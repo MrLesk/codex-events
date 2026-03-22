@@ -257,6 +257,8 @@ Rules:
 - Redemption requires the winner's legal name.
 - Redemption requires acceptance of the winner terms and conditions.
 - Prize redemption references the exact winner terms version accepted for that redemption.
+- Member-scoped prize redemption is completed by the eligible user recorded on the redemption.
+- Team-scoped prize redemption is completed by an active team admin for the winning team.
 
 ### AuditLog
 

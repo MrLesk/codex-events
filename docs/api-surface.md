@@ -166,6 +166,7 @@ Operations:
 | Open submission manually | `POST /api/hackathons/:hackathonId/actions/open-submission` | hackathon admin or platform admin | Allowed only when registration is closed and the configured submission window is open. |
 | Start judging preparation | `POST /api/hackathons/:hackathonId/actions/start-judging-preparation` | hackathon admin or platform admin | Locks submissions, freezes prize eligibility, and creates initial judge assignments. |
 | Start judge review | `POST /api/hackathons/:hackathonId/actions/start-judge-review` | hackathon admin or platform admin | Allowed only after judging preparation is complete. |
+| Start shortlist | `POST /api/hackathons/:hackathonId/actions/start-shortlist` | hackathon admin or platform admin | Allowed only from `judge_review` after every locked submission has a completed review outcome or has been removed from competition. |
 | Announce winners | `POST /api/hackathons/:hackathonId/actions/announce-winners` | hackathon admin or platform admin | Allowed only from `shortlist`. |
 | Complete hackathon | `POST /api/hackathons/:hackathonId/actions/complete` | hackathon admin or platform admin | Allowed only after winners are announced. |
 | List evaluation criteria | `GET /api/hackathons/:hackathonId/evaluation-criteria` | public or authenticated user | Returns configured criteria and display order. |
@@ -374,8 +375,8 @@ Operations:
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | List prize eligibility and redemptions for a hackathon | `GET /api/hackathons/:hackathonId/prize-redemptions` | hackathon admin or platform admin | Returns operational redemption records and eligibility context. |
-| Get own pending prize redemptions | `GET /api/prize-redemptions/me` | prize recipient | Returns the caller's redemption tasks across hackathons. |
-| Submit prize redemption | `POST /api/prize-redemptions/:redemptionId/actions/redeem` | prize recipient | Requires legal name and exact-version acceptance of the current winner terms for the hackathon. |
+| Get own pending prize redemptions | `GET /api/prize-redemptions/me` | prize recipient | Returns the caller's redemption tasks across hackathons. Member-scoped redemptions appear for the eligible user. Team-scoped redemptions appear for active team admins of the winning team. |
+| Submit prize redemption | `POST /api/prize-redemptions/:redemptionId/actions/redeem` | prize recipient | Requires legal name and exact-version acceptance of the current winner terms for the hackathon. Team-scoped redemption requires active team-admin access to the winning team. |
 
 Testing:
 - Unit: prize-eligibility freeze and winner-terms acceptance rules.

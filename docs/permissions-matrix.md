@@ -11,7 +11,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 - `judge`: a user assigned to review through a `JudgeAssignment`
 - `hackathon_admin`: a user with explicit `hackathon_admin` access in a hackathon
 - `platform_admin`: a user with `is_platform_admin = true`
-- `prize_recipient`: a user with a `PrizeRedemption` record to complete
+- `prize_recipient`: a user with a `PrizeRedemption` record to complete, or an active team admin acting on a pending team-scoped redemption
 - `system`: automatic platform behavior driven by configured windows
 
 ## Permission Inheritance
