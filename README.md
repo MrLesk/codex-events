@@ -1,55 +1,78 @@
 # Codex Hackathons
 
-Nuxt application for the Codex hackathon platform.
+Codex Hackathons is the platform for running Codex Community hackathons on infrastructure you control. This repository is intended for teams that want to clone the project, configure it for their own Auth0 tenant and Cloudflare account, and operate hackathons from their own deployment.
 
-## Setup
+## What The Platform Covers
 
-Install dependencies:
+The canonical product model in [`docs/`](docs/README.md) is designed to support:
 
-```bash
-bun install
-```
+- multiple hackathons running in parallel
+- platform accounts that exist independently from any one hackathon
+- per-hackathon applications and approval workflows
+- team formation, join requests, and team-admin management
+- team-owned submissions with controlled submission windows
+- blind judging with judge assignment and admin reassignment controls
+- shortlist, winner selection, and prize redemption flows
+- platform-wide and hackathon-specific terms documents with versioned acceptance records
 
-Copy `.env.example` to `.env` and provide Auth0 credentials for a Regular Web Application:
+For the current domain model, permissions, lifecycle rules, and schema outline, start with:
 
-```bash
-NUXT_AUTH0_DOMAIN=your-tenant.auth0.com
-NUXT_AUTH0_CLIENT_ID=your-auth0-client-id
-NUXT_AUTH0_CLIENT_SECRET=your-auth0-client-secret
-NUXT_AUTH0_SESSION_SECRET=$(openssl rand -hex 64)
-NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
-NUXT_AUTH0_AUDIENCE=
-```
+- [`docs/domain-model.md`](docs/domain-model.md)
+- [`docs/lifecycle-and-state-machines.md`](docs/lifecycle-and-state-machines.md)
+- [`docs/permissions-matrix.md`](docs/permissions-matrix.md)
+- [`docs/schema-outline.md`](docs/schema-outline.md)
 
-Auth0 dashboard settings for local development:
+## Current Repository Surface
 
-- Allowed Callback URLs: `http://localhost:3000/auth/callback`
-- Allowed Logout URLs: `http://localhost:3000`
+The repository already includes:
 
-If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUTH0_*`, rename them to the `NUXT_AUTH0_*` keys above.
+- a Nuxt application configured for Auth0-backed sign-in
+- a protected dashboard route that exercises authenticated application access
+- canonical product and engineering documentation in [`docs/`](docs/README.md)
+- a Playwright + `playwright-bdd` test harness for end-to-end scenarios
+
+The product model in `docs/` is broader than the current starter application surface. Treat `docs/` as the source of truth for the platform you are configuring and extending.
+
+## Platform Configuration
+
+To run the platform in your own environment, start from [`.env.example`](.env.example) and provide values for your deployment.
+
+### Auth0 Runtime
+
+These values configure authentication for the Nuxt application:
+
+- `NUXT_AUTH0_DOMAIN`
+- `NUXT_AUTH0_CLIENT_ID`
+- `NUXT_AUTH0_CLIENT_SECRET`
+- `NUXT_AUTH0_SESSION_SECRET`
+- `NUXT_AUTH0_APP_BASE_URL`
+- `NUXT_AUTH0_AUDIENCE`
+
+For your Auth0 Regular Web Application, configure callback and logout URLs for the domain where you run this app. For example:
+
+- Callback URL: `https://your-domain.example/auth/callback`
+- Logout URL: `https://your-domain.example`
+
+Auth0 is responsible for authentication and identity. Platform authorization remains in the application data model, not in Auth0 roles.
+
+### Cloudflare Resources
+
+These values identify the Cloudflare account and storage resources used by the platform:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_D1_DATABASE_ID`
+- `CLOUDFLARE_R2_BUCKET`
+
+The canonical stack expects Cloudflare Workers for application hosting, D1 for the primary relational database, R2 for file storage, Images for hackathon media, Queues for asynchronous jobs, and Cron Triggers for scheduled platform tasks. See [`docs/tech-stack.md`](docs/tech-stack.md).
+
+## Documentation Map
+
+- [`docs/README.md`](docs/README.md): canonical documentation index
+- [`docs/design-reference.md`](docs/design-reference.md): how to use the `Figma-Design/` reference correctly
+- [`docs/testing-strategy.md`](docs/testing-strategy.md): canonical testing model, including Auth0-backed E2E rules
+- [`DEVELOPMENT.md`](DEVELOPMENT.md): contributor setup, local development, validation, and test commands
 
 ## Development
 
-Start the development server:
-
-```bash
-bun run dev
-```
-
-The built-in Auth0 Nuxt routes are mounted at:
-
-- `/auth/login`
-- `/auth/logout`
-- `/auth/callback`
-- `/auth/backchannel-logout`
-
-The protected example surface added in this repo is `/dashboard`.
-
-## Validation
-
-Run the project checks with:
-
-```bash
-bun run lint
-bun run typecheck
-```
+Contributor-facing setup and local workflow live in [`DEVELOPMENT.md`](DEVELOPMENT.md), not in this README.

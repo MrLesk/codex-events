@@ -17,6 +17,9 @@ logs
 .DS_Store
 .fleet
 .idea
+.features-gen
+playwright-report
+test-results
 
 # Local env files
 .env

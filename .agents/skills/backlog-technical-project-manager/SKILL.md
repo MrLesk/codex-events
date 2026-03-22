@@ -75,11 +75,11 @@ If intent is not explicit, ask for confirmation before activating.
 For each task `<taskId>` (example `BACK-123`), use a dedicated clone:
 
 ```bash
-mkdir -p ../Backlog.md-copies
-if [ ! -d "../Backlog.md-copies/backlog-<taskId>/.git" ]; then
-  git clone "$(pwd)" "../Backlog.md-copies/backlog-<taskId>"
+mkdir -p ../codex-hackathons-copies
+if [ ! -d "../codex-hackathons-copies/backlog-<taskId>/.git" ]; then
+  git clone "$(pwd)" "../codex-hackathons-copies/backlog-<taskId>"
 fi
-cd "../Backlog.md-copies/backlog-<taskId>"
+cd "../codex-hackathons-copies/backlog-<taskId>"
 bun i
 ```
 
@@ -158,7 +158,7 @@ This section is a living checklist for future TPMs. Update it after each multi-t
 2. **Using local-path git remotes in dedicated clones**
    - Symptom: `gh pr create` fails with "no git remotes ... known GitHub host".
    - TPM guardrail: standardize clone remote before PR steps:
-     - `git remote set-url origin https://github.com/MrLesk/Backlog.md.git`
+     - `git remote set-url origin https://github.com/MrLesk/codex-hackathons.git`
 
 3. **Mis-attributing regressions to the wrong task/PR**
    - Symptom: bug report gets sent to wrong branch, causing rework and delay.
@@ -177,5 +177,5 @@ This section is a living checklist for future TPMs. Update it after each multi-t
    - TPM guardrail: inspect PR check status after each push and act on first failing job/log immediately.
 
 7. **Leaving task-record updates stranded on local `main`**
-   - Symptom: sub-agents updated task metadata, but corresponding `backlog/tasks/*.md` changes were never committed/pushed on the owning task branches.
+   - Symptom: sub-agents updated task metadata, but corresponding `./backlog/tasks/*.md` changes were never committed/pushed on the owning task branches.
    - TPM guardrail: require each sub-agent to commit/push its task-record updates on its own task branch, and verify `main` has no leftover modified `backlog/tasks/*.md` files before handoff.

@@ -2,6 +2,7 @@ project_name: "Codex Hackathons"
 default_status: "To Do"
 statuses: ["To Do", "In Progress", "Done"]
 labels: []
+definition_of_done: ["Canonical docs were updated or confirmed unchanged", "Code behavior matches canonical docs", "Relevant validation commands pass", "Tests were added or updated when behavior changed", "Test gaps are documented when automation is not practical", "Config and developer workflow docs were updated when setup changed", "Auth and permissions changes follow the documented platform model", "Risks and follow ups are recorded in the task summary"]
 date_format: yyyy-mm-dd
 max_column_width: 20
 auto_open_browser: true

@@ -9,7 +9,12 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
-    "typecheck": "nuxt typecheck"
+    "typecheck": "nuxt typecheck",
+    "test:e2e:install": "playwright install chromium",
+    "test:e2e:generate": "bddgen",
+    "test:e2e": "bun run test:e2e:generate && playwright test",
+    "test:e2e:headed": "bun run test:e2e:generate && playwright test --headed",
+    "test:e2e:ui": "bun run test:e2e:generate && playwright test --ui"
   },
   "dependencies": {
     "@auth0/auth0-nuxt": "1.0.1",
@@ -21,7 +26,10 @@
   },
   "devDependencies": {
     "@nuxt/eslint": "1.15.2",
+    "@playwright/test": "1.58.2",
+    "@types/node": "25.5.0",
     "eslint": "10.1.0",
+    "playwright-bdd": "8.5.0",
     "typescript": "5.9.3",
     "vue-tsc": "3.2.6",
     "wrangler": "4.76.0"

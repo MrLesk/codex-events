@@ -64,6 +64,8 @@ The mapping between Auth0 identity and platform user is based on the Auth0 subje
 
 Browser end-to-end tests use Playwright and authenticate through the real Auth0 Universal Login flow.
 
+In this repository, Playwright browser scenarios are authored as Gherkin feature files and executed through `playwright-bdd` on top of the Playwright runner.
+
 The supported flow is:
 
 1. Ensure Auth0 personas exist in the test tenant.
