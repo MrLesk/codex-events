@@ -4,7 +4,7 @@ title: Deliver API-first backend before UI implementation
 status: To Do
 assignee: []
 created_date: '2026-03-22 18:55'
-updated_date: '2026-03-22 19:00'
+updated_date: '2026-03-22 19:20'
 labels:
   - backend
   - api
@@ -32,7 +32,7 @@ Create the canonical backend program for the Codex hackathon platform before any
 <!-- AC:BEGIN -->
 - [ ] #1 The initiative is broken down into focused subtasks that cover API contracts, shared backend foundations, domain APIs, platform account deletion, versioned document acceptance flows, derived operational read models, and validation gates.
 - [ ] #2 The planned backend scope covers the canonical business workflows documented in docs/ before UI implementation begins and assigns ownership for each documented workflow.
-- [ ] #3 Each implemented API area requires unit and integration coverage plus Auth0-backed end-to-end coverage where actor-facing behavior is exposed, with final CI enforcement tracked separately.
+- [ ] #3 Each implemented API area requires unit and integration coverage plus Auth0-backed end-to-end coverage where actor-facing behavior is exposed, and the initiative includes CI enforcement for those requirements.
 <!-- AC:END -->
 
 ## Definition of Done

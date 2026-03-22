@@ -6,31 +6,37 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
     "typecheck": "nuxt typecheck",
-    "test:e2e:install": "playwright install chromium",
-    "test:e2e:generate": "bddgen",
-    "test:e2e": "bun run test:e2e:generate && playwright test",
-    "test:e2e:headed": "bun run test:e2e:generate && playwright test --headed",
-    "test:e2e:ui": "bun run test:e2e:generate && playwright test --ui"
+    "playwright:install": "playwright install chromium",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:bdd": "node --experimental-strip-types tests/bdd/bootstrap.ts && bddgen && playwright test"
   },
   "dependencies": {
     "@auth0/auth0-nuxt": "1.0.1",
     "@iconify-json/lucide": "1.2.98",
     "@iconify-json/simple-icons": "1.2.74",
     "@nuxt/ui": "4.5.1",
+    "drizzle-orm": "0.45.1",
     "nuxt": "4.4.2",
-    "tailwindcss": "4.2.2"
+    "tailwindcss": "4.2.2",
+    "zod": "4.3.6"
   },
   "devDependencies": {
     "@nuxt/eslint": "1.15.2",
     "@playwright/test": "1.58.2",
     "@types/node": "25.5.0",
+    "dotenv": "17.3.1",
+    "drizzle-kit": "0.31.10",
     "eslint": "10.1.0",
     "playwright-bdd": "8.5.0",
     "typescript": "5.9.3",
+    "vitest": "4.1.0",
     "vue-tsc": "3.2.6",
     "wrangler": "4.76.0"
   }

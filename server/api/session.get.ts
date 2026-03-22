@@ -1,0 +1,61 @@
+import { desc, eq } from 'drizzle-orm'
+
+import { requireAuthenticatedActor } from '../auth/actor'
+import { hackathonRoleAssignments } from '../database/schema'
+import { getDatabase } from '../database/client'
+import { defineApiHandler } from '../utils/api-handler'
+import { apiData } from '../utils/api-response'
+
+type HackathonRoleAssignmentRecord = typeof hackathonRoleAssignments.$inferSelect
+
+export default defineApiHandler(async (event) => {
+  const actor = await requireAuthenticatedActor(event)
+
+  if (!actor.hasPlatformAccount) {
+    return apiData({
+      actor: {
+        kind: actor.kind,
+        isAuthenticated: actor.isAuthenticated,
+        hasPlatformAccount: actor.hasPlatformAccount,
+        sessionUser: actor.sessionUser,
+        platformUser: null,
+        isPlatformAdmin: false,
+        hackathonRoles: []
+      }
+    })
+  }
+
+  const database = getDatabase(event)
+  const roleAssignments = await database.query.hackathonRoleAssignments.findMany({
+    where: eq(hackathonRoleAssignments.userId, actor.platformUser.id),
+    orderBy: [desc(hackathonRoleAssignments.createdAt)]
+  })
+
+  return apiData({
+    actor: {
+      kind: actor.kind,
+      isAuthenticated: actor.isAuthenticated,
+      hasPlatformAccount: actor.hasPlatformAccount,
+      sessionUser: actor.sessionUser,
+      platformUser: {
+        id: actor.platformUser.id,
+        email: actor.platformUser.email,
+        displayName: actor.platformUser.displayName,
+        isPlatformAdmin: actor.platformUser.isPlatformAdmin,
+        xProfileUrl: actor.platformUser.xProfileUrl,
+        linkedinProfileUrl: actor.platformUser.linkedinProfileUrl,
+        githubProfileUrl: actor.platformUser.githubProfileUrl,
+        createdAt: actor.platformUser.createdAt,
+        updatedAt: actor.platformUser.updatedAt,
+        deletedAt: actor.platformUser.deletedAt
+      },
+      isPlatformAdmin: actor.platformUser.isPlatformAdmin,
+      hackathonRoles: roleAssignments.map((assignment: HackathonRoleAssignmentRecord) => ({
+        hackathonId: assignment.hackathonId,
+        role: assignment.role,
+        isInJudgePool: assignment.isInJudgePool,
+        createdAt: assignment.createdAt
+      }))
+    }
+  })
+})

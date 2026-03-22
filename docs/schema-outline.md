@@ -16,6 +16,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Key Fields
 
 - `id`
+- `auth0_subject`
 - `email`
 - `display_name`
 - `is_platform_admin`
@@ -28,10 +29,12 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Constraints
 
+- `auth0_subject` is unique among active users.
 - `email` is unique among active users.
 
 ### Notes
 
+- `auth0_subject` stores the authenticated Auth0 subject used to resolve the platform actor from the application session.
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
 

@@ -7,8 +7,12 @@ This document defines the canonical testing strategy for the Codex hackathon pla
 The platform uses three testing layers:
 
 - `Vitest` for unit tests and integration tests of isolated application logic
-- `Playwright` for end-to-end tests that exercise the real web application
+- `Playwright` with `playwright-bdd` for end-to-end tests authored as BDD scenarios that exercise the real web application
 - fixture bootstrap scripts for deterministic Auth0 and platform-database test state
+
+In this repository, end-to-end coverage is authored as Gherkin feature files plus step definitions through `playwright-bdd`. This includes the authenticated smoke coverage that reuses real Auth0-backed browser session state.
+Repository-authored end-to-end scenarios and their local bootstrap support live under `tests/bdd/`. Feature files live under `tests/bdd/features`, matching step definitions live under `tests/bdd/steps`, and authenticated bootstrap helpers live under `tests/bdd/bootstrap.ts` and `tests/bdd/support`.
+The default local BDD test command runs both signed-out and authenticated scenarios.
 
 ## Core Rules
 
@@ -64,8 +68,6 @@ The mapping between Auth0 identity and platform user is based on the Auth0 subje
 
 Browser end-to-end tests use Playwright and authenticate through the real Auth0 Universal Login flow.
 
-In this repository, Playwright browser scenarios are authored as Gherkin feature files and executed through `playwright-bdd` on top of the Playwright runner.
-
 The supported flow is:
 
 1. Ensure Auth0 personas exist in the test tenant.
@@ -78,7 +80,7 @@ This keeps authentication realistic while avoiding repeated interactive login du
 
 ## API End-to-End Tests
 
-API end-to-end tests use the same authenticated user sessions as browser tests.
+API-oriented end-to-end assertions in this repository are also authored through BDD scenarios and use the same authenticated user sessions as browser tests.
 
 The supported pattern is:
 
@@ -92,12 +94,16 @@ This keeps API end-to-end coverage aligned with the same cookie-based session mo
 
 Auth0-side fixtures and platform-database fixtures are both reset idempotently.
 
+For local repository execution, platform fixture reset uses the local SQLite-backed D1 path rather than a remote Cloudflare D1 API path.
+
 Reset logic must:
 
 - preserve the stable persona identities
 - reconcile passwords and profile state for those personas when needed
 - recreate or normalize platform authorization rows and scenario data before test execution
 - avoid coupling one test's authorization state to another test's leftovers
+
+For local authenticated validation, the repository prefers a SQLite-backed local D1 file instead of remote Cloudflare D1 fixture reset. The local bootstrap lifecycle is explicit: delete the previous SQLite file, recreate it from migrations, seed the canonical fixture dataset, clear saved session-state artifacts, and then perform fresh real Auth0 logins.
 
 ## Unsupported Patterns
 

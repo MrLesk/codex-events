@@ -4,7 +4,7 @@ title: 'Implement shortlist, winner, prize redemption, and audit APIs'
 status: To Do
 assignee: []
 created_date: '2026-03-22 18:55'
-updated_date: '2026-03-22 19:00'
+updated_date: '2026-03-22 21:04'
 labels:
   - backend
   - api
@@ -40,6 +40,14 @@ Implement the backend APIs that cover the end of the hackathon workflow after ju
 - [ ] #2 Prize eligibility and redemption behavior follow the documented freeze point, recipient requirements, and exact-version winner-terms acceptance requirements.
 - [ ] #3 Automated tests for this API area include unit and integration coverage plus Auth0-backed end-to-end scenarios for leaderboard and shortlist visibility, winner and prize actions, and operational audit access.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+No active implementation has started for TASK-3.8. Treat this as a future task that begins only after TASK-3.7 has finalized the judging/submission data and workflow surface it depends on.
+
+When work starts, validate the computed leaderboard, shortlist, winner, prize-redemption, and audit scope against the then-current canonical docs and persistence layer before recording an implementation plan.
+<!-- SECTION:NOTES:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->

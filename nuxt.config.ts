@@ -25,6 +25,10 @@ export default defineNuxtConfig({
       sessionSecret: '',
       appBaseUrl: 'http://localhost:3000',
       audience: ''
+    },
+    database: {
+      binding: 'DB',
+      localSqlitePath: '.data/local-d1.sqlite'
     }
   },
 

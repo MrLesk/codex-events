@@ -1,0 +1,86 @@
+import { describe, expect, test } from 'vitest'
+
+import { ApiError } from '../../../../server/utils/api-error'
+import {
+  assertHackathonSchedule,
+  assertOpenSubmissionAllowed,
+  assertRoleJudgePoolInvariant
+} from '../../../../server/utils/hackathon-management'
+
+describe('hackathon management utilities', () => {
+  test('requires judges to remain in the automatic judge pool', () => {
+    expect(() => assertRoleJudgePoolInvariant('judge', false)).toThrowError(ApiError)
+    expect(() => assertRoleJudgePoolInvariant('judge', true)).not.toThrow()
+    expect(() => assertRoleJudgePoolInvariant('hackathon_admin', false)).not.toThrow()
+  })
+
+  test('validates canonical hackathon schedule ordering', () => {
+    expect(() => assertHackathonSchedule({
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z'
+    })).not.toThrow()
+
+    expect(() => assertHackathonSchedule({
+      registrationOpensAt: '2026-03-24T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z'
+    })).toThrowError(ApiError)
+  })
+
+  test('allows opening submission only after registration closes and while the submission window is open', () => {
+    const now = new Date('2026-03-23T13:00:00.000Z')
+
+    expect(() => assertOpenSubmissionAllowed({
+      id: 'hackathon_1',
+      name: 'Fixture Hackathon',
+      slug: 'fixture-hackathon',
+      description: 'Fixture hackathon',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      city: 'Vienna',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    }, now)).not.toThrow()
+
+    expect(() => assertOpenSubmissionAllowed({
+      id: 'hackathon_1',
+      name: 'Fixture Hackathon',
+      slug: 'fixture-hackathon',
+      description: 'Fixture hackathon',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      city: 'Vienna',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-24T12:00:00.000Z',
+      submissionOpensAt: '2026-03-24T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    }, now)).toThrowError(ApiError)
+  })
+})

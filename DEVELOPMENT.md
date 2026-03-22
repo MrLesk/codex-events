@@ -21,6 +21,8 @@ NUXT_AUTH0_CLIENT_SECRET=your-auth0-client-secret
 NUXT_AUTH0_SESSION_SECRET=$(openssl rand -hex 64)
 NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
 NUXT_AUTH0_AUDIENCE=
+NUXT_DATABASE_BINDING=DB
+NUXT_DATABASE_LOCAL_SQLITE_PATH=.data/local-d1.sqlite
 ```
 
 Local Auth0 dashboard settings:
@@ -29,6 +31,11 @@ Local Auth0 dashboard settings:
 - Allowed Logout URLs: `http://localhost:3000`
 
 If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUTH0_*`, rename them to the `NUXT_AUTH0_*` keys above.
+
+Shared backend foundation work also expects a D1 binding name at runtime:
+
+- `NUXT_DATABASE_BINDING` should match the D1 binding exposed to the server runtime. The canonical foundation defaults to `DB`.
+- `NUXT_DATABASE_LOCAL_SQLITE_PATH` is an opt-in local fallback for backend integration tests and Auth0-backed Playwright preparation when a Cloudflare D1 binding is not present in `nuxt dev`.
 
 ## Local Development
 
@@ -54,35 +61,56 @@ Run the standard project checks with:
 ```bash
 bun run lint
 bun run typecheck
+bun run test:unit
+bun run test:integration
+```
+
+Generate the current Drizzle migration from the canonical schema with:
+
+```bash
+bun run db:generate
+```
+
+If your Cloudflare D1 credentials are configured in `.env`, push the current schema with:
+
+```bash
+bun run db:push
 ```
 
 ## End-to-End Tests
 
-The repository uses `Playwright` with `playwright-bdd`, so browser scenarios are authored as Gherkin feature files and generated into Playwright tests before execution.
+The repository uses `Playwright` with `playwright-bdd`, so end-to-end coverage is authored as Gherkin feature files plus step definitions and generated into Playwright tests before execution.
+
+Authenticated end-to-end coverage also requires the Auth0 test-tenant variables from `.env.example`, including:
+
+```bash
+AUTH0_TEST_DOMAIN=your-tenant.auth0.com
+AUTH0_TEST_MGMT_CLIENT_ID=your-test-management-client-id
+AUTH0_TEST_MGMT_CLIENT_SECRET=your-test-management-client-secret
+AUTH0_TEST_MGMT_AUDIENCE=https://your-tenant.auth0.com/api/v2/
+AUTH0_TEST_CONNECTION_NAME=Username-Password-Authentication
+```
+
+For platform fixture reset, provide either `NUXT_DATABASE_LOCAL_SQLITE_PATH` for local SQLite-backed D1 preparation or the Cloudflare D1 credentials from `.env.example`.
 
 Install the Playwright browser for local runs:
 
 ```bash
-bun run test:e2e:install
-```
-
-Generate Playwright tests from the feature files:
-
-```bash
-bun run test:e2e:generate
+bun run test:bdd:install
 ```
 
 Run the generated end-to-end suite:
 
 ```bash
-bun run test:e2e
+bun run test:bdd
 ```
 
-Useful variants:
+This is the canonical local BDD command. It bootstraps the stable Auth0 personas, resets the local SQLite-backed fixture database, regenerates the Playwright output, and runs both the signed-out and authenticated BDD scenarios.
 
-```bash
-bun run test:e2e:headed
-bun run test:e2e:ui
-```
+BDD source files live under `tests/bdd/`: feature files in `tests/bdd/features`, matching step definitions in `tests/bdd/steps`, and authenticated bootstrap support in `tests/bdd/bootstrap.ts` plus `tests/bdd/support`. Generated files are written under `.features-gen/` and should not be edited by hand.
 
-BDD source files live in `tests/bdd/features` and matching step definitions live in `tests/bdd/steps`. Generated files are written to `.features-gen/` and should not be edited by hand.
+For authenticated runs, the local SQLite-backed D1 path is the default for deterministic fixture reset. The bootstrap flow deletes and recreates the SQLite database file, reapplies migrations, reseeds the fixture dataset, clears `tests/bdd/.auth/`, and then performs fresh real Auth0 logins for the stable personas before saving new storage-state artifacts.
+
+The authenticated Playwright setup project writes reusable session-state artifacts under `tests/bdd/.auth/`. Those files are local test artifacts and are gitignored.
+
+The current authenticated end-to-end foundation proves real-session reuse through the protected `/dashboard` surface and authenticated request contexts through BDD-authored smoke coverage. Canonical backend API endpoints arrive in later tasks, so there is not yet a dedicated `/api/*` Auth0-backed smoke route in this repository state.
