@@ -31,6 +31,9 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 - If something is not current truth, either omit it or record it explicitly as an unresolved question in the appropriate canonical document.
 - Do not document naming debates, rejected alternatives, or authoring heuristics inside canonical product docs.
 - Do not include rationale that only explains why one wording or model was chosen over another unless that rationale is itself part of the product rules.
+- Do not describe canonical decisions in contrast to the current repository starter code or existing local setup.
+- Do not include optional alternatives in canonical docs unless those alternatives are themselves part of the supported product architecture.
+- Do not add sections such as "current position" or language such as "for the first version" unless the user explicitly asks for phased planning.
 
 ## Working Style
 
