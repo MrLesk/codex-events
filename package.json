@@ -12,7 +12,9 @@
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
     "typecheck": "nuxt typecheck",
+    "validate:backend": "bun run lint && bun run typecheck && bun run test:unit && bun run test:integration && bun run test:bdd",
     "playwright:install": "playwright install chromium",
+    "test:bdd:install": "playwright install chromium",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:bdd": "node --experimental-strip-types tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && node --experimental-strip-types tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1"

@@ -10,9 +10,27 @@ The platform uses three testing layers:
 - `Playwright` with `playwright-bdd` for end-to-end tests authored as BDD scenarios that exercise the real web application
 - fixture bootstrap scripts for deterministic Auth0 and platform-database test state
 
-In this repository, end-to-end coverage is authored as Gherkin feature files plus step definitions through `playwright-bdd`. This includes the authenticated smoke coverage that reuses real Auth0-backed browser session state.
+In this repository, end-to-end coverage is authored as Gherkin feature files plus step definitions through `playwright-bdd`. This includes the authenticated backend workflow coverage that reuses real Auth0-backed browser session state.
 Repository-authored end-to-end scenarios and their local bootstrap support live under `tests/bdd/`. Feature files live under `tests/bdd/features`, matching step definitions live under `tests/bdd/steps`, and authenticated bootstrap helpers live under `tests/bdd/bootstrap.ts` and `tests/bdd/support`.
 The default local BDD test command runs both signed-out and authenticated scenarios.
+
+## Backend Release Gate
+
+The API-first backend program is the release gate before UI implementation begins.
+
+The required validation surface is:
+
+- `bun run lint`
+- `bun run typecheck`
+- `bun run test:unit`
+- `bun run test:integration`
+- `bun run test:bdd`
+
+For local full-gate execution, the repository also exposes:
+
+- `bun run validate:backend`
+
+Continuous integration must run the same validation surface with the Auth0-backed BDD environment configured through repository secrets.
 
 ## Core Rules
 

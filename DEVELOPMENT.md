@@ -63,6 +63,13 @@ bun run lint
 bun run typecheck
 bun run test:unit
 bun run test:integration
+bun run test:bdd
+```
+
+The API-first backend release gate before UI work is:
+
+```bash
+bun run validate:backend
 ```
 
 Generate the current Drizzle migration from the canonical schema with:
@@ -115,4 +122,6 @@ For authenticated runs, the local SQLite-backed D1 path is the default for deter
 
 The authenticated Playwright setup project writes reusable session-state artifacts under `tests/bdd/.auth/`. Those files are local test artifacts and are gitignored.
 
-The current authenticated end-to-end foundation proves real-session reuse through the protected `/dashboard` surface and authenticated request contexts through BDD-authored smoke coverage. Canonical backend API endpoints arrive in later tasks, so there is not yet a dedicated `/api/*` Auth0-backed smoke route in this repository state.
+The authenticated BDD suite now covers the backend workflow surface delivered by `TASK-3.5` through `TASK-3.9`, including actor/session reads, admin configuration, application and team formation, judging, shortlist and winners, prize redemption, audit access, and destructive account deletion.
+
+GitHub Actions uses the same backend release gate. Keep `.github/workflows/ci.yml`, this document, and `docs/testing-strategy.md` aligned when the required validation surface changes.
