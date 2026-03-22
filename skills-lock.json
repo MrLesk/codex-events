@@ -1,6 +1,21 @@
 {
   "version": 1,
   "skills": {
+    "auth0-nuxt": {
+      "source": "auth0/agent-skills",
+      "sourceType": "github",
+      "computedHash": "ddac9262b53f51619b3f3581285ae19ba4c049ee78a96bff907a170ef5e92360"
+    },
+    "backlog-technical-project-manager": {
+      "source": "MrLesk/Backlog.md",
+      "sourceType": "github",
+      "computedHash": "dede31d281d1bb78609df2bc21320096d1fe284560fcbac323ce0be66e3b03a3"
+    },
+    "cloudflare": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "computedHash": "02ef72b4906d295d03da15d52357babdef06a762f0374b85c89c73c9b22a7bad"
+    },
     "design-taste-frontend": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
@@ -20,6 +35,16 @@
       "source": "nuxt/ui",
       "sourceType": "github",
       "computedHash": "9b7ff4c14185b7205c04c7ef41969d7b5c01e59c85e6d64083a7f497bf90b8d7"
+    },
+    "workers-best-practices": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "computedHash": "420e1ad3eaeb8ed2016e6b34fff3757de6aa39899ec2bd6e9784a29c38e70f9a"
+    },
+    "wrangler": {
+      "source": "cloudflare/skills",
+      "sourceType": "github",
+      "computedHash": "cd0ac8f97a2f54d19166acfd380fca8236db5e9f37d3b2066f713967e2673d36"
     }
   }
 }

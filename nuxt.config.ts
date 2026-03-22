@@ -2,6 +2,7 @@
 export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
+    '@auth0/auth0-nuxt',
     '@nuxt/ui'
   ],
 
@@ -16,8 +17,15 @@ export default defineNuxtConfig({
     fallback: 'dark'
   },
 
-  routeRules: {
-    '/': { prerender: true }
+  runtimeConfig: {
+    auth0: {
+      domain: '',
+      clientId: '',
+      clientSecret: '',
+      sessionSecret: '',
+      appBaseUrl: 'http://localhost:3000',
+      audience: ''
+    }
   },
 
   compatibilityDate: '2025-01-15',

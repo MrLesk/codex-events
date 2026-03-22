@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 useHead({
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1' }
@@ -11,16 +11,18 @@ useHead({
   }
 })
 
-const title = 'Nuxt Starter Template'
-const description = 'A production-ready starter template powered by Nuxt UI. Build beautiful, accessible, and performant applications in minutes, not hours.'
+const route = useRoute()
+const user = useUser()
+
+const loginHref = computed(() => `/auth/login?returnTo=${encodeURIComponent(route.fullPath || '/dashboard')}`)
+const title = 'Codex Hackathons'
+const description = 'The internal platform for running Codex community hackathons with Auth0-backed platform authentication.'
 
 useSeoMeta({
   title,
   description,
   ogTitle: title,
   ogDescription: description,
-  ogImage: 'https://ui.nuxt.com/assets/templates/nuxt/starter-light.png',
-  twitterImage: 'https://ui.nuxt.com/assets/templates/nuxt/starter-light.png',
   twitterCard: 'summary_large_image'
 })
 </script>
@@ -29,23 +31,35 @@ useSeoMeta({
   <UApp>
     <UHeader>
       <template #left>
-        <NuxtLink to="/">
-          <AppLogo class="w-auto h-6 shrink-0" />
+        <NuxtLink
+          to="/"
+          class="font-semibold tracking-[0.14em] uppercase text-sm text-highlighted"
+        >
+          Codex Hackathons
         </NuxtLink>
-
-        <TemplateMenu />
       </template>
 
       <template #right>
+        <UButton
+          to="/dashboard"
+          color="neutral"
+          variant="ghost"
+          label="Dashboard"
+        />
+
         <UColorModeButton />
 
         <UButton
-          to="https://github.com/nuxt-ui-templates/starter"
-          target="_blank"
-          icon="i-simple-icons-github"
-          aria-label="GitHub"
-          color="neutral"
-          variant="ghost"
+          v-if="user"
+          to="/auth/logout"
+          label="Sign out"
+          color="primary"
+        />
+        <UButton
+          v-else
+          :to="loginHref"
+          label="Sign in"
+          color="primary"
         />
       </template>
     </UHeader>
@@ -59,19 +73,20 @@ useSeoMeta({
     <UFooter>
       <template #left>
         <p class="text-sm text-muted">
-          Built with Nuxt UI • © {{ new Date().getFullYear() }}
+          Codex Community hackathon platform
         </p>
       </template>
 
       <template #right>
-        <UButton
-          to="https://github.com/nuxt-ui-templates/starter"
-          target="_blank"
-          icon="i-simple-icons-github"
-          aria-label="GitHub"
-          color="neutral"
-          variant="ghost"
-        />
+        <div class="flex items-center gap-3 text-sm text-muted">
+          <UAvatar
+            v-if="user"
+            :src="user.picture"
+            :alt="user.name"
+            size="sm"
+          />
+          <span>{{ user?.email ?? 'Signed out' }}</span>
+        </div>
       </template>
     </UFooter>
   </UApp>

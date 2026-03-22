@@ -1,0 +1,17 @@
+export default defineEventHandler(async (event) => {
+  const url = getRequestURL(event)
+
+  if (!url.pathname.startsWith('/dashboard')) {
+    return
+  }
+
+  const auth0 = useAuth0(event)
+  const session = await auth0.getSession()
+
+  if (session) {
+    return
+  }
+
+  const returnTo = `${url.pathname}${url.search}`
+  return sendRedirect(event, `/auth/login?returnTo=${encodeURIComponent(returnTo)}`)
+})
