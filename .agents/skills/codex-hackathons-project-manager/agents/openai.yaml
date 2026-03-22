@@ -1,0 +1,6 @@
+interface:
+  display_name: "Codex Hackathons Technical PM"
+  short_description: "Orchestrate Backlog.md task delivery with sub-agents"
+  default_prompt: "Use $codex-hackathons-project-manager to coordinate these Backlog.md tasks with parallel sub-agents."
+policy:
+  allow_implicit_invocation: false

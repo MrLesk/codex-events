@@ -1,5 +1,5 @@
 ---
-name: backlog-technical-project-manager
+name: codex-hackathons-technical-project-manager
 description: >-
   Technical project management for Backlog.md workstreams using coordinated
   sub-agents. Use only when the user explicitly asks Codex to take over one or
@@ -9,7 +9,7 @@ description: >-
   approve sub-agent plans before implementation.
 ---
 
-# Backlog.md Technical Project Manager
+# Codex hackathons Technical Project Manager
 
 ## Overview
 
