@@ -17,6 +17,13 @@ Read these first before making product decisions:
 
 When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 
+## Design Reference
+
+- The `Figma-Design/` directory contains design reference material exported as React components and related assets.
+- `Figma-Design/` is a visual and design-system guide, not a canonical source of product behavior, data rules, permissions, or workflows.
+- Components in `Figma-Design/` must not be used as-is when they conflict with the canonical docs in `docs/`.
+- Treat `docs/` as authoritative for product rules and use `Figma-Design/` to inform layout, styling, and interaction design.
+
 ## Authoring Rules
 
 - Write documentation as the current canonical state of the product.
