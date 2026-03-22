@@ -62,7 +62,7 @@ Behavior:
 - All submissions are locked.
 - New teams cannot be created.
 - Judges do not review submissions yet.
-- Submissions are distributed between judges as evenly as possible.
+- Submissions are distributed between the explicit judge pool as evenly as possible.
 - Hackathon admins can reassign submissions only while the active assignment has not been started.
 
 #### `judge_review`
@@ -110,8 +110,8 @@ Behavior:
   Actor: system.
   Guard: hackathon configuration is ready and the registration window is open.
 - `registration_open -> submission_open`
-  Actor: system.
-  Guard: registration is closed and the submission window is open.
+  Actor: hackathon admin or platform admin.
+  Guard: registration is closed, the submission window is open, and an admin starts submission manually.
 - `submission_open -> judging_preparation`
   Guard: submission editing is closed and a hackathon admin starts judging preparation manually.
 - `judging_preparation -> judge_review`

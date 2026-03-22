@@ -36,6 +36,7 @@ Key characteristics:
 - Multiple hackathons can exist in parallel.
 - Each hackathon has its own registration window.
 - Each hackathon has its own submission window.
+- Each hackathon has a submission flow that can be activated manually within its configured submission window.
 - Each hackathon has a judging flow that is activated manually.
 - Each hackathon can define a maximum team member limit.
 - Each hackathon has hackathon-specific terms and conditions for applying and for winners.
@@ -56,6 +57,8 @@ Rules:
 - A user has at most one explicit hackathon role per hackathon.
 - `hackathon_admin` includes judge permissions.
 - A user with `is_platform_admin = true` includes hackathon-admin permissions and therefore judge permissions in every hackathon.
+- Only users with the explicit `judge` role are part of the automatic judge distribution pool.
+- Hackathon admins and platform admins can judge, but they are not automatically included in judge distribution unless they also have the explicit `judge` role for that hackathon.
 - Any actor performing a judge review sees the blind judging view rather than the admin view.
 - The blind judging view includes anonymized application information and excludes team identity.
 
@@ -179,7 +182,7 @@ Relationship rules:
 
 Operational rules:
 
-- When judging preparation begins, submissions are distributed between judges as evenly as possible.
+- When judging preparation begins, submissions are distributed between the explicit judge pool as evenly as possible.
 - Hackathon admins can reassign a submission only before its assigned judge has started review.
 - Scoring data lives on `JudgeAssignment`.
 - Judge-level ineligibility decisions also live on `JudgeAssignment`.
