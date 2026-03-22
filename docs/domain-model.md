@@ -18,6 +18,7 @@ Key characteristics:
 - Can apply to hackathons.
 - Can join at most one team per hackathon.
 - Can be marked with `is_platform_admin`.
+- Can optionally store X, LinkedIn, and GitHub profile links.
 - Can delete their account, subject to GDPR-compliant handling.
 
 Rules:
@@ -34,13 +35,46 @@ A single hackathon program with its own schedule, documents, roles, criteria, te
 Key characteristics:
 
 - Multiple hackathons can exist in parallel.
+- Each hackathon can define a background image and a banner image.
+- Each hackathon has a city and address.
 - Each hackathon has its own registration window.
 - Each hackathon has its own submission window.
 - Each hackathon has a submission flow that can be activated manually within its configured submission window.
 - Each hackathon has a judging flow that is activated manually.
 - Each hackathon can define a maximum team member limit.
-- Each hackathon has hackathon-specific terms and conditions for applying and for winners.
-- Shared platform documents such as the privacy policy are not hackathon-specific.
+- Each hackathon can require X, LinkedIn, and GitHub profiles for registration.
+- Each hackathon references its own application terms and winner terms.
+
+### PlatformDocument
+
+A platform-wide document used during platform account registration.
+
+Current platform document types:
+
+- `privacy_policy`
+- `platform_terms`
+
+Rules:
+
+- Platform registration uses platform-wide documents only.
+- Platform documents are versioned.
+
+### HackathonTermsDocument
+
+A versioned terms document belonging to a specific hackathon.
+
+Document types:
+
+- `application_terms`
+- `winner_terms`
+
+Rules:
+
+- Each hackathon references one current application terms document.
+- Each hackathon references one current winner terms document.
+- Hackathon application uses the current application terms document for that hackathon.
+- Prize redemption uses the current winner terms document for that hackathon.
+- User acceptance must reference the exact accepted document version.
 
 ### HackathonRoleAssignment
 
@@ -62,21 +96,6 @@ Rules:
 - Any actor performing a judge review sees the blind judging view rather than the admin view.
 - The blind judging view includes anonymized application information and excludes team identity.
 
-### HackathonDocument
-
-A document associated with a hackathon or with the platform globally.
-
-Document categories:
-
-- application terms and conditions
-- winner terms and conditions
-- shared platform documents such as privacy policy
-
-Rules:
-
-- Hackathon-specific terms must be versioned.
-- User acceptance must reference the exact accepted version.
-
 ### UserApplication
 
 A user-to-hackathon application record.
@@ -89,6 +108,8 @@ Rules:
 - Application approval is handled by hackathon admins.
 - A user must be approved before creating or joining a team in that hackathon.
 - Blind judging uses application information without exposing team identity.
+- User application acceptance references the exact application terms version accepted for that hackathon.
+- A user can submit a `UserApplication` only if the user profile satisfies that hackathon's required profile rules.
 
 ### Team
 
@@ -223,6 +244,7 @@ Rules:
 - Redemption can be digital or in person depending on the prize.
 - Redemption requires the winner's legal name.
 - Redemption requires acceptance of the winner terms and conditions.
+- Prize redemption references the exact winner terms version accepted for that redemption.
 
 ### AuditLog
 
@@ -285,4 +307,4 @@ Scope:
 
 - The platform must support GDPR-compliant account deletion.
 - The platform must retain the auditability needed for operational and legal review.
-- Acceptance of hackathon-specific terms and winner terms must be recorded against the accepted document version.
+- Acceptance of platform registration documents, hackathon application terms, and winner terms must be recorded against the accepted document version.

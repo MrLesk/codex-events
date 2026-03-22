@@ -12,8 +12,8 @@ This repository is the canonical design and implementation workspace for the Cod
 
 Read these first before making product decisions:
 
-- [docs/README.md](/Users/alex/projects/codex-hackathons/docs/README.md): documentation index and writing rules
-- [docs/domain-model.md](/Users/alex/projects/codex-hackathons/docs/domain-model.md): current domain language, entities, and invariants
+- [docs/README.md](docs/README.md): documentation index and writing rules
+- [docs/domain-model.md](docs/domain-model.md): current domain language, entities, and invariants
 
 When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 
