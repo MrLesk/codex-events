@@ -4,7 +4,7 @@ title: 'Establish the UI shell, navigation, and role-aware entry points'
 status: To Do
 assignee: []
 created_date: '2026-03-22 22:09'
-updated_date: '2026-03-22 22:09'
+updated_date: '2026-03-22 23:38'
 labels:
   - frontend
   - ui
@@ -34,6 +34,12 @@ Create the canonical application shell so signed-out users, participants, judges
 - [ ] #2 Authenticated users see navigation and dashboard entry points that reflect their effective platform and hackathon roles.
 - [ ] #3 The application shell supports moving between the public, participant, judge, admin, account, and winner-facing surfaces defined in the canonical docs.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Supervisor note: worker assignment pending. Shared shell and navigation changes are reserved for this task to minimize conflicts with other Milestone 1 UI work.
+<!-- SECTION:NOTES:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
