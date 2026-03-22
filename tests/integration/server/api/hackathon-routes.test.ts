@@ -7,11 +7,18 @@ import hackathonsPostHandler from '../../../../server/api/hackathons/index.post'
 import hackathonDetailGetHandler from '../../../../server/api/hackathons/[hackathonId]/index.get'
 import hackathonPatchHandler from '../../../../server/api/hackathons/[hackathonId]/index.patch'
 import openSubmissionPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/open-submission.post'
+import startJudgingPreparationPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-judging-preparation.post'
+import startJudgeReviewPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-judge-review.post'
 import {
   auditLogs,
   hackathonRoleAssignments,
   hackathonTermsDocuments,
   hackathons,
+  judgeAssignments,
+  prizeEligibilitySnapshots,
+  submissions,
+  teamMembers,
+  teams,
   users
 } from '../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
@@ -370,6 +377,326 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         entityType: 'hackathon',
         entityId: 'hackathon_open_submission',
         action: 'hackathon.open_submission'
+      })
+    ])
+  })
+
+  test('POST /api/hackathons/:hackathonId/actions/start-judging-preparation locks submissions, snapshots members, creates assignments, and audits', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/start-judging-preparation',
+          handler: startJudgingPreparationPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'platform_admin',
+        auth0Subject: 'auth0|platform_admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        isPlatformAdmin: true
+      },
+      {
+        id: 'judge_a',
+        auth0Subject: 'auth0|judge_a',
+        email: 'judge-a@example.com',
+        displayName: 'Judge A'
+      },
+      {
+        id: 'judge_b',
+        auth0Subject: 'auth0|judge_b',
+        email: 'judge-b@example.com',
+        displayName: 'Judge B'
+      },
+      {
+        id: 'team_admin',
+        auth0Subject: 'auth0|team_admin',
+        email: 'team-admin@example.com',
+        displayName: 'Team Admin'
+      },
+      {
+        id: 'team_member',
+        auth0Subject: 'auth0|team_member',
+        email: 'team-member@example.com',
+        displayName: 'Team Member'
+      },
+      {
+        id: 'other_team_admin',
+        auth0Subject: 'auth0|other_team_admin',
+        email: 'other-team-admin@example.com',
+        displayName: 'Other Team Admin'
+      }
+    ])
+
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_judging_prep',
+      name: 'Judging Prep Hackathon',
+      slug: 'judging-prep-hackathon',
+      description: 'Judging preparation',
+      city: 'Vienna',
+      address: 'Address',
+      registrationOpensAt: '2026-03-18T12:00:00.000Z',
+      registrationClosesAt: '2026-03-19T12:00:00.000Z',
+      submissionOpensAt: '2026-03-19T12:00:00.000Z',
+      submissionClosesAt: '2026-03-21T12:00:00.000Z',
+      state: 'submission_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'platform_admin'
+    })
+
+    await harness.database.insert(hackathonRoleAssignments).values([
+      {
+        id: 'role_judge_a',
+        hackathonId: 'hackathon_judging_prep',
+        userId: 'judge_a',
+        role: 'judge',
+        isInJudgePool: true,
+        createdAt: '2026-03-22T12:00:00.000Z'
+      },
+      {
+        id: 'role_judge_b',
+        hackathonId: 'hackathon_judging_prep',
+        userId: 'judge_b',
+        role: 'judge',
+        isInJudgePool: true,
+        createdAt: '2026-03-22T12:01:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(teams).values([
+      {
+        id: 'team_1',
+        hackathonId: 'hackathon_judging_prep',
+        name: 'Alpha Team',
+        slug: 'alpha-team',
+        isOpenToJoinRequests: false,
+        createdByUserId: 'team_admin',
+        createdAt: '2026-03-22T12:00:00.000Z',
+        updatedAt: '2026-03-22T12:00:00.000Z'
+      },
+      {
+        id: 'team_2',
+        hackathonId: 'hackathon_judging_prep',
+        name: 'Beta Team',
+        slug: 'beta-team',
+        isOpenToJoinRequests: false,
+        createdByUserId: 'other_team_admin',
+        createdAt: '2026-03-22T12:05:00.000Z',
+        updatedAt: '2026-03-22T12:05:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(teamMembers).values([
+      {
+        id: 'membership_admin',
+        teamId: 'team_1',
+        userId: 'team_admin',
+        role: 'admin',
+        joinedAt: '2026-03-22T12:00:00.000Z',
+        createdAt: '2026-03-22T12:00:00.000Z'
+      },
+      {
+        id: 'membership_member',
+        teamId: 'team_1',
+        userId: 'team_member',
+        role: 'member',
+        joinedAt: '2026-03-22T12:01:00.000Z',
+        createdAt: '2026-03-22T12:01:00.000Z'
+      },
+      {
+        id: 'membership_other_admin',
+        teamId: 'team_2',
+        userId: 'other_team_admin',
+        role: 'admin',
+        joinedAt: '2026-03-22T12:05:00.000Z',
+        createdAt: '2026-03-22T12:05:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(submissions).values([
+      {
+        id: 'submission_1',
+        teamId: 'team_1',
+        status: 'submitted',
+        projectName: 'Project One',
+        submittedAt: '2026-03-24T12:00:00.000Z',
+        createdAt: '2026-03-24T12:00:00.000Z',
+        updatedAt: '2026-03-24T12:00:00.000Z'
+      },
+      {
+        id: 'submission_2',
+        teamId: 'team_2',
+        status: 'submitted',
+        projectName: 'Project Two',
+        submittedAt: '2026-03-24T12:05:00.000Z',
+        createdAt: '2026-03-24T12:05:00.000Z',
+        updatedAt: '2026-03-24T12:05:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/hackathons/hackathon_judging_prep/actions/start-judging-preparation', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'hackathon_judging_prep',
+        state: 'judging_preparation'
+      }
+    })
+
+    const updatedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_judging_prep')
+    })
+    const lockedSubmissions = await harness.database.select().from(submissions)
+    const snapshotRows = await harness.database.select().from(prizeEligibilitySnapshots)
+    const assignmentRows = await harness.database.select().from(judgeAssignments)
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(updatedHackathon?.state).toBe('judging_preparation')
+    expect(lockedSubmissions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'submission_1',
+        status: 'locked'
+      }),
+      expect.objectContaining({
+        id: 'submission_2',
+        status: 'locked'
+      })
+    ]))
+    expect(snapshotRows).toHaveLength(3)
+    expect(assignmentRows).toHaveLength(2)
+    expect(assignmentRows.map(row => row.judgeUserId).sort()).toEqual(['judge_a', 'judge_b'])
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'hackathon',
+        entityId: 'hackathon_judging_prep',
+        action: 'hackathon.start_judging_preparation'
+      })
+    ])
+  })
+
+  test('POST /api/hackathons/:hackathonId/actions/start-judge-review advances when locked submissions already have active assignments', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/start-judge-review',
+          handler: startJudgeReviewPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'platform_admin',
+        auth0Subject: 'auth0|platform_admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        isPlatformAdmin: true
+      },
+      {
+        id: 'judge_a',
+        auth0Subject: 'auth0|judge_a',
+        email: 'judge-a@example.com',
+        displayName: 'Judge A'
+      },
+      {
+        id: 'team_admin',
+        auth0Subject: 'auth0|team_admin',
+        email: 'team-admin@example.com',
+        displayName: 'Team Admin'
+      }
+    ])
+
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_judge_review',
+      name: 'Judge Review Hackathon',
+      slug: 'judge-review-hackathon',
+      description: 'Judge review',
+      city: 'Vienna',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'judging_preparation',
+      maxTeamMembers: 5,
+      createdByUserId: 'platform_admin'
+    })
+
+    await harness.database.insert(teams).values({
+      id: 'team_1',
+      hackathonId: 'hackathon_judge_review',
+      name: 'Alpha Team',
+      slug: 'alpha-team',
+      isOpenToJoinRequests: false,
+      createdByUserId: 'team_admin',
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    await harness.database.insert(submissions).values({
+      id: 'submission_1',
+      teamId: 'team_1',
+      status: 'locked',
+      projectName: 'Project One',
+      submittedAt: '2026-03-24T12:00:00.000Z',
+      lockedAt: '2026-03-25T12:30:00.000Z',
+      createdAt: '2026-03-24T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:30:00.000Z'
+    })
+
+    await harness.database.insert(judgeAssignments).values({
+      id: 'assignment_1',
+      hackathonId: 'hackathon_judge_review',
+      submissionId: 'submission_1',
+      judgeUserId: 'judge_a',
+      status: 'assigned',
+      assignedAt: '2026-03-25T12:30:00.000Z',
+      createdAt: '2026-03-25T12:30:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_judge_review/actions/start-judge-review', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'hackathon_judge_review',
+        state: 'judge_review'
+      }
+    })
+
+    const updatedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_judge_review')
+    })
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(updatedHackathon?.state).toBe('judge_review')
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'hackathon',
+        entityId: 'hackathon_judge_review',
+        action: 'hackathon.start_judge_review'
       })
     ])
   })

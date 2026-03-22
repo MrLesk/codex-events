@@ -217,6 +217,7 @@ Operational rules:
 - Disqualification is an admin action.
 - Withdrawal is a team-driven action before judging preparation begins.
 - A hackathon admin or platform admin can mark a submission as withdrawn on behalf of the team when acting on a team request.
+- The admin-withdraw request identifies the requesting user through `requestedByUserId`, and that user must be an active team admin of the submission's team.
 - Once judging preparation begins, teams can no longer withdraw a submission.
 - Once judge review begins, removal from competition is handled as disqualification rather than withdrawal.
 

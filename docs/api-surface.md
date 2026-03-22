@@ -297,7 +297,7 @@ Operations:
 | Update submission | `PATCH /api/hackathons/:hackathonId/teams/:teamId/submission` | team admin | Allowed only in `submission_open`. |
 | Submit project | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/submit` | team admin | Allowed only in `submission_open`. |
 | Withdraw submission | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/withdraw` | team admin | Allowed only before `judging_preparation`. |
-| Withdraw submission on team request | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/admin-withdraw` | hackathon admin or platform admin | Allowed only on team request and only before `judging_preparation`. |
+| Withdraw submission on team request | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/admin-withdraw` | hackathon admin or platform admin | Allowed only before `judging_preparation`. The body must include `requestedByUserId`, and that user must be an active team admin of the submission's team. |
 | Disqualify submission | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/disqualify` | hackathon admin or platform admin | Used instead of withdrawal once review-phase removal rules apply. |
 | List no-submission teams | `GET /api/hackathons/:hackathonId/no-submission-teams` | hackathon admin or platform admin | Returns the computed operational section for approved teams with no active submitted submission. |
 
