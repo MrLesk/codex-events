@@ -78,8 +78,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `slug` is unique.
 - `max_team_members` is greater than or equal to 1.
-- `registration_opens_at < registration_closes_at`
-- `submission_opens_at < submission_closes_at`
+- `registration_opens_at < registration_closes_at <= submission_opens_at < submission_closes_at`
 
 ### Notes
 
@@ -94,23 +93,24 @@ It describes the intended persistent model at the level of entities, key fields,
 - `hackathon_id`
 - `user_id`
 - `role`
+- `is_in_judge_pool`
 - `created_at`
 
 ### Enums
 
 - `role`
-  - `participant`
-  - `judge`
   - `hackathon_admin`
+  - `judge`
 
 ### Constraints
 
 - `unique (hackathon_id, user_id)`
+- `role = judge` requires `is_in_judge_pool = true`
 
 ### Notes
 
-- `platform_admin` is not stored here.
-- Only explicit `judge` assignments are part of automatic judge distribution.
+- Every platform admin also has a `hackathon_admin` assignment row for each hackathon.
+- `is_in_judge_pool` controls automatic judge distribution.
 
 ## PlatformDocument
 
@@ -245,10 +245,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - Only one active team membership per user in the same hackathon.
 - Only one active membership per `(team_id, user_id)`.
-
-### Notes
-
-- The one-team-per-hackathon rule may require a partial unique index or another enforcement strategy tied to active memberships.
+- Every active team must always have at least one active admin membership.
 
 ## TeamJoinRequest
 
@@ -427,6 +424,22 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - A prize can target one rank or a rank range.
 - Different hackathons can configure different prize structures.
+- Member-scoped prize eligibility is determined from the frozen prize eligibility snapshot created at `judging_preparation`.
+
+## PrizeEligibilitySnapshot
+
+### Key Fields
+
+- `id`
+- `hackathon_id`
+- `team_id`
+- `user_id`
+- `snapshot_at`
+- `created_at`
+
+### Notes
+
+- This captures the active team members eligible for member-scoped prizes when prize eligibility is frozen.
 
 ## PrizeRedemption
 
@@ -488,6 +501,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `JudgeAssignment` belongs to `Hackathon`, `Submission`, and `User`
 - `JudgeCriterionScore` belongs to `JudgeAssignment` and `EvaluationCriterion`
 - `Prize` belongs to `Hackathon`
+- `PrizeEligibilitySnapshot` belongs to `Hackathon`, `Team`, and `User`
 - `PrizeRedemption` belongs to `Prize` and may reference `User` and `Team`
 - `AuditLog` references the acting `User` and the affected entity
 

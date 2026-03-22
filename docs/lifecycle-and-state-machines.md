@@ -62,7 +62,8 @@ Behavior:
 - All submissions are locked.
 - New teams cannot be created.
 - Judges do not review submissions yet.
-- Submissions are distributed between the explicit judge pool as evenly as possible.
+- Prize eligibility snapshots are created for teams with submitted submissions.
+- Submissions are distributed between users in the automatic judge distribution pool as evenly as possible.
 - Hackathon admins can reassign submissions only while the active assignment has not been started.
 
 #### `judge_review`

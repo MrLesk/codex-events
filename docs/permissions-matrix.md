@@ -11,13 +11,15 @@ This document defines the canonical permissions for the Codex hackathon platform
 - `judge`: a user assigned to review through a `JudgeAssignment`
 - `hackathon_admin`: a user with explicit `hackathon_admin` access in a hackathon
 - `platform_admin`: a user with `is_platform_admin = true`
+- `prize_recipient`: a user with a `PrizeRedemption` record to complete
 - `system`: automatic platform behavior driven by configured windows
 
 ## Permission Inheritance
 
 - `platform_admin` includes all `hackathon_admin` permissions in every hackathon.
 - `hackathon_admin` includes judge permissions when acting through a `JudgeAssignment`.
-- Only the explicit hackathon `judge` role participates in automatic judge distribution.
+- The automatic judge distribution pool is controlled by `HackathonRoleAssignment.is_in_judge_pool`.
+- A `judge` role must be in the automatic judge distribution pool.
 - A user acting through a `JudgeAssignment` uses the blind judging view even if that user is also an admin.
 - Admin visibility outside the judge review flow is not restricted by the blind judging view.
 
@@ -63,9 +65,9 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Rename team | No | No | No | Yes | No | No |
 | Approve join request | No | No | No | Yes, only while team remains open and capacity is available | No | No |
 | Reject join request | No | No | No | Yes | No | No |
-| Remove team member | No | No | No | Yes | No | No |
-| Leave team during `registration_open` or `submission_open` | No | No | Yes | Yes | No | No |
-| Leave team after submission closes | No | No | Yes, only if at least one active team member remains | Yes, only if at least one active team member remains | No | No |
+| Remove team member | No | No | No | Yes, only if at least one active team admin remains | No | No |
+| Leave team during `registration_open` or `submission_open` | No | No | Yes, only if at least one active team admin remains | Yes, only if at least one active team admin remains | No | No |
+| Leave team after submission closes | No | No | Yes, only if at least one active team admin remains and at least one active team member remains | Yes, only if at least one active team admin remains and at least one active team member remains | No | No |
 
 ## Submission Permissions
 
@@ -102,7 +104,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 
 ## Prize Redemption
 
-| Action | Winner | Hackathon Admin | Platform Admin |
+| Action | Prize Recipient | Hackathon Admin | Platform Admin |
 | --- | --- | --- | --- |
 | Submit legal name and accept winner terms | Yes | No | No |
 | View prize redemption records | No | Yes | Yes |

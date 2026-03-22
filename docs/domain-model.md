@@ -82,17 +82,17 @@ A user-to-hackathon assignment that grants hackathon-specific access.
 
 Hackathon roles:
 
-- `participant`
-- `judge`
 - `hackathon_admin`
+- `judge`
 
 Rules:
 
 - A user has at most one explicit hackathon role per hackathon.
 - `hackathon_admin` includes judge permissions.
-- A user with `is_platform_admin = true` includes hackathon-admin permissions and therefore judge permissions in every hackathon.
-- Only users with the explicit `judge` role are part of the automatic judge distribution pool.
-- Hackathon admins and platform admins can judge, but they are not automatically included in judge distribution unless they also have the explicit `judge` role for that hackathon.
+- Every platform admin also has a `HackathonRoleAssignment` row with role `hackathon_admin` for every hackathon.
+- `HackathonRoleAssignment` includes `is_in_judge_pool` to control automatic judge distribution.
+- A user with role `judge` must be in the automatic judge distribution pool.
+- A user with role `hackathon_admin` can be in or out of the automatic judge distribution pool.
 - Any actor performing a judge review sees the blind judging view rather than the admin view.
 - The blind judging view includes anonymized application information and excludes team identity.
 
@@ -126,6 +126,8 @@ Rules:
 
 - Team membership is hackathon-scoped.
 - A user can belong to at most one team per hackathon.
+- The user who creates a team becomes a team admin automatically.
+- Every active team must always have at least one active team admin.
 - A team cannot exceed the maximum team member limit defined by its hackathon.
 - A team with pending join requests can approve them only while the team remains open to join requests.
 - Team admins can rename the team, review join requests, approve members, and remove members.
@@ -176,8 +178,7 @@ Rules:
 - Submission ownership is team-based, not user-based.
 - When the judging preparation step begins, submissions are locked.
 - Once locked, submissions can no longer be edited.
-- Only a submission can receive an eligibility-related outcome.
-- A submission can be marked with an evaluation outcome such as ineligible, disqualified, or withdrawn.
+- A submission can be marked with workflow outcomes such as withdrawn or disqualified.
 - A team with no submission is not eligible for judging, but this is represented by the absence of a submission rather than by a submission outcome.
 - A draft submission that is never submitted is treated as no submission for judging and dashboard purposes.
 
@@ -203,7 +204,7 @@ Relationship rules:
 
 Operational rules:
 
-- When judging preparation begins, submissions are distributed between the explicit judge pool as evenly as possible.
+- When judging preparation begins, submissions are distributed between users in the automatic judge distribution pool as evenly as possible.
 - Hackathon admins can reassign a submission only before its assigned judge has started review.
 - Scoring data lives on `JudgeAssignment`.
 - Judge-level ineligibility decisions also live on `JudgeAssignment`.
@@ -234,6 +235,16 @@ Rules:
 - Prize structures are hackathon-specific.
 - A hackathon can define multiple prize rules.
 - Prize eligibility can be team-based or member-based depending on the prize configuration.
+- Prize-eligible team membership is frozen when the hackathon enters `judging_preparation`.
+
+### PrizeEligibilitySnapshot
+
+A frozen record of the team members eligible for member-scoped prizes.
+
+Rules:
+
+- Prize eligibility snapshots are created when the hackathon enters `judging_preparation`.
+- A snapshot records the active members of each team with a submitted submission at the moment prize eligibility is frozen.
 
 ### PrizeRedemption
 
@@ -269,6 +280,7 @@ Scope:
 - A `Submission` can have many `JudgeAssignment` records.
 - A `Hackathon` can have many `EvaluationCriterion` records.
 - A `Hackathon` can have many `Prize` records.
+- A `Hackathon` can have many `PrizeEligibilitySnapshot` records.
 - A `Prize` can have many `PrizeRedemption` records.
 
 ## Operational Rules
@@ -288,6 +300,8 @@ Scope:
 - Team formation is allowed while the hackathon is in `registration_open` or `submission_open`.
 - After the submission window opens, users can still leave a team, join another existing team, or create a new team.
 - After the submission window closes, no new teams can be created, including solo teams.
+- A team creator becomes a team admin when the team is created.
+- A team member cannot leave or be removed if that action would leave the team without an active team admin.
 - After the submission window closes, a user can still leave their current team only if at least one active team member remains on the team.
 
 ### Judging
@@ -302,6 +316,7 @@ Scope:
 - Shortlist data is computed ordered data, not a separate persisted shortlist structure.
 - Hackathon admins can manually reorder the final ranking during shortlist mode without changing the underlying judge scores.
 - Approved teams with no submission appear in a separate no-submission section in the hackathon dashboard.
+- Prize-eligible team membership is frozen when judging preparation begins.
 
 ## Compliance
 
