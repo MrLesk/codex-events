@@ -15,6 +15,12 @@ const authenticatedBddTestDir = defineBddConfig({
   outputDir: '.features-gen/authenticated'
 })
 
+const destructiveAuthenticatedBddTestDir = defineBddConfig({
+  features: 'tests/bdd/features/authenticated-destructive/**/*.feature',
+  steps: 'tests/bdd/steps/**/*.ts',
+  outputDir: '.features-gen/authenticated-destructive'
+})
+
 export default defineConfig({
   testDir: '.',
   fullyParallel: true,
@@ -41,12 +47,20 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome']
       }
+    },
+    {
+      name: 'chromium-authenticated-destructive-bdd',
+      testDir: destructiveAuthenticatedBddTestDir,
+      testMatch: ['**/*.spec.js'],
+      use: {
+        ...devices['Desktop Chrome']
+      }
     }
   ],
   webServer: {
     command: 'bun run dev -- --host 0.0.0.0 --port 3000',
     url: 'http://localhost:3000',
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120000
   }
 })

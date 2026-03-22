@@ -85,6 +85,90 @@ describe('shared database migration', () => {
     `).run('request_2', 'team_1', 'user_1', 'pending', now, null, null, now)).toThrow()
   })
 
+  test('prevents setting current application terms to a document from another hackathon', () => {
+    const now = isoTimestamp(0)
+    seedUser(database, 'creator_1', now)
+    seedHackathon(database, 'hackathon_1', 'registration_open', now, 'creator_1')
+    seedHackathon(database, 'hackathon_2', 'registration_open', now, 'creator_1')
+    seedHackathonTermsDocument(database, {
+      documentId: 'terms_other_hackathon',
+      hackathonId: 'hackathon_2',
+      documentType: 'application_terms',
+      now
+    })
+
+    expect(() => database.prepare(`
+      update hackathons
+      set current_application_terms_document_id = ?
+      where id = ?
+    `).run('terms_other_hackathon', 'hackathon_1')).toThrow(/hackathon_current_application_terms_document_invalid/)
+  })
+
+  test('prevents setting current application terms to the wrong document type', () => {
+    const now = isoTimestamp(0)
+    seedUser(database, 'creator_1', now)
+    seedHackathon(database, 'hackathon_1', 'registration_open', now, 'creator_1')
+    seedHackathonTermsDocument(database, {
+      documentId: 'terms_winner_1',
+      hackathonId: 'hackathon_1',
+      documentType: 'winner_terms',
+      now
+    })
+
+    expect(() => database.prepare(`
+      update hackathons
+      set current_application_terms_document_id = ?
+      where id = ?
+    `).run('terms_winner_1', 'hackathon_1')).toThrow(/hackathon_current_application_terms_document_invalid/)
+  })
+
+  test('prevents mutating a referenced current terms document into an invalid state', () => {
+    const now = isoTimestamp(0)
+    seedUser(database, 'creator_1', now)
+    seedHackathon(database, 'hackathon_1', 'registration_open', now, 'creator_1')
+    seedHackathonTermsDocument(database, {
+      documentId: 'terms_app_1',
+      hackathonId: 'hackathon_1',
+      documentType: 'application_terms',
+      now
+    })
+
+    database.prepare(`
+      update hackathons
+      set current_application_terms_document_id = ?
+      where id = ?
+    `).run('terms_app_1', 'hackathon_1')
+
+    expect(() => database.prepare(`
+      update hackathon_terms_documents
+      set document_type = 'winner_terms'
+      where id = ?
+    `).run('terms_app_1')).toThrow(/hackathon_current_application_terms_document_invalid/)
+  })
+
+  test('prevents deleting a referenced current terms document', () => {
+    const now = isoTimestamp(0)
+    seedUser(database, 'creator_1', now)
+    seedHackathon(database, 'hackathon_1', 'registration_open', now, 'creator_1')
+    seedHackathonTermsDocument(database, {
+      documentId: 'terms_win_1',
+      hackathonId: 'hackathon_1',
+      documentType: 'winner_terms',
+      now
+    })
+
+    database.prepare(`
+      update hackathons
+      set current_winner_terms_document_id = ?
+      where id = ?
+    `).run('terms_win_1', 'hackathon_1')
+
+    expect(() => database.prepare(`
+      delete from hackathon_terms_documents
+      where id = ?
+    `).run('terms_win_1')).toThrow(/hackathon_current_winner_terms_document_invalid/)
+  })
+
   test('prevents removing the last active admin from a team', () => {
     const now = isoTimestamp(0)
     seedUser(database, 'user_1', now)
@@ -160,6 +244,32 @@ function seedTeam(database: DatabaseSync, teamId: string, hackathonId: string, c
     )
     values (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(teamId, hackathonId, `Team ${teamId}`, teamId, 1, creatorUserId, now, now)
+}
+
+function seedHackathonTermsDocument(
+  database: DatabaseSync,
+  options: {
+    documentId: string
+    hackathonId: string
+    documentType: 'application_terms' | 'winner_terms'
+    now: string
+  }
+) {
+  database.prepare(`
+    insert into hackathon_terms_documents (
+      id, hackathon_id, document_type, version, title, content, published_at, created_at
+    )
+    values (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    options.documentId,
+    options.hackathonId,
+    options.documentType,
+    1,
+    `${options.documentType} title`,
+    `${options.documentType} content`,
+    options.now,
+    options.now
+  )
 }
 
 function isoTimestamp(offsetSeconds: number) {

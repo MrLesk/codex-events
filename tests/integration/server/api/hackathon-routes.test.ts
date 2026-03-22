@@ -121,8 +121,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       submissionClosesAt: '2026-03-25T12:00:00.000Z',
       state: 'registration_open',
       maxTeamMembers: 5,
-      currentApplicationTermsDocumentId: 'terms_app_1',
-      currentWinnerTermsDocumentId: 'terms_win_1',
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
       createdByUserId: 'creator_1'
     })
     await harness.database.insert(hackathonTermsDocuments).values([
@@ -145,6 +145,14 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         publishedAt: '2026-03-02T00:00:00.000Z'
       }
     ])
+
+    await harness.database
+      .update(hackathons)
+      .set({
+        currentApplicationTermsDocumentId: 'terms_app_1',
+        currentWinnerTermsDocumentId: 'terms_win_1'
+      })
+      .where(eq(hackathons.id, 'hackathon_public'))
 
     const response = await harness.request('/api/hackathons/hackathon_public')
 

@@ -1,0 +1,267 @@
+import type { APIResponse, Page } from '@playwright/test'
+
+import { expect } from '@playwright/test'
+import { createBdd } from 'playwright-bdd'
+
+import { createAuthenticatedApiClient } from '../support/api-client'
+import { platformFixtureIds } from '../support/platform-fixtures.ts'
+import { stablePersonaKeys, type StablePersonaKey } from '../support/personas'
+
+const { When, Then } = createBdd()
+
+type ScenarioState = {
+  response?: APIResponse
+  json?: unknown
+}
+
+const scenarioState = new WeakMap<Page, ScenarioState>()
+
+function getScenarioState(page: Page) {
+  let state = scenarioState.get(page)
+
+  if (!state) {
+    state = {}
+    scenarioState.set(page, state)
+  }
+
+  return state
+}
+
+function parsePersonaKey(personaKey: string): StablePersonaKey {
+  if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
+    return personaKey as StablePersonaKey
+  }
+
+  throw new Error(`Unknown stable persona key: ${personaKey}`)
+}
+
+function parseBooleanString(value: string) {
+  if (value === 'true') {
+    return true
+  }
+
+  if (value === 'false') {
+    return false
+  }
+
+  throw new Error(`Unsupported boolean string: ${value}`)
+}
+
+When('the saved {string} session requests the current API actor context', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.get('/api/session')
+    getScenarioState(page).response = response
+    getScenarioState(page).json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the API actor kind should be {string}', async ({ page }, actorKind: string) => {
+  const payload = getScenarioState(page).json as {
+    data?: {
+      actor?: {
+        kind?: string
+      }
+    }
+  }
+
+  expect(getScenarioState(page).response?.ok()).toBe(true)
+  expect(payload.data?.actor?.kind).toBe(actorKind)
+})
+
+Then('the API actor platform-account flag should be {string}', async ({ page }, hasPlatformAccount: string) => {
+  const payload = getScenarioState(page).json as {
+    data?: {
+      actor?: {
+        hasPlatformAccount?: boolean
+      }
+    }
+  }
+
+  expect(payload.data?.actor?.hasPlatformAccount).toBe(parseBooleanString(hasPlatformAccount))
+})
+
+Then('the API actor platform-admin flag should be {string}', async ({ page }, isPlatformAdmin: string) => {
+  const payload = getScenarioState(page).json as {
+    data?: {
+      actor?: {
+        isPlatformAdmin?: boolean
+      }
+    }
+  }
+
+  expect(payload.data?.actor?.isPlatformAdmin).toBe(parseBooleanString(isPlatformAdmin))
+})
+
+Then('the API actor should expose the fixture hackathon role {string}', async ({ page }, expectedRole: string) => {
+  const payload = getScenarioState(page).json as {
+    data?: {
+      actor?: {
+        hackathonRoles?: Array<{
+          hackathonId: string
+          role: string
+        }>
+      }
+    }
+  }
+  const roles = payload.data?.actor?.hackathonRoles ?? []
+  const fixtureRole = roles.find((role: { hackathonId: string }) => role.hackathonId === platformFixtureIds.hackathonId)
+
+  if (expectedRole === 'none') {
+    expect(fixtureRole ?? null).toBeNull()
+    return
+  }
+
+  expect(fixtureRole).toMatchObject({
+    hackathonId: platformFixtureIds.hackathonId,
+    role: expectedRole
+  })
+})
+
+When('the saved {string} session accepts the fixture platform terms document', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.post('/api/platform-document-acceptances', {
+      data: {
+        platformDocumentId: platformFixtureIds.platformTermsDocumentId
+      }
+    })
+    getScenarioState(page).response = response
+    getScenarioState(page).json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the platform document acceptance response should reference the fixture platform terms document', async ({ page }) => {
+  expect(getScenarioState(page).response?.ok()).toBe(true)
+  expect(getScenarioState(page).json).toMatchObject({
+    data: {
+      acceptance: {
+        platformDocumentId: platformFixtureIds.platformTermsDocumentId
+      },
+      document: {
+        id: platformFixtureIds.platformTermsDocumentId
+      }
+    }
+  })
+})
+
+When('the saved {string} session lists fixture hackathon roles', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.get(`/api/hackathons/${platformFixtureIds.hackathonId}/roles`)
+    getScenarioState(page).response = response
+    getScenarioState(page).json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the fixture role response should include user {string} as {string}', async ({ page }, userId: string, role: string) => {
+  expect(getScenarioState(page).response?.ok()).toBe(true)
+  const payload = getScenarioState(page).json as {
+    data?: Array<{
+      userId: string
+      role: string
+    }>
+  }
+
+  expect(payload.data).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      userId,
+      role
+    })
+  ]))
+})
+
+When('the saved {string} session opens submission for the fixture hackathon', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.hackathonId}/actions/open-submission`)
+    getScenarioState(page).response = response
+    getScenarioState(page).json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the fixture hackathon state should be {string}', async ({ page }, expectedState: string) => {
+  const payload = getScenarioState(page).json as {
+    data?: {
+      id?: string
+      state?: string
+    }
+  }
+
+  expect(getScenarioState(page).response?.ok()).toBe(true)
+  expect(payload.data?.id).toBe(platformFixtureIds.hackathonId)
+  expect(payload.data?.state).toBe(expectedState)
+})
+
+Then('the API error code should be {string}', async ({ page }, expectedCode: string) => {
+  expect(getScenarioState(page).response?.ok()).toBe(false)
+  const payload = getScenarioState(page).json as {
+    error?: {
+      code?: string
+    }
+  }
+
+  expect(payload.error?.code).toBe(expectedCode)
+})
+
+When('the saved {string} session deletes the current platform account', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.delete('/api/account')
+    getScenarioState(page).response = response
+    getScenarioState(page).json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the account deletion response should succeed for {string}', async ({ page: _page }, personaKey: string) => {
+  void personaKey
+  expect(getScenarioState(_page).response?.ok()).toBe(true)
+  const payload = getScenarioState(_page).json as {
+    data?: {
+      userId?: string
+      deletedAt?: string
+    }
+  }
+  expect(payload.data?.userId).toBeTruthy()
+  expect(payload.data?.deletedAt).toBeTruthy()
+})
+
+Then('the saved {string} session should resolve to an authenticated identity without a platform account', async ({ request: _request }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.get('/api/session')
+    const payload = await response.json()
+
+    expect(response.ok()).toBe(true)
+    expect(payload).toMatchObject({
+      data: {
+        actor: {
+          kind: 'authenticated_identity',
+          isAuthenticated: true,
+          hasPlatformAccount: false,
+          platformUser: null,
+          isPlatformAdmin: false,
+          hackathonRoles: []
+        }
+      }
+    })
+  } finally {
+    await apiClient.dispose()
+  }
+})

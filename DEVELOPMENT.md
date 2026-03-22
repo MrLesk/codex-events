@@ -77,6 +77,8 @@ If your Cloudflare D1 credentials are configured in `.env`, push the current sch
 bun run db:push
 ```
 
+Use `bun run db:push` only as a local schema-sync helper against an existing development database. The canonical provisioning path is the checked-in migration chain under `drizzle/*.sql`, which may include manual invariant enforcement that Drizzle cannot express in `schema.ts` alone. Do not treat `db:push` by itself as a complete fresh-provisioning path when manual SQL migrations are present.
+
 ## End-to-End Tests
 
 The repository uses `Playwright` with `playwright-bdd`, so end-to-end coverage is authored as Gherkin feature files plus step definitions and generated into Playwright tests before execution.

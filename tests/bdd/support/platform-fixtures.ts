@@ -6,11 +6,19 @@ import { readMigrationSql } from '../../support/backend/migrations.ts'
 import { resolvePlatformFixtureTarget, type ProvisionedStablePersona } from './personas.ts'
 
 const fixtureTimestamp = '2026-03-22T12:00:00.000Z'
-const fixtureHackathonId = 'hackathon_e2e_fixture'
-const fixtureApplicationTermsId = 'hackathon_terms_application_fixture'
-const fixtureWinnerTermsId = 'hackathon_terms_winner_fixture'
-const fixturePrivacyDocumentId = 'platform_document_privacy_fixture'
-const fixtureTermsDocumentId = 'platform_document_terms_fixture'
+export const fixtureHackathonId = 'hackathon_e2e_fixture'
+export const fixtureApplicationTermsId = 'hackathon_terms_application_fixture'
+export const fixtureWinnerTermsId = 'hackathon_terms_winner_fixture'
+export const fixturePrivacyDocumentId = 'platform_document_privacy_fixture'
+export const fixtureTermsDocumentId = 'platform_document_terms_fixture'
+
+export const platformFixtureIds = {
+  hackathonId: fixtureHackathonId,
+  applicationTermsDocumentId: fixtureApplicationTermsId,
+  winnerTermsDocumentId: fixtureWinnerTermsId,
+  privacyDocumentId: fixturePrivacyDocumentId,
+  platformTermsDocumentId: fixtureTermsDocumentId
+} as const
 
 const personaUserIds: Record<ProvisionedStablePersona['key'], string> = {
   platform_admin: 'user_platform_admin',

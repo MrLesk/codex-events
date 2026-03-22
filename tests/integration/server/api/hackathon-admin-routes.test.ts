@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
+import { eq } from 'drizzle-orm'
 
 import roleListHandler from '../../../../server/api/hackathons/[hackathonId]/roles/index.get'
 import rolePutHandler from '../../../../server/api/hackathons/[hackathonId]/roles/[userId].put'
@@ -29,8 +30,6 @@ async function seedHackathonContext(
   harness: ReturnType<typeof createApiRouteTestHarness>,
   options?: {
     state?: typeof hackathons.$inferInsert.state
-    currentApplicationTermsDocumentId?: string | null
-    currentWinnerTermsDocumentId?: string | null
   }
 ) {
   await harness.database.insert(users).values([
@@ -74,8 +73,8 @@ async function seedHackathonContext(
     submissionClosesAt: '2026-03-25T12:00:00.000Z',
     state: options?.state ?? 'registration_open',
     maxTeamMembers: 5,
-    currentApplicationTermsDocumentId: options?.currentApplicationTermsDocumentId ?? null,
-    currentWinnerTermsDocumentId: options?.currentWinnerTermsDocumentId ?? null,
+    currentApplicationTermsDocumentId: null,
+    currentWinnerTermsDocumentId: null,
     createdByUserId: 'platform_admin'
   })
 
@@ -182,10 +181,7 @@ describe('TASK-3.5 hackathon admin route groups', () => {
       }
     })
     harnesses.push(harness)
-    await seedHackathonContext(harness, {
-      currentApplicationTermsDocumentId: 'terms_app_1',
-      currentWinnerTermsDocumentId: 'terms_win_1'
-    })
+    await seedHackathonContext(harness)
 
     await harness.database.insert(hackathonTermsDocuments).values([
       {
@@ -207,6 +203,14 @@ describe('TASK-3.5 hackathon admin route groups', () => {
         publishedAt: '2026-03-02T00:00:00.000Z'
       }
     ])
+
+    await harness.database
+      .update(hackathons)
+      .set({
+        currentApplicationTermsDocumentId: 'terms_app_1',
+        currentWinnerTermsDocumentId: 'terms_win_1'
+      })
+      .where(eq(hackathons.id, 'hackathon_1'))
 
     const currentResponse = await harness.request('/api/hackathons/hackathon_1/terms/current')
     expect(currentResponse.status).toBe(200)
