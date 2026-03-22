@@ -17,4 +17,5 @@ This directory contains the canonical product and engineering documentation for 
 - [permissions-matrix.md](permissions-matrix.md): actor permissions, visibility rules, and state-based action constraints
 - [schema-outline.md](schema-outline.md): canonical entity fields, enums, constraints, and key relationships
 - [tech-stack.md](tech-stack.md): canonical application stack and infrastructure choices
+- [testing-strategy.md](testing-strategy.md): canonical testing layers, Auth0-backed E2E strategy, and fixture rules
 - [design-reference.md](design-reference.md): role of the `Figma-Design/` folder and how to use it correctly
