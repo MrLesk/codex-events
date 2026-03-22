@@ -1,0 +1,26 @@
+Feature: TASK-3.6 authenticated application and team formation flows
+  Authenticated platform actors can use the implemented TASK-3.6 application and team-formation API surface through real Auth0-backed sessions.
+
+  Scenario: Regular user applies, is approved, and joins a judge-owned team
+    Given the saved "regular_user" Auth0 session state exists
+    And the saved "hackathon_admin" Auth0 session state exists
+    And the saved "judge" Auth0 session state exists
+    When the saved "regular_user" session submits an application for the fixture hackathon
+    Then the submitted application should accept the current fixture application terms
+    When the saved "hackathon_admin" session approves the remembered application
+    Then the remembered application should be approved by "user_hackathon_admin"
+    When the saved "judge" session creates an open team named "Judge Team"
+    Then the remembered team should be created with admin "user_judge"
+    When the saved "regular_user" session creates a join request for the remembered team
+    Then the remembered join request should be pending for user "user_regular_user"
+    When the saved "judge" session approves the remembered join request
+    Then the remembered join request should be approved by "user_judge"
+    When the saved "judge" session loads the remembered team detail
+    Then the remembered team should include member "user_regular_user"
+
+  Scenario: Platform admin cannot leave a solo team
+    Given the saved "platform_admin" Auth0 session state exists
+    When the saved "platform_admin" session creates an open team named "Solo Admin Team"
+    Then the remembered team should be created with admin "user_platform_admin"
+    When the saved "platform_admin" session leaves the remembered team
+    Then the remembered team action should fail with API error code "team_admin_required"

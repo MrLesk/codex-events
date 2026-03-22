@@ -127,6 +127,12 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
     ) values
       ('role_hackathon_admin_fixture', ${sqlLiteral(fixtureHackathonId)}, ${sqlLiteral(hackathonAdminId)}, 'hackathon_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
       ('role_judge_fixture', ${sqlLiteral(fixtureHackathonId)}, ${sqlLiteral(judgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into user_applications (
+      id, hackathon_id, user_id, status, submitted_at, reviewed_at, reviewed_by_user_id,
+      application_terms_document_id, application_terms_accepted_at, created_at, updated_at
+    ) values
+      ('application_platform_admin_fixture', ${sqlLiteral(fixtureHackathonId)}, ${sqlLiteral(platformAdminId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(hackathonAdminId)}, ${sqlLiteral(fixtureApplicationTermsId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('application_judge_fixture', ${sqlLiteral(fixtureHackathonId)}, ${sqlLiteral(judgeId)}, 'approved', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(hackathonAdminId)}, ${sqlLiteral(fixtureApplicationTermsId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `update hackathons
       set current_application_terms_document_id = ${sqlLiteral(fixtureApplicationTermsId)},
           current_winner_terms_document_id = ${sqlLiteral(fixtureWinnerTermsId)}
