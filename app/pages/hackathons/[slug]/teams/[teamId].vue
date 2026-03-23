@@ -8,6 +8,7 @@ import type { TeamActionAvailability } from '~/utils/team-workspace'
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import ParticipantTeamJoinRequestsPanel from '~/components/teams/ParticipantTeamJoinRequestsPanel.vue'
 import ParticipantTeamMembershipPanel from '~/components/teams/ParticipantTeamMembershipPanel.vue'
+import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSubmissionPanel.vue'
 import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWorkspacePanel.vue'
 import {
   createTeamSlug,
@@ -15,6 +16,12 @@ import {
   getLeaveTeamAvailability,
   getMemberRemovalAvailability
 } from '~/utils/team-workspace'
+import {
+  getCreateSubmissionAvailability,
+  getSubmitSubmissionAvailability,
+  getUpdateSubmissionAvailability,
+  getWithdrawSubmissionAvailability
+} from '~/utils/team-submission'
 
 definePageMeta({
   middleware: [to => useUser().value
@@ -66,7 +73,21 @@ const teamSettings = reactive({
   slug: '',
   isOpenToJoinRequests: false
 })
+const submissionForm = reactive({
+  projectName: '',
+  summary: '',
+  repositoryUrl: '',
+  demoUrl: ''
+})
 const hasManuallyEditedSlug = ref(false)
+const canManageTeam = computed(() => workspace.isCurrentTeamAdmin.value)
+const canViewSubmission = computed(() => Boolean(workspace.currentTeamMembership.value))
+const submissionWorkspace = useTeamSubmissionWorkspace(hackathon, {
+  visibleHackathonId: workspace.visibleHackathonId,
+  team: workspace.currentTeam,
+  canViewSubmission,
+  canManageSubmission: canManageTeam
+})
 
 watch(() => workspace.currentTeam.value?.id ?? null, () => {
   if (!workspace.currentTeam.value) {
@@ -100,6 +121,15 @@ watch(() => teamSettings.slug, (value) => {
   hasManuallyEditedSlug.value = value.length > 0 && value !== workspace.currentTeam.value.slug && value !== createTeamSlug(teamSettings.name)
 })
 
+watch(() => submissionWorkspace.currentSubmission.value, (submission) => {
+  submissionForm.projectName = submission?.projectName ?? ''
+  submissionForm.summary = submission?.summary ?? ''
+  submissionForm.repositoryUrl = submission?.repositoryUrl ?? ''
+  submissionForm.demoUrl = submission?.demoUrl ?? ''
+}, {
+  immediate: true
+})
+
 const isWorkspaceLoading = computed(() => {
   if (workspace.actorStatus.value === 'idle' || workspace.actorStatus.value === 'pending' || !actor.value) {
     return true
@@ -115,9 +145,23 @@ const isWorkspaceLoading = computed(() => {
     || workspace.ownApplicationStatus.value === 'pending'
     || workspace.currentTeamStatus.value === 'idle'
     || workspace.currentTeamStatus.value === 'pending'
+    || (canViewSubmission.value
+      && (submissionWorkspace.currentSubmissionStatus.value === 'idle'
+        || submissionWorkspace.currentSubmissionStatus.value === 'pending'))
 })
 
-const canManageTeam = computed(() => workspace.isCurrentTeamAdmin.value)
+const createSubmissionAvailability = computed(() =>
+  getCreateSubmissionAvailability(hackathon.value, submissionWorkspace.currentSubmission.value, canManageTeam.value)
+)
+const updateSubmissionAvailability = computed(() =>
+  getUpdateSubmissionAvailability(hackathon.value, submissionWorkspace.currentSubmission.value, canManageTeam.value)
+)
+const submitSubmissionAvailability = computed(() =>
+  getSubmitSubmissionAvailability(hackathon.value, submissionWorkspace.currentSubmission.value, canManageTeam.value)
+)
+const withdrawSubmissionAvailability = computed(() =>
+  getWithdrawSubmissionAvailability(hackathon.value, submissionWorkspace.currentSubmission.value, canManageTeam.value)
+)
 const joinAvailability = computed(() => {
   if (!workspace.currentTeam.value) {
     return {
@@ -163,6 +207,15 @@ const removalAvailabilityByUserId = computed<Record<string, TeamActionAvailabili
 const currentPendingJoinRequestId = computed(() =>
   workspace.currentTeam.value ? workspace.getRememberedPendingJoinRequestId(workspace.currentTeam.value.id) : null
 )
+
+function buildSubmissionInput() {
+  return {
+    projectName: submissionForm.projectName.trim() || null,
+    summary: submissionForm.summary.trim() || null,
+    repositoryUrl: submissionForm.repositoryUrl.trim() || null,
+    demoUrl: submissionForm.demoUrl.trim() || null
+  }
+}
 
 async function submitTeamProfile() {
   const updatedTeam = await workspace.updateCurrentTeamProfile({
@@ -286,6 +339,62 @@ async function rejectJoinRequest(requestId: string) {
   toast.add({
     title: 'Join request rejected',
     description: 'The pending request was rejected and remains outside the team.',
+    color: 'success'
+  })
+}
+
+async function createSubmissionDraft() {
+  const submission = await submissionWorkspace.createSubmissionDraft(buildSubmissionInput())
+
+  if (!submission) {
+    return
+  }
+
+  toast.add({
+    title: 'Draft created',
+    description: 'The first submission draft is now attached to this team.',
+    color: 'success'
+  })
+}
+
+async function saveSubmissionChanges() {
+  const submission = await submissionWorkspace.updateCurrentSubmission(buildSubmissionInput())
+
+  if (!submission) {
+    return
+  }
+
+  toast.add({
+    title: 'Submission updated',
+    description: 'The project details were updated successfully.',
+    color: 'success'
+  })
+}
+
+async function submitProject() {
+  const submission = await submissionWorkspace.submitCurrentSubmission()
+
+  if (!submission) {
+    return
+  }
+
+  toast.add({
+    title: 'Project submitted',
+    description: 'The current draft is now in the submitted state for this hackathon.',
+    color: 'success'
+  })
+}
+
+async function withdrawSubmission() {
+  const submission = await submissionWorkspace.withdrawCurrentSubmission()
+
+  if (!submission) {
+    return
+  }
+
+  toast.add({
+    title: 'Submission withdrawn',
+    description: 'The project was removed from competition before judging preparation.',
     color: 'success'
   })
 }
@@ -425,6 +534,27 @@ useSeoMeta({
             @request-join="requestToJoinCurrentTeam"
             @cancel-join-request="cancelCurrentPendingJoinRequest"
             @leave-team="leaveCurrentTeam"
+          />
+
+          <ParticipantTeamSubmissionPanel
+            v-if="canViewSubmission"
+            v-model:form="submissionForm"
+            :team-id="workspace.currentTeam.value.id"
+            :hackathon-state="hackathon.state"
+            :submission="submissionWorkspace.currentSubmission.value"
+            :status="submissionWorkspace.currentSubmissionStatus.value"
+            :error-message="submissionWorkspace.currentSubmissionErrorMessage.value"
+            :mutation-error="submissionWorkspace.mutationError.value"
+            :can-manage-submission="canManageTeam"
+            :create-availability="createSubmissionAvailability"
+            :update-availability="updateSubmissionAvailability"
+            :submit-availability="submitSubmissionAvailability"
+            :withdraw-availability="withdrawSubmissionAvailability"
+            :pending-action-key="submissionWorkspace.pendingActionKey.value"
+            @create-draft="createSubmissionDraft"
+            @save-changes="saveSubmissionChanges"
+            @submit-project="submitProject"
+            @withdraw-submission="withdrawSubmission"
           />
 
           <ParticipantTeamMembershipPanel
