@@ -15,9 +15,9 @@ Feature: Public hackathon discovery
 
   Scenario: Loading more public hackathons
     Given I am on the public hackathons page
-    Then I should not see the public hackathon titled "Public Archive Fixture Hackathon"
+    Then I should see 4 public hackathon cards
     When I load more public hackathons
-    Then I should see the public hackathon titled "Public Archive Fixture Hackathon"
+    Then I should see 8 public hackathon cards
 
   Scenario: Viewing the public hackathon detail
     Given I am on the public hackathon detail page for the fixture hackathon

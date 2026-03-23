@@ -72,6 +72,16 @@ The API-first backend release gate before UI work is:
 bun run validate:backend
 ```
 
+The Milestone 1 frontend validation scope is:
+
+```bash
+bun run test:unit:ui-milestone
+bun run test:bdd:ui-milestone
+bun run validate:ui-milestone
+```
+
+`validate:ui-milestone` is the focused UI command for the canonical public, participant, judge, admin, and prize-recipient surfaces delivered under `TASK-4.*`. It reuses the same Auth0-backed bootstrap and Playwright-BDD flow as the broader suite.
+
 Generate the current Drizzle migration from the canonical schema with:
 
 ```bash
@@ -115,6 +125,14 @@ bun run test:bdd
 ```
 
 This is the canonical local BDD command. It bootstraps the stable Auth0 personas, resets the local SQLite-backed fixture database, regenerates the Playwright output, and runs both the signed-out and authenticated BDD scenarios.
+
+Run the focused Milestone 1 UI browser suite with:
+
+```bash
+bun run test:bdd:ui-milestone
+```
+
+This command keeps the same bootstrap flow but narrows execution to the public homepage and hackathon discovery flows, participant application/team/team-submission flows, judge workspace, admin operations and competition workspaces, prize redemption, and the destructive account-management recovery flow. Dedicated account deletion remains part of the broader `bun run test:bdd` surface instead of the focused UI alias.
 
 BDD source files live under `tests/bdd/`: feature files in `tests/bdd/features`, matching step definitions in `tests/bdd/steps`, and authenticated bootstrap support in `tests/bdd/bootstrap.ts` plus `tests/bdd/support`. Generated files are written under `.features-gen/` and should not be edited by hand.
 

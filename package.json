@@ -16,8 +16,11 @@
     "playwright:install": "playwright install chromium",
     "test:bdd:install": "playwright install chromium",
     "test:unit": "vitest run tests/unit",
+    "test:unit:ui-milestone": "vitest run tests/unit/app tests/unit/support/bdd/platform-fixtures.test.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:bdd": "node --experimental-strip-types tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && node --experimental-strip-types tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1"
+    "test:bdd": "node --experimental-strip-types tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && node --experimental-strip-types tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1",
+    "test:bdd:ui-milestone": "node --experimental-strip-types tests/bdd/bootstrap.ts && bddgen && playwright test tests/bdd/features/public/public-homepage.feature tests/bdd/features/public/hackathon-discovery.feature tests/bdd/features/authenticated/participant-application.feature tests/bdd/features/authenticated/team-workspace.feature tests/bdd/features/authenticated/team-submission.feature tests/bdd/features/authenticated/judge-workspace.feature tests/bdd/features/authenticated/admin-operations.feature tests/bdd/features/authenticated/admin-competition.feature tests/bdd/features/authenticated/prize-redemptions.feature --project chromium-bdd --project chromium-authenticated-bdd && node --experimental-strip-types tests/bdd/bootstrap.ts && playwright test tests/bdd/features/authenticated-destructive/account-management.feature --project chromium-authenticated-destructive-bdd --workers=1",
+    "validate:ui-milestone": "bun run lint && bun run typecheck && bun run test:unit:ui-milestone && bun run test:bdd:ui-milestone"
   },
   "dependencies": {
     "@auth0/auth0-nuxt": "1.0.1",

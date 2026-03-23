@@ -97,6 +97,10 @@ Then('the public hackathon card for {string} should link to {string}', async ({ 
   await expect(card).toHaveAttribute('href', href)
 })
 
+Then('I should see {int} public hackathon cards', async ({ page }, count: number) => {
+  await expect(page.locator('[data-testid^="public-hackathon-card-"]')).toHaveCount(count)
+})
+
 When('I open the public hackathons page with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
   await page.goto('/hackathons')

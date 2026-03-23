@@ -32,6 +32,40 @@ For local full-gate execution, the repository also exposes:
 
 Continuous integration must run the same validation surface with the Auth0-backed BDD environment configured through repository secrets.
 
+## Milestone 1 UI Validation Surface
+
+Milestone 1 UI work adds a narrower frontend validation scope on top of the backend release gate.
+
+The required local UI validation surface is:
+
+- `bun run test:unit:ui-milestone`
+- `bun run test:bdd:ui-milestone`
+- `bun run validate:ui-milestone`
+
+This UI validation surface is intentionally role-aware and maps directly to the canonical Milestone 1 product areas:
+
+| UI Area | Coverage Expectation | Current Automated Coverage |
+| --- | --- | --- |
+| Public entry | Signed-out homepage and public discovery remain covered as public browser flows. | `tests/bdd/features/public/public-homepage.feature`, `tests/bdd/features/public/hackathon-discovery.feature` |
+| Participant account and application | Platform-account recovery, participant application, team formation, and team submission remain covered through Auth0-backed browser flows. | `tests/bdd/features/authenticated-destructive/account-management.feature`, `tests/bdd/features/authenticated/participant-application.feature`, `tests/bdd/features/authenticated/team-workspace.feature`, `tests/bdd/features/authenticated/team-submission.feature` |
+| Judge workspace | Blind judge workflow remains covered through the dedicated judge workspace feature. | `tests/bdd/features/authenticated/judge-workspace.feature` |
+| Admin workspace | Admin operations and competition oversight remain covered through dedicated admin browser flows. | `tests/bdd/features/authenticated/admin-operations.feature`, `tests/bdd/features/authenticated/admin-competition.feature` |
+| Prize-recipient workspace | Winner-facing prize redemption remains covered through the dedicated redemption feature. | `tests/bdd/features/authenticated/prize-redemptions.feature` |
+| UI helper logic | Frontend helper and fixture logic remains covered by task-scoped Vitest suites under `tests/unit/app` plus `tests/unit/support/bdd/platform-fixtures.test.ts`. | `bun run test:unit:ui-milestone` |
+
+Milestone 1 UI validation reuses the same stable Auth0 personas, cookie-backed browser sessions, and deterministic fixture reset flow as the broader repository BDD suite. It does not introduce fake identity shortcuts, alternate authorization fixtures, or a parallel test harness.
+
+The UI milestone validation surface is intentionally narrower than the backend release gate:
+
+- it targets the public, participant, judge, admin, and prize-recipient browser flows introduced by Milestone 1
+- it does not replace the broader backend workflow coverage under `TASK-3.*`
+- it keeps destructive account-deletion coverage in the full backend BDD suite instead of the faster UI milestone alias
+
+When backend constraints prevent complete actor-facing UI coverage, the gap must be documented explicitly in the owning task summary rather than implied away. Current known limitations are:
+
+- the focused UI milestone alias does not include the dedicated account-deletion feature because that remains part of the broader destructive backend release gate
+- cross-cutting shell states that are only exercised incidentally by role-specific routes do not yet have a dedicated standalone Milestone 1 browser feature
+
 ## Core Rules
 
 - End-to-end tests use real Auth0 authentication.
