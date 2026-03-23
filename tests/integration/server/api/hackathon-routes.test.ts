@@ -5,16 +5,22 @@ import { eq } from 'drizzle-orm'
 import hackathonsGetHandler from '../../../../server/api/hackathons/index.get'
 import hackathonsPostHandler from '../../../../server/api/hackathons/index.post'
 import hackathonDetailGetHandler from '../../../../server/api/hackathons/[hackathonId]/index.get'
+import publicHackathonsGetHandler from '../../../../server/api/public/hackathons/index.get'
+import publicHackathonDetailGetHandler from '../../../../server/api/public/hackathons/[slug]/index.get'
+import publicHackathonCriteriaGetHandler from '../../../../server/api/public/hackathons/[slug]/evaluation-criteria/index.get'
+import publicHackathonPrizesGetHandler from '../../../../server/api/public/hackathons/[slug]/prizes/index.get'
 import hackathonPatchHandler from '../../../../server/api/hackathons/[hackathonId]/index.patch'
 import openSubmissionPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/open-submission.post'
 import startJudgingPreparationPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-judging-preparation.post'
 import startJudgeReviewPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-judge-review.post'
 import {
   auditLogs,
+  evaluationCriteria,
   hackathonRoleAssignments,
   hackathonTermsDocuments,
   hackathons,
   judgeAssignments,
+  prizes,
   prizeEligibilitySnapshots,
   submissions,
   teamMembers,
@@ -33,6 +39,12 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       harnesses.pop()?.d1Database.close()
     }
   })
+
+  function buildOrderedTimestamp(offset: number) {
+    const day = String(Math.floor(offset / 24) + 1).padStart(2, '0')
+    const hour = String(offset % 24).padStart(2, '0')
+    return `2026-04-${day}T${hour}:00:00.000Z`
+  }
 
   test('GET /api/hackathons hides draft hackathons from public callers', async () => {
     const harness = createApiRouteTestHarness({
@@ -84,10 +96,13 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     const response = await harness.request('/api/hackathons')
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({
+    const payload = await response.json()
+
+    expect(payload).toMatchObject({
       data: [
         expect.objectContaining({
           id: 'hackathon_public',
+          name: 'Public Hackathon',
           slug: 'public-hackathon'
         })
       ],
@@ -95,6 +110,315 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         total: 1
       }
     })
+  })
+
+  test('GET /api/public/hackathons stays public-safe and complete for authenticated admins when drafts fill page slots', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/public/hackathons', handler: publicHackathonsGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'platform_admin',
+        auth0Subject: 'auth0|platform_admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        isPlatformAdmin: true
+      },
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      }
+    ])
+
+    await harness.database.insert(hackathons).values([
+      ...Array.from({ length: 100 }, (_, index) => ({
+        id: `hackathon_draft_${index + 1}`,
+        name: `Draft Hackathon ${index + 1}`,
+        slug: `draft-hackathon-${index + 1}`,
+        description: 'Draft',
+        city: 'Vienna',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'draft' as const,
+        maxTeamMembers: 5,
+        createdByUserId: 'platform_admin',
+        createdAt: buildOrderedTimestamp(index),
+        updatedAt: buildOrderedTimestamp(index)
+      })),
+      {
+        id: 'hackathon_public',
+        name: 'Public Hackathon',
+        slug: 'public-hackathon',
+        description: 'Public',
+        city: 'Vienna',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'registration_open',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/public/hackathons?page=1&page_size=100')
+
+    expect(response.status).toBe(200)
+    const payload = await response.json()
+
+    expect(payload).toMatchObject({
+      data: [
+        expect.objectContaining({
+          name: 'Public Hackathon',
+          slug: 'public-hackathon'
+        })
+      ],
+      meta: {
+        total: 1
+      }
+    })
+
+    expect(payload.data[0]).not.toHaveProperty('id')
+    expect(payload.data[0]).not.toHaveProperty('currentApplicationTermsDocumentId')
+    expect(payload.data[0]).not.toHaveProperty('currentWinnerTermsDocumentId')
+    expect(payload.data[0]).not.toHaveProperty('createdByUserId')
+    expect(payload.data[0]).not.toHaveProperty('createdAt')
+    expect(payload.data[0]).not.toHaveProperty('updatedAt')
+  })
+
+  test('GET /api/public/hackathons/:slug resolves the exact public hackathon without paginated lookup', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/public/hackathons/:slug', handler: publicHackathonDetailGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'platform_admin',
+        auth0Subject: 'auth0|platform_admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        isPlatformAdmin: true
+      },
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      }
+    ])
+
+    await harness.database.insert(hackathons).values([
+      ...Array.from({ length: 120 }, (_, index) => ({
+        id: `hackathon_public_${index + 1}`,
+        name: `Public Hackathon ${index + 1}`,
+        slug: `public-hackathon-${index + 1}`,
+        description: 'Public',
+        city: 'Vienna',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'registration_open' as const,
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1',
+        createdAt: buildOrderedTimestamp(index),
+        updatedAt: buildOrderedTimestamp(index)
+      })),
+      {
+        id: 'hackathon_target',
+        name: 'Target Public Hackathon',
+        slug: 'public-hackathon',
+        description: 'Target public detail',
+        city: 'Vienna',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'registration_open',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      }
+    ])
+    await harness.database.insert(hackathonTermsDocuments).values([
+      {
+        id: 'terms_public_app_1',
+        hackathonId: 'hackathon_target',
+        documentType: 'application_terms',
+        version: 2,
+        title: 'Public Application Terms',
+        content: 'Public application content',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_public_win_1',
+        hackathonId: 'hackathon_target',
+        documentType: 'winner_terms',
+        version: 1,
+        title: 'Public Winner Terms',
+        content: 'Public winner content',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+    await harness.database
+      .update(hackathons)
+      .set({
+        currentApplicationTermsDocumentId: 'terms_public_app_1',
+        currentWinnerTermsDocumentId: 'terms_public_win_1'
+      })
+      .where(eq(hackathons.id, 'hackathon_target'))
+
+    const response = await harness.request('/api/public/hackathons/public-hackathon')
+
+    expect(response.status).toBe(200)
+    const payload = await response.json()
+
+    expect(payload).toMatchObject({
+      data: {
+        slug: 'public-hackathon',
+        name: 'Target Public Hackathon',
+        currentTerms: {
+          applicationTerms: {
+            documentType: 'application_terms',
+            version: 2,
+            title: 'Public Application Terms'
+          },
+          winnerTerms: {
+            documentType: 'winner_terms',
+            version: 1,
+            title: 'Public Winner Terms'
+          }
+        }
+      }
+    })
+
+    expect(payload.data).not.toHaveProperty('id')
+    expect(payload.data).not.toHaveProperty('currentApplicationTermsDocumentId')
+    expect(payload.data).not.toHaveProperty('currentWinnerTermsDocumentId')
+    expect(payload.data).not.toHaveProperty('createdByUserId')
+    expect(payload.data).not.toHaveProperty('createdAt')
+    expect(payload.data).not.toHaveProperty('updatedAt')
+    expect(payload.data.currentTerms.applicationTerms).not.toHaveProperty('id')
+    expect(payload.data.currentTerms.winnerTerms).not.toHaveProperty('id')
+  })
+
+  test('GET /api/public/hackathons/:slug/criteria and prizes omit internal identifiers and timestamps', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/public/hackathons/:slug/evaluation-criteria', handler: publicHackathonCriteriaGetHandler },
+        { method: 'get', path: '/api/public/hackathons/:slug/prizes', handler: publicHackathonPrizesGetHandler }
+      ]
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'creator_1',
+      auth0Subject: 'auth0|creator_1',
+      email: 'creator@example.com',
+      displayName: 'Creator'
+    })
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_public',
+      name: 'Public Hackathon',
+      slug: 'public-hackathon',
+      description: 'Public',
+      city: 'Vienna',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(evaluationCriteria).values({
+      id: 'criterion_public',
+      hackathonId: 'hackathon_public',
+      name: 'Community Impact',
+      description: 'Measures external value.',
+      weight: 40,
+      displayOrder: 1
+    })
+    await harness.database.insert(prizes).values({
+      id: 'prize_public',
+      hackathonId: 'hackathon_public',
+      name: 'Launch Award',
+      description: 'Launch support.',
+      rewardType: 'api_credits',
+      rewardValue: '5000',
+      rewardCurrency: null,
+      awardScope: 'team',
+      rankStart: 1,
+      rankEnd: 1
+    })
+
+    const criteriaResponse = await harness.request('/api/public/hackathons/public-hackathon/evaluation-criteria')
+    const prizeResponse = await harness.request('/api/public/hackathons/public-hackathon/prizes')
+
+    expect(criteriaResponse.status).toBe(200)
+    expect(prizeResponse.status).toBe(200)
+
+    const criteriaPayload = await criteriaResponse.json()
+    const prizePayload = await prizeResponse.json()
+
+    expect(criteriaPayload).toMatchObject({
+      data: [
+        {
+          name: 'Community Impact',
+          description: 'Measures external value.',
+          weight: 40,
+          displayOrder: 1
+        }
+      ]
+    })
+    expect(criteriaPayload.data[0]).not.toHaveProperty('id')
+    expect(criteriaPayload.data[0]).not.toHaveProperty('hackathonId')
+    expect(criteriaPayload.data[0]).not.toHaveProperty('createdAt')
+
+    expect(prizePayload).toMatchObject({
+      data: [
+        {
+          name: 'Launch Award',
+          description: 'Launch support.',
+          rewardType: 'api_credits',
+          rewardValue: '5000',
+          rewardCurrency: null,
+          awardScope: 'team',
+          rankStart: 1,
+          rankEnd: 1
+        }
+      ]
+    })
+    expect(prizePayload.data[0]).not.toHaveProperty('id')
+    expect(prizePayload.data[0]).not.toHaveProperty('hackathonId')
+    expect(prizePayload.data[0]).not.toHaveProperty('createdAt')
   })
 
   test('GET /api/hackathons/:hackathonId returns current term references for visible hackathons', async () => {

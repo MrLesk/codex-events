@@ -50,6 +50,10 @@ export const routeIdParamsSchema = z.object({
   hackathonId: z.string().trim().min(1)
 })
 
+export const routeSlugParamsSchema = z.object({
+  slug: slugSchema
+})
+
 export const hackathonListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   page_size: z.coerce.number().int().min(1).max(100).default(20),
@@ -183,6 +187,42 @@ type HackathonTermsDocumentRecord = typeof hackathonTermsDocuments.$inferSelect
 type EvaluationCriterionRecord = typeof evaluationCriteria.$inferSelect
 type PrizeRecord = typeof prizes.$inferSelect
 
+const publicHackathonStates = [
+  'registration_open',
+  'submission_open',
+  'judging_preparation',
+  'judge_review',
+  'shortlist',
+  'winners_announced',
+  'completed'
+] as const
+
+function buildHackathonListFilters(input: z.infer<typeof hackathonListQuerySchema>) {
+  const filters = []
+
+  if (input.state) {
+    filters.push(eq(hackathons.state, input.state))
+  }
+
+  if (input.slug) {
+    filters.push(like(hackathons.slug, `%${input.slug}%`))
+  }
+
+  return filters
+}
+
+function buildPublicHackathonVisibilityClauses() {
+  return publicHackathonStates.map(state => eq(hackathons.state, state))
+}
+
+function buildPublicHackathonVisibilityWhere(filters: ReturnType<typeof buildHackathonListFilters> = []) {
+  const visibilityWhere = or(...buildPublicHackathonVisibilityClauses())
+
+  return filters.length > 0
+    ? and(...filters, visibilityWhere)
+    : visibilityWhere
+}
+
 function isDraftVisibleToActor(
   actor: Awaited<ReturnType<typeof getRequestActor>>,
   hackathonId: string,
@@ -312,11 +352,51 @@ export async function getVisibleHackathonOrThrow(event: H3Event, hackathonId: st
   })
 }
 
+export async function getPublicHackathonBySlugOrThrow(database: AppDatabase, slug: string) {
+  const hackathon = await database.query.hackathons.findFirst({
+    where: and(
+      eq(hackathons.slug, slug),
+      buildPublicHackathonVisibilityWhere()
+    )
+  })
+
+  if (!hackathon) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'hackathon_not_found',
+      message: 'The requested hackathon was not found.',
+      details: { slug }
+    })
+  }
+
+  return hackathon
+}
+
 export async function requireHackathonAdmin(event: H3Event, hackathonId: string) {
   const hackathon = await getHackathonOrThrow(getDatabase(event), hackathonId)
   const authorization = await resolveHackathonAuthorization(event, hackathonId)
   assertHackathonAdminAccess(authorization)
   return { hackathon, authorization }
+}
+
+export async function listPublicHackathons(
+  database: AppDatabase,
+  input: z.infer<typeof hackathonListQuerySchema>
+) {
+  const page = input.page
+  const pageSize = input.page_size
+  const visibilityWhere = buildPublicHackathonVisibilityWhere(buildHackathonListFilters(input))
+
+  const items = await database.query.hackathons.findMany({
+    where: visibilityWhere,
+    orderBy: [desc(hackathons.createdAt)],
+    limit: pageSize,
+    offset: (page - 1) * pageSize
+  })
+  const totalRows = await database.select({ total: count() }).from(hackathons).where(visibilityWhere)
+  const total = totalRows[0]?.total ?? 0
+
+  return { items, total, page, pageSize }
 }
 
 export async function listVisibleHackathons(
@@ -327,16 +407,7 @@ export async function listVisibleHackathons(
   const actor = await getRequestActor(event)
   const page = input.page
   const pageSize = input.page_size
-
-  const filters = []
-
-  if (input.state) {
-    filters.push(eq(hackathons.state, input.state))
-  }
-
-  if (input.slug) {
-    filters.push(like(hackathons.slug, `%${input.slug}%`))
-  }
+  const filters = buildHackathonListFilters(input)
 
   const baseWhere = filters.length > 0 ? and(...filters) : undefined
 
@@ -355,13 +426,7 @@ export async function listVisibleHackathons(
 
   const adminHackathonIds = await getActorAdminHackathonIds(database, actor)
   const visibilityClauses = [
-    eq(hackathons.state, 'registration_open'),
-    eq(hackathons.state, 'submission_open'),
-    eq(hackathons.state, 'judging_preparation'),
-    eq(hackathons.state, 'judge_review'),
-    eq(hackathons.state, 'shortlist'),
-    eq(hackathons.state, 'winners_announced'),
-    eq(hackathons.state, 'completed'),
+    ...buildPublicHackathonVisibilityClauses(),
     ...(adminHackathonIds.size > 0 ? [inArray(hackathons.id, [...adminHackathonIds])] : [])
   ]
   const visibilityWhere = baseWhere
@@ -447,6 +512,50 @@ export function serializeHackathon(
   }
 }
 
+export function serializePublicHackathonTermsReference(document: HackathonTermsDocumentRecord) {
+  return {
+    documentType: document.documentType,
+    version: document.version,
+    title: document.title,
+    publishedAt: document.publishedAt
+  }
+}
+
+export function serializePublicHackathon(
+  hackathon: HackathonRecord,
+  currentTerms?: {
+    applicationTerms: HackathonTermsDocumentRecord | null
+    winnerTerms: HackathonTermsDocumentRecord | null
+  }
+) {
+  return {
+    name: hackathon.name,
+    slug: hackathon.slug,
+    description: hackathon.description,
+    backgroundImageUrl: hackathon.backgroundImageUrl,
+    bannerImageUrl: hackathon.bannerImageUrl,
+    city: hackathon.city,
+    address: hackathon.address,
+    registrationOpensAt: hackathon.registrationOpensAt,
+    registrationClosesAt: hackathon.registrationClosesAt,
+    submissionOpensAt: hackathon.submissionOpensAt,
+    submissionClosesAt: hackathon.submissionClosesAt,
+    state: hackathon.state,
+    maxTeamMembers: hackathon.maxTeamMembers,
+    requireXProfile: hackathon.requireXProfile,
+    requireLinkedinProfile: hackathon.requireLinkedinProfile,
+    requireGithubProfile: hackathon.requireGithubProfile,
+    ...(currentTerms
+      ? {
+          currentTerms: {
+            applicationTerms: currentTerms.applicationTerms ? serializePublicHackathonTermsReference(currentTerms.applicationTerms) : null,
+            winnerTerms: currentTerms.winnerTerms ? serializePublicHackathonTermsReference(currentTerms.winnerTerms) : null
+          }
+        }
+      : {})
+  }
+}
+
 export function serializeHackathonRoleAssignment(
   assignment: HackathonRoleAssignmentRecord,
   user?: typeof users.$inferSelect | null
@@ -496,6 +605,15 @@ export function serializeEvaluationCriterion(criterion: EvaluationCriterionRecor
   }
 }
 
+export function serializePublicEvaluationCriterion(criterion: EvaluationCriterionRecord) {
+  return {
+    name: criterion.name,
+    description: criterion.description,
+    weight: criterion.weight,
+    displayOrder: criterion.displayOrder
+  }
+}
+
 export function serializePrize(prize: PrizeRecord) {
   return {
     id: prize.id,
@@ -509,6 +627,19 @@ export function serializePrize(prize: PrizeRecord) {
     rankStart: prize.rankStart,
     rankEnd: prize.rankEnd,
     createdAt: prize.createdAt
+  }
+}
+
+export function serializePublicPrize(prize: PrizeRecord) {
+  return {
+    name: prize.name,
+    description: prize.description,
+    rewardType: prize.rewardType,
+    rewardValue: prize.rewardValue,
+    rewardCurrency: prize.rewardCurrency,
+    awardScope: prize.awardScope,
+    rankStart: prize.rankStart,
+    rankEnd: prize.rankEnd
   }
 }
 
