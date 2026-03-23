@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - Codex
 created_date: '2026-03-23 19:35'
-updated_date: '2026-03-23 19:37'
+updated_date: '2026-03-23 20:31'
 labels:
   - backend
   - testing
@@ -46,7 +46,11 @@ Remove the direct node:sqlite-based D1 emulation layer from local development an
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Plan recorded immediately before implementation after validating that `wrangler`'s `getPlatformProxy()` can expose a local `DB` D1 binding from a `wrangler.jsonc` file and that Miniflare can provide a real D1 binding for programmatic tests without `node:sqlite`.
+Plan recorded immediately before implementation after validating that `wrangler`'s `getPlatformProxy()` can expose a local `DB` D1 binding from a `wrangler.jsonc` file and that Miniflare can provide a real D1 binding for programmatic tests without `node:sqlite`. Follow-up within the same task: add native GitHub Actions dependency caching to both CI jobs, using Bun's shared install cache keyed from `bun.lock`, while avoiding low-value browser-cache complexity unless later measurements justify it.
+
+Add GitHub Actions dependency caching to the split CI jobs after the Cloudflare-native D1 migration so repeated runs do not cold-install Bun packages in every job.
+
+Added `actions/cache@v4` to `backend-checks` and `auth0-bdd-release-gate`, caching Bun's shared install cache from `bun.lock`, plus Playwright's browser cache for the BDD job.
 <!-- SECTION:NOTES:END -->
 
 ## Definition of Done
