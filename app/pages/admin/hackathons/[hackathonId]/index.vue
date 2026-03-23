@@ -116,7 +116,7 @@ const winnerTerms = computed(() => workspace.winnerTermsVersions.data.value?.dat
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
 const assignments = computed(() => workspace.assignments.data.value?.data ?? [])
 const leaderboard = computed(() => workspace.leaderboard.data.value?.data ?? [])
-const teams = computed(() => workspace.teams.data.value?.data ?? [])
+const teams = computed(() => workspace.teams.data.value ?? [])
 const noSubmissionTeams = computed(() => workspace.noSubmissionTeams.data.value?.data ?? [])
 
 const lifecycleMetrics = computed(() => {
@@ -527,6 +527,12 @@ async function runLifecycleAction() {
       description="Configure the hackathon, manage terms and scoring rules, control explicit access, and advance only the lifecycle transitions that the current state allows."
     />
 
+    <AdminHackathonWorkspaceTabs
+      v-if="currentHackathon"
+      :hackathon-id="currentHackathon.id"
+      current-surface="setup"
+    />
+
     <UAlert
       v-if="mutationError"
       color="error"
@@ -629,7 +635,7 @@ async function runLifecycleAction() {
           v-model:form="configForm"
           :is-submitting="isSavingConfig"
           submit-label="Save Configuration"
-          helper-text="This workspace intentionally stops at setup and lifecycle controls. Admin operational review, shortlist management, and winner operations stay in their own milestone tasks."
+          helper-text="This workspace stays focused on setup and lifecycle controls. Day-to-day application, team, and submission operations now live in the dedicated Operations workspace."
           @submit="saveConfiguration"
         />
       </section>

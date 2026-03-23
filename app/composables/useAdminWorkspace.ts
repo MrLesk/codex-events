@@ -1,4 +1,5 @@
 import type {
+  AdminApplicationRecord,
   ApiDataResponse,
   ApiListResponse,
   EvaluationCriterion,
@@ -17,7 +18,8 @@ import {
   buildAdminWorkspaceCacheKey,
   filterManageableHackathons,
   getAdminWorkspaceSubjectKey,
-  hasHackathonAdminAccess
+  hasHackathonAdminAccess,
+  listAllPaginatedItems
 } from '~/utils/admin-workspace'
 
 export function useAdminWorkspace() {
@@ -110,11 +112,31 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
     }
   )
 
-  const teams = useFetch<ApiListResponse<TeamSummary>>(
-    () => `/api/hackathons/${resolvedHackathonId.value}/teams?page=1&page_size=100`,
+  const applications = useFetch<ApiListResponse<AdminApplicationRecord>>(
+    () => `/api/hackathons/${resolvedHackathonId.value}/applications`,
     {
-      key: () => buildAdminWorkspaceCacheKey('admin-hackathon-teams', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+      key: () => buildAdminWorkspaceCacheKey('admin-hackathon-applications', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
       watch: [adminWorkspace.subjectKey, resolvedHackathonId]
+    }
+  )
+
+  const teams = useAsyncData<TeamSummary[]>(
+    () => buildAdminWorkspaceCacheKey('admin-hackathon-teams', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+    async () => await listAllPaginatedItems(
+      async (page, pageSize) => await $fetch<ApiListResponse<TeamSummary>>(
+        `/api/hackathons/${resolvedHackathonId.value}/teams`,
+        {
+          query: {
+            page,
+            page_size: pageSize
+          }
+        }
+      ),
+      100
+    ),
+    {
+      watch: [adminWorkspace.subjectKey, resolvedHackathonId],
+      default: () => []
     }
   )
 
@@ -160,6 +182,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
       applicationTermsVersions.refresh(),
       winnerTermsVersions.refresh(),
       roleAssignments.refresh(),
+      applications.refresh(),
       teams.refresh(),
       noSubmissionTeams.refresh(),
       assignments.refresh(),
@@ -176,6 +199,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
     applicationTermsVersions,
     winnerTermsVersions,
     roleAssignments,
+    applications,
     teams,
     noSubmissionTeams,
     assignments,

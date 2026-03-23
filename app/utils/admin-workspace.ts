@@ -31,6 +31,32 @@ export interface ApiListResponse<T> {
   }
 }
 
+export async function listAllPaginatedItems<T>(
+  fetchPage: (page: number, pageSize: number) => Promise<ApiListResponse<T>>,
+  pageSize: number = 100
+) {
+  const items: T[] = []
+  let page = 1
+  let total: number | null = null
+
+  while (true) {
+    const response = await fetchPage(page, pageSize)
+    const pageItems = response.data
+
+    items.push(...pageItems)
+    total = response.meta?.total ?? total
+
+    const reachedKnownTotal = total !== null && items.length >= total
+    const reachedLastPage = pageItems.length < pageSize
+
+    if (pageItems.length === 0 || reachedKnownTotal || reachedLastPage) {
+      return items
+    }
+
+    page += 1
+  }
+}
+
 export interface SessionUserIdentity {
   sub: string
   email?: string | null
@@ -50,6 +76,15 @@ export interface PlatformUserProfile {
   createdAt?: string | null
   updatedAt?: string | null
   deletedAt?: string | null
+}
+
+export interface OperationalUserSummary {
+  id: string
+  email: string
+  displayName: string
+  xProfileUrl?: string | null
+  linkedinProfileUrl?: string | null
+  githubProfileUrl?: string | null
 }
 
 export interface HackathonRoleSummary {
@@ -81,6 +116,22 @@ export interface TermsDocument extends TermsReference {
   hackathonId: string
   content: string
   createdAt: string
+}
+
+export interface AdminApplicationRecord {
+  id: string
+  hackathonId: string
+  userId: string
+  status: 'submitted' | 'approved' | 'rejected'
+  submittedAt: string
+  reviewedAt: string | null
+  reviewedByUserId: string | null
+  applicationTermsDocumentId: string
+  applicationTermsAcceptedAt: string
+  createdAt: string
+  updatedAt: string
+  user?: OperationalUserSummary
+  applicationTermsDocument?: TermsDocument
 }
 
 export interface HackathonRecord {
@@ -181,6 +232,21 @@ export interface TeamSummary {
   activeMemberCount?: number
 }
 
+export interface TeamMemberSummary {
+  id: string
+  teamId: string
+  userId: string
+  role: 'member' | 'admin'
+  joinedAt: string
+  leftAt: string | null
+  createdAt: string
+  user?: OperationalUserSummary
+}
+
+export interface TeamDetailRecord extends TeamSummary {
+  members: TeamMemberSummary[]
+}
+
 export interface SubmissionRecord {
   id: string
   teamId: string
@@ -200,6 +266,22 @@ export interface SubmissionRecord {
 export interface NoSubmissionEntry {
   team: TeamSummary
   submission: SubmissionRecord | null
+}
+
+export type AdminSubmissionStatus = SubmissionRecord['status'] | 'none'
+
+export interface AdminOperationalTeam {
+  team: TeamSummary
+  detail: TeamDetailRecord | null
+  submission: SubmissionRecord | null
+  submissionStatus: AdminSubmissionStatus
+  activeMemberCount: number
+  activeAdminChoices: Array<{
+    userId: string
+    label: string
+  }>
+  isInNoSubmissionSection: boolean
+  noSubmissionReason: AdminSubmissionStatus
 }
 
 export interface JudgeAssignmentSummary {
@@ -261,6 +343,20 @@ export interface LifecycleControl {
   code?: string
 }
 
+export interface AdminSubmissionInterventionPolicy {
+  canAdminWithdraw: boolean
+  adminWithdrawReason?: string
+  canDisqualify: boolean
+  disqualifyReason?: string
+}
+
+function startCase(value: string) {
+  return value
+    .split('_')
+    .map(part => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(' ')
+}
+
 export function isAdminActor(actor: SessionActor | null | undefined) {
   if (!actor?.hasPlatformAccount) {
     return false
@@ -312,10 +408,7 @@ export function filterManageableHackathons(hackathons: HackathonRecord[], actor:
 }
 
 export function formatHackathonState(state: HackathonState) {
-  return state
-    .split('_')
-    .map(part => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
-    .join(' ')
+  return startCase(state)
 }
 
 export function getHackathonStateColor(state: HackathonState) {
@@ -337,6 +430,125 @@ export function getHackathonStateColor(state: HackathonState) {
     case 'completed':
       return 'neutral'
   }
+}
+
+export function formatApplicationStatus(status: AdminApplicationRecord['status']) {
+  return startCase(status)
+}
+
+export function getApplicationStatusColor(status: AdminApplicationRecord['status']) {
+  switch (status) {
+    case 'submitted':
+      return 'warning'
+    case 'approved':
+      return 'success'
+    case 'rejected':
+      return 'error'
+  }
+}
+
+export function formatSubmissionStatus(status: AdminSubmissionStatus) {
+  return status === 'none' ? 'No Submission' : startCase(status)
+}
+
+export function getSubmissionStatusColor(status: AdminSubmissionStatus) {
+  switch (status) {
+    case 'none':
+      return 'neutral'
+    case 'draft':
+      return 'warning'
+    case 'submitted':
+      return 'primary'
+    case 'locked':
+      return 'info'
+    case 'withdrawn':
+      return 'neutral'
+    case 'disqualified':
+      return 'error'
+  }
+}
+
+export function getAdminSubmissionInterventionPolicy(
+  hackathonState: HackathonState,
+  submissionStatus: AdminSubmissionStatus
+): AdminSubmissionInterventionPolicy {
+  const canAdminWithdraw = hackathonState === 'submission_open'
+    && (submissionStatus === 'draft' || submissionStatus === 'submitted')
+  const canDisqualify = ['judge_review', 'shortlist', 'winners_announced', 'completed'].includes(hackathonState)
+    && submissionStatus === 'locked'
+
+  let adminWithdrawReason: string | undefined
+
+  if (!canAdminWithdraw) {
+    if (hackathonState !== 'submission_open') {
+      adminWithdrawReason = 'Admin withdrawal is available only while submission is open.'
+    } else {
+      adminWithdrawReason = 'Only draft or submitted work can be admin-withdrawn.'
+    }
+  }
+
+  let disqualifyReason: string | undefined
+
+  if (!canDisqualify) {
+    if (!['judge_review', 'shortlist', 'winners_announced', 'completed'].includes(hackathonState)) {
+      disqualifyReason = 'Disqualification begins only once judge review starts.'
+    } else {
+      disqualifyReason = 'Only locked submissions can be disqualified.'
+    }
+  }
+
+  return {
+    canAdminWithdraw,
+    adminWithdrawReason,
+    canDisqualify,
+    disqualifyReason
+  }
+}
+
+function formatOperationalUserLabel(user: OperationalUserSummary | undefined, userId: string) {
+  if (!user) {
+    return userId
+  }
+
+  if (user.displayName && user.email) {
+    return `${user.displayName} (${user.email})`
+  }
+
+  return user.displayName || user.email || userId
+}
+
+export function buildAdminOperationalTeams(
+  teams: TeamSummary[],
+  options?: {
+    teamDetails?: Array<TeamDetailRecord | null>
+    submissions?: Array<SubmissionRecord | null>
+    noSubmissionEntries?: NoSubmissionEntry[]
+  }
+): AdminOperationalTeam[] {
+  const noSubmissionByTeamId = new Map(
+    (options?.noSubmissionEntries ?? []).map(entry => [entry.team.id, entry])
+  )
+
+  return teams.map((team, index) => {
+    const detail = options?.teamDetails?.[index] ?? null
+    const noSubmissionEntry = noSubmissionByTeamId.get(team.id)
+    const submission = options?.submissions?.[index] ?? noSubmissionEntry?.submission ?? null
+    const activeAdmins = (detail?.members ?? []).filter(member => member.leftAt === null && member.role === 'admin')
+
+    return {
+      team,
+      detail,
+      submission,
+      submissionStatus: submission?.status ?? 'none',
+      activeMemberCount: detail?.members.length ?? team.activeMemberCount ?? 0,
+      activeAdminChoices: activeAdmins.map(member => ({
+        userId: member.userId,
+        label: formatOperationalUserLabel(member.user, member.userId)
+      })),
+      isInNoSubmissionSection: Boolean(noSubmissionEntry),
+      noSubmissionReason: noSubmissionEntry?.submission?.status ?? 'none'
+    }
+  })
 }
 
 export function getHackathonStateProgress(state: HackathonState) {
