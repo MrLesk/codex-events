@@ -176,3 +176,8 @@ When('I complete the competition hackathon', async ({ page }) => {
 Then('I should see the competition winner {string}', async ({ page }, submissionId: string) => {
   await expect(page.getByTestId(`admin-competition-winner-${submissionId}`)).toBeVisible()
 })
+
+Then('I should see the competition redemption {string} with status {string}', async ({ page }, redemptionId: string, status: string) => {
+  await expect(page.getByTestId(`admin-competition-redemption-${redemptionId}`)).toBeVisible()
+  await expect(page.getByTestId(`admin-competition-redemption-status-${redemptionId}`)).toHaveText(status)
+})

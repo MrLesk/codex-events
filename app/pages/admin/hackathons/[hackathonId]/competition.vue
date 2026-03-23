@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type {
+  ApiDataResponse,
   ApiListResponse,
   HackathonRoleAssignment,
   JudgeAssignmentSummary,
@@ -7,6 +8,7 @@ import type {
   ShortlistEntry,
   WinnerEntry
 } from '~/utils/admin-workspace'
+import type { PrizeRedemptionAdminView, PrizeRedemptionRecord } from '~/utils/prize-redemptions'
 
 import {
   formatHackathonState,
@@ -52,6 +54,10 @@ const shortlistErrorMessage = ref('')
 const winners = ref<WinnerEntry[]>([])
 const winnersStatus = ref<LoadStatus>('idle')
 const winnersErrorMessage = ref('')
+
+const redemptions = ref<PrizeRedemptionRecord[]>([])
+const redemptionsStatus = ref<LoadStatus>('idle')
+const redemptionsErrorMessage = ref('')
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
@@ -257,12 +263,40 @@ async function loadWinners() {
   }
 }
 
+async function loadPrizeRedemptions() {
+  if (!canLoadWinners.value) {
+    redemptions.value = []
+    redemptionsStatus.value = 'idle'
+    redemptionsErrorMessage.value = ''
+    return
+  }
+
+  redemptionsStatus.value = 'pending'
+  redemptionsErrorMessage.value = ''
+
+  try {
+    const response = await $fetch<ApiDataResponse<PrizeRedemptionAdminView>>(
+      `/api/hackathons/${hackathonId.value}/prize-redemptions`
+    )
+    redemptions.value = response.data.redemptions
+    redemptionsStatus.value = 'success'
+  } catch (error) {
+    redemptions.value = []
+    redemptionsStatus.value = 'error'
+    redemptionsErrorMessage.value = toSectionErrorMessage(
+      error,
+      'Prize redemption records could not be loaded right now.'
+    )
+  }
+}
+
 async function loadCompetitionData() {
   await Promise.all([
     loadAssignments(),
     loadLeaderboard(),
     loadShortlist(),
-    loadWinners()
+    loadWinners(),
+    loadPrizeRedemptions()
   ])
 }
 
@@ -516,6 +550,14 @@ async function completeHackathon() {
           @complete-hackathon="completeHackathon"
         />
       </section>
+
+      <AdminCompetitionPrizeRedemptionsPanel
+        :hackathon-state="currentHackathon.state"
+        :winners="winners"
+        :redemptions="redemptions"
+        :is-loading="redemptionsStatus === 'pending'"
+        :error-message="redemptionsStatus === 'error' ? redemptionsErrorMessage : ''"
+      />
 
       <UAlert
         v-if="!['judging_preparation', 'judge_review', 'shortlist', 'winners_announced', 'completed'].includes(currentHackathon.state)"
