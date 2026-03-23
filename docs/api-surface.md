@@ -143,24 +143,29 @@ Operations:
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | Create platform account | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record and records exact-version acceptance of the required current platform documents for registration. Rejects requests that omit required platform document versions or reference unpublished versions. |
+| Update own platform account profile | `PATCH /api/account` | authenticated user with a platform account | Updates the platform profile fields that affect hackathon application eligibility, including display name and optional X, LinkedIn, and GitHub profile links. |
 | Delete own account | `DELETE /api/account` | authenticated user | Performs GDPR-compliant account deletion handling and writes the required audit trail. |
 
 Testing:
-- Unit: registration acceptance-version rules and deletion guard semantics.
-- Integration: registration persistence, document-acceptance linkage, deletion effects, and audit creation.
-- End-to-end: authenticated platform account registration and account deletion flows.
+- Unit: registration acceptance-version rules, profile normalization, and deletion guard semantics.
+- Integration: registration persistence, profile updates, document-acceptance linkage, deletion effects, and audit creation.
+- End-to-end: authenticated platform account registration, profile management, and account deletion flows.
 
 ## Hackathons
 
 Purpose:
-- Expose public hackathon reads and admin lifecycle/configuration operations.
+- Expose public hackathon discovery reads, caller-visible hackathon reads, and admin lifecycle/configuration operations.
 
 Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| List hackathons | `GET /api/hackathons` | public or authenticated user | Returns hackathons visible to the caller with filter support by state and slug-oriented discovery. |
-| Get hackathon detail | `GET /api/hackathons/:hackathonId` | public or authenticated user | Returns canonical hackathon fields and current terms references. |
+| List public hackathons | `GET /api/public/hackathons` | public or authenticated user | Returns the canonical public-visible hackathon set regardless of caller privileges, with pagination and discovery filters. |
+| Get public hackathon detail | `GET /api/public/hackathons/:slug` | public or authenticated user | Resolves by exact hackathon slug and returns canonical public-safe hackathon fields plus current terms references. |
+| List public evaluation criteria | `GET /api/public/hackathons/:slug/evaluation-criteria` | public or authenticated user | Returns the public evaluation criteria for the exact public hackathon slug. |
+| List public prizes | `GET /api/public/hackathons/:slug/prizes` | public or authenticated user | Returns the public prize definitions for the exact public hackathon slug. |
+| List caller-visible hackathons | `GET /api/hackathons` | public or authenticated user | Returns hackathons visible to the caller. Authenticated admins can see draft hackathons they are allowed to manage here. |
+| Get caller-visible hackathon detail | `GET /api/hackathons/:hackathonId` | public or authenticated user | Returns canonical hackathon fields and current terms references for a hackathon visible to the caller. |
 | Create hackathon | `POST /api/hackathons` | platform admin | Creates a `draft` hackathon. |
 | Update hackathon configuration | `PATCH /api/hackathons/:hackathonId` | hackathon admin or platform admin | Updates canonical configuration fields, including schedule, images, location, team size, and required profile flags. |
 | Open submission manually | `POST /api/hackathons/:hackathonId/actions/open-submission` | hackathon admin or platform admin | Allowed only when registration is closed and the configured submission window is open. |
@@ -169,15 +174,17 @@ Operations:
 | Start shortlist | `POST /api/hackathons/:hackathonId/actions/start-shortlist` | hackathon admin or platform admin | Allowed only from `judge_review` after every locked submission has a completed review outcome or has been removed from competition. |
 | Announce winners | `POST /api/hackathons/:hackathonId/actions/announce-winners` | hackathon admin or platform admin | Allowed only from `shortlist`. |
 | Complete hackathon | `POST /api/hackathons/:hackathonId/actions/complete` | hackathon admin or platform admin | Allowed only after winners are announced. |
-| List evaluation criteria | `GET /api/hackathons/:hackathonId/evaluation-criteria` | public or authenticated user | Returns configured criteria and display order. |
+| List caller-visible evaluation criteria | `GET /api/hackathons/:hackathonId/evaluation-criteria` | public or authenticated user | Returns configured criteria and display order for a hackathon visible to the caller. |
 | Create evaluation criterion | `POST /api/hackathons/:hackathonId/evaluation-criteria` | hackathon admin or platform admin | Adds a criterion for the hackathon. |
 | Update evaluation criterion | `PATCH /api/hackathons/:hackathonId/evaluation-criteria/:criterionId` | hackathon admin or platform admin | Updates criterion fields and ordering. |
-| List prizes | `GET /api/hackathons/:hackathonId/prizes` | public or authenticated user | Returns configured prize definitions. |
+| List caller-visible prizes | `GET /api/hackathons/:hackathonId/prizes` | public or authenticated user | Returns configured prize definitions for a hackathon visible to the caller. |
 | Create prize | `POST /api/hackathons/:hackathonId/prizes` | hackathon admin or platform admin | Adds a prize definition for the hackathon. |
 | Update prize | `PATCH /api/hackathons/:hackathonId/prizes/:prizeId` | hackathon admin or platform admin | Updates prize configuration. |
 
 Notes:
 - No manual API action opens `registration_open`. That transition remains system-driven from the configured registration window.
+- Public hackathon discovery and detail responses expose only public-safe fields. They do not expose internal record identifiers, creator identifiers, or audit timestamps.
+- Public current-terms references expose document type, version, title, and published time only.
 
 Testing:
 - Unit: lifecycle transitions and guard rules.
