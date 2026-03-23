@@ -13,7 +13,7 @@
     "test:bdd:install": "playwright install chromium",
     "test:unit": "node ./node_modules/vitest/vitest.mjs run tests/unit",
     "test:integration": "node ./node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts",
-    "test:bdd": "node --experimental-strip-types tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && node --experimental-strip-types tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1",
+    "test:bdd": "bun tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && bun tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1",
     "test:all": "bun run test:unit && bun run test:integration && bun run test:bdd"
   },
   "dependencies": {
