@@ -3,6 +3,7 @@ Feature: Public homepage
 
   Scenario: Viewing the signed-out homepage
     Given I am on the public homepage
-    Then I should see the hero title "Run Codex hackathons on a real platform, not a starter template."
+    Then I should see the hero title "Operate hackathons through one role-aware surface instead of scattered workflows."
+    And I should see a call to action labeled "Browse hackathons"
     And I should see a call to action labeled "Sign in with Auth0"
-    And I should see a dashboard navigation link
+    And I should see a public navigation link labeled "Hackathons"

@@ -15,6 +15,6 @@ Then('I should see a call to action labeled {string}', async ({ page }, label: s
   await expect(page.getByRole('link', { name: label })).toBeVisible()
 })
 
-Then('I should see a dashboard navigation link', async ({ page }) => {
-  await expect(page.getByRole('link', { name: 'Dashboard' }).first()).toBeVisible()
+Then('I should see a public navigation link labeled {string}', async ({ page }, label: string) => {
+  await expect(page.getByRole('link', { name: label }).first()).toBeVisible()
 })
