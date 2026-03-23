@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "codex-hackathons-local",
+  "compatibility_date": "2026-03-23",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "codex-hackathons-local",
+      "database_id": "00000000-0000-0000-0000-000000000001"
+    }
+  ]
+}

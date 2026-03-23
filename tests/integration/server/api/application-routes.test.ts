@@ -113,11 +113,11 @@ async function seedApplicationContext(
 describe('TASK-3.6 application routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllGlobals()
 
     while (harnesses.length > 0) {
-      harnesses.pop()?.d1Database.close()
+      await harnesses.pop()?.d1Database.close()
     }
   })
 

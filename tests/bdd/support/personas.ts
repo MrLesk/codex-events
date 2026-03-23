@@ -25,13 +25,6 @@ export interface ProvisionedStablePersona extends StablePersona {
   auth0Subject: string
 }
 
-export interface PlatformFixtureTarget {
-  localSqlitePath?: string
-  cloudflareAccountId?: string
-  cloudflareApiToken?: string
-  cloudflareD1DatabaseId?: string
-}
-
 const stablePersonaEnvironmentSchema = z.object({
   NUXT_AUTH0_APP_BASE_URL: z.string().url(),
   E2E_PLATFORM_ADMIN_EMAIL: z.string().email(),
@@ -53,16 +46,8 @@ const provisioningEnvironmentSchema = stablePersonaEnvironmentSchema.extend({
   AUTH0_TEST_CONNECTION_NAME: z.string().min(1)
 })
 
-const platformFixtureEnvironmentSchema = z.object({
-  NUXT_DATABASE_LOCAL_SQLITE_PATH: z.string().min(1).optional(),
-  CLOUDFLARE_ACCOUNT_ID: z.string().min(1).optional(),
-  CLOUDFLARE_API_TOKEN: z.string().min(1).optional(),
-  CLOUDFLARE_D1_DATABASE_ID: z.string().min(1).optional()
-})
-
 export type StablePersonaEnvironment = z.infer<typeof stablePersonaEnvironmentSchema>
 export type ProvisioningEnvironment = z.infer<typeof provisioningEnvironmentSchema>
-export type PlatformFixtureEnvironment = z.infer<typeof platformFixtureEnvironmentSchema>
 
 export function loadStablePersonaEnvironment(environment: NodeJS.ProcessEnv = process.env) {
   return stablePersonaEnvironmentSchema.parse(environment)
@@ -70,10 +55,6 @@ export function loadStablePersonaEnvironment(environment: NodeJS.ProcessEnv = pr
 
 export function loadProvisioningEnvironment(environment: NodeJS.ProcessEnv = process.env) {
   return provisioningEnvironmentSchema.parse(environment)
-}
-
-export function loadPlatformFixtureEnvironment(environment: NodeJS.ProcessEnv = process.env) {
-  return platformFixtureEnvironmentSchema.parse(environment)
 }
 
 export function getStablePersonas(environment: NodeJS.ProcessEnv = process.env): StablePersona[] {
@@ -121,20 +102,6 @@ export function getAuth0TestConnectionName(environment: NodeJS.ProcessEnv = proc
 
 export function getAuth0ClientId(environment: NodeJS.ProcessEnv = process.env) {
   return loadProvisioningEnvironment(environment).NUXT_AUTH0_CLIENT_ID
-}
-
-export function resolvePlatformFixtureTarget(environment: NodeJS.ProcessEnv = process.env): PlatformFixtureTarget {
-  const config = loadPlatformFixtureEnvironment(environment)
-
-  if (config.NUXT_DATABASE_LOCAL_SQLITE_PATH) {
-    return {
-      localSqlitePath: config.NUXT_DATABASE_LOCAL_SQLITE_PATH
-    }
-  }
-
-  return {
-    localSqlitePath: '.data/local-d1.sqlite'
-  }
 }
 
 export function getAuthArtifactDirectory() {

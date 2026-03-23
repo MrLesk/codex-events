@@ -1,13 +1,11 @@
-import { createRequire } from 'node:module'
+import type { D1DatabaseBinding } from '../database/client'
 
-import { createLocalD1Binding } from '../database/local-d1'
+import { ApiError } from '../utils/api-error'
+import { createLocalPlatformProxy } from '../database/local-platform-proxy'
 
-const require = createRequire(import.meta.url)
-const { DatabaseSync } = require('node:sqlite') as typeof import('node:sqlite')
+const localPlatformProxyCache = new Map<string, Promise<Awaited<ReturnType<typeof createLocalPlatformProxy>>>>()
 
-const localBindingCache = new Map<string, ReturnType<typeof createLocalD1Binding>>()
-
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
   if (event.context.d1Database) {
     return
   }
@@ -20,21 +18,25 @@ export default defineEventHandler((event) => {
     return
   }
 
-  const sqlitePath = runtimeConfig.database?.localSqlitePath
+  let proxyPromise = localPlatformProxyCache.get(bindingName)
 
-  if (!sqlitePath) {
-    return
+  if (!proxyPromise) {
+    proxyPromise = createLocalPlatformProxy()
+    localPlatformProxyCache.set(bindingName, proxyPromise)
+    proxyPromise.catch(() => localPlatformProxyCache.delete(bindingName))
   }
 
-  const cachedBinding = localBindingCache.get(sqlitePath)
+  const proxy = await proxyPromise
+  const d1Database = proxy.env[bindingName]
 
-  if (cachedBinding) {
-    event.context.d1Database = cachedBinding as never
-    return
+  if (!d1Database) {
+    throw new ApiError({
+      statusCode: 500,
+      code: 'database_binding_missing',
+      message: `The local Cloudflare D1 binding "${bindingName}" could not be resolved from wrangler.jsonc.`,
+      details: { binding: bindingName }
+    })
   }
 
-  const sqlite = new DatabaseSync(sqlitePath)
-  const d1Database = createLocalD1Binding(sqlite)
-  localBindingCache.set(sqlitePath, d1Database)
-  event.context.d1Database = d1Database as never
+  event.context.d1Database = d1Database as D1DatabaseBinding as never
 })

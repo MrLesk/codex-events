@@ -34,11 +34,11 @@ import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllGlobals()
 
     while (harnesses.length > 0) {
-      harnesses.pop()?.d1Database.close()
+      await harnesses.pop()?.d1Database.close()
     }
   })
 

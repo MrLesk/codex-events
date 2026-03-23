@@ -251,11 +251,11 @@ function approvedApplication(id: string, userId: string) {
 describe('TASK-3.6 team formation routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllGlobals()
 
     while (harnesses.length > 0) {
-      harnesses.pop()?.d1Database.close()
+      await harnesses.pop()?.d1Database.close()
     }
   })
 

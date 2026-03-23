@@ -8,9 +8,9 @@ import { createTestD1Database } from '../../../support/backend/fake-d1'
 describe('TestD1Database', () => {
   const databases: Array<ReturnType<typeof createTestD1Database>> = []
 
-  afterEach(() => {
+  afterEach(async () => {
     while (databases.length > 0) {
-      databases.pop()?.close()
+      await databases.pop()?.close()
     }
   })
 

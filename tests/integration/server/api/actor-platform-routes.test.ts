@@ -23,11 +23,11 @@ import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 describe('TASK-3.5 actor-facing API routes', () => {
   const databases: Array<ReturnType<typeof createApiRouteTestHarness>> = []
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllGlobals()
 
     while (databases.length > 0) {
-      databases.pop()?.d1Database.close()
+      await databases.pop()?.d1Database.close()
     }
   })
 

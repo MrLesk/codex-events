@@ -2,7 +2,6 @@ import { eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '../../../../auth/actor'
 import { writeAuditLog } from '../../../../database/audit-log'
-import type { AppDatabaseTransaction } from '../../../../database/client'
 import { getDatabase } from '../../../../database/client'
 import { hackathons, prizeRedemptions, prizes } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
@@ -47,19 +46,18 @@ export default defineApiHandler(async (event) => {
   const announcedAt = new Date().toISOString()
   const redemptionRows = await buildPrizeRedemptionRows(database, hackathonId, prizeList, announcedAt)
 
-  await database.transaction(async (transaction: AppDatabaseTransaction) => {
-    await transaction
+  await database.batch([
+    database
       .update(hackathons)
       .set({
         state: 'winners_announced',
         updatedAt: announcedAt
       })
-      .where(eq(hackathons.id, hackathonId))
-
-    if (redemptionRows.length > 0) {
-      await transaction.insert(prizeRedemptions).values(redemptionRows)
-    }
-  })
+      .where(eq(hackathons.id, hackathonId)),
+    ...(redemptionRows.length > 0
+      ? [database.insert(prizeRedemptions).values(redemptionRows)]
+      : [])
+  ])
 
   const winners = await getWinnersView(database, hackathonId)
 

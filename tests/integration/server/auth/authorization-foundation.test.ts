@@ -24,11 +24,11 @@ describe('backend integration foundation', () => {
     vi.unstubAllGlobals()
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllGlobals()
 
     while (d1Databases.length > 0) {
-      d1Databases.pop()?.close()
+      await d1Databases.pop()?.close()
     }
   })
 

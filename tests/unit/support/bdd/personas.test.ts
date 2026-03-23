@@ -5,7 +5,6 @@ import {
   getAuth0TestConnectionName,
   getStablePersonas,
   loadProvisioningEnvironment,
-  resolvePlatformFixtureTarget,
   loadStablePersonaEnvironment,
   resetAuthArtifactDirectory,
   storageStatePathForPersona
@@ -68,11 +67,5 @@ describe('stable Auth0 personas', () => {
   test('writes storage state under the BDD auth artifact directory', () => {
     resetAuthArtifactDirectory()
     expect(storageStatePathForPersona('judge')).toContain('tests/bdd/.auth/judge.json')
-  })
-
-  test('defaults platform fixture reset to the local sqlite-backed D1 path', () => {
-    expect(resolvePlatformFixtureTarget(baseEnvironment)).toEqual({
-      localSqlitePath: '.data/local-d1.sqlite'
-    })
   })
 })

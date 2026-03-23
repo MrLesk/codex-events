@@ -1,9 +1,9 @@
 import { mkdirSync, rmSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { DatabaseSync } from 'node:sqlite'
 
-import { readMigrationSql } from '../../support/backend/migrations.ts'
-import { resolvePlatformFixtureTarget, type ProvisionedStablePersona } from './personas.ts'
+import { createLocalPlatformProxy, localPlatformPersistPath } from '../../../server/database/local-platform-proxy.ts'
+import { applySqlStatements, readMigrationStatements } from '../../support/backend/migrations.ts'
+import { type ProvisionedStablePersona } from './personas.ts'
 
 const fixtureTimestamp = '2026-03-22T12:00:00.000Z'
 export const fixtureHackathonId = 'hackathon_e2e_fixture'
@@ -204,7 +204,6 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
 
   return [
     'pragma foreign_keys = on',
-    'begin',
     'delete from audit_logs',
     'delete from prize_redemptions',
     'delete from prize_eligibility_snapshots',
@@ -1017,8 +1016,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       where id = ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}`,
     `update hackathons
       set current_winner_terms_document_id = ${sqlLiteral(fixtureCompetitionCompleteWinnerTermsId)}
-      where id = ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}`,
-    'commit'
+      where id = ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}`
   ].join(';\n')
 }
 
@@ -1030,51 +1028,18 @@ export async function resetPlatformFixtures(
   personas: ProvisionedStablePersona[],
   environment: NodeJS.ProcessEnv = process.env
 ) {
-  const fixtureTarget = resolvePlatformFixtureTarget(environment)
+  void environment
   const fixtureSql = buildFixtureSql(personas)
+  mkdirSync(dirname(localPlatformPersistPath), { recursive: true })
+  rmSync(localPlatformPersistPath, { recursive: true, force: true })
 
-  if (fixtureTarget.localSqlitePath) {
-    mkdirSync(dirname(fixtureTarget.localSqlitePath), { recursive: true })
-    rmSync(fixtureTarget.localSqlitePath, { force: true })
+  const proxy = await createLocalPlatformProxy()
 
-    const sqlite = new DatabaseSync(fixtureTarget.localSqlitePath)
-
-    try {
-      sqlite.exec(readMigrationSql())
-      sqlite.exec(fixtureSql)
-    } finally {
-      sqlite.close()
-    }
-
-    return {
-      hackathonId: fixtureHackathonId,
-      userIds: personaUserIds
-    }
-  }
-
-  const response = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${fixtureTarget.cloudflareAccountId}/d1/database/${fixtureTarget.cloudflareD1DatabaseId}/query`,
-    {
-      method: 'POST',
-      headers: {
-        'authorization': `Bearer ${fixtureTarget.cloudflareApiToken}`,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        sql: fixtureSql
-      })
-    }
-  )
-
-  if (!response.ok) {
-    throw new Error(`Cloudflare D1 fixture reset failed with status ${response.status}.`)
-  }
-
-  const payload = await response.json() as { success?: boolean, errors?: Array<{ message?: string }> }
-
-  if (payload.success === false) {
-    const errorMessage = payload.errors?.map(error => error.message).filter(Boolean).join('; ') || 'Unknown Cloudflare D1 error.'
-    throw new Error(`Cloudflare D1 fixture reset failed: ${errorMessage}`)
+  try {
+    await applySqlStatements(proxy.env.DB, readMigrationStatements())
+    await applySqlStatements(proxy.env.DB, fixtureSql)
+  } finally {
+    await proxy.dispose()
   }
 
   return {

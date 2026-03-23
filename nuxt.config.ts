@@ -27,8 +27,7 @@ export default defineNuxtConfig({
       audience: ''
     },
     database: {
-      binding: 'DB',
-      localSqlitePath: '.data/local-d1.sqlite'
+      binding: 'DB'
     }
   },
 

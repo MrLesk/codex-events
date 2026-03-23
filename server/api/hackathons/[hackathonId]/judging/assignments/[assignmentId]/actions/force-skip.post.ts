@@ -1,7 +1,6 @@
 import { eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '../../../../../../../database/audit-log'
-import type { AppDatabaseTransaction } from '../../../../../../../database/client'
 import { judgeAssignments } from '../../../../../../../database/schema'
 import { defineApiHandler } from '../../../../../../../utils/api-handler'
 import { apiData } from '../../../../../../../utils/api-response'
@@ -36,8 +35,8 @@ export default defineApiHandler(async (event) => {
   })
   const replacementAssignment = buildReplacementAssignment(assignment, replacementJudgeUserId, skippedAt)
 
-  await database.transaction(async (transaction: AppDatabaseTransaction) => {
-    await transaction
+  await database.batch([
+    database
       .update(judgeAssignments)
       .set({
         status: 'skipped',
@@ -45,10 +44,9 @@ export default defineApiHandler(async (event) => {
         skippedByUserId: actor.platformUser.id,
         skipReason: body.reason ?? 'force_skipped_by_admin'
       })
-      .where(eq(judgeAssignments.id, assignment.id))
-
-    await transaction.insert(judgeAssignments).values(replacementAssignment)
-  })
+      .where(eq(judgeAssignments.id, assignment.id)),
+    database.insert(judgeAssignments).values(replacementAssignment)
+  ])
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

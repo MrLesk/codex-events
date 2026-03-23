@@ -12,8 +12,8 @@ export interface AuditLogEntry {
   id?: string
 }
 
-export async function writeAuditLog(executor: InsertableExecutor, entry: AuditLogEntry) {
-  const record: typeof auditLogs.$inferInsert = {
+export function buildAuditLogRecord(entry: AuditLogEntry) {
+  return {
     id: entry.id ?? crypto.randomUUID(),
     actorUserId: entry.actorUserId ?? null,
     entityType: entry.entityType,
@@ -21,9 +21,22 @@ export async function writeAuditLog(executor: InsertableExecutor, entry: AuditLo
     action: entry.action,
     metadata: entry.metadata ?? {},
     ...(entry.createdAt ? { createdAt: entry.createdAt } : {})
-  }
+  } satisfies typeof auditLogs.$inferInsert
+}
 
-  await executor.insert(auditLogs).values(record)
+export function buildAuditLogInsert(executor: InsertableExecutor, entry: AuditLogEntry) {
+  const record = buildAuditLogRecord(entry)
+
+  return {
+    record,
+    query: executor.insert(auditLogs).values(record)
+  }
+}
+
+export async function writeAuditLog(executor: InsertableExecutor, entry: AuditLogEntry) {
+  const { query, record } = buildAuditLogInsert(executor, entry)
+
+  await query
 
   return record
 }

@@ -2,7 +2,6 @@ import { eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '../../../../../../auth/actor'
 import { writeAuditLog } from '../../../../../../database/audit-log'
-import type { AppDatabaseTransaction } from '../../../../../../database/client'
 import { teamJoinRequests, teamMembers } from '../../../../../../database/schema'
 import { defineApiHandler } from '../../../../../../utils/api-handler'
 import { apiData } from '../../../../../../utils/api-response'
@@ -41,17 +40,16 @@ export default defineApiHandler(async (event) => {
   const reviewedAt = new Date().toISOString()
   const teamMemberId = crypto.randomUUID()
 
-  await database.transaction(async (transaction: AppDatabaseTransaction) => {
-    await transaction
+  await database.batch([
+    database
       .update(teamJoinRequests)
       .set({
         status: 'approved',
         reviewedAt,
         reviewedByUserId: actor.platformUser.id
       })
-      .where(eq(teamJoinRequests.id, request.id))
-
-    await transaction.insert(teamMembers).values({
+      .where(eq(teamJoinRequests.id, request.id)),
+    database.insert(teamMembers).values({
       id: teamMemberId,
       teamId: liveTeam.id,
       userId: request.userId,
@@ -59,7 +57,7 @@ export default defineApiHandler(async (event) => {
       joinedAt: reviewedAt,
       createdAt: reviewedAt
     })
-  })
+  ])
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

@@ -1,5 +1,4 @@
 import { requirePlatformActor } from '../../../../auth/actor'
-import type { AppDatabaseTransaction } from '../../../../database/client'
 import { teams, teamMembers } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
@@ -27,8 +26,8 @@ export default defineApiHandler(async (event) => {
   const teamId = crypto.randomUUID()
   const teamMemberId = crypto.randomUUID()
 
-  await database.transaction(async (transaction: AppDatabaseTransaction) => {
-    await transaction.insert(teams).values({
+  await database.batch([
+    database.insert(teams).values({
       id: teamId,
       hackathonId,
       name: body.name,
@@ -37,9 +36,8 @@ export default defineApiHandler(async (event) => {
       createdByUserId: actor.platformUser.id,
       createdAt: now,
       updatedAt: now
-    })
-
-    await transaction.insert(teamMembers).values({
+    }),
+    database.insert(teamMembers).values({
       id: teamMemberId,
       teamId,
       userId: actor.platformUser.id,
@@ -47,7 +45,7 @@ export default defineApiHandler(async (event) => {
       joinedAt: now,
       createdAt: now
     })
-  })
+  ])
 
   return apiData(serializeTeam({
     id: teamId,

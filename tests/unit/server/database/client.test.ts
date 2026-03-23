@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { describe, expect, test, vi } from 'vitest'
 
 import { ApiError } from '../../../../server/utils/api-error'
-import { getDatabase, resolveD1Binding, withDatabaseTransaction } from '../../../../server/database/client'
+import { getDatabase, resolveD1Binding, withDatabaseBatch } from '../../../../server/database/client'
 
 function createEvent(binding?: unknown): H3Event {
   return {
@@ -41,14 +41,14 @@ describe('resolveD1Binding', () => {
     expect(first).toBe(second)
   })
 
-  test('delegates transactions through the shared database instance', async () => {
-    const transaction = vi.fn(async (callback: (tx: string) => Promise<string>) => callback('tx'))
+  test('delegates batches through the shared database instance', async () => {
+    const batch = vi.fn(async (queries: string[]) => queries.map(query => `${query}-done`))
 
-    const result = await withDatabaseTransaction({
-      transaction
-    } as never, async tx => `${tx}-value`)
+    const result = await withDatabaseBatch({
+      batch
+    } as never, ['query_a', 'query_b'] as never)
 
-    expect(result).toBe('tx-value')
-    expect(transaction).toHaveBeenCalledTimes(1)
+    expect(result).toEqual(['query_a-done', 'query_b-done'])
+    expect(batch).toHaveBeenCalledTimes(1)
   })
 })

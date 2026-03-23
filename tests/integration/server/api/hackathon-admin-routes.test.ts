@@ -91,11 +91,11 @@ async function seedHackathonContext(
 describe('TASK-3.5 hackathon admin route groups', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
 
-  afterEach(() => {
+  afterEach(async () => {
     vi.unstubAllGlobals()
 
     while (harnesses.length > 0) {
-      harnesses.pop()?.d1Database.close()
+      await harnesses.pop()?.d1Database.close()
     }
   })
 

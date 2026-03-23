@@ -7,7 +7,7 @@ import { ApiError } from '../utils/api-error'
 
 export type D1DatabaseBinding = Parameters<typeof drizzle>[0]
 export type AppDatabase = ReturnType<typeof createDatabase>
-export type AppDatabaseTransaction = Parameters<Parameters<AppDatabase['transaction']>[0]>[0]
+export type AppDatabaseBatch = Parameters<AppDatabase['batch']>[0]
 
 type CloudflareEnv = Record<string, unknown> | undefined
 type RuntimeConfigShape = {
@@ -60,9 +60,9 @@ export function setDatabase(event: H3Event, database: AppDatabase) {
   event.context.appDb = database
 }
 
-export async function withDatabaseTransaction<T>(
+export async function withDatabaseBatch<T extends AppDatabaseBatch>(
   database: AppDatabase,
-  callback: (transaction: AppDatabaseTransaction) => Promise<T>
+  batch: T
 ) {
-  return database.transaction(callback)
+  return await database.batch(batch)
 }

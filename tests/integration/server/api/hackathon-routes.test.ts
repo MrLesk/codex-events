@@ -32,11 +32,21 @@ import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 describe('TASK-3.5 hackathon CRUD routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
 
-  afterEach(() => {
+  async function insertHackathonsInBatches(
+    harness: ReturnType<typeof createApiRouteTestHarness>,
+    rows: Array<typeof hackathons.$inferInsert>,
+    chunkSize = 5
+  ) {
+    for (let index = 0; index < rows.length; index += chunkSize) {
+      await harness.database.insert(hackathons).values(rows.slice(index, index + chunkSize))
+    }
+  }
+
+  afterEach(async () => {
     vi.unstubAllGlobals()
 
     while (harnesses.length > 0) {
-      harnesses.pop()?.d1Database.close()
+      await harnesses.pop()?.d1Database.close()
     }
   })
 
@@ -140,7 +150,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       }
     ])
 
-    await harness.database.insert(hackathons).values([
+    await insertHackathonsInBatches(harness, [
       ...Array.from({ length: 100 }, (_, index) => ({
         id: `hackathon_draft_${index + 1}`,
         name: `Draft Hackathon ${index + 1}`,
@@ -230,7 +240,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       }
     ])
 
-    await harness.database.insert(hackathons).values([
+    await insertHackathonsInBatches(harness, [
       ...Array.from({ length: 120 }, (_, index) => ({
         id: `hackathon_public_${index + 1}`,
         name: `Public Hackathon ${index + 1}`,

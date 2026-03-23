@@ -2,7 +2,6 @@ import { eq, inArray } from 'drizzle-orm'
 
 import { requirePlatformActor } from '../../../../auth/actor'
 import { writeAuditLog } from '../../../../database/audit-log'
-import type { AppDatabaseTransaction } from '../../../../database/client'
 import { getDatabase } from '../../../../database/client'
 import {
   hackathons,
@@ -48,32 +47,29 @@ export default defineApiHandler(async (event) => {
     transitionedAt
   )
 
-  await database.transaction(async (transaction: AppDatabaseTransaction) => {
-    await transaction
+  await database.batch([
+    database
       .update(hackathons)
       .set({
         state: 'judging_preparation',
         updatedAt: transitionedAt
       })
-      .where(eq(hackathons.id, hackathonId))
-
-    await transaction
+      .where(eq(hackathons.id, hackathonId)),
+    database
       .update(submissions)
       .set({
         status: 'locked',
         lockedAt: transitionedAt,
         updatedAt: transitionedAt
       })
-      .where(inArray(submissions.id, submittedSubmissions.map(submission => submission.id)))
-
-    if (snapshotRows.length > 0) {
-      await transaction.insert(prizeEligibilitySnapshots).values(snapshotRows)
-    }
-
-    if (assignmentRows.length > 0) {
-      await transaction.insert(judgeAssignments).values(assignmentRows)
-    }
-  })
+      .where(inArray(submissions.id, submittedSubmissions.map(submission => submission.id))),
+    ...(snapshotRows.length > 0
+      ? [database.insert(prizeEligibilitySnapshots).values(snapshotRows)]
+      : []),
+    ...(assignmentRows.length > 0
+      ? [database.insert(judgeAssignments).values(assignmentRows)]
+      : [])
+  ])
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

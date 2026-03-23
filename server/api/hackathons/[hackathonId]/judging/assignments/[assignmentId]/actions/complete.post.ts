@@ -1,7 +1,6 @@
 import { eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '../../../../../../../database/audit-log'
-import type { AppDatabaseTransaction } from '../../../../../../../database/client'
 import { judgeAssignments, judgeCriterionScores } from '../../../../../../../database/schema'
 import { defineApiHandler } from '../../../../../../../utils/api-handler'
 import { apiData } from '../../../../../../../utils/api-response'
@@ -31,16 +30,15 @@ export default defineApiHandler(async (event) => {
   const normalizedScores = await normalizeCompletionCriterionScores(database, hackathonId, body)
   const completedAt = new Date().toISOString()
 
-  await database.transaction(async (transaction: AppDatabaseTransaction) => {
-    await transaction
+  await database.batch([
+    database
       .update(judgeAssignments)
       .set({
         status: 'judge_completed',
         completedAt
       })
-      .where(eq(judgeAssignments.id, assignment.id))
-
-    await transaction.insert(judgeCriterionScores).values(
+      .where(eq(judgeAssignments.id, assignment.id)),
+    database.insert(judgeCriterionScores).values(
       normalizedScores.map(score => ({
         id: crypto.randomUUID(),
         judgeAssignmentId: assignment.id,
@@ -51,7 +49,7 @@ export default defineApiHandler(async (event) => {
         updatedAt: completedAt
       }))
     )
-  })
+  ])
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

@@ -9,7 +9,7 @@ import {
   userPlatformDocumentAcceptances,
   users
 } from '../database/schema'
-import { writeAuditLog } from '../database/audit-log'
+import { buildAuditLogInsert, writeAuditLog } from '../database/audit-log'
 import { ApiError } from './api-error'
 import { assertGuard } from './lifecycle-guard'
 import { assertCurrentPlatformDocument, getCurrentPlatformDocument } from './platform-documents'
@@ -41,7 +41,6 @@ export const platformAccountProfileBodySchema = z.object({
 type PlatformUserRecord = typeof users.$inferSelect
 type PlatformAccountRegistrationInput = z.infer<typeof platformAccountRegistrationBodySchema>
 type PlatformAccountProfileInput = z.infer<typeof platformAccountProfileBodySchema>
-type AccountManagementTransaction = Parameters<Parameters<AppDatabase['transaction']>[0]>[0]
 
 function normalizeOptionalUrl(value: string | null | undefined) {
   const normalized = value?.trim()
@@ -187,25 +186,25 @@ export async function registerPlatformAccount(
 
   const createdAt = new Date().toISOString()
   const userRecord = buildPlatformAccountInsert(actor, input, createdAt)
+  const acceptanceRows = [
+    {
+      id: crypto.randomUUID(),
+      userId: userRecord.id,
+      platformDocumentId: privacyPolicyDocument.id,
+      acceptedAt: createdAt
+    },
+    {
+      id: crypto.randomUUID(),
+      userId: userRecord.id,
+      platformDocumentId: platformTermsDocument.id,
+      acceptedAt: createdAt
+    }
+  ] satisfies Array<typeof userPlatformDocumentAcceptances.$inferInsert>
 
-  await database.transaction(async (transaction: AccountManagementTransaction) => {
-    await transaction.insert(users).values(userRecord)
-    await transaction.insert(userPlatformDocumentAcceptances).values([
-      {
-        id: crypto.randomUUID(),
-        userId: userRecord.id,
-        platformDocumentId: privacyPolicyDocument.id,
-        acceptedAt: createdAt
-      },
-      {
-        id: crypto.randomUUID(),
-        userId: userRecord.id,
-        platformDocumentId: platformTermsDocument.id,
-        acceptedAt: createdAt
-      }
-    ])
-
-    await writeAuditLog(transaction, {
+  await database.batch([
+    database.insert(users).values(userRecord),
+    database.insert(userPlatformDocumentAcceptances).values(acceptanceRows),
+    buildAuditLogInsert(database, {
       actorUserId: userRecord.id,
       entityType: 'user',
       entityId: userRecord.id,
@@ -214,8 +213,8 @@ export async function registerPlatformAccount(
         privacyPolicyDocumentId: privacyPolicyDocument.id,
         platformTermsDocumentId: platformTermsDocument.id
       }
-    })
-  })
+    }).query
+  ])
 
   return {
     user: serializePlatformUser(userRecord),
@@ -290,21 +289,18 @@ export async function deletePlatformAccount(
   const deletedAt = new Date().toISOString()
   const deletedUserPatch = buildDeletedUserPatch(actor.userId, deletedAt)
 
-  await database.transaction(async (transaction) => {
-    await transaction
+  await database.batch([
+    database
       .update(users)
       .set(deletedUserPatch)
-      .where(eq(users.id, actor.userId))
-
-    await transaction
+      .where(eq(users.id, actor.userId)),
+    database
       .delete(userPlatformDocumentAcceptances)
-      .where(eq(userPlatformDocumentAcceptances.userId, actor.userId))
-
-    await transaction
+      .where(eq(userPlatformDocumentAcceptances.userId, actor.userId)),
+    database
       .delete(hackathonRoleAssignments)
-      .where(eq(hackathonRoleAssignments.userId, actor.userId))
-
-    await writeAuditLog(transaction, {
+      .where(eq(hackathonRoleAssignments.userId, actor.userId)),
+    buildAuditLogInsert(database, {
       actorUserId: actor.userId,
       entityType: 'user',
       entityId: actor.userId,
@@ -312,8 +308,8 @@ export async function deletePlatformAccount(
       metadata: {
         deletedAt
       }
-    })
-  })
+    }).query
+  ])
 
   return {
     userId: actor.userId,
