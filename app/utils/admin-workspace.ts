@@ -301,6 +301,34 @@ export interface JudgeAssignmentSummary {
   ineligibilityMarkedAt: string | null
   ineligibilityMarkedByUserId: string | null
   createdAt: string
+  blindSubmission?: {
+    id: string
+    projectName: string | null
+    summary: string | null
+    repositoryUrl: string | null
+    demoUrl: string | null
+    status: SubmissionRecord['status']
+    submittedAt: string | null
+    lockedAt: string | null
+    applications: Array<{
+      id: string
+      status: AdminApplicationRecord['status']
+      submittedAt: string
+      reviewedAt: string | null
+      applicationTermsDocumentId: string
+    }>
+  }
+  criterionScores?: Array<{
+    id: string
+    evaluationCriterionId: string
+    criterionName: string | null
+    criterionDescription: string | null
+    criterionWeight: number | null
+    score: number
+    comment: string | null
+    createdAt: string
+    updatedAt: string
+  }>
 }
 
 export interface LeaderboardEntry {
@@ -320,6 +348,14 @@ export interface LeaderboardEntry {
     score: number
     comment: string | null
   }>
+}
+
+export interface ShortlistEntry extends LeaderboardEntry {
+  finalRank: number
+}
+
+export interface WinnerEntry extends ShortlistEntry {
+  prizes: PrizeDefinition[]
 }
 
 export interface LifecycleMetrics {
@@ -348,6 +384,13 @@ export interface AdminSubmissionInterventionPolicy {
   adminWithdrawReason?: string
   canDisqualify: boolean
   disqualifyReason?: string
+}
+
+export interface AdminJudgeAssignmentInterventionPolicy {
+  canReassign: boolean
+  reassignReason?: string
+  canForceSkip: boolean
+  forceSkipReason?: string
 }
 
 function startCase(value: string) {
@@ -468,6 +511,23 @@ export function getSubmissionStatusColor(status: AdminSubmissionStatus) {
   }
 }
 
+export function formatJudgeAssignmentStatus(status: JudgeAssignmentSummary['status']) {
+  return startCase(status)
+}
+
+export function getJudgeAssignmentStatusColor(status: JudgeAssignmentSummary['status']) {
+  switch (status) {
+    case 'assigned':
+      return 'warning'
+    case 'judge_started':
+      return 'primary'
+    case 'judge_completed':
+      return 'success'
+    case 'skipped':
+      return 'neutral'
+  }
+}
+
 export function getAdminSubmissionInterventionPolicy(
   hackathonState: HackathonState,
   submissionStatus: AdminSubmissionStatus
@@ -502,6 +562,43 @@ export function getAdminSubmissionInterventionPolicy(
     adminWithdrawReason,
     canDisqualify,
     disqualifyReason
+  }
+}
+
+export function getAdminJudgeAssignmentInterventionPolicy(
+  hackathonState: HackathonState,
+  assignmentStatus: JudgeAssignmentSummary['status']
+): AdminJudgeAssignmentInterventionPolicy {
+  const canReassign = ['judging_preparation', 'judge_review'].includes(hackathonState)
+    && assignmentStatus === 'assigned'
+  const canForceSkip = hackathonState === 'judge_review'
+    && assignmentStatus === 'judge_started'
+
+  let reassignReason: string | undefined
+
+  if (!canReassign) {
+    if (!['judging_preparation', 'judge_review'].includes(hackathonState)) {
+      reassignReason = 'Assignment reassignment is only available during judging preparation or judge review.'
+    } else {
+      reassignReason = 'Only unstarted assignments can be reassigned.'
+    }
+  }
+
+  let forceSkipReason: string | undefined
+
+  if (!canForceSkip) {
+    if (hackathonState !== 'judge_review') {
+      forceSkipReason = 'Force-skip is available only once judge review has started.'
+    } else {
+      forceSkipReason = 'Only started assignments can be force-skipped.'
+    }
+  }
+
+  return {
+    canReassign,
+    reassignReason,
+    canForceSkip,
+    forceSkipReason
   }
 }
 

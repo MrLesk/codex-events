@@ -16,6 +16,10 @@ export const fixtureOperationsHackathonId = 'hackathon_e2e_operations_fixture'
 export const fixtureJudgingHackathonId = 'hackathon_e2e_judging_fixture'
 export const fixtureJudgeWorkspaceHackathonId = 'hackathon_e2e_judge_workspace_fixture'
 export const fixtureOutcomesHackathonId = 'hackathon_e2e_outcomes_fixture'
+const fixtureCompetitionReassignHackathonId = 'hackathon_e2e_competition_reassign_fixture'
+const fixtureCompetitionForceSkipHackathonId = 'hackathon_e2e_competition_force_skip_fixture'
+const fixtureCompetitionShortlistHackathonId = 'hackathon_e2e_competition_shortlist_fixture'
+const fixtureCompetitionCompleteHackathonId = 'hackathon_e2e_competition_complete_fixture'
 export const fixturePublicOverflowHackathonId = 'hackathon_e2e_public_overflow_fixture'
 export const fixturePublicArchiveHackathonId = 'hackathon_e2e_public_archive_fixture'
 export const fixtureApplicationTermsId = 'hackathon_terms_application_fixture'
@@ -28,6 +32,8 @@ export const fixtureWinnerTermsId = 'hackathon_terms_winner_fixture'
 export const fixtureJudgingApplicationTermsId = 'hackathon_terms_application_judging_fixture'
 export const fixtureJudgeWorkspaceApplicationTermsId = 'hackathon_terms_application_judge_workspace_fixture'
 export const fixtureOutcomesWinnerTermsId = 'hackathon_terms_winner_outcomes_fixture'
+const fixtureCompetitionShortlistWinnerTermsId = 'hackathon_terms_winner_competition_shortlist_fixture'
+const fixtureCompetitionCompleteWinnerTermsId = 'hackathon_terms_winner_competition_complete_fixture'
 export const fixturePrivacyDocumentId = 'platform_document_privacy_fixture'
 export const fixtureTermsDocumentId = 'platform_document_terms_fixture'
 export const fixtureJudgingAssignmentId = 'judge_assignment_e2e_fixture'
@@ -42,9 +48,21 @@ export const fixturePublicCriterionOneId = 'evaluation_criterion_e2e_public_impa
 export const fixturePublicCriterionTwoId = 'evaluation_criterion_e2e_public_craft'
 export const fixtureOutcomesSubmissionOneId = 'submission_outcomes_fixture_one'
 export const fixtureOutcomesSubmissionTwoId = 'submission_outcomes_fixture_two'
+const fixtureCompetitionReassignSubmissionId = 'submission_competition_reassign_fixture'
+const fixtureCompetitionForceSkipSubmissionId = 'submission_competition_force_skip_fixture'
+const fixtureCompetitionShortlistSubmissionOneId = 'submission_competition_shortlist_fixture_one'
+const fixtureCompetitionShortlistSubmissionTwoId = 'submission_competition_shortlist_fixture_two'
+const fixtureCompetitionCompleteSubmissionOneId = 'submission_competition_complete_fixture_one'
+const fixtureCompetitionCompleteSubmissionTwoId = 'submission_competition_complete_fixture_two'
 export const fixturePublicPrizeId = 'prize_e2e_public_launch_award'
 export const fixtureOutcomesTeamRedemptionPrizeId = 'prize_outcomes_fixture_team_rank_1'
 export const fixtureOutcomesMemberRedemptionPrizeId = 'prize_outcomes_fixture_member_top_2'
+const fixtureCompetitionShortlistPrizeId = 'prize_competition_shortlist_rank_1'
+const fixtureCompetitionCompletePrizeId = 'prize_competition_complete_rank_1'
+const fixtureCompetitionShortlistCriterionOneId = 'evaluation_criterion_competition_shortlist_novelty'
+const fixtureCompetitionShortlistCriterionTwoId = 'evaluation_criterion_competition_shortlist_execution'
+const fixtureCompetitionCompleteCriterionOneId = 'evaluation_criterion_competition_complete_novelty'
+const fixtureCompetitionCompleteCriterionTwoId = 'evaluation_criterion_competition_complete_execution'
 
 export const platformFixtureIds = {
   hackathonId: fixtureHackathonId,
@@ -53,6 +71,10 @@ export const platformFixtureIds = {
   judgingHackathonId: fixtureJudgingHackathonId,
   judgeWorkspaceHackathonId: fixtureJudgeWorkspaceHackathonId,
   outcomesHackathonId: fixtureOutcomesHackathonId,
+  competitionReassignHackathonId: fixtureCompetitionReassignHackathonId,
+  competitionForceSkipHackathonId: fixtureCompetitionForceSkipHackathonId,
+  competitionShortlistHackathonId: fixtureCompetitionShortlistHackathonId,
+  competitionCompleteHackathonId: fixtureCompetitionCompleteHackathonId,
   publicOverflowHackathonId: fixturePublicOverflowHackathonId,
   publicArchiveHackathonId: fixturePublicArchiveHackathonId,
   applicationTermsDocumentId: fixtureApplicationTermsId,
@@ -76,6 +98,12 @@ export const platformFixtureIds = {
   publicPrizeId: fixturePublicPrizeId,
   outcomesSubmissionOneId: fixtureOutcomesSubmissionOneId,
   outcomesSubmissionTwoId: fixtureOutcomesSubmissionTwoId,
+  competitionReassignSubmissionId: fixtureCompetitionReassignSubmissionId,
+  competitionForceSkipSubmissionId: fixtureCompetitionForceSkipSubmissionId,
+  competitionShortlistSubmissionOneId: fixtureCompetitionShortlistSubmissionOneId,
+  competitionShortlistSubmissionTwoId: fixtureCompetitionShortlistSubmissionTwoId,
+  competitionCompleteSubmissionOneId: fixtureCompetitionCompleteSubmissionOneId,
+  competitionCompleteSubmissionTwoId: fixtureCompetitionCompleteSubmissionTwoId,
   outcomesTeamRedemptionPrizeId: fixtureOutcomesTeamRedemptionPrizeId,
   outcomesMemberRedemptionPrizeId: fixtureOutcomesMemberRedemptionPrizeId
 } as const
@@ -430,6 +458,102 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       ${sqlLiteral(fixtureTimestamp)}
     ),
     (
+      ${sqlLiteral(fixtureCompetitionReassignHackathonId)},
+      'Competition Reassign Fixture Hackathon',
+      'competition-reassign-fixture-hackathon',
+      'Judging-preparation fixture for admin reassignment coverage in the competition workspace.',
+      null,
+      null,
+      'Vienna',
+      'Competition Reassign Fixture Address',
+      '2026-03-08T12:00:00.000Z',
+      '2026-03-10T12:00:00.000Z',
+      '2026-03-10T12:00:00.000Z',
+      '2026-03-12T12:00:00.000Z',
+      'judging_preparation',
+      5,
+      0,
+      0,
+      0,
+      null,
+      null,
+      ${sqlLiteral(platformAdminId)},
+      ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(fixtureTimestamp)}
+    ),
+    (
+      ${sqlLiteral(fixtureCompetitionForceSkipHackathonId)},
+      'Competition Force Skip Fixture Hackathon',
+      'competition-force-skip-fixture-hackathon',
+      'Judge-review fixture for admin force-skip coverage in the competition workspace.',
+      null,
+      null,
+      'Vienna',
+      'Competition Force Skip Fixture Address',
+      '2026-03-08T12:00:00.000Z',
+      '2026-03-10T12:00:00.000Z',
+      '2026-03-10T12:00:00.000Z',
+      '2026-03-12T12:00:00.000Z',
+      'judge_review',
+      5,
+      0,
+      0,
+      0,
+      null,
+      null,
+      ${sqlLiteral(platformAdminId)},
+      ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(fixtureTimestamp)}
+    ),
+    (
+      ${sqlLiteral(fixtureCompetitionShortlistHackathonId)},
+      'Competition Shortlist Fixture Hackathon',
+      'competition-shortlist-fixture-hackathon',
+      'Shortlist fixture for final ranking reorder and winner announcement coverage in the competition workspace.',
+      null,
+      null,
+      'Vienna',
+      'Competition Shortlist Fixture Address',
+      '2026-03-08T12:00:00.000Z',
+      '2026-03-10T12:00:00.000Z',
+      '2026-03-10T12:00:00.000Z',
+      '2026-03-12T12:00:00.000Z',
+      'shortlist',
+      5,
+      0,
+      0,
+      0,
+      null,
+      null,
+      ${sqlLiteral(platformAdminId)},
+      ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(fixtureTimestamp)}
+    ),
+    (
+      ${sqlLiteral(fixtureCompetitionCompleteHackathonId)},
+      'Competition Complete Fixture Hackathon',
+      'competition-complete-fixture-hackathon',
+      'Winners-announced fixture for completion coverage in the competition workspace.',
+      null,
+      null,
+      'Vienna',
+      'Competition Complete Fixture Address',
+      '2026-03-08T12:00:00.000Z',
+      '2026-03-10T12:00:00.000Z',
+      '2026-03-10T12:00:00.000Z',
+      '2026-03-12T12:00:00.000Z',
+      'winners_announced',
+      5,
+      0,
+      0,
+      0,
+      null,
+      null,
+      ${sqlLiteral(platformAdminId)},
+      ${sqlLiteral(fixtureTimestamp)},
+      ${sqlLiteral(fixtureTimestamp)}
+    ),
+    (
       ${sqlLiteral(fixturePublicOverflowHackathonId)},
       'Public Overflow Fixture Hackathon',
       'public-overflow-fixture-hackathon',
@@ -489,7 +613,9 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       (${sqlLiteral(fixtureWinnerTermsId)}, ${sqlLiteral(fixtureHackathonId)}, 'winner_terms', 1, 'Winner Terms', 'E2E winner terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       (${sqlLiteral(fixtureJudgingApplicationTermsId)}, ${sqlLiteral(fixtureJudgingHackathonId)}, 'application_terms', 1, 'Judging Application Terms', 'E2E judging application terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       (${sqlLiteral(fixtureJudgeWorkspaceApplicationTermsId)}, ${sqlLiteral(fixtureJudgeWorkspaceHackathonId)}, 'application_terms', 1, 'Judge Workspace Application Terms', 'E2E judge workspace application terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
-      (${sqlLiteral(fixtureOutcomesWinnerTermsId)}, ${sqlLiteral(fixtureOutcomesHackathonId)}, 'winner_terms', 1, 'Outcomes Winner Terms', 'E2E outcomes winner terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+      (${sqlLiteral(fixtureOutcomesWinnerTermsId)}, ${sqlLiteral(fixtureOutcomesHackathonId)}, 'winner_terms', 1, 'Outcomes Winner Terms', 'E2E outcomes winner terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionShortlistWinnerTermsId)}, ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, 'winner_terms', 1, 'Competition Shortlist Winner Terms', 'E2E competition shortlist winner terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionCompleteWinnerTermsId)}, ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, 'winner_terms', 1, 'Competition Complete Winner Terms', 'E2E competition complete winner terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into hackathon_role_assignments (
       id, hackathon_id, user_id, role, is_in_judge_pool, created_at
     ) values
@@ -503,7 +629,17 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       ('role_judge_judge_workspace_fixture', ${sqlLiteral(fixtureJudgeWorkspaceHackathonId)}, ${sqlLiteral(judgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)}),
       ('role_backup_judge_judge_workspace_fixture', ${sqlLiteral(fixtureJudgeWorkspaceHackathonId)}, ${sqlLiteral(backupJudgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)}),
       ('role_hackathon_admin_outcomes_fixture', ${sqlLiteral(fixtureOutcomesHackathonId)}, ${sqlLiteral(hackathonAdminId)}, 'hackathon_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
-      ('role_judge_outcomes_fixture', ${sqlLiteral(fixtureOutcomesHackathonId)}, ${sqlLiteral(judgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)})`,
+      ('role_judge_outcomes_fixture', ${sqlLiteral(fixtureOutcomesHackathonId)}, ${sqlLiteral(judgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_hackathon_admin_competition_reassign_fixture', ${sqlLiteral(fixtureCompetitionReassignHackathonId)}, ${sqlLiteral(hackathonAdminId)}, 'hackathon_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_judge_competition_reassign_fixture', ${sqlLiteral(fixtureCompetitionReassignHackathonId)}, ${sqlLiteral(judgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_backup_judge_competition_reassign_fixture', ${sqlLiteral(fixtureCompetitionReassignHackathonId)}, ${sqlLiteral(backupJudgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_hackathon_admin_competition_force_skip_fixture', ${sqlLiteral(fixtureCompetitionForceSkipHackathonId)}, ${sqlLiteral(hackathonAdminId)}, 'hackathon_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_judge_competition_force_skip_fixture', ${sqlLiteral(fixtureCompetitionForceSkipHackathonId)}, ${sqlLiteral(judgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_backup_judge_competition_force_skip_fixture', ${sqlLiteral(fixtureCompetitionForceSkipHackathonId)}, ${sqlLiteral(backupJudgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_hackathon_admin_competition_shortlist_fixture', ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, ${sqlLiteral(hackathonAdminId)}, 'hackathon_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_judge_competition_shortlist_fixture', ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, ${sqlLiteral(judgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_hackathon_admin_competition_complete_fixture', ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, ${sqlLiteral(hackathonAdminId)}, 'hackathon_admin', 0, ${sqlLiteral(fixtureTimestamp)}),
+      ('role_judge_competition_complete_fixture', ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, ${sqlLiteral(judgeId)}, 'judge', 1, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into user_applications (
       id, hackathon_id, user_id, status, submitted_at, reviewed_at, reviewed_by_user_id,
       application_terms_document_id, application_terms_accepted_at, created_at, updated_at
@@ -535,7 +671,13 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       ('team_judge_workspace_fixture_one', ${sqlLiteral(fixtureJudgeWorkspaceHackathonId)}, 'Fixture Judge Workspace Team One', 'fixture-judge-workspace-team-one', 0, ${sqlLiteral(regularUserId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       ('team_judge_workspace_fixture_two', ${sqlLiteral(fixtureJudgeWorkspaceHackathonId)}, 'Fixture Judge Workspace Team Two', 'fixture-judge-workspace-team-two', 0, ${sqlLiteral(judgingParticipantTwoId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       ('team_outcomes_fixture_one', ${sqlLiteral(fixtureOutcomesHackathonId)}, 'Fixture Outcomes Team One', 'fixture-outcomes-team-one', 0, ${sqlLiteral(regularUserId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
-      ('team_outcomes_fixture_two', ${sqlLiteral(fixtureOutcomesHackathonId)}, 'Fixture Outcomes Team Two', 'fixture-outcomes-team-two', 0, ${sqlLiteral(judgeId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+      ('team_outcomes_fixture_two', ${sqlLiteral(fixtureOutcomesHackathonId)}, 'Fixture Outcomes Team Two', 'fixture-outcomes-team-two', 0, ${sqlLiteral(judgeId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('team_competition_reassign_fixture', ${sqlLiteral(fixtureCompetitionReassignHackathonId)}, 'Competition Reassign Team', 'competition-reassign-team', 0, ${sqlLiteral(regularUserId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('team_competition_force_skip_fixture', ${sqlLiteral(fixtureCompetitionForceSkipHackathonId)}, 'Competition Force Skip Team', 'competition-force-skip-team', 0, ${sqlLiteral(regularUserId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('team_competition_shortlist_fixture_one', ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, 'Competition Shortlist Team One', 'competition-shortlist-team-one', 0, ${sqlLiteral(regularUserId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('team_competition_shortlist_fixture_two', ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, 'Competition Shortlist Team Two', 'competition-shortlist-team-two', 0, ${sqlLiteral(judgingParticipantTwoId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('team_competition_complete_fixture_one', ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, 'Competition Complete Team One', 'competition-complete-team-one', 0, ${sqlLiteral(regularUserId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('team_competition_complete_fixture_two', ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, 'Competition Complete Team Two', 'competition-complete-team-two', 0, ${sqlLiteral(judgingParticipantTwoId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into team_members (
       id, team_id, user_id, role, joined_at, left_at, created_at
     ) values
@@ -548,7 +690,13 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       ('membership_judge_workspace_fixture_one', 'team_judge_workspace_fixture_one', ${sqlLiteral(regularUserId)}, 'admin', ${sqlLiteral(fixtureTimestamp)}, null, ${sqlLiteral(fixtureTimestamp)}),
       ('membership_judge_workspace_fixture_two', 'team_judge_workspace_fixture_two', ${sqlLiteral(judgingParticipantTwoId)}, 'admin', ${sqlLiteral(fixtureTimestamp)}, null, ${sqlLiteral(fixtureTimestamp)}),
       ('membership_outcomes_fixture_one', 'team_outcomes_fixture_one', ${sqlLiteral(regularUserId)}, 'admin', ${sqlLiteral(fixtureTimestamp)}, null, ${sqlLiteral(fixtureTimestamp)}),
-      ('membership_outcomes_fixture_two', 'team_outcomes_fixture_two', ${sqlLiteral(judgeId)}, 'admin', ${sqlLiteral(fixtureTimestamp)}, null, ${sqlLiteral(fixtureTimestamp)})`,
+      ('membership_outcomes_fixture_two', 'team_outcomes_fixture_two', ${sqlLiteral(judgeId)}, 'admin', ${sqlLiteral(fixtureTimestamp)}, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('membership_competition_reassign_fixture', 'team_competition_reassign_fixture', ${sqlLiteral(regularUserId)}, 'admin', ${sqlLiteral(fixtureTimestamp)}, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('membership_competition_force_skip_fixture', 'team_competition_force_skip_fixture', ${sqlLiteral(regularUserId)}, 'admin', ${sqlLiteral(fixtureTimestamp)}, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('membership_competition_shortlist_fixture_one', 'team_competition_shortlist_fixture_one', ${sqlLiteral(regularUserId)}, 'admin', ${sqlLiteral(fixtureTimestamp)}, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('membership_competition_shortlist_fixture_two', 'team_competition_shortlist_fixture_two', ${sqlLiteral(judgingParticipantTwoId)}, 'admin', ${sqlLiteral(fixtureTimestamp)}, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('membership_competition_complete_fixture_one', 'team_competition_complete_fixture_one', ${sqlLiteral(regularUserId)}, 'admin', ${sqlLiteral(fixtureTimestamp)}, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('membership_competition_complete_fixture_two', 'team_competition_complete_fixture_two', ${sqlLiteral(judgingParticipantTwoId)}, 'admin', ${sqlLiteral(fixtureTimestamp)}, null, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into submissions (
       id, team_id, status, project_name, summary, repository_url, demo_url, submitted_at, locked_at, withdrawn_at, disqualified_at, created_at, updated_at
     ) values
@@ -560,7 +708,13 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       ('submission_judge_workspace_fixture_one', 'team_judge_workspace_fixture_one', 'locked', 'Workspace Project One', 'Blind workspace summary one', 'https://example.com/workspace-fixture-one', 'https://example.com/workspace-fixture-one-demo', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       ('submission_judge_workspace_fixture_two', 'team_judge_workspace_fixture_two', 'locked', 'Workspace Project Two', 'Blind workspace summary two', 'https://example.com/workspace-fixture-two', 'https://example.com/workspace-fixture-two-demo', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       (${sqlLiteral(fixtureOutcomesSubmissionOneId)}, 'team_outcomes_fixture_one', 'locked', 'Fixture Outcomes Project One', 'Outcomes summary one', 'https://example.com/outcomes-fixture-one', 'https://example.com/outcomes-fixture-one-demo', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
-      (${sqlLiteral(fixtureOutcomesSubmissionTwoId)}, 'team_outcomes_fixture_two', 'locked', 'Fixture Outcomes Project Two', 'Outcomes summary two', 'https://example.com/outcomes-fixture-two', 'https://example.com/outcomes-fixture-two-demo', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+      (${sqlLiteral(fixtureOutcomesSubmissionTwoId)}, 'team_outcomes_fixture_two', 'locked', 'Fixture Outcomes Project Two', 'Outcomes summary two', 'https://example.com/outcomes-fixture-two', 'https://example.com/outcomes-fixture-two-demo', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionReassignSubmissionId)}, 'team_competition_reassign_fixture', 'locked', 'Competition Reassign Project', 'Competition reassign summary', 'https://example.com/competition-reassign', 'https://example.com/competition-reassign-demo', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionForceSkipSubmissionId)}, 'team_competition_force_skip_fixture', 'locked', 'Competition Force Skip Project', 'Competition force-skip summary', 'https://example.com/competition-force-skip', 'https://example.com/competition-force-skip-demo', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionShortlistSubmissionOneId)}, 'team_competition_shortlist_fixture_one', 'locked', 'Competition Shortlist Project One', 'Competition shortlist summary one', 'https://example.com/competition-shortlist-one', 'https://example.com/competition-shortlist-one-demo', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionShortlistSubmissionTwoId)}, 'team_competition_shortlist_fixture_two', 'locked', 'Competition Shortlist Project Two', 'Competition shortlist summary two', 'https://example.com/competition-shortlist-two', 'https://example.com/competition-shortlist-two-demo', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionCompleteSubmissionOneId)}, 'team_competition_complete_fixture_one', 'locked', 'Competition Complete Project One', 'Competition complete summary one', 'https://example.com/competition-complete-one', 'https://example.com/competition-complete-one-demo', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionCompleteSubmissionTwoId)}, 'team_competition_complete_fixture_two', 'locked', 'Competition Complete Project Two', 'Competition complete summary two', 'https://example.com/competition-complete-two', 'https://example.com/competition-complete-two-demo', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into evaluation_criteria (
       id, hackathon_id, name, description, weight, display_order, created_at
     ) values
@@ -571,7 +725,11 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       (${sqlLiteral(fixtureJudgeWorkspaceCriterionOneId)}, ${sqlLiteral(fixtureJudgeWorkspaceHackathonId)}, 'Clarity', 'Judge workspace clarity criterion', 40, 1, ${sqlLiteral(fixtureTimestamp)}),
       (${sqlLiteral(fixtureJudgeWorkspaceCriterionTwoId)}, ${sqlLiteral(fixtureJudgeWorkspaceHackathonId)}, 'Impact', 'Judge workspace impact criterion', 60, 2, ${sqlLiteral(fixtureTimestamp)}),
       ('evaluation_criterion_outcomes_fixture_novelty', ${sqlLiteral(fixtureOutcomesHackathonId)}, 'Novelty', 'Outcomes fixture novelty criterion', 50, 1, ${sqlLiteral(fixtureTimestamp)}),
-      ('evaluation_criterion_outcomes_fixture_execution', ${sqlLiteral(fixtureOutcomesHackathonId)}, 'Execution', 'Outcomes fixture execution criterion', 50, 2, ${sqlLiteral(fixtureTimestamp)})`,
+      ('evaluation_criterion_outcomes_fixture_execution', ${sqlLiteral(fixtureOutcomesHackathonId)}, 'Execution', 'Outcomes fixture execution criterion', 50, 2, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionShortlistCriterionOneId)}, ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, 'Novelty', 'Competition shortlist novelty criterion', 50, 1, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionShortlistCriterionTwoId)}, ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, 'Execution', 'Competition shortlist execution criterion', 50, 2, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionCompleteCriterionOneId)}, ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, 'Novelty', 'Competition complete novelty criterion', 50, 1, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionCompleteCriterionTwoId)}, ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, 'Execution', 'Competition complete execution criterion', 50, 2, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into judge_assignments (
       id, hackathon_id, submission_id, judge_user_id, status, assigned_at, started_at, completed_at, skipped_at, skipped_by_user_id, skip_reason, ineligibility_status, ineligibility_reason, ineligibility_marked_at, ineligibility_marked_by_user_id, created_at
     ) values
@@ -580,25 +738,45 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       (${sqlLiteral(fixtureJudgeWorkspaceAssignmentId)}, ${sqlLiteral(fixtureJudgeWorkspaceHackathonId)}, 'submission_judge_workspace_fixture_one', ${sqlLiteral(judgeId)}, 'assigned', ${sqlLiteral(fixtureTimestamp)}, null, null, null, null, null, 'eligible', null, null, null, ${sqlLiteral(fixtureTimestamp)}),
       (${sqlLiteral(fixtureJudgeWorkspaceStartedAssignmentId)}, ${sqlLiteral(fixtureJudgeWorkspaceHackathonId)}, 'submission_judge_workspace_fixture_two', ${sqlLiteral(judgeId)}, 'judge_started', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, null, null, 'eligible', null, null, null, ${sqlLiteral(fixtureTimestamp)}),
       ('judge_assignment_outcomes_fixture_one', ${sqlLiteral(fixtureOutcomesHackathonId)}, ${sqlLiteral(fixtureOutcomesSubmissionOneId)}, ${sqlLiteral(judgeId)}, 'judge_completed', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, null, 'eligible', null, null, null, ${sqlLiteral(fixtureTimestamp)}),
-      ('judge_assignment_outcomes_fixture_two', ${sqlLiteral(fixtureOutcomesHackathonId)}, ${sqlLiteral(fixtureOutcomesSubmissionTwoId)}, ${sqlLiteral(judgeId)}, 'judge_completed', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, null, 'eligible', null, null, null, ${sqlLiteral(fixtureTimestamp)})`,
+      ('judge_assignment_outcomes_fixture_two', ${sqlLiteral(fixtureOutcomesHackathonId)}, ${sqlLiteral(fixtureOutcomesSubmissionTwoId)}, ${sqlLiteral(judgeId)}, 'judge_completed', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, null, 'eligible', null, null, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_assignment_competition_reassign_fixture', ${sqlLiteral(fixtureCompetitionReassignHackathonId)}, ${sqlLiteral(fixtureCompetitionReassignSubmissionId)}, ${sqlLiteral(judgeId)}, 'assigned', ${sqlLiteral(fixtureTimestamp)}, null, null, null, null, null, 'eligible', null, null, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_assignment_competition_force_skip_fixture', ${sqlLiteral(fixtureCompetitionForceSkipHackathonId)}, ${sqlLiteral(fixtureCompetitionForceSkipSubmissionId)}, ${sqlLiteral(judgeId)}, 'judge_started', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, null, null, 'eligible', null, null, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_assignment_competition_shortlist_fixture_one', ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, ${sqlLiteral(fixtureCompetitionShortlistSubmissionOneId)}, ${sqlLiteral(judgeId)}, 'judge_completed', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, null, 'eligible', null, null, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_assignment_competition_shortlist_fixture_two', ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, ${sqlLiteral(fixtureCompetitionShortlistSubmissionTwoId)}, ${sqlLiteral(judgeId)}, 'judge_completed', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, null, 'eligible', null, null, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_assignment_competition_complete_fixture_one', ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, ${sqlLiteral(fixtureCompetitionCompleteSubmissionOneId)}, ${sqlLiteral(judgeId)}, 'judge_completed', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, null, 'eligible', null, null, null, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_assignment_competition_complete_fixture_two', ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, ${sqlLiteral(fixtureCompetitionCompleteSubmissionTwoId)}, ${sqlLiteral(judgeId)}, 'judge_completed', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}, null, null, null, 'eligible', null, null, null, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into judge_criterion_scores (
       id, judge_assignment_id, evaluation_criterion_id, score, comment, created_at, updated_at
     ) values
       ('judge_score_outcomes_fixture_one_novelty', 'judge_assignment_outcomes_fixture_one', 'evaluation_criterion_outcomes_fixture_novelty', 9, 'Strong novelty', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       ('judge_score_outcomes_fixture_one_execution', 'judge_assignment_outcomes_fixture_one', 'evaluation_criterion_outcomes_fixture_execution', 8, 'Strong execution', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       ('judge_score_outcomes_fixture_two_novelty', 'judge_assignment_outcomes_fixture_two', 'evaluation_criterion_outcomes_fixture_novelty', 7, 'Good novelty', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
-      ('judge_score_outcomes_fixture_two_execution', 'judge_assignment_outcomes_fixture_two', 'evaluation_criterion_outcomes_fixture_execution', 6, 'Good execution', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+      ('judge_score_outcomes_fixture_two_execution', 'judge_assignment_outcomes_fixture_two', 'evaluation_criterion_outcomes_fixture_execution', 6, 'Good execution', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_score_competition_shortlist_fixture_one_novelty', 'judge_assignment_competition_shortlist_fixture_one', ${sqlLiteral(fixtureCompetitionShortlistCriterionOneId)}, 9, 'Excellent novelty', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_score_competition_shortlist_fixture_one_execution', 'judge_assignment_competition_shortlist_fixture_one', ${sqlLiteral(fixtureCompetitionShortlistCriterionTwoId)}, 8, 'Strong execution', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_score_competition_shortlist_fixture_two_novelty', 'judge_assignment_competition_shortlist_fixture_two', ${sqlLiteral(fixtureCompetitionShortlistCriterionOneId)}, 7, 'Good novelty', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_score_competition_shortlist_fixture_two_execution', 'judge_assignment_competition_shortlist_fixture_two', ${sqlLiteral(fixtureCompetitionShortlistCriterionTwoId)}, 6, 'Good execution', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_score_competition_complete_fixture_one_novelty', 'judge_assignment_competition_complete_fixture_one', ${sqlLiteral(fixtureCompetitionCompleteCriterionOneId)}, 9, 'Complete novelty leader', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_score_competition_complete_fixture_one_execution', 'judge_assignment_competition_complete_fixture_one', ${sqlLiteral(fixtureCompetitionCompleteCriterionTwoId)}, 9, 'Complete execution leader', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_score_competition_complete_fixture_two_novelty', 'judge_assignment_competition_complete_fixture_two', ${sqlLiteral(fixtureCompetitionCompleteCriterionOneId)}, 6, 'Complete novelty runner-up', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('judge_score_competition_complete_fixture_two_execution', 'judge_assignment_competition_complete_fixture_two', ${sqlLiteral(fixtureCompetitionCompleteCriterionTwoId)}, 7, 'Complete execution runner-up', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into prize_eligibility_snapshots (
       id, hackathon_id, team_id, user_id, snapshot_at, created_at
     ) values
       ('prize_snapshot_outcomes_fixture_team_one', ${sqlLiteral(fixtureOutcomesHackathonId)}, 'team_outcomes_fixture_one', ${sqlLiteral(regularUserId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
-      ('prize_snapshot_outcomes_fixture_team_two', ${sqlLiteral(fixtureOutcomesHackathonId)}, 'team_outcomes_fixture_two', ${sqlLiteral(judgeId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+      ('prize_snapshot_outcomes_fixture_team_two', ${sqlLiteral(fixtureOutcomesHackathonId)}, 'team_outcomes_fixture_two', ${sqlLiteral(judgeId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('prize_snapshot_competition_shortlist_fixture_team_one', ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, 'team_competition_shortlist_fixture_one', ${sqlLiteral(regularUserId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('prize_snapshot_competition_shortlist_fixture_team_two', ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, 'team_competition_shortlist_fixture_two', ${sqlLiteral(judgingParticipantTwoId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('prize_snapshot_competition_complete_fixture_team_one', ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, 'team_competition_complete_fixture_one', ${sqlLiteral(regularUserId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('prize_snapshot_competition_complete_fixture_team_two', ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, 'team_competition_complete_fixture_two', ${sqlLiteral(judgingParticipantTwoId)}, ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into prizes (
       id, hackathon_id, name, description, reward_type, reward_value, reward_currency, award_scope, rank_start, rank_end, created_at
     ) values
       (${sqlLiteral(fixturePublicPrizeId)}, ${sqlLiteral(fixtureHackathonId)}, 'Launch Award', 'Team award for the highest-ranked public program submission.', 'api_credits', '2500', 'USD', 'team', 1, 1, ${sqlLiteral(fixtureTimestamp)}),
       (${sqlLiteral(fixtureOutcomesTeamRedemptionPrizeId)}, ${sqlLiteral(fixtureOutcomesHackathonId)}, 'Outcomes Grand Prize', 'Team prize for rank 1', 'api_credits', '1000', 'USD', 'team', 1, 1, ${sqlLiteral(fixtureTimestamp)}),
-      (${sqlLiteral(fixtureOutcomesMemberRedemptionPrizeId)}, ${sqlLiteral(fixtureOutcomesHackathonId)}, 'Outcomes Top Two Membership', 'Member prize for top two teams', 'subscription', 'pro', null, 'member', 1, 2, ${sqlLiteral(fixtureTimestamp)})`,
+      (${sqlLiteral(fixtureOutcomesMemberRedemptionPrizeId)}, ${sqlLiteral(fixtureOutcomesHackathonId)}, 'Outcomes Top Two Membership', 'Member prize for top two teams', 'subscription', 'pro', null, 'member', 1, 2, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionShortlistPrizeId)}, ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, 'Competition Shortlist Grand Prize', 'Team prize for the announced shortlist winner.', 'api_credits', '750', 'USD', 'team', 1, 1, ${sqlLiteral(fixtureTimestamp)}),
+      (${sqlLiteral(fixtureCompetitionCompletePrizeId)}, ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, 'Competition Complete Grand Prize', 'Team prize for the completed hackathon winner.', 'api_credits', '900', 'USD', 'team', 1, 1, ${sqlLiteral(fixtureTimestamp)})`,
     `update hackathons
       set current_application_terms_document_id = ${sqlLiteral(fixtureApplicationTermsId)},
           current_winner_terms_document_id = ${sqlLiteral(fixtureWinnerTermsId)}
@@ -624,6 +802,12 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
     `update hackathons
       set current_winner_terms_document_id = ${sqlLiteral(fixtureOutcomesWinnerTermsId)}
       where id = ${sqlLiteral(fixtureOutcomesHackathonId)}`,
+    `update hackathons
+      set current_winner_terms_document_id = ${sqlLiteral(fixtureCompetitionShortlistWinnerTermsId)}
+      where id = ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}`,
+    `update hackathons
+      set current_winner_terms_document_id = ${sqlLiteral(fixtureCompetitionCompleteWinnerTermsId)}
+      where id = ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}`,
     'commit'
   ].join(';\n')
 }

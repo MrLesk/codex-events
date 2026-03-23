@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   hackathonId: string
-  currentSurface: 'setup' | 'operations'
+  currentSurface: 'setup' | 'operations' | 'competition'
 }>()
 </script>
 
@@ -23,6 +23,12 @@ defineProps<{
         :color="currentSurface === 'operations' ? 'primary' : 'neutral'"
         :to="`/admin/hackathons/${hackathonId}/operations`"
         label="Operations"
+      />
+      <UButton
+        :variant="currentSurface === 'competition' ? 'solid' : 'soft'"
+        :color="currentSurface === 'competition' ? 'primary' : 'neutral'"
+        :to="`/admin/hackathons/${hackathonId}/competition`"
+        label="Competition"
       />
     </div>
   </div>

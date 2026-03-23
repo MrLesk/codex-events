@@ -17,13 +17,16 @@ import {
   createHackathonFormState,
   createHackathonSlug,
   formatApplicationStatus,
+  formatJudgeAssignmentStatus,
   formatSubmissionStatus,
   filterManageableHackathons,
   fromDateTimeLocalValue,
+  getAdminJudgeAssignmentInterventionPolicy,
   getAdminWorkspaceSubjectKey,
   getAdminSubmissionInterventionPolicy,
   getApplicationStatusColor,
   getCurrentLifecycleControl,
+  getJudgeAssignmentStatusColor,
   hasHackathonAdminAccess,
   getSubmissionStatusColor,
   toDateTimeLocalValue
@@ -312,6 +315,27 @@ describe('admin-workspace lifecycle controls', () => {
       code: 'winner_terms_required'
     })
   })
+
+  test('returns the completion control once winners are announced', () => {
+    const control = getCurrentLifecycleControl(
+      createHackathon({ state: 'winners_announced' }),
+      {
+        submittedSubmissionCount: 2,
+        judgePoolCount: 1,
+        lockedSubmissionCount: 2,
+        activeAssignmentCount: 0,
+        lockedLeaderboardEntryCount: 2,
+        completedReviewCount: 2,
+        prizeCount: 1,
+        hasCurrentWinnerTerms: true
+      }
+    )
+
+    expect(control).toMatchObject({
+      key: 'complete',
+      isEnabled: true
+    })
+  })
 })
 
 describe('admin-workspace operational helpers', () => {
@@ -344,8 +368,31 @@ describe('admin-workspace operational helpers', () => {
   test('formats operational statuses into badge labels and colors', () => {
     expect(formatApplicationStatus('submitted')).toBe('Submitted')
     expect(getApplicationStatusColor('approved')).toBe('success')
+    expect(formatJudgeAssignmentStatus('judge_started')).toBe('Judge Started')
+    expect(getJudgeAssignmentStatusColor('judge_completed')).toBe('success')
     expect(formatSubmissionStatus('none')).toBe('No Submission')
     expect(getSubmissionStatusColor('disqualified')).toBe('error')
+  })
+
+  test('allows only the documented admin judging interventions for each assignment state', () => {
+    expect(getAdminJudgeAssignmentInterventionPolicy('judge_review', 'assigned')).toMatchObject({
+      canReassign: true,
+      canForceSkip: false,
+      forceSkipReason: 'Only started assignments can be force-skipped.'
+    })
+
+    expect(getAdminJudgeAssignmentInterventionPolicy('judge_review', 'judge_started')).toMatchObject({
+      canReassign: false,
+      reassignReason: 'Only unstarted assignments can be reassigned.',
+      canForceSkip: true
+    })
+
+    expect(getAdminJudgeAssignmentInterventionPolicy('shortlist', 'assigned')).toMatchObject({
+      canReassign: false,
+      reassignReason: 'Assignment reassignment is only available during judging preparation or judge review.',
+      canForceSkip: false,
+      forceSkipReason: 'Force-skip is available only once judge review has started.'
+    })
   })
 
   test('builds operational team rows from team, detail, submission, and no-submission sources', () => {
