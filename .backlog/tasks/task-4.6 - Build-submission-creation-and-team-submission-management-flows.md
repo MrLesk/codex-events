@@ -5,7 +5,7 @@ status: Done
 assignee:
   - Codex
 created_date: '2026-03-22 22:09'
-updated_date: '2026-03-23 19:05'
+updated_date: '2026-03-23 19:12'
 labels:
   - frontend
   - ui
@@ -58,7 +58,7 @@ Implemented participant team submission management inside the existing team work
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Implemented participant team submission management inside the existing hackathon-scoped team workspace with a bounded submission helper/composable layer, a dedicated participant submission panel, and isolated unit plus authenticated browser coverage for create, edit, submit, withdraw, and locked read-only states. Canonical docs remained unchanged, focused validation passed, and the participant route now reflects no submission, draft, submitted, withdrawn, and locked behavior without introducing a parallel participant submission route.
+Implemented the participant team submission workspace inside the hackathon-scoped team route, including draft creation, edit/save, submit, withdraw, canonical status summaries, and read-only post-lock visibility. Added task-specific helper/composable layers plus unit and authenticated BDD coverage, and validated the slice with eslint, typecheck, focused vitest, BDD bootstrap, bddgen, and the participant submission Playwright feature.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
