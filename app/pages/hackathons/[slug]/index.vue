@@ -458,6 +458,20 @@ useSeoMeta({
                 />
               </div>
             </div>
+
+            <div
+              v-if="participantApplication.ownApplication.value.status === 'approved'"
+              class="flex flex-wrap gap-3"
+            >
+              <UButton
+                :to="`/hackathons/${slug}/teams`"
+                color="primary"
+                icon="i-lucide-users"
+                data-testid="participant-team-workspace-link"
+              >
+                Open team workspace
+              </UButton>
+            </div>
           </template>
 
           <UAlert
