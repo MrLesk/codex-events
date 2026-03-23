@@ -1,9 +1,9 @@
 import { mkdirSync, rmSync } from 'node:fs'
 import { dirname } from 'node:path'
+import type { ProvisionedStablePersona } from './personas.ts'
 
 import { createLocalPlatformProxy, localPlatformPersistPath } from '../../../server/database/local-platform-proxy.ts'
 import { applySqlStatements, readMigrationStatements } from '../../support/backend/migrations.ts'
-import { type ProvisionedStablePersona } from './personas.ts'
 
 const fixtureTimestamp = '2026-03-22T12:00:00.000Z'
 export const fixtureHackathonId = 'hackathon_e2e_fixture'

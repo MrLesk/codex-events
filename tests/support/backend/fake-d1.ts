@@ -79,7 +79,9 @@ export class TestD1Database {
       DB: testDatabaseId
     }
   })
+
   private readonly d1Database = this.miniflare.getD1Database('DB')
+
   private readonly ready: Promise<void>
 
   constructor(options?: { applyMigrations?: boolean }) {

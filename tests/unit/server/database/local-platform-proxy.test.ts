@@ -19,7 +19,7 @@ describe('local Cloudflare platform proxy', () => {
 
     await proxy.env.DB.prepare('drop table if exists local_platform_proxy_test').run()
     await proxy.env.DB.prepare('create table local_platform_proxy_test (id text primary key, label text not null)').run()
-    await proxy.env.DB.prepare("insert into local_platform_proxy_test (id, label) values ('row_1', 'fixture')").run()
+    await proxy.env.DB.prepare('insert into local_platform_proxy_test (id, label) values (\'row_1\', \'fixture\')').run()
 
     const label = await proxy.env.DB.prepare('select label from local_platform_proxy_test where id = ?')
       .bind('row_1')
