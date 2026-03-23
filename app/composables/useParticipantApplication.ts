@@ -1,0 +1,262 @@
+import type { PublicHackathon } from './useHackathonPresentation'
+import type {
+  ParticipantActor,
+  ParticipantApiDataResponse,
+  ParticipantApiListResponse,
+  ParticipantApplicationRecord,
+  ParticipantCurrentTermsResponse,
+  ParticipantSessionUser,
+  VisibleHackathonRecord
+} from '~/utils/participant-application'
+
+import {
+  buildAnonymousParticipantActor,
+  buildAuthenticatedIdentityParticipantActor,
+  listMissingRequiredProfileFields,
+  normalizeParticipantApiError
+} from '~/utils/participant-application'
+
+async function findVisibleHackathonBySlug(
+  slug: string,
+  apiFetch: typeof $fetch
+) {
+  const pageSize = 100
+  let page = 1
+
+  while (true) {
+    const response = await apiFetch<ParticipantApiListResponse<VisibleHackathonRecord>>('/api/hackathons', {
+      query: {
+        page,
+        page_size: pageSize
+      }
+    })
+    const matchingHackathon = response.data.find(hackathon => hackathon.slug === slug)
+
+    if (matchingHackathon) {
+      return matchingHackathon
+    }
+
+    const total = response.meta?.total ?? response.data.length
+    const loadedItems = page * pageSize
+
+    if (response.data.length === 0 || loadedItems >= total) {
+      return null
+    }
+
+    page += 1
+  }
+}
+
+function toFallbackSessionUser(user: ReturnType<typeof useUser>['value']): ParticipantSessionUser {
+  return {
+    sub: user?.sub ?? '',
+    email: user?.email ?? null,
+    name: user?.name ?? null,
+    nickname: user?.nickname ?? null,
+    picture: user?.picture ?? null
+  }
+}
+
+export function useParticipantApplication(
+  hackathon: MaybeRefOrGetter<PublicHackathon>,
+  slug: MaybeRefOrGetter<string>
+) {
+  const apiFetch = $fetch
+  const user = useUser()
+  const resolvedHackathon = computed(() => toValue(hackathon))
+  const resolvedSlug = computed(() => toValue(slug))
+  const authSubject = computed(() => user.value?.sub ?? 'anonymous')
+
+  const actorRequest = useAsyncData<ParticipantActor | null>(
+    () => `participant-application-actor:${authSubject.value}`,
+    async () => {
+      if (!user.value?.sub) {
+        return null
+      }
+
+      const response = await apiFetch<ParticipantApiDataResponse<{ actor: ParticipantActor }>>('/api/session')
+      return response.data.actor
+    },
+    {
+      default: () => null,
+      watch: [computed(() => user.value?.sub ?? null)],
+      server: false
+    }
+  )
+
+  const actor = computed<ParticipantActor | null>(() => {
+    if (!user.value?.sub) {
+      return buildAnonymousParticipantActor()
+    }
+
+    if (actorRequest.status.value === 'idle' || actorRequest.status.value === 'pending') {
+      return null
+    }
+
+    if (actorRequest.error.value) {
+      return null
+    }
+
+    return actorRequest.data.value ?? buildAuthenticatedIdentityParticipantActor(toFallbackSessionUser(user.value))
+  })
+
+  const actorErrorMessage = computed(() => {
+    if (!actorRequest.error.value) {
+      return ''
+    }
+
+    return normalizeParticipantApiError(actorRequest.error.value).message
+  })
+
+  const visibleHackathonRequest = useAsyncData<VisibleHackathonRecord | null>(
+    () => `participant-application-visible-hackathon:${authSubject.value}:${resolvedSlug.value}`,
+    async () => {
+      if (actor.value?.kind !== 'platform_user') {
+        return null
+      }
+
+      return await findVisibleHackathonBySlug(resolvedSlug.value, apiFetch)
+    },
+    {
+      default: () => null,
+      watch: [actor, resolvedSlug],
+      server: false
+    }
+  )
+
+  const visibleHackathon = computed(() => visibleHackathonRequest.data.value)
+  const visibleHackathonId = computed(() => visibleHackathon.value?.id ?? null)
+  const visibleHackathonErrorMessage = computed(() => {
+    if (!visibleHackathonRequest.error.value) {
+      return ''
+    }
+
+    return normalizeParticipantApiError(visibleHackathonRequest.error.value).message
+  })
+
+  const ownApplicationRequest = useAsyncData<ParticipantApplicationRecord | null>(
+    () => `participant-application-own:${authSubject.value}:${visibleHackathonId.value ?? 'none'}`,
+    async () => {
+      if (actor.value?.kind !== 'platform_user' || !visibleHackathonId.value) {
+        return null
+      }
+
+      const response = await apiFetch<ParticipantApiDataResponse<ParticipantApplicationRecord | null>>(
+        `/api/hackathons/${visibleHackathonId.value}/applications/me`
+      )
+
+      return response.data
+    },
+    {
+      default: () => null,
+      watch: [actor, visibleHackathonId],
+      server: false
+    }
+  )
+
+  const ownApplication = computed(() => ownApplicationRequest.data.value)
+  const ownApplicationErrorMessage = computed(() => {
+    if (!ownApplicationRequest.error.value) {
+      return ''
+    }
+
+    return normalizeParticipantApiError(ownApplicationRequest.error.value).message
+  })
+
+  const currentTermsRequest = useAsyncData<ParticipantCurrentTermsResponse | null>(
+    () => `participant-application-terms:${authSubject.value}:${visibleHackathonId.value ?? 'none'}`,
+    async () => {
+      if (
+        actor.value?.kind !== 'platform_user'
+        || !visibleHackathonId.value
+        || ownApplication.value
+        || resolvedHackathon.value.state !== 'registration_open'
+      ) {
+        return null
+      }
+
+      const response = await apiFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
+        `/api/hackathons/${visibleHackathonId.value}/terms/current`
+      )
+
+      return response.data
+    },
+    {
+      default: () => null,
+      watch: [actor, visibleHackathonId, ownApplication, computed(() => resolvedHackathon.value.state)],
+      server: false
+    }
+  )
+
+  const currentApplicationTerms = computed(() => currentTermsRequest.data.value?.application_terms ?? null)
+  const currentTermsErrorMessage = computed(() => {
+    if (!currentTermsRequest.error.value) {
+      return ''
+    }
+
+    return normalizeParticipantApiError(currentTermsRequest.error.value).message
+  })
+
+  const missingProfileFields = computed(() => {
+    if (actor.value?.kind !== 'platform_user') {
+      return []
+    }
+
+    return listMissingRequiredProfileFields(resolvedHackathon.value, actor.value.platformUser)
+  })
+
+  const submissionError = ref('')
+  const submissionSuccess = ref('')
+  const isSubmitting = ref(false)
+
+  async function submitApplication(applicationTermsDocumentId: string) {
+    if (!visibleHackathonId.value) {
+      submissionError.value = 'The current hackathon application route could not be resolved.'
+      submissionSuccess.value = ''
+      return false
+    }
+
+    isSubmitting.value = true
+    submissionError.value = ''
+    submissionSuccess.value = ''
+
+    try {
+      await apiFetch(`/api/hackathons/${visibleHackathonId.value}/applications`, {
+        method: 'POST',
+        body: {
+          applicationTermsDocumentId
+        }
+      })
+
+      await ownApplicationRequest.refresh()
+      submissionSuccess.value = 'Application submitted.'
+      return true
+    } catch (error) {
+      submissionError.value = normalizeParticipantApiError(error).message
+      return false
+    } finally {
+      isSubmitting.value = false
+    }
+  }
+
+  return {
+    actor,
+    actorErrorMessage,
+    actorStatus: computed(() => actorRequest.status.value),
+    currentApplicationTerms,
+    currentTermsErrorMessage,
+    currentTermsStatus: computed(() => currentTermsRequest.status.value),
+    missingProfileFields,
+    ownApplication,
+    ownApplicationErrorMessage,
+    ownApplicationStatus: computed(() => ownApplicationRequest.status.value),
+    submissionError,
+    submissionSuccess,
+    isSubmitting,
+    submitApplication,
+    visibleHackathon,
+    visibleHackathonErrorMessage,
+    visibleHackathonId,
+    visibleHackathonStatus: computed(() => visibleHackathonRequest.status.value)
+  }
+}

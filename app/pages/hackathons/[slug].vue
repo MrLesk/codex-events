@@ -12,6 +12,12 @@ import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeLis
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonTermsReferences from '~/components/public/hackathons/HackathonTermsReferences.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
+import {
+  formatParticipantApplicationStatus,
+  getHackathonApplicationAvailabilityMessage,
+  getParticipantApplicationStatusColor,
+  summarizeParticipantApplicationStatus
+} from '~/utils/participant-application'
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
@@ -60,6 +66,77 @@ const requiredProfiles = computed(() => listRequiredProfiles(hackathon.value))
 const heroImage = computed(() => hackathon.value.bannerImageUrl ?? hackathon.value.backgroundImageUrl)
 const criteriaErrorMessage = computed(() => criteriaError.value ? 'Public scoring dimensions could not be loaded right now.' : undefined)
 const prizesErrorMessage = computed(() => prizesError.value ? 'Published awards could not be loaded right now.' : undefined)
+const user = useUser()
+const loginHref = computed(() => `/auth/login?returnTo=${encodeURIComponent(route.fullPath || `/hackathons/${slug.value}`)}`)
+const acceptCurrentApplicationTerms = ref(false)
+const participantApplication = useParticipantApplication(hackathon, slug)
+
+watch(() => participantApplication.currentApplicationTerms.value?.id ?? null, () => {
+  acceptCurrentApplicationTerms.value = false
+})
+
+watch(() => participantApplication.ownApplication.value?.id ?? null, (applicationId) => {
+  if (applicationId) {
+    acceptCurrentApplicationTerms.value = false
+  }
+})
+
+const participantActor = computed(() => participantApplication.actor.value)
+const participantPanelLoading = computed(() => {
+  if (!user.value?.sub) {
+    return false
+  }
+
+  if (participantApplication.actorStatus.value === 'idle' || participantApplication.actorStatus.value === 'pending' || !participantActor.value) {
+    return true
+  }
+
+  if (participantActor.value?.kind !== 'platform_user') {
+    return false
+  }
+
+  if (
+    participantApplication.visibleHackathonStatus.value === 'idle'
+    || participantApplication.ownApplicationStatus.value === 'idle'
+    || participantApplication.visibleHackathonStatus.value === 'pending'
+    || participantApplication.ownApplicationStatus.value === 'pending'
+  ) {
+    return true
+  }
+
+  return !participantApplication.ownApplication.value
+    && hackathon.value.state === 'registration_open'
+    && (
+      participantApplication.currentTermsStatus.value === 'idle'
+      || participantApplication.currentTermsStatus.value === 'pending'
+    )
+})
+const participantApplicationStatusLabel = computed(() =>
+  participantApplication.ownApplication.value
+    ? formatParticipantApplicationStatus(participantApplication.ownApplication.value.status)
+    : ''
+)
+const participantApplicationStatusSummary = computed(() =>
+  participantApplication.ownApplication.value
+    ? summarizeParticipantApplicationStatus(participantApplication.ownApplication.value.status, hackathon.value.state)
+    : getHackathonApplicationAvailabilityMessage(hackathon.value.state)
+)
+
+async function submitParticipantApplication() {
+  if (!participantApplication.currentApplicationTerms.value) {
+    participantApplication.submissionError.value = 'The current application terms are unavailable.'
+    participantApplication.submissionSuccess.value = ''
+    return
+  }
+
+  if (!acceptCurrentApplicationTerms.value) {
+    participantApplication.submissionError.value = 'You must accept the current application terms before applying.'
+    participantApplication.submissionSuccess.value = ''
+    return
+  }
+
+  await participantApplication.submitApplication(participantApplication.currentApplicationTerms.value.id)
+}
 
 useSeoMeta({
   title: () => `${hackathon.value.name} | Codex Hackathons`,
@@ -216,6 +293,317 @@ useSeoMeta({
 
         <HackathonTermsReferences :hackathon="hackathon" />
       </div>
+
+      <UCard
+        data-testid="participant-application-panel"
+        variant="subtle"
+        :ui="{ root: 'border border-default/80 bg-elevated/88 backdrop-blur shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)]' }"
+      >
+        <div class="space-y-6">
+          <div class="space-y-2">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Participant application
+            </p>
+            <h2 class="text-2xl font-semibold tracking-[-0.03em] text-highlighted">
+              Apply before team formation begins.
+            </h2>
+            <p class="text-sm leading-7 text-toned">
+              This panel uses the canonical participant application workflow: exact-version application-terms acceptance, required-profile validation, and hackathon-admin review outcomes.
+            </p>
+          </div>
+
+          <UAlert
+            v-if="participantPanelLoading"
+            color="neutral"
+            variant="soft"
+            title="Loading participant application state"
+            description="Resolving the authenticated actor, application status, and current terms for this hackathon."
+          />
+
+          <UAlert
+            v-else-if="participantApplication.actorErrorMessage.value"
+            color="error"
+            variant="soft"
+            title="Unable to resolve participant access"
+            :description="participantApplication.actorErrorMessage.value"
+          />
+
+          <template v-else-if="participantActor?.kind === 'anonymous'">
+            <UAlert
+              color="primary"
+              variant="soft"
+              title="Sign in to apply"
+              description="Public program detail stays visible without authentication, but application submission requires a real Auth0-backed session."
+            />
+
+            <UButton
+              :to="loginHref"
+              color="primary"
+              icon="i-lucide-log-in"
+            >
+              Sign in with Auth0
+            </UButton>
+          </template>
+
+          <template v-else-if="participantActor?.kind === 'authenticated_identity'">
+            <UAlert
+              color="warning"
+              variant="soft"
+              title="Platform account required"
+              description="Complete the platform account before entering the participant application workflow for this hackathon."
+            />
+
+            <UButton
+              to="/onboarding/account"
+              color="warning"
+              icon="i-lucide-id-card"
+            >
+              Complete platform account
+            </UButton>
+          </template>
+
+          <UAlert
+            v-else-if="participantApplication.visibleHackathonErrorMessage.value"
+            color="error"
+            variant="soft"
+            title="Unable to resolve hackathon access"
+            :description="participantApplication.visibleHackathonErrorMessage.value"
+          />
+
+          <UAlert
+            v-else-if="!participantApplication.visibleHackathonId.value"
+            color="error"
+            variant="soft"
+            title="Participant application unavailable"
+            description="The authenticated participant workspace could not resolve this visible hackathon."
+          />
+
+          <UAlert
+            v-else-if="participantApplication.ownApplicationErrorMessage.value"
+            color="error"
+            variant="soft"
+            title="Unable to load your application"
+            :description="participantApplication.ownApplicationErrorMessage.value"
+          />
+
+          <template v-else-if="participantApplication.ownApplication.value">
+            <div class="grid gap-6 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
+              <div class="rounded-[1.5rem] border border-default bg-default px-5 py-5">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                  Current status
+                </p>
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                  <UBadge
+                    data-testid="participant-application-status"
+                    :color="getParticipantApplicationStatusColor(participantApplication.ownApplication.value.status)"
+                    variant="soft"
+                  >
+                    {{ participantApplicationStatusLabel }}
+                  </UBadge>
+                  <span class="text-sm text-toned">
+                    {{ participantApplicationStatusSummary }}
+                  </span>
+                </div>
+
+                <dl class="mt-5 grid gap-4">
+                  <div>
+                    <dt class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                      Submitted
+                    </dt>
+                    <dd class="mt-1 text-sm text-highlighted">
+                      {{ formatHackathonDate(participantApplication.ownApplication.value.submittedAt) }}
+                    </dd>
+                  </div>
+
+                  <div>
+                    <dt class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                      Reviewed
+                    </dt>
+                    <dd class="mt-1 text-sm text-highlighted">
+                      {{ participantApplication.ownApplication.value.reviewedAt ? formatHackathonDate(participantApplication.ownApplication.value.reviewedAt) : 'Awaiting review' }}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div class="rounded-[1.5rem] border border-default bg-default px-5 py-5">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                  Accepted application terms
+                </p>
+                <div
+                  v-if="participantApplication.ownApplication.value.applicationTermsDocument"
+                  class="mt-3 space-y-4"
+                >
+                  <div class="space-y-1">
+                    <p class="text-lg font-semibold text-highlighted">
+                      {{ participantApplication.ownApplication.value.applicationTermsDocument.title }}
+                    </p>
+                    <p class="text-sm text-toned">
+                      Version {{ participantApplication.ownApplication.value.applicationTermsDocument.version }} accepted on {{ formatHackathonDate(participantApplication.ownApplication.value.applicationTermsAcceptedAt) }}.
+                    </p>
+                  </div>
+
+                  <div class="max-h-56 overflow-y-auto rounded-2xl border border-default/70 bg-elevated/70 px-4 py-4 text-sm leading-7 text-toned whitespace-pre-wrap">
+                    {{ participantApplication.ownApplication.value.applicationTermsDocument.content }}
+                  </div>
+                </div>
+
+                <UAlert
+                  v-else
+                  class="mt-3"
+                  color="neutral"
+                  variant="soft"
+                  title="Accepted terms unavailable"
+                  description="The exact application terms document reference was recorded, but its content could not be loaded for this view."
+                />
+              </div>
+            </div>
+          </template>
+
+          <UAlert
+            v-else-if="hackathon.state !== 'registration_open'"
+            color="neutral"
+            variant="soft"
+            title="Applications are closed"
+            :description="participantApplicationStatusSummary"
+          />
+
+          <template v-else-if="participantApplication.missingProfileFields.value.length > 0">
+            <UAlert
+              color="warning"
+              variant="soft"
+              title="Profile update required before applying"
+              description="This hackathon checks required profile fields before an application can be submitted."
+            />
+
+            <div
+              data-testid="participant-application-missing-profiles"
+              class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+            >
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                Missing required fields
+              </p>
+              <ul class="mt-3 grid gap-2 text-sm text-toned">
+                <li
+                  v-for="field in participantApplication.missingProfileFields.value"
+                  :key="field.key"
+                >
+                  {{ field.label }}
+                </li>
+              </ul>
+            </div>
+
+            <UButton
+              to="/account"
+              color="warning"
+              icon="i-lucide-id-card"
+            >
+              Update account profile
+            </UButton>
+          </template>
+
+          <UAlert
+            v-else-if="participantApplication.currentTermsErrorMessage.value"
+            color="error"
+            variant="soft"
+            title="Unable to load current application terms"
+            :description="participantApplication.currentTermsErrorMessage.value"
+          />
+
+          <UAlert
+            v-else-if="!participantApplication.currentApplicationTerms.value"
+            color="warning"
+            variant="soft"
+            title="Application terms unavailable"
+            description="This hackathon does not currently expose application terms for participant acceptance."
+          />
+
+          <template v-else>
+            <div class="grid gap-6 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
+              <div class="rounded-[1.5rem] border border-default bg-default px-5 py-5">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                  Eligibility check
+                </p>
+                <p class="mt-3 text-sm text-toned">
+                  {{ participantApplicationStatusSummary }}
+                </p>
+                <div class="mt-3 grid gap-4">
+                  <div class="rounded-2xl border border-default/70 bg-elevated/70 px-4 py-4">
+                    <p class="text-sm font-semibold text-highlighted">
+                      Registration is open
+                    </p>
+                    <p class="mt-1 text-sm text-toned">
+                      You can submit one application for this hackathon while the registration window is active.
+                    </p>
+                  </div>
+
+                  <div class="rounded-2xl border border-default/70 bg-elevated/70 px-4 py-4">
+                    <p class="text-sm font-semibold text-highlighted">
+                      Profile requirements satisfied
+                    </p>
+                    <p class="mt-1 text-sm text-toned">
+                      Your current platform profile satisfies the required social-link rules for this hackathon.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-[1.5rem] border border-default bg-default px-5 py-5">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                  Current application terms
+                </p>
+                <div class="mt-3 space-y-4">
+                  <div class="space-y-1">
+                    <p class="text-lg font-semibold text-highlighted">
+                      {{ participantApplication.currentApplicationTerms.value.title }}
+                    </p>
+                    <p class="text-sm text-toned">
+                      Version {{ participantApplication.currentApplicationTerms.value.version }} published {{ formatHackathonDate(participantApplication.currentApplicationTerms.value.publishedAt) }}.
+                    </p>
+                  </div>
+
+                  <div class="max-h-56 overflow-y-auto rounded-2xl border border-default/70 bg-elevated/70 px-4 py-4 text-sm leading-7 text-toned whitespace-pre-wrap">
+                    {{ participantApplication.currentApplicationTerms.value.content }}
+                  </div>
+
+                  <label class="flex items-start gap-3 rounded-2xl border border-default/70 bg-elevated/70 px-4 py-4 text-sm text-toned">
+                    <input
+                      v-model="acceptCurrentApplicationTerms"
+                      type="checkbox"
+                      class="mt-1 size-4 rounded border-default"
+                    >
+                    <span>I accept the current application terms exactly as shown above and understand this acceptance will be recorded on submission.</span>
+                  </label>
+
+                  <UAlert
+                    v-if="participantApplication.submissionError.value"
+                    color="error"
+                    variant="soft"
+                    title="Application submission failed"
+                    :description="participantApplication.submissionError.value"
+                  />
+
+                  <UAlert
+                    v-if="participantApplication.submissionSuccess.value"
+                    color="success"
+                    variant="soft"
+                    :description="participantApplication.submissionSuccess.value"
+                  />
+
+                  <UButton
+                    data-testid="participant-application-submit"
+                    color="primary"
+                    :loading="participantApplication.isSubmitting.value"
+                    @click="submitParticipantApplication"
+                  >
+                    Submit application
+                  </UButton>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </UCard>
 
       <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <HackathonCriteriaList
