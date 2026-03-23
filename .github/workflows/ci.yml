@@ -38,7 +38,6 @@ jobs:
 
   auth0-bdd-release-gate:
     needs: backend-checks
-    if: ${{ secrets.NUXT_AUTH0_DOMAIN != '' && secrets.NUXT_AUTH0_CLIENT_ID != '' && secrets.NUXT_AUTH0_CLIENT_SECRET != '' && secrets.NUXT_AUTH0_SESSION_SECRET != '' && secrets.AUTH0_TEST_DOMAIN != '' && secrets.AUTH0_TEST_MGMT_CLIENT_ID != '' && secrets.AUTH0_TEST_MGMT_CLIENT_SECRET != '' && secrets.AUTH0_TEST_MGMT_AUDIENCE != '' && secrets.AUTH0_TEST_CONNECTION_NAME != '' && secrets.E2E_PLATFORM_ADMIN_EMAIL != '' && secrets.E2E_PLATFORM_ADMIN_PASSWORD != '' && secrets.E2E_HACKATHON_ADMIN_EMAIL != '' && secrets.E2E_HACKATHON_ADMIN_PASSWORD != '' && secrets.E2E_JUDGE_EMAIL != '' && secrets.E2E_JUDGE_PASSWORD != '' && secrets.E2E_REGULAR_USER_EMAIL != '' && secrets.E2E_REGULAR_USER_PASSWORD != '' }}
     runs-on: ubuntu-latest
     env:
       CI: true
