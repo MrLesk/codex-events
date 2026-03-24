@@ -71,6 +71,8 @@ bun run test:integration
 bun run test:bdd
 ```
 
+GitHub Actions does not run `bun run test:bdd` on every `push` or `pull_request`. The default CI workflow runs the fast gate (`lint`, `typecheck`, `test:unit`, `test:integration`), while the Auth0-backed BDD suite runs only through manual `workflow_dispatch` invocations and the nightly scheduled workflow run.
+
 Generate the current Drizzle migration from the canonical schema with:
 
 ```bash
@@ -115,4 +117,4 @@ The authenticated Playwright setup project writes reusable session-state artifac
 
 The authenticated BDD suite now covers the backend workflow surface delivered by `TASK-3.5` through `TASK-3.9` and the Milestone 1 UI flows delivered by `TASK-4.*`, including actor/session reads, public discovery, admin configuration, application and team formation, submissions, judging, shortlist and winners, prize redemption, audit access, and destructive account deletion.
 
-GitHub Actions uses the same backend release gate. Keep `.github/workflows/ci.yml`, this document, and `docs/testing-strategy.md` aligned when the required validation surface changes.
+Keep `.github/workflows/ci.yml`, this document, and `docs/testing-strategy.md` aligned when the required validation surfaces change.

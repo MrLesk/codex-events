@@ -14,9 +14,13 @@ In this repository, end-to-end coverage is authored as Gherkin feature files plu
 Repository-authored end-to-end scenarios and their local bootstrap support live under `tests/bdd/`. Feature files live under `tests/bdd/features`, matching step definitions live under `tests/bdd/steps`, and authenticated bootstrap helpers live under `tests/bdd/bootstrap.ts` and `tests/bdd/support`.
 The default local BDD test command runs both signed-out and authenticated scenarios.
 
-## Release Gate
+## Validation Surfaces
 
-The current repository release gate combines static checks with the full automated test surface.
+The repository uses two automated validation surfaces: a fast CI gate for every commit and a full Auth0-backed BDD gate for explicit or periodic end-to-end coverage.
+
+### Fast CI Gate
+
+The fast CI gate is the default validation surface for `push` and `pull_request` runs in GitHub Actions.
 
 The required validation surface is:
 
@@ -24,13 +28,20 @@ The required validation surface is:
 - `bun run typecheck`
 - `bun run test:unit`
 - `bun run test:integration`
+
+### Full Auth0-Backed BDD Gate
+
+The full Auth0-backed gate adds the browser and API BDD suite on top of the fast CI gate.
+
+The required additional validation surface is:
+
 - `bun run test:bdd`
+
+GitHub Actions exposes this full gate through `workflow_dispatch` for on-demand runs and through a nightly scheduled run. The scheduled run executes daily at `03:00 UTC`.
 
 For local all-test execution, the repository also exposes:
 
 - `bun run test:all`
-
-Continuous integration must run the same validation surface with the Auth0-backed BDD environment configured through repository secrets.
 
 ## Milestone 1 UI Validation Surface
 
@@ -49,7 +60,7 @@ This UI validation surface is intentionally role-aware and maps directly to the 
 
 Milestone 1 UI validation reuses the same stable Auth0 personas, cookie-backed browser sessions, and deterministic fixture reset flow as the broader repository BDD suite. It does not introduce fake identity shortcuts, alternate authorization fixtures, or a parallel test harness.
 
-Within the full release gate, the UI coverage remains intentionally scoped to the canonical actor-facing surfaces:
+Within the full Auth0-backed BDD gate, the UI coverage remains intentionally scoped to the canonical actor-facing surfaces:
 
 - it targets the public, participant, judge, admin, and prize-recipient browser flows introduced by Milestone 1
 - it does not replace the broader backend workflow coverage under `TASK-3.*`

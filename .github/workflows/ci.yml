@@ -3,6 +3,9 @@ name: ci
 on:
   push:
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * *'
 
 jobs:
   backend-checks:
@@ -44,7 +47,8 @@ jobs:
       - name: Integration tests
         run: bun run test:integration
 
-  auth0-bdd-release-gate:
+  auth0-bdd-suite:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
     needs: backend-checks
     runs-on: ubuntu-latest
     env:
@@ -101,5 +105,5 @@ jobs:
       - name: Install Playwright Chromium
         run: bunx playwright install --with-deps chromium
 
-      - name: Auth0-backed BDD release gate
+      - name: Auth0-backed BDD suite
         run: bun run test:bdd
