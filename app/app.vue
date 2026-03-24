@@ -24,8 +24,13 @@ const isPublicHackathonDetailRoute = computed(() => /^\/hackathons\/[^/]+\/?$/.t
 const usesPublicShell = computed(() => isHomepage.value || isPublicHackathonDetailRoute.value || route.path === '/privacy-policy')
 const showWorkspaceSidebar = computed(() => hasPlatformAccount.value && !usesPublicShell.value)
 const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_identity' && !usesPublicShell.value)
-const profileHref = computed(() => actor.value.kind === 'platform_user' ? '/account' : '/dashboard')
-const profileLabel = computed(() => user.value ? 'Profile' : 'Sign in')
+const profileName = computed(() => {
+  if (actor.value.kind === 'platform_user') {
+    return actor.value.platformUser.displayName
+  }
+
+  return user.value?.name ?? null
+})
 const pageContainerClass = computed(() => {
   if (isPublicHackathonDetailRoute.value) {
     return 'pt-0 pb-6 lg:pb-8'
@@ -77,25 +82,21 @@ useSeoMeta({
         <div class="ml-auto flex flex-wrap items-center justify-end gap-2">
           <AppColorModeButton />
 
+          <AppUserMenu
+            v-if="user"
+            :name="profileName"
+            :email="user.email"
+          />
+
           <AppButton
-            :to="user ? profileHref : loginHref"
-            :external="!user"
-            :label="profileLabel"
+            v-else
+            :to="loginHref"
+            external
+            label="Sign in"
             color="neutral"
             variant="soft"
             class="rounded-full"
-          >
-            <template
-              v-if="user"
-              #leading
-            >
-              <AppAvatar
-                :src="user.picture"
-                :alt="user.name"
-                size="sm"
-              />
-            </template>
-          </AppButton>
+          />
         </div>
       </AppContainer>
     </header>
