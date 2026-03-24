@@ -70,7 +70,7 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
 }
 
 Given('I am on the public hackathons page', async ({ page }) => {
-  await page.goto('/hackathons')
+  await page.goto('/')
 })
 
 Then('I should see the public hackathon titled {string}', async ({ page }, title: string) => {
@@ -103,7 +103,7 @@ Then('I should see {int} public hackathon cards', async ({ page }, count: number
 
 When('I open the public hackathons page with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto('/hackathons')
+  await page.goto('/')
 })
 
 When('I load more public hackathons', async ({ page }) => {

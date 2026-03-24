@@ -227,86 +227,6 @@ export function useShellNavigation() {
     return chips
   })
 
-  const headerLinks = computed<ShellNavigationItem[]>(() => {
-    if (actor.value.kind === 'anonymous') {
-      return [{
-        id: 'discover',
-        label: 'Hackathons',
-        description: 'Public program discovery',
-        to: '/hackathons',
-        icon: 'i-lucide-sparkles'
-      }]
-    }
-
-    if (actor.value.kind === 'authenticated_identity') {
-      return [{
-        id: 'discover',
-        label: 'Hackathons',
-        description: 'Public program discovery',
-        to: '/hackathons',
-        icon: 'i-lucide-sparkles'
-      }, {
-        id: 'complete-account',
-        label: 'Complete account',
-        description: 'Platform registration and profile',
-        to: '/dashboard',
-        icon: 'i-lucide-id-card'
-      }]
-    }
-
-    const items: ShellNavigationItem[] = [{
-      id: 'discover',
-      label: 'Hackathons',
-      description: 'Participant entry and public detail',
-      to: '/hackathons',
-      icon: 'i-lucide-sparkles'
-    }, {
-      id: 'dashboard',
-      label: 'Dashboard',
-      description: 'Role-aware command surface',
-      to: '/dashboard',
-      icon: 'i-lucide-layout-dashboard'
-    }, {
-      id: 'account',
-      label: 'Account',
-      description: 'Profile and platform lifecycle',
-      to: '/account',
-      icon: 'i-lucide-id-card'
-    }]
-
-    if (hasPrizeRecipientAccess.value) {
-      items.push({
-        id: 'prizes',
-        label: 'Prize redemptions',
-        description: 'Winner-facing tasks',
-        to: '/prize-redemptions',
-        icon: 'i-lucide-gift'
-      })
-    }
-
-    if (hasJudgeAccess.value) {
-      items.push({
-        id: 'judge',
-        label: 'Judge workspace',
-        description: 'Blind assignment review',
-        to: '/judging',
-        icon: 'i-lucide-scale'
-      })
-    }
-
-    if (hasAdminAccess.value) {
-      items.push({
-        id: 'admin',
-        label: 'Admin',
-        description: 'Hackathon operations and setup',
-        to: '/admin',
-        icon: 'i-lucide-shield-check'
-      })
-    }
-
-    return items
-  })
-
   const sidebarGroups = computed<ShellNavigationGroup[]>(() => {
     if (actor.value.kind !== 'platform_user') {
       return []
@@ -324,7 +244,7 @@ export function useShellNavigation() {
         id: 'discover',
         label: 'Hackathons',
         description: 'Participant and public entry surface',
-        to: '/hackathons',
+        to: '/',
         icon: 'i-lucide-sparkles'
       }, {
         id: 'account',
@@ -383,7 +303,7 @@ export function useShellNavigation() {
         id: 'discover',
         label: 'Browse public hackathons',
         description: 'Inspect visible program timing, criteria, prizes, and current terms references before you sign in.',
-        to: '/hackathons',
+        to: '/',
         icon: 'i-lucide-sparkles',
         badge: 'Public',
         accent: 'primary'
@@ -412,7 +332,7 @@ export function useShellNavigation() {
         id: 'discover',
         label: 'Explore public hackathons',
         description: 'You can inspect visible programs now, but team, submission, and admin workflows stay closed until your platform account exists.',
-        to: '/hackathons',
+        to: '/',
         icon: 'i-lucide-sparkles',
         badge: 'Public',
         accent: 'neutral'
@@ -423,7 +343,7 @@ export function useShellNavigation() {
       id: 'participant',
       label: 'Participate in hackathons',
       description: 'Use discovery and participant surfaces for applications, team formation, and team-owned submission work.',
-      to: '/hackathons',
+      to: '/',
       icon: 'i-lucide-users',
       badge: 'Participant',
       accent: 'primary'
@@ -483,7 +403,6 @@ export function useShellNavigation() {
     hasJudgeAccess,
     hasPlatformAccount,
     hasPrizeRecipientAccess,
-    headerLinks,
     isResolvingActor,
     loginHref,
     prizeRedemptionsErrorMessage,

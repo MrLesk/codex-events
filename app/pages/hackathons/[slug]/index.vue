@@ -163,7 +163,7 @@ useSeoMeta({
 
       <AppContainer class="relative py-18 sm:py-24">
         <NuxtLink
-          to="/hackathons"
+          to="/"
           class="inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/10 px-4 py-2 text-sm font-medium text-white/92 backdrop-blur transition-colors hover:bg-white/16"
         >
           <AppIcon

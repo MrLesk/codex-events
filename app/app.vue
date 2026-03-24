@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Toaster as UiSonner } from '~/components/ui/sonner'
 import AppShellNavigation from '~/components/shell/AppShellNavigation.vue'
-import { authLogoutHref } from '~/utils/auth-navigation'
 
 useHead({
   meta: [
@@ -15,10 +14,16 @@ useHead({
   }
 })
 
+const route = useRoute()
 const user = useUser()
-const { actor, hasPlatformAccount, headerLinks, isResolvingActor, loginHref, roleChips, sidebarGroups } = useShellNavigation()
+const { actor, hasPlatformAccount, loginHref, sidebarGroups } = useShellNavigation()
 const title = 'Codex Hackathons'
 const description = 'The internal platform for running Codex community hackathons with Auth0-backed platform authentication.'
+const isHomepage = computed(() => route.path === '/')
+const showWorkspaceSidebar = computed(() => hasPlatformAccount.value && !isHomepage.value)
+const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_identity' && !isHomepage.value)
+const profileHref = computed(() => actor.value.kind === 'platform_user' ? '/account' : '/dashboard')
+const profileLabel = computed(() => user.value ? 'Profile' : 'Sign in')
 
 useSeoMeta({
   title,
@@ -32,106 +37,62 @@ useSeoMeta({
 <template>
   <NuxtLoadingIndicator color="var(--primary)" />
 
-  <div class="relative min-h-screen overflow-x-hidden">
-    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,20,34,0.08),transparent_28%),radial-gradient(circle_at_70%_0%,rgba(79,91,112,0.12),transparent_28%)]" />
+  <div
+    class="relative min-h-screen overflow-x-hidden"
+    :class="isHomepage ? 'bg-black text-[#ECECEC]' : ''"
+  >
+    <div
+      v-if="!isHomepage"
+      class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,20,34,0.08),transparent_28%),radial-gradient(circle_at_70%_0%,rgba(79,91,112,0.12),transparent_28%)]"
+    />
 
-    <header class="sticky top-0 z-40 border-b border-default/70 bg-bg/75 backdrop-blur-2xl">
-      <AppContainer class="flex flex-wrap items-center gap-4 py-4">
+    <header
+      class="sticky top-0 z-40 border-b backdrop-blur-2xl"
+      :class="isHomepage ? 'border-white/[0.08] bg-black/96' : 'border-default/70 bg-bg/75'"
+    >
+      <AppContainer class="flex items-center gap-4 py-4">
         <NuxtLink
           to="/"
-          class="group flex items-center gap-3"
+          class="group flex items-center"
         >
-          <div class="flex size-11 items-center justify-center rounded-2xl border border-default/70 bg-elevated/90 shadow-[0_18px_48px_-34px_rgba(15,20,34,0.65)]">
-            <span class="text-sm font-semibold tracking-[0.3em] text-highlighted">CH</span>
-          </div>
-
           <div>
-            <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-muted">
+            <p
+              class="text-[11px] font-semibold uppercase tracking-[0.22em]"
+              :class="isHomepage ? 'text-[#8C8C8C]' : 'text-muted'"
+            >
               Codex Community
             </p>
-            <p class="text-base font-semibold tracking-[-0.03em] text-highlighted">
+            <p
+              class="text-[17px] font-semibold tracking-[-0.01em]"
+              :class="isHomepage ? 'text-white' : 'text-highlighted'"
+            >
               Hackathon Platform
             </p>
           </div>
         </NuxtLink>
 
-        <nav class="hidden min-w-0 flex-1 items-center justify-center gap-2 lg:flex">
-          <AppButton
-            v-for="item in headerLinks"
-            :key="item.id"
-            :to="item.to"
-            color="neutral"
-            variant="ghost"
-            class="rounded-full"
-          >
-            <template #leading>
-              <AppIcon
-                :name="item.icon"
-                class="size-4"
-              />
-            </template>
-            {{ item.label }}
-          </AppButton>
-        </nav>
-
-        <nav class="flex w-full gap-2 overflow-x-auto pb-1 lg:hidden">
-          <AppButton
-            v-for="item in headerLinks"
-            :key="`${item.id}-mobile`"
-            :to="item.to"
-            color="neutral"
-            variant="soft"
-            size="sm"
-            class="shrink-0 rounded-full"
-          >
-            <template #leading>
-              <AppIcon
-                :name="item.icon"
-                class="size-4"
-              />
-            </template>
-            {{ item.label }}
-          </AppButton>
-        </nav>
-
         <div class="ml-auto flex flex-wrap items-center justify-end gap-2">
-          <AppBadge
-            v-for="chip in roleChips"
-            :key="chip"
-            color="neutral"
-            variant="soft"
-            class="rounded-full px-3 py-1"
-          >
-            {{ chip }}
-          </AppBadge>
-
-          <AppBadge
-            v-if="isResolvingActor"
-            color="primary"
-            variant="soft"
-            class="rounded-full px-3 py-1"
-          >
-            Resolving workspace
-          </AppBadge>
-
           <AppColorModeButton />
 
           <AppButton
-            v-if="user"
-            :to="authLogoutHref"
-            external
-            label="Sign out"
-            color="primary"
+            :to="user ? profileHref : loginHref"
+            :external="!user"
+            :label="profileLabel"
+            color="neutral"
+            variant="soft"
             class="rounded-full"
-          />
-          <AppButton
-            v-else
-            :to="loginHref"
-            external
-            label="Sign in"
-            color="primary"
-            class="rounded-full"
-          />
+          >
+            <template
+              v-if="user"
+              #leading
+            >
+              <AppAvatar
+                :src="user.picture"
+                :alt="user.name"
+                size="sm"
+              />
+            </template>
+          </AppButton>
         </div>
       </AppContainer>
     </header>
@@ -139,7 +100,7 @@ useSeoMeta({
     <div class="relative">
       <AppContainer class="py-6 lg:py-8">
         <AppAlert
-          v-if="actor.kind === 'authenticated_identity'"
+          v-if="showIdentityAlert"
           color="info"
           variant="soft"
           icon="i-lucide-id-card"
@@ -150,7 +111,7 @@ useSeoMeta({
 
         <div class="flex gap-8">
           <aside
-            v-if="hasPlatformAccount"
+            v-if="showWorkspaceSidebar"
             class="hidden w-80 shrink-0 xl:block"
           >
             <div class="sticky top-[6.5rem] space-y-4">
@@ -189,7 +150,10 @@ useSeoMeta({
       </AppContainer>
     </div>
 
-    <footer class="border-t border-default/70 bg-bg/60 backdrop-blur-xl">
+    <footer
+      class="border-t backdrop-blur-xl"
+      :class="isHomepage ? 'border-white/[0.08] bg-black' : 'border-default/70 bg-bg/60'"
+    >
       <AppContainer class="flex flex-col gap-4 py-6 text-sm text-muted md:flex-row md:items-center md:justify-between">
         <p>
           Canonical shell for public discovery, participant entry, judging, administration, and redemption workflows.

@@ -1,140 +1,197 @@
 <script setup lang="ts">
-import DashboardEntryCard from '~/components/shell/DashboardEntryCard.vue'
+import type { PublicApiListResponse, PublicHackathon } from '~/composables/useHackathonPresentation'
 
-const { actor, dashboardEntries, loginHref } = useShellNavigation()
+import HackathonCard from '~/components/public/hackathons/HackathonCard.vue'
 
-const primaryLinks = computed(() => {
-  if (actor.value.kind === 'anonymous') {
-    return [{
-      label: 'Browse hackathons',
-      to: '/hackathons',
-      trailingIcon: 'i-lucide-arrow-right',
-      size: 'xl' as const
-    }, {
-      label: 'Sign in with Auth0',
-      to: loginHref.value,
-      external: true,
-      size: 'xl' as const,
-      color: 'neutral' as const,
-      variant: 'subtle' as const
-    }]
+const publicHackathonsPageSize = 4
+const currentPage = ref(1)
+const hackathons = ref<PublicHackathon[]>([])
+const total = ref(0)
+const isLoadingMore = ref(false)
+const loadMoreError = ref<string>()
+const activeTab = ref<'all' | 'active' | 'past'>('all')
+
+const { data: initialResponse, error } = await useAsyncData('public-hackathons-homepage:page-1', async () =>
+  await $fetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
+    query: {
+      page: 1,
+      page_size: publicHackathonsPageSize
+    }
+  })
+)
+
+hackathons.value = initialResponse.value?.data ?? []
+total.value = initialResponse.value?.meta?.total ?? hackathons.value.length
+
+const hasMoreHackathons = computed(() => hackathons.value.length < total.value)
+const filteredHackathons = computed(() => hackathons.value.filter((hackathon) => {
+  if (activeTab.value === 'all') {
+    return true
   }
 
-  return [{
-    label: 'Open dashboard',
-    to: '/dashboard',
-    trailingIcon: 'i-lucide-arrow-right',
-    size: 'xl' as const
-  }, {
-    label: actor.value.kind === 'authenticated_identity' ? 'Continue onboarding' : 'Open hackathons',
-    to: actor.value.kind === 'authenticated_identity' ? '/dashboard' : '/hackathons',
-    size: 'xl' as const,
-    color: 'neutral' as const,
-    variant: 'subtle' as const
-  }]
+  const isPast = hackathon.state === 'completed'
+
+  return activeTab.value === 'past' ? isPast : !isPast
+}))
+
+async function loadMoreHackathons() {
+  if (isLoadingMore.value || !hasMoreHackathons.value) {
+    return
+  }
+
+  isLoadingMore.value = true
+  loadMoreError.value = undefined
+
+  try {
+    const nextPage = currentPage.value + 1
+    const response = await $fetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
+      query: {
+        page: nextPage,
+        page_size: publicHackathonsPageSize
+      }
+    })
+
+    const nextHackathons = response.data.filter(candidate =>
+      !hackathons.value.some(existing => existing.slug === candidate.slug)
+    )
+
+    hackathons.value = [...hackathons.value, ...nextHackathons]
+    total.value = response.meta?.total ?? total.value
+    currentPage.value = nextPage
+  } catch {
+    loadMoreError.value = 'More public hackathons could not be loaded right now.'
+  } finally {
+    isLoadingMore.value = false
+  }
+}
+
+useSeoMeta({
+  title: 'Codex Hackathons',
+  description: 'Discover current Codex hackathon programs, lifecycle timing, public evaluation criteria, prize structures, and current terms references.'
 })
 </script>
 
 <template>
-  <div class="space-y-14 pb-20">
-    <PageHero
-      title="Operate hackathons through one role-aware surface instead of scattered workflows."
-      description="The shell now separates public discovery from authenticated workspaces. Public visitors can inspect visible hackathons, while signed-in users enter a dashboard that reflects their real platform actor and effective hackathon roles."
-      :links="primaryLinks"
-      orientation="horizontal"
-    >
-      <template #headline>
-        <AppBadge
-          color="primary"
-          variant="soft"
-          class="rounded-full px-4 py-1.5 font-semibold tracking-[0.18em] uppercase"
-        >
-          {{
-            actor.kind === 'anonymous'
-              ? 'Public shell'
-              : actor.kind === 'authenticated_identity'
-                ? 'Authenticated identity'
-                : 'Platform workspace'
-          }}
-        </AppBadge>
-      </template>
-
-      <template #body>
-        <div class="grid gap-4 sm:grid-cols-3">
-          <AppCard
-            variant="subtle"
-            :ui="{ root: 'rounded-[1.75rem] border border-default/80 bg-elevated/80 shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)] backdrop-blur' }"
-          >
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Public
-            </p>
-            <p class="mt-3 text-lg font-semibold text-highlighted">
-              Discovery stays open
-            </p>
-            <p class="mt-2 text-sm leading-7 text-toned">
-              Anyone can inspect visible hackathons, lifecycle timing, criteria, prizes, and terms references.
-            </p>
-          </AppCard>
-
-          <AppCard
-            variant="subtle"
-            :ui="{ root: 'rounded-[1.75rem] border border-default/80 bg-elevated/80 shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)] backdrop-blur' }"
-          >
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Authenticated
-            </p>
-            <p class="mt-3 text-lg font-semibold text-highlighted">
-              Actor-aware entry
-            </p>
-            <p class="mt-2 text-sm leading-7 text-toned">
-              The dashboard branches on canonical actor resolution, not on Auth0 profile assumptions or template shortcuts.
-            </p>
-          </AppCard>
-
-          <AppCard
-            variant="subtle"
-            :ui="{ root: 'rounded-[1.75rem] border border-default/80 bg-elevated/80 shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)] backdrop-blur' }"
-          >
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Role-aware
-            </p>
-            <p class="mt-3 text-lg font-semibold text-highlighted">
-              One shell, multiple surfaces
-            </p>
-            <p class="mt-2 text-sm leading-7 text-toned">
-              Participants, judges, admins, and prize recipients see only the entry points that match their effective product permissions.
-            </p>
-          </AppCard>
+  <div class="mx-auto max-w-[1000px] space-y-8 px-4 pb-24 pt-4 text-[#ECECEC] sm:px-6 lg:px-8">
+    <section class="space-y-5">
+      <div class="flex flex-col gap-4">
+        <div class="space-y-3">
+          <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-white">
+            Hackathons
+          </h1>
+          <p class="max-w-3xl text-[15px] text-[#A3A3A3]">
+            Discover and join hackathon programs running across the Codex community.
+          </p>
         </div>
-      </template>
-    </PageHero>
+      </div>
+    </section>
 
-    <PageSection
-      title="What the shell enforces"
-      description="Each area below exists to keep public, participant, judge, admin, and winner-facing flows legible before deeper feature pages fill in."
-      :features="[{
-        icon: 'i-lucide-shield-check',
-        title: 'Authorization comes from platform data',
-        description: 'The shell consumes the canonical session actor so role-aware entry points reflect platform-account state and hackathon assignments.'
-      }, {
-        icon: 'i-lucide-log-in',
-        title: 'Public and authenticated surfaces stay distinct',
-        description: 'Signed-out visitors stay in public discovery, while authenticated users route into the dashboard without exposing restricted workflows in the landing surface.'
-      }, {
-        icon: 'i-lucide-layout-dashboard',
-        title: 'Shared entry points stay thin',
-        description: 'The shell exposes stable routes for judges and winners without stealing deep implementation from the dedicated tasks that follow.'
-      }]"
+    <AppAlert
+      v-if="error"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      title="Hackathons unavailable"
+      description="The public discovery surface could not load visible hackathons right now."
+      class="border-white/[0.08] bg-[#111111] text-[#ECECEC]"
+    />
+
+    <div
+      v-else-if="filteredHackathons.length === 0"
+      class="rounded-xl border border-dashed border-white/[0.08] bg-[#111111] p-10 text-center"
     >
-      <template #body>
-        <div class="grid gap-6 xl:grid-cols-3">
-          <DashboardEntryCard
-            v-for="entry in dashboardEntries"
-            :key="entry.id"
-            :entry="entry"
-          />
+      <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#8C8C8C]">
+        No visible programs
+      </p>
+      <p class="mt-3 text-lg font-semibold text-white">
+        There are no public hackathons available right now.
+      </p>
+    </div>
+
+    <template v-else>
+      <div class="flex flex-col gap-4 rounded-xl border border-white/[0.08] bg-[#111111] p-2 md:flex-row md:items-center md:justify-between">
+        <div class="flex min-w-0 flex-wrap items-center gap-1">
+          <button
+            class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
+            :class="activeTab === 'all' ? 'bg-white text-black font-medium' : 'text-[#A3A3A3] hover:text-white'"
+            @click="activeTab = 'all'"
+          >
+            All
+          </button>
+          <button
+            class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
+            :class="activeTab === 'active' ? 'bg-white text-black font-medium' : 'text-[#A3A3A3] hover:text-white'"
+            @click="activeTab = 'active'"
+          >
+            Active
+          </button>
+          <button
+            class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
+            :class="activeTab === 'past' ? 'bg-white text-black font-medium' : 'text-[#A3A3A3] hover:text-white'"
+            @click="activeTab = 'past'"
+          >
+            Past
+          </button>
+          <span class="ml-4 border-l border-white/[0.08] pl-4 text-[13px] text-[#8C8C8C]">
+            {{ filteredHackathons.length }} hackathons
+          </span>
         </div>
-      </template>
-    </PageSection>
+
+        <div class="flex items-center gap-2">
+          <button class="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#212121] px-3 py-1.5 text-[13px] text-[#A3A3A3] transition-colors hover:border-white/[0.2]">
+            Status
+            <AppIcon
+              name="i-lucide-chevron-down"
+              class="size-3.5"
+            />
+          </button>
+          <button class="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#212121] px-3 py-1.5 text-[13px] text-[#A3A3A3] transition-colors hover:border-white/[0.2]">
+            Date
+            <AppIcon
+              name="i-lucide-chevron-down"
+              class="size-3.5"
+            />
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-16 pt-6">
+        <HackathonCard
+          v-for="hackathon in filteredHackathons"
+          :key="hackathon.slug"
+          :hackathon="hackathon"
+        />
+      </div>
+    </template>
+
+    <div
+      v-if="!error && hasMoreHackathons"
+      class="flex flex-col items-center gap-4 pt-2"
+    >
+      <AppButton
+        color="neutral"
+        variant="solid"
+        :loading="isLoadingMore"
+        data-testid="public-hackathons-load-more"
+        class="border border-white/[0.08] bg-[#111111] text-white hover:bg-[#181818]"
+        @click="loadMoreHackathons"
+      >
+        Load more hackathons
+      </AppButton>
+
+      <p class="text-sm text-[#8C8C8C]">
+        Showing {{ hackathons.length }} of {{ total }} visible hackathons.
+      </p>
+    </div>
+
+    <AppAlert
+      v-if="loadMoreError"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      title="More hackathons unavailable"
+      :description="loadMoreError"
+      class="border-white/[0.08] bg-[#111111] text-[#ECECEC]"
+    />
   </div>
 </template>

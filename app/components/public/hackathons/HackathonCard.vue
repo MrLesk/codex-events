@@ -1,134 +1,107 @@
 <script setup lang="ts">
 import type { PublicHackathon } from '~/composables/useHackathonPresentation'
 
-import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
-
 const props = defineProps<{
   hackathon: PublicHackathon
 }>()
 
 const heroImage = computed(() => props.hackathon.bannerImageUrl ?? props.hackathon.backgroundImageUrl)
 const requiredProfiles = computed(() => listRequiredProfiles(props.hackathon))
-const registrationStatus = computed(() => describeWindowStatus(props.hackathon.state, 'registration'))
-const submissionStatus = computed(() => describeWindowStatus(props.hackathon.state, 'submission'))
+const displayStatus = computed(() => {
+  if (props.hackathon.state === 'completed') {
+    return 'PAST'
+  }
+
+  if (new Date(props.hackathon.registrationOpensAt).getTime() > Date.now()) {
+    return 'UPCOMING'
+  }
+
+  return 'ACTIVE'
+})
+const timelineTags = computed(() => {
+  const tags = []
+
+  if (requiredProfiles.value.length > 0) {
+    tags.push(...requiredProfiles.value.map(profile => `${profile}`))
+  }
+
+  tags.push(`Up to ${props.hackathon.maxTeamMembers}`)
+
+  return tags.slice(0, 3)
+})
+const programDateLabel = computed(() =>
+  formatHackathonWindow(props.hackathon.registrationOpensAt, props.hackathon.submissionClosesAt)
+)
 </script>
 
 <template>
-  <NuxtLink
-    :to="`/hackathons/${hackathon.slug}`"
-    class="group block h-full"
-    :data-testid="`public-hackathon-card-${hackathon.slug}`"
-  >
-    <AppCard
-      variant="subtle"
-      :ui="{
-        root: 'h-full border border-default/80 bg-elevated/85 shadow-[0_28px_70px_-46px_rgba(15,20,34,0.55)] backdrop-blur',
-        body: 'p-0'
-      }"
-      class="h-full overflow-hidden transition-transform duration-300 group-hover:-translate-y-1"
+  <div class="relative">
+    <div class="absolute bottom-0 left-0 top-0 hidden w-px bg-white/[0.08] lg:block" />
+    <div class="absolute left-[-5px] top-6 hidden h-2 w-2 rounded-full border-2 border-black bg-[#8C8C8C] lg:block" />
+
+    <div class="absolute left-[-78px] top-5 hidden text-[11px] font-bold tracking-widest text-[#8C8C8C] uppercase lg:block">
+      {{ displayStatus }}
+    </div>
+
+    <NuxtLink
+      :to="`/hackathons/${hackathon.slug}`"
+      class="group block lg:ml-8"
+      :data-testid="`public-hackathon-card-${hackathon.slug}`"
     >
-      <div class="relative border-b border-default/80">
-        <img
-          v-if="heroImage"
-          :src="heroImage"
-          :alt="hackathon.name"
-          class="h-56 w-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-        >
-        <div
-          v-else
-          class="h-56 w-full bg-[radial-gradient(circle_at_top_left,rgba(79,91,112,0.35),transparent_36%),linear-gradient(135deg,rgba(15,20,34,0.95),rgba(34,42,57,0.88)_44%,rgba(102,115,139,0.78))]"
-        />
+      <div class="overflow-hidden rounded-xl border border-white/[0.08] bg-[#111111] transition-colors group-hover:border-white/[0.2]">
+        <div class="relative h-[240px] overflow-hidden">
+          <div class="absolute inset-0 z-10 bg-black/20 transition-colors group-hover:bg-black/5" />
+          <img
+            v-if="heroImage"
+            :src="heroImage"
+            :alt="hackathon.name"
+            class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+          >
+          <div
+            v-else
+            class="h-full w-full bg-[linear-gradient(135deg,#2d3b68_0%,#523a77_34%,#246b76_68%,#233f7a_100%)]"
+          />
 
-        <div class="absolute inset-0 bg-gradient-to-t from-codex-950/85 via-codex-950/10 to-transparent" />
-
-        <div class="absolute inset-x-0 bottom-0 space-y-3 p-6 text-inverted">
-          <HackathonStateBadge :state="hackathon.state" />
-
-          <div class="space-y-2">
-            <h2 class="text-3xl font-semibold tracking-[-0.03em] text-white">
+          <div class="absolute bottom-6 left-6 z-20">
+            <div
+              v-if="timelineTags.length > 0"
+              class="mb-3 flex flex-wrap gap-2"
+            >
+              <span
+                v-for="tag in timelineTags"
+                :key="tag"
+                class="rounded bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white/90 backdrop-blur-md border border-white/10"
+              >
+                {{ tag }}
+              </span>
+            </div>
+            <h2 class="text-[28px] font-semibold tracking-[-0.01em] text-white">
               {{ hackathon.name }}
             </h2>
-            <p class="text-sm text-white/78">
-              {{ hackathon.city }} · {{ hackathon.address }}
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-5 p-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p class="mb-1 text-[15px] font-medium text-white">
+              {{ programDateLabel }}
             </p>
+            <p class="text-[13px] text-[#A3A3A3]">
+              {{ hackathon.city }} • {{ hackathon.address }}
+            </p>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[13px] font-medium text-black transition-colors hover:bg-[#ECECEC]">
+              Register
+              <AppIcon
+                name="i-lucide-arrow-up-right"
+                class="size-3.5"
+              />
+            </div>
           </div>
         </div>
       </div>
-
-      <div class="space-y-6 p-6">
-        <p class="text-sm leading-7 text-toned">
-          {{ hackathon.description }}
-        </p>
-
-        <div class="grid gap-3 sm:grid-cols-2">
-          <div class="rounded-2xl border border-default/80 bg-default/65 p-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Registration window
-            </p>
-            <p class="mt-3 text-sm font-medium text-highlighted">
-              {{ formatHackathonWindow(hackathon.registrationOpensAt, hackathon.registrationClosesAt) }}
-            </p>
-            <p class="mt-2 text-sm text-muted">
-              {{ registrationStatus }}
-            </p>
-          </div>
-
-          <div class="rounded-2xl border border-default/80 bg-default/65 p-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Submission window
-            </p>
-            <p class="mt-3 text-sm font-medium text-highlighted">
-              {{ formatHackathonWindow(hackathon.submissionOpensAt, hackathon.submissionClosesAt) }}
-            </p>
-            <p class="mt-2 text-sm text-muted">
-              {{ submissionStatus }}
-            </p>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap gap-2">
-          <AppBadge
-            color="neutral"
-            variant="outline"
-            class="rounded-full px-3 py-1.5"
-          >
-            {{ formatMaxTeamMembers(hackathon.maxTeamMembers) }}
-          </AppBadge>
-
-          <AppBadge
-            v-if="requiredProfiles.length === 0"
-            color="neutral"
-            variant="outline"
-            class="rounded-full px-3 py-1.5"
-          >
-            No required profile links
-          </AppBadge>
-
-          <AppBadge
-            v-for="profile in requiredProfiles"
-            :key="profile"
-            color="primary"
-            variant="soft"
-            class="rounded-full px-3 py-1.5"
-          >
-            {{ profile }} required
-          </AppBadge>
-        </div>
-
-        <div class="flex items-center justify-between border-t border-default/80 pt-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Open public detail
-          </p>
-
-          <div class="inline-flex items-center gap-2 text-sm font-semibold text-highlighted">
-            Explore program
-            <AppIcon
-              name="i-lucide-arrow-up-right"
-              class="size-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-            />
-          </div>
-        </div>
-      </div>
-    </AppCard>
-  </NuxtLink>
+    </NuxtLink>
+  </div>
 </template>
