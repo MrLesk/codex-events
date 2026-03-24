@@ -23,6 +23,7 @@ export interface TeamUserSummary {
   xProfileUrl?: string | null
   linkedinProfileUrl?: string | null
   githubProfileUrl?: string | null
+  lumaUsername?: string | null
 }
 
 export interface TeamSummaryRecord {

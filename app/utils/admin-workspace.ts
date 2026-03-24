@@ -73,6 +73,7 @@ export interface PlatformUserProfile {
   xProfileUrl?: string | null
   linkedinProfileUrl?: string | null
   githubProfileUrl?: string | null
+  lumaUsername?: string | null
   createdAt?: string | null
   updatedAt?: string | null
   deletedAt?: string | null
@@ -85,6 +86,7 @@ export interface OperationalUserSummary {
   xProfileUrl?: string | null
   linkedinProfileUrl?: string | null
   githubProfileUrl?: string | null
+  lumaUsername?: string | null
 }
 
 export interface HackathonRoleSummary {
@@ -152,6 +154,7 @@ export interface HackathonRecord {
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean
+  requireLumaProfile: boolean
   currentApplicationTermsDocumentId: string | null
   currentWinnerTermsDocumentId: string | null
   createdByUserId: string
@@ -179,6 +182,7 @@ export interface HackathonFormState {
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean
+  requireLumaProfile: boolean
 }
 
 export interface EvaluationCriterion {
@@ -689,7 +693,8 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     maxTeamMembers: 4,
     requireXProfile: false,
     requireLinkedinProfile: false,
-    requireGithubProfile: false
+    requireGithubProfile: false,
+    requireLumaProfile: false
   }
 }
 
@@ -709,7 +714,8 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
     maxTeamMembers: hackathon.maxTeamMembers,
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,
-    requireGithubProfile: hackathon.requireGithubProfile
+    requireGithubProfile: hackathon.requireGithubProfile,
+    requireLumaProfile: hackathon.requireLumaProfile
   }
 }
 

@@ -317,7 +317,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         displayName: 'New User',
         privacyPolicyDocumentId: 'privacy_v1',
         platformTermsDocumentId: 'terms_v1',
-        githubProfileUrl: 'https://github.com/new-user'
+        githubProfileUrl: 'https://github.com/new-user',
+        lumaUsername: 'new-user'
       })
     })
 
@@ -327,7 +328,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         user: {
           email: 'new-user@example.com',
           displayName: 'New User',
-          githubProfileUrl: 'https://github.com/new-user'
+          githubProfileUrl: 'https://github.com/new-user',
+          lumaUsername: 'new-user'
         },
         acceptedDocumentIds: {
           privacyPolicyDocumentId: 'privacy_v1',
@@ -345,6 +347,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     expect(createdUser?.email).toBe('new-user@example.com')
     expect(createdUser?.githubProfileUrl).toBe('https://github.com/new-user')
+    expect(createdUser?.lumaUsername).toBe('new-user')
     expect(acceptances).toHaveLength(2)
     expect(auditEntries).toEqual([
       expect.objectContaining({
@@ -362,7 +365,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
           platformUser: {
             id: createdUser?.id,
             email: 'new-user@example.com',
-            displayName: 'New User'
+            displayName: 'New User',
+            lumaUsername: 'new-user'
           }
         }
       }
@@ -501,7 +505,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       auth0Subject: 'auth0|display-name-user',
       email: 'display-name@example.com',
       displayName: 'Display Name User',
-      githubProfileUrl: 'https://github.com/display-name-user'
+      githubProfileUrl: 'https://github.com/display-name-user',
+      lumaUsername: 'display-name-user'
     })
 
     const response = await harness.request('/api/account', {
@@ -517,7 +522,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         user: {
           id: 'user_display_name',
           displayName: 'Display Name Updated',
-          githubProfileUrl: 'https://github.com/display-name-user'
+          githubProfileUrl: 'https://github.com/display-name-user',
+          lumaUsername: 'display-name-user'
         }
       }
     })
@@ -528,7 +534,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     expect(updatedUser).toMatchObject({
       displayName: 'Display Name Updated',
-      githubProfileUrl: 'https://github.com/display-name-user'
+      githubProfileUrl: 'https://github.com/display-name-user',
+      lumaUsername: 'display-name-user'
     })
   })
 
@@ -558,7 +565,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         displayName: 'Updated Account User',
         xProfileUrl: 'https://x.com/account-user',
         linkedinProfileUrl: 'https://linkedin.com/in/account-user',
-        githubProfileUrl: ''
+        githubProfileUrl: '',
+        lumaUsername: 'account-user'
       })
     })
 
@@ -570,7 +578,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
           displayName: 'Updated Account User',
           xProfileUrl: 'https://x.com/account-user',
           linkedinProfileUrl: 'https://linkedin.com/in/account-user',
-          githubProfileUrl: null
+          githubProfileUrl: null,
+          lumaUsername: 'account-user'
         }
       }
     })
@@ -584,7 +593,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       displayName: 'Updated Account User',
       xProfileUrl: 'https://x.com/account-user',
       linkedinProfileUrl: 'https://linkedin.com/in/account-user',
-      githubProfileUrl: null
+      githubProfileUrl: null,
+      lumaUsername: 'account-user'
     })
     expect(auditEntries).toEqual([
       expect.objectContaining({

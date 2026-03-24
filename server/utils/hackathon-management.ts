@@ -76,7 +76,8 @@ const hackathonConfigShape = {
   maxTeamMembers: z.coerce.number().int().min(1),
   requireXProfile: z.coerce.boolean().default(false),
   requireLinkedinProfile: z.coerce.boolean().default(false),
-  requireGithubProfile: z.coerce.boolean().default(false)
+  requireGithubProfile: z.coerce.boolean().default(false),
+  requireLumaProfile: z.coerce.boolean().default(false)
 } satisfies Record<string, z.ZodTypeAny>
 
 export const createHackathonBodySchema = z.object(hackathonConfigShape)
@@ -95,7 +96,8 @@ export const updateHackathonBodySchema = z.object({
   maxTeamMembers: hackathonConfigShape.maxTeamMembers.optional(),
   requireXProfile: hackathonConfigShape.requireXProfile.optional(),
   requireLinkedinProfile: hackathonConfigShape.requireLinkedinProfile.optional(),
-  requireGithubProfile: hackathonConfigShape.requireGithubProfile.optional()
+  requireGithubProfile: hackathonConfigShape.requireGithubProfile.optional(),
+  requireLumaProfile: hackathonConfigShape.requireLumaProfile.optional()
 }).refine(
   input => Object.keys(input).length > 0,
   'At least one hackathon configuration field must be provided.'
@@ -496,6 +498,7 @@ export function serializeHackathon(
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,
     requireGithubProfile: hackathon.requireGithubProfile,
+    requireLumaProfile: hackathon.requireLumaProfile,
     currentApplicationTermsDocumentId: hackathon.currentApplicationTermsDocumentId,
     currentWinnerTermsDocumentId: hackathon.currentWinnerTermsDocumentId,
     createdByUserId: hackathon.createdByUserId,
@@ -545,6 +548,7 @@ export function serializePublicHackathon(
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,
     requireGithubProfile: hackathon.requireGithubProfile,
+    requireLumaProfile: hackathon.requireLumaProfile,
     ...(currentTerms
       ? {
           currentTerms: {

@@ -235,6 +235,15 @@ defineEmits<{
               >
               Require GitHub profile for applications
             </label>
+
+            <label class="flex items-center gap-3 rounded-2xl border border-default bg-default px-4 py-3 text-sm text-toned">
+              <input
+                v-model="form.requireLumaProfile"
+                type="checkbox"
+                class="size-4 rounded border-default"
+              >
+              Require Luma username for applications
+            </label>
           </div>
         </div>
       </AppCard>

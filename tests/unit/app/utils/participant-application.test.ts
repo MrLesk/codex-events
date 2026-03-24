@@ -13,11 +13,13 @@ describe('participant application helpers', () => {
     expect(listMissingRequiredProfileFields({
       requireXProfile: true,
       requireLinkedinProfile: true,
-      requireGithubProfile: true
+      requireGithubProfile: true,
+      requireLumaProfile: true
     }, {
       xProfileUrl: null,
       linkedinProfileUrl: 'https://linkedin.com/in/member',
-      githubProfileUrl: null
+      githubProfileUrl: null,
+      lumaUsername: null
     })).toEqual([
       {
         key: 'xProfileUrl',
@@ -26,6 +28,10 @@ describe('participant application helpers', () => {
       {
         key: 'githubProfileUrl',
         label: 'GitHub profile URL'
+      },
+      {
+        key: 'lumaUsername',
+        label: 'Luma username'
       }
     ])
   })

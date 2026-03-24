@@ -16,7 +16,8 @@ const profileForm = reactive({
   displayName: '',
   xProfileUrl: '',
   linkedinProfileUrl: '',
-  githubProfileUrl: ''
+  githubProfileUrl: '',
+  lumaUsername: ''
 })
 
 const saveState = reactive({
@@ -42,6 +43,7 @@ watch(
     profileForm.xProfileUrl = nextActor.platformUser.xProfileUrl ?? ''
     profileForm.linkedinProfileUrl = nextActor.platformUser.linkedinProfileUrl ?? ''
     profileForm.githubProfileUrl = nextActor.platformUser.githubProfileUrl ?? ''
+    profileForm.lumaUsername = nextActor.platformUser.lumaUsername ?? ''
   },
   { immediate: true }
 )
@@ -95,7 +97,8 @@ async function saveProfile() {
         displayName: profileForm.displayName,
         xProfileUrl: profileForm.xProfileUrl,
         linkedinProfileUrl: profileForm.linkedinProfileUrl,
-        githubProfileUrl: profileForm.githubProfileUrl
+        githubProfileUrl: profileForm.githubProfileUrl,
+        lumaUsername: profileForm.lumaUsername
       }
     })
 
@@ -259,6 +262,22 @@ async function deleteAccount() {
                     class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
                   >
                 </div>
+              </div>
+
+              <div class="space-y-2">
+                <label
+                  class="text-sm font-medium text-highlighted"
+                  for="account-luma-username"
+                >
+                  Luma username
+                </label>
+                <input
+                  id="account-luma-username"
+                  v-model="profileForm.lumaUsername"
+                  type="text"
+                  placeholder="your-luma-name"
+                  class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+                >
               </div>
 
               <div class="space-y-2">

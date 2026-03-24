@@ -50,6 +50,7 @@ export const users = sqliteTable(
     xProfileUrl: text('x_profile_url'),
     linkedinProfileUrl: text('linkedin_profile_url'),
     githubProfileUrl: text('github_profile_url'),
+    lumaUsername: text('luma_username'),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
     deletedAt: text('deleted_at')
@@ -84,6 +85,7 @@ export const hackathons = sqliteTable(
     requireXProfile: integer('require_x_profile', { mode: 'boolean' }).notNull().default(false),
     requireLinkedinProfile: integer('require_linkedin_profile', { mode: 'boolean' }).notNull().default(false),
     requireGithubProfile: integer('require_github_profile', { mode: 'boolean' }).notNull().default(false),
+    requireLumaProfile: integer('require_luma_profile', { mode: 'boolean' }).notNull().default(false),
     currentApplicationTermsDocumentId: text('current_application_terms_document_id'),
     currentWinnerTermsDocumentId: text('current_winner_terms_document_id'),
     createdByUserId: text('created_by_user_id')

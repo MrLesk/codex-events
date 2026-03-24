@@ -21,6 +21,7 @@ async function seedApplicationContext(
   harness: ReturnType<typeof createApiRouteTestHarness>,
   options?: {
     requireGithubProfile?: boolean
+    requireLumaProfile?: boolean
   }
 ) {
   await harness.database.insert(users).values([
@@ -67,6 +68,7 @@ async function seedApplicationContext(
     state: 'registration_open',
     maxTeamMembers: 5,
     requireGithubProfile: options?.requireGithubProfile ?? false,
+    requireLumaProfile: options?.requireLumaProfile ?? false,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
     createdByUserId: 'platform_admin'
@@ -205,6 +207,39 @@ describe('TASK-3.6 application routes', () => {
         code: 'required_profile_fields_missing',
         details: {
           missingFields: ['githubProfileUrl']
+        }
+      }
+    })
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications rejects users missing a required luma username', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|missing_profile',
+        email: 'missing-profile@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaProfile: true
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'required_profile_fields_missing',
+        details: {
+          missingFields: ['lumaUsername']
         }
       }
     })

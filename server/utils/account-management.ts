@@ -28,14 +28,16 @@ export const platformAccountRegistrationBodySchema = z.object({
   platformTermsDocumentId: z.string().trim().min(1),
   xProfileUrl: profileUrlSchema,
   linkedinProfileUrl: profileUrlSchema,
-  githubProfileUrl: profileUrlSchema
+  githubProfileUrl: profileUrlSchema,
+  lumaUsername: z.string().trim().max(120).optional()
 })
 
 export const platformAccountProfileBodySchema = z.object({
   displayName: z.string().trim().min(1).max(120),
   xProfileUrl: profileUrlSchema,
   linkedinProfileUrl: profileUrlSchema,
-  githubProfileUrl: profileUrlSchema
+  githubProfileUrl: profileUrlSchema,
+  lumaUsername: z.string().trim().max(120).optional()
 })
 
 type PlatformUserRecord = typeof users.$inferSelect
@@ -56,6 +58,7 @@ export function serializePlatformUser(user: PlatformUserRecord) {
     xProfileUrl: user.xProfileUrl,
     linkedinProfileUrl: user.linkedinProfileUrl,
     githubProfileUrl: user.githubProfileUrl,
+    lumaUsername: user.lumaUsername,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     deletedAt: user.deletedAt
@@ -84,6 +87,7 @@ function buildPlatformAccountInsert(
     xProfileUrl: normalizeOptionalUrl(input.xProfileUrl),
     linkedinProfileUrl: normalizeOptionalUrl(input.linkedinProfileUrl),
     githubProfileUrl: normalizeOptionalUrl(input.githubProfileUrl),
+    lumaUsername: input.lumaUsername?.trim() || null,
     createdAt,
     updatedAt: createdAt,
     deletedAt: null
@@ -101,6 +105,9 @@ function buildPlatformAccountProfilePatch(input: PlatformAccountProfileInput, up
       : {}),
     ...(input.githubProfileUrl !== undefined
       ? { githubProfileUrl: normalizeOptionalUrl(input.githubProfileUrl) }
+      : {}),
+    ...(input.lumaUsername !== undefined
+      ? { lumaUsername: input.lumaUsername.trim() || null }
       : {}),
     updatedAt
   } satisfies Partial<typeof users.$inferInsert>
@@ -275,6 +282,7 @@ export function buildDeletedUserPatch(userId: string, deletedAt: string) {
     xProfileUrl: null,
     linkedinProfileUrl: null,
     githubProfileUrl: null,
+    lumaUsername: null,
     updatedAt: deletedAt,
     deletedAt
   } satisfies Partial<typeof users.$inferInsert>

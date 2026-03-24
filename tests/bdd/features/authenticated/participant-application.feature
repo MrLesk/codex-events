@@ -13,7 +13,7 @@ Feature: Participant hackathon application experience
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant application page for hackathon slug "participant-profile-requirement-fixture-hackathon" with the saved "regular_user" session
     Then I should see the participant application text "Profile update required before applying"
-    And I should see the participant application missing profile field "GitHub profile URL"
+    And I should see the participant application missing profile field "Luma username"
 
   Scenario: Regular user sees an approved application state
     Given the saved "regular_user" Auth0 session state exists

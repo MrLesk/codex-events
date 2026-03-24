@@ -551,7 +551,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         maxTeamMembers: 5,
         requireXProfile: true,
         requireLinkedinProfile: false,
-        requireGithubProfile: true
+        requireGithubProfile: true,
+        requireLumaProfile: true
       })
     })
 
@@ -562,7 +563,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         name: 'New Hackathon',
         slug: 'new-hackathon',
         state: 'draft',
-        createdByUserId: 'platform_admin'
+        createdByUserId: 'platform_admin',
+        requireLumaProfile: true
       }
     })
 
@@ -631,7 +633,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       body: JSON.stringify({
         description: 'Updated description',
         city: 'Berlin',
-        maxTeamMembers: 7
+        maxTeamMembers: 7,
+        requireLumaProfile: true
       })
     })
 
@@ -641,7 +644,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         id: 'hackathon_patch',
         description: 'Updated description',
         city: 'Berlin',
-        maxTeamMembers: 7
+        maxTeamMembers: 7,
+        requireLumaProfile: true
       }
     })
   })

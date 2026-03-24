@@ -16,6 +16,7 @@ export interface ParticipantPlatformUserProfile {
   xProfileUrl?: string | null
   linkedinProfileUrl?: string | null
   githubProfileUrl?: string | null
+  lumaUsername?: string | null
 }
 
 export type ParticipantActor
@@ -101,7 +102,7 @@ export interface ParticipantApiListResponse<T> {
 }
 
 export interface RequiredProfileField {
-  key: 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl'
+  key: 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'lumaUsername'
   label: string
 }
 
@@ -136,8 +137,8 @@ export function buildAuthenticatedIdentityParticipantActor(sessionUser: Particip
 }
 
 export function listMissingRequiredProfileFields(
-  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile'>,
-  platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl'>
+  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireLumaProfile'>,
+  platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'lumaUsername'>
 ) {
   const missingFields: RequiredProfileField[] = []
 
@@ -159,6 +160,13 @@ export function listMissingRequiredProfileFields(
     missingFields.push({
       key: 'githubProfileUrl',
       label: 'GitHub profile URL'
+    })
+  }
+
+  if (hackathon.requireLumaProfile && !platformUser.lumaUsername) {
+    missingFields.push({
+      key: 'lumaUsername',
+      label: 'Luma username'
     })
   }
 

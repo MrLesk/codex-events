@@ -22,6 +22,7 @@ const registrationForm = reactive({
   xProfileUrl: '',
   linkedinProfileUrl: '',
   githubProfileUrl: '',
+  lumaUsername: '',
   acceptPrivacyPolicy: false,
   acceptPlatformTerms: false
 })
@@ -98,7 +99,8 @@ async function submitRegistration() {
         platformTermsDocumentId: platformTermsDocument.value.id,
         xProfileUrl: registrationForm.xProfileUrl,
         linkedinProfileUrl: registrationForm.linkedinProfileUrl,
-        githubProfileUrl: registrationForm.githubProfileUrl
+        githubProfileUrl: registrationForm.githubProfileUrl,
+        lumaUsername: registrationForm.lumaUsername
       }
     })
 
@@ -238,6 +240,22 @@ async function submitRegistration() {
                   class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
                 >
               </div>
+            </div>
+
+            <div class="space-y-2">
+              <label
+                class="text-sm font-medium text-highlighted"
+                for="luma-username"
+              >
+                Luma username
+              </label>
+              <input
+                id="luma-username"
+                v-model="registrationForm.lumaUsername"
+                type="text"
+                placeholder="your-luma-name"
+                class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+              >
             </div>
 
             <div class="space-y-2">

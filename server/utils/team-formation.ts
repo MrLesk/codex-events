@@ -105,7 +105,8 @@ export function serializeTeamMember(member: TeamMemberRecord, user?: UserRecord 
             displayName: user.displayName,
             xProfileUrl: user.xProfileUrl,
             linkedinProfileUrl: user.linkedinProfileUrl,
-            githubProfileUrl: user.githubProfileUrl
+            githubProfileUrl: user.githubProfileUrl,
+            lumaUsername: user.lumaUsername
           }
         }
       : {})
@@ -164,7 +165,8 @@ export function serializeTeamJoinRequest(
             displayName: options.user.displayName,
             xProfileUrl: options.user.xProfileUrl,
             linkedinProfileUrl: options.user.linkedinProfileUrl,
-            githubProfileUrl: options.user.githubProfileUrl
+            githubProfileUrl: options.user.githubProfileUrl,
+            lumaUsername: options.user.lumaUsername
           }
         }
       : {})

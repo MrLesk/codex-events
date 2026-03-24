@@ -56,7 +56,8 @@ When('the saved {string} session creates a managed hackathon named {string}', as
         maxTeamMembers: 5,
         requireXProfile: false,
         requireLinkedinProfile: false,
-        requireGithubProfile: false
+        requireGithubProfile: false,
+        requireLumaProfile: false
       }
     })
     const json = await response.json() as {

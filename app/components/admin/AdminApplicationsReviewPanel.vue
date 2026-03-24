@@ -114,6 +114,12 @@ const rejectedCount = computed(() =>
                 </div>
 
                 <div class="flex flex-wrap gap-2 text-xs text-muted">
+                  <span
+                    v-if="application.user?.lumaUsername"
+                    class="rounded-full border border-default px-3 py-1 text-highlighted"
+                  >
+                    Luma: @{{ application.user.lumaUsername }}
+                  </span>
                   <a
                     v-if="application.user?.githubProfileUrl"
                     :href="application.user.githubProfileUrl"

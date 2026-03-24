@@ -18,7 +18,7 @@ Key characteristics:
 - Can apply to hackathons.
 - Can join at most one team per hackathon.
 - Can be marked with `is_platform_admin`.
-- Can optionally store X, LinkedIn, and GitHub profile links.
+- Can optionally store X, LinkedIn, and GitHub profile links, plus a Luma username.
 - Can delete their account, subject to GDPR-compliant handling.
 
 Rules:
@@ -42,7 +42,7 @@ Key characteristics:
 - Each hackathon has a submission flow that can be activated manually within its configured submission window.
 - Each hackathon has a judging flow that is activated manually.
 - Each hackathon can define a maximum team member limit.
-- Each hackathon can require X, LinkedIn, and GitHub profiles for registration.
+- Each hackathon can require X, LinkedIn, and GitHub profiles, plus a Luma username, for registration.
 - Each hackathon references its own application terms and winner terms.
 
 ### PlatformDocument

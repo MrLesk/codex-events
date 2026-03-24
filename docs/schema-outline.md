@@ -23,6 +23,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `x_profile_url`
 - `linkedin_profile_url`
 - `github_profile_url`
+- `luma_username`
 - `created_at`
 - `updated_at`
 - `deleted_at`
@@ -59,6 +60,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `require_x_profile`
 - `require_linkedin_profile`
 - `require_github_profile`
+- `require_luma_profile`
 - `current_application_terms_document_id`
 - `current_winner_terms_document_id`
 - `created_by_user_id`

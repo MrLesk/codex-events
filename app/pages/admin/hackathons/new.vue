@@ -59,7 +59,8 @@ async function createHackathon() {
         maxTeamMembers: form.maxTeamMembers,
         requireXProfile: form.requireXProfile,
         requireLinkedinProfile: form.requireLinkedinProfile,
-        requireGithubProfile: form.requireGithubProfile
+        requireGithubProfile: form.requireGithubProfile,
+        requireLumaProfile: form.requireLumaProfile
       }
     })
 

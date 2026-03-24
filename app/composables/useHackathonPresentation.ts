@@ -32,6 +32,7 @@ export interface PublicHackathon {
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean
+  requireLumaProfile: boolean
   currentTerms?: {
     applicationTerms: PublicHackathonTermsReference | null
     winnerTerms: PublicHackathonTermsReference | null
@@ -152,7 +153,7 @@ export function describeWindowStatus(
   return state === 'draft' || state === 'registration_open' ? 'Upcoming' : 'Closed'
 }
 
-export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile'>) {
+export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireLumaProfile'>) {
   const profiles: string[] = []
 
   if (hackathon.requireXProfile) {
@@ -165,6 +166,10 @@ export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXP
 
   if (hackathon.requireGithubProfile) {
     profiles.push('GitHub')
+  }
+
+  if (hackathon.requireLumaProfile) {
+    profiles.push('Luma')
   }
 
   return profiles

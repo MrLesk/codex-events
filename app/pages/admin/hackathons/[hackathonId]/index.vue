@@ -86,6 +86,7 @@ const configForm = reactive({
     requireXProfile: false,
     requireLinkedinProfile: false,
     requireGithubProfile: false,
+    requireLumaProfile: false,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
     createdByUserId: '',
@@ -303,7 +304,8 @@ async function saveConfiguration() {
         maxTeamMembers: configForm.maxTeamMembers,
         requireXProfile: configForm.requireXProfile,
         requireLinkedinProfile: configForm.requireLinkedinProfile,
-        requireGithubProfile: configForm.requireGithubProfile
+        requireGithubProfile: configForm.requireGithubProfile,
+        requireLumaProfile: configForm.requireLumaProfile
       }
     })
 

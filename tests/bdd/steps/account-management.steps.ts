@@ -117,6 +117,7 @@ When('I submit the platform account registration form for {string}', async ({ pa
   await page.getByLabel('Display name').fill(persona.displayName)
   await page.getByLabel('GitHub profile URL').fill('https://github.com/regular-user')
   await page.getByLabel('LinkedIn profile URL').fill('https://linkedin.com/in/regular-user')
+  await page.getByLabel('Luma username').fill('regular-user')
   await page.getByLabel('X profile URL').fill('https://x.com/regular-user')
   await page.getByRole('checkbox', { name: /^Accept Privacy Policy/ }).check()
   await page.getByRole('checkbox', { name: /^Accept Platform Terms/ }).check()
@@ -131,6 +132,7 @@ Then('I should see the account settings heading', async ({ page }) => {
 When('I update the account profile links', async ({ page }) => {
   await page.getByLabel('GitHub profile URL').fill('https://github.com/regular-user-updated')
   await page.getByLabel('LinkedIn profile URL').fill('https://linkedin.com/in/regular-user-updated')
+  await page.getByLabel('Luma username').fill('regular-user-updated')
   await page.getByLabel('X profile URL').fill('https://x.com/regular-user-updated')
   await page.getByRole('button', { name: 'Save profile' }).click()
 })
@@ -138,5 +140,6 @@ When('I update the account profile links', async ({ page }) => {
 Then('the account profile should show the updated links', async ({ page }) => {
   await expect(page.getByLabel('GitHub profile URL')).toHaveValue('https://github.com/regular-user-updated')
   await expect(page.getByLabel('LinkedIn profile URL')).toHaveValue('https://linkedin.com/in/regular-user-updated')
+  await expect(page.getByLabel('Luma username')).toHaveValue('regular-user-updated')
   await expect(page.getByLabel('X profile URL')).toHaveValue('https://x.com/regular-user-updated')
 })

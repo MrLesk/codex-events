@@ -16,6 +16,7 @@ interface ShellPlatformUser {
   xProfileUrl: string | null
   linkedinProfileUrl: string | null
   githubProfileUrl: string | null
+  lumaUsername: string | null
   createdAt: string
   updatedAt: string
   deletedAt: string | null

@@ -64,7 +64,8 @@ export function serializeUserApplication(
             displayName: options.user.displayName,
             xProfileUrl: options.user.xProfileUrl,
             linkedinProfileUrl: options.user.linkedinProfileUrl,
-            githubProfileUrl: options.user.githubProfileUrl
+            githubProfileUrl: options.user.githubProfileUrl,
+            lumaUsername: options.user.lumaUsername
           }
         }
       : {}),
@@ -97,6 +98,10 @@ export function assertUserMeetsHackathonProfileRequirements(user: UserRecord, ha
 
   if (hackathon.requireGithubProfile && !user.githubProfileUrl) {
     missingFields.push('githubProfileUrl')
+  }
+
+  if (hackathon.requireLumaProfile && !user.lumaUsername) {
+    missingFields.push('lumaUsername')
   }
 
   assertGuard(missingFields.length === 0, {
