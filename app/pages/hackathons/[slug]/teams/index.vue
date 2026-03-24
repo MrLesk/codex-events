@@ -5,6 +5,7 @@ import type {
 } from '~/composables/useHackathonPresentation'
 import type { TeamDirectoryEntry } from '~/utils/team-workspace'
 
+import { buildAuthAccessHref } from '~/utils/auth-navigation'
 import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import ParticipantTeamDirectoryPanel from '~/components/teams/ParticipantTeamDirectoryPanel.vue'
@@ -75,6 +76,7 @@ const ownApplicationStatus = computed(() => workspace.ownApplication.value?.stat
 const currentTeamHref = computed(() =>
   workspace.ownTeam.value ? `/hackathons/${slug.value}/teams/${workspace.ownTeam.value.id}` : ''
 )
+const platformRegistrationHref = computed(() => buildAuthAccessHref(route.fullPath, 'register'))
 const teamFormationAvailability = computed(() =>
   getTeamFormationAvailability(hackathon.value, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
 )
@@ -249,7 +251,7 @@ useSeoMeta({
       />
 
       <AppButton
-        to="/onboarding/account"
+        :to="platformRegistrationHref"
         color="warning"
         icon="i-lucide-id-card"
       >

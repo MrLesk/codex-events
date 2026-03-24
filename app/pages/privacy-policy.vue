@@ -43,7 +43,7 @@ useSeoMeta({
           Current policy documents
         </h2>
         <p class="text-sm leading-7 text-neutral-700 dark:text-[#A3A3A3]">
-          The exact privacy-policy document accepted for platform use is managed inside the product and presented during account onboarding when acceptance is required.
+          The exact privacy-policy document accepted for platform use is managed inside the product and presented in the app-owned registration entry flow when acceptance is required.
         </p>
       </div>
     </section>

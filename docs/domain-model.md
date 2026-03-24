@@ -57,6 +57,7 @@ Current platform document types:
 Rules:
 
 - Platform registration uses platform-wide documents only.
+- The app-owned platform-registration entry flow presents the current platform documents before redirecting a new user into Auth0.
 - Platform documents are versioned.
 
 ### HackathonTermsDocument

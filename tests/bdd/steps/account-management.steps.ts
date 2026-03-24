@@ -4,7 +4,6 @@ import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import {
-  getStablePersonas,
   stablePersonaKeys,
   storageStatePathForPersona,
   type StablePersonaKey
@@ -18,16 +17,6 @@ function parsePersonaKey(personaKey: string): StablePersonaKey {
   }
 
   throw new Error(`Unknown stable persona key: ${personaKey}`)
-}
-
-function getStablePersona(personaKey: StablePersonaKey) {
-  const persona = getStablePersonas().find(candidate => candidate.key === personaKey)
-
-  if (!persona) {
-    throw new Error(`Missing stable persona configuration for key: ${personaKey}`)
-  }
-
-  return persona
 }
 
 type StoredState = {
@@ -86,8 +75,8 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
 
 When('I open the account onboarding page with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto('/onboarding/account')
-  await expect(page.getByRole('heading', { name: 'Complete platform account' })).toBeVisible()
+  await page.goto('/auth/access?mode=register&returnTo=%2Faccount')
+  await expect(page.getByRole('heading', { name: 'Sign in or create your platform account' })).toBeVisible()
   await expect(page.getByRole('checkbox', { name: /^Accept Privacy Policy/ })).toBeVisible()
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(500)
@@ -104,25 +93,20 @@ When('I open the account settings page with the saved {string} session', async (
 When('I delete the platform account through the account settings page', async ({ page }) => {
   await page.getByLabel('Type “delete my account” to confirm').fill('delete my account')
   await page.getByRole('button', { name: 'Delete account' }).click()
-  await page.waitForURL('**/onboarding/account?deleted=1')
+  await page.waitForURL('**/auth/access?**deleted=1**')
 })
 
 Then('I should see the deleted platform account message', async ({ page }) => {
   await expect(page.getByText('The platform account was deleted.')).toBeVisible()
 })
 
-When('I submit the platform account registration form for {string}', async ({ page }, personaKey: string) => {
-  const persona = getStablePersona(parsePersonaKey(personaKey))
-
-  await page.getByLabel('Display name').fill(persona.displayName)
-  await page.getByLabel('GitHub profile URL').fill('https://github.com/regular-user')
-  await page.getByLabel('LinkedIn profile URL').fill('https://linkedin.com/in/regular-user')
-  await page.getByLabel('Luma username').fill('regular-user')
-  await page.getByLabel('X profile URL').fill('https://x.com/regular-user')
+When('I submit the platform account registration form for {string}', async ({ page }) => {
+  await page.getByLabel('ChatGPT email').fill('regular-user@chatgpt.example')
+  await page.getByLabel('OpenAI org ID').fill('org_regular_user')
   await page.getByRole('checkbox', { name: /^Accept Privacy Policy/ }).check()
   await page.getByRole('checkbox', { name: /^Accept Platform Terms/ }).check()
   await page.getByRole('button', { name: 'Create platform account' }).click()
-  await page.waitForURL('**/account?created=1')
+  await page.waitForURL('**/account')
 })
 
 Then('I should see the account settings heading', async ({ page }) => {
@@ -132,6 +116,8 @@ Then('I should see the account settings heading', async ({ page }) => {
 When('I update the account profile links', async ({ page }) => {
   await page.getByLabel('GitHub profile URL').fill('https://github.com/regular-user-updated')
   await page.getByLabel('LinkedIn profile URL').fill('https://linkedin.com/in/regular-user-updated')
+  await page.getByLabel('ChatGPT email').fill('regular-user-updated@chatgpt.example')
+  await page.getByLabel('OpenAI org ID').fill('org_regular_user_updated')
   await page.getByLabel('Luma username').fill('regular-user-updated')
   await page.getByLabel('X profile URL').fill('https://x.com/regular-user-updated')
   await page.getByRole('button', { name: 'Save profile' }).click()
@@ -140,6 +126,8 @@ When('I update the account profile links', async ({ page }) => {
 Then('the account profile should show the updated links', async ({ page }) => {
   await expect(page.getByLabel('GitHub profile URL')).toHaveValue('https://github.com/regular-user-updated')
   await expect(page.getByLabel('LinkedIn profile URL')).toHaveValue('https://linkedin.com/in/regular-user-updated')
+  await expect(page.getByLabel('ChatGPT email')).toHaveValue('regular-user-updated@chatgpt.example')
+  await expect(page.getByLabel('OpenAI org ID')).toHaveValue('org_regular_user_updated')
   await expect(page.getByLabel('Luma username')).toHaveValue('regular-user-updated')
   await expect(page.getByLabel('X profile URL')).toHaveValue('https://x.com/regular-user-updated')
 })

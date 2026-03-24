@@ -1,4 +1,4 @@
-import { buildAuthLoginHref } from '~/utils/auth-navigation'
+import { buildAuthAccessHref } from '~/utils/auth-navigation'
 
 interface ShellSessionUser {
   sub: string
@@ -116,7 +116,7 @@ export function useShellNavigation() {
   const actorKey = computed(() => `shell-session-actor-${user.value?.sub ?? 'anonymous'}`)
 
   const returnTo = computed(() => route.fullPath || '/dashboard')
-  const loginHref = computed(() => buildAuthLoginHref(returnTo.value))
+  const authEntryHref = computed(() => buildAuthAccessHref(returnTo.value, 'signin'))
 
   const {
     data: actorResponse,
@@ -312,7 +312,7 @@ export function useShellNavigation() {
         id: 'signin',
         label: 'Authenticate with Auth0',
         description: 'Start a real session so the platform can resolve your actor and role-aware workflow entry points.',
-        to: loginHref.value,
+        to: authEntryHref.value,
         icon: 'i-lucide-log-in',
         badge: 'Protected areas',
         accent: 'secondary',
@@ -325,7 +325,7 @@ export function useShellNavigation() {
         id: 'complete-account',
         label: 'Complete your platform account',
         description: 'Finish platform registration and exact-version document acceptance before entering hackathon participation workflows.',
-        to: '/dashboard',
+        to: buildAuthAccessHref('/dashboard', 'register'),
         icon: 'i-lucide-id-card',
         badge: 'Onboarding',
         accent: 'primary'
@@ -405,7 +405,7 @@ export function useShellNavigation() {
     hasPlatformAccount,
     hasPrizeRecipientAccess,
     isResolvingActor,
-    loginHref,
+    authEntryHref,
     prizeRedemptionsErrorMessage,
     refresh,
     roleChips,

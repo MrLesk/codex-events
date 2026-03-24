@@ -1,5 +1,5 @@
-Feature: TASK-4.3 platform account onboarding and profile management
-  Authenticated identities can recover from account deletion by recreating the platform account and updating profile fields used by hackathon registration.
+Feature: TASK-4.3 platform account registration recovery and profile management
+  Authenticated identities can recover from account deletion by recreating the platform account through the app-owned registration flow and updating profile fields used by hackathon registration.
 
   Scenario: Recreating and updating the regular user platform account
     Given the saved "regular_user" Auth0 session state exists

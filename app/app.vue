@@ -16,12 +16,18 @@ useHead({
 
 const route = useRoute()
 const user = useUser()
-const { actor, hasPlatformAccount, loginHref, sidebarGroups } = useShellNavigation()
+const { actor, authEntryHref, hasPlatformAccount, sidebarGroups } = useShellNavigation()
 const title = 'Codex Hackathons'
 const description = 'The internal platform for running Codex community hackathons with Auth0-backed platform authentication.'
 const isHomepage = computed(() => route.path === '/')
 const isPublicHackathonDetailRoute = computed(() => /^\/hackathons\/[^/]+\/?$/.test(route.path))
-const usesPublicShell = computed(() => isHomepage.value || isPublicHackathonDetailRoute.value || route.path === '/privacy-policy')
+const isAuthAccessRoute = computed(() => route.path === '/auth/access')
+const usesPublicShell = computed(() =>
+  isHomepage.value
+  || isPublicHackathonDetailRoute.value
+  || isAuthAccessRoute.value
+  || route.path === '/privacy-policy'
+)
 const showWorkspaceSidebar = computed(() => hasPlatformAccount.value && !usesPublicShell.value)
 const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_identity' && !usesPublicShell.value)
 const profileName = computed(() => {
@@ -89,9 +95,8 @@ useSeoMeta({
           />
 
           <AppButton
-            v-else
-            :to="loginHref"
-            external
+            v-else-if="!isAuthAccessRoute"
+            :to="authEntryHref"
             label="Sign in"
             color="neutral"
             variant="soft"

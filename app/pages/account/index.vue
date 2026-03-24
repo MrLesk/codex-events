@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { buildAuthAccessHref } from '~/utils/auth-navigation'
 import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 
 definePageMeta({
@@ -9,7 +10,7 @@ const route = useRoute()
 const { actor, status, refresh } = await useAccountLifecycleActor()
 
 if (actor.value && !actor.value.hasPlatformAccount) {
-  await navigateTo('/onboarding/account')
+  await navigateTo(buildAuthAccessHref('/account', 'register'))
 }
 
 const profileForm = reactive({
@@ -129,7 +130,7 @@ async function deleteAccount() {
     })
 
     await refresh()
-    await navigateTo('/onboarding/account?deleted=1')
+    await navigateTo(`${buildAuthAccessHref('/account', 'register')}&deleted=1`)
   } catch (error) {
     deletionState.error = error instanceof Error
       ? error.message
@@ -361,7 +362,7 @@ async function deleteAccount() {
 
               <div class="flex items-center justify-between gap-4">
                 <p class="max-w-md text-sm text-muted">
-                  After deletion the next dashboard visit will move back into the onboarding state because the Auth0 session remains valid while the platform account is gone.
+                  After deletion the next dashboard visit returns to the app-owned registration flow because the Auth0 session remains valid while the platform account is gone.
                 </p>
 
                 <AppButton

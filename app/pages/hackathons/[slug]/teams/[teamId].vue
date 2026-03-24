@@ -5,6 +5,7 @@ import type {
 } from '~/composables/useHackathonPresentation'
 import type { TeamActionAvailability } from '~/utils/team-workspace'
 
+import { buildAuthAccessHref } from '~/utils/auth-navigation'
 import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import ParticipantTeamJoinRequestsPanel from '~/components/teams/ParticipantTeamJoinRequestsPanel.vue'
@@ -66,6 +67,7 @@ const workspace = useTeamFormationWorkspace(hackathon, slug, {
   teamId
 })
 const actor = computed(() => workspace.actor.value)
+const platformRegistrationHref = computed(() => buildAuthAccessHref(route.fullPath, 'register'))
 const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
 const teamSettings = reactive({
   name: '',
@@ -468,7 +470,7 @@ useSeoMeta({
       />
 
       <AppButton
-        to="/onboarding/account"
+        :to="platformRegistrationHref"
         color="warning"
         icon="i-lucide-id-card"
       >
