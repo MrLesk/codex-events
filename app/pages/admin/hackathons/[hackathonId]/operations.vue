@@ -2,14 +2,15 @@
 import type {
   AdminApplicationRecord,
   AdminOperationalTeam,
+  AdminTeamDetailRecord,
   ApiDataResponse,
   ApiListResponse,
   NoSubmissionEntry,
   SubmissionRecord,
-  TeamDetailRecord,
   TeamSummary
 } from '~/utils/admin-workspace'
 
+import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 import {
   buildAdminOperationalTeams,
   formatHackathonState,
@@ -18,9 +19,7 @@ import {
 } from '~/utils/admin-workspace'
 
 definePageMeta({
-  middleware: [to => useUser().value
-    ? undefined
-    : navigateTo(`/auth/login?returnTo=${encodeURIComponent(to.fullPath)}`)]
+  middleware: [requireAuthNavigationGuard]
 })
 
 const route = useRoute()
@@ -54,7 +53,7 @@ const noSubmissionErrorMessage = ref('')
 const operationalTeams = ref<AdminOperationalTeam[]>([])
 const operationalTeamsStatus = ref<LoadStatus>('idle')
 const operationalTeamsErrorMessage = ref('')
-const loadedTeamDetails = ref<Array<TeamDetailRecord | null>>([])
+const loadedTeamDetails = ref<Array<AdminTeamDetailRecord | null>>([])
 const loadedTeamSubmissions = ref<Array<SubmissionRecord | null>>([])
 const initializedHackathonId = ref<string | null>(null)
 const hasMoreTeams = computed(() => paginatedTeams.value.length < totalTeams.value)
@@ -139,7 +138,7 @@ async function loadOperationalTeamDetails() {
   try {
     const [teamDetails, teamSubmissions] = await Promise.all([
       Promise.all(paginatedTeams.value.map(async (team) => {
-        const response = await $fetch<ApiDataResponse<TeamDetailRecord>>(
+        const response = await $fetch<ApiDataResponse<AdminTeamDetailRecord>>(
           `/api/hackathons/${hackathonId.value}/teams/${team.id}`
         )
 

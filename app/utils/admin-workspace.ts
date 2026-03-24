@@ -243,7 +243,7 @@ export interface TeamMemberSummary {
   user?: OperationalUserSummary
 }
 
-export interface TeamDetailRecord extends TeamSummary {
+export interface AdminTeamDetailRecord extends TeamSummary {
   members: TeamMemberSummary[]
 }
 
@@ -272,7 +272,7 @@ export type AdminSubmissionStatus = SubmissionRecord['status'] | 'none'
 
 export interface AdminOperationalTeam {
   team: TeamSummary
-  detail: TeamDetailRecord | null
+  detail: AdminTeamDetailRecord | null
   submission: SubmissionRecord | null
   submissionStatus: AdminSubmissionStatus
   activeMemberCount: number
@@ -511,7 +511,7 @@ export function getSubmissionStatusColor(status: AdminSubmissionStatus) {
   }
 }
 
-export function formatJudgeAssignmentStatus(status: JudgeAssignmentSummary['status']) {
+export function formatAdminJudgeAssignmentStatus(status: JudgeAssignmentSummary['status']) {
   return startCase(status)
 }
 
@@ -617,7 +617,7 @@ function formatOperationalUserLabel(user: OperationalUserSummary | undefined, us
 export function buildAdminOperationalTeams(
   teams: TeamSummary[],
   options?: {
-    teamDetails?: Array<TeamDetailRecord | null>
+    teamDetails?: Array<AdminTeamDetailRecord | null>
     submissions?: Array<SubmissionRecord | null>
     noSubmissionEntries?: NoSubmissionEntry[]
   }

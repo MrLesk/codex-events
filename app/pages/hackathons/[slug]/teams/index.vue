@@ -5,6 +5,7 @@ import type {
 } from '~/composables/useHackathonPresentation'
 import type { TeamDirectoryEntry } from '~/utils/team-workspace'
 
+import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import ParticipantTeamDirectoryPanel from '~/components/teams/ParticipantTeamDirectoryPanel.vue'
 import {
@@ -15,9 +16,7 @@ import {
 } from '~/utils/team-workspace'
 
 definePageMeta({
-  middleware: [to => useUser().value
-    ? undefined
-    : navigateTo(`/auth/login?returnTo=${encodeURIComponent(to.fullPath)}`)]
+  middleware: [requireAuthNavigationGuard]
 })
 
 const route = useRoute()

@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { requireAuthNavigationGuard } from '~/utils/auth-guards'
+
 definePageMeta({
-  middleware: [to => useUser().value
-    ? undefined
-    : navigateTo(`/auth/login?returnTo=${encodeURIComponent(to.fullPath)}`)]
+  middleware: [requireAuthNavigationGuard]
 })
 
 const route = useRoute()

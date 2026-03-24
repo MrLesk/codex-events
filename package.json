@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-    "dev": "node ./node_modules/nuxt/bin/nuxt.mjs dev",
+    "dev": "nuxt dev",
     "db:generate": "drizzle-kit generate",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
     "typecheck": "nuxt typecheck",
     "test:bdd:install": "playwright install chromium",
-    "test:unit": "node ./node_modules/vitest/vitest.mjs run tests/unit",
-    "test:integration": "node ./node_modules/vitest/vitest.mjs run --config vitest.integration.config.ts",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:bdd": "bun tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && bun tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1",
     "test:all": "bun run test:unit && bun run test:integration && bun run test:bdd"
   },

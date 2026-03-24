@@ -6,11 +6,10 @@ import {
   getPrizeRedemptionStatusColor,
   summarizePrizeRedemptionTask
 } from '~/utils/prize-redemptions'
+import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 
 definePageMeta({
-  middleware: [to => useUser().value
-    ? undefined
-    : navigateTo(`/auth/login?returnTo=${encodeURIComponent(to.fullPath)}`)]
+  middleware: [requireAuthNavigationGuard]
 })
 
 const toast = useToast()

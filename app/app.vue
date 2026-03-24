@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import AppShellNavigation from '~/components/shell/AppShellNavigation.vue'
+import { authLogoutHref } from '~/utils/auth-navigation'
+
 useHead({
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1' }
@@ -115,7 +118,8 @@ useSeoMeta({
 
             <UButton
               v-if="user"
-              to="/auth/logout"
+              :to="authLogoutHref"
+              external
               label="Sign out"
               color="primary"
               class="rounded-full"
@@ -123,6 +127,7 @@ useSeoMeta({
             <UButton
               v-else
               :to="loginHref"
+              external
               label="Sign in"
               color="primary"
               class="rounded-full"

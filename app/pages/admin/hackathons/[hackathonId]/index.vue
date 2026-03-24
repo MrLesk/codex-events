@@ -6,6 +6,7 @@ import type {
   TermsDocument
 } from '~/utils/admin-workspace'
 
+import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 import {
   canMutateRoleAssignments,
   createHackathonFormState,
@@ -17,9 +18,7 @@ import {
 } from '~/utils/admin-workspace'
 
 definePageMeta({
-  middleware: [to => useUser().value
-    ? undefined
-    : navigateTo(`/auth/login?returnTo=${encodeURIComponent(to.fullPath)}`)]
+  middleware: [requireAuthNavigationGuard]
 })
 
 type CriterionEditState = Pick<EvaluationCriterion, 'name' | 'description' | 'weight' | 'displayOrder'>

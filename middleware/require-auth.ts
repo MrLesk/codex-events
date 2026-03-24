@@ -1,7 +1,3 @@
-export default defineNuxtRouteMiddleware((to) => {
-  if (useUser().value) {
-    return
-  }
+import { requireAuthNavigationGuard } from '../app/utils/auth-guards'
 
-  return navigateTo(`/auth/login?returnTo=${encodeURIComponent(to.fullPath)}`)
-})
+export default defineNuxtRouteMiddleware(requireAuthNavigationGuard)

@@ -10,6 +10,7 @@ import type {
 } from '~/utils/admin-workspace'
 import type { PrizeRedemptionAdminView, PrizeRedemptionRecord } from '~/utils/prize-redemptions'
 
+import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 import {
   formatHackathonState,
   getCurrentLifecycleControl,
@@ -18,9 +19,7 @@ import {
 } from '~/utils/admin-workspace'
 
 definePageMeta({
-  middleware: [to => useUser().value
-    ? undefined
-    : navigateTo(`/auth/login?returnTo=${encodeURIComponent(to.fullPath)}`)]
+  middleware: [requireAuthNavigationGuard]
 })
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'

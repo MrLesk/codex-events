@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import JudgeAssignmentInboxCard from '~/components/judging/JudgeAssignmentInboxCard.vue'
 import { formatHackathonState, getHackathonStateColor } from '~/utils/admin-workspace'
+import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 
 definePageMeta({
-  middleware: [to => useUser().value
-    ? undefined
-    : navigateTo(`/auth/login?returnTo=${encodeURIComponent(to.fullPath)}`)]
+  middleware: [requireAuthNavigationGuard]
 })
 
 const route = useRoute()

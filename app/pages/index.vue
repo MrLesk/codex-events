@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import DashboardEntryCard from '~/components/shell/DashboardEntryCard.vue'
+
 const { actor, dashboardEntries, loginHref } = useShellNavigation()
 
 const primaryLinks = computed(() => {
@@ -11,6 +13,7 @@ const primaryLinks = computed(() => {
     }, {
       label: 'Sign in with Auth0',
       to: loginHref.value,
+      external: true,
       size: 'xl' as const,
       color: 'neutral' as const,
       variant: 'subtle' as const

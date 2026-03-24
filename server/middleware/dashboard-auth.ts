@@ -1,3 +1,5 @@
+import { buildAuthLoginHref } from '../../app/utils/auth-navigation'
+
 export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)
 
@@ -13,5 +15,5 @@ export default defineEventHandler(async (event) => {
   }
 
   const returnTo = `${url.pathname}${url.search}`
-  return sendRedirect(event, `/auth/login?returnTo=${encodeURIComponent(returnTo)}`)
+  return sendRedirect(event, buildAuthLoginHref(returnTo))
 })

@@ -1,21 +1,14 @@
+import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 
 export const localWranglerConfigPath = resolve(process.cwd(), 'wrangler.jsonc')
 export const localPlatformPersistPath = resolve(process.cwd(), '.wrangler/state/v3')
 
 type WranglerModule = typeof import('wrangler')
-
-const importWrangler = new Function(
-  'specifier',
-  'return import(specifier)'
-) as (specifier: string) => Promise<WranglerModule>
+const require = createRequire(import.meta.url)
 
 async function loadWranglerModule() {
-  if (process.env.VITEST) {
-    return await import('wrangler')
-  }
-
-  return await importWrangler('wrangler')
+  return require('wrangler') as WranglerModule
 }
 
 export async function createLocalPlatformProxy(options?: {

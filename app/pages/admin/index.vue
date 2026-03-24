@@ -4,11 +4,10 @@ import {
   formatHackathonState,
   getHackathonStateColor
 } from '~/utils/admin-workspace'
+import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 
 definePageMeta({
-  middleware: [to => useUser().value
-    ? undefined
-    : navigateTo(`/auth/login?returnTo=${encodeURIComponent(to.fullPath)}`)]
+  middleware: [requireAuthNavigationGuard]
 })
 
 const workspace = useAdminWorkspace()

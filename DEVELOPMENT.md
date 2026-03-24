@@ -34,7 +34,7 @@ If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUT
 Shared backend foundation work also expects a D1 binding name at runtime:
 
 - `NUXT_DATABASE_BINDING` should match the D1 binding exposed to the server runtime. The canonical foundation defaults to `DB`.
-- local development uses the repository `wrangler.jsonc` plus Wrangler's `getPlatformProxy()` to provide a Cloudflare-native local `DB` binding while the Nuxt server runs in Node.js
+- local development uses the repository `wrangler.jsonc` plus Wrangler's `getPlatformProxy()` to provide a Cloudflare-native local `DB` binding while the Nuxt server runs under Bun
 
 ## Local Development
 

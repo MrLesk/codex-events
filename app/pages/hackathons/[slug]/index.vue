@@ -12,6 +12,7 @@ import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeLis
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonTermsReferences from '~/components/public/hackathons/HackathonTermsReferences.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
+import { buildAuthLoginHref } from '~/utils/auth-navigation'
 import {
   formatParticipantApplicationStatus,
   getHackathonApplicationAvailabilityMessage,
@@ -67,7 +68,7 @@ const heroImage = computed(() => hackathon.value.bannerImageUrl ?? hackathon.val
 const criteriaErrorMessage = computed(() => criteriaError.value ? 'Public scoring dimensions could not be loaded right now.' : undefined)
 const prizesErrorMessage = computed(() => prizesError.value ? 'Published awards could not be loaded right now.' : undefined)
 const user = useUser()
-const loginHref = computed(() => `/auth/login?returnTo=${encodeURIComponent(route.fullPath || `/hackathons/${slug.value}`)}`)
+const loginHref = computed(() => buildAuthLoginHref(route.fullPath || `/hackathons/${slug.value}`))
 const acceptCurrentApplicationTerms = ref(false)
 const participantApplication = useParticipantApplication(hackathon, slug)
 
@@ -338,6 +339,7 @@ useSeoMeta({
 
             <UButton
               :to="loginHref"
+              external
               color="primary"
               icon="i-lucide-log-in"
             >

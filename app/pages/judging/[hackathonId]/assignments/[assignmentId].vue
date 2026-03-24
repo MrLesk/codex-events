@@ -6,6 +6,7 @@ import BlindSubmissionPanel from '~/components/judging/BlindSubmissionPanel.vue'
 import JudgeAssignmentStatusBadge from '~/components/judging/JudgeAssignmentStatusBadge.vue'
 import JudgeReviewRubric from '~/components/judging/JudgeReviewRubric.vue'
 import { formatHackathonState, getHackathonStateColor } from '~/utils/admin-workspace'
+import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 import {
   buildCompletionCriterionScoresPayload,
   canCompleteJudgeAssignment,
@@ -21,9 +22,7 @@ import {
 } from '~/utils/judging-workspace'
 
 definePageMeta({
-  middleware: [to => useUser().value
-    ? undefined
-    : navigateTo(`/auth/login?returnTo=${encodeURIComponent(to.fullPath)}`)]
+  middleware: [requireAuthNavigationGuard]
 })
 
 const route = useRoute()

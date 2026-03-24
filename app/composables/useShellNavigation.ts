@@ -77,6 +77,7 @@ export interface ShellNavigationItem {
   to: string
   icon: string
   badge?: string
+  external?: boolean
 }
 
 export interface ShellNavigationGroup {
@@ -112,7 +113,7 @@ export function useShellNavigation() {
   const actorKey = computed(() => `shell-session-actor-${user.value?.sub ?? 'anonymous'}`)
 
   const returnTo = computed(() => route.fullPath || '/dashboard')
-  const loginHref = computed(() => `/auth/login?returnTo=${encodeURIComponent(returnTo.value)}`)
+  const loginHref = computed(() => buildAuthLoginHref(returnTo.value))
 
   const {
     data: actorResponse,
@@ -391,7 +392,8 @@ export function useShellNavigation() {
         to: loginHref.value,
         icon: 'i-lucide-log-in',
         badge: 'Protected areas',
-        accent: 'secondary'
+        accent: 'secondary',
+        external: true
       }]
     }
 
@@ -488,3 +490,4 @@ export function useShellNavigation() {
     sidebarGroups
   }
 }
+import { buildAuthLoginHref } from '~/utils/auth-navigation'

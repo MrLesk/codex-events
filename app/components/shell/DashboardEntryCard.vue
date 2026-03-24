@@ -68,6 +68,7 @@ const accentClass = computed(() => {
 
           <UButton
             :to="props.entry.to"
+            :external="props.entry.external"
             color="primary"
             variant="soft"
             trailing-icon="i-lucide-arrow-right"

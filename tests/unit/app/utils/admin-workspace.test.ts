@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'vitest'
 
 import type {
+  AdminTeamDetailRecord,
   NoSubmissionEntry,
   HackathonRecord,
   SessionActor,
   SubmissionRecord,
-  TeamDetailRecord,
   TeamSummary
 } from '../../../../app/utils/admin-workspace'
 
@@ -17,7 +17,7 @@ import {
   createHackathonFormState,
   createHackathonSlug,
   formatApplicationStatus,
-  formatJudgeAssignmentStatus,
+  formatAdminJudgeAssignmentStatus,
   formatSubmissionStatus,
   filterManageableHackathons,
   fromDateTimeLocalValue,
@@ -102,7 +102,7 @@ function createTeamSummary(overrides: Partial<TeamSummary> = {}): TeamSummary {
   }
 }
 
-function createTeamDetail(overrides: Partial<TeamDetailRecord> = {}): TeamDetailRecord {
+function createTeamDetail(overrides: Partial<AdminTeamDetailRecord> = {}): AdminTeamDetailRecord {
   return {
     ...createTeamSummary(),
     members: [
@@ -368,7 +368,7 @@ describe('admin-workspace operational helpers', () => {
   test('formats operational statuses into badge labels and colors', () => {
     expect(formatApplicationStatus('submitted')).toBe('Submitted')
     expect(getApplicationStatusColor('approved')).toBe('success')
-    expect(formatJudgeAssignmentStatus('judge_started')).toBe('Judge Started')
+    expect(formatAdminJudgeAssignmentStatus('judge_started')).toBe('Judge Started')
     expect(getJudgeAssignmentStatusColor('judge_completed')).toBe('success')
     expect(formatSubmissionStatus('none')).toBe('No Submission')
     expect(getSubmissionStatusColor('disqualified')).toBe('error')

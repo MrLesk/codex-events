@@ -5,7 +5,7 @@ import type {
 } from '~/utils/admin-workspace'
 
 import {
-  formatJudgeAssignmentStatus,
+  formatAdminJudgeAssignmentStatus,
   getAdminJudgeAssignmentInterventionPolicy,
   getJudgeAssignmentStatusColor
 } from '~/utils/admin-workspace'
@@ -142,7 +142,7 @@ const actionableAssignments = computed(() =>
                   variant="soft"
                   class="self-start"
                 >
-                  {{ formatJudgeAssignmentStatus(assignment.status) }}
+                  {{ formatAdminJudgeAssignmentStatus(assignment.status) }}
                 </UBadge>
               </div>
 
