@@ -35,7 +35,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
   async function insertHackathonsInBatches(
     harness: ReturnType<typeof createApiRouteTestHarness>,
     rows: Array<typeof hackathons.$inferInsert>,
-    chunkSize = 5
+    chunkSize = 4
   ) {
     for (let index = 0; index < rows.length; index += chunkSize) {
       await harness.database.insert(hackathons).values(rows.slice(index, index + chunkSize))
@@ -552,6 +552,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         requireXProfile: true,
         requireLinkedinProfile: false,
         requireGithubProfile: true,
+        requireChatgptEmail: true,
+        requireOpenaiOrgId: true,
         requireLumaProfile: true
       })
     })
@@ -564,6 +566,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         slug: 'new-hackathon',
         state: 'draft',
         createdByUserId: 'platform_admin',
+        requireChatgptEmail: true,
+        requireOpenaiOrgId: true,
         requireLumaProfile: true
       }
     })
@@ -634,6 +638,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         description: 'Updated description',
         city: 'Berlin',
         maxTeamMembers: 7,
+        requireChatgptEmail: true,
+        requireOpenaiOrgId: true,
         requireLumaProfile: true
       })
     })
@@ -645,6 +651,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         description: 'Updated description',
         city: 'Berlin',
         maxTeamMembers: 7,
+        requireChatgptEmail: true,
+        requireOpenaiOrgId: true,
         requireLumaProfile: true
       }
     })

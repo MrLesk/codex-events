@@ -14,7 +14,7 @@ The canonical product model in [`docs/`](docs/README.md) is designed to support:
 - blind judging with judge assignment and admin reassignment controls
 - shortlist, winner selection, and prize redemption flows
 - platform-wide and hackathon-specific terms documents with versioned acceptance records
-- hackathon-specific participant profile requirements including X, LinkedIn, GitHub, and Luma
+- hackathon-specific participant profile requirements including X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, and Luma
 
 For the current domain model, permissions, lifecycle rules, and schema outline, start with:
 

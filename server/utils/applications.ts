@@ -65,6 +65,8 @@ export function serializeUserApplication(
             xProfileUrl: options.user.xProfileUrl,
             linkedinProfileUrl: options.user.linkedinProfileUrl,
             githubProfileUrl: options.user.githubProfileUrl,
+            chatgptEmail: options.user.chatgptEmail,
+            openaiOrgId: options.user.openaiOrgId,
             lumaUsername: options.user.lumaUsername
           }
         }
@@ -98,6 +100,14 @@ export function assertUserMeetsHackathonProfileRequirements(user: UserRecord, ha
 
   if (hackathon.requireGithubProfile && !user.githubProfileUrl) {
     missingFields.push('githubProfileUrl')
+  }
+
+  if (hackathon.requireChatgptEmail && !user.chatgptEmail) {
+    missingFields.push('chatgptEmail')
+  }
+
+  if (hackathon.requireOpenaiOrgId && !user.openaiOrgId) {
+    missingFields.push('openaiOrgId')
   }
 
   if (hackathon.requireLumaProfile && !user.lumaUsername) {

@@ -318,6 +318,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         privacyPolicyDocumentId: 'privacy_v1',
         platformTermsDocumentId: 'terms_v1',
         githubProfileUrl: 'https://github.com/new-user',
+        chatgptEmail: 'new-user@chatgpt.example',
+        openaiOrgId: 'org_new_user',
         lumaUsername: 'new-user'
       })
     })
@@ -329,6 +331,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
           email: 'new-user@example.com',
           displayName: 'New User',
           githubProfileUrl: 'https://github.com/new-user',
+          chatgptEmail: 'new-user@chatgpt.example',
+          openaiOrgId: 'org_new_user',
           lumaUsername: 'new-user'
         },
         acceptedDocumentIds: {
@@ -347,6 +351,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     expect(createdUser?.email).toBe('new-user@example.com')
     expect(createdUser?.githubProfileUrl).toBe('https://github.com/new-user')
+    expect(createdUser?.chatgptEmail).toBe('new-user@chatgpt.example')
+    expect(createdUser?.openaiOrgId).toBe('org_new_user')
     expect(createdUser?.lumaUsername).toBe('new-user')
     expect(acceptances).toHaveLength(2)
     expect(auditEntries).toEqual([
@@ -366,6 +372,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
             id: createdUser?.id,
             email: 'new-user@example.com',
             displayName: 'New User',
+            chatgptEmail: 'new-user@chatgpt.example',
+            openaiOrgId: 'org_new_user',
             lumaUsername: 'new-user'
           }
         }
@@ -506,6 +514,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       email: 'display-name@example.com',
       displayName: 'Display Name User',
       githubProfileUrl: 'https://github.com/display-name-user',
+      chatgptEmail: 'display-name@chatgpt.example',
+      openaiOrgId: 'org_display_name',
       lumaUsername: 'display-name-user'
     })
 
@@ -523,6 +533,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
           id: 'user_display_name',
           displayName: 'Display Name Updated',
           githubProfileUrl: 'https://github.com/display-name-user',
+          chatgptEmail: 'display-name@chatgpt.example',
+          openaiOrgId: 'org_display_name',
           lumaUsername: 'display-name-user'
         }
       }
@@ -535,6 +547,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(updatedUser).toMatchObject({
       displayName: 'Display Name Updated',
       githubProfileUrl: 'https://github.com/display-name-user',
+      chatgptEmail: 'display-name@chatgpt.example',
+      openaiOrgId: 'org_display_name',
       lumaUsername: 'display-name-user'
     })
   })
@@ -566,6 +580,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         xProfileUrl: 'https://x.com/account-user',
         linkedinProfileUrl: 'https://linkedin.com/in/account-user',
         githubProfileUrl: '',
+        chatgptEmail: 'account-user@chatgpt.example',
+        openaiOrgId: 'org_account_user',
         lumaUsername: 'account-user'
       })
     })
@@ -579,6 +595,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
           xProfileUrl: 'https://x.com/account-user',
           linkedinProfileUrl: 'https://linkedin.com/in/account-user',
           githubProfileUrl: null,
+          chatgptEmail: 'account-user@chatgpt.example',
+          openaiOrgId: 'org_account_user',
           lumaUsername: 'account-user'
         }
       }
@@ -594,6 +612,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       xProfileUrl: 'https://x.com/account-user',
       linkedinProfileUrl: 'https://linkedin.com/in/account-user',
       githubProfileUrl: null,
+      chatgptEmail: 'account-user@chatgpt.example',
+      openaiOrgId: 'org_account_user',
       lumaUsername: 'account-user'
     })
     expect(auditEntries).toEqual([

@@ -23,6 +23,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `x_profile_url`
 - `linkedin_profile_url`
 - `github_profile_url`
+- `chatgpt_email`
+- `openai_org_id`
 - `luma_username`
 - `created_at`
 - `updated_at`
@@ -60,6 +62,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `require_x_profile`
 - `require_linkedin_profile`
 - `require_github_profile`
+- `require_chatgpt_email`
+- `require_openai_org_id`
 - `require_luma_profile`
 - `current_application_terms_document_id`
 - `current_winner_terms_document_id`

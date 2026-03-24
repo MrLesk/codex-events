@@ -16,6 +16,8 @@ export interface ParticipantPlatformUserProfile {
   xProfileUrl?: string | null
   linkedinProfileUrl?: string | null
   githubProfileUrl?: string | null
+  chatgptEmail?: string | null
+  openaiOrgId?: string | null
   lumaUsername?: string | null
 }
 
@@ -102,7 +104,7 @@ export interface ParticipantApiListResponse<T> {
 }
 
 export interface RequiredProfileField {
-  key: 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'lumaUsername'
+  key: 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaUsername'
   label: string
 }
 
@@ -137,8 +139,8 @@ export function buildAuthenticatedIdentityParticipantActor(sessionUser: Particip
 }
 
 export function listMissingRequiredProfileFields(
-  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireLumaProfile'>,
-  platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'lumaUsername'>
+  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile'>,
+  platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaUsername'>
 ) {
   const missingFields: RequiredProfileField[] = []
 
@@ -160,6 +162,20 @@ export function listMissingRequiredProfileFields(
     missingFields.push({
       key: 'githubProfileUrl',
       label: 'GitHub profile URL'
+    })
+  }
+
+  if (hackathon.requireChatgptEmail && !platformUser.chatgptEmail) {
+    missingFields.push({
+      key: 'chatgptEmail',
+      label: 'ChatGPT email'
+    })
+  }
+
+  if (hackathon.requireOpenaiOrgId && !platformUser.openaiOrgId) {
+    missingFields.push({
+      key: 'openaiOrgId',
+      label: 'OpenAI org ID'
     })
   }
 

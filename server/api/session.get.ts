@@ -45,6 +45,8 @@ export default defineApiHandler(async (event) => {
         xProfileUrl: actor.platformUser.xProfileUrl,
         linkedinProfileUrl: actor.platformUser.linkedinProfileUrl,
         githubProfileUrl: actor.platformUser.githubProfileUrl,
+        chatgptEmail: actor.platformUser.chatgptEmail,
+        openaiOrgId: actor.platformUser.openaiOrgId,
         lumaUsername: actor.platformUser.lumaUsername,
         createdAt: actor.platformUser.createdAt,
         updatedAt: actor.platformUser.updatedAt,

@@ -143,7 +143,7 @@ Operations:
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | Create platform account | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record and records exact-version acceptance of the required current platform documents for registration. The canonical user flow captures agreement in the app-owned registration entry screen before the Auth0 redirect, then finalizes the write only after the authenticated callback succeeds. Rejects requests that omit required platform document versions or reference unpublished versions. |
-| Update own platform account profile | `PATCH /api/account` | authenticated user with a platform account | Updates the platform profile fields that affect hackathon application eligibility, including display name, optional X, LinkedIn, and GitHub profile links, and an optional Luma username. |
+| Update own platform account profile | `PATCH /api/account` | authenticated user with a platform account | Updates the platform profile fields that affect hackathon application eligibility, including display name, optional X, LinkedIn, and GitHub profile links, an optional ChatGPT email, an optional OpenAI org ID, and an optional Luma username. |
 | Delete own account | `DELETE /api/account` | authenticated user | Performs GDPR-compliant account deletion handling and writes the required audit trail. |
 
 Testing:

@@ -60,6 +60,8 @@ async function createHackathon() {
         requireXProfile: form.requireXProfile,
         requireLinkedinProfile: form.requireLinkedinProfile,
         requireGithubProfile: form.requireGithubProfile,
+        requireChatgptEmail: form.requireChatgptEmail,
+        requireOpenaiOrgId: form.requireOpenaiOrgId,
         requireLumaProfile: form.requireLumaProfile
       }
     })

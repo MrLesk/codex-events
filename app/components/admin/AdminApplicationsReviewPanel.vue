@@ -61,7 +61,7 @@ const rejectedCount = computed(() =>
 
       <template v-else>
         <div class="grid gap-4 md:grid-cols-3">
-          <div class="rounded-2xl border border-default bg-default px-4 py-4">
+          <div class="app-inset-card-tight px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Awaiting review
             </p>
@@ -70,7 +70,7 @@ const rejectedCount = computed(() =>
             </p>
           </div>
 
-          <div class="rounded-2xl border border-default bg-default px-4 py-4">
+          <div class="app-inset-card-tight px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Approved
             </p>
@@ -79,7 +79,7 @@ const rejectedCount = computed(() =>
             </p>
           </div>
 
-          <div class="rounded-2xl border border-default bg-default px-4 py-4">
+          <div class="app-inset-card-tight px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Rejected
             </p>
@@ -97,7 +97,7 @@ const rejectedCount = computed(() =>
             v-for="application in applications"
             :key="application.id"
             :data-testid="`admin-application-${application.id}`"
-            class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+            class="app-inset-card px-5 py-5"
           >
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div class="space-y-3">
@@ -129,6 +129,18 @@ const rejectedCount = computed(() =>
                   >
                     GitHub
                   </a>
+                  <span
+                    v-if="application.user?.chatgptEmail"
+                    class="rounded-full border border-default px-3 py-1 text-highlighted"
+                  >
+                    ChatGPT: {{ application.user.chatgptEmail }}
+                  </span>
+                  <span
+                    v-if="application.user?.openaiOrgId"
+                    class="rounded-full border border-default px-3 py-1 text-highlighted"
+                  >
+                    OpenAI org: {{ application.user.openaiOrgId }}
+                  </span>
                   <a
                     v-if="application.user?.linkedinProfileUrl"
                     :href="application.user.linkedinProfileUrl"

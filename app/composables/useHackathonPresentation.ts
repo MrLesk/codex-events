@@ -32,6 +32,8 @@ export interface PublicHackathon {
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean
+  requireChatgptEmail: boolean
+  requireOpenaiOrgId: boolean
   requireLumaProfile: boolean
   currentTerms?: {
     applicationTerms: PublicHackathonTermsReference | null
@@ -153,7 +155,7 @@ export function describeWindowStatus(
   return state === 'draft' || state === 'registration_open' ? 'Upcoming' : 'Closed'
 }
 
-export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireLumaProfile'>) {
+export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile'>) {
   const profiles: string[] = []
 
   if (hackathon.requireXProfile) {
@@ -166,6 +168,14 @@ export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXP
 
   if (hackathon.requireGithubProfile) {
     profiles.push('GitHub')
+  }
+
+  if (hackathon.requireChatgptEmail) {
+    profiles.push('ChatGPT email')
+  }
+
+  if (hackathon.requireOpenaiOrgId) {
+    profiles.push('OpenAI org ID')
   }
 
   if (hackathon.requireLumaProfile) {

@@ -45,6 +45,8 @@ export default defineApiHandler(async (event) => {
     requireXProfile: body.requireXProfile,
     requireLinkedinProfile: body.requireLinkedinProfile,
     requireGithubProfile: body.requireGithubProfile,
+    requireChatgptEmail: body.requireChatgptEmail,
+    requireOpenaiOrgId: body.requireOpenaiOrgId,
     requireLumaProfile: body.requireLumaProfile,
     state: 'draft',
     createdByUserId: actor.platformUser.id,

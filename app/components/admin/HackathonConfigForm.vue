@@ -40,7 +40,7 @@ defineEmits<{
             <input
               v-model="form.name"
               type="text"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               placeholder="Codex Spring Builders 2026"
               required
             >
@@ -51,7 +51,7 @@ defineEmits<{
             <input
               v-model="form.slug"
               type="text"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               placeholder="codex-spring-builders-2026"
               required
             >
@@ -62,7 +62,7 @@ defineEmits<{
             <textarea
               v-model="form.description"
               rows="6"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               placeholder="Describe the event, focus areas, and expectations for participants."
               required
             />
@@ -88,7 +88,7 @@ defineEmits<{
             <input
               v-model="form.city"
               type="text"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               placeholder="Vienna"
               required
             >
@@ -99,7 +99,7 @@ defineEmits<{
             <input
               v-model="form.address"
               type="text"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               placeholder="Operngasse 20, 1040 Vienna"
               required
             >
@@ -110,7 +110,7 @@ defineEmits<{
             <input
               v-model="form.backgroundImageUrl"
               type="url"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               placeholder="https://images.example.com/background.jpg"
             >
           </label>
@@ -120,7 +120,7 @@ defineEmits<{
             <input
               v-model="form.bannerImageUrl"
               type="url"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               placeholder="https://images.example.com/banner.jpg"
             >
           </label>
@@ -147,7 +147,7 @@ defineEmits<{
             <input
               v-model="form.registrationOpensAt"
               type="datetime-local"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               required
             >
           </label>
@@ -157,7 +157,7 @@ defineEmits<{
             <input
               v-model="form.registrationClosesAt"
               type="datetime-local"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               required
             >
           </label>
@@ -167,7 +167,7 @@ defineEmits<{
             <input
               v-model="form.submissionOpensAt"
               type="datetime-local"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               required
             >
           </label>
@@ -177,7 +177,7 @@ defineEmits<{
             <input
               v-model="form.submissionClosesAt"
               type="datetime-local"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               required
             >
           </label>
@@ -203,13 +203,13 @@ defineEmits<{
               v-model.number="form.maxTeamMembers"
               type="number"
               min="1"
-              class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               required
             >
           </label>
 
           <div class="grid gap-3">
-            <label class="flex items-center gap-3 rounded-2xl border border-default bg-default px-4 py-3 text-sm text-toned">
+            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
               <input
                 v-model="form.requireXProfile"
                 type="checkbox"
@@ -218,7 +218,7 @@ defineEmits<{
               Require X profile for applications
             </label>
 
-            <label class="flex items-center gap-3 rounded-2xl border border-default bg-default px-4 py-3 text-sm text-toned">
+            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
               <input
                 v-model="form.requireLinkedinProfile"
                 type="checkbox"
@@ -227,7 +227,7 @@ defineEmits<{
               Require LinkedIn profile for applications
             </label>
 
-            <label class="flex items-center gap-3 rounded-2xl border border-default bg-default px-4 py-3 text-sm text-toned">
+            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
               <input
                 v-model="form.requireGithubProfile"
                 type="checkbox"
@@ -236,7 +236,25 @@ defineEmits<{
               Require GitHub profile for applications
             </label>
 
-            <label class="flex items-center gap-3 rounded-2xl border border-default bg-default px-4 py-3 text-sm text-toned">
+            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
+              <input
+                v-model="form.requireChatgptEmail"
+                type="checkbox"
+                class="size-4 rounded border-default"
+              >
+              Require ChatGPT email for applications
+            </label>
+
+            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
+              <input
+                v-model="form.requireOpenaiOrgId"
+                type="checkbox"
+                class="size-4 rounded border-default"
+              >
+              Require OpenAI org ID for applications
+            </label>
+
+            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
               <input
                 v-model="form.requireLumaProfile"
                 type="checkbox"

@@ -21,6 +21,8 @@ async function seedApplicationContext(
   harness: ReturnType<typeof createApiRouteTestHarness>,
   options?: {
     requireGithubProfile?: boolean
+    requireChatgptEmail?: boolean
+    requireOpenaiOrgId?: boolean
     requireLumaProfile?: boolean
   }
 ) {
@@ -44,7 +46,9 @@ async function seedApplicationContext(
       email: 'regular@example.com',
       displayName: 'Regular User',
       xProfileUrl: 'https://x.example/regular',
-      githubProfileUrl: 'https://github.com/regular'
+      githubProfileUrl: 'https://github.com/regular',
+      chatgptEmail: 'regular@chatgpt.example',
+      openaiOrgId: 'org_regular'
     },
     {
       id: 'missing_profile_user',
@@ -68,6 +72,8 @@ async function seedApplicationContext(
     state: 'registration_open',
     maxTeamMembers: 5,
     requireGithubProfile: options?.requireGithubProfile ?? false,
+    requireChatgptEmail: options?.requireChatgptEmail ?? false,
+    requireOpenaiOrgId: options?.requireOpenaiOrgId ?? false,
     requireLumaProfile: options?.requireLumaProfile ?? false,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
@@ -240,6 +246,40 @@ describe('TASK-3.6 application routes', () => {
         code: 'required_profile_fields_missing',
         details: {
           missingFields: ['lumaUsername']
+        }
+      }
+    })
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications rejects users missing a required ChatGPT email and OpenAI org ID', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|missing_profile',
+        email: 'missing-profile@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireChatgptEmail: true,
+      requireOpenaiOrgId: true
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'required_profile_fields_missing',
+        details: {
+          missingFields: ['chatgptEmail', 'openaiOrgId']
         }
       }
     })

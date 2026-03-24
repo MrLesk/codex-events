@@ -106,6 +106,8 @@ export function serializeTeamMember(member: TeamMemberRecord, user?: UserRecord 
             xProfileUrl: user.xProfileUrl,
             linkedinProfileUrl: user.linkedinProfileUrl,
             githubProfileUrl: user.githubProfileUrl,
+            chatgptEmail: user.chatgptEmail,
+            openaiOrgId: user.openaiOrgId,
             lumaUsername: user.lumaUsername
           }
         }
@@ -166,6 +168,8 @@ export function serializeTeamJoinRequest(
             xProfileUrl: options.user.xProfileUrl,
             linkedinProfileUrl: options.user.linkedinProfileUrl,
             githubProfileUrl: options.user.githubProfileUrl,
+            chatgptEmail: options.user.chatgptEmail,
+            openaiOrgId: options.user.openaiOrgId,
             lumaUsername: options.user.lumaUsername
           }
         }

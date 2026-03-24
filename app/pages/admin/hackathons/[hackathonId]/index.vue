@@ -86,6 +86,8 @@ const configForm = reactive({
     requireXProfile: false,
     requireLinkedinProfile: false,
     requireGithubProfile: false,
+    requireChatgptEmail: false,
+    requireOpenaiOrgId: false,
     requireLumaProfile: false,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
@@ -305,6 +307,8 @@ async function saveConfiguration() {
         requireXProfile: configForm.requireXProfile,
         requireLinkedinProfile: configForm.requireLinkedinProfile,
         requireGithubProfile: configForm.requireGithubProfile,
+        requireChatgptEmail: configForm.requireChatgptEmail,
+        requireOpenaiOrgId: configForm.requireOpenaiOrgId,
         requireLumaProfile: configForm.requireLumaProfile
       }
     })
@@ -576,7 +580,7 @@ async function runLifecycleAction() {
           </template>
 
           <div class="grid gap-4 text-sm">
-            <div class="grid gap-1 rounded-2xl border border-default bg-default px-4 py-3">
+            <div class="grid gap-1 app-inset-card-tight px-4 py-3">
               <span class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Actor</span>
               <span class="text-base font-semibold text-highlighted">
                 {{ actor?.platformUser?.displayName ?? actor?.sessionUser?.email }}
@@ -586,7 +590,7 @@ async function runLifecycleAction() {
               </span>
             </div>
 
-            <div class="grid gap-1 rounded-2xl border border-default bg-default px-4 py-3">
+            <div class="grid gap-1 app-inset-card-tight px-4 py-3">
               <span class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Current terms</span>
               <span class="text-highlighted">
                 Application: {{ currentHackathon.currentTerms?.applicationTerms?.title ?? 'None selected' }}
@@ -660,7 +664,7 @@ async function runLifecycleAction() {
                 <span class="text-sm font-medium text-toned">Document type</span>
                 <select
                   v-model="termsDraft.documentType"
-                  class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                 >
                   <option value="application_terms">
                     Application terms
@@ -676,7 +680,7 @@ async function runLifecycleAction() {
                 <input
                   v-model="termsDraft.title"
                   type="text"
-                  class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                   placeholder="Spring 2026 Application Terms v2"
                 >
               </label>
@@ -687,7 +691,7 @@ async function runLifecycleAction() {
               <textarea
                 v-model="termsDraft.content"
                 rows="5"
-                class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                 placeholder="Enter the canonical terms content."
               />
             </label>
@@ -706,7 +710,7 @@ async function runLifecycleAction() {
                 <div
                   v-for="document in applicationTerms"
                   :key="document.id"
-                  class="rounded-2xl border border-default bg-default px-4 py-4"
+                  class="app-inset-card-tight px-4 py-4"
                 >
                   <div class="flex items-start justify-between gap-4">
                     <div class="space-y-1">
@@ -736,7 +740,7 @@ async function runLifecycleAction() {
                 <div
                   v-for="document in winnerTerms"
                   :key="document.id"
-                  class="rounded-2xl border border-default bg-default px-4 py-4"
+                  class="app-inset-card-tight px-4 py-4"
                 >
                   <div class="flex items-start justify-between gap-4">
                     <div class="space-y-1">
@@ -780,21 +784,21 @@ async function runLifecycleAction() {
                 <input
                   v-model="criteriaDraft.name"
                   type="text"
-                  class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                   placeholder="Criterion name"
                 >
                 <input
                   v-model.number="criteriaDraft.weight"
                   type="number"
                   min="0"
-                  class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                   placeholder="Weight"
                 >
               </div>
               <textarea
                 v-model="criteriaDraft.description"
                 rows="3"
-                class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                 placeholder="Criterion description"
               />
               <AppButton
@@ -806,7 +810,7 @@ async function runLifecycleAction() {
                 <div
                   v-for="criterion in criteria"
                   :key="criterion.id"
-                  class="rounded-2xl border border-default bg-default px-4 py-4"
+                  class="app-inset-card-tight px-4 py-4"
                 >
                   <div class="grid gap-4">
                     <div class="grid gap-4 md:grid-cols-[1fr_120px_120px]">
@@ -859,26 +863,26 @@ async function runLifecycleAction() {
                 <input
                   v-model="prizeDraft.name"
                   type="text"
-                  class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                   placeholder="Prize name"
                 >
                 <input
                   v-model="prizeDraft.rewardValue"
                   type="text"
-                  class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                   placeholder="Reward value"
                 >
               </div>
               <textarea
                 v-model="prizeDraft.description"
                 rows="3"
-                class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                 placeholder="Prize description"
               />
               <div class="grid gap-4 md:grid-cols-4">
                 <select
                   v-model="prizeDraft.rewardType"
-                  class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                 >
                   <option value="api_credits">
                     API credits
@@ -895,7 +899,7 @@ async function runLifecycleAction() {
                 </select>
                 <select
                   v-model="prizeDraft.awardScope"
-                  class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                 >
                   <option value="team">
                     Team
@@ -908,14 +912,14 @@ async function runLifecycleAction() {
                   v-model.number="prizeDraft.rankStart"
                   type="number"
                   min="1"
-                  class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                   placeholder="Rank start"
                 >
                 <input
                   v-model.number="prizeDraft.rankEnd"
                   type="number"
                   min="1"
-                  class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                   placeholder="Rank end"
                 >
               </div>
@@ -928,7 +932,7 @@ async function runLifecycleAction() {
                 <div
                   v-for="prize in prizes"
                   :key="prize.id"
-                  class="rounded-2xl border border-default bg-default px-4 py-4"
+                  class="app-inset-card-tight px-4 py-4"
                 >
                   <div class="grid gap-4">
                     <div class="grid gap-4 md:grid-cols-2">
@@ -1047,13 +1051,13 @@ async function runLifecycleAction() {
               <input
                 v-model="roleDraft.userId"
                 type="text"
-                class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                 placeholder="Platform user ID"
               >
               <div class="grid gap-4 md:grid-cols-2">
                 <select
                   v-model="roleDraft.role"
-                  class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                 >
                   <option value="judge">
                     Judge
@@ -1062,7 +1066,7 @@ async function runLifecycleAction() {
                     Hackathon admin
                   </option>
                 </select>
-                <label class="flex items-center gap-3 rounded-2xl border border-default bg-default px-4 py-3 text-sm text-toned">
+                <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
                   <input
                     v-model="roleDraft.isInJudgePool"
                     :disabled="roleDraft.role === 'judge'"
@@ -1083,7 +1087,7 @@ async function runLifecycleAction() {
               <div
                 v-for="assignment in roleAssignments"
                 :key="assignment.id"
-                class="rounded-2xl border border-default bg-default px-4 py-4"
+                class="app-inset-card-tight px-4 py-4"
               >
                 <div class="grid gap-4">
                   <div class="flex flex-wrap items-start justify-between gap-4">
@@ -1187,7 +1191,7 @@ async function runLifecycleAction() {
           </template>
 
           <div class="grid gap-4 md:grid-cols-2">
-            <div class="rounded-2xl border border-default bg-default px-4 py-4">
+            <div class="app-inset-card-tight px-4 py-4">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                 Submitted submissions
               </p>
@@ -1195,7 +1199,7 @@ async function runLifecycleAction() {
                 {{ lifecycleMetrics.submittedSubmissionCount }}
               </p>
             </div>
-            <div class="rounded-2xl border border-default bg-default px-4 py-4">
+            <div class="app-inset-card-tight px-4 py-4">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                 Automatic judge pool
               </p>
@@ -1203,7 +1207,7 @@ async function runLifecycleAction() {
                 {{ lifecycleMetrics.judgePoolCount }}
               </p>
             </div>
-            <div class="rounded-2xl border border-default bg-default px-4 py-4">
+            <div class="app-inset-card-tight px-4 py-4">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                 Locked submissions
               </p>
@@ -1211,7 +1215,7 @@ async function runLifecycleAction() {
                 {{ lifecycleMetrics.lockedSubmissionCount }}
               </p>
             </div>
-            <div class="rounded-2xl border border-default bg-default px-4 py-4">
+            <div class="app-inset-card-tight px-4 py-4">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                 Active assignments
               </p>
@@ -1219,7 +1223,7 @@ async function runLifecycleAction() {
                 {{ lifecycleMetrics.activeAssignmentCount }}
               </p>
             </div>
-            <div class="rounded-2xl border border-default bg-default px-4 py-4">
+            <div class="app-inset-card-tight px-4 py-4">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                 Completed reviews
               </p>
@@ -1227,7 +1231,7 @@ async function runLifecycleAction() {
                 {{ lifecycleMetrics.completedReviewCount }}
               </p>
             </div>
-            <div class="rounded-2xl border border-default bg-default px-4 py-4">
+            <div class="app-inset-card-tight px-4 py-4">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                 No-submission teams
               </p>

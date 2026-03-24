@@ -18,6 +18,8 @@ const profileForm = reactive({
   xProfileUrl: '',
   linkedinProfileUrl: '',
   githubProfileUrl: '',
+  chatgptEmail: '',
+  openaiOrgId: '',
   lumaUsername: ''
 })
 
@@ -44,6 +46,8 @@ watch(
     profileForm.xProfileUrl = nextActor.platformUser.xProfileUrl ?? ''
     profileForm.linkedinProfileUrl = nextActor.platformUser.linkedinProfileUrl ?? ''
     profileForm.githubProfileUrl = nextActor.platformUser.githubProfileUrl ?? ''
+    profileForm.chatgptEmail = nextActor.platformUser.chatgptEmail ?? ''
+    profileForm.openaiOrgId = nextActor.platformUser.openaiOrgId ?? ''
     profileForm.lumaUsername = nextActor.platformUser.lumaUsername ?? ''
   },
   { immediate: true }
@@ -99,6 +103,8 @@ async function saveProfile() {
         xProfileUrl: profileForm.xProfileUrl,
         linkedinProfileUrl: profileForm.linkedinProfileUrl,
         githubProfileUrl: profileForm.githubProfileUrl,
+        chatgptEmail: profileForm.chatgptEmail,
+        openaiOrgId: profileForm.openaiOrgId,
         lumaUsername: profileForm.lumaUsername
       }
     })
@@ -186,7 +192,7 @@ async function deleteAccount() {
             <div
               v-for="row in profileRows"
               :key="row.label"
-              class="rounded-2xl border border-default/70 bg-muted/40 p-4"
+              class="app-inset-choice p-4"
             >
               <dt class="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
                 {{ row.label }}
@@ -206,7 +212,7 @@ async function deleteAccount() {
                   Profile fields used by hackathon applications
                 </p>
                 <p class="text-sm text-muted">
-                  Keep the social links current so registration checks can validate the required profile fields for each hackathon.
+                  Keep the profile fields current so registration checks can validate the required profile fields for each hackathon.
                 </p>
               </div>
             </template>
@@ -268,6 +274,38 @@ async function deleteAccount() {
               <div class="space-y-2">
                 <label
                   class="text-sm font-medium text-highlighted"
+                  for="account-chatgpt-email"
+                >
+                  ChatGPT email
+                </label>
+                <input
+                  id="account-chatgpt-email"
+                  v-model="profileForm.chatgptEmail"
+                  type="email"
+                  placeholder="you@example.com"
+                  class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+                >
+              </div>
+
+              <div class="space-y-2">
+                <label
+                  class="text-sm font-medium text-highlighted"
+                  for="account-openai-org-id"
+                >
+                  OpenAI org ID
+                </label>
+                <input
+                  id="account-openai-org-id"
+                  v-model="profileForm.openaiOrgId"
+                  type="text"
+                  placeholder="org_1234567890"
+                  class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+                >
+              </div>
+
+              <div class="space-y-2">
+                <label
+                  class="text-sm font-medium text-highlighted"
                   for="account-luma-username"
                 >
                   Luma username
@@ -306,7 +344,7 @@ async function deleteAccount() {
 
               <div class="flex items-center justify-between gap-4">
                 <p class="max-w-md text-sm text-muted">
-                  Empty fields are stored as absent values, which means hackathons that require a specific profile link will block application submission until you add it.
+                  Empty fields are stored as absent values, which means hackathons that require a specific profile field will block application submission until you add it.
                 </p>
 
                 <AppButton

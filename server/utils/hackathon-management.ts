@@ -77,6 +77,8 @@ const hackathonConfigShape = {
   requireXProfile: z.coerce.boolean().default(false),
   requireLinkedinProfile: z.coerce.boolean().default(false),
   requireGithubProfile: z.coerce.boolean().default(false),
+  requireChatgptEmail: z.coerce.boolean().default(false),
+  requireOpenaiOrgId: z.coerce.boolean().default(false),
   requireLumaProfile: z.coerce.boolean().default(false)
 } satisfies Record<string, z.ZodTypeAny>
 
@@ -97,6 +99,8 @@ export const updateHackathonBodySchema = z.object({
   requireXProfile: hackathonConfigShape.requireXProfile.optional(),
   requireLinkedinProfile: hackathonConfigShape.requireLinkedinProfile.optional(),
   requireGithubProfile: hackathonConfigShape.requireGithubProfile.optional(),
+  requireChatgptEmail: hackathonConfigShape.requireChatgptEmail.optional(),
+  requireOpenaiOrgId: hackathonConfigShape.requireOpenaiOrgId.optional(),
   requireLumaProfile: hackathonConfigShape.requireLumaProfile.optional()
 }).refine(
   input => Object.keys(input).length > 0,
@@ -498,6 +502,8 @@ export function serializeHackathon(
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,
     requireGithubProfile: hackathon.requireGithubProfile,
+    requireChatgptEmail: hackathon.requireChatgptEmail,
+    requireOpenaiOrgId: hackathon.requireOpenaiOrgId,
     requireLumaProfile: hackathon.requireLumaProfile,
     currentApplicationTermsDocumentId: hackathon.currentApplicationTermsDocumentId,
     currentWinnerTermsDocumentId: hackathon.currentWinnerTermsDocumentId,
@@ -548,6 +554,8 @@ export function serializePublicHackathon(
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,
     requireGithubProfile: hackathon.requireGithubProfile,
+    requireChatgptEmail: hackathon.requireChatgptEmail,
+    requireOpenaiOrgId: hackathon.requireOpenaiOrgId,
     requireLumaProfile: hackathon.requireLumaProfile,
     ...(currentTerms
       ? {
