@@ -10,11 +10,19 @@ const importWrangler = new Function(
   'return import(specifier)'
 ) as (specifier: string) => Promise<WranglerModule>
 
+async function loadWranglerModule() {
+  if (process.env.VITEST) {
+    return await import('wrangler')
+  }
+
+  return await importWrangler('wrangler')
+}
+
 export async function createLocalPlatformProxy(options?: {
   configPath?: string
   persist?: boolean | { path: string }
 }) {
-  const { getPlatformProxy } = await importWrangler('wrangler')
+  const { getPlatformProxy } = await loadWranglerModule()
 
   return await getPlatformProxy({
     configPath: options?.configPath ?? localWranglerConfigPath,

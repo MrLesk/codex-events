@@ -240,13 +240,19 @@ async function seedHackathon(
   )
 }
 
-async function seedTeam(database: TestD1Database, teamId: string, hackathonId: string, creatorUserId: string, now: string) {
+async function seedTeam(
+  database: TestD1Database,
+  teamId: string,
+  hackathonId: string,
+  createdByUserId: string,
+  now: string
+) {
   await database.prepare(`
     insert into teams (
       id, hackathon_id, name, slug, is_open_to_join_requests, created_by_user_id, created_at, updated_at
     )
     values (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(teamId, hackathonId, `Team ${teamId}`, teamId, 1, creatorUserId, now, now)
+  `).run(teamId, hackathonId, `Team ${teamId}`, teamId, 1, createdByUserId, now, now)
 }
 
 async function seedHackathonTermsDocument(
@@ -269,12 +275,14 @@ async function seedHackathonTermsDocument(
     options.documentType,
     1,
     `${options.documentType} title`,
-    `${options.documentType} content`,
+    'Doc content',
     options.now,
     options.now
   )
 }
 
-function isoTimestamp(offsetSeconds: number) {
-  return new Date(Date.UTC(2026, 2, 22, 12, 0, offsetSeconds)).toISOString()
+function isoTimestamp(offsetDays: number) {
+  const date = new Date('2026-01-01T00:00:00.000Z')
+  date.setUTCDate(date.getUTCDate() + offsetDays)
+  return date.toISOString()
 }
