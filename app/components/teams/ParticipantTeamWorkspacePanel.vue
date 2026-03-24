@@ -40,7 +40,7 @@ function isActionPending(actionKey: string) {
 </script>
 
 <template>
-  <UCard
+  <AppCard
     data-testid="participant-team-workspace-panel"
     class="border border-default/70 bg-elevated/90"
   >
@@ -51,20 +51,20 @@ function isActionPending(actionKey: string) {
             {{ team.name }}
           </h2>
 
-          <UBadge
+          <AppBadge
             :color="team.isOpenToJoinRequests ? 'success' : 'neutral'"
             variant="soft"
           >
             {{ team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
-          </UBadge>
+          </AppBadge>
 
-          <UBadge
+          <AppBadge
             v-if="membership"
             color="primary"
             variant="soft"
           >
             {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
-          </UBadge>
+          </AppBadge>
         </div>
 
         <p class="text-sm text-muted">
@@ -143,7 +143,7 @@ function isActionPending(actionKey: string) {
               >
             </label>
 
-            <UButton
+            <AppButton
               type="submit"
               color="primary"
               :loading="isActionPending(`update-team:${team.id}`)"
@@ -151,7 +151,7 @@ function isActionPending(actionKey: string) {
               data-testid="participant-team-update-profile"
             >
               Save team profile
-            </UButton>
+            </AppButton>
           </form>
         </div>
 
@@ -205,7 +205,7 @@ function isActionPending(actionKey: string) {
           </div>
 
           <div class="flex flex-wrap gap-3">
-            <UButton
+            <AppButton
               v-if="membership"
               color="warning"
               :loading="isActionPending(`leave-team:${team.id}`)"
@@ -214,9 +214,9 @@ function isActionPending(actionKey: string) {
               @click="emit('leaveTeam')"
             >
               Leave team
-            </UButton>
+            </AppButton>
 
-            <UButton
+            <AppButton
               v-else-if="pendingJoinRequestId"
               color="warning"
               variant="soft"
@@ -229,9 +229,9 @@ function isActionPending(actionKey: string) {
               })"
             >
               Cancel pending request
-            </UButton>
+            </AppButton>
 
-            <UButton
+            <AppButton
               v-else
               color="primary"
               :loading="isActionPending(`join-team:${team.id}`)"
@@ -240,10 +240,10 @@ function isActionPending(actionKey: string) {
               @click="emit('requestJoin', team.id)"
             >
               Request to join
-            </UButton>
+            </AppButton>
           </div>
         </div>
       </section>
     </div>
-  </UCard>
+  </AppCard>
 </template>

@@ -19,7 +19,7 @@ const submissionStatus = computed(() => describeWindowStatus(props.hackathon.sta
     class="group block h-full"
     :data-testid="`public-hackathon-card-${hackathon.slug}`"
   >
-    <UCard
+    <AppCard
       variant="subtle"
       :ui="{
         root: 'h-full border border-default/80 bg-elevated/85 shadow-[0_28px_70px_-46px_rgba(15,20,34,0.55)] backdrop-blur',
@@ -87,24 +87,24 @@ const submissionStatus = computed(() => describeWindowStatus(props.hackathon.sta
         </div>
 
         <div class="flex flex-wrap gap-2">
-          <UBadge
+          <AppBadge
             color="neutral"
             variant="outline"
             class="rounded-full px-3 py-1.5"
           >
             {{ formatMaxTeamMembers(hackathon.maxTeamMembers) }}
-          </UBadge>
+          </AppBadge>
 
-          <UBadge
+          <AppBadge
             v-if="requiredProfiles.length === 0"
             color="neutral"
             variant="outline"
             class="rounded-full px-3 py-1.5"
           >
             No required profile links
-          </UBadge>
+          </AppBadge>
 
-          <UBadge
+          <AppBadge
             v-for="profile in requiredProfiles"
             :key="profile"
             color="primary"
@@ -112,7 +112,7 @@ const submissionStatus = computed(() => describeWindowStatus(props.hackathon.sta
             class="rounded-full px-3 py-1.5"
           >
             {{ profile }} required
-          </UBadge>
+          </AppBadge>
         </div>
 
         <div class="flex items-center justify-between border-t border-default/80 pt-5">
@@ -122,13 +122,13 @@ const submissionStatus = computed(() => describeWindowStatus(props.hackathon.sta
 
           <div class="inline-flex items-center gap-2 text-sm font-semibold text-highlighted">
             Explore program
-            <UIcon
+            <AppIcon
               name="i-lucide-arrow-up-right"
               class="size-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
             />
           </div>
         </div>
       </div>
-    </UCard>
+    </AppCard>
   </NuxtLink>
 </template>

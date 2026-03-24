@@ -8,7 +8,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <UCard
+  <AppCard
     variant="subtle"
     :ui="{ root: 'border border-default/80 bg-elevated/85 backdrop-blur shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)]' }"
     data-testid="public-hackathon-criteria"
@@ -23,7 +23,7 @@ const props = defineProps<{
         </h2>
       </div>
 
-      <UAlert
+      <AppAlert
         v-if="errorMessage"
         color="warning"
         variant="subtle"
@@ -58,16 +58,16 @@ const props = defineProps<{
               </p>
             </div>
 
-            <UBadge
+            <AppBadge
               color="primary"
               variant="soft"
               class="rounded-full px-3 py-1.5"
             >
               {{ criterion.weight }} weight
-            </UBadge>
+            </AppBadge>
           </div>
         </div>
       </div>
     </div>
-  </UCard>
+  </AppCard>
 </template>

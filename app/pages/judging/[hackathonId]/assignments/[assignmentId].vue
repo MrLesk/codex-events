@@ -220,12 +220,12 @@ useSeoMeta({
     <section class="relative isolate overflow-hidden border-b border-default/80 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,rgba(249,251,255,0.98),rgba(241,246,252,0.96))]">
       <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/55 to-transparent" />
 
-      <UContainer class="py-10 sm:py-14">
+      <AppContainer class="py-10 sm:py-14">
         <NuxtLink
           to="/judging"
           class="inline-flex items-center gap-2 rounded-full border border-default/80 bg-elevated/82 px-4 py-2 text-sm font-medium text-highlighted shadow-[0_18px_40px_-28px_rgba(17,24,39,0.35)] transition hover:border-primary/45"
         >
-          <UIcon
+          <AppIcon
             name="i-lucide-arrow-left"
             class="size-4"
           />
@@ -240,7 +240,7 @@ useSeoMeta({
           <div class="h-48 rounded-[2rem] border border-default/80 bg-elevated/78" />
         </div>
 
-        <UAlert
+        <AppAlert
           v-else-if="workspace.error.value"
           class="mt-8"
           color="warning"
@@ -249,7 +249,7 @@ useSeoMeta({
           :description="workspace.error.value.message"
         />
 
-        <UAlert
+        <AppAlert
           v-else-if="!assignment || !hackathon"
           class="mt-8"
           color="warning"
@@ -264,13 +264,13 @@ useSeoMeta({
         >
           <div class="space-y-5">
             <div class="flex flex-wrap items-center gap-2">
-              <UBadge
+              <AppBadge
                 :color="getHackathonStateColor(hackathon.state)"
                 variant="soft"
                 class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
               >
                 {{ formatHackathonState(hackathon.state) }}
-              </UBadge>
+              </AppBadge>
               <span class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                 {{ hackathon.name }}
               </span>
@@ -286,7 +286,7 @@ useSeoMeta({
             </div>
           </div>
 
-          <UCard
+          <AppCard
             variant="subtle"
             :ui="{ root: 'rounded-[1.9rem] border border-default/80 bg-elevated/84 shadow-[0_28px_72px_-52px_rgba(17,24,39,0.42)]' }"
           >
@@ -300,27 +300,27 @@ useSeoMeta({
                 class="flex flex-wrap items-center gap-2"
               >
                 <JudgeAssignmentStatusBadge :status="assignment.status" />
-                <UBadge
+                <AppBadge
                   data-testid="judge-assignment-ineligibility"
                   :color="resolveJudgeIneligibilityColor(assignment.ineligibilityStatus)"
                   variant="soft"
                   class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
                 >
                   {{ formatJudgeIneligibilityStatus(assignment.ineligibilityStatus) }}
-                </UBadge>
+                </AppBadge>
               </div>
 
               <p class="text-sm leading-7 text-toned">
                 {{ describeJudgeAssignmentStatus(assignment.status) }}
               </p>
             </div>
-          </UCard>
+          </AppCard>
         </div>
-      </UContainer>
+      </AppContainer>
     </section>
 
-    <UContainer class="space-y-6 pt-10">
-      <UAlert
+    <AppContainer class="space-y-6 pt-10">
+      <AppAlert
         v-if="actionState.success"
         color="success"
         variant="subtle"
@@ -329,7 +329,7 @@ useSeoMeta({
         :description="actionState.success"
       />
 
-      <UAlert
+      <AppAlert
         v-if="actionState.error"
         color="warning"
         variant="subtle"
@@ -353,7 +353,7 @@ useSeoMeta({
         <div class="space-y-6">
           <BlindSubmissionPanel :assignment="assignment" />
 
-          <UAlert
+          <AppAlert
             v-if="criteria.length === 0"
             color="warning"
             variant="soft"
@@ -370,7 +370,7 @@ useSeoMeta({
         </div>
 
         <div class="space-y-6">
-          <UCard
+          <AppCard
             variant="subtle"
             :ui="{ root: 'rounded-[2rem] border border-default/80 bg-elevated/88 shadow-[0_28px_72px_-52px_rgba(17,24,39,0.42)]' }"
           >
@@ -399,9 +399,9 @@ useSeoMeta({
                 </div>
               </div>
             </div>
-          </UCard>
+          </AppCard>
 
-          <UCard
+          <AppCard
             variant="subtle"
             :ui="{ root: 'rounded-[2rem] border border-default/80 bg-elevated/88 shadow-[0_28px_72px_-52px_rgba(17,24,39,0.42)]' }"
           >
@@ -416,7 +416,7 @@ useSeoMeta({
               </div>
 
               <div class="space-y-3">
-                <UButton
+                <AppButton
                   v-if="canStartJudgeAssignment(assignment)"
                   data-testid="judge-start-review"
                   color="primary"
@@ -427,9 +427,9 @@ useSeoMeta({
                   @click="startReview"
                 >
                   Start review
-                </UButton>
+                </AppButton>
 
-                <UButton
+                <AppButton
                   v-if="canCompleteJudgeAssignment(assignment)"
                   data-testid="judge-complete-review"
                   color="success"
@@ -441,7 +441,7 @@ useSeoMeta({
                   @click="completeReview"
                 >
                   Complete review
-                </UButton>
+                </AppButton>
 
                 <p
                   v-if="assignment.status === 'judge_completed'"
@@ -478,7 +478,7 @@ useSeoMeta({
                   class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm leading-7 text-toned outline-none transition focus:border-primary"
                 />
 
-                <UButton
+                <AppButton
                   data-testid="judge-skip-review"
                   color="neutral"
                   variant="outline"
@@ -487,7 +487,7 @@ useSeoMeta({
                   @click="skipReview"
                 >
                   Skip review
-                </UButton>
+                </AppButton>
               </div>
 
               <div
@@ -510,7 +510,7 @@ useSeoMeta({
                   class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm leading-7 text-toned outline-none transition focus:border-primary"
                 />
 
-                <UButton
+                <AppButton
                   data-testid="judge-mark-ineligible"
                   color="error"
                   variant="soft"
@@ -519,12 +519,12 @@ useSeoMeta({
                   @click="markIneligible"
                 >
                   Mark ineligible
-                </UButton>
+                </AppButton>
               </div>
             </div>
-          </UCard>
+          </AppCard>
         </div>
       </div>
-    </UContainer>
+    </AppContainer>
   </div>
 </template>

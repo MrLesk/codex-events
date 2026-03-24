@@ -65,7 +65,7 @@ const actionableAssignments = computed(() =>
 </script>
 
 <template>
-  <UCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="border border-default/70 bg-elevated/90">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -78,7 +78,7 @@ const actionableAssignments = computed(() =>
     </template>
 
     <div class="space-y-6">
-      <UAlert
+      <AppAlert
         v-if="errorMessage"
         color="error"
         variant="soft"
@@ -86,7 +86,7 @@ const actionableAssignments = computed(() =>
         :description="errorMessage"
       />
 
-      <UAlert
+      <AppAlert
         v-else-if="isLoading"
         color="neutral"
         variant="soft"
@@ -95,7 +95,7 @@ const actionableAssignments = computed(() =>
       />
 
       <template v-else>
-        <UAlert
+        <AppAlert
           v-if="actionableAssignments.length === 0"
           color="neutral"
           variant="soft"
@@ -137,13 +137,13 @@ const actionableAssignments = computed(() =>
                   </div>
                 </div>
 
-                <UBadge
+                <AppBadge
                   :color="getJudgeAssignmentStatusColor(assignment.status)"
                   variant="soft"
                   class="self-start"
                 >
                   {{ formatAdminJudgeAssignmentStatus(assignment.status) }}
-                </UBadge>
+                </AppBadge>
               </div>
 
               <div
@@ -191,7 +191,7 @@ const actionableAssignments = computed(() =>
                   </label>
                 </div>
 
-                <UButton
+                <AppButton
                   color="warning"
                   :data-testid="`admin-competition-reassign-submit-${assignment.submissionId}`"
                   :loading="pendingActionKey === `reassign:${assignment.id}`"
@@ -203,7 +203,7 @@ const actionableAssignments = computed(() =>
                   })"
                 >
                   Reassign assignment
-                </UButton>
+                </AppButton>
               </div>
 
               <div
@@ -229,7 +229,7 @@ const actionableAssignments = computed(() =>
                   >
                 </label>
 
-                <UButton
+                <AppButton
                   color="error"
                   variant="soft"
                   :data-testid="`admin-competition-force-skip-submit-${assignment.submissionId}`"
@@ -241,12 +241,12 @@ const actionableAssignments = computed(() =>
                   })"
                 >
                   Force-skip assignment
-                </UButton>
+                </AppButton>
               </div>
             </div>
           </article>
         </div>
       </template>
     </div>
-  </UCard>
+  </AppCard>
 </template>

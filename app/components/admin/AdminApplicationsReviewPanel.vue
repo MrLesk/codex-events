@@ -30,7 +30,7 @@ const rejectedCount = computed(() =>
 </script>
 
 <template>
-  <UCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="border border-default/70 bg-elevated/90">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -43,7 +43,7 @@ const rejectedCount = computed(() =>
     </template>
 
     <div class="space-y-6">
-      <UAlert
+      <AppAlert
         v-if="errorMessage"
         color="error"
         variant="soft"
@@ -51,7 +51,7 @@ const rejectedCount = computed(() =>
         :description="errorMessage"
       />
 
-      <UAlert
+      <AppAlert
         v-else-if="isLoading"
         color="neutral"
         variant="soft"
@@ -144,13 +144,13 @@ const rejectedCount = computed(() =>
                 </div>
               </div>
 
-              <UBadge
+              <AppBadge
                 :color="getApplicationStatusColor(application.status)"
                 variant="soft"
                 class="self-start"
               >
                 {{ formatApplicationStatus(application.status) }}
-              </UBadge>
+              </AppBadge>
             </div>
 
             <div class="mt-5 grid gap-3 text-sm text-toned md:grid-cols-3">
@@ -186,7 +186,7 @@ const rejectedCount = computed(() =>
               v-if="application.status === 'submitted'"
               class="mt-5 flex flex-wrap gap-3"
             >
-              <UButton
+              <AppButton
                 color="success"
                 :data-testid="`admin-application-approve-${application.id}`"
                 :loading="pendingActionKey === `approve:${application.id}`"
@@ -194,9 +194,9 @@ const rejectedCount = computed(() =>
                 @click="emit('approve', application)"
               >
                 Approve application
-              </UButton>
+              </AppButton>
 
-              <UButton
+              <AppButton
                 color="error"
                 variant="soft"
                 :data-testid="`admin-application-reject-${application.id}`"
@@ -205,12 +205,12 @@ const rejectedCount = computed(() =>
                 @click="emit('reject', application)"
               >
                 Reject application
-              </UButton>
+              </AppButton>
             </div>
           </article>
         </div>
 
-        <UAlert
+        <AppAlert
           v-else
           color="neutral"
           variant="soft"
@@ -219,5 +219,5 @@ const rejectedCount = computed(() =>
         />
       </template>
     </div>
-  </UCard>
+  </AppCard>
 </template>

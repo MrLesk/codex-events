@@ -44,6 +44,10 @@ Start the development server:
 bun run dev
 ```
 
+The interface layer uses `shadcn-vue` primitives plus Tailwind CSS.
+Generated `shadcn-vue` primitives live under `app/components/ui/`.
+Project-owned shared interface components live under `app/components/`.
+
 The built-in Auth0 Nuxt routes are mounted at:
 
 - `/auth/login`

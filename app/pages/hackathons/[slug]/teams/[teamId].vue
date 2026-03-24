@@ -405,13 +405,13 @@ useSeoMeta({
 </script>
 
 <template>
-  <UContainer class="space-y-8 py-10 sm:py-14">
+  <AppContainer class="space-y-8 py-10 sm:py-14">
     <section class="space-y-4">
       <NuxtLink
         :to="`/hackathons/${slug}/teams`"
         class="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-primary/80"
       >
-        <UIcon
+        <AppIcon
           name="i-lucide-arrow-left"
           class="size-4"
         />
@@ -432,18 +432,18 @@ useSeoMeta({
           </div>
         </div>
 
-        <UCard class="border border-default/70 bg-elevated/90 lg:max-w-sm">
+        <AppCard class="border border-default/70 bg-elevated/90 lg:max-w-sm">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Route context
           </p>
           <p class="mt-3 text-sm leading-7 text-toned">
             Team detail stays hackathon-scoped and uses the canonical participant team APIs for membership, join requests, and team-admin changes.
           </p>
-        </UCard>
+        </AppCard>
       </div>
     </section>
 
-    <UAlert
+    <AppAlert
       v-if="isWorkspaceLoading"
       color="neutral"
       variant="soft"
@@ -451,7 +451,7 @@ useSeoMeta({
       description="Resolving the participant actor, application status, and team detail for this route."
     />
 
-    <UAlert
+    <AppAlert
       v-else-if="workspace.actorErrorMessage.value"
       color="error"
       variant="soft"
@@ -460,24 +460,24 @@ useSeoMeta({
     />
 
     <template v-else-if="actor?.kind === 'authenticated_identity'">
-      <UAlert
+      <AppAlert
         color="warning"
         variant="soft"
         title="Platform account required"
         description="Complete the platform account before you can enter the participant team workspace."
       />
 
-      <UButton
+      <AppButton
         to="/onboarding/account"
         color="warning"
         icon="i-lucide-id-card"
       >
         Complete platform account
-      </UButton>
+      </AppButton>
     </template>
 
     <template v-else-if="actor?.kind === 'platform_user'">
-      <UAlert
+      <AppAlert
         v-if="workspace.visibleHackathonErrorMessage.value"
         color="error"
         variant="soft"
@@ -485,7 +485,7 @@ useSeoMeta({
         :description="workspace.visibleHackathonErrorMessage.value"
       />
 
-      <UAlert
+      <AppAlert
         v-else-if="!workspace.visibleHackathonId.value"
         color="error"
         variant="soft"
@@ -493,7 +493,7 @@ useSeoMeta({
         description="This authenticated route could not resolve the visible hackathon record needed for participant team work."
       />
 
-      <UAlert
+      <AppAlert
         v-else-if="workspace.ownApplicationErrorMessage.value"
         color="error"
         variant="soft"
@@ -501,7 +501,7 @@ useSeoMeta({
         :description="workspace.ownApplicationErrorMessage.value"
       />
 
-      <UAlert
+      <AppAlert
         v-else-if="workspace.currentTeamErrorMessage.value"
         color="error"
         variant="soft"
@@ -510,7 +510,7 @@ useSeoMeta({
       />
 
       <template v-else-if="workspace.currentTeam.value">
-        <UAlert
+        <AppAlert
           v-if="workspace.mutationError.value"
           color="error"
           variant="soft"
@@ -577,5 +577,5 @@ useSeoMeta({
         </div>
       </template>
     </template>
-  </UContainer>
+  </AppContainer>
 </template>

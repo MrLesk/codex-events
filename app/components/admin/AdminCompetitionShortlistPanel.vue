@@ -85,7 +85,7 @@ function resetDraft() {
 </script>
 
 <template>
-  <UCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="border border-default/70 bg-elevated/90">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -108,7 +108,7 @@ function resetDraft() {
           </p>
         </div>
 
-        <UAlert
+        <AppAlert
           v-if="leaderboardErrorMessage"
           color="error"
           variant="soft"
@@ -116,7 +116,7 @@ function resetDraft() {
           :description="leaderboardErrorMessage"
         />
 
-        <UAlert
+        <AppAlert
           v-else-if="isLeaderboardLoading"
           color="neutral"
           variant="soft"
@@ -163,7 +163,7 @@ function resetDraft() {
           </article>
         </div>
 
-        <UAlert
+        <AppAlert
           v-else
           color="neutral"
           variant="soft"
@@ -182,7 +182,7 @@ function resetDraft() {
           </p>
         </div>
 
-        <UAlert
+        <AppAlert
           v-if="!canReviewShortlist"
           color="neutral"
           variant="soft"
@@ -191,7 +191,7 @@ function resetDraft() {
         />
 
         <template v-else>
-          <UAlert
+          <AppAlert
             v-if="shortlistErrorMessage"
             color="error"
             variant="soft"
@@ -199,7 +199,7 @@ function resetDraft() {
             :description="shortlistErrorMessage"
           />
 
-          <UAlert
+          <AppAlert
             v-else-if="isShortlistLoading"
             color="neutral"
             variant="soft"
@@ -245,7 +245,7 @@ function resetDraft() {
                       v-if="canReorderShortlist"
                       class="flex items-center gap-2"
                     >
-                      <UButton
+                      <AppButton
                         variant="soft"
                         color="neutral"
                         :data-testid="`admin-competition-shortlist-move-up-${entry.submissionId}`"
@@ -253,9 +253,9 @@ function resetDraft() {
                         @click="moveEntry(entry.submissionId, -1)"
                       >
                         Move up
-                      </UButton>
+                      </AppButton>
 
-                      <UButton
+                      <AppButton
                         variant="soft"
                         color="neutral"
                         :data-testid="`admin-competition-shortlist-move-down-${entry.submissionId}`"
@@ -263,7 +263,7 @@ function resetDraft() {
                         @click="moveEntry(entry.submissionId, 1)"
                       >
                         Move down
-                      </UButton>
+                      </AppButton>
                     </div>
                   </div>
                 </div>
@@ -274,7 +274,7 @@ function resetDraft() {
               v-if="canReorderShortlist"
               class="flex flex-wrap gap-3"
             >
-              <UButton
+              <AppButton
                 color="primary"
                 data-testid="admin-competition-shortlist-save"
                 :loading="pendingActionKey === 'shortlist-reorder'"
@@ -282,20 +282,20 @@ function resetDraft() {
                 @click="emit('reorder', draftShortlist.map(entry => entry.submissionId))"
               >
                 Save shortlist order
-              </UButton>
+              </AppButton>
 
-              <UButton
+              <AppButton
                 variant="soft"
                 color="neutral"
                 :disabled="!hasDraftChanges || pendingActionKey !== null"
                 @click="resetDraft"
               >
                 Reset order
-              </UButton>
+              </AppButton>
             </div>
           </div>
 
-          <UAlert
+          <AppAlert
             v-else
             color="neutral"
             variant="soft"
@@ -305,5 +305,5 @@ function resetDraft() {
         </template>
       </section>
     </div>
-  </UCard>
+  </AppCard>
 </template>

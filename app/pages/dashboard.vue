@@ -75,13 +75,13 @@ useSeoMeta({
 
 <template>
   <div class="space-y-12 pb-20">
-    <UPageHero
+    <PageHero
       title="Dashboard"
       :description="roleSummary"
     >
       <template #headline>
         <div class="flex flex-wrap gap-2">
-          <UBadge
+          <AppBadge
             v-for="chip in roleChips"
             :key="chip"
             color="primary"
@@ -89,12 +89,12 @@ useSeoMeta({
             class="rounded-full px-4 py-1.5 font-semibold tracking-[0.16em] uppercase"
           >
             {{ chip }}
-          </UBadge>
+          </AppBadge>
         </div>
       </template>
 
       <template #body>
-        <UAlert
+        <AppAlert
           v-if="isResolvingActor"
           color="primary"
           variant="soft"
@@ -103,14 +103,14 @@ useSeoMeta({
           description="The shell is loading platform-specific permissions and role assignments for this authenticated session."
         />
 
-        <UCard
+        <AppCard
           v-else
           variant="subtle"
           :ui="{ root: 'rounded-[1.85rem] border border-default/80 bg-elevated/82 shadow-[0_30px_72px_-52px_rgba(15,20,34,0.65)] backdrop-blur' }"
         >
           <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div class="flex items-center gap-4">
-              <UAvatar
+              <AppAvatar
                 :src="user?.picture"
                 :alt="user?.name"
                 size="3xl"
@@ -144,16 +144,16 @@ useSeoMeta({
               </div>
             </div>
           </div>
-        </UCard>
+        </AppCard>
       </template>
-    </UPageHero>
+    </PageHero>
 
-    <UPageSection
+    <PageSection
       title="Available entry points"
       description="These cards are derived from the current actor and hackathon-role assignments exposed by the canonical session API."
     >
       <template #body>
-        <UAlert
+        <AppAlert
           v-if="prizeRedemptionsErrorMessage"
           color="warning"
           variant="soft"
@@ -171,6 +171,6 @@ useSeoMeta({
           />
         </div>
       </template>
-    </UPageSection>
+    </PageSection>
   </div>
 </template>

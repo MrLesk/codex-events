@@ -71,7 +71,7 @@ function isActionPending(actionKey: string) {
 </script>
 
 <template>
-  <UCard
+  <AppCard
     data-testid="participant-submission-panel"
     class="border border-default/70 bg-elevated/90"
   >
@@ -82,13 +82,13 @@ function isActionPending(actionKey: string) {
             Project Submission
           </h2>
 
-          <UBadge
+          <AppBadge
             :color="submissionStatusColor"
             variant="soft"
             data-testid="participant-submission-status"
           >
             {{ submissionStatusLabel }}
-          </UBadge>
+          </AppBadge>
         </div>
 
         <p class="text-sm text-muted">
@@ -98,7 +98,7 @@ function isActionPending(actionKey: string) {
     </template>
 
     <div class="space-y-6">
-      <UAlert
+      <AppAlert
         v-if="status === 'pending'"
         color="neutral"
         variant="soft"
@@ -106,7 +106,7 @@ function isActionPending(actionKey: string) {
         description="Resolving the current submission record for this team."
       />
 
-      <UAlert
+      <AppAlert
         v-else-if="status === 'error' && errorMessage"
         color="error"
         variant="soft"
@@ -248,7 +248,7 @@ function isActionPending(actionKey: string) {
             </div>
 
             <div class="flex flex-wrap gap-3">
-              <UButton
+              <AppButton
                 v-if="!submission"
                 type="submit"
                 color="primary"
@@ -257,10 +257,10 @@ function isActionPending(actionKey: string) {
                 data-testid="participant-submission-create"
               >
                 Create draft
-              </UButton>
+              </AppButton>
 
               <template v-else>
-                <UButton
+                <AppButton
                   type="submit"
                   color="primary"
                   :loading="isUpdatePending"
@@ -268,9 +268,9 @@ function isActionPending(actionKey: string) {
                   data-testid="participant-submission-save"
                 >
                   Save changes
-                </UButton>
+                </AppButton>
 
-                <UButton
+                <AppButton
                   type="button"
                   color="primary"
                   variant="soft"
@@ -280,9 +280,9 @@ function isActionPending(actionKey: string) {
                   @click="emit('submitProject')"
                 >
                   Submit project
-                </UButton>
+                </AppButton>
 
-                <UButton
+                <AppButton
                   type="button"
                   color="warning"
                   variant="soft"
@@ -292,12 +292,12 @@ function isActionPending(actionKey: string) {
                   @click="emit('withdrawSubmission')"
                 >
                   Withdraw submission
-                </UButton>
+                </AppButton>
               </template>
             </div>
           </form>
         </div>
       </template>
     </div>
-  </UCard>
+  </AppCard>
 </template>

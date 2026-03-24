@@ -20,7 +20,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <UCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="border border-default/70 bg-elevated/90">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -33,7 +33,7 @@ const emit = defineEmits<{
     </template>
 
     <div class="space-y-4">
-      <UAlert
+      <AppAlert
         v-if="errorMessage"
         color="error"
         variant="soft"
@@ -41,7 +41,7 @@ const emit = defineEmits<{
         :description="errorMessage"
       />
 
-      <UAlert
+      <AppAlert
         v-else-if="status === 'pending'"
         color="neutral"
         variant="soft"
@@ -66,12 +66,12 @@ const emit = defineEmits<{
                   {{ request.user?.displayName ?? request.userId }}
                 </h3>
 
-                <UBadge
+                <AppBadge
                   :color="getTeamJoinRequestStatusColor(request.status)"
                   variant="soft"
                 >
                   {{ formatTeamJoinRequestStatus(request.status) }}
-                </UBadge>
+                </AppBadge>
               </div>
 
               <p class="text-sm text-toned">
@@ -90,7 +90,7 @@ const emit = defineEmits<{
               v-if="request.status === 'pending'"
               class="flex flex-wrap gap-3"
             >
-              <UButton
+              <AppButton
                 color="success"
                 :loading="pendingActionKey === `approve-join-request:${request.id}`"
                 :disabled="pendingActionKey === `approve-join-request:${request.id}`"
@@ -98,9 +98,9 @@ const emit = defineEmits<{
                 @click="emit('approveRequest', request.id)"
               >
                 Approve
-              </UButton>
+              </AppButton>
 
-              <UButton
+              <AppButton
                 color="warning"
                 variant="soft"
                 :loading="pendingActionKey === `reject-join-request:${request.id}`"
@@ -109,13 +109,13 @@ const emit = defineEmits<{
                 @click="emit('rejectRequest', request.id)"
               >
                 Reject
-              </UButton>
+              </AppButton>
             </div>
           </div>
         </article>
       </div>
 
-      <UAlert
+      <AppAlert
         v-else
         color="neutral"
         variant="soft"
@@ -123,5 +123,5 @@ const emit = defineEmits<{
         description="Join requests will appear here once another approved participant asks to join this team."
       />
     </div>
-  </UCard>
+  </AppCard>
 </template>

@@ -22,7 +22,7 @@ defineEmits<{
     @submit.prevent="$emit('submit')"
   >
     <section class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-      <UCard class="border border-default/70 bg-elevated/90">
+      <AppCard class="border border-default/70 bg-elevated/90">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -68,9 +68,9 @@ defineEmits<{
             />
           </label>
         </div>
-      </UCard>
+      </AppCard>
 
-      <UCard class="border border-default/70 bg-elevated/90">
+      <AppCard class="border border-default/70 bg-elevated/90">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -125,11 +125,11 @@ defineEmits<{
             >
           </label>
         </div>
-      </UCard>
+      </AppCard>
     </section>
 
     <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-      <UCard class="border border-default/70 bg-elevated/90">
+      <AppCard class="border border-default/70 bg-elevated/90">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -182,9 +182,9 @@ defineEmits<{
             >
           </label>
         </div>
-      </UCard>
+      </AppCard>
 
-      <UCard class="border border-default/70 bg-elevated/90">
+      <AppCard class="border border-default/70 bg-elevated/90">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -237,7 +237,7 @@ defineEmits<{
             </label>
           </div>
         </div>
-      </UCard>
+      </AppCard>
     </section>
 
     <div class="flex flex-col gap-3 rounded-[1.75rem] border border-default/80 bg-elevated/90 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -245,7 +245,7 @@ defineEmits<{
         {{ helperText ?? 'Changes are written through the canonical admin API endpoints and validated against the documented lifecycle constraints.' }}
       </p>
 
-      <UButton
+      <AppButton
         type="submit"
         :loading="isSubmitting"
         :disabled="isSubmitting"
@@ -254,7 +254,7 @@ defineEmits<{
         class="justify-center"
       >
         {{ submitLabel }}
-      </UButton>
+      </AppButton>
     </div>
   </form>
 </template>

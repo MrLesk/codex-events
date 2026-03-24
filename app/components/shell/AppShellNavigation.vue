@@ -43,7 +43,7 @@ function isActiveLink(to: string) {
             class="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-full border border-default/70 bg-bg/80 text-primary"
             :class="isActiveLink(item.to) ? 'border-primary/40 bg-primary/10 text-primary' : undefined"
           >
-            <UIcon
+            <AppIcon
               :name="item.icon"
               class="size-4"
             />
@@ -54,7 +54,7 @@ function isActiveLink(to: string) {
               <p class="text-sm font-semibold text-highlighted">
                 {{ item.label }}
               </p>
-              <UBadge
+              <AppBadge
                 v-if="item.badge"
                 color="neutral"
                 variant="soft"
@@ -62,7 +62,7 @@ function isActiveLink(to: string) {
                 class="rounded-full"
               >
                 {{ item.badge }}
-              </UBadge>
+              </AppBadge>
             </div>
             <p class="mt-1 text-xs leading-6 text-muted">
               {{ item.description }}

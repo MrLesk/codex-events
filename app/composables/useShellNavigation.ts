@@ -1,3 +1,5 @@
+import { buildAuthLoginHref } from '~/utils/auth-navigation'
+
 interface ShellSessionUser {
   sub: string
   email?: string | null
@@ -490,4 +492,3 @@ export function useShellNavigation() {
     sidebarGroups
   }
 }
-import { buildAuthLoginHref } from '~/utils/auth-navigation'

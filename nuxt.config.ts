@@ -1,30 +1,19 @@
+import tailwindcss from '@tailwindcss/vite'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: [
     '@nuxt/eslint',
     '@auth0/auth0-nuxt',
-    '@nuxt/ui'
+    '@nuxt/icon',
+    'shadcn-nuxt'
   ],
 
   devtools: {
     enabled: true
   },
 
-  vite: {
-    optimizeDeps: {
-      include: [
-        '@vue/devtools-core',
-        '@vue/devtools-kit'
-      ]
-    }
-  },
-
   css: ['~/assets/css/main.css'],
-
-  colorMode: {
-    preference: 'dark',
-    fallback: 'dark'
-  },
 
   runtimeConfig: {
     auth0: {
@@ -42,6 +31,23 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2025-01-15',
 
+  vite: {
+    plugins: [tailwindcss()],
+    optimizeDeps: {
+      include: [
+        '@vue/devtools-core',
+        '@vue/devtools-kit',
+        'lucide-vue-next',
+        'clsx',
+        'tailwind-merge',
+        'class-variance-authority',
+        'vue-sonner',
+        'reka-ui',
+        '@vueuse/core'
+      ]
+    }
+  },
+
   eslint: {
     config: {
       stylistic: {
@@ -49,5 +55,10 @@ export default defineNuxtConfig({
         braceStyle: '1tbs'
       }
     }
+  },
+
+  shadcn: {
+    prefix: '',
+    componentDir: '~/components/ui'
   }
 })

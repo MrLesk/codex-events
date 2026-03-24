@@ -26,7 +26,7 @@ const winnersVisible = computed(() =>
 </script>
 
 <template>
-  <UCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="border border-default/70 bg-elevated/90">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -65,7 +65,7 @@ const winnersVisible = computed(() =>
             </p>
           </div>
 
-          <UAlert
+          <AppAlert
             v-if="outcomeControl.reason"
             color="warning"
             variant="soft"
@@ -74,7 +74,7 @@ const winnersVisible = computed(() =>
           />
 
           <div class="flex flex-wrap gap-3">
-            <UButton
+            <AppButton
               v-if="outcomeControl.key === 'announce_winners'"
               color="success"
               data-testid="admin-competition-announce-winners"
@@ -83,9 +83,9 @@ const winnersVisible = computed(() =>
               @click="emit('announceWinners')"
             >
               Announce winners
-            </UButton>
+            </AppButton>
 
-            <UButton
+            <AppButton
               v-else-if="outcomeControl.key === 'complete'"
               color="neutral"
               data-testid="admin-competition-complete-hackathon"
@@ -94,12 +94,12 @@ const winnersVisible = computed(() =>
               @click="emit('completeHackathon')"
             >
               Complete hackathon
-            </UButton>
+            </AppButton>
           </div>
         </div>
       </div>
 
-      <UAlert
+      <AppAlert
         v-if="!winnersVisible"
         color="neutral"
         variant="soft"
@@ -108,7 +108,7 @@ const winnersVisible = computed(() =>
       />
 
       <template v-else>
-        <UAlert
+        <AppAlert
           v-if="errorMessage"
           color="error"
           variant="soft"
@@ -116,7 +116,7 @@ const winnersVisible = computed(() =>
           :description="errorMessage"
         />
 
-        <UAlert
+        <AppAlert
           v-else-if="isLoading"
           color="neutral"
           variant="soft"
@@ -150,20 +150,20 @@ const winnersVisible = computed(() =>
               </div>
 
               <div class="flex flex-wrap gap-2">
-                <UBadge
+                <AppBadge
                   v-for="prize in winner.prizes"
                   :key="prize.id"
                   color="success"
                   variant="soft"
                 >
                   {{ prize.name }}
-                </UBadge>
+                </AppBadge>
               </div>
             </div>
           </article>
         </div>
 
-        <UAlert
+        <AppAlert
           v-else
           color="neutral"
           variant="soft"
@@ -172,5 +172,5 @@ const winnersVisible = computed(() =>
         />
       </template>
     </div>
-  </UCard>
+  </AppCard>
 </template>

@@ -55,7 +55,7 @@ const disqualifiableTeams = computed(() =>
 </script>
 
 <template>
-  <UCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="border border-default/70 bg-elevated/90">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -68,7 +68,7 @@ const disqualifiableTeams = computed(() =>
     </template>
 
     <div class="space-y-8">
-      <UAlert
+      <AppAlert
         v-if="errorMessage"
         color="error"
         variant="soft"
@@ -76,7 +76,7 @@ const disqualifiableTeams = computed(() =>
         :description="errorMessage"
       />
 
-      <UAlert
+      <AppAlert
         v-else-if="isLoading"
         color="neutral"
         variant="soft"
@@ -143,7 +143,7 @@ const disqualifiableTeams = computed(() =>
                   </label>
                 </div>
 
-                <UAlert
+                <AppAlert
                   v-if="team.activeAdminChoices.length === 0"
                   color="warning"
                   variant="soft"
@@ -151,7 +151,7 @@ const disqualifiableTeams = computed(() =>
                   description="This action cannot be issued until the team detail exposes at least one active admin requester."
                 />
 
-                <UButton
+                <AppButton
                   color="warning"
                   :data-testid="`admin-withdraw-submit-${team.team.id}`"
                   :loading="pendingActionKey === `admin-withdraw:${team.team.id}`"
@@ -163,12 +163,12 @@ const disqualifiableTeams = computed(() =>
                   })"
                 >
                   Admin-withdraw submission
-                </UButton>
+                </AppButton>
               </div>
             </article>
           </div>
 
-          <UAlert
+          <AppAlert
             v-else
             color="neutral"
             variant="soft"
@@ -217,7 +217,7 @@ const disqualifiableTeams = computed(() =>
                   >
                 </label>
 
-                <UButton
+                <AppButton
                   color="error"
                   variant="soft"
                   :data-testid="`admin-disqualify-submit-${team.team.id}`"
@@ -229,12 +229,12 @@ const disqualifiableTeams = computed(() =>
                   })"
                 >
                   Disqualify submission
-                </UButton>
+                </AppButton>
               </div>
             </article>
           </div>
 
-          <UAlert
+          <AppAlert
             v-else
             color="neutral"
             variant="soft"
@@ -244,5 +244,5 @@ const disqualifiableTeams = computed(() =>
         </section>
       </template>
     </div>
-  </UCard>
+  </AppCard>
 </template>

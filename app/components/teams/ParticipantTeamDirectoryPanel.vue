@@ -45,7 +45,7 @@ function isActionPending(actionKey: string) {
 
 <template>
   <div class="space-y-6">
-    <UCard
+    <AppCard
       v-if="currentTeam"
       class="border border-success/30 bg-success/5"
     >
@@ -66,31 +66,31 @@ function isActionPending(actionKey: string) {
             <h3 class="text-xl font-semibold text-highlighted">
               {{ currentTeam.name }}
             </h3>
-            <UBadge
+            <AppBadge
               color="success"
               variant="soft"
             >
               {{ currentTeam.activeMemberCount ?? currentTeam.members.length }} active member{{ (currentTeam.activeMemberCount ?? currentTeam.members.length) === 1 ? '' : 's' }}
-            </UBadge>
+            </AppBadge>
           </div>
           <p class="text-sm text-toned">
             Team slug: {{ currentTeam.slug }}.
           </p>
         </div>
 
-        <UButton
+        <AppButton
           v-if="currentTeamHref"
           :to="currentTeamHref"
           color="primary"
           icon="i-lucide-arrow-right"
         >
           Open team workspace
-        </UButton>
+        </AppButton>
       </div>
-    </UCard>
+    </AppCard>
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-      <UCard class="border border-default/70 bg-elevated/90">
+      <AppCard class="border border-default/70 bg-elevated/90">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -103,7 +103,7 @@ function isActionPending(actionKey: string) {
         </template>
 
         <div class="space-y-4">
-          <UAlert
+          <AppAlert
             v-if="!canCreateTeam.isAllowed"
             color="warning"
             variant="soft"
@@ -149,7 +149,7 @@ function isActionPending(actionKey: string) {
               Open this team to join requests immediately
             </label>
 
-            <UButton
+            <AppButton
               type="submit"
               color="primary"
               :loading="isCreatingTeam"
@@ -157,12 +157,12 @@ function isActionPending(actionKey: string) {
               data-testid="participant-team-create-submit"
             >
               Create team
-            </UButton>
+            </AppButton>
           </form>
         </div>
-      </UCard>
+      </AppCard>
 
-      <UCard
+      <AppCard
         data-testid="participant-team-directory-panel"
         class="border border-default/70 bg-elevated/90"
       >
@@ -178,7 +178,7 @@ function isActionPending(actionKey: string) {
         </template>
 
         <div class="space-y-4">
-          <UAlert
+          <AppAlert
             v-if="teamErrorMessage"
             color="error"
             variant="soft"
@@ -186,7 +186,7 @@ function isActionPending(actionKey: string) {
             :description="teamErrorMessage"
           />
 
-          <UAlert
+          <AppAlert
             v-else-if="isLoadingTeams"
             color="neutral"
             variant="soft"
@@ -211,20 +211,20 @@ function isActionPending(actionKey: string) {
                       {{ entry.team.name }}
                     </h3>
 
-                    <UBadge
+                    <AppBadge
                       :color="entry.team.isOpenToJoinRequests ? 'success' : 'neutral'"
                       variant="soft"
                     >
                       {{ entry.team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
-                    </UBadge>
+                    </AppBadge>
 
-                    <UBadge
+                    <AppBadge
                       v-if="entry.isOwnTeam"
                       color="primary"
                       variant="soft"
                     >
                       Your team
-                    </UBadge>
+                    </AppBadge>
                   </div>
 
                   <p class="text-sm text-toned">
@@ -240,15 +240,15 @@ function isActionPending(actionKey: string) {
                 </div>
 
                 <div class="flex flex-wrap gap-3">
-                  <UButton
+                  <AppButton
                     :to="entry.detailHref"
                     color="neutral"
                     variant="outline"
                   >
                     View team
-                  </UButton>
+                  </AppButton>
 
-                  <UButton
+                  <AppButton
                     v-if="entry.hasPendingJoinRequest"
                     color="warning"
                     variant="soft"
@@ -261,9 +261,9 @@ function isActionPending(actionKey: string) {
                     })"
                   >
                     Cancel pending request
-                  </UButton>
+                  </AppButton>
 
-                  <UButton
+                  <AppButton
                     v-else
                     color="primary"
                     :loading="isActionPending(`join-team:${entry.team.id}`)"
@@ -272,13 +272,13 @@ function isActionPending(actionKey: string) {
                     @click="emit('joinTeam', entry.team.id)"
                   >
                     Request to join
-                  </UButton>
+                  </AppButton>
                 </div>
               </div>
             </article>
           </div>
 
-          <UAlert
+          <AppAlert
             v-else
             color="neutral"
             variant="soft"
@@ -290,7 +290,7 @@ function isActionPending(actionKey: string) {
             v-if="!teamErrorMessage && !isLoadingTeams && teams.length > 0"
             class="flex flex-col items-start gap-3"
           >
-            <UButton
+            <AppButton
               v-if="hasMoreTeams"
               color="neutral"
               variant="outline"
@@ -299,9 +299,9 @@ function isActionPending(actionKey: string) {
               @click="emit('loadMoreTeams')"
             >
               Load more teams
-            </UButton>
+            </AppButton>
 
-            <UAlert
+            <AppAlert
               v-if="loadMoreTeamsErrorMessage"
               color="error"
               variant="soft"
@@ -314,7 +314,7 @@ function isActionPending(actionKey: string) {
             </p>
           </div>
         </div>
-      </UCard>
+      </AppCard>
     </div>
   </div>
 </template>

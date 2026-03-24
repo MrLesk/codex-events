@@ -37,14 +37,14 @@ const primaryLinks = computed(() => {
 
 <template>
   <div class="space-y-14 pb-20">
-    <UPageHero
+    <PageHero
       title="Operate hackathons through one role-aware surface instead of scattered workflows."
       description="The shell now separates public discovery from authenticated workspaces. Public visitors can inspect visible hackathons, while signed-in users enter a dashboard that reflects their real platform actor and effective hackathon roles."
       :links="primaryLinks"
       orientation="horizontal"
     >
       <template #headline>
-        <UBadge
+        <AppBadge
           color="primary"
           variant="soft"
           class="rounded-full px-4 py-1.5 font-semibold tracking-[0.18em] uppercase"
@@ -56,12 +56,12 @@ const primaryLinks = computed(() => {
                 ? 'Authenticated identity'
                 : 'Platform workspace'
           }}
-        </UBadge>
+        </AppBadge>
       </template>
 
       <template #body>
         <div class="grid gap-4 sm:grid-cols-3">
-          <UCard
+          <AppCard
             variant="subtle"
             :ui="{ root: 'rounded-[1.75rem] border border-default/80 bg-elevated/80 shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)] backdrop-blur' }"
           >
@@ -74,9 +74,9 @@ const primaryLinks = computed(() => {
             <p class="mt-2 text-sm leading-7 text-toned">
               Anyone can inspect visible hackathons, lifecycle timing, criteria, prizes, and terms references.
             </p>
-          </UCard>
+          </AppCard>
 
-          <UCard
+          <AppCard
             variant="subtle"
             :ui="{ root: 'rounded-[1.75rem] border border-default/80 bg-elevated/80 shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)] backdrop-blur' }"
           >
@@ -89,9 +89,9 @@ const primaryLinks = computed(() => {
             <p class="mt-2 text-sm leading-7 text-toned">
               The dashboard branches on canonical actor resolution, not on Auth0 profile assumptions or template shortcuts.
             </p>
-          </UCard>
+          </AppCard>
 
-          <UCard
+          <AppCard
             variant="subtle"
             :ui="{ root: 'rounded-[1.75rem] border border-default/80 bg-elevated/80 shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)] backdrop-blur' }"
           >
@@ -104,12 +104,12 @@ const primaryLinks = computed(() => {
             <p class="mt-2 text-sm leading-7 text-toned">
               Participants, judges, admins, and prize recipients see only the entry points that match their effective product permissions.
             </p>
-          </UCard>
+          </AppCard>
         </div>
       </template>
-    </UPageHero>
+    </PageHero>
 
-    <UPageSection
+    <PageSection
       title="What the shell enforces"
       description="Each area below exists to keep public, participant, judge, admin, and winner-facing flows legible before deeper feature pages fill in."
       :features="[{
@@ -135,6 +135,6 @@ const primaryLinks = computed(() => {
           />
         </div>
       </template>
-    </UPageSection>
+    </PageSection>
   </div>
 </template>

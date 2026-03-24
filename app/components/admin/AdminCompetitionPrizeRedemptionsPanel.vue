@@ -27,7 +27,7 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
 </script>
 
 <template>
-  <UCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="border border-default/70 bg-elevated/90">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -40,7 +40,7 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
     </template>
 
     <div class="space-y-6">
-      <UAlert
+      <AppAlert
         v-if="!redemptionsVisible"
         color="neutral"
         variant="soft"
@@ -69,7 +69,7 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
           </div>
         </section>
 
-        <UAlert
+        <AppAlert
           v-if="errorMessage"
           color="error"
           variant="soft"
@@ -77,7 +77,7 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
           :description="errorMessage"
         />
 
-        <UAlert
+        <AppAlert
           v-else-if="isLoading"
           color="neutral"
           variant="soft"
@@ -105,13 +105,13 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
                     <h3 class="text-lg font-semibold text-highlighted">
                       {{ redemption.prize.name }}
                     </h3>
-                    <UBadge
+                    <AppBadge
                       :data-testid="`admin-competition-redemption-status-${redemption.id}`"
                       :color="getPrizeRedemptionStatusColor(redemption.status)"
                       variant="soft"
                     >
                       {{ formatPrizeRedemptionStatus(redemption.status) }}
-                    </UBadge>
+                    </AppBadge>
                   </div>
                 </div>
 
@@ -161,7 +161,7 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
           </article>
         </div>
 
-        <UAlert
+        <AppAlert
           v-else
           color="neutral"
           variant="soft"
@@ -170,5 +170,5 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
         />
       </template>
     </div>
-  </UCard>
+  </AppCard>
 </template>

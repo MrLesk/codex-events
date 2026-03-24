@@ -12,19 +12,19 @@ defineProps<{
     </span>
 
     <div class="flex flex-wrap gap-2">
-      <UButton
+      <AppButton
         :variant="currentSurface === 'setup' ? 'solid' : 'soft'"
         :color="currentSurface === 'setup' ? 'primary' : 'neutral'"
         :to="`/admin/hackathons/${hackathonId}`"
         label="Setup"
       />
-      <UButton
+      <AppButton
         :variant="currentSurface === 'operations' ? 'solid' : 'soft'"
         :color="currentSurface === 'operations' ? 'primary' : 'neutral'"
         :to="`/admin/hackathons/${hackathonId}/operations`"
         label="Operations"
       />
-      <UButton
+      <AppButton
         :variant="currentSurface === 'competition' ? 'solid' : 'soft'"
         :color="currentSurface === 'competition' ? 'primary' : 'neutral'"
         :to="`/admin/hackathons/${hackathonId}/competition`"

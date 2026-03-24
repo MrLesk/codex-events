@@ -19,14 +19,14 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
 </script>
 
 <template>
-  <UContainer class="space-y-8 py-10 sm:py-14">
+  <AppContainer class="space-y-8 py-10 sm:py-14">
     <AdminWorkspaceHeader
       eyebrow="Admin Workspace"
       title="Operate hackathons through the canonical control room."
       description="This route is reserved for platform admins and hackathon admins. It exposes only the hackathons and setup controls the current actor can legitimately manage."
     />
 
-    <UAlert
+    <AppAlert
       v-if="workspace.session.error.value"
       color="error"
       variant="soft"
@@ -35,7 +35,7 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
     />
 
     <template v-else-if="adminReady">
-      <UAlert
+      <AppAlert
         v-if="!actor?.hasPlatformAccount"
         color="warning"
         variant="soft"
@@ -43,7 +43,7 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
         description="Admin controls require a platform account linked to the authenticated session."
       />
 
-      <UAlert
+      <AppAlert
         v-else-if="manageableHackathons.length === 0 && !canCreate"
         color="warning"
         variant="soft"
@@ -55,7 +55,7 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
         v-else
         class="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]"
       >
-        <UCard class="border border-default/70 bg-elevated/90">
+        <AppCard class="border border-default/70 bg-elevated/90">
           <template #header>
             <div class="space-y-1">
               <h2 class="text-lg font-semibold text-highlighted">
@@ -92,7 +92,7 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
               </p>
             </div>
 
-            <UButton
+            <AppButton
               v-if="canCreate"
               to="/admin/hackathons/new"
               size="lg"
@@ -101,9 +101,9 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
               label="Create Hackathon"
             />
           </div>
-        </UCard>
+        </AppCard>
 
-        <UCard class="border border-default/70 bg-elevated/90">
+        <AppCard class="border border-default/70 bg-elevated/90">
           <template #header>
             <div class="space-y-1">
               <h2 class="text-lg font-semibold text-highlighted">
@@ -131,12 +131,12 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
                     <h3 class="text-lg font-semibold text-highlighted">
                       {{ hackathon.name }}
                     </h3>
-                    <UBadge
+                    <AppBadge
                       :color="getHackathonStateColor(hackathon.state)"
                       variant="soft"
                     >
                       {{ formatHackathonState(hackathon.state) }}
-                    </UBadge>
+                    </AppBadge>
                   </div>
                   <p class="max-w-2xl text-sm text-toned">
                     {{ hackathon.description }}
@@ -150,7 +150,7 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
 
                 <div class="flex items-center gap-2 text-sm font-medium text-primary transition group-hover:translate-x-1">
                   <span>Open workspace</span>
-                  <UIcon
+                  <AppIcon
                     name="i-lucide-arrow-right"
                     class="size-4"
                   />
@@ -159,15 +159,15 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
             </NuxtLink>
           </div>
 
-          <UAlert
+          <AppAlert
             v-else
             color="neutral"
             variant="soft"
             title="No hackathons available"
             description="No manageable hackathons are currently visible to this actor."
           />
-        </UCard>
+        </AppCard>
       </section>
     </template>
-  </UContainer>
+  </AppContainer>
 </template>

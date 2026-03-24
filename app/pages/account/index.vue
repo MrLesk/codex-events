@@ -138,8 +138,8 @@ async function deleteAccount() {
 </script>
 
 <template>
-  <UContainer class="py-12">
-    <UPageSection
+  <AppContainer class="py-12">
+    <PageSection
       title="Account settings"
       description="Manage the platform profile fields that influence application eligibility and keep the account ready for future hackathons."
     >
@@ -155,22 +155,22 @@ async function deleteAccount() {
         v-else
         class="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]"
       >
-        <UCard class="rounded-[2rem] border border-default/80 bg-elevated/90 shadow-xl shadow-primary/5">
+        <AppCard class="rounded-[2rem] border border-default/80 bg-elevated/90 shadow-xl shadow-primary/5">
           <template #header>
             <div class="space-y-2">
-              <UBadge
+              <AppBadge
                 color="primary"
                 variant="subtle"
               >
                 Platform account
-              </UBadge>
+              </AppBadge>
               <p class="text-xl font-semibold text-highlighted">
                 Current identity and access summary
               </p>
             </div>
           </template>
 
-          <UAlert
+          <AppAlert
             v-if="flashMessage"
             color="success"
             variant="subtle"
@@ -192,10 +192,10 @@ async function deleteAccount() {
               </dd>
             </div>
           </dl>
-        </UCard>
+        </AppCard>
 
         <div class="space-y-6">
-          <UCard class="rounded-[2rem] border border-default/80 bg-elevated/90 shadow-xl shadow-primary/5">
+          <AppCard class="rounded-[2rem] border border-default/80 bg-elevated/90 shadow-xl shadow-primary/5">
             <template #header>
               <div class="space-y-2">
                 <p class="text-lg font-semibold text-highlighted">
@@ -277,7 +277,7 @@ async function deleteAccount() {
                 >
               </div>
 
-              <UAlert
+              <AppAlert
                 v-if="saveState.error"
                 color="error"
                 variant="subtle"
@@ -289,7 +289,7 @@ async function deleteAccount() {
                   Empty fields are stored as absent values, which means hackathons that require a specific profile link will block application submission until you add it.
                 </p>
 
-                <UButton
+                <AppButton
                   type="submit"
                   label="Save profile"
                   :loading="saveState.pending"
@@ -297,17 +297,17 @@ async function deleteAccount() {
                 />
               </div>
             </form>
-          </UCard>
+          </AppCard>
 
-          <UCard class="rounded-[2rem] border border-error/30 bg-error/5 shadow-xl shadow-error/5">
+          <AppCard class="rounded-[2rem] border border-error/30 bg-error/5 shadow-xl shadow-error/5">
             <template #header>
               <div class="space-y-2">
-                <UBadge
+                <AppBadge
                   color="error"
                   variant="subtle"
                 >
                   Danger zone
-                </UBadge>
+                </AppBadge>
                 <p class="text-lg font-semibold text-highlighted">
                   Delete platform account
                 </p>
@@ -333,7 +333,7 @@ async function deleteAccount() {
                 >
               </div>
 
-              <UAlert
+              <AppAlert
                 v-if="deletionState.error"
                 color="error"
                 variant="subtle"
@@ -345,7 +345,7 @@ async function deleteAccount() {
                   After deletion the next dashboard visit will move back into the onboarding state because the Auth0 session remains valid while the platform account is gone.
                 </p>
 
-                <UButton
+                <AppButton
                   color="error"
                   variant="solid"
                   label="Delete account"
@@ -354,9 +354,9 @@ async function deleteAccount() {
                 />
               </div>
             </div>
-          </UCard>
+          </AppCard>
         </div>
       </div>
-    </UPageSection>
-  </UContainer>
+    </PageSection>
+  </AppContainer>
 </template>

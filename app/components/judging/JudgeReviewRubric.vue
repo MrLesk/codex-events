@@ -29,7 +29,7 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
 </script>
 
 <template>
-  <UCard
+  <AppCard
     variant="subtle"
     :ui="{ root: 'rounded-[2rem] border border-default/80 bg-elevated/88 shadow-[0_28px_72px_-52px_rgba(17,24,39,0.48)]' }"
   >
@@ -58,13 +58,13 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
                 <h3 class="text-lg font-semibold text-highlighted">
                   {{ draft.criterionName }}
                 </h3>
-                <UBadge
+                <AppBadge
                   color="neutral"
                   variant="outline"
                   class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
                 >
                   Weight {{ draft.criterionWeight }}
-                </UBadge>
+                </AppBadge>
               </div>
               <p class="max-w-2xl text-sm leading-7 text-toned">
                 {{ draft.criterionDescription }}
@@ -111,5 +111,5 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
         </div>
       </div>
     </div>
-  </UCard>
+  </AppCard>
 </template>

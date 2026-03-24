@@ -22,7 +22,7 @@ const accentClass = computed(() => {
 </script>
 
 <template>
-  <UCard
+  <AppCard
     variant="subtle"
     :ui="{ root: 'overflow-hidden rounded-[1.85rem] border border-default/75 bg-elevated/82 shadow-[0_30px_72px_-52px_rgba(15,20,34,0.65)] backdrop-blur' }"
   >
@@ -35,13 +35,13 @@ const accentClass = computed(() => {
       <div class="relative space-y-6">
         <div class="flex items-start justify-between gap-4">
           <div class="space-y-3">
-            <UBadge
+            <AppBadge
               color="neutral"
               variant="soft"
               class="rounded-full px-3 py-1 font-semibold tracking-[0.16em] uppercase"
             >
               {{ props.entry.badge ?? 'Workspace' }}
-            </UBadge>
+            </AppBadge>
 
             <div>
               <h3 class="text-xl font-semibold tracking-[-0.03em] text-highlighted">
@@ -54,7 +54,7 @@ const accentClass = computed(() => {
           </div>
 
           <div class="flex size-12 shrink-0 items-center justify-center rounded-full border border-default/70 bg-bg/82 text-primary shadow-[0_18px_40px_-28px_rgba(15,20,34,0.45)]">
-            <UIcon
+            <AppIcon
               :name="props.entry.icon"
               class="size-5"
             />
@@ -66,7 +66,7 @@ const accentClass = computed(() => {
             Role-aware entry point
           </p>
 
-          <UButton
+          <AppButton
             :to="props.entry.to"
             :external="props.entry.external"
             color="primary"
@@ -78,5 +78,5 @@ const accentClass = computed(() => {
         </div>
       </div>
     </div>
-  </UCard>
+  </AppCard>
 </template>

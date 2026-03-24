@@ -39,7 +39,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
 </script>
 
 <template>
-  <UCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="border border-default/70 bg-elevated/90">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -94,7 +94,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
           </p>
         </div>
 
-        <UAlert
+        <AppAlert
           v-if="noSubmissionErrorMessage"
           color="error"
           variant="soft"
@@ -102,7 +102,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
           :description="noSubmissionErrorMessage"
         />
 
-        <UAlert
+        <AppAlert
           v-else-if="isLoadingNoSubmission"
           color="neutral"
           variant="soft"
@@ -130,17 +130,17 @@ function formatAdminNames(team: AdminOperationalTeam) {
                 </p>
               </div>
 
-              <UBadge
+              <AppBadge
                 :color="getSubmissionStatusColor(team.noSubmissionReason)"
                 variant="soft"
               >
                 {{ formatSubmissionStatus(team.noSubmissionReason) }}
-              </UBadge>
+              </AppBadge>
             </div>
           </article>
         </div>
 
-        <UAlert
+        <AppAlert
           v-else
           color="success"
           variant="soft"
@@ -159,7 +159,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
           </p>
         </div>
 
-        <UAlert
+        <AppAlert
           v-if="teamErrorMessage"
           color="error"
           variant="soft"
@@ -167,7 +167,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
           :description="teamErrorMessage"
         />
 
-        <UAlert
+        <AppAlert
           v-else-if="isLoadingTeams"
           color="neutral"
           variant="soft"
@@ -191,12 +191,12 @@ function formatAdminNames(team: AdminOperationalTeam) {
                   <h4 class="text-lg font-semibold text-highlighted">
                     {{ team.team.name }}
                   </h4>
-                  <UBadge
+                  <AppBadge
                     :color="getSubmissionStatusColor(team.submissionStatus)"
                     variant="soft"
                   >
                     {{ formatSubmissionStatus(team.submissionStatus) }}
-                  </UBadge>
+                  </AppBadge>
                 </div>
                 <p class="text-sm text-toned">
                   {{ team.activeMemberCount }} active member{{ team.activeMemberCount === 1 ? '' : 's' }} •
@@ -230,7 +230,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
           </article>
         </div>
 
-        <UAlert
+        <AppAlert
           v-else
           color="neutral"
           variant="soft"
@@ -242,7 +242,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
           v-if="!teamErrorMessage && !isLoadingTeams && teams.length > 0"
           class="flex flex-col items-start gap-3"
         >
-          <UButton
+          <AppButton
             v-if="hasMoreTeams"
             color="neutral"
             variant="outline"
@@ -251,14 +251,14 @@ function formatAdminNames(team: AdminOperationalTeam) {
             @click="emit('loadMoreTeams')"
           >
             Load more teams
-          </UButton>
+          </AppButton>
 
           <p class="text-sm text-muted">
             Showing {{ teams.length }} of {{ totalTeams ?? teams.length }} teams.
           </p>
         </div>
 
-        <UAlert
+        <AppAlert
           v-if="loadMoreTeamsErrorMessage"
           color="warning"
           variant="soft"
@@ -267,5 +267,5 @@ function formatAdminNames(team: AdminOperationalTeam) {
         />
       </section>
     </div>
-  </UCard>
+  </AppCard>
 </template>

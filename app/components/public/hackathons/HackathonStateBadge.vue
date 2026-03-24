@@ -10,12 +10,12 @@ const label = computed(() => formatHackathonStateLabel(props.state))
 </script>
 
 <template>
-  <UBadge
+  <AppBadge
     :color="color"
     variant="subtle"
     size="md"
     class="rounded-full px-3 py-1 font-semibold tracking-[0.16em] uppercase"
   >
     {{ label }}
-  </UBadge>
+  </AppBadge>
 </template>

@@ -159,14 +159,14 @@ useSeoMeta({
         class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(79,91,112,0.4),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(102,115,139,0.25),transparent_24%),linear-gradient(135deg,rgba(15,20,34,0.96),rgba(34,42,57,0.88)_44%,rgba(102,115,139,0.78))]"
       />
 
-      <div class="absolute inset-0 bg-gradient-to-b from-codex-950/30 via-codex-950/55 to-[var(--ui-bg)]" />
+      <div class="absolute inset-0 bg-gradient-to-b from-codex-950/30 via-codex-950/55 to-[var(--background)]" />
 
-      <UContainer class="relative py-18 sm:py-24">
+      <AppContainer class="relative py-18 sm:py-24">
         <NuxtLink
           to="/hackathons"
           class="inline-flex items-center gap-2 rounded-full border border-white/18 bg-white/10 px-4 py-2 text-sm font-medium text-white/92 backdrop-blur transition-colors hover:bg-white/16"
         >
-          <UIcon
+          <AppIcon
             name="i-lucide-arrow-left"
             class="size-4"
           />
@@ -191,32 +191,32 @@ useSeoMeta({
             </div>
 
             <div class="flex flex-wrap gap-3">
-              <UBadge
+              <AppBadge
                 color="neutral"
                 variant="outline"
                 class="rounded-full border-white/22 bg-white/8 px-3 py-1.5 text-white"
               >
                 {{ hackathon.city }} · {{ hackathon.address }}
-              </UBadge>
+              </AppBadge>
 
-              <UBadge
+              <AppBadge
                 color="neutral"
                 variant="outline"
                 class="rounded-full border-white/22 bg-white/8 px-3 py-1.5 text-white"
               >
                 {{ formatMaxTeamMembers(hackathon.maxTeamMembers) }}
-              </UBadge>
+              </AppBadge>
 
-              <UBadge
+              <AppBadge
                 v-if="requiredProfiles.length === 0"
                 color="neutral"
                 variant="outline"
                 class="rounded-full border-white/22 bg-white/8 px-3 py-1.5 text-white"
               >
                 No required profile links
-              </UBadge>
+              </AppBadge>
 
-              <UBadge
+              <AppBadge
                 v-for="profile in requiredProfiles"
                 :key="profile"
                 color="neutral"
@@ -224,11 +224,11 @@ useSeoMeta({
                 class="rounded-full border-white/22 bg-white/8 px-3 py-1.5 text-white"
               >
                 {{ profile }} required
-              </UBadge>
+              </AppBadge>
             </div>
           </div>
 
-          <UCard
+          <AppCard
             variant="subtle"
             :ui="{ root: 'border border-white/16 bg-white/10 text-white shadow-[0_28px_72px_-48px_rgba(0,0,0,0.72)] backdrop-blur' }"
           >
@@ -243,16 +243,16 @@ useSeoMeta({
                 Operational queues, team workspaces, assignment loads, and admin controls remain in their role-specific surfaces.
               </p>
             </div>
-          </UCard>
+          </AppCard>
         </div>
-      </UContainer>
+      </AppContainer>
     </section>
 
-    <UContainer class="space-y-6 pt-10">
+    <AppContainer class="space-y-6 pt-10">
       <HackathonTimeline :hackathon="hackathon" />
 
       <div class="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-        <UCard
+        <AppCard
           variant="subtle"
           :ui="{ root: 'border border-default/80 bg-elevated/85 backdrop-blur shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)]' }"
         >
@@ -290,12 +290,12 @@ useSeoMeta({
               Team formation, applications, judging, and redemption actions remain guarded by lifecycle rules and actor permissions. This public page is intentionally limited to the information a visitor can safely evaluate before entering those workflows.
             </p>
           </div>
-        </UCard>
+        </AppCard>
 
         <HackathonTermsReferences :hackathon="hackathon" />
       </div>
 
-      <UCard
+      <AppCard
         data-testid="participant-application-panel"
         variant="subtle"
         :ui="{ root: 'border border-default/80 bg-elevated/88 backdrop-blur shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)]' }"
@@ -313,7 +313,7 @@ useSeoMeta({
             </p>
           </div>
 
-          <UAlert
+          <AppAlert
             v-if="participantPanelLoading"
             color="neutral"
             variant="soft"
@@ -321,7 +321,7 @@ useSeoMeta({
             description="Resolving the authenticated actor, application status, and current terms for this hackathon."
           />
 
-          <UAlert
+          <AppAlert
             v-else-if="participantApplication.actorErrorMessage.value"
             color="error"
             variant="soft"
@@ -330,41 +330,41 @@ useSeoMeta({
           />
 
           <template v-else-if="participantActor?.kind === 'anonymous'">
-            <UAlert
+            <AppAlert
               color="primary"
               variant="soft"
               title="Sign in to apply"
               description="Public program detail stays visible without authentication, but application submission requires a real Auth0-backed session."
             />
 
-            <UButton
+            <AppButton
               :to="loginHref"
               external
               color="primary"
               icon="i-lucide-log-in"
             >
               Sign in with Auth0
-            </UButton>
+            </AppButton>
           </template>
 
           <template v-else-if="participantActor?.kind === 'authenticated_identity'">
-            <UAlert
+            <AppAlert
               color="warning"
               variant="soft"
               title="Platform account required"
               description="Complete the platform account before entering the participant application workflow for this hackathon."
             />
 
-            <UButton
+            <AppButton
               to="/onboarding/account"
               color="warning"
               icon="i-lucide-id-card"
             >
               Complete platform account
-            </UButton>
+            </AppButton>
           </template>
 
-          <UAlert
+          <AppAlert
             v-else-if="participantApplication.visibleHackathonErrorMessage.value"
             color="error"
             variant="soft"
@@ -372,7 +372,7 @@ useSeoMeta({
             :description="participantApplication.visibleHackathonErrorMessage.value"
           />
 
-          <UAlert
+          <AppAlert
             v-else-if="!participantApplication.visibleHackathonId.value"
             color="error"
             variant="soft"
@@ -380,7 +380,7 @@ useSeoMeta({
             description="The authenticated participant workspace could not resolve this visible hackathon."
           />
 
-          <UAlert
+          <AppAlert
             v-else-if="participantApplication.ownApplicationErrorMessage.value"
             color="error"
             variant="soft"
@@ -395,13 +395,13 @@ useSeoMeta({
                   Current status
                 </p>
                 <div class="mt-3 flex flex-wrap items-center gap-3">
-                  <UBadge
+                  <AppBadge
                     data-testid="participant-application-status"
                     :color="getParticipantApplicationStatusColor(participantApplication.ownApplication.value.status)"
                     variant="soft"
                   >
                     {{ participantApplicationStatusLabel }}
-                  </UBadge>
+                  </AppBadge>
                   <span class="text-sm text-toned">
                     {{ participantApplicationStatusSummary }}
                   </span>
@@ -450,7 +450,7 @@ useSeoMeta({
                   </div>
                 </div>
 
-                <UAlert
+                <AppAlert
                   v-else
                   class="mt-3"
                   color="neutral"
@@ -465,18 +465,18 @@ useSeoMeta({
               v-if="participantApplication.ownApplication.value.status === 'approved'"
               class="flex flex-wrap gap-3"
             >
-              <UButton
+              <AppButton
                 :to="`/hackathons/${slug}/teams`"
                 color="primary"
                 icon="i-lucide-users"
                 data-testid="participant-team-workspace-link"
               >
                 Open team workspace
-              </UButton>
+              </AppButton>
             </div>
           </template>
 
-          <UAlert
+          <AppAlert
             v-else-if="hackathon.state !== 'registration_open'"
             color="neutral"
             variant="soft"
@@ -485,7 +485,7 @@ useSeoMeta({
           />
 
           <template v-else-if="participantApplication.missingProfileFields.value.length > 0">
-            <UAlert
+            <AppAlert
               color="warning"
               variant="soft"
               title="Profile update required before applying"
@@ -509,16 +509,16 @@ useSeoMeta({
               </ul>
             </div>
 
-            <UButton
+            <AppButton
               to="/account"
               color="warning"
               icon="i-lucide-id-card"
             >
               Update account profile
-            </UButton>
+            </AppButton>
           </template>
 
-          <UAlert
+          <AppAlert
             v-else-if="participantApplication.currentTermsErrorMessage.value"
             color="error"
             variant="soft"
@@ -526,7 +526,7 @@ useSeoMeta({
             :description="participantApplication.currentTermsErrorMessage.value"
           />
 
-          <UAlert
+          <AppAlert
             v-else-if="!participantApplication.currentApplicationTerms.value"
             color="warning"
             variant="soft"
@@ -591,7 +591,7 @@ useSeoMeta({
                     <span>I accept the current application terms exactly as shown above and understand this acceptance will be recorded on submission.</span>
                   </label>
 
-                  <UAlert
+                  <AppAlert
                     v-if="participantApplication.submissionError.value"
                     color="error"
                     variant="soft"
@@ -599,27 +599,27 @@ useSeoMeta({
                     :description="participantApplication.submissionError.value"
                   />
 
-                  <UAlert
+                  <AppAlert
                     v-if="participantApplication.submissionSuccess.value"
                     color="success"
                     variant="soft"
                     :description="participantApplication.submissionSuccess.value"
                   />
 
-                  <UButton
+                  <AppButton
                     data-testid="participant-application-submit"
                     color="primary"
                     :loading="participantApplication.isSubmitting.value"
                     @click="submitParticipantApplication"
                   >
                     Submit application
-                  </UButton>
+                  </AppButton>
                 </div>
               </div>
             </div>
           </template>
         </div>
-      </UCard>
+      </AppCard>
 
       <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <HackathonCriteriaList
@@ -632,6 +632,6 @@ useSeoMeta({
           :error-message="prizesErrorMessage"
         />
       </div>
-    </UContainer>
+    </AppContainer>
   </div>
 </template>

@@ -37,7 +37,7 @@ const timelineEntries = computed(() => [
     data-testid="public-hackathon-timeline"
     class="grid gap-4 xl:grid-cols-3"
   >
-    <UCard
+    <AppCard
       v-for="entry in timelineEntries"
       :key="entry.id"
       variant="subtle"
@@ -58,20 +58,20 @@ const timelineEntries = computed(() => [
             v-if="entry.id === 'lifecycle'"
             :state="hackathon.state"
           />
-          <UBadge
+          <AppBadge
             v-else
             color="neutral"
             variant="outline"
             class="rounded-full px-3 py-1.5"
           >
             {{ entry.status }}
-          </UBadge>
+          </AppBadge>
         </div>
 
         <p class="text-sm leading-7 text-toned">
           {{ entry.description }}
         </p>
       </div>
-    </UCard>
+    </AppCard>
   </section>
 </template>

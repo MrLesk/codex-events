@@ -49,13 +49,13 @@ useSeoMeta({
 </script>
 
 <template>
-  <UContainer class="space-y-8 py-10 lg:py-14">
-    <UPageSection
+  <AppContainer class="space-y-8 py-10 lg:py-14">
+    <PageSection
       title="Prize redemptions"
       description="Complete pending winner-facing prize redemption tasks with the exact current winner terms for each hackathon."
     >
       <template #links>
-        <UButton
+        <AppButton
           to="/dashboard"
           label="Return to dashboard"
           color="neutral"
@@ -64,9 +64,9 @@ useSeoMeta({
           class="rounded-full"
         />
       </template>
-    </UPageSection>
+    </PageSection>
 
-    <UAlert
+    <AppAlert
       v-if="workspace.pendingErrorMessage.value"
       color="error"
       variant="soft"
@@ -74,7 +74,7 @@ useSeoMeta({
       :description="workspace.pendingErrorMessage.value"
     />
 
-    <UAlert
+    <AppAlert
       v-else-if="workspace.currentTermsErrorMessage.value"
       color="error"
       variant="soft"
@@ -82,7 +82,7 @@ useSeoMeta({
       :description="workspace.currentTermsErrorMessage.value"
     />
 
-    <UAlert
+    <AppAlert
       v-else-if="isWorkspaceLoading"
       color="neutral"
       variant="soft"
@@ -114,17 +114,17 @@ useSeoMeta({
               </p>
             </div>
 
-            <UBadge
+            <AppBadge
               color="success"
               variant="soft"
             >
               {{ formatPrizeRedemptionStatus(redemption.status) }}
-            </UBadge>
+            </AppBadge>
           </div>
         </article>
       </div>
 
-      <UAlert
+      <AppAlert
         v-if="workspace.tasks.value.length === 0"
         color="neutral"
         variant="soft"
@@ -154,13 +154,13 @@ useSeoMeta({
                   <h2 class="text-2xl font-semibold text-highlighted">
                     {{ task.prize.name }}
                   </h2>
-                  <UBadge
+                  <AppBadge
                     :data-testid="`prize-redemption-status-${task.hackathon.slug}-${task.prize.id}`"
                     :color="getPrizeRedemptionStatusColor(task.status)"
                     variant="soft"
                   >
                     {{ formatPrizeRedemptionStatus(task.status) }}
-                  </UBadge>
+                  </AppBadge>
                 </div>
               </div>
 
@@ -220,20 +220,20 @@ useSeoMeta({
 
               <div class="rounded-[1.5rem] border border-default bg-default px-5 py-5">
                 <div class="space-y-4">
-                  <UFormField
+                  <AppFormField
                     :name="`legal-name-${task.id}`"
                     label="Legal name"
                     description="The submitted legal name is stored on the prize redemption record."
                   >
-                    <UInput
+                    <AppInput
                       v-model="workspace.legalNameById[task.id]"
                       :disabled="!availabilityById[task.id]?.isEnabled || workspace.submittingById[task.id]"
                       placeholder="Enter the legal recipient name"
                       size="xl"
                     />
-                  </UFormField>
+                  </AppFormField>
 
-                  <UCheckbox
+                  <AppCheckbox
                     v-model="workspace.termsAcceptedById[task.id]"
                     :disabled="!availabilityById[task.id]?.isEnabled || workspace.submittingById[task.id]"
                     :label="task.currentWinnerTerms
@@ -241,7 +241,7 @@ useSeoMeta({
                       : 'Current winner terms are unavailable.'"
                   />
 
-                  <UAlert
+                  <AppAlert
                     v-if="workspace.submissionErrorById[task.id]"
                     color="error"
                     variant="soft"
@@ -249,7 +249,7 @@ useSeoMeta({
                     :description="workspace.submissionErrorById[task.id]"
                   />
 
-                  <UAlert
+                  <AppAlert
                     v-else-if="availabilityById[task.id]?.reason"
                     color="warning"
                     variant="soft"
@@ -258,7 +258,7 @@ useSeoMeta({
                   />
 
                   <div class="flex flex-wrap items-center gap-3">
-                    <UButton
+                    <AppButton
                       :data-testid="`prize-redemption-submit-${task.hackathon.slug}-${task.prize.id}`"
                       color="primary"
                       :loading="workspace.submittingById[task.id]"
@@ -266,7 +266,7 @@ useSeoMeta({
                       @click="submitPrizeRedemption(task.id)"
                     >
                       Submit redemption
-                    </UButton>
+                    </AppButton>
 
                     <p class="text-sm text-muted">
                       The exact current winner terms version is submitted automatically with this action.
@@ -279,5 +279,5 @@ useSeoMeta({
         </article>
       </div>
     </template>
-  </UContainer>
+  </AppContainer>
 </template>

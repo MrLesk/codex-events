@@ -5,7 +5,8 @@ This document defines the canonical technology stack for the Codex hackathon pla
 ## Application Stack
 
 - `Nuxt` for the web application
-- `Nuxt UI` for the interface layer
+- `shadcn-vue` for the component primitive layer
+- `Tailwind CSS` for the interface styling system
 - `Zod` for validation and data contracts
 - `Drizzle ORM` for database schema management and queries
 - `Vitest` for unit and integration testing

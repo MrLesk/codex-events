@@ -81,14 +81,14 @@ async function createHackathon() {
 </script>
 
 <template>
-  <UContainer class="space-y-8 py-10 sm:py-14">
+  <AppContainer class="space-y-8 py-10 sm:py-14">
     <AdminWorkspaceHeader
       eyebrow="Admin Workspace"
       title="Create a hackathon draft."
       description="Platform admins can create draft hackathons here using the canonical backend configuration model. Registration remains system-driven, while later lifecycle transitions stay manual."
     />
 
-    <UAlert
+    <AppAlert
       v-if="workspace.session.error.value"
       color="error"
       variant="soft"
@@ -96,7 +96,7 @@ async function createHackathon() {
       :description="workspace.session.error.value.message"
     />
 
-    <UAlert
+    <AppAlert
       v-else-if="!canCreate"
       color="warning"
       variant="soft"
@@ -105,7 +105,7 @@ async function createHackathon() {
     />
 
     <template v-else>
-      <UAlert
+      <AppAlert
         v-if="submitError"
         color="error"
         variant="soft"
@@ -121,5 +121,5 @@ async function createHackathon() {
         @submit="createHackathon"
       />
     </template>
-  </UContainer>
+  </AppContainer>
 </template>

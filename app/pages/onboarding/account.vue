@@ -115,8 +115,8 @@ async function submitRegistration() {
 </script>
 
 <template>
-  <UContainer class="py-12">
-    <UPageSection
+  <AppContainer class="py-12">
+    <PageSection
       title="Complete platform account"
       description="Create the platform-side account that powers hackathon applications, team membership, and role-based access."
     >
@@ -132,15 +132,15 @@ async function submitRegistration() {
         v-else
         class="grid gap-6 lg:grid-cols-[0.95fr_1.05fr]"
       >
-        <UCard class="rounded-[2rem] border border-default/80 bg-elevated/85 shadow-xl shadow-primary/5">
+        <AppCard class="rounded-[2rem] border border-default/80 bg-elevated/85 shadow-xl shadow-primary/5">
           <template #header>
             <div class="space-y-2">
-              <UBadge
+              <AppBadge
                 color="primary"
                 variant="subtle"
               >
                 Authenticated identity
-              </UBadge>
+              </AppBadge>
               <p class="text-2xl font-semibold text-highlighted">
                 Finish the platform-side setup before joining a hackathon.
               </p>
@@ -150,7 +150,7 @@ async function submitRegistration() {
             </div>
           </template>
 
-          <UAlert
+          <AppAlert
             v-if="statusMessage"
             color="warning"
             variant="subtle"
@@ -172,9 +172,9 @@ async function submitRegistration() {
               </dd>
             </div>
           </dl>
-        </UCard>
+        </AppCard>
 
-        <UCard class="rounded-[2rem] border border-default/80 bg-elevated/90 shadow-xl shadow-primary/5">
+        <AppCard class="rounded-[2rem] border border-default/80 bg-elevated/90 shadow-xl shadow-primary/5">
           <template #header>
             <div class="space-y-2">
               <p class="text-lg font-semibold text-highlighted">
@@ -312,7 +312,7 @@ async function submitRegistration() {
               </label>
             </div>
 
-            <UAlert
+            <AppAlert
               v-if="submissionError"
               color="error"
               variant="subtle"
@@ -324,7 +324,7 @@ async function submitRegistration() {
                 This creates the platform `User` record and records the exact document versions accepted during registration.
               </p>
 
-              <UButton
+              <AppButton
                 type="submit"
                 label="Create platform account"
                 :loading="isSubmitting"
@@ -332,8 +332,8 @@ async function submitRegistration() {
               />
             </div>
           </form>
-        </UCard>
+        </AppCard>
       </div>
-    </UPageSection>
-  </UContainer>
+    </PageSection>
+  </AppContainer>
 </template>

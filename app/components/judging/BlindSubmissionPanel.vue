@@ -13,7 +13,7 @@ defineProps<{
 </script>
 
 <template>
-  <UCard
+  <AppCard
     variant="subtle"
     :ui="{ root: 'rounded-[2rem] border border-default/80 bg-elevated/88 shadow-[0_28px_72px_-52px_rgba(17,24,39,0.48)]' }"
   >
@@ -23,13 +23,13 @@ defineProps<{
     >
       <div class="space-y-3">
         <div class="flex flex-wrap items-center gap-2">
-          <UBadge
+          <AppBadge
             color="neutral"
             variant="outline"
             class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
           >
             Blind submission
-          </UBadge>
+          </AppBadge>
           <JudgeAssignmentStatusBadge :status="assignment.status" />
         </div>
 
@@ -76,7 +76,7 @@ defineProps<{
       </div>
 
       <div class="flex flex-wrap gap-3">
-        <UButton
+        <AppButton
           v-if="assignment.blindSubmission.repositoryUrl"
           :to="assignment.blindSubmission.repositoryUrl"
           target="_blank"
@@ -87,9 +87,9 @@ defineProps<{
           class="rounded-full"
         >
           Repository
-        </UButton>
+        </AppButton>
 
-        <UButton
+        <AppButton
           v-if="assignment.blindSubmission.demoUrl"
           :to="assignment.blindSubmission.demoUrl"
           target="_blank"
@@ -100,7 +100,7 @@ defineProps<{
           class="rounded-full"
         >
           Demo
-        </UButton>
+        </AppButton>
       </div>
 
       <div class="space-y-4">
@@ -144,5 +144,5 @@ defineProps<{
         </div>
       </div>
     </div>
-  </UCard>
+  </AppCard>
 </template>

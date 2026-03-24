@@ -63,24 +63,24 @@ useSeoMeta({
 
 <template>
   <div class="pb-24">
-    <UPageHero
+    <PageHero
       title="Discover the programs running across the Codex hackathon platform."
       description="This public surface shows the programs that are currently visible outside restricted operator, judge, and team workspaces. Each program detail page stays inside the canonical public contract: lifecycle timing, criteria, prizes, and current terms references."
       orientation="horizontal"
     >
       <template #headline>
-        <UBadge
+        <AppBadge
           color="primary"
           variant="subtle"
           class="rounded-full px-4 py-1.5 font-semibold tracking-[0.16em] uppercase"
         >
           Public program discovery
-        </UBadge>
+        </AppBadge>
       </template>
 
       <template #body>
         <div class="grid gap-4 sm:grid-cols-2">
-          <UCard
+          <AppCard
             variant="subtle"
             :ui="{ root: 'border border-default/80 bg-elevated/80 backdrop-blur shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)]' }"
           >
@@ -93,9 +93,9 @@ useSeoMeta({
             <p class="mt-2 text-sm leading-7 text-toned">
               This surface is loaded from the canonical public discovery contract, so privileged sessions see the same public-safe result set.
             </p>
-          </UCard>
+          </AppCard>
 
-          <UCard
+          <AppCard
             variant="subtle"
             :ui="{ root: 'border border-default/80 bg-elevated/80 backdrop-blur shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)]' }"
           >
@@ -108,12 +108,12 @@ useSeoMeta({
             <p class="mt-2 text-sm leading-7 text-toned">
               Team operations, judging assignments, and admin controls remain restricted to their role-specific workspaces.
             </p>
-          </UCard>
+          </AppCard>
         </div>
       </template>
-    </UPageHero>
+    </PageHero>
 
-    <UContainer class="space-y-10">
+    <AppContainer class="space-y-10">
       <div class="flex flex-col gap-4 border-b border-default/80 pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
@@ -129,7 +129,7 @@ useSeoMeta({
         </p>
       </div>
 
-      <UAlert
+      <AppAlert
         v-if="error"
         color="warning"
         variant="subtle"
@@ -165,7 +165,7 @@ useSeoMeta({
         v-if="!error && hasMoreHackathons"
         class="flex flex-col items-center gap-4"
       >
-        <UButton
+        <AppButton
           color="neutral"
           variant="outline"
           :loading="isLoadingMore"
@@ -173,14 +173,14 @@ useSeoMeta({
           @click="loadMoreHackathons"
         >
           Load more hackathons
-        </UButton>
+        </AppButton>
 
         <p class="text-sm text-muted">
           Showing {{ hackathons.length }} of {{ total }} visible hackathons.
         </p>
       </div>
 
-      <UAlert
+      <AppAlert
         v-if="loadMoreError"
         color="warning"
         variant="subtle"
@@ -188,6 +188,6 @@ useSeoMeta({
         title="More hackathons unavailable"
         :description="loadMoreError"
       />
-    </UContainer>
+    </AppContainer>
   </div>
 </template>

@@ -21,7 +21,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <UCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="border border-default/70 bg-elevated/90">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -47,20 +47,20 @@ const emit = defineEmits<{
                 {{ member.user?.displayName ?? member.userId }}
               </h3>
 
-              <UBadge
+              <AppBadge
                 :color="member.role === 'admin' ? 'primary' : 'neutral'"
                 variant="soft"
               >
                 {{ formatTeamMemberRole(member.role) }}
-              </UBadge>
+              </AppBadge>
 
-              <UBadge
+              <AppBadge
                 v-if="membership?.id === member.id"
                 color="success"
                 variant="soft"
               >
                 You
-              </UBadge>
+              </AppBadge>
             </div>
 
             <p class="text-sm text-toned">
@@ -75,7 +75,7 @@ const emit = defineEmits<{
             </p>
           </div>
 
-          <UButton
+          <AppButton
             v-if="canManageTeam && membership?.id !== member.id"
             color="warning"
             variant="soft"
@@ -85,9 +85,9 @@ const emit = defineEmits<{
             @click="emit('removeMember', member.userId)"
           >
             Remove member
-          </UButton>
+          </AppButton>
         </div>
       </article>
     </div>
-  </UCard>
+  </AppCard>
 </template>

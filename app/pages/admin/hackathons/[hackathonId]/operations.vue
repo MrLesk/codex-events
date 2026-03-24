@@ -395,7 +395,7 @@ async function disqualifySubmission(payload: {
 </script>
 
 <template>
-  <UContainer class="space-y-8 py-10 sm:py-14">
+  <AppContainer class="space-y-8 py-10 sm:py-14">
     <AdminWorkspaceHeader
       eyebrow="Admin Operations"
       :title="currentHackathon ? `${currentHackathon.name} operations` : 'Hackathon operations'"
@@ -408,7 +408,7 @@ async function disqualifySubmission(payload: {
       current-surface="operations"
     />
 
-    <UAlert
+    <AppAlert
       v-if="mutationError"
       color="error"
       variant="soft"
@@ -416,7 +416,7 @@ async function disqualifySubmission(payload: {
       :description="mutationError"
     />
 
-    <UAlert
+    <AppAlert
       v-if="workspace.hackathon.error.value"
       color="error"
       variant="soft"
@@ -424,7 +424,7 @@ async function disqualifySubmission(payload: {
       :description="workspace.hackathon.error.value.message"
     />
 
-    <UAlert
+    <AppAlert
       v-else-if="currentHackathon && !canManage"
       color="warning"
       variant="soft"
@@ -505,5 +505,5 @@ async function disqualifySubmission(payload: {
         />
       </section>
     </template>
-  </UContainer>
+  </AppContainer>
 </template>

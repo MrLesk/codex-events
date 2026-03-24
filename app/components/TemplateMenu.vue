@@ -1,5 +1,5 @@
 <template>
-  <UDropdownMenu
+  <AppDropdownMenu
     v-slot="{ open }"
     :modal="false"
     :items="[{
@@ -34,7 +34,7 @@
     :ui="{ content: 'min-w-fit' }"
     size="xs"
   >
-    <UButton
+    <AppButton
       label="Starter"
       variant="subtle"
       trailing-icon="i-lucide-chevron-down"
@@ -45,5 +45,5 @@
         trailingIcon: ['transition-transform duration-200', open ? 'rotate-180' : undefined].filter(Boolean).join(' ')
       }"
     />
-  </UDropdownMenu>
+  </AppDropdownMenu>
 </template>

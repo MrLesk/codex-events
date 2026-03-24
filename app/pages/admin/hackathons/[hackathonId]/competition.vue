@@ -423,7 +423,7 @@ async function completeHackathon() {
 </script>
 
 <template>
-  <UContainer class="space-y-8 py-10 sm:py-14">
+  <AppContainer class="space-y-8 py-10 sm:py-14">
     <AdminWorkspaceHeader
       eyebrow="Admin Competition"
       :title="currentHackathon ? `${currentHackathon.name} competition` : 'Hackathon competition'"
@@ -436,7 +436,7 @@ async function completeHackathon() {
       current-surface="competition"
     />
 
-    <UAlert
+    <AppAlert
       v-if="mutationError"
       color="error"
       variant="soft"
@@ -444,7 +444,7 @@ async function completeHackathon() {
       :description="mutationError"
     />
 
-    <UAlert
+    <AppAlert
       v-if="workspace.hackathon.error.value"
       color="error"
       variant="soft"
@@ -452,7 +452,7 @@ async function completeHackathon() {
       :description="workspace.hackathon.error.value.message"
     />
 
-    <UAlert
+    <AppAlert
       v-else-if="workspace.hackathon.status.value === 'pending'"
       color="neutral"
       variant="soft"
@@ -460,7 +460,7 @@ async function completeHackathon() {
       description="Resolving the hackathon, role assignments, and competition surfaces for this admin session."
     />
 
-    <UAlert
+    <AppAlert
       v-else-if="currentHackathon && !canManage"
       color="warning"
       variant="soft"
@@ -475,13 +475,13 @@ async function completeHackathon() {
             Hackathon state
           </p>
           <div class="mt-2 flex items-center gap-3">
-            <UBadge
+            <AppBadge
               data-testid="admin-competition-hackathon-state"
               :color="getHackathonStateColor(currentHackathon.state)"
               variant="soft"
             >
               {{ formatHackathonState(currentHackathon.state) }}
-            </UBadge>
+            </AppBadge>
           </div>
         </div>
 
@@ -558,7 +558,7 @@ async function completeHackathon() {
         :error-message="redemptionsStatus === 'error' ? redemptionsErrorMessage : ''"
       />
 
-      <UAlert
+      <AppAlert
         v-if="!['judging_preparation', 'judge_review', 'shortlist', 'winners_announced', 'completed'].includes(currentHackathon.state)"
         color="neutral"
         variant="soft"
@@ -576,5 +576,5 @@ async function completeHackathon() {
         </p>
       </div>
     </template>
-  </UContainer>
+  </AppContainer>
 </template>

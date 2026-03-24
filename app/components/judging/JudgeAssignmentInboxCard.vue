@@ -33,13 +33,13 @@ const assignmentHref = computed(() =>
         <div class="space-y-3">
           <div class="flex flex-wrap items-center gap-2">
             <JudgeAssignmentStatusBadge :status="assignment.status" />
-            <UBadge
+            <AppBadge
               :color="resolveJudgeIneligibilityColor(assignment.ineligibilityStatus)"
               variant="subtle"
               class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
             >
               {{ formatJudgeIneligibilityStatus(assignment.ineligibilityStatus) }}
-            </UBadge>
+            </AppBadge>
           </div>
 
           <div class="space-y-2">
@@ -54,7 +54,7 @@ const assignmentHref = computed(() =>
 
         <div class="flex items-center gap-2 text-sm font-semibold text-primary transition group-hover:translate-x-1">
           <span>Open review</span>
-          <UIcon
+          <AppIcon
             name="i-lucide-arrow-right"
             class="size-4"
           />

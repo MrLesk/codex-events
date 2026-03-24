@@ -519,7 +519,7 @@ async function runLifecycleAction() {
 </script>
 
 <template>
-  <UContainer class="space-y-8 py-10 sm:py-14">
+  <AppContainer class="space-y-8 py-10 sm:py-14">
     <AdminWorkspaceHeader
       eyebrow="Admin Workspace"
       :title="currentHackathon ? currentHackathon.name : 'Hackathon workspace'"
@@ -532,7 +532,7 @@ async function runLifecycleAction() {
       current-surface="setup"
     />
 
-    <UAlert
+    <AppAlert
       v-if="mutationError"
       color="error"
       variant="soft"
@@ -540,7 +540,7 @@ async function runLifecycleAction() {
       :description="mutationError"
     />
 
-    <UAlert
+    <AppAlert
       v-if="workspace.hackathon.error.value"
       color="error"
       variant="soft"
@@ -548,7 +548,7 @@ async function runLifecycleAction() {
       :description="workspace.hackathon.error.value.message"
     />
 
-    <UAlert
+    <AppAlert
       v-else-if="currentHackathon && !canManage"
       color="warning"
       variant="soft"
@@ -558,18 +558,18 @@ async function runLifecycleAction() {
 
     <template v-else-if="currentHackathon">
       <section class="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <UCard class="border border-default/70 bg-elevated/90">
+        <AppCard class="border border-default/70 bg-elevated/90">
           <template #header>
             <div class="flex flex-wrap items-center gap-3">
               <h2 class="text-lg font-semibold text-highlighted">
                 Program Snapshot
               </h2>
-              <UBadge
+              <AppBadge
                 :color="getHackathonStateColor(currentHackathon.state)"
                 variant="soft"
               >
                 {{ formatHackathonState(currentHackathon.state) }}
-              </UBadge>
+              </AppBadge>
             </div>
           </template>
 
@@ -610,7 +610,7 @@ async function runLifecycleAction() {
                 </p>
               </div>
 
-              <UAlert
+              <AppAlert
                 v-if="lifecycleControl.reason"
                 color="warning"
                 variant="soft"
@@ -618,17 +618,17 @@ async function runLifecycleAction() {
                 :description="lifecycleControl.reason"
               />
 
-              <UButton
+              <AppButton
                 :disabled="!lifecycleControl.isEnabled"
                 color="primary"
                 size="lg"
                 @click="runLifecycleAction"
               >
                 {{ lifecycleControl.label }}
-              </UButton>
+              </AppButton>
             </div>
           </div>
-        </UCard>
+        </AppCard>
 
         <HackathonConfigForm
           v-model:form="configForm"
@@ -640,7 +640,7 @@ async function runLifecycleAction() {
       </section>
 
       <section class="grid gap-6 xl:grid-cols-2">
-        <UCard class="border border-default/70 bg-elevated/90">
+        <AppCard class="border border-default/70 bg-elevated/90">
           <template #header>
             <div class="space-y-1">
               <h2 class="text-lg font-semibold text-highlighted">
@@ -690,7 +690,7 @@ async function runLifecycleAction() {
               />
             </label>
 
-            <UButton
+            <AppButton
               color="primary"
               label="Publish Terms Version"
               @click="createTermsVersion"
@@ -715,14 +715,14 @@ async function runLifecycleAction() {
                         Version {{ document.version }}
                       </p>
                     </div>
-                    <UButton
+                    <AppButton
                       size="sm"
                       variant="soft"
                       :disabled="currentHackathon.currentApplicationTermsDocumentId === document.id"
                       @click="setCurrentTerms(document)"
                     >
                       {{ currentHackathon.currentApplicationTermsDocumentId === document.id ? 'Current' : 'Set current' }}
-                    </UButton>
+                    </AppButton>
                   </div>
                 </div>
               </div>
@@ -745,22 +745,22 @@ async function runLifecycleAction() {
                         Version {{ document.version }}
                       </p>
                     </div>
-                    <UButton
+                    <AppButton
                       size="sm"
                       variant="soft"
                       :disabled="currentHackathon.currentWinnerTermsDocumentId === document.id"
                       @click="setCurrentTerms(document)"
                     >
                       {{ currentHackathon.currentWinnerTermsDocumentId === document.id ? 'Current' : 'Set current' }}
-                    </UButton>
+                    </AppButton>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </UCard>
+        </AppCard>
 
-        <UCard class="border border-default/70 bg-elevated/90">
+        <AppCard class="border border-default/70 bg-elevated/90">
           <template #header>
             <div class="space-y-1">
               <h2 class="text-lg font-semibold text-highlighted">
@@ -795,7 +795,7 @@ async function runLifecycleAction() {
                 class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
                 placeholder="Criterion description"
               />
-              <UButton
+              <AppButton
                 color="primary"
                 label="Add Criterion"
                 @click="createCriterion"
@@ -839,13 +839,13 @@ async function runLifecycleAction() {
                       <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
                         Existing criterion
                       </p>
-                      <UButton
+                      <AppButton
                         size="sm"
                         variant="soft"
                         @click="updateCriterion(criterion.id)"
                       >
                         Save updates
-                      </UButton>
+                      </AppButton>
                     </div>
                   </div>
                 </div>
@@ -917,7 +917,7 @@ async function runLifecycleAction() {
                   placeholder="Rank end"
                 >
               </div>
-              <UButton
+              <AppButton
                 color="primary"
                 label="Add Prize"
                 @click="createPrize"
@@ -1003,24 +1003,24 @@ async function runLifecycleAction() {
                       <div class="text-sm text-muted">
                         {{ prize.rewardType }} • ranks {{ prize.rankStart }}-{{ prize.rankEnd }}
                       </div>
-                      <UButton
+                      <AppButton
                         size="sm"
                         variant="soft"
                         @click="updatePrize(prize.id)"
                       >
                         Save updates
-                      </UButton>
+                      </AppButton>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </UCard>
+        </AppCard>
       </section>
 
       <section class="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-        <UCard class="border border-default/70 bg-elevated/90">
+        <AppCard class="border border-default/70 bg-elevated/90">
           <template #header>
             <div class="space-y-1">
               <h2 class="text-lg font-semibold text-highlighted">
@@ -1033,7 +1033,7 @@ async function runLifecycleAction() {
           </template>
 
           <div class="space-y-4">
-            <UAlert
+            <AppAlert
               v-if="!canMutateRoles"
               color="warning"
               variant="soft"
@@ -1070,7 +1070,7 @@ async function runLifecycleAction() {
                   Include in automatic judge pool
                 </label>
               </div>
-              <UButton
+              <AppButton
                 color="primary"
                 label="Save Role Assignment"
                 @click="createRoleAssignment"
@@ -1097,14 +1097,14 @@ async function runLifecycleAction() {
                       </p>
                     </div>
 
-                    <UButton
+                    <AppButton
                       v-if="canMutateRoles"
                       size="sm"
                       variant="ghost"
                       @click="reuseRoleAssignmentUserId(assignment)"
                     >
                       Reuse ID
-                    </UButton>
+                    </AppButton>
                   </div>
 
                   <div
@@ -1140,21 +1140,21 @@ async function runLifecycleAction() {
                         {{ assignment.role }} • {{ assignment.isInJudgePool ? 'In judge pool' : 'Not in judge pool' }}
                       </p>
                       <div class="flex flex-wrap gap-2">
-                        <UButton
+                        <AppButton
                           size="sm"
                           variant="soft"
                           @click="updateRoleAssignment(assignment)"
                         >
                           Save updates
-                        </UButton>
-                        <UButton
+                        </AppButton>
+                        <AppButton
                           size="sm"
                           color="error"
                           variant="soft"
                           @click="deleteRoleAssignment(assignment)"
                         >
                           Remove
-                        </UButton>
+                        </AppButton>
                       </div>
                     </div>
                   </div>
@@ -1170,9 +1170,9 @@ async function runLifecycleAction() {
               </div>
             </div>
           </div>
-        </UCard>
+        </AppCard>
 
-        <UCard class="border border-default/70 bg-elevated/90">
+        <AppCard class="border border-default/70 bg-elevated/90">
           <template #header>
             <div class="space-y-1">
               <h2 class="text-lg font-semibold text-highlighted">
@@ -1234,8 +1234,8 @@ async function runLifecycleAction() {
               </p>
             </div>
           </div>
-        </UCard>
+        </AppCard>
       </section>
     </template>
-  </UContainer>
+  </AppContainer>
 </template>
