@@ -237,10 +237,10 @@ export async function ensureStableAuth0Personas(environment: NodeJS.ProcessEnv =
             )
         : await createUser(persona, environment, accessToken)
 
-      if (matchedUser && !userMatchesPersona(matchedUser, persona, environment)) {
+      if (matchedUser) {
         await updateUserPassword(
-          matchedUser.user_id,
-          matchedUser.identities?.[0]?.connection,
+          userRecord.user_id,
+          userRecord.identities?.[0]?.connection ?? matchedUser.identities?.[0]?.connection,
           persona.password,
           environment,
           accessToken

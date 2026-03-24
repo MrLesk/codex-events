@@ -1,7 +1,7 @@
 import 'dotenv/config'
 
 import { existsSync } from 'node:fs'
-import { execFileSync, spawn } from 'node:child_process'
+import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { join } from 'node:path'
 import { chromium, type Browser } from '@playwright/test'
 
@@ -19,14 +19,24 @@ async function sleep(milliseconds: number) {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
 
+const serverHealthTimeoutMilliseconds = 5_000
+const serverStartupCheckLimit = 24
+
 async function isServerReachable(baseUrl: string) {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), serverHealthTimeoutMilliseconds)
+
   try {
     const response = await fetch(baseUrl, {
-      redirect: 'manual'
+      redirect: 'manual',
+      signal: controller.signal
     })
+
     return response.status < 500
   } catch {
     return false
+  } finally {
+    clearTimeout(timeout)
   }
 }
 
@@ -77,29 +87,59 @@ async function stopExistingServer(baseUrl: string) {
   throw new Error(`Timed out waiting for the existing local server at ${baseUrl} to stop before bootstrap.`)
 }
 
+function appendServerOutput(buffer: string, chunk: string | Buffer) {
+  const nextBuffer = `${buffer}${chunk.toString()}`
+  return nextBuffer.slice(-8_000)
+}
+
+function captureServerOutput(child: ChildProcessWithoutNullStreams) {
+  let stdoutBuffer = ''
+  let stderrBuffer = ''
+
+  child.stdout.on('data', (chunk) => {
+    stdoutBuffer = appendServerOutput(stdoutBuffer, chunk)
+  })
+  child.stderr.on('data', (chunk) => {
+    stderrBuffer = appendServerOutput(stderrBuffer, chunk)
+  })
+
+  return () => {
+    return [stdoutBuffer.trim(), stderrBuffer.trim()].filter(Boolean).join('\n')
+  }
+}
+
 async function ensureLocalServer(baseUrl: string) {
   await stopExistingServer(baseUrl)
 
   const { hostname, port } = new URL(baseUrl)
+  console.log(`Starting local Nuxt dev server at ${baseUrl}.`)
   const child = spawn(join(process.cwd(), 'node_modules/.bin/nuxt'), ['dev', '--host', hostname, '--port', port || '3000'], {
-    stdio: 'ignore',
+    stdio: ['ignore', 'pipe', 'pipe'],
     env: process.env
   })
+  const readCapturedOutput = captureServerOutput(child)
 
-  for (let attempt = 0; attempt < 120; attempt += 1) {
+  for (let attempt = 0; attempt < serverStartupCheckLimit; attempt += 1) {
     if (child.exitCode !== null) {
-      throw new Error(`Local Nuxt dev server exited early with code ${child.exitCode}.`)
+      const capturedOutput = readCapturedOutput()
+      throw new Error(`Local Nuxt dev server exited early with code ${child.exitCode}.${capturedOutput ? `\n${capturedOutput}` : ''}`)
     }
 
     if (await isServerReachable(baseUrl)) {
+      console.log(`Local Nuxt dev server responded at ${baseUrl}.`)
       return child
+    }
+
+    if ((attempt + 1) % 4 === 0) {
+      console.log(`Waiting for local Nuxt dev server at ${baseUrl} (${attempt + 1}/${serverStartupCheckLimit} checks).`)
     }
 
     await sleep(500)
   }
 
   child.kill('SIGTERM')
-  throw new Error(`Timed out waiting for local Nuxt dev server at ${baseUrl}.`)
+  const capturedOutput = readCapturedOutput()
+  throw new Error(`Timed out waiting for local Nuxt dev server at ${baseUrl}.${capturedOutput ? `\n${capturedOutput}` : ''}`)
 }
 
 async function ensurePersonaStorageState(browser: Browser, persona: StablePersona) {
@@ -119,9 +159,12 @@ async function ensurePersonaStorageState(browser: Browser, persona: StablePerson
 }
 
 const baseUrl = getBaseUrl()
+console.log('Reconciling stable Auth0 personas.')
 const personas = await ensureStableAuth0Personas()
+console.log('Resetting platform fixtures.')
 await resetPlatformFixtures(personas)
 const serverProcess = await ensureLocalServer(baseUrl)
+console.log('Launching browser for Auth0 session bootstrap.')
 resetAuthArtifactDirectory()
 const browser = await chromium.launch()
 

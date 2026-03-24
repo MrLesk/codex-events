@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - Codex
 created_date: '2026-03-23 19:35'
-updated_date: '2026-03-23 20:31'
+updated_date: '2026-03-24 06:51'
 labels:
   - backend
   - testing
@@ -51,6 +51,8 @@ Plan recorded immediately before implementation after validating that `wrangler`
 Add GitHub Actions dependency caching to the split CI jobs after the Cloudflare-native D1 migration so repeated runs do not cold-install Bun packages in every job.
 
 Added `actions/cache@v4` to `backend-checks` and `auth0-bdd-release-gate`, caching Bun's shared install cache from `bun.lock`, plus Playwright's browser cache for the BDD job.
+
+Root-caused the six-hour `auth0-bdd-release-gate` hang to two issues: the bootstrap readiness probe could block forever on a half-open `nuxt dev` socket, and the dev server build path was still trying to statically bundle `wrangler`. Switched the local platform proxy to an opaque runtime import, added bounded readiness probes plus stage logging to the BDD bootstrap, and fixed stable Auth0 persona reconciliation to always reset existing test-user passwords so bootstrap login can complete.
 <!-- SECTION:NOTES:END -->
 
 ## Definition of Done
