@@ -5,80 +5,111 @@ const props = defineProps<{
   prizes: PublicPrize[]
   errorMessage?: string
 }>()
+
+function getPodiumCup(prize: PublicPrize) {
+  if (prize.rankStart !== prize.rankEnd) {
+    return null
+  }
+
+  if (prize.rankStart === 1) {
+    return {
+      label: 'Gold cup',
+      class: 'text-amber-400'
+    }
+  }
+
+  if (prize.rankStart === 2) {
+    return {
+      label: 'Silver cup',
+      class: 'text-slate-300'
+    }
+  }
+
+  if (prize.rankStart === 3) {
+    return {
+      label: 'Bronze cup',
+      class: 'text-orange-500'
+    }
+  }
+
+  return null
+}
 </script>
 
 <template>
-  <AppCard
-    variant="subtle"
-    :ui="{ root: 'border border-default/80 bg-elevated/85 backdrop-blur shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)]' }"
+  <section
+    class="rounded-xl border border-black/8 bg-[#F7F7F8] p-6 dark:border-white/[0.08] dark:bg-[#111111]"
     data-testid="public-hackathon-prizes"
   >
-    <div class="space-y-6">
-      <div class="space-y-2">
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-          Prize structure
-        </p>
-        <h2 class="text-2xl font-semibold tracking-[-0.03em] text-highlighted">
-          Published awards
-        </h2>
-      </div>
+    <h2 class="mb-4 text-[16px] font-medium text-highlighted dark:text-white">
+      Published awards
+    </h2>
 
-      <AppAlert
-        v-if="errorMessage"
-        color="warning"
-        variant="subtle"
-        icon="i-lucide-triangle-alert"
-        title="Prizes unavailable"
-        :description="errorMessage"
-      />
+    <AppAlert
+      v-if="errorMessage"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      title="Prizes unavailable"
+      :description="errorMessage"
+    />
 
+    <div
+      v-else-if="prizes.length === 0"
+      class="text-[14px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]"
+    >
+      This program has not published prize definitions yet.
+    </div>
+
+    <div
+      v-else
+      class="divide-y divide-black/8 dark:divide-white/[0.08]"
+    >
       <div
-        v-else-if="prizes.length === 0"
-        class="rounded-2xl border border-dashed border-default/80 bg-default/55 p-5 text-sm leading-7 text-muted"
+        v-for="prize in prizes"
+        :key="`${prize.rankStart}-${prize.rankEnd}-${prize.name}`"
+        class="py-5 first:pt-0 last:pb-0"
       >
-        This program has not published prize definitions yet.
-      </div>
+        <div class="flex flex-wrap items-start justify-between gap-4">
+          <div class="flex items-start gap-4">
+            <div
+              v-if="getPodiumCup(prize)"
+              class="flex w-20 shrink-0 items-start justify-center pt-0.5"
+            >
+              <AppIcon
+                name="i-lucide-trophy"
+                class="text-amber-400"
+                :class="getPodiumCup(prize)?.class"
+                style="font-size: 44px;"
+              />
+            </div>
 
-      <div
-        v-else
-        class="grid gap-4"
-      >
-        <div
-          v-for="prize in prizes"
-          :key="`${prize.rankStart}-${prize.rankEnd}-${prize.name}`"
-          class="rounded-2xl border border-default/80 bg-default/60 p-5"
-        >
-          <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="space-y-2">
-              <div class="flex flex-wrap items-center gap-2">
-                <h3 class="text-lg font-semibold text-highlighted">
+              <div class="flex flex-wrap items-center gap-3">
+                <h3 class="text-[16px] font-semibold text-highlighted dark:text-white">
                   {{ prize.name }}
                 </h3>
-                <AppBadge
-                  color="neutral"
-                  variant="outline"
-                  class="rounded-full px-3 py-1.5"
-                >
+                <div class="text-[12px] font-medium text-neutral-500 dark:text-[#A3A3A3]">
                   {{ formatPrizeRank(prize) }}
-                </AppBadge>
+                </div>
               </div>
 
-              <p class="text-sm leading-7 text-toned">
+              <p class="max-w-[42rem] text-[14px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]">
                 {{ prize.description }}
               </p>
             </div>
+          </div>
 
-            <div class="space-y-2 text-right">
-              <p class="text-sm font-semibold text-highlighted">
-                {{ formatPrizeReward(prize) }}
-              </p>
-              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
-                {{ formatPrizeScope(prize.awardScope) }}
-              </p>
-            </div>
+          <div class="text-right">
+            <p class="text-[16px] font-semibold text-highlighted dark:text-white">
+              {{ formatPrizeReward(prize) }}
+            </p>
+            <p class="mt-2 text-[11px] font-medium uppercase tracking-[0.16em] text-neutral-500 dark:text-[#8C8C8C]">
+              {{ formatPrizeScope(prize.awardScope) }}
+            </p>
           </div>
         </div>
       </div>
     </div>
-  </AppCard>
+  </section>
 </template>

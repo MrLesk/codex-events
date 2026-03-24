@@ -33,6 +33,24 @@ const filteredHackathons = computed(() => hackathons.value.filter((hackathon) =>
 
   return activeTab.value === 'past' ? isPast : !isPast
 }))
+const canLoadMoreForActiveFilter = computed(() => {
+  if (!hasMoreHackathons.value) {
+    return false
+  }
+
+  if (activeTab.value === 'all') {
+    return true
+  }
+
+  return filteredHackathons.value.length > 0
+})
+const loadMoreSummary = computed(() => {
+  if (activeTab.value === 'all') {
+    return `Showing ${hackathons.value.length} of ${total.value} visible hackathons.`
+  }
+
+  return `Showing ${filteredHackathons.value.length} ${activeTab.value} hackathons from the currently loaded results.`
+})
 
 async function loadMoreHackathons() {
   if (isLoadingMore.value || !hasMoreHackathons.value) {
@@ -180,7 +198,7 @@ useSeoMeta({
     </template>
 
     <div
-      v-if="!error && hasMoreHackathons"
+      v-if="!error && canLoadMoreForActiveFilter"
       class="flex flex-col items-center gap-4 pt-2"
     >
       <AppButton
@@ -195,7 +213,7 @@ useSeoMeta({
       </AppButton>
 
       <p class="text-sm text-neutral-500 dark:text-[#8C8C8C]">
-        Showing {{ hackathons.length }} of {{ total }} visible hackathons.
+        {{ loadMoreSummary }}
       </p>
     </div>
 

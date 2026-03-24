@@ -20,10 +20,19 @@ const { actor, hasPlatformAccount, loginHref, sidebarGroups } = useShellNavigati
 const title = 'Codex Hackathons'
 const description = 'The internal platform for running Codex community hackathons with Auth0-backed platform authentication.'
 const isHomepage = computed(() => route.path === '/')
-const showWorkspaceSidebar = computed(() => hasPlatformAccount.value && !isHomepage.value)
-const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_identity' && !isHomepage.value)
+const isPublicHackathonDetailRoute = computed(() => /^\/hackathons\/[^/]+\/?$/.test(route.path))
+const usesPublicShell = computed(() => isHomepage.value || isPublicHackathonDetailRoute.value || route.path === '/privacy-policy')
+const showWorkspaceSidebar = computed(() => hasPlatformAccount.value && !usesPublicShell.value)
+const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_identity' && !usesPublicShell.value)
 const profileHref = computed(() => actor.value.kind === 'platform_user' ? '/account' : '/dashboard')
 const profileLabel = computed(() => user.value ? 'Profile' : 'Sign in')
+const pageContainerClass = computed(() => {
+  if (isPublicHackathonDetailRoute.value) {
+    return 'pt-0 pb-6 lg:pb-8'
+  }
+
+  return 'py-6 lg:py-8'
+})
 
 useSeoMeta({
   title,
@@ -39,16 +48,16 @@ useSeoMeta({
 
   <div
     class="relative min-h-screen overflow-x-hidden"
-    :class="isHomepage ? 'text-foreground' : ''"
+    :class="usesPublicShell ? 'text-foreground' : ''"
   >
     <div
-      v-if="!isHomepage"
+      v-if="!usesPublicShell"
       class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,20,34,0.08),transparent_28%),radial-gradient(circle_at_70%_0%,rgba(79,91,112,0.12),transparent_28%)]"
     />
 
     <header
       class="sticky top-0 z-40 border-b backdrop-blur-2xl"
-      :class="isHomepage ? 'border-black/8 bg-white/96 dark:border-white/[0.08] dark:bg-black/96' : 'border-default/70 bg-bg/75'"
+      :class="usesPublicShell ? 'border-black/8 bg-white/96 dark:border-white/[0.08] dark:bg-black/96' : 'border-default/70 bg-bg/75'"
     >
       <AppContainer class="flex items-center gap-4 py-4">
         <NuxtLink
@@ -92,7 +101,7 @@ useSeoMeta({
     </header>
 
     <div class="relative">
-      <AppContainer class="py-6 lg:py-8">
+      <AppContainer :class="pageContainerClass">
         <AppAlert
           v-if="showIdentityAlert"
           color="info"
@@ -146,7 +155,7 @@ useSeoMeta({
 
     <footer
       class="border-t backdrop-blur-xl"
-      :class="isHomepage ? 'border-black/8 bg-white dark:border-white/[0.08] dark:bg-black' : 'border-default/70 bg-bg/60'"
+      :class="usesPublicShell ? 'border-black/8 bg-white dark:border-white/[0.08] dark:bg-black' : 'border-default/70 bg-bg/60'"
     >
       <AppContainer class="flex items-center justify-end py-6 text-sm text-neutral-700 dark:text-[#A3A3A3]">
         <NuxtLink
