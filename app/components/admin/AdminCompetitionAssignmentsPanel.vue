@@ -111,7 +111,7 @@ const actionableAssignments = computed(() =>
             v-for="assignment in actionableAssignments"
             :key="assignment.id"
             :data-testid="`admin-competition-assignment-${assignment.submissionId}`"
-            class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+            class="app-inset-card px-5 py-5"
           >
             <div class="space-y-5">
               <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -164,7 +164,7 @@ const actionableAssignments = computed(() =>
                     <span class="text-sm font-medium text-toned">Preferred replacement judge</span>
                     <select
                       v-model="getDraft(assignment).judgeUserId"
-                      class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                      class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                       :data-testid="`admin-competition-reassign-select-${assignment.submissionId}`"
                     >
                       <option value="">
@@ -185,7 +185,7 @@ const actionableAssignments = computed(() =>
                     <input
                       v-model="getDraft(assignment).reassignReason"
                       type="text"
-                      class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                      class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                       placeholder="Reassignment note"
                     >
                   </label>
@@ -224,7 +224,7 @@ const actionableAssignments = computed(() =>
                   <input
                     v-model="getDraft(assignment).forceSkipReason"
                     type="text"
-                    class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                    class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
                     placeholder="Force-skip note"
                   >
                 </label>

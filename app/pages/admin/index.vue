@@ -68,7 +68,7 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
           </template>
 
           <div class="grid gap-4 text-sm">
-            <div class="rounded-2xl border border-default bg-default px-4 py-3">
+            <div class="app-inset-card-tight px-4 py-3">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                 Signed in as
               </p>
@@ -80,7 +80,7 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
               </p>
             </div>
 
-            <div class="rounded-2xl border border-default bg-default px-4 py-3">
+            <div class="app-inset-card-tight px-4 py-3">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                 Effective admin scope
               </p>
@@ -123,7 +123,7 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
               v-for="hackathon in manageableHackathons"
               :key="hackathon.id"
               :to="`/admin/hackathons/${hackathon.id}`"
-              class="group rounded-[1.5rem] border border-default bg-default px-5 py-5 transition hover:border-primary/50 hover:bg-elevated"
+              class="group app-inset-card app-inset-card-hover px-5 py-5"
             >
               <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div class="space-y-2">

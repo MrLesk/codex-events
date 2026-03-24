@@ -62,7 +62,7 @@ const assignmentHref = computed(() =>
       </div>
 
       <div class="grid gap-3 md:grid-cols-3">
-        <div class="rounded-[1.35rem] border border-default/70 bg-white/72 px-4 py-3">
+        <div class="app-inset-card-tight px-4 py-3">
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
             Blind context
           </p>
@@ -71,7 +71,7 @@ const assignmentHref = computed(() =>
           </p>
         </div>
 
-        <div class="rounded-[1.35rem] border border-default/70 bg-white/72 px-4 py-3">
+        <div class="app-inset-card-tight px-4 py-3">
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
             Assigned
           </p>
@@ -80,7 +80,7 @@ const assignmentHref = computed(() =>
           </p>
         </div>
 
-        <div class="rounded-[1.35rem] border border-default/70 bg-white/72 px-4 py-3">
+        <div class="app-inset-card-tight px-4 py-3">
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
             Review signal
           </p>

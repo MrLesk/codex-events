@@ -132,7 +132,7 @@ function resetDraft() {
             v-for="entry in rankedLeaderboardEntries"
             :key="entry.submissionId"
             :data-testid="`admin-competition-leaderboard-${entry.submissionId}`"
-            class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+            class="app-inset-card px-5 py-5"
           >
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div class="space-y-2">
@@ -216,7 +216,7 @@ function resetDraft() {
                 v-for="(entry, index) in draftShortlist"
                 :key="entry.submissionId"
                 :data-testid="`admin-competition-shortlist-${entry.submissionId}`"
-                class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+                class="app-inset-card px-5 py-5"
               >
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div class="space-y-2">

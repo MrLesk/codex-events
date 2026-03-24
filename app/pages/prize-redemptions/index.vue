@@ -169,7 +169,7 @@ useSeoMeta({
               </p>
 
               <div class="grid gap-3 sm:grid-cols-2">
-                <div class="rounded-[1.35rem] border border-default bg-default px-4 py-4">
+                <div class="app-inset-card-tight px-4 py-4">
                   <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                     Prize scope
                   </p>
@@ -178,7 +178,7 @@ useSeoMeta({
                   </p>
                 </div>
 
-                <div class="rounded-[1.35rem] border border-default bg-default px-4 py-4">
+                <div class="app-inset-card-tight px-4 py-4">
                   <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                     Reward
                   </p>
@@ -190,7 +190,7 @@ useSeoMeta({
             </div>
 
             <div class="flex-1 space-y-5">
-              <div class="rounded-[1.5rem] border border-default bg-default px-5 py-5">
+              <div class="app-inset-card px-5 py-5">
                 <div class="space-y-2">
                   <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                     Current winner terms
@@ -218,7 +218,7 @@ useSeoMeta({
                 </div>
               </div>
 
-              <div class="rounded-[1.5rem] border border-default bg-default px-5 py-5">
+              <div class="app-inset-card px-5 py-5">
                 <div class="space-y-4">
                   <AppFormField
                     :name="`legal-name-${task.id}`"

@@ -250,3 +250,25 @@
     color: var(--text-highlighted);
   }
 }
+
+@layer components {
+  .app-inset-card {
+    @apply rounded-[1.5rem] border border-default/70 bg-bg/80 shadow-[0_18px_40px_-30px_rgba(15,20,34,0.24)] backdrop-blur-sm;
+  }
+
+  .app-inset-card-tight {
+    @apply rounded-2xl border border-default/70 bg-bg/80 shadow-[0_16px_36px_-30px_rgba(15,20,34,0.22)] backdrop-blur-sm;
+  }
+
+  .app-inset-card-hover {
+    @apply transition hover:border-primary/35 hover:bg-bg/88 hover:shadow-[0_22px_48px_-34px_rgba(15,20,34,0.28)];
+  }
+
+  .app-inset-field {
+    @apply rounded-2xl border border-default/80 bg-bg/86 shadow-[inset_0_1px_0_rgba(255,255,255,0.45),0_14px_32px_-30px_rgba(15,20,34,0.3)] backdrop-blur-sm transition;
+  }
+
+  .app-inset-choice {
+    @apply rounded-2xl border border-default/70 bg-bg/80 shadow-[0_16px_36px_-30px_rgba(15,20,34,0.22)] backdrop-blur-sm;
+  }
+}

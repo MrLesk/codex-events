@@ -116,7 +116,7 @@ function isActionPending(actionKey: string) {
 
       <template v-else>
         <div class="grid gap-4 md:grid-cols-3">
-          <div class="rounded-2xl border border-default bg-default px-4 py-4">
+          <div class="app-inset-card-tight px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Current status
             </p>
@@ -125,7 +125,7 @@ function isActionPending(actionKey: string) {
             </p>
           </div>
 
-          <div class="rounded-2xl border border-default bg-default px-4 py-4">
+          <div class="app-inset-card-tight px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Submitted at
             </p>
@@ -134,7 +134,7 @@ function isActionPending(actionKey: string) {
             </p>
           </div>
 
-          <div class="rounded-2xl border border-default bg-default px-4 py-4">
+          <div class="app-inset-card-tight px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Last updated
             </p>
@@ -146,7 +146,7 @@ function isActionPending(actionKey: string) {
 
         <div
           v-if="submission"
-          class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+          class="app-inset-card px-5 py-5"
         >
           <div class="space-y-2">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
@@ -171,7 +171,7 @@ function isActionPending(actionKey: string) {
           </div>
         </div>
 
-        <div class="rounded-[1.5rem] border border-default bg-default px-5 py-5">
+        <div class="app-inset-card px-5 py-5">
           <div class="space-y-1">
             <h3 class="text-lg font-semibold text-highlighted">
               {{ submission ? 'Submission details' : 'Start the first draft' }}

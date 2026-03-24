@@ -202,7 +202,7 @@ useSeoMeta({
               </div>
             </div>
 
-            <div class="rounded-[1.35rem] border border-default/70 bg-default/65 px-4 py-3 text-left sm:text-right">
+            <div class="app-inset-card-tight px-4 py-3 text-left sm:text-right">
               <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                 Active blind reviews
               </p>

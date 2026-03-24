@@ -57,7 +57,7 @@ const emit = defineEmits<{
           v-for="request in requests"
           :key="request.id"
           :data-testid="`participant-team-join-request-${request.id}`"
-          class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+          class="app-inset-card px-5 py-5"
         >
           <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div class="space-y-2">

@@ -47,7 +47,7 @@ defineProps<{
       </div>
 
       <div class="grid gap-4 md:grid-cols-3">
-        <div class="rounded-[1.45rem] border border-default/70 bg-default/70 px-4 py-4">
+        <div class="app-inset-card-tight px-4 py-4">
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
             Submission status
           </p>
@@ -56,7 +56,7 @@ defineProps<{
           </p>
         </div>
 
-        <div class="rounded-[1.45rem] border border-default/70 bg-default/70 px-4 py-4">
+        <div class="app-inset-card-tight px-4 py-4">
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
             Locked
           </p>
@@ -65,7 +65,7 @@ defineProps<{
           </p>
         </div>
 
-        <div class="rounded-[1.45rem] border border-default/70 bg-default/70 px-4 py-4">
+        <div class="app-inset-card-tight px-4 py-4">
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
             Application context
           </p>
@@ -119,7 +119,7 @@ defineProps<{
           <div
             v-for="application in assignment.blindSubmission.applications"
             :key="application.id"
-            class="rounded-[1.35rem] border border-default/70 bg-default/60 px-4 py-4"
+            class="app-inset-card-tight px-4 py-4"
           >
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>

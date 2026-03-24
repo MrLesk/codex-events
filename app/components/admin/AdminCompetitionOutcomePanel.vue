@@ -39,7 +39,7 @@ const winnersVisible = computed(() =>
     </template>
 
     <div class="space-y-6">
-      <div class="rounded-[1.5rem] border border-default bg-default px-5 py-5">
+      <div class="app-inset-card px-5 py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Current winner terms
         </p>
@@ -50,7 +50,7 @@ const winnersVisible = computed(() =>
 
       <div
         v-if="outcomeControl"
-        class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+        class="app-inset-card px-5 py-5"
       >
         <div class="space-y-3">
           <div class="space-y-1">
@@ -132,7 +132,7 @@ const winnersVisible = computed(() =>
             v-for="winner in winners"
             :key="winner.submissionId"
             :data-testid="`admin-competition-winner-${winner.submissionId}`"
-            class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+            class="app-inset-card px-5 py-5"
           >
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div class="space-y-2">

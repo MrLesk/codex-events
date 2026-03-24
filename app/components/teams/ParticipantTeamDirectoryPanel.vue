@@ -120,7 +120,7 @@ function isActionPending(actionKey: string) {
               <input
                 v-model="form.name"
                 type="text"
-                class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="North Star Builders"
                 :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
                 required
@@ -132,14 +132,14 @@ function isActionPending(actionKey: string) {
               <input
                 v-model="form.slug"
                 type="text"
-                class="rounded-2xl border border-default bg-default px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
                 placeholder="north-star-builders"
                 :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
                 required
               >
             </label>
 
-            <label class="flex items-center gap-3 rounded-2xl border border-default bg-default px-4 py-3 text-sm text-toned">
+            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
               <input
                 v-model="form.isOpenToJoinRequests"
                 type="checkbox"
@@ -202,7 +202,7 @@ function isActionPending(actionKey: string) {
               v-for="entry in teams"
               :key="entry.team.id"
               :data-testid="`participant-team-card-${entry.team.id}`"
-              class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+              class="app-inset-card px-5 py-5"
             >
               <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div class="space-y-2">

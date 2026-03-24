@@ -50,7 +50,7 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
         <div
           v-for="(draft, index) in modelValue"
           :key="draft.evaluationCriterionId"
-          class="rounded-[1.5rem] border border-default/70 bg-default/70 p-5"
+          class="app-inset-card p-5"
         >
           <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div class="space-y-2">
@@ -71,7 +71,7 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
               </p>
             </div>
 
-            <div class="w-full rounded-[1.35rem] border border-default/70 bg-white/70 p-4 lg:max-w-[12rem]">
+            <div class="w-full app-inset-card-tight p-4 lg:max-w-[12rem]">
               <label
                 :for="`judge-criterion-score-${draft.evaluationCriterionId}`"
                 class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted"

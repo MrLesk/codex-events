@@ -75,7 +75,7 @@ function isActionPending(actionKey: string) {
 
     <div class="space-y-6">
       <div class="grid gap-4 md:grid-cols-3">
-        <div class="rounded-2xl border border-default bg-default px-4 py-4">
+        <div class="app-inset-card-tight px-4 py-4">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Active members
           </p>
@@ -84,7 +84,7 @@ function isActionPending(actionKey: string) {
           </p>
         </div>
 
-        <div class="rounded-2xl border border-default bg-default px-4 py-4">
+        <div class="app-inset-card-tight px-4 py-4">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Created
           </p>
@@ -93,7 +93,7 @@ function isActionPending(actionKey: string) {
           </p>
         </div>
 
-        <div class="rounded-2xl border border-default bg-default px-4 py-4">
+        <div class="app-inset-card-tight px-4 py-4">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Join policy
           </p>
@@ -107,7 +107,7 @@ function isActionPending(actionKey: string) {
         v-if="canManageTeam"
         class="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]"
       >
-        <div class="space-y-4 rounded-[1.5rem] border border-default bg-default px-5 py-5">
+        <div class="space-y-4 app-inset-card px-5 py-5">
           <div class="space-y-1">
             <h3 class="text-lg font-semibold text-highlighted">
               Team profile
@@ -155,7 +155,7 @@ function isActionPending(actionKey: string) {
           </form>
         </div>
 
-        <div class="space-y-4 rounded-[1.5rem] border border-default bg-default px-5 py-5">
+        <div class="space-y-4 app-inset-card px-5 py-5">
           <div class="space-y-1">
             <h3 class="text-lg font-semibold text-highlighted">
               Join policy
@@ -178,7 +178,7 @@ function isActionPending(actionKey: string) {
         </div>
       </section>
 
-      <section class="rounded-[1.5rem] border border-default bg-default px-5 py-5">
+      <section class="app-inset-card px-5 py-5">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div class="space-y-2">
             <h3 class="text-lg font-semibold text-highlighted">

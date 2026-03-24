@@ -38,7 +38,7 @@ const emit = defineEmits<{
         v-for="member in team.members"
         :key="member.id"
         :data-testid="`participant-team-member-${member.userId}`"
-        class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+        class="app-inset-card px-5 py-5"
       >
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div class="space-y-2">

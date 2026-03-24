@@ -50,7 +50,7 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
 
       <template v-else>
         <section class="grid gap-4 sm:grid-cols-2">
-          <div class="rounded-[1.35rem] border border-default bg-default px-5 py-5">
+          <div class="app-inset-card-tight px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Pending records
             </p>
@@ -59,7 +59,7 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
             </p>
           </div>
 
-          <div class="rounded-[1.35rem] border border-default bg-default px-5 py-5">
+          <div class="app-inset-card-tight px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Redeemed records
             </p>
@@ -93,7 +93,7 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
             v-for="redemption in redemptions"
             :key="redemption.id"
             :data-testid="`admin-competition-redemption-${redemption.id}`"
-            class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+            class="app-inset-card px-5 py-5"
           >
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div class="space-y-3">

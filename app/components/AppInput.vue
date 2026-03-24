@@ -36,6 +36,6 @@ const sizeClasses = computed(() => {
     :type="props.type"
     :placeholder="props.placeholder"
     :disabled="props.disabled"
-    :class="cn('border-default/80 bg-default/70 focus-visible:ring-ring/60', sizeClasses)"
+    :class="cn('app-inset-field focus-visible:ring-ring/60', sizeClasses)"
   />
 </template>

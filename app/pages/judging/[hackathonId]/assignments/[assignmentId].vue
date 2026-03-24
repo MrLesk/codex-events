@@ -388,7 +388,7 @@ useSeoMeta({
                 <div
                   v-for="row in timelineRows"
                   :key="row.label"
-                  class="rounded-[1.35rem] border border-default/70 bg-default/65 px-4 py-3"
+                  class="app-inset-card-tight px-4 py-3"
                 >
                   <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                     {{ row.label }}
@@ -460,7 +460,7 @@ useSeoMeta({
 
               <div
                 v-if="canSkipJudgeAssignment(assignment)"
-                class="space-y-3 rounded-[1.5rem] border border-default/70 bg-default/60 p-4"
+                class="space-y-3 app-inset-card p-4"
               >
                 <div>
                   <p class="text-sm font-semibold text-highlighted">
@@ -492,7 +492,7 @@ useSeoMeta({
 
               <div
                 v-if="canMarkJudgeAssignmentIneligible(assignment)"
-                class="space-y-3 rounded-[1.5rem] border border-default/70 bg-default/60 p-4"
+                class="space-y-3 app-inset-card p-4"
               >
                 <div>
                   <p class="text-sm font-semibold text-highlighted">

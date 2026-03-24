@@ -56,7 +56,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
         v-if="!teamErrorMessage && !isLoadingTeams"
         class="grid gap-4 md:grid-cols-3"
       >
-        <div class="rounded-2xl border border-default bg-default px-4 py-4">
+        <div class="app-inset-card-tight px-4 py-4">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Total teams
           </p>
@@ -65,7 +65,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
           </p>
         </div>
 
-        <div class="rounded-2xl border border-default bg-default px-4 py-4">
+        <div class="app-inset-card-tight px-4 py-4">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             In competition
           </p>
@@ -74,7 +74,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
           </p>
         </div>
 
-        <div class="rounded-2xl border border-default bg-default px-4 py-4">
+        <div class="app-inset-card-tight px-4 py-4">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             No-submission section
           </p>
@@ -118,7 +118,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
             v-for="team in noSubmissionTeams"
             :key="`${team.team.id}-no-submission`"
             :data-testid="`admin-no-submission-${team.team.id}`"
-            class="rounded-2xl border border-default bg-default px-4 py-4"
+            class="app-inset-card-tight px-4 py-4"
           >
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -183,7 +183,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
             v-for="team in teams"
             :key="team.team.id"
             :data-testid="`admin-team-${team.team.id}`"
-            class="rounded-[1.5rem] border border-default bg-default px-5 py-5"
+            class="app-inset-card px-5 py-5"
           >
             <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div class="space-y-2">
