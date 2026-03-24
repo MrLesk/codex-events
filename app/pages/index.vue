@@ -72,14 +72,14 @@ useSeoMeta({
 </script>
 
 <template>
-  <div class="mx-auto max-w-[1000px] space-y-8 px-4 pb-24 pt-4 text-[#ECECEC] sm:px-6 lg:px-8">
+  <div class="mx-auto max-w-[1000px] space-y-8 px-4 pb-24 pt-4 text-foreground sm:px-6 lg:px-8">
     <section class="space-y-5">
       <div class="flex flex-col gap-4">
         <div class="space-y-3">
-          <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-white">
+          <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
             Hackathons
           </h1>
-          <p class="max-w-3xl text-[15px] text-[#A3A3A3]">
+          <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
             Discover and join hackathon programs running across the Codex community.
           </p>
         </div>
@@ -93,59 +93,47 @@ useSeoMeta({
       icon="i-lucide-triangle-alert"
       title="Hackathons unavailable"
       description="The public discovery surface could not load visible hackathons right now."
-      class="border-white/[0.08] bg-[#111111] text-[#ECECEC]"
+      class="border-black/8 bg-white text-foreground dark:border-white/[0.08] dark:bg-[#111111] dark:text-[#ECECEC]"
     />
 
-    <div
-      v-else-if="filteredHackathons.length === 0"
-      class="rounded-xl border border-dashed border-white/[0.08] bg-[#111111] p-10 text-center"
-    >
-      <p class="text-sm font-semibold uppercase tracking-[0.18em] text-[#8C8C8C]">
-        No visible programs
-      </p>
-      <p class="mt-3 text-lg font-semibold text-white">
-        There are no public hackathons available right now.
-      </p>
-    </div>
-
     <template v-else>
-      <div class="flex flex-col gap-4 rounded-xl border border-white/[0.08] bg-[#111111] p-2 md:flex-row md:items-center md:justify-between">
+      <div class="flex flex-col gap-4 rounded-xl border border-black/8 bg-neutral-100/80 p-2 dark:border-white/[0.08] dark:bg-[#111111] md:flex-row md:items-center md:justify-between">
         <div class="flex min-w-0 flex-wrap items-center gap-1">
           <button
             class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
-            :class="activeTab === 'all' ? 'bg-white text-black font-medium' : 'text-[#A3A3A3] hover:text-white'"
+            :class="activeTab === 'all' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
             @click="activeTab = 'all'"
           >
             All
           </button>
           <button
             class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
-            :class="activeTab === 'active' ? 'bg-white text-black font-medium' : 'text-[#A3A3A3] hover:text-white'"
+            :class="activeTab === 'active' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
             @click="activeTab = 'active'"
           >
             Active
           </button>
           <button
             class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
-            :class="activeTab === 'past' ? 'bg-white text-black font-medium' : 'text-[#A3A3A3] hover:text-white'"
+            :class="activeTab === 'past' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
             @click="activeTab = 'past'"
           >
             Past
           </button>
-          <span class="ml-4 border-l border-white/[0.08] pl-4 text-[13px] text-[#8C8C8C]">
+          <span class="ml-4 border-l border-black/8 pl-4 text-[13px] text-neutral-700 dark:border-white/[0.08] dark:text-[#8C8C8C]">
             {{ filteredHackathons.length }} hackathons
           </span>
         </div>
 
         <div class="flex items-center gap-2">
-          <button class="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#212121] px-3 py-1.5 text-[13px] text-[#A3A3A3] transition-colors hover:border-white/[0.2]">
+          <button class="flex items-center gap-2 rounded-lg border border-black/8 bg-white px-3 py-1.5 text-[13px] text-neutral-700 transition-colors hover:border-black/20 dark:border-white/[0.08] dark:bg-[#212121] dark:text-[#A3A3A3] dark:hover:border-white/[0.2]">
             Status
             <AppIcon
               name="i-lucide-chevron-down"
               class="size-3.5"
             />
           </button>
-          <button class="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#212121] px-3 py-1.5 text-[13px] text-[#A3A3A3] transition-colors hover:border-white/[0.2]">
+          <button class="flex items-center gap-2 rounded-lg border border-black/8 bg-white px-3 py-1.5 text-[13px] text-neutral-700 transition-colors hover:border-black/20 dark:border-white/[0.08] dark:bg-[#212121] dark:text-[#A3A3A3] dark:hover:border-white/[0.2]">
             Date
             <AppIcon
               name="i-lucide-chevron-down"
@@ -155,7 +143,34 @@ useSeoMeta({
         </div>
       </div>
 
-      <div class="space-y-16 pt-6">
+      <div
+        v-if="hackathons.length === 0"
+        class="rounded-xl border border-dashed border-black/10 bg-white p-10 text-center dark:border-white/[0.08] dark:bg-[#111111]"
+      >
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-[#8C8C8C]">
+          No visible programs
+        </p>
+        <p class="mt-3 text-lg font-semibold text-highlighted dark:text-white">
+          There are no public hackathons available right now.
+        </p>
+      </div>
+
+      <div
+        v-else-if="filteredHackathons.length === 0"
+        class="rounded-xl border border-dashed border-black/10 bg-white p-10 text-center dark:border-white/[0.08] dark:bg-[#111111]"
+      >
+        <p class="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-[#8C8C8C]">
+          No programs in this view
+        </p>
+        <p class="mt-3 text-lg font-semibold text-highlighted dark:text-white">
+          There are no {{ activeTab }} hackathons in the currently loaded results.
+        </p>
+      </div>
+
+      <div
+        v-else
+        class="space-y-16 pt-6"
+      >
         <HackathonCard
           v-for="hackathon in filteredHackathons"
           :key="hackathon.slug"
@@ -173,13 +188,13 @@ useSeoMeta({
         variant="solid"
         :loading="isLoadingMore"
         data-testid="public-hackathons-load-more"
-        class="border border-white/[0.08] bg-[#111111] text-white hover:bg-[#181818]"
+        class="border border-black/8 bg-white text-highlighted hover:bg-neutral-100 dark:border-white/[0.08] dark:bg-[#111111] dark:text-white dark:hover:bg-[#181818]"
         @click="loadMoreHackathons"
       >
         Load more hackathons
       </AppButton>
 
-      <p class="text-sm text-[#8C8C8C]">
+      <p class="text-sm text-neutral-500 dark:text-[#8C8C8C]">
         Showing {{ hackathons.length }} of {{ total }} visible hackathons.
       </p>
     </div>
@@ -191,7 +206,7 @@ useSeoMeta({
       icon="i-lucide-triangle-alert"
       title="More hackathons unavailable"
       :description="loadMoreError"
-      class="border-white/[0.08] bg-[#111111] text-[#ECECEC]"
+      class="border-black/8 bg-white text-foreground dark:border-white/[0.08] dark:bg-[#111111] dark:text-[#ECECEC]"
     />
   </div>
 </template>

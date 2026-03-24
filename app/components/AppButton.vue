@@ -92,7 +92,7 @@ const toneClasses = computed(() => {
 
 const rootClass = computed(() =>
   cn(
-    'inline-flex items-center justify-center gap-2 whitespace-nowrap font-medium shadow-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none disabled:opacity-50',
+    'inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium shadow-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/60 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
     sizeClasses[props.size],
     toneClasses.value,
     props.class

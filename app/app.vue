@@ -39,7 +39,7 @@ useSeoMeta({
 
   <div
     class="relative min-h-screen overflow-x-hidden"
-    :class="isHomepage ? 'bg-black text-[#ECECEC]' : ''"
+    :class="isHomepage ? 'text-foreground' : ''"
   >
     <div
       v-if="!isHomepage"
@@ -48,7 +48,7 @@ useSeoMeta({
 
     <header
       class="sticky top-0 z-40 border-b backdrop-blur-2xl"
-      :class="isHomepage ? 'border-white/[0.08] bg-black/96' : 'border-default/70 bg-bg/75'"
+      :class="isHomepage ? 'border-black/8 bg-white/96 dark:border-white/[0.08] dark:bg-black/96' : 'border-default/70 bg-bg/75'"
     >
       <AppContainer class="flex items-center gap-4 py-4">
         <NuxtLink
@@ -56,16 +56,10 @@ useSeoMeta({
           class="group flex items-center"
         >
           <div>
-            <p
-              class="text-[11px] font-semibold uppercase tracking-[0.22em]"
-              :class="isHomepage ? 'text-[#8C8C8C]' : 'text-muted'"
-            >
+            <p class="text-[11px] font-semibold uppercase tracking-[0.28em] text-neutral-500 dark:text-[#8C8C8C]">
               Codex Community
             </p>
-            <p
-              class="text-[17px] font-semibold tracking-[-0.01em]"
-              :class="isHomepage ? 'text-white' : 'text-highlighted'"
-            >
+            <p class="text-[17px] font-semibold tracking-[-0.01em] text-highlighted dark:text-white">
               Hackathon Platform
             </p>
           </div>
@@ -152,22 +146,15 @@ useSeoMeta({
 
     <footer
       class="border-t backdrop-blur-xl"
-      :class="isHomepage ? 'border-white/[0.08] bg-black' : 'border-default/70 bg-bg/60'"
+      :class="isHomepage ? 'border-black/8 bg-white dark:border-white/[0.08] dark:bg-black' : 'border-default/70 bg-bg/60'"
     >
-      <AppContainer class="flex flex-col gap-4 py-6 text-sm text-muted md:flex-row md:items-center md:justify-between">
-        <p>
-          Canonical shell for public discovery, participant entry, judging, administration, and redemption workflows.
-        </p>
-
-        <div class="flex items-center gap-3">
-          <AppAvatar
-            v-if="user"
-            :src="user.picture"
-            :alt="user.name"
-            size="sm"
-          />
-          <span>{{ user?.email ?? 'Signed out' }}</span>
-        </div>
+      <AppContainer class="flex items-center justify-end py-6 text-sm text-neutral-700 dark:text-[#A3A3A3]">
+        <NuxtLink
+          to="/privacy-policy"
+          class="transition-colors hover:text-highlighted dark:hover:text-white"
+        >
+          Privacy Policy
+        </NuxtLink>
       </AppContainer>
     </footer>
   </div>

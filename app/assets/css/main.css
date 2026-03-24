@@ -144,30 +144,7 @@
 :root {
   --radius: 0.625rem;
 
-  --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
-  --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: #ffffff;
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: #ffffff;
-  --secondary: #ececf0;
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
-  --border: rgb(3 2 19 / 0.1);
-  --input: rgb(3 2 19 / 0.08);
-  --ring: oklch(0.708 0 0);
-  --success: rgb(5 150 105);
-  --warning: rgb(217 119 6);
-  --info: rgb(2 132 199);
-  --error: rgb(225 29 72);
-
-  --surface-bg: #fcfcfd;
+  --surface-bg: #ffffff;
   --surface-default: #f3f3f5;
   --surface-elevated: #ffffff;
   --surface-accented: #ececf0;
@@ -179,38 +156,34 @@
   --text-highlighted: #030213;
   --text-inverted: #ffffff;
 
-  --app-background:
-    radial-gradient(circle at top right, rgb(226 162 129 / 0.09), transparent 30%),
-    radial-gradient(circle at top left, rgb(139 92 246 / 0.05), transparent 22%),
-    linear-gradient(180deg, #ffffff 0%, #f6f5f7 100%);
+  --background: var(--surface-bg);
+  --foreground: var(--text-highlighted);
+  --card: var(--surface-elevated);
+  --card-foreground: var(--text-highlighted);
+  --popover: var(--surface-elevated);
+  --popover-foreground: var(--text-highlighted);
+  --primary: #030213;
+  --primary-foreground: #ffffff;
+  --secondary: var(--surface-accented);
+  --secondary-foreground: var(--text-highlighted);
+  --muted: var(--surface-accented);
+  --muted-foreground: var(--text-muted);
+  --accent: #e9ebef;
+  --accent-foreground: var(--text-highlighted);
+  --destructive: #d4183d;
+  --border: rgb(3 2 19 / 0.1);
+  --input: rgb(3 2 19 / 0.08);
+  --ring: oklch(0.708 0 0);
+  --success: rgb(5 150 105);
+  --warning: rgb(217 119 6);
+  --info: rgb(2 132 199);
+  --error: rgb(225 29 72);
+
   --app-selection: rgb(3 2 19 / 0.14);
 }
 
 .dark {
-  --background: #050816;
-  --foreground: #ececec;
-  --card: #111111;
-  --card-foreground: #ececec;
-  --popover: #111111;
-  --popover-foreground: #ececec;
-  --primary: #f8fafc;
-  --primary-foreground: #111111;
-  --secondary: #171a21;
-  --secondary-foreground: #ececec;
-  --muted: #171a21;
-  --muted-foreground: #8c8c8c;
-  --accent: #212121;
-  --accent-foreground: #ececec;
-  --destructive: rgb(248 113 113);
-  --border: rgb(255 255 255 / 0.08);
-  --input: rgb(255 255 255 / 0.12);
-  --ring: rgb(255 255 255 / 0.24);
-  --success: rgb(74 222 128);
-  --warning: rgb(251 191 36);
-  --info: rgb(96 165 250);
-  --error: rgb(251 113 133);
-
-  --surface-bg: #050816;
+  --surface-bg: #000000;
   --surface-default: #111111;
   --surface-elevated: #171a21;
   --surface-accented: #212121;
@@ -222,10 +195,29 @@
   --text-highlighted: #f8fafc;
   --text-inverted: #111111;
 
-  --app-background:
-    radial-gradient(circle at top right, rgb(226 162 129 / 0.18), transparent 28%),
-    radial-gradient(circle at top left, rgb(96 165 250 / 0.1), transparent 22%),
-    linear-gradient(180deg, #050816 0%, #090b12 100%);
+  --background: var(--surface-bg);
+  --foreground: var(--text-highlighted);
+  --card: var(--surface-default);
+  --card-foreground: var(--text-highlighted);
+  --popover: var(--surface-default);
+  --popover-foreground: var(--text-highlighted);
+  --primary: #f8fafc;
+  --primary-foreground: #111111;
+  --secondary: var(--surface-elevated);
+  --secondary-foreground: var(--text-highlighted);
+  --muted: var(--surface-elevated);
+  --muted-foreground: var(--text-dimmed);
+  --accent: var(--surface-accented);
+  --accent-foreground: var(--text-highlighted);
+  --destructive: rgb(248 113 113);
+  --border: rgb(255 255 255 / 0.08);
+  --input: rgb(255 255 255 / 0.12);
+  --ring: rgb(255 255 255 / 0.24);
+  --success: rgb(74 222 128);
+  --warning: rgb(251 191 36);
+  --info: rgb(96 165 250);
+  --error: rgb(251 113 133);
+
   --app-selection: rgb(255 255 255 / 0.18);
 }
 
@@ -236,13 +228,21 @@
 
   html {
     font-size: 16px;
-    background-color: var(--background);
+    background-color: var(--surface-bg);
   }
 
   body {
     min-height: 100vh;
-    background: var(--app-background);
+    background-color: var(--surface-bg);
     color: var(--foreground);
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
   }
 
   ::selection {

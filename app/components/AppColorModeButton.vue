@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MoonIcon, SunIcon } from 'lucide-vue-next'
+import { MoonIcon, SunMediumIcon } from 'lucide-vue-next'
 
 const colorModeStorageKey = 'codex-hackathons-color-mode'
 const isDark = ref(true)
@@ -23,13 +23,13 @@ onMounted(() => {
 <template>
   <AppButton
     color="neutral"
-    variant="soft"
+    variant="ghost"
     size="sm"
-    class="rounded-full"
+    class="rounded-full text-neutral-600 hover:bg-transparent hover:text-highlighted dark:text-[#D3D6DF] dark:hover:bg-transparent dark:hover:text-white"
     :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
     @click="toggleColorMode"
   >
-    <SunIcon
+    <SunMediumIcon
       v-if="isDark"
       class="size-4"
     />

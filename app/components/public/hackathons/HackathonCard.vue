@@ -36,10 +36,10 @@ const programDateLabel = computed(() =>
 
 <template>
   <div class="relative">
-    <div class="absolute bottom-0 left-0 top-0 hidden w-px bg-white/[0.08] lg:block" />
-    <div class="absolute left-[-5px] top-6 hidden h-2 w-2 rounded-full border-2 border-black bg-[#8C8C8C] lg:block" />
+    <div class="absolute bottom-0 left-0 top-0 hidden w-px bg-black/10 dark:bg-white/[0.08] lg:block" />
+    <div class="absolute left-[-5px] top-6 hidden h-2 w-2 rounded-full border-2 border-background bg-neutral-500 dark:bg-[#8C8C8C] lg:block" />
 
-    <div class="absolute left-[-78px] top-5 hidden text-[11px] font-bold tracking-widest text-[#8C8C8C] uppercase lg:block">
+    <div class="absolute left-[-78px] top-5 hidden text-[11px] font-bold tracking-widest text-neutral-500 uppercase dark:text-[#8C8C8C] lg:block">
       {{ displayStatus }}
     </div>
 
@@ -48,9 +48,9 @@ const programDateLabel = computed(() =>
       class="group block lg:ml-8"
       :data-testid="`public-hackathon-card-${hackathon.slug}`"
     >
-      <div class="overflow-hidden rounded-xl border border-white/[0.08] bg-[#111111] transition-colors group-hover:border-white/[0.2]">
+      <div class="overflow-hidden rounded-xl border border-black/8 bg-white transition-colors group-hover:border-black/20 dark:border-white/[0.08] dark:bg-[#111111] dark:group-hover:border-white/[0.2]">
         <div class="relative h-[240px] overflow-hidden">
-          <div class="absolute inset-0 z-10 bg-black/20 transition-colors group-hover:bg-black/5" />
+          <div class="absolute inset-0 z-10 bg-black/15 transition-colors group-hover:bg-black/5 dark:bg-black/20" />
           <img
             v-if="heroImage"
             :src="heroImage"
@@ -59,7 +59,7 @@ const programDateLabel = computed(() =>
           >
           <div
             v-else
-            class="h-full w-full bg-[linear-gradient(135deg,#2d3b68_0%,#523a77_34%,#246b76_68%,#233f7a_100%)]"
+            class="h-full w-full bg-neutral-200 dark:bg-[#1A1A1A]"
           />
 
           <div class="absolute bottom-6 left-6 z-20">
@@ -70,7 +70,7 @@ const programDateLabel = computed(() =>
               <span
                 v-for="tag in timelineTags"
                 :key="tag"
-                class="rounded bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white/90 backdrop-blur-md border border-white/10"
+                class="rounded border border-white/10 bg-black/55 px-2 py-0.5 text-[11px] font-medium text-white/90 backdrop-blur-md"
               >
                 {{ tag }}
               </span>
@@ -83,16 +83,16 @@ const programDateLabel = computed(() =>
 
         <div class="flex flex-col gap-5 p-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <p class="mb-1 text-[15px] font-medium text-white">
+            <p class="mb-1 text-[15px] font-medium text-highlighted dark:text-white">
               {{ programDateLabel }}
             </p>
-            <p class="text-[13px] text-[#A3A3A3]">
+            <p class="text-[13px] text-neutral-500 dark:text-[#A3A3A3]">
               {{ hackathon.city }} • {{ hackathon.address }}
             </p>
           </div>
 
           <div class="flex items-center gap-3">
-            <div class="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-[13px] font-medium text-black transition-colors hover:bg-[#ECECEC]">
+            <div class="inline-flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]">
               Register
               <AppIcon
                 name="i-lucide-arrow-up-right"
