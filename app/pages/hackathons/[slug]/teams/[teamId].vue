@@ -5,7 +5,7 @@ import type {
 } from '~/composables/useHackathonPresentation'
 import type { TeamActionAvailability } from '~/utils/team-workspace'
 
-import { buildAuthAccessHref } from '~/utils/auth-navigation'
+import { buildTermsOnboardingHref } from '~/utils/auth-navigation'
 import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import ParticipantTeamJoinRequestsPanel from '~/components/teams/ParticipantTeamJoinRequestsPanel.vue'
@@ -67,7 +67,7 @@ const workspace = useTeamFormationWorkspace(hackathon, slug, {
   teamId
 })
 const actor = computed(() => workspace.actor.value)
-const platformRegistrationHref = computed(() => buildAuthAccessHref(route.fullPath, 'register'))
+const platformRegistrationHref = computed(() => buildTermsOnboardingHref(route.fullPath))
 const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
 const teamSettings = reactive({
   name: '',

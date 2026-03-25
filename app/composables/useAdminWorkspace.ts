@@ -63,6 +63,7 @@ export function useAdminWorkspace() {
 export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>) {
   const resolvedHackathonId = computed(() => toValue(hackathonId))
   const adminWorkspace = useAdminWorkspace()
+  const apiFetch = import.meta.server ? useRequestFetch() : $fetch
 
   const hackathon = useFetch<ApiDataResponse<HackathonRecord>>(
     () => `/api/hackathons/${resolvedHackathonId.value}`,
@@ -123,7 +124,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   const teams = useAsyncData<TeamSummary[]>(
     () => buildAdminWorkspaceCacheKey('admin-hackathon-teams', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
     async () => await listAllPaginatedItems(
-      async (page, pageSize) => await $fetch<ApiListResponse<TeamSummary>>(
+      async (page, pageSize) => await apiFetch<ApiListResponse<TeamSummary>>(
         `/api/hackathons/${resolvedHackathonId.value}/teams`,
         {
           query: {

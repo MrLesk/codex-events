@@ -75,9 +75,8 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
 
 When('I open the account onboarding page with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto('/auth/access?mode=register&returnTo=%2Faccount')
-  await expect(page.getByRole('heading', { name: 'Sign in or create your platform account' })).toBeVisible()
-  await expect(page.getByRole('checkbox', { name: /^Accept Privacy Policy/ })).toBeVisible()
+  await page.goto('/auth/access?returnTo=%2Faccount')
+  await expect(page.getByRole('heading', { name: 'Accept the current platform documents' })).toBeVisible()
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(500)
 })
@@ -101,12 +100,14 @@ Then('I should see the deleted platform account message', async ({ page }) => {
 })
 
 When('I submit the platform account registration form for {string}', async ({ page }) => {
-  await page.getByLabel('ChatGPT email').fill('regular-user@chatgpt.example')
-  await page.getByLabel('OpenAI org ID').fill('org_regular_user')
   await page.getByRole('checkbox', { name: /^Accept Privacy Policy/ }).check()
   await page.getByRole('checkbox', { name: /^Accept Platform Terms/ }).check()
-  await page.getByRole('button', { name: 'Create platform account' }).click()
-  await page.waitForURL('**/account')
+  await page.getByRole('button', { name: 'Accept and continue' }).click()
+  await page.waitForURL('**/onboarding/account?**')
+})
+
+Then('I should see the profile onboarding heading', async ({ page }) => {
+  await expect(page.getByRole('heading', { name: 'Complete your profile' })).toBeVisible()
 })
 
 Then('I should see the account settings heading', async ({ page }) => {
@@ -120,7 +121,7 @@ When('I update the account profile links', async ({ page }) => {
   await page.getByLabel('OpenAI org ID').fill('org_regular_user_updated')
   await page.getByLabel('Luma username').fill('regular-user-updated')
   await page.getByLabel('X profile URL').fill('https://x.com/regular-user-updated')
-  await page.getByRole('button', { name: 'Save profile' }).click()
+  await page.getByRole('button', { name: /Save profile|Finish onboarding/ }).click()
 })
 
 Then('the account profile should show the updated links', async ({ page }) => {

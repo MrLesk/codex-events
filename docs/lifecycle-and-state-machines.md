@@ -2,6 +2,53 @@
 
 This document defines the canonical lifecycle states and transitions for the main workflows in the Codex hackathon platform.
 
+## Platform Onboarding
+
+### States
+
+- `terms_pending`
+- `profile_pending`
+- `completed`
+
+### State Meanings
+
+#### `terms_pending`
+
+The user has authenticated with Auth0 but does not yet have a platform user record with accepted platform documents.
+
+Behavior:
+
+- The app-owned onboarding flow must present the current `privacy_policy` and `platform_terms`.
+- The user cannot enter participant, judge, admin, or prize-recipient workspaces yet.
+
+#### `profile_pending`
+
+The platform user record exists and the exact current platform documents were accepted, but the reusable platform profile step is not complete yet.
+
+Behavior:
+
+- The user is routed to the second onboarding page.
+- The user can confirm or update display name, social links, ChatGPT email, OpenAI org ID, and Luma username.
+- Protected workspaces remain blocked until the profile step is saved.
+
+#### `completed`
+
+The platform onboarding flow is complete.
+
+Behavior:
+
+- The user can enter the normal platform workspaces permitted by application authorization.
+- The same profile fields remain editable from account settings later.
+
+### Transitions
+
+- `terms_pending -> profile_pending`
+  Actor: authenticated user.
+  Guard: the user accepts the exact current `privacy_policy` and `platform_terms`, and platform account creation succeeds.
+- `profile_pending -> completed`
+  Actor: platform user.
+  Guard: the user saves the onboarding profile step.
+
 ## Hackathon
 
 ### States

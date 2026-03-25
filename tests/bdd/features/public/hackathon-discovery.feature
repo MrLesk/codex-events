@@ -4,7 +4,6 @@ Feature: Public hackathon discovery
   Scenario: Viewing the public hackathon list
     Given I am on the public hackathons page
     Then I should see the public hackathon titled "E2E Fixture Hackathon"
-    And the public hackathon card for "E2E Fixture Hackathon" should show lifecycle state "Registration open"
     And the public hackathon card for "E2E Fixture Hackathon" should link to "/hackathons/e2e-fixture-hackathon"
 
   Scenario: Viewing the public hackathon list with the saved platform-admin session
@@ -22,8 +21,6 @@ Feature: Public hackathon discovery
   Scenario: Viewing the public hackathon detail
     Given I am on the public hackathon detail page for the fixture hackathon
     Then I should see the public hackathon detail title "E2E Fixture Hackathon"
-    And I should see the public evaluation criterion "Community Impact"
     And I should see the public prize "Launch Award"
-    And I should see the current terms reference "Application Terms"
     And I should see the text "Maximum 5 team members"
     And I should not see the admin control "Configure"

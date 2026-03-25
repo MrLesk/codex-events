@@ -11,6 +11,7 @@ interface AccountLifecyclePlatformUser {
   email: string
   displayName: string
   isPlatformAdmin: boolean
+  onboardingState: 'profile_pending' | 'completed'
   xProfileUrl?: string | null
   linkedinProfileUrl?: string | null
   githubProfileUrl?: string | null
@@ -27,6 +28,7 @@ type AccountLifecycleActor
     kind: 'anonymous'
     isAuthenticated: false
     hasPlatformAccount: false
+    onboardingState: null
     sessionUser: null
     platformUser: null
     isPlatformAdmin: false
@@ -36,6 +38,7 @@ type AccountLifecycleActor
     kind: 'authenticated_identity'
     isAuthenticated: true
     hasPlatformAccount: false
+    onboardingState: 'terms_pending'
     sessionUser: AccountLifecycleSessionUser
     platformUser: null
     isPlatformAdmin: false
@@ -50,6 +53,7 @@ type AccountLifecycleActor
     kind: 'platform_user'
     isAuthenticated: true
     hasPlatformAccount: true
+    onboardingState: 'profile_pending' | 'completed'
     sessionUser: AccountLifecycleSessionUser
     platformUser: AccountLifecyclePlatformUser
     isPlatformAdmin: boolean

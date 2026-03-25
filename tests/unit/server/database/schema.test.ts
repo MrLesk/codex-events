@@ -17,6 +17,7 @@ describe('shared schema foundation', () => {
 
     expect(getTableName(users)).toBe('users')
     expect(columns.auth0Subject.name).toBe('auth0_subject')
+    expect(columns.onboardingState.name).toBe('onboarding_state')
   })
 
   it('defines the documented partial unique indexes', () => {

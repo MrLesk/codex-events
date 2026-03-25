@@ -1,4 +1,4 @@
-import { buildAuthAccessHref } from '~/utils/auth-navigation'
+import { buildAuthLoginHref, buildTermsOnboardingHref } from '~/utils/auth-navigation'
 
 interface ShellSessionUser {
   sub: string
@@ -13,6 +13,7 @@ interface ShellPlatformUser {
   email: string
   displayName: string
   isPlatformAdmin: boolean
+  onboardingState: 'profile_pending' | 'completed'
   xProfileUrl: string | null
   linkedinProfileUrl: string | null
   githubProfileUrl: string | null
@@ -35,6 +36,7 @@ interface AnonymousShellActor {
   kind: 'anonymous'
   isAuthenticated: false
   hasPlatformAccount: false
+  onboardingState: null
   sessionUser: null
   platformUser: null
   isPlatformAdmin: false
@@ -45,6 +47,7 @@ interface AuthenticatedIdentityShellActor {
   kind: 'authenticated_identity'
   isAuthenticated: true
   hasPlatformAccount: false
+  onboardingState: 'terms_pending'
   sessionUser: ShellSessionUser
   platformUser: null
   isPlatformAdmin: false
@@ -55,6 +58,7 @@ interface PlatformShellActor {
   kind: 'platform_user'
   isAuthenticated: true
   hasPlatformAccount: true
+  onboardingState: 'profile_pending' | 'completed'
   sessionUser: ShellSessionUser
   platformUser: ShellPlatformUser
   isPlatformAdmin: boolean
@@ -99,6 +103,7 @@ function buildFallbackActor(user: ReturnType<typeof useUser>['value']): Authenti
     kind: 'authenticated_identity',
     isAuthenticated: true,
     hasPlatformAccount: false,
+    onboardingState: 'terms_pending',
     sessionUser: {
       sub: user?.sub ?? '',
       email: user?.email ?? null,
@@ -115,10 +120,11 @@ function buildFallbackActor(user: ReturnType<typeof useUser>['value']): Authenti
 export function useShellNavigation() {
   const route = useRoute()
   const user = useUser()
+  const apiFetch = import.meta.server ? useRequestFetch() : $fetch
   const actorKey = computed(() => `shell-session-actor-${user.value?.sub ?? 'anonymous'}`)
 
   const returnTo = computed(() => route.fullPath || '/dashboard')
-  const authEntryHref = computed(() => buildAuthAccessHref(returnTo.value, 'signin'))
+  const authEntryHref = computed(() => buildAuthLoginHref(returnTo.value))
 
   const {
     data: actorResponse,
@@ -130,7 +136,7 @@ export function useShellNavigation() {
       return null
     }
 
-    const response = await $fetch<ShellSessionResponse>('/api/session')
+    const response = await apiFetch<ShellSessionResponse>('/api/session')
 
     return response.data.actor
   }, {
@@ -150,6 +156,7 @@ export function useShellNavigation() {
         kind: 'anonymous',
         isAuthenticated: false,
         hasPlatformAccount: false,
+        onboardingState: null,
         sessionUser: null,
         platformUser: null,
         isPlatformAdmin: false,
@@ -171,7 +178,7 @@ export function useShellNavigation() {
         return []
       }
 
-      const response = await $fetch<ShellPrizeRedemptionsResponse>('/api/prize-redemptions/me')
+      const response = await apiFetch<ShellPrizeRedemptionsResponse>('/api/prize-redemptions/me')
 
       return response.data
     },
@@ -210,10 +217,14 @@ export function useShellNavigation() {
     }
 
     if (actor.value.kind === 'authenticated_identity') {
-      return ['Authenticated identity', 'Platform account required']
+      return ['Authenticated identity', 'Onboarding required']
     }
 
     const chips = ['Platform user']
+
+    if (actor.value.onboardingState === 'profile_pending') {
+      chips.push('Profile setup required')
+    }
 
     if (actor.value.isPlatformAdmin) {
       chips.push('Platform admin')
@@ -327,7 +338,7 @@ export function useShellNavigation() {
         id: 'complete-account',
         label: 'Complete your platform account',
         description: 'Finish platform registration and exact-version document acceptance before entering hackathon participation workflows.',
-        to: buildAuthAccessHref('/dashboard', 'register'),
+        to: buildTermsOnboardingHref('/dashboard'),
         icon: 'i-lucide-id-card',
         badge: 'Onboarding',
         accent: 'primary'

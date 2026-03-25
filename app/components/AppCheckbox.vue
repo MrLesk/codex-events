@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { Checkbox as UiCheckbox } from '~/components/ui/checkbox'
-
 const modelValue = defineModel<boolean>({
   default: false
 })
@@ -9,20 +7,16 @@ const props = defineProps<{
   label?: string
   disabled?: boolean
 }>()
-
-function handleCheckedUpdate(value: boolean | 'indeterminate') {
-  modelValue.value = value === true
-}
 </script>
 
 <template>
   <label class="flex items-start gap-3 text-sm text-toned">
-    <UiCheckbox
-      :checked="modelValue"
+    <input
+      v-model="modelValue"
+      type="checkbox"
       :disabled="props.disabled"
-      class="mt-0.5 border-default/80 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
-      @update:checked="handleCheckedUpdate"
-    />
+      class="mt-0.5 size-4 rounded border-default text-primary accent-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
+    >
     <span>
       <slot>{{ props.label }}</slot>
     </span>

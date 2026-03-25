@@ -1,6 +1,11 @@
 export const authLogoutHref = '/auth/logout'
 
-export type AuthAccessMode = 'signin' | 'register'
+export type ActorOnboardingState = 'terms_pending' | 'profile_pending' | 'completed'
+
+interface RedirectAwareActor {
+  kind: 'anonymous' | 'authenticated_identity' | 'platform_user'
+  onboardingState: ActorOnboardingState | null
+}
 
 export function normalizeAuthReturnTo(returnTo: string | null | undefined, fallback = '/') {
   const normalizedReturnTo = returnTo?.trim() || fallback
@@ -16,14 +21,28 @@ export function buildAuthLoginHref(returnTo: string | null | undefined) {
   return `/auth/login?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo))}`
 }
 
-export function buildAuthAccessHref(returnTo: string | null | undefined, mode: AuthAccessMode = 'signin') {
-  const searchParams = new URLSearchParams({
-    returnTo: normalizeAuthReturnTo(returnTo)
-  })
+export function buildTermsOnboardingHref(returnTo: string | null | undefined) {
+  return `/auth/access?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo, '/dashboard'))}`
+}
 
-  if (mode !== 'signin') {
-    searchParams.set('mode', mode)
+export function buildPlatformOnboardingStartHref(returnTo: string | null | undefined) {
+  return buildAuthLoginHref(buildTermsOnboardingHref(returnTo))
+}
+
+export function buildAccountOnboardingHref(returnTo: string | null | undefined) {
+  return `/onboarding/account?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo, '/dashboard'))}`
+}
+
+export function resolveActorAppRedirect(actor: RedirectAwareActor, returnTo: string | null | undefined) {
+  const normalizedReturnTo = normalizeAuthReturnTo(returnTo, '/dashboard')
+
+  if (actor.kind === 'authenticated_identity' || actor.onboardingState === 'terms_pending') {
+    return buildTermsOnboardingHref(normalizedReturnTo)
   }
 
-  return `/auth/access?${searchParams.toString()}`
+  if (actor.kind === 'platform_user' && actor.onboardingState === 'profile_pending') {
+    return buildAccountOnboardingHref(normalizedReturnTo)
+  }
+
+  return normalizedReturnTo
 }

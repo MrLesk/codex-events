@@ -24,6 +24,7 @@ export interface AnonymousActor {
   kind: 'anonymous'
   isAuthenticated: false
   hasPlatformAccount: false
+  onboardingState: null
   sessionUser: null
   platformUser: null
 }
@@ -32,6 +33,7 @@ export interface AuthenticatedIdentityActor {
   kind: 'authenticated_identity'
   isAuthenticated: true
   hasPlatformAccount: false
+  onboardingState: 'terms_pending'
   sessionUser: SessionUserProfile
   platformUser: null
 }
@@ -40,6 +42,7 @@ export interface PlatformActor {
   kind: 'platform_user'
   isAuthenticated: true
   hasPlatformAccount: true
+  onboardingState: 'profile_pending' | 'completed'
   sessionUser: SessionUserProfile
   platformUser: PlatformUserRecord
 }
@@ -90,6 +93,7 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
       kind: 'anonymous',
       isAuthenticated: false,
       hasPlatformAccount: false,
+      onboardingState: null,
       sessionUser: null,
       platformUser: null
     }
@@ -102,6 +106,7 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
       kind: 'authenticated_identity',
       isAuthenticated: true,
       hasPlatformAccount: false,
+      onboardingState: 'terms_pending',
       sessionUser,
       platformUser: null
     }
@@ -111,6 +116,7 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
     kind: 'platform_user',
     isAuthenticated: true,
     hasPlatformAccount: true,
+    onboardingState: platformUser.onboardingState,
     sessionUser,
     platformUser
   }

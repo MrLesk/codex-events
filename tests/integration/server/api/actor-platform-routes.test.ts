@@ -83,10 +83,12 @@ describe('TASK-3.5 actor-facing API routes', () => {
         actor: {
           kind: 'platform_user',
           hasPlatformAccount: true,
+          onboardingState: 'completed',
           isPlatformAdmin: false,
           platformUser: {
             id: 'user_judge',
-            email: 'judge@example.com'
+            email: 'judge@example.com',
+            onboardingState: 'completed'
           },
           hackathonRoles: [
             {
@@ -278,7 +280,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(storedAcceptances).toHaveLength(1)
   })
 
-  test('POST /api/account/registration creates the platform user and records required document acceptances', async () => {
+  test('POST /api/account/registration creates the platform user in profile onboarding and records required document acceptances', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler },
@@ -314,13 +316,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const response = await harness.request('/api/account/registration', {
       method: 'POST',
       body: JSON.stringify({
-        displayName: 'New User',
         privacyPolicyDocumentId: 'privacy_v1',
-        platformTermsDocumentId: 'terms_v1',
-        githubProfileUrl: 'https://github.com/new-user',
-        chatgptEmail: 'new-user@chatgpt.example',
-        openaiOrgId: 'org_new_user',
-        lumaUsername: 'new-user'
+        platformTermsDocumentId: 'terms_v1'
       })
     })
 
@@ -330,10 +327,11 @@ describe('TASK-3.5 actor-facing API routes', () => {
         user: {
           email: 'new-user@example.com',
           displayName: 'New User',
-          githubProfileUrl: 'https://github.com/new-user',
-          chatgptEmail: 'new-user@chatgpt.example',
-          openaiOrgId: 'org_new_user',
-          lumaUsername: 'new-user'
+          onboardingState: 'profile_pending',
+          githubProfileUrl: null,
+          chatgptEmail: null,
+          openaiOrgId: null,
+          lumaUsername: null
         },
         acceptedDocumentIds: {
           privacyPolicyDocumentId: 'privacy_v1',
@@ -350,10 +348,12 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const sessionResponse = await harness.request('/api/session')
 
     expect(createdUser?.email).toBe('new-user@example.com')
-    expect(createdUser?.githubProfileUrl).toBe('https://github.com/new-user')
-    expect(createdUser?.chatgptEmail).toBe('new-user@chatgpt.example')
-    expect(createdUser?.openaiOrgId).toBe('org_new_user')
-    expect(createdUser?.lumaUsername).toBe('new-user')
+    expect(createdUser?.displayName).toBe('New User')
+    expect(createdUser?.onboardingState).toBe('profile_pending')
+    expect(createdUser?.githubProfileUrl).toBeNull()
+    expect(createdUser?.chatgptEmail).toBeNull()
+    expect(createdUser?.openaiOrgId).toBeNull()
+    expect(createdUser?.lumaUsername).toBeNull()
     expect(acceptances).toHaveLength(2)
     expect(auditEntries).toEqual([
       expect.objectContaining({
@@ -368,13 +368,15 @@ describe('TASK-3.5 actor-facing API routes', () => {
         actor: {
           kind: 'platform_user',
           hasPlatformAccount: true,
+          onboardingState: 'profile_pending',
           platformUser: {
             id: createdUser?.id,
             email: 'new-user@example.com',
             displayName: 'New User',
-            chatgptEmail: 'new-user@chatgpt.example',
-            openaiOrgId: 'org_new_user',
-            lumaUsername: 'new-user'
+            onboardingState: 'profile_pending',
+            chatgptEmail: null,
+            openaiOrgId: null,
+            lumaUsername: null
           }
         }
       }
@@ -424,7 +426,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const outdatedResponse = await harness.request('/api/account/registration', {
       method: 'POST',
       body: JSON.stringify({
-        displayName: 'Registration Guard',
         privacyPolicyDocumentId: 'privacy_v1',
         platformTermsDocumentId: 'terms_v1'
       })
@@ -443,7 +444,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const mismatchedResponse = await harness.request('/api/account/registration', {
       method: 'POST',
       body: JSON.stringify({
-        displayName: 'Registration Guard',
         privacyPolicyDocumentId: 'terms_v1',
         platformTermsDocumentId: 'terms_v1'
       })
@@ -570,7 +570,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       id: 'user_account',
       auth0Subject: 'auth0|account-user',
       email: 'account-user@example.com',
-      displayName: 'Account User'
+      displayName: 'Account User',
+      onboardingState: 'profile_pending'
     })
 
     const response = await harness.request('/api/account', {
@@ -592,6 +593,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
         user: {
           id: 'user_account',
           displayName: 'Updated Account User',
+          onboardingState: 'completed',
           xProfileUrl: 'https://x.com/account-user',
           linkedinProfileUrl: 'https://linkedin.com/in/account-user',
           githubProfileUrl: null,
@@ -608,6 +610,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const auditEntries = await harness.database.select().from(auditLogs)
 
     expect(updatedUser).toMatchObject({
+      onboardingState: 'completed',
       displayName: 'Updated Account User',
       xProfileUrl: 'https://x.com/account-user',
       linkedinProfileUrl: 'https://linkedin.com/in/account-user',

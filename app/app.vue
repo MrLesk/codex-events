@@ -97,6 +97,7 @@ useSeoMeta({
           <AppButton
             v-else-if="!isAuthAccessRoute"
             :to="authEntryHref"
+            external
             label="Sign in"
             color="neutral"
             variant="soft"

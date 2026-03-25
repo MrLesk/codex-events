@@ -20,6 +20,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `email`
 - `display_name`
 - `is_platform_admin`
+- `onboarding_state`
 - `x_profile_url`
 - `linkedin_profile_url`
 - `github_profile_url`
@@ -30,6 +31,12 @@ It describes the intended persistent model at the level of entities, key fields,
 - `updated_at`
 - `deleted_at`
 
+### Enums
+
+- `onboarding_state`
+  - `profile_pending`
+  - `completed`
+
 ### Constraints
 
 - `auth0_subject` is unique among active users.
@@ -38,6 +45,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - `auth0_subject` stores the authenticated Auth0 subject used to resolve the platform actor from the application session.
+- `onboarding_state` tracks whether the platform user still needs the second onboarding profile step.
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
 

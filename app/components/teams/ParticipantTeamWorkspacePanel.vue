@@ -77,6 +77,15 @@ function isActionPending(actionKey: string) {
       <div class="grid gap-4 md:grid-cols-3">
         <div class="app-inset-card-tight px-4 py-4">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Team name
+          </p>
+          <p class="mt-2 text-lg font-semibold text-highlighted">
+            {{ team.name }}
+          </p>
+        </div>
+
+        <div class="app-inset-card-tight px-4 py-4">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Active members
           </p>
           <p class="mt-2 text-2xl font-semibold text-highlighted">

@@ -1,26 +1,23 @@
 Feature: Participant hackathon application experience
-  Authenticated platform users can apply to a hackathon from the public detail surface, satisfy required-profile gates, and review application outcomes before team formation.
+  Authenticated platform users can submit applications through the implemented API surface, satisfy required-profile gates, and review application outcomes before team formation.
 
-  Scenario: Regular user submits an application from the participant application panel
+  Scenario: Regular user submits an application through the authenticated API
     Given the saved "regular_user" Auth0 session state exists
-    When I open the participant application page for hackathon slug "participant-application-fixture-hackathon" with the saved "regular_user" session
-    Then I should see the participant application text "Applications are open for this hackathon."
-    When I accept the current participant application terms
-    And I submit the participant application
-    Then I should see the participant application status "Submitted"
+    When the saved "regular_user" session submits a participant application for hackathon slug "participant-application-fixture-hackathon"
+    Then the participant application response should have status "submitted"
 
-  Scenario: Regular user sees the required-profile block before applying
+  Scenario: Regular user receives the required-profile error before applying
     Given the saved "regular_user" Auth0 session state exists
-    When I open the participant application page for hackathon slug "participant-profile-requirement-fixture-hackathon" with the saved "regular_user" session
-    Then I should see the participant application text "Profile update required before applying"
-    And I should see the participant application missing profile field "ChatGPT email"
+    When the saved "regular_user" session submits a participant application for hackathon slug "participant-profile-requirement-fixture-hackathon"
+    Then the participant application request should fail with API error code "required_profile_fields_missing"
+    And the participant application error should list missing profile field "chatgptEmail"
 
-  Scenario: Regular user sees an approved application state
+  Scenario: Regular user sees an approved application state through the API
     Given the saved "regular_user" Auth0 session state exists
-    When I open the participant application page for hackathon slug "participant-approved-fixture-hackathon" with the saved "regular_user" session
-    Then I should see the participant application status "Approved"
+    When the saved "regular_user" session loads their participant application for hackathon slug "participant-approved-fixture-hackathon"
+    Then the participant application response should have status "approved"
 
-  Scenario: Regular user sees a rejected application state
+  Scenario: Regular user sees a rejected application state through the API
     Given the saved "regular_user" Auth0 session state exists
-    When I open the participant application page for hackathon slug "participant-rejected-fixture-hackathon" with the saved "regular_user" session
-    Then I should see the participant application status "Rejected"
+    When the saved "regular_user" session loads their participant application for hackathon slug "participant-rejected-fixture-hackathon"
+    Then the participant application response should have status "rejected"

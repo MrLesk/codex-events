@@ -52,7 +52,8 @@ describe('request actor resolution', () => {
     await expect(getRequestActor(event)).resolves.toMatchObject({
       kind: 'anonymous',
       isAuthenticated: false,
-      hasPlatformAccount: false
+      hasPlatformAccount: false,
+      onboardingState: null
     })
   })
 
@@ -64,6 +65,7 @@ describe('request actor resolution', () => {
       kind: 'authenticated_identity',
       isAuthenticated: true,
       hasPlatformAccount: false,
+      onboardingState: 'terms_pending',
       sessionUser: {
         sub: 'auth0|user_1',
         email: 'user@example.com'
@@ -78,15 +80,18 @@ describe('request actor resolution', () => {
       auth0Subject: 'auth0|user_1',
       email: 'user@example.com',
       displayName: 'User One',
-      isPlatformAdmin: true
+      isPlatformAdmin: true,
+      onboardingState: 'completed'
     }))
 
     await expect(getRequestActor(event)).resolves.toMatchObject({
       kind: 'platform_user',
       hasPlatformAccount: true,
+      onboardingState: 'completed',
       platformUser: {
         id: 'user_1',
-        isPlatformAdmin: true
+        isPlatformAdmin: true,
+        onboardingState: 'completed'
       }
     })
   })
@@ -98,7 +103,8 @@ describe('request actor resolution', () => {
       auth0Subject: 'auth0|user_1',
       email: 'user@example.com',
       displayName: 'User One',
-      isPlatformAdmin: false
+      isPlatformAdmin: false,
+      onboardingState: 'completed'
     })
     setDatabase(event, database)
 

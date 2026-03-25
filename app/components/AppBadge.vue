@@ -4,6 +4,10 @@ import type { HTMLAttributes } from 'vue'
 import { Badge as UiBadge } from '~/components/ui/badge'
 import { cn } from '~/lib/utils'
 
+defineOptions({
+  inheritAttrs: false
+})
+
 type BadgeColor = 'primary' | 'secondary' | 'neutral' | 'success' | 'warning' | 'error' | 'info'
 type BadgeVariant = 'solid' | 'soft' | 'subtle' | 'outline'
 type BadgeSize = 'sm' | 'md'
@@ -59,12 +63,15 @@ const rootClass = computed(() => {
     props.class
   )
 })
+
+const attrs = useAttrs()
 </script>
 
 <template>
   <UiBadge
     variant="outline"
     :class="rootClass"
+    v-bind="attrs"
   >
     <slot />
   </UiBadge>

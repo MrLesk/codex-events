@@ -26,15 +26,8 @@ const optionalEmailSchema = z
   .optional()
 
 export const platformAccountRegistrationBodySchema = z.object({
-  displayName: z.string().trim().min(1).max(120),
   privacyPolicyDocumentId: z.string().trim().min(1),
-  platformTermsDocumentId: z.string().trim().min(1),
-  xProfileUrl: profileUrlSchema,
-  linkedinProfileUrl: profileUrlSchema,
-  githubProfileUrl: profileUrlSchema,
-  chatgptEmail: optionalEmailSchema,
-  openaiOrgId: z.string().trim().max(120).optional(),
-  lumaUsername: z.string().trim().max(120).optional()
+  platformTermsDocumentId: z.string().trim().min(1)
 })
 
 export const platformAccountProfileBodySchema = z.object({
@@ -50,6 +43,14 @@ export const platformAccountProfileBodySchema = z.object({
 type PlatformUserRecord = typeof users.$inferSelect
 type PlatformAccountRegistrationInput = z.infer<typeof platformAccountRegistrationBodySchema>
 type PlatformAccountProfileInput = z.infer<typeof platformAccountProfileBodySchema>
+
+function buildRegistrationDisplayName(actor: AuthenticatedIdentityActor) {
+  const displayName = actor.sessionUser.name?.trim()
+    || actor.sessionUser.nickname?.trim()
+    || actor.sessionUser.email?.trim()
+
+  return displayName || 'New User'
+}
 
 function normalizeOptionalUrl(value: string | null | undefined) {
   const normalized = value?.trim()
@@ -67,6 +68,7 @@ export function serializePlatformUser(user: PlatformUserRecord) {
     email: user.email,
     displayName: user.displayName,
     isPlatformAdmin: user.isPlatformAdmin,
+    onboardingState: user.onboardingState,
     xProfileUrl: user.xProfileUrl,
     linkedinProfileUrl: user.linkedinProfileUrl,
     githubProfileUrl: user.githubProfileUrl,
@@ -81,7 +83,6 @@ export function serializePlatformUser(user: PlatformUserRecord) {
 
 function buildPlatformAccountInsert(
   actor: AuthenticatedIdentityActor,
-  input: PlatformAccountRegistrationInput,
   createdAt: string
 ) {
   const email = actor.sessionUser.email?.trim()
@@ -96,23 +97,31 @@ function buildPlatformAccountInsert(
     id: crypto.randomUUID(),
     auth0Subject: actor.sessionUser.sub,
     email: email!,
-    displayName: input.displayName.trim(),
+    displayName: buildRegistrationDisplayName(actor),
     isPlatformAdmin: false,
-    xProfileUrl: normalizeOptionalUrl(input.xProfileUrl),
-    linkedinProfileUrl: normalizeOptionalUrl(input.linkedinProfileUrl),
-    githubProfileUrl: normalizeOptionalUrl(input.githubProfileUrl),
-    chatgptEmail: normalizeOptionalString(input.chatgptEmail),
-    openaiOrgId: normalizeOptionalString(input.openaiOrgId),
-    lumaUsername: normalizeOptionalString(input.lumaUsername),
+    onboardingState: 'profile_pending',
+    xProfileUrl: null,
+    linkedinProfileUrl: null,
+    githubProfileUrl: null,
+    chatgptEmail: null,
+    openaiOrgId: null,
+    lumaUsername: null,
     createdAt,
     updatedAt: createdAt,
     deletedAt: null
   } satisfies typeof users.$inferInsert
 }
 
-function buildPlatformAccountProfilePatch(input: PlatformAccountProfileInput, updatedAt: string) {
+function buildPlatformAccountProfilePatch(
+  input: PlatformAccountProfileInput,
+  updatedAt: string,
+  onboardingState: PlatformUserRecord['onboardingState']
+) {
   return {
     displayName: input.displayName.trim(),
+    ...(onboardingState === 'profile_pending'
+      ? { onboardingState: 'completed' as const }
+      : {}),
     ...(input.xProfileUrl !== undefined
       ? { xProfileUrl: normalizeOptionalUrl(input.xProfileUrl) }
       : {}),
@@ -214,7 +223,7 @@ export async function registerPlatformAccount(
   ])
 
   const createdAt = new Date().toISOString()
-  const userRecord = buildPlatformAccountInsert(actor, input, createdAt)
+  const userRecord = buildPlatformAccountInsert(actor, createdAt)
   const acceptanceRows = [
     {
       id: crypto.randomUUID(),
@@ -259,8 +268,21 @@ export async function updatePlatformAccountProfile(
   userId: string,
   input: PlatformAccountProfileInput
 ) {
+  const existingUser = await database.query.users.findFirst({
+    where: eq(users.id, userId)
+  })
+
+  assertGuard(Boolean(existingUser), {
+    statusCode: 404,
+    code: 'platform_user_not_found',
+    message: 'The requested platform user was not found.',
+    details: {
+      userId
+    }
+  })
+
   const updatedAt = new Date().toISOString()
-  const patch = buildPlatformAccountProfilePatch(input, updatedAt)
+  const patch = buildPlatformAccountProfilePatch(input, updatedAt, existingUser!.onboardingState)
 
   await database
     .update(users)
@@ -301,6 +323,7 @@ export function buildDeletedUserPatch(userId: string, deletedAt: string) {
     email: `deleted_${suffix}@deleted.invalid`,
     displayName: 'Deleted User',
     isPlatformAdmin: false,
+    onboardingState: 'completed',
     xProfileUrl: null,
     linkedinProfileUrl: null,
     githubProfileUrl: null,

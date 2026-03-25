@@ -8,10 +8,11 @@ import type {
 
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
-import { buildAuthAccessHref } from '~/utils/auth-navigation'
+import { buildPlatformOnboardingStartHref, buildTermsOnboardingHref } from '~/utils/auth-navigation'
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
+const { actor: accountActor } = await useAccountLifecycleActor()
 
 if (!slug.value) {
   throw createError({
@@ -54,10 +55,8 @@ const hackathon = computed(() => hackathonResponse.value!.data)
 const criteria = computed(() => criteriaResponse.value?.data ?? [])
 const prizes = computed(() => prizesResponse.value?.data ?? [])
 const prizesErrorMessage = computed(() => prizesError.value ? 'Published awards could not be loaded right now.' : undefined)
-const registerEntryHref = computed(() => buildAuthAccessHref(route.fullPath || `/hackathons/${slug.value}`, 'register'))
-const participantApplication = useParticipantApplication(hackathon, slug)
-
-const participantActor = computed(() => participantApplication.actor.value)
+const registerEntryHref = computed(() => buildPlatformOnboardingStartHref(route.fullPath || `/hackathons/${slug.value}`))
+const termsOnboardingHref = computed(() => buildTermsOnboardingHref(route.fullPath || `/hackathons/${slug.value}`))
 const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
 const headerStateClass = computed(() => {
   if (hackathon.value.state === 'submission_open') {
@@ -81,19 +80,20 @@ const detailSummary = computed(() => [
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
 const showRegisterCta = computed(() => {
-  if (participantActor.value?.kind === 'anonymous' || participantActor.value?.kind === 'authenticated_identity') {
+  if (accountActor.value?.kind === 'anonymous' || accountActor.value?.kind === 'authenticated_identity') {
     return true
   }
 
   return false
 })
+const isRegisterHrefExternal = computed(() => accountActor.value?.kind === 'anonymous')
 const registerHref = computed(() => {
-  if (participantActor.value?.kind === 'anonymous') {
+  if (accountActor.value?.kind === 'anonymous') {
     return registerEntryHref.value
   }
 
-  if (participantActor.value?.kind === 'authenticated_identity') {
-    return registerEntryHref.value
+  if (accountActor.value?.kind === 'authenticated_identity') {
+    return termsOnboardingHref.value
   }
 
   return null
@@ -159,6 +159,7 @@ useSeoMeta({
                 <AppButton
                   v-if="registerHref"
                   :to="registerHref"
+                  :external="isRegisterHrefExternal"
                   color="neutral"
                   variant="solid"
                   class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"

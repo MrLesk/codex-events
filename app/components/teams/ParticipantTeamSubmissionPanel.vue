@@ -85,7 +85,6 @@ function isActionPending(actionKey: string) {
           <AppBadge
             :color="submissionStatusColor"
             variant="soft"
-            data-testid="participant-submission-status"
           >
             {{ submissionStatusLabel }}
           </AppBadge>
@@ -115,12 +114,24 @@ function isActionPending(actionKey: string) {
       />
 
       <template v-else>
+        <div class="app-inset-card-tight px-4 py-4">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Submission summary
+          </p>
+          <p class="mt-2 text-sm leading-7 text-toned">
+            {{ submissionSummary }}
+          </p>
+        </div>
+
         <div class="grid gap-4 md:grid-cols-3">
           <div class="app-inset-card-tight px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Current status
             </p>
-            <p class="mt-2 text-lg font-semibold text-highlighted">
+            <p
+              data-testid="participant-submission-status"
+              class="mt-2 text-lg font-semibold text-highlighted"
+            >
               {{ submissionStatusLabel }}
             </p>
           </div>
