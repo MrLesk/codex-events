@@ -94,7 +94,7 @@ AUTH0_TEST_DOMAIN=your-tenant.auth0.com
 AUTH0_TEST_MGMT_CLIENT_ID=your-test-management-client-id
 AUTH0_TEST_MGMT_CLIENT_SECRET=your-test-management-client-secret
 AUTH0_TEST_MGMT_AUDIENCE=https://your-tenant.auth0.com/api/v2/
-AUTH0_TEST_CONNECTION_NAME=Username-Password-Authentication
+AUTH0_TEST_CONNECTION_NAME=codex-hackathons-e2e-users
 ```
 
 For platform fixture reset and authenticated browser coverage, the repository uses the local D1 binding declared in `wrangler.jsonc`. The bootstrap flow clears the persisted `.wrangler/state/v3` data before recreating schema and fixtures through Cloudflare's local D1 runtime.
