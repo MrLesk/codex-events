@@ -47,7 +47,7 @@ export async function loginAndPersistStorageState(browser: Browser, persona: Sta
   const storageStatePath = storageStatePathForPersona(persona.key)
   const context = await browser.newContext({ baseURL: baseUrl })
   const page = await context.newPage()
-  const dashboardUrlPattern = new RegExp(`^${escapeForRegex(baseUrl)}/dashboard(?:[/?#].*)?$`)
+  const dashboardUrlPattern = new RegExp(`^${escapeForRegex(baseUrl)}/account/dashboard(?:[/?#].*)?$`)
   const maxAttempts = 5
 
   try {
@@ -98,7 +98,7 @@ export async function loginAndPersistStorageState(browser: Browser, persona: Sta
       }
 
       const pageText = (await page.locator('body').innerText()).slice(0, 1000)
-      throw new Error(`Auth0 login did not reach /dashboard for persona "${persona.key}". Final URL: ${page.url()}. Page text: ${pageText}`)
+      throw new Error(`Auth0 login did not reach /account/dashboard for persona "${persona.key}". Final URL: ${page.url()}. Page text: ${pageText}`)
     }
 
     throw new Error(`Auth0 login exhausted retry attempts for persona "${persona.key}".`)

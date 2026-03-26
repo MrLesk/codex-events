@@ -24,9 +24,9 @@ Key characteristics:
 
 Rules:
 
-- Platform onboarding happens in two steps after Auth0 authentication:
-  - exact acceptance of the current `privacy_policy` and `platform_terms`
-  - completion of the reusable platform profile fields
+- Platform account provisioning depends on Auth0 signup consent for the platform `privacy_policy` and `platform_terms`.
+- After the authenticated callback, the platform provisions the account in `profile_pending` and records platform-document acceptance.
+- The reusable platform profile fields are completed from account settings before full workspace access.
 - A platform user records `onboarding_state` as either `profile_pending` or `completed`.
 - A user with `is_platform_admin = true` is a platform admin.
 - Platform admins can create hackathons.
@@ -62,7 +62,8 @@ Current platform document types:
 Rules:
 
 - Platform registration uses platform-wide documents only.
-- The app-owned onboarding flow presents the current platform documents after the Auth0 session is established and before the reusable profile step begins.
+- The Auth0 signup experience references platform policy and terms links for account creation.
+- After callback, platform provisioning requires a consent signal from Auth0 and records platform-document acceptance in product data.
 - Platform documents are versioned.
 
 ### HackathonTermsDocument

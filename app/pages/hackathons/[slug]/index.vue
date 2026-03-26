@@ -8,7 +8,7 @@ import type {
 
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
-import { buildPlatformOnboardingStartHref, buildTermsOnboardingHref } from '~/utils/auth-navigation'
+import { buildAuthLoginHref } from '~/utils/auth-navigation'
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
@@ -55,8 +55,7 @@ const hackathon = computed(() => hackathonResponse.value!.data)
 const criteria = computed(() => criteriaResponse.value?.data ?? [])
 const prizes = computed(() => prizesResponse.value?.data ?? [])
 const prizesErrorMessage = computed(() => prizesError.value ? 'Published awards could not be loaded right now.' : undefined)
-const registerEntryHref = computed(() => buildPlatformOnboardingStartHref(route.fullPath || `/hackathons/${slug.value}`))
-const termsOnboardingHref = computed(() => buildTermsOnboardingHref(route.fullPath || `/hackathons/${slug.value}`))
+const registerEntryHref = computed(() => buildAuthLoginHref(route.fullPath || `/hackathons/${slug.value}`))
 const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
 const headerStateClass = computed(() => {
   if (hackathon.value.state === 'submission_open') {
@@ -93,7 +92,7 @@ const registerHref = computed(() => {
   }
 
   if (accountActor.value?.kind === 'authenticated_identity') {
-    return termsOnboardingHref.value
+    return '/account/settings'
   }
 
   return null

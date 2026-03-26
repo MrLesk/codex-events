@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { Toaster as UiSonner } from '~/components/ui/sonner'
+import {Toaster as UiSonner} from '~/components/ui/sonner'
 import AppShellNavigation from '~/components/shell/AppShellNavigation.vue'
 
 useHead({
   meta: [
-    { name: 'viewport', content: 'width=device-width, initial-scale=1' }
+    {name: 'viewport', content: 'width=device-width, initial-scale=1'}
   ],
   link: [
-    { rel: 'icon', href: '/favicon.ico' }
+    {rel: 'icon', href: '/favicon.ico'}
   ],
   htmlAttrs: {
     lang: 'en'
@@ -16,17 +16,16 @@ useHead({
 
 const route = useRoute()
 const user = useUser()
-const { actor, authEntryHref, hasPlatformAccount, sidebarGroups } = useShellNavigation()
+const {actor, authEntryHref, hasPlatformAccount, sidebarGroups} = useShellNavigation()
 const title = 'Codex Hackathons'
 const description = 'The internal platform for running Codex community hackathons with Auth0-backed platform authentication.'
 const isHomepage = computed(() => route.path === '/')
 const isPublicHackathonDetailRoute = computed(() => /^\/hackathons\/[^/]+\/?$/.test(route.path))
-const isAuthAccessRoute = computed(() => route.path === '/auth/access')
 const usesPublicShell = computed(() =>
   isHomepage.value
   || isPublicHackathonDetailRoute.value
-  || isAuthAccessRoute.value
   || route.path === '/privacy-policy'
+  || route.path === '/terms-and-conditions'
 )
 const showWorkspaceSidebar = computed(() => hasPlatformAccount.value && !usesPublicShell.value)
 const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_identity' && !usesPublicShell.value)
@@ -55,7 +54,7 @@ useSeoMeta({
 </script>
 
 <template>
-  <NuxtLoadingIndicator color="var(--primary)" />
+  <NuxtLoadingIndicator color="var(--primary)"/>
 
   <div class="min-h-screen overflow-x-hidden text-foreground">
     <header
@@ -78,7 +77,7 @@ useSeoMeta({
         </NuxtLink>
 
         <div class="ml-auto flex flex-wrap items-center justify-end gap-2">
-          <AppColorModeButton />
+          <AppColorModeButton/>
 
           <AppUserMenu
             v-if="user"
@@ -87,10 +86,10 @@ useSeoMeta({
           />
 
           <AppButton
-            v-else-if="!isAuthAccessRoute"
+            v-else
             :to="authEntryHref"
             external
-            label="Sign in"
+            label="Sign up"
             color="neutral"
             variant="soft"
             class="rounded-full"
@@ -104,7 +103,7 @@ useSeoMeta({
       class="relative"
     >
       <AppContainer :class="pageContainerClass">
-        <NuxtPage />
+        <NuxtPage/>
       </AppContainer>
     </div>
 
@@ -116,8 +115,9 @@ useSeoMeta({
         v-if="showWorkspaceSidebar"
         class="hidden w-[260px] min-w-[260px] shrink-0 xl:block"
       >
-        <div class="sticky top-[4.5rem] flex min-h-[calc(100vh-5rem)] flex-col overflow-y-auto border-r border-white/[0.08] bg-black px-4 pb-6 pt-4 text-[#A3A3A3]">
-          <AppShellNavigation :groups="sidebarGroups" />
+        <div
+          class="sticky top-[4.5rem] flex min-h-[calc(100vh-5rem)] flex-col overflow-y-auto border-r border-white/[0.08] bg-black px-4 pb-6 pt-4 text-[#A3A3A3]">
+          <AppShellNavigation :groups="sidebarGroups"/>
 
           <div class="mt-auto border-t border-white/[0.08] pt-5">
             <p class="text-[11px] font-semibold tracking-[0.02em] text-[#8C8C8C] uppercase">
@@ -154,7 +154,7 @@ useSeoMeta({
             description="Your Auth0 session is active, but the platform still needs the canonical platform-account record and exact-version document acceptance before protected workflow access expands."
           />
 
-          <NuxtPage />
+          <NuxtPage/>
         </AppContainer>
       </main>
     </div>
@@ -163,7 +163,13 @@ useSeoMeta({
       class="border-t bg-white dark:border-white/[0.08] dark:bg-black"
       :class="usesPublicShell ? 'border-black/8' : 'border-black/8 dark:border-white/[0.08]'"
     >
-      <AppContainer class="flex items-center justify-end py-6 text-sm text-neutral-700 dark:text-[#A3A3A3]">
+      <AppContainer class="flex items-center justify-end gap-5 py-6 text-sm text-neutral-700 dark:text-[#A3A3A3]">
+        <NuxtLink
+          to="/terms-and-conditions"
+          class="transition-colors hover:text-highlighted dark:hover:text-white"
+        >
+          Terms and Conditions
+        </NuxtLink>
         <NuxtLink
           to="/privacy-policy"
           class="transition-colors hover:text-highlighted dark:hover:text-white"

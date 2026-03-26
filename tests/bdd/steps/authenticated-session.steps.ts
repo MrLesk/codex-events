@@ -86,7 +86,7 @@ Given('the saved {string} Auth0 session state exists', async ({ page }, personaK
 
 When('I open the dashboard with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto('/dashboard')
+  await page.goto('/account/dashboard')
 })
 
 Then('I should see the dashboard heading', async ({ page }) => {

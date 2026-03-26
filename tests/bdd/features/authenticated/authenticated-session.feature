@@ -6,7 +6,7 @@ Feature: Authenticated session foundation
     When I open the dashboard with the saved "<persona>" session
     Then I should see the dashboard heading
     And I should see the signed-in "<persona>" email
-    And the saved "<persona>" session should authenticate a request context to "/dashboard"
+    And the saved "<persona>" session should authenticate a request context to "/account/dashboard"
 
     Examples:
       | persona         |

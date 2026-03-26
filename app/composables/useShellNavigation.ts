@@ -1,6 +1,6 @@
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 
-import { buildAuthLoginHref } from '~/utils/auth-navigation'
+import { accountDashboardHref, buildAuthLoginHref } from '~/utils/auth-navigation'
 
 interface ShellPrizeRedemptionsResponse {
   data: Array<{
@@ -30,7 +30,7 @@ export function useShellNavigation() {
   const user = useUser()
   const apiFetch = import.meta.server ? useRequestFetch() : $fetch
 
-  const returnTo = computed(() => route.fullPath || '/dashboard')
+  const returnTo = computed(() => route.fullPath || accountDashboardHref)
   const authEntryHref = computed(() => buildAuthLoginHref(returnTo.value))
   const { actor, status, refresh } = useSessionActor()
 
@@ -68,9 +68,9 @@ export function useShellNavigation() {
 
     const leftOnboardingSurface = (
       previousPath.startsWith('/onboarding/')
-      || previousPath.startsWith('/auth/access')
+      || previousPath.startsWith('/account/settings')
     ) && !nextPath.startsWith('/onboarding/')
-    && !nextPath.startsWith('/auth/access')
+    && !nextPath.startsWith('/account/settings')
 
     if (!leftOnboardingSurface) {
       return
@@ -134,19 +134,13 @@ export function useShellNavigation() {
         id: 'dashboard',
         label: 'Dashboard',
         description: 'Role-aware operational overview',
-        to: '/dashboard',
+        to: '/account/dashboard',
         icon: 'i-lucide-layout-dashboard'
       }, {
-        id: 'hackathons',
-        label: 'Hackathons',
-        description: 'Your current and past participation',
-        to: '/hackathons',
-        icon: 'i-lucide-sparkles'
-      }, {
-        id: 'account',
-        label: 'Account',
+        id: 'settings',
+        label: 'Settings',
         description: 'Profile details and platform lifecycle',
-        to: '/account',
+        to: '/account/settings',
         icon: 'i-lucide-id-card'
       }]
     }]

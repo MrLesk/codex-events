@@ -6,5 +6,5 @@ export default defineEventHandler(async (event) => {
     new URL(event.node.req.url as string, runtimeConfig.auth0.appBaseUrl)
   )
 
-  return sendRedirect(event, '/dashboard')
+  return sendRedirect(event, '/account/dashboard')
 })

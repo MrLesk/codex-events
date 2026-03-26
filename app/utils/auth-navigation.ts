@@ -1,4 +1,6 @@
 export const authLogoutHref = '/auth/logout'
+export const accountDashboardHref = '/account/dashboard'
+export const accountSettingsHref = '/account/settings'
 
 export type ActorOnboardingState = 'terms_pending' | 'profile_pending' | 'completed'
 
@@ -22,26 +24,26 @@ export function buildAuthLoginHref(returnTo: string | null | undefined) {
 }
 
 export function buildTermsOnboardingHref(returnTo: string | null | undefined) {
-  return `/auth/access?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo, '/dashboard'))}`
+  return `${accountSettingsHref}?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo, accountDashboardHref))}`
 }
 
 export function buildPlatformOnboardingStartHref(returnTo: string | null | undefined) {
-  return buildAuthLoginHref(buildTermsOnboardingHref(returnTo))
+  return buildAuthLoginHref(normalizeAuthReturnTo(returnTo, accountDashboardHref))
 }
 
 export function buildAccountOnboardingHref(returnTo: string | null | undefined) {
-  return `/onboarding/account?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo, '/dashboard'))}`
+  return `${accountSettingsHref}?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo, accountDashboardHref))}`
 }
 
 export function resolveActorAppRedirect(actor: RedirectAwareActor, returnTo: string | null | undefined) {
-  const normalizedReturnTo = normalizeAuthReturnTo(returnTo, '/dashboard')
+  const normalizedReturnTo = normalizeAuthReturnTo(returnTo, accountDashboardHref)
 
-  if (actor.kind === 'authenticated_identity' || actor.onboardingState === 'terms_pending') {
-    return buildTermsOnboardingHref(normalizedReturnTo)
+  if (actor.kind === 'authenticated_identity') {
+    return accountSettingsHref
   }
 
-  if (actor.kind === 'platform_user' && actor.onboardingState === 'profile_pending') {
-    return buildAccountOnboardingHref(normalizedReturnTo)
+  if (actor.kind === 'platform_user' && actor.onboardingState === 'profile_pending' && normalizedReturnTo !== accountSettingsHref) {
+    return accountSettingsHref
   }
 
   return normalizedReturnTo

@@ -3,7 +3,7 @@ import { buildAuthLoginHref } from '../../app/utils/auth-navigation'
 export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)
 
-  if (!url.pathname.startsWith('/dashboard')) {
+  if (!url.pathname.startsWith('/account')) {
     return
   }
 

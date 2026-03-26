@@ -56,7 +56,7 @@ useSeoMeta({
     >
       <template #links>
         <AppButton
-          to="/dashboard"
+          to="/account/dashboard"
           label="Return to dashboard"
           color="neutral"
           variant="soft"

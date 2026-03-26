@@ -75,15 +75,15 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
 
 When('I open the account onboarding page with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto('/auth/access?returnTo=%2Faccount')
-  await expect(page.getByRole('heading', { name: 'Accept the current platform documents' })).toBeVisible()
+  await page.goto('/account/settings')
+  await expect(page.getByRole('heading', { name: 'Account settings' })).toBeVisible()
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(500)
 })
 
 When('I open the account settings page with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto('/account')
+  await page.goto('/account/settings')
   await expect(page.getByRole('heading', { name: 'Account settings' })).toBeVisible()
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(500)
@@ -92,7 +92,7 @@ When('I open the account settings page with the saved {string} session', async (
 When('I delete the platform account through the account settings page', async ({ page }) => {
   await page.getByLabel('Type “delete my account” to confirm').fill('delete my account')
   await page.getByRole('button', { name: 'Delete account' }).click()
-  await page.waitForURL('**/auth/access?**deleted=1**')
+  await page.waitForURL('**/auth/logout**')
 })
 
 Then('I should see the deleted platform account message', async ({ page }) => {
@@ -100,14 +100,11 @@ Then('I should see the deleted platform account message', async ({ page }) => {
 })
 
 When('I submit the platform account registration form for {string}', async ({ page }) => {
-  await page.getByRole('checkbox', { name: /^Accept Privacy Policy/ }).check()
-  await page.getByRole('checkbox', { name: /^Accept Platform Terms/ }).check()
-  await page.getByRole('button', { name: 'Accept and continue' }).click()
-  await page.waitForURL('**/onboarding/account?**')
+  await page.waitForURL('**/account/settings**')
 })
 
 Then('I should see the profile onboarding heading', async ({ page }) => {
-  await expect(page.getByRole('heading', { name: 'Complete your profile' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Account settings' })).toBeVisible()
 })
 
 Then('I should see the account settings heading', async ({ page }) => {

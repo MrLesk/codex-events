@@ -12,13 +12,13 @@ import {
 
 describe('auth navigation helpers', () => {
   test('builds a login redirect with an encoded return target', () => {
-    expect(buildAuthLoginHref('/dashboard?tab=judge')).toBe('/auth/login?returnTo=%2Fdashboard%3Ftab%3Djudge')
+    expect(buildAuthLoginHref('/account/dashboard?tab=judge')).toBe('/auth/login?returnTo=%2Faccount%2Fdashboard%3Ftab%3Djudge')
   })
 
   test('builds onboarding entry routes with explicit post-auth steps', () => {
-    expect(buildTermsOnboardingHref('/hackathons/fixture')).toBe('/auth/access?returnTo=%2Fhackathons%2Ffixture')
-    expect(buildPlatformOnboardingStartHref('/dashboard')).toBe('/auth/login?returnTo=%2Fauth%2Faccess%3FreturnTo%3D%252Fdashboard')
-    expect(buildAccountOnboardingHref('/dashboard')).toBe('/onboarding/account?returnTo=%2Fdashboard')
+    expect(buildTermsOnboardingHref('/hackathons/fixture')).toBe('/account/settings?returnTo=%2Fhackathons%2Ffixture')
+    expect(buildPlatformOnboardingStartHref('/account/dashboard')).toBe('/auth/login?returnTo=%2Faccount%2Fdashboard')
+    expect(buildAccountOnboardingHref('/account/dashboard')).toBe('/account/settings?returnTo=%2Faccount%2Fdashboard')
   })
 
   test('falls back to the homepage when the return target is empty', () => {
@@ -30,23 +30,23 @@ describe('auth navigation helpers', () => {
   test('normalizes unsafe return targets back to the fallback route', () => {
     expect(normalizeAuthReturnTo('https://example.com')).toBe('/')
     expect(normalizeAuthReturnTo('//example.com')).toBe('/')
-    expect(normalizeAuthReturnTo('not-a-path', '/dashboard')).toBe('/dashboard')
+    expect(normalizeAuthReturnTo('not-a-path', '/account/dashboard')).toBe('/account/dashboard')
   })
 
   test('routes authenticated actors through the required onboarding step before the app workspace', () => {
     expect(resolveActorAppRedirect({
       kind: 'authenticated_identity',
       onboardingState: 'terms_pending'
-    }, '/judging')).toBe('/auth/access?returnTo=%2Fjudging')
+    }, '/judging')).toBe('/account/settings')
 
     expect(resolveActorAppRedirect({
       kind: 'platform_user',
       onboardingState: 'profile_pending'
-    }, '/account')).toBe('/onboarding/account?returnTo=%2Faccount')
+    }, '/account/dashboard')).toBe('/account/settings')
 
     expect(resolveActorAppRedirect({
       kind: 'platform_user',
       onboardingState: 'completed'
-    }, '/dashboard')).toBe('/dashboard')
+    }, '/account/dashboard')).toBe('/account/dashboard')
   })
 })

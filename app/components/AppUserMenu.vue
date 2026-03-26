@@ -17,7 +17,7 @@ const displayName = computed(() => props.name?.trim() || 'Developer User')
 const displayEmail = computed(() => props.email?.trim() || 'Signed in')
 
 async function navigateToSettings() {
-  await navigateTo('/account')
+  await navigateTo('/account/settings')
 }
 
 async function logout() {

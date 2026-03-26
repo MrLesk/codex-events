@@ -4,7 +4,9 @@ import { and, eq, isNull } from 'drizzle-orm'
 
 import { getDatabase } from '../database/client'
 import { users } from '../database/schema'
+import { registerPlatformAccount } from '../utils/account-management'
 import { ApiError } from '../utils/api-error'
+import { getCurrentPlatformDocument } from '../utils/platform-documents'
 
 interface SessionUserProfile {
   sub: string
@@ -12,6 +14,7 @@ interface SessionUserProfile {
   name?: string | null
   nickname?: string | null
   picture?: string | null
+  [key: string]: unknown
 }
 
 interface SessionLike {
@@ -19,6 +22,11 @@ interface SessionLike {
 }
 
 type PlatformUserRecord = typeof users.$inferSelect
+
+const signupConsentClaims = {
+  privacyPolicy: 'https://codex-hackathons/consents/privacy_policy',
+  platformTerms: 'https://codex-hackathons/consents/platform_terms'
+} as const
 
 export interface AnonymousActor {
   kind: 'anonymous'
@@ -91,6 +99,55 @@ async function findPlatformUserBySubject(event: H3Event, auth0Subject: string) {
   })
 }
 
+function hasRequiredSignupConsents(sessionUser: SessionUserProfile) {
+  return sessionUser[signupConsentClaims.privacyPolicy] === true
+    && sessionUser[signupConsentClaims.platformTerms] === true
+}
+
+function buildAuthenticatedIdentityActor(sessionUser: SessionUserProfile): AuthenticatedIdentityActor {
+  return {
+    kind: 'authenticated_identity',
+    isAuthenticated: true,
+    hasPlatformAccount: false,
+    onboardingState: 'terms_pending',
+    sessionUser,
+    platformUser: null
+  }
+}
+
+async function provisionPlatformAccountFromSignupConsent(event: H3Event, sessionUser: SessionUserProfile) {
+  if (!hasRequiredSignupConsents(sessionUser)) {
+    return null
+  }
+
+  const database = getDatabase(event)
+  const [privacyPolicyDocument, platformTermsDocument] = await Promise.all([
+    getCurrentPlatformDocument(database, 'privacy_policy'),
+    getCurrentPlatformDocument(database, 'platform_terms')
+  ])
+
+  if (!privacyPolicyDocument || !platformTermsDocument) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'platform_document_unavailable',
+      message: 'Current platform documents must be configured before account provisioning.'
+    })
+  }
+
+  try {
+    await registerPlatformAccount(database, buildAuthenticatedIdentityActor(sessionUser), {
+      privacyPolicyDocumentId: privacyPolicyDocument.id,
+      platformTermsDocumentId: platformTermsDocument.id
+    })
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.code !== 'platform_account_already_exists') {
+      throw error
+    }
+  }
+
+  return await findPlatformUserBySubject(event, sessionUser.sub)
+}
+
 export function setRequestActor(event: H3Event, actor: RequestActor | Promise<RequestActor>) {
   event.context.requestActor = actor
 }
@@ -111,24 +168,30 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
 
   const platformUser = await findPlatformUserBySubject(event, sessionUser.sub)
 
-  if (!platformUser) {
+  if (platformUser) {
     return {
-      kind: 'authenticated_identity',
+      kind: 'platform_user',
       isAuthenticated: true,
-      hasPlatformAccount: false,
-      onboardingState: 'terms_pending',
+      hasPlatformAccount: true,
+      onboardingState: platformUser.onboardingState,
       sessionUser,
-      platformUser: null
+      platformUser
     }
+  }
+
+  const provisionedUser = await provisionPlatformAccountFromSignupConsent(event, sessionUser)
+
+  if (!provisionedUser) {
+    return buildAuthenticatedIdentityActor(sessionUser)
   }
 
   return {
     kind: 'platform_user',
     isAuthenticated: true,
     hasPlatformAccount: true,
-    onboardingState: platformUser.onboardingState,
+    onboardingState: provisionedUser.onboardingState,
     sessionUser,
-    platformUser
+    platformUser: provisionedUser
   }
 }
 
