@@ -13,6 +13,7 @@ const props = defineProps<{
   email?: string | null
   avatarSrc?: string
   avatarAlt?: string | null
+  isPlatformAdmin?: boolean
 }>()
 
 const displayName = computed(() => props.name?.trim() || 'Developer User')
@@ -25,6 +26,14 @@ async function navigateToDashboard() {
 
 async function navigateToSettings() {
   await navigateTo('/account/settings')
+}
+
+async function navigateToJudgingWorkspace() {
+  await navigateTo('/account/judging')
+}
+
+async function navigateToAdminOperations() {
+  await navigateTo('/account/admin')
 }
 
 async function logout() {
@@ -83,6 +92,32 @@ async function logout() {
             class="size-4"
           />
           <span>Settings</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          v-if="props.isPlatformAdmin"
+          class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
+          @select.prevent="navigateToJudgingWorkspace"
+          @click="navigateToJudgingWorkspace"
+        >
+          <AppIcon
+            name="i-lucide-scale"
+            class="size-4"
+          />
+          <span>Judge workspace</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          v-if="props.isPlatformAdmin"
+          class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
+          @select.prevent="navigateToAdminOperations"
+          @click="navigateToAdminOperations"
+        >
+          <AppIcon
+            name="i-lucide-shield-check"
+            class="size-4"
+          />
+          <span>Admin operations</span>
         </DropdownMenuItem>
 
         <DropdownMenuItem
