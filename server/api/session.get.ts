@@ -32,19 +32,19 @@ export default defineApiHandler(async (event) => {
   })
 
   return apiData({
-      actor: {
-        kind: actor.kind,
-        isAuthenticated: actor.isAuthenticated,
-        hasPlatformAccount: actor.hasPlatformAccount,
-        sessionUser: actor.sessionUser,
-        platformUser: {
-          id: actor.platformUser.id,
-          email: actor.platformUser.email,
-          displayName: actor.platformUser.displayName,
-          isPlatformAdmin: actor.platformUser.isPlatformAdmin,
-          xProfileUrl: actor.platformUser.xProfileUrl,
-          linkedinProfileUrl: actor.platformUser.linkedinProfileUrl,
-          githubProfileUrl: actor.platformUser.githubProfileUrl,
+    actor: {
+      kind: actor.kind,
+      isAuthenticated: actor.isAuthenticated,
+      hasPlatformAccount: actor.hasPlatformAccount,
+      sessionUser: actor.sessionUser,
+      platformUser: {
+        id: actor.platformUser.id,
+        email: actor.platformUser.email,
+        displayName: actor.platformUser.displayName,
+        isPlatformAdmin: actor.platformUser.isPlatformAdmin,
+        xProfileUrl: actor.platformUser.xProfileUrl,
+        linkedinProfileUrl: actor.platformUser.linkedinProfileUrl,
+        githubProfileUrl: actor.platformUser.githubProfileUrl,
         chatgptEmail: actor.platformUser.chatgptEmail,
         openaiOrgId: actor.platformUser.openaiOrgId,
         lumaUsername: actor.platformUser.lumaUsername,

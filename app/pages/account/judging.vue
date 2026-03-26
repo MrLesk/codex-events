@@ -22,7 +22,7 @@ const visibleInboxGroups = computed(() => {
   }
 
   return inboxGroups.value
-    .map((group) => ({
+    .map(group => ({
       ...group,
       assignments: group.assignments.filter((assignment) => {
         if (inboxFilter.value === 'in_review') {

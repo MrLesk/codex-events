@@ -139,7 +139,6 @@ const emit = defineEmits<{
             class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
           >
         </div>
-
       </div>
     </section>
 
@@ -200,7 +199,6 @@ const emit = defineEmits<{
             </a>
           </p>
         </div>
-
       </div>
     </section>
 
