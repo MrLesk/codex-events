@@ -132,6 +132,10 @@ export function formatHackathonDate(value: string) {
   return fullDateFormatter.format(new Date(value))
 }
 
+export function formatHackathonCompactDate(value: string) {
+  return compactDateFormatter.format(new Date(value))
+}
+
 export function formatHackathonWindow(start: string, end: string) {
   return `${compactDateFormatter.format(new Date(start))} - ${fullDateFormatter.format(new Date(end))}`
 }

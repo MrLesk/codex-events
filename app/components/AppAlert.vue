@@ -46,7 +46,12 @@ const rootClass = computed(() => {
     'outline:info': 'border-info/20 bg-transparent text-info'
   }
 
-  return cn('rounded-[1.35rem] px-4 py-3', variants[key] ?? variants['soft:neutral'], props.class)
+  return cn(
+    'rounded-[1.35rem] px-4 py-3',
+    props.icon ? 'grid-cols-[calc(var(--spacing)*4)_1fr] gap-x-3' : undefined,
+    variants[key] ?? variants['soft:neutral'],
+    props.class
+  )
 })
 </script>
 
@@ -68,7 +73,7 @@ const rootClass = computed(() => {
     </UiAlertTitle>
     <UiAlertDescription
       v-if="props.description"
-      class="text-current/90"
+      class="col-span-full col-start-1 mt-1 text-current/90"
     >
       {{ props.description }}
     </UiAlertDescription>

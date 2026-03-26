@@ -109,8 +109,8 @@ useSeoMeta({
       color="warning"
       variant="subtle"
       icon="i-lucide-triangle-alert"
-      title="Hackathons unavailable"
-      description="The public discovery surface could not load visible hackathons right now."
+      title="Hackathons are temporarily unavailable"
+      description="We couldn't load the latest hackathons. Please refresh the page or try again in a moment."
       class="border-black/8 bg-white text-foreground dark:border-white/[0.08] dark:bg-[#111111] dark:text-[#ECECEC]"
     />
 
