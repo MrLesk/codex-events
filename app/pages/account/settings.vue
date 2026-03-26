@@ -28,16 +28,17 @@ const saveState = reactive({
 
 const profileIconState = reactive({
   uploadPending: false,
-  removePending: false,
   success: '',
   error: ''
 })
+const profileIconInput = ref<HTMLInputElement | null>(null)
 
 const deletionState = reactive({
   confirmationText: '',
   pending: false,
   error: ''
 })
+const isDangerZoneExpanded = ref(false)
 
 watch(
   actor,
@@ -154,32 +155,19 @@ async function uploadProfileIcon(event: Event) {
   }
 }
 
-async function removeProfileIcon() {
-  profileIconState.removePending = true
-  profileIconState.success = ''
-  profileIconState.error = ''
-
-  try {
-    await $fetch('/api/account/profile-icon', {
-      method: 'DELETE'
-    })
-
-    await refresh()
-    profileIconState.success = 'Profile icon removed.'
-  } catch (error) {
-    profileIconState.error = error instanceof Error
-      ? error.message
-      : 'Unable to remove profile icon.'
-  } finally {
-    profileIconState.removePending = false
+function promptProfileIconUpload() {
+  if (profileIconState.uploadPending) {
+    return
   }
+
+  profileIconInput.value?.click()
 }
 
 async function deleteAccount() {
   deletionState.error = ''
 
   if (deletionState.confirmationText !== 'delete my account') {
-    deletionState.error = 'Type "delete my account" exactly to confirm deletion.'
+    deletionState.error = 'Type "delete my account" to continue.'
     return
   }
 
@@ -195,7 +183,7 @@ async function deleteAccount() {
   } catch (error) {
     deletionState.error = error instanceof Error
       ? error.message
-      : 'Unable to delete the platform account.'
+      : 'Unable to delete account.'
   } finally {
     deletionState.pending = false
   }
@@ -272,61 +260,6 @@ const profileSubmitLabel = computed(() => isProfileSetupMode.value ? 'Finish set
         />
 
         <section class="space-y-5">
-          <div
-            v-if="!isPlatformAccountUnavailable"
-            class="rounded-xl border border-default/70 bg-default/45 p-5"
-          >
-            <div class="mb-4 flex items-center gap-2">
-              <AppIcon
-                name="i-lucide-image"
-                class="size-4 text-dimmed"
-              />
-              <p class="text-sm font-semibold text-highlighted">
-                Profile icon
-              </p>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-4">
-              <AppAvatar
-                :src="profileIconSrc"
-                :alt="profileIconAlt"
-                size="3xl"
-                fallback="icon"
-              />
-
-              <div class="space-y-3">
-                <div class="flex flex-wrap gap-2">
-                  <label class="cursor-pointer">
-                    <input
-                      class="sr-only"
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      :disabled="profileIconState.uploadPending || profileIconState.removePending"
-                      @change="uploadProfileIcon"
-                    >
-                    <AppButton
-                      type="button"
-                      :loading="profileIconState.uploadPending"
-                      label="Upload icon"
-                    />
-                  </label>
-
-                  <AppButton
-                    variant="soft"
-                    color="neutral"
-                    label="Remove icon"
-                    :disabled="!profileIconSrc || profileIconState.uploadPending"
-                    :loading="profileIconState.removePending"
-                    @click="removeProfileIcon"
-                  />
-                </div>
-                <p class="text-xs text-muted">
-                  Upload JPEG, PNG, or WebP up to 1MB.
-                </p>
-              </div>
-            </div>
-          </div>
-
           <AppAlert
             v-if="saveState.success"
             color="success"
@@ -348,37 +281,132 @@ const profileSubmitLabel = computed(() => isProfileSetupMode.value ? 'Finish set
             :description="profileIconState.error"
           />
 
+          <div
+            v-if="!isPlatformAccountUnavailable"
+            class="grid items-start gap-5 lg:grid-cols-[20rem_minmax(0,1fr)]"
+          >
+            <div
+              class="rounded-xl border border-default/70 bg-default/45 p-5"
+            >
+              <div class="mb-4 flex items-center gap-2">
+                <AppIcon
+                  name="i-lucide-image"
+                  class="size-4 text-dimmed"
+                />
+                <p class="text-sm font-semibold text-highlighted">
+                  Profile icon
+                </p>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-4">
+                <button
+                  type="button"
+                  class="group relative rounded-full transition-opacity hover:opacity-95"
+                  :disabled="profileIconState.uploadPending"
+                  aria-label="Edit profile icon"
+                  @click="promptProfileIconUpload"
+                >
+                  <AppAvatar
+                    :src="profileIconSrc"
+                    :alt="profileIconAlt"
+                    size="3xl"
+                    fallback="icon"
+                  />
+                  <span class="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                    <AppIcon
+                      name="i-lucide-pencil"
+                      class="size-4 text-white"
+                    />
+                  </span>
+                </button>
+
+                <div class="space-y-3">
+                  <input
+                    ref="profileIconInput"
+                    class="sr-only"
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    :disabled="profileIconState.uploadPending"
+                    @change="uploadProfileIcon"
+                  >
+                  <p class="text-xs text-muted">
+                    JPG/PNG up to 1mb
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="rounded-xl border border-default/70 bg-default/45 p-5">
+              <div class="mb-4 flex items-center gap-2">
+                <AppIcon
+                  name="i-lucide-user"
+                  class="size-4 text-dimmed"
+                />
+                <p class="text-sm font-semibold text-highlighted">
+                  Profile information
+                </p>
+              </div>
+
+              <div class="space-y-2">
+                <label
+                  class="text-sm font-medium text-highlighted"
+                  for="account-display-name-inline"
+                >
+                  Display name
+                </label>
+                <input
+                  id="account-display-name-inline"
+                  v-model="profileForm.displayName"
+                  type="text"
+                  required
+                  class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
+                >
+              </div>
+            </div>
+          </div>
+
           <AccountSettingsProfileForm
             v-if="!isPlatformAccountUnavailable"
             v-model="profileForm"
             :pending="saveState.pending"
             :error="saveState.error"
             :submit-label="profileSubmitLabel"
+            :hide-profile-information="true"
             @submit="saveProfile"
           />
         </section>
 
         <section
           v-if="!isPlatformAccountUnavailable"
-          class="space-y-5"
+          class="space-y-4"
         >
-          <div class="border-b border-error/20 pb-3">
-            <p class="text-[20px] font-medium text-error">
+          <button
+            type="button"
+            class="inline-flex w-full border-b border-error/20 pb-3 text-left"
+            :aria-expanded="isDangerZoneExpanded"
+            @click="isDangerZoneExpanded = !isDangerZoneExpanded"
+          >
+            <span class="inline-flex items-center gap-2 text-[20px] font-medium text-error">
               Danger zone
-            </p>
-          </div>
+              <AppIcon
+                name="i-lucide-chevron-down"
+                class="size-4 text-error transition-transform duration-200"
+                :class="isDangerZoneExpanded ? 'rotate-180' : ''"
+              />
+            </span>
+          </button>
 
-          <div class="rounded-xl border border-error/20 bg-error/5 p-6">
+          <div
+            v-if="isDangerZoneExpanded"
+            class="rounded-xl border border-error/20 bg-error/5 p-6"
+          >
             <div class="space-y-5">
               <div class="space-y-2">
                 <p class="text-sm font-semibold text-highlighted dark:text-white">
-                  Delete platform account
+                  Delete account
                 </p>
                 <p class="text-sm text-muted">
-                  This permanently removes your platform account record, role assignments, and platform document acceptance history.
-                </p>
-                <p class="text-sm text-muted">
-                  You will be signed out after deletion. Signing in again starts a fresh account-provisioning flow.
+                  This action is permanent. Your account will be deleted and you will be signed out.
                 </p>
               </div>
 
@@ -387,7 +415,7 @@ const profileSubmitLabel = computed(() => isProfileSetupMode.value ? 'Finish set
                   class="text-sm font-medium text-highlighted dark:text-white"
                   for="account-delete-confirmation"
                 >
-                  Type "delete my account" to confirm
+                  Type "delete my account" to continue
                 </label>
                 <input
                   id="account-delete-confirmation"
@@ -408,7 +436,7 @@ const profileSubmitLabel = computed(() => isProfileSetupMode.value ? 'Finish set
                 <AppButton
                   color="error"
                   variant="solid"
-                  label="Delete account"
+                  label="Delete account permanently"
                   :loading="deletionState.pending"
                   @click="deleteAccount"
                 />
