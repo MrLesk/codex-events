@@ -60,6 +60,7 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 - Favor booleans, enums, and direct fields over additional entities or abstractions when the extra structure does not provide clear operational value.
 - Do not add general-purpose extensibility for hypothetical future needs unless the user explicitly asks for it.
 - Optimize for systems that are easy to understand, query, and operate at scale, even when that means rejecting more textbook modeling patterns.
+- For any code changes, run validation before handoff: at minimum `bun run test:unit` must pass locally. If tests cannot be run, explicitly report that limitation and why.
 
 <!-- BACKLOG.MD MCP GUIDELINES START -->
 
