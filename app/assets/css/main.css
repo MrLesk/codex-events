@@ -150,8 +150,8 @@
   --surface-accented: #ececf0;
   --surface-inverted: #030213;
 
-  --text-dimmed: #8d90a1;
-  --text-muted: #717182;
+  --text-dimmed: #6d7486;
+  --text-muted: #535b6d;
   --text-toned: #424654;
   --text-highlighted: #030213;
   --text-inverted: #ffffff;
@@ -189,8 +189,8 @@
   --surface-accented: #212121;
   --surface-inverted: #f8fafc;
 
-  --text-dimmed: #8c8c8c;
-  --text-muted: #a3a3a3;
+  --text-dimmed: #aeb5c2;
+  --text-muted: #c7cdd9;
   --text-toned: #d3d6df;
   --text-highlighted: #f8fafc;
   --text-inverted: #111111;
@@ -206,7 +206,7 @@
   --secondary: var(--surface-elevated);
   --secondary-foreground: var(--text-highlighted);
   --muted: var(--surface-elevated);
-  --muted-foreground: var(--text-dimmed);
+  --muted-foreground: var(--text-muted);
   --accent: var(--surface-accented);
   --accent-foreground: var(--text-highlighted);
   --destructive: rgb(248 113 113);
@@ -241,6 +241,10 @@
     cursor: pointer;
   }
 
+  a {
+    cursor: pointer;
+  }
+
   button:disabled {
     cursor: not-allowed;
   }
@@ -270,5 +274,11 @@
 
   .app-inset-choice {
     @apply rounded-2xl border border-default/70 bg-bg/80 shadow-[0_16px_36px_-30px_rgba(15,20,34,0.22)] backdrop-blur-sm;
+  }
+}
+
+@layer utilities {
+  .text-muted {
+    color: var(--text-muted);
   }
 }

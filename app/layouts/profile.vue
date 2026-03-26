@@ -3,52 +3,69 @@ import AppShellFooter from '~/components/shell/AppShellFooter.vue'
 import AppShellHeader from '~/components/shell/AppShellHeader.vue'
 import AppShellNavigation from '~/components/shell/AppShellNavigation.vue'
 
-const user = useUser()
 const { actor, hasPlatformAccount, sidebarGroups } = useShellNavigation()
+
+const sidebarCollapseStorageKey = 'codex-hackathons-sidebar-collapsed'
+const isSidebarCollapsed = ref(false)
 
 const showWorkspaceSidebar = computed(() => hasPlatformAccount.value)
 const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_identity')
-const profileName = computed(() => {
-  if (actor.value.kind === 'platform_user') {
-    return actor.value.platformUser.displayName
-  }
 
-  return user.value?.name ?? null
+function toggleSidebarCollapse() {
+  isSidebarCollapsed.value = !isSidebarCollapsed.value
+}
+
+onMounted(() => {
+  try {
+    isSidebarCollapsed.value = localStorage.getItem(sidebarCollapseStorageKey) === 'true'
+  } catch {
+    // Ignore storage access failures and keep default collapsed state.
+  }
+})
+
+watch(isSidebarCollapsed, (nextValue) => {
+  try {
+    localStorage.setItem(sidebarCollapseStorageKey, nextValue ? 'true' : 'false')
+  } catch {
+    // Ignore storage access failures and keep runtime state.
+  }
 })
 </script>
 
 <template>
-  <div class="min-h-screen overflow-x-hidden text-foreground">
+  <div class="flex min-h-screen flex-col overflow-x-hidden text-foreground">
     <AppShellHeader />
 
-    <div class="relative flex">
+    <div class="relative flex flex-1 items-stretch">
       <aside
         v-if="showWorkspaceSidebar"
-        class="hidden w-[260px] min-w-[260px] shrink-0 xl:block"
+        class="hidden shrink-0 text-[#A3A3A3] transition-[width] duration-200 xl:block"
+        :class="isSidebarCollapsed ? 'w-[84px] min-w-[84px]' : 'w-[260px] min-w-[260px]'"
       >
-        <div class="sticky top-[4.5rem] flex min-h-[calc(100vh-5rem)] flex-col overflow-y-auto border-r border-white/[0.08] bg-black px-4 pb-6 pt-4 text-[#A3A3A3]">
-          <AppShellNavigation :groups="sidebarGroups" />
-
-          <div class="mt-auto border-t border-white/[0.08] pt-5">
-            <p class="text-[11px] font-semibold tracking-[0.02em] text-[#8C8C8C] uppercase">
-              Active identity
-            </p>
-            <div class="mt-3 flex items-center gap-3">
-              <AppAvatar
-                :src="user?.picture"
-                :alt="user?.name"
-                size="lg"
-              />
-              <div class="min-w-0">
-                <p class="truncate text-sm font-medium text-white">
-                  {{ profileName }}
-                </p>
-                <p class="truncate text-xs text-[#8C8C8C]">
-                  {{ user?.email ?? 'Signed in' }}
-                </p>
-              </div>
-            </div>
+        <div
+          class="fixed left-0 top-[4.5rem] z-30 flex h-[calc(100vh-4.5rem)] flex-col border-r border-white/[0.08] bg-black px-3 pb-4 pt-3"
+          :class="isSidebarCollapsed ? 'w-[84px]' : 'w-[260px]'"
+        >
+          <div class="min-h-0 flex-1 overflow-y-auto">
+            <AppShellNavigation
+              :groups="sidebarGroups"
+              :collapsed="isSidebarCollapsed"
+            />
           </div>
+
+          <button
+            type="button"
+            class="mt-3 inline-flex size-8 items-center justify-center rounded-md text-[#8C8C8C] transition-colors hover:bg-[#1A1A1A] hover:text-white focus-visible:ring-2 focus-visible:ring-white/[0.24] focus-visible:outline-none"
+            :class="isSidebarCollapsed ? 'self-center' : 'self-start'"
+            :aria-label="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            :title="isSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+            @click="toggleSidebarCollapse"
+          >
+            <AppIcon
+              :name="isSidebarCollapsed ? 'i-lucide-panel-left-open' : 'i-lucide-panel-left-close'"
+              class="size-4"
+            />
+          </button>
         </div>
       </aside>
 

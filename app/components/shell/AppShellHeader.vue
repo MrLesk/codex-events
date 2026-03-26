@@ -30,8 +30,8 @@ const profileAvatarSrc = computed(() => {
 </script>
 
 <template>
-  <header class="sticky top-0 z-40 border-b border-black/8 bg-white/96 backdrop-blur-2xl dark:border-white/[0.08] dark:bg-black/96">
-    <div class="flex items-center gap-4 px-6 py-4">
+  <header class="fixed inset-x-0 top-0 z-40 border-b border-black/8 bg-white/96 backdrop-blur-2xl dark:border-white/[0.08] dark:bg-black/96">
+    <div class="flex h-[4.5rem] items-center gap-4 px-6">
       <NuxtLink
         to="/"
         class="group flex items-center"
@@ -69,4 +69,8 @@ const profileAvatarSrc = computed(() => {
       </div>
     </div>
   </header>
+  <div
+    aria-hidden="true"
+    class="h-[4.5rem] shrink-0"
+  />
 </template>
