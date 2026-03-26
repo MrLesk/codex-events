@@ -1,33 +1,46 @@
 <script setup lang="ts">
 import type { PublicHackathon } from '~/composables/useHackathonPresentation'
 
+import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
+
 const props = defineProps<{
   hackathon: PublicHackathon
 }>()
 
-const heroImage = computed(() => props.hackathon.bannerImageUrl ?? props.hackathon.backgroundImageUrl)
-const timelineDateLabel = computed(() => formatHackathonCompactDate(props.hackathon.registrationOpensAt))
-const statusLabel = computed(() => {
+const heroImage = computed(() => {
+  const bannerImageUrl = props.hackathon.bannerImageUrl?.trim()
+
+  if (bannerImageUrl) {
+    return bannerImageUrl
+  }
+
+  const backgroundImageUrl = props.hackathon.backgroundImageUrl?.trim()
+
+  return backgroundImageUrl || null
+})
+const timelineDateLabel = computed(() => formatHackathonCompactDate(props.hackathon.submissionOpensAt))
+const registrationOpensAtTimestamp = computed(() => new Date(props.hackathon.registrationOpensAt).getTime())
+const registrationClosesAtTimestamp = computed(() => new Date(props.hackathon.registrationClosesAt).getTime())
+const isRegistrationOpen = computed(() => {
+  const now = Date.now()
+  return now >= registrationOpensAtTimestamp.value && now <= registrationClosesAtTimestamp.value
+})
+const ctaLabel = computed(() => {
   if (props.hackathon.state === 'completed') {
-    return 'Past'
+    return 'View outcomes'
   }
 
-  if (new Date(props.hackathon.registrationOpensAt).getTime() > Date.now()) {
-    return `Upcoming · ${timelineDateLabel.value}`
-  }
-
-  return 'Active now'
+  return isRegistrationOpen.value ? 'Register now' : 'View details'
 })
 const programDateLabel = computed(() =>
-  formatHackathonWindow(props.hackathon.registrationOpensAt, props.hackathon.submissionClosesAt)
+  formatHackathonWindow(props.hackathon.submissionOpensAt, props.hackathon.submissionClosesAt)
 )
 const locationLabel = computed(() => [props.hackathon.city, props.hackathon.address].filter(Boolean).join(' • '))
 </script>
 
 <template>
   <div class="relative">
-    <div class="absolute bottom-0 left-0 top-0 hidden w-px bg-black/10 dark:bg-white/[0.08] lg:block" />
-    <div class="absolute left-[-5px] top-6 hidden h-2 w-2 rounded-full border-2 border-background bg-neutral-500 dark:bg-[#8C8C8C] lg:block" />
+    <div class="absolute left-[-6px] top-6 hidden h-3 w-3 rounded-full border-[3px] border-background bg-neutral-500 dark:bg-[#A3A3A3] lg:block" />
 
     <div class="absolute left-[-66px] top-4 hidden text-[12px] font-medium text-neutral-500 dark:text-[#8C8C8C] lg:block">
       {{ timelineDateLabel }}
@@ -53,22 +66,15 @@ const locationLabel = computed(() => [props.hackathon.city, props.hackathon.addr
           />
 
           <div class="absolute left-6 top-6 z-20 flex flex-wrap gap-2">
-            <span class="rounded-full border border-white/25 bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur-md">
-              {{ statusLabel }}
-            </span>
-            <span class="rounded-full border border-white/20 bg-black/45 px-2.5 py-1 text-[11px] font-medium text-white/90 backdrop-blur-md">
-              Codex hackathon
-            </span>
+            <HackathonStateBadge
+              :state="hackathon.state"
+              class="border border-white/25 bg-black/55 text-white backdrop-blur-md dark:border-white/25 dark:bg-black/55 dark:text-white"
+            />
           </div>
 
           <div class="absolute bottom-8 left-6 z-20">
-            <div
-              class="mb-3 inline-flex rounded-full border border-white/15 bg-black/35 px-3 py-1 text-[11px] font-medium text-white/85 backdrop-blur-md"
-            >
-              Up to {{ hackathon.maxTeamMembers }}
-            </div>
             <h2 class="text-[32px] font-semibold tracking-[-0.01em] text-white">
-              {{ hackathon.city }}
+              {{ hackathon.name }}
             </h2>
           </div>
         </div>
@@ -76,19 +82,19 @@ const locationLabel = computed(() => [props.hackathon.city, props.hackathon.addr
         <div class="flex flex-col gap-5 p-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p class="mb-1 text-[15px] font-medium text-highlighted dark:text-white">
-              {{ programDateLabel }}
-            </p>
-            <p class="text-[13px] text-neutral-500 dark:text-[#A3A3A3]">
-              {{ hackathon.name }}
+              Hackathon dates: {{ programDateLabel }}
             </p>
             <p class="mt-1 text-[13px] text-neutral-500 dark:text-[#A3A3A3]">
               {{ locationLabel }}
+            </p>
+            <p class="mt-1 text-[13px] text-neutral-500 dark:text-[#A3A3A3]">
+              Team size: 1-{{ hackathon.maxTeamMembers }}
             </p>
           </div>
 
           <div class="flex items-center gap-3">
             <div class="inline-flex items-center gap-1.5 rounded-full bg-black px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]">
-              Register now
+              {{ ctaLabel }}
               <AppIcon
                 name="i-lucide-arrow-up-right"
                 class="size-3.5"
