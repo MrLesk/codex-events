@@ -4,13 +4,15 @@ import AppShellHeader from '~/components/shell/AppShellHeader.vue'
 </script>
 
 <template>
-  <div class="min-h-screen overflow-x-hidden text-foreground">
+  <div class="flex h-screen flex-col overflow-hidden text-foreground">
     <AppShellHeader />
 
-    <main class="relative">
-      <slot />
-    </main>
+    <div class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+      <main class="relative">
+        <slot />
+      </main>
 
-    <AppShellFooter />
+      <AppShellFooter />
+    </div>
   </div>
 </template>

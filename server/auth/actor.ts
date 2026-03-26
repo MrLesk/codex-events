@@ -128,11 +128,7 @@ async function provisionPlatformAccountFromSignupConsent(event: H3Event, session
   ])
 
   if (!privacyPolicyDocument || !platformTermsDocument) {
-    throw new ApiError({
-      statusCode: 409,
-      code: 'platform_document_unavailable',
-      message: 'Current platform documents must be configured before account provisioning.'
-    })
+    return null
   }
 
   try {

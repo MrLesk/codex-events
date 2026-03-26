@@ -19,26 +19,6 @@ const props = defineProps<{
 const displayName = computed(() => props.name?.trim() || 'Developer User')
 const displayEmail = computed(() => props.email?.trim() || 'Signed in')
 const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
-
-async function navigateToDashboard() {
-  await navigateTo('/account/dashboard')
-}
-
-async function navigateToSettings() {
-  await navigateTo('/account/settings')
-}
-
-async function navigateToJudgingWorkspace() {
-  await navigateTo('/account/judging')
-}
-
-async function navigateToAdminOperations() {
-  await navigateTo('/account/admin')
-}
-
-async function logout() {
-  await navigateTo(authLogoutHref, { external: true })
-}
 </script>
 
 <template>
@@ -73,60 +53,83 @@ async function logout() {
 
       <div>
         <DropdownMenuItem
+          as-child
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
-          @select.prevent="navigateToDashboard"
         >
-          <AppIcon
-            name="i-lucide-layout-dashboard"
-            class="size-4"
-          />
-          <span>Dashboard</span>
+          <NuxtLink
+            to="/account/dashboard"
+            class="flex w-full items-center gap-2"
+          >
+            <AppIcon
+              name="i-lucide-layout-dashboard"
+              class="size-4"
+            />
+            <span>Dashboard</span>
+          </NuxtLink>
         </DropdownMenuItem>
 
         <DropdownMenuItem
+          as-child
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
-          @select.prevent="navigateToSettings"
         >
-          <AppIcon
-            name="i-lucide-id-card"
-            class="size-4"
-          />
-          <span>Settings</span>
+          <NuxtLink
+            to="/account/settings"
+            class="flex w-full items-center gap-2"
+          >
+            <AppIcon
+              name="i-lucide-id-card"
+              class="size-4"
+            />
+            <span>Settings</span>
+          </NuxtLink>
         </DropdownMenuItem>
 
         <DropdownMenuItem
           v-if="props.isPlatformAdmin"
+          as-child
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
-          @select.prevent="navigateToJudgingWorkspace"
-          @click="navigateToJudgingWorkspace"
         >
-          <AppIcon
-            name="i-lucide-scale"
-            class="size-4"
-          />
-          <span>Judge workspace</span>
+          <NuxtLink
+            to="/account/judging"
+            class="flex w-full items-center gap-2"
+          >
+            <AppIcon
+              name="i-lucide-scale"
+              class="size-4"
+            />
+            <span>Judge workspace</span>
+          </NuxtLink>
         </DropdownMenuItem>
 
         <DropdownMenuItem
           v-if="props.isPlatformAdmin"
+          as-child
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
-          @select.prevent="navigateToAdminOperations"
-          @click="navigateToAdminOperations"
         >
-          <AppIcon
-            name="i-lucide-shield-check"
-            class="size-4"
-          />
-          <span>Admin operations</span>
+          <NuxtLink
+            to="/account/admin"
+            class="flex w-full items-center gap-2"
+          >
+            <AppIcon
+              name="i-lucide-shield-check"
+              class="size-4"
+            />
+            <span>Admin operations</span>
+          </NuxtLink>
         </DropdownMenuItem>
 
         <DropdownMenuItem
+          as-child
           variant="destructive"
           class="gap-2 rounded-none rounded-b-xl px-4 py-2 text-[13px] text-red-400 focus:bg-red-400/10 focus:text-red-400 data-[highlighted]:bg-red-400/10 data-[highlighted]:text-red-400 [&_svg]:text-current"
-          @select.prevent="logout"
         >
-          <LogOutIcon class="size-4" />
-          <span>Log out</span>
+          <a
+            :href="authLogoutHref"
+            class="flex w-full items-center gap-2"
+          >
+            <LogOutIcon class="size-4" />
+            <span>Log out</span>
+          </a>
         </DropdownMenuItem>
       </div>
     </DropdownMenuContent>

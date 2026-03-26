@@ -40,9 +40,9 @@ const locationLabel = computed(() => [props.hackathon.city, props.hackathon.addr
 
 <template>
   <div class="relative">
-    <div class="absolute left-[-6px] top-6 hidden h-3 w-3 rounded-full border-[3px] border-background bg-neutral-500 dark:bg-[#A3A3A3] lg:block" />
+    <div class="absolute left-[-10px] top-5 hidden h-5 w-5 rounded-full border-4 border-background bg-neutral-500 dark:bg-[#A3A3A3] lg:block" />
 
-    <div class="absolute left-[-66px] top-4 hidden text-[12px] font-medium text-neutral-500 dark:text-[#8C8C8C] lg:block">
+    <div class="absolute left-[-66px] top-[22px] hidden text-[12px] font-medium leading-none text-neutral-500 dark:text-[#8C8C8C] lg:block">
       {{ timelineDateLabel }}
     </div>
 

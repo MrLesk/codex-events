@@ -64,12 +64,13 @@ const canLoadMoreForCurrentFilter = computed(() => {
 
   return filteredHackathons.value.length < currentFilterTotal.value
 })
+const visibleHackathonCount = computed(() => filteredHackathons.value.length)
 const loadMoreSummary = computed(() => {
   if (activeTab.value === 'all') {
-    return `Showing ${currentFilterTotal.value} visible hackathons.`
+    return `Showing ${visibleHackathonCount.value} out of ${total.value} hackathons.`
   }
 
-  return `Showing ${currentFilterTotal.value} ${activeTab.value} hackathons.`
+  return `Showing ${visibleHackathonCount.value} out of ${currentFilterTotal.value} ${activeTab.value} hackathons.`
 })
 
 async function loadMoreHackathons() {
@@ -192,7 +193,7 @@ useSeoMeta({
         v-else
         class="relative space-y-16 pt-6"
       >
-        <div class="absolute bottom-0 left-0 top-0 hidden w-0.5 bg-black/16 dark:bg-white/[0.2] lg:block" />
+        <div class="absolute bottom-0 left-0 top-0 hidden w-1 bg-black/16 dark:bg-white/[0.2] lg:block" />
         <HackathonCard
           v-for="hackathon in filteredHackathons"
           :key="hackathon.slug"
