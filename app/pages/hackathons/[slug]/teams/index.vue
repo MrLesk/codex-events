@@ -6,7 +6,6 @@ import type {
 import type { TeamDirectoryEntry } from '~/utils/team-workspace'
 
 import { buildTermsOnboardingHref } from '~/utils/auth-navigation'
-import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import ParticipantTeamDirectoryPanel from '~/components/teams/ParticipantTeamDirectoryPanel.vue'
 import {
@@ -17,7 +16,8 @@ import {
 } from '~/utils/team-workspace'
 
 definePageMeta({
-  middleware: [requireAuthNavigationGuard]
+  layout: 'hackathon-detail',
+  middleware: ['require-auth']
 })
 
 const route = useRoute()

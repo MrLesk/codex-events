@@ -1,6 +1,6 @@
 <script setup lang="ts">
 defineProps<{
-  hackathonId: string
+  hackathonSlug: string
   currentSurface: 'setup' | 'operations' | 'competition'
 }>()
 </script>
@@ -15,19 +15,19 @@ defineProps<{
       <AppButton
         :variant="currentSurface === 'setup' ? 'solid' : 'soft'"
         :color="currentSurface === 'setup' ? 'primary' : 'neutral'"
-        :to="`/admin/hackathons/${hackathonId}`"
+        :to="`/hackathons/${hackathonSlug}/admin`"
         label="Setup"
       />
       <AppButton
         :variant="currentSurface === 'operations' ? 'solid' : 'soft'"
         :color="currentSurface === 'operations' ? 'primary' : 'neutral'"
-        :to="`/admin/hackathons/${hackathonId}/operations`"
+        :to="`/hackathons/${hackathonSlug}/admin/operations`"
         label="Operations"
       />
       <AppButton
         :variant="currentSurface === 'competition' ? 'solid' : 'soft'"
         :color="currentSurface === 'competition' ? 'primary' : 'neutral'"
-        :to="`/admin/hackathons/${hackathonId}/competition`"
+        :to="`/hackathons/${hackathonSlug}/admin/competition`"
         label="Competition"
       />
     </div>

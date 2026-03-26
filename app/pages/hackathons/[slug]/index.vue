@@ -5,10 +5,21 @@ import type {
   PublicHackathon,
   PublicPrize
 } from '~/composables/useHackathonPresentation'
+import type { ApiDataResponse, HackathonRecord } from '~/utils/admin-workspace'
+import type { ParticipantApplicationRecord } from '~/utils/participant-application'
 
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
 import { buildAuthLoginHref } from '~/utils/auth-navigation'
+
+const hackathonDetailParticipantStates = new Set<PublicHackathon['state']>([
+  'submission_open',
+  'judging_preparation',
+  'judge_review',
+  'shortlist',
+  'winners_announced',
+  'completed'
+])
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
@@ -56,6 +67,27 @@ const criteria = computed(() => criteriaResponse.value?.data ?? [])
 const prizes = computed(() => prizesResponse.value?.data ?? [])
 const prizesErrorMessage = computed(() => prizesError.value ? 'Published awards could not be loaded right now.' : undefined)
 const registerEntryHref = computed(() => buildAuthLoginHref(route.fullPath || `/hackathons/${slug.value}`))
+
+if (accountActor.value?.kind === 'platform_user' && hackathonDetailParticipantStates.has(hackathon.value.state)) {
+  const requestFetch = import.meta.server ? useRequestFetch() : $fetch
+
+  try {
+    const visibleHackathon = await requestFetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/slug/${slug.value}`)
+    const ownApplicationResponse = await requestFetch<ApiDataResponse<ParticipantApplicationRecord | null>>(
+      `/api/hackathons/${visibleHackathon.data.id}/applications/me`
+    )
+    const hasApprovedApplication = ownApplicationResponse.data?.status === 'approved'
+
+    if (hasApprovedApplication) {
+      setPageLayout('hackathon-detail')
+    }
+  } catch {
+    setPageLayout('public')
+  }
+} else {
+  setPageLayout('public')
+}
+
 const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
 const headerStateClass = computed(() => {
   if (hackathon.value.state === 'submission_open') {

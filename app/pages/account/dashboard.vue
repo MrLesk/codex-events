@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import HackathonParticipationCard from '~/components/hackathons/HackathonParticipationCard.vue'
-import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 
 definePageMeta({
-  middleware: [requireAuthNavigationGuard]
+  layout: 'profile',
+  middleware: ['require-auth']
 })
 
 interface WorkspaceLink {

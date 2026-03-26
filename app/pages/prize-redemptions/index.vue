@@ -6,10 +6,10 @@ import {
   getPrizeRedemptionStatusColor,
   summarizePrizeRedemptionTask
 } from '~/utils/prize-redemptions'
-import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 
 definePageMeta({
-  middleware: [requireAuthNavigationGuard]
+  layout: 'profile',
+  middleware: ['require-auth']
 })
 
 const toast = useToast()

@@ -4,10 +4,10 @@ import {
   formatHackathonState,
   getHackathonStateColor
 } from '~/utils/admin-workspace'
-import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 
 definePageMeta({
-  middleware: [requireAuthNavigationGuard]
+  layout: 'profile',
+  middleware: ['require-auth']
 })
 
 const workspace = useAdminWorkspace()
@@ -122,7 +122,7 @@ const canCreate = computed(() => canCreateHackathon(actor.value))
             <NuxtLink
               v-for="hackathon in manageableHackathons"
               :key="hackathon.id"
-              :to="`/admin/hackathons/${hackathon.id}`"
+              :to="`/hackathons/${hackathon.slug}/admin`"
               class="group app-inset-card app-inset-card-hover px-5 py-5"
             >
               <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

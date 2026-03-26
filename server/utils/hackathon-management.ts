@@ -358,6 +358,40 @@ export async function getVisibleHackathonOrThrow(event: H3Event, hackathonId: st
   })
 }
 
+export async function getVisibleHackathonBySlugOrThrow(event: H3Event, slug: string) {
+  const database = getDatabase(event)
+  const actor = await getRequestActor(event)
+  const hackathon = await database.query.hackathons.findFirst({
+    where: eq(hackathons.slug, slug)
+  })
+
+  if (!hackathon) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'hackathon_not_found',
+      message: 'The requested hackathon was not found.',
+      details: { slug }
+    })
+  }
+
+  if (hackathon.state !== 'draft') {
+    return hackathon
+  }
+
+  const adminHackathonIds = await getActorAdminHackathonIds(database, actor)
+
+  if (isDraftVisibleToActor(actor, hackathon.id, adminHackathonIds)) {
+    return hackathon
+  }
+
+  throw new ApiError({
+    statusCode: 404,
+    code: 'hackathon_not_found',
+    message: 'The requested hackathon was not found.',
+    details: { slug }
+  })
+}
+
 export async function getPublicHackathonBySlugOrThrow(database: AppDatabase, slug: string) {
   const hackathon = await database.query.hackathons.findFirst({
     where: and(

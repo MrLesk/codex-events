@@ -13,10 +13,11 @@ import {
 
 const props = defineProps<{
   assignment: JudgeAssignmentDetail
+  hackathonSlug: string
 }>()
 
 const assignmentHref = computed(() =>
-  `/judging/${props.assignment.hackathonId}/assignments/${props.assignment.id}`
+  `/hackathons/${props.hackathonSlug}/judging/assignments/${props.assignment.id}`
 )
 </script>
 

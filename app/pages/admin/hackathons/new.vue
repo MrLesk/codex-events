@@ -8,10 +8,10 @@ import {
   fromDateTimeLocalValue,
   normalizeApiError
 } from '~/utils/admin-workspace'
-import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 
 definePageMeta({
-  middleware: [requireAuthNavigationGuard]
+  layout: 'profile',
+  middleware: ['require-auth']
 })
 
 const workspace = useAdminWorkspace()
@@ -73,7 +73,7 @@ async function createHackathon() {
     })
 
     await workspace.refreshRoot()
-    await navigateTo(`/admin/hackathons/${response.data.id}`)
+    await navigateTo(`/hackathons/${response.data.slug}/admin`)
   } catch (error) {
     const apiError = normalizeApiError(error)
     submitError.value = apiError.message

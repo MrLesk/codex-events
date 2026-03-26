@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import JudgeAssignmentInboxCard from '~/components/judging/JudgeAssignmentInboxCard.vue'
 import { formatHackathonState, getHackathonStateColor } from '~/utils/admin-workspace'
-import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 
 definePageMeta({
-  middleware: [requireAuthNavigationGuard]
+  layout: 'profile',
+  middleware: ['require-auth']
 })
 
 const route = useRoute()
@@ -217,6 +217,7 @@ useSeoMeta({
               v-for="assignment in group.assignments"
               :key="assignment.id"
               :assignment="assignment"
+              :hackathon-slug="group.hackathon.slug"
             />
           </div>
         </section>
