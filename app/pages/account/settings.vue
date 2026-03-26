@@ -137,9 +137,6 @@ const profileSubmitLabel = computed(() => isProfileSetupMode.value ? 'Finish set
     <section class="border-b border-black/8 dark:border-white/[0.08]">
       <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
         <div class="space-y-2 pb-4">
-          <p class="text-[11px] font-semibold tracking-[0.18em] text-muted uppercase">
-            Account
-          </p>
           <div class="flex flex-wrap items-end justify-between gap-4">
             <div class="space-y-2">
               <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
@@ -153,11 +150,12 @@ const profileSubmitLabel = computed(() => isProfileSetupMode.value ? 'Finish set
                 }}
               </p>
             </div>
-            <div class="rounded-lg border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]">
-              <p class="text-[11px] font-semibold tracking-[0.16em] text-muted uppercase">
-                Account email
-              </p>
-              <p class="mt-1 text-[14px] text-highlighted dark:text-white">
+            <div class="flex max-w-full items-center gap-2 rounded-lg border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]">
+              <AppIcon
+                name="i-lucide-mail"
+                class="size-4 text-dimmed"
+              />
+              <p class="text-[14px] font-medium text-highlighted dark:text-white">
                 {{ accountEmail }}
               </p>
             </div>
@@ -188,12 +186,6 @@ const profileSubmitLabel = computed(() => isProfileSetupMode.value ? 'Finish set
         />
 
         <section class="space-y-5">
-          <div class="border-b border-black/8 pb-3 dark:border-white/[0.08]">
-            <p class="text-[20px] font-medium text-highlighted dark:text-white">
-              Profile information
-            </p>
-          </div>
-
           <AppAlert
             v-if="saveState.success"
             color="success"

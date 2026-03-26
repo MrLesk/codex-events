@@ -35,7 +35,7 @@ const emit = defineEmits<{
       <div class="mb-4 flex items-center gap-2">
         <AppIcon
           name="i-lucide-user"
-          class="size-4 text-muted"
+          class="size-4 text-dimmed"
         />
         <p class="text-sm font-semibold text-highlighted">
           Profile information
@@ -63,7 +63,7 @@ const emit = defineEmits<{
       <div class="mb-4 flex items-center gap-2">
         <AppIcon
           name="i-lucide-globe"
-          class="size-4 text-muted"
+          class="size-4 text-dimmed"
         />
         <p class="text-sm font-semibold text-highlighted">
           Social profiles
@@ -125,7 +125,7 @@ const emit = defineEmits<{
       <div class="mb-4 flex items-center gap-2">
         <AppIcon
           name="i-lucide-id-card"
-          class="size-4 text-muted"
+          class="size-4 text-dimmed"
         />
         <p class="text-sm font-semibold text-highlighted">
           Hackathon profile fields
