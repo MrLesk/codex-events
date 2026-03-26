@@ -2,11 +2,8 @@ export const authLogoutHref = '/auth/logout'
 export const accountDashboardHref = '/account/dashboard'
 export const accountSettingsHref = '/account/settings'
 
-export type ActorOnboardingState = 'terms_pending' | 'profile_pending' | 'completed'
-
 interface RedirectAwareActor {
   kind: 'anonymous' | 'authenticated_identity' | 'platform_user'
-  onboardingState: ActorOnboardingState | null
 }
 
 export function normalizeAuthReturnTo(returnTo: string | null | undefined, fallback = '/') {
@@ -20,18 +17,13 @@ export function normalizeAuthReturnTo(returnTo: string | null | undefined, fallb
 }
 
 export function buildAuthLoginHref(returnTo: string | null | undefined) {
-  return `/auth/login?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo))}`
+  const normalizedReturnTo = normalizeAuthReturnTo(returnTo, accountDashboardHref)
+  const loginReturnTo = normalizedReturnTo === '/' ? accountDashboardHref : normalizedReturnTo
+
+  return `/auth/login?returnTo=${encodeURIComponent(loginReturnTo)}`
 }
 
-export function buildTermsOnboardingHref(returnTo: string | null | undefined) {
-  return `${accountSettingsHref}?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo, accountDashboardHref))}`
-}
-
-export function buildPlatformOnboardingStartHref(returnTo: string | null | undefined) {
-  return buildAuthLoginHref(normalizeAuthReturnTo(returnTo, accountDashboardHref))
-}
-
-export function buildAccountOnboardingHref(returnTo: string | null | undefined) {
+export function buildAccountSettingsHref(returnTo: string | null | undefined) {
   return `${accountSettingsHref}?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo, accountDashboardHref))}`
 }
 
@@ -39,10 +31,6 @@ export function resolveActorAppRedirect(actor: RedirectAwareActor, returnTo: str
   const normalizedReturnTo = normalizeAuthReturnTo(returnTo, accountDashboardHref)
 
   if (actor.kind === 'authenticated_identity') {
-    return accountSettingsHref
-  }
-
-  if (actor.kind === 'platform_user' && actor.onboardingState === 'profile_pending' && normalizedReturnTo !== accountSettingsHref) {
     return accountSettingsHref
   }
 

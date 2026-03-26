@@ -68,7 +68,6 @@ export function serializePlatformUser(user: PlatformUserRecord) {
     email: user.email,
     displayName: user.displayName,
     isPlatformAdmin: user.isPlatformAdmin,
-    onboardingState: user.onboardingState,
     xProfileUrl: user.xProfileUrl,
     linkedinProfileUrl: user.linkedinProfileUrl,
     githubProfileUrl: user.githubProfileUrl,
@@ -100,7 +99,6 @@ function buildPlatformAccountInsert(
     email: email!,
     displayName: buildRegistrationDisplayName(actor),
     isPlatformAdmin: false,
-    onboardingState: 'profile_pending',
     xProfileUrl: null,
     linkedinProfileUrl: null,
     githubProfileUrl: null,
@@ -116,14 +114,10 @@ function buildPlatformAccountInsert(
 
 function buildPlatformAccountProfilePatch(
   input: PlatformAccountProfileInput,
-  updatedAt: string,
-  onboardingState: PlatformUserRecord['onboardingState']
+  updatedAt: string
 ) {
   return {
     displayName: input.displayName.trim(),
-    ...(onboardingState === 'profile_pending'
-      ? { onboardingState: 'completed' as const }
-      : {}),
     ...(input.xProfileUrl !== undefined
       ? { xProfileUrl: normalizeOptionalUrl(input.xProfileUrl) }
       : {}),
@@ -284,7 +278,7 @@ export async function updatePlatformAccountProfile(
   })
 
   const updatedAt = new Date().toISOString()
-  const patch = buildPlatformAccountProfilePatch(input, updatedAt, existingUser!.onboardingState)
+  const patch = buildPlatformAccountProfilePatch(input, updatedAt)
 
   await database
     .update(users)
@@ -380,7 +374,6 @@ export function buildDeletedUserPatch(userId: string, deletedAt: string) {
     email: `deleted_${suffix}@deleted.invalid`,
     displayName: 'Deleted User',
     isPlatformAdmin: false,
-    onboardingState: 'completed',
     xProfileUrl: null,
     linkedinProfileUrl: null,
     githubProfileUrl: null,

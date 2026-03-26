@@ -68,8 +68,7 @@ describe('hackathon authorization', () => {
         auth0Subject: 'auth0|admin',
         email: 'admin@example.com',
         displayName: 'Admin',
-        isPlatformAdmin: true,
-        onboardingState: 'completed'
+        isPlatformAdmin: true
       }
     }))
 
@@ -89,8 +88,7 @@ describe('hackathon authorization', () => {
         auth0Subject: 'auth0|judge',
         email: 'judge@example.com',
         displayName: 'Judge',
-        isPlatformAdmin: false,
-        onboardingState: 'completed'
+        isPlatformAdmin: false
       },
       hackathonRoleAssignment: {
         role: 'judge',
@@ -118,7 +116,7 @@ describe('hackathon authorization', () => {
     })).toThrow(ApiError)
   })
 
-  test('rejects platform users whose onboarding is still pending', async () => {
+  test('allows platform users to resolve authorization without extra account gating', async () => {
     const event = createEvent({ sub: 'auth0|pending' })
     setDatabase(event, createDatabaseMock({
       user: {
@@ -126,14 +124,13 @@ describe('hackathon authorization', () => {
         auth0Subject: 'auth0|pending',
         email: 'pending@example.com',
         displayName: 'Pending',
-        isPlatformAdmin: false,
-        onboardingState: 'profile_pending'
+        isPlatformAdmin: false
       }
     }))
 
-    await expect(resolveHackathonAuthorization(event, 'hackathon_1')).rejects.toMatchObject({
-      statusCode: 403,
-      code: 'platform_onboarding_incomplete'
+    await expect(resolveHackathonAuthorization(event, 'hackathon_1')).resolves.toMatchObject({
+      hackathonId: 'hackathon_1',
+      isPlatformAdmin: false
     })
   })
 })
@@ -147,8 +144,7 @@ describe('team authorization', () => {
         auth0Subject: 'auth0|member',
         email: 'member@example.com',
         displayName: 'Member',
-        isPlatformAdmin: false,
-        onboardingState: 'completed'
+        isPlatformAdmin: false
       },
       teamMembership: {
         role: 'admin'
@@ -181,8 +177,7 @@ describe('judge assignment authorization', () => {
         auth0Subject: 'auth0|judge',
         email: 'judge@example.com',
         displayName: 'Judge',
-        isPlatformAdmin: false,
-        onboardingState: 'completed'
+        isPlatformAdmin: false
       },
       judgeAssignment: {
         id: 'assignment_1',
@@ -206,8 +201,7 @@ describe('judge assignment authorization', () => {
         auth0Subject: 'auth0|admin',
         email: 'admin@example.com',
         displayName: 'Admin',
-        isPlatformAdmin: false,
-        onboardingState: 'completed'
+        isPlatformAdmin: false
       },
       hackathonRoleAssignment: {
         role: 'hackathon_admin',
@@ -235,8 +229,7 @@ describe('judge assignment authorization', () => {
         auth0Subject: 'auth0|other',
         email: 'other@example.com',
         displayName: 'Other',
-        isPlatformAdmin: false,
-        onboardingState: 'completed'
+        isPlatformAdmin: false
       },
       judgeAssignment: {
         id: 'assignment_1',

@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  accountDashboardHref,
+  accountSettingsHref,
   authLogoutHref,
-  buildAccountOnboardingHref,
+  buildAccountSettingsHref,
   buildAuthLoginHref,
-  buildPlatformOnboardingStartHref,
-  buildTermsOnboardingHref,
   normalizeAuthReturnTo,
   resolveActorAppRedirect
 } from '../../../../app/utils/auth-navigation'
@@ -15,15 +15,14 @@ describe('auth navigation helpers', () => {
     expect(buildAuthLoginHref('/account/dashboard?tab=judge')).toBe('/auth/login?returnTo=%2Faccount%2Fdashboard%3Ftab%3Djudge')
   })
 
-  test('builds onboarding entry routes with explicit post-auth steps', () => {
-    expect(buildTermsOnboardingHref('/hackathons/fixture')).toBe('/account/settings?returnTo=%2Fhackathons%2Ffixture')
-    expect(buildPlatformOnboardingStartHref('/account/dashboard')).toBe('/auth/login?returnTo=%2Faccount%2Fdashboard')
-    expect(buildAccountOnboardingHref('/account/dashboard')).toBe('/account/settings?returnTo=%2Faccount%2Fdashboard')
+  test('builds account settings route with return target', () => {
+    expect(buildAccountSettingsHref('/hackathons/fixture')).toBe('/account/settings?returnTo=%2Fhackathons%2Ffixture')
+    expect(buildAccountSettingsHref('/account/dashboard')).toBe('/account/settings?returnTo=%2Faccount%2Fdashboard')
   })
 
-  test('falls back to the homepage when the return target is empty', () => {
-    expect(buildAuthLoginHref('')).toBe('/auth/login?returnTo=%2F')
-    expect(buildAuthLoginHref(undefined)).toBe('/auth/login?returnTo=%2F')
+  test('falls back to the account dashboard when the return target is empty', () => {
+    expect(buildAuthLoginHref('')).toBe('/auth/login?returnTo=%2Faccount%2Fdashboard')
+    expect(buildAuthLoginHref(undefined)).toBe('/auth/login?returnTo=%2Faccount%2Fdashboard')
     expect(authLogoutHref).toBe('/auth/logout')
   })
 
@@ -33,20 +32,17 @@ describe('auth navigation helpers', () => {
     expect(normalizeAuthReturnTo('not-a-path', '/account/dashboard')).toBe('/account/dashboard')
   })
 
-  test('routes authenticated actors through the required onboarding step before the app workspace', () => {
+  test('routes authenticated identities to account settings, but preserves platform user return targets', () => {
     expect(resolveActorAppRedirect({
-      kind: 'authenticated_identity',
-      onboardingState: 'terms_pending'
-    }, '/judging')).toBe('/account/settings')
+      kind: 'authenticated_identity'
+    }, '/judging')).toBe(accountSettingsHref)
 
     expect(resolveActorAppRedirect({
-      kind: 'platform_user',
-      onboardingState: 'profile_pending'
-    }, '/account/dashboard')).toBe('/account/settings')
+      kind: 'platform_user'
+    }, '/account/dashboard')).toBe(accountDashboardHref)
 
     expect(resolveActorAppRedirect({
-      kind: 'platform_user',
-      onboardingState: 'completed'
-    }, '/account/dashboard')).toBe('/account/dashboard')
+      kind: 'platform_user'
+    }, '/account/dashboard')).toBe(accountDashboardHref)
   })
 })

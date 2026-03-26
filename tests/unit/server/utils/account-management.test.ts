@@ -11,7 +11,6 @@ describe('account management utilities', () => {
       email: 'deleted_user_1_20260322120000000@deleted.invalid',
       displayName: 'Deleted User',
       isPlatformAdmin: false,
-      onboardingState: 'completed',
       xProfileUrl: null,
       linkedinProfileUrl: null,
       githubProfileUrl: null,

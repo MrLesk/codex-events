@@ -33,7 +33,7 @@ const workspaceLinks = computed<WorkspaceLink[]>(() => {
     links.push({
       id: 'judge',
       label: 'Judge workspace',
-      description: 'Review active judging assignments.',
+      description: 'Review submissions assigned to you.',
       to: '/judging'
     })
   }
@@ -42,7 +42,7 @@ const workspaceLinks = computed<WorkspaceLink[]>(() => {
     links.push({
       id: 'admin',
       label: 'Admin operations',
-      description: 'Manage hackathon setup and lifecycle controls.',
+      description: 'Run setup, scheduling, and operations.',
       to: '/admin'
     })
   }
@@ -51,7 +51,7 @@ const workspaceLinks = computed<WorkspaceLink[]>(() => {
     links.push({
       id: 'prizes',
       label: 'Prize redemptions',
-      description: 'Resolve winner-facing redemption tasks.',
+      description: 'Process winner redemption requests.',
       to: '/prize-redemptions'
     })
   }
@@ -61,7 +61,7 @@ const workspaceLinks = computed<WorkspaceLink[]>(() => {
 
 useSeoMeta({
   title: 'Account Dashboard | Codex Hackathons',
-  description: 'Current and past hackathon participation plus role-specific workspace entry points.'
+  description: 'See your active and past hackathons, then jump into the tools tied to your account.'
 })
 </script>
 
@@ -79,7 +79,7 @@ useSeoMeta({
                 Dashboard
               </h1>
               <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-                Track your current and past hackathons and jump into any specialized workspaces tied to this account.
+                See your active hackathons, revisit past ones, and jump into the tools you need.
               </p>
             </div>
 
@@ -89,7 +89,7 @@ useSeoMeta({
               variant="solid"
               class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
             >
-              Browse public discovery
+              Explore hackathons
               <template #trailing>
                 <AppIcon
                   name="i-lucide-arrow-up-right"
@@ -141,8 +141,8 @@ useSeoMeta({
         v-else-if="isLoading"
         color="neutral"
         variant="soft"
-        title="Loading participation"
-        description="Resolving your application, team membership, and submission history across hackathons."
+        title="Loading your hackathon activity"
+        description="This only takes a moment."
       />
 
       <template v-else>
@@ -154,10 +154,10 @@ useSeoMeta({
             Participant workspace
           </p>
           <p class="mt-3 text-lg font-semibold text-highlighted dark:text-white">
-            No hackathon participation yet
+            No hackathons yet
           </p>
           <p class="mt-2 text-[14px] text-neutral-500 dark:text-[#A3A3A3]">
-            Join a hackathon from public discovery to start tracking your participation history here.
+            Join a hackathon and your activity will appear here.
           </p>
         </div>
 

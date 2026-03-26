@@ -75,14 +75,6 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
   }
 }
 
-When('I open the account onboarding page with the saved {string} session', async ({ page }, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto('/account/settings')
-  await expect(page.getByRole('heading', { name: 'Account settings' })).toBeVisible()
-  await page.waitForLoadState('networkidle')
-  await page.waitForTimeout(500)
-})
-
 When('I open the account settings page with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
   await page.goto('/account/settings')
@@ -105,10 +97,6 @@ When('I submit the platform account registration form for {string}', async ({ pa
   await page.waitForURL('**/account/settings**')
 })
 
-Then('I should see the profile onboarding heading', async ({ page }) => {
-  await expect(page.getByRole('heading', { name: 'Account settings' })).toBeVisible()
-})
-
 Then('I should see the account settings heading', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Account settings' })).toBeVisible()
 })
@@ -120,7 +108,7 @@ When('I update the account profile links', async ({ page }) => {
   await page.getByLabel('OpenAI org ID').fill('org_regular_user_updated')
   await page.getByLabel('Luma username').fill('regular-user-updated')
   await page.getByLabel('X profile URL').fill('https://x.com/regular-user-updated')
-  await page.getByRole('button', { name: /Save profile|Finish onboarding|Save changes|Finish setup/ }).click()
+  await page.getByRole('button', { name: 'Save' }).click()
 })
 
 Then('the account profile should show the updated links', async ({ page }) => {

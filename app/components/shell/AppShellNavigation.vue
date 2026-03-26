@@ -18,27 +18,24 @@ function isActiveLink(to: string) {
 </script>
 
 <template>
-  <nav
-    class="text-[#A3A3A3]"
-    :class="props.collapsed ? 'space-y-4' : 'space-y-7'"
-  >
+  <nav class="space-y-7 text-[#A3A3A3]">
     <section
-      v-for="group in props.groups"
-      :key="group.label"
-      :class="props.collapsed ? 'space-y-1.5' : 'space-y-2'"
+      v-for="(group, groupIndex) in props.groups"
+      :key="`${group.label || 'group'}-${groupIndex}`"
+      class="space-y-2"
     >
       <p
-        v-if="!props.collapsed"
-        class="px-3 text-[11px] font-semibold tracking-[0.02em] text-[#8C8C8C] uppercase"
+        v-if="group.label"
+        class="px-3 text-[11px] font-semibold tracking-[0.02em] text-[#8C8C8C] uppercase transition-opacity duration-150"
+        :class="props.collapsed ? 'opacity-0' : 'opacity-100'"
       >
         {{ group.label }}
       </p>
       <div
-        v-else
+        v-else-if="groupIndex > 0"
         class="px-2 py-1.5"
       >
         <div class="h-px bg-white/[0.08]" />
-        <span class="sr-only">{{ group.label }}</span>
       </div>
 
       <div class="flex flex-col gap-1">
@@ -46,9 +43,9 @@ function isActiveLink(to: string) {
           v-for="item in group.items"
           :key="item.id"
           :to="item.to"
-          class="inline-flex items-center rounded-md text-[14px] transition-colors"
+          class="inline-flex w-full items-center rounded-md px-3 py-[6px] text-[14px] transition-colors"
           :class="[
-            props.collapsed ? 'justify-center px-2 py-2' : 'gap-2 px-3 py-[6px]',
+            'justify-start',
             isActiveLink(item.to)
               ? 'bg-[#282828] text-white'
               : 'text-[#ECECEC] hover:bg-[#1A1A1A] hover:text-white'
@@ -60,15 +57,13 @@ function isActiveLink(to: string) {
             class="size-4 shrink-0"
           />
           <span
-            v-if="!props.collapsed"
-            class="truncate"
+            aria-hidden="true"
+            class="overflow-hidden whitespace-nowrap text-left transition-[max-width,opacity,margin] duration-200"
+            :class="props.collapsed ? 'ml-0 max-w-0 opacity-0' : 'ml-2 max-w-[12rem] opacity-100'"
           >
             {{ item.label }}
           </span>
-          <span
-            v-else
-            class="sr-only"
-          >
+          <span class="sr-only">
             {{ item.label }}
           </span>
         </NuxtLink>

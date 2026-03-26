@@ -130,12 +130,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
         actor: {
           kind: 'platform_user',
           hasPlatformAccount: true,
-          onboardingState: 'completed',
           isPlatformAdmin: false,
           platformUser: {
             id: 'user_judge',
             email: 'judge@example.com',
-            onboardingState: 'completed',
             profileIconUpdatedAt: null
           },
           hackathonRoles: [
@@ -197,18 +195,15 @@ describe('TASK-3.5 actor-facing API routes', () => {
         actor: {
           kind: 'platform_user',
           hasPlatformAccount: true,
-          onboardingState: 'profile_pending',
           platformUser: {
             id: createdUser?.id,
             email: 'consented-user@example.com',
-            displayName: 'Consented User',
-            onboardingState: 'profile_pending'
+            displayName: 'Consented User'
           }
         }
       }
     })
     expect(createdUser?.email).toBe('consented-user@example.com')
-    expect(createdUser?.onboardingState).toBe('profile_pending')
     expect(acceptances).toHaveLength(2)
     expect(acceptances.map(acceptance => acceptance.platformDocumentId).sort()).toEqual(['privacy_v1', 'terms_v1'])
     expect(auditEntries).toEqual([
@@ -399,7 +394,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(storedAcceptances).toHaveLength(1)
   })
 
-  test('POST /api/account/registration creates the platform user in profile onboarding and records required document acceptances', async () => {
+  test('POST /api/account/registration creates the platform user and records required document acceptances', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler },
@@ -446,7 +441,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
         user: {
           email: 'new-user@example.com',
           displayName: 'New User',
-          onboardingState: 'profile_pending',
           githubProfileUrl: null,
           chatgptEmail: null,
           openaiOrgId: null,
@@ -469,7 +463,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     expect(createdUser?.email).toBe('new-user@example.com')
     expect(createdUser?.displayName).toBe('New User')
-    expect(createdUser?.onboardingState).toBe('profile_pending')
     expect(createdUser?.githubProfileUrl).toBeNull()
     expect(createdUser?.chatgptEmail).toBeNull()
     expect(createdUser?.openaiOrgId).toBeNull()
@@ -489,12 +482,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
         actor: {
           kind: 'platform_user',
           hasPlatformAccount: true,
-          onboardingState: 'profile_pending',
           platformUser: {
             id: createdUser?.id,
             email: 'new-user@example.com',
             displayName: 'New User',
-            onboardingState: 'profile_pending',
             chatgptEmail: null,
             openaiOrgId: null,
             lumaUsername: null,
@@ -692,8 +683,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       id: 'user_account',
       auth0Subject: 'auth0|account-user',
       email: 'account-user@example.com',
-      displayName: 'Account User',
-      onboardingState: 'profile_pending'
+      displayName: 'Account User'
     })
 
     const response = await harness.request('/api/account', {
@@ -715,7 +705,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
         user: {
           id: 'user_account',
           displayName: 'Updated Account User',
-          onboardingState: 'completed',
           xProfileUrl: 'https://x.com/account-user',
           linkedinProfileUrl: 'https://linkedin.com/in/account-user',
           githubProfileUrl: null,
@@ -732,7 +721,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const auditEntries = await harness.database.select().from(auditLogs)
 
     expect(updatedUser).toMatchObject({
-      onboardingState: 'completed',
       displayName: 'Updated Account User',
       xProfileUrl: 'https://x.com/account-user',
       linkedinProfileUrl: 'https://linkedin.com/in/account-user',

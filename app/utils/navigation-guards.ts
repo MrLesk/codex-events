@@ -6,7 +6,6 @@ export type HackathonScopedRole = 'hackathon_admin' | 'judge'
 
 type SessionActor = {
   kind: 'anonymous' | 'authenticated_identity' | 'platform_user'
-  onboardingState: 'terms_pending' | 'profile_pending' | 'completed' | null
   isPlatformAdmin?: boolean
   hackathonRoles?: Array<{
     hackathonId: string

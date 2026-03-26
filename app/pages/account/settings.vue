@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AccountSettingsProfileForm from '~/components/account/AccountSettingsProfileForm.vue'
-import { accountDashboardHref, authLogoutHref } from '~/utils/auth-navigation'
+import { authLogoutHref } from '~/utils/auth-navigation'
 
 definePageMeta({
   layout: 'profile',
@@ -59,9 +59,6 @@ watch(
 )
 
 async function saveProfile() {
-  const wasProfilePending = actor.value?.kind === 'platform_user'
-    && actor.value.onboardingState === 'profile_pending'
-
   saveState.pending = true
   saveState.error = ''
   saveState.success = ''
@@ -81,12 +78,6 @@ async function saveProfile() {
     })
 
     await refresh()
-
-    if (wasProfilePending) {
-      await navigateTo(accountDashboardHref)
-      return
-    }
-
     saveState.success = 'Profile saved.'
   } catch (error) {
     saveState.error = error instanceof Error
@@ -197,13 +188,10 @@ const accountEmail = computed(() => {
   return user.value?.email ?? ''
 })
 
-const isProfileSetupMode = computed(() =>
-  actor.value?.kind === 'platform_user' && actor.value.onboardingState === 'profile_pending'
-)
 const isPlatformAccountUnavailable = computed(() =>
   status.value !== 'pending' && actor.value?.kind !== 'platform_user'
 )
-const profileSubmitLabel = computed(() => isProfileSetupMode.value ? 'Finish setup' : 'Save changes')
+const profileSubmitLabel = computed(() => 'Save')
 </script>
 
 <template>
@@ -217,11 +205,7 @@ const profileSubmitLabel = computed(() => isProfileSetupMode.value ? 'Finish set
                 Account settings
               </h1>
               <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-                {{
-                  isProfileSetupMode
-                    ? 'Complete profile setup before entering the full workspace.'
-                    : 'Update the profile details used across your hackathon participation and keep your account information current.'
-                }}
+                Update the profile details used across your hackathon participation and keep your account information current.
               </p>
             </div>
             <div class="flex max-w-full items-center gap-2 rounded-lg border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]">

@@ -79,6 +79,38 @@ const emit = defineEmits<{
         <div class="space-y-2">
           <label
             class="text-sm font-medium text-highlighted"
+            for="account-luma-username"
+          >
+            Luma username
+          </label>
+          <input
+            id="account-luma-username"
+            v-model="model.lumaUsername"
+            type="text"
+            placeholder="your-luma-name"
+            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
+          >
+        </div>
+
+        <div class="space-y-2">
+          <label
+            class="text-sm font-medium text-highlighted"
+            for="account-x-profile-url"
+          >
+            X profile URL
+          </label>
+          <input
+            id="account-x-profile-url"
+            v-model="model.xProfileUrl"
+            type="url"
+            placeholder="https://x.com/your-name"
+            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
+          >
+        </div>
+
+        <div class="space-y-2">
+          <label
+            class="text-sm font-medium text-highlighted"
             for="account-github-profile-url"
           >
             GitHub profile URL
@@ -108,21 +140,6 @@ const emit = defineEmits<{
           >
         </div>
 
-        <div class="space-y-2 md:col-span-2">
-          <label
-            class="text-sm font-medium text-highlighted"
-            for="account-x-profile-url"
-          >
-            X profile URL
-          </label>
-          <input
-            id="account-x-profile-url"
-            v-model="model.xProfileUrl"
-            type="url"
-            placeholder="https://x.com/your-name"
-            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
-          >
-        </div>
       </div>
     </section>
 
@@ -136,6 +153,9 @@ const emit = defineEmits<{
           Hackathon profile fields
         </p>
       </div>
+      <p class="mb-4 text-xs text-muted">
+        These fields might be needed to credit Codex credits for a hackathon.
+      </p>
 
       <div class="grid gap-4 md:grid-cols-2">
         <div class="space-y-2">
@@ -168,23 +188,19 @@ const emit = defineEmits<{
             placeholder="org_1234567890"
             class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
           >
+          <p class="text-xs text-muted">
+            Find your org ID at
+            <a
+              href="https://platform.openai.com/orgid"
+              target="_blank"
+              rel="noreferrer"
+              class="text-primary underline-offset-2 hover:underline"
+            >
+              platform.openai.com/orgid
+            </a>
+          </p>
         </div>
 
-        <div class="space-y-2 md:col-span-2">
-          <label
-            class="text-sm font-medium text-highlighted"
-            for="account-luma-username"
-          >
-            Luma username
-          </label>
-          <input
-            id="account-luma-username"
-            v-model="model.lumaUsername"
-            type="text"
-            placeholder="your-luma-name"
-            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
-          >
-        </div>
       </div>
     </section>
 

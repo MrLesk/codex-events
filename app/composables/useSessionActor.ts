@@ -11,7 +11,6 @@ interface SessionActorPlatformUser {
   email: string
   displayName: string
   isPlatformAdmin: boolean
-  onboardingState: 'profile_pending' | 'completed'
   xProfileUrl: string | null
   linkedinProfileUrl: string | null
   githubProfileUrl: string | null
@@ -35,7 +34,6 @@ interface AnonymousSessionActor {
   kind: 'anonymous'
   isAuthenticated: false
   hasPlatformAccount: false
-  onboardingState: null
   sessionUser: null
   platformUser: null
   isPlatformAdmin: false
@@ -46,7 +44,6 @@ interface AuthenticatedIdentitySessionActor {
   kind: 'authenticated_identity'
   isAuthenticated: true
   hasPlatformAccount: false
-  onboardingState: 'terms_pending'
   sessionUser: SessionActorUser
   platformUser: null
   isPlatformAdmin: false
@@ -57,7 +54,6 @@ interface PlatformSessionActor {
   kind: 'platform_user'
   isAuthenticated: true
   hasPlatformAccount: true
-  onboardingState: 'profile_pending' | 'completed'
   sessionUser: SessionActorUser
   platformUser: SessionActorPlatformUser
   isPlatformAdmin: boolean
@@ -77,7 +73,6 @@ function buildAnonymousSessionActor(): AnonymousSessionActor {
     kind: 'anonymous',
     isAuthenticated: false,
     hasPlatformAccount: false,
-    onboardingState: null,
     sessionUser: null,
     platformUser: null,
     isPlatformAdmin: false,
@@ -90,7 +85,6 @@ function buildAuthenticatedIdentityFallback(user: ReturnType<typeof useUser>['va
     kind: 'authenticated_identity',
     isAuthenticated: true,
     hasPlatformAccount: false,
-    onboardingState: 'terms_pending',
     sessionUser: {
       sub: user?.sub ?? '',
       email: user?.email ?? null,

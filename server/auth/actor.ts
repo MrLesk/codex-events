@@ -32,7 +32,6 @@ export interface AnonymousActor {
   kind: 'anonymous'
   isAuthenticated: false
   hasPlatformAccount: false
-  onboardingState: null
   sessionUser: null
   platformUser: null
 }
@@ -41,7 +40,6 @@ export interface AuthenticatedIdentityActor {
   kind: 'authenticated_identity'
   isAuthenticated: true
   hasPlatformAccount: false
-  onboardingState: 'terms_pending'
   sessionUser: SessionUserProfile
   platformUser: null
 }
@@ -50,7 +48,6 @@ export interface PlatformActor {
   kind: 'platform_user'
   isAuthenticated: true
   hasPlatformAccount: true
-  onboardingState: 'profile_pending' | 'completed'
   sessionUser: SessionUserProfile
   platformUser: PlatformUserRecord
 }
@@ -114,7 +111,6 @@ function buildAuthenticatedIdentityActor(sessionUser: SessionUserProfile): Authe
     kind: 'authenticated_identity',
     isAuthenticated: true,
     hasPlatformAccount: false,
-    onboardingState: 'terms_pending',
     sessionUser,
     platformUser: null
   }
@@ -165,7 +161,6 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
       kind: 'anonymous',
       isAuthenticated: false,
       hasPlatformAccount: false,
-      onboardingState: null,
       sessionUser: null,
       platformUser: null
     }
@@ -178,7 +173,6 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
       kind: 'platform_user',
       isAuthenticated: true,
       hasPlatformAccount: true,
-      onboardingState: platformUser.onboardingState,
       sessionUser,
       platformUser
     }
@@ -194,7 +188,6 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
     kind: 'platform_user',
     isAuthenticated: true,
     hasPlatformAccount: true,
-    onboardingState: provisionedUser.onboardingState,
     sessionUser,
     platformUser: provisionedUser
   }
@@ -219,22 +212,6 @@ export async function requireAuthenticatedActor(event: H3Event) {
   })
 }
 
-export function assertPlatformOnboardingCompleted(actor: PlatformActor) {
-  if (actor.onboardingState === 'completed') {
-    return actor
-  }
-
-  throw new ApiError({
-    statusCode: 403,
-    code: 'platform_onboarding_incomplete',
-    message: 'Complete platform onboarding before accessing the workspace.',
-    details: {
-      userId: actor.platformUser.id,
-      onboardingState: actor.onboardingState
-    }
-  })
-}
-
 export async function requirePlatformAccountActor(event: H3Event) {
   const actor = await requireAuthenticatedActor(event)
 
@@ -246,5 +223,5 @@ export async function requirePlatformAccountActor(event: H3Event) {
 }
 
 export async function requirePlatformActor(event: H3Event) {
-  return assertPlatformOnboardingCompleted(await requirePlatformAccountActor(event))
+  return await requirePlatformAccountActor(event)
 }

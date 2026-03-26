@@ -28,7 +28,6 @@ export const hackathonStates = [
 
 export const hackathonRoleTypes = ['hackathon_admin', 'judge'] as const
 export const platformDocumentTypes = ['privacy_policy', 'platform_terms'] as const
-export const platformUserOnboardingStates = ['profile_pending', 'completed'] as const
 export const hackathonTermsDocumentTypes = ['application_terms', 'winner_terms'] as const
 export const userApplicationStatuses = ['submitted', 'approved', 'rejected'] as const
 export const teamMemberRoles = ['member', 'admin'] as const
@@ -48,7 +47,6 @@ export const users = sqliteTable(
     email: text('email').notNull(),
     displayName: text('display_name').notNull(),
     isPlatformAdmin: integer('is_platform_admin', { mode: 'boolean' }).notNull().default(false),
-    onboardingState: text('onboarding_state', { enum: platformUserOnboardingStates }).notNull().default('completed'),
     xProfileUrl: text('x_profile_url'),
     linkedinProfileUrl: text('linkedin_profile_url'),
     githubProfileUrl: text('github_profile_url'),

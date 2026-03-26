@@ -66,13 +66,10 @@ export function useShellNavigation() {
       return
     }
 
-    const leftOnboardingSurface = (
-      previousPath.startsWith('/onboarding/')
-      || previousPath.startsWith('/account/settings')
-    ) && !nextPath.startsWith('/onboarding/')
-    && !nextPath.startsWith('/account/settings')
+    const leftAccountSettings = previousPath.startsWith('/account/settings')
+      && !nextPath.startsWith('/account/settings')
 
-    if (!leftOnboardingSurface) {
+    if (!leftAccountSettings) {
       return
     }
 
@@ -103,7 +100,7 @@ export function useShellNavigation() {
     }
 
     if (actor.value.kind === 'authenticated_identity') {
-      return ['Onboarding required']
+      return ['Platform account required']
     }
 
     const chips = ['Platform user']
@@ -129,7 +126,7 @@ export function useShellNavigation() {
     }
 
     const groups: ShellNavigationGroup[] = [{
-      label: 'Workspace',
+      label: '',
       items: [{
         id: 'dashboard',
         label: 'Dashboard',

@@ -146,7 +146,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     })
   })
 
-  test('GET /api/hackathons/participation rejects platform users with incomplete onboarding', async () => {
+  test('GET /api/hackathons/participation returns an empty payload for platform users without participation records', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/hackathons/participation', handler: hackathonParticipationGetHandler }
@@ -162,20 +162,16 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       id: 'participant_pending',
       auth0Subject: 'auth0|participant_pending',
       email: 'participant-pending@example.com',
-      displayName: 'Participant Pending',
-      onboardingState: 'profile_pending'
+      displayName: 'Participant Pending'
     })
 
     const response = await harness.request('/api/hackathons/participation')
 
-    expect(response.status).toBe(403)
+    expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
-      error: {
-        code: 'platform_onboarding_incomplete',
-        details: {
-          onboardingState: 'profile_pending',
-          userId: 'participant_pending'
-        }
+      data: {
+        current: [],
+        past: []
       }
     })
   })

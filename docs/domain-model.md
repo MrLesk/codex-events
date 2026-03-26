@@ -15,7 +15,6 @@ A platform user with an account that exists independently from any specific hack
 Key characteristics:
 
 - Can authenticate into the platform without registering for a hackathon.
-- Can exist in onboarding before the profile step is complete.
 - Can apply to hackathons.
 - Can join at most one team per hackathon.
 - Can be marked with `is_platform_admin`.
@@ -25,9 +24,8 @@ Key characteristics:
 Rules:
 
 - Platform account provisioning depends on Auth0 signup consent for the platform `privacy_policy` and `platform_terms`.
-- After the authenticated callback, the platform provisions the account in `profile_pending` and records platform-document acceptance.
-- The reusable platform profile fields are completed from account settings before full workspace access.
-- A platform user records `onboarding_state` as either `profile_pending` or `completed`.
+- After the authenticated callback, the platform provisions the account and records platform-document acceptance.
+- The reusable platform profile fields are managed from account settings.
 - A user with `is_platform_admin = true` is a platform admin.
 - Platform admins can create hackathons.
 - Platform admins can assign hackathon admins.

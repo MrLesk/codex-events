@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LogOutIcon, SettingsIcon } from 'lucide-vue-next'
+import { LogOutIcon } from 'lucide-vue-next'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +18,10 @@ const props = defineProps<{
 const displayName = computed(() => props.name?.trim() || 'Developer User')
 const displayEmail = computed(() => props.email?.trim() || 'Signed in')
 const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
+
+async function navigateToDashboard() {
+  await navigateTo('/account/dashboard')
+}
 
 async function navigateToSettings() {
   await navigateTo('/account/settings')
@@ -61,9 +65,23 @@ async function logout() {
       <div class="py-1">
         <DropdownMenuItem
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
+          @select.prevent="navigateToDashboard"
+        >
+          <AppIcon
+            name="i-lucide-layout-dashboard"
+            class="size-4"
+          />
+          <span>Dashboard</span>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
           @select.prevent="navigateToSettings"
         >
-          <SettingsIcon class="size-4" />
+          <AppIcon
+            name="i-lucide-id-card"
+            class="size-4"
+          />
           <span>Settings</span>
         </DropdownMenuItem>
 

@@ -6,7 +6,6 @@ import { getDatabase } from '../database/client'
 import { hackathonRoleAssignments, judgeAssignments, teamMembers } from '../database/schema'
 import { ApiError } from '../utils/api-error'
 import {
-  assertPlatformOnboardingCompleted,
   getRequestActor,
   type PlatformActor
 } from './actor'
@@ -38,7 +37,7 @@ export interface JudgeAssignmentAuthorization {
 
 function requireResolvedPlatformActor(actor: Awaited<ReturnType<typeof getRequestActor>>): PlatformActor {
   if (actor.kind === 'platform_user') {
-    return assertPlatformOnboardingCompleted(actor)
+    return actor
   }
 
   throw new ApiError({
