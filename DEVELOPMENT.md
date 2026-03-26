@@ -49,6 +49,13 @@ By default the script reads `NUXT_AUTH0_*` plus `AUTH0_TEST_MGMT_*`. You can ove
 
 If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUTH0_*`, rename them to the `NUXT_AUTH0_*` keys above.
 
+Local first-platform-admin bootstrap command:
+
+- `bun tools/platform-admin/bootstrap.ts check --email your-admin@example.com`
+- `bun tools/platform-admin/bootstrap.ts apply --email your-admin@example.com`
+
+This operator command uses the local Wrangler D1 platform proxy, promotes the target user to platform admin in application data, backfills required hackathon-admin inheritance rows for existing hackathons, and writes an audit-log record when changes are applied.
+
 Shared backend foundation work also expects a D1 binding name at runtime:
 
 - `NUXT_DATABASE_BINDING` should match the D1 binding exposed to the server runtime. The canonical foundation defaults to `DB`.

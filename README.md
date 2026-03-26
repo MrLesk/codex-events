@@ -75,6 +75,17 @@ The automation covers:
 - Auth0 application default login URI (`initiate_login_uri`) for password-reset return navigation
 - Auth0 tenant default redirection URI (`default_redirection_uri`) as fallback return navigation
 
+### Platform Admin Bootstrap
+
+Platform-admin authorization is stored in platform data (`users.is_platform_admin`) rather than Auth0 roles.
+
+For first-admin bootstrap in your environment, use:
+
+- `bun tools/platform-admin/bootstrap.ts check --email your-admin@example.com`
+- `bun tools/platform-admin/bootstrap.ts apply --email your-admin@example.com`
+
+The command is idempotent. It promotes the target user to platform admin, ensures required hackathon-admin inheritance role rows for existing hackathons, and records an audit-log entry when changes are applied.
+
 ### Cloudflare Resources
 
 These values identify the Cloudflare account and storage resources used by the platform:
