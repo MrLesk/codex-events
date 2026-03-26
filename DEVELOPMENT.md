@@ -29,6 +29,20 @@ Local Auth0 dashboard settings:
 - Allowed Callback URLs: `http://localhost:3000/auth/callback`
 - Allowed Logout URLs: `http://localhost:3000`
 
+Auth0 consent-bootstrap automation:
+
+- `bun run auth0:consent:apply`
+- `bun run auth0:consent:check`
+
+These commands enforce the required signup consent configuration for the tenant:
+
+- custom domain readiness and default assignment
+- signup prompt policy links and mandatory consent checkbox
+- post-login consent Action deployment and trigger binding
+- required callback/logout/origin URL inclusion on the Auth0 application
+
+By default the script reads `NUXT_AUTH0_*` plus `AUTH0_TEST_MGMT_*`. You can override with explicit `AUTH0_*` variables (`AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_MGMT_AUDIENCE`, `AUTH0_APP_CLIENT_ID`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_TERMS_URL`, `AUTH0_PRIVACY_URL`).
+
 If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUTH0_*`, rename them to the `NUXT_AUTH0_*` keys above.
 
 Shared backend foundation work also expects a D1 binding name at runtime:

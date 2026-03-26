@@ -56,6 +56,23 @@ For your Auth0 Regular Web Application, configure callback and logout URLs for t
 
 Auth0 is responsible for authentication and identity. Platform authorization remains in the application data model, not in Auth0 roles.
 
+### Auth0 Consent Configuration Drift Control
+
+The repository includes an Auth0 tenant automation command that codifies the required signup-consent configuration:
+
+- `bun run auth0:consent:apply`: idempotently applies required settings
+- `bun run auth0:consent:check`: verifies settings and exits non-zero on drift
+
+The automation covers:
+
+- custom domain presence/readiness and primary/default status
+- signup prompt links and required consent checkbox partial
+- post-login Action code/deployment for consent claims
+- post-login Action binding
+- required Auth0 application callback/logout/origin URLs
+
+For production deployments, configure CI secrets and run `auth0:consent:check` in your deployment gate so tenant drift blocks release.
+
 ### Cloudflare Resources
 
 These values identify the Cloudflare account and storage resources used by the platform:
