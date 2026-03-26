@@ -23,6 +23,7 @@ NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
 NUXT_AUTH0_AUDIENCE=
 NUXT_DATABASE_BINDING=DB
 NUXT_PROFILE_ICONS_BINDING=PROFILE_ICONS
+NUXT_HACKATHON_IMAGES_BINDING=HACKATHON_IMAGES
 ```
 
 Local Auth0 dashboard settings:
@@ -65,6 +66,11 @@ Profile icon uploads use a Cloudflare R2 binding at runtime:
 
 - `NUXT_PROFILE_ICONS_BINDING` should match the R2 binding used for account profile icons. The canonical default is `PROFILE_ICONS`.
 - local development uses the repository `wrangler.jsonc` R2 bucket binding for profile icon object storage.
+
+Hackathon background and banner uploads use a dedicated Cloudflare R2 binding at runtime:
+
+- `NUXT_HACKATHON_IMAGES_BINDING` should match the R2 binding used for hackathon background and banner image objects. The canonical default is `HACKATHON_IMAGES`.
+- local development uses the repository `wrangler.jsonc` R2 bucket binding for hackathon image object storage.
 
 ## Local Development
 
@@ -127,7 +133,7 @@ AUTH0_TEST_MGMT_AUDIENCE=https://your-tenant.auth0.com/api/v2/
 AUTH0_TEST_CONNECTION_NAME=codex-hackathons-e2e-users
 ```
 
-For platform fixture reset and authenticated browser coverage, the repository uses the local D1 binding declared in `wrangler.jsonc`. The bootstrap flow clears the persisted `.wrangler/state/v3` data before recreating schema and fixtures through Cloudflare's local D1 runtime.
+For platform fixture reset and authenticated browser coverage, the repository uses the local D1 binding declared in `wrangler.jsonc`. The bootstrap flow clears the persisted `.wrangler/state` data before recreating schema and fixtures through Cloudflare's local D1 runtime.
 
 Install the Playwright browser for local runs:
 
@@ -145,7 +151,7 @@ This is the canonical local BDD command. It bootstraps the stable Auth0 personas
 
 BDD source files live under `tests/bdd/`: feature files in `tests/bdd/features`, matching step definitions in `tests/bdd/steps`, and authenticated bootstrap support in `tests/bdd/bootstrap.ts` plus `tests/bdd/support`. Generated files are written under `.features-gen/` and should not be edited by hand.
 
-For authenticated runs, the local D1 state under `.wrangler/state/v3` is the default deterministic fixture target. The bootstrap flow clears that persisted local Cloudflare state, reapplies migrations, reseeds the fixture dataset, clears `tests/bdd/.auth/`, and then performs fresh real Auth0 logins for the stable personas before saving new storage-state artifacts.
+For authenticated runs, the local D1 state under `.wrangler/state` is the default deterministic fixture target. The bootstrap flow clears that persisted local Cloudflare state, reapplies migrations, reseeds the fixture dataset, clears `tests/bdd/.auth/`, and then performs fresh real Auth0 logins for the stable personas before saving new storage-state artifacts.
 
 The authenticated Playwright setup project writes reusable session-state artifacts under `tests/bdd/.auth/`. Those files are local test artifacts and are gitignored.
 

@@ -12,8 +12,10 @@ type ScenarioState = {
   response?: APIResponse
   json?: unknown
   hackathonId?: string
+  hackathonSlug?: string
   criterionId?: string
   hackathonTermsDocumentId?: string
+  backgroundImageUrl?: string
 }
 
 const scenarioState = new WeakMap<Page, ScenarioState>()
@@ -69,6 +71,7 @@ When('the saved {string} session creates a managed hackathon named {string}', as
     state.response = response
     state.json = json
     state.hackathonId = json.data?.id
+    state.hackathonSlug = json.data?.slug
   } finally {
     await apiClient.dispose()
   }
@@ -83,6 +86,64 @@ Then('the remembered managed hackathon should be created in state {string}', asy
       state: expectedState
     }
   })
+})
+
+When('the saved {string} session uploads a background image for the remembered managed hackathon', async ({ page }, personaKey: string) => {
+  const state = getScenarioState(page)
+
+  if (!state.hackathonId) {
+    throw new Error('No remembered managed hackathon is available for image upload.')
+  }
+
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.post(`/api/hackathons/${state.hackathonId}/images/background`, {
+      multipart: {
+        file: {
+          name: 'background.png',
+          mimeType: 'image/png',
+          buffer: Buffer.from([1, 2, 3, 4])
+        }
+      }
+    })
+    const json = await response.json() as {
+      data?: {
+        backgroundImageUrl?: string
+      }
+    }
+    state.response = response
+    state.json = json
+    state.backgroundImageUrl = json.data?.backgroundImageUrl
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the remembered managed hackathon should expose a managed background image URL', async ({ page }) => {
+  expect(getScenarioState(page).response?.ok()).toBe(true)
+  expect(getScenarioState(page).backgroundImageUrl).toMatch(/^https?:\/\/.+\/api\/public\/hackathons\/.+\/images\/background$/)
+})
+
+Then('the remembered managed hackathon background image endpoint should return the uploaded image', async ({ page }) => {
+  const state = getScenarioState(page)
+
+  if (!state.backgroundImageUrl) {
+    throw new Error('No remembered background image URL is available for image validation.')
+  }
+
+  const apiClient = await createAuthenticatedApiClient('platform_admin')
+
+  try {
+    const imageUrl = new URL(state.backgroundImageUrl)
+    const response = await apiClient.get(`${imageUrl.pathname}${imageUrl.search}`)
+
+    expect(response.ok()).toBe(true)
+    expect(response.headers()['content-type']).toContain('image/png')
+    expect(new Uint8Array(await response.body())).toEqual(new Uint8Array([1, 2, 3, 4]))
+  } finally {
+    await apiClient.dispose()
+  }
 })
 
 When('the saved {string} session adds evaluation criterion {string} with weight {int} and display order {int} to the remembered managed hackathon', async ({ page }, personaKey: string, name: string, weight: number, displayOrder: number) => {

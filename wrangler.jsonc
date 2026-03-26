@@ -14,6 +14,10 @@
     {
       "binding": "PROFILE_ICONS",
       "bucket_name": "codex-hackathons-local-profile-icons"
+    },
+    {
+      "binding": "HACKATHON_IMAGES",
+      "bucket_name": "codex-hackathons-local-hackathon-images"
     }
   ]
 }

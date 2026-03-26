@@ -32,6 +32,9 @@ export function createApiRouteTestHarness(options: {
     profileIcons?: {
       binding?: string
     }
+    hackathonImages?: {
+      binding?: string
+    }
   }
 }) {
   const d1Database = createTestD1Database()
@@ -44,6 +47,7 @@ export function createApiRouteTestHarness(options: {
   app.use(eventHandler((event) => {
     const databaseBinding = options.runtimeConfig?.database?.binding ?? 'DB'
     const profileIconsBinding = options.runtimeConfig?.profileIcons?.binding ?? 'PROFILE_ICONS'
+    const hackathonImagesBinding = options.runtimeConfig?.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
 
     event.context.cloudflare = {
       env: {
@@ -58,6 +62,9 @@ export function createApiRouteTestHarness(options: {
       },
       profileIcons: {
         binding: profileIconsBinding
+      },
+      hackathonImages: {
+        binding: hackathonImagesBinding
       }
     }
     event.context.auth0ClientOptions = {}

@@ -69,6 +69,17 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Leave team during `registration_open` or `submission_open` | No | No | Yes, only if at least one active team admin remains | Yes, only if at least one active team admin remains | No | No |
 | Leave team after submission closes | No | No | Yes, only if at least one active team admin remains and at least one active team member remains | Yes, only if at least one active team admin remains and at least one active team member remains | No | No |
 
+## Hackathon Image Permissions
+
+| Action | Public User | Hackathon Admin | Platform Admin |
+| --- | --- | --- | --- |
+| View uploaded public hackathon background image | Yes, only for publicly visible hackathons | Yes | Yes |
+| View uploaded public hackathon banner image | Yes, only for publicly visible hackathons | Yes | Yes |
+| Upload hackathon background image | No | Yes | Yes |
+| Remove hackathon background image | No | Yes | Yes |
+| Upload hackathon banner image | No | Yes | Yes |
+| Remove hackathon banner image | No | Yes | Yes |
+
 ## Submission Permissions
 
 | Action | Team Member | Team Admin | Hackathon Admin | Platform Admin |

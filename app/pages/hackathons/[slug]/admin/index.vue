@@ -69,6 +69,18 @@ const workspace = useAdminHackathonWorkspace(hackathonId)
 
 const isSavingConfig = ref(false)
 const mutationError = ref('')
+const imageMutationState = reactive({
+  background: {
+    pending: false,
+    success: '',
+    error: ''
+  },
+  banner: {
+    pending: false,
+    success: '',
+    error: ''
+  }
+})
 const criteriaDraft = reactive({
   name: '',
   description: '',
@@ -129,12 +141,16 @@ const configForm = reactive({
   })
 })
 
+function applyConfigFromHackathon(hackathon: HackathonRecord) {
+  Object.assign(configForm, createHackathonFormState(hackathon))
+}
+
 watch(() => workspace.currentHackathon.value, (hackathon) => {
   if (!hackathon) {
     return
   }
 
-  Object.assign(configForm, createHackathonFormState(hackathon))
+  applyConfigFromHackathon(hackathon)
 }, {
   immediate: true
 })
@@ -359,6 +375,86 @@ async function saveConfiguration() {
   } finally {
     isSavingConfig.value = false
   }
+}
+
+type HackathonImageSlot = 'background' | 'banner'
+
+async function uploadHackathonImage(slot: HackathonImageSlot, file: File) {
+  const hackathon = currentHackathon.value
+
+  if (!hackathon) {
+    return
+  }
+
+  const state = imageMutationState[slot]
+  state.pending = true
+  state.success = ''
+  state.error = ''
+
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const response = await $fetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/${hackathon.id}/images/${slot}`, {
+      method: 'POST',
+      body: formData
+    })
+
+    applyConfigFromHackathon(response.data)
+    await workspace.refreshWorkspace()
+    state.success = slot === 'background'
+      ? 'Background image uploaded.'
+      : 'Banner image uploaded.'
+  } catch (error) {
+    state.error = normalizeApiError(error).message
+  } finally {
+    state.pending = false
+  }
+}
+
+async function removeHackathonImage(slot: HackathonImageSlot) {
+  const hackathon = currentHackathon.value
+
+  if (!hackathon) {
+    return
+  }
+
+  const state = imageMutationState[slot]
+  state.pending = true
+  state.success = ''
+  state.error = ''
+
+  try {
+    const response = await $fetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/${hackathon.id}/images/${slot}`, {
+      method: 'DELETE'
+    })
+
+    applyConfigFromHackathon(response.data)
+    await workspace.refreshWorkspace()
+    state.success = slot === 'background'
+      ? 'Background image removed.'
+      : 'Banner image removed.'
+  } catch (error) {
+    state.error = normalizeApiError(error).message
+  } finally {
+    state.pending = false
+  }
+}
+
+async function uploadBackgroundImage(file: File) {
+  await uploadHackathonImage('background', file)
+}
+
+async function removeBackgroundImage() {
+  await removeHackathonImage('background')
+}
+
+async function uploadBannerImage(file: File) {
+  await uploadHackathonImage('banner', file)
+}
+
+async function removeBannerImage() {
+  await removeHackathonImage('banner')
 }
 
 async function createCriterion() {
@@ -672,10 +768,21 @@ async function runLifecycleAction() {
 
         <HackathonConfigForm
           v-model:form="configForm"
+          :can-upload-managed-images="true"
           :is-submitting="isSavingConfig"
+          :background-image-upload-pending="imageMutationState.background.pending"
+          :background-image-upload-success="imageMutationState.background.success"
+          :background-image-upload-error="imageMutationState.background.error"
+          :banner-image-upload-pending="imageMutationState.banner.pending"
+          :banner-image-upload-success="imageMutationState.banner.success"
+          :banner-image-upload-error="imageMutationState.banner.error"
           submit-label="Save Configuration"
           helper-text="This workspace stays focused on setup and lifecycle controls. Day-to-day application, team, and submission operations now live in the dedicated Operations workspace."
           @submit="saveConfiguration"
+          @upload-background-image="uploadBackgroundImage"
+          @remove-background-image="removeBackgroundImage"
+          @upload-banner-image="uploadBannerImage"
+          @remove-banner-image="removeBannerImage"
         />
       </section>
 

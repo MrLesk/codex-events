@@ -10,7 +10,13 @@ import publicHackathonsGetHandler from '../../../../server/api/public/hackathons
 import publicHackathonDetailGetHandler from '../../../../server/api/public/hackathons/[slug]/index.get'
 import publicHackathonCriteriaGetHandler from '../../../../server/api/public/hackathons/[slug]/evaluation-criteria/index.get'
 import publicHackathonPrizesGetHandler from '../../../../server/api/public/hackathons/[slug]/prizes/index.get'
+import publicHackathonBackgroundImageGetHandler from '../../../../server/api/public/hackathons/[slug]/images/background.get'
+import publicHackathonBannerImageGetHandler from '../../../../server/api/public/hackathons/[slug]/images/banner.get'
 import hackathonPatchHandler from '../../../../server/api/hackathons/[hackathonId]/index.patch'
+import hackathonBackgroundImageDeleteHandler from '../../../../server/api/hackathons/[hackathonId]/images/background.delete'
+import hackathonBackgroundImagePostHandler from '../../../../server/api/hackathons/[hackathonId]/images/background.post'
+import hackathonBannerImageDeleteHandler from '../../../../server/api/hackathons/[hackathonId]/images/banner.delete'
+import hackathonBannerImagePostHandler from '../../../../server/api/hackathons/[hackathonId]/images/banner.post'
 import openSubmissionPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/open-submission.post'
 import startJudgingPreparationPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-judging-preparation.post'
 import startJudgeReviewPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-judge-review.post'
@@ -33,6 +39,50 @@ import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 describe('TASK-3.5 hackathon CRUD routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
+  const hackathonImagesBindingName = 'HACKATHON_IMAGES'
+
+  class InMemoryR2Bucket {
+    private readonly objects = new Map<string, { body: Uint8Array, contentType?: string }>()
+
+    async get(key: string) {
+      const object = this.objects.get(key)
+
+      if (!object) {
+        return null
+      }
+
+      return {
+        async arrayBuffer() {
+          return object.body.buffer.slice(
+            object.body.byteOffset,
+            object.body.byteOffset + object.body.byteLength
+          )
+        },
+        httpMetadata: {
+          contentType: object.contentType
+        }
+      }
+    }
+
+    async put(
+      key: string,
+      value: ArrayBuffer | ArrayBufferView,
+      options?: { httpMetadata?: { contentType?: string } }
+    ) {
+      const body = value instanceof ArrayBuffer
+        ? new Uint8Array(value)
+        : new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+
+      this.objects.set(key, {
+        body: new Uint8Array(body),
+        contentType: options?.httpMetadata?.contentType
+      })
+    }
+
+    async delete(key: string) {
+      this.objects.delete(key)
+    }
+  }
 
   async function insertHackathonsInBatches(
     harness: ReturnType<typeof createApiRouteTestHarness>,
@@ -931,6 +981,333 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
         requireLumaProfile: true
+      }
+    })
+  })
+
+  test('PATCH /api/hackathons/:hackathonId rewrites managed image URLs when slug changes', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'patch', path: '/api/hackathons/:hackathonId', handler: hackathonPatchHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|admin',
+        email: 'admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'hackathon_admin',
+        auth0Subject: 'auth0|admin',
+        email: 'admin@example.com',
+        displayName: 'Hackathon Admin'
+      }
+    ])
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_patch_slug',
+      name: 'Patch Hackathon',
+      slug: 'patch-hackathon',
+      description: 'Old description',
+      backgroundImageUrl: 'http://localhost/api/public/hackathons/patch-hackathon/images/background',
+      bannerImageUrl: 'http://localhost/api/public/hackathons/patch-hackathon/images/banner',
+      city: 'Vienna',
+      address: 'Old Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_admin_slug',
+      hackathonId: 'hackathon_patch_slug',
+      userId: 'hackathon_admin',
+      role: 'hackathon_admin',
+      isInJudgePool: false,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_patch_slug', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        slug: 'patch-hackathon-2026'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'hackathon_patch_slug',
+        slug: 'patch-hackathon-2026',
+        backgroundImageUrl: 'http://localhost/api/public/hackathons/patch-hackathon-2026/images/background',
+        bannerImageUrl: 'http://localhost/api/public/hackathons/patch-hackathon-2026/images/banner'
+      }
+    })
+  })
+
+  test('hackathon image routes upload, read, and remove hackathon background and banner images', async () => {
+    const hackathonImagesBucket = new InMemoryR2Bucket()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/images/background', handler: hackathonBackgroundImagePostHandler },
+        { method: 'delete', path: '/api/hackathons/:hackathonId/images/background', handler: hackathonBackgroundImageDeleteHandler },
+        { method: 'post', path: '/api/hackathons/:hackathonId/images/banner', handler: hackathonBannerImagePostHandler },
+        { method: 'delete', path: '/api/hackathons/:hackathonId/images/banner', handler: hackathonBannerImageDeleteHandler },
+        { method: 'get', path: '/api/public/hackathons/:slug/images/background', handler: publicHackathonBackgroundImageGetHandler },
+        { method: 'get', path: '/api/public/hackathons/:slug/images/banner', handler: publicHackathonBannerImageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      },
+      cloudflareEnv: {
+        [hackathonImagesBindingName]: hackathonImagesBucket
+      },
+      runtimeConfig: {
+        hackathonImages: {
+          binding: hackathonImagesBindingName
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'hackathon_admin',
+        auth0Subject: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com',
+        displayName: 'Hackathon Admin'
+      }
+    ])
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_images',
+      name: 'Image Hackathon',
+      slug: 'image-hackathon',
+      description: 'Hackathon with managed images',
+      city: 'Vienna',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_admin',
+      hackathonId: 'hackathon_images',
+      userId: 'hackathon_admin',
+      role: 'hackathon_admin',
+      isInJudgePool: false,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    const backgroundUploadForm = new FormData()
+    backgroundUploadForm.append(
+      'file',
+      new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      'background.png'
+    )
+
+    const backgroundUploadResponse = await harness.request('/api/hackathons/hackathon_images/images/background', {
+      method: 'POST',
+      body: backgroundUploadForm
+    })
+
+    expect(backgroundUploadResponse.status).toBe(200)
+    expect(await backgroundUploadResponse.json()).toMatchObject({
+      data: {
+        id: 'hackathon_images',
+        backgroundImageUrl: 'http://localhost/api/public/hackathons/image-hackathon/images/background'
+      }
+    })
+
+    const backgroundResponse = await harness.request('/api/public/hackathons/image-hackathon/images/background')
+
+    expect(backgroundResponse.status).toBe(200)
+    expect(backgroundResponse.headers.get('content-type')).toBe('image/png')
+    expect(new Uint8Array(await backgroundResponse.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]))
+
+    const bannerUploadForm = new FormData()
+    bannerUploadForm.append(
+      'file',
+      new Blob([new Uint8Array([9, 8, 7])], { type: 'image/png' }),
+      'banner.png'
+    )
+
+    const bannerUploadResponse = await harness.request('/api/hackathons/hackathon_images/images/banner', {
+      method: 'POST',
+      body: bannerUploadForm
+    })
+
+    expect(bannerUploadResponse.status).toBe(200)
+    expect(await bannerUploadResponse.json()).toMatchObject({
+      data: {
+        id: 'hackathon_images',
+        bannerImageUrl: 'http://localhost/api/public/hackathons/image-hackathon/images/banner'
+      }
+    })
+
+    const bannerResponse = await harness.request('/api/public/hackathons/image-hackathon/images/banner')
+
+    expect(bannerResponse.status).toBe(200)
+    expect(bannerResponse.headers.get('content-type')).toBe('image/png')
+    expect(new Uint8Array(await bannerResponse.arrayBuffer())).toEqual(new Uint8Array([9, 8, 7]))
+
+    const backgroundDeleteResponse = await harness.request('/api/hackathons/hackathon_images/images/background', {
+      method: 'DELETE'
+    })
+
+    expect(backgroundDeleteResponse.status).toBe(200)
+    expect(await backgroundDeleteResponse.json()).toMatchObject({
+      data: {
+        id: 'hackathon_images',
+        backgroundImageUrl: null
+      }
+    })
+
+    const missingBackgroundResponse = await harness.request('/api/public/hackathons/image-hackathon/images/background')
+
+    expect(missingBackgroundResponse.status).toBe(404)
+    expect(await missingBackgroundResponse.json()).toMatchObject({
+      error: {
+        code: 'hackathon_background_image_not_found'
+      }
+    })
+
+    const bannerDeleteResponse = await harness.request('/api/hackathons/hackathon_images/images/banner', {
+      method: 'DELETE'
+    })
+
+    expect(bannerDeleteResponse.status).toBe(200)
+    expect(await bannerDeleteResponse.json()).toMatchObject({
+      data: {
+        id: 'hackathon_images',
+        bannerImageUrl: null
+      }
+    })
+
+    const missingBannerResponse = await harness.request('/api/public/hackathons/image-hackathon/images/banner')
+
+    expect(missingBannerResponse.status).toBe(404)
+    expect(await missingBannerResponse.json()).toMatchObject({
+      error: {
+        code: 'hackathon_banner_image_not_found'
+      }
+    })
+  })
+
+  test('POST /api/hackathons/:hackathonId/images/background rejects invalid image files', async () => {
+    const hackathonImagesBucket = new InMemoryR2Bucket()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/images/background', handler: hackathonBackgroundImagePostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      },
+      cloudflareEnv: {
+        [hackathonImagesBindingName]: hackathonImagesBucket
+      },
+      runtimeConfig: {
+        hackathonImages: {
+          binding: hackathonImagesBindingName
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'hackathon_admin',
+        auth0Subject: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com',
+        displayName: 'Hackathon Admin'
+      }
+    ])
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_images',
+      name: 'Image Hackathon',
+      slug: 'image-hackathon',
+      description: 'Hackathon with managed images',
+      city: 'Vienna',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_admin',
+      hackathonId: 'hackathon_images',
+      userId: 'hackathon_admin',
+      role: 'hackathon_admin',
+      isInJudgePool: false,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    const invalidTypeForm = new FormData()
+    invalidTypeForm.append(
+      'file',
+      new Blob([new Uint8Array([1, 2, 3])], { type: 'image/gif' }),
+      'background.gif'
+    )
+
+    const invalidTypeResponse = await harness.request('/api/hackathons/hackathon_images/images/background', {
+      method: 'POST',
+      body: invalidTypeForm
+    })
+
+    expect(invalidTypeResponse.status).toBe(400)
+    expect(await invalidTypeResponse.json()).toMatchObject({
+      error: {
+        code: 'hackathon_image_content_type_invalid'
+      }
+    })
+
+    const oversizedForm = new FormData()
+    oversizedForm.append(
+      'file',
+      new Blob([new Uint8Array((5 * 1024 * 1024) + 1)], { type: 'image/png' }),
+      'background.png'
+    )
+
+    const oversizedResponse = await harness.request('/api/hackathons/hackathon_images/images/background', {
+      method: 'POST',
+      body: oversizedForm
+    })
+
+    expect(oversizedResponse.status).toBe(400)
+    expect(await oversizedResponse.json()).toMatchObject({
+      error: {
+        code: 'hackathon_image_file_too_large'
       }
     })
   })

@@ -24,6 +24,7 @@ import {
   users
 } from '../database/schema'
 import { ApiError } from './api-error'
+import { publicHackathonImagePath } from './hackathon-images'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
 
 const isoTimestampSchema = z.string().refine(
@@ -282,9 +283,56 @@ export function buildHackathonUpdatePayload(
   existingHackathon: HackathonRecord,
   patch: z.infer<typeof updateHackathonBodySchema>
 ) {
+  const normalizedPatch: z.infer<typeof updateHackathonBodySchema> = {
+    ...patch
+  }
+
+  const nextSlug = patch.slug?.trim()
+
+  if (nextSlug && nextSlug !== existingHackathon.slug) {
+    const previousBackgroundPath = publicHackathonImagePath(existingHackathon.slug, 'background')
+    const previousBannerPath = publicHackathonImagePath(existingHackathon.slug, 'banner')
+    const nextBackgroundPath = publicHackathonImagePath(nextSlug, 'background')
+    const nextBannerPath = publicHackathonImagePath(nextSlug, 'banner')
+
+    const rewriteManagedImageUrl = (
+      imageUrl: string | null | undefined,
+      previousPath: string,
+      nextPath: string
+    ) => {
+      if (!imageUrl) {
+        return imageUrl ?? null
+      }
+
+      try {
+        const parsed = new URL(imageUrl)
+
+        if (parsed.pathname !== previousPath) {
+          return imageUrl
+        }
+
+        parsed.pathname = nextPath
+        return parsed.toString()
+      } catch {
+        return imageUrl
+      }
+    }
+
+    normalizedPatch.backgroundImageUrl = rewriteManagedImageUrl(
+      normalizedPatch.backgroundImageUrl ?? existingHackathon.backgroundImageUrl,
+      previousBackgroundPath,
+      nextBackgroundPath
+    )
+    normalizedPatch.bannerImageUrl = rewriteManagedImageUrl(
+      normalizedPatch.bannerImageUrl ?? existingHackathon.bannerImageUrl,
+      previousBannerPath,
+      nextBannerPath
+    )
+  }
+
   const mergedHackathon = {
     ...existingHackathon,
-    ...patch
+    ...normalizedPatch
   }
 
   assertHackathonSchedule({
@@ -295,7 +343,7 @@ export function buildHackathonUpdatePayload(
   })
 
   return {
-    ...patch,
+    ...normalizedPatch,
     updatedAt: new Date().toISOString()
   }
 }

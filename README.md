@@ -50,6 +50,7 @@ These values configure authentication for the Nuxt application:
 - `NUXT_AUTH0_APP_BASE_URL`
 - `NUXT_AUTH0_AUDIENCE`
 - `NUXT_PROFILE_ICONS_BINDING`
+- `NUXT_HACKATHON_IMAGES_BINDING`
 
 For your Auth0 Regular Web Application, configure callback and logout URLs for the domain where you run this app. For example:
 
@@ -95,7 +96,7 @@ These values identify the Cloudflare account and storage resources used by the p
 - `CLOUDFLARE_D1_DATABASE_ID`
 - `CLOUDFLARE_R2_BUCKET`
 
-The canonical stack expects Cloudflare Workers for application hosting, D1 for the primary relational database, R2 for file storage, Images for hackathon media, Queues for asynchronous jobs, and Cron Triggers for scheduled platform tasks. See [`docs/tech-stack.md`](docs/tech-stack.md).
+The canonical stack expects Cloudflare Workers for application hosting, D1 for the primary relational database, R2 for file storage (including profile icons and hackathon images), Queues for asynchronous jobs, and Cron Triggers for scheduled platform tasks. See [`docs/tech-stack.md`](docs/tech-stack.md).
 
 ## Documentation Map
 

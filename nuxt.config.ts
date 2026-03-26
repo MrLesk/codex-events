@@ -29,6 +29,9 @@ export default defineNuxtConfig({
     },
     profileIcons: {
       binding: 'PROFILE_ICONS'
+    },
+    hackathonImages: {
+      binding: 'HACKATHON_IMAGES'
     }
   },
 

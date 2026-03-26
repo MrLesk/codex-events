@@ -26,12 +26,14 @@ export default defineEventHandler(async (event) => {
   const runtimeConfig = useRuntimeConfig(event)
   const databaseBindingName = runtimeConfig.database?.binding ?? 'DB'
   const profileIconsBindingName = runtimeConfig.profileIcons?.binding ?? 'PROFILE_ICONS'
+  const hackathonImagesBindingName = runtimeConfig.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
 
   const hasDatabaseBinding = Boolean(event.context.d1Database || cloudflareEnv?.[databaseBindingName])
   const hasProfileIconsBinding = Boolean(cloudflareEnv?.[profileIconsBindingName])
+  const hasHackathonImagesBinding = Boolean(cloudflareEnv?.[hackathonImagesBindingName])
 
-  if (hasDatabaseBinding && hasProfileIconsBinding) {
+  if (hasDatabaseBinding && hasProfileIconsBinding && hasHackathonImagesBinding) {
     return
   }
 
@@ -50,6 +52,10 @@ export default defineEventHandler(async (event) => {
   const proxyProfileIconsBucket = proxyEnv[profileIconsBindingName]
     ?? (profileIconsBindingName === 'PROFILE_ICONS' ? undefined : proxyEnv.PROFILE_ICONS)
   const profileIconsBucket = existingProfileIconsBucket ?? proxyProfileIconsBucket
+  const existingHackathonImagesBucket = cloudflareEnv?.[hackathonImagesBindingName]
+  const proxyHackathonImagesBucket = proxyEnv[hackathonImagesBindingName]
+    ?? (hackathonImagesBindingName === 'HACKATHON_IMAGES' ? undefined : proxyEnv.HACKATHON_IMAGES)
+  const hackathonImagesBucket = existingHackathonImagesBucket ?? proxyHackathonImagesBucket
 
   if (!d1Database) {
     throw new ApiError({
@@ -71,9 +77,17 @@ export default defineEventHandler(async (event) => {
     event.context.cloudflare.env[profileIconsBindingName] = profileIconsBucket as never
   }
 
+  if (!event.context.cloudflare.env[hackathonImagesBindingName] && isR2BucketLike(hackathonImagesBucket)) {
+    event.context.cloudflare.env[hackathonImagesBindingName] = hackathonImagesBucket as never
+  }
+
   const profileIconContext = event.context as typeof event.context & { profileIconsBucket?: R2BucketLike }
   profileIconContext.profileIconsBucket = isR2BucketLike(profileIconsBucket)
     ? profileIconsBucket
+    : undefined
+  const hackathonImageContext = event.context as typeof event.context & { hackathonImagesBucket?: R2BucketLike }
+  hackathonImageContext.hackathonImagesBucket = isR2BucketLike(hackathonImagesBucket)
+    ? hackathonImagesBucket
     : undefined
   event.context.d1Database = d1Database as D1DatabaseBinding as never
 })

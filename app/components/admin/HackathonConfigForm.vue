@@ -5,21 +5,62 @@ const form = defineModel<HackathonFormState>('form', {
   required: true
 })
 
-defineProps<{
+const emit = defineEmits<{
+  submit: []
+  uploadBackgroundImage: [file: File]
+  removeBackgroundImage: []
+  uploadBannerImage: [file: File]
+  removeBannerImage: []
+}>()
+
+const props = defineProps<{
   isSubmitting?: boolean
   submitLabel: string
   helperText?: string
+  canUploadManagedImages?: boolean
+  backgroundImageUploadPending?: boolean
+  backgroundImageUploadSuccess?: string
+  backgroundImageUploadError?: string
+  bannerImageUploadPending?: boolean
+  bannerImageUploadSuccess?: string
+  bannerImageUploadError?: string
 }>()
 
-defineEmits<{
-  submit: []
-}>()
+function uploadBackgroundImage(event: Event) {
+  const target = event.target as HTMLInputElement | null
+  const file = target?.files?.item(0) ?? null
+
+  if (!file) {
+    return
+  }
+
+  emit('uploadBackgroundImage', file)
+
+  if (target) {
+    target.value = ''
+  }
+}
+
+function uploadBannerImage(event: Event) {
+  const target = event.target as HTMLInputElement | null
+  const file = target?.files?.item(0) ?? null
+
+  if (!file) {
+    return
+  }
+
+  emit('uploadBannerImage', file)
+
+  if (target) {
+    target.value = ''
+  }
+}
 </script>
 
 <template>
   <form
     class="space-y-8"
-    @submit.prevent="$emit('submit')"
+    @submit.prevent="emit('submit')"
   >
     <section class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
       <AppCard class="border border-default/70 bg-elevated/90">
@@ -113,6 +154,42 @@ defineEmits<{
               class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               placeholder="https://images.example.com/background.jpg"
             >
+
+            <div
+              v-if="props.canUploadManagedImages"
+              class="flex flex-wrap items-center gap-2"
+            >
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                class="block w-full text-sm text-toned file:mr-3 file:rounded-md file:border file:border-default file:bg-elevated file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-highlighted"
+                :disabled="props.backgroundImageUploadPending"
+                @change="uploadBackgroundImage"
+              >
+              <AppButton
+                type="button"
+                color="neutral"
+                variant="soft"
+                size="sm"
+                :disabled="props.backgroundImageUploadPending"
+                @click="emit('removeBackgroundImage')"
+              >
+                Remove uploaded background
+              </AppButton>
+            </div>
+
+            <p
+              v-if="props.backgroundImageUploadSuccess"
+              class="text-xs text-success"
+            >
+              {{ props.backgroundImageUploadSuccess }}
+            </p>
+            <p
+              v-if="props.backgroundImageUploadError"
+              class="text-xs text-error"
+            >
+              {{ props.backgroundImageUploadError }}
+            </p>
           </label>
 
           <label class="grid gap-2">
@@ -123,6 +200,42 @@ defineEmits<{
               class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
               placeholder="https://images.example.com/banner.jpg"
             >
+
+            <div
+              v-if="props.canUploadManagedImages"
+              class="flex flex-wrap items-center gap-2"
+            >
+              <input
+                type="file"
+                accept="image/jpeg,image/png"
+                class="block w-full text-sm text-toned file:mr-3 file:rounded-md file:border file:border-default file:bg-elevated file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-highlighted"
+                :disabled="props.bannerImageUploadPending"
+                @change="uploadBannerImage"
+              >
+              <AppButton
+                type="button"
+                color="neutral"
+                variant="soft"
+                size="sm"
+                :disabled="props.bannerImageUploadPending"
+                @click="emit('removeBannerImage')"
+              >
+                Remove uploaded banner
+              </AppButton>
+            </div>
+
+            <p
+              v-if="props.bannerImageUploadSuccess"
+              class="text-xs text-success"
+            >
+              {{ props.bannerImageUploadSuccess }}
+            </p>
+            <p
+              v-if="props.bannerImageUploadError"
+              class="text-xs text-error"
+            >
+              {{ props.bannerImageUploadError }}
+            </p>
           </label>
         </div>
       </AppCard>
