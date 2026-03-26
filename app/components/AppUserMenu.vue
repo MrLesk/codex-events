@@ -62,7 +62,7 @@ async function logout() {
         </p>
       </div>
 
-      <div class="py-1">
+      <div>
         <DropdownMenuItem
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
           @select.prevent="navigateToDashboard"
@@ -87,7 +87,7 @@ async function logout() {
 
         <DropdownMenuItem
           variant="destructive"
-          class="gap-2 rounded-none px-4 py-2 text-[13px] text-red-400 focus:bg-red-400/10 focus:text-red-400 data-[highlighted]:bg-red-400/10 data-[highlighted]:text-red-400 [&_svg]:text-current"
+          class="gap-2 rounded-none rounded-b-xl px-4 py-2 text-[13px] text-red-400 focus:bg-red-400/10 focus:text-red-400 data-[highlighted]:bg-red-400/10 data-[highlighted]:text-red-400 [&_svg]:text-current"
           @select.prevent="logout"
         >
           <LogOutIcon class="size-4" />
