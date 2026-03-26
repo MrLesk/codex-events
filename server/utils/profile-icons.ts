@@ -36,11 +36,39 @@ type RuntimeConfigShape = {
   }
 }
 
+type CloudflareEnvShape = Record<string, unknown> | undefined
+type ProfileIconContextShape = H3Event['context'] & {
+  runtimeConfig?: RuntimeConfigShape
+  profileIconsBucket?: unknown
+}
+
 function resolveProfileIconsBindingName(event: H3Event) {
-  const eventRuntimeConfig = (event.context as H3Event['context'] & { runtimeConfig?: RuntimeConfigShape }).runtimeConfig
+  const eventRuntimeConfig = (event.context as ProfileIconContextShape).runtimeConfig
   const runtimeConfigGetter = (globalThis as { useRuntimeConfig?: (event: H3Event) => RuntimeConfigShape }).useRuntimeConfig
 
   return eventRuntimeConfig?.profileIcons?.binding ?? runtimeConfigGetter?.(event)?.profileIcons?.binding ?? 'PROFILE_ICONS'
+}
+
+function isR2BucketLike(value: unknown): value is R2BucketLike {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Partial<R2BucketLike>
+  return typeof candidate.get === 'function'
+    && typeof candidate.put === 'function'
+    && typeof candidate.delete === 'function'
+}
+
+function listAvailableR2BindingNames(cloudflareEnv: CloudflareEnvShape) {
+  if (!cloudflareEnv) {
+    return []
+  }
+
+  return Object.entries(cloudflareEnv)
+    .filter(([, value]) => isR2BucketLike(value))
+    .map(([key]) => key)
+    .sort()
 }
 
 export function profileIconObjectKey(userId: string) {
@@ -48,21 +76,29 @@ export function profileIconObjectKey(userId: string) {
 }
 
 export function getProfileIconsBucket(event: H3Event): R2BucketLike {
+  const context = event.context as ProfileIconContextShape
   const bindingName = resolveProfileIconsBindingName(event)
-  const bucket = event.context.cloudflare?.env?.[bindingName] as R2BucketLike | undefined
+  const cloudflareEnv = event.context.cloudflare?.env as CloudflareEnvShape
+  const fallbackBindingName = bindingName === 'PROFILE_ICONS' ? undefined : 'PROFILE_ICONS'
+  const configuredBucketCandidate = cloudflareEnv?.[bindingName]
+  const fallbackBucketCandidate = fallbackBindingName ? cloudflareEnv?.[fallbackBindingName] : undefined
+  const injectedBucketCandidate = context.profileIconsBucket
+  const bucketCandidate = configuredBucketCandidate ?? injectedBucketCandidate ?? fallbackBucketCandidate
 
-  if (!bucket) {
-    throw new ApiError({
-      statusCode: 500,
-      code: 'profile_icons_binding_missing',
-      message: `The Cloudflare R2 binding "${bindingName}" is not available on this request.`,
-      details: {
-        binding: bindingName
-      }
-    })
+  if (isR2BucketLike(bucketCandidate)) {
+    return bucketCandidate
   }
 
-  return bucket
+  throw new ApiError({
+    statusCode: 500,
+    code: 'profile_icons_binding_missing',
+    message: `The Cloudflare R2 binding "${bindingName}" is not available on this request.`,
+    details: {
+      binding: bindingName,
+      ...(fallbackBindingName ? { fallbackBinding: fallbackBindingName } : {}),
+      availableR2Bindings: listAvailableR2BindingNames(cloudflareEnv)
+    }
+  })
 }
 
 export function assertValidProfileIconPart(part: {
@@ -120,9 +156,15 @@ export async function putProfileIconObject(
     data: Uint8Array
   }
 ) {
+  // Wrangler's local R2 proxy can throw internal assertions when given a Node Buffer.
+  // Normalize to a plain Uint8Array for consistent behavior across runtimes.
+  const normalizedData = payload.data.constructor === Uint8Array
+    ? payload.data
+    : new Uint8Array(payload.data)
+
   await getProfileIconsBucket(event).put(
     profileIconObjectKey(userId),
-    payload.data,
+    normalizedData,
     {
       httpMetadata: {
         contentType: payload.contentType
