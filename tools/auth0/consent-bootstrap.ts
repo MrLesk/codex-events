@@ -9,6 +9,7 @@ interface TenantConfig {
   managementAudience: string
   appClientId: string
   appBaseUrl: string
+  loginUri: string
   customDomain: string
   termsUrl: string
   privacyUrl: string
@@ -36,6 +37,11 @@ interface Auth0Client {
   allowed_logout_urls?: string[]
   web_origins?: string[]
   allowed_origins?: string[]
+  initiate_login_uri?: string
+}
+
+interface Auth0TenantSettings {
+  default_redirection_uri?: string | null
 }
 
 interface Auth0ActionVersion {
@@ -67,37 +73,66 @@ interface Auth0BindingsResponse {
 const consentClaimNamespace = 'https://codex-hackathons/consents'
 const defaultActionName = 'codex-signup-consent-claims'
 const defaultActionRuntime = 'node22'
-const consentCheckboxId = 'ulp-terms-of-service'
-const consentCheckboxTemplate = `<div class="ulp-field"><input class="ulp-input" type="checkbox" id="${consentCheckboxId}" name="${consentCheckboxId}" required><label for="${consentCheckboxId}">{{ prompt.screen.texts.var-tos }}</label></div>`
+const termsConsentCheckboxId = 'ulp-terms-of-service'
+const privacyConsentCheckboxId = 'ulp-privacy-policy'
+const consentHelperMessageId = 'ulp-consent-helper'
+const consentGuardScriptMarker = 'consent-guard-v2'
+const signupPromptKeys = ['signup-id', 'signup'] as const
+type SignupPromptKey = typeof signupPromptKeys[number]
+
+function buildConsentCheckboxPartials(config: TenantConfig) {
+  return [
+    '<style>',
+    `#${consentHelperMessageId} {`,
+    '  margin-top: 8px;',
+    '  font-size: 12px;',
+    '  color: #b42318;',
+    '}',
+    'button[disabled][type="submit"], button[disabled][name="action"] {',
+    '  cursor: not-allowed;',
+    '  opacity: 0.65;',
+    '  filter: saturate(0.7);',
+    '}',
+    '.consent-disabled {',
+    '  cursor: not-allowed !important;',
+    '  opacity: 0.65 !important;',
+    '  filter: saturate(0.7) !important;',
+    '  pointer-events: none !important;',
+    '}',
+    '</style>',
+    `<div class="ulp-field"><input class="ulp-input" type="checkbox" id="${termsConsentCheckboxId}" name="${termsConsentCheckboxId}" required><label for="${termsConsentCheckboxId}">I agree to the <a href="${config.termsUrl}" target="_blank" rel="noopener noreferrer">Terms and Conditions</a>.</label></div>`,
+    `<div class="ulp-field"><input class="ulp-input" type="checkbox" id="${privacyConsentCheckboxId}" name="${privacyConsentCheckboxId}" required><label for="${privacyConsentCheckboxId}">I agree to the <a href="${config.privacyUrl}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</label></div>`,
+    `<p id="${consentHelperMessageId}" role="alert" aria-live="polite">Accept both consents to continue.</p>`,
+    `<script data-consent-guard="${consentGuardScriptMarker}">(function(){function init(){var terms=document.getElementById('${termsConsentCheckboxId}');var privacy=document.getElementById('${privacyConsentCheckboxId}');var helper=document.getElementById('${consentHelperMessageId}');var submitButton=document.querySelector('button[type="submit"],button[name="action"]:not([value])');var socialButtons=Array.prototype.slice.call(document.querySelectorAll('button[name="action"][value],button[data-action-button-social],button[data-provider],a[data-action-button-social],a[href*="connection="]'));if(!terms||!privacy||!submitButton){return;}function setDisabled(el,disabled){if('disabled'in el){el.disabled=disabled;}el.setAttribute('aria-disabled',String(disabled));el.classList.toggle('consent-disabled',disabled);}function update(){var ready=Boolean(terms.checked&&privacy.checked);setDisabled(submitButton,!ready);submitButton.title=ready?'':'Accept both consents to continue';socialButtons.forEach(function(button){setDisabled(button,!ready);button.title=ready?'':'Accept both consents to continue';});if(helper){helper.style.display=ready?'none':'block';}}terms.addEventListener('change',update);privacy.addEventListener('change',update);update();}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}else{init();}})();</script>`
+  ].join('\n')
+}
 
 const consentActionCode = `exports.onExecutePostLogin = async (event, api) => {
   const claimNamespace = '${consentClaimNamespace}';
   const metadata = (event.user.app_metadata && event.user.app_metadata.codex_consents) || {};
   const hasRecordedConsent = Boolean(metadata.privacy_policy_accepted_at && metadata.platform_terms_accepted_at);
-  const loginCount = Number(event.stats && event.stats.logins_count ? event.stats.logins_count : 0);
 
-  const rawSignupConsent = event.request && event.request.body
-    ? event.request.body['${consentCheckboxId}']
-    : undefined;
-  const acceptedThisSignup = rawSignupConsent === true
-    || rawSignupConsent === 'true'
-    || rawSignupConsent === 'on'
-    || rawSignupConsent === '1'
-    || rawSignupConsent === 1;
+  const body = (event.request && event.request.body) || {};
+  const accepted = (value) => value === true
+    || value === 'true'
+    || value === 'on'
+    || value === '1'
+    || value === 1;
+  const acceptedTerms = accepted(body['${termsConsentCheckboxId}']);
+  const acceptedPrivacy = accepted(body['${privacyConsentCheckboxId}']);
+  const acceptedThisSignup = acceptedTerms && acceptedPrivacy;
 
-  if (!hasRecordedConsent && loginCount <= 1 && !acceptedThisSignup) {
-    api.access.deny('consent_required', 'You must accept Terms and Conditions and Privacy Policy to create your account.');
+  if (!hasRecordedConsent && !acceptedThisSignup) {
     return;
   }
 
-  const now = new Date().toISOString();
-  const nextConsent = {
-    ...metadata,
-    privacy_policy_accepted_at: metadata.privacy_policy_accepted_at || now,
-    platform_terms_accepted_at: metadata.platform_terms_accepted_at || now
-  };
-
   if (!hasRecordedConsent) {
+    const now = new Date().toISOString();
+    const nextConsent = {
+      ...metadata,
+      privacy_policy_accepted_at: metadata.privacy_policy_accepted_at || now,
+      platform_terms_accepted_at: metadata.platform_terms_accepted_at || now
+    };
     api.user.setAppMetadata('codex_consents', nextConsent);
   }
 
@@ -116,6 +151,7 @@ Environment variables:
 - AUTH0_MGMT_AUDIENCE (fallback: AUTH0_TEST_MGMT_AUDIENCE or https://<AUTH0_DOMAIN>/api/v2/)
 - AUTH0_APP_CLIENT_ID (fallback: NUXT_AUTH0_CLIENT_ID)
 - AUTH0_APP_BASE_URL (fallback: NUXT_AUTH0_APP_BASE_URL)
+- AUTH0_LOGIN_URI (required when AUTH0_APP_BASE_URL is not https; must be https)
 - AUTH0_CUSTOM_DOMAIN (fallback: NUXT_AUTH0_DOMAIN)
 - AUTH0_TERMS_URL (default: <AUTH0_APP_BASE_URL>/terms-and-conditions)
 - AUTH0_PRIVACY_URL (default: <AUTH0_APP_BASE_URL>/privacy-policy)
@@ -139,6 +175,16 @@ function normalizeMultiline(value: string | undefined) {
 function normalizeUrlString(value: string) {
   const url = new URL(value)
   return `${url.origin}${url.pathname.replace(/\/$/, '')}${url.search}${url.hash}`
+}
+
+function normalizeHttpsUrlString(value: string, name: string) {
+  const normalized = normalizeUrlString(value)
+
+  if (!normalized.startsWith('https://')) {
+    throw new Error(`${name} must be an https URL.`)
+  }
+
+  return normalized
 }
 
 function asSet(values: string[] | undefined) {
@@ -182,6 +228,9 @@ function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
   )
 
   const normalizedAppBaseUrl = normalizeUrlString(appBaseUrl)
+  const inferredLoginUri = normalizedAppBaseUrl.startsWith('https://')
+    ? `${normalizedAppBaseUrl}/auth/login`
+    : ''
   const defaultManagementAudience = `${normalizeDomain(tenantDomain)}/api/v2/`
 
   return {
@@ -204,6 +253,13 @@ function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
       'AUTH0_APP_CLIENT_ID (or NUXT_AUTH0_CLIENT_ID)'
     ),
     appBaseUrl: normalizedAppBaseUrl,
+    loginUri: normalizeHttpsUrlString(
+      requireConfigField(
+        firstDefinedValue(environment.AUTH0_LOGIN_URI, inferredLoginUri),
+        'AUTH0_LOGIN_URI (or inferred AUTH0_APP_BASE_URL/auth/login when AUTH0_APP_BASE_URL is https)'
+      ),
+      'AUTH0_LOGIN_URI (or inferred AUTH0_APP_BASE_URL/auth/login)'
+    ),
     customDomain: requireConfigField(
       firstDefinedValue(environment.AUTH0_CUSTOM_DOMAIN, environment.NUXT_AUTH0_DOMAIN),
       'AUTH0_CUSTOM_DOMAIN (or NUXT_AUTH0_DOMAIN)'
@@ -219,13 +275,57 @@ function buildExpectedConsentText(config: TenantConfig) {
   return `I agree to the [Terms and Conditions](${config.termsUrl}) and [Privacy Policy](${config.privacyUrl}).`
 }
 
-function hasRequiredConsentCheckbox(partial: string | undefined) {
+function hasRequiredConsentUi(partial: string | undefined, config: TenantConfig) {
   const normalized = normalizeMultiline(partial)
 
-  return normalized.includes(`id="${consentCheckboxId}"`)
-    && normalized.includes(`name="${consentCheckboxId}"`)
+  return normalized.includes(`id="${termsConsentCheckboxId}"`)
+    && normalized.includes(`name="${termsConsentCheckboxId}"`)
+    && normalized.includes(`id="${privacyConsentCheckboxId}"`)
+    && normalized.includes(`name="${privacyConsentCheckboxId}"`)
     && normalized.includes('required')
-    && normalized.includes('{{ prompt.screen.texts.var-tos }}')
+    && normalized.includes(config.termsUrl)
+    && normalized.includes(config.privacyUrl)
+    && normalized.includes(`id="${consentHelperMessageId}"`)
+    && normalized.includes(`data-consent-guard="${consentGuardScriptMarker}"`)
+}
+
+function buildExpectedResetPasswordCustomText(config: TenantConfig) {
+  return {
+    'reset-password-success': {
+      buttonText: 'Back to Codex Hackathons',
+      description: `Your password has been changed successfully. Continue at ${config.loginUri}.`
+    },
+    'reset-password-error': {
+      backToLoginLinkText: 'Back to Codex Hackathons',
+      descriptionExpired: `This link has expired. Return to ${config.loginUri} and select "Forgot Your Password" to request a new email.`,
+      descriptionGeneric: `There was a problem processing this request. Return to ${config.loginUri} and request a new password reset email.`,
+      descriptionUsed: `This link has already been used. Return to ${config.loginUri} and request a new password reset email.`,
+      eventTitleExpired: 'Link Expired',
+      eventTitleGeneric: 'Link Invalid',
+      eventTitleUsed: 'Link Already Used'
+    }
+  } as const
+}
+
+function hasRequiredResetPasswordText(
+  customText: Record<string, Record<string, string>> | undefined,
+  config: TenantConfig
+) {
+  const success = customText?.['reset-password-success'] ?? {}
+  const error = customText?.['reset-password-error'] ?? {}
+  const buttonText = normalizeMultiline(success.buttonText)
+  const description = normalizeMultiline(success.description)
+  const backToLoginLinkText = normalizeMultiline(error.backToLoginLinkText)
+  const descriptionExpired = normalizeMultiline(error.descriptionExpired)
+  const descriptionGeneric = normalizeMultiline(error.descriptionGeneric)
+  const descriptionUsed = normalizeMultiline(error.descriptionUsed)
+
+  return buttonText === 'Back to Codex Hackathons'
+    && description.includes(config.loginUri)
+    && backToLoginLinkText === 'Back to Codex Hackathons'
+    && descriptionExpired.includes(config.loginUri)
+    && descriptionGeneric.includes(config.loginUri)
+    && descriptionUsed.includes(config.loginUri)
 }
 
 function resolveRetryDelay(response: Response, attempt: number) {
@@ -379,6 +479,14 @@ async function getClient(config: TenantConfig, token: string) {
   return await response.json() as Auth0Client
 }
 
+async function getTenantSettings(config: TenantConfig, token: string) {
+  const response = await auth0ManagementRequest(config, token, '/api/v2/tenants/settings', {
+    method: 'GET'
+  })
+
+  return await response.json() as Auth0TenantSettings
+}
+
 function addAll(values: Set<string>, additions: string[]) {
   let changed = false
 
@@ -403,17 +511,20 @@ async function ensureClientUrls(config: TenantConfig, token: string, mode: Comma
   const requiredCallbacks = [callbackUrl]
   const requiredLogoutUrls = [config.appBaseUrl]
   const requiredOrigins = [baseOrigin]
+  const expectedLoginUri = config.loginUri
 
   const callbacks = asSet(client.callbacks)
   const allowedLogoutUrls = asSet(client.allowed_logout_urls)
   const webOrigins = asSet(client.web_origins)
   const allowedOrigins = asSet(client.allowed_origins)
+  const currentLoginUri = client.initiate_login_uri ? normalizeUrlString(client.initiate_login_uri) : ''
 
   const callbackChanged = addAll(callbacks, requiredCallbacks)
   const logoutChanged = addAll(allowedLogoutUrls, requiredLogoutUrls)
   const webOriginsChanged = addAll(webOrigins, requiredOrigins)
   const allowedOriginsChanged = addAll(allowedOrigins, requiredOrigins)
-  const needsPatch = callbackChanged || logoutChanged || webOriginsChanged || allowedOriginsChanged
+  const loginUriChanged = currentLoginUri !== expectedLoginUri
+  const needsPatch = callbackChanged || logoutChanged || webOriginsChanged || allowedOriginsChanged || loginUriChanged
 
   if (mode === 'apply' && needsPatch) {
     await auth0ManagementRequest(config, token, `/api/v2/clients/${encodeURIComponent(config.appClientId)}`, {
@@ -422,95 +533,169 @@ async function ensureClientUrls(config: TenantConfig, token: string, mode: Comma
         callbacks: [...callbacks].sort(),
         allowed_logout_urls: [...allowedLogoutUrls].sort(),
         web_origins: [...webOrigins].sort(),
-        allowed_origins: [...allowedOrigins].sort()
+        allowed_origins: [...allowedOrigins].sort(),
+        initiate_login_uri: expectedLoginUri
       })
     })
-    console.log(`Applied: ensured callback/logout/origin URLs on Auth0 client ${config.appClientId}.`)
+    console.log(`Applied: ensured callback/logout/origin URLs and initiate_login_uri on Auth0 client ${config.appClientId}.`)
   }
 
-  if (!hasAll(callbacks, requiredCallbacks)) {
+  const verifiedClient = mode === 'apply' && needsPatch
+    ? await getClient(config, token)
+    : client
+  const verifiedCallbacks = asSet(verifiedClient.callbacks)
+  const verifiedAllowedLogoutUrls = asSet(verifiedClient.allowed_logout_urls)
+  const verifiedWebOrigins = asSet(verifiedClient.web_origins)
+  const verifiedAllowedOrigins = asSet(verifiedClient.allowed_origins)
+  const verifiedLoginUri = verifiedClient.initiate_login_uri ? normalizeUrlString(verifiedClient.initiate_login_uri) : ''
+
+  if (!hasAll(verifiedCallbacks, requiredCallbacks)) {
     failures.push(`Auth0 client ${config.appClientId} is missing required callback URL ${callbackUrl}.`)
   }
 
-  if (!hasAll(allowedLogoutUrls, requiredLogoutUrls)) {
+  if (!hasAll(verifiedAllowedLogoutUrls, requiredLogoutUrls)) {
     failures.push(`Auth0 client ${config.appClientId} is missing required logout URL ${config.appBaseUrl}.`)
   }
 
-  if (!hasAll(webOrigins, requiredOrigins)) {
+  if (!hasAll(verifiedWebOrigins, requiredOrigins)) {
     failures.push(`Auth0 client ${config.appClientId} is missing required web origin ${baseOrigin}.`)
   }
 
-  if (!hasAll(allowedOrigins, requiredOrigins)) {
+  if (!hasAll(verifiedAllowedOrigins, requiredOrigins)) {
     failures.push(`Auth0 client ${config.appClientId} is missing required allowed origin ${baseOrigin}.`)
+  }
+
+  if (verifiedLoginUri !== expectedLoginUri) {
+    failures.push(`Auth0 client ${config.appClientId} initiate_login_uri is ${verifiedClient.initiate_login_uri ?? 'unset'}, expected ${expectedLoginUri}.`)
   }
 }
 
-async function getSignupCustomText(config: TenantConfig, token: string) {
-  const response = await auth0ManagementRequest(config, token, '/api/v2/prompts/signup-id/custom-text/en', {
+async function ensureTenantDefaultRedirection(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  const settings = await getTenantSettings(config, token)
+  const expectedDefaultRedirectionUri = config.loginUri
+  const currentDefaultRedirectionUri = settings.default_redirection_uri
+    ? normalizeUrlString(settings.default_redirection_uri)
+    : ''
+  const needsPatch = currentDefaultRedirectionUri !== expectedDefaultRedirectionUri
+
+  if (mode === 'apply' && needsPatch) {
+    await auth0ManagementRequest(config, token, '/api/v2/tenants/settings', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        default_redirection_uri: expectedDefaultRedirectionUri
+      })
+    })
+    console.log('Applied: ensured Auth0 tenant default_redirection_uri for reset-password fallback return.')
+  }
+
+  const verifiedSettings = mode === 'apply' && needsPatch
+    ? await getTenantSettings(config, token)
+    : settings
+  const verifiedDefaultRedirectionUri = verifiedSettings.default_redirection_uri
+    ? normalizeUrlString(verifiedSettings.default_redirection_uri)
+    : ''
+
+  if (verifiedDefaultRedirectionUri !== expectedDefaultRedirectionUri) {
+    failures.push(`Auth0 tenant default_redirection_uri is ${verifiedSettings.default_redirection_uri ?? 'unset'}, expected ${expectedDefaultRedirectionUri}.`)
+  }
+}
+
+async function getSignupCustomText(config: TenantConfig, token: string, promptKey: SignupPromptKey) {
+  const response = await auth0ManagementRequest(config, token, `/api/v2/prompts/${promptKey}/custom-text/en`, {
     method: 'GET'
   })
-  return await response.json() as { ['signup-id']?: { ['var-tos']?: string } }
+  return await response.json() as Record<string, { ['var-tos']?: string }>
 }
 
 async function ensureSignupCustomText(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
   const expectedConsentText = buildExpectedConsentText(config)
-  let currentCustomText = await getSignupCustomText(config, token)
-  let currentValue = currentCustomText['signup-id']?.['var-tos'] ?? ''
+  for (const promptKey of signupPromptKeys) {
+    let currentCustomText = await getSignupCustomText(config, token, promptKey)
+    let currentValue = currentCustomText[promptKey]?.['var-tos'] ?? ''
 
-  if (mode === 'apply' && normalizeMultiline(currentValue) !== normalizeMultiline(expectedConsentText)) {
-    await auth0ManagementRequest(config, token, '/api/v2/prompts/signup-id/custom-text/en', {
-      method: 'PUT',
-      body: JSON.stringify({
-        'signup-id': {
-          ...currentCustomText['signup-id'],
-          'var-tos': expectedConsentText
-        }
+    if (mode === 'apply' && normalizeMultiline(currentValue) !== normalizeMultiline(expectedConsentText)) {
+      await auth0ManagementRequest(config, token, `/api/v2/prompts/${promptKey}/custom-text/en`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          [promptKey]: {
+            ...currentCustomText[promptKey],
+            'var-tos': expectedConsentText
+          }
+        })
       })
-    })
-    currentCustomText = await getSignupCustomText(config, token)
-    currentValue = currentCustomText['signup-id']?.['var-tos'] ?? ''
-    console.log('Applied: updated signup prompt consent text (var-tos).')
-  }
+      currentCustomText = await getSignupCustomText(config, token, promptKey)
+      currentValue = currentCustomText[promptKey]?.['var-tos'] ?? ''
+      console.log(`Applied: updated signup prompt (${promptKey}) consent text (var-tos).`)
+    }
 
-  if (normalizeMultiline(currentValue) !== normalizeMultiline(expectedConsentText)) {
-    failures.push('Auth0 signup prompt custom text var-tos does not match expected privacy/terms links.')
+    if (normalizeMultiline(currentValue) !== normalizeMultiline(expectedConsentText)) {
+      failures.push(`Auth0 signup prompt (${promptKey}) custom text var-tos does not match expected privacy/terms links.`)
+    }
   }
 }
 
-async function getSignupPartials(config: TenantConfig, token: string) {
-  const response = await auth0ManagementRequest(config, token, '/api/v2/prompts/signup-id/partials', {
+async function getSignupPartials(config: TenantConfig, token: string, promptKey: SignupPromptKey) {
+  const response = await auth0ManagementRequest(config, token, `/api/v2/prompts/${promptKey}/partials`, {
     method: 'GET'
   })
-  return await response.json() as { ['signup-id']?: Record<string, string> }
+  return await response.json() as Record<string, Record<string, string>>
 }
 
 async function ensureSignupPartials(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
-  let currentPartials = await getSignupPartials(config, token)
-  let signupPartials = currentPartials['signup-id'] ?? {}
-  let currentFormContentEnd = signupPartials['form-content-end']
+  const expectedPartials = buildConsentCheckboxPartials(config)
 
-  if (mode === 'apply' && !hasRequiredConsentCheckbox(currentFormContentEnd)) {
-    const nextFormContentEnd = normalizeMultiline(currentFormContentEnd)
-      ? `${normalizeMultiline(currentFormContentEnd)}\n${consentCheckboxTemplate}`
-      : consentCheckboxTemplate
+  for (const promptKey of signupPromptKeys) {
+    let currentPartials = await getSignupPartials(config, token, promptKey)
+    let signupPartials = currentPartials[promptKey] ?? {}
+    let currentFormContentEnd = signupPartials['form-content-end']
 
-    await auth0ManagementRequest(config, token, '/api/v2/prompts/signup-id/partials', {
-      method: 'PUT',
-      body: JSON.stringify({
-        'signup-id': {
-          ...signupPartials,
-          'form-content-end': nextFormContentEnd
-        }
+    if (mode === 'apply' && normalizeMultiline(currentFormContentEnd) !== normalizeMultiline(expectedPartials)) {
+      await auth0ManagementRequest(config, token, `/api/v2/prompts/${promptKey}/partials`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          [promptKey]: {
+            ...signupPartials,
+            'form-content-end': expectedPartials
+          }
+        })
       })
+      currentPartials = await getSignupPartials(config, token, promptKey)
+      signupPartials = currentPartials[promptKey] ?? {}
+      currentFormContentEnd = signupPartials['form-content-end']
+      console.log(`Applied: ensured canonical signup consent UI partial for ${promptKey}.`)
+    }
+
+    if (!hasRequiredConsentUi(currentFormContentEnd, config)) {
+      failures.push(`Auth0 signup prompt (${promptKey}) partial form-content-end is missing required two-consent UI and guard behavior.`)
+    }
+  }
+}
+
+async function getResetPasswordCustomText(config: TenantConfig, token: string) {
+  const response = await auth0ManagementRequest(config, token, '/api/v2/prompts/reset-password/custom-text/en', {
+    method: 'GET'
+  })
+  return await response.json() as Record<string, Record<string, string>>
+}
+
+async function ensureResetPasswordCustomText(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  const expected = buildExpectedResetPasswordCustomText(config)
+  let current = await getResetPasswordCustomText(config, token)
+
+  if (
+    mode === 'apply'
+    && normalizeMultiline(JSON.stringify(current)) !== normalizeMultiline(JSON.stringify(expected))
+  ) {
+    await auth0ManagementRequest(config, token, '/api/v2/prompts/reset-password/custom-text/en', {
+      method: 'PUT',
+      body: JSON.stringify(expected)
     })
-    currentPartials = await getSignupPartials(config, token)
-    signupPartials = currentPartials['signup-id'] ?? {}
-    currentFormContentEnd = signupPartials['form-content-end']
-    console.log('Applied: ensured mandatory signup consent checkbox partial.')
+    current = await getResetPasswordCustomText(config, token)
+    console.log('Applied: updated reset-password success/error copy with app return CTA.')
   }
 
-  if (!hasRequiredConsentCheckbox(currentFormContentEnd)) {
-    failures.push(`Auth0 signup prompt partial form-content-end is missing required ${consentCheckboxId} consent checkbox.`)
+  if (!hasRequiredResetPasswordText(current, config)) {
+    failures.push('Auth0 reset-password copy is missing required app return CTA text for success and error states.')
   }
 }
 
@@ -680,8 +865,10 @@ async function main() {
 
     await ensureCustomDomain(config, managementToken, mode, failures)
     await ensureClientUrls(config, managementToken, mode, failures)
+    await ensureTenantDefaultRedirection(config, managementToken, mode, failures)
     await ensureSignupCustomText(config, managementToken, mode, failures)
     await ensureSignupPartials(config, managementToken, mode, failures)
+    await ensureResetPasswordCustomText(config, managementToken, mode, failures)
     const action = await ensureAction(config, managementToken, mode, failures)
     await ensureActionBinding(config, managementToken, mode, action, failures)
 

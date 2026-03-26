@@ -72,6 +72,8 @@ The automation covers:
 - post-login Action code/deployment for consent claims
 - post-login Action binding
 - required Auth0 application callback/logout/origin URLs
+- Auth0 application default login URI (`initiate_login_uri`) for password-reset return navigation
+- Auth0 tenant default redirection URI (`default_redirection_uri`) as fallback return navigation
 
 ### Cloudflare Resources
 

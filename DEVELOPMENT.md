@@ -41,8 +41,11 @@ These commands enforce the required signup consent configuration for the tenant:
 - signup prompt policy links and mandatory consent checkbox
 - post-login consent Action deployment and trigger binding
 - required callback/logout/origin URL inclusion on the Auth0 application
+- default login URI (`initiate_login_uri`) for password-reset return routing
+- tenant default redirection URI fallback (`default_redirection_uri`) for reset-password error states
 
-By default the script reads `NUXT_AUTH0_*` plus `AUTH0_TEST_MGMT_*`. You can override with explicit `AUTH0_*` variables (`AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_MGMT_AUDIENCE`, `AUTH0_APP_CLIENT_ID`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_TERMS_URL`, `AUTH0_PRIVACY_URL`).
+By default the script reads `NUXT_AUTH0_*` plus `AUTH0_TEST_MGMT_*`. You can override with explicit `AUTH0_*` variables (`AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_MGMT_AUDIENCE`, `AUTH0_APP_CLIENT_ID`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_LOGIN_URI`, `AUTH0_TERMS_URL`, `AUTH0_PRIVACY_URL`).
+`AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL`/`NUXT_AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
 
 If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUTH0_*`, rename them to the `NUXT_AUTH0_*` keys above.
 
