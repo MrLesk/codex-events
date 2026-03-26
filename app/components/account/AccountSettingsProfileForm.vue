@@ -15,10 +15,12 @@ withDefaults(defineProps<{
   pending?: boolean
   error?: string
   submitLabel?: string
+  hideProfileInformation?: boolean
 }>(), {
   pending: false,
   error: '',
-  submitLabel: 'Save changes'
+  submitLabel: 'Save changes',
+  hideProfileInformation: false
 })
 
 const emit = defineEmits<{
@@ -31,7 +33,10 @@ const emit = defineEmits<{
     class="space-y-6"
     @submit.prevent="emit('submit')"
   >
-    <section class="rounded-xl border border-default/70 bg-default/45 p-5">
+    <section
+      v-if="!hideProfileInformation"
+      class="rounded-xl border border-default/70 bg-default/45 p-5"
+    >
       <div class="mb-4 flex items-center gap-2">
         <AppIcon
           name="i-lucide-user"

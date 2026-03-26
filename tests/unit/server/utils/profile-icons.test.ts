@@ -34,12 +34,12 @@ describe('profile icon utilities', () => {
     expect(() => assertValidProfileIconPart({
       type: 'image/gif',
       data: new Uint8Array([1])
-    })).toThrowError(/JPEG, PNG, or WebP/)
+    })).toThrowError(/JPEG or PNG/)
   })
 
   test('rejects files larger than 1MB', () => {
     expect(() => assertValidProfileIconPart({
-      type: 'image/webp',
+      type: 'image/png',
       data: new Uint8Array(profileIconMaxBytes + 1)
     })).toThrowError(/1MB or smaller/)
   })

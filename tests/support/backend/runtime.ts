@@ -11,6 +11,7 @@ interface TestSessionUser {
   name?: string | null
   nickname?: string | null
   picture?: string | null
+  [key: string]: unknown
 }
 
 type EventContext = H3Event['context'] & {

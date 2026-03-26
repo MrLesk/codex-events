@@ -6,7 +6,8 @@
     {
       "binding": "DB",
       "database_name": "codex-hackathons-local",
-      "database_id": "00000000-0000-0000-0000-000000000001"
+      "database_id": "00000000-0000-0000-0000-000000000001",
+      "migrations_dir": "drizzle"
     }
   ],
   "r2_buckets": [

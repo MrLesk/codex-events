@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-    "dev": "nuxt dev",
+    "dev": "CI=1 wrangler d1 migrations apply DB --local --persist-to .wrangler/state/v3 --config wrangler.jsonc && nuxt dev",
     "db:generate": "drizzle-kit generate",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",

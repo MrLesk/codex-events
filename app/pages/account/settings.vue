@@ -256,7 +256,7 @@ const profileSubmitLabel = computed(() => isProfileSetupMode.value ? 'Finish set
           color="warning"
           variant="subtle"
           title="Account provisioning is not complete"
-          description="Sign out and repeat the Auth0 signup flow to provision your platform account."
+          description="Sign out and sign back in to re-provision your platform account from Auth0 consent claims."
         />
 
         <section class="space-y-5">

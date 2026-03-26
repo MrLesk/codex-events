@@ -3,39 +3,51 @@ import type { D1DatabaseBinding } from '../database/client'
 import { ApiError } from '../utils/api-error'
 import { createLocalPlatformProxy } from '../database/local-platform-proxy'
 
-const localPlatformProxyCache = new Map<string, Promise<Awaited<ReturnType<typeof createLocalPlatformProxy>>>>()
+const localPlatformProxyCache = new Map<'local', Promise<Awaited<ReturnType<typeof createLocalPlatformProxy>>>>()
 
 export default defineEventHandler(async (event) => {
-  if (event.context.d1Database) {
-    return
-  }
-
   const runtimeConfig = useRuntimeConfig(event)
-  const bindingName = runtimeConfig.database?.binding ?? 'DB'
-  const cloudflareBinding = event.context.cloudflare?.env?.[bindingName]
+  const databaseBindingName = runtimeConfig.database?.binding ?? 'DB'
+  const profileIconsBindingName = runtimeConfig.profileIcons?.binding ?? 'PROFILE_ICONS'
+  const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
 
-  if (cloudflareBinding) {
+  const hasDatabaseBinding = Boolean(event.context.d1Database || cloudflareEnv?.[databaseBindingName])
+  const hasProfileIconsBinding = Boolean(cloudflareEnv?.[profileIconsBindingName])
+
+  if (hasDatabaseBinding && hasProfileIconsBinding) {
     return
   }
 
-  let proxyPromise = localPlatformProxyCache.get(bindingName)
+  let proxyPromise = localPlatformProxyCache.get('local')
 
   if (!proxyPromise) {
     proxyPromise = createLocalPlatformProxy()
-    localPlatformProxyCache.set(bindingName, proxyPromise)
-    proxyPromise.catch(() => localPlatformProxyCache.delete(bindingName))
+    localPlatformProxyCache.set('local', proxyPromise)
+    proxyPromise.catch(() => localPlatformProxyCache.delete('local'))
   }
 
   const proxy = await proxyPromise
-  const d1Database = proxy.env[bindingName]
+  const proxyEnv = proxy.env as Record<string, unknown>
+  const d1Database = (cloudflareEnv?.[databaseBindingName] ?? proxyEnv[databaseBindingName]) as D1DatabaseBinding | undefined
 
   if (!d1Database) {
     throw new ApiError({
       statusCode: 500,
       code: 'database_binding_missing',
-      message: `The local Cloudflare D1 binding "${bindingName}" could not be resolved from wrangler.jsonc.`,
-      details: { binding: bindingName }
+      message: `The local Cloudflare D1 binding "${databaseBindingName}" could not be resolved from wrangler.jsonc.`,
+      details: { binding: databaseBindingName }
     })
+  }
+
+  event.context.cloudflare ??= {} as never
+  event.context.cloudflare.env ??= {} as never
+
+  if (!event.context.cloudflare.env[databaseBindingName]) {
+    event.context.cloudflare.env[databaseBindingName] = d1Database as never
+  }
+
+  if (!event.context.cloudflare.env[profileIconsBindingName] && proxyEnv[profileIconsBindingName]) {
+    event.context.cloudflare.env[profileIconsBindingName] = proxyEnv[profileIconsBindingName] as never
   }
 
   event.context.d1Database = d1Database as D1DatabaseBinding as never

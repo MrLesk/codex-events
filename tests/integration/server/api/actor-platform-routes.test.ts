@@ -150,6 +150,77 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
+  test('GET /api/session provisions a missing platform account when signup consent claims are present', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      sessionUser: {
+        'sub': 'auth0|consented-user',
+        'email': 'consented-user@example.com',
+        'name': 'Consented User',
+        'https://codex-hackathons/consents/privacy_policy': true,
+        'https://codex-hackathons/consents/platform_terms': true
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/session')
+    const createdUser = await harness.database.query.users.findFirst({
+      where: eq(users.auth0Subject, 'auth0|consented-user')
+    })
+    const acceptances = await harness.database.select().from(userPlatformDocumentAcceptances)
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        actor: {
+          kind: 'platform_user',
+          hasPlatformAccount: true,
+          onboardingState: 'profile_pending',
+          platformUser: {
+            id: createdUser?.id,
+            email: 'consented-user@example.com',
+            displayName: 'Consented User',
+            onboardingState: 'profile_pending'
+          }
+        }
+      }
+    })
+    expect(createdUser?.email).toBe('consented-user@example.com')
+    expect(createdUser?.onboardingState).toBe('profile_pending')
+    expect(acceptances).toHaveLength(2)
+    expect(acceptances.map(acceptance => acceptance.platformDocumentId).sort()).toEqual(['privacy_v1', 'terms_v1'])
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        actorUserId: createdUser?.id,
+        entityType: 'user',
+        entityId: createdUser?.id,
+        action: 'account.registered'
+      })
+    ])
+  })
+
   test('GET /api/platform-documents/current returns current documents publicly', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -827,8 +898,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const oversizedForm = new FormData()
     oversizedForm.append(
       'file',
-      new Blob([new Uint8Array(1024 * 1024 + 1)], { type: 'image/webp' }),
-      'profile.webp'
+      new Blob([new Uint8Array(1024 * 1024 + 1)], { type: 'image/png' }),
+      'profile.png'
     )
 
     const oversizedResponse = await harness.request('/api/account/profile-icon', {

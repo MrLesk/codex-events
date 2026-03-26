@@ -72,12 +72,17 @@ function readSessionUser(session: SessionLike | null | undefined): SessionUserPr
     return null
   }
 
+  const privacyPolicyConsent = session.user[signupConsentClaims.privacyPolicy]
+  const platformTermsConsent = session.user[signupConsentClaims.platformTerms]
+
   return {
     sub: session.user.sub,
     email: session.user.email ?? null,
     name: session.user.name ?? null,
     nickname: session.user.nickname ?? null,
-    picture: session.user.picture ?? null
+    picture: session.user.picture ?? null,
+    [signupConsentClaims.privacyPolicy]: privacyPolicyConsent,
+    [signupConsentClaims.platformTerms]: platformTermsConsent
   }
 }
 

@@ -80,7 +80,7 @@ watch(isSidebarCollapsed, (nextValue) => {
             icon="i-lucide-id-card"
             class="mb-6 rounded-xl border border-info/20 bg-info/6"
             title="Finish your platform account before entering participant workflows"
-            description="Your Auth0 session is active, but the platform still needs the canonical platform-account record and exact-version document acceptance before protected workflow access expands."
+            description="Your Auth0 session is active, but the platform account record is missing. Sign out and sign back in to trigger automatic account provisioning from Auth0 consent claims."
           />
         </AppContainer>
 

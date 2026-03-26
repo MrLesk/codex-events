@@ -12,6 +12,7 @@ interface TestSessionUser {
   name?: string | null
   nickname?: string | null
   picture?: string | null
+  [key: string]: unknown
 }
 
 interface RouteDefinition {

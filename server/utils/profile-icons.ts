@@ -6,8 +6,7 @@ export const profileIconMaxBytes = 1024 * 1024
 
 export const profileIconContentTypes = [
   'image/jpeg',
-  'image/png',
-  'image/webp'
+  'image/png'
 ] as const
 
 type ProfileIconContentType = typeof profileIconContentTypes[number]
@@ -84,7 +83,7 @@ export function assertValidProfileIconPart(part: {
     throw new ApiError({
       statusCode: 400,
       code: 'profile_icon_content_type_invalid',
-      message: 'Profile icons must be JPEG, PNG, or WebP images.',
+      message: 'Profile icons must be JPEG or PNG images.',
       details: {
         allowedContentTypes: profileIconContentTypes
       }
