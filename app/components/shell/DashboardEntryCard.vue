@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import type { DashboardEntry } from '~/composables/useShellNavigation'
+interface DashboardEntryCardEntry {
+  label: string
+  description: string
+  to: string
+  icon: string
+  accent?: 'primary' | 'secondary' | 'success' | 'warning' | 'neutral'
+  badge?: string
+  external?: boolean
+}
 
 const props = defineProps<{
-  entry: DashboardEntry
+  entry: DashboardEntryCardEntry
 }>()
 
 const accentClass = computed(() => {

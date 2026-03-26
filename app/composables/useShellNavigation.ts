@@ -1,75 +1,6 @@
-import { buildAuthLoginHref, buildTermsOnboardingHref } from '~/utils/auth-navigation'
+import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 
-interface ShellSessionUser {
-  sub: string
-  email?: string | null
-  name?: string | null
-  nickname?: string | null
-  picture?: string | null
-}
-
-interface ShellPlatformUser {
-  id: string
-  email: string
-  displayName: string
-  isPlatformAdmin: boolean
-  onboardingState: 'profile_pending' | 'completed'
-  xProfileUrl: string | null
-  linkedinProfileUrl: string | null
-  githubProfileUrl: string | null
-  chatgptEmail: string | null
-  openaiOrgId: string | null
-  lumaUsername: string | null
-  createdAt: string
-  updatedAt: string
-  deletedAt: string | null
-}
-
-interface ShellHackathonRole {
-  hackathonId: string
-  role: 'hackathon_admin' | 'judge'
-  isInJudgePool: boolean
-  createdAt: string
-}
-
-interface AnonymousShellActor {
-  kind: 'anonymous'
-  isAuthenticated: false
-  hasPlatformAccount: false
-  onboardingState: null
-  sessionUser: null
-  platformUser: null
-  isPlatformAdmin: false
-  hackathonRoles: []
-}
-
-interface AuthenticatedIdentityShellActor {
-  kind: 'authenticated_identity'
-  isAuthenticated: true
-  hasPlatformAccount: false
-  onboardingState: 'terms_pending'
-  sessionUser: ShellSessionUser
-  platformUser: null
-  isPlatformAdmin: false
-  hackathonRoles: []
-}
-
-interface PlatformShellActor {
-  kind: 'platform_user'
-  isAuthenticated: true
-  hasPlatformAccount: true
-  onboardingState: 'profile_pending' | 'completed'
-  sessionUser: ShellSessionUser
-  platformUser: ShellPlatformUser
-  isPlatformAdmin: boolean
-  hackathonRoles: ShellHackathonRole[]
-}
-
-interface ShellSessionResponse {
-  data: {
-    actor: AuthenticatedIdentityShellActor | PlatformShellActor
-  }
-}
+import { buildAuthLoginHref } from '~/utils/auth-navigation'
 
 interface ShellPrizeRedemptionsResponse {
   data: Array<{
@@ -77,7 +8,7 @@ interface ShellPrizeRedemptionsResponse {
   }>
 }
 
-export type ShellActor = AnonymousShellActor | AuthenticatedIdentityShellActor | PlatformShellActor
+export type ShellActor = ResolvedSessionActor
 
 export interface ShellNavigationItem {
   id: string
@@ -94,78 +25,14 @@ export interface ShellNavigationGroup {
   items: ShellNavigationItem[]
 }
 
-export interface DashboardEntry extends ShellNavigationItem {
-  accent: 'primary' | 'secondary' | 'success' | 'warning' | 'neutral'
-}
-
-function buildFallbackActor(user: ReturnType<typeof useUser>['value']): AuthenticatedIdentityShellActor {
-  return {
-    kind: 'authenticated_identity',
-    isAuthenticated: true,
-    hasPlatformAccount: false,
-    onboardingState: 'terms_pending',
-    sessionUser: {
-      sub: user?.sub ?? '',
-      email: user?.email ?? null,
-      name: user?.name ?? null,
-      nickname: user?.nickname ?? null,
-      picture: user?.picture ?? null
-    },
-    platformUser: null,
-    isPlatformAdmin: false,
-    hackathonRoles: []
-  }
-}
-
 export function useShellNavigation() {
   const route = useRoute()
   const user = useUser()
   const apiFetch = import.meta.server ? useRequestFetch() : $fetch
-  const actorKey = computed(() => `shell-session-actor-${user.value?.sub ?? 'anonymous'}`)
 
   const returnTo = computed(() => route.fullPath || '/dashboard')
   const authEntryHref = computed(() => buildAuthLoginHref(returnTo.value))
-
-  const {
-    data: actorResponse,
-    status,
-    refresh,
-    clear
-  } = useAsyncData<ShellActor | null>(actorKey, async () => {
-    if (!user.value?.sub) {
-      return null
-    }
-
-    const response = await apiFetch<ShellSessionResponse>('/api/session')
-
-    return response.data.actor
-  }, {
-    default: () => null,
-    watch: [computed(() => user.value?.sub ?? null)]
-  })
-
-  watch(() => user.value?.sub ?? null, (sub, previousSub) => {
-    if (sub !== previousSub) {
-      clear()
-    }
-  })
-
-  const actor = computed<ShellActor>(() => {
-    if (!user.value?.sub) {
-      return {
-        kind: 'anonymous',
-        isAuthenticated: false,
-        hasPlatformAccount: false,
-        onboardingState: null,
-        sessionUser: null,
-        platformUser: null,
-        isPlatformAdmin: false,
-        hackathonRoles: []
-      }
-    }
-
-    return actorResponse.value ?? buildFallbackActor(user.value)
-  })
+  const { actor, status, refresh } = useSessionActor()
 
   const {
     data: pendingPrizeRedemptions,
@@ -194,7 +61,26 @@ export function useShellNavigation() {
     }
   })
 
-  const isResolvingActor = computed(() => Boolean(user.value?.sub) && status.value === 'pending' && !actorResponse.value)
+  watch(() => route.path, async (nextPath, previousPath) => {
+    if (!import.meta.client || !user.value?.sub || !previousPath) {
+      return
+    }
+
+    const leftOnboardingSurface = (
+      previousPath.startsWith('/onboarding/')
+      || previousPath.startsWith('/auth/access')
+    ) && !nextPath.startsWith('/onboarding/')
+    && !nextPath.startsWith('/auth/access')
+
+    if (!leftOnboardingSurface) {
+      return
+    }
+
+    await refresh()
+    await refreshNuxtData(`shell-prize-redemptions-${user.value.sub}`)
+  })
+
+  const isResolvingActor = computed(() => Boolean(user.value?.sub) && status.value === 'pending')
   const hasPlatformAccount = computed(() => actor.value.kind === 'platform_user')
   const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
     && (actor.value.isPlatformAdmin || actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin')))
@@ -217,14 +103,10 @@ export function useShellNavigation() {
     }
 
     if (actor.value.kind === 'authenticated_identity') {
-      return ['Authenticated identity', 'Onboarding required']
+      return ['Onboarding required']
     }
 
     const chips = ['Platform user']
-
-    if (actor.value.onboardingState === 'profile_pending') {
-      chips.push('Profile setup required')
-    }
 
     if (actor.value.isPlatformAdmin) {
       chips.push('Platform admin')
@@ -251,14 +133,14 @@ export function useShellNavigation() {
       items: [{
         id: 'dashboard',
         label: 'Dashboard',
-        description: 'Role-aware overview and next steps',
+        description: 'Role-aware operational overview',
         to: '/dashboard',
         icon: 'i-lucide-layout-dashboard'
       }, {
-        id: 'discover',
+        id: 'hackathons',
         label: 'Hackathons',
-        description: 'Participant and public entry surface',
-        to: '/',
+        description: 'Your current and past participation',
+        to: '/hackathons',
         icon: 'i-lucide-sparkles'
       }, {
         id: 'account',
@@ -311,108 +193,8 @@ export function useShellNavigation() {
     return groups
   })
 
-  const dashboardEntries = computed<DashboardEntry[]>(() => {
-    if (actor.value.kind === 'anonymous') {
-      return [{
-        id: 'discover',
-        label: 'Browse public hackathons',
-        description: 'Inspect visible program timing, criteria, prizes, and current terms references before you sign in.',
-        to: '/',
-        icon: 'i-lucide-sparkles',
-        badge: 'Public',
-        accent: 'primary'
-      }, {
-        id: 'signin',
-        label: 'Authenticate with Auth0',
-        description: 'Start a real session so the platform can resolve your actor and role-aware workflow entry points.',
-        to: authEntryHref.value,
-        icon: 'i-lucide-log-in',
-        badge: 'Protected areas',
-        accent: 'secondary',
-        external: true
-      }]
-    }
-
-    if (actor.value.kind === 'authenticated_identity') {
-      return [{
-        id: 'complete-account',
-        label: 'Complete your platform account',
-        description: 'Finish platform registration and exact-version document acceptance before entering hackathon participation workflows.',
-        to: buildTermsOnboardingHref('/dashboard'),
-        icon: 'i-lucide-id-card',
-        badge: 'Onboarding',
-        accent: 'primary'
-      }, {
-        id: 'discover',
-        label: 'Explore public hackathons',
-        description: 'You can inspect visible programs now, but team, submission, and admin workflows stay closed until your platform account exists.',
-        to: '/',
-        icon: 'i-lucide-sparkles',
-        badge: 'Public',
-        accent: 'neutral'
-      }]
-    }
-
-    const entries: DashboardEntry[] = [{
-      id: 'participant',
-      label: 'Participate in hackathons',
-      description: 'Use discovery and participant surfaces for applications, team formation, and team-owned submission work.',
-      to: '/',
-      icon: 'i-lucide-users',
-      badge: 'Participant',
-      accent: 'primary'
-    }, {
-      id: 'account',
-      label: 'Manage your account',
-      description: 'Keep profile links current and handle your own platform-account lifecycle actions.',
-      to: '/account',
-      icon: 'i-lucide-id-card',
-      badge: 'Account',
-      accent: 'neutral'
-    }]
-
-    if (hasPrizeRecipientAccess.value) {
-      entries.push({
-        id: 'prizes',
-        label: 'Check prize redemptions',
-        description: 'Open winner-facing redemption tasks when a hackathon outcome makes them available.',
-        to: '/prize-redemptions',
-        icon: 'i-lucide-gift',
-        badge: 'Winner-facing',
-        accent: 'success'
-      })
-    }
-
-    if (hasJudgeAccess.value) {
-      entries.unshift({
-        id: 'judge',
-        label: 'Review judge assignments',
-        description: 'Enter the blind workspace for assigned submissions without exposing restricted team identity.',
-        to: '/judging',
-        icon: 'i-lucide-scale',
-        badge: 'Judge',
-        accent: 'warning'
-      })
-    }
-
-    if (hasAdminAccess.value) {
-      entries.unshift({
-        id: 'admin',
-        label: 'Operate hackathons',
-        description: 'Configure programs, manage lifecycle controls, and oversee role-aware operational surfaces.',
-        to: '/admin',
-        icon: 'i-lucide-shield-check',
-        badge: actor.value.isPlatformAdmin ? 'Platform admin' : 'Hackathon admin',
-        accent: 'secondary'
-      })
-    }
-
-    return entries
-  })
-
   return {
     actor,
-    dashboardEntries,
     hasAdminAccess,
     hasJudgeAccess,
     hasPlatformAccount,

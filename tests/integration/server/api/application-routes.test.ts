@@ -218,6 +218,45 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
+  test('POST /api/hackathons/:hackathonId/applications rejects users with incomplete onboarding', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    await harness.database
+      .update(users)
+      .set({
+        onboardingState: 'profile_pending'
+      })
+      .where(eq(users.id, 'regular_user'))
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'platform_onboarding_incomplete',
+        details: {
+          onboardingState: 'profile_pending',
+          userId: 'regular_user'
+        }
+      }
+    })
+  })
+
   test('POST /api/hackathons/:hackathonId/applications rejects users missing a required luma username', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

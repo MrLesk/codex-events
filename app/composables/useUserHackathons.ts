@@ -1,0 +1,130 @@
+import type { PublicHackathonState } from './useHackathonPresentation'
+
+export type UserApplicationStatus = 'submitted' | 'approved' | 'rejected'
+export type UserSubmissionStatus = 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified' | null
+export type UserHackathonRole = 'hackathon_admin' | 'judge'
+export type UserHackathonPrimaryActionIcon = 'i-lucide-arrow-up-right' | 'i-lucide-users' | 'i-lucide-rocket'
+
+export interface UserHackathonEntry {
+  id: string
+  slug: string
+  name: string
+  description: string
+  state: PublicHackathonState
+  city: string
+  address: string
+  bannerImageUrl: string | null
+  backgroundImageUrl: string | null
+  registrationOpensAt: string
+  registrationClosesAt: string
+  submissionOpensAt: string
+  submissionClosesAt: string
+  applicationStatus: UserApplicationStatus | null
+  team: {
+    id: string
+    name: string
+    slug: string
+    role: 'member' | 'admin'
+  } | null
+  submissionStatus: UserSubmissionStatus
+  roles: UserHackathonRole[]
+}
+
+export interface UserHackathonsResponse {
+  data: {
+    current: UserHackathonEntry[]
+    past: UserHackathonEntry[]
+  }
+}
+
+export interface UserHackathonPrimaryAction {
+  label: string
+  to: string
+  icon: UserHackathonPrimaryActionIcon
+}
+
+function startCase(value: string) {
+  return value
+    .split('_')
+    .map(segment => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ')
+}
+
+export function formatUserApplicationStatus(status: UserApplicationStatus) {
+  return startCase(status)
+}
+
+export function resolveUserApplicationStatusColor(status: UserApplicationStatus) {
+  switch (status) {
+    case 'submitted':
+      return 'warning'
+    case 'approved':
+      return 'success'
+    case 'rejected':
+      return 'error'
+  }
+}
+
+export function formatUserSubmissionStatus(status: UserSubmissionStatus) {
+  return status ? startCase(status) : 'No submission'
+}
+
+export function resolveUserSubmissionStatusColor(status: UserSubmissionStatus) {
+  switch (status) {
+    case null:
+      return 'neutral'
+    case 'draft':
+      return 'warning'
+    case 'submitted':
+      return 'primary'
+    case 'locked':
+      return 'info'
+    case 'withdrawn':
+      return 'neutral'
+    case 'disqualified':
+      return 'error'
+  }
+}
+
+export function formatUserHackathonRole(role: UserHackathonRole) {
+  return role === 'hackathon_admin' ? 'Hackathon admin' : 'Judge'
+}
+
+export function resolveUserHackathonPrimaryAction(entry: UserHackathonEntry): UserHackathonPrimaryAction {
+  if (entry.team) {
+    return {
+      label: entry.state === 'completed' ? 'Review team workspace' : 'Open team workspace',
+      to: `/hackathons/${entry.slug}/teams/${entry.team.id}`,
+      icon: 'i-lucide-arrow-up-right'
+    }
+  }
+
+  if (entry.applicationStatus === 'approved') {
+    return {
+      label: entry.state === 'completed' ? 'Review teams' : 'Form your team',
+      to: `/hackathons/${entry.slug}/teams`,
+      icon: 'i-lucide-users'
+    }
+  }
+
+  return {
+    label: entry.applicationStatus === null ? 'Open details' : 'Review program details',
+    to: `/hackathons/${entry.slug}`,
+    icon: entry.applicationStatus === null ? 'i-lucide-arrow-up-right' : 'i-lucide-rocket'
+  }
+}
+
+export function useUserHackathons() {
+  const user = useUser()
+
+  return useFetch<UserHackathonsResponse>('/api/account/hackathons', {
+    key: () => `account-hackathons:${user.value?.sub ?? 'anonymous'}`,
+    default: () => ({
+      data: {
+        current: [],
+        past: []
+      }
+    }),
+    watch: [computed(() => user.value?.sub ?? null)]
+  })
+}

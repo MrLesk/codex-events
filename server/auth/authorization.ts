@@ -5,7 +5,11 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { getDatabase } from '../database/client'
 import { hackathonRoleAssignments, judgeAssignments, teamMembers } from '../database/schema'
 import { ApiError } from '../utils/api-error'
-import { getRequestActor, type PlatformActor } from './actor'
+import {
+  assertPlatformOnboardingCompleted,
+  getRequestActor,
+  type PlatformActor
+} from './actor'
 
 export interface HackathonAuthorization {
   hackathonId: string
@@ -34,7 +38,7 @@ export interface JudgeAssignmentAuthorization {
 
 function requireResolvedPlatformActor(actor: Awaited<ReturnType<typeof getRequestActor>>): PlatformActor {
   if (actor.kind === 'platform_user') {
-    return actor
+    return assertPlatformOnboardingCompleted(actor)
   }
 
   throw new ApiError({

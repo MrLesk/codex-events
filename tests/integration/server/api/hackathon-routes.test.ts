@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
 import hackathonsGetHandler from '../../../../server/api/hackathons/index.get'
+import hackathonParticipationGetHandler from '../../../../server/api/hackathons/participation.get'
 import hackathonsPostHandler from '../../../../server/api/hackathons/index.post'
 import hackathonDetailGetHandler from '../../../../server/api/hackathons/[hackathonId]/index.get'
 import publicHackathonsGetHandler from '../../../../server/api/public/hackathons/index.get'
@@ -25,6 +26,7 @@ import {
   submissions,
   teamMembers,
   teams,
+  userApplications,
   users
 } from '../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
@@ -118,6 +120,285 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       ],
       meta: {
         total: 1
+      }
+    })
+  })
+
+  test('GET /api/hackathons/participation requires a platform account', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/participation', handler: hackathonParticipationGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|identity_only',
+        email: 'identity@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    const response = await harness.request('/api/hackathons/participation')
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'platform_account_required'
+      }
+    })
+  })
+
+  test('GET /api/hackathons/participation rejects platform users with incomplete onboarding', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/participation', handler: hackathonParticipationGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant_pending',
+        email: 'participant-pending@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'participant_pending',
+      auth0Subject: 'auth0|participant_pending',
+      email: 'participant-pending@example.com',
+      displayName: 'Participant Pending',
+      onboardingState: 'profile_pending'
+    })
+
+    const response = await harness.request('/api/hackathons/participation')
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'platform_onboarding_incomplete',
+        details: {
+          onboardingState: 'profile_pending',
+          userId: 'participant_pending'
+        }
+      }
+    })
+  })
+
+  test('GET /api/hackathons/participation returns current and past participation from applications, teams, and submissions', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/participation', handler: hackathonParticipationGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant_1',
+        email: 'participant@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'participant_1',
+        auth0Subject: 'auth0|participant_1',
+        email: 'participant@example.com',
+        displayName: 'Participant One'
+      }
+    ])
+
+    await harness.database.insert(hackathons).values([
+      {
+        id: 'hackathon_current',
+        name: 'Current Hackathon',
+        slug: 'current-hackathon',
+        description: 'Current program',
+        city: 'Vienna',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'submission_open',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1'
+      },
+      {
+        id: 'hackathon_past',
+        name: 'Past Hackathon',
+        slug: 'past-hackathon',
+        description: 'Past program',
+        city: 'London',
+        address: 'Address',
+        registrationOpensAt: '2026-01-10T12:00:00.000Z',
+        registrationClosesAt: '2026-01-13T12:00:00.000Z',
+        submissionOpensAt: '2026-01-13T12:00:00.000Z',
+        submissionClosesAt: '2026-01-15T12:00:00.000Z',
+        state: 'completed',
+        maxTeamMembers: 4,
+        createdByUserId: 'creator_1'
+      }
+    ])
+
+    await harness.database.insert(hackathonTermsDocuments).values([
+      {
+        id: 'terms_current',
+        hackathonId: 'hackathon_current',
+        documentType: 'application_terms',
+        version: 1,
+        title: 'Current terms',
+        content: 'Current terms content',
+        publishedAt: '2026-03-18T00:00:00.000Z'
+      },
+      {
+        id: 'terms_past',
+        hackathonId: 'hackathon_past',
+        documentType: 'application_terms',
+        version: 1,
+        title: 'Past terms',
+        content: 'Past terms content',
+        publishedAt: '2026-01-08T00:00:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(userApplications).values([
+      {
+        id: 'application_current',
+        hackathonId: 'hackathon_current',
+        userId: 'participant_1',
+        status: 'approved',
+        submittedAt: '2026-03-20T13:00:00.000Z',
+        reviewedAt: '2026-03-20T15:00:00.000Z',
+        applicationTermsDocumentId: 'terms_current',
+        applicationTermsAcceptedAt: '2026-03-20T13:00:00.000Z',
+        updatedAt: '2026-03-20T15:00:00.000Z'
+      },
+      {
+        id: 'application_past',
+        hackathonId: 'hackathon_past',
+        userId: 'participant_1',
+        status: 'approved',
+        submittedAt: '2026-01-10T13:00:00.000Z',
+        reviewedAt: '2026-01-10T15:00:00.000Z',
+        applicationTermsDocumentId: 'terms_past',
+        applicationTermsAcceptedAt: '2026-01-10T13:00:00.000Z',
+        updatedAt: '2026-01-10T15:00:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(teams).values([
+      {
+        id: 'team_current',
+        hackathonId: 'hackathon_current',
+        name: 'Current Team',
+        slug: 'current-team',
+        createdByUserId: 'participant_1'
+      },
+      {
+        id: 'team_past',
+        hackathonId: 'hackathon_past',
+        name: 'Past Team',
+        slug: 'past-team',
+        createdByUserId: 'participant_1'
+      }
+    ])
+
+    await harness.database.insert(teamMembers).values([
+      {
+        id: 'membership_current',
+        teamId: 'team_current',
+        userId: 'participant_1',
+        role: 'admin',
+        joinedAt: '2026-03-20T16:00:00.000Z',
+        leftAt: null
+      },
+      {
+        id: 'membership_past',
+        teamId: 'team_past',
+        userId: 'participant_1',
+        role: 'member',
+        joinedAt: '2026-01-10T16:00:00.000Z',
+        leftAt: '2026-01-15T18:00:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(submissions).values([
+      {
+        id: 'submission_current',
+        teamId: 'team_current',
+        status: 'submitted',
+        projectName: 'Current Project',
+        submittedAt: '2026-03-24T11:00:00.000Z',
+        createdAt: '2026-03-24T10:00:00.000Z',
+        updatedAt: '2026-03-24T11:00:00.000Z'
+      },
+      {
+        id: 'submission_past',
+        teamId: 'team_past',
+        status: 'locked',
+        projectName: 'Past Project',
+        submittedAt: '2026-01-14T11:00:00.000Z',
+        lockedAt: '2026-01-15T11:00:00.000Z',
+        createdAt: '2026-01-14T10:00:00.000Z',
+        updatedAt: '2026-01-15T11:00:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/hackathons/participation')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        current: [
+          {
+            hackathon: {
+              id: 'hackathon_current',
+              slug: 'current-hackathon',
+              state: 'submission_open'
+            },
+            isPast: false,
+            application: {
+              id: 'application_current',
+              status: 'approved'
+            },
+            activeTeam: {
+              id: 'team_current',
+              membershipRole: 'admin',
+              isActiveMembership: true
+            },
+            latestTeam: {
+              id: 'team_current'
+            },
+            latestSubmission: {
+              id: 'submission_current',
+              status: 'submitted'
+            }
+          }
+        ],
+        past: [
+          {
+            hackathon: {
+              id: 'hackathon_past',
+              slug: 'past-hackathon',
+              state: 'completed'
+            },
+            isPast: true,
+            application: {
+              id: 'application_past',
+              status: 'approved'
+            },
+            activeTeam: null,
+            latestTeam: {
+              id: 'team_past',
+              membershipRole: 'member',
+              isActiveMembership: false
+            },
+            latestSubmission: {
+              id: 'submission_past',
+              status: 'locked'
+            }
+          }
+        ]
       }
     })
   })

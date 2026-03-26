@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import PlatformAccountProfileForm from '~/components/account/PlatformAccountProfileForm.vue'
+import AccountSettingsProfileForm from '~/components/account/AccountSettingsProfileForm.vue'
 import { buildAccountOnboardingHref, buildTermsOnboardingHref } from '~/utils/auth-navigation'
 import { requireAuthNavigationGuard } from '~/utils/auth-guards'
 
@@ -57,39 +57,6 @@ watch(
   { immediate: true }
 )
 
-const profileRows = computed(() => {
-  if (!actor.value?.hasPlatformAccount) {
-    return []
-  }
-
-  return [
-    {
-      label: 'Platform email',
-      value: actor.value.platformUser.email
-    },
-    {
-      label: 'Auth0 subject',
-      value: actor.value.sessionUser.sub
-    },
-    {
-      label: 'Platform roles',
-      value: actor.value.isPlatformAdmin
-        ? 'Platform admin'
-        : actor.value.hackathonRoles.length > 0
-          ? actor.value.hackathonRoles.map(role => role.role).join(', ')
-          : 'No special platform roles'
-    }
-  ]
-})
-
-const flashMessage = computed(() => {
-  if (saveState.success) {
-    return saveState.success
-  }
-
-  return ''
-})
-
 async function saveProfile() {
   saveState.pending = true
   saveState.error = ''
@@ -145,118 +112,115 @@ async function deleteAccount() {
     deletionState.pending = false
   }
 }
+
+const accountEmail = computed(() => {
+  if (actor.value?.hasPlatformAccount) {
+    return actor.value.platformUser.email
+  }
+
+  return ''
+})
 </script>
 
 <template>
-  <AppContainer class="py-12">
-    <PageSection
-      title="Account settings"
-      description="Manage the platform profile fields that influence application eligibility and keep the account ready for future hackathons."
-    >
+  <div class="pb-14">
+    <section class="border-b border-black/8 dark:border-white/[0.08]">
+      <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
+        <div class="space-y-2 pb-4">
+          <p class="text-[11px] font-semibold tracking-[0.18em] text-muted uppercase">
+            Account
+          </p>
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <div class="space-y-2">
+              <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+                Account settings
+              </h1>
+              <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
+                Update the profile details used across your hackathon participation and keep your account information current.
+              </p>
+            </div>
+            <div class="rounded-lg border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]">
+              <p class="text-[11px] font-semibold tracking-[0.16em] text-muted uppercase">
+                Account email
+              </p>
+              <p class="mt-1 text-[14px] text-highlighted dark:text-white">
+                {{ accountEmail }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </AppContainer>
+    </section>
+
+    <AppContainer class="max-w-[68rem] space-y-8 pt-6">
       <div
         v-if="status === 'pending'"
-        class="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]"
+        class="space-y-6"
       >
-        <div class="h-64 rounded-[2rem] border border-default bg-elevated/70" />
-        <div class="h-64 rounded-[2rem] border border-default bg-elevated/70" />
+        <div class="h-64 rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]" />
+        <div class="h-64 rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]" />
       </div>
 
       <div
         v-else
-        class="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]"
+        class="space-y-8"
       >
-        <AppCard class="rounded-[2rem] border border-default/80 bg-elevated/90 shadow-xl shadow-primary/5">
-          <template #header>
-            <div class="space-y-2">
-              <AppBadge
-                color="primary"
-                variant="subtle"
-              >
-                Platform account
-              </AppBadge>
-              <p class="text-xl font-semibold text-highlighted">
-                Current identity and access summary
-              </p>
-            </div>
-          </template>
+        <section class="space-y-5">
+          <div class="border-b border-black/8 pb-3 dark:border-white/[0.08]">
+            <p class="text-[20px] font-medium text-highlighted dark:text-white">
+              Profile information
+            </p>
+          </div>
 
           <AppAlert
-            v-if="flashMessage"
+            v-if="saveState.success"
             color="success"
             variant="subtle"
-            :description="flashMessage"
-            class="mb-4"
+            :description="saveState.success"
           />
 
-          <dl class="grid gap-4">
-            <div
-              v-for="row in profileRows"
-              :key="row.label"
-              class="app-inset-choice p-4"
-            >
-              <dt class="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-                {{ row.label }}
-              </dt>
-              <dd class="mt-2 break-all text-sm text-toned">
-                {{ row.value }}
-              </dd>
-            </div>
-          </dl>
-        </AppCard>
+          <AccountSettingsProfileForm
+            v-model="profileForm"
+            :pending="saveState.pending"
+            :error="saveState.error"
+            submit-label="Save changes"
+            @submit="saveProfile"
+          />
+        </section>
 
-        <div class="space-y-6">
-          <AppCard class="rounded-[2rem] border border-default/80 bg-elevated/90 shadow-xl shadow-primary/5">
-            <template #header>
+        <section class="space-y-5">
+          <div class="border-b border-error/20 pb-3">
+            <p class="text-[20px] font-medium text-error">
+              Danger zone
+            </p>
+          </div>
+
+          <div class="rounded-xl border border-error/20 bg-error/5 p-6">
+            <div class="space-y-5">
               <div class="space-y-2">
-                <p class="text-lg font-semibold text-highlighted">
-                  Profile fields used by hackathon applications
-                </p>
-                <p class="text-sm text-muted">
-                  Keep the profile fields current so registration checks can validate the required profile fields for each hackathon.
-                </p>
-              </div>
-            </template>
-
-            <PlatformAccountProfileForm
-              v-model="profileForm"
-              :pending="saveState.pending"
-              :error="saveState.error"
-              submit-label="Save profile"
-              @submit="saveProfile"
-            />
-          </AppCard>
-
-          <AppCard class="rounded-[2rem] border border-error/30 bg-error/5 shadow-xl shadow-error/5">
-            <template #header>
-              <div class="space-y-2">
-                <AppBadge
-                  color="error"
-                  variant="subtle"
-                >
-                  Danger zone
-                </AppBadge>
-                <p class="text-lg font-semibold text-highlighted">
+                <p class="text-sm font-semibold text-highlighted dark:text-white">
                   Delete platform account
                 </p>
                 <p class="text-sm text-muted">
-                  This keeps the Auth0 identity signed in, but removes the platform-side user record, role assignments, and platform document acceptance records.
+                  This permanently removes your platform account record, role assignments, and platform document acceptance history.
+                </p>
+                <p class="text-sm text-muted">
+                  Your Auth0 sign-in remains active. The next protected visit will send you through onboarding again.
                 </p>
               </div>
-            </template>
 
-            <div class="space-y-4">
               <div class="space-y-2">
                 <label
-                  class="text-sm font-medium text-highlighted"
+                  class="text-sm font-medium text-highlighted dark:text-white"
                   for="account-delete-confirmation"
                 >
-                  Type “delete my account” to confirm
+                  Type "delete my account" to confirm
                 </label>
                 <input
                   id="account-delete-confirmation"
                   v-model="deletionState.confirmationText"
                   type="text"
-                  class="w-full rounded-2xl border border-error/30 bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-error"
+                  class="w-full rounded-lg border border-error/30 bg-white px-3 py-2.5 text-sm text-toned outline-none transition focus:border-error dark:bg-[#111111]"
                 >
               </div>
 
@@ -267,11 +231,7 @@ async function deleteAccount() {
                 :description="deletionState.error"
               />
 
-              <div class="flex items-center justify-between gap-4">
-                <p class="max-w-md text-sm text-muted">
-                  After deletion the next dashboard visit returns to the app-owned registration flow because the Auth0 session remains valid while the platform account is gone.
-                </p>
-
+              <div class="flex justify-end">
                 <AppButton
                   color="error"
                   variant="solid"
@@ -281,9 +241,9 @@ async function deleteAccount() {
                 />
               </div>
             </div>
-          </AppCard>
-        </div>
+          </div>
+        </section>
       </div>
-    </PageSection>
-  </AppContainer>
+    </AppContainer>
+  </div>
 </template>

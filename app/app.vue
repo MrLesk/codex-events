@@ -42,7 +42,7 @@ const pageContainerClass = computed(() => {
     return 'pt-0 pb-6 lg:pb-8'
   }
 
-  return 'py-6 lg:py-8'
+  return 'py-0'
 })
 
 useSeoMeta({
@@ -57,20 +57,12 @@ useSeoMeta({
 <template>
   <NuxtLoadingIndicator color="var(--primary)" />
 
-  <div
-    class="relative min-h-screen overflow-x-hidden"
-    :class="usesPublicShell ? 'text-foreground' : ''"
-  >
-    <div
-      v-if="!usesPublicShell"
-      class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(15,20,34,0.08),transparent_28%),radial-gradient(circle_at_70%_0%,rgba(79,91,112,0.12),transparent_28%)]"
-    />
-
+  <div class="min-h-screen overflow-x-hidden text-foreground">
     <header
-      class="sticky top-0 z-40 border-b backdrop-blur-2xl"
-      :class="usesPublicShell ? 'border-black/8 bg-white/96 dark:border-white/[0.08] dark:bg-black/96' : 'border-default/70 bg-bg/75'"
+      class="sticky top-0 z-40 border-b bg-white/96 backdrop-blur-2xl dark:border-white/[0.08] dark:bg-black/96"
+      :class="usesPublicShell ? 'border-black/8' : 'border-black/8 dark:border-white/[0.08]'"
     >
-      <AppContainer class="flex items-center gap-4 py-4">
+      <div class="flex items-center gap-4 px-6 py-4">
         <NuxtLink
           to="/"
           class="group flex items-center"
@@ -104,65 +96,72 @@ useSeoMeta({
             class="rounded-full"
           />
         </div>
-      </AppContainer>
+      </div>
     </header>
 
-    <div class="relative">
+    <div
+      v-if="usesPublicShell"
+      class="relative"
+    >
       <AppContainer :class="pageContainerClass">
-        <AppAlert
-          v-if="showIdentityAlert"
-          color="info"
-          variant="soft"
-          icon="i-lucide-id-card"
-          class="mb-6 rounded-[1.5rem] border border-info/20 bg-info/6"
-          title="Finish your platform account before entering participant workflows"
-          description="Your Auth0 session is active, but the platform still needs the canonical platform-account record and exact-version document acceptance before protected workflow access expands."
-        />
-
-        <div class="flex gap-8">
-          <aside
-            v-if="showWorkspaceSidebar"
-            class="hidden w-80 shrink-0 xl:block"
-          >
-            <div class="sticky top-[6.5rem] space-y-4">
-              <AppShellNavigation :groups="sidebarGroups" />
-
-              <AppCard
-                variant="subtle"
-                :ui="{ root: 'rounded-[1.75rem] border border-default/70 bg-elevated/80 shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)] backdrop-blur' }"
-              >
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  Active identity
-                </p>
-                <div class="mt-4 flex items-center gap-3">
-                  <AppAvatar
-                    :src="user?.picture"
-                    :alt="user?.name"
-                    size="lg"
-                  />
-                  <div class="min-w-0">
-                    <p class="truncate text-sm font-semibold text-highlighted">
-                      {{ actor.kind === 'platform_user' ? actor.platformUser.displayName : user?.name }}
-                    </p>
-                    <p class="truncate text-xs text-muted">
-                      {{ user?.email ?? 'Signed in' }}
-                    </p>
-                  </div>
-                </div>
-              </AppCard>
-            </div>
-          </aside>
-
-          <main class="min-w-0 flex-1">
-            <NuxtPage />
-          </main>
-        </div>
+        <NuxtPage />
       </AppContainer>
     </div>
 
+    <div
+      v-else
+      class="relative flex"
+    >
+      <aside
+        v-if="showWorkspaceSidebar"
+        class="hidden w-[260px] min-w-[260px] shrink-0 xl:block"
+      >
+        <div class="sticky top-[4.5rem] flex min-h-[calc(100vh-5rem)] flex-col overflow-y-auto border-r border-white/[0.08] bg-black px-4 pb-6 pt-4 text-[#A3A3A3]">
+          <AppShellNavigation :groups="sidebarGroups" />
+
+          <div class="mt-auto border-t border-white/[0.08] pt-5">
+            <p class="text-[11px] font-semibold tracking-[0.02em] text-[#8C8C8C] uppercase">
+              Active identity
+            </p>
+            <div class="mt-3 flex items-center gap-3">
+              <AppAvatar
+                :src="user?.picture"
+                :alt="user?.name"
+                size="lg"
+              />
+              <div class="min-w-0">
+                <p class="truncate text-sm font-medium text-white">
+                  {{ actor.kind === 'platform_user' ? actor.platformUser.displayName : user?.name }}
+                </p>
+                <p class="truncate text-xs text-[#8C8C8C]">
+                  {{ user?.email ?? 'Signed in' }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="min-w-0 flex-1 pb-10 lg:pb-14">
+        <AppContainer class="pt-6 lg:pt-8">
+          <AppAlert
+            v-if="showIdentityAlert"
+            color="info"
+            variant="soft"
+            icon="i-lucide-id-card"
+            class="mb-6 rounded-xl border border-info/20 bg-info/6"
+            title="Finish your platform account before entering participant workflows"
+            description="Your Auth0 session is active, but the platform still needs the canonical platform-account record and exact-version document acceptance before protected workflow access expands."
+          />
+
+          <NuxtPage />
+        </AppContainer>
+      </main>
+    </div>
+
     <footer
-      class="border-t backdrop-blur-xl"
-      :class="usesPublicShell ? 'border-black/8 bg-white dark:border-white/[0.08] dark:bg-black' : 'border-default/70 bg-bg/60'"
+      class="border-t bg-white dark:border-white/[0.08] dark:bg-black"
+      :class="usesPublicShell ? 'border-black/8' : 'border-black/8 dark:border-white/[0.08]'"
     >
       <AppContainer class="flex items-center justify-end py-6 text-sm text-neutral-700 dark:text-[#A3A3A3]">
         <NuxtLink

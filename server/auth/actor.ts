@@ -49,6 +49,16 @@ export interface PlatformActor {
 
 export type RequestActor = AnonymousActor | AuthenticatedIdentityActor | PlatformActor
 
+function buildPlatformAccountRequiredError(actor: RequestActor) {
+  return new ApiError({
+    statusCode: actor.kind === 'anonymous' ? 401 : 403,
+    code: actor.kind === 'anonymous' ? 'unauthenticated' : 'platform_account_required',
+    message: actor.kind === 'anonymous'
+      ? 'This operation requires an authenticated session.'
+      : 'This operation requires a platform account.'
+  })
+}
+
 function readSessionUser(session: SessionLike | null | undefined): SessionUserProfile | null {
   if (!session?.user?.sub) {
     return null
@@ -141,16 +151,32 @@ export async function requireAuthenticatedActor(event: H3Event) {
   })
 }
 
-export async function requirePlatformActor(event: H3Event) {
+export function assertPlatformOnboardingCompleted(actor: PlatformActor) {
+  if (actor.onboardingState === 'completed') {
+    return actor
+  }
+
+  throw new ApiError({
+    statusCode: 403,
+    code: 'platform_onboarding_incomplete',
+    message: 'Complete platform onboarding before accessing the workspace.',
+    details: {
+      userId: actor.platformUser.id,
+      onboardingState: actor.onboardingState
+    }
+  })
+}
+
+export async function requirePlatformAccountActor(event: H3Event) {
   const actor = await requireAuthenticatedActor(event)
 
   if (actor.hasPlatformAccount) {
     return actor
   }
 
-  throw new ApiError({
-    statusCode: 403,
-    code: 'platform_account_required',
-    message: 'This operation requires a platform account.'
-  })
+  throw buildPlatformAccountRequiredError(actor)
+}
+
+export async function requirePlatformActor(event: H3Event) {
+  return assertPlatformOnboardingCompleted(await requirePlatformAccountActor(event))
 }

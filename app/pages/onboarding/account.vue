@@ -84,11 +84,11 @@ const identityRows = computed(() => {
     label: 'Platform email',
     value: actor.value.platformUser.email
   }, {
-    label: 'Auth0 subject',
-    value: actor.value.sessionUser.sub
-  }, {
     label: 'Next destination',
     value: postOnboardingDestination.value
+  }, {
+    label: 'Workspace unlock',
+    value: 'Hackathons, teams, submissions, and role-specific workspaces'
   }]
 })
 
@@ -111,6 +111,14 @@ async function saveProfile() {
     })
 
     await refresh()
+
+    if (user.value?.sub) {
+      await Promise.all([
+        refreshNuxtData(`session-actor:${user.value.sub}`),
+        refreshNuxtData(`shell-prize-redemptions-${user.value.sub}`)
+      ])
+    }
+
     await navigateTo(postOnboardingDestination.value)
   } catch (error) {
     saveState.error = error instanceof Error

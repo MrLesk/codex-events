@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { getRequestActor } from '../auth/actor'
+import { requirePlatformActor } from '../auth/actor'
 import { resolveHackathonAuthorization, resolveTeamAuthorization } from '../auth/authorization'
 import { getDatabase, type AppDatabase } from '../database/client'
 import { submissions, teams, teamMembers } from '../database/schema'
@@ -201,18 +201,7 @@ export function buildSubmissionWritePayload(
 }
 
 export async function requireSubmissionVisibilityContext(event: H3Event, hackathonId: string, teamId: string) {
-  const actor = await getRequestActor(event)
-
-  if (actor.kind !== 'platform_user') {
-    throw new ApiError({
-      statusCode: actor.kind === 'anonymous' ? 401 : 403,
-      code: actor.kind === 'anonymous' ? 'unauthenticated' : 'platform_account_required',
-      message: actor.kind === 'anonymous'
-        ? 'This operation requires an authenticated session.'
-        : 'This operation requires a platform account.'
-    })
-  }
-
+  const actor = await requirePlatformActor(event)
   const database = getDatabase(event)
   const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
   const team = await getTeamOrThrow(database, hackathonId, teamId)

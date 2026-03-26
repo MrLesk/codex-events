@@ -289,7 +289,9 @@ async function saveConfiguration() {
   isSavingConfig.value = true
 
   try {
-    await $fetch(`/api/hackathons/${currentHackathon.value.id}`, {
+    const updateUrl = `/api/hackathons/${currentHackathon.value.id}` as string
+
+    await $fetch(updateUrl, {
       method: 'PATCH',
       body: {
         name: configForm.name,
