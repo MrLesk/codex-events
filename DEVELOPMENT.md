@@ -31,8 +31,8 @@ Local Auth0 dashboard settings:
 
 Auth0 consent-bootstrap automation:
 
-- `bun run auth0:consent:apply`
-- `bun run auth0:consent:check`
+- `bun tools/auth0/consent-bootstrap.ts apply`
+- `bun tools/auth0/consent-bootstrap.ts check`
 
 These commands enforce the required signup consent configuration for the tenant:
 

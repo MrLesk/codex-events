@@ -60,8 +60,8 @@ Auth0 is responsible for authentication and identity. Platform authorization rem
 
 The repository includes an Auth0 tenant automation command that codifies the required signup-consent configuration:
 
-- `bun run auth0:consent:apply`: idempotently applies required settings
-- `bun run auth0:consent:check`: verifies settings and exits non-zero on drift
+- `bun tools/auth0/consent-bootstrap.ts apply`: idempotently applies required settings
+- `bun tools/auth0/consent-bootstrap.ts check`: verifies settings and exits non-zero on drift
 
 The automation covers:
 
@@ -70,8 +70,6 @@ The automation covers:
 - post-login Action code/deployment for consent claims
 - post-login Action binding
 - required Auth0 application callback/logout/origin URLs
-
-For production deployments, configure CI secrets and run `auth0:consent:check` in your deployment gate so tenant drift blocks release.
 
 ### Cloudflare Resources
 
