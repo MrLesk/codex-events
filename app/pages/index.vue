@@ -19,9 +19,22 @@ const { data: initialResponse, error } = await useAsyncData('public-hackathons-h
     }
   })
 )
+const { data: pastCountResponse } = await useAsyncData('public-hackathons-homepage:past-count', async () =>
+  await $fetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
+    query: {
+      page: 1,
+      page_size: 1,
+      state: 'completed'
+    }
+  })
+)
 
 hackathons.value = initialResponse.value?.data ?? []
 total.value = initialResponse.value?.meta?.total ?? hackathons.value.length
+const pastTotal = ref(
+  pastCountResponse.value?.meta?.total
+  ?? hackathons.value.filter(hackathon => hackathon.state === 'completed').length
+)
 
 const hasMoreHackathons = computed(() => hackathons.value.length < total.value)
 const filteredHackathons = computed(() => hackathons.value.filter((hackathon) => {
@@ -33,23 +46,30 @@ const filteredHackathons = computed(() => hackathons.value.filter((hackathon) =>
 
   return activeTab.value === 'past' ? isPast : !isPast
 }))
-const canLoadMoreForActiveFilter = computed(() => {
+const currentFilterTotal = computed(() => {
+  if (activeTab.value === 'all') {
+    return total.value
+  }
+
+  if (activeTab.value === 'past') {
+    return pastTotal.value
+  }
+
+  return Math.max(total.value - pastTotal.value, 0)
+})
+const canLoadMoreForCurrentFilter = computed(() => {
   if (!hasMoreHackathons.value) {
     return false
   }
 
-  if (activeTab.value === 'all') {
-    return true
-  }
-
-  return filteredHackathons.value.length > 0
+  return filteredHackathons.value.length < currentFilterTotal.value
 })
 const loadMoreSummary = computed(() => {
   if (activeTab.value === 'all') {
-    return `Showing ${hackathons.value.length} of ${total.value} visible hackathons.`
+    return `Showing ${currentFilterTotal.value} visible hackathons.`
   }
 
-  return `Showing ${filteredHackathons.value.length} ${activeTab.value} hackathons from the currently loaded results.`
+  return `Showing ${currentFilterTotal.value} ${activeTab.value} hackathons.`
 })
 
 async function loadMoreHackathons() {
@@ -115,7 +135,7 @@ useSeoMeta({
     />
 
     <template v-else>
-      <div class="flex flex-col gap-4 rounded-xl border border-black/8 bg-neutral-100/80 p-2 dark:border-white/[0.08] dark:bg-[#111111] md:flex-row md:items-center md:justify-between">
+      <div class="flex flex-col gap-4 rounded-xl border border-black/8 bg-neutral-100/80 p-2 dark:border-white/[0.08] dark:bg-[#111111]">
         <div class="flex min-w-0 flex-wrap items-center gap-1">
           <button
             class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
@@ -139,25 +159,8 @@ useSeoMeta({
             Past
           </button>
           <span class="ml-4 border-l border-black/8 pl-4 text-[13px] text-neutral-700 dark:border-white/[0.08] dark:text-[#8C8C8C]">
-            {{ filteredHackathons.length }} hackathons
+            {{ currentFilterTotal }} hackathons
           </span>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button class="flex items-center gap-2 rounded-lg border border-black/8 bg-white px-3 py-1.5 text-[13px] text-neutral-700 transition-colors hover:border-black/20 dark:border-white/[0.08] dark:bg-[#212121] dark:text-[#A3A3A3] dark:hover:border-white/[0.2]">
-            Status
-            <AppIcon
-              name="i-lucide-chevron-down"
-              class="size-3.5"
-            />
-          </button>
-          <button class="flex items-center gap-2 rounded-lg border border-black/8 bg-white px-3 py-1.5 text-[13px] text-neutral-700 transition-colors hover:border-black/20 dark:border-white/[0.08] dark:bg-[#212121] dark:text-[#A3A3A3] dark:hover:border-white/[0.2]">
-            Date
-            <AppIcon
-              name="i-lucide-chevron-down"
-              class="size-3.5"
-            />
-          </button>
         </div>
       </div>
 
@@ -187,8 +190,9 @@ useSeoMeta({
 
       <div
         v-else
-        class="space-y-16 pt-6"
+        class="relative space-y-16 pt-6"
       >
+        <div class="absolute bottom-0 left-0 top-0 hidden w-0.5 bg-black/16 dark:bg-white/[0.2] lg:block" />
         <HackathonCard
           v-for="hackathon in filteredHackathons"
           :key="hackathon.slug"
@@ -198,7 +202,7 @@ useSeoMeta({
     </template>
 
     <div
-      v-if="!error && canLoadMoreForActiveFilter"
+      v-if="!error && canLoadMoreForCurrentFilter"
       class="flex flex-col items-center gap-4 pt-2"
     >
       <AppButton
