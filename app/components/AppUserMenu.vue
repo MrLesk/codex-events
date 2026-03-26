@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { LogOutIcon, SettingsIcon, UserIcon } from 'lucide-vue-next'
+import { LogOutIcon, SettingsIcon } from 'lucide-vue-next'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,10 +11,13 @@ import { authLogoutHref } from '~/utils/auth-navigation'
 const props = defineProps<{
   name?: string | null
   email?: string | null
+  avatarSrc?: string
+  avatarAlt?: string | null
 }>()
 
 const displayName = computed(() => props.name?.trim() || 'Developer User')
 const displayEmail = computed(() => props.email?.trim() || 'Signed in')
+const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
 
 async function navigateToSettings() {
   await navigateTo('/account/settings')
@@ -30,10 +33,14 @@ async function logout() {
     <DropdownMenuTrigger as-child>
       <button
         type="button"
-        class="ml-2 flex size-8 items-center justify-center rounded-full border border-white/[0.1] bg-[#212121] text-[#A3A3A3] transition-colors hover:border-white/[0.2] hover:text-white"
+        class="ml-2 rounded-full transition-opacity hover:opacity-90"
         aria-label="Open profile menu"
       >
-        <UserIcon class="size-4" />
+        <AppAvatar
+          :src="props.avatarSrc"
+          :alt="avatarAlt"
+          fallback="icon"
+        />
       </button>
     </DropdownMenuTrigger>
 

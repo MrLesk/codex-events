@@ -1,4 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
@@ -118,7 +120,7 @@ When('I update the account profile links', async ({ page }) => {
   await page.getByLabel('OpenAI org ID').fill('org_regular_user_updated')
   await page.getByLabel('Luma username').fill('regular-user-updated')
   await page.getByLabel('X profile URL').fill('https://x.com/regular-user-updated')
-  await page.getByRole('button', { name: /Save profile|Finish onboarding/ }).click()
+  await page.getByRole('button', { name: /Save profile|Finish onboarding|Save changes|Finish setup/ }).click()
 })
 
 Then('the account profile should show the updated links', async ({ page }) => {
@@ -128,4 +130,29 @@ Then('the account profile should show the updated links', async ({ page }) => {
   await expect(page.getByLabel('OpenAI org ID')).toHaveValue('org_regular_user_updated')
   await expect(page.getByLabel('Luma username')).toHaveValue('regular-user-updated')
   await expect(page.getByLabel('X profile URL')).toHaveValue('https://x.com/regular-user-updated')
+})
+
+When('I upload a profile icon from account settings', async ({ page }) => {
+  const fixturePath = join(tmpdir(), 'codex-profile-icon-test.png')
+  writeFileSync(
+    fixturePath,
+    // 1x1 transparent PNG
+    Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9pzyY5kAAAAASUVORK5CYII=', 'base64')
+  )
+
+  await page.locator('input[type="file"]').setInputFiles(fixturePath)
+  await expect(page.getByText('Profile icon updated.')).toBeVisible()
+})
+
+Then('the header menu should show the uploaded profile icon', async ({ page }) => {
+  await expect(page.locator('button[aria-label="Open profile menu"] img')).toHaveCount(1)
+})
+
+When('I remove the profile icon from account settings', async ({ page }) => {
+  await page.getByRole('button', { name: 'Remove icon' }).click()
+  await expect(page.getByText('Profile icon removed.')).toBeVisible()
+})
+
+Then('the header menu should show the generic profile icon fallback', async ({ page }) => {
+  await expect(page.locator('button[aria-label="Open profile menu"] img')).toHaveCount(0)
 })

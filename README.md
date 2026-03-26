@@ -15,6 +15,7 @@ The canonical product model in [`docs/`](docs/README.md) is designed to support:
 - shortlist, winner selection, and prize redemption flows
 - platform-wide and hackathon-specific terms documents with versioned acceptance records
 - hackathon-specific participant profile requirements including X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, and Luma
+- user-managed profile icons uploaded from account settings
 
 For the current domain model, permissions, lifecycle rules, and schema outline, start with:
 
@@ -48,6 +49,7 @@ These values configure authentication for the Nuxt application:
 - `NUXT_AUTH0_SESSION_SECRET`
 - `NUXT_AUTH0_APP_BASE_URL`
 - `NUXT_AUTH0_AUDIENCE`
+- `NUXT_PROFILE_ICONS_BINDING`
 
 For your Auth0 Regular Web Application, configure callback and logout URLs for the domain where you run this app. For example:
 

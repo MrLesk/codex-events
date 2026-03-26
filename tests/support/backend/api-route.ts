@@ -23,6 +23,15 @@ interface RouteDefinition {
 export function createApiRouteTestHarness(options: {
   routes: RouteDefinition[]
   sessionUser?: TestSessionUser | null
+  cloudflareEnv?: Record<string, unknown>
+  runtimeConfig?: {
+    database?: {
+      binding?: string
+    }
+    profileIcons?: {
+      binding?: string
+    }
+  }
 }) {
   const d1Database = createTestD1Database()
   const database = createDatabase(d1Database as never)
@@ -32,15 +41,22 @@ export function createApiRouteTestHarness(options: {
   stubAuth0Session(options.sessionUser ?? null)
 
   app.use(eventHandler((event) => {
+    const databaseBinding = options.runtimeConfig?.database?.binding ?? 'DB'
+    const profileIconsBinding = options.runtimeConfig?.profileIcons?.binding ?? 'PROFILE_ICONS'
+
     event.context.cloudflare = {
       env: {
-        DB: d1Database
+        [databaseBinding]: d1Database,
+        ...(options.cloudflareEnv ?? {})
       }
     } as never
     event.context.runtimeConfig = {
       auth0: {},
       database: {
-        binding: 'DB'
+        binding: databaseBinding
+      },
+      profileIcons: {
+        binding: profileIconsBinding
       }
     }
     event.context.auth0ClientOptions = {}
@@ -61,8 +77,9 @@ export function createApiRouteTestHarness(options: {
     d1Database,
     async request(path: string, init: RequestInit = {}) {
       const headers = new Headers(init.headers)
+      const isFormDataBody = typeof FormData !== 'undefined' && init.body instanceof FormData
 
-      if (init.body && !headers.has('content-type')) {
+      if (init.body && !isFormDataBody && !headers.has('content-type')) {
         headers.set('content-type', 'application/json')
       }
 

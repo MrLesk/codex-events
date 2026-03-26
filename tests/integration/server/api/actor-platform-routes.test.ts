@@ -4,6 +4,9 @@ import { eq } from 'drizzle-orm'
 
 import accountDeleteHandler from '../../../../server/api/account.delete'
 import accountPatchHandler from '../../../../server/api/account.patch'
+import accountProfileIconDeleteHandler from '../../../../server/api/account/profile-icon.delete'
+import accountProfileIconGetHandler from '../../../../server/api/account/profile-icon.get'
+import accountProfileIconPostHandler from '../../../../server/api/account/profile-icon.post'
 import accountRegistrationPostHandler from '../../../../server/api/account/registration.post'
 import sessionHandler from '../../../../server/api/session.get'
 import platformDocumentAcceptancePostHandler from '../../../../server/api/platform-document-acceptances.post'
@@ -22,6 +25,50 @@ import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 describe('TASK-3.5 actor-facing API routes', () => {
   const databases: Array<ReturnType<typeof createApiRouteTestHarness>> = []
+  const profileIconBindingName = 'PROFILE_ICONS'
+
+  class InMemoryR2Bucket {
+    private readonly objects = new Map<string, { body: Uint8Array, contentType?: string }>()
+
+    async get(key: string) {
+      const object = this.objects.get(key)
+
+      if (!object) {
+        return null
+      }
+
+      return {
+        async arrayBuffer() {
+          return object.body.buffer.slice(
+            object.body.byteOffset,
+            object.body.byteOffset + object.body.byteLength
+          )
+        },
+        httpMetadata: {
+          contentType: object.contentType
+        }
+      }
+    }
+
+    async put(
+      key: string,
+      value: ArrayBuffer | ArrayBufferView,
+      options?: { httpMetadata?: { contentType?: string } }
+    ) {
+      const body = value instanceof ArrayBuffer
+        ? new Uint8Array(value)
+        : new Uint8Array(value.buffer, value.byteOffset, value.byteLength)
+
+      this.objects.set(key, {
+        body: new Uint8Array(body),
+        contentType: options?.httpMetadata?.contentType
+      })
+    }
+
+    async delete(key: string) {
+      this.objects.delete(key)
+    }
+  }
 
   afterEach(async () => {
     vi.unstubAllGlobals()
@@ -88,7 +135,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
           platformUser: {
             id: 'user_judge',
             email: 'judge@example.com',
-            onboardingState: 'completed'
+            onboardingState: 'completed',
+            profileIconUpdatedAt: null
           },
           hackathonRoles: [
             {
@@ -331,7 +379,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
           githubProfileUrl: null,
           chatgptEmail: null,
           openaiOrgId: null,
-          lumaUsername: null
+          lumaUsername: null,
+          profileIconUpdatedAt: null
         },
         acceptedDocumentIds: {
           privacyPolicyDocumentId: 'privacy_v1',
@@ -354,6 +403,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(createdUser?.chatgptEmail).toBeNull()
     expect(createdUser?.openaiOrgId).toBeNull()
     expect(createdUser?.lumaUsername).toBeNull()
+    expect(createdUser?.profileIconUpdatedAt).toBeNull()
     expect(acceptances).toHaveLength(2)
     expect(auditEntries).toEqual([
       expect.objectContaining({
@@ -376,7 +426,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
             onboardingState: 'profile_pending',
             chatgptEmail: null,
             openaiOrgId: null,
-            lumaUsername: null
+            lumaUsername: null,
+            profileIconUpdatedAt: null
           }
         }
       }
@@ -629,7 +680,182 @@ describe('TASK-3.5 actor-facing API routes', () => {
     ])
   })
 
+  test('profile-icon account routes upload, read, and remove the caller profile icon', async () => {
+    const profileIconsBucket = new InMemoryR2Bucket()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/profile-icon', handler: accountProfileIconPostHandler },
+        { method: 'get', path: '/api/account/profile-icon', handler: accountProfileIconGetHandler },
+        { method: 'delete', path: '/api/account/profile-icon', handler: accountProfileIconDeleteHandler },
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|profile-icon-user',
+        email: 'profile-icon-user@example.com',
+        name: 'Profile Icon User'
+      },
+      cloudflareEnv: {
+        [profileIconBindingName]: profileIconsBucket
+      },
+      runtimeConfig: {
+        profileIcons: {
+          binding: profileIconBindingName
+        }
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'user_profile_icon',
+      auth0Subject: 'auth0|profile-icon-user',
+      email: 'profile-icon-user@example.com',
+      displayName: 'Profile Icon User'
+    })
+
+    const uploadForm = new FormData()
+    uploadForm.append(
+      'file',
+      new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'image/png' }),
+      'profile.png'
+    )
+
+    const uploadResponse = await harness.request('/api/account/profile-icon', {
+      method: 'POST',
+      body: uploadForm
+    })
+
+    expect(uploadResponse.status).toBe(200)
+    expect(await uploadResponse.json()).toMatchObject({
+      data: {
+        user: {
+          id: 'user_profile_icon'
+        }
+      }
+    })
+
+    const iconResponse = await harness.request('/api/account/profile-icon')
+
+    expect(iconResponse.status).toBe(200)
+    expect(iconResponse.headers.get('content-type')).toBe('image/png')
+    expect(new Uint8Array(await iconResponse.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4]))
+
+    const sessionResponse = await harness.request('/api/session')
+    const sessionPayload = await sessionResponse.json()
+
+    expect(sessionPayload).toMatchObject({
+      data: {
+        actor: {
+          platformUser: {
+            profileIconUpdatedAt: expect.any(String)
+          }
+        }
+      }
+    })
+
+    const removeResponse = await harness.request('/api/account/profile-icon', {
+      method: 'DELETE'
+    })
+
+    expect(removeResponse.status).toBe(200)
+    expect(await removeResponse.json()).toMatchObject({
+      data: {
+        user: {
+          id: 'user_profile_icon',
+          profileIconUpdatedAt: null
+        }
+      }
+    })
+
+    const removedIconResponse = await harness.request('/api/account/profile-icon')
+
+    expect(removedIconResponse.status).toBe(404)
+    expect(await removedIconResponse.json()).toMatchObject({
+      error: {
+        code: 'profile_icon_not_found'
+      }
+    })
+  })
+
+  test('POST /api/account/profile-icon rejects invalid content types and oversized files', async () => {
+    const profileIconsBucket = new InMemoryR2Bucket()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/profile-icon', handler: accountProfileIconPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|profile-icon-guard-user',
+        email: 'profile-icon-guard@example.com',
+        name: 'Profile Icon Guard'
+      },
+      cloudflareEnv: {
+        [profileIconBindingName]: profileIconsBucket
+      },
+      runtimeConfig: {
+        profileIcons: {
+          binding: profileIconBindingName
+        }
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'user_profile_icon_guard',
+      auth0Subject: 'auth0|profile-icon-guard-user',
+      email: 'profile-icon-guard@example.com',
+      displayName: 'Profile Icon Guard'
+    })
+
+    const invalidTypeForm = new FormData()
+    invalidTypeForm.append(
+      'file',
+      new Blob([new Uint8Array([1, 2, 3])], { type: 'image/gif' }),
+      'profile.gif'
+    )
+
+    const invalidTypeResponse = await harness.request('/api/account/profile-icon', {
+      method: 'POST',
+      body: invalidTypeForm
+    })
+
+    expect(invalidTypeResponse.status).toBe(400)
+    expect(await invalidTypeResponse.json()).toMatchObject({
+      error: {
+        code: 'profile_icon_content_type_invalid'
+      }
+    })
+
+    const oversizedForm = new FormData()
+    oversizedForm.append(
+      'file',
+      new Blob([new Uint8Array(1024 * 1024 + 1)], { type: 'image/webp' }),
+      'profile.webp'
+    )
+
+    const oversizedResponse = await harness.request('/api/account/profile-icon', {
+      method: 'POST',
+      body: oversizedForm
+    })
+
+    expect(oversizedResponse.status).toBe(400)
+    expect(await oversizedResponse.json()).toMatchObject({
+      error: {
+        code: 'profile_icon_file_too_large'
+      }
+    })
+  })
+
   test('DELETE /api/account soft-deletes the user and writes an audit record', async () => {
+    const profileIconsBucket = new InMemoryR2Bucket()
+    await profileIconsBucket.put(
+      'users/user_delete/profile-icon',
+      new Uint8Array([9, 9, 9]),
+      {
+        httpMetadata: {
+          contentType: 'image/png'
+        }
+      }
+    )
+
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'delete', path: '/api/account', handler: accountDeleteHandler }
@@ -637,6 +863,14 @@ describe('TASK-3.5 actor-facing API routes', () => {
       sessionUser: {
         sub: 'auth0|delete-me',
         email: 'delete-me@example.com'
+      },
+      cloudflareEnv: {
+        [profileIconBindingName]: profileIconsBucket
+      },
+      runtimeConfig: {
+        profileIcons: {
+          binding: profileIconBindingName
+        }
       }
     })
     databases.push(harness)
@@ -646,7 +880,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       auth0Subject: 'auth0|delete-me',
       email: 'delete-me@example.com',
       displayName: 'Delete Me',
-      isPlatformAdmin: true
+      isPlatformAdmin: true,
+      profileIconUpdatedAt: fixtureTimestamp()
     })
     await harness.database.insert(hackathons).values({
       id: 'hackathon_1',
@@ -707,8 +942,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(deletedUser?.deletedAt).toBeTruthy()
     expect(deletedUser?.displayName).toBe('Deleted User')
     expect(deletedUser?.isPlatformAdmin).toBe(false)
+    expect(deletedUser?.profileIconUpdatedAt).toBeNull()
     expect(deletedAcceptances).toHaveLength(0)
     expect(deletedAssignments).toHaveLength(0)
+    expect(await profileIconsBucket.get('users/user_delete/profile-icon')).toBeNull()
     expect(auditEntries).toEqual([
       expect.objectContaining({
         actorUserId: 'user_delete',

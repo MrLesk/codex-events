@@ -26,6 +26,13 @@ const saveState = reactive({
   error: ''
 })
 
+const profileIconState = reactive({
+  uploadPending: false,
+  removePending: false,
+  success: '',
+  error: ''
+})
+
 const deletionState = reactive({
   confirmationText: '',
   pending: false,
@@ -86,6 +93,85 @@ async function saveProfile() {
       : 'Unable to save the profile.'
   } finally {
     saveState.pending = false
+  }
+}
+
+const profileIconSrc = computed(() => {
+  if (actor.value?.kind !== 'platform_user') {
+    return undefined
+  }
+
+  const version = actor.value.platformUser.profileIconUpdatedAt
+
+  if (!version) {
+    return undefined
+  }
+
+  return `/api/account/profile-icon?v=${encodeURIComponent(version)}`
+})
+
+const profileIconAlt = computed(() => {
+  if (actor.value?.kind === 'platform_user') {
+    return actor.value.platformUser.displayName
+  }
+
+  return user.value?.name ?? 'User'
+})
+
+async function uploadProfileIcon(event: Event) {
+  const target = event.target as HTMLInputElement | null
+  const file = target?.files?.item(0) ?? null
+
+  if (!file) {
+    return
+  }
+
+  profileIconState.uploadPending = true
+  profileIconState.success = ''
+  profileIconState.error = ''
+
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    await $fetch('/api/account/profile-icon', {
+      method: 'POST',
+      body: formData
+    })
+
+    await refresh()
+    profileIconState.success = 'Profile icon updated.'
+  } catch (error) {
+    profileIconState.error = error instanceof Error
+      ? error.message
+      : 'Unable to upload profile icon.'
+  } finally {
+    if (target) {
+      target.value = ''
+    }
+
+    profileIconState.uploadPending = false
+  }
+}
+
+async function removeProfileIcon() {
+  profileIconState.removePending = true
+  profileIconState.success = ''
+  profileIconState.error = ''
+
+  try {
+    await $fetch('/api/account/profile-icon', {
+      method: 'DELETE'
+    })
+
+    await refresh()
+    profileIconState.success = 'Profile icon removed.'
+  } catch (error) {
+    profileIconState.error = error instanceof Error
+      ? error.message
+      : 'Unable to remove profile icon.'
+  } finally {
+    profileIconState.removePending = false
   }
 }
 
@@ -186,11 +272,80 @@ const profileSubmitLabel = computed(() => isProfileSetupMode.value ? 'Finish set
         />
 
         <section class="space-y-5">
+          <div
+            v-if="!isPlatformAccountUnavailable"
+            class="rounded-xl border border-default/70 bg-default/45 p-5"
+          >
+            <div class="mb-4 flex items-center gap-2">
+              <AppIcon
+                name="i-lucide-image"
+                class="size-4 text-dimmed"
+              />
+              <p class="text-sm font-semibold text-highlighted">
+                Profile icon
+              </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-4">
+              <AppAvatar
+                :src="profileIconSrc"
+                :alt="profileIconAlt"
+                size="3xl"
+                fallback="icon"
+              />
+
+              <div class="space-y-3">
+                <div class="flex flex-wrap gap-2">
+                  <label class="cursor-pointer">
+                    <input
+                      class="sr-only"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      :disabled="profileIconState.uploadPending || profileIconState.removePending"
+                      @change="uploadProfileIcon"
+                    >
+                    <AppButton
+                      type="button"
+                      :loading="profileIconState.uploadPending"
+                      label="Upload icon"
+                    />
+                  </label>
+
+                  <AppButton
+                    variant="soft"
+                    color="neutral"
+                    label="Remove icon"
+                    :disabled="!profileIconSrc || profileIconState.uploadPending"
+                    :loading="profileIconState.removePending"
+                    @click="removeProfileIcon"
+                  />
+                </div>
+                <p class="text-xs text-muted">
+                  Upload JPEG, PNG, or WebP up to 1MB.
+                </p>
+              </div>
+            </div>
+          </div>
+
           <AppAlert
             v-if="saveState.success"
             color="success"
             variant="subtle"
             :description="saveState.success"
+          />
+
+          <AppAlert
+            v-if="profileIconState.success"
+            color="success"
+            variant="subtle"
+            :description="profileIconState.success"
+          />
+
+          <AppAlert
+            v-if="profileIconState.error"
+            color="error"
+            variant="subtle"
+            :description="profileIconState.error"
           />
 
           <AccountSettingsProfileForm

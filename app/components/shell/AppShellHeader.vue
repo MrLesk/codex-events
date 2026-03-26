@@ -13,6 +13,20 @@ const profileName = computed(() => {
 
   return user.value?.name ?? null
 })
+
+const profileAvatarSrc = computed(() => {
+  if (actor.value.kind !== 'platform_user') {
+    return undefined
+  }
+
+  const version = actor.value.platformUser.profileIconUpdatedAt
+
+  if (!version) {
+    return undefined
+  }
+
+  return `/api/account/profile-icon?v=${encodeURIComponent(version)}`
+})
 </script>
 
 <template>
@@ -39,6 +53,8 @@ const profileName = computed(() => {
           v-if="user"
           :name="profileName"
           :email="user.email"
+          :avatar-src="profileAvatarSrc"
+          :avatar-alt="profileName"
         />
 
         <AppButton

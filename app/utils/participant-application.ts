@@ -19,6 +19,7 @@ export interface ParticipantPlatformUserProfile {
   chatgptEmail?: string | null
   openaiOrgId?: string | null
   lumaUsername?: string | null
+  profileIconUpdatedAt?: string | null
 }
 
 export type ParticipantActor

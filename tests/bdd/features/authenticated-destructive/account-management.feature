@@ -8,3 +8,7 @@ Feature: TASK-4.3 platform account registration recovery and profile management
     Then I should see the account settings heading
     When I update the account profile links
     Then the account profile should show the updated links
+    When I upload a profile icon from account settings
+    Then the header menu should show the uploaded profile icon
+    When I remove the profile icon from account settings
+    Then the header menu should show the generic profile icon fallback

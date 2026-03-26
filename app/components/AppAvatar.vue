@@ -1,17 +1,22 @@
 <script setup lang="ts">
+import { UserIcon } from 'lucide-vue-next'
+
 import { Avatar as UiAvatar, AvatarFallback as UiAvatarFallback, AvatarImage as UiAvatarImage } from '~/components/ui/avatar'
 import { cn } from '~/lib/utils'
 
 type AvatarSize = 'sm' | 'lg' | '3xl'
+type AvatarFallbackMode = 'initials' | 'icon'
 
 const props = withDefaults(defineProps<{
   src?: string
   alt?: string
   size?: AvatarSize
+  fallback?: AvatarFallbackMode
 }>(), {
   src: undefined,
   alt: '',
-  size: 'sm'
+  size: 'sm',
+  fallback: 'initials'
 })
 
 const sizeClasses: Record<AvatarSize, string> = {
@@ -43,7 +48,13 @@ const fallbackLabel = computed(() => {
       :alt="props.alt"
     />
     <UiAvatarFallback class="bg-default text-xs font-semibold text-toned">
-      {{ fallbackLabel }}
+      <template v-if="props.fallback === 'initials'">
+        {{ fallbackLabel }}
+      </template>
+      <UserIcon
+        v-else
+        class="size-4"
+      />
     </UiAvatarFallback>
   </UiAvatar>
 </template>

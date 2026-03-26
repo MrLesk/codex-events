@@ -20,6 +20,9 @@ type EventContext = H3Event['context'] & {
     database?: {
       binding?: string
     }
+    profileIcons?: {
+      binding?: string
+    }
   }
 }
 

@@ -55,6 +55,7 @@ export const users = sqliteTable(
     chatgptEmail: text('chatgpt_email'),
     openaiOrgId: text('openai_org_id'),
     lumaUsername: text('luma_username'),
+    profileIconUpdatedAt: text('profile_icon_updated_at'),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
     deletedAt: text('deleted_at')

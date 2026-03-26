@@ -51,6 +51,7 @@ export default defineApiHandler(async (event) => {
         chatgptEmail: actor.platformUser.chatgptEmail,
         openaiOrgId: actor.platformUser.openaiOrgId,
         lumaUsername: actor.platformUser.lumaUsername,
+        profileIconUpdatedAt: actor.platformUser.profileIconUpdatedAt,
         createdAt: actor.platformUser.createdAt,
         updatedAt: actor.platformUser.updatedAt,
         deletedAt: actor.platformUser.deletedAt

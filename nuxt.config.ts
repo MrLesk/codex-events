@@ -26,6 +26,9 @@ export default defineNuxtConfig({
     },
     database: {
       binding: 'DB'
+    },
+    profileIcons: {
+      binding: 'PROFILE_ICONS'
     }
   },
 

@@ -27,6 +27,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `chatgpt_email`
 - `openai_org_id`
 - `luma_username`
+- `profile_icon_updated_at`
 - `created_at`
 - `updated_at`
 - `deleted_at`
@@ -48,6 +49,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `onboarding_state` tracks whether the platform user still needs the second onboarding profile step.
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
+- `profile_icon_updated_at` records when the current profile icon object was last replaced.
 
 ## Hackathon
 

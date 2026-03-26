@@ -144,12 +144,15 @@ Operations:
 | --- | --- | --- | --- |
 | Create platform account after terms acceptance | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record in onboarding state `profile_pending` and records acceptance of the current required platform documents. |
 | Update own platform account profile | `PATCH /api/account` | authenticated user with a platform account | Updates the platform profile fields that affect hackathon application eligibility, including display name, optional X, LinkedIn, and GitHub profile links, an optional ChatGPT email, an optional OpenAI org ID, and an optional Luma username. If the platform user is in onboarding state `profile_pending`, a successful profile update completes onboarding. |
+| Get own profile icon | `GET /api/account/profile-icon` | authenticated user with a platform account | Returns the uploaded profile icon object for the caller. |
+| Upload or replace own profile icon | `POST /api/account/profile-icon` | authenticated user with a platform account | Accepts multipart upload for a single profile icon image and replaces any prior icon object. |
+| Remove own profile icon | `DELETE /api/account/profile-icon` | authenticated user with a platform account | Deletes the caller's uploaded profile icon and clears profile-icon metadata on the platform user record. |
 | Delete own account | `DELETE /api/account` | authenticated user | Performs GDPR-compliant account deletion handling and writes the required audit trail. |
 
 Testing:
-- Unit: registration acceptance-version rules, onboarding-state transitions, profile normalization, and deletion guard semantics.
-- Integration: registration persistence, onboarding routing metadata, profile updates, document-acceptance linkage, deletion effects, and audit creation.
-- End-to-end: authenticated post-Auth0 callback provisioning, profile management, and account deletion flows.
+- Unit: registration acceptance-version rules, onboarding-state transitions, profile normalization, profile-icon upload guards, and deletion guard semantics.
+- Integration: registration persistence, onboarding routing metadata, profile updates, profile-icon object flows, document-acceptance linkage, deletion effects, and audit creation.
+- End-to-end: authenticated post-Auth0 callback provisioning, profile management including profile icon updates, and account deletion flows.
 
 ## Hackathons
 

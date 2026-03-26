@@ -18,6 +18,7 @@ interface SessionActorPlatformUser {
   chatgptEmail: string | null
   openaiOrgId: string | null
   lumaUsername: string | null
+  profileIconUpdatedAt: string | null
   createdAt: string
   updatedAt: string
   deletedAt: string | null

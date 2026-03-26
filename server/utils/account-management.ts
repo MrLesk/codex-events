@@ -75,6 +75,7 @@ export function serializePlatformUser(user: PlatformUserRecord) {
     chatgptEmail: user.chatgptEmail,
     openaiOrgId: user.openaiOrgId,
     lumaUsername: user.lumaUsername,
+    profileIconUpdatedAt: user.profileIconUpdatedAt,
     createdAt: user.createdAt,
     updatedAt: user.updatedAt,
     deletedAt: user.deletedAt
@@ -106,6 +107,7 @@ function buildPlatformAccountInsert(
     chatgptEmail: null,
     openaiOrgId: null,
     lumaUsername: null,
+    profileIconUpdatedAt: null,
     createdAt,
     updatedAt: createdAt,
     deletedAt: null
@@ -315,6 +317,61 @@ export async function updatePlatformAccountProfile(
   return serializePlatformUser(updatedUser!)
 }
 
+export async function updatePlatformAccountProfileIconTimestamp(
+  database: AppDatabase,
+  userId: string,
+  profileIconUpdatedAt: string | null
+) {
+  const existingUser = await database.query.users.findFirst({
+    where: eq(users.id, userId)
+  })
+
+  assertGuard(Boolean(existingUser), {
+    statusCode: 404,
+    code: 'platform_user_not_found',
+    message: 'The requested platform user was not found.',
+    details: {
+      userId
+    }
+  })
+
+  const updatedAt = new Date().toISOString()
+  const patch = {
+    profileIconUpdatedAt,
+    updatedAt
+  } satisfies Partial<typeof users.$inferInsert>
+
+  await database
+    .update(users)
+    .set(patch)
+    .where(eq(users.id, userId))
+
+  await writeAuditLog(database, {
+    actorUserId: userId,
+    entityType: 'user',
+    entityId: userId,
+    action: 'account.updated',
+    metadata: {
+      fields: Object.keys(patch)
+    }
+  })
+
+  const updatedUser = await database.query.users.findFirst({
+    where: eq(users.id, userId)
+  })
+
+  assertGuard(Boolean(updatedUser), {
+    statusCode: 404,
+    code: 'platform_user_not_found',
+    message: 'The requested platform user was not found.',
+    details: {
+      userId
+    }
+  })
+
+  return serializePlatformUser(updatedUser!)
+}
+
 export function buildDeletedUserPatch(userId: string, deletedAt: string) {
   const suffix = `${userId}_${sanitizeTimestampForIdentifier(deletedAt)}`
 
@@ -330,6 +387,7 @@ export function buildDeletedUserPatch(userId: string, deletedAt: string) {
     chatgptEmail: null,
     openaiOrgId: null,
     lumaUsername: null,
+    profileIconUpdatedAt: null,
     updatedAt: deletedAt,
     deletedAt
   } satisfies Partial<typeof users.$inferInsert>

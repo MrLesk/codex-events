@@ -76,6 +76,7 @@ export interface PlatformUserProfile {
   chatgptEmail?: string | null
   openaiOrgId?: string | null
   lumaUsername?: string | null
+  profileIconUpdatedAt?: string | null
   createdAt?: string | null
   updatedAt?: string | null
   deletedAt?: string | null
@@ -91,6 +92,7 @@ export interface OperationalUserSummary {
   chatgptEmail?: string | null
   openaiOrgId?: string | null
   lumaUsername?: string | null
+  profileIconUpdatedAt?: string | null
 }
 
 export interface HackathonRoleSummary {

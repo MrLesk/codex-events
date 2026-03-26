@@ -1,0 +1,36 @@
+import { setHeader } from 'h3'
+
+import { requirePlatformAccountActor } from '../../auth/actor'
+import { defineApiHandler } from '../../utils/api-handler'
+import { ApiError } from '../../utils/api-error'
+import { getProfileIconObject } from '../../utils/profile-icons'
+
+export default defineApiHandler(async (event) => {
+  const actor = await requirePlatformAccountActor(event)
+
+  if (!actor.platformUser.profileIconUpdatedAt) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'profile_icon_not_found',
+      message: 'The platform user does not have an uploaded profile icon.'
+    })
+  }
+
+  const icon = await getProfileIconObject(event, actor.platformUser.id)
+
+  if (!icon) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'profile_icon_not_found',
+      message: 'The platform user does not have an uploaded profile icon.'
+    })
+  }
+
+  setHeader(event, 'cache-control', 'private, no-store')
+
+  return new Response(await icon.arrayBuffer(), {
+    headers: {
+      'content-type': icon.httpMetadata?.contentType ?? 'application/octet-stream'
+    }
+  })
+})

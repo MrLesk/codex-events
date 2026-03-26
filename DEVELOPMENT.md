@@ -22,6 +22,7 @@ NUXT_AUTH0_SESSION_SECRET=$(openssl rand -hex 64)
 NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
 NUXT_AUTH0_AUDIENCE=
 NUXT_DATABASE_BINDING=DB
+NUXT_PROFILE_ICONS_BINDING=PROFILE_ICONS
 ```
 
 Local Auth0 dashboard settings:
@@ -49,6 +50,11 @@ Shared backend foundation work also expects a D1 binding name at runtime:
 
 - `NUXT_DATABASE_BINDING` should match the D1 binding exposed to the server runtime. The canonical foundation defaults to `DB`.
 - local development uses the repository `wrangler.jsonc` plus Wrangler's `getPlatformProxy()` to provide a Cloudflare-native local `DB` binding while the Nuxt server runs under Bun
+
+Profile icon uploads use a Cloudflare R2 binding at runtime:
+
+- `NUXT_PROFILE_ICONS_BINDING` should match the R2 binding used for account profile icons. The canonical default is `PROFILE_ICONS`.
+- local development uses the repository `wrangler.jsonc` R2 bucket binding for profile icon object storage.
 
 ## Local Development
 
