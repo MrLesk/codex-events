@@ -149,7 +149,7 @@ export function useShellNavigation() {
         id: 'judge',
         label: 'Judge workspace',
         description: 'Blind judging and assignment progress',
-        to: '/judging',
+        to: '/account/judging',
         icon: 'i-lucide-scale'
       })
     }
@@ -159,7 +159,7 @@ export function useShellNavigation() {
         id: 'admin',
         label: 'Admin operations',
         description: 'Setup, lifecycle controls, and oversight',
-        to: '/admin',
+        to: '/account/admin',
         icon: 'i-lucide-shield-check'
       })
     }

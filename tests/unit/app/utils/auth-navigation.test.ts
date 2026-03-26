@@ -35,7 +35,7 @@ describe('auth navigation helpers', () => {
   test('routes authenticated identities to account settings, but preserves platform user return targets', () => {
     expect(resolveActorAppRedirect({
       kind: 'authenticated_identity'
-    }, '/judging')).toBe(accountSettingsHref)
+    }, '/account/judging')).toBe(accountSettingsHref)
 
     expect(resolveActorAppRedirect({
       kind: 'platform_user'

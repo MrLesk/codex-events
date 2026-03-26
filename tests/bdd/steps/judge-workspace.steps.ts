@@ -79,7 +79,7 @@ function getAssignmentCard(page: Page, title: string) {
 
 When('I open the judge workspace with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto('/judging')
+  await page.goto('/account/judging')
 })
 
 Then('I should see the blind workspace assignment card for {string}', async ({ page }, title: string) => {
@@ -153,7 +153,7 @@ When('I skip the opened blind review with reason {string}', async ({ page }, rea
   await page.getByTestId('judge-skip-reason').fill(reason)
 
   await Promise.all([
-    page.waitForURL('**/judging?notice=skipped'),
+    page.waitForURL('**/account/judging?notice=skipped'),
     page.getByTestId('judge-skip-review').click()
   ])
 })

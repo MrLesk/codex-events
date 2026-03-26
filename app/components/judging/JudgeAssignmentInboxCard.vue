@@ -25,11 +25,9 @@ const assignmentHref = computed(() =>
   <NuxtLink
     :to="assignmentHref"
     :data-testid="`judge-assignment-card-${assignment.id}`"
-    class="group relative overflow-hidden rounded-[1.9rem] border border-default/80 bg-[linear-gradient(155deg,rgba(255,255,255,0.86),rgba(247,249,253,0.96)_42%,rgba(238,243,251,0.94))] p-6 shadow-[0_28px_72px_-52px_rgba(17,24,39,0.45)] transition hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-[0_34px_84px_-52px_rgba(59,130,246,0.24)]"
+    class="group rounded-xl border border-black/8 bg-white p-5 transition-colors hover:border-black/20 dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.2]"
   >
-    <div class="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-primary/45 to-transparent" />
-
-    <div class="flex flex-col gap-5">
+    <div class="flex flex-col gap-4">
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div class="space-y-3">
           <div class="flex flex-wrap items-center gap-2">
@@ -37,55 +35,55 @@ const assignmentHref = computed(() =>
             <AppBadge
               :color="resolveJudgeIneligibilityColor(assignment.ineligibilityStatus)"
               variant="subtle"
-              class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
+              class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
             >
               {{ formatJudgeIneligibilityStatus(assignment.ineligibilityStatus) }}
             </AppBadge>
           </div>
 
           <div class="space-y-2">
-            <h3 class="text-2xl font-semibold tracking-[-0.04em] text-highlighted">
+            <h3 class="text-[20px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
               {{ assignment.blindSubmission.projectName ?? 'Untitled blind submission' }}
             </h3>
-            <p class="max-w-2xl text-sm leading-7 text-toned">
+            <p class="max-w-2xl text-[14px] text-neutral-600 dark:text-[#B0B0B0]">
               {{ assignment.blindSubmission.summary || describeJudgeAssignmentStatus(assignment.status) }}
             </p>
           </div>
         </div>
 
-        <div class="flex items-center gap-2 text-sm font-semibold text-primary transition group-hover:translate-x-1">
+        <div class="inline-flex items-center gap-1 text-[13px] font-medium text-highlighted dark:text-white">
           <span>Open review</span>
           <AppIcon
             name="i-lucide-arrow-right"
-            class="size-4"
+            class="size-3.5"
           />
         </div>
       </div>
 
       <div class="grid gap-3 md:grid-cols-3">
-        <div class="app-inset-card-tight px-4 py-3">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+        <div class="rounded-lg border border-black/8 bg-[#F7F7F8] px-3 py-2 dark:border-white/[0.08] dark:bg-[#171717]">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
             Blind context
           </p>
-          <p class="mt-2 text-sm font-medium text-highlighted">
+          <p class="mt-1 text-[13px] font-medium text-highlighted dark:text-white">
             {{ formatBlindApplicationCount(assignment.blindSubmission.applications.length) }}
           </p>
         </div>
 
-        <div class="app-inset-card-tight px-4 py-3">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+        <div class="rounded-lg border border-black/8 bg-[#F7F7F8] px-3 py-2 dark:border-white/[0.08] dark:bg-[#171717]">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
             Assigned
           </p>
-          <p class="mt-2 text-sm font-medium text-highlighted">
+          <p class="mt-1 text-[13px] font-medium text-highlighted dark:text-white">
             {{ formatJudgeTimestamp(assignment.assignedAt) }}
           </p>
         </div>
 
-        <div class="app-inset-card-tight px-4 py-3">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+        <div class="rounded-lg border border-black/8 bg-[#F7F7F8] px-3 py-2 dark:border-white/[0.08] dark:bg-[#171717]">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
             Review signal
           </p>
-          <p class="mt-2 text-sm font-medium text-highlighted">
+          <p class="mt-1 text-[13px] font-medium text-highlighted dark:text-white">
             {{ assignment.startedAt ? `Started ${formatJudgeTimestamp(assignment.startedAt)}` : 'Ready to start' }}
           </p>
         </div>

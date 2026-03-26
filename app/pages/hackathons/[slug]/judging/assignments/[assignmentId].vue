@@ -196,7 +196,7 @@ async function skipReview() {
     )
 
     await navigateTo({
-      path: '/judging',
+      path: '/account/judging',
       query: {
         notice: 'skipped'
       }
@@ -244,7 +244,7 @@ useSeoMeta({
 
       <AppContainer class="py-10 sm:py-14">
         <NuxtLink
-          to="/judging"
+          to="/account/judging"
           class="inline-flex items-center gap-2 rounded-full border border-default/80 bg-elevated/82 px-4 py-2 text-sm font-medium text-highlighted shadow-[0_18px_40px_-28px_rgba(17,24,39,0.35)] transition hover:border-primary/45"
         >
           <AppIcon
