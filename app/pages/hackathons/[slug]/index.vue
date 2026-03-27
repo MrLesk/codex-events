@@ -98,6 +98,10 @@ const detailSummary = computed(() => [
   hackathon.value.city,
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
+const sortedAgendaItems = computed(() =>
+  [...(hackathon.value.agendaItems ?? [])]
+    .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
+)
 const showRegisterCta = computed(() => true)
 const descriptionMarkdown = computed(() => hackathon.value.description?.trim() ?? '')
 const descriptionHtml = computed(() => descriptionMarkdown.value ? renderMarkdown(descriptionMarkdown.value) : '')
@@ -120,18 +124,24 @@ const registerHref = computed(() => {
   return registerRouteHref.value
 })
 
-const activePublicSection = ref<'overview' | 'prizes'>('overview')
-const publicSectionTargets: Record<typeof activePublicSection.value, string> = {
-  overview: 'public-overview',
-  prizes: 'prizes'
-}
+const activePublicSection = ref<'overview' | 'prizes' | 'details'>('overview')
 
-function scrollToPublicSection(section: keyof typeof publicSectionTargets) {
-  activePublicSection.value = section
-  document.getElementById(publicSectionTargets[section])?.scrollIntoView({
-    behavior: 'smooth',
-    block: 'start'
-  })
+const agendaDateTimeFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit'
+})
+
+function formatAgendaWindow(startsAt: string, endsAt: string | null) {
+  const startLabel = agendaDateTimeFormatter.format(new Date(startsAt))
+
+  if (!endsAt) {
+    return startLabel
+  }
+
+  const endLabel = agendaDateTimeFormatter.format(new Date(endsAt))
+  return `${startLabel} - ${endLabel}`
 }
 
 useSeoMeta({
@@ -220,64 +230,133 @@ useSeoMeta({
             class="flex items-center gap-5 overflow-x-auto"
           >
             <button
+              id="public-tab-overview"
               type="button"
               role="tab"
               :aria-selected="activePublicSection === 'overview'"
+              aria-controls="public-tab-panel-overview"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activePublicSection === 'overview' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="scrollToPublicSection('overview')"
+              @click="activePublicSection = 'overview'"
             >
               Overview
             </button>
             <button
+              id="public-tab-prizes"
               type="button"
               role="tab"
               :aria-selected="activePublicSection === 'prizes'"
-              class="inline-flex items-center gap-2 border-b-2 pb-3 text-[14px] font-medium transition-colors"
+              aria-controls="public-tab-panel-prizes"
+              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activePublicSection === 'prizes' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="scrollToPublicSection('prizes')"
+              @click="activePublicSection = 'prizes'"
             >
               Prizes
-              <span
-                v-if="prizes.length > 0"
-                class="rounded-full bg-black/6 px-1.5 py-0.5 text-[11px] text-neutral-600 dark:bg-white/[0.05] dark:text-[#8C8C8C]"
-              >
-                {{ prizes.length }}
-              </span>
+            </button>
+            <button
+              id="public-tab-details"
+              type="button"
+              role="tab"
+              :aria-selected="activePublicSection === 'details'"
+              aria-controls="public-tab-panel-details"
+              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
+              :class="activePublicSection === 'details' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+              @click="activePublicSection = 'details'"
+            >
+              Details
             </button>
           </nav>
         </div>
       </AppContainer>
     </section>
 
-    <AppContainer
-      id="public-overview"
-      class="relative z-10 max-w-[68rem] space-y-7 pt-6"
-    >
+    <AppContainer class="relative z-10 max-w-[68rem] pt-6">
       <section
-        v-if="descriptionHtml"
-        class="rounded-xl border border-black/8 bg-[#F7F7F8] p-6 dark:border-white/[0.08] dark:bg-[#111111]"
+        v-if="activePublicSection === 'overview'"
+        id="public-tab-panel-overview"
+        role="tabpanel"
+        aria-labelledby="public-tab-overview"
+        class="space-y-7"
       >
-        <div
-          class="hackathon-markdown"
-          v-html="descriptionHtml"
-        />
+        <section
+          v-if="descriptionHtml"
+          class="rounded-xl border border-black/8 bg-[#F7F7F8] p-6 dark:border-white/[0.08] dark:bg-[#111111]"
+        >
+          <div
+            class="hackathon-markdown"
+            v-html="descriptionHtml"
+          />
+        </section>
+
+        <section
+          v-else
+          class="rounded-xl border border-dashed border-black/10 bg-white p-8 text-center dark:border-white/[0.08] dark:bg-[#111111]"
+        >
+          <p class="text-[15px] font-medium text-highlighted dark:text-white">
+            Overview will appear here once published.
+          </p>
+        </section>
       </section>
 
-      <HackathonTimeline
-        :hackathon="hackathon"
-        :criteria-count="criteriaCount"
-      />
-
-      <div
-        id="prizes"
-        class="border-t border-black/8 pt-8 dark:border-white/[0.08]"
+      <section
+        v-else-if="activePublicSection === 'prizes'"
+        id="public-tab-panel-prizes"
+        role="tabpanel"
+        aria-labelledby="public-tab-prizes"
       >
         <HackathonPrizeList
           :prizes="prizes"
           :error-message="prizesErrorMessage"
         />
-      </div>
+      </section>
+
+      <section
+        v-else
+        id="public-tab-panel-details"
+        role="tabpanel"
+        aria-labelledby="public-tab-details"
+        class="space-y-7"
+      >
+        <HackathonTimeline
+          :hackathon="hackathon"
+          :criteria-count="criteriaCount"
+        />
+
+        <section
+          v-if="sortedAgendaItems.length > 0"
+          class="rounded-xl border border-black/8 bg-white/70 p-6 dark:border-white/[0.08] dark:bg-black/36"
+        >
+          <div class="mb-4">
+            <h2 class="text-lg font-semibold text-highlighted dark:text-white">
+              Agenda
+            </h2>
+            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+              Event schedule maintained as structured agenda items.
+            </p>
+          </div>
+
+          <ol class="space-y-3">
+            <li
+              v-for="item in sortedAgendaItems"
+              :key="item.id"
+              class="rounded-lg border border-black/8 bg-white/80 p-4 dark:border-white/[0.08] dark:bg-black/28"
+            >
+              <p class="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-[#8C8C8C]">
+                {{ formatAgendaWindow(item.startsAt, item.endsAt) }}
+              </p>
+              <p class="mt-1 text-base font-medium text-highlighted dark:text-white">
+                {{ item.title }}
+              </p>
+              <p
+                v-if="item.details"
+                class="mt-1 text-sm text-neutral-600 dark:text-[#A3A3A3]"
+              >
+                {{ item.details }}
+              </p>
+            </li>
+          </ol>
+        </section>
+      </section>
     </AppContainer>
   </div>
 </template>

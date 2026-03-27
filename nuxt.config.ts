@@ -49,7 +49,8 @@ export default defineNuxtConfig({
         'class-variance-authority',
         'vue-sonner',
         'reka-ui',
-        '@vueuse/core'
+        '@vueuse/core',
+        'markdown-it'
       ]
     }
   },
