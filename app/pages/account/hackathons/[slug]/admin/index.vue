@@ -2,6 +2,7 @@
 import type {
   ApiDataResponse,
   EvaluationCriterion,
+  HackathonFormState,
   HackathonRecord,
   HackathonRoleAssignment,
   PrizeDefinition,
@@ -10,7 +11,6 @@ import type {
 
 import {
   canMutateRoleAssignments,
-  createHackathonFormState,
   formatHackathonState,
   fromDateTimeLocalValue,
   getCurrentLifecycleControl,
@@ -107,51 +107,6 @@ const termsDraft = reactive({
 const criterionEdits = reactive<Record<string, CriterionEditState>>({})
 const prizeEdits = reactive<Record<string, PrizeEditState>>({})
 const adminAssignmentSearch = ref('')
-
-const configForm = reactive({
-  ...createHackathonFormState({
-    id: '',
-    name: '',
-    slug: '',
-    description: '',
-    agendaItems: [],
-    backgroundImageUrl: null,
-    bannerImageUrl: null,
-    city: '',
-    address: '',
-    registrationOpensAt: '',
-    registrationClosesAt: '',
-    submissionOpensAt: '',
-    submissionClosesAt: '',
-    state: 'draft',
-    maxTeamMembers: 4,
-    requireXProfile: false,
-    requireLinkedinProfile: false,
-    requireGithubProfile: false,
-    requireChatgptEmail: false,
-    requireOpenaiOrgId: false,
-    requireLumaProfile: false,
-    currentApplicationTermsDocumentId: null,
-    currentWinnerTermsDocumentId: null,
-    createdByUserId: '',
-    createdAt: '',
-    updatedAt: ''
-  })
-})
-
-function applyConfigFromHackathon(hackathon: HackathonRecord) {
-  Object.assign(configForm, createHackathonFormState(hackathon))
-}
-
-watch(() => workspace.currentHackathon.value, (hackathon) => {
-  if (!hackathon) {
-    return
-  }
-
-  applyConfigFromHackathon(hackathon)
-}, {
-  immediate: true
-})
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const actor = computed(() => workspace.actor.value)
@@ -366,7 +321,7 @@ async function runMutation(action: () => Promise<void>, successTitle: string, su
   }
 }
 
-async function saveConfiguration() {
+async function saveConfiguration(configForm: HackathonFormState) {
   if (!currentHackathon.value) {
     return
   }
@@ -434,12 +389,11 @@ async function uploadHackathonImage(slot: HackathonImageSlot, file: File) {
     const formData = new FormData()
     formData.append('file', file)
 
-    const response = await $fetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/${hackathon.id}/images/${slot}`, {
+    await $fetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/${hackathon.id}/images/${slot}`, {
       method: 'POST',
       body: formData
     })
 
-    applyConfigFromHackathon(response.data)
     await workspace.refreshWorkspace()
     state.success = slot === 'background'
       ? 'Background image uploaded.'
@@ -464,11 +418,10 @@ async function removeHackathonImage(slot: HackathonImageSlot) {
   state.error = ''
 
   try {
-    const response = await $fetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/${hackathon.id}/images/${slot}`, {
+    await $fetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/${hackathon.id}/images/${slot}`, {
       method: 'DELETE'
     })
 
-    applyConfigFromHackathon(response.data)
     await workspace.refreshWorkspace()
     state.success = slot === 'background'
       ? 'Background image removed.'
@@ -793,8 +746,8 @@ async function runLifecycleAction() {
             </div>
           </AppCard>
 
-          <HackathonConfigForm
-            v-model:form="configForm"
+          <AdminHackathonCreateEditForm
+            :initial-hackathon="currentHackathon"
             :can-upload-managed-images="true"
             :is-submitting="isSavingConfig"
             :background-image-upload-pending="imageMutationState.background.pending"

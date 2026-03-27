@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { ApiDataResponse, HackathonRecord } from '~/utils/admin-workspace'
+import type {
+  ApiDataResponse,
+  HackathonFormState,
+  HackathonRecord
+} from '~/utils/admin-workspace'
 
 import {
-  canCreateHackathon,
-  createEmptyHackathonFormState,
-  createHackathonSlug,
   fromDateTimeLocalValue,
   normalizeApiError,
   toHackathonAgendaPayload
@@ -12,33 +13,16 @@ import {
 
 definePageMeta({
   layout: 'profile',
-  middleware: ['require-auth']
+  middleware: ['require-platform-admin']
 })
 
 const workspace = useAdminWorkspace()
 const toast = useToast()
 
-const form = reactive(createEmptyHackathonFormState())
-const hasManuallyEditedSlug = ref(false)
 const isSubmitting = ref(false)
 const submitError = ref('')
 
-watch(() => form.name, (value) => {
-  if (!hasManuallyEditedSlug.value) {
-    form.slug = createHackathonSlug(value)
-  }
-})
-
-watch(() => form.slug, (value) => {
-  if (value !== createHackathonSlug(form.name)) {
-    hasManuallyEditedSlug.value = true
-  }
-})
-
-const actor = computed(() => workspace.actor.value)
-const canCreate = computed(() => canCreateHackathon(actor.value))
-
-async function createHackathon() {
+async function createHackathon(form: HackathonFormState) {
   submitError.value = ''
   isSubmitting.value = true
 
@@ -90,7 +74,7 @@ async function createHackathon() {
     <AdminWorkspaceHeader
       eyebrow="Admin Workspace"
       title="Create a hackathon draft."
-      description="Platform admins can create draft hackathons here using the canonical backend configuration model. Registration remains system-driven, while later lifecycle transitions stay manual."
+      description="Create a new hackathon and fill in the details participants and judges will use. It starts as a draft so you can review everything before opening registration."
     />
 
     <AppAlert
@@ -101,28 +85,13 @@ async function createHackathon() {
       :description="workspace.session.error.value.message"
     />
 
-    <AppAlert
-      v-else-if="!canCreate"
-      color="warning"
-      variant="soft"
-      title="Platform admin access required"
-      description="Creating hackathons is reserved for platform admins."
-    />
-
     <template v-else>
-      <AppAlert
-        v-if="submitError"
-        color="error"
-        variant="soft"
-        title="Unable to create hackathon"
-        :description="submitError"
-      />
-
-      <HackathonConfigForm
-        v-model:form="form"
+      <AdminHackathonCreateEditForm
+        :auto-generate-slug="true"
+        :submit-error="submitError"
         :is-submitting="isSubmitting"
         submit-label="Create Draft Hackathon"
-        helper-text="A successful create call produces a draft hackathon. Registration still opens automatically from the configured registration window."
+        helper-text="This creates a draft hackathon. You can keep editing it before applications open."
         @submit="createHackathon"
       />
     </template>
