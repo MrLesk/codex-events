@@ -53,6 +53,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `description`
 - `background_image_url`
 - `banner_image_url`
+- `luma_event_url`
 - `city`
 - `address`
 - `registration_opens_at`
@@ -95,6 +96,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `registration_open` is system-driven by the configured registration window.
 - `submission_open` is manually activated by an admin within the configured submission window.
+- `luma_event_url` is optional because not every hackathon has a linked Luma event.
 
 ## HackathonRoleAssignment
 

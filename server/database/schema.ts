@@ -77,6 +77,7 @@ export const hackathons = sqliteTable(
     description: text('description').notNull(),
     backgroundImageUrl: text('background_image_url'),
     bannerImageUrl: text('banner_image_url'),
+    lumaEventUrl: text('luma_event_url'),
     city: text('city').notNull(),
     address: text('address').notNull(),
     registrationOpensAt: text('registration_opens_at').notNull(),
@@ -173,7 +174,7 @@ export const hackathonTermsDocuments = sqliteTable(
     id: idColumn(),
     hackathonId: text('hackathon_id')
       .notNull()
-      .references(() => hackathons.id),
+      .references(() => hackathons.id, { onDelete: 'cascade' }),
     documentType: text('document_type', { enum: hackathonTermsDocumentTypes }).notNull(),
     version: integer('version').notNull(),
     title: text('title').notNull(),

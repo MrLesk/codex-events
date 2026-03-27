@@ -34,9 +34,11 @@ describe('shared schema foundation', () => {
   })
 
   it('defines schedule and entity checks on shared tables', () => {
+    const hackathonColumns = getTableColumns(hackathons)
     const hackathonChecks = getTableConfig(hackathons).checks.map(checkItem => checkItem.name)
     const auditIndexes = getTableConfig(auditLogs).indexes.map(index => index.config.name)
 
+    expect(hackathonColumns.lumaEventUrl.name).toBe('luma_event_url')
     expect(hackathonChecks).toContain('hackathons_max_team_members_check')
     expect(hackathonChecks).toContain('hackathons_schedule_order_check')
     expect(auditIndexes).toContain('audit_logs_entity_idx')

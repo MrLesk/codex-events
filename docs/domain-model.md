@@ -39,6 +39,7 @@ Key characteristics:
 
 - Multiple hackathons can exist in parallel.
 - Each hackathon can define a background image and a banner image.
+- Each hackathon can optionally reference a Luma event URL.
 - Each hackathon has a city and address.
 - Each hackathon has its own registration window.
 - Each hackathon has its own submission window.
