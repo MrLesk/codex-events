@@ -869,6 +869,16 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         name: 'New Hackathon',
         slug: 'new-hackathon',
         description: 'New hackathon',
+        agendaItems: [
+          {
+            id: 'agenda_item_1',
+            startsAt: '2026-03-20T12:00:00.000Z',
+            endsAt: '2026-03-20T12:30:00.000Z',
+            title: 'Opening',
+            details: 'Kickoff and orientation.',
+            displayOrder: 1
+          }
+        ],
         city: 'Vienna',
         address: 'Address',
         registrationOpensAt: '2026-03-20T12:00:00.000Z',
@@ -893,6 +903,12 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         slug: 'new-hackathon',
         state: 'draft',
         createdByUserId: 'platform_admin',
+        agendaItems: [
+          expect.objectContaining({
+            id: 'agenda_item_1',
+            title: 'Opening'
+          })
+        ],
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
         requireLumaProfile: true
@@ -963,6 +979,16 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       method: 'PATCH',
       body: JSON.stringify({
         description: 'Updated description',
+        agendaItems: [
+          {
+            id: 'agenda_item_2',
+            startsAt: '2026-03-24T09:00:00.000Z',
+            endsAt: null,
+            title: 'Updated item',
+            details: null,
+            displayOrder: 1
+          }
+        ],
         city: 'Berlin',
         maxTeamMembers: 7,
         requireChatgptEmail: true,
@@ -976,6 +1002,12 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       data: {
         id: 'hackathon_patch',
         description: 'Updated description',
+        agendaItems: [
+          expect.objectContaining({
+            id: 'agenda_item_2',
+            title: 'Updated item'
+          })
+        ],
         city: 'Berlin',
         maxTeamMembers: 7,
         requireChatgptEmail: true,

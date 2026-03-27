@@ -55,6 +55,37 @@ function uploadBannerImage(event: Event) {
     target.value = ''
   }
 }
+
+function createAgendaItemId() {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
+  }
+
+  return `agenda-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
+}
+
+function nextAgendaDisplayOrder() {
+  if (form.value.agendaItems.length === 0) {
+    return 1
+  }
+
+  return Math.max(...form.value.agendaItems.map(item => item.displayOrder)) + 1
+}
+
+function addAgendaItem() {
+  form.value.agendaItems.push({
+    id: createAgendaItemId(),
+    startsAt: '',
+    endsAt: '',
+    title: '',
+    details: '',
+    displayOrder: nextAgendaDisplayOrder()
+  })
+}
+
+function removeAgendaItem(itemId: string) {
+  form.value.agendaItems = form.value.agendaItems.filter(item => item.id !== itemId)
+}
 </script>
 
 <template>
@@ -108,6 +139,108 @@ function uploadBannerImage(event: Event) {
               required
             />
           </label>
+
+          <div class="grid gap-3">
+            <div class="flex items-center justify-between gap-3">
+              <span class="text-sm font-medium text-toned">Agenda items</span>
+              <AppButton
+                type="button"
+                color="neutral"
+                variant="soft"
+                size="sm"
+                @click="addAgendaItem"
+              >
+                Add item
+              </AppButton>
+            </div>
+
+            <p class="text-xs text-muted">
+              Agenda items are structured records used for public schedule rendering and admin editing.
+            </p>
+
+            <div
+              v-if="form.agendaItems.length === 0"
+              class="rounded-xl border border-dashed border-default/80 px-4 py-3 text-sm text-muted"
+            >
+              No agenda items yet.
+            </div>
+
+            <div
+              v-for="item in form.agendaItems"
+              :key="item.id"
+              class="grid gap-3 rounded-xl border border-default/70 bg-default/30 p-4"
+            >
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-xs font-medium uppercase tracking-wide text-toned">
+                  Agenda item
+                </p>
+                <AppButton
+                  type="button"
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  @click="removeAgendaItem(item.id)"
+                >
+                  Remove
+                </AppButton>
+              </div>
+
+              <div class="grid gap-3 md:grid-cols-3">
+                <label class="grid gap-2 md:col-span-2">
+                  <span class="text-xs font-medium text-toned">Title</span>
+                  <input
+                    v-model="item.title"
+                    type="text"
+                    class="app-inset-field px-3 py-2 text-sm text-highlighted outline-none focus:border-primary"
+                    placeholder="Opening workshop"
+                    required
+                  >
+                </label>
+
+                <label class="grid gap-2">
+                  <span class="text-xs font-medium text-toned">Display order</span>
+                  <input
+                    v-model.number="item.displayOrder"
+                    type="number"
+                    min="0"
+                    class="app-inset-field px-3 py-2 text-sm text-highlighted outline-none focus:border-primary"
+                    required
+                  >
+                </label>
+              </div>
+
+              <div class="grid gap-3 md:grid-cols-2">
+                <label class="grid gap-2">
+                  <span class="text-xs font-medium text-toned">Starts at</span>
+                  <input
+                    v-model="item.startsAt"
+                    type="datetime-local"
+                    class="app-inset-field px-3 py-2 text-sm text-highlighted outline-none focus:border-primary"
+                    required
+                  >
+                </label>
+
+                <label class="grid gap-2">
+                  <span class="text-xs font-medium text-toned">Ends at</span>
+                  <input
+                    v-model="item.endsAt"
+                    type="datetime-local"
+                    class="app-inset-field px-3 py-2 text-sm text-highlighted outline-none focus:border-primary"
+                  >
+                </label>
+              </div>
+
+              <label class="grid gap-2">
+                <span class="text-xs font-medium text-toned">Details</span>
+                <textarea
+                  v-model="item.details"
+                  rows="3"
+                  class="app-inset-field px-3 py-2 text-sm text-highlighted outline-none focus:border-primary"
+                  placeholder="Optional notes for this agenda item."
+                />
+              </label>
+            </div>
+          </div>
         </div>
       </AppCard>
 

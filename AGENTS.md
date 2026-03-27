@@ -49,6 +49,14 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 - Do not include optional alternatives in canonical docs unless those alternatives are themselves part of the supported product architecture.
 - Do not add sections such as "current position" or language such as "for the first version" unless the user explicitly asks for phased planning.
 
+## Compatibility Policy (Strict)
+
+- Do not add backward-compatibility behavior unless the user explicitly requests it.
+- Do not add compatibility fallbacks, dual-read paths, or dual-write paths to support legacy shapes by default.
+- Do not preserve legacy adapters, shims, or migration glue in runtime code "just in case".
+- When replacing a model or contract, update callers to the new canonical shape directly instead of introducing temporary fallback logic.
+- If migration is required, use an explicit data migration/backfill plan rather than runtime fallback behavior.
+
 ## Working Style
 
 - Keep domain language stable and intentional.
@@ -60,6 +68,7 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 - Favor booleans, enums, and direct fields over additional entities or abstractions when the extra structure does not provide clear operational value.
 - Do not add general-purpose extensibility for hypothetical future needs unless the user explicitly asks for it.
 - Optimize for systems that are easy to understand, query, and operate at scale, even when that means rejecting more textbook modeling patterns.
+- Reject fallback-based implementations when a direct canonical implementation is possible.
 - For any code changes, run validation before handoff: at minimum `bun run test:unit` must pass locally. If tests cannot be run, explicitly report that limitation and why.
 
 <!-- BACKLOG.MD MCP GUIDELINES START -->

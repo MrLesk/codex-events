@@ -51,6 +51,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `name`
 - `slug`
 - `description`
+- `agenda_items_json`
 - `background_image_url`
 - `banner_image_url`
 - `luma_event_url`
@@ -97,6 +98,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `registration_open` is system-driven by the configured registration window.
 - `submission_open` is manually activated by an admin within the configured submission window.
 - `luma_event_url` is optional because not every hackathon has a linked Luma event.
+- `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`).
 
 ## HackathonRoleAssignment
 

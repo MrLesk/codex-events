@@ -11,6 +11,7 @@ import {
   assertHackathonSchedule,
   assertHackathonSlugAvailable,
   createHackathonBodySchema,
+  serializeHackathonAgendaItems,
   serializeHackathon
 } from '../../utils/hackathon-management'
 import { parseValidatedBody } from '../../utils/validation'
@@ -33,6 +34,7 @@ export default defineApiHandler(async (event) => {
     name: body.name,
     slug: body.slug,
     description: body.description,
+    agendaItemsJson: serializeHackathonAgendaItems(body.agendaItems),
     backgroundImageUrl: body.backgroundImageUrl ?? null,
     bannerImageUrl: body.bannerImageUrl ?? null,
     city: body.city,

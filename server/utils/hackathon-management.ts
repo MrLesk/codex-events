@@ -39,6 +39,7 @@ const slugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slugs must use lowercase letters, numbers, and hyphens only.')
 
 const nullableUrlSchema = z.string().url().nullable().optional()
+const nullableTrimmedStringSchema = z.string().trim().min(1).nullable().optional()
 
 const roleEnumSchema = z.enum(hackathonRoleTypes)
 const stateEnumSchema = z.enum(hackathonStates)
@@ -62,10 +63,54 @@ export const hackathonListQuerySchema = z.object({
   slug: z.string().trim().min(1).optional()
 })
 
+const agendaItemSchema = z.object({
+  id: z.string().trim().min(1),
+  startsAt: isoTimestampSchema,
+  endsAt: isoTimestampSchema.nullable().optional().default(null),
+  title: z.string().trim().min(1),
+  details: nullableTrimmedStringSchema.default(null),
+  displayOrder: z.coerce.number().int().min(0)
+}).superRefine((item, ctx) => {
+  if (!item.endsAt) {
+    return
+  }
+
+  const startsAt = Date.parse(item.startsAt)
+  const endsAt = Date.parse(item.endsAt)
+
+  if (endsAt < startsAt) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Agenda item end time must be on or after the start time.',
+      path: ['endsAt']
+    })
+  }
+})
+
+const agendaItemsSchema = z.array(agendaItemSchema)
+  .superRefine((items, ctx) => {
+    const ids = new Set<string>()
+
+    items.forEach((item, index) => {
+      if (!ids.has(item.id)) {
+        ids.add(item.id)
+        return
+      }
+
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Agenda item IDs must be unique.',
+        path: [index, 'id']
+      })
+    })
+  })
+  .default([])
+
 const hackathonConfigShape = {
   name: z.string().trim().min(1),
   slug: slugSchema,
   description: z.string().trim().min(1),
+  agendaItems: agendaItemsSchema,
   backgroundImageUrl: nullableUrlSchema,
   bannerImageUrl: nullableUrlSchema,
   city: z.string().trim().min(1),
@@ -88,6 +133,7 @@ export const updateHackathonBodySchema = z.object({
   name: hackathonConfigShape.name.optional(),
   slug: hackathonConfigShape.slug.optional(),
   description: hackathonConfigShape.description.optional(),
+  agendaItems: agendaItemsSchema.optional(),
   backgroundImageUrl: hackathonConfigShape.backgroundImageUrl.optional(),
   bannerImageUrl: hackathonConfigShape.bannerImageUrl.optional(),
   city: hackathonConfigShape.city.optional(),
@@ -193,6 +239,7 @@ type HackathonRoleAssignmentRecord = typeof hackathonRoleAssignments.$inferSelec
 type HackathonTermsDocumentRecord = typeof hackathonTermsDocuments.$inferSelect
 type EvaluationCriterionRecord = typeof evaluationCriteria.$inferSelect
 type PrizeRecord = typeof prizes.$inferSelect
+export type HackathonAgendaItem = z.infer<typeof agendaItemSchema>
 
 const publicHackathonStates = [
   'registration_open',
@@ -203,6 +250,26 @@ const publicHackathonStates = [
   'winners_announced',
   'completed'
 ] as const
+
+export function serializeHackathonAgendaItems(items: HackathonAgendaItem[]) {
+  return JSON.stringify(
+    [...items].sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
+  )
+}
+
+export function parseHackathonAgendaItems(value: string | null | undefined) {
+  if (!value) {
+    return []
+  }
+
+  try {
+    return agendaItemsSchema
+      .parse(JSON.parse(value))
+      .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
+  } catch {
+    return []
+  }
+}
 
 function buildHackathonListFilters(input: z.infer<typeof hackathonListQuerySchema>) {
   const filters = []
@@ -283,8 +350,13 @@ export function buildHackathonUpdatePayload(
   existingHackathon: HackathonRecord,
   patch: z.infer<typeof updateHackathonBodySchema>
 ) {
-  const normalizedPatch: z.infer<typeof updateHackathonBodySchema> = {
+  const normalizedPatch: z.infer<typeof updateHackathonBodySchema> & { agendaItemsJson?: string } = {
     ...patch
+  }
+
+  if (normalizedPatch.agendaItems !== undefined) {
+    normalizedPatch.agendaItemsJson = serializeHackathonAgendaItems(normalizedPatch.agendaItems)
+    Reflect.deleteProperty(normalizedPatch, 'agendaItems')
   }
 
   const nextSlug = patch.slug?.trim()
@@ -571,6 +643,7 @@ export function serializeHackathon(
     name: hackathon.name,
     slug: hackathon.slug,
     description: hackathon.description,
+    agendaItems: parseHackathonAgendaItems(hackathon.agendaItemsJson),
     backgroundImageUrl: hackathon.backgroundImageUrl,
     bannerImageUrl: hackathon.bannerImageUrl,
     lumaEventUrl: hackathon.lumaEventUrl,
@@ -624,6 +697,7 @@ export function serializePublicHackathon(
     name: hackathon.name,
     slug: hackathon.slug,
     description: hackathon.description,
+    agendaItems: parseHackathonAgendaItems(hackathon.agendaItemsJson),
     backgroundImageUrl: hackathon.backgroundImageUrl,
     bannerImageUrl: hackathon.bannerImageUrl,
     lumaEventUrl: hackathon.lumaEventUrl,

@@ -15,10 +15,20 @@ export interface PublicHackathonTermsReference {
   publishedAt: string
 }
 
+export interface PublicHackathonAgendaItem {
+  id: string
+  startsAt: string
+  endsAt: string | null
+  title: string
+  details: string | null
+  displayOrder: number
+}
+
 export interface PublicHackathon {
   name: string
   slug: string
   description: string
+  agendaItems: PublicHackathonAgendaItem[]
   backgroundImageUrl: string | null
   bannerImageUrl: string | null
   lumaEventUrl?: string | null

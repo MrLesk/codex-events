@@ -164,15 +164,15 @@ Operations:
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | List public hackathons | `GET /api/public/hackathons` | public or authenticated user | Returns the canonical public-visible hackathon set regardless of caller privileges, with pagination and discovery filters. |
-| Get public hackathon detail | `GET /api/public/hackathons/:slug` | public or authenticated user | Resolves by exact hackathon slug and returns canonical public-safe hackathon fields plus current terms references. |
+| Get public hackathon detail | `GET /api/public/hackathons/:slug` | public or authenticated user | Resolves by exact hackathon slug and returns canonical public-safe hackathon fields, including structured `agendaItems`, plus current terms references. |
 | List public evaluation criteria | `GET /api/public/hackathons/:slug/evaluation-criteria` | public or authenticated user | Returns the public evaluation criteria for the exact public hackathon slug. |
 | List public prizes | `GET /api/public/hackathons/:slug/prizes` | public or authenticated user | Returns the public prize definitions for the exact public hackathon slug. |
 | Get public background image | `GET /api/public/hackathons/:slug/images/background` | public or authenticated user | Returns the uploaded hackathon background image bytes for the exact public hackathon slug when configured. |
 | Get public banner image | `GET /api/public/hackathons/:slug/images/banner` | public or authenticated user | Returns the uploaded hackathon banner image bytes for the exact public hackathon slug when configured. |
 | List caller-visible hackathons | `GET /api/hackathons` | public or authenticated user | Returns hackathons visible to the caller. Authenticated admins can see draft hackathons they are allowed to manage here. |
-| Get caller-visible hackathon detail | `GET /api/hackathons/:hackathonId` | public or authenticated user | Returns canonical hackathon fields and current terms references for a hackathon visible to the caller. |
-| Create hackathon | `POST /api/hackathons` | platform admin | Creates a `draft` hackathon. |
-| Update hackathon configuration | `PATCH /api/hackathons/:hackathonId` | hackathon admin or platform admin | Updates canonical configuration fields, including schedule, images, location, team size, and required profile flags. |
+| Get caller-visible hackathon detail | `GET /api/hackathons/:hackathonId` | public or authenticated user | Returns canonical hackathon fields, including structured `agendaItems`, and current terms references for a hackathon visible to the caller. |
+| Create hackathon | `POST /api/hackathons` | platform admin | Creates a `draft` hackathon with canonical configuration, including structured `agendaItems`. |
+| Update hackathon configuration | `PATCH /api/hackathons/:hackathonId` | hackathon admin or platform admin | Updates canonical configuration fields, including schedule, structured `agendaItems`, images, location, team size, and required profile flags. |
 | Upload hackathon background image | `POST /api/hackathons/:hackathonId/images/background` | hackathon admin or platform admin | Accepts multipart upload for the background image and updates `backgroundImageUrl` to the platform-managed public image endpoint. |
 | Remove hackathon background image | `DELETE /api/hackathons/:hackathonId/images/background` | hackathon admin or platform admin | Deletes the uploaded background image object and clears `backgroundImageUrl`. |
 | Upload hackathon banner image | `POST /api/hackathons/:hackathonId/images/banner` | hackathon admin or platform admin | Accepts multipart upload for the banner image and updates `bannerImageUrl` to the platform-managed public image endpoint. |

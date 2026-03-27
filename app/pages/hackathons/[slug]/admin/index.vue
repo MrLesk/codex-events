@@ -15,7 +15,8 @@ import {
   fromDateTimeLocalValue,
   getCurrentLifecycleControl,
   getHackathonStateColor,
-  normalizeApiError
+  normalizeApiError,
+  toHackathonAgendaPayload
 } from '~/utils/admin-workspace'
 
 definePageMeta({
@@ -113,6 +114,7 @@ const configForm = reactive({
     name: '',
     slug: '',
     description: '',
+    agendaItems: [],
     backgroundImageUrl: null,
     bannerImageUrl: null,
     city: '',
@@ -352,6 +354,7 @@ async function saveConfiguration() {
         name: configForm.name,
         slug: configForm.slug,
         description: configForm.description,
+        agendaItems: toHackathonAgendaPayload(configForm.agendaItems),
         backgroundImageUrl: configForm.backgroundImageUrl || null,
         bannerImageUrl: configForm.bannerImageUrl || null,
         city: configForm.city,

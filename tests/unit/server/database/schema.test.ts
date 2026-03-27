@@ -39,6 +39,7 @@ describe('shared schema foundation', () => {
     const auditIndexes = getTableConfig(auditLogs).indexes.map(index => index.config.name)
 
     expect(hackathonColumns.lumaEventUrl.name).toBe('luma_event_url')
+    expect(hackathonColumns.agendaItemsJson.name).toBe('agenda_items_json')
     expect(hackathonChecks).toContain('hackathons_max_team_members_check')
     expect(hackathonChecks).toContain('hackathons_schedule_order_check')
     expect(auditIndexes).toContain('audit_logs_entity_idx')

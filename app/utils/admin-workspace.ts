@@ -126,6 +126,15 @@ export interface TermsDocument extends TermsReference {
   createdAt: string
 }
 
+export interface HackathonAgendaItem {
+  id: string
+  startsAt: string
+  endsAt: string | null
+  title: string
+  details: string | null
+  displayOrder: number
+}
+
 export interface AdminApplicationRecord {
   id: string
   hackathonId: string
@@ -147,6 +156,7 @@ export interface HackathonRecord {
   name: string
   slug: string
   description: string
+  agendaItems: HackathonAgendaItem[]
   backgroundImageUrl: string | null
   bannerImageUrl: string | null
   city: string
@@ -178,6 +188,7 @@ export interface HackathonFormState {
   name: string
   slug: string
   description: string
+  agendaItems: HackathonFormAgendaItem[]
   backgroundImageUrl: string
   bannerImageUrl: string
   city: string
@@ -193,6 +204,15 @@ export interface HackathonFormState {
   requireChatgptEmail: boolean
   requireOpenaiOrgId: boolean
   requireLumaProfile: boolean
+}
+
+export interface HackathonFormAgendaItem {
+  id: string
+  startsAt: string
+  endsAt: string
+  title: string
+  details: string
+  displayOrder: number
 }
 
 export interface EvaluationCriterion {
@@ -692,6 +712,7 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     name: '',
     slug: '',
     description: '',
+    agendaItems: [],
     backgroundImageUrl: '',
     bannerImageUrl: '',
     city: '',
@@ -715,6 +736,16 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
     name: hackathon.name,
     slug: hackathon.slug,
     description: hackathon.description,
+    agendaItems: [...hackathon.agendaItems]
+      .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
+      .map(item => ({
+        id: item.id,
+        startsAt: toDateTimeLocalValue(item.startsAt),
+        endsAt: toDateTimeLocalValue(item.endsAt),
+        title: item.title,
+        details: item.details ?? '',
+        displayOrder: item.displayOrder
+      })),
     backgroundImageUrl: hackathon.backgroundImageUrl ?? '',
     bannerImageUrl: hackathon.bannerImageUrl ?? '',
     city: hackathon.city,
@@ -731,6 +762,19 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
     requireOpenaiOrgId: hackathon.requireOpenaiOrgId,
     requireLumaProfile: hackathon.requireLumaProfile
   }
+}
+
+export function toHackathonAgendaPayload(items: HackathonFormAgendaItem[]): HackathonAgendaItem[] {
+  return items
+    .map(item => ({
+      id: item.id,
+      startsAt: fromDateTimeLocalValue(item.startsAt),
+      endsAt: fromDateTimeLocalValue(item.endsAt) || null,
+      title: item.title.trim(),
+      details: item.details.trim() || null,
+      displayOrder: item.displayOrder
+    }))
+    .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
 }
 
 export function toDateTimeLocalValue(value: string | null | undefined) {

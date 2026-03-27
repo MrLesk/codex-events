@@ -38,6 +38,7 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     name: 'Codex Builders',
     slug: 'codex-builders',
     description: 'Canonical admin workspace fixture.',
+    agendaItems: [],
     backgroundImageUrl: null,
     bannerImageUrl: null,
     city: 'Vienna',
@@ -226,10 +227,22 @@ describe('admin-workspace form helpers', () => {
   test('maps hackathon records into editable form state', () => {
     const hackathon = createHackathon({
       backgroundImageUrl: 'https://example.com/background.jpg',
-      bannerImageUrl: 'https://example.com/banner.jpg'
+      bannerImageUrl: 'https://example.com/banner.jpg',
+      agendaItems: [
+        {
+          id: 'agenda-item-1',
+          startsAt: '2026-03-22T11:00:00.000Z',
+          endsAt: '2026-03-22T12:00:00.000Z',
+          title: 'Opening',
+          details: 'Kickoff',
+          displayOrder: 1
+        }
+      ]
     })
 
-    expect(createHackathonFormState(hackathon)).toMatchObject({
+    const formState = createHackathonFormState(hackathon)
+
+    expect(formState).toMatchObject({
       name: hackathon.name,
       slug: hackathon.slug,
       city: hackathon.city,
@@ -240,6 +253,16 @@ describe('admin-workspace form helpers', () => {
       requireLinkedinProfile: true,
       requireGithubProfile: true
     })
+
+    expect(formState.agendaItems).toHaveLength(1)
+    expect(formState.agendaItems[0]).toMatchObject({
+      id: 'agenda-item-1',
+      title: 'Opening',
+      details: 'Kickoff',
+      displayOrder: 1
+    })
+    expect(fromDateTimeLocalValue(formState.agendaItems[0].startsAt)).toBe('2026-03-22T11:00:00.000Z')
+    expect(fromDateTimeLocalValue(formState.agendaItems[0].endsAt)).toBe('2026-03-22T12:00:00.000Z')
   })
 
   test('normalizes authenticated subjects for cache-key partitioning', () => {

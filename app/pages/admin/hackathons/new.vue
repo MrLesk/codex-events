@@ -6,7 +6,8 @@ import {
   createEmptyHackathonFormState,
   createHackathonSlug,
   fromDateTimeLocalValue,
-  normalizeApiError
+  normalizeApiError,
+  toHackathonAgendaPayload
 } from '~/utils/admin-workspace'
 
 definePageMeta({
@@ -48,6 +49,7 @@ async function createHackathon() {
         name: form.name,
         slug: form.slug,
         description: form.description,
+        agendaItems: toHackathonAgendaPayload(form.agendaItems),
         backgroundImageUrl: form.backgroundImageUrl || null,
         bannerImageUrl: form.bannerImageUrl || null,
         city: form.city,

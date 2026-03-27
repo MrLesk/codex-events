@@ -29,6 +29,7 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     name: 'Codex Judges',
     slug: 'codex-judges',
     description: 'Judge workspace fixture.',
+    agendaItems: [],
     backgroundImageUrl: null,
     bannerImageUrl: null,
     city: 'Vienna',

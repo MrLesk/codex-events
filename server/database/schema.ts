@@ -75,6 +75,7 @@ export const hackathons = sqliteTable(
     name: text('name').notNull(),
     slug: text('slug').notNull(),
     description: text('description').notNull(),
+    agendaItemsJson: text('agenda_items_json').notNull().default('[]'),
     backgroundImageUrl: text('background_image_url'),
     bannerImageUrl: text('banner_image_url'),
     lumaEventUrl: text('luma_event_url'),
