@@ -199,49 +199,12 @@ const submitConfigForm = handleSubmit(() => {
 
 <template>
   <form
-    class="space-y-8 pb-24"
+    class="space-y-10"
     @submit.prevent="submitConfigForm"
   >
-    <nav class="sticky top-20 z-20 -mb-2 overflow-x-auto rounded-lg border border-black/8 bg-white/85 p-2 backdrop-blur dark:border-white/[0.08] dark:bg-black/50">
-      <ul class="flex min-w-max items-center gap-2 text-xs font-medium text-toned">
-        <li>
-          <a
-            href="#admin-config-basics"
-            class="inline-flex rounded-md px-3 py-1.5 transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
-          >
-            Basics
-          </a>
-        </li>
-        <li>
-          <a
-            href="#admin-config-identity"
-            class="inline-flex rounded-md px-3 py-1.5 transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
-          >
-            Identity
-          </a>
-        </li>
-        <li>
-          <a
-            href="#admin-config-timeline"
-            class="inline-flex rounded-md px-3 py-1.5 transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
-          >
-            Timeline
-          </a>
-        </li>
-        <li>
-          <a
-            href="#admin-config-rules"
-            class="inline-flex rounded-md px-3 py-1.5 transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
-          >
-            Rules
-          </a>
-        </li>
-      </ul>
-    </nav>
-
     <section
       id="admin-config-basics"
-      class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]"
+      class="space-y-6"
     >
       <AppCard class="scroll-mt-28 rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
         <template #header>
@@ -390,7 +353,6 @@ const submitConfigForm = handleSubmit(() => {
                 />
               </label>
             </div>
-
           </div>
         </div>
       </AppCard>
@@ -602,7 +564,7 @@ const submitConfigForm = handleSubmit(() => {
       </AppCard>
     </section>
 
-    <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+    <section class="space-y-6">
       <AppCard
         id="admin-config-timeline"
         class="scroll-mt-28 rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36"
@@ -774,7 +736,7 @@ const submitConfigForm = handleSubmit(() => {
       </AppCard>
     </section>
 
-    <div class="sticky bottom-4 z-30 flex flex-col gap-3 rounded-xl border border-black/10 bg-white/90 px-5 py-4 shadow-lg backdrop-blur dark:border-white/[0.08] dark:bg-black/75 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex flex-col gap-4 rounded-xl border border-black/8 bg-white/75 px-5 py-5 dark:border-white/[0.08] dark:bg-black/36 sm:flex-row sm:items-center sm:justify-between">
       <p class="max-w-3xl text-sm text-muted">
         {{ helperText ?? 'Save your changes to update this hackathon.' }}
       </p>

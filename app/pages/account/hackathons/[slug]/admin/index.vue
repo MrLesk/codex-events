@@ -13,7 +13,6 @@ import {
   canMutateRoleAssignments,
   formatHackathonState,
   fromDateTimeLocalValue,
-  getCurrentLifecycleControl,
   getHackathonStateColor,
   normalizeApiError,
   toHackathonAgendaPayload
@@ -148,10 +147,6 @@ const applicationTerms = computed(() => workspace.applicationTermsVersions.data.
 const winnerTerms = computed(() => workspace.winnerTermsVersions.data.value?.data ?? [])
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
 const applications = computed(() => workspace.applications.data.value?.data ?? [])
-const assignments = computed(() => workspace.assignments.data.value?.data ?? [])
-const leaderboard = computed(() => workspace.leaderboard.data.value?.data ?? [])
-const teams = computed(() => workspace.teams.data.value ?? [])
-const noSubmissionTeams = computed(() => workspace.noSubmissionTeams.data.value?.data ?? [])
 const adminRoleAssignments = computed(() =>
   roleAssignments.value.filter(assignment => assignment.role === 'hackathon_admin')
 )
@@ -223,29 +218,6 @@ const judgeAssignableUsers = computed(() => {
     const haystack = `${user.displayName} ${user.email} ${user.id}`.toLowerCase()
     return haystack.includes(query)
   })
-})
-
-const lifecycleMetrics = computed(() => {
-  const lockedEntries = leaderboard.value.filter(entry => entry.submissionStatus === 'locked')
-
-  return {
-    submittedSubmissionCount: Math.max(teams.value.length - noSubmissionTeams.value.length, 0),
-    judgePoolCount: roleAssignments.value.filter(assignment => assignment.isInJudgePool).length,
-    lockedSubmissionCount: lockedEntries.length,
-    activeAssignmentCount: assignments.value.length,
-    lockedLeaderboardEntryCount: lockedEntries.length,
-    completedReviewCount: lockedEntries.filter(entry => entry.reviewStatus === 'judge_completed').length,
-    prizeCount: prizes.value.length,
-    hasCurrentWinnerTerms: Boolean(currentHackathon.value?.currentTerms?.winnerTerms)
-  }
-})
-
-const lifecycleControl = computed(() => {
-  if (!currentHackathon.value) {
-    return null
-  }
-
-  return getCurrentLifecycleControl(currentHackathon.value, lifecycleMetrics.value)
 })
 
 function nextDisplayOrder(items: Array<EvaluationCriterion>) {
@@ -671,17 +643,6 @@ async function setCurrentTerms(document: TermsDocument) {
   }, 'Current terms updated', 'The hackathon now references the selected terms version.')
 }
 
-async function runLifecycleAction() {
-  if (!lifecycleControl.value) {
-    return
-  }
-
-  await runMutation(async () => {
-    await $fetch(lifecycleControl.value!.endpoint, {
-      method: 'POST'
-    })
-  }, 'Lifecycle updated', `${lifecycleControl.value.label} completed successfully.`)
-}
 </script>
 
 <template>
@@ -733,7 +694,7 @@ async function runLifecycleAction() {
       />
 
       <template v-else-if="currentHackathon">
-        <section class="grid gap-6 xl:grid-cols-[1.12fr_0.88fr] xl:items-start">
+        <section class="space-y-6">
           <AdminHackathonCreateEditForm
             :initial-hackathon="currentHackathon"
             :can-upload-managed-images="true"
@@ -745,7 +706,7 @@ async function runLifecycleAction() {
             :banner-image-upload-success="imageMutationState.banner.success"
             :banner-image-upload-error="imageMutationState.banner.error"
             submit-label="Save Configuration"
-            helper-text="This workspace stays focused on setup and lifecycle controls. Day-to-day application, team, and submission operations now live in the dedicated Operations workspace."
+            helper-text="This workspace stays focused on setup controls. Day-to-day application, team, submission, and lifecycle operations now live in the dedicated Operations workspace."
             @submit="saveConfiguration"
             @upload-background-image="uploadBackgroundImage"
             @remove-background-image="removeBackgroundImage"
@@ -753,7 +714,7 @@ async function runLifecycleAction() {
             @remove-banner-image="removeBannerImage"
           />
 
-          <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none xl:sticky xl:top-24 dark:border-white/[0.08] dark:bg-black/36">
+          <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
             <template #header>
               <div class="flex flex-wrap items-center gap-3">
                 <h2 class="text-lg font-semibold text-highlighted">
@@ -768,8 +729,8 @@ async function runLifecycleAction() {
               </div>
             </template>
 
-            <div class="grid gap-4 text-sm">
-              <div class="grid gap-1 rounded-lg border border-black/8 bg-white/85 px-4 py-3 dark:border-white/[0.08] dark:bg-[#111111]">
+            <div class="grid gap-5 text-sm">
+              <div class="grid gap-1">
                 <span class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Actor</span>
                 <span class="text-base font-semibold text-highlighted">
                   {{ actor?.platformUser?.displayName ?? actor?.sessionUser?.email }}
@@ -779,7 +740,7 @@ async function runLifecycleAction() {
                 </span>
               </div>
 
-              <div class="grid gap-1 rounded-lg border border-black/8 bg-white/85 px-4 py-3 dark:border-white/[0.08] dark:bg-[#111111]">
+              <div class="grid gap-1 border-t border-black/8 pt-4 dark:border-white/[0.08]">
                 <span class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Current terms</span>
                 <span class="text-highlighted">
                   Application: {{ currentHackathon.currentTerms?.applicationTerms?.title ?? 'None selected' }}
@@ -788,43 +749,18 @@ async function runLifecycleAction() {
                   Winner: {{ currentHackathon.currentTerms?.winnerTerms?.title ?? 'None selected' }}
                 </span>
               </div>
-
-              <div
-                v-if="lifecycleControl"
-                class="grid gap-3 rounded-lg border border-black/8 px-4 py-4 dark:border-white/[0.08]"
-              >
-                <div class="space-y-1">
-                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                    Next lifecycle action
-                  </p>
-                  <h3 class="text-base font-semibold text-highlighted">
-                    {{ lifecycleControl.label }}
-                  </h3>
-                  <p class="text-sm text-toned">
-                    {{ lifecycleControl.description }}
-                  </p>
-                </div>
-
-                <AppAlert
-                  v-if="lifecycleControl.reason"
-                  color="warning"
-                  variant="soft"
-                  title="Not ready yet"
-                  :description="lifecycleControl.reason"
-                />
-
-                <AppButton
-                  :disabled="!lifecycleControl.isEnabled"
-                  color="primary"
-                  size="lg"
-                  @click="runLifecycleAction"
-                >
-                  {{ lifecycleControl.label }}
-                </AppButton>
-              </div>
             </div>
           </AppCard>
         </section>
+
+        <div class="space-y-1">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Program Rules
+          </p>
+          <h2 class="text-xl font-semibold text-highlighted">
+            Terms and Scoring
+          </h2>
+        </div>
 
         <section class="space-y-6">
           <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
@@ -1206,8 +1142,17 @@ async function runLifecycleAction() {
           </AppCard>
         </section>
 
-        <section class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr] xl:items-start">
-          <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none xl:sticky xl:top-24 dark:border-white/[0.08] dark:bg-black/36">
+        <div class="space-y-1">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Access Control
+          </p>
+          <h2 class="text-xl font-semibold text-highlighted">
+            Admins and Judges
+          </h2>
+        </div>
+
+        <section class="space-y-6">
+          <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
             <template #header>
               <div class="space-y-1">
                 <h2 class="text-lg font-semibold text-highlighted">
@@ -1446,69 +1391,6 @@ async function runLifecycleAction() {
             </div>
           </AppCard>
 
-          <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
-            <template #header>
-              <div class="space-y-1">
-                <h2 class="text-lg font-semibold text-highlighted">
-                  Readiness Signals
-                </h2>
-                <p class="text-sm text-muted">
-                  These metrics give admins enough visibility to know why the next lifecycle action is enabled or blocked without stepping into later operational tasks.
-                </p>
-              </div>
-            </template>
-
-            <div class="grid gap-4 md:grid-cols-2">
-              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  Submitted submissions
-                </p>
-                <p class="mt-2 text-3xl font-semibold text-highlighted">
-                  {{ lifecycleMetrics.submittedSubmissionCount }}
-                </p>
-              </div>
-              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  Automatic judge pool
-                </p>
-                <p class="mt-2 text-3xl font-semibold text-highlighted">
-                  {{ lifecycleMetrics.judgePoolCount }}
-                </p>
-              </div>
-              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  Locked submissions
-                </p>
-                <p class="mt-2 text-3xl font-semibold text-highlighted">
-                  {{ lifecycleMetrics.lockedSubmissionCount }}
-                </p>
-              </div>
-              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  Active assignments
-                </p>
-                <p class="mt-2 text-3xl font-semibold text-highlighted">
-                  {{ lifecycleMetrics.activeAssignmentCount }}
-                </p>
-              </div>
-              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  Completed reviews
-                </p>
-                <p class="mt-2 text-3xl font-semibold text-highlighted">
-                  {{ lifecycleMetrics.completedReviewCount }}
-                </p>
-              </div>
-              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  No-submission teams
-                </p>
-                <p class="mt-2 text-3xl font-semibold text-highlighted">
-                  {{ noSubmissionTeams.length }}
-                </p>
-              </div>
-            </div>
-          </AppCard>
         </section>
       </template>
     </AppContainer>

@@ -15,6 +15,7 @@ import {
   buildAdminOperationalTeams,
   formatHackathonState,
   getAdminSubmissionInterventionPolicy,
+  getCurrentLifecycleControl,
   normalizeApiError
 } from '~/utils/admin-workspace'
 
@@ -65,6 +66,12 @@ const pendingActionKey = ref<string | null>(null)
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
+const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
+const assignments = computed(() => workspace.assignments.data.value?.data ?? [])
+const leaderboard = computed(() => workspace.leaderboard.data.value?.data ?? [])
+const allTeams = computed(() => workspace.teams.data.value ?? [])
+const noSubmissionTeams = computed(() => workspace.noSubmissionTeams.data.value?.data ?? [])
+const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
 const headerStateLabel = computed(() =>
   currentHackathon.value ? formatHackathonState(currentHackathon.value.state).toUpperCase() : ''
 )
@@ -366,6 +373,29 @@ const actionableSummaryValue = computed(() => {
   return `${actionableTeamCount.value}`
 })
 
+const lifecycleMetrics = computed(() => {
+  const lockedEntries = leaderboard.value.filter(entry => entry.submissionStatus === 'locked')
+
+  return {
+    submittedSubmissionCount: Math.max(allTeams.value.length - noSubmissionTeams.value.length, 0),
+    judgePoolCount: roleAssignments.value.filter(assignment => assignment.isInJudgePool).length,
+    lockedSubmissionCount: lockedEntries.length,
+    activeAssignmentCount: assignments.value.length,
+    lockedLeaderboardEntryCount: lockedEntries.length,
+    completedReviewCount: lockedEntries.filter(entry => entry.reviewStatus === 'judge_completed').length,
+    prizeCount: prizes.value.length,
+    hasCurrentWinnerTerms: Boolean(currentHackathon.value?.currentTerms?.winnerTerms)
+  }
+})
+
+const lifecycleControl = computed(() => {
+  if (!currentHackathon.value) {
+    return null
+  }
+
+  return getCurrentLifecycleControl(currentHackathon.value, lifecycleMetrics.value)
+})
+
 async function refreshOperations() {
   await workspace.refreshWorkspace()
   await loadOperationsData(currentTeamPage.value)
@@ -452,6 +482,23 @@ async function disqualifySubmission(payload: {
     'The submission has been removed from competition through the admin workflow.'
   )
 }
+
+async function runLifecycleAction() {
+  if (!lifecycleControl.value) {
+    return
+  }
+
+  await runMutation(
+    'lifecycle',
+    async () => {
+      await $fetch(lifecycleControl.value!.endpoint, {
+        method: 'POST'
+      })
+    },
+    'Lifecycle updated',
+    `${lifecycleControl.value.label} completed successfully.`
+  )
+}
 </script>
 
 <template>
@@ -462,8 +509,8 @@ async function disqualifySubmission(payload: {
           eyebrow="Admin Operations"
           :title="currentHackathon ? `${currentHackathon.name} operations` : 'Hackathon operations'"
           description="Review applications, monitor teams and submission state, and run the admin-only interventions that do not belong in participant or judge workspaces."
-          :back-to="`/account/hackathons/${slug}`"
-          back-label="Back to hackathon detail"
+          back-to="/account/admin"
+          back-label="Back to admin operations"
           :state-label="headerStateLabel"
           :state-class="headerStateClass"
           :summary="workspaceSummary"
@@ -540,6 +587,54 @@ async function disqualifySubmission(payload: {
             </p>
           </div>
         </section>
+
+        <AppCard
+          v-if="lifecycleControl"
+          class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36"
+        >
+          <template #header>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold text-highlighted">
+                Next Lifecycle Action
+              </h2>
+              <p class="text-sm text-muted">
+                Execute state transitions from operations once readiness criteria are met.
+              </p>
+            </div>
+          </template>
+
+          <div class="grid gap-4">
+            <div class="space-y-1">
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                Action
+              </p>
+              <h3 class="text-base font-semibold text-highlighted">
+                {{ lifecycleControl.label }}
+              </h3>
+              <p class="text-sm text-toned">
+                {{ lifecycleControl.description }}
+              </p>
+            </div>
+
+            <AppAlert
+              v-if="lifecycleControl.reason"
+              color="warning"
+              variant="soft"
+              title="Not ready yet"
+              :description="lifecycleControl.reason"
+            />
+
+            <AppButton
+              :disabled="!lifecycleControl.isEnabled"
+              color="primary"
+              size="lg"
+              class="justify-center sm:justify-start"
+              @click="runLifecycleAction"
+            >
+              {{ lifecycleControl.label }}
+            </AppButton>
+          </div>
+        </AppCard>
 
         <AdminApplicationsReviewPanel
           :applications="applications"

@@ -4,11 +4,17 @@ import AppShellHeader from '~/components/shell/AppShellHeader.vue'
 import AppShellNavigation from '~/components/shell/AppShellNavigation.vue'
 
 const { actor, hasPlatformAccount, sidebarGroups } = useShellNavigation()
+const route = useRoute()
 
 const sidebarCollapseStorageKey = 'codex-hackathons-sidebar-collapsed'
 const isSidebarCollapsed = ref(false)
 
-const showWorkspaceSidebar = computed(() => hasPlatformAccount.value)
+const isAccountRoute = computed(() =>
+  route.path === '/account' || route.path.startsWith('/account/')
+)
+const showWorkspaceSidebar = computed(() =>
+  hasPlatformAccount.value || isAccountRoute.value
+)
 const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_identity')
 
 function toggleSidebarCollapse() {
@@ -40,8 +46,11 @@ watch(isSidebarCollapsed, (nextValue) => {
       <div class="relative flex items-stretch">
         <aside
           v-if="showWorkspaceSidebar"
-          class="hidden shrink-0 text-[#A3A3A3] transition-[width] duration-200 xl:block"
-          :class="isSidebarCollapsed ? 'w-[68px] min-w-[68px]' : 'w-[260px] min-w-[260px]'"
+          class="shrink-0 text-[#A3A3A3] transition-[width] duration-200"
+          :class="[
+            isAccountRoute ? 'block' : 'hidden xl:block',
+            isSidebarCollapsed ? 'w-[68px] min-w-[68px]' : 'w-[260px] min-w-[260px]'
+          ]"
         >
           <div
             class="fixed left-0 top-[4.5rem] z-30 flex h-[calc(100vh-4.5rem)] flex-col border-r border-black/10 bg-black/86 px-3 pb-4 pt-3 backdrop-blur-md dark:border-white/[0.08]"
