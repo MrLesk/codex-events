@@ -15,6 +15,10 @@ interface TenantConfig {
   privacyUrl: string
   actionName: string
   actionRuntime: string
+  brandingPrimaryColor: string
+  brandingPageBackgroundColor: string
+  brandingLogoUrl: string
+  brandingFaviconUrl: string
 }
 
 interface Auth0CustomDomain {
@@ -42,6 +46,15 @@ interface Auth0Client {
 
 interface Auth0TenantSettings {
   default_redirection_uri?: string | null
+}
+
+interface Auth0Branding {
+  logo_url?: string
+  favicon_url?: string
+  colors?: {
+    primary?: string
+    page_background?: string
+  }
 }
 
 interface Auth0ActionVersion {
@@ -142,7 +155,7 @@ const consentActionCode = `exports.onExecutePostLogin = async (event, api) => {
 `
 
 function getUsageMessage() {
-  return `Usage: bun tools/auth0/consent-bootstrap.ts <apply|check>
+  return `Usage: bun tools/auth0/auth0-bootstrap.ts <apply|check>
 
 Environment variables:
 - AUTH0_DOMAIN (fallback: AUTH0_TEST_DOMAIN)
@@ -157,6 +170,10 @@ Environment variables:
 - AUTH0_PRIVACY_URL (default: <AUTH0_APP_BASE_URL>/privacy-policy)
 - AUTH0_CONSENT_ACTION_NAME (default: ${defaultActionName})
 - AUTH0_CONSENT_ACTION_RUNTIME (default: ${defaultActionRuntime})
+- AUTH0_BRANDING_PRIMARY_COLOR (optional hex color, example: #1f2937)
+- AUTH0_BRANDING_PAGE_BACKGROUND_COLOR (optional hex color, example: #f8fafc)
+- AUTH0_BRANDING_LOGO_URL (optional URL)
+- AUTH0_BRANDING_FAVICON_URL (optional URL)
 `
 }
 
@@ -185,6 +202,49 @@ function normalizeHttpsUrlString(value: string, name: string) {
   }
 
   return normalized
+}
+
+function normalizeHexColor(value: string, name: string) {
+  const normalized = value.trim().toLowerCase()
+
+  if (!/^#[0-9a-f]{6}$/.test(normalized)) {
+    throw new Error(`${name} must be a 6-digit hex color in the form #rrggbb.`)
+  }
+
+  return normalized
+}
+
+function normalizeOptionalHexColor(value: string | undefined, name: string) {
+  const trimmed = value?.trim() ?? ''
+  if (!trimmed) {
+    return ''
+  }
+  return normalizeHexColor(trimmed, name)
+}
+
+function normalizeOptionalUrl(value: string | undefined) {
+  const trimmed = value?.trim() ?? ''
+  if (!trimmed) {
+    return ''
+  }
+  return normalizeUrlString(trimmed)
+}
+
+function normalizeColorForComparison(value: string | undefined) {
+  return (value ?? '').trim().toLowerCase()
+}
+
+function normalizeUrlForComparison(value: string | undefined) {
+  const trimmed = (value ?? '').trim()
+  if (!trimmed) {
+    return ''
+  }
+
+  try {
+    return normalizeUrlString(trimmed)
+  } catch {
+    return trimmed
+  }
 }
 
 function asSet(values: string[] | undefined) {
@@ -267,7 +327,14 @@ function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     termsUrl: normalizeUrlString(firstDefinedValue(environment.AUTH0_TERMS_URL, `${normalizedAppBaseUrl}/terms-and-conditions`)),
     privacyUrl: normalizeUrlString(firstDefinedValue(environment.AUTH0_PRIVACY_URL, `${normalizedAppBaseUrl}/privacy-policy`)),
     actionName: firstDefinedValue(environment.AUTH0_CONSENT_ACTION_NAME, defaultActionName),
-    actionRuntime: firstDefinedValue(environment.AUTH0_CONSENT_ACTION_RUNTIME, defaultActionRuntime)
+    actionRuntime: firstDefinedValue(environment.AUTH0_CONSENT_ACTION_RUNTIME, defaultActionRuntime),
+    brandingPrimaryColor: normalizeOptionalHexColor(environment.AUTH0_BRANDING_PRIMARY_COLOR, 'AUTH0_BRANDING_PRIMARY_COLOR'),
+    brandingPageBackgroundColor: normalizeOptionalHexColor(
+      environment.AUTH0_BRANDING_PAGE_BACKGROUND_COLOR,
+      'AUTH0_BRANDING_PAGE_BACKGROUND_COLOR'
+    ),
+    brandingLogoUrl: normalizeOptionalUrl(environment.AUTH0_BRANDING_LOGO_URL),
+    brandingFaviconUrl: normalizeOptionalUrl(environment.AUTH0_BRANDING_FAVICON_URL)
   }
 }
 
@@ -600,6 +667,89 @@ async function ensureTenantDefaultRedirection(config: TenantConfig, token: strin
   }
 }
 
+function hasRequestedBrandingConfig(config: TenantConfig) {
+  return Boolean(
+    config.brandingPrimaryColor
+    || config.brandingPageBackgroundColor
+    || config.brandingLogoUrl
+    || config.brandingFaviconUrl
+  )
+}
+
+async function getBranding(config: TenantConfig, token: string) {
+  const response = await auth0ManagementRequest(config, token, '/api/v2/branding', {
+    method: 'GET'
+  })
+  return await response.json() as Auth0Branding
+}
+
+async function ensureBranding(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  if (!hasRequestedBrandingConfig(config)) {
+    return
+  }
+
+  const expected: Auth0Branding = {}
+  if (config.brandingLogoUrl) {
+    expected.logo_url = config.brandingLogoUrl
+  }
+  if (config.brandingFaviconUrl) {
+    expected.favicon_url = config.brandingFaviconUrl
+  }
+  if (config.brandingPrimaryColor || config.brandingPageBackgroundColor) {
+    expected.colors = {}
+    if (config.brandingPrimaryColor) {
+      expected.colors.primary = config.brandingPrimaryColor
+    }
+    if (config.brandingPageBackgroundColor) {
+      expected.colors.page_background = config.brandingPageBackgroundColor
+    }
+  }
+
+  const current = await getBranding(config, token)
+  const currentPrimary = normalizeColorForComparison(current.colors?.primary)
+  const currentPageBackground = normalizeColorForComparison(current.colors?.page_background)
+  const expectedPrimary = normalizeColorForComparison(expected.colors?.primary)
+  const expectedPageBackground = normalizeColorForComparison(expected.colors?.page_background)
+  const currentLogoUrl = normalizeUrlForComparison(current.logo_url)
+  const currentFaviconUrl = normalizeUrlForComparison(current.favicon_url)
+  const expectedLogoUrl = normalizeOptionalUrl(expected.logo_url)
+  const expectedFaviconUrl = normalizeOptionalUrl(expected.favicon_url)
+
+  const primaryNeedsPatch = Boolean(expectedPrimary) && currentPrimary !== expectedPrimary
+  const pageBackgroundNeedsPatch = Boolean(expectedPageBackground) && currentPageBackground !== expectedPageBackground
+  const logoNeedsPatch = Boolean(expectedLogoUrl) && currentLogoUrl !== expectedLogoUrl
+  const faviconNeedsPatch = Boolean(expectedFaviconUrl) && currentFaviconUrl !== expectedFaviconUrl
+  const needsPatch = primaryNeedsPatch || pageBackgroundNeedsPatch || logoNeedsPatch || faviconNeedsPatch
+
+  if (mode === 'apply' && needsPatch) {
+    await auth0ManagementRequest(config, token, '/api/v2/branding', {
+      method: 'PATCH',
+      body: JSON.stringify(expected)
+    })
+    console.log('Applied: ensured Auth0 branding colors/logo/favicon.')
+  }
+
+  const verified = mode === 'apply' && needsPatch
+    ? await getBranding(config, token)
+    : current
+
+  if (expectedPrimary && normalizeColorForComparison(verified.colors?.primary) !== expectedPrimary) {
+    failures.push(`Auth0 branding primary color is ${verified.colors?.primary ?? 'unset'}, expected ${expected.colors?.primary}.`)
+  }
+
+  if (expectedPageBackground && normalizeColorForComparison(verified.colors?.page_background) !== expectedPageBackground) {
+    failures.push(`Auth0 branding page background color is ${verified.colors?.page_background ?? 'unset'}, expected ${expected.colors?.page_background}.`)
+  }
+
+  if (expectedLogoUrl && normalizeUrlForComparison(verified.logo_url) !== expectedLogoUrl) {
+    failures.push(`Auth0 branding logo_url is ${verified.logo_url ?? 'unset'}, expected ${expected.logo_url}.`)
+  }
+
+  if (expectedFaviconUrl && normalizeUrlForComparison(verified.favicon_url) !== expectedFaviconUrl) {
+    failures.push(`Auth0 branding favicon_url is ${verified.favicon_url ?? 'unset'}, expected ${expected.favicon_url}.`)
+  }
+}
+
 async function getSignupCustomText(config: TenantConfig, token: string, promptKey: SignupPromptKey) {
   const response = await auth0ManagementRequest(config, token, `/api/v2/prompts/${promptKey}/custom-text/en`, {
     method: 'GET'
@@ -858,7 +1008,7 @@ async function main() {
     const managementToken = await getManagementAccessToken(config)
     const failures: string[] = []
 
-    console.log(`Auth0 consent bootstrap mode: ${mode}`)
+    console.log(`Auth0 bootstrap mode: ${mode}`)
     console.log(`Tenant domain: ${config.tenantDomain}`)
     console.log(`Custom domain target: ${config.customDomain}`)
     console.log(`App base URL target: ${config.appBaseUrl}`)
@@ -866,6 +1016,7 @@ async function main() {
     await ensureCustomDomain(config, managementToken, mode, failures)
     await ensureClientUrls(config, managementToken, mode, failures)
     await ensureTenantDefaultRedirection(config, managementToken, mode, failures)
+    await ensureBranding(config, managementToken, mode, failures)
     await ensureSignupCustomText(config, managementToken, mode, failures)
     await ensureSignupPartials(config, managementToken, mode, failures)
     await ensureResetPasswordCustomText(config, managementToken, mode, failures)
@@ -873,14 +1024,14 @@ async function main() {
     await ensureActionBinding(config, managementToken, mode, action, failures)
 
     if (failures.length > 0) {
-      console.error('Auth0 consent bootstrap check failed:')
+      console.error('Auth0 bootstrap check failed:')
       for (const failure of failures) {
         console.error(`- ${failure}`)
       }
       process.exit(1)
     }
 
-    console.log('Auth0 consent bootstrap check passed.')
+    console.log('Auth0 bootstrap check passed.')
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     console.error(message)

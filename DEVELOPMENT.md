@@ -31,21 +31,22 @@ Local Auth0 dashboard settings:
 - Allowed Callback URLs: `http://localhost:3000/auth/callback`
 - Allowed Logout URLs: `http://localhost:3000`
 
-Auth0 consent-bootstrap automation:
+Auth0 bootstrap automation:
 
-- `bun tools/auth0/consent-bootstrap.ts apply`
-- `bun tools/auth0/consent-bootstrap.ts check`
+- `bun tools/auth0/auth0-bootstrap.ts apply`
+- `bun tools/auth0/auth0-bootstrap.ts check`
 
-These commands enforce the required signup consent configuration for the tenant:
+These commands enforce required Auth0 tenant configuration:
 
 - custom domain readiness and default assignment
+- optional Auth0 Universal Login branding sync (colors/logo/favicon) when branding env vars are set
 - signup prompt policy links and mandatory consent checkbox
 - post-login consent Action deployment and trigger binding
 - required callback/logout/origin URL inclusion on the Auth0 application
 - default login URI (`initiate_login_uri`) for password-reset return routing
 - tenant default redirection URI fallback (`default_redirection_uri`) for reset-password error states
 
-By default the script reads `NUXT_AUTH0_*` plus `AUTH0_TEST_MGMT_*`. You can override with explicit `AUTH0_*` variables (`AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_MGMT_AUDIENCE`, `AUTH0_APP_CLIENT_ID`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_LOGIN_URI`, `AUTH0_TERMS_URL`, `AUTH0_PRIVACY_URL`).
+By default the script reads `NUXT_AUTH0_*` plus `AUTH0_TEST_MGMT_*`. You can override with explicit `AUTH0_*` variables (`AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_MGMT_AUDIENCE`, `AUTH0_APP_CLIENT_ID`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_LOGIN_URI`, `AUTH0_TERMS_URL`, `AUTH0_PRIVACY_URL`, `AUTH0_BRANDING_PRIMARY_COLOR`, `AUTH0_BRANDING_PAGE_BACKGROUND_COLOR`, `AUTH0_BRANDING_LOGO_URL`, `AUTH0_BRANDING_FAVICON_URL`).
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL`/`NUXT_AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
 
 If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUTH0_*`, rename them to the `NUXT_AUTH0_*` keys above.

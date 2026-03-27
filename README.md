@@ -59,16 +59,17 @@ For your Auth0 Regular Web Application, configure callback and logout URLs for t
 
 Auth0 is responsible for authentication and identity. Platform authorization remains in the application data model, not in Auth0 roles.
 
-### Auth0 Consent Configuration Drift Control
+### Auth0 Bootstrap Configuration Drift Control
 
-The repository includes an Auth0 tenant automation command that codifies the required signup-consent configuration:
+The repository includes an Auth0 tenant automation command that codifies required Auth0 tenant configuration:
 
-- `bun tools/auth0/consent-bootstrap.ts apply`: idempotently applies required settings
-- `bun tools/auth0/consent-bootstrap.ts check`: verifies settings and exits non-zero on drift
+- `bun tools/auth0/auth0-bootstrap.ts apply`: idempotently applies required settings
+- `bun tools/auth0/auth0-bootstrap.ts check`: verifies settings and exits non-zero on drift
 
 The automation covers:
 
 - custom domain presence/readiness and primary/default status
+- optional Auth0 Universal Login branding sync (colors/logo/favicon) when branding env vars are provided
 - signup prompt links and required consent checkbox partial
 - post-login Action code/deployment for consent claims
 - post-login Action binding
