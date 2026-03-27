@@ -21,6 +21,8 @@ const emit = defineEmits<{
 }>()
 
 const draftShortlist = ref<ShortlistEntry[]>([])
+const draggedSubmissionId = ref<string | null>(null)
+const dropTargetSubmissionId = ref<string | null>(null)
 
 watch(() => props.shortlist, (entries) => {
   draftShortlist.value = entries.map(entry => ({ ...entry }))
@@ -77,6 +79,78 @@ function moveEntry(submissionId: string, direction: -1 | 1) {
     ...item,
     finalRank: index + 1
   }))
+}
+
+function reorderEntry(sourceSubmissionId: string, targetSubmissionId: string) {
+  if (!sourceSubmissionId || sourceSubmissionId === targetSubmissionId) {
+    return
+  }
+
+  const sourceIndex = draftShortlist.value.findIndex(entry => entry.submissionId === sourceSubmissionId)
+  const targetIndex = draftShortlist.value.findIndex(entry => entry.submissionId === targetSubmissionId)
+
+  if (sourceIndex < 0 || targetIndex < 0) {
+    return
+  }
+
+  const next = [...draftShortlist.value]
+  const [entry] = next.splice(sourceIndex, 1)
+
+  if (!entry) {
+    return
+  }
+
+  next.splice(targetIndex, 0, entry)
+  draftShortlist.value = next.map((item, index) => ({
+    ...item,
+    finalRank: index + 1
+  }))
+}
+
+function onDragStart(submissionId: string, event: DragEvent) {
+  draggedSubmissionId.value = submissionId
+  dropTargetSubmissionId.value = null
+
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', submissionId)
+  }
+}
+
+function onDragOver(submissionId: string) {
+  if (!draggedSubmissionId.value || draggedSubmissionId.value === submissionId) {
+    dropTargetSubmissionId.value = null
+    return
+  }
+
+  dropTargetSubmissionId.value = submissionId
+}
+
+function onDragLeave(submissionId: string) {
+  if (dropTargetSubmissionId.value === submissionId) {
+    dropTargetSubmissionId.value = null
+  }
+}
+
+function onDrop(targetSubmissionId: string, event: DragEvent) {
+  event.preventDefault()
+
+  const sourceFromEvent = event.dataTransfer?.getData('text/plain')?.trim() ?? ''
+  const sourceSubmissionId = draggedSubmissionId.value ?? sourceFromEvent
+
+  draggedSubmissionId.value = null
+  dropTargetSubmissionId.value = null
+
+  if (!sourceSubmissionId) {
+    return
+  }
+
+  reorderEntry(sourceSubmissionId, targetSubmissionId)
+}
+
+function onDragEnd() {
+  draggedSubmissionId.value = null
+  dropTargetSubmissionId.value = null
 }
 
 function resetDraft() {
@@ -216,7 +290,11 @@ function resetDraft() {
                 v-for="(entry, index) in draftShortlist"
                 :key="entry.submissionId"
                 :data-testid="`admin-competition-shortlist-${entry.submissionId}`"
-                class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
+                class="rounded-lg border border-black/8 bg-white/85 px-5 py-5 transition-colors dark:border-white/[0.08] dark:bg-[#111111]"
+                :class="dropTargetSubmissionId === entry.submissionId ? 'border-black/25 dark:border-white/[0.25]' : ''"
+                @dragover.prevent="onDragOver(entry.submissionId)"
+                @dragleave="onDragLeave(entry.submissionId)"
+                @drop="onDrop(entry.submissionId, $event)"
               >
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div class="space-y-2">
@@ -240,6 +318,18 @@ function resetDraft() {
                     <p class="text-sm text-toned">
                       Score: {{ formatScore(entry.scoreTotal) }}
                     </p>
+
+                    <button
+                      v-if="canReorderShortlist"
+                      type="button"
+                      class="rounded-md border border-black/8 bg-white px-2 py-1 text-xs font-medium text-toned transition hover:border-black/25 hover:text-highlighted dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.25]"
+                      :disabled="pendingActionKey !== null"
+                      draggable="true"
+                      @dragstart="onDragStart(entry.submissionId, $event)"
+                      @dragend="onDragEnd"
+                    >
+                      Drag
+                    </button>
 
                     <div
                       v-if="canReorderShortlist"
