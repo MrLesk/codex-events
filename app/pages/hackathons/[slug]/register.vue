@@ -156,7 +156,7 @@ if (accountActor.value?.kind === 'platform_user') {
     ownApplication.value = ownApplicationResponse.data
 
     if (ownApplication.value) {
-      await navigateTo(`/hackathons/${slug.value}`)
+      await navigateTo(`/account/hackathon/${slug.value}`)
     } else if (hackathon.value.state === 'registration_open') {
       const currentTermsResponse = await requestFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
         `/api/hackathons/${visibleHackathonId.value}/terms/current`
@@ -249,7 +249,7 @@ async function submitParticipantApplication() {
     ownApplication.value = ownApplicationResponse.data
     submissionSuccess.value = 'Application submitted.'
     applicationTermsAccepted.value = false
-    await navigateTo(`/hackathons/${slug.value}`)
+    await navigateTo(`/account/hackathon/${slug.value}`)
   } catch (error) {
     submissionError.value = normalizeParticipantApiError(error).message
   } finally {

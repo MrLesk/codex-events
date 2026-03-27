@@ -16,6 +16,7 @@ const props = defineProps<{
 }>()
 
 const hackathonHref = computed(() => `/hackathons/${props.record.hackathon.slug}`)
+const accountHackathonHref = computed(() => `/account/hackathon/${props.record.hackathon.slug}`)
 const teamsHref = computed(() => `${hackathonHref.value}/teams`)
 const teamWorkspaceHref = computed(() =>
   props.record.activeTeam ? `${teamsHref.value}/${props.record.activeTeam.id}` : null
@@ -25,22 +26,14 @@ const primaryActionHref = computed(() => {
     return teamWorkspaceHref.value
   }
 
-  if (props.record.application?.status === 'approved') {
-    return teamsHref.value
-  }
-
-  return hackathonHref.value
+  return accountHackathonHref.value
 })
 const primaryActionLabel = computed(() => {
   if (teamWorkspaceHref.value) {
     return 'Open team workspace'
   }
 
-  if (props.record.application?.status === 'approved') {
-    return 'Browse teams'
-  }
-
-  return 'Open hackathon'
+  return 'Open workspace'
 })
 const displayedTeam = computed(() => props.record.activeTeam ?? props.record.latestTeam)
 const participationStatusLabel = computed(() => formatParticipationStatusLabel(props.record))
