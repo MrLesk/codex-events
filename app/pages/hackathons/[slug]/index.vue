@@ -280,7 +280,7 @@ useSeoMeta({
       >
         <section
           v-if="descriptionHtml"
-          class="rounded-xl border border-black/8 bg-[#F7F7F8]/90 p-6 dark:border-white/[0.08] dark:bg-[#111111]/86"
+          class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
         >
           <div
             class="hackathon-markdown"
@@ -290,7 +290,7 @@ useSeoMeta({
 
         <section
           v-else
-          class="rounded-xl border border-dashed border-black/10 bg-white p-8 text-center dark:border-white/[0.08] dark:bg-[#111111]"
+          class="rounded-xl border border-dashed border-black/10 bg-white/80 p-8 text-center dark:border-white/[0.08] dark:bg-[#111111]/80"
         >
           <p class="text-[15px] font-medium text-highlighted dark:text-white">
             Overview will appear here once published.
@@ -324,7 +324,7 @@ useSeoMeta({
 
         <section
           v-if="sortedAgendaItems.length > 0"
-          class="rounded-xl border border-black/8 bg-white/70 p-6 dark:border-white/[0.08] dark:bg-black/36"
+          class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
         >
           <div class="mb-4">
             <h2 class="text-lg font-semibold text-highlighted dark:text-white">
@@ -339,7 +339,7 @@ useSeoMeta({
             <li
               v-for="item in sortedAgendaItems"
               :key="item.id"
-              class="rounded-lg border border-black/8 bg-white/80 p-4 dark:border-white/[0.08] dark:bg-black/28"
+              class="rounded-lg border border-black/8 bg-white/80 p-4 dark:border-white/[0.08] dark:bg-[#1A1A1A]/80"
             >
               <p class="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-[#8C8C8C]">
                 {{ formatAgendaWindow(item.startsAt, item.endsAt) }}

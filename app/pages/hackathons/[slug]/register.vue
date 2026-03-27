@@ -446,7 +446,7 @@ useSeoMeta({
           :description="profileIconState.error"
         />
 
-        <section class="rounded-xl border border-black/8 bg-white/90 px-4 py-4 dark:border-white/[0.08] dark:bg-[#171717]/86">
+        <section class="rounded-xl border border-black/8 bg-white/80 px-4 py-4 dark:border-white/[0.08] dark:bg-[#171717]/80">
           <div class="mb-3 flex items-center gap-2">
             <AppIcon
               name="i-lucide-image"

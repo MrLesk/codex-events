@@ -38,7 +38,7 @@ function getPodiumCup(prize: PublicPrize) {
 
 <template>
   <section
-    class="rounded-xl border border-black/8 bg-[#F7F7F8] p-6 dark:border-white/[0.08] dark:bg-[#111111]"
+    class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
     data-testid="public-hackathon-prizes"
   >
     <h2 class="mb-4 text-[16px] font-medium text-highlighted dark:text-white">

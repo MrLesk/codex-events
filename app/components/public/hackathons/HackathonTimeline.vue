@@ -113,7 +113,7 @@ const timelineEntries = computed(() => [
     <div
       v-for="entry in timelineEntries"
       :key="entry.id"
-      class="rounded-xl border border-black/8 bg-[#F7F7F8] p-6 dark:border-white/[0.08] dark:bg-[#111111]"
+      class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
     >
       <template v-if="entry.id !== 'details'">
         <h3 class="mb-4 text-[14px] font-medium text-neutral-500 dark:text-[#A3A3A3]">

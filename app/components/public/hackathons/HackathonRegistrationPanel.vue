@@ -96,7 +96,6 @@ const teamIntentOptions: Array<{
   }
 ]
 
-const isTermsDialogOpen = ref(false)
 const syncingFromModels = ref(false)
 
 const primaryProfileFields = computed(() =>
@@ -298,18 +297,6 @@ const submitReadinessText = computed(() => {
 
 const isSubmitDisabled = computed(() => props.isSubmitting || props.isSavingProfile)
 
-function openTermsDialog() {
-  if (!props.currentApplicationTerms) {
-    return
-  }
-
-  isTermsDialogOpen.value = true
-}
-
-function closeTermsDialog() {
-  isTermsDialogOpen.value = false
-}
-
 const submitApplicationForm = handleSubmit(() => {
   if (isSubmitDisabled.value || !canSubmitFromPanel.value) {
     return
@@ -415,7 +402,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
         />
 
         <template v-if="application">
-          <div class="rounded-xl border border-black/8 bg-white/90 px-4 py-4 dark:border-white/[0.08] dark:bg-[#171717]/86">
+          <div class="rounded-xl border border-black/8 bg-white/80 px-4 py-4 dark:border-white/[0.08] dark:bg-[#171717]/80">
             <div class="flex flex-wrap items-center gap-3">
               <p class="text-[14px] font-medium text-highlighted dark:text-white">
                 Application status
@@ -453,7 +440,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
 
         <template v-else-if="canRenderSubmissionForm">
           <form
-            class="space-y-4 rounded-xl border border-black/8 bg-white/90 px-4 pb-20 pt-4 dark:border-white/[0.08] dark:bg-[#171717]/86 md:pb-4"
+            class="space-y-4 rounded-xl border border-black/8 bg-white/80 px-4 pb-20 pt-4 dark:border-white/[0.08] dark:bg-[#171717]/80 md:pb-4"
             @submit.prevent="handleSubmitAttempt"
           >
             <div class="space-y-3">
@@ -726,10 +713,14 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                 I accept
                 <button
                   type="button"
-                  class="font-medium text-primary underline-offset-2 hover:underline"
-                  @click.stop.prevent="openTermsDialog"
+                  class="ml-1 inline-flex items-center gap-1 font-semibold text-sky-700 underline decoration-2 underline-offset-2 transition-colors hover:text-sky-800 dark:text-sky-300 dark:hover:text-sky-200"
+                  @click.stop.prevent="openTermsInNewTab"
                 >
                   Application Terms
+                  <AppIcon
+                    name="i-lucide-external-link"
+                    class="size-3.5"
+                  />
                 </button>.
               </span>
             </AppCheckbox>
@@ -759,7 +750,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
               Submit application
             </AppButton>
 
-            <div class="sticky bottom-0 -mx-4 border-t border-black/8 bg-white/92 px-4 py-3 backdrop-blur md:hidden dark:border-white/[0.08] dark:bg-[#171717]/90">
+            <div class="sticky bottom-0 -mx-4 border-t border-black/8 bg-white/80 px-4 py-3 backdrop-blur md:hidden dark:border-white/[0.08] dark:bg-[#171717]/80">
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
                   {{ submitReadinessText }}
@@ -789,47 +780,5 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
         </template>
       </template>
     </div>
-
-    <Teleport to="body">
-      <div
-        v-if="isTermsDialogOpen && currentApplicationTerms"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
-        role="dialog"
-        aria-modal="true"
-        :aria-label="currentTermsTitle"
-        @click.self="closeTermsDialog"
-      >
-        <div class="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-xl border border-black/10 bg-white shadow-xl dark:border-white/[0.08] dark:bg-[#111111]">
-          <div class="flex items-center justify-between border-b border-black/8 px-4 py-3 dark:border-white/[0.08]">
-            <p class="text-sm font-semibold text-highlighted dark:text-white">
-              {{ currentTermsTitle }}
-            </p>
-            <button
-              type="button"
-              class="rounded-md border border-black/10 px-2 py-1 text-xs text-neutral-600 hover:text-highlighted dark:border-white/[0.12] dark:text-[#A3A3A3] dark:hover:text-white"
-              @click="closeTermsDialog"
-            >
-              Close
-            </button>
-          </div>
-
-          <div class="max-h-[65vh] overflow-y-auto px-4 py-4">
-            <div class="whitespace-pre-wrap text-sm leading-6 text-neutral-700 dark:text-[#D4D4D4]">
-              {{ currentApplicationTerms.content }}
-            </div>
-          </div>
-
-          <div class="flex items-center justify-end border-t border-black/8 px-4 py-3 dark:border-white/[0.08]">
-            <button
-              type="button"
-              class="text-xs font-medium text-primary underline-offset-2 hover:underline"
-              @click="openTermsInNewTab"
-            >
-              Open in new tab
-            </button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
   </section>
 </template>
