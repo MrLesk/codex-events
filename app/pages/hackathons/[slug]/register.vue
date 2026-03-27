@@ -260,7 +260,12 @@ async function submitParticipantApplication() {
     ownApplication.value = ownApplicationResponse.data
     submissionSuccess.value = 'Application submitted.'
     applicationTermsAccepted.value = false
-    await navigateTo(`/account/hackathons/${slug.value}`)
+    await navigateTo({
+      path: `/account/hackathons/${slug.value}`,
+      query: {
+        notice: 'application_submitted'
+      }
+    })
   } catch (error) {
     submissionError.value = normalizeParticipantApiError(error).message
   } finally {

@@ -41,6 +41,20 @@ definePageMeta({
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
 const { actor: accountActor, status: accountActorStatus } = await useAccountLifecycleActor()
+const registrationNotice = computed(() => {
+  const notice = route.query.notice
+
+  if (typeof notice === 'string') {
+    return notice
+  }
+
+  if (Array.isArray(notice)) {
+    return notice[0] ?? ''
+  }
+
+  return ''
+})
+const showRegistrationSuccessNotice = ref(registrationNotice.value === 'application_submitted')
 
 if (!slug.value) {
   throw createError({
@@ -211,6 +225,19 @@ const descriptionHtml = computed(() => descriptionMarkdown.value ? renderMarkdow
 
 const activeSection = ref<'overview' | 'prizes' | 'judges' | 'staff' | 'team' | 'submission'>('overview')
 const canViewApprovedWorkspace = computed(() => applicationStatus.value === 'approved')
+
+onMounted(() => {
+  if (!showRegistrationSuccessNotice.value) {
+    return
+  }
+
+  const nextQuery = { ...route.query }
+  delete nextQuery.notice
+  void navigateTo({
+    path: route.path,
+    query: nextQuery
+  }, { replace: true })
+})
 
 useSeoMeta({
   title: () => `${hackathon.value.name} Workspace | Codex Hackathons`,
@@ -392,6 +419,14 @@ useSeoMeta({
       </template>
 
       <template v-else-if="accountActor?.kind === 'platform_user'">
+        <AppAlert
+          v-if="showRegistrationSuccessNotice"
+          color="success"
+          variant="soft"
+          title="Application submitted"
+          description="Your application was submitted successfully. You can track review status below."
+        />
+
         <AppAlert
           v-if="workspaceErrorMessage"
           color="error"
