@@ -30,7 +30,7 @@ const profileAvatarSrc = computed(() => {
 </script>
 
 <template>
-  <header class="fixed inset-x-0 top-0 z-40 border-b border-black/8 bg-white/90 backdrop-blur-2xl dark:border-white/[0.08] dark:bg-black/90">
+  <header class="fixed inset-x-0 top-0 z-40 border-b border-black/8 bg-white/90 backdrop-blur-2xl dark:border-white/[0.08] dark:bg-black/86">
     <div class="flex h-[4.5rem] items-center gap-4 px-6">
       <NuxtLink
         to="/"
