@@ -1,4 +1,22 @@
 <script setup lang="ts">
+import { renderMarkdown } from '~/utils/markdown'
+
+const termsMarkdown = `
+## Platform usage
+
+Access to participant, judge, and admin workflows is governed by platform account state, hackathon roles, and workflow-specific permissions.
+
+## Data and records
+
+The platform stores account, participation, and audit records required to run hackathons and preserve operational traceability.
+
+## Document acceptance
+
+Platform account provisioning references exact accepted versions of the legal documents configured in the product.
+`.trim()
+
+const termsHtml = computed(() => renderMarkdown(termsMarkdown))
+
 useSeoMeta({
   title: 'Terms and Conditions',
   description: 'Platform terms and conditions for Codex Hackathons participants and operators.'
@@ -6,46 +24,40 @@ useSeoMeta({
 </script>
 
 <template>
-  <div class="mx-auto max-w-[840px] space-y-8 px-4 pb-24 pt-4 text-foreground sm:px-6 lg:px-8">
-    <section class="space-y-3">
-      <p class="text-[11px] font-semibold uppercase tracking-[0.22em] text-neutral-500 dark:text-[#8C8C8C]">
-        Legal
-      </p>
-      <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-        Terms and Conditions
-      </h1>
-      <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-        These terms define the baseline rules for using the Codex Hackathons platform.
-      </p>
+  <div class="relative isolate pb-24">
+    <section class="relative z-10 border-b border-black/8 bg-white/52 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/56">
+      <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
+        <NuxtLink
+          to="/"
+          class="inline-flex items-center gap-2 text-[13px] font-medium text-neutral-600 transition-colors hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white"
+        >
+          <AppIcon
+            name="i-lucide-arrow-left"
+            class="size-4"
+          />
+          Back to hackathons
+        </NuxtLink>
+
+        <div class="mt-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
+          <div class="space-y-2">
+            <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+              Terms and Conditions
+            </h1>
+            <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
+              These terms define the baseline rules for using the Codex Hackathons platform.
+            </p>
+          </div>
+        </div>
+      </AppContainer>
     </section>
 
-    <section class="space-y-6 rounded-2xl border border-black/8 bg-white p-6 dark:border-white/[0.08] dark:bg-[#111111]">
-      <div class="space-y-2">
-        <h2 class="text-base font-semibold text-highlighted dark:text-white">
-          Platform usage
-        </h2>
-        <p class="text-sm leading-7 text-neutral-700 dark:text-[#A3A3A3]">
-          Access to participant, judge, and admin workflows is governed by platform account state, hackathon roles, and workflow-specific permissions.
-        </p>
-      </div>
-
-      <div class="space-y-2">
-        <h2 class="text-base font-semibold text-highlighted dark:text-white">
-          Data and records
-        </h2>
-        <p class="text-sm leading-7 text-neutral-700 dark:text-[#A3A3A3]">
-          The platform stores account, participation, and audit records required to run hackathons and preserve operational traceability.
-        </p>
-      </div>
-
-      <div class="space-y-2">
-        <h2 class="text-base font-semibold text-highlighted dark:text-white">
-          Document acceptance
-        </h2>
-        <p class="text-sm leading-7 text-neutral-700 dark:text-[#A3A3A3]">
-          Platform account provisioning references exact accepted versions of the legal documents configured in the product.
-        </p>
-      </div>
-    </section>
+    <AppContainer class="relative z-10 max-w-[68rem] space-y-6 pb-10 pt-6 sm:pb-14">
+      <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
+        <div
+          class="hackathon-markdown"
+          v-html="termsHtml"
+        />
+      </section>
+    </AppContainer>
   </div>
 </template>

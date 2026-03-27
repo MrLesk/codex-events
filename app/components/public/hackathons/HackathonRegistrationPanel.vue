@@ -106,8 +106,8 @@ const hackathonCreditProfileFields = computed(() =>
   props.profileFields.filter(field => field.key === 'chatgptEmail' || field.key === 'openaiOrgId')
 )
 
-const currentTermsTitle = computed(() => props.currentApplicationTerms?.title?.trim() || 'Application Terms')
 const maxTeamMemberHints = computed(() => Math.max(0, props.maxTeamMembers - 1))
+const applicationTermsPageHref = computed(() => `/hackathons/${props.hackathon.slug}/application-terms`)
 
 const requiredChipClass = 'rounded-full border border-amber-600/35 bg-amber-500/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 dark:border-amber-300/35 dark:bg-amber-300/12 dark:text-amber-200'
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -307,33 +307,6 @@ const submitApplicationForm = handleSubmit(() => {
 
 function handleSubmitAttempt(event?: Event) {
   submitApplicationForm(event)
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('\'', '&#39;')
-}
-
-function openTermsInNewTab() {
-  if (!props.currentApplicationTerms || !import.meta.client) {
-    return
-  }
-
-  const win = window.open('', '_blank', 'noopener,noreferrer')
-
-  if (!win) {
-    return
-  }
-
-  const title = escapeHtml(currentTermsTitle.value)
-  const content = escapeHtml(props.currentApplicationTerms.content).replaceAll('\n', '<br />')
-
-  win.document.write(`<!doctype html><html><head><meta charset="utf-8" /><title>${title}</title><style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:860px;margin:40px auto;padding:0 20px;line-height:1.55;color:#0f172a}h1{font-size:24px;margin:0 0 20px}p{margin:0}</style></head><body><h1>${title}</h1><p>${content}</p></body></html>`)
-  win.document.close()
 }
 
 function getProfileFieldType(key: HackathonProfileField['key']) {
@@ -711,17 +684,19 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
             >
               <span>
                 I accept
-                <button
-                  type="button"
+                <NuxtLink
+                  :to="applicationTermsPageHref"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   class="ml-1 inline-flex items-center gap-1 font-semibold text-sky-700 underline decoration-2 underline-offset-2 transition-colors hover:text-sky-800 dark:text-sky-300 dark:hover:text-sky-200"
-                  @click.stop.prevent="openTermsInNewTab"
+                  @click.stop
                 >
                   Application Terms
                   <AppIcon
                     name="i-lucide-external-link"
                     class="size-3.5"
                   />
-                </button>.
+                </NuxtLink>.
               </span>
             </AppCheckbox>
 
