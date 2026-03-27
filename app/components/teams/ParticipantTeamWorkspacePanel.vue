@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
+
 import type {
   TeamActionAvailability,
   TeamDetailRecord,
   TeamMemberRecord
 } from '~/utils/team-workspace'
+
+import { teamProfileFormSchema } from '~/utils/form-schemas'
+import { cloneFormValues } from '~/utils/form-values'
 
 const settings = defineModel<{
   name: string
@@ -37,6 +43,34 @@ const emit = defineEmits<{
 function isActionPending(actionKey: string) {
   return props.pendingActionKey === actionKey
 }
+
+const {
+  errors,
+  submitCount,
+  values,
+  setValues,
+  handleSubmit
+} = useForm({
+  validationSchema: toTypedSchema(teamProfileFormSchema),
+  initialValues: cloneFormValues(settings.value)
+})
+
+watch(() => settings.value, (nextSettings) => {
+  setValues(cloneFormValues(nextSettings), false)
+}, {
+  deep: true,
+  immediate: true
+})
+
+watch(values, (nextValues) => {
+  Object.assign(settings.value, cloneFormValues(nextValues))
+}, {
+  deep: true
+})
+
+const submitProfileForm = handleSubmit(() => {
+  emit('submitProfile')
+})
 </script>
 
 <template>
@@ -128,7 +162,7 @@ function isActionPending(actionKey: string) {
 
           <form
             class="space-y-4"
-            @submit.prevent="emit('submitProfile')"
+            @submit.prevent="submitProfileForm"
           >
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Team name</span>
@@ -136,9 +170,15 @@ function isActionPending(actionKey: string) {
                 v-model="settings.name"
                 type="text"
                 class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
                 :disabled="isActionPending(`update-team:${team.id}`)"
-                required
               >
+              <p
+                v-if="submitCount > 0 && errors.name"
+                class="text-xs text-error"
+              >
+                {{ errors.name }}
+              </p>
             </label>
 
             <label class="grid gap-2">
@@ -147,9 +187,15 @@ function isActionPending(actionKey: string) {
                 v-model="settings.slug"
                 type="text"
                 class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                :class="submitCount > 0 && errors.slug ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
                 :disabled="isActionPending(`update-team:${team.id}`)"
-                required
               >
+              <p
+                v-if="submitCount > 0 && errors.slug"
+                class="text-xs text-error"
+              >
+                {{ errors.slug }}
+              </p>
             </label>
 
             <AppButton

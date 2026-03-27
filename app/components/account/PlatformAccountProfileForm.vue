@@ -1,6 +1,13 @@
 <script setup lang="ts">
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
+
+import { accountProfileFormSchema } from '~/utils/form-schemas'
+import { cloneFormValues } from '~/utils/form-values'
+
 interface PlatformAccountProfileFormModel {
-  displayName: string
+  firstName: string
+  familyName: string
   xProfileUrl: string
   linkedinProfileUrl: string
   githubProfileUrl: string
@@ -26,27 +33,85 @@ withDefaults(defineProps<{
 const emit = defineEmits<{
   submit: []
 }>()
+
+const {
+  errors,
+  submitCount,
+  values,
+  setValues,
+  handleSubmit
+} = useForm({
+  validationSchema: toTypedSchema(accountProfileFormSchema),
+  initialValues: cloneFormValues(model.value)
+})
+
+watch(() => model.value, (nextModel) => {
+  setValues(cloneFormValues(nextModel), false)
+}, {
+  deep: true,
+  immediate: true
+})
+
+watch(values, (nextValues) => {
+  Object.assign(model.value, cloneFormValues(nextValues))
+}, {
+  deep: true
+})
+
+const submitProfileForm = handleSubmit(() => {
+  emit('submit')
+})
 </script>
 
 <template>
   <form
     class="space-y-5"
-    @submit.prevent="emit('submit')"
+    @submit.prevent="submitProfileForm"
   >
-    <div class="space-y-2">
-      <label
-        class="text-sm font-medium text-highlighted"
-        for="account-display-name"
-      >
-        Display name
-      </label>
-      <input
-        id="account-display-name"
-        v-model="model.displayName"
-        type="text"
-        required
-        class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
-      >
+    <div class="grid gap-4 md:grid-cols-2">
+      <div class="space-y-2">
+        <label
+          class="text-sm font-medium text-highlighted"
+          for="account-first-name"
+        >
+          First name
+        </label>
+        <input
+          id="account-first-name"
+          v-model="model.firstName"
+          type="text"
+          class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+          :class="submitCount > 0 && errors.firstName ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+        >
+        <p
+          v-if="submitCount > 0 && errors.firstName"
+          class="text-xs text-error"
+        >
+          {{ errors.firstName }}
+        </p>
+      </div>
+
+      <div class="space-y-2">
+        <label
+          class="text-sm font-medium text-highlighted"
+          for="account-family-name"
+        >
+          Family name
+        </label>
+        <input
+          id="account-family-name"
+          v-model="model.familyName"
+          type="text"
+          class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+          :class="submitCount > 0 && errors.familyName ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+        >
+        <p
+          v-if="submitCount > 0 && errors.familyName"
+          class="text-xs text-error"
+        >
+          {{ errors.familyName }}
+        </p>
+      </div>
     </div>
 
     <div class="grid gap-4 md:grid-cols-2">
@@ -60,10 +125,18 @@ const emit = defineEmits<{
         <input
           id="account-github-profile-url"
           v-model="model.githubProfileUrl"
-          type="url"
+          type="text"
+          inputmode="url"
           placeholder="https://github.com/your-name"
           class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+          :class="submitCount > 0 && errors.githubProfileUrl ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
         >
+        <p
+          v-if="submitCount > 0 && errors.githubProfileUrl"
+          class="text-xs text-error"
+        >
+          {{ errors.githubProfileUrl }}
+        </p>
       </div>
 
       <div class="space-y-2">
@@ -76,10 +149,18 @@ const emit = defineEmits<{
         <input
           id="account-linkedin-profile-url"
           v-model="model.linkedinProfileUrl"
-          type="url"
+          type="text"
+          inputmode="url"
           placeholder="https://linkedin.com/in/your-name"
           class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+          :class="submitCount > 0 && errors.linkedinProfileUrl ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
         >
+        <p
+          v-if="submitCount > 0 && errors.linkedinProfileUrl"
+          class="text-xs text-error"
+        >
+          {{ errors.linkedinProfileUrl }}
+        </p>
       </div>
     </div>
 
@@ -96,7 +177,14 @@ const emit = defineEmits<{
         type="email"
         placeholder="you@example.com"
         class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+        :class="submitCount > 0 && errors.chatgptEmail ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
       >
+      <p
+        v-if="submitCount > 0 && errors.chatgptEmail"
+        class="text-xs text-error"
+      >
+        {{ errors.chatgptEmail }}
+      </p>
     </div>
 
     <div class="space-y-2">
@@ -112,7 +200,14 @@ const emit = defineEmits<{
         type="text"
         placeholder="org_1234567890"
         class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+        :class="submitCount > 0 && errors.openaiOrgId ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
       >
+      <p
+        v-if="submitCount > 0 && errors.openaiOrgId"
+        class="text-xs text-error"
+      >
+        {{ errors.openaiOrgId }}
+      </p>
     </div>
 
     <div class="space-y-2">
@@ -128,7 +223,14 @@ const emit = defineEmits<{
         type="text"
         placeholder="your-luma-name"
         class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+        :class="submitCount > 0 && errors.lumaUsername ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
       >
+      <p
+        v-if="submitCount > 0 && errors.lumaUsername"
+        class="text-xs text-error"
+      >
+        {{ errors.lumaUsername }}
+      </p>
     </div>
 
     <div class="space-y-2">
@@ -141,10 +243,18 @@ const emit = defineEmits<{
       <input
         id="account-x-profile-url"
         v-model="model.xProfileUrl"
-        type="url"
+        type="text"
+        inputmode="url"
         placeholder="https://x.com/your-name"
         class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned outline-none transition focus:border-primary"
+        :class="submitCount > 0 && errors.xProfileUrl ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
       >
+      <p
+        v-if="submitCount > 0 && errors.xProfileUrl"
+        class="text-xs text-error"
+      >
+        {{ errors.xProfileUrl }}
+      </p>
     </div>
 
     <AppAlert

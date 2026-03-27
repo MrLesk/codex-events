@@ -1,9 +1,15 @@
 <script setup lang="ts">
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
+
 import type {
   TeamActionAvailability,
   TeamDetailRecord,
   TeamDirectoryEntry
 } from '~/utils/team-workspace'
+
+import { teamDirectoryCreateFormSchema } from '~/utils/form-schemas'
+import { cloneFormValues } from '~/utils/form-values'
 
 const form = defineModel<{
   name: string
@@ -41,6 +47,34 @@ const emit = defineEmits<{
 function isActionPending(actionKey: string) {
   return props.pendingActionKey === actionKey
 }
+
+const {
+  errors,
+  submitCount,
+  values,
+  setValues,
+  handleSubmit
+} = useForm({
+  validationSchema: toTypedSchema(teamDirectoryCreateFormSchema),
+  initialValues: cloneFormValues(form.value)
+})
+
+watch(() => form.value, (nextForm) => {
+  setValues(cloneFormValues(nextForm), false)
+}, {
+  deep: true,
+  immediate: true
+})
+
+watch(values, (nextValues) => {
+  Object.assign(form.value, cloneFormValues(nextValues))
+}, {
+  deep: true
+})
+
+const submitCreateForm = handleSubmit(() => {
+  emit('submitCreate')
+})
 </script>
 
 <template>
@@ -113,18 +147,24 @@ function isActionPending(actionKey: string) {
 
           <form
             class="space-y-4"
-            @submit.prevent="emit('submitCreate')"
+            @submit.prevent="submitCreateForm"
           >
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Team name</span>
               <input
                 v-model="form.name"
                 type="text"
-                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
                 placeholder="North Star Builders"
                 :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
-                required
               >
+              <p
+                v-if="submitCount > 0 && errors.name"
+                class="text-xs text-error"
+              >
+                {{ errors.name }}
+              </p>
             </label>
 
             <label class="grid gap-2">
@@ -132,11 +172,17 @@ function isActionPending(actionKey: string) {
               <input
                 v-model="form.slug"
                 type="text"
-                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                :class="submitCount > 0 && errors.slug ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
                 placeholder="north-star-builders"
                 :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
-                required
               >
+              <p
+                v-if="submitCount > 0 && errors.slug"
+                class="text-xs text-error"
+              >
+                {{ errors.slug }}
+              </p>
             </label>
 
             <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">

@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
+
 import type {
   TeamSubmissionActionAvailability,
   TeamSubmissionRecord
@@ -10,6 +13,8 @@ import {
   getTeamSubmissionStatusColor,
   getTeamSubmissionWorkspaceStatus
 } from '~/utils/team-submission'
+import { teamSubmissionFormSchema } from '~/utils/form-schemas'
+import { cloneFormValues } from '~/utils/form-values'
 
 const form = defineModel<{
   projectName: string
@@ -68,6 +73,39 @@ const isWithdrawPending = computed(() => Boolean(withdrawActionKey.value && isAc
 function isActionPending(actionKey: string) {
   return props.pendingActionKey === actionKey
 }
+
+const {
+  errors,
+  submitCount,
+  values,
+  setValues,
+  handleSubmit
+} = useForm({
+  validationSchema: toTypedSchema(teamSubmissionFormSchema),
+  initialValues: cloneFormValues(form.value)
+})
+
+watch(() => form.value, (nextForm) => {
+  setValues(cloneFormValues(nextForm), false)
+}, {
+  deep: true,
+  immediate: true
+})
+
+watch(values, (nextValues) => {
+  Object.assign(form.value, cloneFormValues(nextValues))
+}, {
+  deep: true
+})
+
+const submitSubmissionForm = handleSubmit(() => {
+  if (props.submission) {
+    emit('saveChanges')
+    return
+  }
+
+  emit('createDraft')
+})
 </script>
 
 <template>
@@ -215,7 +253,7 @@ function isActionPending(actionKey: string) {
 
           <form
             class="mt-5 space-y-4"
-            @submit.prevent="submission ? emit('saveChanges') : emit('createDraft')"
+            @submit.prevent="submitSubmissionForm"
           >
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Project name</span>
@@ -225,6 +263,12 @@ function isActionPending(actionKey: string) {
                 class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
               >
+              <p
+                v-if="submitCount > 0 && errors.projectName"
+                class="text-xs text-error"
+              >
+                {{ errors.projectName }}
+              </p>
             </label>
 
             <label class="grid gap-2">
@@ -234,6 +278,12 @@ function isActionPending(actionKey: string) {
                 class="min-h-32 rounded-2xl border border-default bg-elevated px-4 py-3 text-sm leading-7 text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
                 :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
               />
+              <p
+                v-if="submitCount > 0 && errors.summary"
+                class="text-xs text-error"
+              >
+                {{ errors.summary }}
+              </p>
             </label>
 
             <div class="grid gap-4 lg:grid-cols-2">
@@ -241,20 +291,36 @@ function isActionPending(actionKey: string) {
                 <span class="text-sm font-medium text-toned">Repository URL</span>
                 <input
                   v-model="form.repositoryUrl"
-                  type="url"
+                  type="text"
+                  inputmode="url"
                   class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                  :class="submitCount > 0 && errors.repositoryUrl ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
                   :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
                 >
+                <p
+                  v-if="submitCount > 0 && errors.repositoryUrl"
+                  class="text-xs text-error"
+                >
+                  {{ errors.repositoryUrl }}
+                </p>
               </label>
 
               <label class="grid gap-2">
                 <span class="text-sm font-medium text-toned">Demo URL</span>
                 <input
                   v-model="form.demoUrl"
-                  type="url"
+                  type="text"
+                  inputmode="url"
                   class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                  :class="submitCount > 0 && errors.demoUrl ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
                   :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
                 >
+                <p
+                  v-if="submitCount > 0 && errors.demoUrl"
+                  class="text-xs text-error"
+                >
+                  {{ errors.demoUrl }}
+                </p>
               </label>
             </div>
 

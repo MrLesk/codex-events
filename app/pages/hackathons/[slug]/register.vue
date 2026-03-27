@@ -16,6 +16,7 @@ import HackathonRegistrationPanel from '~/components/public/hackathons/Hackathon
 import {
   createParticipantTeamMemberHintRows,
   getParticipantApplicationSubmissionPolicy,
+  normalizeParticipantProfileUrl,
   listHackathonProfileFields,
   normalizeParticipantApiError,
   normalizeParticipantTeamMemberHintsForSubmission
@@ -28,7 +29,7 @@ definePageMeta({
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
-const { actor: accountActor, status: accountActorStatus } = await useAccountLifecycleActor()
+const { actor: accountActor, status: accountActorStatus, refresh: refreshAccountActor } = await useAccountLifecycleActor()
 
 if (!slug.value) {
   throw createError({
@@ -97,7 +98,8 @@ const detailSummary = computed(() => [
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
 const profileForm = reactive({
-  displayName: '',
+  firstName: '',
+  familyName: '',
   xProfileUrl: '',
   linkedinProfileUrl: '',
   githubProfileUrl: '',
@@ -105,6 +107,12 @@ const profileForm = reactive({
   openaiOrgId: '',
   lumaUsername: ''
 })
+const profileIconState = reactive({
+  uploadPending: false,
+  success: '',
+  error: ''
+})
+const profileIconInput = ref<HTMLInputElement | null>(null)
 const isSavingProfile = ref(false)
 const profileSaveError = ref('')
 const ownApplication = ref<ParticipantApplicationRecord | null>(null)
@@ -120,7 +128,8 @@ watch(() => accountActor.value, (actor) => {
     return
   }
 
-  profileForm.displayName = actor.platformUser.displayName
+  profileForm.firstName = actor.platformUser.firstName
+  profileForm.familyName = actor.platformUser.familyName
   profileForm.xProfileUrl = actor.platformUser.xProfileUrl ?? ''
   profileForm.linkedinProfileUrl = actor.platformUser.linkedinProfileUrl ?? ''
   profileForm.githubProfileUrl = actor.platformUser.githubProfileUrl ?? ''
@@ -156,7 +165,7 @@ if (accountActor.value?.kind === 'platform_user') {
     ownApplication.value = ownApplicationResponse.data
 
     if (ownApplication.value) {
-      await navigateTo(`/account/hackathon/${slug.value}`)
+      await navigateTo(`/account/hackathons/${slug.value}`)
     } else if (hackathon.value.state === 'registration_open') {
       const currentTermsResponse = await requestFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
         `/api/hackathons/${visibleHackathonId.value}/terms/current`
@@ -214,15 +223,17 @@ async function submitParticipantApplication() {
     await $fetch('/api/account', {
       method: 'PATCH',
       body: {
-        displayName: profileForm.displayName,
-        xProfileUrl: profileForm.xProfileUrl,
-        linkedinProfileUrl: profileForm.linkedinProfileUrl,
-        githubProfileUrl: profileForm.githubProfileUrl,
+        firstName: profileForm.firstName,
+        familyName: profileForm.familyName,
+        xProfileUrl: normalizeParticipantProfileUrl(profileForm.xProfileUrl),
+        linkedinProfileUrl: normalizeParticipantProfileUrl(profileForm.linkedinProfileUrl),
+        githubProfileUrl: normalizeParticipantProfileUrl(profileForm.githubProfileUrl),
         chatgptEmail: profileForm.chatgptEmail,
         openaiOrgId: profileForm.openaiOrgId,
         lumaUsername: profileForm.lumaUsername
       }
     })
+    await refreshAccountActor()
   } catch (error) {
     profileSaveError.value = normalizeParticipantApiError(error).message
     isSubmitting.value = false
@@ -249,13 +260,80 @@ async function submitParticipantApplication() {
     ownApplication.value = ownApplicationResponse.data
     submissionSuccess.value = 'Application submitted.'
     applicationTermsAccepted.value = false
-    await navigateTo(`/account/hackathon/${slug.value}`)
+    await navigateTo(`/account/hackathons/${slug.value}`)
   } catch (error) {
     submissionError.value = normalizeParticipantApiError(error).message
   } finally {
     isSubmitting.value = false
     isSavingProfile.value = false
   }
+}
+
+const profileIconSrc = computed(() => {
+  if (accountActor.value?.kind !== 'platform_user') {
+    return undefined
+  }
+
+  const version = accountActor.value.platformUser.profileIconUpdatedAt
+
+  if (!version) {
+    return undefined
+  }
+
+  return `/api/account/profile-icon?v=${encodeURIComponent(version)}`
+})
+
+const profileIconAlt = computed(() => {
+  if (accountActor.value?.kind !== 'platform_user') {
+    return 'User'
+  }
+
+  const composedName = `${profileForm.firstName.trim()} ${profileForm.familyName.trim()}`.trim()
+  return composedName || accountActor.value.platformUser.displayName
+})
+
+async function uploadProfileIcon(event: Event) {
+  const target = event.target as HTMLInputElement | null
+  const file = target?.files?.item(0) ?? null
+
+  if (!file) {
+    return
+  }
+
+  profileIconState.uploadPending = true
+  profileIconState.success = ''
+  profileIconState.error = ''
+
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    await $fetch('/api/account/profile-icon', {
+      method: 'POST',
+      body: formData
+    })
+
+    await refreshAccountActor()
+    profileIconState.success = 'Profile icon updated.'
+  } catch (error) {
+    profileIconState.error = error instanceof Error
+      ? error.message
+      : 'Unable to upload profile icon.'
+  } finally {
+    if (target) {
+      target.value = ''
+    }
+
+    profileIconState.uploadPending = false
+  }
+}
+
+function promptProfileIconUpload() {
+  if (profileIconState.uploadPending) {
+    return
+  }
+
+  profileIconInput.value?.click()
 }
 
 useSeoMeta({
@@ -280,7 +358,7 @@ useSeoMeta({
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.22),transparent_46%)] dark:bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.10),transparent_48%)]" />
     </div>
 
-    <section class="relative z-10 border-b border-black/8 bg-white/42 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/48">
+    <section class="relative z-10 border-b border-black/8 bg-white/52 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/56">
       <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
         <section class="pb-0">
           <NuxtLink
@@ -301,7 +379,7 @@ useSeoMeta({
                   data-testid="public-hackathon-register-title"
                   class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white"
                 >
-                  {{ hackathon.name }} - {{ hackathon.city }}
+                  {{ hackathon.name }}
                 </h1>
                 <span
                   class="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider"
@@ -353,28 +431,91 @@ useSeoMeta({
         />
       </template>
 
-      <HackathonRegistrationPanel
-        v-else-if="accountActor?.kind === 'platform_user'"
-        v-model:terms-accepted="applicationTermsAccepted"
-        v-model:team-intent="registrationTeamIntent"
-        v-model:team-member-hints="registrationTeamMembers"
-        v-model:profile-form="profileForm"
-        :hackathon="hackathon"
-        :application="ownApplication"
-        :current-application-terms="currentApplicationTerms"
-        :profile-fields="visibleProfileFields"
-        :missing-profile-fields="missingRequiredProfileFields"
-        :submission-policy="participantSubmissionPolicy"
-        :teams-href="teamsHref"
-        :max-team-members="hackathon.maxTeamMembers"
-        :is-submitting="isSubmitting"
-        :is-saving-profile="isSavingProfile"
-        :profile-error="profileSaveError"
-        :submission-error="submissionError"
-        :submission-success="submissionSuccess"
-        :workspace-error-message="workspaceErrorMessage"
-        @submit-application="submitParticipantApplication"
-      />
+      <template v-else-if="accountActor?.kind === 'platform_user'">
+        <AppAlert
+          v-if="profileIconState.success"
+          color="success"
+          variant="soft"
+          :description="profileIconState.success"
+        />
+
+        <AppAlert
+          v-if="profileIconState.error"
+          color="error"
+          variant="soft"
+          :description="profileIconState.error"
+        />
+
+        <section class="rounded-xl border border-black/8 bg-white/90 px-4 py-4 dark:border-white/[0.08] dark:bg-[#171717]/86">
+          <div class="mb-3 flex items-center gap-2">
+            <AppIcon
+              name="i-lucide-image"
+              class="size-4 text-dimmed"
+            />
+            <p class="text-sm font-semibold text-highlighted dark:text-white">
+              Profile icon
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-4">
+            <button
+              type="button"
+              class="group relative rounded-full transition-opacity hover:opacity-95"
+              :disabled="profileIconState.uploadPending"
+              aria-label="Edit profile icon"
+              @click="promptProfileIconUpload"
+            >
+              <AppAvatar
+                :src="profileIconSrc"
+                :alt="profileIconAlt"
+                size="3xl"
+                fallback="icon"
+              />
+              <span class="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                <AppIcon
+                  name="i-lucide-pencil"
+                  class="size-4 text-white"
+                />
+              </span>
+            </button>
+
+            <div class="space-y-2">
+              <input
+                ref="profileIconInput"
+                class="sr-only"
+                type="file"
+                accept="image/jpeg,image/png"
+                :disabled="profileIconState.uploadPending"
+                @change="uploadProfileIcon"
+              >
+              <p class="text-xs text-neutral-500 dark:text-[#8C8C8C]">
+                JPG/PNG up to 1mb
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <HackathonRegistrationPanel
+          v-model:terms-accepted="applicationTermsAccepted"
+          v-model:team-intent="registrationTeamIntent"
+          v-model:team-member-hints="registrationTeamMembers"
+          v-model:profile-form="profileForm"
+          :hackathon="hackathon"
+          :application="ownApplication"
+          :current-application-terms="currentApplicationTerms"
+          :profile-fields="visibleProfileFields"
+          :submission-policy="participantSubmissionPolicy"
+          :teams-href="teamsHref"
+          :max-team-members="hackathon.maxTeamMembers"
+          :is-submitting="isSubmitting"
+          :is-saving-profile="isSavingProfile"
+          :profile-error="profileSaveError"
+          :submission-error="submissionError"
+          :submission-success="submissionSuccess"
+          :workspace-error-message="workspaceErrorMessage"
+          @submit-application="submitParticipantApplication"
+        />
+      </template>
     </AppContainer>
   </div>
 </template>

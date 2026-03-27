@@ -166,7 +166,7 @@ useSeoMeta({
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.22),transparent_46%)] dark:bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.10),transparent_48%)]" />
     </div>
 
-    <section class="relative z-10 border-b border-black/8 bg-white/42 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/48">
+    <section class="relative z-10 border-b border-black/8 bg-white/52 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/56">
       <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
         <NuxtLink
           to="/"
@@ -280,7 +280,7 @@ useSeoMeta({
       >
         <section
           v-if="descriptionHtml"
-          class="rounded-xl border border-black/8 bg-[#F7F7F8] p-6 dark:border-white/[0.08] dark:bg-[#111111]"
+          class="rounded-xl border border-black/8 bg-[#F7F7F8]/90 p-6 dark:border-white/[0.08] dark:bg-[#111111]/86"
         >
           <div
             class="hackathon-markdown"

@@ -36,7 +36,7 @@ watch(isSidebarCollapsed, (nextValue) => {
   <div class="flex h-screen flex-col overflow-hidden text-foreground">
     <AppShellHeader />
 
-    <div class="min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+    <div class="min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-none">
       <div class="relative flex min-h-0 flex-1 items-stretch">
         <aside
           v-if="showWorkspaceSidebar"
@@ -47,7 +47,7 @@ watch(isSidebarCollapsed, (nextValue) => {
             class="fixed left-0 top-[4.5rem] z-30 flex h-[calc(100vh-4.5rem)] flex-col border-r border-white/[0.08] bg-black px-3 pb-4 pt-3"
             :class="isSidebarCollapsed ? 'w-[68px]' : 'w-[260px]'"
           >
-            <div class="min-h-0 flex-1 overflow-y-auto">
+            <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-none">
               <AppShellNavigation
                 :groups="sidebarGroups"
                 :collapsed="isSidebarCollapsed"

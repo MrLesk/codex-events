@@ -1,5 +1,11 @@
 <script setup lang="ts">
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
+
 import type { HackathonFormState } from '~/utils/admin-workspace'
+
+import { hackathonConfigFormSchema } from '~/utils/form-schemas'
+import { cloneFormValues } from '~/utils/form-values'
 
 const form = defineModel<HackathonFormState>('form', {
   required: true
@@ -86,15 +92,51 @@ function addAgendaItem() {
 function removeAgendaItem(itemId: string) {
   form.value.agendaItems = form.value.agendaItems.filter(item => item.id !== itemId)
 }
+
+const {
+  errors,
+  submitCount,
+  values,
+  setValues,
+  handleSubmit
+} = useForm({
+  validationSchema: toTypedSchema(hackathonConfigFormSchema),
+  initialValues: cloneFormValues(form.value)
+})
+
+watch(() => form.value, (nextForm) => {
+  setValues(cloneFormValues(nextForm), false)
+}, {
+  deep: true,
+  immediate: true
+})
+
+watch(values, (nextValues) => {
+  Object.assign(form.value, cloneFormValues(nextValues))
+}, {
+  deep: true
+})
+
+const validationErrorMessages = computed(() => {
+  if (submitCount.value === 0) {
+    return []
+  }
+
+  return [...new Set(Object.values(errors.value).filter((value): value is string => Boolean(value)))]
+})
+
+const submitConfigForm = handleSubmit(() => {
+  emit('submit')
+})
 </script>
 
 <template>
   <form
     class="space-y-8"
-    @submit.prevent="emit('submit')"
+    @submit.prevent="submitConfigForm"
   >
     <section class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-      <AppCard class="border border-default/70 bg-elevated/90">
+      <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -112,7 +154,7 @@ function removeAgendaItem(itemId: string) {
             <input
               v-model="form.name"
               type="text"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               placeholder="Codex Spring Builders 2026"
               required
             >
@@ -123,7 +165,7 @@ function removeAgendaItem(itemId: string) {
             <input
               v-model="form.slug"
               type="text"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               placeholder="codex-spring-builders-2026"
               required
             >
@@ -134,7 +176,7 @@ function removeAgendaItem(itemId: string) {
             <textarea
               v-model="form.description"
               rows="6"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               placeholder="Describe the event, focus areas, and expectations for participants."
               required
             />
@@ -160,7 +202,7 @@ function removeAgendaItem(itemId: string) {
 
             <div
               v-if="form.agendaItems.length === 0"
-              class="rounded-xl border border-dashed border-default/80 px-4 py-3 text-sm text-muted"
+              class="rounded-xl border border-dashed border-black/10 px-4 py-3 text-sm text-muted dark:border-white/[0.08]"
             >
               No agenda items yet.
             </div>
@@ -168,7 +210,7 @@ function removeAgendaItem(itemId: string) {
             <div
               v-for="item in form.agendaItems"
               :key="item.id"
-              class="grid gap-3 rounded-xl border border-default/70 bg-default/30 p-4"
+              class="grid gap-3 rounded-lg border border-black/8 p-4 dark:border-white/[0.08]"
             >
               <div class="flex items-center justify-between gap-3">
                 <p class="text-xs font-medium uppercase tracking-wide text-toned">
@@ -191,7 +233,7 @@ function removeAgendaItem(itemId: string) {
                   <input
                     v-model="item.title"
                     type="text"
-                    class="app-inset-field px-3 py-2 text-sm text-highlighted outline-none focus:border-primary"
+                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
                     placeholder="Opening workshop"
                     required
                   >
@@ -203,7 +245,7 @@ function removeAgendaItem(itemId: string) {
                     v-model.number="item.displayOrder"
                     type="number"
                     min="0"
-                    class="app-inset-field px-3 py-2 text-sm text-highlighted outline-none focus:border-primary"
+                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
                     required
                   >
                 </label>
@@ -215,7 +257,7 @@ function removeAgendaItem(itemId: string) {
                   <input
                     v-model="item.startsAt"
                     type="datetime-local"
-                    class="app-inset-field px-3 py-2 text-sm text-highlighted outline-none focus:border-primary"
+                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
                     required
                   >
                 </label>
@@ -225,7 +267,7 @@ function removeAgendaItem(itemId: string) {
                   <input
                     v-model="item.endsAt"
                     type="datetime-local"
-                    class="app-inset-field px-3 py-2 text-sm text-highlighted outline-none focus:border-primary"
+                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
                   >
                 </label>
               </div>
@@ -235,7 +277,7 @@ function removeAgendaItem(itemId: string) {
                 <textarea
                   v-model="item.details"
                   rows="3"
-                  class="app-inset-field px-3 py-2 text-sm text-highlighted outline-none focus:border-primary"
+                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
                   placeholder="Optional notes for this agenda item."
                 />
               </label>
@@ -244,7 +286,7 @@ function removeAgendaItem(itemId: string) {
         </div>
       </AppCard>
 
-      <AppCard class="border border-default/70 bg-elevated/90">
+      <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -262,7 +304,7 @@ function removeAgendaItem(itemId: string) {
             <input
               v-model="form.city"
               type="text"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               placeholder="Vienna"
               required
             >
@@ -273,7 +315,7 @@ function removeAgendaItem(itemId: string) {
             <input
               v-model="form.address"
               type="text"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               placeholder="Operngasse 20, 1040 Vienna"
               required
             >
@@ -284,7 +326,7 @@ function removeAgendaItem(itemId: string) {
             <input
               v-model="form.backgroundImageUrl"
               type="url"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               placeholder="https://images.example.com/background.jpg"
             >
 
@@ -295,7 +337,7 @@ function removeAgendaItem(itemId: string) {
               <input
                 type="file"
                 accept="image/jpeg,image/png"
-                class="block w-full text-sm text-toned file:mr-3 file:rounded-md file:border file:border-default file:bg-elevated file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-highlighted"
+                class="block w-full text-sm text-toned file:mr-3 file:rounded-md file:border file:border-black/10 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-highlighted dark:file:border-white/[0.12] dark:file:bg-[#111111]"
                 :disabled="props.backgroundImageUploadPending"
                 @change="uploadBackgroundImage"
               >
@@ -330,7 +372,7 @@ function removeAgendaItem(itemId: string) {
             <input
               v-model="form.bannerImageUrl"
               type="url"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               placeholder="https://images.example.com/banner.jpg"
             >
 
@@ -341,7 +383,7 @@ function removeAgendaItem(itemId: string) {
               <input
                 type="file"
                 accept="image/jpeg,image/png"
-                class="block w-full text-sm text-toned file:mr-3 file:rounded-md file:border file:border-default file:bg-elevated file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-highlighted"
+                class="block w-full text-sm text-toned file:mr-3 file:rounded-md file:border file:border-black/10 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-highlighted dark:file:border-white/[0.12] dark:file:bg-[#111111]"
                 :disabled="props.bannerImageUploadPending"
                 @change="uploadBannerImage"
               >
@@ -375,7 +417,7 @@ function removeAgendaItem(itemId: string) {
     </section>
 
     <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-      <AppCard class="border border-default/70 bg-elevated/90">
+      <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -393,7 +435,7 @@ function removeAgendaItem(itemId: string) {
             <input
               v-model="form.registrationOpensAt"
               type="datetime-local"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               required
             >
           </label>
@@ -403,7 +445,7 @@ function removeAgendaItem(itemId: string) {
             <input
               v-model="form.registrationClosesAt"
               type="datetime-local"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               required
             >
           </label>
@@ -413,7 +455,7 @@ function removeAgendaItem(itemId: string) {
             <input
               v-model="form.submissionOpensAt"
               type="datetime-local"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               required
             >
           </label>
@@ -423,14 +465,14 @@ function removeAgendaItem(itemId: string) {
             <input
               v-model="form.submissionClosesAt"
               type="datetime-local"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               required
             >
           </label>
         </div>
       </AppCard>
 
-      <AppCard class="border border-default/70 bg-elevated/90">
+      <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -449,62 +491,62 @@ function removeAgendaItem(itemId: string) {
               v-model.number="form.maxTeamMembers"
               type="number"
               min="1"
-              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               required
             >
           </label>
 
           <div class="grid gap-3">
-            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.requireXProfile"
                 type="checkbox"
-                class="size-4 rounded border-default"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
               Require X profile for applications
             </label>
 
-            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.requireLinkedinProfile"
                 type="checkbox"
-                class="size-4 rounded border-default"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
               Require LinkedIn profile for applications
             </label>
 
-            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.requireGithubProfile"
                 type="checkbox"
-                class="size-4 rounded border-default"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
               Require GitHub profile for applications
             </label>
 
-            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.requireChatgptEmail"
                 type="checkbox"
-                class="size-4 rounded border-default"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
               Require ChatGPT email for applications
             </label>
 
-            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.requireOpenaiOrgId"
                 type="checkbox"
-                class="size-4 rounded border-default"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
               Require OpenAI org ID for applications
             </label>
 
-            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.requireLumaProfile"
                 type="checkbox"
-                class="size-4 rounded border-default"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
               Require Luma username for applications
             </label>
@@ -513,10 +555,18 @@ function removeAgendaItem(itemId: string) {
       </AppCard>
     </section>
 
-    <div class="flex flex-col gap-3 rounded-[1.75rem] border border-default/80 bg-elevated/90 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <div class="flex flex-col gap-3 rounded-xl border border-black/8 bg-white/70 px-5 py-4 dark:border-white/[0.08] dark:bg-black/36 sm:flex-row sm:items-center sm:justify-between">
       <p class="max-w-3xl text-sm text-muted">
         {{ helperText ?? 'Changes are written through the canonical admin API endpoints and validated against the documented lifecycle constraints.' }}
       </p>
+
+      <AppAlert
+        v-if="validationErrorMessages.length > 0"
+        color="error"
+        variant="soft"
+        title="Form validation failed"
+        :description="validationErrorMessages[0]"
+      />
 
       <AppButton
         type="submit"

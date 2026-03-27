@@ -7,7 +7,7 @@ import AppShellHeader from '~/components/shell/AppShellHeader.vue'
   <div class="flex h-screen flex-col overflow-hidden text-foreground">
     <AppShellHeader />
 
-    <div class="min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+    <div class="min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-none">
       <main class="relative flex-1">
         <slot />
       </main>
