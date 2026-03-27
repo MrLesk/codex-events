@@ -303,9 +303,13 @@ const submitProfileForm = handleSubmit(() => {
               href="https://platform.openai.com/orgid"
               target="_blank"
               rel="noreferrer"
-              class="text-primary underline-offset-2 hover:underline"
+              class="inline-flex items-center gap-1 text-sky-700 underline-offset-2 transition-colors hover:text-sky-800 hover:underline dark:text-sky-300 dark:hover:text-sky-200"
             >
               platform.openai.com/orgid
+              <AppIcon
+                name="i-lucide-external-link"
+                class="size-3.5"
+              />
             </a>
           </p>
         </div>

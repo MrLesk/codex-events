@@ -84,6 +84,7 @@ defineProps<{
           color="primary"
           variant="soft"
           icon="i-lucide-github"
+          trailing-icon="i-lucide-external-link"
           class="rounded-full"
         >
           Repository
@@ -97,6 +98,7 @@ defineProps<{
           color="neutral"
           variant="outline"
           icon="i-lucide-monitor-play"
+          trailing-icon="i-lucide-external-link"
           class="rounded-full"
         >
           Demo

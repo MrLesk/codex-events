@@ -125,9 +125,13 @@ const rejectedCount = computed(() =>
                     :href="application.user.githubProfileUrl"
                     target="_blank"
                     rel="noreferrer"
-                    class="rounded-full border border-black/10 px-3 py-1 transition hover:border-black/20 hover:text-highlighted dark:border-white/[0.12] dark:hover:border-white/[0.22]"
+                    class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
                   >
                     GitHub
+                    <AppIcon
+                      name="i-lucide-external-link"
+                      class="size-3"
+                    />
                   </a>
                   <span
                     v-if="application.user?.chatgptEmail"
@@ -146,18 +150,26 @@ const rejectedCount = computed(() =>
                     :href="application.user.linkedinProfileUrl"
                     target="_blank"
                     rel="noreferrer"
-                    class="rounded-full border border-black/10 px-3 py-1 transition hover:border-black/20 hover:text-highlighted dark:border-white/[0.12] dark:hover:border-white/[0.22]"
+                    class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
                   >
                     LinkedIn
+                    <AppIcon
+                      name="i-lucide-external-link"
+                      class="size-3"
+                    />
                   </a>
                   <a
                     v-if="application.user?.xProfileUrl"
                     :href="application.user.xProfileUrl"
                     target="_blank"
                     rel="noreferrer"
-                    class="rounded-full border border-black/10 px-3 py-1 transition hover:border-black/20 hover:text-highlighted dark:border-white/[0.12] dark:hover:border-white/[0.22]"
+                    class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
                   >
                     X
+                    <AppIcon
+                      name="i-lucide-external-link"
+                      class="size-3"
+                    />
                   </a>
                 </div>
               </div>
