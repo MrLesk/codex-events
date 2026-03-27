@@ -6,9 +6,13 @@ import {
   getHackathonApplicationAvailabilityMessage,
   getParticipantApplicationSubmissionPolicy,
   getParticipantApplicationStatusColor,
+  isParticipantProfileUrlValid,
+  isParticipantSocialProfileUrlValid,
+  isOpenAiOrgIdFormatValid,
   listHackathonProfileFields,
-  listRequiredProfileFields,
   listMissingRequiredProfileFields,
+  listRequiredProfileFields,
+  normalizeParticipantProfileUrl,
   normalizeParticipantTeamMemberHintsForSubmission,
   parseParticipantRegistrationDetailsJson,
   summarizeParticipantApplicationStatus
@@ -184,7 +188,6 @@ describe('participant application helpers', () => {
   test('creates and normalizes team-member hint rows for submission payloads', () => {
     expect(createParticipantTeamMemberHintRows(3)).toEqual([
       { fullName: '', email: '' },
-      { fullName: '', email: '' },
       { fullName: '', email: '' }
     ])
 
@@ -193,9 +196,37 @@ describe('participant application helpers', () => {
       { fullName: '', email: '  ' },
       { fullName: 'Grace Hopper', email: '' }
     ], 2)).toEqual([
-      { fullName: 'Ada Lovelace', email: 'ada@example.com' },
-      { fullName: null, email: null }
+      { fullName: 'Ada Lovelace', email: 'ada@example.com' }
     ])
+  })
+
+  test('validates OpenAI org ID format used by the registration form', () => {
+    expect(isOpenAiOrgIdFormatValid('org_123abc')).toBe(true)
+    expect(isOpenAiOrgIdFormatValid('org_regular_user')).toBe(true)
+    expect(isOpenAiOrgIdFormatValid('org-123abc')).toBe(true)
+    expect(isOpenAiOrgIdFormatValid('')).toBe(false)
+  })
+
+  test('normalizes participant profile URLs by prepending https when scheme is missing', () => {
+    expect(normalizeParticipantProfileUrl('github.com/codex')).toBe('https://github.com/codex')
+    expect(normalizeParticipantProfileUrl('https://x.com/codex')).toBe('https://x.com/codex')
+    expect(normalizeParticipantProfileUrl('')).toBe('')
+  })
+
+  test('accepts schema-less profile URLs as valid registration input', () => {
+    expect(isParticipantProfileUrlValid('github.com/codex')).toBe(true)
+    expect(isParticipantProfileUrlValid('https://github.com/codex')).toBe(true)
+    expect(isParticipantProfileUrlValid('nota url')).toBe(false)
+  })
+
+  test('validates social profile URL domains by field', () => {
+    expect(isParticipantSocialProfileUrlValid('githubProfileUrl', 'github.com/codex')).toBe(true)
+    expect(isParticipantSocialProfileUrlValid('githubProfileUrl', 'github.cox/codex')).toBe(false)
+    expect(isParticipantSocialProfileUrlValid('linkedinProfileUrl', 'linkedin.com/in/codex')).toBe(true)
+    expect(isParticipantSocialProfileUrlValid('linkedinProfileUrl', 'example.com/in/codex')).toBe(false)
+    expect(isParticipantSocialProfileUrlValid('xProfileUrl', 'x.com/codex')).toBe(true)
+    expect(isParticipantSocialProfileUrlValid('xProfileUrl', 'twitter.com/codex')).toBe(true)
+    expect(isParticipantSocialProfileUrlValid('xProfileUrl', 'social.example/codex')).toBe(false)
   })
 
   test('parses persisted registration details JSON with fallback behavior', () => {

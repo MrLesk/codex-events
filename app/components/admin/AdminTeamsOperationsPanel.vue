@@ -39,7 +39,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
 </script>
 
 <template>
-  <AppCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -56,7 +56,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
         v-if="!teamErrorMessage && !isLoadingTeams"
         class="grid gap-4 md:grid-cols-3"
       >
-        <div class="app-inset-card-tight px-4 py-4">
+        <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Total teams
           </p>
@@ -65,7 +65,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
           </p>
         </div>
 
-        <div class="app-inset-card-tight px-4 py-4">
+        <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             In competition
           </p>
@@ -74,7 +74,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
           </p>
         </div>
 
-        <div class="app-inset-card-tight px-4 py-4">
+        <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             No-submission section
           </p>
@@ -118,7 +118,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
             v-for="team in noSubmissionTeams"
             :key="`${team.team.id}-no-submission`"
             :data-testid="`admin-no-submission-${team.team.id}`"
-            class="app-inset-card-tight px-4 py-4"
+            class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4"
           >
             <div class="flex flex-wrap items-start justify-between gap-3">
               <div>
@@ -183,7 +183,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
             v-for="team in teams"
             :key="team.team.id"
             :data-testid="`admin-team-${team.team.id}`"
-            class="app-inset-card px-5 py-5"
+            class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
           >
             <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div class="space-y-2">

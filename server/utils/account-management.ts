@@ -18,9 +18,30 @@ function sanitizeTimestampForIdentifier(timestamp: string) {
   return timestamp.replaceAll(/[^0-9]/g, '')
 }
 
-const profileUrlSchema = z
-  .union([z.string().trim().url(), z.literal(''), z.null()])
-  .optional()
+const urlSchemePattern = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
+
+function normalizeProfileUrlInput(value: unknown) {
+  if (typeof value !== 'string') {
+    return value
+  }
+
+  const normalized = value.trim()
+
+  if (!normalized) {
+    return ''
+  }
+
+  if (urlSchemePattern.test(normalized) || normalized.startsWith('//')) {
+    return normalized
+  }
+
+  return `https://${normalized}`
+}
+
+const profileUrlSchema = z.preprocess(
+  normalizeProfileUrlInput,
+  z.union([z.string().url(), z.literal(''), z.null()])
+).optional()
 const optionalEmailSchema = z
   .union([z.string().trim().email(), z.literal(''), z.null()])
   .optional()
@@ -31,25 +52,94 @@ export const platformAccountRegistrationBodySchema = z.object({
 })
 
 export const platformAccountProfileBodySchema = z.object({
-  displayName: z.string().trim().min(1).max(120),
+  firstName: z.string().trim().min(1).max(120),
+  familyName: z.string().trim().min(1).max(120),
   xProfileUrl: profileUrlSchema,
   linkedinProfileUrl: profileUrlSchema,
   githubProfileUrl: profileUrlSchema,
   chatgptEmail: optionalEmailSchema,
   openaiOrgId: z.string().trim().max(120).optional(),
   lumaUsername: z.string().trim().max(120).optional()
+}).superRefine((input, context) => {
+  const socialProfileRules: Array<{
+    key: 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl'
+    allowedDomains: string[]
+    message: string
+  }> = [
+    {
+      key: 'xProfileUrl',
+      allowedDomains: ['x.com', 'twitter.com'],
+      message: 'Use an x.com or twitter.com profile URL.'
+    },
+    {
+      key: 'linkedinProfileUrl',
+      allowedDomains: ['linkedin.com'],
+      message: 'Use a linkedin.com profile URL.'
+    },
+    {
+      key: 'githubProfileUrl',
+      allowedDomains: ['github.com'],
+      message: 'Use a github.com profile URL.'
+    }
+  ]
+
+  for (const rule of socialProfileRules) {
+    const rawValue = input[rule.key]
+
+    if (typeof rawValue !== 'string' || rawValue.length === 0) {
+      continue
+    }
+
+    let normalizedHost = ''
+
+    try {
+      normalizedHost = new URL(rawValue).hostname.toLowerCase()
+    } catch {
+      continue
+    }
+
+    const hostAllowed = rule.allowedDomains.some(domain =>
+      normalizedHost === domain || normalizedHost.endsWith(`.${domain}`)
+    )
+
+    if (!hostAllowed) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [rule.key],
+        message: rule.message
+      })
+    }
+  }
 })
 
 type PlatformUserRecord = typeof users.$inferSelect
 type PlatformAccountRegistrationInput = z.infer<typeof platformAccountRegistrationBodySchema>
 type PlatformAccountProfileInput = z.infer<typeof platformAccountProfileBodySchema>
 
-function buildRegistrationDisplayName(actor: AuthenticatedIdentityActor) {
-  const displayName = actor.sessionUser.name?.trim()
+function splitNameParts(value: string) {
+  const normalized = value.trim()
+  const [firstName = '', ...rest] = normalized.split(/\s+/)
+
+  return {
+    firstName,
+    familyName: rest.join(' ')
+  }
+}
+
+function buildRegistrationNameParts(actor: AuthenticatedIdentityActor) {
+  const fallbackName = actor.sessionUser.name?.trim()
     || actor.sessionUser.nickname?.trim()
     || actor.sessionUser.email?.trim()
+    || 'New User'
+  const nameParts = splitNameParts(fallbackName)
+  const firstName = nameParts.firstName || 'New'
+  const familyName = nameParts.familyName || 'User'
 
-  return displayName || 'New User'
+  return {
+    firstName,
+    familyName,
+    displayName: `${firstName} ${familyName}`.trim()
+  }
 }
 
 function normalizeOptionalUrl(value: string | null | undefined) {
@@ -67,6 +157,8 @@ export function serializePlatformUser(user: PlatformUserRecord) {
     id: user.id,
     email: user.email,
     displayName: user.displayName,
+    firstName: user.firstName,
+    familyName: user.familyName,
     isPlatformAdmin: user.isPlatformAdmin,
     xProfileUrl: user.xProfileUrl,
     linkedinProfileUrl: user.linkedinProfileUrl,
@@ -93,11 +185,15 @@ function buildPlatformAccountInsert(
     message: 'The authenticated identity does not expose an email address required for platform account registration.'
   })
 
+  const registrationNameParts = buildRegistrationNameParts(actor)
+
   return {
     id: crypto.randomUUID(),
     auth0Subject: actor.sessionUser.sub,
     email: email!,
-    displayName: buildRegistrationDisplayName(actor),
+    displayName: registrationNameParts.displayName,
+    firstName: registrationNameParts.firstName,
+    familyName: registrationNameParts.familyName,
     isPlatformAdmin: false,
     xProfileUrl: null,
     linkedinProfileUrl: null,
@@ -116,8 +212,13 @@ function buildPlatformAccountProfilePatch(
   input: PlatformAccountProfileInput,
   updatedAt: string
 ) {
+  const firstName = input.firstName.trim()
+  const familyName = input.familyName.trim()
+
   return {
-    displayName: input.displayName.trim(),
+    displayName: `${firstName} ${familyName}`.trim(),
+    firstName,
+    familyName,
     ...(input.xProfileUrl !== undefined
       ? { xProfileUrl: normalizeOptionalUrl(input.xProfileUrl) }
       : {}),
@@ -373,6 +474,8 @@ export function buildDeletedUserPatch(userId: string, deletedAt: string) {
     auth0Subject: `deleted_${suffix}`,
     email: `deleted_${suffix}@deleted.invalid`,
     displayName: 'Deleted User',
+    firstName: 'Deleted',
+    familyName: 'User',
     isPlatformAdmin: false,
     xProfileUrl: null,
     linkedinProfileUrl: null,

@@ -441,6 +441,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         user: {
           email: 'new-user@example.com',
           displayName: 'New User',
+          firstName: 'New',
+          familyName: 'User',
           githubProfileUrl: null,
           chatgptEmail: null,
           openaiOrgId: null,
@@ -463,6 +465,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     expect(createdUser?.email).toBe('new-user@example.com')
     expect(createdUser?.displayName).toBe('New User')
+    expect(createdUser?.firstName).toBe('New')
+    expect(createdUser?.familyName).toBe('User')
     expect(createdUser?.githubProfileUrl).toBeNull()
     expect(createdUser?.chatgptEmail).toBeNull()
     expect(createdUser?.openaiOrgId).toBeNull()
@@ -486,6 +490,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
             id: createdUser?.id,
             email: 'new-user@example.com',
             displayName: 'New User',
+            firstName: 'New',
+            familyName: 'User',
             chatgptEmail: null,
             openaiOrgId: null,
             lumaUsername: null,
@@ -596,7 +602,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const response = await harness.request('/api/account', {
       method: 'PATCH',
       body: JSON.stringify({
-        displayName: 'Identity Only'
+        firstName: 'Identity',
+        familyName: 'Only'
       })
     })
 
@@ -608,7 +615,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
-  test('PATCH /api/account updates the current platform user display name without changing existing profile urls', async () => {
+  test('PATCH /api/account updates canonical names and display name without changing existing profile urls', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'patch', path: '/api/account', handler: accountPatchHandler }
@@ -626,6 +633,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       auth0Subject: 'auth0|display-name-user',
       email: 'display-name@example.com',
       displayName: 'Display Name User',
+      firstName: 'Display',
+      familyName: 'Name User',
       githubProfileUrl: 'https://github.com/display-name-user',
       chatgptEmail: 'display-name@chatgpt.example',
       openaiOrgId: 'org_display_name',
@@ -635,7 +644,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const response = await harness.request('/api/account', {
       method: 'PATCH',
       body: JSON.stringify({
-        displayName: 'Display Name Updated'
+        firstName: 'Display',
+        familyName: 'Name Updated'
       })
     })
 
@@ -645,6 +655,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         user: {
           id: 'user_display_name',
           displayName: 'Display Name Updated',
+          firstName: 'Display',
+          familyName: 'Name Updated',
           githubProfileUrl: 'https://github.com/display-name-user',
           chatgptEmail: 'display-name@chatgpt.example',
           openaiOrgId: 'org_display_name',
@@ -659,6 +671,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     expect(updatedUser).toMatchObject({
       displayName: 'Display Name Updated',
+      firstName: 'Display',
+      familyName: 'Name Updated',
       githubProfileUrl: 'https://github.com/display-name-user',
       chatgptEmail: 'display-name@chatgpt.example',
       openaiOrgId: 'org_display_name',
@@ -683,15 +697,18 @@ describe('TASK-3.5 actor-facing API routes', () => {
       id: 'user_account',
       auth0Subject: 'auth0|account-user',
       email: 'account-user@example.com',
-      displayName: 'Account User'
+      displayName: 'Account User',
+      firstName: 'Account',
+      familyName: 'User'
     })
 
     const response = await harness.request('/api/account', {
       method: 'PATCH',
       body: JSON.stringify({
-        displayName: 'Updated Account User',
-        xProfileUrl: 'https://x.com/account-user',
-        linkedinProfileUrl: 'https://linkedin.com/in/account-user',
+        firstName: 'Updated',
+        familyName: 'Account User',
+        xProfileUrl: 'x.com/account-user',
+        linkedinProfileUrl: 'linkedin.com/in/account-user',
         githubProfileUrl: '',
         chatgptEmail: 'account-user@chatgpt.example',
         openaiOrgId: 'org_account_user',
@@ -705,6 +722,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         user: {
           id: 'user_account',
           displayName: 'Updated Account User',
+          firstName: 'Updated',
+          familyName: 'Account User',
           xProfileUrl: 'https://x.com/account-user',
           linkedinProfileUrl: 'https://linkedin.com/in/account-user',
           githubProfileUrl: null,
@@ -722,6 +741,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     expect(updatedUser).toMatchObject({
       displayName: 'Updated Account User',
+      firstName: 'Updated',
+      familyName: 'Account User',
       xProfileUrl: 'https://x.com/account-user',
       linkedinProfileUrl: 'https://linkedin.com/in/account-user',
       githubProfileUrl: null,
@@ -737,6 +758,40 @@ describe('TASK-3.5 actor-facing API routes', () => {
         action: 'account.updated'
       })
     ])
+  })
+
+  test('PATCH /api/account rejects unsupported social profile URL domains', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'patch', path: '/api/account', handler: accountPatchHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|domain-user',
+        email: 'domain-user@example.com',
+        name: 'Domain User'
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'user_domain',
+      auth0Subject: 'auth0|domain-user',
+      email: 'domain-user@example.com',
+      displayName: 'Domain User',
+      firstName: 'Domain',
+      familyName: 'User'
+    })
+
+    const response = await harness.request('/api/account', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        firstName: 'Domain',
+        familyName: 'User',
+        githubProfileUrl: 'github.cox/domain-user'
+      })
+    })
+
+    expect(response.status).toBe(400)
   })
 
   test('profile-icon account routes upload, read, and remove the caller profile icon', async () => {

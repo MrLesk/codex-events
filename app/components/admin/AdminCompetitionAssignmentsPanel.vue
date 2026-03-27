@@ -65,7 +65,7 @@ const actionableAssignments = computed(() =>
 </script>
 
 <template>
-  <AppCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -111,7 +111,7 @@ const actionableAssignments = computed(() =>
             v-for="assignment in actionableAssignments"
             :key="assignment.id"
             :data-testid="`admin-competition-assignment-${assignment.submissionId}`"
-            class="app-inset-card px-5 py-5"
+            class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
           >
             <div class="space-y-5">
               <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -148,7 +148,7 @@ const actionableAssignments = computed(() =>
 
               <div
                 v-if="getAdminJudgeAssignmentInterventionPolicy(hackathonState, assignment.status).canReassign"
-                class="grid gap-4 rounded-[1.25rem] border border-default/70 bg-elevated/70 px-4 py-4"
+                class="grid gap-4 rounded-lg border border-black/8 px-4 py-4 dark:border-white/[0.08]"
               >
                 <div class="space-y-1">
                   <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
@@ -164,7 +164,7 @@ const actionableAssignments = computed(() =>
                     <span class="text-sm font-medium text-toned">Preferred replacement judge</span>
                     <select
                       v-model="getDraft(assignment).judgeUserId"
-                      class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                       :data-testid="`admin-competition-reassign-select-${assignment.submissionId}`"
                     >
                       <option value="">
@@ -185,7 +185,7 @@ const actionableAssignments = computed(() =>
                     <input
                       v-model="getDraft(assignment).reassignReason"
                       type="text"
-                      class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                       placeholder="Reassignment note"
                     >
                   </label>
@@ -208,7 +208,7 @@ const actionableAssignments = computed(() =>
 
               <div
                 v-if="getAdminJudgeAssignmentInterventionPolicy(hackathonState, assignment.status).canForceSkip"
-                class="grid gap-4 rounded-[1.25rem] border border-default/70 bg-elevated/70 px-4 py-4"
+                class="grid gap-4 rounded-lg border border-black/8 px-4 py-4 dark:border-white/[0.08]"
               >
                 <div class="space-y-1">
                   <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
@@ -224,7 +224,7 @@ const actionableAssignments = computed(() =>
                   <input
                     v-model="getDraft(assignment).forceSkipReason"
                     type="text"
-                    class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                     placeholder="Force-skip note"
                   >
                 </label>

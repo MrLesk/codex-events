@@ -55,7 +55,7 @@ const disqualifiableTeams = computed(() =>
 </script>
 
 <template>
-  <AppCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -103,7 +103,7 @@ const disqualifiableTeams = computed(() =>
               v-for="team in withdrawableTeams"
               :key="`${team.team.id}-withdraw`"
               :data-testid="`admin-withdraw-team-${team.team.id}`"
-              class="app-inset-card px-5 py-5"
+              class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
             >
               <div class="space-y-4">
                 <div>
@@ -120,7 +120,7 @@ const disqualifiableTeams = computed(() =>
                     <span class="text-sm font-medium text-toned">Requested by team admin</span>
                     <select
                       v-model="getDraft(team).requestedByUserId"
-                      class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                     >
                       <option
                         v-for="choice in team.activeAdminChoices"
@@ -137,7 +137,7 @@ const disqualifiableTeams = computed(() =>
                     <input
                       v-model="getDraft(team).adminWithdrawReason"
                       type="text"
-                      class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                       placeholder="Requested by team due to..."
                     >
                   </label>
@@ -195,7 +195,7 @@ const disqualifiableTeams = computed(() =>
               v-for="team in disqualifiableTeams"
               :key="`${team.team.id}-disqualify`"
               :data-testid="`admin-disqualify-team-${team.team.id}`"
-              class="app-inset-card px-5 py-5"
+              class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
             >
               <div class="space-y-4">
                 <div>
@@ -212,7 +212,7 @@ const disqualifiableTeams = computed(() =>
                   <input
                     v-model="getDraft(team).disqualifyReason"
                     type="text"
-                    class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                     placeholder="Competition removal reason"
                   >
                 </label>

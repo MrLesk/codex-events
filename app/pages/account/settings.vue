@@ -11,7 +11,8 @@ const user = useUser()
 const { actor, status, refresh } = await useAccountLifecycleActor()
 
 const profileForm = reactive({
-  displayName: '',
+  firstName: '',
+  familyName: '',
   xProfileUrl: '',
   linkedinProfileUrl: '',
   githubProfileUrl: '',
@@ -47,7 +48,8 @@ watch(
       return
     }
 
-    profileForm.displayName = nextActor.platformUser.displayName
+    profileForm.firstName = nextActor.platformUser.firstName
+    profileForm.familyName = nextActor.platformUser.familyName
     profileForm.xProfileUrl = nextActor.platformUser.xProfileUrl ?? ''
     profileForm.linkedinProfileUrl = nextActor.platformUser.linkedinProfileUrl ?? ''
     profileForm.githubProfileUrl = nextActor.platformUser.githubProfileUrl ?? ''
@@ -67,7 +69,8 @@ async function saveProfile() {
     await $fetch('/api/account', {
       method: 'PATCH',
       body: {
-        displayName: profileForm.displayName,
+        firstName: profileForm.firstName,
+        familyName: profileForm.familyName,
         xProfileUrl: profileForm.xProfileUrl,
         linkedinProfileUrl: profileForm.linkedinProfileUrl,
         githubProfileUrl: profileForm.githubProfileUrl,
@@ -104,7 +107,8 @@ const profileIconSrc = computed(() => {
 
 const profileIconAlt = computed(() => {
   if (actor.value?.kind === 'platform_user') {
-    return actor.value.platformUser.displayName
+    const fullName = `${actor.value.platformUser.firstName} ${actor.value.platformUser.familyName}`.trim()
+    return fullName || actor.value.platformUser.displayName
   }
 
   return user.value?.name ?? 'User'
@@ -331,20 +335,38 @@ const profileSubmitLabel = computed(() => 'Save')
                 </p>
               </div>
 
-              <div class="space-y-2">
-                <label
-                  class="text-sm font-medium text-highlighted"
-                  for="account-display-name-inline"
-                >
-                  Display name
-                </label>
-                <input
-                  id="account-display-name-inline"
-                  v-model="profileForm.displayName"
-                  type="text"
-                  required
-                  class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
-                >
+              <div class="grid gap-4 md:grid-cols-2">
+                <div class="space-y-2">
+                  <label
+                    class="text-sm font-medium text-highlighted"
+                    for="account-first-name-inline"
+                  >
+                    First name
+                  </label>
+                  <input
+                    id="account-first-name-inline"
+                    v-model="profileForm.firstName"
+                    type="text"
+                    required
+                    class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
+                  >
+                </div>
+
+                <div class="space-y-2">
+                  <label
+                    class="text-sm font-medium text-highlighted"
+                    for="account-family-name-inline"
+                  >
+                    Family name
+                  </label>
+                  <input
+                    id="account-family-name-inline"
+                    v-model="profileForm.familyName"
+                    type="text"
+                    required
+                    class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
+                  >
+                </div>
               </div>
             </div>
           </div>

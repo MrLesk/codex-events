@@ -12,6 +12,8 @@ export interface ParticipantPlatformUserProfile {
   id: string
   email: string
   displayName: string
+  firstName: string
+  familyName: string
   isPlatformAdmin: boolean
   xProfileUrl?: string | null
   linkedinProfileUrl?: string | null
@@ -208,6 +210,68 @@ export interface ParticipantApiErrorShape {
   details?: Record<string, unknown>
 }
 
+const urlSchemePattern = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
+const socialProfileAllowedDomains = {
+  xProfileUrl: ['x.com', 'twitter.com'],
+  linkedinProfileUrl: ['linkedin.com'],
+  githubProfileUrl: ['github.com']
+} as const
+
+function isHostnameAllowed(hostname: string, allowedDomains: readonly string[]) {
+  const normalizedHostname = hostname.toLowerCase()
+
+  return allowedDomains.some(domain =>
+    normalizedHostname === domain || normalizedHostname.endsWith(`.${domain}`)
+  )
+}
+
+export function normalizeParticipantProfileUrl(value: string | null | undefined) {
+  const normalized = value?.trim() ?? ''
+
+  if (!normalized) {
+    return ''
+  }
+
+  if (urlSchemePattern.test(normalized) || normalized.startsWith('//')) {
+    return normalized
+  }
+
+  return `https://${normalized}`
+}
+
+export function isParticipantProfileUrlValid(value: string | null | undefined) {
+  const normalized = normalizeParticipantProfileUrl(value)
+
+  if (!normalized) {
+    return true
+  }
+
+  try {
+    const parsed = new URL(normalized)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+export function isParticipantSocialProfileUrlValid(
+  key: keyof typeof socialProfileAllowedDomains,
+  value: string | null | undefined
+) {
+  const normalized = normalizeParticipantProfileUrl(value)
+
+  if (!normalized) {
+    return true
+  }
+
+  if (!isParticipantProfileUrlValid(normalized)) {
+    return false
+  }
+
+  const parsed = new URL(normalized)
+  return isHostnameAllowed(parsed.hostname, socialProfileAllowedDomains[key])
+}
+
 export function buildAnonymousParticipantActor(): ParticipantActor {
   return {
     kind: 'anonymous',
@@ -294,8 +358,14 @@ export function getHackathonApplicationAvailabilityMessage(state: PublicHackatho
   return 'Applications are closed for this hackathon.'
 }
 
+const openAiOrgIdPattern = /^(org_|org-)[A-Za-z0-9_-]+$/
+
+export function isOpenAiOrgIdFormatValid(value: string) {
+  return openAiOrgIdPattern.test(value.trim())
+}
+
 export function createParticipantTeamMemberHintRows(maxTeamMembers: number): ParticipantRegistrationTeamMemberHint[] {
-  return Array.from({ length: Math.max(0, maxTeamMembers) }, () => ({
+  return Array.from({ length: Math.max(0, maxTeamMembers - 1) }, () => ({
     fullName: '',
     email: ''
   }))
@@ -346,7 +416,7 @@ export function normalizeParticipantTeamMemberHintsForSubmission(
   maxTeamMembers: number
 ) {
   return teamMembers
-    .slice(0, Math.max(0, maxTeamMembers))
+    .slice(0, Math.max(0, maxTeamMembers - 1))
     .map(member => ({
       fullName: member.fullName.trim().length > 0 ? member.fullName.trim() : null,
       email: member.email.trim().length > 0 ? member.email.trim() : null

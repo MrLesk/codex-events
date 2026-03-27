@@ -65,6 +65,35 @@ const pendingActionKey = ref<string | null>(null)
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
+const headerStateLabel = computed(() =>
+  currentHackathon.value ? formatHackathonState(currentHackathon.value.state).toUpperCase() : ''
+)
+const headerStateClass = computed(() => {
+  if (currentHackathon.value?.state === 'submission_open') {
+    return 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+  }
+
+  if (currentHackathon.value?.state === 'registration_open') {
+    return 'border border-sky-600/35 bg-sky-500/16 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/14 dark:text-sky-300'
+  }
+
+  if (currentHackathon.value?.state === 'winners_announced') {
+    return 'bg-green-500/10 text-green-400 border border-green-500/20'
+  }
+
+  return 'bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]'
+})
+const workspaceSummary = computed(() => {
+  if (!currentHackathon.value) {
+    return ''
+  }
+
+  return [
+    formatHackathonWindow(currentHackathon.value.registrationOpensAt, currentHackathon.value.submissionClosesAt),
+    currentHackathon.value.city,
+    formatMaxTeamMembers(currentHackathon.value.maxTeamMembers)
+  ].join(' • ')
+})
 const applications = ref<AdminApplicationRecord[]>([])
 const applicationsStatus = ref<LoadStatus>('idle')
 const applicationsErrorMessage = ref('')
@@ -426,115 +455,126 @@ async function disqualifySubmission(payload: {
 </script>
 
 <template>
-  <AppContainer class="space-y-8 py-10 sm:py-14">
-    <AdminWorkspaceHeader
-      eyebrow="Admin Operations"
-      :title="currentHackathon ? `${currentHackathon.name} operations` : 'Hackathon operations'"
-      description="Review applications, monitor teams and submission state, and run the admin-only interventions that do not belong in participant or judge workspaces."
-    />
+  <div class="pb-14">
+    <section class="border-b border-black/8 bg-white/42 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/48">
+      <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
+        <AdminWorkspaceHeader
+          eyebrow="Admin Operations"
+          :title="currentHackathon ? `${currentHackathon.name} operations` : 'Hackathon operations'"
+          description="Review applications, monitor teams and submission state, and run the admin-only interventions that do not belong in participant or judge workspaces."
+          :back-to="`/account/hackathons/${slug}`"
+          back-label="Back to hackathon detail"
+          :state-label="headerStateLabel"
+          :state-class="headerStateClass"
+          :summary="workspaceSummary"
+        />
 
-    <AdminHackathonWorkspaceTabs
-      v-if="currentHackathon"
-      :hackathon-slug="currentHackathon.slug"
-      current-surface="operations"
-    />
+        <AdminHackathonWorkspaceTabs
+          v-if="currentHackathon"
+          :hackathon-slug="currentHackathon.slug"
+          current-surface="operations"
+        />
+      </AppContainer>
+    </section>
 
-    <AppAlert
-      v-if="mutationError"
-      color="error"
-      variant="soft"
-      title="Admin operation failed"
-      :description="mutationError"
-    />
-
-    <AppAlert
-      v-if="workspace.hackathon.error.value"
-      color="error"
-      variant="soft"
-      title="Unable to load hackathon"
-      :description="workspace.hackathon.error.value.message"
-    />
-
-    <AppAlert
-      v-else-if="currentHackathon && !canManage"
-      color="warning"
-      variant="soft"
-      title="Admin access required"
-      description="This hackathon is visible, but the current actor does not have hackathon-admin capabilities for its operational workspace."
-    />
-
-    <template v-else-if="currentHackathon">
-      <section class="grid gap-4 lg:grid-cols-4">
-        <div class="rounded-[1.5rem] border border-default/70 bg-elevated/90 px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Hackathon state
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
-            {{ formatHackathonState(currentHackathon.state) }}
-          </p>
-        </div>
-
-        <div class="rounded-[1.5rem] border border-default/70 bg-elevated/90 px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Applications
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
-            {{ applicationSummaryValue }}
-          </p>
-        </div>
-
-        <div class="rounded-[1.5rem] border border-default/70 bg-elevated/90 px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Teams
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
-            {{ teamSummaryValue }}
-          </p>
-        </div>
-
-        <div class="rounded-[1.5rem] border border-default/70 bg-elevated/90 px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Actionable interventions
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
-            {{ actionableSummaryValue }}
-          </p>
-        </div>
-      </section>
-
-      <AdminApplicationsReviewPanel
-        :applications="applications"
-        :is-loading="applicationsStatus === 'pending'"
-        :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
-        :pending-action-key="pendingActionKey"
-        @approve="approveApplication"
-        @reject="rejectApplication"
+    <AppContainer class="max-w-[68rem] space-y-8 pt-6">
+      <AppAlert
+        v-if="mutationError"
+        color="error"
+        variant="soft"
+        title="Admin operation failed"
+        :description="mutationError"
       />
 
-      <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <AdminTeamsOperationsPanel
-          :teams="operationalTeams"
-          :total-teams="totalTeams"
-          :is-loading-teams="teamsStatus === 'pending' || operationalTeamsStatus === 'pending'"
-          :team-error-message="teamsStatus === 'error' ? teamsErrorMessage : operationalTeamsStatus === 'error' ? operationalTeamsErrorMessage : ''"
-          :is-loading-no-submission="noSubmissionStatus === 'pending'"
-          :no-submission-error-message="noSubmissionStatus === 'error' ? noSubmissionErrorMessage : ''"
-          :has-more-teams="hasMoreTeams"
-          :is-loading-more-teams="isLoadingMoreTeams"
-          :load-more-teams-error-message="loadMoreTeamsErrorMessage"
-          @load-more-teams="loadMoreTeams"
+      <AppAlert
+        v-if="workspace.hackathon.error.value"
+        color="error"
+        variant="soft"
+        title="Unable to load hackathon"
+        :description="workspace.hackathon.error.value.message"
+      />
+
+      <AppAlert
+        v-else-if="currentHackathon && !canManage"
+        color="warning"
+        variant="soft"
+        title="Admin access required"
+        description="This hackathon is visible, but the current actor does not have hackathon-admin capabilities for its operational workspace."
+      />
+
+      <template v-else-if="currentHackathon">
+        <section class="grid gap-4 lg:grid-cols-4">
+          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Hackathon state
+            </p>
+            <p class="mt-2 text-xl font-semibold text-highlighted">
+              {{ formatHackathonState(currentHackathon.state) }}
+            </p>
+          </div>
+
+          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Applications
+            </p>
+            <p class="mt-2 text-xl font-semibold text-highlighted">
+              {{ applicationSummaryValue }}
+            </p>
+          </div>
+
+          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Teams
+            </p>
+            <p class="mt-2 text-xl font-semibold text-highlighted">
+              {{ teamSummaryValue }}
+            </p>
+          </div>
+
+          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Actionable interventions
+            </p>
+            <p class="mt-2 text-xl font-semibold text-highlighted">
+              {{ actionableSummaryValue }}
+            </p>
+          </div>
+        </section>
+
+        <AdminApplicationsReviewPanel
+          :applications="applications"
+          :is-loading="applicationsStatus === 'pending'"
+          :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
+          :pending-action-key="pendingActionKey"
+          @approve="approveApplication"
+          @reject="rejectApplication"
         />
 
-        <AdminSubmissionInterventionsPanel
-          :hackathon-state="currentHackathon.state"
-          :teams="operationalTeams"
-          :is-loading="teamsStatus === 'pending' || operationalTeamsStatus === 'pending'"
-          :error-message="teamsStatus === 'error' ? teamsErrorMessage : operationalTeamsStatus === 'error' ? operationalTeamsErrorMessage : ''"
-          :pending-action-key="pendingActionKey"
-          @admin-withdraw="adminWithdrawSubmission"
-          @disqualify="disqualifySubmission"
-        />
-      </section>
-    </template>
-  </AppContainer>
+        <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <AdminTeamsOperationsPanel
+            :teams="operationalTeams"
+            :total-teams="totalTeams"
+            :is-loading-teams="teamsStatus === 'pending' || operationalTeamsStatus === 'pending'"
+            :team-error-message="teamsStatus === 'error' ? teamsErrorMessage : operationalTeamsStatus === 'error' ? operationalTeamsErrorMessage : ''"
+            :is-loading-no-submission="noSubmissionStatus === 'pending'"
+            :no-submission-error-message="noSubmissionStatus === 'error' ? noSubmissionErrorMessage : ''"
+            :has-more-teams="hasMoreTeams"
+            :is-loading-more-teams="isLoadingMoreTeams"
+            :load-more-teams-error-message="loadMoreTeamsErrorMessage"
+            @load-more-teams="loadMoreTeams"
+          />
+
+          <AdminSubmissionInterventionsPanel
+            :hackathon-state="currentHackathon.state"
+            :teams="operationalTeams"
+            :is-loading="teamsStatus === 'pending' || operationalTeamsStatus === 'pending'"
+            :error-message="teamsStatus === 'error' ? teamsErrorMessage : operationalTeamsStatus === 'error' ? operationalTeamsErrorMessage : ''"
+            :pending-action-key="pendingActionKey"
+            @admin-withdraw="adminWithdrawSubmission"
+            @disqualify="disqualifySubmission"
+          />
+        </section>
+      </template>
+    </AppContainer>
+  </div>
 </template>

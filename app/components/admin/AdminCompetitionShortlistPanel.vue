@@ -85,7 +85,7 @@ function resetDraft() {
 </script>
 
 <template>
-  <AppCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -132,7 +132,7 @@ function resetDraft() {
             v-for="entry in rankedLeaderboardEntries"
             :key="entry.submissionId"
             :data-testid="`admin-competition-leaderboard-${entry.submissionId}`"
-            class="app-inset-card px-5 py-5"
+            class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
           >
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div class="space-y-2">
@@ -216,7 +216,7 @@ function resetDraft() {
                 v-for="(entry, index) in draftShortlist"
                 :key="entry.submissionId"
                 :data-testid="`admin-competition-shortlist-${entry.submissionId}`"
-                class="app-inset-card px-5 py-5"
+                class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
               >
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div class="space-y-2">

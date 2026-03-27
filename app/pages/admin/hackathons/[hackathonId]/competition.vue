@@ -19,7 +19,7 @@ if (!hackathonId) {
 const requestFetch = import.meta.server ? useRequestFetch() : $fetch
 const response = await requestFetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/${encodeURIComponent(hackathonId)}`)
 
-await navigateTo(`/hackathons/${response.data.slug}/admin/competition`, {
+await navigateTo(`/account/hackathons/${response.data.slug}/admin/competition`, {
   redirectCode: 301
 })
 </script>

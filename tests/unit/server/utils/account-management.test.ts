@@ -10,6 +10,8 @@ describe('account management utilities', () => {
       auth0Subject: 'deleted_user_1_20260322120000000',
       email: 'deleted_user_1_20260322120000000@deleted.invalid',
       displayName: 'Deleted User',
+      firstName: 'Deleted',
+      familyName: 'User',
       isPlatformAdmin: false,
       xProfileUrl: null,
       linkedinProfileUrl: null,

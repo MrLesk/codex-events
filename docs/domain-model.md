@@ -18,6 +18,7 @@ Key characteristics:
 - Can apply to hackathons.
 - Can join at most one team per hackathon.
 - Can be marked with `is_platform_admin`.
+- Stores canonical `first_name` and `family_name` values used for profile management.
 - Can optionally store X, LinkedIn, and GitHub profile links, a ChatGPT email, an OpenAI org ID, a Luma username, and a profile icon uploaded from account settings.
 - Can delete their account, subject to GDPR-compliant handling.
 

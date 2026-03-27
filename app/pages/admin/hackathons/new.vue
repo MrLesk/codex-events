@@ -75,7 +75,7 @@ async function createHackathon() {
     })
 
     await workspace.refreshRoot()
-    await navigateTo(`/hackathons/${response.data.slug}/admin`)
+    await navigateTo(`/account/hackathons/${response.data.slug}/admin`)
   } catch (error) {
     const apiError = normalizeApiError(error)
     submitError.value = apiError.message

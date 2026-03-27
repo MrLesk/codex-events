@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HTMLAttributes } from 'vue'
+import { useSlots, type HTMLAttributes } from 'vue'
 
 import { Card as UiCard } from '~/components/ui/card'
 import { cn } from '~/lib/utils'
@@ -16,18 +16,35 @@ const props = withDefaults(defineProps<{
   ui: () => ({})
 })
 
+const slots = useSlots()
+
 const rootClass = computed(() =>
   cn(
-    'rounded-[1.5rem] border border-default/70 bg-elevated/90 text-foreground shadow-[0_24px_60px_-46px_rgba(15,20,34,0.55)]',
-    props.variant === 'subtle' ? 'bg-elevated/82 backdrop-blur' : '',
+    'rounded-xl border border-black/8 bg-white/70 py-0 text-foreground shadow-none dark:border-white/[0.08] dark:bg-black/36',
+    props.variant === 'subtle' ? 'bg-white/62 dark:bg-black/28' : '',
     props.ui.root,
     props.class
+  )
+)
+
+const bodyClass = computed(() =>
+  cn(
+    slots.header ? 'px-6 pb-6 pt-4' : 'p-6',
+    props.ui.body
   )
 )
 </script>
 
 <template>
   <UiCard :class="rootClass">
-    <slot />
+    <div
+      v-if="$slots.header"
+      class="px-6 pt-6"
+    >
+      <slot name="header" />
+    </div>
+    <div :class="bodyClass">
+      <slot />
+    </div>
   </UiCard>
 </template>

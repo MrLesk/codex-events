@@ -237,8 +237,11 @@
     color: var(--foreground);
   }
 
-  button {
+  button,
+  [data-slot='button'] {
     cursor: pointer;
+    -webkit-user-select: none;
+    user-select: none;
   }
 
   a {

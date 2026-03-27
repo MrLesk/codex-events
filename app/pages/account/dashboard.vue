@@ -264,7 +264,7 @@ useSeoMeta({
             <NuxtLink
               v-for="hackathon in recentManageableHackathons"
               :key="hackathon.id"
-              :to="`/hackathons/${hackathon.slug}/admin`"
+              :to="`/account/hackathons/${hackathon.slug}/admin`"
               class="rounded-xl border border-black/8 bg-white p-4 transition-colors hover:border-black/20 dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.2]"
             >
               <div class="flex flex-wrap items-center justify-between gap-2">

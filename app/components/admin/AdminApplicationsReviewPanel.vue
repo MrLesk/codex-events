@@ -30,7 +30,7 @@ const rejectedCount = computed(() =>
 </script>
 
 <template>
-  <AppCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -61,7 +61,7 @@ const rejectedCount = computed(() =>
 
       <template v-else>
         <div class="grid gap-4 md:grid-cols-3">
-          <div class="app-inset-card-tight px-4 py-4">
+          <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Awaiting review
             </p>
@@ -70,7 +70,7 @@ const rejectedCount = computed(() =>
             </p>
           </div>
 
-          <div class="app-inset-card-tight px-4 py-4">
+          <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Approved
             </p>
@@ -79,7 +79,7 @@ const rejectedCount = computed(() =>
             </p>
           </div>
 
-          <div class="app-inset-card-tight px-4 py-4">
+          <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Rejected
             </p>
@@ -97,7 +97,7 @@ const rejectedCount = computed(() =>
             v-for="application in applications"
             :key="application.id"
             :data-testid="`admin-application-${application.id}`"
-            class="app-inset-card px-5 py-5"
+            class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
           >
             <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div class="space-y-3">
@@ -116,7 +116,7 @@ const rejectedCount = computed(() =>
                 <div class="flex flex-wrap gap-2 text-xs text-muted">
                   <span
                     v-if="application.user?.lumaUsername"
-                    class="rounded-full border border-default px-3 py-1 text-highlighted"
+                    class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
                   >
                     Luma: @{{ application.user.lumaUsername }}
                   </span>
@@ -125,19 +125,19 @@ const rejectedCount = computed(() =>
                     :href="application.user.githubProfileUrl"
                     target="_blank"
                     rel="noreferrer"
-                    class="rounded-full border border-default px-3 py-1 transition hover:border-primary/50 hover:text-highlighted"
+                    class="rounded-full border border-black/10 px-3 py-1 transition hover:border-black/20 hover:text-highlighted dark:border-white/[0.12] dark:hover:border-white/[0.22]"
                   >
                     GitHub
                   </a>
                   <span
                     v-if="application.user?.chatgptEmail"
-                    class="rounded-full border border-default px-3 py-1 text-highlighted"
+                    class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
                   >
                     ChatGPT: {{ application.user.chatgptEmail }}
                   </span>
                   <span
                     v-if="application.user?.openaiOrgId"
-                    class="rounded-full border border-default px-3 py-1 text-highlighted"
+                    class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
                   >
                     OpenAI org: {{ application.user.openaiOrgId }}
                   </span>
@@ -146,7 +146,7 @@ const rejectedCount = computed(() =>
                     :href="application.user.linkedinProfileUrl"
                     target="_blank"
                     rel="noreferrer"
-                    class="rounded-full border border-default px-3 py-1 transition hover:border-primary/50 hover:text-highlighted"
+                    class="rounded-full border border-black/10 px-3 py-1 transition hover:border-black/20 hover:text-highlighted dark:border-white/[0.12] dark:hover:border-white/[0.22]"
                   >
                     LinkedIn
                   </a>
@@ -155,7 +155,7 @@ const rejectedCount = computed(() =>
                     :href="application.user.xProfileUrl"
                     target="_blank"
                     rel="noreferrer"
-                    class="rounded-full border border-default px-3 py-1 transition hover:border-primary/50 hover:text-highlighted"
+                    class="rounded-full border border-black/10 px-3 py-1 transition hover:border-black/20 hover:text-highlighted dark:border-white/[0.12] dark:hover:border-white/[0.22]"
                   >
                     X
                   </a>

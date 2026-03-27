@@ -10,6 +10,8 @@ interface SessionActorPlatformUser {
   id: string
   email: string
   displayName: string
+  firstName: string
+  familyName: string
   isPlatformAdmin: boolean
   xProfileUrl: string | null
   linkedinProfileUrl: string | null

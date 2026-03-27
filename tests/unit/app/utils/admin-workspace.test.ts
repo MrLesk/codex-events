@@ -75,6 +75,8 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
       id: 'user-1',
       email: 'admin@example.com',
       displayName: 'Admin User',
+      firstName: 'Admin',
+      familyName: 'User',
       isPlatformAdmin: false
     },
     isPlatformAdmin: false,
@@ -187,6 +189,8 @@ describe('admin-workspace access helpers', () => {
         id: 'platform-admin',
         email: 'platform@example.com',
         displayName: 'Platform Admin',
+        firstName: 'Platform',
+        familyName: 'Admin',
         isPlatformAdmin: true
       }
     })
@@ -209,6 +213,8 @@ describe('admin-workspace access helpers', () => {
         id: 'platform-admin',
         email: 'platform@example.com',
         displayName: 'Platform Admin',
+        firstName: 'Platform',
+        familyName: 'Admin',
         isPlatformAdmin: true
       }
     }))).toBe(true)

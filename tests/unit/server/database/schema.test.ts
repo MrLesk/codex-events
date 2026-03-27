@@ -17,6 +17,8 @@ describe('shared schema foundation', () => {
 
     expect(getTableName(users)).toBe('users')
     expect(columns.auth0Subject.name).toBe('auth0_subject')
+    expect(columns.firstName.name).toBe('first_name')
+    expect(columns.familyName.name).toBe('family_name')
     expect(columns.profileIconUpdatedAt.name).toBe('profile_icon_updated_at')
   })
 

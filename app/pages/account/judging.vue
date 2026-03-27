@@ -380,7 +380,7 @@ useSeoMeta({
 
                   <AppButton
                     v-if="canManageHackathon(group.hackathon.id)"
-                    :to="`/hackathons/${group.hackathon.slug}/admin/competition`"
+                    :to="`/account/hackathons/${group.hackathon.slug}/admin/competition`"
                     color="neutral"
                     variant="soft"
                     class="w-full justify-center rounded-lg px-3 py-1.5 text-[12px] font-medium"

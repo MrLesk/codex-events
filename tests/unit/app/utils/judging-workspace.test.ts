@@ -66,6 +66,8 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
       id: 'judge-1',
       email: 'judge@example.com',
       displayName: 'Judge One',
+      firstName: 'Judge',
+      familyName: 'One',
       isPlatformAdmin: false
     },
     isPlatformAdmin: false,
