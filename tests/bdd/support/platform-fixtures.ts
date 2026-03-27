@@ -1,9 +1,14 @@
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, rmSync } from 'node:fs'
 import { dirname } from 'node:path'
 import type { ProvisionedStablePersona } from './personas.ts'
 
-import { createLocalPlatformProxy, localPlatformPersistPath } from '../../../server/database/local-platform-proxy.ts'
-import { applySqlStatements, readMigrationStatements } from '../../support/backend/migrations.ts'
+import {
+  createLocalPlatformProxy,
+  localPlatformPersistPath,
+  localWranglerConfigPath
+} from '../../../server/database/local-platform-proxy.ts'
+import { applySqlStatements } from '../../support/backend/migrations.ts'
 
 const fixtureTimestamp = '2026-03-22T12:00:00.000Z'
 export const fixtureHackathonId = 'hackathon_e2e_fixture'
@@ -1177,19 +1182,45 @@ export function buildPlatformFixtureResetSql(personas: ProvisionedStablePersona[
   return buildFixtureSql(personas)
 }
 
+function applyLocalD1Migrations(environment: NodeJS.ProcessEnv) {
+  execFileSync(
+    'bun',
+    [
+      'x',
+      'wrangler',
+      'd1',
+      'migrations',
+      'apply',
+      'DB',
+      '--local',
+      '--persist-to',
+      dirname(localPlatformPersistPath),
+      '--config',
+      localWranglerConfigPath
+    ],
+    {
+      cwd: process.cwd(),
+      env: {
+        ...environment,
+        CI: '1'
+      },
+      stdio: 'pipe'
+    }
+  )
+}
+
 export async function resetPlatformFixtures(
   personas: ProvisionedStablePersona[],
   environment: NodeJS.ProcessEnv = process.env
 ) {
-  void environment
   const fixtureSql = buildFixtureSql(personas)
   mkdirSync(dirname(localPlatformPersistPath), { recursive: true })
   rmSync(localPlatformPersistPath, { recursive: true, force: true })
+  applyLocalD1Migrations(environment)
 
   const proxy = await createLocalPlatformProxy()
 
   try {
-    await applySqlStatements(proxy.env.DB, readMigrationStatements())
     await applySqlStatements(proxy.env.DB, fixtureSql)
   } finally {
     await proxy.dispose()

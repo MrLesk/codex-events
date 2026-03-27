@@ -275,6 +275,15 @@
   .app-inset-choice {
     @apply rounded-2xl border border-default/70 bg-bg/80 shadow-[0_16px_36px_-30px_rgba(15,20,34,0.22)] backdrop-blur-sm;
   }
+
+  /* Slightly increase label-to-control spacing across common form layouts. */
+  label.grid.gap-2 {
+    row-gap: 0.625rem;
+  }
+
+  .space-y-2 > label.text-sm.font-medium + :is(input, textarea, select, [data-slot='input']) {
+    margin-top: 0.125rem;
+  }
 }
 
 @layer utilities {

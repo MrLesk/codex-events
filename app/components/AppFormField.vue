@@ -7,8 +7,8 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div class="space-y-2">
-    <div class="space-y-1">
+  <div class="space-y-2.5">
+    <div class="space-y-1.5">
       <label
         v-if="props.label"
         :for="props.name"

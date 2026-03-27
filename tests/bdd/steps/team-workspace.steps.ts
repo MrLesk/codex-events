@@ -133,82 +133,9 @@ Then('I should be in the participant team workspace for the created team', async
   await expect(page.getByTestId('participant-team-workspace-panel').getByText(createdTeamName)).toBeVisible()
 })
 
-When('I open the participant visible team workspace for {string}', async ({ page }, teamName: string) => {
-  const teamCard = page.locator('[data-testid^="participant-team-card-"]').filter({
-    hasText: teamName
-  }).first()
-
-  if (await teamCard.count()) {
-    await expect(teamCard).toBeVisible()
-    await Promise.all([
-      page.waitForURL(/\/hackathons\/[^/]+\/teams\/[^/]+$/),
-      teamCard.getByRole('link', {
-        name: 'View team'
-      }).click()
-    ])
-  } else {
-    const currentTeamLink = page.getByRole('link', {
-      name: 'Open team workspace'
-    })
-
-    await expect(currentTeamLink).toBeVisible()
-    await Promise.all([
-      page.waitForURL(/\/hackathons\/[^/]+\/teams\/[^/]+$/),
-      currentTeamLink.click()
-    ])
-  }
-
-  await expect(page.getByTestId('participant-team-workspace-panel')).toBeVisible()
-})
-
-When('I request to join the current participant team', async ({ page }) => {
-  await Promise.all([
-    page.waitForResponse(response =>
-      response.url().includes('/api/hackathons/')
-      && response.url().includes('/team-join-requests')
-      && response.request().method() === 'POST'
-      && response.ok()
-    ),
-    page.getByTestId('participant-team-request-join').click()
-  ])
-})
-
 Then('I should see the participant team text {string}', async ({ page }, text: string) => {
   await expect(page.getByText(text, {
     exact: false
-  }).first()).toBeVisible()
-})
-
-Then('I should see the participant join request for {string}', async ({ page }, displayName: string) => {
-  await expect(page.getByText(displayName, {
-    exact: true
-  })).toBeVisible()
-  await expect(page.locator('[data-testid^="participant-team-join-request-"]').filter({
-    hasText: displayName
-  }).first()).toBeVisible()
-})
-
-When('I approve the participant join request for {string}', async ({ page }, displayName: string) => {
-  const requestCard = page.locator('[data-testid^="participant-team-join-request-"]').filter({
-    hasText: displayName
-  }).first()
-
-  await expect(requestCard).toBeVisible()
-  await Promise.all([
-    page.waitForResponse(response =>
-      response.url().includes('/actions/approve')
-      && response.request().method() === 'POST'
-      && response.ok()
-    ),
-    requestCard.getByRole('button', {
-      name: 'Approve'
-    }).click()
-  ])
-})
-
-Then('I should see the participant team member {string}', async ({ page }, displayName: string) => {
-  await expect(page.locator('[data-testid^="participant-team-member-"]').filter({
-    hasText: displayName
   }).first()).toBeVisible()
 })
 

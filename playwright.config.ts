@@ -58,7 +58,7 @@ export default defineConfig({
     }
   ],
   webServer: {
-    command: 'bun run dev -- --host 0.0.0.0 --port 3000',
+    command: 'bun run db:local:guard && nuxt dev --host 0.0.0.0 --port 3000',
     url: 'http://localhost:3000',
     reuseExistingServer: false,
     timeout: 120000

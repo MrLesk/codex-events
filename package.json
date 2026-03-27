@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-    "dev": "CI=1 wrangler d1 migrations apply DB --local --persist-to .wrangler/state/v3 --config wrangler.jsonc && nuxt dev",
+    "db:local:guard": "bun tools/d1/ensure-local-state-path.ts",
+    "dev": "bun run db:local:guard && CI=1 wrangler d1 migrations apply DB --local --persist-to .wrangler/state --config wrangler.jsonc && nuxt dev",
     "db:generate": "drizzle-kit generate",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
@@ -13,7 +14,7 @@
     "test:bdd:install": "playwright install chromium",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:bdd": "bun tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && bun tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1",
+    "test:bdd": "bun run db:local:guard && bun tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && bun tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1",
     "test:all": "bun run test:unit && bun run test:integration && bun run test:bdd"
   },
   "dependencies": {
