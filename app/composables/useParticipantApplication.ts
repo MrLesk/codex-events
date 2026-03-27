@@ -217,6 +217,9 @@ export function useParticipantApplication(
       fullName: string | null
       email: string | null
     }>
+    inPersonAttendanceCommitment?: boolean
+    whyThisHackathon?: string
+    proofOfExecutionUrl?: string
   }) {
     if (!visibleHackathonId.value) {
       submissionError.value = 'The current hackathon application route could not be resolved.'
@@ -234,7 +237,16 @@ export function useParticipantApplication(
         body: {
           applicationTermsDocumentId: options.applicationTermsDocumentId,
           registrationTeamIntent: options.registrationTeamIntent,
-          registrationTeamMembers: options.registrationTeamMembers
+          registrationTeamMembers: options.registrationTeamMembers,
+          ...(typeof options.inPersonAttendanceCommitment === 'boolean'
+            ? { inPersonAttendanceCommitment: options.inPersonAttendanceCommitment }
+            : {}),
+          ...(typeof options.whyThisHackathon === 'string'
+            ? { whyThisHackathon: options.whyThisHackathon }
+            : {}),
+          ...(typeof options.proofOfExecutionUrl === 'string'
+            ? { proofOfExecutionUrl: options.proofOfExecutionUrl }
+            : {})
         }
       })
 

@@ -6,6 +6,7 @@ import { apiData } from '../../../../utils/api-response'
 import {
   assertCurrentApplicationTermsAcceptance,
   assertHackathonAllowsApplications,
+  assertInPersonAttendanceCommitment,
   assertNoExistingApplication,
   assertUserMeetsHackathonProfileRequirements,
   serializeRegistrationDetailsJson,
@@ -24,6 +25,7 @@ export default defineApiHandler(async (event) => {
 
   assertHackathonAllowsApplications(hackathon)
   assertUserMeetsHackathonProfileRequirements(actor.platformUser, hackathon)
+  assertInPersonAttendanceCommitment(hackathon, body)
   await assertNoExistingApplication(database, hackathonId, actor.platformUser.id)
   const currentTermsDocument = await assertCurrentApplicationTermsAcceptance(
     database,
@@ -32,7 +34,10 @@ export default defineApiHandler(async (event) => {
   )
   const registrationDetailsJson = serializeRegistrationDetailsJson(hackathon, {
     registrationTeamIntent: body.registrationTeamIntent,
-    registrationTeamMembers: body.registrationTeamMembers
+    registrationTeamMembers: body.registrationTeamMembers,
+    inPersonAttendanceCommitment: body.inPersonAttendanceCommitment,
+    whyThisHackathon: body.whyThisHackathon,
+    proofOfExecutionUrl: body.proofOfExecutionUrl
   })
 
   const submittedAt = new Date().toISOString()

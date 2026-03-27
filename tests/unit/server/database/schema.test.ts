@@ -42,6 +42,9 @@ describe('shared schema foundation', () => {
 
     expect(hackathonColumns.lumaEventUrl.name).toBe('luma_event_url')
     expect(hackathonColumns.agendaItemsJson.name).toBe('agenda_items_json')
+    expect(hackathonColumns.inPersonEvent.name).toBe('in_person_event')
+    expect(hackathonColumns.requireWhyThisHackathon.name).toBe('require_why_this_hackathon')
+    expect(hackathonColumns.requireProofOfExecution.name).toBe('require_proof_of_execution')
     expect(hackathonChecks).toContain('hackathons_max_team_members_check')
     expect(hackathonChecks).toContain('hackathons_schedule_order_check')
     expect(auditIndexes).toContain('audit_logs_entity_idx')

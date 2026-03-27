@@ -41,12 +41,15 @@ async function createHackathon(form: HackathonFormState) {
         submissionOpensAt: fromDateTimeLocalValue(form.submissionOpensAt),
         submissionClosesAt: fromDateTimeLocalValue(form.submissionClosesAt),
         maxTeamMembers: form.maxTeamMembers,
+        inPersonEvent: form.inPersonEvent,
         requireXProfile: form.requireXProfile,
         requireLinkedinProfile: form.requireLinkedinProfile,
         requireGithubProfile: form.requireGithubProfile,
         requireChatgptEmail: form.requireChatgptEmail,
         requireOpenaiOrgId: form.requireOpenaiOrgId,
-        requireLumaProfile: form.requireLumaProfile
+        requireLumaProfile: form.requireLumaProfile,
+        requireWhyThisHackathon: form.requireWhyThisHackathon,
+        requireProofOfExecution: form.requireProofOfExecution
       }
     })
 

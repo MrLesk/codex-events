@@ -49,9 +49,15 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     submissionClosesAt: '2026-03-24T10:00:00.000Z',
     state: 'registration_open',
     maxTeamMembers: 5,
+    inPersonEvent: false,
     requireXProfile: false,
     requireLinkedinProfile: true,
     requireGithubProfile: true,
+    requireChatgptEmail: false,
+    requireOpenaiOrgId: false,
+    requireLumaProfile: false,
+    requireWhyThisHackathon: false,
+    requireProofOfExecution: false,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
     createdByUserId: 'platform-admin',
@@ -258,6 +264,7 @@ describe('admin-workspace form helpers', () => {
       backgroundImageUrl: 'https://example.com/background.jpg',
       bannerImageUrl: 'https://example.com/banner.jpg',
       maxTeamMembers: 5,
+      inPersonEvent: false,
       requireLinkedinProfile: true,
       requireGithubProfile: true
     })

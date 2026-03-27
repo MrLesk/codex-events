@@ -23,6 +23,15 @@ import { cloneFormValues } from '~/utils/form-values'
 const termsAccepted = defineModel<boolean>('termsAccepted', {
   required: true
 })
+const inPersonAttendanceCommitment = defineModel<boolean>('inPersonAttendanceCommitment', {
+  required: true
+})
+const whyThisHackathon = defineModel<string>('whyThisHackathon', {
+  required: true
+})
+const proofOfExecutionUrl = defineModel<string>('proofOfExecutionUrl', {
+  required: true
+})
 const teamIntent = defineModel<ParticipantRegistrationTeamIntent>('teamIntent', {
   required: true
 })
@@ -43,11 +52,12 @@ const profileForm = defineModel<{
 })
 
 const props = defineProps<{
-  hackathon: Pick<PublicHackathon, 'slug' | 'state'>
+  hackathon: Pick<PublicHackathon, 'slug' | 'state' | 'city' | 'inPersonEvent' | 'requireWhyThisHackathon' | 'requireProofOfExecution'>
   application: ParticipantApplicationRecord | null
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
   profileFields: HackathonProfileField[]
   submissionPolicy: ParticipantApplicationSubmissionPolicy
+  inPersonCommitmentDateLabel: string
   teamsHref: string
   maxTeamMembers: number
   isSubmitting?: boolean
@@ -110,12 +120,14 @@ const maxTeamMemberHints = computed(() => Math.max(0, props.maxTeamMembers - 1))
 const applicationTermsPageHref = computed(() => `/hackathons/${props.hackathon.slug}/application-terms`)
 
 const requiredChipClass = 'rounded-full border border-amber-600/35 bg-amber-500/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 dark:border-amber-300/35 dark:bg-amber-300/12 dark:text-amber-200'
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 const registrationSchema = computed(() => buildParticipantRegistrationFormSchema({
   profileFields: props.profileFields,
   maxTeamMembers: props.maxTeamMembers,
-  hasCurrentApplicationTerms: Boolean(props.currentApplicationTerms)
+  hasCurrentApplicationTerms: Boolean(props.currentApplicationTerms),
+  isInPersonEvent: props.hackathon.inPersonEvent,
+  requireWhyThisHackathon: props.hackathon.requireWhyThisHackathon,
+  requireProofOfExecution: props.hackathon.requireProofOfExecution
 }))
 
 const {
@@ -128,6 +140,9 @@ const {
   validationSchema: computed(() => toTypedSchema(registrationSchema.value)),
   initialValues: {
     termsAccepted: termsAccepted.value,
+    inPersonAttendanceCommitment: inPersonAttendanceCommitment.value,
+    whyThisHackathon: whyThisHackathon.value,
+    proofOfExecutionUrl: proofOfExecutionUrl.value,
     teamIntent: teamIntent.value,
     teamMemberHints: cloneFormValues(teamMemberHints.value),
     profileForm: cloneFormValues(profileForm.value)
@@ -136,16 +151,23 @@ const {
 
 watch([
   termsAccepted,
+  inPersonAttendanceCommitment,
+  whyThisHackathon,
+  proofOfExecutionUrl,
   teamIntent,
   teamMemberHints,
   profileForm,
   () => props.profileFields,
   () => props.maxTeamMembers,
-  () => props.currentApplicationTerms?.id ?? null
+  () => props.currentApplicationTerms?.id ?? null,
+  () => props.hackathon.inPersonEvent
 ], () => {
   syncingFromModels.value = true
   setValues({
     termsAccepted: termsAccepted.value,
+    inPersonAttendanceCommitment: inPersonAttendanceCommitment.value,
+    whyThisHackathon: whyThisHackathon.value,
+    proofOfExecutionUrl: proofOfExecutionUrl.value,
     teamIntent: teamIntent.value,
     teamMemberHints: cloneFormValues(teamMemberHints.value),
     profileForm: cloneFormValues(profileForm.value)
@@ -162,6 +184,9 @@ watch(values, (nextValues) => {
   }
 
   termsAccepted.value = nextValues.termsAccepted ?? false
+  inPersonAttendanceCommitment.value = nextValues.inPersonAttendanceCommitment ?? false
+  whyThisHackathon.value = nextValues.whyThisHackathon ?? ''
+  proofOfExecutionUrl.value = nextValues.proofOfExecutionUrl ?? ''
   teamIntent.value = nextValues.teamIntent ?? 'unknown'
   teamMemberHints.value = cloneFormValues(nextValues.teamMemberHints ?? [])
 
@@ -206,6 +231,21 @@ const termsAcceptedError = computed(() => {
   return currentErrors.termsAccepted ?? ''
 })
 
+const inPersonAttendanceCommitmentError = computed(() => {
+  const currentErrors = errors.value as Record<string, string | undefined>
+  return currentErrors.inPersonAttendanceCommitment ?? ''
+})
+
+const whyThisHackathonError = computed(() => {
+  const currentErrors = errors.value as Record<string, string | undefined>
+  return currentErrors.whyThisHackathon ?? ''
+})
+
+const proofOfExecutionUrlError = computed(() => {
+  const currentErrors = errors.value as Record<string, string | undefined>
+  return currentErrors.proofOfExecutionUrl ?? ''
+})
+
 const hasClientValidationErrors = computed(() => Object.keys(errors.value).length > 0)
 
 const canSubmitFromPanel = computed(() => props.submissionPolicy.isAllowed && !hasClientValidationErrors.value)
@@ -218,6 +258,7 @@ const submissionPolicyReason = computed(() => {
   if (
     props.submissionPolicy.reason === 'Complete the required profile fields before submitting this application.'
     || props.submissionPolicy.reason === 'Accept the current application terms before submitting.'
+    || props.submissionPolicy.reason === 'Confirm in-person attendance commitment before submitting this application.'
   ) {
     return ''
   }
@@ -252,6 +293,18 @@ const missingRequiredFieldCount = computed(() => {
     count += 1
   }
 
+  if (props.hackathon.inPersonEvent && !inPersonAttendanceCommitment.value) {
+    count += 1
+  }
+
+  if (props.hackathon.requireWhyThisHackathon && !whyThisHackathon.value.trim()) {
+    count += 1
+  }
+
+  if (props.hackathon.requireProofOfExecution && !proofOfExecutionUrl.value.trim()) {
+    count += 1
+  }
+
   return count
 })
 
@@ -268,6 +321,18 @@ const invalidFieldCount = computed(() => {
 
   if (props.currentApplicationTerms) {
     requiredKeys.add('termsAccepted')
+  }
+
+  if (props.hackathon.inPersonEvent) {
+    requiredKeys.add('inPersonAttendanceCommitment')
+  }
+
+  if (props.hackathon.requireWhyThisHackathon) {
+    requiredKeys.add('whyThisHackathon')
+  }
+
+  if (props.hackathon.requireProofOfExecution) {
+    requiredKeys.add('proofOfExecutionUrl')
   }
 
   let invalidCount = 0
@@ -593,6 +658,76 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
               :description="submissionPolicyReason"
             />
 
+            <section class="space-y-3 rounded-lg border border-black/8 px-3 py-3 dark:border-white/[0.08]">
+              <div class="flex items-center gap-2">
+                <p class="text-[13px] font-medium text-highlighted dark:text-white">
+                  Application details
+                </p>
+                <span
+                  v-if="hackathon.requireWhyThisHackathon || hackathon.requireProofOfExecution"
+                  :class="requiredChipClass"
+                >
+                  Required fields may apply
+                </span>
+              </div>
+
+              <label class="space-y-1">
+                <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
+                  <span>Why this hackathon</span>
+                  <span
+                    v-if="hackathon.requireWhyThisHackathon"
+                    :class="requiredChipClass"
+                  >
+                    Required
+                  </span>
+                </span>
+                <textarea
+                  v-model="whyThisHackathon"
+                  rows="5"
+                  :disabled="isSubmitting || isSavingProfile"
+                  class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
+                  :class="submitAttempted && whyThisHackathonError
+                    ? 'border-error/45 focus:border-error dark:border-error/50'
+                    : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                  placeholder="Share your motivation and what you want to build."
+                />
+                <p
+                  v-if="submitAttempted && whyThisHackathonError"
+                  class="text-[11px] text-error"
+                >
+                  {{ whyThisHackathonError }}
+                </p>
+              </label>
+
+              <label class="space-y-1">
+                <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
+                  <span>Proof of execution URL</span>
+                  <span
+                    v-if="hackathon.requireProofOfExecution"
+                    :class="requiredChipClass"
+                  >
+                    Required
+                  </span>
+                </span>
+                <input
+                  v-model="proofOfExecutionUrl"
+                  type="url"
+                  :disabled="isSubmitting || isSavingProfile"
+                  class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
+                  :class="submitAttempted && proofOfExecutionUrlError
+                    ? 'border-error/45 focus:border-error dark:border-error/50'
+                    : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                  placeholder="https://github.com/your-project or https://demo.example.com"
+                >
+                <p
+                  v-if="submitAttempted && proofOfExecutionUrlError"
+                  class="text-[11px] text-error"
+                >
+                  {{ proofOfExecutionUrlError }}
+                </p>
+              </label>
+            </section>
+
             <div class="space-y-2">
               <p class="text-[14px] font-medium text-highlighted dark:text-white">
                 Applying as
@@ -680,6 +815,30 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                 </p>
               </div>
             </div>
+
+            <section
+              v-if="hackathon.inPersonEvent"
+              class="space-y-2 rounded-lg border border-black/8 px-3 py-3 dark:border-white/[0.08]"
+            >
+              <p class="text-[13px] font-medium text-highlighted dark:text-white">
+                In-person attendance commitment
+              </p>
+              <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
+                If your application is approved, you confirm that you can attend in person on {{ inPersonCommitmentDateLabel }} in {{ hackathon.city }}.
+              </p>
+              <AppCheckbox
+                v-model="inPersonAttendanceCommitment"
+                :disabled="isSubmitting"
+              >
+                I commit to attending in person on that date in {{ hackathon.city }} if approved.
+              </AppCheckbox>
+              <p
+                v-if="submitAttempted && inPersonAttendanceCommitmentError"
+                class="text-[11px] text-error"
+              >
+                {{ inPersonAttendanceCommitmentError }}
+              </p>
+            </section>
 
             <AppCheckbox
               v-if="currentApplicationTerms"

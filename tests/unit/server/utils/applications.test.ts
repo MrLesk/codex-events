@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import { ApiError } from '../../../../server/utils/api-error'
 import {
+  assertInPersonAttendanceCommitment,
   assertApplicationReviewable,
   assertHackathonAllowsApplications,
   assertUserMeetsHackathonProfileRequirements,
@@ -25,6 +26,7 @@ describe('application utilities', () => {
       submissionClosesAt: '2026-03-25T12:00:00.000Z',
       state: 'registration_open',
       maxTeamMembers: 5,
+      inPersonEvent: false,
       requireXProfile: false,
       requireLinkedinProfile: false,
       requireGithubProfile: false,
@@ -52,6 +54,7 @@ describe('application utilities', () => {
       submissionClosesAt: '2026-03-25T12:00:00.000Z',
       state: 'submission_open',
       maxTeamMembers: 5,
+      inPersonEvent: false,
       requireXProfile: false,
       requireLinkedinProfile: false,
       requireGithubProfile: false,
@@ -95,6 +98,7 @@ describe('application utilities', () => {
       submissionClosesAt: '2026-03-25T12:00:00.000Z',
       state: 'registration_open',
       maxTeamMembers: 5,
+      inPersonEvent: false,
       requireXProfile: true,
       requireLinkedinProfile: false,
       requireGithubProfile: true,
@@ -141,6 +145,7 @@ describe('application utilities', () => {
       submissionClosesAt: '2026-03-25T12:00:00.000Z',
       state: 'registration_open',
       maxTeamMembers: 5,
+      inPersonEvent: false,
       requireXProfile: false,
       requireLinkedinProfile: false,
       requireGithubProfile: false,
@@ -186,6 +191,7 @@ describe('application utilities', () => {
       submissionClosesAt: '2026-03-25T12:00:00.000Z',
       state: 'registration_open',
       maxTeamMembers: 5,
+      inPersonEvent: false,
       requireXProfile: false,
       requireLinkedinProfile: false,
       requireGithubProfile: false,
@@ -235,7 +241,10 @@ describe('application utilities', () => {
   test('serializes registration details and enforces max team-member hints', () => {
     expect(serializeRegistrationDetailsJson({
       id: 'hackathon_1',
-      maxTeamMembers: 2
+      maxTeamMembers: 2,
+      inPersonEvent: true,
+      requireWhyThisHackathon: true,
+      requireProofOfExecution: true
     }, {
       registrationTeamIntent: 'team',
       registrationTeamMembers: [
@@ -247,7 +256,10 @@ describe('application utilities', () => {
           fullName: 'Grace Hopper',
           email: null
         }
-      ]
+      ],
+      inPersonAttendanceCommitment: true,
+      whyThisHackathon: ' I have shipped similar projects before. ',
+      proofOfExecutionUrl: 'https://github.com/example/shipped-work'
     })).toBe(JSON.stringify({
       teamIntent: 'team',
       teamMembers: [
@@ -258,12 +270,18 @@ describe('application utilities', () => {
         {
           fullName: 'Grace Hopper'
         }
-      ]
+      ],
+      inPersonAttendanceCommitment: true,
+      whyThisHackathon: 'I have shipped similar projects before.',
+      proofOfExecutionUrl: 'https://github.com/example/shipped-work'
     }))
 
     expect(() => serializeRegistrationDetailsJson({
       id: 'hackathon_1',
-      maxTeamMembers: 1
+      maxTeamMembers: 1,
+      inPersonEvent: false,
+      requireWhyThisHackathon: false,
+      requireProofOfExecution: false
     }, {
       registrationTeamIntent: 'team',
       registrationTeamMembers: [
@@ -275,7 +293,79 @@ describe('application utilities', () => {
           fullName: 'Grace Hopper',
           email: null
         }
-      ]
+      ],
+      inPersonAttendanceCommitment: false,
+      whyThisHackathon: '',
+      proofOfExecutionUrl: ''
     })).toThrowError(ApiError)
+  })
+
+  test('enforces why-this-hackathon and proof-of-execution requirements when configured', () => {
+    expect(() => serializeRegistrationDetailsJson({
+      id: 'hackathon_1',
+      maxTeamMembers: 4,
+      inPersonEvent: false,
+      requireWhyThisHackathon: true,
+      requireProofOfExecution: false
+    }, {
+      registrationTeamIntent: 'unknown',
+      registrationTeamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisHackathon: '',
+      proofOfExecutionUrl: ''
+    })).toThrowError(ApiError)
+
+    expect(() => serializeRegistrationDetailsJson({
+      id: 'hackathon_1',
+      maxTeamMembers: 4,
+      inPersonEvent: false,
+      requireWhyThisHackathon: false,
+      requireProofOfExecution: true
+    }, {
+      registrationTeamIntent: 'unknown',
+      registrationTeamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisHackathon: '',
+      proofOfExecutionUrl: ''
+    })).toThrowError(ApiError)
+  })
+
+  test('rejects non-http proof-of-execution URLs', () => {
+    expect(() => serializeRegistrationDetailsJson({
+      id: 'hackathon_1',
+      maxTeamMembers: 4,
+      inPersonEvent: false,
+      requireWhyThisHackathon: false,
+      requireProofOfExecution: false
+    }, {
+      registrationTeamIntent: 'unknown',
+      registrationTeamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisHackathon: '',
+      proofOfExecutionUrl: 'ftp://example.com/project'
+    })).toThrowError(ApiError)
+  })
+
+  test('requires explicit in-person commitment only for in-person hackathons', () => {
+    expect(() => assertInPersonAttendanceCommitment({
+      id: 'hackathon_1',
+      inPersonEvent: true
+    }, {
+      inPersonAttendanceCommitment: false
+    })).toThrowError(ApiError)
+
+    expect(() => assertInPersonAttendanceCommitment({
+      id: 'hackathon_1',
+      inPersonEvent: true
+    }, {
+      inPersonAttendanceCommitment: true
+    })).not.toThrow()
+
+    expect(() => assertInPersonAttendanceCommitment({
+      id: 'hackathon_1',
+      inPersonEvent: false
+    }, {
+      inPersonAttendanceCommitment: false
+    })).not.toThrow()
   })
 })

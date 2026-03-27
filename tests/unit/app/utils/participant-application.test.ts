@@ -146,7 +146,9 @@ describe('participant application helpers', () => {
       applicationStatus: null,
       missingRequiredProfileFieldCount: 0,
       hasCurrentApplicationTerms: true,
-      hasAcceptedCurrentTerms: true
+      hasAcceptedCurrentTerms: true,
+      requiresInPersonAttendanceCommitment: false,
+      hasAcceptedInPersonAttendanceCommitment: false
     })).toEqual({
       isAllowed: true
     })
@@ -156,7 +158,9 @@ describe('participant application helpers', () => {
       applicationStatus: null,
       missingRequiredProfileFieldCount: 0,
       hasCurrentApplicationTerms: true,
-      hasAcceptedCurrentTerms: true
+      hasAcceptedCurrentTerms: true,
+      requiresInPersonAttendanceCommitment: false,
+      hasAcceptedInPersonAttendanceCommitment: false
     })).toEqual({
       isAllowed: false,
       reason: 'Applications are closed for this hackathon.'
@@ -167,7 +171,9 @@ describe('participant application helpers', () => {
       applicationStatus: null,
       missingRequiredProfileFieldCount: 2,
       hasCurrentApplicationTerms: true,
-      hasAcceptedCurrentTerms: true
+      hasAcceptedCurrentTerms: true,
+      requiresInPersonAttendanceCommitment: false,
+      hasAcceptedInPersonAttendanceCommitment: false
     })).toEqual({
       isAllowed: false,
       reason: 'Complete the required profile fields before submitting this application.'
@@ -178,10 +184,25 @@ describe('participant application helpers', () => {
       applicationStatus: null,
       missingRequiredProfileFieldCount: 0,
       hasCurrentApplicationTerms: true,
-      hasAcceptedCurrentTerms: false
+      hasAcceptedCurrentTerms: false,
+      requiresInPersonAttendanceCommitment: false,
+      hasAcceptedInPersonAttendanceCommitment: false
     })).toEqual({
       isAllowed: false,
       reason: 'Accept the current application terms before submitting.'
+    })
+
+    expect(getParticipantApplicationSubmissionPolicy({
+      hackathonState: 'registration_open',
+      applicationStatus: null,
+      missingRequiredProfileFieldCount: 0,
+      hasCurrentApplicationTerms: true,
+      hasAcceptedCurrentTerms: true,
+      requiresInPersonAttendanceCommitment: true,
+      hasAcceptedInPersonAttendanceCommitment: false
+    })).toEqual({
+      isAllowed: false,
+      reason: 'Confirm in-person attendance commitment before submitting this application.'
     })
   })
 
@@ -237,7 +258,9 @@ describe('participant application helpers', () => {
           fullName: 'Ada Lovelace',
           email: 'ada@example.com'
         }
-      ]
+      ],
+      whyThisHackathon: 'I want to build something useful.',
+      proofOfExecutionUrl: 'https://github.com/example/project'
     }))).toEqual({
       teamIntent: 'team',
       teamMembers: [
@@ -245,12 +268,18 @@ describe('participant application helpers', () => {
           fullName: 'Ada Lovelace',
           email: 'ada@example.com'
         }
-      ]
+      ],
+      inPersonAttendanceCommitment: false,
+      whyThisHackathon: 'I want to build something useful.',
+      proofOfExecutionUrl: 'https://github.com/example/project'
     })
 
     expect(parseParticipantRegistrationDetailsJson('{invalid-json')).toEqual({
       teamIntent: 'unknown',
-      teamMembers: []
+      teamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisHackathon: '',
+      proofOfExecutionUrl: ''
     })
   })
 })

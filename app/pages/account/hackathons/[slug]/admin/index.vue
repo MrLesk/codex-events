@@ -368,12 +368,15 @@ async function saveConfiguration(configForm: HackathonFormState) {
         submissionOpensAt: fromDateTimeLocalValue(configForm.submissionOpensAt),
         submissionClosesAt: fromDateTimeLocalValue(configForm.submissionClosesAt),
         maxTeamMembers: configForm.maxTeamMembers,
+        inPersonEvent: configForm.inPersonEvent,
         requireXProfile: configForm.requireXProfile,
         requireLinkedinProfile: configForm.requireLinkedinProfile,
         requireGithubProfile: configForm.requireGithubProfile,
         requireChatgptEmail: configForm.requireChatgptEmail,
         requireOpenaiOrgId: configForm.requireOpenaiOrgId,
-        requireLumaProfile: configForm.requireLumaProfile
+        requireLumaProfile: configForm.requireLumaProfile,
+        requireWhyThisHackathon: configForm.requireWhyThisHackathon,
+        requireProofOfExecution: configForm.requireProofOfExecution
       }
     })
 
@@ -689,8 +692,8 @@ async function runLifecycleAction() {
           eyebrow="Admin Settings"
           :title="currentHackathon ? `${currentHackathon.name} settings` : 'Hackathon settings'"
           description="Edit hackathon configuration, manage terms, and assign or remove hackathon-admin and judge access."
-          :back-to="`/account/hackathons/${slug}`"
-          back-label="Back to hackathon detail"
+          back-to="/account/admin"
+          back-label="Back to admin operations"
           :state-label="headerStateLabel"
           :state-class="headerStateClass"
           :summary="workspaceSummary"
@@ -704,7 +707,7 @@ async function runLifecycleAction() {
       </AppContainer>
     </section>
 
-    <AppContainer class="max-w-[68rem] space-y-8 pt-6">
+    <AppContainer class="max-w-[68rem] space-y-10 pt-6">
       <AppAlert
         v-if="mutationError"
         color="error"
@@ -730,8 +733,27 @@ async function runLifecycleAction() {
       />
 
       <template v-else-if="currentHackathon">
-        <section class="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-          <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
+        <section class="grid gap-6 xl:grid-cols-[1.12fr_0.88fr] xl:items-start">
+          <AdminHackathonCreateEditForm
+            :initial-hackathon="currentHackathon"
+            :can-upload-managed-images="true"
+            :is-submitting="isSavingConfig"
+            :background-image-upload-pending="imageMutationState.background.pending"
+            :background-image-upload-success="imageMutationState.background.success"
+            :background-image-upload-error="imageMutationState.background.error"
+            :banner-image-upload-pending="imageMutationState.banner.pending"
+            :banner-image-upload-success="imageMutationState.banner.success"
+            :banner-image-upload-error="imageMutationState.banner.error"
+            submit-label="Save Configuration"
+            helper-text="This workspace stays focused on setup and lifecycle controls. Day-to-day application, team, and submission operations now live in the dedicated Operations workspace."
+            @submit="saveConfiguration"
+            @upload-background-image="uploadBackgroundImage"
+            @remove-background-image="removeBackgroundImage"
+            @upload-banner-image="uploadBannerImage"
+            @remove-banner-image="removeBannerImage"
+          />
+
+          <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none xl:sticky xl:top-24 dark:border-white/[0.08] dark:bg-black/36">
             <template #header>
               <div class="flex flex-wrap items-center gap-3">
                 <h2 class="text-lg font-semibold text-highlighted">
@@ -747,7 +769,7 @@ async function runLifecycleAction() {
             </template>
 
             <div class="grid gap-4 text-sm">
-              <div class="grid gap-1 rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-3">
+              <div class="grid gap-1 rounded-lg border border-black/8 bg-white/85 px-4 py-3 dark:border-white/[0.08] dark:bg-[#111111]">
                 <span class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Actor</span>
                 <span class="text-base font-semibold text-highlighted">
                   {{ actor?.platformUser?.displayName ?? actor?.sessionUser?.email }}
@@ -757,7 +779,7 @@ async function runLifecycleAction() {
                 </span>
               </div>
 
-              <div class="grid gap-1 rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-3">
+              <div class="grid gap-1 rounded-lg border border-black/8 bg-white/85 px-4 py-3 dark:border-white/[0.08] dark:bg-[#111111]">
                 <span class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Current terms</span>
                 <span class="text-highlighted">
                   Application: {{ currentHackathon.currentTerms?.applicationTerms?.title ?? 'None selected' }}
@@ -802,28 +824,9 @@ async function runLifecycleAction() {
               </div>
             </div>
           </AppCard>
-
-          <AdminHackathonCreateEditForm
-            :initial-hackathon="currentHackathon"
-            :can-upload-managed-images="true"
-            :is-submitting="isSavingConfig"
-            :background-image-upload-pending="imageMutationState.background.pending"
-            :background-image-upload-success="imageMutationState.background.success"
-            :background-image-upload-error="imageMutationState.background.error"
-            :banner-image-upload-pending="imageMutationState.banner.pending"
-            :banner-image-upload-success="imageMutationState.banner.success"
-            :banner-image-upload-error="imageMutationState.banner.error"
-            submit-label="Save Configuration"
-            helper-text="This workspace stays focused on setup and lifecycle controls. Day-to-day application, team, and submission operations now live in the dedicated Operations workspace."
-            @submit="saveConfiguration"
-            @upload-background-image="uploadBackgroundImage"
-            @remove-background-image="removeBackgroundImage"
-            @upload-banner-image="uploadBannerImage"
-            @remove-banner-image="removeBannerImage"
-          />
         </section>
 
-        <section class="grid gap-6 xl:grid-cols-2">
+        <section class="space-y-6">
           <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
             <template #header>
               <div class="space-y-1">
@@ -888,7 +891,7 @@ async function runLifecycleAction() {
                   <div
                     v-for="document in applicationTerms"
                     :key="document.id"
-                    class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4"
+                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
                   >
                     <div class="flex items-start justify-between gap-4">
                       <div class="space-y-1">
@@ -918,7 +921,7 @@ async function runLifecycleAction() {
                   <div
                     v-for="document in winnerTerms"
                     :key="document.id"
-                    class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4"
+                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
                   >
                     <div class="flex items-start justify-between gap-4">
                       <div class="space-y-1">
@@ -988,7 +991,7 @@ async function runLifecycleAction() {
                   <div
                     v-for="criterion in criteria"
                     :key="criterion.id"
-                    class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4"
+                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
                   >
                     <div class="grid gap-4">
                       <div class="grid gap-4 md:grid-cols-[1fr_120px_120px]">
@@ -1110,7 +1113,7 @@ async function runLifecycleAction() {
                   <div
                     v-for="prize in prizes"
                     :key="prize.id"
-                    class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4"
+                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
                   >
                     <div class="grid gap-4">
                       <div class="grid gap-4 md:grid-cols-2">
@@ -1203,8 +1206,8 @@ async function runLifecycleAction() {
           </AppCard>
         </section>
 
-        <section class="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-          <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
+        <section class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr] xl:items-start">
+          <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none xl:sticky xl:top-24 dark:border-white/[0.08] dark:bg-black/36">
             <template #header>
               <div class="space-y-1">
                 <h2 class="text-lg font-semibold text-highlighted">
@@ -1226,22 +1229,27 @@ async function runLifecycleAction() {
               />
 
               <section class="space-y-3">
-                <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-                  Hackathon admins
-                </h3>
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+                    Hackathon admins
+                  </h3>
+                  <p class="text-xs text-muted">
+                    {{ adminRoleAssignments.length }} assigned
+                  </p>
+                </div>
 
                 <template v-if="canMutateRoles">
                   <input
                     v-model="adminAssignmentSearch"
                     type="text"
-                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+                    class="w-full rounded-lg border border-black/8 bg-white/90 px-4 py-3 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                     placeholder="Search users by name, email, or user ID"
                   >
                   <div class="grid gap-3">
                     <div
                       v-for="user in adminAssignableUsers"
                       :key="user.id"
-                      class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                      class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 dark:border-white/[0.08] dark:bg-[#111111]"
                     >
                       <div class="space-y-0.5">
                         <p class="font-semibold text-highlighted">
@@ -1276,7 +1284,7 @@ async function runLifecycleAction() {
                   <div
                     v-for="assignment in adminRoleAssignments"
                     :key="assignment.id"
-                    class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4"
+                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
                   >
                     <div class="grid gap-4">
                       <div class="flex flex-wrap items-start justify-between gap-4">
@@ -1329,22 +1337,27 @@ async function runLifecycleAction() {
               </section>
 
               <section class="space-y-3 border-t border-black/8 pt-4 dark:border-white/[0.08]">
-                <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-                  Judges
-                </h3>
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+                    Judges
+                  </h3>
+                  <p class="text-xs text-muted">
+                    {{ judgeRoleAssignments.length }} assigned
+                  </p>
+                </div>
 
                 <template v-if="canMutateRoles">
                   <input
                     v-model="judgeAssignmentSearch"
                     type="text"
-                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+                    class="w-full rounded-lg border border-black/8 bg-white/90 px-4 py-3 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                     placeholder="Search users by name, email, or user ID"
                   >
                   <div class="grid gap-3">
                     <div
                       v-for="user in judgeAssignableUsers"
                       :key="user.id"
-                      class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                      class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 dark:border-white/[0.08] dark:bg-[#111111]"
                     >
                       <div class="space-y-0.5">
                         <p class="font-semibold text-highlighted">
@@ -1379,7 +1392,7 @@ async function runLifecycleAction() {
                   <div
                     v-for="assignment in judgeRoleAssignments"
                     :key="assignment.id"
-                    class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4"
+                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
                   >
                     <div class="grid gap-4">
                       <div class="flex flex-wrap items-start justify-between gap-4">
@@ -1446,7 +1459,7 @@ async function runLifecycleAction() {
             </template>
 
             <div class="grid gap-4 md:grid-cols-2">
-              <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
+              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                   Submitted submissions
                 </p>
@@ -1454,7 +1467,7 @@ async function runLifecycleAction() {
                   {{ lifecycleMetrics.submittedSubmissionCount }}
                 </p>
               </div>
-              <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
+              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                   Automatic judge pool
                 </p>
@@ -1462,7 +1475,7 @@ async function runLifecycleAction() {
                   {{ lifecycleMetrics.judgePoolCount }}
                 </p>
               </div>
-              <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
+              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                   Locked submissions
                 </p>
@@ -1470,7 +1483,7 @@ async function runLifecycleAction() {
                   {{ lifecycleMetrics.lockedSubmissionCount }}
                 </p>
               </div>
-              <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
+              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                   Active assignments
                 </p>
@@ -1478,7 +1491,7 @@ async function runLifecycleAction() {
                   {{ lifecycleMetrics.activeAssignmentCount }}
                 </p>
               </div>
-              <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
+              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                   Completed reviews
                 </p>
@@ -1486,7 +1499,7 @@ async function runLifecycleAction() {
                   {{ lifecycleMetrics.completedReviewCount }}
                 </p>
               </div>
-              <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
+              <div class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                   No-submission teams
                 </p>

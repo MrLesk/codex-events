@@ -169,12 +169,15 @@ export interface HackathonRecord {
   submissionClosesAt: string
   state: HackathonState
   maxTeamMembers: number
+  inPersonEvent: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean
   requireChatgptEmail: boolean
   requireOpenaiOrgId: boolean
   requireLumaProfile: boolean
+  requireWhyThisHackathon: boolean
+  requireProofOfExecution: boolean
   currentApplicationTermsDocumentId: string | null
   currentWinnerTermsDocumentId: string | null
   createdByUserId: string
@@ -200,12 +203,15 @@ export interface HackathonFormState {
   submissionOpensAt: string
   submissionClosesAt: string
   maxTeamMembers: number
+  inPersonEvent: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean
   requireChatgptEmail: boolean
   requireOpenaiOrgId: boolean
   requireLumaProfile: boolean
+  requireWhyThisHackathon: boolean
+  requireProofOfExecution: boolean
 }
 
 export interface HackathonFormAgendaItem {
@@ -724,12 +730,15 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     submissionOpensAt: '',
     submissionClosesAt: '',
     maxTeamMembers: 4,
+    inPersonEvent: false,
     requireXProfile: false,
     requireLinkedinProfile: false,
     requireGithubProfile: false,
     requireChatgptEmail: true,
     requireOpenaiOrgId: true,
-    requireLumaProfile: true
+    requireLumaProfile: true,
+    requireWhyThisHackathon: false,
+    requireProofOfExecution: false
   }
 }
 
@@ -757,12 +766,15 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
     submissionOpensAt: toDateTimeLocalValue(hackathon.submissionOpensAt),
     submissionClosesAt: toDateTimeLocalValue(hackathon.submissionClosesAt),
     maxTeamMembers: hackathon.maxTeamMembers,
+    inPersonEvent: hackathon.inPersonEvent,
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,
     requireGithubProfile: hackathon.requireGithubProfile,
     requireChatgptEmail: hackathon.requireChatgptEmail,
     requireOpenaiOrgId: hackathon.requireOpenaiOrgId,
-    requireLumaProfile: hackathon.requireLumaProfile
+    requireLumaProfile: hackathon.requireLumaProfile,
+    requireWhyThisHackathon: hackathon.requireWhyThisHackathon,
+    requireProofOfExecution: hackathon.requireProofOfExecution
   }
 }
 

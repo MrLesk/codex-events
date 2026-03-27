@@ -38,7 +38,10 @@ async function seedApplicationContext(
     requireChatgptEmail?: boolean
     requireOpenaiOrgId?: boolean
     requireLumaProfile?: boolean
+    requireWhyThisHackathon?: boolean
+    requireProofOfExecution?: boolean
     lumaEventUrl?: string | null
+    inPersonEvent?: boolean
   }
 ) {
   await harness.database.insert(users).values([
@@ -86,10 +89,13 @@ async function seedApplicationContext(
     submissionClosesAt: '2026-03-25T12:00:00.000Z',
     state: 'registration_open',
     maxTeamMembers: 5,
+    inPersonEvent: options?.inPersonEvent ?? false,
     requireGithubProfile: options?.requireGithubProfile ?? false,
     requireChatgptEmail: options?.requireChatgptEmail ?? false,
     requireOpenaiOrgId: options?.requireOpenaiOrgId ?? false,
     requireLumaProfile: options?.requireLumaProfile ?? false,
+    requireWhyThisHackathon: options?.requireWhyThisHackathon ?? false,
+    requireProofOfExecution: options?.requireProofOfExecution ?? false,
     lumaEventUrl: options?.lumaEventUrl ?? null,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
@@ -186,7 +192,9 @@ describe('TASK-3.6 application routes', () => {
             fullName: 'Grace Hopper',
             email: null
           }
-        ]
+        ],
+        whyThisHackathon: 'I want to build a practical project with other builders.',
+        proofOfExecutionUrl: 'https://github.com/regular/previous-project'
       })
     })
 
@@ -220,8 +228,167 @@ describe('TASK-3.6 application routes', () => {
           {
             fullName: 'Grace Hopper'
           }
-        ]
+        ],
+        inPersonAttendanceCommitment: false,
+        whyThisHackathon: 'I want to build a practical project with other builders.',
+        proofOfExecutionUrl: 'https://github.com/regular/previous-project'
       })
+    })
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications requires in-person attendance commitment when configured', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      inPersonEvent: true
+    })
+
+    const missingCommitmentResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(missingCommitmentResponse.status).toBe(409)
+    expect(await missingCommitmentResponse.json()).toMatchObject({
+      error: {
+        code: 'in_person_attendance_commitment_required'
+      }
+    })
+
+    const committedResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2',
+        inPersonAttendanceCommitment: true
+      })
+    })
+
+    expect(committedResponse.status).toBe(200)
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+
+    expect(storedApplication?.registrationDetailsJson).toBe(JSON.stringify({
+      teamIntent: 'unknown',
+      teamMembers: [],
+      inPersonAttendanceCommitment: true,
+      whyThisHackathon: '',
+      proofOfExecutionUrl: ''
+    }))
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications enforces why-this-hackathon and proof-of-execution requirements when configured', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireWhyThisHackathon: true,
+      requireProofOfExecution: true
+    })
+
+    const missingResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(missingResponse.status).toBe(409)
+    expect(await missingResponse.json()).toMatchObject({
+      error: {
+        code: 'why_this_hackathon_required'
+      }
+    })
+
+    const missingProofResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2',
+        whyThisHackathon: 'I want to collaborate and build.'
+      })
+    })
+
+    expect(missingProofResponse.status).toBe(409)
+    expect(await missingProofResponse.json()).toMatchObject({
+      error: {
+        code: 'proof_of_execution_required'
+      }
+    })
+
+    const successResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2',
+        whyThisHackathon: 'I want to collaborate and build.',
+        proofOfExecutionUrl: 'https://github.com/regular/shipped-work'
+      })
+    })
+
+    expect(successResponse.status).toBe(200)
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+
+    expect(storedApplication?.registrationDetailsJson).toBe(JSON.stringify({
+      teamIntent: 'unknown',
+      teamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisHackathon: 'I want to collaborate and build.',
+      proofOfExecutionUrl: 'https://github.com/regular/shipped-work'
+    }))
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications rejects non-http proof-of-execution URLs', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2',
+        proofOfExecutionUrl: 'ftp://example.com/work'
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'proof_of_execution_url_invalid'
+      }
     })
   })
 

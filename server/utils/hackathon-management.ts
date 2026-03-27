@@ -120,12 +120,15 @@ const hackathonConfigShape = {
   submissionOpensAt: isoTimestampSchema,
   submissionClosesAt: isoTimestampSchema,
   maxTeamMembers: z.coerce.number().int().min(1).default(4),
+  inPersonEvent: z.coerce.boolean().default(false),
   requireXProfile: z.coerce.boolean().default(false),
   requireLinkedinProfile: z.coerce.boolean().default(false),
   requireGithubProfile: z.coerce.boolean().default(false),
   requireChatgptEmail: z.coerce.boolean().default(false),
   requireOpenaiOrgId: z.coerce.boolean().default(false),
-  requireLumaProfile: z.coerce.boolean().default(false)
+  requireLumaProfile: z.coerce.boolean().default(false),
+  requireWhyThisHackathon: z.coerce.boolean().default(false),
+  requireProofOfExecution: z.coerce.boolean().default(false)
 } satisfies Record<string, z.ZodTypeAny>
 
 export const createHackathonBodySchema = z.object(hackathonConfigShape)
@@ -143,12 +146,15 @@ export const updateHackathonBodySchema = z.object({
   submissionOpensAt: hackathonConfigShape.submissionOpensAt.optional(),
   submissionClosesAt: hackathonConfigShape.submissionClosesAt.optional(),
   maxTeamMembers: hackathonConfigShape.maxTeamMembers.optional(),
+  inPersonEvent: hackathonConfigShape.inPersonEvent.optional(),
   requireXProfile: hackathonConfigShape.requireXProfile.optional(),
   requireLinkedinProfile: hackathonConfigShape.requireLinkedinProfile.optional(),
   requireGithubProfile: hackathonConfigShape.requireGithubProfile.optional(),
   requireChatgptEmail: hackathonConfigShape.requireChatgptEmail.optional(),
   requireOpenaiOrgId: hackathonConfigShape.requireOpenaiOrgId.optional(),
-  requireLumaProfile: hackathonConfigShape.requireLumaProfile.optional()
+  requireLumaProfile: hackathonConfigShape.requireLumaProfile.optional(),
+  requireWhyThisHackathon: hackathonConfigShape.requireWhyThisHackathon.optional(),
+  requireProofOfExecution: hackathonConfigShape.requireProofOfExecution.optional()
 }).refine(
   input => Object.keys(input).length > 0,
   'At least one hackathon configuration field must be provided.'
@@ -655,12 +661,15 @@ export function serializeHackathon(
     submissionClosesAt: hackathon.submissionClosesAt,
     state: hackathon.state,
     maxTeamMembers: hackathon.maxTeamMembers,
+    inPersonEvent: hackathon.inPersonEvent,
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,
     requireGithubProfile: hackathon.requireGithubProfile,
     requireChatgptEmail: hackathon.requireChatgptEmail,
     requireOpenaiOrgId: hackathon.requireOpenaiOrgId,
     requireLumaProfile: hackathon.requireLumaProfile,
+    requireWhyThisHackathon: hackathon.requireWhyThisHackathon,
+    requireProofOfExecution: hackathon.requireProofOfExecution,
     currentApplicationTermsDocumentId: hackathon.currentApplicationTermsDocumentId,
     currentWinnerTermsDocumentId: hackathon.currentWinnerTermsDocumentId,
     createdByUserId: hackathon.createdByUserId,
@@ -709,12 +718,15 @@ export function serializePublicHackathon(
     submissionClosesAt: hackathon.submissionClosesAt,
     state: hackathon.state,
     maxTeamMembers: hackathon.maxTeamMembers,
+    inPersonEvent: hackathon.inPersonEvent,
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,
     requireGithubProfile: hackathon.requireGithubProfile,
     requireChatgptEmail: hackathon.requireChatgptEmail,
     requireOpenaiOrgId: hackathon.requireOpenaiOrgId,
     requireLumaProfile: hackathon.requireLumaProfile,
+    requireWhyThisHackathon: hackathon.requireWhyThisHackathon,
+    requireProofOfExecution: hackathon.requireProofOfExecution,
     ...(currentTerms
       ? {
           currentTerms: {

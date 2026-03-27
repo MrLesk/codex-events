@@ -886,12 +886,15 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         submissionOpensAt: '2026-03-23T12:00:00.000Z',
         submissionClosesAt: '2026-03-25T12:00:00.000Z',
         maxTeamMembers: 5,
+        inPersonEvent: true,
         requireXProfile: true,
         requireLinkedinProfile: false,
         requireGithubProfile: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
-        requireLumaProfile: true
+        requireLumaProfile: true,
+        requireWhyThisHackathon: true,
+        requireProofOfExecution: true
       })
     })
 
@@ -909,9 +912,12 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
             title: 'Opening'
           })
         ],
+        inPersonEvent: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
-        requireLumaProfile: true
+        requireLumaProfile: true,
+        requireWhyThisHackathon: true,
+        requireProofOfExecution: true
       }
     })
 
@@ -991,9 +997,12 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         ],
         city: 'Berlin',
         maxTeamMembers: 7,
+        inPersonEvent: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
-        requireLumaProfile: true
+        requireLumaProfile: true,
+        requireWhyThisHackathon: true,
+        requireProofOfExecution: true
       })
     })
 
@@ -1010,9 +1019,12 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         ],
         city: 'Berlin',
         maxTeamMembers: 7,
+        inPersonEvent: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
-        requireLumaProfile: true
+        requireLumaProfile: true,
+        requireWhyThisHackathon: true,
+        requireProofOfExecution: true
       }
     })
   })

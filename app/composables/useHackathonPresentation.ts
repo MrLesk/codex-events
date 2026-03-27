@@ -40,12 +40,15 @@ export interface PublicHackathon {
   submissionClosesAt: string
   state: PublicHackathonState
   maxTeamMembers: number
+  inPersonEvent: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean
   requireChatgptEmail: boolean
   requireOpenaiOrgId: boolean
   requireLumaProfile: boolean
+  requireWhyThisHackathon: boolean
+  requireProofOfExecution: boolean
   currentTerms?: {
     applicationTerms: PublicHackathonTermsReference | null
     winnerTerms: PublicHackathonTermsReference | null

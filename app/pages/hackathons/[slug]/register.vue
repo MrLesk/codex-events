@@ -72,6 +72,9 @@ const detailBackgroundImageUrl = computed(() => {
 })
 const teamsHref = computed(() => `/hackathons/${slug.value}/teams`)
 const applicationTermsAccepted = ref(false)
+const inPersonAttendanceCommitment = ref(false)
+const whyThisHackathon = ref('')
+const proofOfExecutionUrl = ref('')
 const registrationTeamIntent = ref<'solo' | 'team' | 'unknown'>('unknown')
 const registrationTeamMembers = ref<ParticipantRegistrationTeamMemberHint[]>([])
 const profileFields = computed(() => listHackathonProfileFields(hackathon.value))
@@ -97,6 +100,12 @@ const detailSummary = computed(() => [
   hackathon.value.city,
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
+const inPersonCommitmentDateLabel = computed(() => {
+  const earliestAgendaStart = [...hackathon.value.agendaItems]
+    .sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt))[0]?.startsAt
+
+  return formatHackathonDate(earliestAgendaStart ?? hackathon.value.registrationOpensAt)
+})
 const profileForm = reactive({
   firstName: '',
   familyName: '',
@@ -152,6 +161,12 @@ watch(() => currentApplicationTerms.value?.id ?? null, () => {
   applicationTermsAccepted.value = false
 })
 
+watch(() => hackathon.value.inPersonEvent, (isInPersonEvent) => {
+  if (!isInPersonEvent) {
+    inPersonAttendanceCommitment.value = false
+  }
+}, { immediate: true })
+
 if (accountActor.value?.kind === 'platform_user') {
   const requestFetch = import.meta.server ? useRequestFetch() : $fetch
 
@@ -183,7 +198,9 @@ const participantSubmissionPolicy = computed(() =>
     applicationStatus: ownApplication.value?.status ?? null,
     missingRequiredProfileFieldCount: missingRequiredProfileFields.value.length,
     hasCurrentApplicationTerms: Boolean(currentApplicationTerms.value),
-    hasAcceptedCurrentTerms: applicationTermsAccepted.value
+    hasAcceptedCurrentTerms: applicationTermsAccepted.value,
+    requiresInPersonAttendanceCommitment: hackathon.value.inPersonEvent,
+    hasAcceptedInPersonAttendanceCommitment: inPersonAttendanceCommitment.value
   })
 )
 
@@ -242,16 +259,24 @@ async function submitParticipantApplication() {
   }
 
   try {
+    const applicationPayload: Record<string, unknown> = {
+      applicationTermsDocumentId: currentApplicationTerms.value.id,
+      whyThisHackathon: whyThisHackathon.value,
+      proofOfExecutionUrl: proofOfExecutionUrl.value,
+      registrationTeamIntent: registrationTeamIntent.value,
+      registrationTeamMembers: normalizeParticipantTeamMemberHintsForSubmission(
+        registrationTeamMembers.value,
+        hackathon.value.maxTeamMembers
+      )
+    }
+
+    if (hackathon.value.inPersonEvent) {
+      applicationPayload.inPersonAttendanceCommitment = inPersonAttendanceCommitment.value
+    }
+
     await $fetch(`/api/hackathons/${visibleHackathonId.value}/applications`, {
       method: 'POST',
-      body: {
-        applicationTermsDocumentId: currentApplicationTerms.value.id,
-        registrationTeamIntent: registrationTeamIntent.value,
-        registrationTeamMembers: normalizeParticipantTeamMemberHintsForSubmission(
-          registrationTeamMembers.value,
-          hackathon.value.maxTeamMembers
-        )
-      }
+      body: applicationPayload
     })
 
     const ownApplicationResponse = await $fetch<ParticipantApiDataResponse<ParticipantApplicationRecord | null>>(
@@ -260,6 +285,9 @@ async function submitParticipantApplication() {
     ownApplication.value = ownApplicationResponse.data
     submissionSuccess.value = 'Application submitted.'
     applicationTermsAccepted.value = false
+    inPersonAttendanceCommitment.value = false
+    whyThisHackathon.value = ''
+    proofOfExecutionUrl.value = ''
     await navigateTo({
       path: `/account/hackathons/${slug.value}`,
       query: {
@@ -502,10 +530,14 @@ useSeoMeta({
 
         <HackathonRegistrationPanel
           v-model:terms-accepted="applicationTermsAccepted"
+          v-model:in-person-attendance-commitment="inPersonAttendanceCommitment"
+          v-model:why-this-hackathon="whyThisHackathon"
+          v-model:proof-of-execution-url="proofOfExecutionUrl"
           v-model:team-intent="registrationTeamIntent"
           v-model:team-member-hints="registrationTeamMembers"
           v-model:profile-form="profileForm"
           :hackathon="hackathon"
+          :in-person-commitment-date-label="inPersonCommitmentDateLabel"
           :application="ownApplication"
           :current-application-terms="currentApplicationTerms"
           :profile-fields="visibleProfileFields"

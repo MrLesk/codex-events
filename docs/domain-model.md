@@ -41,6 +41,7 @@ Key characteristics:
 - Multiple hackathons can exist in parallel.
 - Each hackathon can define a background image and a banner image.
 - Each hackathon can define structured agenda items for public schedule display and admin editing.
+- Each hackathon can be marked as an in-person event.
 - Each hackathon can optionally reference a Luma event URL.
 - Each hackathon has a city and address.
 - Each hackathon has its own registration window.
@@ -49,6 +50,7 @@ Key characteristics:
 - Each hackathon has a judging flow that is activated manually.
 - Each hackathon can define a maximum team member limit.
 - Each hackathon can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma username, for registration.
+- Each hackathon can require a `why this hackathon` response and a proof-of-execution URL in applications.
 - Each hackathon references its own application terms and winner terms.
 
 ### PlatformDocument
@@ -119,8 +121,13 @@ Rules:
 - Blind judging uses application information without exposing team identity.
 - User application acceptance references the exact application terms version accepted for that hackathon.
 - A user can submit a `UserApplication` only if the user profile satisfies that hackathon's required profile rules.
+- If a hackathon is marked as an in-person event, a user application requires explicit commitment to attend in person on the hackathon date in that city after approval.
 - A user application records a registration team-intent hint: `solo`, `team`, or `unknown`.
 - When the registration team-intent hint is `team`, the user application can include free-form teammate hints captured during application (name/family-name and/or email per hinted member).
+- A user application can include a free-form `why this hackathon` response.
+- A user application can include a proof-of-execution URL.
+- If the hackathon requires motivation, the `why this hackathon` response must be non-empty.
+- If the hackathon requires proof of execution, the proof-of-execution URL must be non-empty and use `http` or `https`.
 
 ### Team
 

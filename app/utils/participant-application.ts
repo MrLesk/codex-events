@@ -81,6 +81,9 @@ export interface ParticipantRegistrationTeamMemberHint {
 export interface ParticipantRegistrationDetails {
   teamIntent: ParticipantRegistrationTeamIntent
   teamMembers: ParticipantRegistrationTeamMemberHint[]
+  inPersonAttendanceCommitment: boolean
+  whyThisHackathon: string
+  proofOfExecutionUrl: string
 }
 
 export interface ParticipantApplicationRecord {
@@ -375,7 +378,10 @@ export function parseParticipantRegistrationDetailsJson(value: string | null | u
   if (!value) {
     return {
       teamIntent: 'unknown',
-      teamMembers: []
+      teamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisHackathon: '',
+      proofOfExecutionUrl: ''
     }
   }
 
@@ -399,14 +405,30 @@ export function parseParticipantRegistrationDetailsJson(value: string | null | u
           })
       : []
 
+    const inPersonAttendanceCommitment = typeof parsed.inPersonAttendanceCommitment === 'boolean'
+      ? parsed.inPersonAttendanceCommitment
+      : false
+    const whyThisHackathon = typeof parsed.whyThisHackathon === 'string'
+      ? parsed.whyThisHackathon
+      : ''
+    const proofOfExecutionUrl = typeof parsed.proofOfExecutionUrl === 'string'
+      ? parsed.proofOfExecutionUrl
+      : ''
+
     return {
       teamIntent,
-      teamMembers
+      teamMembers,
+      inPersonAttendanceCommitment,
+      whyThisHackathon,
+      proofOfExecutionUrl
     }
   } catch {
     return {
       teamIntent: 'unknown',
-      teamMembers: []
+      teamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisHackathon: '',
+      proofOfExecutionUrl: ''
     }
   }
 }
@@ -434,6 +456,8 @@ export function getParticipantApplicationSubmissionPolicy(options: {
   missingRequiredProfileFieldCount: number
   hasCurrentApplicationTerms: boolean
   hasAcceptedCurrentTerms: boolean
+  requiresInPersonAttendanceCommitment: boolean
+  hasAcceptedInPersonAttendanceCommitment: boolean
 }): ParticipantApplicationSubmissionPolicy {
   if (options.hackathonState !== 'registration_open') {
     return {
@@ -481,6 +505,13 @@ export function getParticipantApplicationSubmissionPolicy(options: {
     return {
       isAllowed: false,
       reason: 'Accept the current application terms before submitting.'
+    }
+  }
+
+  if (options.requiresInPersonAttendanceCommitment && !options.hasAcceptedInPersonAttendanceCommitment) {
+    return {
+      isAllowed: false,
+      reason: 'Confirm in-person attendance commitment before submitting this application.'
     }
   }
 

@@ -89,12 +89,15 @@ export const hackathons = sqliteTable(
     submissionClosesAt: text('submission_closes_at').notNull(),
     state: text('state', { enum: hackathonStates }).notNull().default('draft'),
     maxTeamMembers: integer('max_team_members').notNull(),
+    inPersonEvent: integer('in_person_event', { mode: 'boolean' }).notNull().default(false),
     requireXProfile: integer('require_x_profile', { mode: 'boolean' }).notNull().default(false),
     requireLinkedinProfile: integer('require_linkedin_profile', { mode: 'boolean' }).notNull().default(false),
     requireGithubProfile: integer('require_github_profile', { mode: 'boolean' }).notNull().default(false),
     requireChatgptEmail: integer('require_chatgpt_email', { mode: 'boolean' }).notNull().default(false),
     requireOpenaiOrgId: integer('require_openai_org_id', { mode: 'boolean' }).notNull().default(false),
     requireLumaProfile: integer('require_luma_profile', { mode: 'boolean' }).notNull().default(false),
+    requireWhyThisHackathon: integer('require_why_this_hackathon', { mode: 'boolean' }).notNull().default(false),
+    requireProofOfExecution: integer('require_proof_of_execution', { mode: 'boolean' }).notNull().default(false),
     currentApplicationTermsDocumentId: text('current_application_terms_document_id'),
     currentWinnerTermsDocumentId: text('current_winner_terms_document_id'),
     createdByUserId: text('created_by_user_id')
@@ -214,7 +217,7 @@ export const userApplications = sqliteTable(
     applicationTermsAcceptedAt: text('application_terms_accepted_at').notNull(),
     registrationDetailsJson: text('registration_details_json')
       .notNull()
-      .default('{"teamIntent":"unknown","teamMembers":[]}'),
+      .default('{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisHackathon":"","proofOfExecutionUrl":""}'),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()
   },

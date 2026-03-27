@@ -199,11 +199,51 @@ const submitConfigForm = handleSubmit(() => {
 
 <template>
   <form
-    class="space-y-8"
+    class="space-y-8 pb-24"
     @submit.prevent="submitConfigForm"
   >
-    <section class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-      <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
+    <nav class="sticky top-20 z-20 -mb-2 overflow-x-auto rounded-lg border border-black/8 bg-white/85 p-2 backdrop-blur dark:border-white/[0.08] dark:bg-black/50">
+      <ul class="flex min-w-max items-center gap-2 text-xs font-medium text-toned">
+        <li>
+          <a
+            href="#admin-config-basics"
+            class="inline-flex rounded-md px-3 py-1.5 transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
+          >
+            Basics
+          </a>
+        </li>
+        <li>
+          <a
+            href="#admin-config-identity"
+            class="inline-flex rounded-md px-3 py-1.5 transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
+          >
+            Identity
+          </a>
+        </li>
+        <li>
+          <a
+            href="#admin-config-timeline"
+            class="inline-flex rounded-md px-3 py-1.5 transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
+          >
+            Timeline
+          </a>
+        </li>
+        <li>
+          <a
+            href="#admin-config-rules"
+            class="inline-flex rounded-md px-3 py-1.5 transition hover:bg-black/5 hover:text-highlighted dark:hover:bg-white/[0.06]"
+          >
+            Rules
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <section
+      id="admin-config-basics"
+      class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]"
+    >
+      <AppCard class="scroll-mt-28 rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -250,8 +290,18 @@ const submitConfigForm = handleSubmit(() => {
           </label>
 
           <div class="grid gap-3">
-            <div class="flex items-center gap-3">
+            <div class="flex items-center justify-between gap-3">
               <span class="text-sm font-medium text-toned">Agenda items</span>
+              <AppButton
+                type="button"
+                color="neutral"
+                variant="soft"
+                size="sm"
+                class="shrink-0"
+                @click="addAgendaItem"
+              >
+                Add item
+              </AppButton>
             </div>
 
             <p class="text-xs text-muted">
@@ -341,21 +391,14 @@ const submitConfigForm = handleSubmit(() => {
               </label>
             </div>
 
-            <AppButton
-              type="button"
-              color="neutral"
-              variant="soft"
-              size="sm"
-              class="justify-self-start"
-              @click="addAgendaItem"
-            >
-              Add item
-            </AppButton>
           </div>
         </div>
       </AppCard>
 
-      <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
+      <AppCard
+        id="admin-config-identity"
+        class="scroll-mt-28 rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36"
+      >
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -560,7 +603,10 @@ const submitConfigForm = handleSubmit(() => {
     </section>
 
     <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-      <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
+      <AppCard
+        id="admin-config-timeline"
+        class="scroll-mt-28 rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36"
+      >
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -615,7 +661,10 @@ const submitConfigForm = handleSubmit(() => {
         </div>
       </AppCard>
 
-      <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
+      <AppCard
+        id="admin-config-rules"
+        class="scroll-mt-28 rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36"
+      >
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -642,6 +691,15 @@ const submitConfigForm = handleSubmit(() => {
           <div class="grid gap-3">
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
+                v-model="form.inPersonEvent"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              In-person event (require in-person attendance commitment at registration)
+            </label>
+
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
                 v-model="form.requireChatgptEmail"
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
@@ -665,6 +723,24 @@ const submitConfigForm = handleSubmit(() => {
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
               Require Luma username for applications
+            </label>
+
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="form.requireWhyThisHackathon"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              Require "Why this hackathon" in applications
+            </label>
+
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="form.requireProofOfExecution"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              Require proof-of-execution URL in applications
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
@@ -698,7 +774,7 @@ const submitConfigForm = handleSubmit(() => {
       </AppCard>
     </section>
 
-    <div class="flex flex-col gap-3 rounded-xl border border-black/8 bg-white/70 px-5 py-4 dark:border-white/[0.08] dark:bg-black/36 sm:flex-row sm:items-center sm:justify-between">
+    <div class="sticky bottom-4 z-30 flex flex-col gap-3 rounded-xl border border-black/10 bg-white/90 px-5 py-4 shadow-lg backdrop-blur dark:border-white/[0.08] dark:bg-black/75 sm:flex-row sm:items-center sm:justify-between">
       <p class="max-w-3xl text-sm text-muted">
         {{ helperText ?? 'Save your changes to update this hackathon.' }}
       </p>

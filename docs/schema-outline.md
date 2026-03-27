@@ -67,12 +67,15 @@ It describes the intended persistent model at the level of entities, key fields,
 - `submission_closes_at`
 - `state`
 - `max_team_members`
+- `in_person_event`
 - `require_x_profile`
 - `require_linkedin_profile`
 - `require_github_profile`
 - `require_chatgpt_email`
 - `require_openai_org_id`
 - `require_luma_profile`
+- `require_why_this_hackathon`
+- `require_proof_of_execution`
 - `current_application_terms_document_id`
 - `current_winner_terms_document_id`
 - `created_by_user_id`
@@ -101,6 +104,9 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `registration_open` is system-driven by the configured registration window.
 - `submission_open` is manually activated by an admin within the configured submission window.
+- `in_person_event` controls whether applications must include explicit in-person attendance commitment.
+- `require_why_this_hackathon` controls whether applications must include a non-empty `whyThisHackathon` response.
+- `require_proof_of_execution` controls whether applications must include a non-empty `proofOfExecutionUrl`.
 - `luma_event_url` is optional because not every hackathon has a linked Luma event.
 - `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`).
 
@@ -226,6 +232,9 @@ It describes the intended persistent model at the level of entities, key fields,
 - `registration_details_json` stores registration-intent hints as a JSON string payload:
   - `teamIntent`: `solo`, `team`, or `unknown`
   - `teamMembers`: free-form teammate hints captured during application (name/family-name and/or email)
+  - `inPersonAttendanceCommitment`: boolean commitment required when the hackathon has `in_person_event = true`
+  - `whyThisHackathon`: trimmed free-form motivation text
+  - `proofOfExecutionUrl`: optional URL that points to prior execution evidence
 
 ## Team
 

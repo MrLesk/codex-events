@@ -38,7 +38,10 @@ const registrationTeamMemberHintSchema = z.object({
 export const submitApplicationBodySchema = z.object({
   applicationTermsDocumentId: z.string().trim().min(1),
   registrationTeamIntent: z.enum(registrationTeamIntentValues).default('unknown'),
-  registrationTeamMembers: z.array(registrationTeamMemberHintSchema).default([])
+  registrationTeamMembers: z.array(registrationTeamMemberHintSchema).default([]),
+  inPersonAttendanceCommitment: z.boolean().default(false),
+  whyThisHackathon: z.string().trim().max(4000).default(''),
+  proofOfExecutionUrl: z.string().trim().max(2048).default('')
 })
 
 type UserApplicationRecord = typeof userApplications.$inferSelect
@@ -56,9 +59,41 @@ function normalizeTeamMemberHintValue(value: string | null | undefined) {
   return normalized.length > 0 ? normalized : null
 }
 
+function normalizeTextValue(value: string | null | undefined) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  return value.trim()
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function normalizeProofOfExecutionUrl(value: string | null | undefined) {
+  const normalized = normalizeTextValue(value)
+
+  if (!normalized) {
+    return ''
+  }
+
+  assertGuard(isHttpUrl(normalized), {
+    code: 'proof_of_execution_url_invalid',
+    message: 'Proof of execution URL must use the http or https scheme.'
+  })
+
+  return normalized
+}
+
 export function serializeRegistrationDetailsJson(
-  hackathon: Pick<HackathonRecord, 'id' | 'maxTeamMembers'>,
-  payload: Pick<SubmitApplicationBody, 'registrationTeamIntent' | 'registrationTeamMembers'>
+  hackathon: Pick<HackathonRecord, 'id' | 'maxTeamMembers' | 'inPersonEvent' | 'requireWhyThisHackathon' | 'requireProofOfExecution'>,
+  payload: Pick<SubmitApplicationBody, 'registrationTeamIntent' | 'registrationTeamMembers' | 'inPersonAttendanceCommitment' | 'whyThisHackathon' | 'proofOfExecutionUrl'>
 ) {
   assertGuard(payload.registrationTeamMembers.length <= hackathon.maxTeamMembers, {
     code: 'registration_team_members_invalid',
@@ -88,9 +123,48 @@ export function serializeRegistrationDetailsJson(
         .filter((member): member is { fullName?: string, email?: string } => Boolean(member))
     : []
 
+  const whyThisHackathon = normalizeTextValue(payload.whyThisHackathon)
+  const proofOfExecutionUrl = normalizeProofOfExecutionUrl(payload.proofOfExecutionUrl)
+
+  assertGuard(!hackathon.requireWhyThisHackathon || whyThisHackathon.length > 0, {
+    code: 'why_this_hackathon_required',
+    message: 'A why-this-hackathon response is required for this hackathon.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  assertGuard(!hackathon.requireProofOfExecution || proofOfExecutionUrl.length > 0, {
+    code: 'proof_of_execution_required',
+    message: 'A proof-of-execution URL is required for this hackathon.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
   return JSON.stringify({
     teamIntent: payload.registrationTeamIntent,
-    teamMembers: normalizedTeamMembers
+    teamMembers: normalizedTeamMembers,
+    inPersonAttendanceCommitment: hackathon.inPersonEvent ? payload.inPersonAttendanceCommitment : false,
+    whyThisHackathon,
+    proofOfExecutionUrl
+  })
+}
+
+export function assertInPersonAttendanceCommitment(
+  hackathon: Pick<HackathonRecord, 'id' | 'inPersonEvent'>,
+  payload: Pick<SubmitApplicationBody, 'inPersonAttendanceCommitment'>
+) {
+  if (!hackathon.inPersonEvent) {
+    return
+  }
+
+  assertGuard(payload.inPersonAttendanceCommitment === true, {
+    code: 'in_person_attendance_commitment_required',
+    message: 'In-person hackathons require explicit in-person attendance commitment before application submission.',
+    details: {
+      hackathonId: hackathon.id
+    }
   })
 }
 

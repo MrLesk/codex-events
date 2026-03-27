@@ -158,12 +158,15 @@ export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object
   submissionOpensAt: z.string().trim().min(1),
   submissionClosesAt: z.string().trim().min(1),
   maxTeamMembers: z.number().int().min(1),
+  inPersonEvent: z.boolean(),
   requireXProfile: z.boolean(),
   requireLinkedinProfile: z.boolean(),
   requireGithubProfile: z.boolean(),
   requireChatgptEmail: z.boolean(),
   requireOpenaiOrgId: z.boolean(),
-  requireLumaProfile: z.boolean()
+  requireLumaProfile: z.boolean(),
+  requireWhyThisHackathon: z.boolean(),
+  requireProofOfExecution: z.boolean()
 }).superRefine((input, context) => {
   const registrationOpensAt = Date.parse(input.registrationOpensAt)
   const registrationClosesAt = Date.parse(input.registrationClosesAt)
@@ -221,14 +224,20 @@ export function buildParticipantRegistrationFormSchema(options: {
   profileFields: HackathonProfileField[]
   maxTeamMembers: number
   hasCurrentApplicationTerms: boolean
+  isInPersonEvent: boolean
+  requireWhyThisHackathon: boolean
+  requireProofOfExecution: boolean
 }) {
   return z.object({
     termsAccepted: z.boolean(),
+    inPersonAttendanceCommitment: z.boolean(),
     teamIntent: z.enum(['solo', 'team', 'unknown'] as [ParticipantRegistrationTeamIntent, ParticipantRegistrationTeamIntent, ParticipantRegistrationTeamIntent]),
     teamMemberHints: z.array(z.object({
       fullName: z.string(),
       email: z.string()
     })),
+    whyThisHackathon: z.string().trim().max(4000),
+    proofOfExecutionUrl: createOptionalHttpUrlSchema('Enter a valid proof of execution URL.'),
     profileForm: z.object({
       firstName: z.string().trim().min(1).max(120),
       familyName: z.string().trim().min(1).max(120),
@@ -260,6 +269,14 @@ export function buildParticipantRegistrationFormSchema(options: {
         code: z.ZodIssueCode.custom,
         path: ['termsAccepted'],
         message: 'Accept Application Terms to submit.'
+      })
+    }
+
+    if (options.isInPersonEvent && !input.inPersonAttendanceCommitment) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['inPersonAttendanceCommitment'],
+        message: 'Confirm in-person attendance commitment to submit.'
       })
     }
 
@@ -304,6 +321,22 @@ export function buildParticipantRegistrationFormSchema(options: {
         code: z.ZodIssueCode.custom,
         path: ['profileForm', field.key],
         message: `${field.label} is required.`
+      })
+    }
+
+    if (options.requireWhyThisHackathon && input.whyThisHackathon.trim().length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['whyThisHackathon'],
+        message: 'Why this hackathon is required.'
+      })
+    }
+
+    if (options.requireProofOfExecution && input.proofOfExecutionUrl.trim().length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['proofOfExecutionUrl'],
+        message: 'Proof of execution URL is required.'
       })
     }
   })

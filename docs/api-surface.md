@@ -171,8 +171,8 @@ Operations:
 | Get public banner image | `GET /api/public/hackathons/:slug/images/banner` | public or authenticated user | Returns the uploaded hackathon banner image bytes for the exact public hackathon slug when configured. |
 | List caller-visible hackathons | `GET /api/hackathons` | public or authenticated user | Returns hackathons visible to the caller. Authenticated admins can see draft hackathons they are allowed to manage here. |
 | Get caller-visible hackathon detail | `GET /api/hackathons/:hackathonId` | public or authenticated user | Returns canonical hackathon fields, including structured `agendaItems`, and current terms references for a hackathon visible to the caller. |
-| Create hackathon | `POST /api/hackathons` | platform admin | Creates a `draft` hackathon with canonical configuration, including structured `agendaItems`. |
-| Update hackathon configuration | `PATCH /api/hackathons/:hackathonId` | hackathon admin or platform admin | Updates canonical configuration fields, including schedule, structured `agendaItems`, images, location, team size, and required profile flags. |
+| Create hackathon | `POST /api/hackathons` | platform admin | Creates a `draft` hackathon with canonical configuration, including structured `agendaItems`, `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. |
+| Update hackathon configuration | `PATCH /api/hackathons/:hackathonId` | hackathon admin or platform admin | Updates canonical configuration fields, including schedule, structured `agendaItems`, images, location, team size, required profile flags, `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. |
 | Upload hackathon background image | `POST /api/hackathons/:hackathonId/images/background` | hackathon admin or platform admin | Accepts multipart upload for the background image and updates `backgroundImageUrl` to the platform-managed public image endpoint. |
 | Remove hackathon background image | `DELETE /api/hackathons/:hackathonId/images/background` | hackathon admin or platform admin | Deletes the uploaded background image object and clears `backgroundImageUrl`. |
 | Upload hackathon banner image | `POST /api/hackathons/:hackathonId/images/banner` | hackathon admin or platform admin | Accepts multipart upload for the banner image and updates `bannerImageUrl` to the platform-managed public image endpoint. |
@@ -247,7 +247,7 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Submit application | `POST /api/hackathons/:hackathonId/applications` | authenticated user | Allowed only in `registration_open`, only if no prior application exists, and only if the user profile satisfies the hackathon's required profile flags. Requires exact-version acceptance of the current application terms. Carries registration hint payload with `registrationTeamIntent` (`solo`, `team`, `unknown`) and optional teammate hints. |
+| Submit application | `POST /api/hackathons/:hackathonId/applications` | authenticated user | Allowed only in `registration_open`, only if no prior application exists, and only if the user profile satisfies the hackathon's required profile flags. Requires exact-version acceptance of the current application terms. Carries registration hint payload with `registrationTeamIntent` (`solo`, `team`, `unknown`) and optional teammate hints, plus optional `whyThisHackathon` and `proofOfExecutionUrl`. For in-person hackathons, also requires `inPersonAttendanceCommitment = true`. If configured, also requires non-empty `whyThisHackathon` and/or non-empty `proofOfExecutionUrl`. |
 | Get own application | `GET /api/hackathons/:hackathonId/applications/me` | authenticated user | Returns the caller's application for the hackathon, if present. |
 | List hackathon applications | `GET /api/hackathons/:hackathonId/applications` | hackathon admin or platform admin | Returns application records for review workflows. |
 | Approve application | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/approve` | hackathon admin or platform admin | Transitions `submitted` to `approved` and enqueues participant-facing approval email delivery. |
@@ -428,6 +428,7 @@ Testing:
 - Team formation is available only during `registration_open` and `submission_open`.
 - Submission creation and editing are available only during `submission_open`.
 - A draft submission that is never submitted is treated as no submission for judging and dashboard purposes.
+- In-person application commitment is required only when the hackathon is configured with `inPersonEvent = true`.
 - Withdrawal ends when `judging_preparation` begins.
 - Removal from competition during or after judge review uses `disqualified`.
 - Prize-eligible team membership freezes when the hackathon enters `judging_preparation`.
