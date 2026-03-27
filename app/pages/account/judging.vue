@@ -5,6 +5,7 @@ import {
   getHackathonStateColor,
   hasHackathonAdminAccess
 } from '~/utils/admin-workspace'
+import { collapseMarkdownToPlainText } from '~/utils/hackathon-description'
 
 definePageMeta({
   layout: 'profile',
@@ -52,6 +53,17 @@ const hackathonCount = computed(() => inboxGroups.value.length)
 const visibleAssignmentCount = computed(() =>
   visibleInboxGroups.value.reduce((total, group) => total + group.assignments.length, 0)
 )
+const descriptionPreviewCharacterLimit = 320
+const expandedDescriptionHackathonIds = ref(new Set<string>())
+const normalizedDescriptionByHackathonId = computed(() => {
+  const descriptionMap = new Map<string, string>()
+
+  for (const group of inboxGroups.value) {
+    descriptionMap.set(group.hackathon.id, collapseMarkdownToPlainText(group.hackathon.description))
+  }
+
+  return descriptionMap
+})
 const isLoading = computed(() => workspace.status.value === 'pending')
 const hasJudgeAccess = computed(() => {
   const actor = workspace.actor.value
@@ -105,6 +117,40 @@ const flashMessage = computed(() =>
     ? 'The assignment was skipped and removed from your active blind-review queue.'
     : ''
 )
+
+function isDescriptionExpanded(hackathonId: string) {
+  return expandedDescriptionHackathonIds.value.has(hackathonId)
+}
+
+function toggleDescriptionExpansion(hackathonId: string) {
+  const nextExpandedIds = new Set(expandedDescriptionHackathonIds.value)
+
+  if (nextExpandedIds.has(hackathonId)) {
+    nextExpandedIds.delete(hackathonId)
+  } else {
+    nextExpandedIds.add(hackathonId)
+  }
+
+  expandedDescriptionHackathonIds.value = nextExpandedIds
+}
+
+function getDescriptionPreview(hackathonId: string) {
+  const normalizedDescription = normalizedDescriptionByHackathonId.value.get(hackathonId) ?? ''
+
+  if (
+    isDescriptionExpanded(hackathonId)
+    || normalizedDescription.length <= descriptionPreviewCharacterLimit
+  ) {
+    return normalizedDescription
+  }
+
+  return `${normalizedDescription.slice(0, descriptionPreviewCharacterLimit).trimEnd()}…`
+}
+
+function shouldShowDescriptionToggle(hackathonId: string) {
+  const normalizedDescription = normalizedDescriptionByHackathonId.value.get(hackathonId) ?? ''
+  return normalizedDescription.length > descriptionPreviewCharacterLimit
+}
 
 useSeoMeta({
   title: 'Judging Workspace | Codex Hackathons',
@@ -306,9 +352,17 @@ useSeoMeta({
                       {{ formatHackathonState(group.hackathon.state) }}
                     </AppBadge>
                   </div>
-                  <p class="text-[14px] text-neutral-600 dark:text-[#B0B0B0]">
-                    {{ group.hackathon.description }}
+                  <p class="max-w-3xl break-words text-[14px] text-neutral-600 dark:text-[#B0B0B0]">
+                    {{ getDescriptionPreview(group.hackathon.id) }}
                   </p>
+                  <button
+                    v-if="shouldShowDescriptionToggle(group.hackathon.id)"
+                    type="button"
+                    class="inline-flex text-[13px] font-medium text-highlighted transition-colors hover:text-neutral-700 dark:text-white dark:hover:text-[#D9D9D9]"
+                    @click="toggleDescriptionExpansion(group.hackathon.id)"
+                  >
+                    {{ isDescriptionExpanded(group.hackathon.id) ? 'Show less' : 'Load more' }}
+                  </button>
                   <p class="text-[12px] text-muted">
                     {{ group.hackathon.city }}
                   </p>

@@ -4,6 +4,7 @@ import {
   formatHackathonState,
   getHackathonStateColor
 } from '~/utils/admin-workspace'
+import { collapseMarkdownToPlainText } from '~/utils/hackathon-description'
 
 definePageMeta({
   layout: 'profile',
@@ -50,20 +51,6 @@ const normalizedDescriptionByHackathonId = computed(() => {
 
   return descriptionMap
 })
-
-function collapseMarkdownToPlainText(markdownSource: string) {
-  return markdownSource
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/`([^`]+)`/g, '$1')
-    .replace(/!\[[^\]]*]\([^)]+\)/g, ' ')
-    .replace(/\[([^\]]+)]\([^)]+\)/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^>\s?/gm, '')
-    .replace(/[*_~]/g, '')
-    .replace(/\r?\n+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
 
 function isDescriptionExpanded(hackathonId: string) {
   return expandedDescriptionHackathonIds.value.has(hackathonId)
