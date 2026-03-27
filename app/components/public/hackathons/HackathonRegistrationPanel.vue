@@ -149,7 +149,7 @@ watch([
     teamIntent: teamIntent.value,
     teamMemberHints: cloneFormValues(teamMemberHints.value),
     profileForm: cloneFormValues(profileForm.value)
-  }, false)
+  }, submitCount.value > 0)
   syncingFromModels.value = false
 }, {
   deep: true,

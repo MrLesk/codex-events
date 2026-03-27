@@ -4,6 +4,7 @@ title: Switch registration form to submit-attempt validation display
 status: In Progress
 assignee: []
 created_date: '2026-03-27 19:11'
+updated_date: '2026-03-27 20:48'
 labels: []
 dependencies: []
 priority: high
@@ -22,6 +23,14 @@ Show field-level validation errors only after the user attempts to submit. Keep 
 - [ ] #3 Submit button is not disabled due to validation errors alone.
 - [ ] #4 Form still prevents submission while an existing request is pending.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Fixed stale client-side validation errors in registration form by validating `setValues` updates after the first submit attempt (`submitCount > 0`) so field errors now clear as soon as inputs become valid.
+
+Validation run: `bun run typecheck` and `bun run test:unit` both pass.
+<!-- SECTION:NOTES:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
