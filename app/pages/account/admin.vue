@@ -39,6 +39,65 @@ const draftCount = computed(() =>
 const activeOperationsCount = computed(() =>
   manageableHackathons.value.filter(hackathon => hackathon.state !== 'draft' && hackathon.state !== 'completed').length
 )
+const descriptionPreviewCharacterLimit = 320
+const expandedDescriptionHackathonIds = ref(new Set<string>())
+const normalizedDescriptionByHackathonId = computed(() => {
+  const descriptionMap = new Map<string, string>()
+
+  for (const hackathon of manageableHackathons.value) {
+    descriptionMap.set(hackathon.id, collapseMarkdownToPlainText(hackathon.description))
+  }
+
+  return descriptionMap
+})
+
+function collapseMarkdownToPlainText(markdownSource: string) {
+  return markdownSource
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/!\[[^\]]*]\([^)]+\)/g, ' ')
+    .replace(/\[([^\]]+)]\([^)]+\)/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .replace(/^>\s?/gm, '')
+    .replace(/[*_~]/g, '')
+    .replace(/\r?\n+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function isDescriptionExpanded(hackathonId: string) {
+  return expandedDescriptionHackathonIds.value.has(hackathonId)
+}
+
+function toggleDescriptionExpansion(hackathonId: string) {
+  const nextExpandedIds = new Set(expandedDescriptionHackathonIds.value)
+
+  if (nextExpandedIds.has(hackathonId)) {
+    nextExpandedIds.delete(hackathonId)
+  } else {
+    nextExpandedIds.add(hackathonId)
+  }
+
+  expandedDescriptionHackathonIds.value = nextExpandedIds
+}
+
+function getDescriptionPreview(hackathonId: string) {
+  const normalizedDescription = normalizedDescriptionByHackathonId.value.get(hackathonId) ?? ''
+
+  if (
+    isDescriptionExpanded(hackathonId)
+    || normalizedDescription.length <= descriptionPreviewCharacterLimit
+  ) {
+    return normalizedDescription
+  }
+
+  return `${normalizedDescription.slice(0, descriptionPreviewCharacterLimit).trimEnd()}…`
+}
+
+function shouldShowDescriptionToggle(hackathonId: string) {
+  const normalizedDescription = normalizedDescriptionByHackathonId.value.get(hackathonId) ?? ''
+  return normalizedDescription.length > descriptionPreviewCharacterLimit
+}
 
 useSeoMeta({
   title: 'Admin Workspace | Codex Hackathons',
@@ -211,9 +270,17 @@ useSeoMeta({
                       {{ formatHackathonState(hackathon.state) }}
                     </AppBadge>
                   </div>
-                  <p class="max-w-3xl text-[14px] text-neutral-600 dark:text-[#B0B0B0]">
-                    {{ hackathon.description }}
+                  <p class="max-w-3xl break-words text-[14px] text-neutral-600 dark:text-[#B0B0B0]">
+                    {{ getDescriptionPreview(hackathon.id) }}
                   </p>
+                  <button
+                    v-if="shouldShowDescriptionToggle(hackathon.id)"
+                    type="button"
+                    class="inline-flex text-[13px] font-medium text-highlighted transition-colors hover:text-neutral-700 dark:text-white dark:hover:text-[#D9D9D9]"
+                    @click.stop.prevent="toggleDescriptionExpansion(hackathon.id)"
+                  >
+                    {{ isDescriptionExpanded(hackathon.id) ? 'Show less' : 'Load more' }}
+                  </button>
                   <div class="flex flex-wrap items-center gap-3 text-[12px] text-muted">
                     <span>{{ hackathon.city }}</span>
                     <span>{{ hackathon.maxTeamMembers }} max/team</span>

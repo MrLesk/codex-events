@@ -108,6 +108,98 @@ describe('application utilities', () => {
     })).toThrowError(ApiError)
   })
 
+  test('luma username requirement only applies when a luma event URL is configured', () => {
+    expect(() => assertUserMeetsHackathonProfileRequirements({
+      id: 'user_1',
+      auth0Subject: 'auth0|user_1',
+      email: 'user@example.com',
+      displayName: 'User',
+      isPlatformAdmin: false,
+      xProfileUrl: null,
+      linkedinProfileUrl: null,
+      githubProfileUrl: null,
+      chatgptEmail: null,
+      openaiOrgId: null,
+      lumaUsername: null,
+      profileIconUpdatedAt: null,
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z',
+      deletedAt: null
+    }, {
+      id: 'hackathon_1',
+      name: 'Fixture Hackathon',
+      slug: 'fixture-hackathon',
+      description: 'Fixture hackathon',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      lumaEventUrl: null,
+      city: 'Vienna',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaProfile: true,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    })).not.toThrow()
+
+    expect(() => assertUserMeetsHackathonProfileRequirements({
+      id: 'user_1',
+      auth0Subject: 'auth0|user_1',
+      email: 'user@example.com',
+      displayName: 'User',
+      isPlatformAdmin: false,
+      xProfileUrl: null,
+      linkedinProfileUrl: null,
+      githubProfileUrl: null,
+      chatgptEmail: null,
+      openaiOrgId: null,
+      lumaUsername: null,
+      profileIconUpdatedAt: null,
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z',
+      deletedAt: null
+    }, {
+      id: 'hackathon_1',
+      name: 'Fixture Hackathon',
+      slug: 'fixture-hackathon',
+      description: 'Fixture hackathon',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      lumaEventUrl: 'https://luma.com/codex',
+      city: 'Vienna',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaProfile: true,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    })).toThrowError(ApiError)
+  })
+
   test('only submitted applications can be reviewed', () => {
     expect(() => assertApplicationReviewable({
       id: 'application_1',

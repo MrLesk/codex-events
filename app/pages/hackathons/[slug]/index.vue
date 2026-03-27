@@ -5,25 +5,18 @@ import type {
   PublicHackathon,
   PublicPrize
 } from '~/composables/useHackathonPresentation'
-import type { ApiDataResponse, HackathonRecord } from '~/utils/admin-workspace'
-import type { ParticipantApplicationRecord } from '~/utils/participant-application'
 
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
+import { renderMarkdown } from '~/utils/markdown'
 import {
   buildAccountSettingsHref,
   buildAuthLoginHref
 } from '~/utils/auth-navigation'
 
-const hackathonDetailParticipantStates = new Set<PublicHackathon['state']>([
-  'registration_open',
-  'submission_open',
-  'judging_preparation',
-  'judge_review',
-  'shortlist',
-  'winners_announced',
-  'completed'
-])
+definePageMeta({
+  layout: 'public'
+})
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
@@ -73,26 +66,6 @@ const prizesErrorMessage = computed(() => prizesError.value ? 'Published awards 
 const registerRouteHref = computed(() => `/hackathons/${slug.value}/register`)
 const registerEntryHref = computed(() => buildAuthLoginHref(registerRouteHref.value))
 
-if (accountActor.value?.kind === 'platform_user' && hackathonDetailParticipantStates.has(hackathon.value.state)) {
-  const requestFetch = import.meta.server ? useRequestFetch() : $fetch
-
-  try {
-    const visibleHackathon = await requestFetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/slug/${slug.value}`)
-    const ownApplicationResponse = await requestFetch<ApiDataResponse<ParticipantApplicationRecord | null>>(
-      `/api/hackathons/${visibleHackathon.data.id}/applications/me`
-    )
-    const hasApprovedApplication = ownApplicationResponse.data?.status === 'approved'
-
-    if (hasApprovedApplication) {
-      setPageLayout('hackathon-detail')
-    }
-  } catch {
-    setPageLayout('public')
-  }
-} else {
-  setPageLayout('public')
-}
-
 const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
 const headerStateClass = computed(() => {
   if (hackathon.value.state === 'submission_open') {
@@ -100,7 +73,7 @@ const headerStateClass = computed(() => {
   }
 
   if (hackathon.value.state === 'registration_open') {
-    return 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+    return 'border border-sky-600/35 bg-sky-500/16 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/14 dark:text-sky-300'
   }
 
   if (hackathon.value.state === 'winners_announced') {
@@ -110,12 +83,30 @@ const headerStateClass = computed(() => {
   return 'bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]'
 })
 const criteriaCount = computed(() => criteria.value.length)
+const detailBackgroundImageUrl = computed(() => {
+  const backgroundImageUrl = hackathon.value.backgroundImageUrl?.trim()
+
+  if (backgroundImageUrl) {
+    return backgroundImageUrl
+  }
+
+  const bannerImageUrl = hackathon.value.bannerImageUrl?.trim()
+  return bannerImageUrl || null
+})
 const detailSummary = computed(() => [
   formatHackathonWindow(hackathon.value.registrationOpensAt, hackathon.value.submissionClosesAt),
   hackathon.value.city,
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
 const showRegisterCta = computed(() => true)
+const descriptionMarkdown = computed(() => hackathon.value.description?.trim() ?? '')
+const descriptionHtml = computed(() => descriptionMarkdown.value ? renderMarkdown(descriptionMarkdown.value) : '')
+const seoDescription = computed(() => hackathon.value.description
+  .replace(/`([^`]+)`/g, '$1')
+  .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+  .replace(/[*_#>-]+/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim())
 const isRegisterHrefExternal = computed(() => accountActor.value?.kind === 'anonymous')
 const registerHref = computed(() => {
   if (accountActor.value?.kind === 'anonymous') {
@@ -145,13 +136,27 @@ function scrollToPublicSection(section: keyof typeof publicSectionTargets) {
 
 useSeoMeta({
   title: () => `${hackathon.value.name} | Codex Hackathons`,
-  description: () => hackathon.value.description
+  description: () => seoDescription.value
 })
 </script>
 
 <template>
-  <div class="pb-24">
-    <section class="border-b border-black/8 bg-white dark:border-white/[0.08] dark:bg-black">
+  <div class="relative isolate pb-24">
+    <div
+      v-if="detailBackgroundImageUrl"
+      class="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+      aria-hidden="true"
+    >
+      <img
+        :src="detailBackgroundImageUrl"
+        :alt="`${hackathon.name} background`"
+        class="h-full w-full scale-110 object-cover opacity-55 blur-md saturate-125 contrast-105"
+      >
+      <div class="absolute inset-0 bg-gradient-to-b from-black/20 via-black/45 to-black/68 dark:from-black/35 dark:via-black/55 dark:to-black/76" />
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.22),transparent_46%)] dark:bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.10),transparent_48%)]" />
+    </div>
+
+    <section class="relative z-10 border-b border-black/8 bg-white/42 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/48">
       <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
         <NuxtLink
           to="/"
@@ -247,21 +252,22 @@ useSeoMeta({
 
     <AppContainer
       id="public-overview"
-      class="max-w-[68rem] space-y-7 pt-6"
+      class="relative z-10 max-w-[68rem] space-y-7 pt-6"
     >
+      <section
+        v-if="descriptionHtml"
+        class="rounded-xl border border-black/8 bg-[#F7F7F8] p-6 dark:border-white/[0.08] dark:bg-[#111111]"
+      >
+        <div
+          class="hackathon-markdown"
+          v-html="descriptionHtml"
+        />
+      </section>
+
       <HackathonTimeline
         :hackathon="hackathon"
         :criteria-count="criteriaCount"
       />
-
-      <section class="rounded-xl border border-black/8 bg-[#F7F7F8] p-6 dark:border-white/[0.08] dark:bg-[#111111]">
-        <h2 class="mb-4 text-[16px] font-medium text-highlighted dark:text-white">
-          About this Hackathon
-        </h2>
-        <div class="max-w-[800px] space-y-4 text-[14px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]">
-          <p>{{ hackathon.description }}</p>
-        </div>
-      </section>
 
       <div
         id="prizes"

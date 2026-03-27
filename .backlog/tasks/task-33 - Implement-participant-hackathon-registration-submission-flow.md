@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-03-27 01:58'
-updated_date: '2026-03-27 02:12'
+updated_date: '2026-03-27 15:49'
 labels: []
 dependencies: []
 priority: high
@@ -54,6 +54,8 @@ Added migration `drizzle/0008_user_application_registration_details.sql` and upd
 Updated canonical docs (`docs/domain-model.md`, `docs/schema-outline.md`, `docs/api-surface.md`) to reflect new registration intent/hints model.
 
 Validation run: `bun run test:unit` (pass), `bun run test:integration -- tests/integration/server/api/application-routes.test.ts` (pass), `bun run typecheck` (pass).
+
+Per follow-up request, moved participant registration form off hackathon detail into dedicated route `app/pages/hackathons/[slug]/register.vue` and restored detail page to register-button-only behavior.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
@@ -96,6 +98,8 @@ Tests/validation:
 Risks/follow-ups:
 - `registration_details_json` is currently stored and returned but not yet used by admin approval UX/workflows (intentionally separated; a different agent is handling approval flow).
 - Unrelated local untracked files (`TASK-34`, `tests/bdd/features/authenticated/admin-operations.feature`) were left untouched.
+
+Follow-up adjustment: moved the registration form from the hackathon detail page to a dedicated authenticated page at `/hackathons/[slug]/register`, while keeping only a register CTA on the detail page (anonymous users go through Auth0 login; authenticated identities are sent to account settings; platform users go to the new register page).
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done

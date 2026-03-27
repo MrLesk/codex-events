@@ -24,6 +24,7 @@ async function seedApplicationContext(
     requireChatgptEmail?: boolean
     requireOpenaiOrgId?: boolean
     requireLumaProfile?: boolean
+    lumaEventUrl?: string | null
   }
 ) {
   await harness.database.insert(users).values([
@@ -75,6 +76,7 @@ async function seedApplicationContext(
     requireChatgptEmail: options?.requireChatgptEmail ?? false,
     requireOpenaiOrgId: options?.requireOpenaiOrgId ?? false,
     requireLumaProfile: options?.requireLumaProfile ?? false,
+    lumaEventUrl: options?.lumaEventUrl ?? null,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
     createdByUserId: 'platform_admin'
@@ -287,7 +289,8 @@ describe('TASK-3.6 application routes', () => {
     })
     harnesses.push(harness)
     await seedApplicationContext(harness, {
-      requireLumaProfile: true
+      requireLumaProfile: true,
+      lumaEventUrl: 'https://luma.com/codex'
     })
 
     const response = await harness.request('/api/hackathons/hackathon_1/applications', {
@@ -306,6 +309,32 @@ describe('TASK-3.6 application routes', () => {
         }
       }
     })
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications does not require luma username when no luma event URL is configured', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|missing_profile',
+        email: 'missing-profile@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaProfile: true,
+      lumaEventUrl: null
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(response.status).toBe(200)
   })
 
   test('POST /api/hackathons/:hackathonId/applications rejects users missing a required ChatGPT email and OpenAI org ID', async () => {

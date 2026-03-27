@@ -124,6 +124,84 @@ export interface RequiredProfileField {
   label: string
 }
 
+export interface HackathonProfileField extends RequiredProfileField {
+  required: boolean
+  visible: boolean
+}
+
+const requiredProfileFieldRules: Array<{
+  key: RequiredProfileField['key']
+  label: RequiredProfileField['label']
+  isRequired: (hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile' | 'lumaEventUrl'>) => boolean
+  isVisible: (hackathon: Pick<PublicHackathon, 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'lumaEventUrl'>) => boolean
+  hasValue: (platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaUsername'>) => boolean
+}> = [
+  {
+    key: 'xProfileUrl',
+    label: 'X profile URL',
+    isRequired: hackathon => hackathon.requireXProfile,
+    isVisible: () => true,
+    hasValue: platformUser => Boolean(platformUser.xProfileUrl)
+  },
+  {
+    key: 'linkedinProfileUrl',
+    label: 'LinkedIn profile URL',
+    isRequired: hackathon => hackathon.requireLinkedinProfile,
+    isVisible: () => true,
+    hasValue: platformUser => Boolean(platformUser.linkedinProfileUrl)
+  },
+  {
+    key: 'githubProfileUrl',
+    label: 'GitHub profile URL',
+    isRequired: hackathon => hackathon.requireGithubProfile,
+    isVisible: () => true,
+    hasValue: platformUser => Boolean(platformUser.githubProfileUrl)
+  },
+  {
+    key: 'chatgptEmail',
+    label: 'ChatGPT email',
+    isRequired: hackathon => hackathon.requireChatgptEmail,
+    isVisible: hackathon => hackathon.requireChatgptEmail,
+    hasValue: platformUser => Boolean(platformUser.chatgptEmail)
+  },
+  {
+    key: 'openaiOrgId',
+    label: 'OpenAI org ID',
+    isRequired: hackathon => hackathon.requireOpenaiOrgId,
+    isVisible: hackathon => hackathon.requireOpenaiOrgId,
+    hasValue: platformUser => Boolean(platformUser.openaiOrgId)
+  },
+  {
+    key: 'lumaUsername',
+    label: 'Luma username',
+    isRequired: hackathon => hackathon.requireLumaProfile && Boolean(hackathon.lumaEventUrl?.trim()),
+    isVisible: hackathon => Boolean(hackathon.lumaEventUrl?.trim()),
+    hasValue: platformUser => Boolean(platformUser.lumaUsername)
+  }
+]
+
+export function listRequiredProfileFields(
+  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile' | 'lumaEventUrl'>
+) {
+  return requiredProfileFieldRules
+    .filter(rule => rule.isVisible(hackathon) && rule.isRequired(hackathon))
+    .map(rule => ({
+      key: rule.key,
+      label: rule.label
+    }))
+}
+
+export function listHackathonProfileFields(
+  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile' | 'lumaEventUrl'>
+): HackathonProfileField[] {
+  return requiredProfileFieldRules.map(rule => ({
+    key: rule.key,
+    label: rule.label,
+    required: rule.isRequired(hackathon),
+    visible: rule.isVisible(hackathon)
+  }))
+}
+
 export interface ParticipantApiErrorShape {
   code: string
   message: string
@@ -155,54 +233,15 @@ export function buildAuthenticatedIdentityParticipantActor(sessionUser: Particip
 }
 
 export function listMissingRequiredProfileFields(
-  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile'>,
+  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile' | 'lumaEventUrl'>,
   platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaUsername'>
 ) {
-  const missingFields: RequiredProfileField[] = []
-
-  if (hackathon.requireXProfile && !platformUser.xProfileUrl) {
-    missingFields.push({
-      key: 'xProfileUrl',
-      label: 'X profile URL'
-    })
-  }
-
-  if (hackathon.requireLinkedinProfile && !platformUser.linkedinProfileUrl) {
-    missingFields.push({
-      key: 'linkedinProfileUrl',
-      label: 'LinkedIn profile URL'
-    })
-  }
-
-  if (hackathon.requireGithubProfile && !platformUser.githubProfileUrl) {
-    missingFields.push({
-      key: 'githubProfileUrl',
-      label: 'GitHub profile URL'
-    })
-  }
-
-  if (hackathon.requireChatgptEmail && !platformUser.chatgptEmail) {
-    missingFields.push({
-      key: 'chatgptEmail',
-      label: 'ChatGPT email'
-    })
-  }
-
-  if (hackathon.requireOpenaiOrgId && !platformUser.openaiOrgId) {
-    missingFields.push({
-      key: 'openaiOrgId',
-      label: 'OpenAI org ID'
-    })
-  }
-
-  if (hackathon.requireLumaProfile && !platformUser.lumaUsername) {
-    missingFields.push({
-      key: 'lumaUsername',
-      label: 'Luma username'
-    })
-  }
-
-  return missingFields
+  return requiredProfileFieldRules
+    .filter(rule => rule.isVisible(hackathon) && rule.isRequired(hackathon) && !rule.hasValue(platformUser))
+    .map(rule => ({
+      key: rule.key,
+      label: rule.label
+    }))
 }
 
 export function formatParticipantApplicationStatus(status: ParticipantApplicationRecord['status']) {

@@ -28,6 +28,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "0.45.1",
     "lucide-vue-next": "^1.0.0",
+    "markdown-it": "^14.1.1",
     "nuxt": "4.4.2",
     "reka-ui": "^2.9.2",
     "shadcn-nuxt": "2.4.3",

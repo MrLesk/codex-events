@@ -30,7 +30,7 @@ const ctaLabel = computed(() => {
     return 'View outcomes'
   }
 
-  return isRegistrationOpen.value ? 'Register now' : 'View details'
+  return isRegistrationOpen.value ? 'Discover' : 'View details'
 })
 const programDateLabel = computed(() =>
   formatHackathonWindow(props.hackathon.submissionOpensAt, props.hackathon.submissionClosesAt)

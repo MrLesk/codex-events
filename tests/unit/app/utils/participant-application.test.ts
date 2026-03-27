@@ -6,6 +6,8 @@ import {
   getHackathonApplicationAvailabilityMessage,
   getParticipantApplicationSubmissionPolicy,
   getParticipantApplicationStatusColor,
+  listHackathonProfileFields,
+  listRequiredProfileFields,
   listMissingRequiredProfileFields,
   normalizeParticipantTeamMemberHintsForSubmission,
   parseParticipantRegistrationDetailsJson,
@@ -20,7 +22,8 @@ describe('participant application helpers', () => {
       requireGithubProfile: true,
       requireChatgptEmail: true,
       requireOpenaiOrgId: true,
-      requireLumaProfile: true
+      requireLumaProfile: true,
+      lumaEventUrl: 'https://luma.com/codex'
     }, {
       xProfileUrl: null,
       linkedinProfileUrl: 'https://linkedin.com/in/member',
@@ -50,6 +53,68 @@ describe('participant application helpers', () => {
         label: 'Luma username'
       }
     ])
+  })
+
+  test('lists required profile fields for a hackathon', () => {
+    expect(listRequiredProfileFields({
+      requireXProfile: true,
+      requireLinkedinProfile: false,
+      requireGithubProfile: true,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: true,
+      requireLumaProfile: false,
+      lumaEventUrl: null
+    })).toEqual([
+      { key: 'xProfileUrl', label: 'X profile URL' },
+      { key: 'githubProfileUrl', label: 'GitHub profile URL' },
+      { key: 'openaiOrgId', label: 'OpenAI org ID' }
+    ])
+  })
+
+  test('lists all hackathon profile fields with required flags', () => {
+    expect(listHackathonProfileFields({
+      requireXProfile: true,
+      requireLinkedinProfile: false,
+      requireGithubProfile: true,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaProfile: true,
+      lumaEventUrl: 'https://luma.com/codex'
+    })).toEqual([
+      { key: 'xProfileUrl', label: 'X profile URL', required: true, visible: true },
+      { key: 'linkedinProfileUrl', label: 'LinkedIn profile URL', required: false, visible: true },
+      { key: 'githubProfileUrl', label: 'GitHub profile URL', required: true, visible: true },
+      { key: 'chatgptEmail', label: 'ChatGPT email', required: false, visible: false },
+      { key: 'openaiOrgId', label: 'OpenAI org ID', required: false, visible: false },
+      { key: 'lumaUsername', label: 'Luma username', required: true, visible: true }
+    ])
+  })
+
+  test('does not require or show luma username when no luma event URL is configured', () => {
+    expect(listRequiredProfileFields({
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaProfile: true,
+      lumaEventUrl: null
+    })).toEqual([])
+
+    expect(listHackathonProfileFields({
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaProfile: true,
+      lumaEventUrl: null
+    }).find(field => field.key === 'lumaUsername')).toEqual({
+      key: 'lumaUsername',
+      label: 'Luma username',
+      required: false,
+      visible: false
+    })
   })
 
   test('formats participant application statuses and summaries for reviewed states', () => {

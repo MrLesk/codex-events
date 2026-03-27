@@ -36,8 +36,8 @@ watch(isSidebarCollapsed, (nextValue) => {
   <div class="flex h-screen flex-col overflow-hidden text-foreground">
     <AppShellHeader />
 
-    <div class="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-      <div class="relative flex items-stretch">
+    <div class="min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+      <div class="relative flex min-h-0 flex-1 items-stretch">
         <aside
           v-if="showWorkspaceSidebar"
           class="hidden shrink-0 text-[#A3A3A3] transition-[width] duration-200 xl:block"

@@ -9,7 +9,7 @@ const hackathons = ref<PublicHackathon[]>([])
 const total = ref(0)
 const isLoadingMore = ref(false)
 const loadMoreError = ref<string>()
-const activeTab = ref<'all' | 'active' | 'past'>('active')
+const activeTab = ref<'active' | 'past'>('active')
 
 const { data: initialResponse, error } = await useAsyncData('public-hackathons-homepage:page-1', async () =>
   await $fetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
@@ -38,19 +38,11 @@ const pastTotal = ref(
 
 const hasMoreHackathons = computed(() => hackathons.value.length < total.value)
 const filteredHackathons = computed(() => hackathons.value.filter((hackathon) => {
-  if (activeTab.value === 'all') {
-    return true
-  }
-
   const isPast = hackathon.state === 'completed'
 
   return activeTab.value === 'past' ? isPast : !isPast
 }))
 const currentFilterTotal = computed(() => {
-  if (activeTab.value === 'all') {
-    return total.value
-  }
-
   if (activeTab.value === 'past') {
     return pastTotal.value
   }
@@ -66,18 +58,10 @@ const canLoadMoreForCurrentFilter = computed(() => {
 })
 const visibleHackathonCount = computed(() => filteredHackathons.value.length)
 const loadMoreSummary = computed(() => {
-  if (activeTab.value === 'all') {
-    return `Showing ${visibleHackathonCount.value} out of ${total.value} hackathons.`
-  }
-
   return `Showing ${visibleHackathonCount.value} out of ${currentFilterTotal.value} ${activeTab.value} hackathons.`
 })
 
 async function ensureSelectedTabHasLoadedResults() {
-  if (activeTab.value === 'all') {
-    return
-  }
-
   while (!isLoadingMore.value && hasMoreHackathons.value && filteredHackathons.value.length === 0) {
     await loadMoreHackathons()
   }
@@ -152,13 +136,6 @@ useSeoMeta({
     <template v-else>
       <div class="flex flex-col gap-4 rounded-xl border border-black/8 bg-neutral-100/80 p-2 dark:border-white/[0.08] dark:bg-[#111111]">
         <div class="flex min-w-0 flex-wrap items-center gap-1">
-          <button
-            class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
-            :class="activeTab === 'all' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-            @click="activeTab = 'all'"
-          >
-            All
-          </button>
           <button
             class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
             :class="activeTab === 'active' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"

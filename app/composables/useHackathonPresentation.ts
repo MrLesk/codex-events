@@ -21,6 +21,7 @@ export interface PublicHackathon {
   description: string
   backgroundImageUrl: string | null
   bannerImageUrl: string | null
+  lumaEventUrl?: string | null
   city: string
   address: string
   registrationOpensAt: string
@@ -159,7 +160,7 @@ export function describeWindowStatus(
   return state === 'draft' || state === 'registration_open' ? 'Upcoming' : 'Closed'
 }
 
-export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile'>) {
+export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile' | 'lumaEventUrl'>) {
   const profiles: string[] = []
 
   if (hackathon.requireXProfile) {
@@ -182,7 +183,7 @@ export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXP
     profiles.push('OpenAI org ID')
   }
 
-  if (hackathon.requireLumaProfile) {
+  if (hackathon.requireLumaProfile && Boolean(hackathon.lumaEventUrl?.trim())) {
     profiles.push('Luma')
   }
 

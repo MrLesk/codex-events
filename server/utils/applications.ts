@@ -168,7 +168,9 @@ export function assertUserMeetsHackathonProfileRequirements(user: UserRecord, ha
     missingFields.push('openaiOrgId')
   }
 
-  if (hackathon.requireLumaProfile && !user.lumaUsername) {
+  const hasLinkedLumaEvent = Boolean(hackathon.lumaEventUrl?.trim())
+
+  if (hackathon.requireLumaProfile && hasLinkedLumaEvent && !user.lumaUsername) {
     missingFields.push('lumaUsername')
   }
 
