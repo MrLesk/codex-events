@@ -30,7 +30,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Create account and authenticate | Yes | Yes |
 | Delete own account | Yes | Yes |
 | Create hackathon | No | Yes |
-| Assign hackathon admins | No | Yes |
+| Assign hackathon admins across any hackathon | No | Yes |
 
 ## Hackathon Lifecycle Actions
 
@@ -43,6 +43,17 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Move to shortlist | No | No | Yes | Yes | No |
 | Announce winners | No | No | Yes | Yes | No |
 | Complete hackathon | No | No | Yes | Yes | No |
+
+## Hackathon Role Assignment Permissions
+
+| Action | Hackathon Admin | Platform Admin |
+| --- | --- | --- |
+| List explicit hackathon role assignments | Yes | Yes |
+| Assign or replace `judge` role assignments | Yes | Yes |
+| Remove `judge` role assignments | Yes | Yes |
+| Assign or replace `hackathon_admin` role assignments | Yes | Yes |
+| Remove `hackathon_admin` role assignments | Yes | Yes |
+| Update explicit judge-pool participation | Yes | Yes |
 
 ## Application Permissions
 

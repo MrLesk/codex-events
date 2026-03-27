@@ -200,8 +200,8 @@ describe('admin-workspace access helpers', () => {
     ])
   })
 
-  test('limits explicit role mutations to platform admins', () => {
-    expect(canMutateRoleAssignments(createActor())).toBe(false)
+  test('allows explicit role mutations for hackathon admins and platform admins', () => {
+    expect(canMutateRoleAssignments(createActor())).toBe(true)
     expect(canMutateRoleAssignments(createActor({
       isPlatformAdmin: true,
       platformUser: {

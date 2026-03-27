@@ -1,23 +1,21 @@
 import { eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '../../../../auth/actor'
-import { assertPlatformAdminAccess } from '../../../../auth/authorization'
 import { writeAuditLog } from '../../../../database/audit-log'
 import { getDatabase } from '../../../../database/client'
 import { hackathonRoleAssignments } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
-import { getHackathonOrThrow, getRoleAssignmentOrThrow, roleAssignmentParamsSchema } from '../../../../utils/hackathon-management'
+import { getRoleAssignmentOrThrow, requireHackathonAdmin, roleAssignmentParamsSchema } from '../../../../utils/hackathon-management'
 import { parseValidatedParams } from '../../../../utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
-  assertPlatformAdminAccess(actor)
 
   const { hackathonId, userId } = parseValidatedParams(event, roleAssignmentParamsSchema)
   const database = getDatabase(event)
 
-  await getHackathonOrThrow(database, hackathonId)
+  await requireHackathonAdmin(event, hackathonId)
   const assignment = await getRoleAssignmentOrThrow(database, hackathonId, userId)
 
   await database

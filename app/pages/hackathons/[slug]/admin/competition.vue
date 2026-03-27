@@ -2,6 +2,7 @@
 import type {
   ApiDataResponse,
   ApiListResponse,
+  EvaluationCriterion,
   HackathonRecord,
   HackathonRoleAssignment,
   JudgeAssignmentSummary,
@@ -12,6 +13,7 @@ import type {
 import type { PrizeRedemptionAdminView, PrizeRedemptionRecord } from '~/utils/prize-redemptions'
 
 import {
+  canMutateRoleAssignments,
   formatHackathonState,
   getCurrentLifecycleControl,
   getHackathonStateColor,
@@ -28,6 +30,14 @@ type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type JudgeChoice = {
   value: string
   label: string
+}
+
+type CriterionEditState = Pick<EvaluationCriterion, 'name' | 'description' | 'weight' | 'displayOrder'>
+
+type AssignableUser = {
+  id: string
+  displayName: string
+  email: string
 }
 
 const route = useRoute()
@@ -88,11 +98,74 @@ const winnersErrorMessage = ref('')
 const redemptions = ref<PrizeRedemptionRecord[]>([])
 const redemptionsStatus = ref<LoadStatus>('idle')
 const redemptionsErrorMessage = ref('')
+const criteriaDraft = reactive({
+  name: '',
+  description: '',
+  weight: 10,
+  displayOrder: 1
+})
+const criterionEdits = reactive<Record<string, CriterionEditState>>({})
+const judgeAssignmentSearch = ref('')
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
+const actor = computed(() => workspace.actor.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
+const canMutateRoles = computed(() => canMutateRoleAssignments(actor.value))
+const criteria = computed(() => workspace.criteria.data.value?.data ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
+const applications = computed(() => workspace.applications.data.value?.data ?? [])
+const judgeRoleAssignments = computed(() =>
+  roleAssignments.value.filter(assignment => assignment.role === 'judge')
+)
+
+const assignableUsers = computed<AssignableUser[]>(() => {
+  const usersById = new Map<string, AssignableUser>()
+
+  for (const application of applications.value) {
+    if (application.status !== 'approved' || !application.user) {
+      continue
+    }
+
+    usersById.set(application.user.id, {
+      id: application.user.id,
+      displayName: application.user.displayName,
+      email: application.user.email
+    })
+  }
+
+  for (const assignment of roleAssignments.value) {
+    if (!assignment.user) {
+      continue
+    }
+
+    usersById.set(assignment.user.id, {
+      id: assignment.user.id,
+      displayName: assignment.user.displayName,
+      email: assignment.user.email
+    })
+  }
+
+  return [...usersById.values()].sort((left, right) => left.displayName.localeCompare(right.displayName))
+})
+
+const judgeAssignableUsers = computed(() => {
+  const assignedJudgeIds = new Set(judgeRoleAssignments.value.map(assignment => assignment.userId))
+  const query = judgeAssignmentSearch.value.trim().toLowerCase()
+
+  return assignableUsers.value.filter((user) => {
+    if (assignedJudgeIds.has(user.id)) {
+      return false
+    }
+
+    if (!query) {
+      return true
+    }
+
+    const haystack = `${user.displayName} ${user.email} ${user.id}`.toLowerCase()
+    return haystack.includes(query)
+  })
+})
 
 const canLoadShortlist = computed(() =>
   Boolean(currentHackathon.value && ['shortlist', 'winners_announced', 'completed'].includes(currentHackathon.value.state))
@@ -192,6 +265,51 @@ const winnerSummaryValue = computed(() => {
   }
 
   return `${winners.value.length}`
+})
+
+function nextDisplayOrder(items: Array<EvaluationCriterion>) {
+  return items.reduce((highest, item) => Math.max(highest, item.displayOrder), 0) + 1
+}
+
+function replaceReactiveMap<T>(target: Record<string, T>, source: Record<string, T>) {
+  for (const key of Object.keys(target)) {
+    if (!(key in source)) {
+      Reflect.deleteProperty(target, key)
+    }
+  }
+
+  Object.assign(target, source)
+}
+
+function createCriterionEditState(criterion: EvaluationCriterion): CriterionEditState {
+  return {
+    name: criterion.name,
+    description: criterion.description,
+    weight: criterion.weight,
+    displayOrder: criterion.displayOrder
+  }
+}
+
+function getCriterionEdit(criterion: EvaluationCriterion) {
+  const existing = criterionEdits[criterion.id]
+
+  if (existing) {
+    return existing
+  }
+
+  const next = createCriterionEditState(criterion)
+  criterionEdits[criterion.id] = next
+  return next
+}
+
+watch(criteria, (items) => {
+  criteriaDraft.displayOrder = nextDisplayOrder(items)
+  replaceReactiveMap(
+    criterionEdits,
+    Object.fromEntries(items.map(criterion => [criterion.id, createCriterionEditState(criterion)]))
+  )
+}, {
+  immediate: true
 })
 
 function toSectionErrorMessage(error: unknown, fallback: string) {
@@ -348,8 +466,10 @@ watch([() => currentHackathon.value?.id, canManage], async ([id, allowed]) => {
 async function refreshCompetition() {
   await Promise.all([
     workspace.hackathon.refresh(),
+    workspace.criteria.refresh(),
     workspace.prizes.refresh(),
     workspace.roleAssignments.refresh(),
+    workspace.applications.refresh(),
     workspace.winnerTermsVersions.refresh()
   ])
   await loadCompetitionData()
@@ -372,6 +492,84 @@ async function runMutation(actionKey: string, action: () => Promise<void>, succe
   } finally {
     pendingActionKey.value = null
   }
+}
+
+async function createCriterion() {
+  await runMutation(
+    'criterion:create',
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/evaluation-criteria`, {
+        method: 'POST',
+        body: { ...criteriaDraft }
+      })
+      criteriaDraft.name = ''
+      criteriaDraft.description = ''
+      criteriaDraft.weight = 10
+    },
+    'Criterion added',
+    'The judging rubric has been updated.'
+  )
+}
+
+async function updateCriterion(criterionId: string) {
+  const edit = criterionEdits[criterionId]
+
+  if (!edit) {
+    return
+  }
+
+  await runMutation(
+    `criterion:update:${criterionId}`,
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/evaluation-criteria/${criterionId}`, {
+        method: 'PATCH',
+        body: {
+          name: edit.name,
+          description: edit.description,
+          weight: edit.weight,
+          displayOrder: edit.displayOrder
+        }
+      })
+    },
+    'Criterion updated',
+    'The judging rubric entry was updated.'
+  )
+}
+
+async function assignJudge(userId: string) {
+  const trimmedUserId = userId.trim()
+
+  if (!trimmedUserId) {
+    return
+  }
+
+  await runMutation(
+    `judge:assign:${trimmedUserId}`,
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/roles/${trimmedUserId}`, {
+        method: 'PUT',
+        body: {
+          role: 'judge',
+          isInJudgePool: true
+        }
+      })
+    },
+    'Judge assigned',
+    'The judge pool roster was updated.'
+  )
+}
+
+async function removeJudge(assignment: HackathonRoleAssignment) {
+  await runMutation(
+    `judge:remove:${assignment.userId}`,
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/roles/${assignment.userId}`, {
+        method: 'DELETE'
+      })
+    },
+    'Judge removed',
+    'The judge pool roster was updated.'
+  )
 }
 
 async function reassignAssignment(payload: { assignmentId: string, judgeUserId?: string, reason?: string }) {
@@ -456,22 +654,22 @@ async function completeHackathon() {
 <template>
   <AppContainer class="space-y-8 py-10 sm:py-14">
     <AdminWorkspaceHeader
-      eyebrow="Admin Competition"
-      :title="currentHackathon ? `${currentHackathon.name} competition` : 'Hackathon competition'"
-      description="Monitor blind judging, review the computed leaderboard, manage final shortlist ordering, and publish only the canonical winner actions for the current lifecycle state."
+      eyebrow="Admin Judging"
+      :title="currentHackathon ? `${currentHackathon.name} judging` : 'Hackathon judging'"
+      description="Manage judging criteria, maintain the judge roster, monitor blind judging assignments, and drive the competition outcome workflow."
     />
 
     <AdminHackathonWorkspaceTabs
       v-if="currentHackathon"
       :hackathon-slug="currentHackathon.slug"
-      current-surface="competition"
+      current-surface="judging"
     />
 
     <AppAlert
       v-if="mutationError"
       color="error"
       variant="soft"
-      title="Competition action failed"
+      title="Judging action failed"
       :description="mutationError"
     />
 
@@ -487,8 +685,8 @@ async function completeHackathon() {
       v-else-if="workspace.hackathon.status.value === 'pending'"
       color="neutral"
       variant="soft"
-      title="Loading competition workspace"
-      description="Resolving the hackathon, role assignments, and competition surfaces for this admin session."
+      title="Loading judging workspace"
+      description="Resolving the hackathon, role assignments, and judging surfaces for this admin session."
     />
 
     <AppAlert
@@ -496,7 +694,7 @@ async function completeHackathon() {
       color="warning"
       variant="soft"
       title="Admin access required"
-      description="This hackathon is visible, but the current actor does not have hackathon-admin capabilities for its competition workspace."
+      description="This hackathon is visible, but the current actor does not have hackathon-admin capabilities for its judging workspace."
     />
 
     <template v-else-if="currentHackathon">
@@ -542,6 +740,210 @@ async function completeHackathon() {
             {{ winnerSummaryValue }}
           </p>
         </div>
+      </section>
+
+      <section class="grid gap-6 xl:grid-cols-2">
+        <AppCard class="border border-default/70 bg-elevated/90">
+          <template #header>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold text-highlighted">
+                Judging Criteria
+              </h2>
+              <p class="text-sm text-muted">
+                Define and maintain the weighted rubric used for judge reviews and leaderboard scoring.
+              </p>
+            </div>
+          </template>
+
+          <div class="space-y-4">
+            <div class="grid gap-4 md:grid-cols-2">
+              <input
+                v-model="criteriaDraft.name"
+                type="text"
+                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+                placeholder="Criterion name"
+              >
+              <input
+                v-model.number="criteriaDraft.weight"
+                type="number"
+                min="0"
+                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+                placeholder="Weight"
+              >
+            </div>
+            <textarea
+              v-model="criteriaDraft.description"
+              rows="3"
+              class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              placeholder="Criterion description"
+            />
+            <AppButton
+              v-if="canMutateRoles"
+              color="primary"
+              label="Add Criterion"
+              @click="createCriterion"
+            />
+
+            <div class="grid gap-3">
+              <div
+                v-for="criterion in criteria"
+                :key="criterion.id"
+                class="app-inset-card-tight px-4 py-4"
+              >
+                <div class="grid gap-4">
+                  <div class="grid gap-4 md:grid-cols-[1fr_120px_120px]">
+                    <input
+                      v-model="getCriterionEdit(criterion).name"
+                      type="text"
+                      class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                      placeholder="Criterion name"
+                    >
+                    <input
+                      v-model.number="getCriterionEdit(criterion).weight"
+                      type="number"
+                      min="0"
+                      class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                      placeholder="Weight"
+                    >
+                    <input
+                      v-model.number="getCriterionEdit(criterion).displayOrder"
+                      type="number"
+                      min="1"
+                      class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                      placeholder="Order"
+                    >
+                  </div>
+                  <textarea
+                    v-model="getCriterionEdit(criterion).description"
+                    rows="3"
+                    class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
+                    placeholder="Criterion description"
+                  />
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
+                      Existing criterion
+                    </p>
+                    <AppButton
+                      v-if="canMutateRoles"
+                      size="sm"
+                      variant="soft"
+                      @click="updateCriterion(criterion.id)"
+                    >
+                      Save updates
+                    </AppButton>
+                  </div>
+                </div>
+              </div>
+              <p
+                v-if="criteria.length === 0"
+                class="text-sm text-muted"
+              >
+                No judging criteria have been configured yet.
+              </p>
+            </div>
+          </div>
+        </AppCard>
+
+        <AppCard class="border border-default/70 bg-elevated/90">
+          <template #header>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold text-highlighted">
+                Judge Assignments
+              </h2>
+              <p class="text-sm text-muted">
+                Search approved users and manage who is explicitly assigned to judge this hackathon.
+              </p>
+            </div>
+          </template>
+
+          <div class="space-y-4">
+            <AppAlert
+              v-if="!canMutateRoles"
+              color="warning"
+              variant="soft"
+              title="Hackathon admin access required"
+              description="The current actor can review this roster but cannot modify it for this hackathon."
+            />
+
+            <template v-else>
+              <input
+                v-model="judgeAssignmentSearch"
+                type="text"
+                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+                placeholder="Search users by name, email, or user ID"
+              >
+              <div class="grid gap-3">
+                <div
+                  v-for="user in judgeAssignableUsers"
+                  :key="user.id"
+                  class="app-inset-card-tight flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+                >
+                  <div class="space-y-0.5">
+                    <p class="font-semibold text-highlighted">
+                      {{ user.displayName }}
+                    </p>
+                    <p class="text-sm text-muted">
+                      {{ user.email }}
+                    </p>
+                    <p class="font-mono text-xs text-muted">
+                      userId: {{ user.id }}
+                    </p>
+                  </div>
+                  <AppButton
+                    size="sm"
+                    variant="soft"
+                    @click="assignJudge(user.id)"
+                  >
+                    Assign judge
+                  </AppButton>
+                </div>
+                <p
+                  v-if="judgeAssignableUsers.length === 0"
+                  class="text-sm text-muted"
+                >
+                  No assignable users match the current search.
+                </p>
+              </div>
+            </template>
+
+            <div class="grid gap-3">
+              <div
+                v-for="assignment in judgeRoleAssignments"
+                :key="assignment.id"
+                class="app-inset-card-tight px-4 py-4"
+              >
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div class="space-y-0.5">
+                    <p class="font-semibold text-highlighted">
+                      {{ assignment.user?.displayName ?? assignment.userId }}
+                    </p>
+                    <p class="text-sm text-muted">
+                      {{ assignment.user?.email ?? 'Manual user lookup required' }}
+                    </p>
+                    <p class="font-mono text-xs text-muted">
+                      userId: {{ assignment.userId }}
+                    </p>
+                  </div>
+                  <AppButton
+                    v-if="canMutateRoles"
+                    size="sm"
+                    color="error"
+                    variant="soft"
+                    @click="removeJudge(assignment)"
+                  >
+                    Remove
+                  </AppButton>
+                </div>
+              </div>
+              <p
+                v-if="judgeRoleAssignments.length === 0"
+                class="text-sm text-muted"
+              >
+                No judges have been explicitly assigned yet.
+              </p>
+            </div>
+          </div>
+        </AppCard>
       </section>
 
       <AdminCompetitionAssignmentsPanel
@@ -593,8 +995,8 @@ async function completeHackathon() {
         v-if="!['judging_preparation', 'judge_review', 'shortlist', 'winners_announced', 'completed'].includes(currentHackathon.state)"
         color="neutral"
         variant="soft"
-        title="Competition routing is staged"
-        description="This surface becomes operational after submissions close and judging preparation begins."
+        title="Judging workflow is staged"
+        description="Assignment operations become fully active once submissions close and judging preparation begins."
       />
 
       <div class="rounded-[1.5rem] border border-default/70 bg-elevated/90 px-5 py-5">

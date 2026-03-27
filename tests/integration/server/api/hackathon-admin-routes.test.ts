@@ -167,6 +167,47 @@ describe('TASK-3.5 hackathon admin route groups', () => {
     })
   })
 
+  test('hackathon admin can create and remove role assignments for the same hackathon', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'put', path: '/api/hackathons/:hackathonId/roles/:userId', handler: rolePutHandler },
+        { method: 'delete', path: '/api/hackathons/:hackathonId/roles/:userId', handler: roleDeleteHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedHackathonContext(harness)
+
+    const createJudgeResponse = await harness.request('/api/hackathons/hackathon_1/roles/judge_user', {
+      method: 'PUT',
+      body: JSON.stringify({
+        role: 'judge',
+        isInJudgePool: true
+      })
+    })
+    expect(createJudgeResponse.status).toBe(200)
+    expect(await createJudgeResponse.json()).toMatchObject({
+      data: {
+        userId: 'judge_user',
+        role: 'judge'
+      }
+    })
+
+    const removeJudgeResponse = await harness.request('/api/hackathons/hackathon_1/roles/judge_user', {
+      method: 'DELETE'
+    })
+    expect(removeJudgeResponse.status).toBe(200)
+    expect(await removeJudgeResponse.json()).toMatchObject({
+      data: {
+        userId: 'judge_user',
+        deleted: true
+      }
+    })
+  })
+
   test('terms routes expose current terms and allow admin versioning plus current-reference updates', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

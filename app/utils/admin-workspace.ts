@@ -431,7 +431,7 @@ export function canCreateHackathon(actor: SessionActor | null | undefined) {
 }
 
 export function canMutateRoleAssignments(actor: SessionActor | null | undefined) {
-  return canCreateHackathon(actor)
+  return isAdminActor(actor)
 }
 
 export function hasHackathonAdminAccess(actor: SessionActor | null | undefined, hackathonId: string) {

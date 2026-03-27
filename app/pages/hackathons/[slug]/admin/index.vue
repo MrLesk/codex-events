@@ -27,9 +27,10 @@ type CriterionEditState = Pick<EvaluationCriterion, 'name' | 'description' | 'we
 type PrizeEditState = Pick<PrizeDefinition, 'name' | 'description' | 'rewardType' | 'rewardValue' | 'awardScope' | 'rankStart' | 'rankEnd'> & {
   rewardCurrency: string
 }
-type RoleAssignmentEditState = Pick<HackathonRoleAssignment, 'role' | 'isInJudgePool'>
-type RoleAssignmentDraftState = RoleAssignmentEditState & {
-  userId: string
+type AssignableUser = {
+  id: string
+  displayName: string
+  email: string
 }
 
 const route = useRoute()
@@ -97,11 +98,6 @@ const prizeDraft = reactive({
   rankStart: 1,
   rankEnd: 1
 })
-const roleDraft = reactive<RoleAssignmentDraftState>({
-  userId: '',
-  role: 'judge',
-  isInJudgePool: true
-})
 const termsDraft = reactive({
   documentType: 'application_terms',
   title: '',
@@ -109,7 +105,7 @@ const termsDraft = reactive({
 })
 const criterionEdits = reactive<Record<string, CriterionEditState>>({})
 const prizeEdits = reactive<Record<string, PrizeEditState>>({})
-const roleAssignmentEdits = reactive<Record<string, RoleAssignmentEditState>>({})
+const adminAssignmentSearch = ref('')
 
 const configForm = reactive({
   ...createHackathonFormState({
@@ -164,10 +160,62 @@ const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
 const applicationTerms = computed(() => workspace.applicationTermsVersions.data.value?.data ?? [])
 const winnerTerms = computed(() => workspace.winnerTermsVersions.data.value?.data ?? [])
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
+const applications = computed(() => workspace.applications.data.value?.data ?? [])
 const assignments = computed(() => workspace.assignments.data.value?.data ?? [])
 const leaderboard = computed(() => workspace.leaderboard.data.value?.data ?? [])
 const teams = computed(() => workspace.teams.data.value ?? [])
 const noSubmissionTeams = computed(() => workspace.noSubmissionTeams.data.value?.data ?? [])
+const adminRoleAssignments = computed(() =>
+  roleAssignments.value.filter(assignment => assignment.role === 'hackathon_admin')
+)
+
+const assignableUsers = computed<AssignableUser[]>(() => {
+  const usersById = new Map<string, AssignableUser>()
+
+  for (const application of applications.value) {
+    if (application.status !== 'approved' || !application.user) {
+      continue
+    }
+
+    usersById.set(application.user.id, {
+      id: application.user.id,
+      displayName: application.user.displayName,
+      email: application.user.email
+    })
+  }
+
+  for (const assignment of roleAssignments.value) {
+    if (!assignment.user) {
+      continue
+    }
+
+    usersById.set(assignment.user.id, {
+      id: assignment.user.id,
+      displayName: assignment.user.displayName,
+      email: assignment.user.email
+    })
+  }
+
+  return [...usersById.values()].sort((left, right) => left.displayName.localeCompare(right.displayName))
+})
+
+const adminAssignableUsers = computed(() => {
+  const currentAdminIds = new Set(adminRoleAssignments.value.map(assignment => assignment.userId))
+  const query = adminAssignmentSearch.value.trim().toLowerCase()
+
+  return assignableUsers.value.filter((user) => {
+    if (currentAdminIds.has(user.id)) {
+      return false
+    }
+
+    if (!query) {
+      return true
+    }
+
+    const haystack = `${user.displayName} ${user.email} ${user.id}`.toLowerCase()
+    return haystack.includes(query)
+  })
+})
 
 const lifecycleMetrics = computed(() => {
   const lockedEntries = leaderboard.value.filter(entry => entry.submissionStatus === 'locked')
@@ -228,13 +276,6 @@ function createPrizeEditState(prize: PrizeDefinition): PrizeEditState {
   }
 }
 
-function createRoleAssignmentEditState(assignment: HackathonRoleAssignment): RoleAssignmentEditState {
-  return {
-    role: assignment.role,
-    isInJudgePool: assignment.isInJudgePool
-  }
-}
-
 function getCriterionEdit(criterion: EvaluationCriterion) {
   const existing = criterionEdits[criterion.id]
 
@@ -259,25 +300,6 @@ function getPrizeEdit(prize: PrizeDefinition) {
   return next
 }
 
-function getRoleAssignmentEdit(assignment: HackathonRoleAssignment) {
-  const existing = roleAssignmentEdits[assignment.id]
-
-  if (existing) {
-    return existing
-  }
-
-  const next = createRoleAssignmentEditState(assignment)
-  roleAssignmentEdits[assignment.id] = next
-  return next
-}
-
-function toRoleAssignmentPayload(draft: RoleAssignmentEditState) {
-  return {
-    role: draft.role,
-    isInJudgePool: draft.role === 'judge' ? true : draft.isInJudgePool
-  }
-}
-
 watch(criteria, (items) => {
   criteriaDraft.displayOrder = nextDisplayOrder(items)
   replaceReactiveMap(
@@ -295,21 +317,6 @@ watch(prizes, (items) => {
   )
 }, {
   immediate: true
-})
-
-watch(roleAssignments, (items) => {
-  replaceReactiveMap(
-    roleAssignmentEdits,
-    Object.fromEntries(items.map(assignment => [assignment.id, createRoleAssignmentEditState(assignment)]))
-  )
-}, {
-  immediate: true
-})
-
-watch(() => roleDraft.role, (role) => {
-  if (role === 'judge') {
-    roleDraft.isInJudgePool = true
-  }
 })
 
 async function runMutation(action: () => Promise<void>, successTitle: string, successDescription: string) {
@@ -545,43 +552,27 @@ async function updatePrize(prizeId: string) {
   }, 'Prize updated', 'The prize definition has been updated.')
 }
 
-async function createRoleAssignment() {
+async function assignHackathonAdmin(userId: string) {
   const hackathon = currentHackathon.value
-  const userId = roleDraft.userId.trim()
+  const trimmedUserId = userId.trim()
 
-  if (!hackathon || !userId) {
-    if (!userId) {
-      mutationError.value = 'Enter a platform user ID before saving an explicit role assignment.'
+  if (!hackathon || !trimmedUserId) {
+    if (!trimmedUserId) {
+      mutationError.value = 'Pick a registered user before assigning hackathon-admin access.'
     }
 
     return
   }
 
   await runMutation(async () => {
-    await $fetch(`/api/hackathons/${hackathon.id}/roles/${userId}`, {
+    await $fetch(`/api/hackathons/${hackathon.id}/roles/${trimmedUserId}`, {
       method: 'PUT',
-      body: toRoleAssignmentPayload(roleDraft)
+      body: {
+        role: 'hackathon_admin',
+        isInJudgePool: false
+      }
     })
-    roleDraft.userId = ''
-    roleDraft.role = 'judge'
-    roleDraft.isInJudgePool = true
-  }, 'Role assignment saved', 'The explicit hackathon access list has been updated.')
-}
-
-async function updateRoleAssignment(assignment: HackathonRoleAssignment) {
-  const hackathon = currentHackathon.value
-  const edit = roleAssignmentEdits[assignment.id]
-
-  if (!hackathon || !edit) {
-    return
-  }
-
-  await runMutation(async () => {
-    await $fetch(`/api/hackathons/${hackathon.id}/roles/${assignment.userId}`, {
-      method: 'PUT',
-      body: toRoleAssignmentPayload(edit)
-    })
-  }, 'Role assignment updated', 'The explicit hackathon access entry has been updated.')
+  }, 'Hackathon admin assigned', 'The admin roster was updated for this hackathon.')
 }
 
 async function deleteRoleAssignment(assignment: HackathonRoleAssignment) {
@@ -595,13 +586,7 @@ async function deleteRoleAssignment(assignment: HackathonRoleAssignment) {
     await $fetch(`/api/hackathons/${hackathon.id}/roles/${assignment.userId}`, {
       method: 'DELETE'
     })
-  }, 'Role assignment removed', 'The explicit hackathon access entry has been removed.')
-}
-
-function reuseRoleAssignmentUserId(assignment: HackathonRoleAssignment) {
-  roleDraft.userId = assignment.userId
-  roleDraft.role = assignment.role
-  roleDraft.isInJudgePool = assignment.isInJudgePool
+  }, 'Hackathon admin removed', 'The admin roster was updated for this hackathon.')
 }
 
 async function createTermsVersion() {
@@ -657,15 +642,15 @@ async function runLifecycleAction() {
 <template>
   <AppContainer class="space-y-8 py-10 sm:py-14">
     <AdminWorkspaceHeader
-      eyebrow="Admin Workspace"
-      :title="currentHackathon ? currentHackathon.name : 'Hackathon workspace'"
-      description="Configure the hackathon, manage terms and scoring rules, control explicit access, and advance only the lifecycle transitions that the current state allows."
+      eyebrow="Admin Settings"
+      :title="currentHackathon ? `${currentHackathon.name} settings` : 'Hackathon settings'"
+      description="Edit hackathon configuration, manage terms, and assign or remove hackathon-admin access."
     />
 
     <AdminHackathonWorkspaceTabs
       v-if="currentHackathon"
       :hackathon-slug="currentHackathon.slug"
-      current-surface="setup"
+      current-surface="settings"
     />
 
     <AppAlert
@@ -1171,10 +1156,10 @@ async function runLifecycleAction() {
           <template #header>
             <div class="space-y-1">
               <h2 class="text-lg font-semibold text-highlighted">
-                Explicit Role Assignments
+                Hackathon Admin Assignments
               </h2>
               <p class="text-sm text-muted">
-                Manual `userId` entry remains temporary until the backend exposes canonical user lookup for admin assignment workflows. Existing assignments surface the exact `userId` needed for follow-up edits or removal.
+                Search approved and already-associated users, then assign or remove hackathon-admin access for this hackathon.
               </p>
             </div>
           </template>
@@ -1184,49 +1169,55 @@ async function runLifecycleAction() {
               v-if="!canMutateRoles"
               color="warning"
               variant="soft"
-              title="Platform admin required for explicit role changes"
-              description="Hackathon admins can review the access roster here, but create, update, and delete role assignments remain restricted to platform admins."
+              title="Hackathon admin access required"
+              description="The current actor can view this roster but cannot modify it for this hackathon."
             />
 
             <template v-else>
               <input
-                v-model="roleDraft.userId"
+                v-model="adminAssignmentSearch"
                 type="text"
                 class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
-                placeholder="Platform user ID"
+                placeholder="Search users by name, email, or user ID"
               >
-              <div class="grid gap-4 md:grid-cols-2">
-                <select
-                  v-model="roleDraft.role"
-                  class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none focus:border-primary"
+              <div class="grid gap-3">
+                <div
+                  v-for="user in adminAssignableUsers"
+                  :key="user.id"
+                  class="app-inset-card-tight flex flex-wrap items-center justify-between gap-3 px-4 py-3"
                 >
-                  <option value="judge">
-                    Judge
-                  </option>
-                  <option value="hackathon_admin">
-                    Hackathon admin
-                  </option>
-                </select>
-                <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
-                  <input
-                    v-model="roleDraft.isInJudgePool"
-                    :disabled="roleDraft.role === 'judge'"
-                    type="checkbox"
-                    class="size-4 rounded border-default"
+                  <div class="space-y-0.5">
+                    <p class="font-semibold text-highlighted">
+                      {{ user.displayName }}
+                    </p>
+                    <p class="text-sm text-muted">
+                      {{ user.email }}
+                    </p>
+                    <p class="font-mono text-xs text-muted">
+                      userId: {{ user.id }}
+                    </p>
+                  </div>
+                  <AppButton
+                    size="sm"
+                    variant="soft"
+                    @click="assignHackathonAdmin(user.id)"
                   >
-                  Include in automatic judge pool
-                </label>
+                    Assign admin
+                  </AppButton>
+                </div>
+
+                <p
+                  v-if="adminAssignableUsers.length === 0"
+                  class="text-sm text-muted"
+                >
+                  No assignable users match the current search.
+                </p>
               </div>
-              <AppButton
-                color="primary"
-                label="Save Role Assignment"
-                @click="createRoleAssignment"
-              />
             </template>
 
             <div class="grid gap-3">
               <div
-                v-for="assignment in roleAssignments"
+                v-for="assignment in adminRoleAssignments"
                 :key="assignment.id"
                 class="app-inset-card-tight px-4 py-4"
               >
@@ -1243,78 +1234,40 @@ async function runLifecycleAction() {
                         userId: {{ assignment.userId }}
                       </p>
                     </div>
-
-                    <AppButton
-                      v-if="canMutateRoles"
-                      size="sm"
-                      variant="ghost"
-                      @click="reuseRoleAssignmentUserId(assignment)"
-                    >
-                      Reuse ID
-                    </AppButton>
                   </div>
 
                   <div
                     v-if="canMutateRoles"
-                    class="grid gap-4"
+                    class="flex flex-wrap items-center justify-between gap-3"
                   >
-                    <div class="grid gap-4 md:grid-cols-2">
-                      <select
-                        v-model="getRoleAssignmentEdit(assignment).role"
-                        class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary"
-                        @change="getRoleAssignmentEdit(assignment).role === 'judge' ? getRoleAssignmentEdit(assignment).isInJudgePool = true : undefined"
-                      >
-                        <option value="judge">
-                          Judge
-                        </option>
-                        <option value="hackathon_admin">
-                          Hackathon admin
-                        </option>
-                      </select>
-                      <label class="flex items-center gap-3 rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned">
-                        <input
-                          v-model="getRoleAssignmentEdit(assignment).isInJudgePool"
-                          :disabled="getRoleAssignmentEdit(assignment).role === 'judge'"
-                          type="checkbox"
-                          class="size-4 rounded border-default"
-                        >
-                        Include in automatic judge pool
-                      </label>
-                    </div>
-
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                      <p class="text-sm text-muted">
-                        {{ assignment.role }} • {{ assignment.isInJudgePool ? 'In judge pool' : 'Not in judge pool' }}
-                      </p>
-                      <div class="flex flex-wrap gap-2">
-                        <AppButton
-                          size="sm"
-                          variant="soft"
-                          @click="updateRoleAssignment(assignment)"
-                        >
-                          Save updates
-                        </AppButton>
-                        <AppButton
-                          size="sm"
-                          color="error"
-                          variant="soft"
-                          @click="deleteRoleAssignment(assignment)"
-                        >
-                          Remove
-                        </AppButton>
-                      </div>
-                    </div>
+                    <p class="text-sm text-muted">
+                      hackathon_admin
+                    </p>
+                    <AppButton
+                      size="sm"
+                      color="error"
+                      variant="soft"
+                      @click="deleteRoleAssignment(assignment)"
+                    >
+                      Remove
+                    </AppButton>
                   </div>
 
                   <div
                     v-else
                     class="text-sm text-muted"
                   >
-                    <p>{{ assignment.role }}</p>
-                    <p>{{ assignment.isInJudgePool ? 'In judge pool' : 'Not in judge pool' }}</p>
+                    <p>hackathon_admin</p>
                   </div>
                 </div>
               </div>
+
+              <p
+                v-if="adminRoleAssignments.length === 0"
+                class="text-sm text-muted"
+              >
+                No hackathon admins have been explicitly assigned yet.
+              </p>
             </div>
           </div>
         </AppCard>

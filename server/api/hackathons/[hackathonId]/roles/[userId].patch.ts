@@ -1,5 +1,4 @@
 import { requirePlatformActor } from '../../../../auth/actor'
-import { assertPlatformAdminAccess } from '../../../../auth/authorization'
 import { writeAuditLog } from '../../../../database/audit-log'
 import { getDatabase } from '../../../../database/client'
 import { hackathonRoleAssignments } from '../../../../database/schema'
@@ -8,6 +7,7 @@ import { apiData } from '../../../../utils/api-response'
 import {
   assertRoleJudgePoolInvariant,
   getActiveUserOrThrow,
+  requireHackathonAdmin,
   getRoleAssignmentOrThrow,
   roleAssignmentParamsSchema,
   roleAssignmentPatchBodySchema,
@@ -18,12 +18,12 @@ import { eq } from 'drizzle-orm'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
-  assertPlatformAdminAccess(actor)
 
   const { hackathonId, userId } = parseValidatedParams(event, roleAssignmentParamsSchema)
   const body = await parseValidatedBody(event, roleAssignmentPatchBodySchema)
   const database = getDatabase(event)
 
+  await requireHackathonAdmin(event, hackathonId)
   const assignment = await getRoleAssignmentOrThrow(database, hackathonId, userId)
   const user = await getActiveUserOrThrow(database, userId)
 
