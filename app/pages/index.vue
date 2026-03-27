@@ -61,12 +61,6 @@ const loadMoreSummary = computed(() => {
   return `Showing ${visibleHackathonCount.value} out of ${currentFilterTotal.value} ${activeTab.value} hackathons.`
 })
 
-async function ensureSelectedTabHasLoadedResults() {
-  while (!isLoadingMore.value && hasMoreHackathons.value && filteredHackathons.value.length === 0) {
-    await loadMoreHackathons()
-  }
-}
-
 async function loadMoreHackathons() {
   if (isLoadingMore.value || !hasMoreHackathons.value) {
     return
@@ -97,10 +91,6 @@ async function loadMoreHackathons() {
     isLoadingMore.value = false
   }
 }
-
-watch(activeTab, async () => {
-  await ensureSelectedTabHasLoadedResults()
-})
 
 useSeoMeta({
   title: 'Codex Hackathons',

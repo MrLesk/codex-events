@@ -65,6 +65,7 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 - Record unresolved product questions explicitly instead of implying false certainty.
 - Use current-state language such as "A hackathon has..." rather than "We changed..." or "Previously...".
 - Prefer the simplest model that expresses the business rules clearly.
+- Prefer proven libraries and existing framework capabilities over writing custom implementations from scratch in most cases.
 - Favor booleans, enums, and direct fields over additional entities or abstractions when the extra structure does not provide clear operational value.
 - Do not add general-purpose extensibility for hypothetical future needs unless the user explicitly asks for it.
 - Optimize for systems that are easy to understand, query, and operate at scale, even when that means rejecting more textbook modeling patterns.

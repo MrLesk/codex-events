@@ -8,11 +8,11 @@ import AppShellHeader from '~/components/shell/AppShellHeader.vue'
     <AppShellHeader />
 
     <div class="min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-none">
-      <main class="relative flex-1">
+      <main class="relative">
         <slot />
       </main>
 
-      <AppShellFooter />
+      <AppShellFooter class="mt-auto" />
     </div>
   </div>
 </template>

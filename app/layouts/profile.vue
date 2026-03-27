@@ -37,7 +37,7 @@ watch(isSidebarCollapsed, (nextValue) => {
     <AppShellHeader />
 
     <div class="min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-none">
-      <div class="relative flex min-h-0 flex-1 items-stretch">
+      <div class="relative flex items-stretch">
         <aside
           v-if="showWorkspaceSidebar"
           class="hidden shrink-0 text-[#A3A3A3] transition-[width] duration-200 xl:block"
@@ -89,7 +89,7 @@ watch(isSidebarCollapsed, (nextValue) => {
         </main>
       </div>
 
-      <AppShellFooter />
+      <AppShellFooter class="mt-auto" />
     </div>
   </div>
 </template>
