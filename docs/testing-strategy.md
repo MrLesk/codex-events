@@ -159,7 +159,7 @@ Reset logic must:
 - recreate or normalize platform authorization rows and scenario data before test execution
 - avoid coupling one test's authorization state to another test's leftovers
 
-For local authenticated validation, the repository uses the D1 binding declared in `wrangler.jsonc` and persists local state under `.wrangler/state`. The local bootstrap lifecycle is explicit: clear the persisted local D1 state, recreate it from migrations, seed the canonical fixture dataset, clear saved session-state artifacts, and then perform fresh real Auth0 logins.
+For local authenticated validation, the repository uses the D1 binding declared in `wrangler.jsonc` and persists local state under `.wrangler/state` by default (or a `LOCAL_D1_STATE_ROOT` override when provided). The local bootstrap lifecycle is explicit: clear the selected persisted local D1 state, recreate it from migrations, seed the canonical fixture dataset, clear saved session-state artifacts, and then perform fresh real Auth0 logins.
 
 ## Unsupported Patterns
 

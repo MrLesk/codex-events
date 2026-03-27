@@ -6,7 +6,7 @@
   "scripts": {
     "build": "nuxt build",
     "db:local:guard": "bun tools/d1/ensure-local-state-path.ts",
-    "dev": "bun run db:local:guard && CI=1 wrangler d1 migrations apply DB --local --persist-to .wrangler/state --config wrangler.jsonc && nuxt dev",
+    "dev": "bun run db:local:guard && CI=1 wrangler d1 migrations apply DB --local --persist-to ${LOCAL_D1_STATE_ROOT:-.wrangler/state} --config wrangler.jsonc && nuxt dev",
     "db:generate": "drizzle-kit generate",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",

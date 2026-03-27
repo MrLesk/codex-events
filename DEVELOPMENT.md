@@ -133,7 +133,7 @@ AUTH0_TEST_MGMT_AUDIENCE=https://your-tenant.auth0.com/api/v2/
 AUTH0_TEST_CONNECTION_NAME=codex-hackathons-e2e-users
 ```
 
-For platform fixture reset and authenticated browser coverage, the repository uses the local D1 binding declared in `wrangler.jsonc`. The bootstrap flow clears the persisted `.wrangler/state` data before recreating schema and fixtures through Cloudflare's local D1 runtime.
+For platform fixture reset and authenticated browser coverage, the repository uses the local D1 binding declared in `wrangler.jsonc`. The bootstrap flow clears persisted local D1 data before recreating schema and fixtures through Cloudflare's local D1 runtime.
 
 Install the Playwright browser for local runs:
 
@@ -151,7 +151,9 @@ This is the canonical local BDD command. It bootstraps the stable Auth0 personas
 
 BDD source files live under `tests/bdd/`: feature files in `tests/bdd/features`, matching step definitions in `tests/bdd/steps`, and authenticated bootstrap support in `tests/bdd/bootstrap.ts` plus `tests/bdd/support`. Generated files are written under `.features-gen/` and should not be edited by hand.
 
-For authenticated runs, the local D1 state under `.wrangler/state` is the default deterministic fixture target. The bootstrap flow clears that persisted local Cloudflare state, reapplies migrations, reseeds the fixture dataset, clears `tests/bdd/.auth/`, and then performs fresh real Auth0 logins for the stable personas before saving new storage-state artifacts.
+For authenticated runs, the local D1 state under `.wrangler/state` is the default deterministic fixture target. You can override the persist root by setting `LOCAL_D1_STATE_ROOT` (for example `LOCAL_D1_STATE_ROOT=.wrangler/state-bdd-alt bun run test:bdd`).
+
+The bootstrap flow clears the selected persisted local Cloudflare state, reapplies migrations, reseeds the fixture dataset, clears `tests/bdd/.auth/`, and then performs fresh real Auth0 logins for the stable personas before saving new storage-state artifacts.
 
 The authenticated Playwright setup project writes reusable session-state artifacts under `tests/bdd/.auth/`. Those files are local test artifacts and are gitignored.
 
