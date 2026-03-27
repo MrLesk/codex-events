@@ -74,7 +74,7 @@ const hackathonConfigShape = {
   registrationClosesAt: isoTimestampSchema,
   submissionOpensAt: isoTimestampSchema,
   submissionClosesAt: isoTimestampSchema,
-  maxTeamMembers: z.coerce.number().int().min(1),
+  maxTeamMembers: z.coerce.number().int().min(1).default(4),
   requireXProfile: z.coerce.boolean().default(false),
   requireLinkedinProfile: z.coerce.boolean().default(false),
   requireGithubProfile: z.coerce.boolean().default(false),

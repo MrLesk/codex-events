@@ -9,7 +9,7 @@ const hackathons = ref<PublicHackathon[]>([])
 const total = ref(0)
 const isLoadingMore = ref(false)
 const loadMoreError = ref<string>()
-const activeTab = ref<'all' | 'active' | 'past'>('all')
+const activeTab = ref<'all' | 'active' | 'past'>('active')
 
 const { data: initialResponse, error } = await useAsyncData('public-hackathons-homepage:page-1', async () =>
   await $fetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
@@ -73,6 +73,16 @@ const loadMoreSummary = computed(() => {
   return `Showing ${visibleHackathonCount.value} out of ${currentFilterTotal.value} ${activeTab.value} hackathons.`
 })
 
+async function ensureSelectedTabHasLoadedResults() {
+  if (activeTab.value === 'all') {
+    return
+  }
+
+  while (!isLoadingMore.value && hasMoreHackathons.value && filteredHackathons.value.length === 0) {
+    await loadMoreHackathons()
+  }
+}
+
 async function loadMoreHackathons() {
   if (isLoadingMore.value || !hasMoreHackathons.value) {
     return
@@ -103,6 +113,10 @@ async function loadMoreHackathons() {
     isLoadingMore.value = false
   }
 }
+
+watch(activeTab, async () => {
+  await ensureSelectedTabHasLoadedResults()
+})
 
 useSeoMeta({
   title: 'Codex Hackathons',
