@@ -227,6 +227,8 @@ describe('admin-workspace form helpers', () => {
     const localValue = toDateTimeLocalValue(isoTimestamp)
 
     expect(createHackathonSlug('  Codex Spring Builders 2026  ')).toBe('codex-spring-builders-2026')
+    expect(createHackathonSlug('  Spring 2026 @ Codex!  ')).toBe('spring-2026-codex')
+    expect(createHackathonSlug('MIXED_Case__Slug')).toBe('mixed-case-slug')
     expect(fromDateTimeLocalValue(localValue)).toBe(isoTimestamp)
   })
 

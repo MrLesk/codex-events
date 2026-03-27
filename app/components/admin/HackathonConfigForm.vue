@@ -4,6 +4,7 @@ import { useForm } from 'vee-validate'
 
 import type { HackathonFormState } from '~/utils/admin-workspace'
 
+import { createHackathonSlug } from '~/utils/admin-workspace'
 import { hackathonConfigFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
 
@@ -23,6 +24,7 @@ const props = defineProps<{
   isSubmitting?: boolean
   submitLabel: string
   helperText?: string
+  autoGenerateSlug?: boolean
   canUploadManagedImages?: boolean
   backgroundImageUploadPending?: boolean
   backgroundImageUploadSuccess?: string
@@ -31,6 +33,9 @@ const props = defineProps<{
   bannerImageUploadSuccess?: string
   bannerImageUploadError?: string
 }>()
+
+const hasManuallyEditedSlug = ref(false)
+const isProgrammaticSlugUpdate = ref(false)
 
 function uploadBackgroundImage(event: Event) {
   const target = event.target as HTMLInputElement | null
@@ -96,7 +101,6 @@ function removeAgendaItem(itemId: string) {
 const {
   errors,
   submitCount,
-  values,
   setValues,
   handleSubmit
 } = useForm({
@@ -111,10 +115,54 @@ watch(() => form.value, (nextForm) => {
   immediate: true
 })
 
-watch(values, (nextValues) => {
-  Object.assign(form.value, cloneFormValues(nextValues))
-}, {
-  deep: true
+watch(() => form.value.name, (nextName) => {
+  if (!props.autoGenerateSlug || hasManuallyEditedSlug.value) {
+    return
+  }
+
+  const generatedSlug = createHackathonSlug(nextName)
+
+  if (form.value.slug === generatedSlug) {
+    return
+  }
+
+  isProgrammaticSlugUpdate.value = true
+  form.value.slug = generatedSlug
+})
+
+watch(() => form.value.slug, (nextSlug) => {
+  const normalizedSlug = createHackathonSlug(nextSlug)
+  const generatedSlugFromName = createHackathonSlug(form.value.name)
+  const cameFromUserEdit = !isProgrammaticSlugUpdate.value
+
+  if (normalizedSlug !== nextSlug) {
+    isProgrammaticSlugUpdate.value = true
+    form.value.slug = normalizedSlug
+
+    if (
+      props.autoGenerateSlug
+      && cameFromUserEdit
+      && !hasManuallyEditedSlug.value
+      && normalizedSlug !== generatedSlugFromName
+    ) {
+      hasManuallyEditedSlug.value = true
+    }
+
+    return
+  }
+
+  if (!props.autoGenerateSlug) {
+    return
+  }
+
+  if (isProgrammaticSlugUpdate.value) {
+    isProgrammaticSlugUpdate.value = false
+    return
+  }
+
+  if (!hasManuallyEditedSlug.value && normalizedSlug !== generatedSlugFromName) {
+    hasManuallyEditedSlug.value = true
+  }
 })
 
 const validationErrorMessages = computed(() => {
@@ -143,7 +191,7 @@ const submitConfigForm = handleSubmit(() => {
               Basic Information
             </h2>
             <p class="text-sm text-muted">
-              Define the canonical public metadata and schedule that the backend already validates.
+              Set the public basics for this hackathon: name, slug, description, and agenda.
             </p>
           </div>
         </template>
@@ -161,7 +209,7 @@ const submitConfigForm = handleSubmit(() => {
           </label>
 
           <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Slug</span>
+            <span class="text-sm font-medium text-toned">Slug (the path in the URL, for example: codex-hackathons.com/hackathons/codex-spring-builders-2026)</span>
             <input
               v-model="form.slug"
               type="text"
@@ -197,7 +245,7 @@ const submitConfigForm = handleSubmit(() => {
             </div>
 
             <p class="text-xs text-muted">
-              Agenda items are structured records used for public schedule rendering and admin editing.
+              Agenda items appear in the public schedule.
             </p>
 
             <div
@@ -479,7 +527,7 @@ const submitConfigForm = handleSubmit(() => {
               Participation Rules
             </h2>
             <p class="text-sm text-muted">
-              Keep the model simple and aligned with the canonical hackathon configuration.
+              Choose team limits and required profile fields for applicants.
             </p>
           </div>
         </template>
@@ -557,7 +605,7 @@ const submitConfigForm = handleSubmit(() => {
 
     <div class="flex flex-col gap-3 rounded-xl border border-black/8 bg-white/70 px-5 py-4 dark:border-white/[0.08] dark:bg-black/36 sm:flex-row sm:items-center sm:justify-between">
       <p class="max-w-3xl text-sm text-muted">
-        {{ helperText ?? 'Changes are written through the canonical admin API endpoints and validated against the documented lifecycle constraints.' }}
+        {{ helperText ?? 'Save your changes to update this hackathon.' }}
       </p>
 
       <AppAlert
