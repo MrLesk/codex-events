@@ -84,6 +84,7 @@ This project uses Backlog.md MCP for all task and project management activities.
 - If your client supports MCP resources, read `backlog://workflow/overview` to understand when and how to use Backlog for this project.
 - If your client only supports tools or the above request fails, call `backlog.get_backlog_instructions()` to load the tool-oriented overview. Use the `instruction` selector when you need `task-creation`, `task-execution`, or `task-finalization`.
 - When committing work tied to a Backlog.md task, use this commit message format: `{taskId} - {taskTitle}`.
+- Always commit related `.backlog/tasks/task-*.md` files together with the corresponding code/doc changes in the same commit.
 
 - **First time working here?** Read the overview resource IMMEDIATELY to learn the workflow
 - **Already familiar?** You should have the overview cached ("## Backlog.md Overview (MCP)")
