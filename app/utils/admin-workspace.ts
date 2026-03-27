@@ -727,9 +727,9 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     requireXProfile: false,
     requireLinkedinProfile: false,
     requireGithubProfile: false,
-    requireChatgptEmail: false,
-    requireOpenaiOrgId: false,
-    requireLumaProfile: false
+    requireChatgptEmail: true,
+    requireOpenaiOrgId: true,
+    requireLumaProfile: true
   }
 }
 

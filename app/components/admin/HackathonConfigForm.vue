@@ -36,6 +36,17 @@ const props = defineProps<{
 
 const hasManuallyEditedSlug = ref(false)
 const isProgrammaticSlugUpdate = ref(false)
+const backgroundImageInput = ref<HTMLInputElement | null>(null)
+const bannerImageInput = ref<HTMLInputElement | null>(null)
+
+const managedBackgroundImageUrl = computed(() => form.value.backgroundImageUrl.trim())
+const managedBannerImageUrl = computed(() => form.value.bannerImageUrl.trim())
+const showBackgroundImageSection = computed(() =>
+  Boolean(props.canUploadManagedImages || managedBackgroundImageUrl.value)
+)
+const showBannerImageSection = computed(() =>
+  Boolean(props.canUploadManagedImages || managedBannerImageUrl.value)
+)
 
 function uploadBackgroundImage(event: Event) {
   const target = event.target as HTMLInputElement | null
@@ -65,6 +76,14 @@ function uploadBannerImage(event: Event) {
   if (target) {
     target.value = ''
   }
+}
+
+function promptBackgroundImageUpload() {
+  backgroundImageInput.value?.click()
+}
+
+function promptBannerImageUpload() {
+  bannerImageInput.value?.click()
 }
 
 function createAgendaItemId() {
@@ -231,17 +250,8 @@ const submitConfigForm = handleSubmit(() => {
           </label>
 
           <div class="grid gap-3">
-            <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
               <span class="text-sm font-medium text-toned">Agenda items</span>
-              <AppButton
-                type="button"
-                color="neutral"
-                variant="soft"
-                size="sm"
-                @click="addAgendaItem"
-              >
-                Add item
-              </AppButton>
             </div>
 
             <p class="text-xs text-muted">
@@ -330,6 +340,17 @@ const submitConfigForm = handleSubmit(() => {
                 />
               </label>
             </div>
+
+            <AppButton
+              type="button"
+              color="neutral"
+              variant="soft"
+              size="sm"
+              class="justify-self-start"
+              @click="addAgendaItem"
+            >
+              Add item
+            </AppButton>
           </div>
         </div>
       </AppCard>
@@ -369,27 +390,58 @@ const submitConfigForm = handleSubmit(() => {
             >
           </label>
 
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Background image URL</span>
-            <input
-              v-model="form.backgroundImageUrl"
-              type="url"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-              placeholder="https://images.example.com/background.jpg"
-            >
+          <section
+            v-if="showBackgroundImageSection"
+            class="grid gap-3"
+          >
+            <div class="space-y-1">
+              <h3 class="text-sm font-medium text-toned">
+                Background image
+              </h3>
+              <p class="text-xs text-muted">
+                Managed image upload only. JPG/PNG up to 1mb.
+              </p>
+            </div>
+
+            <div class="overflow-hidden rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]">
+              <img
+                v-if="managedBackgroundImageUrl"
+                :src="managedBackgroundImageUrl"
+                alt="Hackathon background preview"
+                class="h-36 w-full object-cover"
+              >
+              <div
+                v-else
+                class="flex h-36 items-center justify-center px-4 text-center text-sm text-muted"
+              >
+                No background image uploaded yet.
+              </div>
+            </div>
 
             <div
               v-if="props.canUploadManagedImages"
               class="flex flex-wrap items-center gap-2"
             >
               <input
+                ref="backgroundImageInput"
                 type="file"
                 accept="image/jpeg,image/png"
-                class="block w-full text-sm text-toned file:mr-3 file:rounded-md file:border file:border-black/10 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-highlighted dark:file:border-white/[0.12] dark:file:bg-[#111111]"
+                class="sr-only"
                 :disabled="props.backgroundImageUploadPending"
                 @change="uploadBackgroundImage"
               >
               <AppButton
+                type="button"
+                color="neutral"
+                variant="soft"
+                size="sm"
+                :disabled="props.backgroundImageUploadPending"
+                @click="promptBackgroundImageUpload"
+              >
+                {{ managedBackgroundImageUrl ? 'Replace background image' : 'Upload background image' }}
+              </AppButton>
+              <AppButton
+                v-if="managedBackgroundImageUrl"
                 type="button"
                 color="neutral"
                 variant="soft"
@@ -400,6 +452,12 @@ const submitConfigForm = handleSubmit(() => {
                 Remove uploaded background
               </AppButton>
             </div>
+            <p
+              v-else
+              class="text-xs text-muted"
+            >
+              Save the draft first to enable managed background uploads.
+            </p>
 
             <p
               v-if="props.backgroundImageUploadSuccess"
@@ -413,29 +471,60 @@ const submitConfigForm = handleSubmit(() => {
             >
               {{ props.backgroundImageUploadError }}
             </p>
-          </label>
+          </section>
 
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Banner image URL</span>
-            <input
-              v-model="form.bannerImageUrl"
-              type="url"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-              placeholder="https://images.example.com/banner.jpg"
-            >
+          <section
+            v-if="showBannerImageSection"
+            class="grid gap-3"
+          >
+            <div class="space-y-1">
+              <h3 class="text-sm font-medium text-toned">
+                Banner image
+              </h3>
+              <p class="text-xs text-muted">
+                Managed image upload only. JPG/PNG up to 1mb.
+              </p>
+            </div>
+
+            <div class="overflow-hidden rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]">
+              <img
+                v-if="managedBannerImageUrl"
+                :src="managedBannerImageUrl"
+                alt="Hackathon banner preview"
+                class="h-36 w-full object-cover"
+              >
+              <div
+                v-else
+                class="flex h-36 items-center justify-center px-4 text-center text-sm text-muted"
+              >
+                No banner image uploaded yet.
+              </div>
+            </div>
 
             <div
               v-if="props.canUploadManagedImages"
               class="flex flex-wrap items-center gap-2"
             >
               <input
+                ref="bannerImageInput"
                 type="file"
                 accept="image/jpeg,image/png"
-                class="block w-full text-sm text-toned file:mr-3 file:rounded-md file:border file:border-black/10 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-medium file:text-highlighted dark:file:border-white/[0.12] dark:file:bg-[#111111]"
+                class="sr-only"
                 :disabled="props.bannerImageUploadPending"
                 @change="uploadBannerImage"
               >
               <AppButton
+                type="button"
+                color="neutral"
+                variant="soft"
+                size="sm"
+                :disabled="props.bannerImageUploadPending"
+                @click="promptBannerImageUpload"
+              >
+                {{ managedBannerImageUrl ? 'Replace banner image' : 'Upload banner image' }}
+              </AppButton>
+              <AppButton
+                v-if="managedBannerImageUrl"
                 type="button"
                 color="neutral"
                 variant="soft"
@@ -446,6 +535,12 @@ const submitConfigForm = handleSubmit(() => {
                 Remove uploaded banner
               </AppButton>
             </div>
+            <p
+              v-else
+              class="text-xs text-muted"
+            >
+              Save the draft first to enable managed banner uploads.
+            </p>
 
             <p
               v-if="props.bannerImageUploadSuccess"
@@ -459,7 +554,7 @@ const submitConfigForm = handleSubmit(() => {
             >
               {{ props.bannerImageUploadError }}
             </p>
-          </label>
+          </section>
         </div>
       </AppCard>
     </section>
@@ -547,33 +642,6 @@ const submitConfigForm = handleSubmit(() => {
           <div class="grid gap-3">
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
-                v-model="form.requireXProfile"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Require X profile for applications
-            </label>
-
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.requireLinkedinProfile"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Require LinkedIn profile for applications
-            </label>
-
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.requireGithubProfile"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Require GitHub profile for applications
-            </label>
-
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
                 v-model="form.requireChatgptEmail"
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
@@ -597,6 +665,33 @@ const submitConfigForm = handleSubmit(() => {
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
               Require Luma username for applications
+            </label>
+
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="form.requireLinkedinProfile"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              Require LinkedIn profile for applications
+            </label>
+
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="form.requireGithubProfile"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              Require GitHub profile for applications
+            </label>
+
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="form.requireXProfile"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              Require X profile for applications
             </label>
           </div>
         </div>

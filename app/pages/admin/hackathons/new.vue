@@ -34,8 +34,6 @@ async function createHackathon(form: HackathonFormState) {
         slug: form.slug,
         description: form.description,
         agendaItems: toHackathonAgendaPayload(form.agendaItems),
-        backgroundImageUrl: form.backgroundImageUrl || null,
-        bannerImageUrl: form.bannerImageUrl || null,
         city: form.city,
         address: form.address,
         registrationOpensAt: fromDateTimeLocalValue(form.registrationOpensAt),
