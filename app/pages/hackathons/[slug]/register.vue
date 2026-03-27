@@ -336,7 +336,6 @@ useSeoMeta({
     </section>
 
     <AppContainer class="relative z-10 max-w-[68rem] space-y-8 pb-10 pt-6 sm:pb-14">
-
       <AppAlert
         v-if="accountActorStatus === 'pending'"
         color="neutral"
