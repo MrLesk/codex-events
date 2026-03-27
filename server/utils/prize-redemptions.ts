@@ -101,7 +101,7 @@ export async function getPrizeRedemptionContextOrThrow(database: AppDatabase, re
 export async function listHackathonPrizeRedemptions(database: AppDatabase, hackathonId: string) {
   const prizeList = await database.query.prizes.findMany({
     where: eq(prizes.hackathonId, hackathonId),
-    orderBy: [asc(prizes.rankStart), asc(prizes.rankEnd), asc(prizes.createdAt)]
+    orderBy: [asc(prizes.displayOrder), asc(prizes.rankStart), asc(prizes.rankEnd), asc(prizes.createdAt)]
   })
 
   if (prizeList.length === 0) {

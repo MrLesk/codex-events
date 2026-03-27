@@ -244,6 +244,7 @@ export interface PrizeDefinition {
   awardScope: 'team' | 'member'
   rankStart: number
   rankEnd: number
+  displayOrder: number
   createdAt: string
 }
 

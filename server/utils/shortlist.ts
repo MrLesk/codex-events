@@ -249,7 +249,7 @@ export async function getWinnersView(database: AppDatabase, hackathonId: string)
     listShortlistEntries(database, hackathonId),
     database.query.prizes.findMany({
       where: eq(prizes.hackathonId, hackathonId),
-      orderBy: [asc(prizes.rankStart), asc(prizes.rankEnd), asc(prizes.createdAt)]
+      orderBy: [asc(prizes.displayOrder), asc(prizes.rankStart), asc(prizes.rankEnd), asc(prizes.createdAt)]
     })
   ])
 

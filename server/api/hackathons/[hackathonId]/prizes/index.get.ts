@@ -15,7 +15,7 @@ export default defineApiHandler(async (event) => {
 
   const prizeList = await database.query.prizes.findMany({
     where: eq(prizes.hackathonId, hackathonId),
-    orderBy: [asc(prizes.rankStart), asc(prizes.rankEnd)]
+    orderBy: [asc(prizes.displayOrder), asc(prizes.rankStart), asc(prizes.rankEnd), asc(prizes.createdAt)]
   })
 
   return apiList(

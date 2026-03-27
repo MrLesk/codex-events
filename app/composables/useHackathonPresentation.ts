@@ -71,6 +71,7 @@ export interface PublicPrize {
   awardScope: 'team' | 'member'
   rankStart: number
   rankEnd: number
+  displayOrder: number
 }
 
 export interface PublicApiDataResponse<T> {

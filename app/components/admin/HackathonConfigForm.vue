@@ -38,6 +38,8 @@ const hasManuallyEditedSlug = ref(false)
 const isProgrammaticSlugUpdate = ref(false)
 const backgroundImageInput = ref<HTMLInputElement | null>(null)
 const bannerImageInput = ref<HTMLInputElement | null>(null)
+const draggedAgendaItemId = ref<string | null>(null)
+const agendaDropTargetId = ref<string | null>(null)
 
 const managedBackgroundImageUrl = computed(() => form.value.backgroundImageUrl.trim())
 const managedBannerImageUrl = computed(() => form.value.bannerImageUrl.trim())
@@ -95,11 +97,14 @@ function createAgendaItemId() {
 }
 
 function nextAgendaDisplayOrder() {
-  if (form.value.agendaItems.length === 0) {
-    return 1
-  }
+  return form.value.agendaItems.length + 1
+}
 
-  return Math.max(...form.value.agendaItems.map(item => item.displayOrder)) + 1
+function normalizeAgendaDisplayOrder() {
+  form.value.agendaItems = form.value.agendaItems.map((item, index) => ({
+    ...item,
+    displayOrder: index + 1
+  }))
 }
 
 function addAgendaItem() {
@@ -115,6 +120,102 @@ function addAgendaItem() {
 
 function removeAgendaItem(itemId: string) {
   form.value.agendaItems = form.value.agendaItems.filter(item => item.id !== itemId)
+  normalizeAgendaDisplayOrder()
+}
+
+function moveAgendaItem(itemId: string, direction: -1 | 1) {
+  const currentIndex = form.value.agendaItems.findIndex(item => item.id === itemId)
+
+  if (currentIndex < 0) {
+    return
+  }
+
+  const nextIndex = currentIndex + direction
+
+  if (nextIndex < 0 || nextIndex >= form.value.agendaItems.length) {
+    return
+  }
+
+  const reordered = [...form.value.agendaItems]
+  const [movedItem] = reordered.splice(currentIndex, 1)
+
+  if (!movedItem) {
+    return
+  }
+
+  reordered.splice(nextIndex, 0, movedItem)
+  form.value.agendaItems = reordered
+  normalizeAgendaDisplayOrder()
+}
+
+function reorderAgendaItems(sourceId: string, targetId: string) {
+  if (!sourceId || sourceId === targetId) {
+    return
+  }
+
+  const sourceIndex = form.value.agendaItems.findIndex(item => item.id === sourceId)
+  const targetIndex = form.value.agendaItems.findIndex(item => item.id === targetId)
+
+  if (sourceIndex < 0 || targetIndex < 0) {
+    return
+  }
+
+  const reordered = [...form.value.agendaItems]
+  const [movedItem] = reordered.splice(sourceIndex, 1)
+
+  if (!movedItem) {
+    return
+  }
+
+  reordered.splice(targetIndex, 0, movedItem)
+  form.value.agendaItems = reordered
+  normalizeAgendaDisplayOrder()
+}
+
+function onAgendaDragStart(itemId: string, event: DragEvent) {
+  draggedAgendaItemId.value = itemId
+  agendaDropTargetId.value = null
+
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', itemId)
+  }
+}
+
+function onAgendaDragOver(itemId: string) {
+  if (!draggedAgendaItemId.value || draggedAgendaItemId.value === itemId) {
+    agendaDropTargetId.value = null
+    return
+  }
+
+  agendaDropTargetId.value = itemId
+}
+
+function onAgendaDragLeave(itemId: string) {
+  if (agendaDropTargetId.value === itemId) {
+    agendaDropTargetId.value = null
+  }
+}
+
+function onAgendaDrop(targetId: string, event: DragEvent) {
+  event.preventDefault()
+
+  const sourceFromEvent = event.dataTransfer?.getData('text/plain')?.trim() ?? ''
+  const sourceId = draggedAgendaItemId.value ?? sourceFromEvent
+
+  agendaDropTargetId.value = null
+  draggedAgendaItemId.value = null
+
+  if (!sourceId) {
+    return
+  }
+
+  reorderAgendaItems(sourceId, targetId)
+}
+
+function onAgendaDragEnd() {
+  draggedAgendaItemId.value = null
+  agendaDropTargetId.value = null
 }
 
 const {
@@ -253,105 +354,147 @@ const submitConfigForm = handleSubmit(() => {
           </label>
 
           <div class="grid gap-3">
-            <div class="flex items-center justify-between gap-3">
+            <div class="space-y-1">
               <span class="text-sm font-medium text-toned">Agenda items</span>
+              <p class="text-xs text-muted">
+                Drag items to reorder the schedule. This order is what participants see.
+              </p>
+            </div>
+
+            <div
+              v-if="form.agendaItems.length === 0"
+              class="grid gap-3 rounded-xl border border-dashed border-black/10 px-4 py-4 text-sm text-muted dark:border-white/[0.08]"
+            >
+              <p>No agenda items yet.</p>
               <AppButton
                 type="button"
                 color="neutral"
                 variant="soft"
                 size="sm"
-                class="shrink-0"
+                class="w-fit"
+                @click="addAgendaItem"
+              >
+                Add first item
+              </AppButton>
+            </div>
+
+            <div
+              v-else
+              class="grid gap-3"
+            >
+              <article
+                v-for="(item, index) in form.agendaItems"
+                :key="item.id"
+                class="grid gap-3 rounded-lg border border-black/8 p-4 transition-colors dark:border-white/[0.08]"
+                :class="agendaDropTargetId === item.id ? 'border-black/25 dark:border-white/[0.25]' : ''"
+                @dragover.prevent="onAgendaDragOver(item.id)"
+                @dragleave="onAgendaDragLeave(item.id)"
+                @drop="onAgendaDrop(item.id, $event)"
+              >
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <div class="flex items-center gap-2">
+                    <button
+                      type="button"
+                      class="rounded-md border border-black/8 bg-white px-2 py-1 text-xs font-medium text-toned transition hover:border-black/25 hover:text-highlighted dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.25]"
+                      draggable="true"
+                      @dragstart="onAgendaDragStart(item.id, $event)"
+                      @dragend="onAgendaDragEnd"
+                    >
+                      Drag
+                    </button>
+                    <p class="text-xs font-medium uppercase tracking-wide text-toned">
+                      Agenda item {{ index + 1 }}
+                    </p>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <AppButton
+                      type="button"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      :disabled="index === 0"
+                      @click="moveAgendaItem(item.id, -1)"
+                    >
+                      Move up
+                    </AppButton>
+                    <AppButton
+                      type="button"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      :disabled="index === form.agendaItems.length - 1"
+                      @click="moveAgendaItem(item.id, 1)"
+                    >
+                      Move down
+                    </AppButton>
+                    <AppButton
+                      type="button"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      @click="removeAgendaItem(item.id)"
+                    >
+                      Remove
+                    </AppButton>
+                  </div>
+                </div>
+
+                <div class="grid gap-3">
+                  <label class="grid gap-2">
+                    <span class="text-xs font-medium text-toned">Title</span>
+                    <input
+                      v-model="item.title"
+                      type="text"
+                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
+                      placeholder="Opening workshop"
+                      required
+                    >
+                  </label>
+                </div>
+
+                <div class="grid gap-3 md:grid-cols-2">
+                  <label class="grid gap-2">
+                    <span class="text-xs font-medium text-toned">Starts at</span>
+                    <input
+                      v-model="item.startsAt"
+                      type="datetime-local"
+                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
+                      required
+                    >
+                  </label>
+
+                  <label class="grid gap-2">
+                    <span class="text-xs font-medium text-toned">Ends at</span>
+                    <input
+                      v-model="item.endsAt"
+                      type="datetime-local"
+                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
+                    >
+                  </label>
+                </div>
+
+                <label class="grid gap-2">
+                  <span class="text-xs font-medium text-toned">Details</span>
+                  <textarea
+                    v-model="item.details"
+                    rows="3"
+                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
+                    placeholder="Optional notes for this agenda item."
+                  />
+                </label>
+              </article>
+
+              <AppButton
+                type="button"
+                color="neutral"
+                variant="soft"
+                size="sm"
+                class="w-fit"
                 @click="addAgendaItem"
               >
                 Add item
               </AppButton>
-            </div>
-
-            <p class="text-xs text-muted">
-              Agenda items appear in the public schedule.
-            </p>
-
-            <div
-              v-if="form.agendaItems.length === 0"
-              class="rounded-xl border border-dashed border-black/10 px-4 py-3 text-sm text-muted dark:border-white/[0.08]"
-            >
-              No agenda items yet.
-            </div>
-
-            <div
-              v-for="item in form.agendaItems"
-              :key="item.id"
-              class="grid gap-3 rounded-lg border border-black/8 p-4 dark:border-white/[0.08]"
-            >
-              <div class="flex items-center justify-between gap-3">
-                <p class="text-xs font-medium uppercase tracking-wide text-toned">
-                  Agenda item
-                </p>
-                <AppButton
-                  type="button"
-                  color="neutral"
-                  variant="ghost"
-                  size="sm"
-                  @click="removeAgendaItem(item.id)"
-                >
-                  Remove
-                </AppButton>
-              </div>
-
-              <div class="grid gap-3 md:grid-cols-3">
-                <label class="grid gap-2 md:col-span-2">
-                  <span class="text-xs font-medium text-toned">Title</span>
-                  <input
-                    v-model="item.title"
-                    type="text"
-                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                    placeholder="Opening workshop"
-                    required
-                  >
-                </label>
-
-                <label class="grid gap-2">
-                  <span class="text-xs font-medium text-toned">Display order</span>
-                  <input
-                    v-model.number="item.displayOrder"
-                    type="number"
-                    min="0"
-                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                    required
-                  >
-                </label>
-              </div>
-
-              <div class="grid gap-3 md:grid-cols-2">
-                <label class="grid gap-2">
-                  <span class="text-xs font-medium text-toned">Starts at</span>
-                  <input
-                    v-model="item.startsAt"
-                    type="datetime-local"
-                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                    required
-                  >
-                </label>
-
-                <label class="grid gap-2">
-                  <span class="text-xs font-medium text-toned">Ends at</span>
-                  <input
-                    v-model="item.endsAt"
-                    type="datetime-local"
-                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                  >
-                </label>
-              </div>
-
-              <label class="grid gap-2">
-                <span class="text-xs font-medium text-toned">Details</span>
-                <textarea
-                  v-model="item.details"
-                  rows="3"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                  placeholder="Optional notes for this agenda item."
-                />
-              </label>
             </div>
           </div>
         </div>

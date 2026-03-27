@@ -411,6 +411,7 @@ export const prizes = sqliteTable(
     awardScope: text('award_scope', { enum: prizeAwardScopes }).notNull(),
     rankStart: integer('rank_start').notNull(),
     rankEnd: integer('rank_end').notNull(),
+    displayOrder: integer('display_order').notNull().default(0),
     createdAt: createdAtColumn()
   },
   table => [

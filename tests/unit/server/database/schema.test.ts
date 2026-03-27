@@ -6,6 +6,7 @@ import {
   auditLogs,
   hackathons,
   judgeAssignments,
+  prizes,
   submissions,
   teamJoinRequests,
   users
@@ -37,6 +38,8 @@ describe('shared schema foundation', () => {
 
   it('defines schedule and entity checks on shared tables', () => {
     const hackathonColumns = getTableColumns(hackathons)
+    const prizeColumns = getTableColumns(prizes)
+    const prizeChecks = getTableConfig(prizes).checks.map(checkItem => checkItem.name)
     const hackathonChecks = getTableConfig(hackathons).checks.map(checkItem => checkItem.name)
     const auditIndexes = getTableConfig(auditLogs).indexes.map(index => index.config.name)
 
@@ -45,6 +48,8 @@ describe('shared schema foundation', () => {
     expect(hackathonColumns.inPersonEvent.name).toBe('in_person_event')
     expect(hackathonColumns.requireWhyThisHackathon.name).toBe('require_why_this_hackathon')
     expect(hackathonColumns.requireProofOfExecution.name).toBe('require_proof_of_execution')
+    expect(prizeColumns.displayOrder.name).toBe('display_order')
+    expect(prizeChecks).toContain('prizes_rank_order_check')
     expect(hackathonChecks).toContain('hackathons_max_team_members_check')
     expect(hackathonChecks).toContain('hackathons_schedule_order_check')
     expect(auditIndexes).toContain('audit_logs_entity_idx')

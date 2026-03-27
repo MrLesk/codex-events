@@ -24,7 +24,7 @@ definePageMeta({
 })
 
 type CriterionEditState = Pick<EvaluationCriterion, 'name' | 'description' | 'weight' | 'displayOrder'>
-type PrizeEditState = Pick<PrizeDefinition, 'name' | 'description' | 'rewardType' | 'rewardValue' | 'awardScope' | 'rankStart' | 'rankEnd'> & {
+type PrizeEditState = Pick<PrizeDefinition, 'name' | 'description' | 'rewardType' | 'rewardValue' | 'awardScope' | 'rankStart' | 'rankEnd' | 'displayOrder'> & {
   rewardCurrency: string
 }
 type AssignableUser = {
@@ -69,6 +69,8 @@ const hackathonId = computed(() => hackathonResponse.value!.data.id)
 const workspace = useAdminHackathonWorkspace(hackathonId)
 
 const isSavingConfig = ref(false)
+const isSavingCriterionOrder = ref(false)
+const isSavingPrizeOrder = ref(false)
 const mutationError = ref('')
 const imageMutationState = reactive({
   background: {
@@ -105,6 +107,10 @@ const termsDraft = reactive({
 })
 const criterionEdits = reactive<Record<string, CriterionEditState>>({})
 const prizeEdits = reactive<Record<string, PrizeEditState>>({})
+const draggedCriterionId = ref<string | null>(null)
+const criterionDropTargetId = ref<string | null>(null)
+const draggedPrizeId = ref<string | null>(null)
+const prizeDropTargetId = ref<string | null>(null)
 const adminAssignmentSearch = ref('')
 const judgeAssignmentSearch = ref('')
 
@@ -143,6 +149,31 @@ const workspaceSummary = computed(() => {
 const canMutateRoles = computed(() => canMutateRoleAssignments(actor.value))
 const criteria = computed(() => workspace.criteria.data.value?.data ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
+const orderedCriteria = computed(() =>
+  [...criteria.value].sort((left, right) => {
+    const leftOrder = getCriterionEdit(left).displayOrder
+    const rightOrder = getCriterionEdit(right).displayOrder
+    return leftOrder - rightOrder || left.createdAt.localeCompare(right.createdAt)
+  })
+)
+const orderedPrizes = computed(() =>
+  [...prizes.value].sort((left, right) => {
+    const leftOrder = getPrizeEdit(left).displayOrder
+    const rightOrder = getPrizeEdit(right).displayOrder
+
+    if (leftOrder !== rightOrder) {
+      return leftOrder - rightOrder
+    }
+
+    return left.rankStart - right.rankStart || left.rankEnd - right.rankEnd || left.createdAt.localeCompare(right.createdAt)
+  })
+)
+const hasCriterionOrderChanges = computed(() =>
+  criteria.value.some(criterion => getCriterionEdit(criterion).displayOrder !== criterion.displayOrder)
+)
+const hasPrizeOrderChanges = computed(() =>
+  prizes.value.some(prize => getPrizeEdit(prize).displayOrder !== prize.displayOrder)
+)
 const applicationTerms = computed(() => workspace.applicationTermsVersions.data.value?.data ?? [])
 const winnerTerms = computed(() => workspace.winnerTermsVersions.data.value?.data ?? [])
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
@@ -252,7 +283,8 @@ function createPrizeEditState(prize: PrizeDefinition): PrizeEditState {
     rewardCurrency: prize.rewardCurrency ?? '',
     awardScope: prize.awardScope,
     rankStart: prize.rankStart,
-    rankEnd: prize.rankEnd
+    rankEnd: prize.rankEnd,
+    displayOrder: prize.displayOrder
   }
 }
 
@@ -278,6 +310,173 @@ function getPrizeEdit(prize: PrizeDefinition) {
   const next = createPrizeEditState(prize)
   prizeEdits[prize.id] = next
   return next
+}
+
+function moveItemWithinList<T extends { id: string }>(items: T[], sourceId: string, targetId: string) {
+  if (!sourceId || sourceId === targetId) {
+    return items
+  }
+
+  const sourceIndex = items.findIndex(item => item.id === sourceId)
+  const targetIndex = items.findIndex(item => item.id === targetId)
+
+  if (sourceIndex < 0 || targetIndex < 0) {
+    return items
+  }
+
+  const reordered = [...items]
+  const [movedItem] = reordered.splice(sourceIndex, 1)
+
+  if (!movedItem) {
+    return items
+  }
+
+  reordered.splice(targetIndex, 0, movedItem)
+  return reordered
+}
+
+function moveItemByDirection<T extends { id: string }>(items: T[], itemId: string, direction: -1 | 1) {
+  const currentIndex = items.findIndex(item => item.id === itemId)
+
+  if (currentIndex < 0) {
+    return items
+  }
+
+  const targetIndex = currentIndex + direction
+
+  if (targetIndex < 0 || targetIndex >= items.length) {
+    return items
+  }
+
+  const reordered = [...items]
+  const [movedItem] = reordered.splice(currentIndex, 1)
+
+  if (!movedItem) {
+    return items
+  }
+
+  reordered.splice(targetIndex, 0, movedItem)
+  return reordered
+}
+
+function applyCriterionOrderFromList(items: EvaluationCriterion[]) {
+  items.forEach((criterion, index) => {
+    getCriterionEdit(criterion).displayOrder = index + 1
+  })
+}
+
+function applyPrizeOrderFromList(items: PrizeDefinition[]) {
+  items.forEach((prize, index) => {
+    getPrizeEdit(prize).displayOrder = index + 1
+  })
+}
+
+function reorderCriteria(sourceId: string, targetId: string) {
+  applyCriterionOrderFromList(moveItemWithinList(orderedCriteria.value, sourceId, targetId))
+}
+
+function moveCriterion(criterionId: string, direction: -1 | 1) {
+  applyCriterionOrderFromList(moveItemByDirection(orderedCriteria.value, criterionId, direction))
+}
+
+function onCriterionDragStart(criterionId: string, event: DragEvent) {
+  draggedCriterionId.value = criterionId
+  criterionDropTargetId.value = null
+
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', criterionId)
+  }
+}
+
+function onCriterionDragOver(criterionId: string) {
+  if (!draggedCriterionId.value || draggedCriterionId.value === criterionId) {
+    criterionDropTargetId.value = null
+    return
+  }
+
+  criterionDropTargetId.value = criterionId
+}
+
+function onCriterionDragLeave(criterionId: string) {
+  if (criterionDropTargetId.value === criterionId) {
+    criterionDropTargetId.value = null
+  }
+}
+
+function onCriterionDrop(targetId: string, event: DragEvent) {
+  event.preventDefault()
+
+  const sourceFromEvent = event.dataTransfer?.getData('text/plain')?.trim() ?? ''
+  const sourceId = draggedCriterionId.value ?? sourceFromEvent
+
+  draggedCriterionId.value = null
+  criterionDropTargetId.value = null
+
+  if (!sourceId) {
+    return
+  }
+
+  reorderCriteria(sourceId, targetId)
+}
+
+function onCriterionDragEnd() {
+  draggedCriterionId.value = null
+  criterionDropTargetId.value = null
+}
+
+function reorderPrizes(sourceId: string, targetId: string) {
+  applyPrizeOrderFromList(moveItemWithinList(orderedPrizes.value, sourceId, targetId))
+}
+
+function movePrize(prizeId: string, direction: -1 | 1) {
+  applyPrizeOrderFromList(moveItemByDirection(orderedPrizes.value, prizeId, direction))
+}
+
+function onPrizeDragStart(prizeId: string, event: DragEvent) {
+  draggedPrizeId.value = prizeId
+  prizeDropTargetId.value = null
+
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', prizeId)
+  }
+}
+
+function onPrizeDragOver(prizeId: string) {
+  if (!draggedPrizeId.value || draggedPrizeId.value === prizeId) {
+    prizeDropTargetId.value = null
+    return
+  }
+
+  prizeDropTargetId.value = prizeId
+}
+
+function onPrizeDragLeave(prizeId: string) {
+  if (prizeDropTargetId.value === prizeId) {
+    prizeDropTargetId.value = null
+  }
+}
+
+function onPrizeDrop(targetId: string, event: DragEvent) {
+  event.preventDefault()
+
+  const sourceFromEvent = event.dataTransfer?.getData('text/plain')?.trim() ?? ''
+  const sourceId = draggedPrizeId.value ?? sourceFromEvent
+
+  draggedPrizeId.value = null
+  prizeDropTargetId.value = null
+
+  if (!sourceId) {
+    return
+  }
+
+  reorderPrizes(sourceId, targetId)
+}
+
+function onPrizeDragEnd() {
+  draggedPrizeId.value = null
+  prizeDropTargetId.value = null
 }
 
 watch(criteria, (items) => {
@@ -526,10 +725,108 @@ async function updatePrize(prizeId: string) {
         rewardCurrency: edit.rewardCurrency || null,
         awardScope: edit.awardScope,
         rankStart: edit.rankStart,
-        rankEnd: edit.rankEnd
+        rankEnd: edit.rankEnd,
+        displayOrder: edit.displayOrder
       }
     })
   }, 'Prize updated', 'The prize definition has been updated.')
+}
+
+async function saveCriterionOrder() {
+  const hackathon = currentHackathon.value
+
+  if (!hackathon || !hasCriterionOrderChanges.value) {
+    return
+  }
+
+  const changedCriteria = orderedCriteria.value.filter(
+    criterion => getCriterionEdit(criterion).displayOrder !== criterion.displayOrder
+  )
+
+  if (changedCriteria.length === 0) {
+    return
+  }
+
+  const maxDisplayOrder = Math.max(
+    0,
+    ...criteria.value.map(criterion => criterion.displayOrder),
+    ...orderedCriteria.value.map(criterion => getCriterionEdit(criterion).displayOrder)
+  )
+
+  isSavingCriterionOrder.value = true
+  mutationError.value = ''
+
+  try {
+    for (const [index, criterion] of changedCriteria.entries()) {
+      await $fetch(`/api/hackathons/${hackathon.id}/evaluation-criteria/${criterion.id}`, {
+        method: 'PATCH',
+        body: {
+          displayOrder: maxDisplayOrder + index + 1
+        }
+      })
+    }
+
+    for (const criterion of changedCriteria) {
+      await $fetch(`/api/hackathons/${hackathon.id}/evaluation-criteria/${criterion.id}`, {
+        method: 'PATCH',
+        body: {
+          displayOrder: getCriterionEdit(criterion).displayOrder
+        }
+      })
+    }
+
+    toast.add({
+      title: 'Criterion order updated',
+      description: 'Evaluation criteria now follow the updated order.',
+      color: 'success'
+    })
+    await workspace.refreshWorkspace()
+  } catch (error) {
+    mutationError.value = normalizeApiError(error).message
+  } finally {
+    isSavingCriterionOrder.value = false
+  }
+}
+
+async function savePrizeOrder() {
+  const hackathon = currentHackathon.value
+
+  if (!hackathon || !hasPrizeOrderChanges.value) {
+    return
+  }
+
+  const changedPrizes = orderedPrizes.value.filter(
+    prize => getPrizeEdit(prize).displayOrder !== prize.displayOrder
+  )
+
+  if (changedPrizes.length === 0) {
+    return
+  }
+
+  isSavingPrizeOrder.value = true
+  mutationError.value = ''
+
+  try {
+    for (const prize of changedPrizes) {
+      await $fetch(`/api/hackathons/${hackathon.id}/prizes/${prize.id}`, {
+        method: 'PATCH',
+        body: {
+          displayOrder: getPrizeEdit(prize).displayOrder
+        }
+      })
+    }
+
+    toast.add({
+      title: 'Prize order updated',
+      description: 'Prizes now follow the updated order.',
+      color: 'success'
+    })
+    await workspace.refreshWorkspace()
+  } catch (error) {
+    mutationError.value = normalizeApiError(error).message
+  } finally {
+    isSavingPrizeOrder.value = false
+  }
 }
 
 async function assignHackathonAdmin(userId: string) {
@@ -642,7 +939,6 @@ async function setCurrentTerms(document: TermsDocument) {
     })
   }, 'Current terms updated', 'The hackathon now references the selected terms version.')
 }
-
 </script>
 
 <template>
@@ -923,52 +1219,100 @@ async function setCurrentTerms(document: TermsDocument) {
                   label="Add Criterion"
                   @click="createCriterion"
                 />
-                <div class="grid gap-3">
-                  <div
-                    v-for="criterion in criteria"
-                    :key="criterion.id"
-                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
-                  >
-                    <div class="grid gap-4">
-                      <div class="grid gap-4 md:grid-cols-[1fr_120px_120px]">
-                        <input
-                          v-model="getCriterionEdit(criterion).name"
-                          type="text"
+                <div class="space-y-3">
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-xs text-muted">
+                      Drag to reorder criteria.
+                    </p>
+                    <AppButton
+                      size="sm"
+                      variant="soft"
+                      :disabled="!hasCriterionOrderChanges || isSavingCriterionOrder || isSavingPrizeOrder"
+                      :loading="isSavingCriterionOrder"
+                      @click="saveCriterionOrder"
+                    >
+                      Save criterion order
+                    </AppButton>
+                  </div>
+
+                  <div class="grid gap-3">
+                    <div
+                      v-for="(criterion, index) in orderedCriteria"
+                      :key="criterion.id"
+                      class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 transition-colors dark:border-white/[0.08] dark:bg-[#111111]"
+                      :class="criterionDropTargetId === criterion.id ? 'border-black/25 dark:border-white/[0.25]' : ''"
+                      @dragover.prevent="onCriterionDragOver(criterion.id)"
+                      @dragleave="onCriterionDragLeave(criterion.id)"
+                      @drop="onCriterionDrop(criterion.id, $event)"
+                    >
+                      <div class="grid gap-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                          <div class="flex items-center gap-2">
+                            <button
+                              type="button"
+                              class="rounded-md border border-black/8 bg-white px-2 py-1 text-xs font-medium text-toned transition hover:border-black/25 hover:text-highlighted dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.25]"
+                              draggable="true"
+                              @dragstart="onCriterionDragStart(criterion.id, $event)"
+                              @dragend="onCriterionDragEnd"
+                            >
+                              Drag
+                            </button>
+                            <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
+                              Criterion {{ index + 1 }}
+                            </p>
+                          </div>
+
+                          <div class="flex items-center gap-2">
+                            <AppButton
+                              size="sm"
+                              variant="ghost"
+                              color="neutral"
+                              :disabled="index === 0"
+                              @click="moveCriterion(criterion.id, -1)"
+                            >
+                              Move up
+                            </AppButton>
+                            <AppButton
+                              size="sm"
+                              variant="ghost"
+                              color="neutral"
+                              :disabled="index === orderedCriteria.length - 1"
+                              @click="moveCriterion(criterion.id, 1)"
+                            >
+                              Move down
+                            </AppButton>
+                            <AppButton
+                              size="sm"
+                              variant="soft"
+                              @click="updateCriterion(criterion.id)"
+                            >
+                              Save updates
+                            </AppButton>
+                          </div>
+                        </div>
+
+                        <div class="grid gap-4 md:grid-cols-[1fr_140px]">
+                          <input
+                            v-model="getCriterionEdit(criterion).name"
+                            type="text"
+                            class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="Criterion name"
+                          >
+                          <input
+                            v-model.number="getCriterionEdit(criterion).weight"
+                            type="number"
+                            min="0"
+                            class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="Weight"
+                          >
+                        </div>
+
+                        <textarea
+                          v-model="getCriterionEdit(criterion).description"
+                          rows="3"
                           class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Criterion name"
-                        >
-                        <input
-                          v-model.number="getCriterionEdit(criterion).weight"
-                          type="number"
-                          min="0"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Weight"
-                        >
-                        <input
-                          v-model.number="getCriterionEdit(criterion).displayOrder"
-                          type="number"
-                          min="1"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Order"
-                        >
-                      </div>
-                      <textarea
-                        v-model="getCriterionEdit(criterion).description"
-                        rows="3"
-                        class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                        placeholder="Criterion description"
-                      />
-                      <div class="flex flex-wrap items-center justify-between gap-3">
-                        <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
-                          Existing criterion
-                        </p>
-                        <AppButton
-                          size="sm"
-                          variant="soft"
-                          @click="updateCriterion(criterion.id)"
-                        >
-                          Save updates
-                        </AppButton>
+                          placeholder="Criterion description"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1045,94 +1389,154 @@ async function setCurrentTerms(document: TermsDocument) {
                   label="Add Prize"
                   @click="createPrize"
                 />
-                <div class="grid gap-3">
-                  <div
-                    v-for="prize in prizes"
-                    :key="prize.id"
-                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
-                  >
-                    <div class="grid gap-4">
-                      <div class="grid gap-4 md:grid-cols-2">
-                        <input
-                          v-model="getPrizeEdit(prize).name"
-                          type="text"
+                <div class="space-y-3">
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-xs text-muted">
+                      Drag to reorder prizes.
+                    </p>
+                    <AppButton
+                      size="sm"
+                      variant="soft"
+                      :disabled="!hasPrizeOrderChanges || isSavingPrizeOrder || isSavingCriterionOrder"
+                      :loading="isSavingPrizeOrder"
+                      @click="savePrizeOrder"
+                    >
+                      Save prize order
+                    </AppButton>
+                  </div>
+
+                  <div class="grid gap-3">
+                    <div
+                      v-for="(prize, index) in orderedPrizes"
+                      :key="prize.id"
+                      class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 transition-colors dark:border-white/[0.08] dark:bg-[#111111]"
+                      :class="prizeDropTargetId === prize.id ? 'border-black/25 dark:border-white/[0.25]' : ''"
+                      @dragover.prevent="onPrizeDragOver(prize.id)"
+                      @dragleave="onPrizeDragLeave(prize.id)"
+                      @drop="onPrizeDrop(prize.id, $event)"
+                    >
+                      <div class="grid gap-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                          <div class="flex items-center gap-2">
+                            <button
+                              type="button"
+                              class="rounded-md border border-black/8 bg-white px-2 py-1 text-xs font-medium text-toned transition hover:border-black/25 hover:text-highlighted dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.25]"
+                              draggable="true"
+                              @dragstart="onPrizeDragStart(prize.id, $event)"
+                              @dragend="onPrizeDragEnd"
+                            >
+                              Drag
+                            </button>
+                            <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
+                              Prize {{ index + 1 }}
+                            </p>
+                          </div>
+
+                          <div class="flex items-center gap-2">
+                            <AppButton
+                              size="sm"
+                              variant="ghost"
+                              color="neutral"
+                              :disabled="index === 0"
+                              @click="movePrize(prize.id, -1)"
+                            >
+                              Move up
+                            </AppButton>
+                            <AppButton
+                              size="sm"
+                              variant="ghost"
+                              color="neutral"
+                              :disabled="index === orderedPrizes.length - 1"
+                              @click="movePrize(prize.id, 1)"
+                            >
+                              Move down
+                            </AppButton>
+                            <AppButton
+                              size="sm"
+                              variant="soft"
+                              @click="updatePrize(prize.id)"
+                            >
+                              Save updates
+                            </AppButton>
+                          </div>
+                        </div>
+
+                        <div class="grid gap-4 md:grid-cols-2">
+                          <input
+                            v-model="getPrizeEdit(prize).name"
+                            type="text"
+                            class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="Prize name"
+                          >
+                          <input
+                            v-model="getPrizeEdit(prize).rewardValue"
+                            type="text"
+                            class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="Reward value"
+                          >
+                        </div>
+
+                        <textarea
+                          v-model="getPrizeEdit(prize).description"
+                          rows="3"
                           class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Prize name"
-                        >
-                        <input
-                          v-model="getPrizeEdit(prize).rewardValue"
-                          type="text"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Reward value"
-                        >
-                      </div>
-                      <textarea
-                        v-model="getPrizeEdit(prize).description"
-                        rows="3"
-                        class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                        placeholder="Prize description"
-                      />
-                      <div class="grid gap-4 md:grid-cols-5">
-                        <select
-                          v-model="getPrizeEdit(prize).rewardType"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                        >
-                          <option value="api_credits">
-                            API credits
-                          </option>
-                          <option value="subscription">
-                            Subscription
-                          </option>
-                          <option value="physical">
-                            Physical
-                          </option>
-                          <option value="other">
-                            Other
-                          </option>
-                        </select>
-                        <select
-                          v-model="getPrizeEdit(prize).awardScope"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                        >
-                          <option value="team">
-                            Team
-                          </option>
-                          <option value="member">
-                            Member
-                          </option>
-                        </select>
-                        <input
-                          v-model="getPrizeEdit(prize).rewardCurrency"
-                          type="text"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Currency"
-                        >
-                        <input
-                          v-model.number="getPrizeEdit(prize).rankStart"
-                          type="number"
-                          min="1"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Rank start"
-                        >
-                        <input
-                          v-model.number="getPrizeEdit(prize).rankEnd"
-                          type="number"
-                          min="1"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Rank end"
-                        >
-                      </div>
-                      <div class="flex flex-wrap items-center justify-between gap-3">
+                          placeholder="Prize description"
+                        />
+
+                        <div class="grid gap-4 md:grid-cols-5">
+                          <select
+                            v-model="getPrizeEdit(prize).rewardType"
+                            class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                          >
+                            <option value="api_credits">
+                              API credits
+                            </option>
+                            <option value="subscription">
+                              Subscription
+                            </option>
+                            <option value="physical">
+                              Physical
+                            </option>
+                            <option value="other">
+                              Other
+                            </option>
+                          </select>
+                          <select
+                            v-model="getPrizeEdit(prize).awardScope"
+                            class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                          >
+                            <option value="team">
+                              Team
+                            </option>
+                            <option value="member">
+                              Member
+                            </option>
+                          </select>
+                          <input
+                            v-model="getPrizeEdit(prize).rewardCurrency"
+                            type="text"
+                            class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="Currency"
+                          >
+                          <input
+                            v-model.number="getPrizeEdit(prize).rankStart"
+                            type="number"
+                            min="1"
+                            class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="Rank start"
+                          >
+                          <input
+                            v-model.number="getPrizeEdit(prize).rankEnd"
+                            type="number"
+                            min="1"
+                            class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="Rank end"
+                          >
+                        </div>
+
                         <div class="text-sm text-muted">
                           {{ prize.rewardType }} • ranks {{ prize.rankStart }}-{{ prize.rankEnd }}
                         </div>
-                        <AppButton
-                          size="sm"
-                          variant="soft"
-                          @click="updatePrize(prize.id)"
-                        >
-                          Save updates
-                        </AppButton>
                       </div>
                     </div>
                   </div>
@@ -1390,7 +1794,6 @@ async function setCurrentTerms(document: TermsDocument) {
               </section>
             </div>
           </AppCard>
-
         </section>
       </template>
     </AppContainer>

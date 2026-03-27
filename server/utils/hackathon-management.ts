@@ -220,7 +220,8 @@ export const createPrizeBodySchema = z.object({
   rewardCurrency: z.string().trim().min(1).nullable().optional(),
   awardScope: prizeAwardScopeSchema,
   rankStart: z.coerce.number().int().min(1),
-  rankEnd: z.coerce.number().int().min(1)
+  rankEnd: z.coerce.number().int().min(1),
+  displayOrder: z.coerce.number().int().min(0).optional()
 }).refine(
   input => input.rankStart <= input.rankEnd,
   'Prize rankStart must be less than or equal to rankEnd.'
@@ -234,7 +235,8 @@ export const updatePrizeBodySchema = z.object({
   rewardCurrency: z.string().trim().min(1).nullable().optional(),
   awardScope: prizeAwardScopeSchema.optional(),
   rankStart: z.coerce.number().int().min(1).optional(),
-  rankEnd: z.coerce.number().int().min(1).optional()
+  rankEnd: z.coerce.number().int().min(1).optional(),
+  displayOrder: z.coerce.number().int().min(0).optional()
 }).refine(
   input => Object.keys(input).length > 0,
   'At least one prize field must be provided.'
@@ -808,6 +810,7 @@ export function serializePrize(prize: PrizeRecord) {
     awardScope: prize.awardScope,
     rankStart: prize.rankStart,
     rankEnd: prize.rankEnd,
+    displayOrder: prize.displayOrder,
     createdAt: prize.createdAt
   }
 }
@@ -821,7 +824,8 @@ export function serializePublicPrize(prize: PrizeRecord) {
     rewardCurrency: prize.rewardCurrency,
     awardScope: prize.awardScope,
     rankStart: prize.rankStart,
-    rankEnd: prize.rankEnd
+    rankEnd: prize.rankEnd,
+    displayOrder: prize.displayOrder
   }
 }
 
