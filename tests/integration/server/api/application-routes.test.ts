@@ -17,6 +17,20 @@ import {
 } from '../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
+function createQueueProducerStub(options?: {
+  failSend?: boolean
+}) {
+  const send = vi.fn(async () => {
+    if (options?.failSend) {
+      throw new Error('queue unavailable')
+    }
+  })
+
+  return {
+    send
+  }
+}
+
 async function seedApplicationContext(
   harness: ReturnType<typeof createApiRouteTestHarness>,
   options?: {
@@ -416,6 +430,7 @@ describe('TASK-3.6 application routes', () => {
   })
 
   test('admin application routes list and approve submitted applications with audit logging', async () => {
+    const queueProducer = createQueueProducerStub()
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/hackathons/:hackathonId/applications', handler: applicationsListHandler },
@@ -428,6 +443,14 @@ describe('TASK-3.6 application routes', () => {
       sessionUser: {
         sub: 'auth0|hackathon_admin',
         email: 'hackathon-admin@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: queueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        }
       }
     })
     harnesses.push(harness)
@@ -478,11 +501,34 @@ describe('TASK-3.6 application routes', () => {
         entityType: 'user_application',
         entityId: 'application_1',
         action: 'user_application.approved'
+      }),
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.review_email_enqueued',
+        metadata: expect.objectContaining({
+          decision: 'approved',
+          enqueue: expect.objectContaining({
+            status: 'enqueued'
+          })
+        })
       })
     ]))
+
+    expect(queueProducer.send).toHaveBeenCalledTimes(1)
+    expect(queueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: 'application_1',
+      decision: 'approved',
+      recipientEmail: 'regular@example.com',
+      hackathonName: 'Fixture Hackathon',
+      hackathonSlug: 'fixture-hackathon'
+    }), {
+      contentType: 'json'
+    })
   })
 
   test('admin application routes reject submitted applications', async () => {
+    const queueProducer = createQueueProducerStub()
     const harness = createApiRouteTestHarness({
       routes: [
         {
@@ -494,6 +540,14 @@ describe('TASK-3.6 application routes', () => {
       sessionUser: {
         sub: 'auth0|platform_admin',
         email: 'platform-admin@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: queueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        }
       }
     })
     harnesses.push(harness)
@@ -523,6 +577,77 @@ describe('TASK-3.6 application routes', () => {
         reviewedByUserId: 'platform_admin'
       }
     })
+
+    expect(queueProducer.send).toHaveBeenCalledTimes(1)
+    expect(queueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: 'application_1',
+      decision: 'rejected',
+      recipientEmail: 'regular@example.com'
+    }), {
+      contentType: 'json'
+    })
+  })
+
+  test('application review remains successful when queue enqueue fails', async () => {
+    const queueProducer = createQueueProducerStub({ failSend: true })
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/reject',
+          handler: rejectApplicationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: queueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      status: 'submitted',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/reject', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(queueProducer.send).toHaveBeenCalledTimes(1)
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.review_email_enqueued',
+        metadata: expect.objectContaining({
+          decision: 'rejected',
+          enqueue: expect.objectContaining({
+            status: 'failed',
+            reason: 'queue_send_error'
+          })
+        })
+      })
+    ]))
   })
 
   test('hackathon admins can reject submitted applications', async () => {

@@ -24,6 +24,17 @@ type EventContext = H3Event['context'] & {
     profileIcons?: {
       binding?: string
     }
+    resend?: {
+      apiKey?: string
+      fromEmail?: string
+      fromName?: string
+      replyTo?: string
+    }
+    applicationReviewEmails?: {
+      queueBinding?: string
+      queueName?: string
+      retryDelaySeconds?: number
+    }
   }
 }
 

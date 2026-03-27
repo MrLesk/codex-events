@@ -59,6 +59,22 @@ For your Auth0 Regular Web Application, configure callback and logout URLs for t
 
 Auth0 is responsible for authentication and identity. Platform authorization remains in the application data model, not in Auth0 roles.
 
+### Outbound Email Runtime (Resend)
+
+These values configure participant-facing application decision emails sent after hackathon application approval or rejection:
+
+- `NUXT_RESEND_API_KEY`
+- `NUXT_RESEND_FROM_EMAIL`
+- `NUXT_RESEND_FROM_NAME`
+- `NUXT_RESEND_REPLY_TO`
+- `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING`
+- `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME`
+- `NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS`
+
+Set `NUXT_RESEND_API_KEY` as a secret in deployed environments (for example, a Cloudflare Workers secret) and keep sender identity values in your environment configuration.
+
+Application review APIs enqueue email delivery work to a Cloudflare Queue. Ensure your Worker has both producer and consumer queue configuration for the queue identified by `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME` and bound through `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING`.
+
 ### Auth0 Bootstrap Configuration Drift Control
 
 The repository includes an Auth0 tenant automation command that codifies required Auth0 tenant configuration:

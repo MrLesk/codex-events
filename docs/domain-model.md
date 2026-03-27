@@ -114,6 +114,7 @@ Rules:
 
 - A user can have at most one application per hackathon.
 - Application approval is handled by hackathon admins.
+- Application review enqueues participant-facing email delivery for approved and rejected outcomes.
 - A user must be approved before creating or joining a team in that hackathon.
 - Blind judging uses application information without exposing team identity.
 - User application acceptance references the exact application terms version accepted for that hackathon.

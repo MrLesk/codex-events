@@ -24,6 +24,17 @@ export default defineNuxtConfig({
       appBaseUrl: 'http://localhost:3000',
       audience: ''
     },
+    resend: {
+      apiKey: '',
+      fromEmail: '',
+      fromName: 'Codex Hackathons',
+      replyTo: ''
+    },
+    applicationReviewEmails: {
+      queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE',
+      queueName: 'codex-hackathons-application-review-email-delivery',
+      retryDelaySeconds: 120
+    },
     database: {
       binding: 'DB'
     },

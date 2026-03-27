@@ -250,13 +250,18 @@ Operations:
 | Submit application | `POST /api/hackathons/:hackathonId/applications` | authenticated user | Allowed only in `registration_open`, only if no prior application exists, and only if the user profile satisfies the hackathon's required profile flags. Requires exact-version acceptance of the current application terms. Carries registration hint payload with `registrationTeamIntent` (`solo`, `team`, `unknown`) and optional teammate hints. |
 | Get own application | `GET /api/hackathons/:hackathonId/applications/me` | authenticated user | Returns the caller's application for the hackathon, if present. |
 | List hackathon applications | `GET /api/hackathons/:hackathonId/applications` | hackathon admin or platform admin | Returns application records for review workflows. |
-| Approve application | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/approve` | hackathon admin or platform admin | Transitions `submitted` to `approved`. |
-| Reject application | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/reject` | hackathon admin or platform admin | Transitions `submitted` to `rejected`. |
+| Approve application | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/approve` | hackathon admin or platform admin | Transitions `submitted` to `approved` and enqueues participant-facing approval email delivery. |
+| Reject application | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/reject` | hackathon admin or platform admin | Transitions `submitted` to `rejected` and enqueues participant-facing rejection email delivery. |
 
 Testing:
 - Unit: application guard and state-transition rules.
 - Integration: exact-version acceptance persistence and review actions.
 - End-to-end: applicant and admin review flows.
+
+Operational notes:
+- Application review API actions remain successful even when queue enqueue fails.
+- Queue-consumer delivery outcomes are retried under queue retry policy and provider-aware retry guards.
+- Queue enqueue outcomes are recorded in audit metadata for operational visibility.
 
 ## Teams
 

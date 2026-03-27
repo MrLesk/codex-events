@@ -35,6 +35,17 @@ export function createApiRouteTestHarness(options: {
     hackathonImages?: {
       binding?: string
     }
+    resend?: {
+      apiKey?: string
+      fromEmail?: string
+      fromName?: string
+      replyTo?: string
+    }
+    applicationReviewEmails?: {
+      queueBinding?: string
+      queueName?: string
+      retryDelaySeconds?: number
+    }
   }
 }) {
   const d1Database = createTestD1Database()
@@ -48,6 +59,13 @@ export function createApiRouteTestHarness(options: {
     const databaseBinding = options.runtimeConfig?.database?.binding ?? 'DB'
     const profileIconsBinding = options.runtimeConfig?.profileIcons?.binding ?? 'PROFILE_ICONS'
     const hackathonImagesBinding = options.runtimeConfig?.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
+    const resendApiKey = options.runtimeConfig?.resend?.apiKey ?? ''
+    const resendFromEmail = options.runtimeConfig?.resend?.fromEmail ?? ''
+    const resendFromName = options.runtimeConfig?.resend?.fromName ?? 'Codex Hackathons'
+    const resendReplyTo = options.runtimeConfig?.resend?.replyTo ?? ''
+    const reviewEmailsQueueBinding = options.runtimeConfig?.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
+    const reviewEmailsQueueName = options.runtimeConfig?.applicationReviewEmails?.queueName ?? 'codex-hackathons-application-review-email-delivery'
+    const reviewEmailsRetryDelaySeconds = options.runtimeConfig?.applicationReviewEmails?.retryDelaySeconds ?? 120
 
     event.context.cloudflare = {
       env: {
@@ -65,6 +83,17 @@ export function createApiRouteTestHarness(options: {
       },
       hackathonImages: {
         binding: hackathonImagesBinding
+      },
+      resend: {
+        apiKey: resendApiKey,
+        fromEmail: resendFromEmail,
+        fromName: resendFromName,
+        replyTo: resendReplyTo
+      },
+      applicationReviewEmails: {
+        queueBinding: reviewEmailsQueueBinding,
+        queueName: reviewEmailsQueueName,
+        retryDelaySeconds: reviewEmailsRetryDelaySeconds
       }
     }
     event.context.auth0ClientOptions = {}

@@ -11,6 +11,10 @@ interface R2BucketLike {
   delete: (key: string) => Promise<void>
 }
 
+interface QueueProducerLike {
+  send: (message: unknown, options?: unknown) => Promise<void>
+}
+
 function isR2BucketLike(value: unknown): value is R2BucketLike {
   if (!value || typeof value !== 'object') {
     return false
@@ -22,18 +26,29 @@ function isR2BucketLike(value: unknown): value is R2BucketLike {
     && typeof candidate.delete === 'function'
 }
 
+function isQueueProducerLike(value: unknown): value is QueueProducerLike {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Partial<QueueProducerLike>
+  return typeof candidate.send === 'function'
+}
+
 export default defineEventHandler(async (event) => {
   const runtimeConfig = useRuntimeConfig(event)
   const databaseBindingName = runtimeConfig.database?.binding ?? 'DB'
   const profileIconsBindingName = runtimeConfig.profileIcons?.binding ?? 'PROFILE_ICONS'
   const hackathonImagesBindingName = runtimeConfig.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
+  const applicationReviewEmailQueueBindingName = runtimeConfig.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
 
   const hasDatabaseBinding = Boolean(event.context.d1Database || cloudflareEnv?.[databaseBindingName])
   const hasProfileIconsBinding = Boolean(cloudflareEnv?.[profileIconsBindingName])
   const hasHackathonImagesBinding = Boolean(cloudflareEnv?.[hackathonImagesBindingName])
+  const hasApplicationReviewEmailQueueBinding = Boolean(cloudflareEnv?.[applicationReviewEmailQueueBindingName])
 
-  if (hasDatabaseBinding && hasProfileIconsBinding && hasHackathonImagesBinding) {
+  if (hasDatabaseBinding && hasProfileIconsBinding && hasHackathonImagesBinding && hasApplicationReviewEmailQueueBinding) {
     return
   }
 
@@ -56,6 +71,12 @@ export default defineEventHandler(async (event) => {
   const proxyHackathonImagesBucket = proxyEnv[hackathonImagesBindingName]
     ?? (hackathonImagesBindingName === 'HACKATHON_IMAGES' ? undefined : proxyEnv.HACKATHON_IMAGES)
   const hackathonImagesBucket = existingHackathonImagesBucket ?? proxyHackathonImagesBucket
+  const existingApplicationReviewEmailQueue = cloudflareEnv?.[applicationReviewEmailQueueBindingName]
+  const proxyApplicationReviewEmailQueue = proxyEnv[applicationReviewEmailQueueBindingName]
+    ?? (applicationReviewEmailQueueBindingName === 'APPLICATION_REVIEW_EMAIL_QUEUE'
+      ? undefined
+      : proxyEnv.APPLICATION_REVIEW_EMAIL_QUEUE)
+  const applicationReviewEmailQueue = existingApplicationReviewEmailQueue ?? proxyApplicationReviewEmailQueue
 
   if (!d1Database) {
     throw new ApiError({
@@ -79,6 +100,10 @@ export default defineEventHandler(async (event) => {
 
   if (!event.context.cloudflare.env[hackathonImagesBindingName] && isR2BucketLike(hackathonImagesBucket)) {
     event.context.cloudflare.env[hackathonImagesBindingName] = hackathonImagesBucket as never
+  }
+
+  if (!event.context.cloudflare.env[applicationReviewEmailQueueBindingName] && isQueueProducerLike(applicationReviewEmailQueue)) {
+    event.context.cloudflare.env[applicationReviewEmailQueueBindingName] = applicationReviewEmailQueue as never
   }
 
   const profileIconContext = event.context as typeof event.context & { profileIconsBucket?: R2BucketLike }

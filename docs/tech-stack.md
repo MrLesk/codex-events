@@ -16,6 +16,7 @@ This document defines the canonical technology stack for the Codex hackathon pla
 - `Cloudflare R2` for file storage, including account profile icons and hackathon background/banner images
 - `Cloudflare Queues` for asynchronous jobs
 - `Cloudflare Cron Triggers` for scheduled platform tasks
+- `Resend` for outbound transactional email delivery
 - `Auth0` for user authentication and identity
 
 ## Architecture Notes

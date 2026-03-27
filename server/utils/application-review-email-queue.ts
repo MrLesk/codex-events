@@ -1,0 +1,300 @@
+import type { H3Event } from 'h3'
+
+import { z } from 'zod'
+
+import {
+  sendApplicationReviewDecisionEmail,
+  type ApplicationReviewDecisionEmailInput,
+  type ApplicationReviewDecisionEmailDeliveryResult
+} from './application-review-emails'
+
+export const defaultApplicationReviewEmailQueueBinding = 'APPLICATION_REVIEW_EMAIL_QUEUE'
+export const defaultApplicationReviewEmailQueueName = 'codex-hackathons-application-review-email-delivery'
+export const defaultApplicationReviewEmailRetryDelaySeconds = 120
+
+const applicationReviewEmailsQueueRuntimeConfigSchema = z.object({
+  applicationReviewEmails: z.object({
+    queueBinding: z.string().trim().optional(),
+    queueName: z.string().trim().optional(),
+    retryDelaySeconds: z.coerce.number().int().nonnegative().optional()
+  }).optional()
+})
+
+export const applicationReviewEmailQueueMessageSchema = z.object({
+  applicationId: z.string().trim().min(1),
+  decision: z.enum(['approved', 'rejected']),
+  reviewedAt: z.string().trim().min(1),
+  recipientEmail: z.string().trim().email().nullable(),
+  recipientDisplayName: z.string().trim().max(160).nullable().optional(),
+  hackathonName: z.string().trim().min(1).max(200),
+  hackathonSlug: z.string().trim().min(1).max(200),
+  enqueuedAt: z.string().trim().min(1)
+})
+
+export type ApplicationReviewEmailQueueMessage = z.infer<typeof applicationReviewEmailQueueMessageSchema>
+
+interface QueueProducerLike {
+  send: (message: unknown, options?: {
+    contentType?: 'text' | 'json' | 'bytes' | 'v8'
+    delaySeconds?: number
+  }) => Promise<void>
+}
+
+interface QueueMessageLike<Body = unknown> {
+  id: string
+  body: Body
+  attempts: number
+  ack: () => void
+  retry: (options?: { delaySeconds?: number }) => void
+}
+
+interface QueueBatchLike<Body = unknown> {
+  queue: string
+  messages: readonly QueueMessageLike<Body>[]
+}
+
+type ApplicationReviewEmailQueueRuntimeConfig = z.infer<typeof applicationReviewEmailsQueueRuntimeConfigSchema>
+
+export type ApplicationReviewEmailEnqueueResult = {
+  status: 'enqueued'
+} | {
+  status: 'skipped'
+  reason: string
+} | {
+  status: 'failed'
+  reason: string
+  errorMessage: string
+}
+
+export type ApplicationReviewEmailQueueMessageOutcome = {
+  messageId: string
+  action: 'ack' | 'retry'
+  reason: string
+  delivery: ApplicationReviewDecisionEmailDeliveryResult | null
+}
+
+export function buildApplicationReviewEmailQueueMessage(
+  input: ApplicationReviewDecisionEmailInput
+): ApplicationReviewEmailQueueMessage {
+  return {
+    ...input,
+    recipientDisplayName: input.recipientDisplayName?.trim() || null,
+    enqueuedAt: new Date().toISOString()
+  }
+}
+
+function resolveQueueRuntimeConfig(event: H3Event): ApplicationReviewEmailQueueRuntimeConfig {
+  const eventRuntimeConfig = (event.context as H3Event['context'] & { runtimeConfig?: unknown }).runtimeConfig
+  const runtimeConfigGetter = (globalThis as { useRuntimeConfig?: (event: H3Event) => unknown }).useRuntimeConfig
+  const candidate = eventRuntimeConfig ?? runtimeConfigGetter?.(event) ?? {}
+  const parsed = applicationReviewEmailsQueueRuntimeConfigSchema.safeParse(candidate)
+
+  return parsed.success ? parsed.data : {}
+}
+
+function resolveQueueRuntimeConfigFromUnknown(candidate: unknown): ApplicationReviewEmailQueueRuntimeConfig {
+  const parsed = applicationReviewEmailsQueueRuntimeConfigSchema.safeParse(candidate)
+
+  return parsed.success ? parsed.data : {}
+}
+
+function getQueueBindingName(config: ApplicationReviewEmailQueueRuntimeConfig) {
+  return config.applicationReviewEmails?.queueBinding?.trim() || defaultApplicationReviewEmailQueueBinding
+}
+
+function getQueueName(config: ApplicationReviewEmailQueueRuntimeConfig) {
+  return config.applicationReviewEmails?.queueName?.trim() || defaultApplicationReviewEmailQueueName
+}
+
+function getRetryDelaySeconds(config: ApplicationReviewEmailQueueRuntimeConfig) {
+  return config.applicationReviewEmails?.retryDelaySeconds ?? defaultApplicationReviewEmailRetryDelaySeconds
+}
+
+function isQueueProducerLike(value: unknown): value is QueueProducerLike {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Partial<QueueProducerLike>
+  return typeof candidate.send === 'function'
+}
+
+export function getApplicationReviewEmailQueueProducer(event: H3Event) {
+  const config = resolveQueueRuntimeConfig(event)
+  const bindingName = getQueueBindingName(config)
+  const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
+  const producerCandidate = cloudflareEnv?.[bindingName]
+
+  if (isQueueProducerLike(producerCandidate)) {
+    return {
+      producer: producerCandidate,
+      bindingName
+    }
+  }
+
+  return {
+    producer: null,
+    bindingName
+  }
+}
+
+export async function enqueueApplicationReviewEmailMessage(
+  event: H3Event,
+  messageInput: ApplicationReviewEmailQueueMessage
+): Promise<ApplicationReviewEmailEnqueueResult> {
+  const parsedMessage = applicationReviewEmailQueueMessageSchema.safeParse(messageInput)
+
+  if (!parsedMessage.success) {
+    return {
+      status: 'skipped',
+      reason: 'queue_message_invalid'
+    }
+  }
+
+  const { producer, bindingName } = getApplicationReviewEmailQueueProducer(event)
+
+  if (!producer) {
+    return {
+      status: 'skipped',
+      reason: `queue_binding_missing:${bindingName}`
+    }
+  }
+
+  try {
+    await producer.send(parsedMessage.data, {
+      contentType: 'json'
+    })
+  } catch (error) {
+    return {
+      status: 'failed',
+      reason: 'queue_send_error',
+      errorMessage: error instanceof Error ? error.message : 'Unexpected queue send error'
+    }
+  }
+
+  return {
+    status: 'enqueued'
+  }
+}
+
+function shouldRetryDeliveryFailure(delivery: ApplicationReviewDecisionEmailDeliveryResult) {
+  if (delivery.status !== 'failed') {
+    return false
+  }
+
+  if (delivery.reason === 'transport_error') {
+    return true
+  }
+
+  const providerError = delivery.providerError
+  const statusCode = providerError?.statusCode ?? null
+  const providerName = providerError?.name ?? ''
+
+  if (statusCode === 429 || (statusCode !== null && statusCode >= 500)) {
+    return true
+  }
+
+  return providerName === 'application_error'
+    || providerName === 'internal_server_error'
+    || providerName === 'rate_limit_exceeded'
+    || providerName === 'concurrent_idempotent_requests'
+}
+
+export async function processApplicationReviewEmailQueueMessage(
+  message: QueueMessageLike,
+  options?: {
+    runtimeConfig?: unknown
+    sendDecisionEmail?: typeof sendApplicationReviewDecisionEmail
+  }
+): Promise<ApplicationReviewEmailQueueMessageOutcome> {
+  const parsedMessage = applicationReviewEmailQueueMessageSchema.safeParse(message.body)
+
+  if (!parsedMessage.success) {
+    message.ack()
+
+    return {
+      messageId: message.id,
+      action: 'ack',
+      reason: 'queue_message_invalid',
+      delivery: null
+    }
+  }
+
+  const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
+  const sendDecisionEmail = options?.sendDecisionEmail ?? sendApplicationReviewDecisionEmail
+  const delivery = await sendDecisionEmail(
+    { context: {} } as H3Event,
+    parsedMessage.data,
+    {
+      runtimeConfig: options?.runtimeConfig
+    }
+  )
+
+  if (delivery.status === 'sent' || delivery.status === 'skipped') {
+    message.ack()
+
+    return {
+      messageId: message.id,
+      action: 'ack',
+      reason: `delivery_${delivery.status}`,
+      delivery
+    }
+  }
+
+  if (shouldRetryDeliveryFailure(delivery)) {
+    message.retry({
+      delaySeconds: getRetryDelaySeconds(config)
+    })
+
+    return {
+      messageId: message.id,
+      action: 'retry',
+      reason: 'delivery_failed_retryable',
+      delivery
+    }
+  }
+
+  message.ack()
+
+  return {
+    messageId: message.id,
+    action: 'ack',
+    reason: 'delivery_failed_non_retryable',
+    delivery
+  }
+}
+
+export async function processApplicationReviewEmailQueueBatch(
+  batch: QueueBatchLike,
+  options?: {
+    runtimeConfig?: unknown
+    queueName?: string
+    sendDecisionEmail?: typeof sendApplicationReviewDecisionEmail
+  }
+) {
+  const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
+  const expectedQueueName = options?.queueName ?? getQueueName(config)
+
+  if (batch.queue !== expectedQueueName) {
+    return {
+      queue: batch.queue,
+      skipped: true,
+      outcomes: [] as ApplicationReviewEmailQueueMessageOutcome[]
+    }
+  }
+
+  const outcomes: ApplicationReviewEmailQueueMessageOutcome[] = []
+
+  for (const message of batch.messages) {
+    outcomes.push(await processApplicationReviewEmailQueueMessage(message, {
+      runtimeConfig: options?.runtimeConfig ?? config,
+      sendDecisionEmail: options?.sendDecisionEmail
+    }))
+  }
+
+  return {
+    queue: batch.queue,
+    skipped: false,
+    outcomes
+  }
+}
