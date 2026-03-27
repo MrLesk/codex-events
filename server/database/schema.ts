@@ -208,6 +208,9 @@ export const userApplications = sqliteTable(
       .notNull()
       .references(() => hackathonTermsDocuments.id),
     applicationTermsAcceptedAt: text('application_terms_accepted_at').notNull(),
+    registrationDetailsJson: text('registration_details_json')
+      .notNull()
+      .default('{"teamIntent":"unknown","teamMembers":[]}'),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()
   },

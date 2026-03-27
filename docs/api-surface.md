@@ -210,9 +210,9 @@ Operations:
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | List role assignments | `GET /api/hackathons/:hackathonId/roles` | hackathon admin or platform admin | Returns explicit assignments for the hackathon. |
-| Create or replace role assignment | `PUT /api/hackathons/:hackathonId/roles/:userId` | platform admin | Supports `hackathon_admin` or `judge` roles and `is_in_judge_pool`. |
-| Remove explicit role assignment | `DELETE /api/hackathons/:hackathonId/roles/:userId` | platform admin | Removes the explicit assignment. Platform-admin inheritance remains implicit. |
-| Update judge-pool participation | `PATCH /api/hackathons/:hackathonId/roles/:userId` | platform admin | `judge` must remain in the automatic judge pool. |
+| Create or replace role assignment | `PUT /api/hackathons/:hackathonId/roles/:userId` | hackathon admin or platform admin | Supports `hackathon_admin` or `judge` roles and `is_in_judge_pool`. |
+| Remove explicit role assignment | `DELETE /api/hackathons/:hackathonId/roles/:userId` | hackathon admin or platform admin | Removes the explicit assignment. Platform-admin inheritance remains implicit. |
+| Update judge-pool participation | `PATCH /api/hackathons/:hackathonId/roles/:userId` | hackathon admin or platform admin | `judge` must remain in the automatic judge pool. |
 
 Testing:
 - Unit: role invariants and judge-pool rules.
@@ -247,7 +247,7 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Submit application | `POST /api/hackathons/:hackathonId/applications` | authenticated user | Allowed only in `registration_open`, only if no prior application exists, and only if the user profile satisfies the hackathon's required profile flags. Requires exact-version acceptance of the current application terms. |
+| Submit application | `POST /api/hackathons/:hackathonId/applications` | authenticated user | Allowed only in `registration_open`, only if no prior application exists, and only if the user profile satisfies the hackathon's required profile flags. Requires exact-version acceptance of the current application terms. Carries registration hint payload with `registrationTeamIntent` (`solo`, `team`, `unknown`) and optional teammate hints. |
 | Get own application | `GET /api/hackathons/:hackathonId/applications/me` | authenticated user | Returns the caller's application for the hackathon, if present. |
 | List hackathon applications | `GET /api/hackathons/:hackathonId/applications` | hackathon admin or platform admin | Returns application records for review workflows. |
 | Approve application | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/approve` | hackathon admin or platform admin | Transitions `submitted` to `approved`. |

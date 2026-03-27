@@ -17,14 +17,16 @@ function getNavigationFetch() {
   return import.meta.server ? useRequestFetch() : $fetch
 }
 
-export async function ensureAuthenticatedActor(to: RouteLocationNormalized) {
+export async function ensureAuthenticatedActor(
+  to: RouteLocationNormalized,
+  navigationFetch: ReturnType<typeof getNavigationFetch> = getNavigationFetch()
+) {
   if (!useUser().value) {
     return {
       redirect: navigateTo(buildAuthLoginHref(to.fullPath), { external: true })
     }
   }
 
-  const navigationFetch = getNavigationFetch()
   const response = await navigationFetch('/api/session') as {
     data?: {
       actor?: SessionActor
@@ -56,7 +58,8 @@ export async function ensureHackathonRoleForSlugRoute(
   to: RouteLocationNormalized,
   roles: HackathonScopedRole[]
 ) {
-  const resolvedSession = await ensureAuthenticatedActor(to)
+  const navigationFetch = getNavigationFetch()
+  const resolvedSession = await ensureAuthenticatedActor(to, navigationFetch)
 
   if ('redirect' in resolvedSession) {
     return resolvedSession.redirect
@@ -81,7 +84,6 @@ export async function ensureHackathonRoleForSlugRoute(
     })
   }
 
-  const navigationFetch = getNavigationFetch()
   const hackathonResponse = await navigationFetch(`/api/hackathons/slug/${encodeURIComponent(slug)}`) as {
     data?: {
       id?: string

@@ -28,14 +28,71 @@ export const applicationParamsSchema = routeIdParamsSchema.extend({
   applicationId: z.string().trim().min(1)
 })
 
+export const registrationTeamIntentValues = ['solo', 'team', 'unknown'] as const
+
+const registrationTeamMemberHintSchema = z.object({
+  fullName: z.string().max(200).optional().nullable(),
+  email: z.string().email().max(320).optional().nullable()
+})
+
 export const submitApplicationBodySchema = z.object({
-  applicationTermsDocumentId: z.string().trim().min(1)
+  applicationTermsDocumentId: z.string().trim().min(1),
+  registrationTeamIntent: z.enum(registrationTeamIntentValues).default('unknown'),
+  registrationTeamMembers: z.array(registrationTeamMemberHintSchema).default([])
 })
 
 type UserApplicationRecord = typeof userApplications.$inferSelect
 type UserRecord = typeof users.$inferSelect
 type HackathonRecord = typeof hackathons.$inferSelect
 type HackathonTermsDocumentRecord = typeof hackathonTermsDocuments.$inferSelect
+type SubmitApplicationBody = z.infer<typeof submitApplicationBodySchema>
+
+function normalizeTeamMemberHintValue(value: string | null | undefined) {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : null
+}
+
+export function serializeRegistrationDetailsJson(
+  hackathon: Pick<HackathonRecord, 'id' | 'maxTeamMembers'>,
+  payload: Pick<SubmitApplicationBody, 'registrationTeamIntent' | 'registrationTeamMembers'>
+) {
+  assertGuard(payload.registrationTeamMembers.length <= hackathon.maxTeamMembers, {
+    code: 'registration_team_members_invalid',
+    message: 'The provided team-member registration hints exceed the maximum team size for this hackathon.',
+    details: {
+      hackathonId: hackathon.id,
+      maxTeamMembers: hackathon.maxTeamMembers
+    }
+  })
+
+  const normalizedTeamMembers = payload.registrationTeamIntent === 'team'
+    ? payload.registrationTeamMembers
+        .slice(0, hackathon.maxTeamMembers)
+        .map((member) => {
+          const fullName = normalizeTeamMemberHintValue(member.fullName)
+          const email = normalizeTeamMemberHintValue(member.email)
+
+          if (!fullName && !email) {
+            return null
+          }
+
+          return {
+            ...(fullName ? { fullName } : {}),
+            ...(email ? { email } : {})
+          }
+        })
+        .filter((member): member is { fullName?: string, email?: string } => Boolean(member))
+    : []
+
+  return JSON.stringify({
+    teamIntent: payload.registrationTeamIntent,
+    teamMembers: normalizedTeamMembers
+  })
+}
 
 export function serializeUserApplication(
   application: UserApplicationRecord,
@@ -54,6 +111,7 @@ export function serializeUserApplication(
     reviewedByUserId: application.reviewedByUserId,
     applicationTermsDocumentId: application.applicationTermsDocumentId,
     applicationTermsAcceptedAt: application.applicationTermsAcceptedAt,
+    registrationDetailsJson: application.registrationDetailsJson,
     createdAt: application.createdAt,
     updatedAt: application.updatedAt,
     ...(options?.user

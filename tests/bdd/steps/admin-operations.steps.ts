@@ -41,7 +41,7 @@ function escapeRegExp(value: string) {
 
 function getStatusBadge(scope: Locator, status: string) {
   return scope.locator('[data-slot="base"]').filter({
-    hasText: new RegExp(`^${escapeRegExp(status)}$`)
+    hasText: new RegExp(`^${escapeRegExp(status)}$`, 'i')
   })
 }
 
@@ -108,6 +108,17 @@ When('I approve the admin application {string}', async ({ page }, applicationId:
       && response.ok()
     ),
     page.getByTestId(`admin-application-approve-${applicationId}`).click()
+  ])
+})
+
+When('I reject the admin application {string}', async ({ page }, applicationId: string) => {
+  await Promise.all([
+    page.waitForResponse(response =>
+      response.url().includes(`/api/hackathons/`)
+      && response.url().includes(`/applications/${applicationId}/actions/reject`)
+      && response.ok()
+    ),
+    page.getByTestId(`admin-application-reject-${applicationId}`).click()
   ])
 })
 

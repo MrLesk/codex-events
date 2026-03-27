@@ -10,9 +10,13 @@ import type { ParticipantApplicationRecord } from '~/utils/participant-applicati
 
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
-import { buildAuthLoginHref } from '~/utils/auth-navigation'
+import {
+  buildAccountSettingsHref,
+  buildAuthLoginHref
+} from '~/utils/auth-navigation'
 
 const hackathonDetailParticipantStates = new Set<PublicHackathon['state']>([
+  'registration_open',
   'submission_open',
   'judging_preparation',
   'judge_review',
@@ -66,7 +70,8 @@ const hackathon = computed(() => hackathonResponse.value!.data)
 const criteria = computed(() => criteriaResponse.value?.data ?? [])
 const prizes = computed(() => prizesResponse.value?.data ?? [])
 const prizesErrorMessage = computed(() => prizesError.value ? 'Published awards could not be loaded right now.' : undefined)
-const registerEntryHref = computed(() => buildAuthLoginHref(route.fullPath || `/hackathons/${slug.value}`))
+const registerRouteHref = computed(() => `/hackathons/${slug.value}/register`)
+const registerEntryHref = computed(() => buildAuthLoginHref(registerRouteHref.value))
 
 if (accountActor.value?.kind === 'platform_user' && hackathonDetailParticipantStates.has(hackathon.value.state)) {
   const requestFetch = import.meta.server ? useRequestFetch() : $fetch
@@ -110,13 +115,7 @@ const detailSummary = computed(() => [
   hackathon.value.city,
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
-const showRegisterCta = computed(() => {
-  if (accountActor.value?.kind === 'anonymous' || accountActor.value?.kind === 'authenticated_identity') {
-    return true
-  }
-
-  return false
-})
+const showRegisterCta = computed(() => true)
 const isRegisterHrefExternal = computed(() => accountActor.value?.kind === 'anonymous')
 const registerHref = computed(() => {
   if (accountActor.value?.kind === 'anonymous') {
@@ -124,10 +123,10 @@ const registerHref = computed(() => {
   }
 
   if (accountActor.value?.kind === 'authenticated_identity') {
-    return '/account/settings'
+    return buildAccountSettingsHref(registerRouteHref.value)
   }
 
-  return null
+  return registerRouteHref.value
 })
 
 const activePublicSection = ref<'overview' | 'prizes'>('overview')
@@ -188,23 +187,8 @@ useSeoMeta({
                 class="shrink-0 pt-0.5"
               >
                 <AppButton
-                  v-if="registerHref"
                   :to="registerHref"
                   :external="isRegisterHrefExternal"
-                  color="neutral"
-                  variant="solid"
-                  class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-                >
-                  Register
-                  <template #trailing>
-                    <AppIcon
-                      name="i-lucide-arrow-up-right"
-                      class="size-3.5"
-                    />
-                  </template>
-                </AppButton>
-                <AppButton
-                  v-else
                   color="neutral"
                   variant="solid"
                   class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"

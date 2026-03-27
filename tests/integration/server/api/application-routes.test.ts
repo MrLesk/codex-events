@@ -159,7 +159,18 @@ describe('TASK-3.6 application routes', () => {
     const successResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
       method: 'POST',
       body: JSON.stringify({
-        applicationTermsDocumentId: 'terms_app_2'
+        applicationTermsDocumentId: 'terms_app_2',
+        registrationTeamIntent: 'team',
+        registrationTeamMembers: [
+          {
+            fullName: 'Ada Lovelace',
+            email: 'ada@example.com'
+          },
+          {
+            fullName: 'Grace Hopper',
+            email: null
+          }
+        ]
       })
     })
 
@@ -168,7 +179,8 @@ describe('TASK-3.6 application routes', () => {
       data: {
         userId: 'regular_user',
         status: 'submitted',
-        applicationTermsDocumentId: 'terms_app_2'
+        applicationTermsDocumentId: 'terms_app_2',
+        registrationDetailsJson: expect.any(String)
       }
     })
 
@@ -181,7 +193,19 @@ describe('TASK-3.6 application routes', () => {
 
     expect(storedApplication).toMatchObject({
       status: 'submitted',
-      applicationTermsDocumentId: 'terms_app_2'
+      applicationTermsDocumentId: 'terms_app_2',
+      registrationDetailsJson: JSON.stringify({
+        teamIntent: 'team',
+        teamMembers: [
+          {
+            fullName: 'Ada Lovelace',
+            email: 'ada@example.com'
+          },
+          {
+            fullName: 'Grace Hopper'
+          }
+        ]
+      })
     })
   })
 
@@ -214,6 +238,39 @@ describe('TASK-3.6 application routes', () => {
         details: {
           missingFields: ['githubProfileUrl']
         }
+      }
+    })
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications rejects registration team-member hints beyond max team members', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2',
+        registrationTeamIntent: 'team',
+        registrationTeamMembers: Array.from({ length: 6 }, (_, index) => ({
+          fullName: `Member ${index + 1}`,
+          email: null
+        }))
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'registration_team_members_invalid'
       }
     })
   })
@@ -435,6 +492,49 @@ describe('TASK-3.6 application routes', () => {
         id: 'application_1',
         status: 'rejected',
         reviewedByUserId: 'platform_admin'
+      }
+    })
+  })
+
+  test('hackathon admins can reject submitted applications', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/reject',
+          handler: rejectApplicationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      status: 'submitted',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/reject', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        status: 'rejected',
+        reviewedByUserId: 'hackathon_admin'
       }
     })
   })

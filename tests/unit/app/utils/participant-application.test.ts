@@ -1,10 +1,14 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  createParticipantTeamMemberHintRows,
   formatParticipantApplicationStatus,
   getHackathonApplicationAvailabilityMessage,
+  getParticipantApplicationSubmissionPolicy,
   getParticipantApplicationStatusColor,
   listMissingRequiredProfileFields,
+  normalizeParticipantTeamMemberHintsForSubmission,
+  parseParticipantRegistrationDetailsJson,
   summarizeParticipantApplicationStatus
 } from '../../../../app/utils/participant-application'
 
@@ -65,5 +69,92 @@ describe('participant application helpers', () => {
     expect(getHackathonApplicationAvailabilityMessage('registration_open')).toBe('Applications are open for this hackathon.')
     expect(getHackathonApplicationAvailabilityMessage('draft')).toBe('Applications are not available until registration opens.')
     expect(getHackathonApplicationAvailabilityMessage('submission_open')).toBe('Applications are closed for this hackathon.')
+  })
+
+  test('returns registration submission policy based on lifecycle, profile, and terms acceptance', () => {
+    expect(getParticipantApplicationSubmissionPolicy({
+      hackathonState: 'registration_open',
+      applicationStatus: null,
+      missingRequiredProfileFieldCount: 0,
+      hasCurrentApplicationTerms: true,
+      hasAcceptedCurrentTerms: true
+    })).toEqual({
+      isAllowed: true
+    })
+
+    expect(getParticipantApplicationSubmissionPolicy({
+      hackathonState: 'submission_open',
+      applicationStatus: null,
+      missingRequiredProfileFieldCount: 0,
+      hasCurrentApplicationTerms: true,
+      hasAcceptedCurrentTerms: true
+    })).toEqual({
+      isAllowed: false,
+      reason: 'Applications are closed for this hackathon.'
+    })
+
+    expect(getParticipantApplicationSubmissionPolicy({
+      hackathonState: 'registration_open',
+      applicationStatus: null,
+      missingRequiredProfileFieldCount: 2,
+      hasCurrentApplicationTerms: true,
+      hasAcceptedCurrentTerms: true
+    })).toEqual({
+      isAllowed: false,
+      reason: 'Complete the required profile fields before submitting this application.'
+    })
+
+    expect(getParticipantApplicationSubmissionPolicy({
+      hackathonState: 'registration_open',
+      applicationStatus: null,
+      missingRequiredProfileFieldCount: 0,
+      hasCurrentApplicationTerms: true,
+      hasAcceptedCurrentTerms: false
+    })).toEqual({
+      isAllowed: false,
+      reason: 'Accept the current application terms before submitting.'
+    })
+  })
+
+  test('creates and normalizes team-member hint rows for submission payloads', () => {
+    expect(createParticipantTeamMemberHintRows(3)).toEqual([
+      { fullName: '', email: '' },
+      { fullName: '', email: '' },
+      { fullName: '', email: '' }
+    ])
+
+    expect(normalizeParticipantTeamMemberHintsForSubmission([
+      { fullName: ' Ada Lovelace ', email: 'ada@example.com' },
+      { fullName: '', email: '  ' },
+      { fullName: 'Grace Hopper', email: '' }
+    ], 2)).toEqual([
+      { fullName: 'Ada Lovelace', email: 'ada@example.com' },
+      { fullName: null, email: null }
+    ])
+  })
+
+  test('parses persisted registration details JSON with fallback behavior', () => {
+    expect(parseParticipantRegistrationDetailsJson(JSON.stringify({
+      teamIntent: 'team',
+      teamMembers: [
+        {
+          fullName: 'Ada Lovelace',
+          email: 'ada@example.com'
+        }
+      ]
+    }))).toEqual({
+      teamIntent: 'team',
+      teamMembers: [
+        {
+          fullName: 'Ada Lovelace',
+          email: 'ada@example.com'
+        }
+      ]
+    })
+
+    expect(parseParticipantRegistrationDetailsJson('{invalid-json')).toEqual({
+      teamIntent: 'unknown',
+      teamMembers: []
+    })
   })
 })

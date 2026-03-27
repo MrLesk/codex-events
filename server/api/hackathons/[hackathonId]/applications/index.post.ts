@@ -8,6 +8,7 @@ import {
   assertHackathonAllowsApplications,
   assertNoExistingApplication,
   assertUserMeetsHackathonProfileRequirements,
+  serializeRegistrationDetailsJson,
   serializeUserApplication,
   submitApplicationBodySchema
 } from '../../../../utils/applications'
@@ -29,6 +30,10 @@ export default defineApiHandler(async (event) => {
     hackathon,
     body.applicationTermsDocumentId
   )
+  const registrationDetailsJson = serializeRegistrationDetailsJson(hackathon, {
+    registrationTeamIntent: body.registrationTeamIntent,
+    registrationTeamMembers: body.registrationTeamMembers
+  })
 
   const submittedAt = new Date().toISOString()
   const applicationId = crypto.randomUUID()
@@ -41,6 +46,7 @@ export default defineApiHandler(async (event) => {
     submittedAt,
     applicationTermsDocumentId: currentTermsDocument.id,
     applicationTermsAcceptedAt: submittedAt,
+    registrationDetailsJson,
     createdAt: submittedAt,
     updatedAt: submittedAt
   })
@@ -55,6 +61,7 @@ export default defineApiHandler(async (event) => {
     reviewedByUserId: null,
     applicationTermsDocumentId: currentTermsDocument.id,
     applicationTermsAcceptedAt: submittedAt,
+    registrationDetailsJson,
     createdAt: submittedAt,
     updatedAt: submittedAt
   }, {

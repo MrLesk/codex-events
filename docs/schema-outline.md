@@ -198,6 +198,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `reviewed_by_user_id`
 - `application_terms_document_id`
 - `application_terms_accepted_at`
+- `registration_details_json`
 - `created_at`
 - `updated_at`
 
@@ -211,6 +212,12 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Constraints
 
 - `unique (hackathon_id, user_id)`
+
+### Notes
+
+- `registration_details_json` stores registration-intent hints as a JSON string payload:
+  - `teamIntent`: `solo`, `team`, or `unknown`
+  - `teamMembers`: free-form teammate hints captured during application (name/family-name and/or email)
 
 ## Team
 

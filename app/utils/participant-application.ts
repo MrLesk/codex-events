@@ -67,6 +67,20 @@ export interface ParticipantApplicationTermsDocument {
   createdAt: string
 }
 
+export const participantRegistrationTeamIntentValues = ['solo', 'team', 'unknown'] as const
+
+export type ParticipantRegistrationTeamIntent = typeof participantRegistrationTeamIntentValues[number]
+
+export interface ParticipantRegistrationTeamMemberHint {
+  fullName: string
+  email: string
+}
+
+export interface ParticipantRegistrationDetails {
+  teamIntent: ParticipantRegistrationTeamIntent
+  teamMembers: ParticipantRegistrationTeamMemberHint[]
+}
+
 export interface ParticipantApplicationRecord {
   id: string
   hackathonId: string
@@ -77,6 +91,7 @@ export interface ParticipantApplicationRecord {
   reviewedByUserId: string | null
   applicationTermsDocumentId: string
   applicationTermsAcceptedAt: string
+  registrationDetailsJson: string
   createdAt: string
   updatedAt: string
   applicationTermsDocument?: ParticipantApplicationTermsDocument
@@ -238,6 +253,131 @@ export function getHackathonApplicationAvailabilityMessage(state: PublicHackatho
   }
 
   return 'Applications are closed for this hackathon.'
+}
+
+export function createParticipantTeamMemberHintRows(maxTeamMembers: number): ParticipantRegistrationTeamMemberHint[] {
+  return Array.from({ length: Math.max(0, maxTeamMembers) }, () => ({
+    fullName: '',
+    email: ''
+  }))
+}
+
+export function parseParticipantRegistrationDetailsJson(value: string | null | undefined): ParticipantRegistrationDetails {
+  if (!value) {
+    return {
+      teamIntent: 'unknown',
+      teamMembers: []
+    }
+  }
+
+  try {
+    const parsed = JSON.parse(value) as Partial<ParticipantRegistrationDetails>
+
+    const teamIntent = parsed.teamIntent && participantRegistrationTeamIntentValues.includes(parsed.teamIntent)
+      ? parsed.teamIntent
+      : 'unknown'
+
+    const teamMembers = Array.isArray(parsed.teamMembers)
+      ? parsed.teamMembers
+          .map((member) => {
+            const fullName = typeof member?.fullName === 'string' ? member.fullName : ''
+            const email = typeof member?.email === 'string' ? member.email : ''
+
+            return {
+              fullName,
+              email
+            }
+          })
+      : []
+
+    return {
+      teamIntent,
+      teamMembers
+    }
+  } catch {
+    return {
+      teamIntent: 'unknown',
+      teamMembers: []
+    }
+  }
+}
+
+export function normalizeParticipantTeamMemberHintsForSubmission(
+  teamMembers: ParticipantRegistrationTeamMemberHint[],
+  maxTeamMembers: number
+) {
+  return teamMembers
+    .slice(0, Math.max(0, maxTeamMembers))
+    .map(member => ({
+      fullName: member.fullName.trim().length > 0 ? member.fullName.trim() : null,
+      email: member.email.trim().length > 0 ? member.email.trim() : null
+    }))
+}
+
+export interface ParticipantApplicationSubmissionPolicy {
+  isAllowed: boolean
+  reason?: string
+}
+
+export function getParticipantApplicationSubmissionPolicy(options: {
+  hackathonState: PublicHackathonState
+  applicationStatus: ParticipantApplicationRecord['status'] | null
+  missingRequiredProfileFieldCount: number
+  hasCurrentApplicationTerms: boolean
+  hasAcceptedCurrentTerms: boolean
+}): ParticipantApplicationSubmissionPolicy {
+  if (options.hackathonState !== 'registration_open') {
+    return {
+      isAllowed: false,
+      reason: getHackathonApplicationAvailabilityMessage(options.hackathonState)
+    }
+  }
+
+  if (options.applicationStatus === 'submitted') {
+    return {
+      isAllowed: false,
+      reason: 'Your application is already submitted and waiting for review.'
+    }
+  }
+
+  if (options.applicationStatus === 'approved') {
+    return {
+      isAllowed: false,
+      reason: 'Your application is already approved for this hackathon.'
+    }
+  }
+
+  if (options.applicationStatus === 'rejected') {
+    return {
+      isAllowed: false,
+      reason: 'Rejected applicants cannot submit another application to the same hackathon.'
+    }
+  }
+
+  if (options.missingRequiredProfileFieldCount > 0) {
+    return {
+      isAllowed: false,
+      reason: 'Complete the required profile fields before submitting this application.'
+    }
+  }
+
+  if (!options.hasCurrentApplicationTerms) {
+    return {
+      isAllowed: false,
+      reason: 'The current application terms are unavailable for this hackathon.'
+    }
+  }
+
+  if (!options.hasAcceptedCurrentTerms) {
+    return {
+      isAllowed: false,
+      reason: 'Accept the current application terms before submitting.'
+    }
+  }
+
+  return {
+    isAllowed: true
+  }
 }
 
 export function normalizeParticipantApiError(error: unknown): ParticipantApiErrorShape {

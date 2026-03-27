@@ -5,6 +5,7 @@ import type {
   ParticipantApiListResponse,
   ParticipantApplicationRecord,
   ParticipantCurrentTermsResponse,
+  ParticipantRegistrationTeamIntent,
   ParticipantSessionUser,
   VisibleHackathonRecord
 } from '~/utils/participant-application'
@@ -209,7 +210,14 @@ export function useParticipantApplication(
   const submissionSuccess = ref('')
   const isSubmitting = ref(false)
 
-  async function submitApplication(applicationTermsDocumentId: string) {
+  async function submitApplication(options: {
+    applicationTermsDocumentId: string
+    registrationTeamIntent: ParticipantRegistrationTeamIntent
+    registrationTeamMembers: Array<{
+      fullName: string | null
+      email: string | null
+    }>
+  }) {
     if (!visibleHackathonId.value) {
       submissionError.value = 'The current hackathon application route could not be resolved.'
       submissionSuccess.value = ''
@@ -224,7 +232,9 @@ export function useParticipantApplication(
       await apiFetch(`/api/hackathons/${visibleHackathonId.value}/applications`, {
         method: 'POST',
         body: {
-          applicationTermsDocumentId
+          applicationTermsDocumentId: options.applicationTermsDocumentId,
+          registrationTeamIntent: options.registrationTeamIntent,
+          registrationTeamMembers: options.registrationTeamMembers
         }
       })
 

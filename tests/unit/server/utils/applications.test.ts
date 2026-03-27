@@ -4,7 +4,8 @@ import { ApiError } from '../../../../server/utils/api-error'
 import {
   assertApplicationReviewable,
   assertHackathonAllowsApplications,
-  assertUserMeetsHackathonProfileRequirements
+  assertUserMeetsHackathonProfileRequirements,
+  serializeRegistrationDetailsJson
 } from '../../../../server/utils/applications'
 
 describe('application utilities', () => {
@@ -118,6 +119,7 @@ describe('application utilities', () => {
       reviewedByUserId: null,
       applicationTermsDocumentId: 'terms_1',
       applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+      registrationDetailsJson: '{"teamIntent":"unknown","teamMembers":[]}',
       createdAt: '2026-03-22T12:00:00.000Z',
       updatedAt: '2026-03-22T12:00:00.000Z'
     })).not.toThrow()
@@ -132,8 +134,56 @@ describe('application utilities', () => {
       reviewedByUserId: 'admin_1',
       applicationTermsDocumentId: 'terms_1',
       applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+      registrationDetailsJson: '{"teamIntent":"unknown","teamMembers":[]}',
       createdAt: '2026-03-22T12:00:00.000Z',
       updatedAt: '2026-03-22T12:05:00.000Z'
+    })).toThrowError(ApiError)
+  })
+
+  test('serializes registration details and enforces max team-member hints', () => {
+    expect(serializeRegistrationDetailsJson({
+      id: 'hackathon_1',
+      maxTeamMembers: 2
+    }, {
+      registrationTeamIntent: 'team',
+      registrationTeamMembers: [
+        {
+          fullName: ' Ada Lovelace ',
+          email: 'ada@example.com'
+        },
+        {
+          fullName: 'Grace Hopper',
+          email: null
+        }
+      ]
+    })).toBe(JSON.stringify({
+      teamIntent: 'team',
+      teamMembers: [
+        {
+          fullName: 'Ada Lovelace',
+          email: 'ada@example.com'
+        },
+        {
+          fullName: 'Grace Hopper'
+        }
+      ]
+    }))
+
+    expect(() => serializeRegistrationDetailsJson({
+      id: 'hackathon_1',
+      maxTeamMembers: 1
+    }, {
+      registrationTeamIntent: 'team',
+      registrationTeamMembers: [
+        {
+          fullName: 'Ada Lovelace',
+          email: null
+        },
+        {
+          fullName: 'Grace Hopper',
+          email: null
+        }
+      ]
     })).toThrowError(ApiError)
   })
 })

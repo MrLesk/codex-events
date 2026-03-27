@@ -28,7 +28,7 @@ Rules:
 - The reusable platform profile fields are managed from account settings.
 - A user with `is_platform_admin = true` is a platform admin.
 - Platform admins can create hackathons.
-- Platform admins can assign hackathon admins.
+- Hackathon admins and platform admins can assign judges and hackathon admins within their hackathons.
 - Platform admins implicitly have hackathon-admin permissions in every hackathon.
 
 ### Hackathon
@@ -115,6 +115,8 @@ Rules:
 - Blind judging uses application information without exposing team identity.
 - User application acceptance references the exact application terms version accepted for that hackathon.
 - A user can submit a `UserApplication` only if the user profile satisfies that hackathon's required profile rules.
+- A user application records a registration team-intent hint: `solo`, `team`, or `unknown`.
+- When the registration team-intent hint is `team`, the user application can include free-form teammate hints captured during application (name/family-name and/or email per hinted member).
 
 ### Team
 
