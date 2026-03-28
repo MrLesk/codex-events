@@ -100,15 +100,12 @@ const headerStateClass = computed(() => {
 })
 const detailSummary = computed(() => [
   formatHackathonWindow(hackathon.value.registrationOpensAt, hackathon.value.submissionClosesAt),
-  hackathon.value.city,
+  formatHackathonLocation(hackathon.value),
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
-const inPersonCommitmentDateLabel = computed(() => {
-  const earliestAgendaStart = [...hackathon.value.agendaItems]
-    .sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt))[0]?.startsAt
-
-  return formatHackathonDate(earliestAgendaStart ?? hackathon.value.registrationOpensAt)
-})
+const inPersonCommitmentDateLabel = computed(() =>
+  formatHackathonDate(getHackathonEarliestStartAt(hackathon.value))
+)
 const profileForm = reactive({
   firstName: '',
   familyName: '',

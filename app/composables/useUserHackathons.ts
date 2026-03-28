@@ -12,6 +12,7 @@ export interface UserHackathonEntry {
   description: string
   state: PublicHackathonState
   city: string
+  country: string
   address: string
   bannerImageUrl: string | null
   backgroundImageUrl: string | null

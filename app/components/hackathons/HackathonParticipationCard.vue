@@ -50,7 +50,7 @@ const participationSummary = computed(() => summarizeParticipationRecord(props.r
       <div class="flex flex-wrap items-start justify-between gap-4 border-b border-black/8 pb-5 dark:border-white/[0.08]">
         <div class="space-y-2">
           <p class="text-[11px] font-semibold tracking-[0.18em] text-muted uppercase">
-            {{ props.record.hackathon.city }}
+            {{ formatHackathonLocation(props.record.hackathon) }}
           </p>
           <h2 class="text-[24px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
             {{ props.record.hackathon.name }}

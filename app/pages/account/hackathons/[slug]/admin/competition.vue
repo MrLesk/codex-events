@@ -135,7 +135,7 @@ const workspaceSummary = computed(() => {
 
   return [
     formatHackathonWindow(currentHackathon.value.registrationOpensAt, currentHackathon.value.submissionClosesAt),
-    currentHackathon.value.city,
+    formatHackathonLocation(currentHackathon.value),
     formatMaxTeamMembers(currentHackathon.value.maxTeamMembers)
   ].join(' • ')
 })

@@ -50,6 +50,7 @@ When('the saved {string} session creates a managed hackathon named {string}', as
         slug: `bdd-managed-hackathon-${now}`,
         description: 'Hackathon created by TASK-3.9 Auth0-backed release-gate coverage.',
         city: 'Vienna',
+        country: 'Austria',
         address: 'BDD Fixture Address',
         registrationOpensAt: new Date(now - 3_600_000).toISOString(),
         registrationClosesAt: new Date(now + 86_400_000).toISOString(),

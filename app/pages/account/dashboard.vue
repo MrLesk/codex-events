@@ -280,7 +280,7 @@ useSeoMeta({
                 </AppBadge>
               </div>
               <p class="mt-2 text-[12px] text-muted">
-                {{ hackathon.city }} · {{ hackathon.maxTeamMembers }} max/team
+                {{ formatHackathonLocation(hackathon) }} · {{ hackathon.maxTeamMembers }} max/team
               </p>
             </NuxtLink>
           </div>

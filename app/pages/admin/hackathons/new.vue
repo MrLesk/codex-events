@@ -35,6 +35,7 @@ async function createHackathon(form: HackathonFormState) {
         description: form.description,
         agendaItems: toHackathonAgendaPayload(form.agendaItems),
         city: form.city,
+        country: form.country,
         address: form.address,
         registrationOpensAt: fromDateTimeLocalValue(form.registrationOpensAt),
         registrationClosesAt: fromDateTimeLocalValue(form.registrationClosesAt),

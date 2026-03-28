@@ -163,6 +163,7 @@ export interface HackathonRecord {
   backgroundImageUrl: string | null
   bannerImageUrl: string | null
   city: string
+  country: string
   address: string
   registrationOpensAt: string
   registrationClosesAt: string
@@ -199,6 +200,7 @@ export interface HackathonFormState {
   backgroundImageUrl: string
   bannerImageUrl: string
   city: string
+  country: string
   address: string
   registrationOpensAt: string
   registrationClosesAt: string
@@ -728,6 +730,7 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     backgroundImageUrl: '',
     bannerImageUrl: '',
     city: '',
+    country: '',
     address: '',
     registrationOpensAt: '',
     registrationClosesAt: '',
@@ -765,6 +768,7 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
     backgroundImageUrl: hackathon.backgroundImageUrl ?? '',
     bannerImageUrl: hackathon.bannerImageUrl ?? '',
     city: hackathon.city,
+    country: hackathon.country,
     address: hackathon.address,
     registrationOpensAt: toDateTimeLocalValue(hackathon.registrationOpensAt),
     registrationClosesAt: toDateTimeLocalValue(hackathon.registrationClosesAt),

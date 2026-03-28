@@ -99,6 +99,10 @@ const timelineEntries = computed(() => [
       {
         label: 'Lifecycle',
         value: formatHackathonStateLabel(props.hackathon.state)
+      },
+      {
+        label: 'Team size',
+        value: `1-${props.hackathon.maxTeamMembers} members`
       }
     ]
   }

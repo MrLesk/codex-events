@@ -46,7 +46,7 @@ const profileForm = defineModel<{
 })
 
 const props = defineProps<{
-  hackathon: Pick<PublicHackathon, 'slug' | 'state' | 'city' | 'inPersonEvent' | 'requireWhyThisHackathon' | 'requireProofOfExecution'>
+  hackathon: Pick<PublicHackathon, 'slug' | 'state' | 'city' | 'country' | 'inPersonEvent' | 'requireWhyThisHackathon' | 'requireProofOfExecution'>
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
   profileFields: HackathonProfileField[]
   submissionPolicy: ParticipantApplicationSubmissionPolicy
@@ -65,6 +65,7 @@ const emit = defineEmits<{
 }>()
 
 const canRenderSubmissionForm = computed(() => props.hackathon.state === 'registration_open')
+const hackathonLocationLabel = computed(() => formatHackathonLocation(props.hackathon))
 
 const canEditRegistrationHint = computed(() => !props.isSubmitting)
 const teamIntentOptions: Array<{
@@ -766,13 +767,13 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                 In-person attendance commitment
               </p>
               <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
-                If your application is approved, you confirm that you can attend in person on {{ inPersonCommitmentDateLabel }} in {{ hackathon.city }}.
+                If your application is approved, you confirm that you can attend in person on {{ inPersonCommitmentDateLabel }} in {{ hackathonLocationLabel }}.
               </p>
               <AppCheckbox
                 v-model="inPersonAttendanceCommitment"
                 :disabled="isSubmitting"
               >
-                I commit to attending in person on that date in {{ hackathon.city }} if approved.
+                I commit to attending in person on that date in {{ hackathonLocationLabel }} if approved.
               </AppCheckbox>
               <p
                 v-if="submitAttempted && inPersonAttendanceCommitmentError"

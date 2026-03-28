@@ -38,6 +38,7 @@ export default defineApiHandler(async (event) => {
     backgroundImageUrl: body.backgroundImageUrl ?? null,
     bannerImageUrl: body.bannerImageUrl ?? null,
     city: body.city,
+    country: body.country,
     address: body.address,
     registrationOpensAt: body.registrationOpensAt,
     registrationClosesAt: body.registrationClosesAt,

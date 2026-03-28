@@ -542,6 +542,17 @@ const submitConfigForm = handleSubmit(() => {
           </label>
 
           <label class="grid gap-2">
+            <span class="text-sm font-medium text-toned">Country</span>
+            <input
+              v-model="form.country"
+              type="text"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+              placeholder="Austria"
+              required
+            >
+          </label>
+
+          <label class="grid gap-2">
             <span class="text-sm font-medium text-toned">Address</span>
             <input
               v-model="form.address"

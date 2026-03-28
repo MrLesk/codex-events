@@ -269,7 +269,7 @@ useSeoMeta({
                     {{ isDescriptionExpanded(hackathon.id) ? 'Show less' : 'Load more' }}
                   </button>
                   <div class="flex flex-wrap items-center gap-3 text-[12px] text-muted">
-                    <span>{{ hackathon.city }}</span>
+                    <span>{{ formatHackathonLocation(hackathon) }}</span>
                     <span>{{ hackathon.maxTeamMembers }} max/team</span>
                     <span>{{ hackathon.slug }}</span>
                   </div>

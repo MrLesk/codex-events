@@ -18,7 +18,10 @@ const heroImage = computed(() => {
 
   return backgroundImageUrl || null
 })
-const timelineDateLabel = computed(() => formatHackathonCompactDate(props.hackathon.submissionOpensAt))
+const earliestStartAt = computed(() => getHackathonEarliestStartAt(props.hackathon))
+const timelineDateLabel = computed(() => formatHackathonCompactDate(earliestStartAt.value))
+const hackathonDayLabel = computed(() => formatHackathonDateWithWeekday(earliestStartAt.value))
+const locationLabel = computed(() => formatHackathonLocation(props.hackathon))
 const registrationOpensAtTimestamp = computed(() => new Date(props.hackathon.registrationOpensAt).getTime())
 const registrationClosesAtTimestamp = computed(() => new Date(props.hackathon.registrationClosesAt).getTime())
 const isRegistrationOpen = computed(() => {
@@ -32,10 +35,6 @@ const ctaLabel = computed(() => {
 
   return isRegistrationOpen.value ? 'Discover' : 'View details'
 })
-const programDateLabel = computed(() =>
-  formatHackathonWindow(props.hackathon.submissionOpensAt, props.hackathon.submissionClosesAt)
-)
-const locationLabel = computed(() => [props.hackathon.city, props.hackathon.address].filter(Boolean).join(' • '))
 </script>
 
 <template>
@@ -82,13 +81,10 @@ const locationLabel = computed(() => [props.hackathon.city, props.hackathon.addr
         <div class="flex flex-col gap-5 p-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p class="mb-1 text-[15px] font-medium text-highlighted dark:text-white">
-              Hackathon dates: {{ programDateLabel }}
+              {{ hackathonDayLabel }}
             </p>
             <p class="mt-1 text-[13px] text-neutral-500 dark:text-[#A3A3A3]">
               {{ locationLabel }}
-            </p>
-            <p class="mt-1 text-[13px] text-neutral-500 dark:text-[#A3A3A3]">
-              Team size: 1-{{ hackathon.maxTeamMembers }}
             </p>
           </div>
 

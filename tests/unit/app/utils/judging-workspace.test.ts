@@ -33,6 +33,7 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     backgroundImageUrl: null,
     bannerImageUrl: null,
     city: 'Vienna',
+    country: 'Austria',
     address: 'Operngasse 20',
     registrationOpensAt: '2026-03-20T10:00:00.000Z',
     registrationClosesAt: '2026-03-22T10:00:00.000Z',

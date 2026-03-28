@@ -42,6 +42,7 @@ export interface PublicHackathon {
   bannerImageUrl: string | null
   lumaEventUrl?: string | null
   city: string
+  country: string
   address: string
   registrationOpensAt: string
   registrationClosesAt: string
@@ -135,6 +136,13 @@ const fullDateFormatter = new Intl.DateTimeFormat('en-US', {
   year: 'numeric'
 })
 
+const weekdayDateFormatter = new Intl.DateTimeFormat(undefined, {
+  weekday: 'short',
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric'
+})
+
 const compactDateFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   day: 'numeric'
@@ -203,12 +211,40 @@ export function formatHackathonDate(value: string) {
   return fullDateFormatter.format(new Date(value))
 }
 
+export function formatHackathonDateWithWeekday(value: string) {
+  return weekdayDateFormatter.format(new Date(value))
+}
+
+export function formatHackathonLocation(location: { city: string, country: string }) {
+  return `${location.city}, ${location.country}`
+}
+
 export function formatHackathonCompactDate(value: string) {
   return compactDateFormatter.format(new Date(value))
 }
 
 export function formatHackathonWindow(start: string, end: string) {
   return `${compactDateFormatter.format(new Date(start))} - ${fullDateFormatter.format(new Date(end))}`
+}
+
+export function getHackathonEarliestStartAt(
+  hackathon: Pick<PublicHackathon, 'agendaItems' | 'submissionOpensAt'>
+) {
+  let earliestAgendaStartAt: string | null = null
+  let earliestAgendaTimestamp = Number.POSITIVE_INFINITY
+
+  for (const item of hackathon.agendaItems) {
+    const startsAtTimestamp = Date.parse(item.startsAt)
+
+    if (Number.isNaN(startsAtTimestamp) || startsAtTimestamp >= earliestAgendaTimestamp) {
+      continue
+    }
+
+    earliestAgendaTimestamp = startsAtTimestamp
+    earliestAgendaStartAt = item.startsAt
+  }
+
+  return earliestAgendaStartAt ?? hackathon.submissionOpensAt
 }
 
 export function shouldShowAgendaDayContext(

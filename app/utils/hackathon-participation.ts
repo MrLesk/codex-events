@@ -8,6 +8,7 @@ export interface HackathonParticipationHackathonSummary {
   name: string
   slug: string
   city: string
+  country: string
   state: PublicHackathonState
   registrationOpensAt: string
   submissionClosesAt: string

@@ -60,6 +60,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `banner_image_url`
 - `luma_event_url`
 - `city`
+- `country`
 - `address`
 - `registration_opens_at`
 - `registration_closes_at`

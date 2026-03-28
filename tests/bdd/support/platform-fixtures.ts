@@ -257,7 +257,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       (${sqlLiteral(fixturePrivacyDocumentId)}, 'privacy_policy', 1, 'Privacy Policy', 'E2E privacy policy', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       (${sqlLiteral(fixtureTermsDocumentId)}, 'platform_terms', 1, 'Platform Terms', 'E2E platform terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into hackathons (
-      id, name, slug, description, background_image_url, banner_image_url, city, address,
+      id, name, slug, description, background_image_url, banner_image_url, city, country, address,
       registration_opens_at, registration_closes_at, submission_opens_at, submission_closes_at,
       state, max_team_members, require_x_profile, require_linkedin_profile, require_github_profile, require_chatgpt_email, require_openai_org_id, require_luma_profile,
       current_application_terms_document_id, current_winner_terms_document_id, created_by_user_id,
@@ -270,6 +270,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-30T12:00:00.000Z',

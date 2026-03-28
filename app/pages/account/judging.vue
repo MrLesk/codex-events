@@ -364,7 +364,7 @@ useSeoMeta({
                     {{ isDescriptionExpanded(group.hackathon.id) ? 'Show less' : 'Load more' }}
                   </button>
                   <p class="text-[12px] text-muted">
-                    {{ group.hackathon.city }}
+                    {{ formatHackathonLocation(group.hackathon) }}
                   </p>
                 </div>
 

@@ -83,6 +83,7 @@ export const hackathons = sqliteTable(
     bannerImageUrl: text('banner_image_url'),
     lumaEventUrl: text('luma_event_url'),
     city: text('city').notNull(),
+    country: text('country').notNull(),
     address: text('address').notNull(),
     registrationOpensAt: text('registration_opens_at').notNull(),
     registrationClosesAt: text('registration_closes_at').notNull(),

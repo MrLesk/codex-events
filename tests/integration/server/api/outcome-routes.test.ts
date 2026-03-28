@@ -91,6 +91,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       slug: 'outcome-hackathon',
       description: 'Outcome hackathon',
       city: 'Vienna',
+      country: 'Austria',
       address: 'Address',
       registrationOpensAt: '2026-03-10T12:00:00.000Z',
       registrationClosesAt: '2026-03-12T12:00:00.000Z',

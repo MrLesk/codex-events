@@ -47,6 +47,7 @@ function serializeHackathonSummary(hackathon: HackathonRecord) {
     name: hackathon.name,
     slug: hackathon.slug,
     city: hackathon.city,
+    country: hackathon.country,
     state: hackathon.state,
     registrationOpensAt: hackathon.registrationOpensAt,
     submissionClosesAt: hackathon.submissionClosesAt

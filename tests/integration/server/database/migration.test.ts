@@ -207,13 +207,13 @@ async function seedHackathon(
 ) {
   await database.prepare(`
     insert into hackathons (
-      id, name, slug, description, background_image_url, banner_image_url, city, address,
+      id, name, slug, description, background_image_url, banner_image_url, city, country, address,
       registration_opens_at, registration_closes_at, submission_opens_at, submission_closes_at,
       state, max_team_members, require_x_profile, require_linkedin_profile, require_github_profile,
       current_application_terms_document_id, current_winner_terms_document_id, created_by_user_id,
       created_at, updated_at
     )
-    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     hackathonId,
     `Hackathon ${hackathonId}`,
@@ -222,6 +222,7 @@ async function seedHackathon(
     null,
     null,
     'City',
+    'Country',
     'Address',
     now,
     isoTimestamp(1),

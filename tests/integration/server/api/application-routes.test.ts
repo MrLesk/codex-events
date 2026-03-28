@@ -83,6 +83,7 @@ async function seedApplicationContext(
     slug: 'fixture-hackathon',
     description: 'Fixture hackathon',
     city: 'Vienna',
+    country: 'Austria',
     address: 'Fixture Address',
     registrationOpensAt: '2026-03-20T12:00:00.000Z',
     registrationClosesAt: '2026-03-23T12:00:00.000Z',

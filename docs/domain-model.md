@@ -43,7 +43,7 @@ Key characteristics:
 - Each hackathon can define structured agenda items for public schedule display and admin editing.
 - Each hackathon can be marked as an in-person event.
 - Each hackathon can optionally reference a Luma event URL.
-- Each hackathon has a city and address.
+- Each hackathon has a city, country, and address.
 - Each hackathon has its own registration window.
 - Each hackathon has its own submission window.
 - Each hackathon has a submission flow that can be activated manually within its configured submission window.
@@ -124,7 +124,7 @@ Rules:
 - Blind judging uses application information without exposing team identity.
 - User application acceptance references the exact application terms version accepted for that hackathon.
 - A user can submit a `UserApplication` only if the user profile satisfies that hackathon's required profile rules.
-- If a hackathon is marked as an in-person event, a user application requires explicit commitment to attend in person on the hackathon date in that city after approval.
+- If a hackathon is marked as an in-person event, a user application requires explicit commitment to attend in person on the hackathon date in that city and country after approval.
 - A user application records a registration team-intent hint: `solo`, `team`, or `unknown`.
 - When the registration team-intent hint is `team`, the user application can include free-form teammate hints captured during application (name/family-name and/or email per hinted member).
 - A user application can include a free-form `why this hackathon` response.

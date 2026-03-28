@@ -63,6 +63,7 @@ function serializeHackathonParticipation(
     description: hackathon.description,
     state: hackathon.state,
     city: hackathon.city,
+    country: hackathon.country,
     address: hackathon.address,
     bannerImageUrl: hackathon.bannerImageUrl,
     backgroundImageUrl: hackathon.backgroundImageUrl,

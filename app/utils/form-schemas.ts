@@ -152,6 +152,7 @@ export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object
   backgroundImageUrl: createOptionalHttpUrlSchema('Enter a valid background image URL.'),
   bannerImageUrl: createOptionalHttpUrlSchema('Enter a valid banner image URL.'),
   city: requiredTextSchema,
+  country: requiredTextSchema,
   address: requiredTextSchema,
   registrationOpensAt: z.string().trim().min(1),
   registrationClosesAt: z.string().trim().min(1),

@@ -104,6 +104,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       slug: 'judging-hackathon',
       description: 'Judging hackathon',
       city: 'Vienna',
+      country: 'Austria',
       address: 'Address',
       registrationOpensAt: '2026-03-18T12:00:00.000Z',
       registrationClosesAt: '2026-03-19T12:00:00.000Z',

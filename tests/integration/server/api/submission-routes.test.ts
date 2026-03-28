@@ -120,6 +120,7 @@ async function seedSubmissionContext(
     slug: 'submission-hackathon',
     description: 'Submission Hackathon',
     city: 'Vienna',
+    country: 'Austria',
     address: 'Fixture Address',
     registrationOpensAt: '2026-03-20T12:00:00.000Z',
     registrationClosesAt: '2026-03-23T12:00:00.000Z',

@@ -99,10 +99,9 @@ const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
 const detailSummary = computed(() => [
-  formatHackathonWindow(hackathon.value.registrationOpensAt, hackathon.value.submissionClosesAt),
-  hackathon.value.city,
-  formatMaxTeamMembers(hackathon.value.maxTeamMembers)
-].join(' • '))
+  formatHackathonDateWithWeekday(getHackathonEarliestStartAt(hackathon.value)),
+  formatHackathonLocation(hackathon.value)
+].filter(Boolean).join(' - '))
 const sortedAgendaItems = computed(() =>
   [...(hackathon.value.agendaItems ?? [])]
     .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
