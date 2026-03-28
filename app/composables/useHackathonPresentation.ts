@@ -28,6 +28,8 @@ export interface PublicAgendaItemPresentation {
   dayLabel: string | null
   dateLabel: string | null
   timeLabel: string
+  timeLines: string[]
+  timeFlowDirection: 'down' | null
   metaLabel: string
 }
 
@@ -171,6 +173,20 @@ function formatAgendaTimeLabel(startsAt: Date, endsAt: Date | null) {
   return `${startLabel} - ${formatAgendaDayContext(endsAt)} | ${timeFormatter.format(endsAt)}`
 }
 
+function getAgendaTimeLines(startsAt: Date, endsAt: Date | null) {
+  const startLabel = timeFormatter.format(startsAt)
+
+  if (!endsAt) {
+    return [startLabel]
+  }
+
+  if (isSameLocalDay(startsAt, endsAt)) {
+    return [startLabel, timeFormatter.format(endsAt)]
+  }
+
+  return [`${startLabel} - ${formatAgendaDayContext(endsAt)} | ${timeFormatter.format(endsAt)}`]
+}
+
 export function formatHackathonStateLabel(state: PublicHackathonState) {
   return stateLabels[state]
 }
@@ -220,12 +236,16 @@ export function getAgendaItemPresentation(
   const startsAt = new Date(item.startsAt)
   const endsAt = item.endsAt ? new Date(item.endsAt) : null
   const timeLabel = formatAgendaTimeLabel(startsAt, endsAt)
+  const timeLines = getAgendaTimeLines(startsAt, endsAt)
+  const timeFlowDirection = timeLines.length > 1 ? 'down' : null
 
   if (!showDayContext) {
     return {
       dayLabel: null,
       dateLabel: null,
       timeLabel,
+      timeLines,
+      timeFlowDirection,
       metaLabel: timeLabel
     }
   }
@@ -237,6 +257,8 @@ export function getAgendaItemPresentation(
     dayLabel,
     dateLabel,
     timeLabel,
+    timeLines,
+    timeFlowDirection,
     metaLabel: `${dayLabel}, ${dateLabel} | ${timeLabel}`
   }
 }

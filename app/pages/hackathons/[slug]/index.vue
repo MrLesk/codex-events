@@ -362,76 +362,104 @@ useSeoMeta({
             aria-hidden="true"
           />
 
-          <div class="relative mb-5 flex flex-col gap-4 border-b border-black/8 pb-5 dark:border-white/[0.08] sm:flex-row sm:items-end sm:justify-between">
-            <div class="space-y-3">
-              <div class="inline-flex items-center gap-3">
-                <span class="flex size-8 items-center justify-center rounded-full border border-black/8 bg-white/80 text-amber-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-amber-300">
-                  <AppIcon
-                    name="i-lucide-calendar-range"
-                    class="size-4"
-                  />
-                </span>
-                <div>
-                  <h2 class="text-xl font-semibold tracking-[-0.03em] text-highlighted dark:text-white">
-                    Agenda
-                  </h2>
-                  <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    Published schedule for this hackathon.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div class="inline-flex w-fit items-center rounded-full border border-black/8 bg-white/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-[#B8B8B8]">
-              {{ agendaEntries.length }} items
-            </div>
+          <div class="relative mb-6 flex items-center gap-3 border-b border-black/8 pb-5 dark:border-white/[0.08]">
+            <span class="flex size-8 items-center justify-center rounded-full border border-black/8 bg-white/80 text-amber-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-amber-300">
+              <AppIcon
+                name="i-lucide-calendar-range"
+                class="size-4"
+              />
+            </span>
+            <h2 class="text-xl font-semibold tracking-[-0.03em] text-highlighted dark:text-white">
+              Agenda
+            </h2>
           </div>
 
-          <ol class="space-y-3.5">
-            <li
-              v-for="item in agendaEntries"
-              :key="item.id"
-              class="group relative overflow-hidden rounded-[1.35rem] border border-black/8 bg-white/74 p-4 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:border-black/15 active:translate-y-px dark:border-white/[0.08] dark:bg-[#161616]/84 dark:hover:border-white/[0.14] sm:p-5"
-            >
-              <div class="grid gap-4 md:grid-cols-[11rem_minmax(0,1fr)] md:gap-6">
-                <div class="flex flex-col gap-2 md:items-end md:text-right">
+          <div class="relative lg:pl-[7.5rem]">
+            <div class="absolute bottom-2 left-[6rem] top-2 hidden w-px bg-black/12 dark:bg-white/[0.14] lg:block" />
+
+            <ol class="space-y-3.5">
+              <li
+                v-for="item in agendaEntries"
+                :key="item.id"
+                class="relative"
+              >
+                <div
+                  class="absolute left-[-2rem] top-1/2 hidden size-4 -translate-y-1/2 rounded-full border-[3px] border-[#FAF7EF] bg-amber-500 shadow-[0_0_0_6px_rgba(250,247,239,0.92)] dark:border-[#101010] dark:bg-amber-300 dark:shadow-[0_0_0_6px_rgba(16,16,16,0.9)] lg:block"
+                  aria-hidden="true"
+                />
+                <div class="absolute left-[-7.5rem] top-1/2 hidden w-[5rem] -translate-y-1/2 text-right lg:block">
                   <div
-                    v-if="item.presentation.dayLabel"
-                    class="space-y-0.5"
-                  >
-                    <p class="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-700/80 dark:text-amber-300/75">
-                      {{ item.presentation.dayLabel }}
-                    </p>
-                    <p class="text-sm font-semibold text-highlighted dark:text-white">
-                      {{ item.presentation.dateLabel }}
-                    </p>
-                  </div>
-                  <p
-                    class="whitespace-nowrap font-mono text-[13px] font-medium text-neutral-600 dark:text-[#BBBBBB]"
+                    class="text-[12px] font-medium leading-tight text-neutral-500 dark:text-[#8C8C8C]"
                     :title="item.presentation.metaLabel"
                   >
-                    {{ item.presentation.timeLabel }}
+                    <template v-if="item.presentation.dayLabel">
+                      <p>{{ item.presentation.dateLabel }}</p>
+                    </template>
+                    <template v-else>
+                      <div class="ml-auto flex w-fit flex-col items-center gap-0.5">
+                        <p class="whitespace-nowrap">
+                          {{ item.presentation.timeLines[0] }}
+                        </p>
+                        <AppIcon
+                          v-if="item.presentation.timeFlowDirection === 'down'"
+                          name="i-lucide-arrow-down"
+                          class="size-3 text-amber-700/80 dark:text-amber-300/75"
+                        />
+                        <p
+                          v-if="item.presentation.timeLines[1]"
+                          class="whitespace-nowrap"
+                        >
+                          {{ item.presentation.timeLines[1] }}
+                        </p>
+                      </div>
+                    </template>
+                  </div>
+                  <p
+                    v-if="item.presentation.dayLabel"
+                    class="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700/80 dark:text-amber-300/75"
+                  >
+                    {{ item.presentation.dayLabel }}
                   </p>
                 </div>
 
-                <div class="relative min-w-0 border-t border-black/8 pt-4 dark:border-white/[0.08] md:border-t-0 md:border-l md:pl-6 md:pt-0">
-                  <span
-                    class="absolute -top-1.5 left-0 hidden size-3 rounded-full border border-amber-500/35 bg-white shadow-[0_0_0_6px_rgba(255,255,255,0.72)] dark:bg-[#121212] dark:shadow-[0_0_0_6px_rgba(18,18,18,0.82)] md:block"
-                    aria-hidden="true"
-                  />
-                  <p class="text-[17px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-                    {{ item.title }}
-                  </p>
-                  <p
-                    v-if="item.details"
-                    class="mt-2 max-w-[62ch] text-sm leading-6 text-neutral-600 dark:text-[#AFAFAF]"
-                  >
-                    {{ item.details }}
-                  </p>
+                <div class="group relative overflow-hidden rounded-[1.35rem] border border-black/8 bg-white/74 p-4 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:border-black/15 active:translate-y-px dark:border-white/[0.08] dark:bg-[#161616]/84 dark:hover:border-white/[0.14] sm:p-5">
+                  <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                      <div
+                        v-if="item.presentation.dayLabel"
+                        class="mb-3 flex flex-wrap items-center gap-2"
+                      >
+                        <span class="inline-flex items-center rounded-full border border-black/8 bg-black/[0.03] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700/80 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-amber-300/75">
+                          {{ item.presentation.dayLabel }}
+                        </span>
+                        <span class="inline-flex items-center rounded-full border border-black/8 bg-white/78 px-3 py-1 text-[11px] font-medium text-neutral-600 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-[#C9C9C9]">
+                          {{ item.presentation.dateLabel }}
+                        </span>
+                      </div>
+
+                      <p class="text-[17px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+                        {{ item.title }}
+                      </p>
+                      <p
+                        v-if="item.details"
+                        class="mt-2 max-w-[62ch] text-sm leading-6 text-neutral-600 dark:text-[#AFAFAF]"
+                      >
+                        {{ item.details }}
+                      </p>
+                    </div>
+
+                    <div
+                      class="inline-flex shrink-0 items-center rounded-full border border-black/8 bg-white/78 px-3 py-1 text-[11px] font-medium text-neutral-600 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-[#C9C9C9]"
+                      :class="item.presentation.dayLabel ? '' : 'lg:hidden'"
+                      :title="item.presentation.metaLabel"
+                    >
+                      {{ item.presentation.timeLabel }}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </li>
-          </ol>
+              </li>
+            </ol>
+          </div>
         </section>
       </section>
     </AppContainer>

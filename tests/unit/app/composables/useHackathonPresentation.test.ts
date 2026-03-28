@@ -23,6 +23,8 @@ describe('public hackathon agenda presentation helpers', () => {
       dayLabel: null,
       dateLabel: null,
       timeLabel: '09:00 AM - 09:45 AM',
+      timeLines: ['09:00 AM', '09:45 AM'],
+      timeFlowDirection: 'down',
       metaLabel: '09:00 AM - 09:45 AM'
     })
   })
@@ -44,6 +46,8 @@ describe('public hackathon agenda presentation helpers', () => {
       dayLabel: 'Fri',
       dateLabel: 'Mar 27',
       timeLabel: '09:00 AM - 09:45 AM',
+      timeLines: ['09:00 AM', '09:45 AM'],
+      timeFlowDirection: 'down',
       metaLabel: 'Fri, Mar 27 | 09:00 AM - 09:45 AM'
     })
   })
@@ -56,6 +60,8 @@ describe('public hackathon agenda presentation helpers', () => {
       dayLabel: 'Sat',
       dateLabel: 'Mar 28',
       timeLabel: '11:00 PM - Sun, Mar 29 | 01:00 AM',
+      timeLines: ['11:00 PM - Sun, Mar 29 | 01:00 AM'],
+      timeFlowDirection: null,
       metaLabel: 'Sat, Mar 28 | 11:00 PM - Sun, Mar 29 | 01:00 AM'
     })
   })
