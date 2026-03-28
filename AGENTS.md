@@ -61,7 +61,9 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 
 - Keep domain language stable and intentional.
 - Assume high concurrency in this repository. Other agents or collaborators may be editing nearby files at the same time.
+- Do not stop work just because you notice unrelated or unexpected changes in the worktree. Expect parallel work by default and continue unless those changes directly block the task you are doing.
 - Inspect the worktree before staging, committing, or reverting anything, and isolate only the files required for your task.
+- When parallel work is present, adapt to it. Read carefully, avoid overwriting others, and stage or commit only the changes required for your task.
 - Do not overwrite, revert, or "clean up" changes you did not make unless the user explicitly asks you to do so.
 - Default git workflow for this repository is to commit directly on `main` and push to `origin/main`.
 - Do not create feature branches or PRs unless the user explicitly asks for them.
