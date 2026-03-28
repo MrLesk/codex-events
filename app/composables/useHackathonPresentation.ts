@@ -24,6 +24,13 @@ export interface PublicHackathonAgendaItem {
   displayOrder: number
 }
 
+export interface PublicAgendaItemPresentation {
+  dayLabel: string | null
+  dateLabel: string | null
+  timeLabel: string
+  metaLabel: string
+}
+
 export interface PublicHackathon {
   name: string
   slug: string
@@ -131,6 +138,39 @@ const compactDateFormatter = new Intl.DateTimeFormat('en-US', {
   day: 'numeric'
 })
 
+const weekdayFormatter = new Intl.DateTimeFormat('en-US', {
+  weekday: 'short'
+})
+
+const timeFormatter = new Intl.DateTimeFormat('en-US', {
+  hour: '2-digit',
+  minute: '2-digit'
+})
+
+function isSameLocalDay(left: Date, right: Date) {
+  return left.getFullYear() === right.getFullYear()
+    && left.getMonth() === right.getMonth()
+    && left.getDate() === right.getDate()
+}
+
+function formatAgendaDayContext(value: Date) {
+  return `${weekdayFormatter.format(value)}, ${compactDateFormatter.format(value)}`
+}
+
+function formatAgendaTimeLabel(startsAt: Date, endsAt: Date | null) {
+  const startLabel = timeFormatter.format(startsAt)
+
+  if (!endsAt) {
+    return startLabel
+  }
+
+  if (isSameLocalDay(startsAt, endsAt)) {
+    return `${startLabel} - ${timeFormatter.format(endsAt)}`
+  }
+
+  return `${startLabel} - ${formatAgendaDayContext(endsAt)} | ${timeFormatter.format(endsAt)}`
+}
+
 export function formatHackathonStateLabel(state: PublicHackathonState) {
   return stateLabels[state]
 }
@@ -153,6 +193,52 @@ export function formatHackathonCompactDate(value: string) {
 
 export function formatHackathonWindow(start: string, end: string) {
   return `${compactDateFormatter.format(new Date(start))} - ${fullDateFormatter.format(new Date(end))}`
+}
+
+export function shouldShowAgendaDayContext(
+  items: Pick<PublicHackathonAgendaItem, 'startsAt' | 'endsAt'>[]
+) {
+  if (items.length === 0) {
+    return false
+  }
+
+  let earliestTimestamp = Number.POSITIVE_INFINITY
+  let latestTimestamp = Number.NEGATIVE_INFINITY
+
+  for (const item of items) {
+    earliestTimestamp = Math.min(earliestTimestamp, new Date(item.startsAt).getTime())
+    latestTimestamp = Math.max(latestTimestamp, new Date(item.endsAt ?? item.startsAt).getTime())
+  }
+
+  return !isSameLocalDay(new Date(earliestTimestamp), new Date(latestTimestamp))
+}
+
+export function getAgendaItemPresentation(
+  item: Pick<PublicHackathonAgendaItem, 'startsAt' | 'endsAt'>,
+  showDayContext: boolean
+): PublicAgendaItemPresentation {
+  const startsAt = new Date(item.startsAt)
+  const endsAt = item.endsAt ? new Date(item.endsAt) : null
+  const timeLabel = formatAgendaTimeLabel(startsAt, endsAt)
+
+  if (!showDayContext) {
+    return {
+      dayLabel: null,
+      dateLabel: null,
+      timeLabel,
+      metaLabel: timeLabel
+    }
+  }
+
+  const dayLabel = weekdayFormatter.format(startsAt)
+  const dateLabel = compactDateFormatter.format(startsAt)
+
+  return {
+    dayLabel,
+    dateLabel,
+    timeLabel,
+    metaLabel: `${dayLabel}, ${dateLabel} | ${timeLabel}`
+  }
 }
 
 export function describeWindowStatus(
