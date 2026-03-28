@@ -313,9 +313,9 @@ useSeoMeta({
 
         <div class="mt-3 border-b border-black/8 pb-0 dark:border-white/[0.08]">
           <div class="space-y-2 pb-4">
-            <div class="flex flex-wrap items-start justify-between gap-4">
-              <div class="min-w-0 space-y-2">
-                <div class="flex min-w-0 flex-wrap items-center gap-3">
+            <div class="space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0 flex flex-wrap items-center gap-3">
                   <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
                     {{ hackathon.name }}
                   </h1>
@@ -327,18 +327,18 @@ useSeoMeta({
                   </span>
                 </div>
 
-                <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-                  {{ detailSummary }}
-                </p>
+                <AppBadge
+                  :color="applicationStatusColor"
+                  variant="soft"
+                  class="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                >
+                  {{ applicationStatusLabel }}
+                </AppBadge>
               </div>
 
-              <AppBadge
-                :color="applicationStatusColor"
-                variant="soft"
-                class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
-              >
-                {{ applicationStatusLabel }}
-              </AppBadge>
+              <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
+                {{ detailSummary }}
+              </p>
             </div>
 
             <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
