@@ -71,7 +71,7 @@ interface AccountHackathonsResponse {
   }
 }
 
-const allWorkspaceTabs = [
+const _allWorkspaceTabs = [
   'overview',
   'prizes',
   'details',
@@ -81,7 +81,7 @@ const allWorkspaceTabs = [
   'operations',
   'settings'
 ] as const
-type WorkspaceSectionTab = (typeof allWorkspaceTabs)[number]
+type WorkspaceSectionTab = (typeof _allWorkspaceTabs)[number]
 
 const workspaceTabLabels: Record<WorkspaceSectionTab, string> = {
   overview: 'Overview',

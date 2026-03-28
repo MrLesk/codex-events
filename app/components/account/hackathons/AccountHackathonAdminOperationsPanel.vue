@@ -500,152 +500,152 @@ async function runLifecycleAction() {
 
 <template>
   <div class="space-y-8">
-      <AppAlert
-        v-if="mutationError"
-        color="error"
-        variant="soft"
-        title="Admin operation failed"
-        :description="mutationError"
-      />
+    <AppAlert
+      v-if="mutationError"
+      color="error"
+      variant="soft"
+      title="Admin operation failed"
+      :description="mutationError"
+    />
 
-      <AppAlert
-        v-if="workspace.hackathon.error.value"
-        color="error"
-        variant="soft"
-        title="Unable to load hackathon"
-        :description="workspace.hackathon.error.value.message"
-      />
+    <AppAlert
+      v-if="workspace.hackathon.error.value"
+      color="error"
+      variant="soft"
+      title="Unable to load hackathon"
+      :description="workspace.hackathon.error.value.message"
+    />
 
-      <AppAlert
-        v-else-if="currentHackathon && !canManage"
-        color="warning"
-        variant="soft"
-        title="Admin access required"
-        description="This hackathon is visible, but the current actor does not have hackathon-admin capabilities for its operational workspace."
-      />
+    <AppAlert
+      v-else-if="currentHackathon && !canManage"
+      color="warning"
+      variant="soft"
+      title="Admin access required"
+      description="This hackathon is visible, but the current actor does not have hackathon-admin capabilities for its operational workspace."
+    />
 
-      <template v-else-if="currentHackathon">
-        <section class="grid gap-4 lg:grid-cols-4">
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Hackathon state
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ formatHackathonState(currentHackathon.state) }}
+    <template v-else-if="currentHackathon">
+      <section class="grid gap-4 lg:grid-cols-4">
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Hackathon state
+          </p>
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ formatHackathonState(currentHackathon.state) }}
+          </p>
+        </div>
+
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Applications
+          </p>
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ applicationSummaryValue }}
+          </p>
+        </div>
+
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Teams
+          </p>
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ teamSummaryValue }}
+          </p>
+        </div>
+
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Actionable interventions
+          </p>
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ actionableSummaryValue }}
+          </p>
+        </div>
+      </section>
+
+      <AppCard
+        v-if="lifecycleControl"
+        class="rounded-xl hackathon-workspace-detail-panel"
+      >
+        <template #header>
+          <div class="space-y-1">
+            <h2 class="text-lg font-semibold text-highlighted">
+              Next Lifecycle Action
+            </h2>
+            <p class="text-sm text-muted">
+              Execute state transitions from operations once readiness criteria are met.
             </p>
           </div>
+        </template>
 
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+        <div class="grid gap-4">
+          <div class="space-y-1">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Applications
+              Action
             </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ applicationSummaryValue }}
-            </p>
-          </div>
-
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Teams
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ teamSummaryValue }}
-            </p>
-          </div>
-
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Actionable interventions
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ actionableSummaryValue }}
-            </p>
-          </div>
-        </section>
-
-        <AppCard
-          v-if="lifecycleControl"
-          class="rounded-xl hackathon-workspace-detail-panel"
-        >
-          <template #header>
-            <div class="space-y-1">
-              <h2 class="text-lg font-semibold text-highlighted">
-                Next Lifecycle Action
-              </h2>
-              <p class="text-sm text-muted">
-                Execute state transitions from operations once readiness criteria are met.
-              </p>
-            </div>
-          </template>
-
-          <div class="grid gap-4">
-            <div class="space-y-1">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                Action
-              </p>
-              <h3 class="text-base font-semibold text-highlighted">
-                {{ lifecycleControl.label }}
-              </h3>
-              <p class="text-sm text-toned">
-                {{ lifecycleControl.description }}
-              </p>
-            </div>
-
-            <AppAlert
-              v-if="lifecycleControl.reason"
-              color="warning"
-              variant="soft"
-              title="Not ready yet"
-              :description="lifecycleControl.reason"
-            />
-
-            <AppButton
-              :disabled="!lifecycleControl.isEnabled"
-              color="primary"
-              size="lg"
-              class="justify-center sm:justify-start"
-              @click="runLifecycleAction"
-            >
+            <h3 class="text-base font-semibold text-highlighted">
               {{ lifecycleControl.label }}
-            </AppButton>
+            </h3>
+            <p class="text-sm text-toned">
+              {{ lifecycleControl.description }}
+            </p>
           </div>
-        </AppCard>
 
-        <AdminApplicationsReviewPanel
-          :applications="applications"
-          :participants-limit="currentHackathon.participantsLimit ?? null"
-          :is-loading="applicationsStatus === 'pending'"
-          :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
-          :pending-action-key="pendingActionKey"
-          @approve="approveApplication"
-          @reject="rejectApplication"
-          @save-decisions="applyStagedApplicationDecisions"
+          <AppAlert
+            v-if="lifecycleControl.reason"
+            color="warning"
+            variant="soft"
+            title="Not ready yet"
+            :description="lifecycleControl.reason"
+          />
+
+          <AppButton
+            :disabled="!lifecycleControl.isEnabled"
+            color="primary"
+            size="lg"
+            class="justify-center sm:justify-start"
+            @click="runLifecycleAction"
+          >
+            {{ lifecycleControl.label }}
+          </AppButton>
+        </div>
+      </AppCard>
+
+      <AdminApplicationsReviewPanel
+        :applications="applications"
+        :participants-limit="currentHackathon.participantsLimit ?? null"
+        :is-loading="applicationsStatus === 'pending'"
+        :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
+        :pending-action-key="pendingActionKey"
+        @approve="approveApplication"
+        @reject="rejectApplication"
+        @save-decisions="applyStagedApplicationDecisions"
+      />
+
+      <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <AdminTeamsOperationsPanel
+          :teams="operationalTeams"
+          :total-teams="totalTeams"
+          :is-loading-teams="teamsStatus === 'pending' || operationalTeamsStatus === 'pending'"
+          :team-error-message="teamsStatus === 'error' ? teamsErrorMessage : operationalTeamsStatus === 'error' ? operationalTeamsErrorMessage : ''"
+          :is-loading-no-submission="noSubmissionStatus === 'pending'"
+          :no-submission-error-message="noSubmissionStatus === 'error' ? noSubmissionErrorMessage : ''"
+          :has-more-teams="hasMoreTeams"
+          :is-loading-more-teams="isLoadingMoreTeams"
+          :load-more-teams-error-message="loadMoreTeamsErrorMessage"
+          @load-more-teams="loadMoreTeams"
         />
 
-        <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <AdminTeamsOperationsPanel
-            :teams="operationalTeams"
-            :total-teams="totalTeams"
-            :is-loading-teams="teamsStatus === 'pending' || operationalTeamsStatus === 'pending'"
-            :team-error-message="teamsStatus === 'error' ? teamsErrorMessage : operationalTeamsStatus === 'error' ? operationalTeamsErrorMessage : ''"
-            :is-loading-no-submission="noSubmissionStatus === 'pending'"
-            :no-submission-error-message="noSubmissionStatus === 'error' ? noSubmissionErrorMessage : ''"
-            :has-more-teams="hasMoreTeams"
-            :is-loading-more-teams="isLoadingMoreTeams"
-            :load-more-teams-error-message="loadMoreTeamsErrorMessage"
-            @load-more-teams="loadMoreTeams"
-          />
-
-          <AdminSubmissionInterventionsPanel
-            :hackathon-state="currentHackathon.state"
-            :teams="operationalTeams"
-            :is-loading="teamsStatus === 'pending' || operationalTeamsStatus === 'pending'"
-            :error-message="teamsStatus === 'error' ? teamsErrorMessage : operationalTeamsStatus === 'error' ? operationalTeamsErrorMessage : ''"
-            :pending-action-key="pendingActionKey"
-            @admin-withdraw="adminWithdrawSubmission"
-            @disqualify="disqualifySubmission"
-          />
-        </section>
-      </template>
+        <AdminSubmissionInterventionsPanel
+          :hackathon-state="currentHackathon.state"
+          :teams="operationalTeams"
+          :is-loading="teamsStatus === 'pending' || operationalTeamsStatus === 'pending'"
+          :error-message="teamsStatus === 'error' ? teamsErrorMessage : operationalTeamsStatus === 'error' ? operationalTeamsErrorMessage : ''"
+          :pending-action-key="pendingActionKey"
+          @admin-withdraw="adminWithdrawSubmission"
+          @disqualify="disqualifySubmission"
+        />
+      </section>
+    </template>
   </div>
 </template>

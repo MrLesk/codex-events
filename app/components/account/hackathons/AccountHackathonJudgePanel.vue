@@ -11,7 +11,7 @@ const workspace = useJudgeWorkspace()
 const currentHackathon = computed(() =>
   filterExplicitJudgeHackathons(workspace.hackathons.data.value ?? [], workspace.actor.value)
     .find(hackathon => hackathon.slug === props.slug)
-  ?? null
+    ?? null
 )
 const currentInboxGroup = computed(() =>
   workspace.inboxGroups.value.find(group => group.hackathon.slug === props.slug) ?? null

@@ -4,9 +4,6 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
-  alias: {
-    '#platform-legal': fileURLToPath(new URL('./shared/platform-legal.ts', import.meta.url))
-  },
 
   modules: [
     '@nuxt/eslint',
@@ -50,6 +47,9 @@ export default defineNuxtConfig({
     hackathonImages: {
       binding: 'HACKATHON_IMAGES'
     }
+  },
+  alias: {
+    '#platform-legal': fileURLToPath(new URL('./shared/platform-legal.ts', import.meta.url))
   },
 
   compatibilityDate: '2025-01-15',

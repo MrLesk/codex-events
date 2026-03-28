@@ -555,248 +555,248 @@ async function completeHackathon() {
 
 <template>
   <div class="space-y-8">
-      <AppAlert
-        v-if="mutationError"
-        color="error"
-        variant="soft"
-        title="Judging action failed"
-        :description="mutationError"
-      />
+    <AppAlert
+      v-if="mutationError"
+      color="error"
+      variant="soft"
+      title="Judging action failed"
+      :description="mutationError"
+    />
 
-      <AppAlert
-        v-if="workspace.hackathon.error.value"
-        color="error"
-        variant="soft"
-        title="Unable to load hackathon"
-        :description="workspace.hackathon.error.value.message"
-      />
+    <AppAlert
+      v-if="workspace.hackathon.error.value"
+      color="error"
+      variant="soft"
+      title="Unable to load hackathon"
+      :description="workspace.hackathon.error.value.message"
+    />
 
-      <AppAlert
-        v-else-if="workspace.hackathon.status.value === 'pending'"
-        color="neutral"
-        variant="soft"
-        title="Loading judging workspace"
-        description="Resolving the hackathon, role assignments, and judging surfaces for this admin session."
-      />
+    <AppAlert
+      v-else-if="workspace.hackathon.status.value === 'pending'"
+      color="neutral"
+      variant="soft"
+      title="Loading judging workspace"
+      description="Resolving the hackathon, role assignments, and judging surfaces for this admin session."
+    />
 
-      <AppAlert
-        v-else-if="currentHackathon && !canManage"
-        color="warning"
-        variant="soft"
-        title="Admin access required"
-        description="This hackathon is visible, but the current actor does not have hackathon-admin capabilities for its judging workspace."
-      />
+    <AppAlert
+      v-else-if="currentHackathon && !canManage"
+      color="warning"
+      variant="soft"
+      title="Admin access required"
+      description="This hackathon is visible, but the current actor does not have hackathon-admin capabilities for its judging workspace."
+    />
 
-      <template v-else-if="currentHackathon">
-        <section class="grid gap-4 lg:grid-cols-4">
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Hackathon state
-            </p>
-            <div class="mt-2 flex items-center gap-3">
-              <AppBadge
-                data-testid="admin-competition-hackathon-state"
-                :color="getHackathonStateColor(currentHackathon.state)"
-                variant="soft"
-              >
-                {{ formatHackathonState(currentHackathon.state) }}
-              </AppBadge>
-            </div>
+    <template v-else-if="currentHackathon">
+      <section class="grid gap-4 lg:grid-cols-4">
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Hackathon state
+          </p>
+          <div class="mt-2 flex items-center gap-3">
+            <AppBadge
+              data-testid="admin-competition-hackathon-state"
+              :color="getHackathonStateColor(currentHackathon.state)"
+              variant="soft"
+            >
+              {{ formatHackathonState(currentHackathon.state) }}
+            </AppBadge>
           </div>
-
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Assignment oversight
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ assignmentSummaryValue }}
-            </p>
-          </div>
-
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Ranked submissions
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ leaderboardSummaryValue }}
-            </p>
-          </div>
-
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Finalized winners
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ winnerSummaryValue }}
-            </p>
-          </div>
-        </section>
-
-        <section>
-          <AppCard class="rounded-xl hackathon-workspace-detail-panel">
-            <template #header>
-              <div class="space-y-1">
-                <h2 class="text-lg font-semibold text-highlighted">
-                  Judging Criteria
-                </h2>
-                <p class="text-sm text-muted">
-                  Define and maintain the weighted rubric used for judge reviews and leaderboard scoring.
-                </p>
-              </div>
-            </template>
-
-            <div class="space-y-4">
-              <div class="grid gap-4 md:grid-cols-2">
-                <input
-                  v-model="criteriaDraft.name"
-                  type="text"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                  placeholder="Criterion name"
-                >
-                <input
-                  v-model.number="criteriaDraft.weight"
-                  type="number"
-                  min="0"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                  placeholder="Weight"
-                >
-              </div>
-              <textarea
-                v-model="criteriaDraft.description"
-                rows="3"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                placeholder="Criterion description"
-              />
-              <AppButton
-                v-if="canMutateRoles"
-                color="primary"
-                label="Add Criterion"
-                @click="createCriterion"
-              />
-
-              <div class="grid gap-3">
-                <div
-                  v-for="criterion in criteria"
-                  :key="criterion.id"
-                  class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4"
-                >
-                  <div class="grid gap-4">
-                    <div class="grid gap-4 md:grid-cols-[1fr_120px_120px]">
-                      <input
-                        v-model="getCriterionEdit(criterion).name"
-                        type="text"
-                        class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                        placeholder="Criterion name"
-                      >
-                      <input
-                        v-model.number="getCriterionEdit(criterion).weight"
-                        type="number"
-                        min="0"
-                        class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                        placeholder="Weight"
-                      >
-                      <input
-                        v-model.number="getCriterionEdit(criterion).displayOrder"
-                        type="number"
-                        min="1"
-                        class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                        placeholder="Order"
-                      >
-                    </div>
-                    <textarea
-                      v-model="getCriterionEdit(criterion).description"
-                      rows="3"
-                      class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                      placeholder="Criterion description"
-                    />
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                      <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
-                        Existing criterion
-                      </p>
-                      <AppButton
-                        v-if="canMutateRoles"
-                        size="sm"
-                        variant="soft"
-                        @click="updateCriterion(criterion.id)"
-                      >
-                        Save updates
-                      </AppButton>
-                    </div>
-                  </div>
-                </div>
-                <p
-                  v-if="criteria.length === 0"
-                  class="text-sm text-muted"
-                >
-                  No judging criteria have been configured yet.
-                </p>
-              </div>
-            </div>
-          </AppCard>
-        </section>
-
-        <AdminCompetitionAssignmentsPanel
-          :hackathon-state="currentHackathon.state"
-          :assignments="assignments"
-          :judge-choices="judgeChoices"
-          :is-loading="assignmentsStatus === 'pending'"
-          :error-message="assignmentsStatus === 'error' ? assignmentsErrorMessage : ''"
-          :pending-action-key="pendingActionKey"
-          @reassign="reassignAssignment"
-          @force-skip="forceSkipAssignment"
-        />
-
-        <section class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <AdminCompetitionShortlistPanel
-            :hackathon-state="currentHackathon.state"
-            :leaderboard="leaderboardEntries"
-            :shortlist="shortlistEntries"
-            :is-leaderboard-loading="leaderboardStatus === 'pending'"
-            :leaderboard-error-message="leaderboardStatus === 'error' ? leaderboardErrorMessage : ''"
-            :is-shortlist-loading="shortlistStatus === 'pending'"
-            :shortlist-error-message="shortlistStatus === 'error' ? shortlistErrorMessage : ''"
-            :pending-action-key="pendingActionKey"
-            @reorder="reorderShortlist"
-          />
-
-          <AdminCompetitionOutcomePanel
-            :hackathon-state="currentHackathon.state"
-            :winners="winners"
-            :winner-terms-title="currentHackathon.currentTerms?.winnerTerms?.title ?? null"
-            :outcome-control="outcomeControl"
-            :is-loading="winnersStatus === 'pending'"
-            :error-message="winnersStatus === 'error' ? winnersErrorMessage : ''"
-            :pending-action-key="pendingActionKey"
-            @announce-winners="announceWinners"
-            @complete-hackathon="completeHackathon"
-          />
-        </section>
-
-        <AdminCompetitionPrizeRedemptionsPanel
-          :hackathon-state="currentHackathon.state"
-          :winners="winners"
-          :redemptions="redemptions"
-          :is-loading="redemptionsStatus === 'pending'"
-          :error-message="redemptionsStatus === 'error' ? redemptionsErrorMessage : ''"
-        />
-
-        <AppAlert
-          v-if="!['judging_preparation', 'judge_review', 'shortlist', 'winners_announced', 'completed'].includes(currentHackathon.state)"
-          color="neutral"
-          variant="soft"
-          title="Judging workflow is staged"
-          description="Assignment operations become fully active once submissions close and judging preparation begins."
-        />
+        </div>
 
         <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Shortlist status
+            Assignment oversight
           </p>
-          <p class="mt-2 text-sm text-toned">
-            Shortlist entries: {{ shortlistSummaryValue }}.
-            Current winner terms: {{ currentHackathon.currentTerms?.winnerTerms?.title ?? 'None selected' }}.
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ assignmentSummaryValue }}
           </p>
         </div>
-      </template>
+
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Ranked submissions
+          </p>
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ leaderboardSummaryValue }}
+          </p>
+        </div>
+
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Finalized winners
+          </p>
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ winnerSummaryValue }}
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+          <template #header>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold text-highlighted">
+                Judging Criteria
+              </h2>
+              <p class="text-sm text-muted">
+                Define and maintain the weighted rubric used for judge reviews and leaderboard scoring.
+              </p>
+            </div>
+          </template>
+
+          <div class="space-y-4">
+            <div class="grid gap-4 md:grid-cols-2">
+              <input
+                v-model="criteriaDraft.name"
+                type="text"
+                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+                placeholder="Criterion name"
+              >
+              <input
+                v-model.number="criteriaDraft.weight"
+                type="number"
+                min="0"
+                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+                placeholder="Weight"
+              >
+            </div>
+            <textarea
+              v-model="criteriaDraft.description"
+              rows="3"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+              placeholder="Criterion description"
+            />
+            <AppButton
+              v-if="canMutateRoles"
+              color="primary"
+              label="Add Criterion"
+              @click="createCriterion"
+            />
+
+            <div class="grid gap-3">
+              <div
+                v-for="criterion in criteria"
+                :key="criterion.id"
+                class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4"
+              >
+                <div class="grid gap-4">
+                  <div class="grid gap-4 md:grid-cols-[1fr_120px_120px]">
+                    <input
+                      v-model="getCriterionEdit(criterion).name"
+                      type="text"
+                      class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                      placeholder="Criterion name"
+                    >
+                    <input
+                      v-model.number="getCriterionEdit(criterion).weight"
+                      type="number"
+                      min="0"
+                      class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                      placeholder="Weight"
+                    >
+                    <input
+                      v-model.number="getCriterionEdit(criterion).displayOrder"
+                      type="number"
+                      min="1"
+                      class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                      placeholder="Order"
+                    >
+                  </div>
+                  <textarea
+                    v-model="getCriterionEdit(criterion).description"
+                    rows="3"
+                    class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                    placeholder="Criterion description"
+                  />
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
+                      Existing criterion
+                    </p>
+                    <AppButton
+                      v-if="canMutateRoles"
+                      size="sm"
+                      variant="soft"
+                      @click="updateCriterion(criterion.id)"
+                    >
+                      Save updates
+                    </AppButton>
+                  </div>
+                </div>
+              </div>
+              <p
+                v-if="criteria.length === 0"
+                class="text-sm text-muted"
+              >
+                No judging criteria have been configured yet.
+              </p>
+            </div>
+          </div>
+        </AppCard>
+      </section>
+
+      <AdminCompetitionAssignmentsPanel
+        :hackathon-state="currentHackathon.state"
+        :assignments="assignments"
+        :judge-choices="judgeChoices"
+        :is-loading="assignmentsStatus === 'pending'"
+        :error-message="assignmentsStatus === 'error' ? assignmentsErrorMessage : ''"
+        :pending-action-key="pendingActionKey"
+        @reassign="reassignAssignment"
+        @force-skip="forceSkipAssignment"
+      />
+
+      <section class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <AdminCompetitionShortlistPanel
+          :hackathon-state="currentHackathon.state"
+          :leaderboard="leaderboardEntries"
+          :shortlist="shortlistEntries"
+          :is-leaderboard-loading="leaderboardStatus === 'pending'"
+          :leaderboard-error-message="leaderboardStatus === 'error' ? leaderboardErrorMessage : ''"
+          :is-shortlist-loading="shortlistStatus === 'pending'"
+          :shortlist-error-message="shortlistStatus === 'error' ? shortlistErrorMessage : ''"
+          :pending-action-key="pendingActionKey"
+          @reorder="reorderShortlist"
+        />
+
+        <AdminCompetitionOutcomePanel
+          :hackathon-state="currentHackathon.state"
+          :winners="winners"
+          :winner-terms-title="currentHackathon.currentTerms?.winnerTerms?.title ?? null"
+          :outcome-control="outcomeControl"
+          :is-loading="winnersStatus === 'pending'"
+          :error-message="winnersStatus === 'error' ? winnersErrorMessage : ''"
+          :pending-action-key="pendingActionKey"
+          @announce-winners="announceWinners"
+          @complete-hackathon="completeHackathon"
+        />
+      </section>
+
+      <AdminCompetitionPrizeRedemptionsPanel
+        :hackathon-state="currentHackathon.state"
+        :winners="winners"
+        :redemptions="redemptions"
+        :is-loading="redemptionsStatus === 'pending'"
+        :error-message="redemptionsStatus === 'error' ? redemptionsErrorMessage : ''"
+      />
+
+      <AppAlert
+        v-if="!['judging_preparation', 'judge_review', 'shortlist', 'winners_announced', 'completed'].includes(currentHackathon.state)"
+        color="neutral"
+        variant="soft"
+        title="Judging workflow is staged"
+        description="Assignment operations become fully active once submissions close and judging preparation begins."
+      />
+
+      <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+          Shortlist status
+        </p>
+        <p class="mt-2 text-sm text-toned">
+          Shortlist entries: {{ shortlistSummaryValue }}.
+          Current winner terms: {{ currentHackathon.currentTerms?.winnerTerms?.title ?? 'None selected' }}.
+        </p>
+      </div>
+    </template>
   </div>
 </template>
