@@ -84,6 +84,7 @@ It translates the canonical product model into stable backend domains, operation
 The canonical backend domains are:
 
 - `session`
+- `legal`
 - `platform-documents`
 - `account`
 - `hackathons`
@@ -98,6 +99,21 @@ The canonical backend domains are:
 - `winners`
 - `prize-redemption`
 - `audit`
+
+## Legal
+
+Purpose:
+- Support public legal-notice contact from the platform imprint page.
+
+Operations:
+
+| Operation | Method And Path | Actor | Guards And Notes |
+| --- | --- | --- | --- |
+| Submit imprint contact request | `POST /api/public/imprint-contact` | public or authenticated user | Accepts a public support or legal-contact message with name, email, and message text. Sends the message to the platform support inbox through the configured transactional email provider. This route is for legal or support contact only and is not a substitute for authenticated account workflows. |
+
+Testing:
+- Unit: contact-form validation and delivery-result handling.
+- Integration: public request handling and provider-configuration failure behavior.
 
 ## Session
 
@@ -444,6 +460,7 @@ Testing:
 | Domain | Unit | Integration | Auth0-backed End-to-End |
 | --- | --- | --- | --- |
 | Session | Required | Required | Required |
+| Legal | Required | Required | Not required |
 | Platform documents | Required | Required | Required |
 | Account | Required | Required | Required |
 | Hackathons | Required | Required | Required for actor-facing admin and public flows |

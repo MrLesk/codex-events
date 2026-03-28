@@ -1,25 +1,16 @@
 <script setup lang="ts">
 import { renderMarkdown } from '~/utils/markdown'
+import {
+  platformLegalLastUpdatedLabel,
+  platformSupportEmail,
+  platformTermsMarkdown
+} from '../../shared/platform-legal'
 
-const termsMarkdown = `
-## Platform usage
-
-Access to participant, judge, and admin workflows is governed by platform account state, hackathon roles, and workflow-specific permissions.
-
-## Data and records
-
-The platform stores account, participation, and audit records required to run hackathons and preserve operational traceability.
-
-## Document acceptance
-
-Platform account provisioning references exact accepted versions of the legal documents configured in the product.
-`.trim()
-
-const termsHtml = computed(() => renderMarkdown(termsMarkdown))
+const termsHtml = computed(() => renderMarkdown(platformTermsMarkdown))
 
 useSeoMeta({
   title: 'Terms and Conditions',
-  description: 'Platform terms and conditions for Codex Hackathons participants and operators.'
+  description: 'Terms and Conditions for using the Codex Hackathons platform.'
 })
 </script>
 
@@ -39,13 +30,23 @@ useSeoMeta({
         </NuxtLink>
 
         <div class="mt-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
-          <div class="space-y-2">
+          <div class="space-y-3">
             <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
               Terms and Conditions
             </h1>
             <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-              These terms define the baseline rules for using the Codex Hackathons platform.
+              These terms define the baseline rules for using the Codex Hackathons platform and explain how platform-level rules interact with hackathon-specific documents.
             </p>
+            <div class="flex flex-wrap items-center gap-3 text-[13px] text-neutral-600 dark:text-[#A3A3A3]">
+              <span>Last updated {{ platformLegalLastUpdatedLabel }}</span>
+              <span class="hidden sm:inline">•</span>
+              <a
+                :href="`mailto:${platformSupportEmail}`"
+                class="transition-colors hover:text-highlighted dark:hover:text-white"
+              >
+                {{ platformSupportEmail }}
+              </a>
+            </div>
           </div>
         </div>
       </AppContainer>

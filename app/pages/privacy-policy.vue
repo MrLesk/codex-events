@@ -1,25 +1,16 @@
 <script setup lang="ts">
 import { renderMarkdown } from '~/utils/markdown'
+import {
+  platformLegalLastUpdatedLabel,
+  platformPrivacyEmail,
+  platformPrivacyPolicyMarkdown
+} from '../../shared/platform-legal'
 
-const privacyMarkdown = `
-## What the platform stores
-
-Depending on your role and activity, the platform may store account details, hackathon applications, team membership, submissions, judging activity, and prize redemption records.
-
-## Why the platform stores it
-
-This information is used to operate hackathon programs, enforce workflow permissions, preserve auditability, and keep an exact record of document acceptance tied to platform and hackathon workflows.
-
-## Current policy documents
-
-The exact privacy-policy document accepted for platform use is managed inside the product and referenced from the Auth0 signup experience.
-`.trim()
-
-const privacyHtml = computed(() => renderMarkdown(privacyMarkdown))
+const privacyHtml = computed(() => renderMarkdown(platformPrivacyPolicyMarkdown))
 
 useSeoMeta({
   title: 'Privacy Policy',
-  description: 'Overview of how the Codex Hackathons platform handles participant and program data.'
+  description: 'Privacy Policy for the Codex Hackathons platform operated from Vienna, Austria.'
 })
 </script>
 
@@ -39,13 +30,23 @@ useSeoMeta({
         </NuxtLink>
 
         <div class="mt-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
-          <div class="space-y-2">
+          <div class="space-y-3">
             <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
               Privacy Policy
             </h1>
             <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-              This platform processes the information needed to run Codex community hackathons, manage participation, support judging, and administer prize redemption workflows.
+              This policy explains how Codex Hackathons processes personal data across account creation, hackathon participation, judging, prize workflows, and support requests.
             </p>
+            <div class="flex flex-wrap items-center gap-3 text-[13px] text-neutral-600 dark:text-[#A3A3A3]">
+              <span>Last updated {{ platformLegalLastUpdatedLabel }}</span>
+              <span class="hidden sm:inline">•</span>
+              <a
+                :href="`mailto:${platformPrivacyEmail}`"
+                class="transition-colors hover:text-highlighted dark:hover:text-white"
+              >
+                {{ platformPrivacyEmail }}
+              </a>
+            </div>
           </div>
         </div>
       </AppContainer>
