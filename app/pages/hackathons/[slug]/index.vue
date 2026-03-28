@@ -95,6 +95,9 @@ const detailBackgroundImageUrl = computed(() => {
   const bannerImageUrl = hackathon.value.bannerImageUrl?.trim()
   return bannerImageUrl || null
 })
+const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
+  ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
+  : undefined)
 const detailSummary = computed(() => [
   formatHackathonWindow(hackathon.value.registrationOpensAt, hackathon.value.submissionClosesAt),
   hackathon.value.city,
@@ -103,6 +106,13 @@ const detailSummary = computed(() => [
 const sortedAgendaItems = computed(() =>
   [...(hackathon.value.agendaItems ?? [])]
     .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
+)
+const showAgendaDayContext = computed(() => shouldShowAgendaDayContext(sortedAgendaItems.value))
+const agendaEntries = computed(() =>
+  sortedAgendaItems.value.map(item => ({
+    ...item,
+    presentation: getAgendaItemPresentation(item, showAgendaDayContext.value)
+  }))
 )
 const showRegisterCta = computed(() => shouldShowPublicRegistrationEntry(hackathon.value.state))
 const descriptionMarkdown = computed(() => hackathon.value.description?.trim() ?? '')
@@ -162,24 +172,6 @@ watchEffect(() => {
   }, { replace: true })
 })
 
-const agendaDateTimeFormatter = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit'
-})
-
-function formatAgendaWindow(startsAt: string, endsAt: string | null) {
-  const startLabel = agendaDateTimeFormatter.format(new Date(startsAt))
-
-  if (!endsAt) {
-    return startLabel
-  }
-
-  const endLabel = agendaDateTimeFormatter.format(new Date(endsAt))
-  return `${startLabel} - ${endLabel}`
-}
-
 useSeoMeta({
   title: () => `${hackathon.value.name} | Codex Hackathons`,
   description: () => seoDescription.value
@@ -193,11 +185,10 @@ useSeoMeta({
       class="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       aria-hidden="true"
     >
-      <img
-        :src="detailBackgroundImageUrl"
-        :alt="`${hackathon.name} background`"
-        class="h-full w-full scale-110 object-cover opacity-55 blur-md saturate-125 contrast-105"
-      >
+      <div
+        class="hackathon-detail-background-media"
+        :style="detailBackgroundImageStyle"
+      />
       <div class="absolute inset-0 bg-gradient-to-b from-black/20 via-black/45 to-black/68 dark:from-black/35 dark:via-black/55 dark:to-black/76" />
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.22),transparent_46%)] dark:bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.10),transparent_48%)]" />
     </div>
@@ -359,36 +350,86 @@ useSeoMeta({
         />
 
         <section
-          v-if="sortedAgendaItems.length > 0"
-          class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
+          v-if="agendaEntries.length > 0"
+          class="relative overflow-hidden rounded-[1.75rem] border border-black/10 bg-white/72 p-5 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#101010]/78 sm:p-7"
         >
-          <div class="mb-4">
-            <h2 class="text-lg font-semibold text-highlighted dark:text-white">
-              Agenda
-            </h2>
-            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-              Event schedule maintained as structured agenda items.
-            </p>
+          <div
+            class="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent"
+            aria-hidden="true"
+          />
+          <div
+            class="pointer-events-none absolute -right-10 top-6 size-28 rounded-full bg-amber-500/12 blur-3xl"
+            aria-hidden="true"
+          />
+
+          <div class="relative mb-5 flex flex-col gap-4 border-b border-black/8 pb-5 dark:border-white/[0.08] sm:flex-row sm:items-end sm:justify-between">
+            <div class="space-y-3">
+              <div class="inline-flex items-center gap-3">
+                <span class="flex size-8 items-center justify-center rounded-full border border-black/8 bg-white/80 text-amber-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-amber-300">
+                  <AppIcon
+                    name="i-lucide-calendar-range"
+                    class="size-4"
+                  />
+                </span>
+                <div>
+                  <h2 class="text-xl font-semibold tracking-[-0.03em] text-highlighted dark:text-white">
+                    Agenda
+                  </h2>
+                  <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                    Published schedule for this hackathon.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="inline-flex w-fit items-center rounded-full border border-black/8 bg-white/70 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-neutral-500 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-[#B8B8B8]">
+              {{ agendaEntries.length }} items
+            </div>
           </div>
 
-          <ol class="space-y-3">
+          <ol class="space-y-3.5">
             <li
-              v-for="item in sortedAgendaItems"
+              v-for="item in agendaEntries"
               :key="item.id"
-              class="rounded-lg border border-black/8 bg-white/80 p-4 dark:border-white/[0.08] dark:bg-[#1A1A1A]/80"
+              class="group relative overflow-hidden rounded-[1.35rem] border border-black/8 bg-white/74 p-4 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:border-black/15 active:translate-y-px dark:border-white/[0.08] dark:bg-[#161616]/84 dark:hover:border-white/[0.14] sm:p-5"
             >
-              <p class="text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-[#8C8C8C]">
-                {{ formatAgendaWindow(item.startsAt, item.endsAt) }}
-              </p>
-              <p class="mt-1 text-base font-medium text-highlighted dark:text-white">
-                {{ item.title }}
-              </p>
-              <p
-                v-if="item.details"
-                class="mt-1 text-sm text-neutral-600 dark:text-[#A3A3A3]"
-              >
-                {{ item.details }}
-              </p>
+              <div class="grid gap-4 md:grid-cols-[11rem_minmax(0,1fr)] md:gap-6">
+                <div class="flex flex-col gap-2 md:items-end md:text-right">
+                  <div
+                    v-if="item.presentation.dayLabel"
+                    class="space-y-0.5"
+                  >
+                    <p class="text-[10px] font-semibold uppercase tracking-[0.28em] text-amber-700/80 dark:text-amber-300/75">
+                      {{ item.presentation.dayLabel }}
+                    </p>
+                    <p class="text-sm font-semibold text-highlighted dark:text-white">
+                      {{ item.presentation.dateLabel }}
+                    </p>
+                  </div>
+                  <p
+                    class="whitespace-nowrap font-mono text-[13px] font-medium text-neutral-600 dark:text-[#BBBBBB]"
+                    :title="item.presentation.metaLabel"
+                  >
+                    {{ item.presentation.timeLabel }}
+                  </p>
+                </div>
+
+                <div class="relative min-w-0 border-t border-black/8 pt-4 dark:border-white/[0.08] md:border-t-0 md:border-l md:pl-6 md:pt-0">
+                  <span
+                    class="absolute -top-1.5 left-0 hidden size-3 rounded-full border border-amber-500/35 bg-white shadow-[0_0_0_6px_rgba(255,255,255,0.72)] dark:bg-[#121212] dark:shadow-[0_0_0_6px_rgba(18,18,18,0.82)] md:block"
+                    aria-hidden="true"
+                  />
+                  <p class="text-[17px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+                    {{ item.title }}
+                  </p>
+                  <p
+                    v-if="item.details"
+                    class="mt-2 max-w-[62ch] text-sm leading-6 text-neutral-600 dark:text-[#AFAFAF]"
+                  >
+                    {{ item.details }}
+                  </p>
+                </div>
+              </div>
             </li>
           </ol>
         </section>

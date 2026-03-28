@@ -279,6 +279,14 @@
     @apply rounded-2xl border border-default/70 bg-bg/80 shadow-[0_16px_36px_-30px_rgba(15,20,34,0.22)] backdrop-blur-sm;
   }
 
+  .app-shell-scroll-region {
+    scrollbar-gutter: stable;
+  }
+
+  .hackathon-detail-background-media {
+    @apply absolute inset-0 scale-110 bg-cover bg-center bg-no-repeat opacity-55 blur-md saturate-125 contrast-105;
+  }
+
   /* Slightly increase label-to-control spacing across common form layouts. */
   label.grid.gap-2 {
     row-gap: 0.625rem;

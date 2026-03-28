@@ -161,6 +161,9 @@ const detailBackgroundImageUrl = computed(() => {
   const bannerImageUrl = hackathon.value.bannerImageUrl?.trim()
   return bannerImageUrl || null
 })
+const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
+  ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
+  : undefined)
 const detailSummary = computed(() => [
   formatHackathonWindow(hackathon.value.registrationOpensAt, hackathon.value.submissionClosesAt),
   hackathon.value.city,
@@ -287,11 +290,10 @@ useSeoMeta({
       class="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       aria-hidden="true"
     >
-      <img
-        :src="detailBackgroundImageUrl"
-        :alt="`${hackathon.name} background`"
-        class="h-full w-full scale-110 object-cover opacity-55 blur-md saturate-125 contrast-105"
-      >
+      <div
+        class="hackathon-detail-background-media"
+        :style="detailBackgroundImageStyle"
+      />
       <div class="absolute inset-0 bg-gradient-to-b from-black/20 via-black/45 to-black/68 dark:from-black/35 dark:via-black/55 dark:to-black/76" />
       <div class="absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.22),transparent_46%)] dark:bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.10),transparent_48%)]" />
     </div>
