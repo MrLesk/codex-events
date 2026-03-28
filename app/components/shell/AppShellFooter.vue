@@ -1,5 +1,5 @@
 <template>
-  <footer class="relative z-20 border-t border-black/10 bg-white/90 backdrop-blur-md dark:border-white/[0.08] dark:bg-black/86">
+  <footer class="relative z-20 border-t border-black/10 bg-white/70 backdrop-blur-md dark:border-white/[0.08] dark:bg-black/70">
     <AppContainer class="flex items-center justify-end gap-5 py-6 text-sm text-neutral-900 dark:text-[#E5E5E5]">
       <NuxtLink
         to="/imprint"

@@ -260,35 +260,35 @@
 
 @layer components {
   .app-surface-panel {
-    @apply border border-black/8 bg-default/80 shadow-none dark:border-white/[0.08] dark:bg-default/80;
+    @apply !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80;
   }
 
   .app-surface-panel-dashed {
-    @apply border border-dashed border-black/10 bg-default/80 shadow-none dark:border-white/[0.08] dark:bg-default/80;
+    @apply !border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80;
   }
 
   .app-surface-panel-elevated {
-    @apply border border-black/8 bg-white/78 shadow-none dark:border-white/[0.08] dark:bg-white/[0.04];
+    @apply !border !border-black/8 !bg-white/78 !shadow-none dark:!border-white/[0.08] dark:!bg-white/[0.04];
   }
 
   .hackathon-workspace-panel {
-    @apply border border-black/8 bg-default/80 shadow-none dark:border-white/[0.08] dark:bg-default/80;
+    @apply !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80;
   }
 
   .hackathon-workspace-panel-dashed {
-    @apply border border-dashed border-black/10 bg-default/80 shadow-none dark:border-white/[0.08] dark:bg-default/80;
+    @apply !border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80;
   }
 
   .hackathon-workspace-detail-panel {
-    @apply border border-black/10 bg-white/72 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#101010]/78;
+    @apply !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.08] dark:!bg-[#101010]/78;
   }
 
   .hackathon-workspace-detail-panel-dashed {
-    @apply border border-dashed border-black/10 bg-white/72 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.32)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#101010]/78;
+    @apply !border !border-dashed !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.32)] !backdrop-blur-xl dark:!border-white/[0.08] dark:!bg-[#101010]/78;
   }
 
   .hackathon-workspace-detail-inset {
-    @apply border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#151515]/82;
+    @apply !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.08] dark:!bg-[#151515]/82;
   }
 }
 

@@ -53,7 +53,7 @@ watch(isSidebarCollapsed, (nextValue) => {
           ]"
         >
           <div
-            class="fixed left-0 top-[4.5rem] z-30 flex h-[calc(100vh-4.5rem)] flex-col border-r border-black/10 bg-black/86 px-3 pb-4 pt-3 backdrop-blur-md dark:border-white/[0.08]"
+            class="fixed left-0 top-[4.5rem] z-30 flex h-[calc(100vh-4.5rem)] flex-col border-r border-black/10 bg-black/70 px-3 pb-4 pt-3 backdrop-blur-md dark:border-white/[0.08]"
             :class="isSidebarCollapsed ? 'w-[68px]' : 'w-[260px]'"
           >
             <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-none">
