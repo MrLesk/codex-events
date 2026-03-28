@@ -505,7 +505,7 @@ async function ensureCustomDomain(config: TenantConfig, token: string, mode: Com
     return
   }
 
-  if (mode === 'apply' && (!customDomain.primary || !customDomain.is_default)) {
+  if (mode === 'apply' && !customDomain.primary) {
     await auth0ManagementRequest(config, token, `/api/v2/custom-domains/${encodeURIComponent(customDomain.custom_domain_id)}`, {
       method: 'PATCH',
       body: JSON.stringify({
@@ -519,10 +519,6 @@ async function ensureCustomDomain(config: TenantConfig, token: string, mode: Com
 
   if (!customDomain?.primary) {
     failures.push(`Custom domain ${config.customDomain} is not primary.`)
-  }
-
-  if (!customDomain?.is_default) {
-    failures.push(`Custom domain ${config.customDomain} is not default.`)
   }
 
   if (customDomain?.status !== 'ready') {

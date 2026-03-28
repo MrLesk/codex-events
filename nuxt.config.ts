@@ -1,7 +1,13 @@
+import { fileURLToPath } from 'node:url'
+
 import tailwindcss from '@tailwindcss/vite'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  alias: {
+    '#platform-legal': fileURLToPath(new URL('./shared/platform-legal.ts', import.meta.url))
+  },
+
   modules: [
     '@nuxt/eslint',
     '@auth0/auth0-nuxt',

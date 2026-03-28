@@ -94,6 +94,31 @@ The built-in Auth0 Nuxt routes are mounted at:
 
 The protected example surface added in this repo is `/dashboard`.
 
+## Shared Dev Deployment
+
+The repository `wrangler.jsonc` uses top-level bindings for local development and a separate `dev` environment for the shared Cloudflare deployment at `https://dev.codex-hackathons.com`.
+
+The deployed dev environment uses:
+
+- application URL: `https://dev.codex-hackathons.com`
+- Auth0 custom domain: `https://auth.dev.codex-hackathons.com`
+
+When you operate the shared dev environment, export `CLOUDFLARE_MGMT_TOKEN` and run:
+
+```bash
+bun run db:migrate:dev
+bun run deploy:dev
+```
+
+If Auth0 needs to be re-aligned with the deployed dev hostname split, apply the bootstrap with explicit overrides:
+
+```bash
+AUTH0_CUSTOM_DOMAIN=auth.dev.codex-hackathons.com \
+AUTH0_APP_BASE_URL=https://dev.codex-hackathons.com \
+AUTH0_LOGIN_URI=https://dev.codex-hackathons.com/auth/login \
+bun tools/auth0/auth0-bootstrap.ts apply
+```
+
 ## Validation
 
 Run the standard project checks with:

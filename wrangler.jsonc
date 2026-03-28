@@ -1,40 +1,106 @@
 {
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "codex-hackathons-local",
-  "compatibility_date": "2026-03-23",
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "codex-hackathons-local",
-      "database_id": "00000000-0000-0000-0000-000000000001",
-      "migrations_dir": "drizzle"
-    }
-  ],
-  "r2_buckets": [
-    {
-      "binding": "PROFILE_ICONS",
-      "bucket_name": "codex-hackathons-local-profile-icons"
-    },
-    {
-      "binding": "HACKATHON_IMAGES",
-      "bucket_name": "codex-hackathons-local-hackathon-images"
-    }
-  ],
-  "queues": {
-    "producers": [
-      {
-        "binding": "APPLICATION_REVIEW_EMAIL_QUEUE",
-        "queue": "codex-hackathons-application-review-email-delivery"
-      }
-    ],
-    "consumers": [
-      {
-        "queue": "codex-hackathons-application-review-email-delivery",
-        "max_batch_size": 10,
-        "max_batch_timeout": 5,
-        "max_retries": 10,
-        "retry_delay": 120
-      }
-    ]
-  }
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "codex-hackathons-local",
+	"compatibility_date": "2026-03-23",
+	"compatibility_flags": [
+		"nodejs_compat",
+		"no_nodejs_compat_v2"
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "codex-hackathons-local",
+			"database_id": "00000000-0000-0000-0000-000000000001",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "PROFILE_ICONS",
+			"bucket_name": "codex-hackathons-local-profile-icons"
+		},
+		{
+			"binding": "HACKATHON_IMAGES",
+			"bucket_name": "codex-hackathons-local-hackathon-images"
+		}
+	],
+	"queues": {
+		"producers": [
+			{
+				"binding": "APPLICATION_REVIEW_EMAIL_QUEUE",
+				"queue": "codex-hackathons-application-review-email-delivery"
+			}
+		],
+		"consumers": [
+			{
+				"queue": "codex-hackathons-application-review-email-delivery",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 10,
+				"retry_delay": 120
+			}
+		]
+	},
+	"env": {
+		"dev": {
+			"name": "codex-hackathons-dev",
+			"main": ".output/server/index.mjs",
+			"workers_dev": true,
+			"build": {
+				"command": "bun run build:cloudflare"
+			},
+			"assets": {
+				"binding": "ASSETS",
+				"directory": ".output/public"
+			},
+			"routes": [
+				{
+					"pattern": "dev.codex-hackathons.com",
+					"custom_domain": true
+				}
+			],
+			"vars": {
+				"NUXT_AUTH0_DOMAIN": "auth.dev.codex-hackathons.com",
+				"NUXT_AUTH0_APP_BASE_URL": "https://dev.codex-hackathons.com",
+				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING": "APPLICATION_REVIEW_EMAIL_QUEUE",
+				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "dev-codex-hackathons-application-review-email-delivery",
+				"NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS": "120"
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "dev-codex-hackathons",
+					"database_id": "53a5509d-097e-4fa5-bcc9-7a9c1cc0040e",
+					"migrations_dir": "drizzle"
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "PROFILE_ICONS",
+					"bucket_name": "dev-codex-hackathons-profile-icons"
+				},
+				{
+					"binding": "HACKATHON_IMAGES",
+					"bucket_name": "dev-codex-hackathons-hackathon-images"
+				}
+			],
+			"queues": {
+				"producers": [
+					{
+						"binding": "APPLICATION_REVIEW_EMAIL_QUEUE",
+						"queue": "dev-codex-hackathons-application-review-email-delivery"
+					}
+				],
+				"consumers": [
+					{
+						"queue": "dev-codex-hackathons-application-review-email-delivery",
+						"max_batch_size": 10,
+						"max_batch_timeout": 5,
+						"max_retries": 10,
+						"retry_delay": 120
+					}
+				]
+			}
+		}
+	}
 }

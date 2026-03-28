@@ -4,7 +4,7 @@ import {
   platformLegalLastUpdatedLabel,
   platformSupportEmail,
   platformTermsMarkdown
-} from '../../shared/platform-legal'
+} from '#platform-legal'
 
 const termsHtml = computed(() => renderMarkdown(platformTermsMarkdown))
 

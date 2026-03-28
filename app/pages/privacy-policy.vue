@@ -4,7 +4,7 @@ import {
   platformLegalLastUpdatedLabel,
   platformPrivacyEmail,
   platformPrivacyPolicyMarkdown
-} from '../../shared/platform-legal'
+} from '#platform-legal'
 
 const privacyHtml = computed(() => renderMarkdown(platformPrivacyPolicyMarkdown))
 

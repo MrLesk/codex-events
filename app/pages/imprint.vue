@@ -11,7 +11,7 @@ import {
   platformLegalLastUpdatedLabel,
   platformPrivacyEmail,
   platformSupportEmail
-} from '../../shared/platform-legal'
+} from '#platform-legal'
 
 const imprintHtml = computed(() => renderMarkdown(platformImprintMarkdown))
 const initialContactForm = {

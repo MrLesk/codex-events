@@ -57,6 +57,11 @@ For your Auth0 Regular Web Application, configure callback and logout URLs for t
 - Callback URL: `https://your-domain.example/auth/callback`
 - Logout URL: `https://your-domain.example`
 
+If you also use an Auth0 custom domain, keep it separate from the application hostname. The deployed dev environment in this repository uses:
+
+- application URL: `https://dev.codex-hackathons.com`
+- Auth0 custom domain: `https://auth.dev.codex-hackathons.com`
+
 Auth0 is responsible for authentication and identity. Platform authorization remains in the application data model, not in Auth0 roles.
 
 ### Outbound Email Runtime (Resend)
@@ -114,6 +119,13 @@ These values identify the Cloudflare account and storage resources used by the p
 - `CLOUDFLARE_R2_BUCKET`
 
 The canonical stack expects Cloudflare Workers for application hosting, D1 for the primary relational database, R2 for file storage (including profile icons and hackathon images), Queues for asynchronous jobs, and Cron Triggers for scheduled platform tasks. See [`docs/tech-stack.md`](docs/tech-stack.md).
+
+The repository `wrangler.jsonc` keeps top-level bindings pointed at local development resources and defines a separate `dev` environment for the shared Cloudflare dev deployment. The current dev deployment is published at `https://dev.codex-hackathons.com` and is managed with:
+
+- `bun run db:migrate:dev`
+- `bun run deploy:dev`
+
+When operating the shared dev environment, export `CLOUDFLARE_MGMT_TOKEN` and let the scripts pass it through to Wrangler as `CLOUDFLARE_API_TOKEN`.
 
 ## Documentation Map
 

@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { Resend, type CreateEmailRequestOptions, type ErrorResponse } from 'resend'
 import { z } from 'zod'
 
-import { platformSupportEmail } from '../../shared/platform-legal'
+import { platformSupportEmail } from '#platform-legal'
 
 export const publicLegalContactBodySchema = z.object({
   name: z.string().trim().min(1).max(120),
