@@ -712,18 +712,56 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       weight: 40,
       displayOrder: 1
     })
-    await harness.database.insert(prizes).values({
-      id: 'prize_public',
-      hackathonId: 'hackathon_public',
-      name: 'Launch Award',
-      description: 'Launch support.',
-      rewardType: 'api_credits',
-      rewardValue: '5000',
-      rewardCurrency: null,
-      awardScope: 'team',
-      rankStart: 1,
-      rankEnd: 1
-    })
+    await harness.database.insert(prizes).values([
+      {
+        id: 'prize_public_1',
+        hackathonId: 'hackathon_public',
+        name: 'Launch Award',
+        description: 'Launch support.',
+        rewardType: 'api_credits',
+        rewardValue: '5000',
+        rewardCurrency: null,
+        awardScope: 'team',
+        rankStart: 1,
+        rankEnd: 1
+      },
+      {
+        id: 'prize_public_2',
+        hackathonId: 'hackathon_public',
+        name: 'Top 3 Teams Benefit',
+        description: 'Shared finalist benefit.',
+        rewardType: 'other',
+        rewardValue: 'Mentorship',
+        rewardCurrency: null,
+        awardScope: 'team',
+        rankStart: 1,
+        rankEnd: 3
+      },
+      {
+        id: 'prize_public_3',
+        hackathonId: 'hackathon_public',
+        name: 'Second Place Award',
+        description: 'Runner-up support.',
+        rewardType: 'api_credits',
+        rewardValue: '3000',
+        rewardCurrency: null,
+        awardScope: 'team',
+        rankStart: 2,
+        rankEnd: 2
+      },
+      {
+        id: 'prize_public_4',
+        hackathonId: 'hackathon_public',
+        name: 'Third Place Award',
+        description: 'Third-place support.',
+        rewardType: 'api_credits',
+        rewardValue: '1500',
+        rewardCurrency: null,
+        awardScope: 'team',
+        rankStart: 3,
+        rankEnd: 3
+      }
+    ])
 
     const criteriaResponse = await harness.request('/api/public/hackathons/public-hackathon/evaluation-criteria')
     const prizeResponse = await harness.request('/api/public/hackathons/public-hackathon/prizes')
@@ -759,12 +797,48 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
           awardScope: 'team',
           rankStart: 1,
           rankEnd: 1
+        },
+        {
+          name: 'Second Place Award',
+          description: 'Runner-up support.',
+          rewardType: 'api_credits',
+          rewardValue: '3000',
+          rewardCurrency: null,
+          awardScope: 'team',
+          rankStart: 2,
+          rankEnd: 2
+        },
+        {
+          name: 'Third Place Award',
+          description: 'Third-place support.',
+          rewardType: 'api_credits',
+          rewardValue: '1500',
+          rewardCurrency: null,
+          awardScope: 'team',
+          rankStart: 3,
+          rankEnd: 3
+        },
+        {
+          name: 'Top 3 Teams Benefit',
+          description: 'Shared finalist benefit.',
+          rewardType: 'other',
+          rewardValue: 'Mentorship',
+          rewardCurrency: null,
+          awardScope: 'team',
+          rankStart: 1,
+          rankEnd: 3
         }
       ]
     })
     expect(prizePayload.data[0]).not.toHaveProperty('id')
     expect(prizePayload.data[0]).not.toHaveProperty('hackathonId')
     expect(prizePayload.data[0]).not.toHaveProperty('createdAt')
+    expect(prizePayload.data.map((prize: { name: string }) => prize.name)).toEqual([
+      'Launch Award',
+      'Second Place Award',
+      'Third Place Award',
+      'Top 3 Teams Benefit'
+    ])
   })
 
   test('GET /api/hackathons/:hackathonId returns current term references for visible hackathons', async () => {

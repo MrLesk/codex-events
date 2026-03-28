@@ -33,6 +33,18 @@ export interface PublicAgendaItemPresentation {
   metaLabel: string
 }
 
+export interface PublicDateTimePresentation {
+  dayLabel: string
+  dateLabel: string
+  timeLabel: string
+  metaLabel: string
+}
+
+export interface PublicHackathonStatePresentation {
+  label: string
+  color: 'neutral' | 'info' | 'warning' | 'primary' | 'success'
+}
+
 export interface PublicHackathon {
   name: string
   slug: string
@@ -117,6 +129,14 @@ const stateColors: Record<PublicHackathonState, 'neutral' | 'info' | 'warning' |
   shortlist: 'primary',
   winners_announced: 'success',
   completed: 'neutral'
+}
+
+const publicHackathonHeaderStateClasses: Record<PublicHackathonStatePresentation['color'], string> = {
+  neutral: 'bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]',
+  info: 'border border-sky-600/35 bg-sky-500/16 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/14 dark:text-sky-300',
+  warning: 'bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]',
+  primary: 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
+  success: 'bg-green-500/10 text-green-400 border border-green-500/20'
 }
 
 const stateSummaries: Record<PublicHackathonState, string> = {
@@ -207,12 +227,55 @@ export function summarizeHackathonState(state: PublicHackathonState) {
   return stateSummaries[state]
 }
 
+export function getPublicHackathonStatePresentation(
+  hackathon: Pick<PublicHackathon, 'state'> & Partial<Pick<PublicHackathon, 'registrationOpensAt' | 'registrationClosesAt'>>,
+  now = new Date()
+): PublicHackathonStatePresentation {
+  if (hackathon.state === 'registration_open' && hackathon.registrationOpensAt && hackathon.registrationClosesAt) {
+    const registrationWindowStatus = describeHackathonWindowStatus(
+      hackathon.registrationOpensAt,
+      hackathon.registrationClosesAt,
+      now
+    )
+
+    if (registrationWindowStatus === 'Upcoming') {
+      return {
+        label: 'Upcoming',
+        color: 'neutral'
+      }
+    }
+
+    if (registrationWindowStatus === 'Closed') {
+      return {
+        label: 'Registration closed',
+        color: 'neutral'
+      }
+    }
+  }
+
+  return {
+    label: formatHackathonStateLabel(hackathon.state),
+    color: resolveHackathonStateColor(hackathon.state)
+  }
+}
+
+export function resolvePublicHackathonHeaderStateClass(
+  hackathon: Pick<PublicHackathon, 'state'> & Partial<Pick<PublicHackathon, 'registrationOpensAt' | 'registrationClosesAt'>>,
+  now = new Date()
+) {
+  return publicHackathonHeaderStateClasses[getPublicHackathonStatePresentation(hackathon, now).color]
+}
+
 export function formatHackathonDate(value: string) {
   return fullDateFormatter.format(new Date(value))
 }
 
 export function formatHackathonDateWithWeekday(value: string) {
   return weekdayDateFormatter.format(new Date(value))
+}
+
+export function formatHackathonTime(value: string) {
+  return timeFormatter.format(new Date(value))
 }
 
 export function formatHackathonLocation(location: { city: string, country: string }) {
@@ -236,6 +299,70 @@ export function formatHackathonCompactDate(value: string) {
 
 export function formatHackathonWindow(start: string, end: string) {
   return `${compactDateFormatter.format(new Date(start))} - ${fullDateFormatter.format(new Date(end))}`
+}
+
+export function getHackathonDateTimePresentation(value: string): PublicDateTimePresentation {
+  const date = new Date(value)
+  const dayLabel = weekdayFormatter.format(date)
+  const dateLabel = compactDateFormatter.format(date)
+  const timeLabel = timeFormatter.format(date)
+
+  return {
+    dayLabel,
+    dateLabel,
+    timeLabel,
+    metaLabel: `${dayLabel}, ${dateLabel} | ${timeLabel}`
+  }
+}
+
+export function describeHackathonWindowStatus(start: string, end: string, now = new Date()) {
+  const startAt = new Date(start)
+  const endAt = new Date(end)
+
+  if (now < startAt) {
+    return 'Upcoming'
+  }
+
+  if (now >= endAt) {
+    return 'Closed'
+  }
+
+  return 'Open now'
+}
+
+export function getHackathonWindowProgress(start: string, end: string, now = new Date()) {
+  const startAt = new Date(start).getTime()
+  const endAt = new Date(end).getTime()
+  const currentTime = now.getTime()
+
+  if (currentTime <= startAt) {
+    return 8
+  }
+
+  if (currentTime >= endAt || endAt <= startAt) {
+    return 100
+  }
+
+  return Math.max(8, Math.min(99, Math.round(((currentTime - startAt) / (endAt - startAt)) * 100)))
+}
+
+export function describeHackathonWindowNote(start: string, end: string, now = new Date()) {
+  const startAt = new Date(start)
+  const endAt = new Date(end)
+
+  if (now < startAt) {
+    return `Opens ${formatHackathonCompactDate(start)}`
+  }
+
+  if (now >= endAt) {
+    return `Closed ${formatHackathonCompactDate(end)}`
+  }
+
+  if (isSameLocalDay(now, endAt)) {
+    return `Closes at ${formatHackathonTime(end)}`
+  }
+
+  return `Closes ${formatHackathonCompactDate(end)}`
 }
 
 export function getHackathonEarliestStartAt(

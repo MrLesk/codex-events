@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm'
+import { asc, desc, eq } from 'drizzle-orm'
 
 import { getDatabase } from '../../../../../database/client'
 import { prizes } from '../../../../../database/schema'
@@ -14,7 +14,7 @@ export default defineApiHandler(async (event) => {
 
   const prizeList = await database.query.prizes.findMany({
     where: eq(prizes.hackathonId, hackathon.id),
-    orderBy: [asc(prizes.displayOrder), asc(prizes.rankStart), asc(prizes.rankEnd), asc(prizes.createdAt)]
+    orderBy: [asc(prizes.displayOrder), asc(prizes.rankEnd), desc(prizes.rankStart), asc(prizes.createdAt)]
   })
 
   return apiList(

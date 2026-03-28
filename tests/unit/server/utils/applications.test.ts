@@ -39,7 +39,7 @@ describe('application utilities', () => {
       createdByUserId: 'creator_1',
       createdAt: '2026-03-20T10:00:00.000Z',
       updatedAt: '2026-03-20T10:00:00.000Z'
-    })).not.toThrow()
+    }, new Date('2026-03-21T12:00:00.000Z'))).not.toThrow()
 
     expect(() => assertHackathonAllowsApplications({
       id: 'hackathon_1',
@@ -69,7 +69,37 @@ describe('application utilities', () => {
       createdByUserId: 'creator_1',
       createdAt: '2026-03-20T10:00:00.000Z',
       updatedAt: '2026-03-20T10:00:00.000Z'
-    })).toThrowError(ApiError)
+    }, new Date('2026-03-21T12:00:00.000Z'))).toThrowError(ApiError)
+
+    expect(() => assertHackathonAllowsApplications({
+      id: 'hackathon_1',
+      name: 'Fixture Hackathon',
+      slug: 'fixture-hackathon',
+      description: 'Fixture hackathon',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      participantsLimit: null,
+      inPersonEvent: false,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    }, new Date('2026-03-23T12:00:00.000Z'))).toThrowError(ApiError)
   })
 
   test('required profile flags are enforced against the user profile', () => {

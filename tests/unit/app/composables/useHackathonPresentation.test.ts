@@ -1,8 +1,13 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  describeHackathonWindowNote,
+  describeHackathonWindowStatus,
   formatHackathonLocation,
   formatHackathonDateWithWeekday,
+  getPublicHackathonStatePresentation,
+  getHackathonDateTimePresentation,
+  getHackathonWindowProgress,
   getHackathonEarliestStartAt,
   getAgendaItemPresentation,
   shouldShowAgendaDayContext
@@ -123,5 +128,82 @@ describe('public hackathon agenda presentation helpers', () => {
       day: 'numeric',
       year: 'numeric'
     }).format(new Date(value)))
+  })
+
+  test('formats a hackathon boundary into separate day, date, and time labels', () => {
+    const value = '2026-03-28T09:00:00Z'
+    const date = new Date(value)
+    const expectedDayLabel = new Intl.DateTimeFormat('en-US', {
+      weekday: 'short'
+    }).format(date)
+    const expectedDateLabel = new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric'
+    }).format(date)
+    const expectedTimeLabel = new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date)
+
+    expect(getHackathonDateTimePresentation(value)).toEqual({
+      dayLabel: expectedDayLabel,
+      dateLabel: expectedDateLabel,
+      timeLabel: expectedTimeLabel,
+      metaLabel: `${expectedDayLabel}, ${expectedDateLabel} | ${expectedTimeLabel}`
+    })
+  })
+
+  test('keeps the window open only until the exact closing timestamp', () => {
+    const now = new Date('2026-03-28T00:30:00Z')
+    const end = '2026-03-28T01:00:00Z'
+    const expectedCloseTime = new Intl.DateTimeFormat('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(new Date(end))
+
+    expect(describeHackathonWindowStatus('2026-02-26T00:00:00Z', end, now)).toBe('Open now')
+    expect(describeHackathonWindowNote('2026-02-26T00:00:00Z', end, now)).toBe(`Closes at ${expectedCloseTime}`)
+  })
+
+  test('uses elapsed timestamp progress while registration remains open', () => {
+    const progress = getHackathonWindowProgress(
+      '2026-02-26T00:00:00Z',
+      '2026-03-28T01:00:00Z',
+      new Date('2026-03-28T00:30:00Z')
+    )
+
+    expect(progress).toBeGreaterThan(90)
+    expect(progress).toBeLessThan(100)
+  })
+
+  test('marks the window closed at the exact closing timestamp', () => {
+    const end = '2026-03-28T01:00:00Z'
+    const now = new Date(end)
+
+    expect(describeHackathonWindowStatus('2026-02-26T00:00:00Z', end, now)).toBe('Closed')
+    expect(describeHackathonWindowNote('2026-02-26T00:00:00Z', end, now)).toBe('Closed Mar 28')
+    expect(getHackathonWindowProgress('2026-02-26T00:00:00Z', end, now)).toBe(100)
+  })
+
+  test('presents a closed public registration badge once the exact registration close timestamp passes', () => {
+    expect(getPublicHackathonStatePresentation({
+      state: 'registration_open',
+      registrationOpensAt: '2026-02-26T00:00:00Z',
+      registrationClosesAt: '2026-03-28T01:00:00Z'
+    }, new Date('2026-03-28T01:00:00Z'))).toEqual({
+      label: 'Registration closed',
+      color: 'neutral'
+    })
+  })
+
+  test('preserves the normal public registration badge while the registration window is still open', () => {
+    expect(getPublicHackathonStatePresentation({
+      state: 'registration_open',
+      registrationOpensAt: '2026-02-26T00:00:00Z',
+      registrationClosesAt: '2026-03-28T01:00:00Z'
+    }, new Date('2026-03-28T00:30:00Z'))).toEqual({
+      label: 'Registration open',
+      color: 'info'
+    })
   })
 })

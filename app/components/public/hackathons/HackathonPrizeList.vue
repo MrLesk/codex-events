@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PublicPrize } from '~/composables/useHackathonPresentation'
 
-const props = defineProps<{
+defineProps<{
   prizes: PublicPrize[]
 }>()
 
@@ -60,8 +60,8 @@ function getPodiumCup(prize: PublicPrize) {
         :key="`${prize.rankStart}-${prize.rankEnd}-${prize.name}`"
         class="py-5 first:pt-0 last:pb-0"
       >
-        <div class="flex flex-wrap items-start justify-between gap-4">
-          <div class="flex items-start gap-4">
+        <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+          <div class="min-w-0 flex flex-1 items-start gap-4">
             <div
               v-if="getPodiumCup(prize)"
               class="flex w-20 shrink-0 items-start justify-center pt-0.5"
@@ -74,7 +74,7 @@ function getPodiumCup(prize: PublicPrize) {
               />
             </div>
 
-            <div class="space-y-2">
+            <div class="min-w-0 flex-1 space-y-2">
               <div class="flex flex-wrap items-center gap-3">
                 <h3 class="text-[16px] font-semibold text-highlighted dark:text-white">
                   {{ prize.name }}
@@ -84,13 +84,13 @@ function getPodiumCup(prize: PublicPrize) {
                 </div>
               </div>
 
-              <p class="max-w-[42rem] text-[14px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]">
+              <p class="text-[14px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]">
                 {{ prize.description }}
               </p>
             </div>
           </div>
 
-          <div class="text-right">
+          <div class="shrink-0 text-right">
             <p class="text-[16px] font-semibold text-highlighted dark:text-white">
               {{ formatPrizeReward(prize) }}
             </p>

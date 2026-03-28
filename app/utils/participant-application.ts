@@ -351,29 +351,78 @@ export function summarizeParticipantApplicationStatus(
   }
 }
 
-export function getHackathonApplicationAvailabilityMessage(state: PublicHackathonState) {
-  if (state === 'registration_open') {
+export function isHackathonRegistrationOpen(
+  state: PublicHackathonState,
+  registrationOpensAt: string,
+  registrationClosesAt: string,
+  now = new Date()
+) {
+  if (state !== 'registration_open') {
+    return false
+  }
+
+  const registrationOpensAtTimestamp = Date.parse(registrationOpensAt)
+  const registrationClosesAtTimestamp = Date.parse(registrationClosesAt)
+  const nowTimestamp = now.getTime()
+
+  return nowTimestamp >= registrationOpensAtTimestamp && nowTimestamp < registrationClosesAtTimestamp
+}
+
+export function getHackathonApplicationAvailabilityMessage(
+  state: PublicHackathonState,
+  registrationOpensAt: string,
+  registrationClosesAt: string,
+  now = new Date()
+) {
+  if (isHackathonRegistrationOpen(state, registrationOpensAt, registrationClosesAt, now)) {
     return 'Applications are open for this hackathon.'
   }
 
-  if (state === 'draft') {
+  if (state === 'draft' || now.getTime() < Date.parse(registrationOpensAt)) {
     return 'Applications are not available until registration opens.'
   }
 
   return 'Applications are closed for this hackathon.'
 }
 
-export function shouldShowPublicRegistrationEntry(state: PublicHackathonState) {
-  return state === 'registration_open'
+export function shouldShowPublicRegistrationEntry(
+  state: PublicHackathonState,
+  registrationOpensAt: string,
+  registrationClosesAt: string,
+  now = new Date()
+) {
+  return isHackathonRegistrationOpen(state, registrationOpensAt, registrationClosesAt, now)
 }
 
 export function resolveParticipantRegistrationEntry(options: {
   actorKind: ParticipantActor['kind']
   hackathonSlug: string
   hackathonState: PublicHackathonState
+  registrationOpensAt: string
+  registrationClosesAt: string
   hasExistingApplication: boolean
+  now?: Date
 }) {
   const registerHref = `/hackathons/${options.hackathonSlug}/register`
+
+  if (options.hasExistingApplication) {
+    return {
+      to: `/account/hackathons/${options.hackathonSlug}`,
+      external: false
+    }
+  }
+
+  if (!shouldShowPublicRegistrationEntry(
+    options.hackathonState,
+    options.registrationOpensAt,
+    options.registrationClosesAt,
+    options.now
+  )) {
+    return {
+      to: `/hackathons/${options.hackathonSlug}`,
+      external: false
+    }
+  }
 
   if (options.actorKind === 'anonymous') {
     return {
@@ -385,20 +434,6 @@ export function resolveParticipantRegistrationEntry(options: {
   if (options.actorKind === 'authenticated_identity') {
     return {
       to: buildAccountSettingsHref(registerHref),
-      external: false
-    }
-  }
-
-  if (options.hasExistingApplication) {
-    return {
-      to: `/account/hackathons/${options.hackathonSlug}`,
-      external: false
-    }
-  }
-
-  if (!shouldShowPublicRegistrationEntry(options.hackathonState)) {
-    return {
-      to: `/hackathons/${options.hackathonSlug}`,
       external: false
     }
   }
@@ -497,6 +532,9 @@ export interface ParticipantApplicationSubmissionPolicy {
 
 export function getParticipantApplicationSubmissionPolicy(options: {
   hackathonState: PublicHackathonState
+  registrationOpensAt: string
+  registrationClosesAt: string
+  now?: Date
   applicationStatus: ParticipantApplicationRecord['status'] | null
   missingRequiredProfileFieldCount: number
   hasCurrentApplicationTerms: boolean
@@ -504,10 +542,20 @@ export function getParticipantApplicationSubmissionPolicy(options: {
   requiresInPersonAttendanceCommitment: boolean
   hasAcceptedInPersonAttendanceCommitment: boolean
 }): ParticipantApplicationSubmissionPolicy {
-  if (options.hackathonState !== 'registration_open') {
+  if (!isHackathonRegistrationOpen(
+    options.hackathonState,
+    options.registrationOpensAt,
+    options.registrationClosesAt,
+    options.now
+  )) {
     return {
       isAllowed: false,
-      reason: getHackathonApplicationAvailabilityMessage(options.hackathonState)
+      reason: getHackathonApplicationAvailabilityMessage(
+        options.hackathonState,
+        options.registrationOpensAt,
+        options.registrationClosesAt,
+        options.now
+      )
     }
   }
 

@@ -53,12 +53,20 @@ if (!hackathonResponse.value?.data) {
 const hackathon = computed(() => hackathonResponse.value!.data)
 const registerHref = computed(() => `/hackathons/${slug.value}/register`)
 const backHref = computed(() =>
-  shouldShowPublicRegistrationEntry(hackathon.value.state)
+  shouldShowPublicRegistrationEntry(
+    hackathon.value.state,
+    hackathon.value.registrationOpensAt,
+    hackathon.value.registrationClosesAt
+  )
     ? registerHref.value
     : `/hackathons/${slug.value}`
 )
 const backLabel = computed(() =>
-  shouldShowPublicRegistrationEntry(hackathon.value.state)
+  shouldShowPublicRegistrationEntry(
+    hackathon.value.state,
+    hackathon.value.registrationOpensAt,
+    hackathon.value.registrationClosesAt
+  )
     ? 'Back to registration'
     : 'Back to hackathon'
 )
@@ -75,22 +83,9 @@ const detailBackgroundImageUrl = computed(() => {
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
-const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
-const headerStateClass = computed(() => {
-  if (hackathon.value.state === 'submission_open') {
-    return 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-  }
-
-  if (hackathon.value.state === 'registration_open') {
-    return 'border border-sky-600/35 bg-sky-500/16 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/14 dark:text-sky-300'
-  }
-
-  if (hackathon.value.state === 'winners_announced') {
-    return 'bg-green-500/10 text-green-400 border border-green-500/20'
-  }
-
-  return 'bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]'
-})
+const headerStatePresentation = computed(() => getPublicHackathonStatePresentation(hackathon.value))
+const headerStateLabel = computed(() => headerStatePresentation.value.label.toUpperCase())
+const headerStateClass = computed(() => resolvePublicHackathonHeaderStateClass(hackathon.value))
 const detailSummary = computed(() => [
   formatHackathonWindow(hackathon.value.registrationOpensAt, hackathon.value.submissionClosesAt),
   formatHackathonLocation(hackathon.value),

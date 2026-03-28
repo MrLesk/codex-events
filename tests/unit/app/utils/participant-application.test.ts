@@ -137,15 +137,45 @@ describe('participant application helpers', () => {
   })
 
   test('describes whether the hackathon currently allows new applications', () => {
-    expect(getHackathonApplicationAvailabilityMessage('registration_open')).toBe('Applications are open for this hackathon.')
-    expect(getHackathonApplicationAvailabilityMessage('draft')).toBe('Applications are not available until registration opens.')
-    expect(getHackathonApplicationAvailabilityMessage('submission_open')).toBe('Applications are closed for this hackathon.')
+    expect(getHackathonApplicationAvailabilityMessage(
+      'registration_open',
+      '2026-03-20T12:00:00.000Z',
+      '2026-03-23T12:00:00.000Z',
+      new Date('2026-03-21T12:00:00.000Z')
+    )).toBe('Applications are open for this hackathon.')
+    expect(getHackathonApplicationAvailabilityMessage(
+      'draft',
+      '2026-03-20T12:00:00.000Z',
+      '2026-03-23T12:00:00.000Z',
+      new Date('2026-03-19T12:00:00.000Z')
+    )).toBe('Applications are not available until registration opens.')
+    expect(getHackathonApplicationAvailabilityMessage(
+      'registration_open',
+      '2026-03-20T12:00:00.000Z',
+      '2026-03-23T12:00:00.000Z',
+      new Date('2026-03-23T12:00:00.000Z')
+    )).toBe('Applications are closed for this hackathon.')
   })
 
   test('shows the public registration entry only while registration is open', () => {
-    expect(shouldShowPublicRegistrationEntry('registration_open')).toBe(true)
-    expect(shouldShowPublicRegistrationEntry('submission_open')).toBe(false)
-    expect(shouldShowPublicRegistrationEntry('completed')).toBe(false)
+    expect(shouldShowPublicRegistrationEntry(
+      'registration_open',
+      '2026-03-20T12:00:00.000Z',
+      '2026-03-23T12:00:00.000Z',
+      new Date('2026-03-21T12:00:00.000Z')
+    )).toBe(true)
+    expect(shouldShowPublicRegistrationEntry(
+      'registration_open',
+      '2026-03-20T12:00:00.000Z',
+      '2026-03-23T12:00:00.000Z',
+      new Date('2026-03-23T12:00:00.000Z')
+    )).toBe(false)
+    expect(shouldShowPublicRegistrationEntry(
+      'submission_open',
+      '2026-03-20T12:00:00.000Z',
+      '2026-03-23T12:00:00.000Z',
+      new Date('2026-03-21T12:00:00.000Z')
+    )).toBe(false)
   })
 
   test('resolves participant registration entry redirects by actor and state', () => {
@@ -153,7 +183,10 @@ describe('participant application helpers', () => {
       actorKind: 'anonymous',
       hackathonSlug: 'codex-spring',
       hackathonState: 'registration_open',
-      hasExistingApplication: false
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      hasExistingApplication: false,
+      now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
       to: '/auth/login?returnTo=%2Fhackathons%2Fcodex-spring%2Fregister',
       external: true
@@ -163,7 +196,10 @@ describe('participant application helpers', () => {
       actorKind: 'authenticated_identity',
       hackathonSlug: 'codex-spring',
       hackathonState: 'registration_open',
-      hasExistingApplication: false
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      hasExistingApplication: false,
+      now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
       to: '/account/settings?returnTo=%2Fhackathons%2Fcodex-spring%2Fregister',
       external: false
@@ -173,7 +209,10 @@ describe('participant application helpers', () => {
       actorKind: 'platform_user',
       hackathonSlug: 'codex-spring',
       hackathonState: 'judge_review',
-      hasExistingApplication: false
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      hasExistingApplication: false,
+      now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
       to: '/hackathons/codex-spring',
       external: false
@@ -183,7 +222,10 @@ describe('participant application helpers', () => {
       actorKind: 'platform_user',
       hackathonSlug: 'codex-spring',
       hackathonState: 'registration_open',
-      hasExistingApplication: true
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      hasExistingApplication: true,
+      now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
       to: '/account/hackathons/codex-spring',
       external: false
@@ -193,13 +235,32 @@ describe('participant application helpers', () => {
       actorKind: 'platform_user',
       hackathonSlug: 'codex-spring',
       hackathonState: 'registration_open',
-      hasExistingApplication: false
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      hasExistingApplication: false,
+      now: new Date('2026-03-21T12:00:00.000Z')
     })).toBeNull()
+
+    expect(resolveParticipantRegistrationEntry({
+      actorKind: 'platform_user',
+      hackathonSlug: 'codex-spring',
+      hackathonState: 'registration_open',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      hasExistingApplication: false,
+      now: new Date('2026-03-23T12:00:00.000Z')
+    })).toEqual({
+      to: '/hackathons/codex-spring',
+      external: false
+    })
   })
 
   test('returns registration submission policy based on lifecycle, profile, and terms acceptance', () => {
     expect(getParticipantApplicationSubmissionPolicy({
       hackathonState: 'registration_open',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      now: new Date('2026-03-21T12:00:00.000Z'),
       applicationStatus: null,
       missingRequiredProfileFieldCount: 0,
       hasCurrentApplicationTerms: true,
@@ -212,6 +273,9 @@ describe('participant application helpers', () => {
 
     expect(getParticipantApplicationSubmissionPolicy({
       hackathonState: 'submission_open',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      now: new Date('2026-03-21T12:00:00.000Z'),
       applicationStatus: null,
       missingRequiredProfileFieldCount: 0,
       hasCurrentApplicationTerms: true,
@@ -225,6 +289,25 @@ describe('participant application helpers', () => {
 
     expect(getParticipantApplicationSubmissionPolicy({
       hackathonState: 'registration_open',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      now: new Date('2026-03-23T12:00:00.000Z'),
+      applicationStatus: null,
+      missingRequiredProfileFieldCount: 0,
+      hasCurrentApplicationTerms: true,
+      hasAcceptedCurrentTerms: true,
+      requiresInPersonAttendanceCommitment: false,
+      hasAcceptedInPersonAttendanceCommitment: false
+    })).toEqual({
+      isAllowed: false,
+      reason: 'Applications are closed for this hackathon.'
+    })
+
+    expect(getParticipantApplicationSubmissionPolicy({
+      hackathonState: 'registration_open',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      now: new Date('2026-03-21T12:00:00.000Z'),
       applicationStatus: null,
       missingRequiredProfileFieldCount: 2,
       hasCurrentApplicationTerms: true,
@@ -238,6 +321,9 @@ describe('participant application helpers', () => {
 
     expect(getParticipantApplicationSubmissionPolicy({
       hackathonState: 'registration_open',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      now: new Date('2026-03-21T12:00:00.000Z'),
       applicationStatus: null,
       missingRequiredProfileFieldCount: 0,
       hasCurrentApplicationTerms: true,
@@ -251,6 +337,9 @@ describe('participant application helpers', () => {
 
     expect(getParticipantApplicationSubmissionPolicy({
       hackathonState: 'registration_open',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      now: new Date('2026-03-21T12:00:00.000Z'),
       applicationStatus: null,
       missingRequiredProfileFieldCount: 0,
       hasCurrentApplicationTerms: true,

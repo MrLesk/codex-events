@@ -212,8 +212,18 @@ export function serializeUserApplication(
   }
 }
 
-export function assertHackathonAllowsApplications(hackathon: HackathonRecord) {
+export function assertHackathonAllowsApplications(hackathon: HackathonRecord, now = new Date()) {
   assertAllowedState(hackathon.state, ['registration_open'], {
+    code: 'hackathon_state_invalid',
+    message: 'Applications can only be submitted while registration is open.',
+    details: { hackathonId: hackathon.id }
+  })
+
+  const nowTimestamp = now.getTime()
+  const registrationOpensAt = Date.parse(hackathon.registrationOpensAt)
+  const registrationClosesAt = Date.parse(hackathon.registrationClosesAt)
+
+  assertGuard(nowTimestamp >= registrationOpensAt && nowTimestamp < registrationClosesAt, {
     code: 'hackathon_state_invalid',
     message: 'Applications can only be submitted while registration is open.',
     details: { hackathonId: hackathon.id }

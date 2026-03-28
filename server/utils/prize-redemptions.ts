@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '../auth/actor'
@@ -101,7 +101,7 @@ export async function getPrizeRedemptionContextOrThrow(database: AppDatabase, re
 export async function listHackathonPrizeRedemptions(database: AppDatabase, hackathonId: string) {
   const prizeList = await database.query.prizes.findMany({
     where: eq(prizes.hackathonId, hackathonId),
-    orderBy: [asc(prizes.displayOrder), asc(prizes.rankStart), asc(prizes.rankEnd), asc(prizes.createdAt)]
+    orderBy: [asc(prizes.displayOrder), asc(prizes.rankEnd), desc(prizes.rankStart), asc(prizes.createdAt)]
   })
 
   if (prizeList.length === 0) {

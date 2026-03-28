@@ -3,10 +3,13 @@ import type { PublicHackathonState } from '~/composables/useHackathonPresentatio
 
 const props = defineProps<{
   state: PublicHackathonState
+  registrationOpensAt?: string
+  registrationClosesAt?: string
 }>()
 
-const color = computed(() => resolveHackathonStateColor(props.state))
-const label = computed(() => formatHackathonStateLabel(props.state))
+const statePresentation = computed(() => getPublicHackathonStatePresentation(props))
+const color = computed(() => statePresentation.value.color)
+const label = computed(() => statePresentation.value.label)
 </script>
 
 <template>

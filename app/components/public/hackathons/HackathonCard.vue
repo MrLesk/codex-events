@@ -67,6 +67,8 @@ const ctaLabel = computed(() => {
           <div class="absolute left-6 top-6 z-20 flex flex-wrap gap-2">
             <HackathonStateBadge
               :state="hackathon.state"
+              :registration-opens-at="hackathon.registrationOpensAt"
+              :registration-closes-at="hackathon.registrationClosesAt"
               class="border border-white/25 bg-black/55 text-white backdrop-blur-md dark:border-white/25 dark:bg-black/55 dark:text-white"
             />
           </div>

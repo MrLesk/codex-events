@@ -6,105 +6,77 @@ const props = defineProps<{
   criteriaCount?: number
 }>()
 
-function getWindowProgress(state: PublicHackathon['state'], window: 'registration' | 'submission') {
-  if (window === 'registration') {
-    if (state === 'draft') {
-      return 8
-    }
-
-    if (state === 'registration_open') {
-      return 100
-    }
-
-    return 100
-  }
-
-  if (state === 'submission_open') {
-    return 42
-  }
-
-  if (['judging_preparation', 'judge_review', 'shortlist', 'winners_announced', 'completed'].includes(state)) {
-    return 100
-  }
-
-  return 10
+function formatAttendanceLabel(hackathon: Pick<PublicHackathon, 'inPersonEvent'>) {
+  return hackathon.inPersonEvent ? 'In person' : 'No in-person attendance required'
 }
 
-function getWindowAccent(window: 'registration' | 'submission') {
-  return window === 'registration' ? 'bg-green-500' : 'bg-violet-500'
+function formatLocationLabel(hackathon: Pick<PublicHackathon, 'city' | 'address'>) {
+  const city = hackathon.city.trim()
+  const address = hackathon.address.trim()
+
+  if (!address) {
+    return city
+  }
+
+  return city ? `${city} · ${address}` : address
 }
 
-function getWindowNote(state: PublicHackathon['state'], window: 'registration' | 'submission') {
-  if (window === 'registration') {
-    if (state === 'draft') {
-      return 'Registration upcoming'
+const eventDetailRows = computed(() => {
+  const rows: Array<{
+    label: string
+    value: string
+    href?: string
+  }> = [
+    {
+      label: 'Team size',
+      value: `1-${props.hackathon.maxTeamMembers} members`
+    },
+    {
+      label: 'Attendance',
+      value: formatAttendanceLabel(props.hackathon)
     }
+  ]
 
-    if (state === 'registration_open') {
-      return 'Registration open'
-    }
-
-    return 'Registration closed'
+  if (props.hackathon.inPersonEvent) {
+    rows.push({
+      label: 'Location',
+      value: formatLocationLabel(props.hackathon)
+    })
   }
 
-  if (state === 'submission_open') {
-    return 'Submission open'
+  const lumaEventUrl = props.hackathon.lumaEventUrl?.trim()
+
+  if (lumaEventUrl) {
+    rows.push({
+      label: 'Luma event',
+      value: 'Open event page',
+      href: lumaEventUrl
+    })
   }
 
-  if (['judging_preparation', 'judge_review', 'shortlist', 'winners_announced', 'completed'].includes(state)) {
-    return 'Submission closed'
-  }
-
-  return 'Submission upcoming'
-}
-
-const criteriaSummary = computed(() => {
-  const count = props.criteriaCount ?? 0
-
-  return count === 1 ? '1 Dimension' : `${count} Dimensions`
+  return rows
 })
+
+const registrationStart = computed(() => getHackathonDateTimePresentation(props.hackathon.registrationOpensAt))
+const registrationEnd = computed(() => getHackathonDateTimePresentation(props.hackathon.registrationClosesAt))
 
 const timelineEntries = computed(() => [
   {
     id: 'registration',
     eyebrow: 'Registration Window',
-    title: formatHackathonWindow(props.hackathon.registrationOpensAt, props.hackathon.registrationClosesAt),
-    status: describeWindowStatus(props.hackathon.state, 'registration'),
-    note: getWindowNote(props.hackathon.state, 'registration'),
-    progress: getWindowProgress(props.hackathon.state, 'registration'),
-    accent: getWindowAccent('registration')
-  },
-  {
-    id: 'submission',
-    eyebrow: 'Submission Window',
-    title: formatHackathonWindow(props.hackathon.submissionOpensAt, props.hackathon.submissionClosesAt),
-    status: describeWindowStatus(props.hackathon.state, 'submission'),
-    note: getWindowNote(props.hackathon.state, 'submission'),
-    progress: getWindowProgress(props.hackathon.state, 'submission'),
-    accent: getWindowAccent('submission')
+    title: null,
+    status: describeHackathonWindowStatus(props.hackathon.registrationOpensAt, props.hackathon.registrationClosesAt),
+    note: describeHackathonWindowNote(props.hackathon.registrationOpensAt, props.hackathon.registrationClosesAt),
+    progress: getHackathonWindowProgress(props.hackathon.registrationOpensAt, props.hackathon.registrationClosesAt),
+    accent: 'bg-green-500',
+    start: registrationStart.value,
+    end: registrationEnd.value
   },
   {
     id: 'details',
-    eyebrow: 'Judging Details',
+    eyebrow: 'Event Details',
     title: null,
-    rows: [
-      {
-        label: 'Format',
-        value: 'Blind Evaluation'
-      },
-      {
-        label: 'Criteria',
-        value: criteriaSummary.value
-      },
-      {
-        label: 'Lifecycle',
-        value: formatHackathonStateLabel(props.hackathon.state)
-      },
-      {
-        label: 'Team size',
-        value: `1-${props.hackathon.maxTeamMembers} members`
-      }
-    ]
+    rows: eventDetailRows.value
   }
 ])
 </script>
@@ -112,7 +84,7 @@ const timelineEntries = computed(() => [
 <template>
   <section
     data-testid="public-hackathon-timeline"
-    class="grid grid-cols-1 gap-6 md:grid-cols-3"
+    class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]"
   >
     <div
       v-for="entry in timelineEntries"
@@ -120,12 +92,53 @@ const timelineEntries = computed(() => [
       class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
     >
       <template v-if="entry.id !== 'details'">
-        <h3 class="mb-4 text-[14px] font-medium text-neutral-500 dark:text-[#A3A3A3]">
-          {{ entry.eyebrow }}
-        </h3>
-        <div class="text-[16px] text-highlighted dark:text-white">
-          {{ entry.title }}
+        <div class="mb-4 flex items-start justify-between gap-4">
+          <h3 class="text-[14px] font-medium text-neutral-500 dark:text-[#A3A3A3]">
+            {{ entry.eyebrow }}
+          </h3>
+          <span class="rounded-full border border-black/8 bg-white/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-600 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-[#C9C9C9]">
+            {{ entry.status }}
+          </span>
         </div>
+
+        <div
+          class="space-y-2.5"
+          :title="`${entry.start.metaLabel} -> ${entry.end.metaLabel}`"
+        >
+          <div class="rounded-[1rem] border border-black/8 bg-white/78 p-3 dark:border-white/[0.08] dark:bg-white/[0.04]">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500 dark:text-[#8C8C8C]">
+              Opens
+            </p>
+            <p class="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+              {{ entry.start.timeLabel }}
+            </p>
+            <p class="mt-1 text-[12px] text-neutral-500 dark:text-[#A3A3A3]">
+              {{ entry.start.dayLabel }}, {{ entry.start.dateLabel }}
+            </p>
+          </div>
+
+          <div class="flex justify-center">
+            <span class="inline-flex size-7 items-center justify-center rounded-full border border-black/8 bg-white/78 text-neutral-500 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-[#A3A3A3]">
+              <AppIcon
+                name="i-lucide-arrow-down"
+                class="size-3.5"
+              />
+            </span>
+          </div>
+
+          <div class="rounded-[1rem] border border-black/8 bg-white/78 p-3 dark:border-white/[0.08] dark:bg-white/[0.04]">
+            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500 dark:text-[#8C8C8C]">
+              Closes
+            </p>
+            <p class="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+              {{ entry.end.timeLabel }}
+            </p>
+            <p class="mt-1 text-[12px] text-neutral-500 dark:text-[#A3A3A3]">
+              {{ entry.end.dayLabel }}, {{ entry.end.dateLabel }}
+            </p>
+          </div>
+        </div>
+
         <div class="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-black/6 dark:bg-white/[0.05]">
           <div
             class="h-full"
@@ -146,12 +159,28 @@ const timelineEntries = computed(() => [
           <div
             v-for="row in entry.rows"
             :key="row.label"
-            class="flex justify-between text-[13px]"
+            class="flex items-start justify-between gap-5 text-[13px]"
           >
             <span class="text-neutral-500 dark:text-[#8C8C8C]">
               {{ row.label }}
             </span>
-            <span class="text-highlighted dark:text-white">
+            <a
+              v-if="row.href"
+              :href="row.href"
+              target="_blank"
+              rel="noreferrer"
+              class="inline-flex max-w-[16rem] items-center justify-end gap-1.5 text-right font-medium text-highlighted transition-colors hover:text-black dark:text-white dark:hover:text-white/80"
+            >
+              <span>{{ row.value }}</span>
+              <AppIcon
+                name="i-lucide-arrow-up-right"
+                class="size-3.5 shrink-0"
+              />
+            </a>
+            <span
+              v-else
+              class="max-w-[16rem] text-right font-medium leading-5 text-highlighted dark:text-white"
+            >
               {{ row.value }}
             </span>
           </div>

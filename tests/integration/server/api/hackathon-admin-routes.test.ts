@@ -376,19 +376,60 @@ describe('TASK-3.5 hackathon admin route groups', () => {
     harnesses.push(publicHarness)
     await seedHackathonContext(publicHarness)
 
-    await publicHarness.database.insert(prizes).values({
-      id: 'prize_1',
-      hackathonId: 'hackathon_1',
-      name: 'First Prize',
-      description: 'Main prize',
-      rewardType: 'api_credits',
-      rewardValue: '5000',
-      rewardCurrency: 'USD',
-      awardScope: 'team',
-      rankStart: 1,
-      rankEnd: 1,
-      createdAt: '2026-03-22T12:00:00.000Z'
-    })
+    await publicHarness.database.insert(prizes).values([
+      {
+        id: 'prize_1',
+        hackathonId: 'hackathon_1',
+        name: 'First Prize',
+        description: 'Main prize',
+        rewardType: 'api_credits',
+        rewardValue: '5000',
+        rewardCurrency: 'USD',
+        awardScope: 'team',
+        rankStart: 1,
+        rankEnd: 1,
+        createdAt: '2026-03-22T12:00:00.000Z'
+      },
+      {
+        id: 'prize_2',
+        hackathonId: 'hackathon_1',
+        name: 'Top 3 Bonus',
+        description: 'Bonus for finalists',
+        rewardType: 'other',
+        rewardValue: 'Mentorship',
+        rewardCurrency: null,
+        awardScope: 'team',
+        rankStart: 1,
+        rankEnd: 3,
+        createdAt: '2026-03-22T12:01:00.000Z'
+      },
+      {
+        id: 'prize_3',
+        hackathonId: 'hackathon_1',
+        name: 'Second Prize',
+        description: 'Runner-up prize',
+        rewardType: 'api_credits',
+        rewardValue: '3000',
+        rewardCurrency: 'USD',
+        awardScope: 'team',
+        rankStart: 2,
+        rankEnd: 2,
+        createdAt: '2026-03-22T12:00:00.000Z'
+      },
+      {
+        id: 'prize_4',
+        hackathonId: 'hackathon_1',
+        name: 'Third Prize',
+        description: 'Third-place prize',
+        rewardType: 'api_credits',
+        rewardValue: '1500',
+        rewardCurrency: 'USD',
+        awardScope: 'team',
+        rankStart: 3,
+        rankEnd: 3,
+        createdAt: '2026-03-22T12:00:00.000Z'
+      }
+    ])
 
     const listResponse = await publicHarness.request('/api/hackathons/hackathon_1/prizes')
     expect(listResponse.status).toBe(200)
@@ -397,6 +438,18 @@ describe('TASK-3.5 hackathon admin route groups', () => {
         expect.objectContaining({
           id: 'prize_1',
           name: 'First Prize'
+        }),
+        expect.objectContaining({
+          id: 'prize_3',
+          name: 'Second Prize'
+        }),
+        expect.objectContaining({
+          id: 'prize_4',
+          name: 'Third Prize'
+        }),
+        expect.objectContaining({
+          id: 'prize_2',
+          name: 'Top 3 Bonus'
         })
       ]
     })

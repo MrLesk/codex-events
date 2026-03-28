@@ -82,22 +82,9 @@ const registrationTeamIntent = ref<'solo' | 'team' | 'unknown'>('unknown')
 const registrationTeamMembers = ref<ParticipantRegistrationTeamMemberHint[]>([])
 const profileFields = computed(() => listHackathonProfileFields(hackathon.value))
 const visibleProfileFields = computed(() => profileFields.value.filter(field => field.visible))
-const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
-const headerStateClass = computed(() => {
-  if (hackathon.value.state === 'submission_open') {
-    return 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-  }
-
-  if (hackathon.value.state === 'registration_open') {
-    return 'border border-sky-600/35 bg-sky-500/16 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/14 dark:text-sky-300'
-  }
-
-  if (hackathon.value.state === 'winners_announced') {
-    return 'bg-green-500/10 text-green-400 border border-green-500/20'
-  }
-
-  return 'bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]'
-})
+const headerStatePresentation = computed(() => getPublicHackathonStatePresentation(hackathon.value))
+const headerStateLabel = computed(() => headerStatePresentation.value.label.toUpperCase())
+const headerStateClass = computed(() => resolvePublicHackathonHeaderStateClass(hackathon.value))
 const detailSummary = computed(() => [
   formatHackathonWindow(hackathon.value.registrationOpensAt, hackathon.value.submissionClosesAt),
   formatHackathonLocation(hackathon.value),
@@ -176,6 +163,8 @@ if (accountActor.value?.kind === 'platform_user') {
       actorKind: accountActor.value.kind,
       hackathonSlug: slug.value,
       hackathonState: hackathon.value.state,
+      registrationOpensAt: hackathon.value.registrationOpensAt,
+      registrationClosesAt: hackathon.value.registrationClosesAt,
       hasExistingApplication: hasExistingApplication.value
     })
 
@@ -195,6 +184,8 @@ if (accountActor.value?.kind === 'platform_user') {
 const participantSubmissionPolicy = computed(() =>
   getParticipantApplicationSubmissionPolicy({
     hackathonState: hackathon.value.state,
+    registrationOpensAt: hackathon.value.registrationOpensAt,
+    registrationClosesAt: hackathon.value.registrationClosesAt,
     applicationStatus: hasExistingApplication.value ? 'submitted' : null,
     missingRequiredProfileFieldCount: missingRequiredProfileFields.value.length,
     hasCurrentApplicationTerms: Boolean(currentApplicationTerms.value),

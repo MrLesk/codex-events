@@ -68,22 +68,9 @@ const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 const registerRouteHref = computed(() => `/hackathons/${slug.value}/register`)
 const registerEntryHref = computed(() => buildAuthLoginHref(registerRouteHref.value))
 
-const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
-const headerStateClass = computed(() => {
-  if (hackathon.value.state === 'submission_open') {
-    return 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-  }
-
-  if (hackathon.value.state === 'registration_open') {
-    return 'border border-sky-600/35 bg-sky-500/16 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/14 dark:text-sky-300'
-  }
-
-  if (hackathon.value.state === 'winners_announced') {
-    return 'bg-green-500/10 text-green-400 border border-green-500/20'
-  }
-
-  return 'bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]'
-})
+const headerStatePresentation = computed(() => getPublicHackathonStatePresentation(hackathon.value))
+const headerStateLabel = computed(() => headerStatePresentation.value.label.toUpperCase())
+const headerStateClass = computed(() => resolvePublicHackathonHeaderStateClass(hackathon.value))
 const criteriaCount = computed(() => criteria.value.length)
 const detailBackgroundImageUrl = computed(() => {
   const backgroundImageUrl = hackathon.value.backgroundImageUrl?.trim()
@@ -113,7 +100,13 @@ const agendaEntries = computed(() =>
     presentation: getAgendaItemPresentation(item, showAgendaDayContext.value)
   }))
 )
-const showRegisterCta = computed(() => shouldShowPublicRegistrationEntry(hackathon.value.state))
+const showRegisterCta = computed(() =>
+  shouldShowPublicRegistrationEntry(
+    hackathon.value.state,
+    hackathon.value.registrationOpensAt,
+    hackathon.value.registrationClosesAt
+  )
+)
 const descriptionMarkdown = computed(() => hackathon.value.description?.trim() ?? '')
 const descriptionHtml = computed(() => descriptionMarkdown.value ? renderMarkdown(descriptionMarkdown.value) : '')
 const seoDescription = computed(() => hackathon.value.description
