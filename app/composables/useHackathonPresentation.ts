@@ -216,7 +216,18 @@ export function formatHackathonDateWithWeekday(value: string) {
 }
 
 export function formatHackathonLocation(location: { city: string, country: string }) {
-  return `${location.city}, ${location.country}`
+  const city = location.city.trim()
+  const country = location.country.trim()
+
+  if (!city) {
+    return country
+  }
+
+  if (!country || city === country) {
+    return city
+  }
+
+  return `${city}, ${country}`
 }
 
 export function formatHackathonCompactDate(value: string) {

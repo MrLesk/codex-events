@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  formatHackathonLocation,
   formatHackathonDateWithWeekday,
   getHackathonEarliestStartAt,
   getAgendaItemPresentation,
@@ -8,6 +9,20 @@ import {
 } from '../../../../app/composables/useHackathonPresentation'
 
 describe('public hackathon agenda presentation helpers', () => {
+  test('omits the country when city and country are identical', () => {
+    expect(formatHackathonLocation({
+      city: 'Singapore',
+      country: 'Singapore'
+    })).toBe('Singapore')
+  })
+
+  test('keeps city and country when they differ', () => {
+    expect(formatHackathonLocation({
+      city: 'Vienna',
+      country: 'Austria'
+    })).toBe('Vienna, Austria')
+  })
+
   test('collapses agenda labels to time-only when the full agenda fits in one local day', () => {
     const agendaItems = [
       {
