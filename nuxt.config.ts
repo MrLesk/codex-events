@@ -50,6 +50,9 @@ export default defineNuxtConfig({
 
   vite: {
     plugins: [tailwindcss()],
+    server: {
+      allowedHosts: ['comic-famous-koi.ngrok-free.app']
+    },
     optimizeDeps: {
       include: [
         '@vue/devtools-core',
