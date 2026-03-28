@@ -145,6 +145,7 @@ const accessRecord = computed(() => [
   ...accountHackathonsResponse.data.current,
   ...accountHackathonsResponse.data.past
 ].find(record => record.slug === slug.value) ?? null)
+const accessRecordId = computed(() => accessRecord.value?.id ?? '')
 
 if (!accessRecord.value) {
   throw createError({
@@ -609,7 +610,7 @@ useSeoMeta({
       >
         <AccountHackathonRoleRosterPanel
           v-if="canAdmin"
-          :hackathon-id="accessRecord.id"
+          :hackathon-id="accessRecordId"
           role="judge"
           title="Judges"
           description="Manage the explicit judge roster for this hackathon."
@@ -637,7 +638,7 @@ useSeoMeta({
       >
         <AccountHackathonRoleRosterPanel
           v-if="canAdmin"
-          :hackathon-id="accessRecord.id"
+          :hackathon-id="accessRecordId"
           role="hackathon_admin"
           title="Staff"
           description="Manage the hackathon-admin staff roster for this hackathon."

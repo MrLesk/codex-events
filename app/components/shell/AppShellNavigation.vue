@@ -44,7 +44,7 @@ const accountHackathonNavigationMode = useState<'participant' | 'admin'>(
           :class="[
             'justify-start',
             isShellNavigationLinkActive(route.path, route.query.tab, item.to, {
-              accountHackathonNavigationMode: accountHackathonNavigationMode.value
+              accountHackathonNavigationMode
             })
               ? 'bg-[#282828] text-white'
               : 'text-[#ECECEC] hover:bg-[#1A1A1A] hover:text-white'
