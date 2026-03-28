@@ -60,6 +60,9 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 ## Working Style
 
 - Keep domain language stable and intentional.
+- Assume high concurrency in this repository. Other agents or collaborators may be editing nearby files at the same time.
+- Inspect the worktree before staging, committing, or reverting anything, and isolate only the files required for your task.
+- Do not overwrite, revert, or "clean up" changes you did not make unless the user explicitly asks you to do so.
 - Prefer updating existing canonical docs over creating duplicate notes.
 - Separate product concepts from storage details when possible.
 - Record unresolved product questions explicitly instead of implying false certainty.
