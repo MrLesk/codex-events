@@ -32,23 +32,21 @@ async function selectHomepageTab(nextTab: HomepageTab) {
   })
 }
 
-const { data: initialResponse, error } = await useAsyncData('public-hackathons-homepage:page-1', async () =>
-  await $fetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
-    query: {
-      page: 1,
-      page_size: publicHackathonsPageSize
-    }
-  })
-)
-const { data: pastCountResponse } = await useAsyncData('public-hackathons-homepage:past-count', async () =>
-  await $fetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
-    query: {
-      page: 1,
-      page_size: 1,
-      state: 'completed'
-    }
-  })
-)
+const { data: initialResponse, error } = await useFetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
+  key: 'public-hackathons-homepage:page-1',
+  query: {
+    page: 1,
+    page_size: publicHackathonsPageSize
+  }
+})
+const { data: pastCountResponse } = await useFetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
+  key: 'public-hackathons-homepage:past-count',
+  query: {
+    page: 1,
+    page_size: 1,
+    state: 'completed'
+  }
+})
 
 hackathons.value = initialResponse.value?.data ?? []
 total.value = initialResponse.value?.meta?.total ?? hackathons.value.length
@@ -172,10 +170,10 @@ useSeoMeta({
         class="app-surface-panel-dashed rounded-xl p-10 text-center"
       >
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-[#8C8C8C]">
-          No visible programs
+          0 hackathons configured
         </p>
         <p class="mt-3 text-lg font-semibold text-highlighted dark:text-white">
-          There are no public hackathons available right now.
+          There are currently no public hackathons configured. Check again later.
         </p>
       </div>
 
