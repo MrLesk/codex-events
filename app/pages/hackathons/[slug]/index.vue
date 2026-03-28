@@ -9,6 +9,7 @@ import type {
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
 import { renderMarkdown } from '~/utils/markdown'
+import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 import {
   buildAccountSettingsHref,
   buildAuthLoginHref
@@ -124,7 +125,41 @@ const registerHref = computed(() => {
   return registerRouteHref.value
 })
 
-const activePublicSection = ref<'overview' | 'prizes' | 'details'>('overview')
+const publicSectionTabs = ['overview', 'prizes', 'details'] as const
+type PublicSectionTab = (typeof publicSectionTabs)[number]
+const activePublicSection = computed<PublicSectionTab>(() =>
+  resolveTabQueryValue(route.query.tab, publicSectionTabs, 'overview')
+)
+
+async function selectPublicSection(nextSection: PublicSectionTab) {
+  if (normalizeTabQueryValue(route.query.tab) === nextSection) {
+    return
+  }
+
+  await navigateTo({
+    path: route.path,
+    query: {
+      ...route.query,
+      tab: nextSection
+    },
+    hash: route.hash
+  })
+}
+
+watchEffect(() => {
+  if (activePublicSection.value !== 'prizes' || hasPublishedPrizes.value) {
+    return
+  }
+
+  void navigateTo({
+    path: route.path,
+    query: {
+      ...route.query,
+      tab: 'overview'
+    },
+    hash: route.hash
+  }, { replace: true })
+})
 
 const agendaDateTimeFormatter = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -237,7 +272,7 @@ useSeoMeta({
               aria-controls="public-tab-panel-overview"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activePublicSection === 'overview' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="activePublicSection = 'overview'"
+              @click="void selectPublicSection('overview')"
             >
               Overview
             </button>
@@ -250,7 +285,7 @@ useSeoMeta({
               aria-controls="public-tab-panel-prizes"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activePublicSection === 'prizes' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="activePublicSection = 'prizes'"
+              @click="void selectPublicSection('prizes')"
             >
               Prizes
             </button>
@@ -262,7 +297,7 @@ useSeoMeta({
               aria-controls="public-tab-panel-details"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activePublicSection === 'details' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="activePublicSection = 'details'"
+              @click="void selectPublicSection('details')"
             >
               Details
             </button>

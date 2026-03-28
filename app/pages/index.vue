@@ -2,14 +2,35 @@
 import type { PublicApiListResponse, PublicHackathon } from '~/composables/useHackathonPresentation'
 
 import HackathonCard from '~/components/public/hackathons/HackathonCard.vue'
+import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
 const publicHackathonsPageSize = 4
+const route = useRoute()
 const currentPage = ref(1)
 const hackathons = ref<PublicHackathon[]>([])
 const total = ref(0)
 const isLoadingMore = ref(false)
 const loadMoreError = ref<string>()
-const activeTab = ref<'active' | 'past'>('active')
+const homepageTabs = ['active', 'past'] as const
+type HomepageTab = (typeof homepageTabs)[number]
+const activeTab = computed<HomepageTab>(() =>
+  resolveTabQueryValue(route.query.tab, homepageTabs, 'active')
+)
+
+async function selectHomepageTab(nextTab: HomepageTab) {
+  if (normalizeTabQueryValue(route.query.tab) === nextTab) {
+    return
+  }
+
+  await navigateTo({
+    path: route.path,
+    query: {
+      ...route.query,
+      tab: nextTab
+    },
+    hash: route.hash
+  })
+}
 
 const { data: initialResponse, error } = await useAsyncData('public-hackathons-homepage:page-1', async () =>
   await $fetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
@@ -129,14 +150,14 @@ useSeoMeta({
           <button
             class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
             :class="activeTab === 'active' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-            @click="activeTab = 'active'"
+            @click="void selectHomepageTab('active')"
           >
             Active
           </button>
           <button
             class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
             :class="activeTab === 'past' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-            @click="activeTab = 'past'"
+            @click="void selectHomepageTab('past')"
           >
             Past
           </button>

@@ -32,6 +32,7 @@ import {
   getTeamSubmissionWorkspaceStatus
 } from '~/utils/team-submission'
 import { renderMarkdown } from '~/utils/markdown'
+import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
 definePageMeta({
   layout: 'profile',
@@ -223,8 +224,42 @@ const submissionRoleSummary = computed(() => {
 const descriptionMarkdown = computed(() => hackathon.value.description?.trim() ?? '')
 const descriptionHtml = computed(() => descriptionMarkdown.value ? renderMarkdown(descriptionMarkdown.value) : '')
 
-const activeSection = ref<'overview' | 'prizes' | 'judges' | 'staff' | 'team' | 'submission'>('overview')
+const workspaceSectionTabs = ['overview', 'prizes', 'judges', 'staff', 'team', 'submission'] as const
+type WorkspaceSectionTab = (typeof workspaceSectionTabs)[number]
+const activeSection = computed<WorkspaceSectionTab>(() =>
+  resolveTabQueryValue(route.query.tab, workspaceSectionTabs, 'overview')
+)
 const canViewApprovedWorkspace = computed(() => applicationStatus.value === 'approved')
+
+async function selectWorkspaceSection(nextSection: WorkspaceSectionTab) {
+  if (normalizeTabQueryValue(route.query.tab) === nextSection) {
+    return
+  }
+
+  await navigateTo({
+    path: route.path,
+    query: {
+      ...route.query,
+      tab: nextSection
+    },
+    hash: route.hash
+  })
+}
+
+watchEffect(() => {
+  if (activeSection.value !== 'prizes' || hasPublishedPrizes.value) {
+    return
+  }
+
+  void navigateTo({
+    path: route.path,
+    query: {
+      ...route.query,
+      tab: 'overview'
+    },
+    hash: route.hash
+  }, { replace: true })
+})
 
 onMounted(() => {
   if (!showRegistrationSuccessNotice.value) {
@@ -323,7 +358,7 @@ useSeoMeta({
               aria-controls="account-tab-panel-overview"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activeSection === 'overview' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="activeSection = 'overview'"
+              @click="void selectWorkspaceSection('overview')"
             >
               Overview
             </button>
@@ -336,7 +371,7 @@ useSeoMeta({
               aria-controls="account-tab-panel-prizes"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activeSection === 'prizes' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="activeSection = 'prizes'"
+              @click="void selectWorkspaceSection('prizes')"
             >
               Prizes
             </button>
@@ -348,7 +383,7 @@ useSeoMeta({
               aria-controls="account-tab-panel-judges"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activeSection === 'judges' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="activeSection = 'judges'"
+              @click="void selectWorkspaceSection('judges')"
             >
               Judges
             </button>
@@ -360,7 +395,7 @@ useSeoMeta({
               aria-controls="account-tab-panel-staff"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activeSection === 'staff' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="activeSection = 'staff'"
+              @click="void selectWorkspaceSection('staff')"
             >
               Staff
             </button>
@@ -372,7 +407,7 @@ useSeoMeta({
               aria-controls="account-tab-panel-team"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activeSection === 'team' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="activeSection = 'team'"
+              @click="void selectWorkspaceSection('team')"
             >
               Team
             </button>
@@ -384,7 +419,7 @@ useSeoMeta({
               aria-controls="account-tab-panel-submission"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activeSection === 'submission' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="activeSection = 'submission'"
+              @click="void selectWorkspaceSection('submission')"
             >
               Submission
             </button>
