@@ -87,6 +87,9 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 - Include only the minimum context needed to act safely.
 - Expand only when the user explicitly asks for more detail.
 - Keep progress updates short and factual.
+- When a user gives a non-trivial task, ask focused follow-up questions until you have high confidence in the outcome they actually want, not just the solution they initially proposed.
+- Clarify the underlying goal, constraints, and success criteria before implementing when the user's intent could reasonably be interpreted in more than one way.
+- If the task is purely mechanical and the intended outcome is already clear, do not ask unnecessary questions.
 
 ## User POV For Copy And UX
 
