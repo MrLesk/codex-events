@@ -91,8 +91,8 @@ const timelineEntries = computed(() => [
       :key="entry.id"
       class="hackathon-workspace-detail-panel rounded-xl p-6"
     >
-      <template v-if="entry.id !== 'details'">
-        <div class="mb-4 flex items-start justify-between gap-4">
+      <template v-if="entry.start && entry.end">
+        <div class="mb-3 flex items-start justify-between gap-4">
           <h3 class="text-[14px] font-medium text-neutral-500 dark:text-[#A3A3A3]">
             {{ entry.eyebrow }}
           </h3>
@@ -102,44 +102,51 @@ const timelineEntries = computed(() => [
         </div>
 
         <div
-          class="space-y-2.5"
+          class="hackathon-workspace-detail-inset rounded-[1rem] px-3.5 py-3"
           :title="`${entry.start.metaLabel} -> ${entry.end.metaLabel}`"
         >
-          <div class="hackathon-workspace-detail-inset rounded-[1rem] p-3">
-            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500 dark:text-[#8C8C8C]">
-              Opens
-            </p>
-            <p class="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-              {{ entry.start.timeLabel }}
-            </p>
-            <p class="mt-1 text-[12px] text-neutral-500 dark:text-[#A3A3A3]">
-              {{ entry.start.dayLabel }}, {{ entry.start.dateLabel }}
-            </p>
-          </div>
+          <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
+            <div class="min-w-0">
+              <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500 dark:text-[#8C8C8C]">
+                Opens
+              </p>
+              <p class="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+                {{ entry.start.timeLabel }}
+              </p>
+              <p class="mt-1 text-[12px] leading-4 text-neutral-500 dark:text-[#A3A3A3]">
+                {{ entry.start.dayLabel }}, {{ entry.start.dateLabel }}
+              </p>
+            </div>
 
-          <div class="flex justify-center">
-            <span class="inline-flex size-7 items-center justify-center rounded-full border border-black/8 bg-white/78 text-neutral-500 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-[#A3A3A3]">
-              <AppIcon
-                name="i-lucide-arrow-down"
-                class="size-3.5"
-              />
-            </span>
-          </div>
+            <div
+              class="flex items-center gap-2 self-start pt-1.5 text-neutral-500 dark:text-[#A3A3A3]"
+              aria-hidden="true"
+            >
+              <span class="hidden h-px w-3 bg-black/8 dark:bg-white/[0.08] sm:block" />
+              <span class="inline-flex size-7 items-center justify-center rounded-full border border-black/8 bg-white/78 dark:border-white/[0.08] dark:bg-white/[0.04]">
+                <AppIcon
+                  name="i-lucide-arrow-right"
+                  class="size-3.5"
+                />
+              </span>
+              <span class="hidden h-px w-3 bg-black/8 dark:bg-white/[0.08] sm:block" />
+            </div>
 
-          <div class="hackathon-workspace-detail-inset rounded-[1rem] p-3">
-            <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500 dark:text-[#8C8C8C]">
-              Closes
-            </p>
-            <p class="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-              {{ entry.end.timeLabel }}
-            </p>
-            <p class="mt-1 text-[12px] text-neutral-500 dark:text-[#A3A3A3]">
-              {{ entry.end.dayLabel }}, {{ entry.end.dateLabel }}
-            </p>
+            <div class="min-w-0 text-right">
+              <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500 dark:text-[#8C8C8C]">
+                Closes
+              </p>
+              <p class="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+                {{ entry.end.timeLabel }}
+              </p>
+              <p class="mt-1 text-[12px] leading-4 text-neutral-500 dark:text-[#A3A3A3]">
+                {{ entry.end.dayLabel }}, {{ entry.end.dateLabel }}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div class="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-black/6 dark:bg-white/[0.05]">
+        <div class="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-black/6 dark:bg-white/[0.05]">
           <div
             class="h-full"
             :class="entry.accent"
