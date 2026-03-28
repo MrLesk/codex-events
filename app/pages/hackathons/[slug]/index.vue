@@ -9,16 +9,23 @@ import type {
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
 import { renderMarkdown } from '~/utils/markdown'
-import { shouldShowPublicRegistrationEntry } from '~/utils/participant-application'
+import { resolvePublicHackathonPrimaryAction } from '~/utils/participant-application'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
-import {
-  buildAccountSettingsHref,
-  buildAuthLoginHref
-} from '~/utils/auth-navigation'
 
 definePageMeta({
   layout: 'public'
 })
+
+interface AccountHackathonAccessRecord {
+  slug: string
+}
+
+interface AccountHackathonsResponse {
+  data: {
+    current: AccountHackathonAccessRecord[]
+    past: AccountHackathonAccessRecord[]
+  }
+}
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
@@ -65,8 +72,22 @@ const hackathon = computed(() => hackathonResponse.value!.data)
 const criteria = computed(() => criteriaResponse.value?.data ?? [])
 const prizes = computed(() => prizesResponse.value?.data ?? [])
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
-const registerRouteHref = computed(() => `/hackathons/${slug.value}/register`)
-const registerEntryHref = computed(() => buildAuthLoginHref(registerRouteHref.value))
+const requestFetch = import.meta.server ? useRequestFetch() : $fetch
+const hasHackathonWorkspaceAccess = ref(false)
+
+if (accountActor.value.kind === 'platform_user') {
+  try {
+    const accountHackathonsResponse = await requestFetch<AccountHackathonsResponse>('/api/account/hackathons')
+    const accessibleHackathons = [
+      ...accountHackathonsResponse.data.current,
+      ...accountHackathonsResponse.data.past
+    ]
+
+    hasHackathonWorkspaceAccess.value = accessibleHackathons.some(record => record.slug === slug.value)
+  } catch {
+    hasHackathonWorkspaceAccess.value = false
+  }
+}
 
 const headerStatePresentation = computed(() => getPublicHackathonStatePresentation(hackathon.value))
 const headerStateLabel = computed(() => headerStatePresentation.value.label.toUpperCase())
@@ -100,13 +121,20 @@ const agendaEntries = computed(() =>
     presentation: getAgendaItemPresentation(item, showAgendaDayContext.value)
   }))
 )
-const showRegisterCta = computed(() =>
-  shouldShowPublicRegistrationEntry(
-    hackathon.value.state,
-    hackathon.value.registrationOpensAt,
-    hackathon.value.registrationClosesAt
-  )
+const primaryAction = computed(() =>
+  resolvePublicHackathonPrimaryAction({
+    actorKind: accountActor.value.kind,
+    hackathonSlug: slug.value,
+    hackathonState: hackathon.value.state,
+    registrationOpensAt: hackathon.value.registrationOpensAt,
+    registrationClosesAt: hackathon.value.registrationClosesAt,
+    hasHackathonWorkspaceAccess: hasHackathonWorkspaceAccess.value
+  })
 )
+const showPrimaryAction = computed(() => Boolean(primaryAction.value))
+const primaryActionHref = computed(() => primaryAction.value?.to ?? '')
+const isPrimaryActionExternal = computed(() => primaryAction.value?.external ?? false)
+const primaryActionLabel = computed(() => primaryAction.value?.label ?? '')
 const descriptionMarkdown = computed(() => hackathon.value.description?.trim() ?? '')
 const descriptionHtml = computed(() => descriptionMarkdown.value ? renderMarkdown(descriptionMarkdown.value) : '')
 const seoDescription = computed(() => hackathon.value.description
@@ -115,18 +143,6 @@ const seoDescription = computed(() => hackathon.value.description
   .replace(/[*_#>-]+/g, ' ')
   .replace(/\s+/g, ' ')
   .trim())
-const isRegisterHrefExternal = computed(() => accountActor.value?.kind === 'anonymous')
-const registerHref = computed(() => {
-  if (accountActor.value?.kind === 'anonymous') {
-    return registerEntryHref.value
-  }
-
-  if (accountActor.value?.kind === 'authenticated_identity') {
-    return buildAccountSettingsHref(registerRouteHref.value)
-  }
-
-  return registerRouteHref.value
-})
 
 const publicSectionTabs = ['overview', 'prizes', 'details'] as const
 type PublicSectionTab = (typeof publicSectionTabs)[number]
@@ -217,17 +233,18 @@ useSeoMeta({
               </div>
 
               <div
-                v-if="showRegisterCta"
+                v-if="showPrimaryAction"
                 class="shrink-0 pt-0.5"
               >
                 <AppButton
-                  :to="registerHref"
-                  :external="isRegisterHrefExternal"
+                  data-testid="public-hackathon-primary-action"
+                  :to="primaryActionHref"
+                  :external="isPrimaryActionExternal"
                   color="neutral"
                   variant="solid"
                   class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                 >
-                  Register
+                  {{ primaryActionLabel }}
                   <template #trailing>
                     <AppIcon
                       name="i-lucide-arrow-up-right"

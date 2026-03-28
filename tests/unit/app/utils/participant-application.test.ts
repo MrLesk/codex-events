@@ -15,6 +15,7 @@ import {
   normalizeParticipantProfileUrl,
   normalizeParticipantTeamMemberHintsForSubmission,
   parseParticipantRegistrationDetailsJson,
+  resolvePublicHackathonPrimaryAction,
   resolveParticipantRegistrationEntry,
   shouldShowPublicRegistrationEntry,
   summarizeParticipantApplicationStatus
@@ -253,6 +254,62 @@ describe('participant application helpers', () => {
       to: '/hackathons/codex-spring',
       external: false
     })
+  })
+
+  test('keeps the public detail CTA as Register while registration is open', () => {
+    expect(resolvePublicHackathonPrimaryAction({
+      actorKind: 'anonymous',
+      hackathonSlug: 'codex-spring',
+      hackathonState: 'registration_open',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      hasHackathonWorkspaceAccess: false,
+      now: new Date('2026-03-21T12:00:00.000Z')
+    })).toEqual({
+      label: 'Register',
+      to: '/auth/login?returnTo=%2Fhackathons%2Fcodex-spring%2Fregister',
+      external: true
+    })
+
+    expect(resolvePublicHackathonPrimaryAction({
+      actorKind: 'platform_user',
+      hackathonSlug: 'codex-spring',
+      hackathonState: 'registration_open',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      hasHackathonWorkspaceAccess: true,
+      now: new Date('2026-03-21T12:00:00.000Z')
+    })).toEqual({
+      label: 'Register',
+      to: '/hackathons/codex-spring/register',
+      external: false
+    })
+  })
+
+  test('shows the public detail Open workspace CTA after registration closes when account access exists', () => {
+    expect(resolvePublicHackathonPrimaryAction({
+      actorKind: 'platform_user',
+      hackathonSlug: 'codex-spring',
+      hackathonState: 'judge_review',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      hasHackathonWorkspaceAccess: true,
+      now: new Date('2026-03-24T12:00:00.000Z')
+    })).toEqual({
+      label: 'Open workspace',
+      to: '/account/hackathons/codex-spring',
+      external: false
+    })
+
+    expect(resolvePublicHackathonPrimaryAction({
+      actorKind: 'platform_user',
+      hackathonSlug: 'codex-spring',
+      hackathonState: 'judge_review',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      hasHackathonWorkspaceAccess: false,
+      now: new Date('2026-03-24T12:00:00.000Z')
+    })).toBeNull()
   })
 
   test('returns registration submission policy based on lifecycle, profile, and terms acceptance', () => {

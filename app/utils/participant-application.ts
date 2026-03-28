@@ -394,6 +394,63 @@ export function shouldShowPublicRegistrationEntry(
   return isHackathonRegistrationOpen(state, registrationOpensAt, registrationClosesAt, now)
 }
 
+export interface PublicHackathonPrimaryAction {
+  label: 'Register' | 'Open workspace'
+  to: string
+  external: boolean
+}
+
+export function resolvePublicHackathonPrimaryAction(options: {
+  actorKind: ParticipantActor['kind']
+  hackathonSlug: string
+  hackathonState: PublicHackathonState
+  registrationOpensAt: string
+  registrationClosesAt: string
+  hasHackathonWorkspaceAccess: boolean
+  now?: Date
+}): PublicHackathonPrimaryAction | null {
+  const registerHref = `/hackathons/${options.hackathonSlug}/register`
+
+  if (shouldShowPublicRegistrationEntry(
+    options.hackathonState,
+    options.registrationOpensAt,
+    options.registrationClosesAt,
+    options.now
+  )) {
+    if (options.actorKind === 'anonymous') {
+      return {
+        label: 'Register',
+        to: buildAuthLoginHref(registerHref),
+        external: true
+      }
+    }
+
+    if (options.actorKind === 'authenticated_identity') {
+      return {
+        label: 'Register',
+        to: buildAccountSettingsHref(registerHref),
+        external: false
+      }
+    }
+
+    return {
+      label: 'Register',
+      to: registerHref,
+      external: false
+    }
+  }
+
+  if (!options.hasHackathonWorkspaceAccess) {
+    return null
+  }
+
+  return {
+    label: 'Open workspace',
+    to: `/account/hackathons/${options.hackathonSlug}`,
+    external: false
+  }
+}
+
 export function resolveParticipantRegistrationEntry(options: {
   actorKind: ParticipantActor['kind']
   hackathonSlug: string
