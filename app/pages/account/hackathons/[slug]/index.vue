@@ -15,6 +15,7 @@ import AccountHackathonAdminOperationsPanel from '~/components/account/hackathon
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
 import AccountHackathonCompetitionPanel from '~/components/account/hackathons/AccountHackathonCompetitionPanel.vue'
 import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
+import AccountHackathonRoleRosterPanel from '~/components/account/hackathons/AccountHackathonRoleRosterPanel.vue'
 import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
 import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOverviewPanel.vue'
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
@@ -95,6 +96,10 @@ const workspaceTabLabels: Record<WorkspaceSectionTab, string> = {
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
+const accountHackathonNavigationMode = useState<'participant' | 'admin'>(
+  'account-hackathon-navigation-mode',
+  () => 'participant'
+)
 const { actor } = useAccountLifecycleActor()
 
 if (!slug.value) {
@@ -217,6 +222,14 @@ const visibleTabs = computed(() =>
 const activeSection = computed<WorkspaceSectionTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
+
+watchEffect(() => {
+  accountHackathonNavigationMode.value = canAdmin.value ? 'admin' : 'participant'
+})
+
+onUnmounted(() => {
+  accountHackathonNavigationMode.value = 'participant'
+})
 
 async function selectWorkspaceSection(nextSection: WorkspaceSectionTab) {
   if (normalizeTabQueryValue(route.query.tab) === nextSection) {
@@ -594,7 +607,19 @@ useSeoMeta({
         role="tabpanel"
         aria-labelledby="account-tab-judges"
       >
-        <AppCard class="hackathon-workspace-detail-panel p-6">
+        <AccountHackathonRoleRosterPanel
+          v-if="canAdmin"
+          :hackathon-id="accessRecord.id"
+          role="judge"
+          title="Judges"
+          description="Manage the explicit judge roster for this hackathon."
+          empty-assigned-message="No judges have been explicitly assigned yet."
+        />
+
+        <AppCard
+          v-else
+          class="hackathon-workspace-detail-panel p-6"
+        >
           <h2 class="text-xl font-semibold text-highlighted dark:text-white">
             Judges
           </h2>
@@ -610,7 +635,19 @@ useSeoMeta({
         role="tabpanel"
         aria-labelledby="account-tab-staff"
       >
-        <AppCard class="hackathon-workspace-detail-panel p-6">
+        <AccountHackathonRoleRosterPanel
+          v-if="canAdmin"
+          :hackathon-id="accessRecord.id"
+          role="hackathon_admin"
+          title="Staff"
+          description="Manage the hackathon-admin staff roster for this hackathon."
+          empty-assigned-message="No hackathon admins have been explicitly assigned yet."
+        />
+
+        <AppCard
+          v-else
+          class="hackathon-workspace-detail-panel p-6"
+        >
           <h2 class="text-xl font-semibold text-highlighted dark:text-white">
             Staff
           </h2>

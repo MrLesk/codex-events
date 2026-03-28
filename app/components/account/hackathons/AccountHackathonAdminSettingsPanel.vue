@@ -4,13 +4,11 @@ import type {
   EvaluationCriterion,
   HackathonFormState,
   HackathonRecord,
-  HackathonRoleAssignment,
   PrizeDefinition,
   TermsDocument
 } from '~/utils/admin-workspace'
 
 import {
-  canMutateRoleAssignments,
   formatHackathonState,
   fromDateTimeLocalValue,
   getHackathonStateColor,
@@ -25,11 +23,6 @@ const props = defineProps<{
 type CriterionEditState = Pick<EvaluationCriterion, 'name' | 'description' | 'weight' | 'displayOrder'>
 type PrizeEditState = Pick<PrizeDefinition, 'name' | 'description' | 'rewardType' | 'rewardValue' | 'awardScope' | 'rankStart' | 'rankEnd' | 'displayOrder'> & {
   rewardCurrency: string
-}
-type AssignableUser = {
-  id: string
-  displayName: string
-  email: string
 }
 
 const toast = useToast()
@@ -109,13 +102,10 @@ const draggedCriterionId = ref<string | null>(null)
 const criterionDropTargetId = ref<string | null>(null)
 const draggedPrizeId = ref<string | null>(null)
 const prizeDropTargetId = ref<string | null>(null)
-const adminAssignmentSearch = ref('')
-const judgeAssignmentSearch = ref('')
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const actor = computed(() => workspace.actor.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
-const canMutateRoles = computed(() => canMutateRoleAssignments(actor.value))
 const criteria = computed(() => workspace.criteria.data.value?.data ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
 const orderedCriteria = computed(() =>
@@ -145,80 +135,6 @@ const hasPrizeOrderChanges = computed(() =>
 )
 const applicationTerms = computed(() => workspace.applicationTermsVersions.data.value?.data ?? [])
 const winnerTerms = computed(() => workspace.winnerTermsVersions.data.value?.data ?? [])
-const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
-const applications = computed(() => workspace.applications.data.value?.data ?? [])
-const adminRoleAssignments = computed(() =>
-  roleAssignments.value.filter(assignment => assignment.role === 'hackathon_admin')
-)
-const judgeRoleAssignments = computed(() =>
-  roleAssignments.value.filter(assignment => assignment.role === 'judge')
-)
-
-const assignableUsers = computed<AssignableUser[]>(() => {
-  const usersById = new Map<string, AssignableUser>()
-
-  for (const application of applications.value) {
-    if (application.status !== 'approved' || !application.user) {
-      continue
-    }
-
-    usersById.set(application.user.id, {
-      id: application.user.id,
-      displayName: application.user.displayName,
-      email: application.user.email
-    })
-  }
-
-  for (const assignment of roleAssignments.value) {
-    if (!assignment.user) {
-      continue
-    }
-
-    usersById.set(assignment.user.id, {
-      id: assignment.user.id,
-      displayName: assignment.user.displayName,
-      email: assignment.user.email
-    })
-  }
-
-  return [...usersById.values()].sort((left, right) => left.displayName.localeCompare(right.displayName))
-})
-
-const adminAssignableUsers = computed(() => {
-  const currentAdminIds = new Set(adminRoleAssignments.value.map(assignment => assignment.userId))
-  const query = adminAssignmentSearch.value.trim().toLowerCase()
-
-  return assignableUsers.value.filter((user) => {
-    if (currentAdminIds.has(user.id)) {
-      return false
-    }
-
-    if (!query) {
-      return true
-    }
-
-    const haystack = `${user.displayName} ${user.email} ${user.id}`.toLowerCase()
-    return haystack.includes(query)
-  })
-})
-
-const judgeAssignableUsers = computed(() => {
-  const assignedJudgeIds = new Set(judgeRoleAssignments.value.map(assignment => assignment.userId))
-  const query = judgeAssignmentSearch.value.trim().toLowerCase()
-
-  return assignableUsers.value.filter((user) => {
-    if (assignedJudgeIds.has(user.id)) {
-      return false
-    }
-
-    if (!query) {
-      return true
-    }
-
-    const haystack = `${user.displayName} ${user.email} ${user.id}`.toLowerCase()
-    return haystack.includes(query)
-  })
-})
 
 function nextDisplayOrder(items: Array<EvaluationCriterion>) {
   return items.reduce((highest, item) => Math.max(highest, item.displayOrder), 0) + 1
@@ -798,80 +714,6 @@ async function savePrizeOrder() {
   } finally {
     isSavingPrizeOrder.value = false
   }
-}
-
-async function assignHackathonAdmin(userId: string) {
-  const hackathon = currentHackathon.value
-  const trimmedUserId = userId.trim()
-
-  if (!hackathon || !trimmedUserId) {
-    if (!trimmedUserId) {
-      mutationError.value = 'Pick a registered user before assigning hackathon-admin access.'
-    }
-
-    return
-  }
-
-  await runMutation(async () => {
-    await $fetch(`/api/hackathons/${hackathon.id}/roles/${trimmedUserId}`, {
-      method: 'PUT',
-      body: {
-        role: 'hackathon_admin',
-        isInJudgePool: false
-      }
-    })
-  }, 'Hackathon admin assigned', 'The admin roster was updated for this hackathon.')
-}
-
-async function deleteRoleAssignment(assignment: HackathonRoleAssignment) {
-  const hackathon = currentHackathon.value
-
-  if (!hackathon) {
-    return
-  }
-
-  await runMutation(async () => {
-    await $fetch(`/api/hackathons/${hackathon.id}/roles/${assignment.userId}`, {
-      method: 'DELETE'
-    })
-  }, 'Hackathon admin removed', 'The admin roster was updated for this hackathon.')
-}
-
-async function assignJudge(userId: string) {
-  const hackathon = currentHackathon.value
-  const trimmedUserId = userId.trim()
-
-  if (!hackathon || !trimmedUserId) {
-    if (!trimmedUserId) {
-      mutationError.value = 'Pick a registered user before assigning judge access.'
-    }
-
-    return
-  }
-
-  await runMutation(async () => {
-    await $fetch(`/api/hackathons/${hackathon.id}/roles/${trimmedUserId}`, {
-      method: 'PUT',
-      body: {
-        role: 'judge',
-        isInJudgePool: true
-      }
-    })
-  }, 'Judge assigned', 'The judge roster was updated for this hackathon.')
-}
-
-async function removeJudge(assignment: HackathonRoleAssignment) {
-  const hackathon = currentHackathon.value
-
-  if (!hackathon) {
-    return
-  }
-
-  await runMutation(async () => {
-    await $fetch(`/api/hackathons/${hackathon.id}/roles/${assignment.userId}`, {
-      method: 'DELETE'
-    })
-  }, 'Judge removed', 'The judge roster was updated for this hackathon.')
 }
 
 async function createTermsVersion() {
@@ -1495,255 +1337,6 @@ async function setCurrentTerms(document: TermsDocument) {
           </AppCard>
         </section>
 
-        <div class="space-y-1">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Access Control
-          </p>
-          <h2 class="text-xl font-semibold text-highlighted">
-            Admins and Judges
-          </h2>
-        </div>
-
-        <section class="space-y-6">
-          <AppCard class="rounded-xl hackathon-workspace-detail-panel">
-            <template #header>
-              <div class="space-y-1">
-                <h2 class="text-lg font-semibold text-highlighted">
-                  Role Assignments
-                </h2>
-                <p class="text-sm text-muted">
-                  Search approved and already-associated users, then assign or remove hackathon-admin and judge access for this hackathon.
-                </p>
-              </div>
-            </template>
-
-            <div class="space-y-4">
-              <AppAlert
-                v-if="!canMutateRoles"
-                color="warning"
-                variant="soft"
-                title="Hackathon admin access required"
-                description="The current actor can view this roster but cannot modify it for this hackathon."
-              />
-
-              <section class="space-y-3">
-                <div class="flex items-center justify-between gap-3">
-                  <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-                    Hackathon admins
-                  </h3>
-                  <p class="text-xs text-muted">
-                    {{ adminRoleAssignments.length }} assigned
-                  </p>
-                </div>
-
-                <template v-if="canMutateRoles">
-                  <input
-                    v-model="adminAssignmentSearch"
-                    type="text"
-                    class="w-full rounded-lg border border-black/8 bg-white/90 px-4 py-3 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                    placeholder="Search users by name, email, or user ID"
-                  >
-                  <div class="grid gap-3">
-                    <div
-                      v-for="user in adminAssignableUsers"
-                      :key="user.id"
-                      class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 dark:border-white/[0.08] dark:bg-[#111111]"
-                    >
-                      <div class="space-y-0.5">
-                        <p class="font-semibold text-highlighted">
-                          {{ user.displayName }}
-                        </p>
-                        <p class="text-sm text-muted">
-                          {{ user.email }}
-                        </p>
-                        <p class="font-mono text-xs text-muted">
-                          userId: {{ user.id }}
-                        </p>
-                      </div>
-                      <AppButton
-                        size="sm"
-                        variant="soft"
-                        @click="assignHackathonAdmin(user.id)"
-                      >
-                        Assign admin
-                      </AppButton>
-                    </div>
-
-                    <p
-                      v-if="adminAssignableUsers.length === 0"
-                      class="text-sm text-muted"
-                    >
-                      No assignable users match the current search.
-                    </p>
-                  </div>
-                </template>
-
-                <div class="grid gap-3">
-                  <div
-                    v-for="assignment in adminRoleAssignments"
-                    :key="assignment.id"
-                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
-                  >
-                    <div class="grid gap-4">
-                      <div class="flex flex-wrap items-start justify-between gap-4">
-                        <div class="space-y-1">
-                          <p class="font-semibold text-highlighted">
-                            {{ assignment.user?.displayName ?? assignment.userId }}
-                          </p>
-                          <p class="text-sm text-muted">
-                            {{ assignment.user?.email ?? 'Manual user lookup required' }}
-                          </p>
-                          <p class="font-mono text-xs text-muted">
-                            userId: {{ assignment.userId }}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div
-                        v-if="canMutateRoles"
-                        class="flex flex-wrap items-center justify-between gap-3"
-                      >
-                        <p class="text-sm text-muted">
-                          hackathon_admin
-                        </p>
-                        <AppButton
-                          size="sm"
-                          color="error"
-                          variant="soft"
-                          @click="deleteRoleAssignment(assignment)"
-                        >
-                          Remove
-                        </AppButton>
-                      </div>
-
-                      <div
-                        v-else
-                        class="text-sm text-muted"
-                      >
-                        <p>hackathon_admin</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p
-                    v-if="adminRoleAssignments.length === 0"
-                    class="text-sm text-muted"
-                  >
-                    No hackathon admins have been explicitly assigned yet.
-                  </p>
-                </div>
-              </section>
-
-              <section class="space-y-3 border-t border-black/8 pt-4 dark:border-white/[0.08]">
-                <div class="flex items-center justify-between gap-3">
-                  <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-                    Judges
-                  </h3>
-                  <p class="text-xs text-muted">
-                    {{ judgeRoleAssignments.length }} assigned
-                  </p>
-                </div>
-
-                <template v-if="canMutateRoles">
-                  <input
-                    v-model="judgeAssignmentSearch"
-                    type="text"
-                    class="w-full rounded-lg border border-black/8 bg-white/90 px-4 py-3 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                    placeholder="Search users by name, email, or user ID"
-                  >
-                  <div class="grid gap-3">
-                    <div
-                      v-for="user in judgeAssignableUsers"
-                      :key="user.id"
-                      class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 dark:border-white/[0.08] dark:bg-[#111111]"
-                    >
-                      <div class="space-y-0.5">
-                        <p class="font-semibold text-highlighted">
-                          {{ user.displayName }}
-                        </p>
-                        <p class="text-sm text-muted">
-                          {{ user.email }}
-                        </p>
-                        <p class="font-mono text-xs text-muted">
-                          userId: {{ user.id }}
-                        </p>
-                      </div>
-                      <AppButton
-                        size="sm"
-                        variant="soft"
-                        @click="assignJudge(user.id)"
-                      >
-                        Assign judge
-                      </AppButton>
-                    </div>
-
-                    <p
-                      v-if="judgeAssignableUsers.length === 0"
-                      class="text-sm text-muted"
-                    >
-                      No assignable users match the current search.
-                    </p>
-                  </div>
-                </template>
-
-                <div class="grid gap-3">
-                  <div
-                    v-for="assignment in judgeRoleAssignments"
-                    :key="assignment.id"
-                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
-                  >
-                    <div class="grid gap-4">
-                      <div class="flex flex-wrap items-start justify-between gap-4">
-                        <div class="space-y-1">
-                          <p class="font-semibold text-highlighted">
-                            {{ assignment.user?.displayName ?? assignment.userId }}
-                          </p>
-                          <p class="text-sm text-muted">
-                            {{ assignment.user?.email ?? 'Manual user lookup required' }}
-                          </p>
-                          <p class="font-mono text-xs text-muted">
-                            userId: {{ assignment.userId }}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div
-                        v-if="canMutateRoles"
-                        class="flex flex-wrap items-center justify-between gap-3"
-                      >
-                        <p class="text-sm text-muted">
-                          judge
-                        </p>
-                        <AppButton
-                          size="sm"
-                          color="error"
-                          variant="soft"
-                          @click="removeJudge(assignment)"
-                        >
-                          Remove
-                        </AppButton>
-                      </div>
-
-                      <div
-                        v-else
-                        class="text-sm text-muted"
-                      >
-                        <p>judge</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <p
-                    v-if="judgeRoleAssignments.length === 0"
-                    class="text-sm text-muted"
-                  >
-                    No judges have been explicitly assigned yet.
-                  </p>
-                </div>
-              </section>
-            </div>
-          </AppCard>
-        </section>
       </template>
   </div>
 </template>

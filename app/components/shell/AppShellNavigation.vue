@@ -8,6 +8,10 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
+const accountHackathonNavigationMode = useState<'participant' | 'admin'>(
+  'account-hackathon-navigation-mode',
+  () => 'participant'
+)
 </script>
 
 <template>
@@ -39,7 +43,9 @@ const route = useRoute()
           class="inline-flex w-full items-center rounded-md px-3 py-[6px] text-[14px] transition-colors"
           :class="[
             'justify-start',
-            isShellNavigationLinkActive(route.path, route.query.tab, item.to)
+            isShellNavigationLinkActive(route.path, route.query.tab, item.to, {
+              accountHackathonNavigationMode: accountHackathonNavigationMode.value
+            })
               ? 'bg-[#282828] text-white'
               : 'text-[#ECECEC] hover:bg-[#1A1A1A] hover:text-white'
           ]"
