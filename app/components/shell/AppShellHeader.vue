@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { buildAuthLoginHref } from '~/utils/auth-navigation'
+import { buildProfileIconHref } from '~/utils/profile-icon'
 
 const route = useRoute()
 const user = useUser()
@@ -25,7 +26,7 @@ const profileAvatarSrc = computed(() => {
     return undefined
   }
 
-  return `/api/account/profile-icon?v=${encodeURIComponent(version)}`
+  return buildProfileIconHref(actor.value.platformUser.id, version)
 })
 </script>
 

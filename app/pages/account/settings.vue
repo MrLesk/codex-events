@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AccountSettingsProfileForm from '~/components/account/AccountSettingsProfileForm.vue'
 import { authLogoutHref } from '~/utils/auth-navigation'
+import { buildProfileIconHref } from '~/utils/profile-icon'
 
 definePageMeta({
   layout: 'profile',
@@ -102,7 +103,7 @@ const profileIconSrc = computed(() => {
     return undefined
   }
 
-  return `/api/account/profile-icon?v=${encodeURIComponent(version)}`
+  return buildProfileIconHref(actor.value.platformUser.id, version)
 })
 
 const profileIconAlt = computed(() => {

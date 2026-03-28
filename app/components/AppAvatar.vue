@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { UserIcon } from 'lucide-vue-next'
 
-import { Avatar as UiAvatar, AvatarFallback as UiAvatarFallback, AvatarImage as UiAvatarImage } from '~/components/ui/avatar'
+import { Avatar as UiAvatar, AvatarFallback as UiAvatarFallback } from '~/components/ui/avatar'
 import { cn } from '~/lib/utils'
 
 type AvatarSize = 'sm' | 'lg' | '3xl'
@@ -25,6 +25,9 @@ const sizeClasses: Record<AvatarSize, string> = {
   '3xl': 'size-16'
 }
 
+const normalizedSrc = computed(() => props.src?.trim() || undefined)
+const imageLoadFailed = ref(false)
+
 const fallbackLabel = computed(() => {
   const value = (props.alt || '').trim()
 
@@ -38,16 +41,28 @@ const fallbackLabel = computed(() => {
     .map(part => part[0]?.toUpperCase() ?? '')
     .join('')
 })
+
+watch(normalizedSrc, () => {
+  imageLoadFailed.value = false
+})
+
+const resolvedImageSrc = computed(() => imageLoadFailed.value ? undefined : normalizedSrc.value)
 </script>
 
 <template>
   <UiAvatar :class="cn('border border-default/70 bg-default', sizeClasses[props.size])">
-    <UiAvatarImage
-      v-if="props.src"
-      :src="props.src"
+    <img
+      v-if="resolvedImageSrc"
+      :src="resolvedImageSrc"
       :alt="props.alt"
-    />
-    <UiAvatarFallback class="bg-default text-xs font-semibold text-toned">
+      class="aspect-square size-full object-cover object-center"
+      loading="eager"
+      @error="imageLoadFailed = true"
+    >
+    <UiAvatarFallback
+      v-else
+      class="bg-default text-xs font-semibold text-toned"
+    >
       <template v-if="props.fallback === 'initials'">
         {{ fallbackLabel }}
       </template>

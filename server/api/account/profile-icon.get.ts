@@ -26,7 +26,8 @@ export default defineApiHandler(async (event) => {
     })
   }
 
-  setHeader(event, 'cache-control', 'private, no-store')
+  setHeader(event, 'cache-control', 'private, max-age=31536000, immutable')
+  setHeader(event, 'vary', 'Cookie')
 
   return new Response(await icon.arrayBuffer(), {
     headers: {

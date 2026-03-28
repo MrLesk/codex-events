@@ -850,6 +850,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const iconResponse = await harness.request('/api/account/profile-icon')
 
     expect(iconResponse.status).toBe(200)
+    expect(iconResponse.headers.get('cache-control')).toBe('private, max-age=31536000, immutable')
+    expect(iconResponse.headers.get('vary')).toBe('Cookie')
     expect(iconResponse.headers.get('content-type')).toBe('image/png')
     expect(new Uint8Array(await iconResponse.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4]))
 
