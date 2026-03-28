@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import type {
+  AdminApplicationRecord,
   AdminTeamDetailRecord,
   NoSubmissionEntry,
   HackathonRecord,
@@ -27,6 +28,7 @@ import {
   getApplicationStatusColor,
   getCurrentLifecycleControl,
   getJudgeAssignmentStatusColor,
+  getParticipantsLimitSummary,
   hasHackathonAdminAccess,
   getSubmissionStatusColor,
   toDateTimeLocalValue
@@ -93,6 +95,24 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
       isInJudgePool: false,
       createdAt: '2026-03-01T00:00:00.000Z'
     }],
+    ...overrides
+  }
+}
+
+function createApplication(overrides: Partial<AdminApplicationRecord> = {}): AdminApplicationRecord {
+  return {
+    id: 'application-1',
+    hackathonId: 'hackathon-1',
+    userId: 'user-1',
+    status: 'submitted',
+    preApprovalStatus: null,
+    submittedAt: '2026-03-22T12:00:00.000Z',
+    reviewedAt: null,
+    reviewedByUserId: null,
+    applicationTermsDocumentId: 'terms-1',
+    applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+    createdAt: '2026-03-22T12:00:00.000Z',
+    updatedAt: '2026-03-22T12:00:00.000Z',
     ...overrides
   }
 }
@@ -413,6 +433,40 @@ describe('admin-workspace operational helpers', () => {
     expect(getJudgeAssignmentStatusColor('judge_completed')).toBe('success')
     expect(formatSubmissionStatus('none')).toBe('No Submission')
     expect(getSubmissionStatusColor('disqualified')).toBe('error')
+  })
+
+  test('summarizes participant limit fill including staged approvals', () => {
+    expect(getParticipantsLimitSummary([
+      createApplication({ id: 'application-approved', status: 'approved' }),
+      createApplication({ id: 'application-staged-approved', preApprovalStatus: 'approved' }),
+      createApplication({ id: 'application-staged-rejected', preApprovalStatus: 'rejected' })
+    ], 3)).toMatchObject({
+      participantsLimit: 3,
+      approvedCount: 1,
+      stagedApprovedCount: 1,
+      projectedApprovedCount: 2,
+      description: 'Current fill: 1/3 approved against the planning target. If you save the current staged decisions, projected fill becomes 2/3, leaving 1 spot remaining against the target.'
+    })
+  })
+
+  test('reports when staged approvals would push the participant target over limit', () => {
+    expect(getParticipantsLimitSummary([
+      createApplication({ id: 'application-approved-1', status: 'approved' }),
+      createApplication({ id: 'application-approved-2', status: 'approved' }),
+      createApplication({ id: 'application-staged-approved', preApprovalStatus: 'approved' })
+    ], 2)).toMatchObject({
+      participantsLimit: 2,
+      approvedCount: 2,
+      stagedApprovedCount: 1,
+      projectedApprovedCount: 3,
+      description: 'Current fill: 2/2 approved against the planning target. If you save the current staged decisions, projected fill becomes 3/2, which is 1 spot over the target.'
+    })
+  })
+
+  test('returns no participant-limit summary when the hackathon has no configured limit', () => {
+    expect(getParticipantsLimitSummary([
+      createApplication({ status: 'approved' })
+    ], null)).toBeNull()
   })
 
   test('allows only the documented admin judging interventions for each assignment state', () => {

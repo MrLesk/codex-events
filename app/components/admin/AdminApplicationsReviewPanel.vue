@@ -3,7 +3,8 @@ import type { AdminApplicationRecord } from '~/utils/admin-workspace'
 
 import {
   formatApplicationStatus,
-  getApplicationStatusColor
+  getApplicationStatusColor,
+  getParticipantsLimitSummary
 } from '~/utils/admin-workspace'
 
 const props = defineProps<{
@@ -42,13 +43,9 @@ const stagedRejectedCount = computed(() =>
     application => application.status === 'submitted' && application.preApprovalStatus === 'rejected'
   ).length
 )
-const participantsLimitSummary = computed(() => {
-  if (props.participantsLimit && props.participantsLimit > 0) {
-    return `${approvedCount.value}/${props.participantsLimit} approved`
-  }
-
-  return `${approvedCount.value} approved (no limit)`
-})
+const participantsLimitSummary = computed(() =>
+  getParticipantsLimitSummary(props.applications, props.participantsLimit)
+)
 
 function stageDecisionActionKey(applicationId: string, decision: 'approved' | 'rejected') {
   return `stage:${decision}:${applicationId}`
@@ -87,10 +84,11 @@ function stageDecisionActionKey(applicationId: string, decision: 'approved' | 'r
 
       <template v-else>
         <AppAlert
+          v-if="participantsLimitSummary"
           color="info"
           variant="soft"
           title="Participants limit"
-          :description="`Capacity: ${participantsLimitSummary}. Staged decisions: ${stagedCount} total (${stagedApprovedCount} approve, ${stagedRejectedCount} reject).`"
+          :description="`${participantsLimitSummary.description} Staged decisions: ${stagedCount} total (${stagedApprovedCount} approve, ${stagedRejectedCount} reject).`"
         />
 
         <div class="grid gap-4 md:grid-cols-4">

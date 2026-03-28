@@ -441,6 +441,14 @@ export interface AdminJudgeAssignmentInterventionPolicy {
   forceSkipReason?: string
 }
 
+export interface ParticipantsLimitSummary {
+  participantsLimit: number
+  approvedCount: number
+  stagedApprovedCount: number
+  projectedApprovedCount: number
+  description: string
+}
+
 function startCase(value: string) {
   return value
     .split('_')
@@ -535,6 +543,44 @@ export function getApplicationStatusColor(status: AdminApplicationRecord['status
       return 'success'
     case 'rejected':
       return 'error'
+  }
+}
+
+function formatRemainingSpots(count: number) {
+  return `${count} ${count === 1 ? 'spot' : 'spots'}`
+}
+
+export function getParticipantsLimitSummary(
+  applications: AdminApplicationRecord[],
+  participantsLimit?: number | null
+): ParticipantsLimitSummary | null {
+  if (!participantsLimit || participantsLimit <= 0) {
+    return null
+  }
+
+  const approvedCount = applications.filter(application => application.status === 'approved').length
+  const stagedApprovedCount = applications.filter(
+    application => application.status === 'submitted' && application.preApprovalStatus === 'approved'
+  ).length
+  const projectedApprovedCount = approvedCount + stagedApprovedCount
+  const spotsDelta = participantsLimit - projectedApprovedCount
+
+  let projectedOutcome: string
+
+  if (spotsDelta > 0) {
+    projectedOutcome = `leaving ${formatRemainingSpots(spotsDelta)} remaining against the target.`
+  } else if (spotsDelta === 0) {
+    projectedOutcome = 'matching the target exactly.'
+  } else {
+    projectedOutcome = `which is ${formatRemainingSpots(Math.abs(spotsDelta))} over the target.`
+  }
+
+  return {
+    participantsLimit,
+    approvedCount,
+    stagedApprovedCount,
+    projectedApprovedCount,
+    description: `Current fill: ${approvedCount}/${participantsLimit} approved against the planning target. If you save the current staged decisions, projected fill becomes ${projectedApprovedCount}/${participantsLimit}, ${projectedOutcome}`
   }
 }
 

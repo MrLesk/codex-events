@@ -49,7 +49,7 @@ Key characteristics:
 - Each hackathon has a submission flow that can be activated manually within its configured submission window.
 - Each hackathon has a judging flow that is activated manually.
 - Each hackathon can define a maximum team member limit.
-- Each hackathon can optionally define a participant approval limit.
+- Each hackathon can optionally define a participant approval limit used as an indicative planning target during admin review.
 - Each hackathon can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma username, for registration.
 - Each hackathon can require a `why this hackathon` response and a proof-of-execution URL in applications.
 - Each hackathon references its own application terms and winner terms.

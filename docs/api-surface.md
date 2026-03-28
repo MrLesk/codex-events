@@ -208,6 +208,7 @@ Operations:
 
 Notes:
 - No manual API action opens `registration_open`. That transition remains system-driven from the configured registration window.
+- `participantsLimit` is an indicative planning target surfaced in admin approval workflows and does not reject staged or applied approval decisions by itself.
 - Public hackathon discovery and detail responses expose only public-safe fields. They do not expose internal record identifiers, creator identifiers, or audit timestamps.
 - Public current-terms references expose document type, version, title, and published time only.
 
