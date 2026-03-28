@@ -46,8 +46,7 @@ function escapeHtml(value: string) {
 
 function resolveRuntimeConfig(event: H3Event): LegalContactRuntimeConfig {
   const eventRuntimeConfig = (event.context as H3Event['context'] & { runtimeConfig?: unknown }).runtimeConfig
-  const runtimeConfigGetter = (globalThis as { useRuntimeConfig?: (event: H3Event) => unknown }).useRuntimeConfig
-  const candidate = eventRuntimeConfig ?? runtimeConfigGetter?.(event) ?? {}
+  const candidate = eventRuntimeConfig ?? useRuntimeConfig(event) ?? {}
   const parsed = z.object({
     resend: z.object({
       apiKey: z.string().trim().optional(),

@@ -1,5 +1,10 @@
 <script setup lang="ts">
+import { toTypedSchema } from '@vee-validate/zod'
+import { useForm } from 'vee-validate'
+
 import { renderMarkdown } from '~/utils/markdown'
+import { cloneFormValues } from '~/utils/form-values'
+import { imprintContactFormSchema } from '~/utils/form-schemas'
 import {
   platformImprintContactApiPath,
   platformImprintMarkdown,
@@ -9,18 +14,50 @@ import {
 } from '../../shared/platform-legal'
 
 const imprintHtml = computed(() => renderMarkdown(platformImprintMarkdown))
-
-const contactForm = reactive({
+const initialContactForm = {
   name: '',
   email: '',
   message: '',
   website: ''
-})
+}
+const contactForm = reactive(cloneFormValues(initialContactForm))
+const syncingFromForm = ref(false)
 
 const contactState = reactive({
   pending: false,
   success: '',
   error: ''
+})
+
+const {
+  errors,
+  submitCount,
+  setValues,
+  values,
+  resetForm,
+  handleSubmit
+} = useForm({
+  validationSchema: toTypedSchema(imprintContactFormSchema),
+  initialValues: { ...initialContactForm }
+})
+
+watch(contactForm, (nextForm) => {
+  syncingFromForm.value = true
+  setValues(cloneFormValues(nextForm), submitCount.value > 0)
+  syncingFromForm.value = false
+}, {
+  deep: true,
+  immediate: true
+})
+
+watch(values, (nextValues) => {
+  if (syncingFromForm.value) {
+    return
+  }
+
+  Object.assign(contactForm, cloneFormValues(nextValues))
+}, {
+  deep: true
 })
 
 function extractErrorMessage(error: unknown, fallback: string) {
@@ -36,7 +73,15 @@ function extractErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
-async function submitContactForm() {
+function resetContactFormState() {
+  Object.assign(contactForm, cloneFormValues(initialContactForm))
+  resetForm({
+    values: { ...initialContactForm }
+  })
+  contactState.error = ''
+}
+
+const submitContactForm = handleSubmit(async (contactForm) => {
   contactState.pending = true
   contactState.success = ''
   contactState.error = ''
@@ -52,16 +97,18 @@ async function submitContactForm() {
       }
     })
 
-    contactForm.name = ''
-    contactForm.email = ''
-    contactForm.message = ''
-    contactForm.website = ''
-    contactState.success = 'Message sent. We will reply to the email address you provided.'
+    resetContactFormState()
+    contactState.success = 'We will reply to the email address you provided.'
   } catch (error) {
     contactState.error = extractErrorMessage(error, 'Unable to send your message right now.')
   } finally {
     contactState.pending = false
   }
+})
+
+function startAnotherContactMessage() {
+  resetContactFormState()
+  contactState.success = ''
 }
 
 useSeoMeta({
@@ -123,19 +170,43 @@ useSeoMeta({
         />
       </section>
 
-      <section class="rounded-xl border border-black/8 bg-white/88 p-6 dark:border-white/[0.08] dark:bg-[#111111]/92">
+      <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/92">
         <div class="space-y-4">
           <div class="space-y-2">
             <h2 class="text-lg font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
               Contact us
             </h2>
             <p class="text-sm text-neutral-700 dark:text-[#A3A3A3]">
-              Use this form for legal, support, and general platform questions. By sending a message, you agree that we may use it to respond as described in the Privacy Policy.
+              Use this form for legal, support, and general platform questions. We use the information you provide to handle and reply to your message, as described in the Privacy Policy.
             </p>
           </div>
 
-          <form
+          <div
+            v-if="contactState.success"
             class="space-y-4"
+          >
+            <AppAlert
+              color="success"
+              variant="subtle"
+              title="Message sent"
+              :description="contactState.success"
+            />
+
+            <div class="flex justify-end">
+              <AppButton
+                color="neutral"
+                variant="outline"
+                @click="startAnotherContactMessage"
+              >
+                Send another message
+              </AppButton>
+            </div>
+          </div>
+
+          <form
+            v-else
+            class="space-y-4"
+            novalidate
             @submit.prevent="submitContactForm"
           >
             <AppFormField
@@ -146,11 +217,17 @@ useSeoMeta({
                 id="imprint-contact-name"
                 v-model="contactForm.name"
                 type="text"
-                required
                 maxlength="120"
                 autocomplete="name"
-                class="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-highlighted dark:border-white/[0.08] dark:bg-[#181818] dark:text-white"
+                class="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-neutral-900 outline-none transition dark:border-white/[0.08] dark:bg-[#181818] dark:text-white"
+                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-highlighted'"
               >
+              <p
+                v-if="submitCount > 0 && errors.name"
+                class="text-xs text-error"
+              >
+                {{ errors.name }}
+              </p>
             </AppFormField>
 
             <AppFormField
@@ -161,10 +238,16 @@ useSeoMeta({
                 id="imprint-contact-email"
                 v-model="contactForm.email"
                 type="email"
-                required
                 autocomplete="email"
-                class="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-highlighted dark:border-white/[0.08] dark:bg-[#181818] dark:text-white"
+                class="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-neutral-900 outline-none transition dark:border-white/[0.08] dark:bg-[#181818] dark:text-white"
+                :class="submitCount > 0 && errors.email ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-highlighted'"
               >
+              <p
+                v-if="submitCount > 0 && errors.email"
+                class="text-xs text-error"
+              >
+                {{ errors.email }}
+              </p>
             </AppFormField>
 
             <div
@@ -188,46 +271,45 @@ useSeoMeta({
               <textarea
                 id="imprint-contact-message"
                 v-model="contactForm.message"
-                required
                 maxlength="4000"
                 rows="7"
-                class="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-neutral-900 outline-none transition focus:border-highlighted dark:border-white/[0.08] dark:bg-[#181818] dark:text-white"
+                class="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-neutral-900 outline-none transition dark:border-white/[0.08] dark:bg-[#181818] dark:text-white"
+                :class="submitCount > 0 && errors.message ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-highlighted'"
               />
+              <p
+                v-if="submitCount > 0 && errors.message"
+                class="text-xs text-error"
+              >
+                {{ errors.message }}
+              </p>
             </AppFormField>
 
-            <div class="space-y-2">
-              <p
-                v-if="contactState.success"
-                class="text-sm font-medium text-emerald-700 dark:text-emerald-400"
+            <AppAlert
+              v-if="contactState.error"
+              color="error"
+              variant="subtle"
+              :description="contactState.error"
+            />
+
+            <div class="flex justify-end">
+              <AppButton
+                type="submit"
+                color="primary"
+                :loading="contactState.pending"
               >
-                {{ contactState.success }}
-              </p>
-              <p
-                v-if="contactState.error"
-                class="text-sm font-medium text-red-700 dark:text-red-400"
-              >
-                {{ contactState.error }}
-              </p>
+                Send
+              </AppButton>
             </div>
 
-            <div class="flex items-center justify-between gap-4">
-              <p class="text-xs text-neutral-600 dark:text-[#A3A3A3]">
-                You can also write directly to
-                <a
-                  :href="`mailto:${platformSupportEmail}`"
-                  class="transition-colors hover:text-highlighted dark:hover:text-white"
-                >
-                  {{ platformSupportEmail }}
-                </a>.
-              </p>
-
-              <button
-                type="submit"
-                :disabled="contactState.pending"
-                class="inline-flex items-center justify-center rounded-xl bg-highlighted px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            <div class="rounded-xl border border-black/8 bg-white/70 px-4 py-3 text-sm text-neutral-700 dark:border-white/[0.08] dark:bg-[#181818] dark:text-[#A3A3A3]">
+              <span class="font-medium text-highlighted dark:text-white">Prefer email?</span>
+              Write directly to
+              <a
+                :href="`mailto:${platformSupportEmail}`"
+                class="font-medium underline underline-offset-2 transition-colors hover:text-highlighted dark:hover:text-white"
               >
-                {{ contactState.pending ? 'Sending...' : 'Send message' }}
-              </button>
+                {{ platformSupportEmail }}
+              </a>.
             </div>
           </form>
         </div>

@@ -14,6 +14,54 @@ function createEvent(runtimeConfig?: Record<string, unknown>) {
 }
 
 describe('legal contact utilities', () => {
+  test('reads Resend configuration from useRuntimeConfig when event context does not include it', async () => {
+    const send = vi.fn(async () => ({
+      data: { id: 'email_runtime_config' },
+      error: null,
+      headers: null
+    }))
+    const runtimeConfigHolder = globalThis as typeof globalThis & {
+      useRuntimeConfig?: (event: H3Event) => Record<string, unknown>
+    }
+    const previousUseRuntimeConfig = runtimeConfigHolder.useRuntimeConfig
+
+    runtimeConfigHolder.useRuntimeConfig = () => ({
+      resend: {
+        apiKey: 're_test_123',
+        fromEmail: 'notifications@example.com',
+        fromName: 'Codex Hackathons'
+      }
+    })
+
+    try {
+      const result = await sendPublicLegalContactEmail({
+        context: {}
+      } as H3Event, {
+        name: 'Ada Lovelace',
+        email: 'ada@example.com',
+        message: 'Hello there.',
+        website: ''
+      }, {
+        resendClient: {
+          emails: {
+            send
+          }
+        } as never
+      })
+
+      expect(result).toEqual({
+        status: 'sent',
+        messageId: 'email_runtime_config'
+      })
+    } finally {
+      if (previousUseRuntimeConfig) {
+        runtimeConfigHolder.useRuntimeConfig = previousUseRuntimeConfig
+      } else {
+        delete runtimeConfigHolder.useRuntimeConfig
+      }
+    }
+  })
+
   test('skips delivery when Resend configuration is missing', async () => {
     const result = await sendPublicLegalContactEmail(createEvent(), {
       name: 'Ada Lovelace',

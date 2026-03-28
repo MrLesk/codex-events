@@ -401,7 +401,7 @@ ${platformOperatorAddress}
 
 - General support: [${platformSupportEmail}](mailto:${platformSupportEmail})
 - Privacy and data protection: [${platformPrivacyEmail}](mailto:${platformPrivacyEmail})
-- Web contact form: available below on this page
+- You can also use the contact form on this page
 
 ## Responsible for content
 
