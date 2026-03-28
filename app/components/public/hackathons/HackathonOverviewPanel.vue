@@ -12,7 +12,7 @@ const descriptionHtml = computed(() => descriptionMarkdown.value ? renderMarkdow
 <template>
   <section
     v-if="descriptionHtml"
-    class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
+    class="hackathon-workspace-detail-panel rounded-xl p-6"
     data-testid="public-hackathon-overview"
   >
     <div
@@ -23,7 +23,7 @@ const descriptionHtml = computed(() => descriptionMarkdown.value ? renderMarkdow
 
   <section
     v-else
-    class="rounded-xl border border-dashed border-black/10 bg-white/80 p-8 text-center dark:border-white/[0.08] dark:bg-[#111111]/80"
+    class="hackathon-workspace-detail-panel-dashed rounded-xl p-8 text-center"
     data-testid="public-hackathon-overview-empty"
   >
     <p class="text-[15px] font-medium text-highlighted dark:text-white">

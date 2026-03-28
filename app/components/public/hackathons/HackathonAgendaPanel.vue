@@ -21,7 +21,7 @@ const agendaEntries = computed(() =>
 <template>
   <section
     v-if="agendaEntries.length > 0"
-    class="relative overflow-hidden rounded-[1.75rem] border border-black/10 bg-white/72 p-5 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#101010]/78 sm:p-7"
+    class="hackathon-workspace-detail-panel relative overflow-hidden rounded-[1.75rem] p-5 sm:p-7"
     data-testid="public-hackathon-agenda"
   >
     <div
@@ -93,7 +93,7 @@ const agendaEntries = computed(() =>
             </p>
           </div>
 
-          <div class="group relative overflow-hidden rounded-[1.35rem] border border-black/8 bg-white/74 p-4 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:border-black/15 active:translate-y-px dark:border-white/[0.08] dark:bg-[#161616]/84 dark:hover:border-white/[0.14] sm:p-5">
+          <div class="hackathon-workspace-detail-inset group relative overflow-hidden rounded-[1.35rem] p-4 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:border-black/15 active:translate-y-px dark:hover:border-white/[0.16] sm:p-5">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div class="min-w-0">
                 <div

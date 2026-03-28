@@ -89,7 +89,7 @@ const timelineEntries = computed(() => [
     <div
       v-for="entry in timelineEntries"
       :key="entry.id"
-      class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
+      class="hackathon-workspace-detail-panel rounded-xl p-6"
     >
       <template v-if="entry.id !== 'details'">
         <div class="mb-4 flex items-start justify-between gap-4">
@@ -105,7 +105,7 @@ const timelineEntries = computed(() => [
           class="space-y-2.5"
           :title="`${entry.start.metaLabel} -> ${entry.end.metaLabel}`"
         >
-          <div class="rounded-[1rem] border border-black/8 bg-white/78 p-3 dark:border-white/[0.08] dark:bg-white/[0.04]">
+          <div class="hackathon-workspace-detail-inset rounded-[1rem] p-3">
             <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500 dark:text-[#8C8C8C]">
               Opens
             </p>
@@ -126,7 +126,7 @@ const timelineEntries = computed(() => [
             </span>
           </div>
 
-          <div class="rounded-[1rem] border border-black/8 bg-white/78 p-3 dark:border-white/[0.08] dark:bg-white/[0.04]">
+          <div class="hackathon-workspace-detail-inset rounded-[1rem] p-3">
             <p class="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-500 dark:text-[#8C8C8C]">
               Closes
             </p>
