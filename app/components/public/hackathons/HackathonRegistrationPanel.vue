@@ -105,7 +105,7 @@ const applicationTermsPageHref = computed(() => `/hackathons/${props.hackathon.s
 
 const requiredChipClass = 'rounded-full border border-amber-600/35 bg-amber-500/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 dark:border-amber-300/35 dark:bg-amber-300/12 dark:text-amber-200'
 const inlineSectionClass = 'space-y-3 border-t border-black/8 pt-4 dark:border-white/[0.08]'
-const inlineSectionBodyClass = 'space-y-3 border-l border-black/[0.06] pl-3 dark:border-white/[0.06] sm:pl-4'
+const inlineSectionBodyClass = 'space-y-3'
 
 const registrationSchema = computed(() => buildParticipantRegistrationFormSchema({
   profileFields: props.profileFields,
