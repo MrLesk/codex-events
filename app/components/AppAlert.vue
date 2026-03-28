@@ -23,20 +23,20 @@ const rootClass = computed(() => {
   const key = `${props.variant}:${props.color}`
 
   const variants: Record<string, string> = {
-    'soft:primary': 'border-primary/20 bg-primary/10 text-primary',
-    'soft:secondary': 'border-secondary/20 bg-secondary/15 text-secondary',
-    'soft:neutral': 'border-default/80 bg-default/90 text-toned',
-    'soft:success': 'border-success/20 bg-success/10 text-success',
-    'soft:warning': 'border-warning/20 bg-warning/10 text-warning',
-    'soft:error': 'border-error/20 bg-error/10 text-error',
-    'soft:info': 'border-info/20 bg-info/10 text-info',
-    'subtle:primary': 'border-transparent bg-primary/8 text-primary',
-    'subtle:secondary': 'border-transparent bg-secondary/10 text-secondary',
-    'subtle:neutral': 'border-transparent bg-default/70 text-toned',
-    'subtle:success': 'border-transparent bg-success/8 text-success',
-    'subtle:warning': 'border-transparent bg-warning/8 text-warning',
-    'subtle:error': 'border-transparent bg-error/8 text-error',
-    'subtle:info': 'border-transparent bg-info/8 text-info',
+    'soft:primary': 'bg-primary/10 text-primary',
+    'soft:secondary': 'bg-secondary/15 text-secondary',
+    'soft:neutral': 'bg-default/80 text-toned',
+    'soft:success': 'bg-success/10 text-success',
+    'soft:warning': 'bg-warning/10 text-warning',
+    'soft:error': 'bg-error/10 text-error',
+    'soft:info': 'bg-info/10 text-info',
+    'subtle:primary': 'bg-primary/8 text-primary',
+    'subtle:secondary': 'bg-secondary/10 text-secondary',
+    'subtle:neutral': 'bg-default/70 text-toned',
+    'subtle:success': 'bg-success/8 text-success',
+    'subtle:warning': 'bg-warning/8 text-warning',
+    'subtle:error': 'bg-error/8 text-error',
+    'subtle:info': 'bg-info/8 text-info',
     'outline:primary': 'border-primary/20 bg-transparent text-primary',
     'outline:secondary': 'border-secondary/20 bg-transparent text-secondary',
     'outline:neutral': 'border-default/80 bg-transparent text-toned',
@@ -47,7 +47,7 @@ const rootClass = computed(() => {
   }
 
   return cn(
-    'rounded-[1.35rem] px-4 py-3',
+    'app-surface-panel rounded-xl px-4 py-3',
     props.icon ? 'grid-cols-[calc(var(--spacing)*4)_1fr] gap-x-3' : undefined,
     variants[key] ?? variants['soft:neutral'],
     props.class

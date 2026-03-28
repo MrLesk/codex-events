@@ -44,7 +44,7 @@ const participationSummary = computed(() => summarizeParticipationRecord(props.r
 <template>
   <article
     :data-testid="`hackathon-participation-${props.record.hackathon.slug}`"
-    class="overflow-hidden rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111]"
+    class="app-surface-panel overflow-hidden rounded-xl"
   >
     <div class="space-y-5 p-6">
       <div class="flex flex-wrap items-start justify-between gap-4 border-b border-black/8 pb-5 dark:border-white/[0.08]">
@@ -68,7 +68,7 @@ const participationSummary = computed(() => summarizeParticipationRecord(props.r
       </p>
 
       <div class="grid gap-3 sm:grid-cols-3">
-        <div class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-4 dark:border-white/[0.08] dark:bg-[#171717]">
+        <div class="app-surface-panel-elevated rounded-xl px-4 py-4">
           <p class="text-[11px] font-semibold tracking-[0.16em] text-muted uppercase">
             Team
           </p>
@@ -83,7 +83,7 @@ const participationSummary = computed(() => summarizeParticipationRecord(props.r
           </p>
         </div>
 
-        <div class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-4 dark:border-white/[0.08] dark:bg-[#171717]">
+        <div class="app-surface-panel-elevated rounded-xl px-4 py-4">
           <p class="text-[11px] font-semibold tracking-[0.16em] text-muted uppercase">
             Participation
           </p>
@@ -92,7 +92,7 @@ const participationSummary = computed(() => summarizeParticipationRecord(props.r
           </p>
         </div>
 
-        <div class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-4 dark:border-white/[0.08] dark:bg-[#171717]">
+        <div class="app-surface-panel-elevated rounded-xl px-4 py-4">
           <p class="text-[11px] font-semibold tracking-[0.16em] text-muted uppercase">
             Last activity
           </p>

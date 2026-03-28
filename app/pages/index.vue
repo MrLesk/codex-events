@@ -141,11 +141,11 @@ useSeoMeta({
       icon="i-lucide-triangle-alert"
       title="Hackathons are temporarily unavailable"
       description="We couldn't load the latest hackathons. Please refresh the page or try again in a moment."
-      class="border-black/8 bg-white text-foreground dark:border-white/[0.08] dark:bg-[#111111] dark:text-[#ECECEC]"
+      class="app-surface-panel text-foreground dark:text-[#ECECEC]"
     />
 
     <template v-else>
-      <div class="flex flex-col gap-4 rounded-xl border border-black/8 bg-neutral-100/80 p-2 dark:border-white/[0.08] dark:bg-[#111111]">
+      <div class="app-surface-panel flex flex-col gap-4 rounded-xl p-2">
         <div class="flex min-w-0 flex-wrap items-center gap-1">
           <button
             class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
@@ -169,7 +169,7 @@ useSeoMeta({
 
       <div
         v-if="hackathons.length === 0"
-        class="rounded-xl border border-dashed border-black/10 bg-white p-10 text-center dark:border-white/[0.08] dark:bg-[#111111]"
+        class="app-surface-panel-dashed rounded-xl p-10 text-center"
       >
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-[#8C8C8C]">
           No visible programs
@@ -181,7 +181,7 @@ useSeoMeta({
 
       <div
         v-else-if="filteredHackathons.length === 0"
-        class="rounded-xl border border-dashed border-black/10 bg-white p-10 text-center dark:border-white/[0.08] dark:bg-[#111111]"
+        class="app-surface-panel-dashed rounded-xl p-10 text-center"
       >
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-[#8C8C8C]">
           No programs in this view
@@ -213,7 +213,7 @@ useSeoMeta({
         variant="solid"
         :loading="isLoadingMore"
         data-testid="public-hackathons-load-more"
-        class="border border-black/8 bg-white text-highlighted hover:bg-neutral-100 dark:border-white/[0.08] dark:bg-[#111111] dark:text-white dark:hover:bg-[#181818]"
+        class="border border-black/8 bg-default/92 text-highlighted hover:bg-default dark:border-white/[0.08] dark:bg-default/92 dark:text-white dark:hover:bg-elevated/92"
         @click="loadMoreHackathons"
       >
         Load more hackathons
@@ -231,7 +231,7 @@ useSeoMeta({
       icon="i-lucide-triangle-alert"
       title="More hackathons unavailable"
       :description="loadMoreError"
-      class="border-black/8 bg-white text-foreground dark:border-white/[0.08] dark:bg-[#111111] dark:text-[#ECECEC]"
+      class="app-surface-panel text-foreground dark:text-[#ECECEC]"
     />
   </div>
 </template>

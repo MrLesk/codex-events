@@ -20,8 +20,8 @@ const slots = useSlots()
 
 const rootClass = computed(() =>
   cn(
-    'rounded-xl border border-black/8 bg-white/70 py-0 text-foreground shadow-none dark:border-white/[0.08] dark:bg-black/36',
-    props.variant === 'subtle' ? 'bg-white/62 dark:bg-black/28' : '',
+    'app-surface-panel rounded-xl py-0 text-foreground',
+    props.variant === 'subtle' ? 'bg-default/72 dark:bg-default/72' : '',
     props.ui.root,
     props.class
   )
