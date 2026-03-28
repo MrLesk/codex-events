@@ -1,94 +1,50 @@
 <script setup lang="ts">
-import {
-  canCreateHackathon,
-  formatHackathonState,
-  getHackathonStateColor
-} from '~/utils/admin-workspace'
-import { collapseMarkdownToPlainText } from '~/utils/hackathon-description'
+import AccountHackathonDashboardList from '~/components/account/AccountHackathonDashboardList.vue'
+import { canCreateHackathon } from '~/utils/admin-workspace'
 
 definePageMeta({
   layout: 'profile',
-  middleware: ['require-auth']
+  middleware: ['require-account-admin']
 })
 
 const workspace = useAdminWorkspace()
 
-const actor = computed(() => workspace.actor.value)
+const isPlatformAdmin = computed(() => workspace.actor.value?.isPlatformAdmin === true)
+const canCreate = computed(() => canCreateHackathon(workspace.actor.value))
 const manageableHackathons = computed(() => workspace.manageableHackathons.value)
-const canCreate = computed(() => canCreateHackathon(actor.value))
-
-const isLoading = computed(() =>
-  workspace.session.status.value === 'pending' || workspace.hackathons.status.value === 'pending'
-)
-const hasPlatformAccount = computed(() => Boolean(actor.value?.hasPlatformAccount))
-const hasAdminAccess = computed(() =>
-  Boolean(
-    actor.value?.hasPlatformAccount
-    && (actor.value.isPlatformAdmin || actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin'))
-  )
-)
-const scopeLabel = computed(() => {
-  if (!actor.value?.hasPlatformAccount) {
-    return 'Not available'
-  }
-
-  return actor.value.isPlatformAdmin ? 'Platform admin' : 'Hackathon admin'
-})
-const draftCount = computed(() =>
-  manageableHackathons.value.filter(hackathon => hackathon.state === 'draft').length
-)
 const activeOperationsCount = computed(() =>
   manageableHackathons.value.filter(hackathon => hackathon.state !== 'draft' && hackathon.state !== 'completed').length
 )
-const descriptionPreviewCharacterLimit = 320
-const expandedDescriptionHackathonIds = ref(new Set<string>())
-const normalizedDescriptionByHackathonId = computed(() => {
-  const descriptionMap = new Map<string, string>()
-
-  for (const hackathon of manageableHackathons.value) {
-    descriptionMap.set(hackathon.id, collapseMarkdownToPlainText(hackathon.description))
-  }
-
-  return descriptionMap
-})
-
-function isDescriptionExpanded(hackathonId: string) {
-  return expandedDescriptionHackathonIds.value.has(hackathonId)
-}
-
-function toggleDescriptionExpansion(hackathonId: string) {
-  const nextExpandedIds = new Set(expandedDescriptionHackathonIds.value)
-
-  if (nextExpandedIds.has(hackathonId)) {
-    nextExpandedIds.delete(hackathonId)
-  } else {
-    nextExpandedIds.add(hackathonId)
-  }
-
-  expandedDescriptionHackathonIds.value = nextExpandedIds
-}
-
-function getDescriptionPreview(hackathonId: string) {
-  const normalizedDescription = normalizedDescriptionByHackathonId.value.get(hackathonId) ?? ''
-
-  if (
-    isDescriptionExpanded(hackathonId)
-    || normalizedDescription.length <= descriptionPreviewCharacterLimit
-  ) {
-    return normalizedDescription
-  }
-
-  return `${normalizedDescription.slice(0, descriptionPreviewCharacterLimit).trimEnd()}…`
-}
-
-function shouldShowDescriptionToggle(hackathonId: string) {
-  const normalizedDescription = normalizedDescriptionByHackathonId.value.get(hackathonId) ?? ''
-  return normalizedDescription.length > descriptionPreviewCharacterLimit
-}
+const draftCount = computed(() =>
+  manageableHackathons.value.filter(hackathon => hackathon.state === 'draft').length
+)
+const judgingFlowCount = computed(() =>
+  manageableHackathons.value.filter(hackathon =>
+    ['judging_preparation', 'judge_review', 'shortlist'].includes(hackathon.state)
+  ).length
+)
+const listItems = computed(() =>
+  manageableHackathons.value.map(hackathon => ({
+    id: hackathon.id,
+    name: hackathon.name,
+    description: isPlatformAdmin.value
+      ? 'Open this hackathon to manage operations, change settings, and work across the full internal admin surface.'
+      : 'Open this hackathon to manage operations, configure settings, and monitor the participant workflow from one shared detail surface.',
+    state: hackathon.state,
+    to: `/account/hackathons/${hackathon.slug}?tab=operations`,
+    actionLabel: 'Open operations',
+    overline: 'Admin',
+    meta: [
+      formatHackathonLocation(hackathon),
+      `${hackathon.maxTeamMembers} max/team`,
+      hackathon.slug
+    ]
+  }))
+)
 
 useSeoMeta({
-  title: 'Admin Workspace | Codex Hackathons',
-  description: 'Manage hackathons and run admin operations from your account workspace.'
+  title: 'Admin Dashboard | Codex Hackathons',
+  description: 'See the hackathons you can manage and open their operations and settings surfaces.'
 })
 </script>
 
@@ -103,21 +59,32 @@ useSeoMeta({
                 Account workspace
               </p>
               <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-                Admin
+                Admin dashboard
               </h1>
               <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-                Access the hackathons you can manage and jump directly into setup, operations, or competition control.
+                {{
+                  isPlatformAdmin
+                    ? 'Run platform-wide admin work, create hackathons, and open any hackathon workspace from one place.'
+                    : 'Open the hackathons you manage and jump into their operations and settings tabs.'
+                }}
               </p>
             </div>
 
-            <div class="rounded-lg border border-black/8 bg-[#F7F7F8] px-4 py-2 dark:border-white/[0.08] dark:bg-[#171717]">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-                Scope
-              </p>
-              <p class="mt-1 text-[14px] font-medium text-highlighted dark:text-white">
-                {{ scopeLabel }}
-              </p>
-            </div>
+            <AppButton
+              v-if="canCreate"
+              to="/admin/hackathons/new"
+              color="neutral"
+              variant="solid"
+              class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+            >
+              Create hackathon
+              <template #trailing>
+                <AppIcon
+                  name="i-lucide-plus"
+                  class="size-3.5"
+                />
+              </template>
+            </AppButton>
           </div>
         </div>
       </AppContainer>
@@ -128,7 +95,7 @@ useSeoMeta({
         v-if="workspace.session.error.value"
         color="error"
         variant="soft"
-        title="Unable to load admin workspace"
+        title="Admin dashboard unavailable"
         :description="workspace.session.error.value.message"
       />
 
@@ -141,34 +108,18 @@ useSeoMeta({
       />
 
       <AppAlert
-        v-else-if="isLoading"
+        v-else-if="workspace.session.status.value === 'pending' || workspace.hackathons.status.value === 'pending'"
         color="neutral"
         variant="soft"
-        title="Loading admin workspace"
-        description="This only takes a moment."
-      />
-
-      <AppAlert
-        v-else-if="!hasPlatformAccount"
-        color="warning"
-        variant="soft"
-        title="Platform account required"
-        description="Admin operations are available after the authenticated session is linked to a platform account."
-      />
-
-      <AppAlert
-        v-else-if="!hasAdminAccess"
-        color="warning"
-        variant="soft"
-        title="Admin access required"
-        description="This account does not currently have platform-admin or hackathon-admin permissions."
+        title="Loading admin dashboard"
+        :description="isPlatformAdmin ? 'Fetching the full admin workspace.' : 'Fetching the hackathons you can manage.'"
       />
 
       <template v-else>
         <section class="grid gap-4 sm:grid-cols-3">
           <div class="rounded-xl border border-black/8 bg-white p-4 dark:border-white/[0.08] dark:bg-[#111111]">
             <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              Manageable hackathons
+              {{ isPlatformAdmin ? 'Total hackathons' : 'Manageable hackathons' }}
             </p>
             <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
               {{ manageableHackathons.length }}
@@ -186,106 +137,25 @@ useSeoMeta({
 
           <div class="rounded-xl border border-black/8 bg-white p-4 dark:border-white/[0.08] dark:bg-[#111111]">
             <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              Drafts to configure
+              {{ isPlatformAdmin ? 'Drafts in setup' : 'In judging flow' }}
             </p>
             <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ draftCount }}
+              {{ isPlatformAdmin ? draftCount : judgingFlowCount }}
             </p>
           </div>
         </section>
 
-        <div
-          v-if="canCreate"
-          class="flex justify-end"
-        >
-          <AppButton
-            to="/admin/hackathons/new"
-            color="neutral"
-            variant="solid"
-            class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-          >
-            Create hackathon
-            <template #trailing>
-              <AppIcon
-                name="i-lucide-plus"
-                class="size-3.5"
-              />
-            </template>
-          </AppButton>
-        </div>
-
-        <section class="space-y-4">
-          <div class="border-b border-black/8 pb-3 dark:border-white/[0.08]">
-            <p class="text-[20px] font-medium text-highlighted dark:text-white">
-              Hackathons you can operate
-            </p>
-          </div>
-
-          <div
-            v-if="manageableHackathons.length === 0"
-            class="rounded-xl border border-dashed border-black/10 bg-white p-8 text-center dark:border-white/[0.08] dark:bg-[#111111]"
-          >
-            <p class="text-[15px] font-medium text-highlighted dark:text-white">
-              No manageable hackathons yet
-            </p>
-            <p class="mt-2 text-[14px] text-neutral-500 dark:text-[#A3A3A3]">
-              Once you receive admin access, hackathons will appear here.
-            </p>
-          </div>
-
-          <div
-            v-else
-            class="grid gap-4"
-          >
-            <NuxtLink
-              v-for="hackathon in manageableHackathons"
-              :key="hackathon.id"
-              :to="`/account/hackathons/${hackathon.slug}/admin`"
-              class="rounded-xl border border-black/8 bg-white p-5 transition-colors hover:border-black/20 dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.2]"
-            >
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div class="space-y-2">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <p class="text-[18px] font-semibold text-highlighted dark:text-white">
-                      {{ hackathon.name }}
-                    </p>
-                    <AppBadge
-                      :color="getHackathonStateColor(hackathon.state)"
-                      variant="soft"
-                      class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-                    >
-                      {{ formatHackathonState(hackathon.state) }}
-                    </AppBadge>
-                  </div>
-                  <p class="max-w-3xl break-words text-[14px] text-neutral-600 dark:text-[#B0B0B0]">
-                    {{ getDescriptionPreview(hackathon.id) }}
-                  </p>
-                  <button
-                    v-if="shouldShowDescriptionToggle(hackathon.id)"
-                    type="button"
-                    class="inline-flex text-[13px] font-medium text-highlighted transition-colors hover:text-neutral-700 dark:text-white dark:hover:text-[#D9D9D9]"
-                    @click.stop.prevent="toggleDescriptionExpansion(hackathon.id)"
-                  >
-                    {{ isDescriptionExpanded(hackathon.id) ? 'Show less' : 'Load more' }}
-                  </button>
-                  <div class="flex flex-wrap items-center gap-3 text-[12px] text-muted">
-                    <span>{{ formatHackathonLocation(hackathon) }}</span>
-                    <span>{{ hackathon.maxTeamMembers }} max/team</span>
-                    <span>{{ hackathon.slug }}</span>
-                  </div>
-                </div>
-
-                <div class="inline-flex items-center gap-1 text-[13px] font-medium text-highlighted dark:text-white">
-                  <span>Open</span>
-                  <AppIcon
-                    name="i-lucide-arrow-right"
-                    class="size-3.5"
-                  />
-                </div>
-              </div>
-            </NuxtLink>
-          </div>
-        </section>
+        <AccountHackathonDashboardList
+          :title="isPlatformAdmin ? 'All hackathons' : 'Hackathons you manage'"
+          :description="isPlatformAdmin
+            ? 'Use the same shared list surface to jump into operations and settings for any hackathon.'
+            : 'Each hackathon opens into the shared account detail surface, with Operations preselected so you can continue work immediately.'"
+          :items="listItems"
+          :empty-title="isPlatformAdmin ? 'No hackathons yet' : 'No manageable hackathons yet'"
+          :empty-description="isPlatformAdmin
+            ? 'Create the first hackathon to start operating the platform.'
+            : 'When you receive admin access, those hackathons will appear here.'"
+        />
       </template>
     </AppContainer>
   </div>

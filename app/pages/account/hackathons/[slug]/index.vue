@@ -5,24 +5,21 @@ import type {
   PublicHackathon,
   PublicPrize
 } from '~/composables/useHackathonPresentation'
-import type { ApiDataResponse, HackathonRecord } from '~/utils/admin-workspace'
-import type {
-  ParticipantApplicationRecord,
-  ParticipantApiDataResponse
-} from '~/utils/participant-application'
 import type {
   HackathonParticipationApiDataResponse,
   HackathonParticipationPayload,
   HackathonParticipationRecord
 } from '~/utils/hackathon-participation'
 
+import AccountHackathonAdminOperationsPanel from '~/components/account/hackathons/AccountHackathonAdminOperationsPanel.vue'
+import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
+import AccountHackathonCompetitionPanel from '~/components/account/hackathons/AccountHackathonCompetitionPanel.vue'
+import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
-import { buildAccountSettingsHref } from '~/utils/auth-navigation'
 import {
   formatParticipantApplicationStatus,
   getParticipantApplicationStatusColor,
-  normalizeParticipantApiError,
   summarizeParticipantApplicationStatus
 } from '~/utils/participant-application'
 import { getTeamFormationAvailability } from '~/utils/team-workspace'
@@ -36,26 +33,68 @@ import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
 definePageMeta({
   layout: 'profile',
-  middleware: ['require-auth']
+  middleware: ['require-platform-account']
 })
+
+interface AccountHackathonAccessRecord {
+  id: string
+  slug: string
+  name: string
+  description: string
+  state: PublicHackathon['state']
+  city: string
+  country: string
+  address: string
+  bannerImageUrl: string | null
+  backgroundImageUrl: string | null
+  registrationOpensAt: string
+  registrationClosesAt: string
+  submissionOpensAt: string
+  submissionClosesAt: string
+  applicationStatus: 'submitted' | 'approved' | 'rejected' | null
+  team: {
+    id: string
+    name: string
+    slug: string
+    role: 'member' | 'admin'
+  } | null
+  submissionStatus: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified' | null
+  roles: Array<'hackathon_admin' | 'judge'>
+}
+
+interface AccountHackathonsResponse {
+  data: {
+    current: AccountHackathonAccessRecord[]
+    past: AccountHackathonAccessRecord[]
+  }
+}
+
+const allWorkspaceTabs = [
+  'overview',
+  'prizes',
+  'details',
+  'judges',
+  'staff',
+  'judging',
+  'operations',
+  'settings'
+] as const
+type WorkspaceSectionTab = (typeof allWorkspaceTabs)[number]
+
+const workspaceTabLabels: Record<WorkspaceSectionTab, string> = {
+  overview: 'Overview',
+  prizes: 'Prizes',
+  details: 'Details',
+  judges: 'Judges',
+  staff: 'Staff',
+  judging: 'Judging',
+  operations: 'Operations',
+  settings: 'Settings'
+}
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
-const { actor: accountActor, status: accountActorStatus } = await useAccountLifecycleActor()
-const registrationNotice = computed(() => {
-  const notice = route.query.notice
-
-  if (typeof notice === 'string') {
-    return notice
-  }
-
-  if (Array.isArray(notice)) {
-    return notice[0] ?? ''
-  }
-
-  return ''
-})
-const showRegistrationSuccessNotice = ref(registrationNotice.value === 'application_submitted')
+const { actor } = useAccountLifecycleActor()
 
 if (!slug.value) {
   throw createError({
@@ -94,46 +133,186 @@ if (!hackathonResponse.value?.data) {
   })
 }
 
+const requestFetch = import.meta.server ? useRequestFetch() : $fetch
+const accountHackathonsResponse = await requestFetch<AccountHackathonsResponse>('/api/account/hackathons')
+const accessRecord = computed(() => [
+  ...accountHackathonsResponse.data.current,
+  ...accountHackathonsResponse.data.past
+].find(record => record.slug === slug.value) ?? null)
+
+if (!accessRecord.value) {
+  throw createError({
+    statusCode: 401,
+    statusMessage: 'This hackathon is not available in your account workspace.'
+  })
+}
+
+const participationResponse = await requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>(
+  '/api/hackathons/participation'
+)
+const participationRecord = computed<HackathonParticipationRecord | null>(() => {
+  const records = [
+    ...participationResponse.data.current,
+    ...participationResponse.data.past
+  ]
+
+  return records.find(record => record.hackathon.slug === slug.value) ?? null
+})
+
 const hackathon = computed(() => hackathonResponse.value!.data)
 const criteriaCount = computed(() => criteriaResponse.value?.data.length ?? 0)
 const prizes = computed(() => prizesResponse.value?.data ?? [])
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 
-const ownApplication = ref<ParticipantApplicationRecord | null>(null)
-const participationRecord = ref<HackathonParticipationRecord | null>(null)
-const workspaceErrorMessage = ref('')
-
-if (accountActor.value?.kind === 'platform_user') {
-  const requestFetch = import.meta.server ? useRequestFetch() : $fetch
-
-  try {
-    const visibleHackathonResponse = await requestFetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/slug/${slug.value}`)
-    const visibleHackathonId = visibleHackathonResponse.data.id
-
-    const ownApplicationResponse = await requestFetch<ParticipantApiDataResponse<ParticipantApplicationRecord | null>>(
-      `/api/hackathons/${visibleHackathonId}/applications/me`
-    )
-    ownApplication.value = ownApplicationResponse.data
-
-    const participationResponse = await requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>(
-      '/api/hackathons/participation'
-    )
-    const allParticipationRecords = [
-      ...participationResponse.data.current,
-      ...participationResponse.data.past
-    ]
-    participationRecord.value = allParticipationRecords.find(record => record.hackathon.slug === slug.value) ?? null
-  } catch (error) {
-    workspaceErrorMessage.value = normalizeParticipantApiError(error).message
+const canJudge = computed(() => accessRecord.value?.roles.includes('judge') ?? false)
+const canAdmin = computed(() => {
+  if (actor.value.kind !== 'platform_user') {
+    return false
   }
+
+  return actor.value.isPlatformAdmin || (accessRecord.value?.roles.includes('hackathon_admin') ?? false)
+})
+const workspaceBackLink = computed(() => canAdmin.value
+  ? {
+      to: '/account/admin',
+      label: 'Back to Admin dashboard'
+    }
+  : {
+      to: '/account',
+      label: 'Back to my hackathons'
+    })
+const applicationStatus = computed(() =>
+  participationRecord.value?.application?.status ?? accessRecord.value?.applicationStatus ?? null
+)
+const hasParticipantContext = computed(() =>
+  Boolean(applicationStatus.value || participationRecord.value?.activeTeam || participationRecord.value?.latestTeam)
+)
+
+const availableTabs = computed<WorkspaceSectionTab[]>(() => {
+  const tabs: WorkspaceSectionTab[] = ['overview']
+
+  if (hasPublishedPrizes.value) {
+    tabs.push('prizes')
+  }
+
+  tabs.push('details', 'judges', 'staff')
+
+  if (canJudge.value) {
+    tabs.push('judging')
+  }
+
+  if (canAdmin.value) {
+    tabs.push('operations', 'settings')
+  }
+
+  return tabs
+})
+const visibleTabs = computed(() =>
+  availableTabs.value.map(tab => ({
+    id: tab,
+    label: workspaceTabLabels[tab]
+  }))
+)
+const activeSection = computed<WorkspaceSectionTab>(() =>
+  resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
+)
+
+async function selectWorkspaceSection(nextSection: WorkspaceSectionTab) {
+  if (normalizeTabQueryValue(route.query.tab) === nextSection) {
+    return
+  }
+
+  const nextQuery = {
+    ...route.query
+  }
+
+  if (nextSection === 'overview') {
+    delete nextQuery.tab
+  } else {
+    nextQuery.tab = nextSection
+  }
+
+  await navigateTo({
+    path: route.path,
+    query: nextQuery,
+    hash: route.hash
+  })
 }
 
-const accountSettingsHref = computed(() => buildAccountSettingsHref(route.fullPath))
-const registerHref = computed(() => `/hackathons/${slug.value}/register`)
+watchEffect(() => {
+  const normalizedTab = normalizeTabQueryValue(route.query.tab)
+  const resolvedTab = resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
+
+  if (!normalizedTab && resolvedTab === 'overview') {
+    return
+  }
+
+  if (normalizedTab === resolvedTab) {
+    return
+  }
+
+  const nextQuery = {
+    ...route.query
+  }
+
+  if (resolvedTab === 'overview') {
+    delete nextQuery.tab
+  } else {
+    nextQuery.tab = resolvedTab
+  }
+
+  void navigateTo({
+    path: route.path,
+    query: nextQuery,
+    hash: route.hash
+  }, { replace: true })
+})
+
 const teamsHref = computed(() => `/hackathons/${slug.value}/teams`)
 const activeTeamHref = computed(() =>
   participationRecord.value?.activeTeam ? `/hackathons/${slug.value}/teams/${participationRecord.value.activeTeam.id}` : null
 )
+const applicationStatusLabel = computed(() =>
+  applicationStatus.value ? formatParticipantApplicationStatus(applicationStatus.value) : ''
+)
+const applicationStatusColor = computed(() => {
+  if (!applicationStatus.value) {
+    return 'neutral'
+  }
+
+  return getParticipantApplicationStatusColor(applicationStatus.value)
+})
+const applicationStatusSummary = computed(() =>
+  applicationStatus.value
+    ? summarizeParticipantApplicationStatus(applicationStatus.value, hackathon.value.state)
+    : ''
+)
+
+const teamFormationAvailability = computed(() =>
+  getTeamFormationAvailability(
+    hackathon.value,
+    applicationStatus.value,
+    Boolean(participationRecord.value?.activeTeam)
+  )
+)
+const submissionStatus = computed(() =>
+  getTeamSubmissionWorkspaceStatus(participationRecord.value?.latestSubmission ?? null)
+)
+const submissionStatusLabel = computed(() => formatTeamSubmissionStatus(submissionStatus.value))
+const submissionSummary = computed(() =>
+  getTeamSubmissionStateSummary(hackathon.value, participationRecord.value?.latestSubmission ?? null)
+)
+const submissionRoleSummary = computed(() => {
+  if (!participationRecord.value?.activeTeam) {
+    return 'Join or create a team before working on a project submission.'
+  }
+
+  if (participationRecord.value.activeTeam.membershipRole === 'admin') {
+    return 'You are a team admin and can manage submission actions when lifecycle guards allow them.'
+  }
+
+  return 'You are a team member with read-only submission visibility. Team admins manage submission actions.'
+})
 
 const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
 const headerStateClass = computed(() => {
@@ -169,117 +348,23 @@ const detailSummary = computed(() => [
   formatHackathonLocation(hackathon.value),
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
-
-const applicationStatus = computed(() => ownApplication.value?.status ?? null)
-const applicationStatusLabel = computed(() =>
-  applicationStatus.value ? formatParticipantApplicationStatus(applicationStatus.value) : 'Not registered'
-)
-const applicationStatusColor = computed(() => {
-  if (!applicationStatus.value) {
-    return 'neutral'
-  }
-
-  return getParticipantApplicationStatusColor(applicationStatus.value)
-})
-const applicationStatusSummary = computed(() =>
-  applicationStatus.value
-    ? summarizeParticipantApplicationStatus(applicationStatus.value, hackathon.value.state)
-    : 'Register for this hackathon to unlock participant-specific workspace details.'
-)
-
-const teamFormationAvailability = computed(() =>
-  getTeamFormationAvailability(
-    hackathon.value,
-    applicationStatus.value,
-    Boolean(participationRecord.value?.activeTeam)
-  )
-)
-const submissionStatus = computed(() =>
-  getTeamSubmissionWorkspaceStatus(participationRecord.value?.latestSubmission ?? null)
-)
-const submissionStatusLabel = computed(() => formatTeamSubmissionStatus(submissionStatus.value))
-const submissionSummary = computed(() =>
-  getTeamSubmissionStateSummary(hackathon.value, participationRecord.value?.latestSubmission ?? null)
-)
-const submissionWindowMessage = computed(() => {
-  if (hackathon.value.state === 'submission_open') {
-    return ''
-  }
-
-  if (hackathon.value.state === 'registration_open' || hackathon.value.state === 'draft') {
-    return 'Submission is not open yet. You can still use this tab to review status and requirements.'
-  }
-
-  return 'Submission is closed. You can still use this tab to review your team submission status.'
-})
-const submissionRoleSummary = computed(() => {
-  if (!participationRecord.value?.activeTeam) {
-    return 'Join or create a team before working on a project submission.'
-  }
-
-  if (participationRecord.value.activeTeam.membershipRole === 'admin') {
-    return 'You are a team admin and can manage submission actions when lifecycle guards allow them.'
-  }
-
-  return 'You are a team member with read-only submission visibility. Team admins manage submission actions.'
-})
-
 const descriptionMarkdown = computed(() => hackathon.value.description?.trim() ?? '')
 const descriptionHtml = computed(() => descriptionMarkdown.value ? renderMarkdown(descriptionMarkdown.value) : '')
-
-const workspaceSectionTabs = ['overview', 'prizes', 'judges', 'staff', 'team', 'submission'] as const
-type WorkspaceSectionTab = (typeof workspaceSectionTabs)[number]
-const activeSection = computed<WorkspaceSectionTab>(() =>
-  resolveTabQueryValue(route.query.tab, workspaceSectionTabs, 'overview')
+const sortedAgendaItems = computed(() =>
+  [...(hackathon.value.agendaItems ?? [])]
+    .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
 )
-const canViewApprovedWorkspace = computed(() => applicationStatus.value === 'approved')
-
-async function selectWorkspaceSection(nextSection: WorkspaceSectionTab) {
-  if (normalizeTabQueryValue(route.query.tab) === nextSection) {
-    return
-  }
-
-  await navigateTo({
-    path: route.path,
-    query: {
-      ...route.query,
-      tab: nextSection
-    },
-    hash: route.hash
-  })
-}
-
-watchEffect(() => {
-  if (activeSection.value !== 'prizes' || hasPublishedPrizes.value) {
-    return
-  }
-
-  void navigateTo({
-    path: route.path,
-    query: {
-      ...route.query,
-      tab: 'overview'
-    },
-    hash: route.hash
-  }, { replace: true })
-})
-
-onMounted(() => {
-  if (!showRegistrationSuccessNotice.value) {
-    return
-  }
-
-  const nextQuery = { ...route.query }
-  delete nextQuery.notice
-  void navigateTo({
-    path: route.path,
-    query: nextQuery
-  }, { replace: true })
-})
+const showAgendaDayContext = computed(() => shouldShowAgendaDayContext(sortedAgendaItems.value))
+const agendaEntries = computed(() =>
+  sortedAgendaItems.value.map(item => ({
+    ...item,
+    presentation: getAgendaItemPresentation(item, showAgendaDayContext.value)
+  }))
+)
 
 useSeoMeta({
-  title: () => `${hackathon.value.name} Workspace | Codex Hackathons`,
-  description: () => `View your participant workspace details for ${hackathon.value.name}.`
+  title: () => `${hackathon.value.name} | Codex Hackathons`,
+  description: () => `View the account workspace for ${hackathon.value.name}.`
 })
 </script>
 
@@ -301,14 +386,14 @@ useSeoMeta({
     <section class="relative z-10 border-b border-black/8 bg-white/42 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/48">
       <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
         <NuxtLink
-          to="/account/dashboard"
+          :to="workspaceBackLink.to"
           class="inline-flex items-center gap-2 text-[13px] font-medium text-neutral-600 transition-colors hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white"
         >
           <AppIcon
             name="i-lucide-arrow-left"
             class="size-4"
           />
-          Back to dashboard
+          {{ workspaceBackLink.label }}
         </NuxtLink>
 
         <div class="mt-3 border-b border-black/8 pb-0 dark:border-white/[0.08]">
@@ -325,15 +410,15 @@ useSeoMeta({
                   >
                     {{ headerStateLabel }}
                   </span>
+                  <AppBadge
+                    v-if="applicationStatus"
+                    :color="applicationStatusColor"
+                    variant="soft"
+                    class="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                  >
+                    {{ applicationStatusLabel }}
+                  </AppBadge>
                 </div>
-
-                <AppBadge
-                  :color="applicationStatusColor"
-                  variant="soft"
-                  class="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
-                >
-                  {{ applicationStatusLabel }}
-                </AppBadge>
               </div>
 
               <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
@@ -341,89 +426,32 @@ useSeoMeta({
               </p>
             </div>
 
-            <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
+            <p
+              v-if="applicationStatusSummary"
+              class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]"
+            >
               {{ applicationStatusSummary }}
             </p>
           </div>
 
           <nav
-            v-if="canViewApprovedWorkspace"
-            aria-label="Participant hackathon workspace sections"
+            aria-label="Account hackathon sections"
             role="tablist"
             class="flex items-center gap-5 overflow-x-auto"
           >
             <button
-              id="account-tab-overview"
+              v-for="tab in visibleTabs"
+              :id="`account-tab-${tab.id}`"
+              :key="tab.id"
               type="button"
               role="tab"
-              :aria-selected="activeSection === 'overview'"
-              aria-controls="account-tab-panel-overview"
+              :aria-selected="activeSection === tab.id"
+              :aria-controls="`account-tab-panel-${tab.id}`"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activeSection === 'overview' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="void selectWorkspaceSection('overview')"
+              :class="activeSection === tab.id ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+              @click="void selectWorkspaceSection(tab.id)"
             >
-              Overview
-            </button>
-            <button
-              v-if="hasPublishedPrizes"
-              id="account-tab-prizes"
-              type="button"
-              role="tab"
-              :aria-selected="activeSection === 'prizes'"
-              aria-controls="account-tab-panel-prizes"
-              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activeSection === 'prizes' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="void selectWorkspaceSection('prizes')"
-            >
-              Prizes
-            </button>
-            <button
-              id="account-tab-judges"
-              type="button"
-              role="tab"
-              :aria-selected="activeSection === 'judges'"
-              aria-controls="account-tab-panel-judges"
-              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activeSection === 'judges' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="void selectWorkspaceSection('judges')"
-            >
-              Judges
-            </button>
-            <button
-              id="account-tab-staff"
-              type="button"
-              role="tab"
-              :aria-selected="activeSection === 'staff'"
-              aria-controls="account-tab-panel-staff"
-              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activeSection === 'staff' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="void selectWorkspaceSection('staff')"
-            >
-              Staff
-            </button>
-            <button
-              id="account-tab-team"
-              type="button"
-              role="tab"
-              :aria-selected="activeSection === 'team'"
-              aria-controls="account-tab-panel-team"
-              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activeSection === 'team' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="void selectWorkspaceSection('team')"
-            >
-              Team
-            </button>
-            <button
-              id="account-tab-submission"
-              type="button"
-              role="tab"
-              :aria-selected="activeSection === 'submission'"
-              aria-controls="account-tab-panel-submission"
-              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
-              :class="activeSection === 'submission' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="void selectWorkspaceSection('submission')"
-            >
-              Submission
+              {{ tab.label }}
             </button>
           </nav>
         </div>
@@ -431,176 +459,54 @@ useSeoMeta({
     </section>
 
     <AppContainer class="relative z-10 max-w-[68rem] space-y-7 pt-6">
-      <AppAlert
-        v-if="accountActorStatus === 'pending'"
-        color="neutral"
-        variant="soft"
-        title="Loading account workspace"
-        description="Resolving your account and hackathon participation details."
-      />
-
-      <template v-else-if="accountActor?.kind === 'authenticated_identity'">
-        <AppAlert
-          color="warning"
-          variant="soft"
-          title="Platform account required"
-          description="Complete your platform account before entering participant hackathon workspaces."
-        />
-
-        <AppButton
-          :to="accountSettingsHref"
-          color="warning"
-          icon="i-lucide-id-card"
+      <section
+        v-if="activeSection === 'overview'"
+        id="account-tab-panel-overview"
+        role="tabpanel"
+        aria-labelledby="account-tab-overview"
+        class="space-y-7"
+      >
+        <section
+          v-if="descriptionHtml"
+          class="rounded-xl border border-black/8 bg-[#F7F7F8] p-6 dark:border-white/[0.08] dark:bg-[#111111]"
         >
-          Complete platform account
-        </AppButton>
-      </template>
+          <div
+            class="hackathon-markdown"
+            v-html="descriptionHtml"
+          />
+        </section>
 
-      <template v-else-if="accountActor?.kind === 'platform_user'">
-        <AppAlert
-          v-if="showRegistrationSuccessNotice"
-          color="success"
-          variant="soft"
-          title="Application submitted"
-          description="Your application was submitted successfully. You can track review status below."
-        />
+        <section
+          v-else
+          class="rounded-xl hackathon-workspace-panel-dashed p-8 text-center"
+        >
+          <p class="text-[15px] font-medium text-highlighted dark:text-white">
+            Overview will appear here once published.
+          </p>
+        </section>
 
-        <AppAlert
-          v-if="workspaceErrorMessage"
-          color="error"
-          variant="soft"
-          title="Hackathon workspace unavailable"
-          :description="workspaceErrorMessage"
-        />
+        <section
+          v-if="hasParticipantContext"
+          class="space-y-4"
+        >
+          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+            <p class="text-[20px] font-medium text-highlighted dark:text-white">
+              Your participation
+            </p>
+            <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
+              Team and submission actions now live here instead of separate tabs.
+            </p>
+          </div>
 
-        <template v-else-if="!ownApplication">
           <AppAlert
-            color="info"
+            v-if="applicationStatus && applicationStatus !== 'approved'"
+            :color="applicationStatus === 'submitted' ? 'warning' : 'error'"
             variant="soft"
-            title="Registration required"
-            description="Register for this hackathon before accessing participant team and submission workspaces."
+            title="Application status"
+            :description="applicationStatusSummary"
           />
 
-          <AppButton
-            :to="registerHref"
-            color="primary"
-            trailing-icon="i-lucide-arrow-up-right"
-          >
-            Register for this hackathon
-          </AppButton>
-        </template>
-
-        <template v-else-if="ownApplication.status === 'submitted'">
-          <AppCard class="border border-black/8 bg-white/70 p-6 dark:border-white/[0.08] dark:bg-[#111111]">
-            <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-              Pending approval
-            </h2>
-            <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-              Your application has been submitted. A hackathon admin needs to review it before participant workspaces become available.
-            </p>
-            <p class="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-neutral-500 dark:text-[#8C8C8C]">
-              Application status: {{ applicationStatusLabel }}
-            </p>
-          </AppCard>
-        </template>
-
-        <template v-else-if="ownApplication.status === 'rejected'">
-          <AppCard class="border border-red-500/20 bg-red-500/5 p-6 dark:border-red-400/20 dark:bg-red-500/10">
-            <h2 class="text-xl font-semibold text-red-700 dark:text-red-300">
-              Application rejected
-            </h2>
-            <p class="mt-2 text-sm text-red-700/80 dark:text-red-200/85">
-              This application was rejected. You cannot submit another application to this hackathon.
-            </p>
-            <p class="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-red-700/70 dark:text-red-200/75">
-              Contact hackathon staff if you need clarification on the decision.
-            </p>
-          </AppCard>
-        </template>
-
-        <template v-else>
-          <section
-            v-if="activeSection === 'overview'"
-            id="account-tab-panel-overview"
-            role="tabpanel"
-            aria-labelledby="account-tab-overview"
-            class="space-y-7"
-          >
-            <section
-              v-if="descriptionHtml"
-              class="rounded-xl border border-black/8 bg-[#F7F7F8] p-6 dark:border-white/[0.08] dark:bg-[#111111]"
-            >
-              <div
-                class="hackathon-markdown"
-                v-html="descriptionHtml"
-              />
-            </section>
-
-            <section
-              v-else
-              class="rounded-xl border border-dashed border-black/10 bg-white p-8 text-center dark:border-white/[0.08] dark:bg-[#111111]"
-            >
-              <p class="text-[15px] font-medium text-highlighted dark:text-white">
-                Overview will appear here once published.
-              </p>
-            </section>
-
-            <HackathonTimeline
-              :hackathon="hackathon"
-              :criteria-count="criteriaCount"
-            />
-          </section>
-
-          <section
-            v-else-if="hasPublishedPrizes && activeSection === 'prizes'"
-            id="account-tab-panel-prizes"
-            role="tabpanel"
-            aria-labelledby="account-tab-prizes"
-          >
-            <HackathonPrizeList
-              :prizes="prizes"
-            />
-          </section>
-
-          <section
-            v-else-if="activeSection === 'judges'"
-            id="account-tab-panel-judges"
-            role="tabpanel"
-            aria-labelledby="account-tab-judges"
-          >
-            <AppCard class="border border-black/8 bg-white/70 p-6 dark:border-white/[0.08] dark:bg-[#111111]">
-              <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                Judges
-              </h2>
-              <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                Judge roster publishing for participant workspaces is not exposed yet. This tab will show the official judge list once that API surface is available.
-              </p>
-            </AppCard>
-          </section>
-
-          <section
-            v-else-if="activeSection === 'staff'"
-            id="account-tab-panel-staff"
-            role="tabpanel"
-            aria-labelledby="account-tab-staff"
-          >
-            <AppCard class="border border-black/8 bg-white/70 p-6 dark:border-white/[0.08] dark:bg-[#111111]">
-              <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                Staff
-              </h2>
-              <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                Staff roster publishing for participant workspaces is not exposed yet. This tab will show hackathon staff once that API surface is available.
-              </p>
-            </AppCard>
-          </section>
-
-          <section
-            v-else-if="activeSection === 'team'"
-            id="account-tab-panel-team"
-            role="tabpanel"
-            aria-labelledby="account-tab-team"
-            class="space-y-4"
-          >
+          <template v-else-if="applicationStatus === 'approved'">
             <AppAlert
               :color="teamFormationAvailability.isOpen ? 'success' : 'neutral'"
               variant="soft"
@@ -608,98 +514,223 @@ useSeoMeta({
               :description="teamFormationAvailability.summary"
             />
 
-            <AppCard class="border border-black/8 bg-white/70 p-6 dark:border-white/[0.08] dark:bg-[#111111]">
-              <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                Team workspace
-              </h2>
-
-              <template v-if="participationRecord?.activeTeam">
-                <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                  Current team: <span class="font-semibold text-highlighted dark:text-white">{{ participationRecord.activeTeam.name }}</span>
-                </p>
-                <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                  Role: {{ participationRecord.activeTeam.membershipRole }} • {{ participationRecord.activeTeam.activeMemberCount }} active members
-                </p>
-
-                <AppButton
-                  v-if="activeTeamHref"
-                  :to="activeTeamHref"
-                  color="neutral"
-                  variant="solid"
-                  trailing-icon="i-lucide-arrow-up-right"
-                  class="mt-4"
-                >
-                  Open team workspace
-                </AppButton>
-              </template>
-
-              <template v-else>
-                <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                  You are approved for this hackathon, but you do not have an active team yet.
-                </p>
-
-                <AppButton
-                  :to="teamsHref"
-                  color="neutral"
-                  variant="solid"
-                  trailing-icon="i-lucide-arrow-up-right"
-                  class="mt-4"
-                >
-                  Open team directory
-                </AppButton>
-              </template>
-            </AppCard>
-          </section>
-
-          <section
-            v-else
-            id="account-tab-panel-submission"
-            role="tabpanel"
-            aria-labelledby="account-tab-submission"
-            class="space-y-4"
-          >
-            <AppAlert
-              v-if="submissionWindowMessage"
-              color="neutral"
-              variant="soft"
-              title="Submission window"
-              :description="submissionWindowMessage"
-            />
-
-            <AppCard class="border border-black/8 bg-white/70 p-6 dark:border-white/[0.08] dark:bg-[#111111]">
-              <div class="flex flex-wrap items-center justify-between gap-3">
+            <section class="grid gap-4 lg:grid-cols-2">
+              <AppCard class="hackathon-workspace-panel p-6">
                 <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                  Submission
+                  Team workspace
                 </h2>
-                <AppBadge
+
+                <template v-if="participationRecord?.activeTeam">
+                  <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                    Current team: <span class="font-semibold text-highlighted dark:text-white">{{ participationRecord.activeTeam.name }}</span>
+                  </p>
+                  <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                    Role: {{ participationRecord.activeTeam.membershipRole }} • {{ participationRecord.activeTeam.activeMemberCount }} active members
+                  </p>
+
+                  <AppButton
+                    v-if="activeTeamHref"
+                    :to="activeTeamHref"
+                    color="neutral"
+                    variant="solid"
+                    trailing-icon="i-lucide-arrow-up-right"
+                    class="mt-4"
+                  >
+                    Open team workspace
+                  </AppButton>
+                </template>
+
+                <template v-else>
+                  <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                    You are approved for this hackathon, but you do not have an active team yet.
+                  </p>
+
+                  <AppButton
+                    :to="teamsHref"
+                    color="neutral"
+                    variant="solid"
+                    trailing-icon="i-lucide-arrow-up-right"
+                    class="mt-4"
+                  >
+                    Open team directory
+                  </AppButton>
+                </template>
+              </AppCard>
+
+              <AppCard class="hackathon-workspace-panel p-6">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                  <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+                    Submission
+                  </h2>
+                  <AppBadge
+                    color="neutral"
+                    variant="soft"
+                    class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                  >
+                    {{ submissionStatusLabel }}
+                  </AppBadge>
+                </div>
+
+                <p class="mt-3 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                  {{ submissionSummary }}
+                </p>
+                <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                  {{ submissionRoleSummary }}
+                </p>
+
+                <AppButton
+                  :to="activeTeamHref ?? teamsHref"
                   color="neutral"
-                  variant="soft"
-                  class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                  variant="solid"
+                  trailing-icon="i-lucide-arrow-up-right"
+                  class="mt-4"
                 >
-                  {{ submissionStatusLabel }}
-                </AppBadge>
+                  {{ activeTeamHref ? 'Open team submission workspace' : 'Open team directory' }}
+                </AppButton>
+              </AppCard>
+            </section>
+          </template>
+        </section>
+      </section>
+
+      <section
+        v-else-if="activeSection === 'prizes'"
+        id="account-tab-panel-prizes"
+        role="tabpanel"
+        aria-labelledby="account-tab-prizes"
+      >
+        <HackathonPrizeList :prizes="prizes" />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'details'"
+        id="account-tab-panel-details"
+        role="tabpanel"
+        aria-labelledby="account-tab-details"
+        class="space-y-7"
+      >
+        <HackathonTimeline
+          :hackathon="hackathon"
+          :criteria-count="criteriaCount"
+        />
+
+        <section
+          v-if="agendaEntries.length > 0"
+          class="relative overflow-hidden rounded-[1.75rem] border border-black/10 bg-white/72 p-5 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#101010]/78 sm:p-7"
+        >
+          <div
+            class="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent"
+            aria-hidden="true"
+          />
+          <div
+            class="pointer-events-none absolute -right-10 top-6 size-28 rounded-full bg-amber-500/12 blur-3xl"
+            aria-hidden="true"
+          />
+
+          <div class="relative space-y-6">
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div class="space-y-1.5">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                  Schedule
+                </p>
+                <h2 class="text-[24px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+                  Agenda
+                </h2>
               </div>
+            </div>
 
-              <p class="mt-3 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                {{ submissionSummary }}
-              </p>
-              <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                {{ submissionRoleSummary }}
-              </p>
-
-              <AppButton
-                :to="activeTeamHref ?? teamsHref"
-                color="neutral"
-                variant="solid"
-                trailing-icon="i-lucide-arrow-up-right"
-                class="mt-4"
+            <div class="space-y-4">
+              <div
+                v-for="entry in agendaEntries"
+                :key="entry.id"
+                class="grid gap-2 rounded-[1.25rem] border border-black/8 bg-white/78 p-4 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] dark:border-white/[0.08] dark:bg-[#151515]/82 sm:grid-cols-[auto,1fr] sm:items-start sm:gap-5"
               >
-                {{ activeTeamHref ? 'Open team submission workspace' : 'Open team directory' }}
-              </AppButton>
-            </AppCard>
-          </section>
-        </template>
-      </template>
+                <div class="min-w-[9rem] space-y-1">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300/90">
+                    {{ entry.presentation.dateLabel }}
+                  </p>
+                  <p class="text-[15px] font-semibold text-highlighted dark:text-white">
+                    {{ entry.presentation.timeLabel }}
+                  </p>
+                </div>
+
+                <div class="space-y-1.5">
+                  <h3 class="text-[17px] font-semibold text-highlighted dark:text-white">
+                    {{ entry.title }}
+                  </h3>
+                  <p
+                    v-if="entry.details"
+                    class="text-[14px] leading-relaxed text-neutral-600 dark:text-[#B0B0B0]"
+                  >
+                    {{ entry.details }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section
+        v-else-if="activeSection === 'judges'"
+        id="account-tab-panel-judges"
+        role="tabpanel"
+        aria-labelledby="account-tab-judges"
+      >
+        <AppCard class="hackathon-workspace-panel p-6">
+          <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+            Judges
+          </h2>
+          <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+            Judge roster publishing is not exposed yet. This tab is reserved for the official hackathon judge list.
+          </p>
+        </AppCard>
+      </section>
+
+      <section
+        v-else-if="activeSection === 'staff'"
+        id="account-tab-panel-staff"
+        role="tabpanel"
+        aria-labelledby="account-tab-staff"
+      >
+        <AppCard class="hackathon-workspace-panel p-6">
+          <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+            Staff
+          </h2>
+          <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+            Staff roster publishing is not exposed yet. This tab is reserved for the official hackathon staff list.
+          </p>
+        </AppCard>
+      </section>
+
+      <section
+        v-else-if="activeSection === 'judging'"
+        id="account-tab-panel-judging"
+        role="tabpanel"
+        aria-labelledby="account-tab-judging"
+      >
+        <AccountHackathonJudgePanel :slug="slug" />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'operations'"
+        id="account-tab-panel-operations"
+        role="tabpanel"
+        aria-labelledby="account-tab-operations"
+        class="space-y-8"
+      >
+        <AccountHackathonAdminOperationsPanel :slug="slug" />
+        <AccountHackathonCompetitionPanel :slug="slug" />
+      </section>
+
+      <section
+        v-else
+        id="account-tab-panel-settings"
+        role="tabpanel"
+        aria-labelledby="account-tab-settings"
+      >
+        <AccountHackathonAdminSettingsPanel :slug="slug" />
+      </section>
     </AppContainer>
   </div>
 </template>

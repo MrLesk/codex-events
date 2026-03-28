@@ -5,7 +5,7 @@ Feature: TASK-4.3 platform account registration recovery and profile management
     Given the saved "regular_user" Auth0 session state exists
     And the saved "regular_user" session should resolve to an authenticated identity without a platform account
     When I open the account settings page with the saved "regular_user" session
-    Then I should see the account settings heading
+    Then I should see the profile settings heading
     When I update the account profile links
     Then the account profile should show the updated links
     When I upload a profile icon from account settings

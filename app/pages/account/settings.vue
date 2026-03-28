@@ -207,7 +207,7 @@ const profileSubmitLabel = computed(() => 'Save')
           <div class="flex flex-wrap items-end justify-between gap-4">
             <div class="space-y-2">
               <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-                Account settings
+                Profile settings
               </h1>
               <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
                 Update the profile details used across your hackathon participation and keep your account information current.

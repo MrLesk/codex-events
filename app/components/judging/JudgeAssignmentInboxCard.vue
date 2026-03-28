@@ -25,7 +25,7 @@ const assignmentHref = computed(() =>
   <NuxtLink
     :to="assignmentHref"
     :data-testid="`judge-assignment-card-${assignment.id}`"
-    class="group rounded-xl border border-black/8 bg-white p-5 transition-colors hover:border-black/20 dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.2]"
+    class="hackathon-workspace-panel group rounded-xl p-5 transition-colors hover:border-black/20 dark:hover:border-white/[0.2]"
   >
     <div class="flex flex-col gap-4">
       <div class="flex flex-wrap items-start justify-between gap-3">

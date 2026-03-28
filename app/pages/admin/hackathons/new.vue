@@ -62,7 +62,7 @@ async function createHackathon(form: HackathonFormState) {
     })
 
     await workspace.refreshRoot()
-    await navigateTo(`/account/hackathons/${response.data.slug}/admin`)
+    await navigateTo(`/account/hackathons/${response.data.slug}?tab=settings`)
   } catch (error) {
     const apiError = normalizeApiError(error)
     submitError.value = apiError.message

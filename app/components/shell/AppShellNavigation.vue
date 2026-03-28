@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { ShellNavigationGroup } from '~/composables/useShellNavigation'
+import { isShellNavigationLinkActive } from '~/utils/shell-navigation'
 
 const props = defineProps<{
   groups: ShellNavigationGroup[]
@@ -7,14 +8,6 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
-
-function isActiveLink(to: string) {
-  if (to === '/') {
-    return route.path === '/'
-  }
-
-  return route.path === to || route.path.startsWith(`${to}/`)
-}
 </script>
 
 <template>
@@ -46,7 +39,7 @@ function isActiveLink(to: string) {
           class="inline-flex w-full items-center rounded-md px-3 py-[6px] text-[14px] transition-colors"
           :class="[
             'justify-start',
-            isActiveLink(item.to)
+            isShellNavigationLinkActive(route.path, route.query.tab, item.to)
               ? 'bg-[#282828] text-white'
               : 'text-[#ECECEC] hover:bg-[#1A1A1A] hover:text-white'
           ]"

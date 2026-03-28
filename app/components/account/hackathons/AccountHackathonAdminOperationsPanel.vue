@@ -19,14 +19,12 @@ import {
   normalizeApiError
 } from '~/utils/admin-workspace'
 
-definePageMeta({
-  layout: 'hackathon-detail',
-  middleware: ['require-hackathon-admin']
-})
+const props = defineProps<{
+  slug: string
+}>()
 
-const route = useRoute()
 const toast = useToast()
-const slug = computed(() => String(route.params.slug ?? '').trim())
+const slug = computed(() => props.slug.trim())
 
 if (!slug.value) {
   throw createError({
@@ -77,35 +75,6 @@ const leaderboard = computed(() => workspace.leaderboard.data.value?.data ?? [])
 const allTeams = computed(() => workspace.teams.data.value ?? [])
 const noSubmissionTeams = computed(() => workspace.noSubmissionTeams.data.value?.data ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
-const headerStateLabel = computed(() =>
-  currentHackathon.value ? formatHackathonState(currentHackathon.value.state).toUpperCase() : ''
-)
-const headerStateClass = computed(() => {
-  if (currentHackathon.value?.state === 'submission_open') {
-    return 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-  }
-
-  if (currentHackathon.value?.state === 'registration_open') {
-    return 'border border-sky-600/35 bg-sky-500/16 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/14 dark:text-sky-300'
-  }
-
-  if (currentHackathon.value?.state === 'winners_announced') {
-    return 'bg-green-500/10 text-green-400 border border-green-500/20'
-  }
-
-  return 'bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]'
-})
-const workspaceSummary = computed(() => {
-  if (!currentHackathon.value) {
-    return ''
-  }
-
-  return [
-    formatHackathonWindow(currentHackathon.value.registrationOpensAt, currentHackathon.value.submissionClosesAt),
-    formatHackathonLocation(currentHackathon.value),
-    formatMaxTeamMembers(currentHackathon.value.maxTeamMembers)
-  ].join(' • ')
-})
 const applications = ref<AdminApplicationRecord[]>([])
 const applicationsStatus = ref<LoadStatus>('idle')
 const applicationsErrorMessage = ref('')
@@ -530,29 +499,7 @@ async function runLifecycleAction() {
 </script>
 
 <template>
-  <div class="pb-14">
-    <section class="border-b border-black/8 bg-white/42 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/48">
-      <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
-        <AdminWorkspaceHeader
-          eyebrow="Admin Operations"
-          :title="currentHackathon ? `${currentHackathon.name} operations` : 'Hackathon operations'"
-          description="Review applications, monitor teams and submission state, and run the admin-only interventions that do not belong in participant or judge workspaces."
-          back-to="/account/admin"
-          back-label="Back to admin operations"
-          :state-label="headerStateLabel"
-          :state-class="headerStateClass"
-          :summary="workspaceSummary"
-        />
-
-        <AdminHackathonWorkspaceTabs
-          v-if="currentHackathon"
-          :hackathon-slug="currentHackathon.slug"
-          current-surface="operations"
-        />
-      </AppContainer>
-    </section>
-
-    <AppContainer class="max-w-[68rem] space-y-8 pt-6">
+  <div class="space-y-8">
       <AppAlert
         v-if="mutationError"
         color="error"
@@ -579,7 +526,7 @@ async function runLifecycleAction() {
 
       <template v-else-if="currentHackathon">
         <section class="grid gap-4 lg:grid-cols-4">
-          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Hackathon state
             </p>
@@ -588,7 +535,7 @@ async function runLifecycleAction() {
             </p>
           </div>
 
-          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Applications
             </p>
@@ -597,7 +544,7 @@ async function runLifecycleAction() {
             </p>
           </div>
 
-          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Teams
             </p>
@@ -606,7 +553,7 @@ async function runLifecycleAction() {
             </p>
           </div>
 
-          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Actionable interventions
             </p>
@@ -618,7 +565,7 @@ async function runLifecycleAction() {
 
         <AppCard
           v-if="lifecycleControl"
-          class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36"
+          class="rounded-xl hackathon-workspace-panel"
         >
           <template #header>
             <div class="space-y-1">
@@ -700,6 +647,5 @@ async function runLifecycleAction() {
           />
         </section>
       </template>
-    </AppContainer>
   </div>
 </template>

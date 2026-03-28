@@ -27,7 +27,7 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
 </script>
 
 <template>
-  <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
+  <AppCard class="rounded-xl hackathon-workspace-panel">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">

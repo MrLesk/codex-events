@@ -82,7 +82,7 @@ export function useShellNavigation() {
   const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
     && (actor.value.isPlatformAdmin || actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin')))
   const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
-    && (hasAdminAccess.value || actor.value.hackathonRoles.some(role => role.role === 'judge')))
+    && actor.value.hackathonRoles.some(role => role.role === 'judge'))
   const hasPrizeRecipientAccess = computed(() => pendingPrizeRedemptions.value.length > 0)
   const prizeRedemptionsErrorMessage = computed(() => {
     if (actor.value.kind !== 'platform_user' || !pendingPrizeRedemptionsError.value) {
@@ -125,63 +125,44 @@ export function useShellNavigation() {
       return []
     }
 
-    const groups: ShellNavigationGroup[] = [{
-      label: '',
-      items: [{
-        id: 'dashboard',
-        label: 'Dashboard',
-        description: 'Role-aware operational overview',
-        to: '/account/dashboard',
-        icon: 'i-lucide-layout-dashboard'
-      }, {
-        id: 'settings',
-        label: 'Settings',
-        description: 'Profile details and platform lifecycle',
-        to: '/account/settings',
-        icon: 'i-lucide-id-card'
-      }]
+    const items: ShellNavigationItem[] = [{
+      id: 'my-hackathons',
+      label: 'My hackathons',
+      description: 'Your active, upcoming, and past hackathons',
+      to: '/account',
+      icon: 'i-lucide-flag'
+    }, {
+      id: 'profile-settings',
+      label: 'Profile settings',
+      description: 'Profile details and platform lifecycle',
+      to: '/account/settings',
+      icon: 'i-lucide-id-card'
     }]
 
-    const specializedItems: ShellNavigationItem[] = []
-
     if (hasJudgeAccess.value) {
-      specializedItems.unshift({
-        id: 'judge',
-        label: 'Judge workspace',
-        description: 'Blind judging and assignment progress',
+      items.push({
+        id: 'judge-dashboard',
+        label: 'Judge dashboard',
+        description: 'Hackathons where you are assigned as a judge',
         to: '/account/judging',
         icon: 'i-lucide-scale'
       })
     }
 
     if (hasAdminAccess.value) {
-      specializedItems.push({
-        id: 'admin',
-        label: 'Admin operations',
-        description: 'Setup, lifecycle controls, and oversight',
+      items.push({
+        id: 'admin-dashboard',
+        label: 'Admin dashboard',
+        description: 'Hackathons you can manage and platform-wide admin work',
         to: '/account/admin',
         icon: 'i-lucide-shield-check'
       })
     }
 
-    if (hasPrizeRecipientAccess.value) {
-      specializedItems.push({
-        id: 'prizes',
-        label: 'Prize redemptions',
-        description: 'Winner-facing redemption tasks',
-        to: '/prize-redemptions',
-        icon: 'i-lucide-gift'
-      })
-    }
-
-    if (specializedItems.length > 0) {
-      groups.push({
-        label: 'Specialized areas',
-        items: specializedItems
-      })
-    }
-
-    return groups
+    return [{
+      label: '',
+      items
+    }]
   })
 
   return {

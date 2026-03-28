@@ -13,12 +13,16 @@ const props = defineProps<{
   email?: string | null
   avatarSrc?: string
   avatarAlt?: string | null
-  isPlatformAdmin?: boolean
 }>()
 
+const { actor } = useSessionActor()
 const displayName = computed(() => props.name?.trim() || 'Developer User')
 const displayEmail = computed(() => props.email?.trim() || 'Signed in')
 const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
+const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
+  && actor.value.hackathonRoles.some(role => role.role === 'judge'))
+const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
+  && (actor.value.isPlatformAdmin || actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin')))
 </script>
 
 <template>
@@ -57,14 +61,14 @@ const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
         >
           <NuxtLink
-            to="/account/dashboard"
+            to="/account"
             class="flex w-full items-center gap-2"
           >
             <AppIcon
-              name="i-lucide-layout-dashboard"
+              name="i-lucide-flag"
               class="size-4"
             />
-            <span>Dashboard</span>
+            <span>My hackathons</span>
           </NuxtLink>
         </DropdownMenuItem>
 
@@ -80,12 +84,12 @@ const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
               name="i-lucide-id-card"
               class="size-4"
             />
-            <span>Settings</span>
+            <span>Profile settings</span>
           </NuxtLink>
         </DropdownMenuItem>
 
         <DropdownMenuItem
-          v-if="props.isPlatformAdmin"
+          v-if="hasJudgeAccess"
           as-child
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
         >
@@ -97,12 +101,12 @@ const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
               name="i-lucide-scale"
               class="size-4"
             />
-            <span>Judge workspace</span>
+            <span>Judge dashboard</span>
           </NuxtLink>
         </DropdownMenuItem>
 
         <DropdownMenuItem
-          v-if="props.isPlatformAdmin"
+          v-if="hasAdminAccess"
           as-child
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
         >
@@ -114,7 +118,7 @@ const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
               name="i-lucide-shield-check"
               class="size-4"
             />
-            <span>Admin operations</span>
+            <span>Admin dashboard</span>
           </NuxtLink>
         </DropdownMenuItem>
 

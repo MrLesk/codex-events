@@ -56,8 +56,8 @@ useSeoMeta({
     >
       <template #links>
         <AppButton
-          to="/account/dashboard"
-          label="Return to dashboard"
+          to="/account"
+          label="Return to my hackathons"
           color="neutral"
           variant="soft"
           icon="i-lucide-arrow-left"

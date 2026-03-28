@@ -78,7 +78,7 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
 When('I open the account settings page with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
   await page.goto('/account/settings')
-  await expect(page.getByRole('heading', { name: 'Account settings' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Profile settings' })).toBeVisible()
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(500)
 })
@@ -97,8 +97,8 @@ When('I submit the platform account registration form for {string}', async ({ pa
   await page.waitForURL('**/account/settings**')
 })
 
-Then('I should see the account settings heading', async ({ page }) => {
-  await expect(page.getByRole('heading', { name: 'Account settings' })).toBeVisible()
+Then('I should see the profile settings heading', async ({ page }) => {
+  await expect(page.getByRole('heading', { name: 'Profile settings' })).toBeVisible()
 })
 
 When('I update the account profile links', async ({ page }) => {

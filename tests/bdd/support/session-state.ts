@@ -47,7 +47,7 @@ export async function loginAndPersistStorageState(browser: Browser, persona: Sta
   const storageStatePath = storageStatePathForPersona(persona.key)
   const context = await browser.newContext({ baseURL: baseUrl })
   const page = await context.newPage()
-  const dashboardUrlPattern = new RegExp(`^${escapeForRegex(baseUrl)}/account/dashboard(?:[/?#].*)?$`)
+  const accountUrlPattern = new RegExp(`^${escapeForRegex(baseUrl)}/account(?:[/?#].*)?$`)
   const maxAttempts = 5
 
   try {
@@ -76,13 +76,13 @@ export async function loginAndPersistStorageState(browser: Browser, persona: Sta
       const blockedAccount = page.getByText(/account has been blocked after multiple consecutive login attempts/i).first()
       const authPageError = page.getByText(/unexpected http response status code|an error has occurred/i).first()
       const outcome = await Promise.race([
-        page.waitForURL(dashboardUrlPattern, { timeout: 20_000 }).then(() => 'dashboard').catch(() => null),
+        page.waitForURL(accountUrlPattern, { timeout: 20_000 }).then(() => 'account').catch(() => null),
         invalidCredentials.waitFor({ state: 'visible', timeout: 20_000 }).then(() => 'invalid').catch(() => null),
         blockedAccount.waitFor({ state: 'visible', timeout: 20_000 }).then(() => 'blocked').catch(() => null),
         authPageError.waitFor({ state: 'visible', timeout: 20_000 }).then(() => 'error').catch(() => null)
       ])
 
-      if (outcome === 'dashboard') {
+      if (outcome === 'account') {
         await context.storageState({ path: storageStatePath })
         return storageStatePath
       }
@@ -98,7 +98,7 @@ export async function loginAndPersistStorageState(browser: Browser, persona: Sta
       }
 
       const pageText = (await page.locator('body').innerText()).slice(0, 1000)
-      throw new Error(`Auth0 login did not reach /account/dashboard for persona "${persona.key}". Final URL: ${page.url()}. Page text: ${pageText}`)
+      throw new Error(`Auth0 login did not reach /account for persona "${persona.key}". Final URL: ${page.url()}. Page text: ${pageText}`)
     }
 
     throw new Error(`Auth0 login exhausted retry attempts for persona "${persona.key}".`)

@@ -1,26 +1,30 @@
 import type { RouteLocationNormalized } from 'vue-router'
+import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 
-import { accountDashboardHref, buildAuthLoginHref, resolveActorAppRedirect } from './auth-navigation'
+import { buildAuthLoginHref, resolveActorAppRedirect } from './auth-navigation'
 
 export type HackathonScopedRole = 'hackathon_admin' | 'judge'
-
-type SessionActor = {
-  kind: 'anonymous' | 'authenticated_identity' | 'platform_user'
-  isPlatformAdmin?: boolean
-  hackathonRoles?: Array<{
-    hackathonId: string
-    role: string
-  }>
-}
+type SessionActor = ResolvedSessionActor
+type PlatformSessionActor = Extract<ResolvedSessionActor, { kind: 'platform_user' }>
+type RedirectNavigationResult = { redirect: ReturnType<typeof navigateTo> }
+type AuthenticatedNavigationResult = { actor: SessionActor }
+type PlatformNavigationResult = { actor: PlatformSessionActor }
 
 function getNavigationFetch() {
   return import.meta.server ? useRequestFetch() : $fetch
 }
 
+function createUnauthorizedNavigationError(statusMessage = 'Unauthorized') {
+  return createError({
+    statusCode: 401,
+    statusMessage
+  })
+}
+
 export async function ensureAuthenticatedActor(
   to: RouteLocationNormalized,
   navigationFetch: ReturnType<typeof getNavigationFetch> = getNavigationFetch()
-) {
+): Promise<RedirectNavigationResult | AuthenticatedNavigationResult> {
   if (!useUser().value) {
     return {
       redirect: navigateTo(buildAuthLoginHref(to.fullPath), { external: true })
@@ -54,22 +58,54 @@ export async function ensureAuthenticatedActor(
   }
 }
 
+export async function ensurePlatformAccountActor(
+  to: RouteLocationNormalized,
+  navigationFetch: ReturnType<typeof getNavigationFetch> = getNavigationFetch()
+): Promise<RedirectNavigationResult | PlatformNavigationResult> {
+  const resolvedSession = await ensureAuthenticatedActor(to, navigationFetch)
+
+  if ('redirect' in resolvedSession) {
+    return resolvedSession
+  }
+
+  if (resolvedSession.actor.kind !== 'platform_user') {
+    throw createUnauthorizedNavigationError('Platform account required.')
+  }
+
+  return {
+    actor: resolvedSession.actor
+  }
+}
+
+export async function ensureAccountPageAccess(
+  to: RouteLocationNormalized,
+  hasAccess: (actor: PlatformSessionActor) => boolean,
+  statusMessage = 'Unauthorized'
+) {
+  const navigationFetch = getNavigationFetch()
+  const resolvedSession = await ensurePlatformAccountActor(to, navigationFetch)
+
+  if ('redirect' in resolvedSession) {
+    return resolvedSession.redirect
+  }
+
+  if (!hasAccess(resolvedSession.actor)) {
+    throw createUnauthorizedNavigationError(statusMessage)
+  }
+}
+
 export async function ensureHackathonRoleForSlugRoute(
   to: RouteLocationNormalized,
   roles: HackathonScopedRole[]
 ) {
   const navigationFetch = getNavigationFetch()
-  const resolvedSession = await ensureAuthenticatedActor(to, navigationFetch)
+  const resolvedSession = await ensurePlatformAccountActor(to, navigationFetch)
 
   if ('redirect' in resolvedSession) {
     return resolvedSession.redirect
   }
 
   const actor = resolvedSession.actor
-
-  if (actor.kind !== 'platform_user') {
-    return navigateTo(accountDashboardHref)
-  }
 
   if (actor.isPlatformAdmin) {
     return
@@ -107,5 +143,5 @@ export async function ensureHackathonRoleForSlugRoute(
     return
   }
 
-  return navigateTo(`/hackathons/${slug}`)
+  throw createUnauthorizedNavigationError('This page requires additional hackathon permissions.')
 }

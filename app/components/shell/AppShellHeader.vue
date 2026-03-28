@@ -56,7 +56,6 @@ const profileAvatarSrc = computed(() => {
           :email="user.email"
           :avatar-src="profileAvatarSrc"
           :avatar-alt="profileName"
-          :is-platform-admin="actor.kind === 'platform_user' && actor.isPlatformAdmin"
         />
 
         <AppButton

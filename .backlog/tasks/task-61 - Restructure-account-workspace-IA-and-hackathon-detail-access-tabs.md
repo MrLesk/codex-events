@@ -1,11 +1,11 @@
 ---
 id: TASK-61
 title: Restructure account workspace IA and hackathon detail access tabs
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-03-28 15:48'
-updated_date: '2026-03-28 16:38'
+updated_date: '2026-03-28 16:47'
 labels: []
 dependencies: []
 documentation:
@@ -75,6 +75,12 @@ Adjusted the public hackathon detail CTA so that once registration is closed, ac
 Validation for the public-detail CTA follow-up: `bun run test:unit` passed locally after the final diff (39 files, 185 tests).
 <!-- SECTION:NOTES:END -->
 
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented the canonical account workspace IA with separate My hackathons, Profile settings, Judge dashboard, and Admin dashboard surfaces, page-level permission gating, and a 401 unauthorized experience for authenticated access denial. Collapsed hackathon-specific admin subroutes into `/account/hackathons/[slug]` with permission-aware query-param tabs, merged platform-admin controls into the Admin dashboard, fixed sidebar active-state matching, normalized account hackathon tab-panel surfaces, and made the detail header back-link role-aware. Validation run: `bun run test:unit` passed locally. `bun run typecheck` still reports unrelated pre-existing failures in `app/components/public/hackathons/HackathonTimeline.vue` and server application route files outside this task scope.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Canonical docs were updated or confirmed unchanged
@@ -82,7 +88,7 @@ Validation for the public-detail CTA follow-up: `bun run test:unit` passed local
 - [x] #3 Relevant validation commands pass
 - [x] #4 Tests were added or updated when behavior changed
 - [x] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
+- [x] #6 Config and developer workflow docs were updated when setup changed
 - [x] #7 Auth and permissions changes follow the documented platform model
 - [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->

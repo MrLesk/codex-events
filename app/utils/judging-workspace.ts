@@ -153,6 +153,23 @@ export function filterReviewableHackathons(
   return hackathons.filter(hackathon => reviewableHackathonIds.has(hackathon.id))
 }
 
+export function filterExplicitJudgeHackathons(
+  hackathons: HackathonRecord[],
+  actor: SessionActor | null | undefined
+) {
+  if (!actor?.hasPlatformAccount) {
+    return []
+  }
+
+  const explicitJudgeHackathonIds = new Set(
+    actor.hackathonRoles
+      .filter(role => role.role === 'judge')
+      .map(role => role.hackathonId)
+  )
+
+  return hackathons.filter(hackathon => explicitJudgeHackathonIds.has(hackathon.id))
+}
+
 export function filterAssignmentsForActor(
   assignments: JudgeAssignmentDetail[],
   actor: SessionActor | null | undefined

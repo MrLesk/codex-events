@@ -321,7 +321,7 @@ const submitConfigForm = handleSubmit(() => {
       id="admin-config-basics"
       class="space-y-6"
     >
-      <AppCard class="scroll-mt-28 rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
+      <AppCard class="scroll-mt-28 rounded-xl hackathon-workspace-panel">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -516,7 +516,7 @@ const submitConfigForm = handleSubmit(() => {
 
       <AppCard
         id="admin-config-identity"
-        class="scroll-mt-28 rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36"
+        class="scroll-mt-28 rounded-xl hackathon-workspace-panel"
       >
         <template #header>
           <div class="space-y-1">
@@ -735,7 +735,7 @@ const submitConfigForm = handleSubmit(() => {
     <section class="space-y-6">
       <AppCard
         id="admin-config-timeline"
-        class="scroll-mt-28 rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36"
+        class="scroll-mt-28 rounded-xl hackathon-workspace-panel"
       >
         <template #header>
           <div class="space-y-1">
@@ -793,7 +793,7 @@ const submitConfigForm = handleSubmit(() => {
 
       <AppCard
         id="admin-config-rules"
-        class="scroll-mt-28 rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36"
+        class="scroll-mt-28 rounded-xl hackathon-workspace-panel"
       >
         <template #header>
           <div class="space-y-1">
@@ -916,7 +916,7 @@ const submitConfigForm = handleSubmit(() => {
       </AppCard>
     </section>
 
-    <div class="flex flex-col gap-4 rounded-xl border border-black/8 bg-white/75 px-5 py-5 dark:border-white/[0.08] dark:bg-black/36 sm:flex-row sm:items-center sm:justify-between">
+    <div class="hackathon-workspace-panel flex flex-col gap-4 rounded-xl px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
       <p class="max-w-3xl text-sm text-muted">
         {{ helperText ?? 'Save your changes to update this hackathon.' }}
       </p>

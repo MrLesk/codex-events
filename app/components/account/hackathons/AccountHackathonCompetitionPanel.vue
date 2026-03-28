@@ -20,10 +20,9 @@ import {
   normalizeApiError
 } from '~/utils/admin-workspace'
 
-definePageMeta({
-  layout: 'hackathon-detail',
-  middleware: ['require-hackathon-admin']
-})
+const props = defineProps<{
+  slug: string
+}>()
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
@@ -40,9 +39,8 @@ type AssignableUser = {
   email: string
 }
 
-const route = useRoute()
 const toast = useToast()
-const slug = computed(() => String(route.params.slug ?? '').trim())
+const slug = computed(() => props.slug.trim())
 
 if (!slug.value) {
   throw createError({
@@ -110,35 +108,6 @@ const judgeAssignmentSearch = ref('')
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const actor = computed(() => workspace.actor.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
-const headerStateLabel = computed(() =>
-  currentHackathon.value ? formatHackathonState(currentHackathon.value.state).toUpperCase() : ''
-)
-const headerStateClass = computed(() => {
-  if (currentHackathon.value?.state === 'submission_open') {
-    return 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-  }
-
-  if (currentHackathon.value?.state === 'registration_open') {
-    return 'border border-sky-600/35 bg-sky-500/16 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/14 dark:text-sky-300'
-  }
-
-  if (currentHackathon.value?.state === 'winners_announced') {
-    return 'bg-green-500/10 text-green-400 border border-green-500/20'
-  }
-
-  return 'bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]'
-})
-const workspaceSummary = computed(() => {
-  if (!currentHackathon.value) {
-    return ''
-  }
-
-  return [
-    formatHackathonWindow(currentHackathon.value.registrationOpensAt, currentHackathon.value.submissionClosesAt),
-    formatHackathonLocation(currentHackathon.value),
-    formatMaxTeamMembers(currentHackathon.value.maxTeamMembers)
-  ].join(' • ')
-})
 const canMutateRoles = computed(() => canMutateRoleAssignments(actor.value))
 const criteria = computed(() => workspace.criteria.data.value?.data ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
@@ -681,29 +650,7 @@ async function completeHackathon() {
 </script>
 
 <template>
-  <div class="pb-14">
-    <section class="border-b border-black/8 bg-white/42 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/48">
-      <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
-        <AdminWorkspaceHeader
-          eyebrow="Admin Judging"
-          :title="currentHackathon ? `${currentHackathon.name} judging` : 'Hackathon judging'"
-          description="Manage judging criteria, maintain the judge roster, monitor blind judging assignments, and drive the competition outcome workflow."
-          back-to="/account/admin"
-          back-label="Back to admin operations"
-          :state-label="headerStateLabel"
-          :state-class="headerStateClass"
-          :summary="workspaceSummary"
-        />
-
-        <AdminHackathonWorkspaceTabs
-          v-if="currentHackathon"
-          :hackathon-slug="currentHackathon.slug"
-          current-surface="judging"
-        />
-      </AppContainer>
-    </section>
-
-    <AppContainer class="max-w-[68rem] space-y-8 pt-6">
+  <div class="space-y-8">
       <AppAlert
         v-if="mutationError"
         color="error"
@@ -738,7 +685,7 @@ async function completeHackathon() {
 
       <template v-else-if="currentHackathon">
         <section class="grid gap-4 lg:grid-cols-4">
-          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Hackathon state
             </p>
@@ -753,7 +700,7 @@ async function completeHackathon() {
             </div>
           </div>
 
-          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Assignment oversight
             </p>
@@ -762,7 +709,7 @@ async function completeHackathon() {
             </p>
           </div>
 
-          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Ranked submissions
             </p>
@@ -771,7 +718,7 @@ async function completeHackathon() {
             </p>
           </div>
 
-          <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Finalized winners
             </p>
@@ -782,7 +729,7 @@ async function completeHackathon() {
         </section>
 
         <section class="grid gap-6 xl:grid-cols-2">
-          <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
+          <AppCard class="rounded-xl hackathon-workspace-panel">
             <template #header>
               <div class="space-y-1">
                 <h2 class="text-lg font-semibold text-highlighted">
@@ -1038,7 +985,7 @@ async function completeHackathon() {
           description="Assignment operations become fully active once submissions close and judging preparation begins."
         />
 
-        <div class="rounded-xl border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] px-5 py-5">
+        <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Shortlist status
           </p>
@@ -1048,6 +995,5 @@ async function completeHackathon() {
           </p>
         </div>
       </template>
-    </AppContainer>
   </div>
 </template>

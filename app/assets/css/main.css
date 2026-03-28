@@ -259,6 +259,28 @@
 }
 
 @layer components {
+  .app-surface-panel {
+    @apply border border-black/8 bg-default/80 shadow-none dark:border-white/[0.08] dark:bg-default/80;
+  }
+
+  .app-surface-panel-dashed {
+    @apply border border-dashed border-black/10 bg-default/80 shadow-none dark:border-white/[0.08] dark:bg-default/80;
+  }
+
+  .app-surface-panel-elevated {
+    @apply border border-black/8 bg-white/78 shadow-none dark:border-white/[0.08] dark:bg-white/[0.04];
+  }
+
+  .hackathon-workspace-panel {
+    @apply border border-black/8 bg-default/80 shadow-none dark:border-white/[0.08] dark:bg-default/80;
+  }
+
+  .hackathon-workspace-panel-dashed {
+    @apply border border-dashed border-black/10 bg-default/80 shadow-none dark:border-white/[0.08] dark:bg-default/80;
+  }
+}
+
+@layer components {
   .app-inset-card {
     @apply rounded-[1.5rem] border border-default/70 bg-bg/80 shadow-[0_18px_40px_-30px_rgba(15,20,34,0.24)] backdrop-blur-sm;
   }

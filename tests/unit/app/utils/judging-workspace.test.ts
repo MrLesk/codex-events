@@ -15,6 +15,7 @@ import {
   canSkipJudgeAssignment,
   canStartJudgeAssignment,
   createCriterionScoreDrafts,
+  filterExplicitJudgeHackathons,
   filterAssignmentsForActor,
   filterReviewableHackathons,
   getJudgeWorkspaceSubjectKey,
@@ -169,6 +170,31 @@ describe('judging-workspace filters', () => {
       'hackathon-1',
       'hackathon-2'
     ])
+  })
+
+  test('limits explicit judge hackathons to actual judge roles only', () => {
+    const actor = createActor({
+      hackathonRoles: [
+        {
+          hackathonId: 'hackathon-1',
+          role: 'judge',
+          isInJudgePool: true,
+          createdAt: '2026-03-01T00:00:00.000Z'
+        },
+        {
+          hackathonId: 'hackathon-2',
+          role: 'hackathon_admin',
+          isInJudgePool: false,
+          createdAt: '2026-03-01T00:00:00.000Z'
+        }
+      ]
+    })
+    const hackathons = [
+      createHackathon({ id: 'hackathon-1' }),
+      createHackathon({ id: 'hackathon-2', slug: 'admin-hackathon', name: 'Admin Hackathon' })
+    ]
+
+    expect(filterExplicitJudgeHackathons(hackathons, actor).map(hackathon => hackathon.id)).toEqual(['hackathon-1'])
   })
 
   test('filters assignment lists to the current actor even when other assignments are visible upstream', () => {

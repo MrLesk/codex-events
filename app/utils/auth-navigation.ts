@@ -1,5 +1,5 @@
 export const authLogoutHref = '/auth/logout'
-export const accountDashboardHref = '/account/dashboard'
+export const accountDashboardHref = '/account'
 export const accountSettingsHref = '/account/settings'
 
 interface RedirectAwareActor {
