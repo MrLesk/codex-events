@@ -67,6 +67,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `submission_closes_at`
 - `state`
 - `max_team_members`
+- `participants_limit`
 - `in_person_event`
 - `require_x_profile`
 - `require_linkedin_profile`
@@ -98,6 +99,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `slug` is unique.
 - `max_team_members` is greater than or equal to 1.
+- `participants_limit` is null or greater than or equal to 1.
 - `registration_opens_at < registration_closes_at <= submission_opens_at < submission_closes_at`
 
 ### Notes
@@ -210,6 +212,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `submitted_at`
 - `reviewed_at`
 - `reviewed_by_user_id`
+- `pre_approval_status`
 - `application_terms_document_id`
 - `application_terms_accepted_at`
 - `registration_details_json`
@@ -220,6 +223,9 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `status`
   - `submitted`
+  - `approved`
+  - `rejected`
+- `pre_approval_status`
   - `approved`
   - `rejected`
 
@@ -235,6 +241,7 @@ It describes the intended persistent model at the level of entities, key fields,
   - `inPersonAttendanceCommitment`: boolean commitment required when the hackathon has `in_person_event = true`
   - `whyThisHackathon`: trimmed free-form motivation text
   - `proofOfExecutionUrl`: optional URL that points to prior execution evidence
+- `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
 
 ## Team
 

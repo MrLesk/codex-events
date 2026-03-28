@@ -9,6 +9,7 @@ import {
   prizes,
   submissions,
   teamJoinRequests,
+  userApplications,
   users
 } from '../../../../server/database/schema'
 
@@ -38,6 +39,7 @@ describe('shared schema foundation', () => {
 
   it('defines schedule and entity checks on shared tables', () => {
     const hackathonColumns = getTableColumns(hackathons)
+    const applicationColumns = getTableColumns(userApplications)
     const prizeColumns = getTableColumns(prizes)
     const prizeChecks = getTableConfig(prizes).checks.map(checkItem => checkItem.name)
     const hackathonChecks = getTableConfig(hackathons).checks.map(checkItem => checkItem.name)
@@ -46,11 +48,14 @@ describe('shared schema foundation', () => {
     expect(hackathonColumns.lumaEventUrl.name).toBe('luma_event_url')
     expect(hackathonColumns.agendaItemsJson.name).toBe('agenda_items_json')
     expect(hackathonColumns.inPersonEvent.name).toBe('in_person_event')
+    expect(hackathonColumns.participantsLimit.name).toBe('participants_limit')
     expect(hackathonColumns.requireWhyThisHackathon.name).toBe('require_why_this_hackathon')
     expect(hackathonColumns.requireProofOfExecution.name).toBe('require_proof_of_execution')
+    expect(applicationColumns.preApprovalStatus.name).toBe('pre_approval_status')
     expect(prizeColumns.displayOrder.name).toBe('display_order')
     expect(prizeChecks).toContain('prizes_rank_order_check')
     expect(hackathonChecks).toContain('hackathons_max_team_members_check')
+    expect(hackathonChecks).toContain('hackathons_participants_limit_check')
     expect(hackathonChecks).toContain('hackathons_schedule_order_check')
     expect(auditIndexes).toContain('audit_logs_entity_idx')
   })

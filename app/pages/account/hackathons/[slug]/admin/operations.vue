@@ -60,6 +60,11 @@ const hackathonId = computed(() => hackathonResponse.value!.data.id)
 const workspace = useAdminHackathonWorkspace(hackathonId)
 const adminOperationalTeamsPageSize = 3
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
+type ApplyStagedApplicationDecisionsResponse = ApiDataResponse<{
+  appliedCount: number
+  approvedCount: number
+  rejectedCount: number
+}>
 
 const mutationError = ref('')
 const pendingActionKey = ref<string | null>(null)
@@ -422,27 +427,50 @@ async function runMutation(actionKey: string, action: () => Promise<void>, succe
 
 async function approveApplication(application: AdminApplicationRecord) {
   await runMutation(
-    `approve:${application.id}`,
+    `stage:approved:${application.id}`,
     async () => {
       await $fetch(`/api/hackathons/${application.hackathonId}/applications/${application.id}/actions/approve`, {
         method: 'POST'
       })
     },
-    'Application approved',
-    'The applicant can now create or join a team for this hackathon.'
+    'Decision staged',
+    'Approval was staged. It will apply only after you save staged decisions.'
   )
 }
 
 async function rejectApplication(application: AdminApplicationRecord) {
   await runMutation(
-    `reject:${application.id}`,
+    `stage:rejected:${application.id}`,
     async () => {
       await $fetch(`/api/hackathons/${application.hackathonId}/applications/${application.id}/actions/reject`, {
         method: 'POST'
       })
     },
-    'Application rejected',
-    'The application review outcome has been recorded.'
+    'Decision staged',
+    'Rejection was staged. It will apply only after you save staged decisions.'
+  )
+}
+
+async function applyStagedApplicationDecisions() {
+  await runMutation(
+    'apply-staged-decisions',
+    async () => {
+      const response = await $fetch<ApplyStagedApplicationDecisionsResponse>(
+        `/api/hackathons/${hackathonId.value}/applications/actions/apply-staged-decisions`,
+        {
+          method: 'POST'
+        }
+      )
+
+      if (response.data.appliedCount === 0) {
+        throw createError({
+          statusCode: 409,
+          statusMessage: 'There are no staged decisions to apply.'
+        })
+      }
+    },
+    'Staged decisions applied',
+    'Application outcomes were applied and participant emails were queued.'
   )
 }
 
@@ -638,11 +666,13 @@ async function runLifecycleAction() {
 
         <AdminApplicationsReviewPanel
           :applications="applications"
+          :participants-limit="currentHackathon.participantsLimit ?? null"
           :is-loading="applicationsStatus === 'pending'"
           :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
           :pending-action-key="pendingActionKey"
           @approve="approveApplication"
           @reject="rejectApplication"
+          @save-decisions="applyStagedApplicationDecisions"
         />
 
         <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">

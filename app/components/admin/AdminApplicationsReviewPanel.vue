@@ -8,6 +8,7 @@ import {
 
 const props = defineProps<{
   applications: AdminApplicationRecord[]
+  participantsLimit?: number | null
   isLoading?: boolean
   errorMessage?: string
   pendingActionKey?: string | null
@@ -16,6 +17,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   approve: [application: AdminApplicationRecord]
   reject: [application: AdminApplicationRecord]
+  saveDecisions: []
 }>()
 
 const submittedCount = computed(() =>
@@ -27,6 +29,30 @@ const approvedCount = computed(() =>
 const rejectedCount = computed(() =>
   props.applications.filter(application => application.status === 'rejected').length
 )
+const stagedCount = computed(() =>
+  props.applications.filter(application => application.status === 'submitted' && Boolean(application.preApprovalStatus)).length
+)
+const stagedApprovedCount = computed(() =>
+  props.applications.filter(
+    application => application.status === 'submitted' && application.preApprovalStatus === 'approved'
+  ).length
+)
+const stagedRejectedCount = computed(() =>
+  props.applications.filter(
+    application => application.status === 'submitted' && application.preApprovalStatus === 'rejected'
+  ).length
+)
+const participantsLimitSummary = computed(() => {
+  if (props.participantsLimit && props.participantsLimit > 0) {
+    return `${approvedCount.value}/${props.participantsLimit} approved`
+  }
+
+  return `${approvedCount.value} approved (no limit)`
+})
+
+function stageDecisionActionKey(applicationId: string, decision: 'approved' | 'rejected') {
+  return `stage:${decision}:${applicationId}`
+}
 </script>
 
 <template>
@@ -37,7 +63,7 @@ const rejectedCount = computed(() =>
           Application Review
         </h2>
         <p class="text-sm text-muted">
-          Review submitted applications using the canonical admin transitions only.
+          Stage registration decisions, then save once to apply them and trigger participant emails.
         </p>
       </div>
     </template>
@@ -60,7 +86,14 @@ const rejectedCount = computed(() =>
       />
 
       <template v-else>
-        <div class="grid gap-4 md:grid-cols-3">
+        <AppAlert
+          color="info"
+          variant="soft"
+          title="Participants limit"
+          :description="`Capacity: ${participantsLimitSummary}. Staged decisions: ${stagedCount} total (${stagedApprovedCount} approve, ${stagedRejectedCount} reject).`"
+        />
+
+        <div class="grid gap-4 md:grid-cols-4">
           <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Awaiting review
@@ -87,6 +120,30 @@ const rejectedCount = computed(() =>
               {{ rejectedCount }}
             </p>
           </div>
+
+          <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Staged
+            </p>
+            <p class="mt-2 text-2xl font-semibold text-highlighted">
+              {{ stagedCount }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-black/8 bg-white px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]">
+          <p class="text-sm text-muted">
+            Save applies staged decisions and then queues participant emails.
+          </p>
+          <AppButton
+            color="primary"
+            :data-testid="'admin-application-save-decisions'"
+            :loading="pendingActionKey === 'apply-staged-decisions'"
+            :disabled="stagedCount === 0 || (pendingActionKey !== null && pendingActionKey !== 'apply-staged-decisions')"
+            @click="emit('saveDecisions')"
+          >
+            Save staged decisions ({{ stagedCount }})
+          </AppButton>
         </div>
 
         <div
@@ -183,6 +240,18 @@ const rejectedCount = computed(() =>
               </AppBadge>
             </div>
 
+            <div
+              v-if="application.status === 'submitted' && application.preApprovalStatus"
+              class="mt-4"
+            >
+              <AppBadge
+                :color="getApplicationStatusColor(application.preApprovalStatus)"
+                variant="soft"
+              >
+                Staged: {{ formatApplicationStatus(application.preApprovalStatus) }}
+              </AppBadge>
+            </div>
+
             <div class="mt-5 grid gap-3 text-sm text-toned md:grid-cols-3">
               <div>
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
@@ -219,22 +288,22 @@ const rejectedCount = computed(() =>
               <AppButton
                 color="success"
                 :data-testid="`admin-application-approve-${application.id}`"
-                :loading="pendingActionKey === `approve:${application.id}`"
-                :disabled="pendingActionKey !== null && pendingActionKey !== `approve:${application.id}`"
+                :loading="pendingActionKey === stageDecisionActionKey(application.id, 'approved')"
+                :disabled="pendingActionKey !== null && pendingActionKey !== stageDecisionActionKey(application.id, 'approved')"
                 @click="emit('approve', application)"
               >
-                Approve application
+                Stage approval
               </AppButton>
 
               <AppButton
                 color="error"
                 variant="soft"
                 :data-testid="`admin-application-reject-${application.id}`"
-                :loading="pendingActionKey === `reject:${application.id}`"
-                :disabled="pendingActionKey !== null && pendingActionKey !== `reject:${application.id}`"
+                :loading="pendingActionKey === stageDecisionActionKey(application.id, 'rejected')"
+                :disabled="pendingActionKey !== null && pendingActionKey !== stageDecisionActionKey(application.id, 'rejected')"
                 @click="emit('reject', application)"
               >
-                Reject application
+                Stage rejection
               </AppButton>
             </div>
           </article>

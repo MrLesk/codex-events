@@ -142,6 +142,7 @@ export interface AdminApplicationRecord {
   hackathonId: string
   userId: string
   status: 'submitted' | 'approved' | 'rejected'
+  preApprovalStatus?: 'approved' | 'rejected' | null
   submittedAt: string
   reviewedAt: string | null
   reviewedByUserId: string | null
@@ -169,6 +170,7 @@ export interface HackathonRecord {
   submissionClosesAt: string
   state: HackathonState
   maxTeamMembers: number
+  participantsLimit?: number | null
   inPersonEvent: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
@@ -203,6 +205,7 @@ export interface HackathonFormState {
   submissionOpensAt: string
   submissionClosesAt: string
   maxTeamMembers: number
+  participantsLimit: number | null
   inPersonEvent: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
@@ -731,6 +734,7 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     submissionOpensAt: '',
     submissionClosesAt: '',
     maxTeamMembers: 4,
+    participantsLimit: null,
     inPersonEvent: false,
     requireXProfile: false,
     requireLinkedinProfile: false,
@@ -767,6 +771,7 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
     submissionOpensAt: toDateTimeLocalValue(hackathon.submissionOpensAt),
     submissionClosesAt: toDateTimeLocalValue(hackathon.submissionClosesAt),
     maxTeamMembers: hackathon.maxTeamMembers,
+    participantsLimit: hackathon.participantsLimit ?? null,
     inPersonEvent: hackathon.inPersonEvent,
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,

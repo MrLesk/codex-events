@@ -49,6 +49,7 @@ Key characteristics:
 - Each hackathon has a submission flow that can be activated manually within its configured submission window.
 - Each hackathon has a judging flow that is activated manually.
 - Each hackathon can define a maximum team member limit.
+- Each hackathon can optionally define a participant approval limit.
 - Each hackathon can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma username, for registration.
 - Each hackathon can require a `why this hackathon` response and a proof-of-execution URL in applications.
 - Each hackathon references its own application terms and winner terms.
@@ -116,7 +117,8 @@ Rules:
 
 - A user can have at most one application per hackathon.
 - Application approval is handled by hackathon admins.
-- Application review enqueues participant-facing email delivery for approved and rejected outcomes.
+- Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
+- Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
 - A user must be approved before creating or joining a team in that hackathon.
 - Blind judging uses application information without exposing team identity.
 - User application acceptance references the exact application terms version accepted for that hackathon.

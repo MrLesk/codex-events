@@ -142,6 +142,7 @@ Behavior:
 
 - The user counts as an applicant.
 - The user cannot create or join a team yet.
+- Hackathon admins can stage a pre-approval decision (`approved` or `rejected`) without changing the canonical status until staged decisions are applied.
 
 #### `approved`
 
@@ -165,9 +166,9 @@ Behavior:
 ### Transitions
 
 - `submitted -> approved`
-  Actor: hackathon admin or platform admin.
+  Actor: hackathon admin or platform admin applying staged decisions.
 - `submitted -> rejected`
-  Actor: hackathon admin or platform admin.
+  Actor: hackathon admin or platform admin applying staged decisions.
 
 ## Team Join Request
 

@@ -93,11 +93,20 @@ When('the saved {string} session approves the remembered application', async ({ 
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(
+    const stageResponse = await apiClient.post(
       `/api/hackathons/${state.hackathonId}/applications/${state.applicationId}/actions/approve`
     )
-    state.response = response
-    state.json = await response.json()
+    if (!stageResponse.ok()) {
+      state.response = stageResponse
+      state.json = await stageResponse.json()
+      return
+    }
+
+    const applyResponse = await apiClient.post(
+      `/api/hackathons/${state.hackathonId}/applications/actions/apply-staged-decisions`
+    )
+    state.response = applyResponse
+    state.json = await applyResponse.json()
   } finally {
     await apiClient.dispose()
   }
@@ -107,9 +116,13 @@ Then('the remembered application should be approved by {string}', async ({ page 
   expect(getScenarioState(page).response?.ok()).toBe(true)
   expect(getScenarioState(page).json).toMatchObject({
     data: {
-      id: getScenarioState(page).applicationId,
-      status: 'approved',
-      reviewedByUserId: reviewerUserId
+      applications: expect.arrayContaining([
+        expect.objectContaining({
+          id: getScenarioState(page).applicationId,
+          status: 'approved',
+          reviewedByUserId: reviewerUserId
+        })
+      ])
     }
   })
 })

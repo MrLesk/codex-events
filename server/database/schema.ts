@@ -30,6 +30,7 @@ export const hackathonRoleTypes = ['hackathon_admin', 'judge'] as const
 export const platformDocumentTypes = ['privacy_policy', 'platform_terms'] as const
 export const hackathonTermsDocumentTypes = ['application_terms', 'winner_terms'] as const
 export const userApplicationStatuses = ['submitted', 'approved', 'rejected'] as const
+export const userApplicationPreApprovalStatuses = ['approved', 'rejected'] as const
 export const teamMemberRoles = ['member', 'admin'] as const
 export const teamJoinRequestStatuses = ['pending', 'approved', 'rejected', 'canceled'] as const
 export const submissionStatuses = ['draft', 'submitted', 'withdrawn', 'locked', 'disqualified'] as const
@@ -89,6 +90,7 @@ export const hackathons = sqliteTable(
     submissionClosesAt: text('submission_closes_at').notNull(),
     state: text('state', { enum: hackathonStates }).notNull().default('draft'),
     maxTeamMembers: integer('max_team_members').notNull(),
+    participantsLimit: integer('participants_limit'),
     inPersonEvent: integer('in_person_event', { mode: 'boolean' }).notNull().default(false),
     requireXProfile: integer('require_x_profile', { mode: 'boolean' }).notNull().default(false),
     requireLinkedinProfile: integer('require_linkedin_profile', { mode: 'boolean' }).notNull().default(false),
@@ -109,6 +111,10 @@ export const hackathons = sqliteTable(
   table => [
     uniqueIndex('hackathons_slug_idx').on(table.slug),
     check('hackathons_max_team_members_check', sql`${table.maxTeamMembers} >= 1`),
+    check(
+      'hackathons_participants_limit_check',
+      sql`${table.participantsLimit} is null or ${table.participantsLimit} >= 1`
+    ),
     check(
       'hackathons_schedule_order_check',
       sql`${table.registrationOpensAt} < ${table.registrationClosesAt}
@@ -208,6 +214,7 @@ export const userApplications = sqliteTable(
       .notNull()
       .references(() => users.id),
     status: text('status', { enum: userApplicationStatuses }).notNull().default('submitted'),
+    preApprovalStatus: text('pre_approval_status', { enum: userApplicationPreApprovalStatuses }),
     submittedAt: text('submitted_at').notNull().default(currentTimestamp),
     reviewedAt: text('reviewed_at'),
     reviewedByUserId: text('reviewed_by_user_id').references(() => users.id),

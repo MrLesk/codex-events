@@ -49,6 +49,20 @@ const showBackgroundImageSection = computed(() =>
 const showBannerImageSection = computed(() =>
   Boolean(props.canUploadManagedImages || managedBannerImageUrl.value)
 )
+const participantsLimitInput = computed({
+  get: () => form.value.participantsLimit?.toString() ?? '',
+  set: (value: string) => {
+    const normalizedValue = value.trim()
+
+    if (!normalizedValue) {
+      form.value.participantsLimit = null
+      return
+    }
+
+    const parsed = Number.parseInt(normalizedValue, 10)
+    form.value.participantsLimit = Number.isNaN(parsed) ? null : parsed
+  }
+})
 
 function uploadBackgroundImage(event: Event) {
   const target = event.target as HTMLInputElement | null
@@ -791,6 +805,18 @@ const submitConfigForm = handleSubmit(() => {
               class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               required
             >
+          </label>
+
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-toned">Participants limit</span>
+            <input
+              v-model="participantsLimitInput"
+              type="number"
+              min="1"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+              placeholder="Leave empty for no limit"
+            >
+            <span class="text-xs text-muted">Maximum approved participants for the hackathon. Leave blank for no cap.</span>
           </label>
 
           <div class="grid gap-3">

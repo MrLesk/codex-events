@@ -539,6 +539,7 @@ async function saveConfiguration(configForm: HackathonFormState) {
         submissionOpensAt: fromDateTimeLocalValue(configForm.submissionOpensAt),
         submissionClosesAt: fromDateTimeLocalValue(configForm.submissionClosesAt),
         maxTeamMembers: configForm.maxTeamMembers,
+        participantsLimit: configForm.participantsLimit,
         inPersonEvent: configForm.inPersonEvent,
         requireXProfile: configForm.requireXProfile,
         requireLinkedinProfile: configForm.requireLinkedinProfile,

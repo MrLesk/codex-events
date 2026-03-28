@@ -44,6 +44,7 @@ export default defineApiHandler(async (event) => {
     submissionOpensAt: body.submissionOpensAt,
     submissionClosesAt: body.submissionClosesAt,
     maxTeamMembers: body.maxTeamMembers,
+    participantsLimit: body.participantsLimit,
     inPersonEvent: body.inPersonEvent,
     requireXProfile: body.requireXProfile,
     requireLinkedinProfile: body.requireLinkedinProfile,

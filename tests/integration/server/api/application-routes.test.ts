@@ -6,6 +6,7 @@ import applicationsListHandler from '../../../../server/api/hackathons/[hackatho
 import applicationsPostHandler from '../../../../server/api/hackathons/[hackathonId]/applications/index.post'
 import ownApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/me.get'
 import approveApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/[applicationId]/actions/approve.post'
+import applyStagedDecisionsHandler from '../../../../server/api/hackathons/[hackathonId]/applications/actions/apply-staged-decisions.post'
 import rejectApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/[applicationId]/actions/reject.post'
 import {
   auditLogs,
@@ -596,7 +597,7 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('admin application routes list and approve submitted applications with audit logging', async () => {
+  test('admin application routes list, stage decisions, and apply them with audit logging', async () => {
     const queueProducer = createQueueProducerStub()
     const harness = createApiRouteTestHarness({
       routes: [
@@ -605,6 +606,11 @@ describe('TASK-3.6 application routes', () => {
           method: 'post',
           path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/approve',
           handler: approveApplicationHandler
+        },
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/actions/apply-staged-decisions',
+          handler: applyStagedDecisionsHandler
         }
       ],
       sessionUser: {
@@ -657,13 +663,32 @@ describe('TASK-3.6 application routes', () => {
     expect(await approveResponse.json()).toMatchObject({
       data: {
         id: 'application_1',
-        status: 'approved',
-        reviewedByUserId: 'hackathon_admin'
+        status: 'submitted',
+        preApprovalStatus: 'approved',
+        reviewedByUserId: null
+      }
+    })
+    expect(queueProducer.send).toHaveBeenCalledTimes(0)
+
+    const applyResponse = await harness.request('/api/hackathons/hackathon_1/applications/actions/apply-staged-decisions', {
+      method: 'POST'
+    })
+    expect(applyResponse.status).toBe(200)
+    expect(await applyResponse.json()).toMatchObject({
+      data: {
+        appliedCount: 1,
+        approvedCount: 1,
+        rejectedCount: 0
       }
     })
 
     const auditRows = await harness.database.select().from(auditLogs)
     expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.review_decision_staged'
+      }),
       expect.objectContaining({
         entityType: 'user_application',
         entityId: 'application_1',
@@ -694,7 +719,7 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('admin application routes reject submitted applications', async () => {
+  test('admin can stage rejection and apply it in batch', async () => {
     const queueProducer = createQueueProducerStub()
     const harness = createApiRouteTestHarness({
       routes: [
@@ -702,6 +727,11 @@ describe('TASK-3.6 application routes', () => {
           method: 'post',
           path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/reject',
           handler: rejectApplicationHandler
+        },
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/actions/apply-staged-decisions',
+          handler: applyStagedDecisionsHandler
         }
       ],
       sessionUser: {
@@ -740,8 +770,22 @@ describe('TASK-3.6 application routes', () => {
     expect(await response.json()).toMatchObject({
       data: {
         id: 'application_1',
-        status: 'rejected',
-        reviewedByUserId: 'platform_admin'
+        status: 'submitted',
+        preApprovalStatus: 'rejected',
+        reviewedByUserId: null
+      }
+    })
+    expect(queueProducer.send).toHaveBeenCalledTimes(0)
+
+    const applyResponse = await harness.request('/api/hackathons/hackathon_1/applications/actions/apply-staged-decisions', {
+      method: 'POST'
+    })
+    expect(applyResponse.status).toBe(200)
+    expect(await applyResponse.json()).toMatchObject({
+      data: {
+        appliedCount: 1,
+        approvedCount: 0,
+        rejectedCount: 1
       }
     })
 
@@ -755,7 +799,7 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('application review remains successful when queue enqueue fails', async () => {
+  test('applying staged decisions remains successful when queue enqueue fails', async () => {
     const queueProducer = createQueueProducerStub({ failSend: true })
     const harness = createApiRouteTestHarness({
       routes: [
@@ -763,6 +807,11 @@ describe('TASK-3.6 application routes', () => {
           method: 'post',
           path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/reject',
           handler: rejectApplicationHandler
+        },
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/actions/apply-staged-decisions',
+          handler: applyStagedDecisionsHandler
         }
       ],
       sessionUser: {
@@ -798,6 +847,12 @@ describe('TASK-3.6 application routes', () => {
     })
 
     expect(response.status).toBe(200)
+    expect(queueProducer.send).toHaveBeenCalledTimes(0)
+
+    const applyResponse = await harness.request('/api/hackathons/hackathon_1/applications/actions/apply-staged-decisions', {
+      method: 'POST'
+    })
+    expect(applyResponse.status).toBe(200)
     expect(queueProducer.send).toHaveBeenCalledTimes(1)
 
     const auditRows = await harness.database.select().from(auditLogs)
@@ -817,7 +872,7 @@ describe('TASK-3.6 application routes', () => {
     ]))
   })
 
-  test('hackathon admins can reject submitted applications', async () => {
+  test('hackathon admins can stage rejection for submitted applications', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
@@ -854,8 +909,9 @@ describe('TASK-3.6 application routes', () => {
     expect(await response.json()).toMatchObject({
       data: {
         id: 'application_1',
-        status: 'rejected',
-        reviewedByUserId: 'hackathon_admin'
+        status: 'submitted',
+        preApprovalStatus: 'rejected',
+        reviewedByUserId: null
       }
     })
   })

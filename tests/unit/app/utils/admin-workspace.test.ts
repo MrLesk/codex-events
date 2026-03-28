@@ -264,6 +264,7 @@ describe('admin-workspace form helpers', () => {
       backgroundImageUrl: 'https://example.com/background.jpg',
       bannerImageUrl: 'https://example.com/banner.jpg',
       maxTeamMembers: 5,
+      participantsLimit: null,
       inPersonEvent: false,
       requireLinkedinProfile: true,
       requireGithubProfile: true

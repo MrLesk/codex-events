@@ -158,6 +158,7 @@ export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object
   submissionOpensAt: z.string().trim().min(1),
   submissionClosesAt: z.string().trim().min(1),
   maxTeamMembers: z.number().int().min(1),
+  participantsLimit: z.number().int().min(1).nullable(),
   inPersonEvent: z.boolean(),
   requireXProfile: z.boolean(),
   requireLinkedinProfile: z.boolean(),

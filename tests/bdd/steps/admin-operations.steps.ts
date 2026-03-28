@@ -109,6 +109,15 @@ When('I approve the admin application {string}', async ({ page }, applicationId:
     ),
     page.getByTestId(`admin-application-approve-${applicationId}`).click()
   ])
+
+  await Promise.all([
+    page.waitForResponse(response =>
+      response.url().includes(`/api/hackathons/`)
+      && response.url().includes('/applications/actions/apply-staged-decisions')
+      && response.ok()
+    ),
+    page.getByTestId('admin-application-save-decisions').click()
+  ])
 })
 
 When('I reject the admin application {string}', async ({ page }, applicationId: string) => {
@@ -119,6 +128,15 @@ When('I reject the admin application {string}', async ({ page }, applicationId: 
       && response.ok()
     ),
     page.getByTestId(`admin-application-reject-${applicationId}`).click()
+  ])
+
+  await Promise.all([
+    page.waitForResponse(response =>
+      response.url().includes(`/api/hackathons/`)
+      && response.url().includes('/applications/actions/apply-staged-decisions')
+      && response.ok()
+    ),
+    page.getByTestId('admin-application-save-decisions').click()
   ])
 })
 

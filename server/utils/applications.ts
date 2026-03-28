@@ -180,6 +180,7 @@ export function serializeUserApplication(
     hackathonId: application.hackathonId,
     userId: application.userId,
     status: application.status,
+    preApprovalStatus: application.preApprovalStatus,
     submittedAt: application.submittedAt,
     reviewedAt: application.reviewedAt,
     reviewedByUserId: application.reviewedByUserId,
