@@ -15,6 +15,8 @@ import AccountHackathonAdminOperationsPanel from '~/components/account/hackathon
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
 import AccountHackathonCompetitionPanel from '~/components/account/hackathons/AccountHackathonCompetitionPanel.vue'
 import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
+import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
+import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOverviewPanel.vue'
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
 import {
@@ -28,7 +30,6 @@ import {
   getTeamSubmissionStateSummary,
   getTeamSubmissionWorkspaceStatus
 } from '~/utils/team-submission'
-import { renderMarkdown } from '~/utils/markdown'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
 definePageMeta({
@@ -348,19 +349,6 @@ const detailSummary = computed(() => [
   formatHackathonLocation(hackathon.value),
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
-const descriptionMarkdown = computed(() => hackathon.value.description?.trim() ?? '')
-const descriptionHtml = computed(() => descriptionMarkdown.value ? renderMarkdown(descriptionMarkdown.value) : '')
-const sortedAgendaItems = computed(() =>
-  [...(hackathon.value.agendaItems ?? [])]
-    .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
-)
-const showAgendaDayContext = computed(() => shouldShowAgendaDayContext(sortedAgendaItems.value))
-const agendaEntries = computed(() =>
-  sortedAgendaItems.value.map(item => ({
-    ...item,
-    presentation: getAgendaItemPresentation(item, showAgendaDayContext.value)
-  }))
-)
 
 useSeoMeta({
   title: () => `${hackathon.value.name} | Codex Hackathons`,
@@ -466,24 +454,7 @@ useSeoMeta({
         aria-labelledby="account-tab-overview"
         class="space-y-7"
       >
-        <section
-          v-if="descriptionHtml"
-          class="rounded-xl border border-black/8 bg-[#F7F7F8] p-6 dark:border-white/[0.08] dark:bg-[#111111]"
-        >
-          <div
-            class="hackathon-markdown"
-            v-html="descriptionHtml"
-          />
-        </section>
-
-        <section
-          v-else
-          class="rounded-xl hackathon-workspace-panel-dashed p-8 text-center"
-        >
-          <p class="text-[15px] font-medium text-highlighted dark:text-white">
-            Overview will appear here once published.
-          </p>
-        </section>
+        <HackathonOverviewPanel :description="hackathon.description" />
 
         <section
           v-if="hasParticipantContext"
@@ -515,7 +486,7 @@ useSeoMeta({
             />
 
             <section class="grid gap-4 lg:grid-cols-2">
-              <AppCard class="hackathon-workspace-panel p-6">
+              <AppCard class="hackathon-workspace-detail-inset p-6">
                 <h2 class="text-xl font-semibold text-highlighted dark:text-white">
                   Team workspace
                 </h2>
@@ -557,7 +528,7 @@ useSeoMeta({
                 </template>
               </AppCard>
 
-              <AppCard class="hackathon-workspace-panel p-6">
+              <AppCard class="hackathon-workspace-detail-inset p-6">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                   <h2 class="text-xl font-semibold text-highlighted dark:text-white">
                     Submission
@@ -614,61 +585,7 @@ useSeoMeta({
           :criteria-count="criteriaCount"
         />
 
-        <section
-          v-if="agendaEntries.length > 0"
-          class="relative overflow-hidden rounded-[1.75rem] border border-black/10 bg-white/72 p-5 shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] backdrop-blur-xl dark:border-white/[0.08] dark:bg-[#101010]/78 sm:p-7"
-        >
-          <div
-            class="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-amber-500/60 to-transparent"
-            aria-hidden="true"
-          />
-          <div
-            class="pointer-events-none absolute -right-10 top-6 size-28 rounded-full bg-amber-500/12 blur-3xl"
-            aria-hidden="true"
-          />
-
-          <div class="relative space-y-6">
-            <div class="flex flex-wrap items-start justify-between gap-4">
-              <div class="space-y-1.5">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                  Schedule
-                </p>
-                <h2 class="text-[24px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-                  Agenda
-                </h2>
-              </div>
-            </div>
-
-            <div class="space-y-4">
-              <div
-                v-for="entry in agendaEntries"
-                :key="entry.id"
-                class="grid gap-2 rounded-[1.25rem] border border-black/8 bg-white/78 p-4 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] dark:border-white/[0.08] dark:bg-[#151515]/82 sm:grid-cols-[auto,1fr] sm:items-start sm:gap-5"
-              >
-                <div class="min-w-[9rem] space-y-1">
-                  <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-300/90">
-                    {{ entry.presentation.dateLabel }}
-                  </p>
-                  <p class="text-[15px] font-semibold text-highlighted dark:text-white">
-                    {{ entry.presentation.timeLabel }}
-                  </p>
-                </div>
-
-                <div class="space-y-1.5">
-                  <h3 class="text-[17px] font-semibold text-highlighted dark:text-white">
-                    {{ entry.title }}
-                  </h3>
-                  <p
-                    v-if="entry.details"
-                    class="text-[14px] leading-relaxed text-neutral-600 dark:text-[#B0B0B0]"
-                  >
-                    {{ entry.details }}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <HackathonAgendaPanel :agenda-items="hackathon.agendaItems" />
       </section>
 
       <section
@@ -677,7 +594,7 @@ useSeoMeta({
         role="tabpanel"
         aria-labelledby="account-tab-judges"
       >
-        <AppCard class="hackathon-workspace-panel p-6">
+        <AppCard class="hackathon-workspace-detail-panel p-6">
           <h2 class="text-xl font-semibold text-highlighted dark:text-white">
             Judges
           </h2>
@@ -693,7 +610,7 @@ useSeoMeta({
         role="tabpanel"
         aria-labelledby="account-tab-staff"
       >
-        <AppCard class="hackathon-workspace-panel p-6">
+        <AppCard class="hackathon-workspace-detail-panel p-6">
           <h2 class="text-xl font-semibold text-highlighted dark:text-white">
             Staff
           </h2>

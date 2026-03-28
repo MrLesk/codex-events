@@ -959,7 +959,7 @@ async function setCurrentTerms(document: TermsDocument) {
             @remove-banner-image="removeBannerImage"
           />
 
-          <AppCard class="rounded-xl hackathon-workspace-panel">
+          <AppCard class="rounded-xl hackathon-workspace-detail-panel">
             <template #header>
               <div class="flex flex-wrap items-center gap-3">
                 <h2 class="text-lg font-semibold text-highlighted">
@@ -1008,7 +1008,7 @@ async function setCurrentTerms(document: TermsDocument) {
         </div>
 
         <section class="space-y-6">
-          <AppCard class="rounded-xl hackathon-workspace-panel">
+          <AppCard class="rounded-xl hackathon-workspace-detail-panel">
             <template #header>
               <div class="space-y-1">
                 <h2 class="text-lg font-semibold text-highlighted">
@@ -1128,7 +1128,7 @@ async function setCurrentTerms(document: TermsDocument) {
             </div>
           </AppCard>
 
-          <AppCard class="rounded-xl hackathon-workspace-panel">
+          <AppCard class="rounded-xl hackathon-workspace-detail-panel">
             <template #header>
               <div class="space-y-1">
                 <h2 class="text-lg font-semibold text-highlighted">
@@ -1505,7 +1505,7 @@ async function setCurrentTerms(document: TermsDocument) {
         </div>
 
         <section class="space-y-6">
-          <AppCard class="rounded-xl hackathon-workspace-panel">
+          <AppCard class="rounded-xl hackathon-workspace-detail-panel">
             <template #header>
               <div class="space-y-1">
                 <h2 class="text-lg font-semibold text-highlighted">

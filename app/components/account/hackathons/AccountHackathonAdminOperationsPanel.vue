@@ -526,7 +526,7 @@ async function runLifecycleAction() {
 
       <template v-else-if="currentHackathon">
         <section class="grid gap-4 lg:grid-cols-4">
-          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Hackathon state
             </p>
@@ -535,7 +535,7 @@ async function runLifecycleAction() {
             </p>
           </div>
 
-          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Applications
             </p>
@@ -544,7 +544,7 @@ async function runLifecycleAction() {
             </p>
           </div>
 
-          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Teams
             </p>
@@ -553,7 +553,7 @@ async function runLifecycleAction() {
             </p>
           </div>
 
-          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Actionable interventions
             </p>
@@ -565,7 +565,7 @@ async function runLifecycleAction() {
 
         <AppCard
           v-if="lifecycleControl"
-          class="rounded-xl hackathon-workspace-panel"
+          class="rounded-xl hackathon-workspace-detail-panel"
         >
           <template #header>
             <div class="space-y-1">

@@ -685,7 +685,7 @@ async function completeHackathon() {
 
       <template v-else-if="currentHackathon">
         <section class="grid gap-4 lg:grid-cols-4">
-          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Hackathon state
             </p>
@@ -700,7 +700,7 @@ async function completeHackathon() {
             </div>
           </div>
 
-          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Assignment oversight
             </p>
@@ -709,7 +709,7 @@ async function completeHackathon() {
             </p>
           </div>
 
-          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Ranked submissions
             </p>
@@ -718,7 +718,7 @@ async function completeHackathon() {
             </p>
           </div>
 
-          <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Finalized winners
             </p>
@@ -729,7 +729,7 @@ async function completeHackathon() {
         </section>
 
         <section class="grid gap-6 xl:grid-cols-2">
-          <AppCard class="rounded-xl hackathon-workspace-panel">
+          <AppCard class="rounded-xl hackathon-workspace-detail-panel">
             <template #header>
               <div class="space-y-1">
                 <h2 class="text-lg font-semibold text-highlighted">
@@ -830,7 +830,7 @@ async function completeHackathon() {
             </div>
           </AppCard>
 
-          <AppCard class="rounded-xl border border-black/8 bg-white/70 shadow-none dark:border-white/[0.08] dark:bg-black/36">
+          <AppCard class="rounded-xl hackathon-workspace-detail-panel">
             <template #header>
               <div class="space-y-1">
                 <h2 class="text-lg font-semibold text-highlighted">
@@ -985,7 +985,7 @@ async function completeHackathon() {
           description="Assignment operations become fully active once submissions close and judging preparation begins."
         />
 
-        <div class="rounded-xl hackathon-workspace-panel px-5 py-5">
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Shortlist status
           </p>

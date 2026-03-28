@@ -55,7 +55,7 @@ const disqualifiableTeams = computed(() =>
 </script>
 
 <template>
-  <AppCard class="rounded-xl hackathon-workspace-panel">
+  <AppCard class="rounded-xl hackathon-workspace-detail-panel">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">

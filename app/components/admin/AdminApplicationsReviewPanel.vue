@@ -53,7 +53,7 @@ function stageDecisionActionKey(applicationId: string, decision: 'approved' | 'r
 </script>
 
 <template>
-  <AppCard class="rounded-xl hackathon-workspace-panel">
+  <AppCard class="rounded-xl hackathon-workspace-detail-panel">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -129,7 +129,7 @@ function stageDecisionActionKey(applicationId: string, decision: 'approved' | 'r
           </div>
         </div>
 
-        <div class="hackathon-workspace-panel flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-4">
+        <div class="hackathon-workspace-detail-inset flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-4">
           <p class="text-sm text-muted">
             Save applies staged decisions and then queues participant emails.
           </p>
