@@ -494,7 +494,7 @@ useSeoMeta({
               Your participation
             </p>
             <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
-              Team and submission actions now live here instead of separate tabs.
+              Track your application, team, and project here as they become available.
             </p>
           </div>
 

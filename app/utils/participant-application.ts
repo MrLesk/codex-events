@@ -341,7 +341,7 @@ export function summarizeParticipantApplicationStatus(
 ) {
   switch (status) {
     case 'submitted':
-      return 'Your application is waiting for hackathon-admin review.'
+      return 'Your application is under review. Team setup and project submission will appear here after approval.'
     case 'approved':
       return hackathonState === 'registration_open' || hackathonState === 'submission_open'
         ? 'You are approved to create a team or request to join an open team in this hackathon.'

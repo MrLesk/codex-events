@@ -133,6 +133,8 @@ describe('participant application helpers', () => {
     expect(getParticipantApplicationStatusColor('approved')).toBe('success')
     expect(getParticipantApplicationStatusColor('rejected')).toBe('error')
 
+    expect(summarizeParticipantApplicationStatus('submitted', 'registration_open')).toContain('under review')
+    expect(summarizeParticipantApplicationStatus('submitted', 'registration_open')).toContain('after approval')
     expect(summarizeParticipantApplicationStatus('approved', 'registration_open')).toContain('approved to create a team')
     expect(summarizeParticipantApplicationStatus('rejected', 'registration_open')).toContain('cannot submit another application')
   })
