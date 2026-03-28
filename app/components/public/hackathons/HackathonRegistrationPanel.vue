@@ -5,18 +5,12 @@ import { useForm } from 'vee-validate'
 import type { PublicHackathon } from '~/composables/useHackathonPresentation'
 import type {
   HackathonProfileField,
-  ParticipantApplicationRecord,
   ParticipantApplicationSubmissionPolicy,
   ParticipantApplicationTermsDocument,
   ParticipantRegistrationTeamIntent,
   ParticipantRegistrationTeamMemberHint
 } from '~/utils/participant-application'
 
-import {
-  formatParticipantApplicationStatus,
-  getParticipantApplicationStatusColor,
-  summarizeParticipantApplicationStatus
-} from '~/utils/participant-application'
 import { buildParticipantRegistrationFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
 
@@ -53,18 +47,15 @@ const profileForm = defineModel<{
 
 const props = defineProps<{
   hackathon: Pick<PublicHackathon, 'slug' | 'state' | 'city' | 'inPersonEvent' | 'requireWhyThisHackathon' | 'requireProofOfExecution'>
-  application: ParticipantApplicationRecord | null
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
   profileFields: HackathonProfileField[]
   submissionPolicy: ParticipantApplicationSubmissionPolicy
   inPersonCommitmentDateLabel: string
-  teamsHref: string
   maxTeamMembers: number
   isSubmitting?: boolean
   isSavingProfile?: boolean
   profileError?: string
   submissionError?: string
-  submissionSuccess?: string
   isLoading?: boolean
   workspaceErrorMessage?: string
 }>()
@@ -73,15 +64,7 @@ const emit = defineEmits<{
   submitApplication: []
 }>()
 
-const applicationStatusSummary = computed(() =>
-  props.application
-    ? summarizeParticipantApplicationStatus(props.application.status, props.hackathon.state)
-    : ''
-)
-
-const canRenderSubmissionForm = computed(() =>
-  props.hackathon.state === 'registration_open' && !props.application
-)
+const canRenderSubmissionForm = computed(() => props.hackathon.state === 'registration_open')
 
 const canEditRegistrationHint = computed(() => !props.isSubmitting)
 const teamIntentOptions: Array<{
@@ -101,7 +84,7 @@ const teamIntentOptions: Array<{
   },
   {
     value: 'unknown',
-    label: 'Not sure',
+    label: "I'll decide later",
     icon: 'i-lucide-circle-help'
   }
 ]
@@ -432,51 +415,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
           :description="submissionError"
         />
 
-        <AppAlert
-          v-if="submissionSuccess"
-          color="success"
-          variant="soft"
-          :description="submissionSuccess"
-        />
-
-        <template v-if="application">
-          <div class="rounded-xl border border-black/8 bg-white/80 px-4 py-4 dark:border-white/[0.08] dark:bg-[#171717]/80">
-            <div class="flex flex-wrap items-center gap-3">
-              <p class="text-[14px] font-medium text-highlighted dark:text-white">
-                Application status
-              </p>
-              <AppBadge
-                :color="getParticipantApplicationStatusColor(application.status)"
-                variant="soft"
-                class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em]"
-              >
-                {{ formatParticipantApplicationStatus(application.status) }}
-              </AppBadge>
-            </div>
-
-            <p class="mt-2 text-[14px] text-neutral-500 dark:text-[#A3A3A3]">
-              {{ applicationStatusSummary }}
-            </p>
-
-            <AppButton
-              v-if="application.status === 'approved'"
-              :to="teamsHref"
-              color="neutral"
-              variant="solid"
-              class="mt-4 h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-            >
-              Open teams
-              <template #trailing>
-                <AppIcon
-                  name="i-lucide-arrow-up-right"
-                  class="size-3.5"
-                />
-              </template>
-            </AppButton>
-          </div>
-        </template>
-
-        <template v-else-if="canRenderSubmissionForm">
+        <template v-if="canRenderSubmissionForm">
           <form
             class="space-y-4 rounded-xl border border-black/8 bg-white/80 px-4 pb-20 pt-4 dark:border-white/[0.08] dark:bg-[#171717]/80 md:pb-4"
             @submit.prevent="handleSubmitAttempt"
@@ -484,7 +423,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
             <div class="space-y-3">
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[13px] font-medium text-highlighted dark:text-white">
-                  Participant profile
+                  About you
                 </p>
               </div>
 
@@ -544,7 +483,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
             <div class="space-y-3">
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[13px] font-medium text-highlighted dark:text-white">
-                  Profile fields
+                  Links and accounts
                 </p>
               </div>
 
@@ -590,10 +529,10 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
               class="space-y-3 rounded-lg border border-black/8 px-3 py-3 dark:border-white/[0.08]"
             >
               <p class="text-[13px] font-medium text-highlighted dark:text-white">
-                Hackathon profile fields
+                OpenAI account details
               </p>
               <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
-                Required fields in this section are used for Codex credit attribution in this hackathon.
+                We use these details to connect your application to the right OpenAI account.
               </p>
 
               <div class="grid gap-3 md:grid-cols-2">
@@ -633,7 +572,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                     v-if="field.key === 'openaiOrgId'"
                     class="text-[11px] text-neutral-500 dark:text-[#8C8C8C]"
                   >
-                    Find your org ID at
+                    Use your OpenAI organization ID. Find it at
                     <a
                       href="https://platform.openai.com/orgid"
                       target="_blank"
@@ -661,7 +600,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
             <section class="space-y-3 rounded-lg border border-black/8 px-3 py-3 dark:border-white/[0.08]">
               <div class="flex items-center gap-2">
                 <p class="text-[13px] font-medium text-highlighted dark:text-white">
-                  Application details
+                  Your application
                 </p>
                 <span
                   v-if="hackathon.requireWhyThisHackathon || hackathon.requireProofOfExecution"
@@ -719,6 +658,9 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                     : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
                   placeholder="https://github.com/your-project or https://demo.example.com"
                 >
+                <p class="text-[11px] text-neutral-500 dark:text-[#8C8C8C]">
+                  Share a link that shows something you have already built or shipped.
+                </p>
                 <p
                   v-if="submitAttempted && proofOfExecutionUrlError"
                   class="text-[11px] text-error"
@@ -730,7 +672,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
 
             <div class="space-y-2">
               <p class="text-[14px] font-medium text-highlighted dark:text-white">
-                Applying as
+                How are you planning to participate?
               </p>
               <div class="grid gap-2 sm:grid-cols-3">
                 <button
@@ -760,7 +702,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                 </button>
               </div>
               <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
-                Tell us if you apply with teammates so we can review and approve your group together after a positive review.
+                This does not create your team yet. If you are approved, you can still create a team or join one later while team formation is open.
               </p>
             </div>
 
@@ -772,7 +714,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                 Teammates (up to {{ maxTeamMemberHints }})
               </p>
               <p class="text-[13px] text-neutral-500 dark:text-[#8C8C8C]">
-                Add name or email.
+                Add the teammates you expect to work with. This helps us review your application, but it does not create your team yet.
               </p>
               <p
                 v-if="submitAttempted && teamMemberHintsError"
@@ -905,6 +847,10 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                 </AppButton>
               </div>
             </div>
+
+            <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
+              After you apply, we will review your application. If you are approved, you can create a team or join one while team formation is open.
+            </p>
           </form>
         </template>
 
@@ -912,8 +858,8 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
           <AppAlert
             color="neutral"
             variant="soft"
-            title="Applications are not open"
-            description="This hackathon is outside the registration window."
+            title="Registration closed"
+            description="Registration closed while you were on this page. Head back to the hackathon page for the latest status."
           />
         </template>
       </template>

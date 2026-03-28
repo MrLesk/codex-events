@@ -15,6 +15,8 @@ import {
   normalizeParticipantProfileUrl,
   normalizeParticipantTeamMemberHintsForSubmission,
   parseParticipantRegistrationDetailsJson,
+  resolveParticipantRegistrationEntry,
+  shouldShowPublicRegistrationEntry,
   summarizeParticipantApplicationStatus
 } from '../../../../app/utils/participant-application'
 
@@ -138,6 +140,61 @@ describe('participant application helpers', () => {
     expect(getHackathonApplicationAvailabilityMessage('registration_open')).toBe('Applications are open for this hackathon.')
     expect(getHackathonApplicationAvailabilityMessage('draft')).toBe('Applications are not available until registration opens.')
     expect(getHackathonApplicationAvailabilityMessage('submission_open')).toBe('Applications are closed for this hackathon.')
+  })
+
+  test('shows the public registration entry only while registration is open', () => {
+    expect(shouldShowPublicRegistrationEntry('registration_open')).toBe(true)
+    expect(shouldShowPublicRegistrationEntry('submission_open')).toBe(false)
+    expect(shouldShowPublicRegistrationEntry('completed')).toBe(false)
+  })
+
+  test('resolves participant registration entry redirects by actor and state', () => {
+    expect(resolveParticipantRegistrationEntry({
+      actorKind: 'anonymous',
+      hackathonSlug: 'codex-spring',
+      hackathonState: 'registration_open',
+      hasExistingApplication: false
+    })).toEqual({
+      to: '/auth/login?returnTo=%2Fhackathons%2Fcodex-spring%2Fregister',
+      external: true
+    })
+
+    expect(resolveParticipantRegistrationEntry({
+      actorKind: 'authenticated_identity',
+      hackathonSlug: 'codex-spring',
+      hackathonState: 'registration_open',
+      hasExistingApplication: false
+    })).toEqual({
+      to: '/account/settings?returnTo=%2Fhackathons%2Fcodex-spring%2Fregister',
+      external: false
+    })
+
+    expect(resolveParticipantRegistrationEntry({
+      actorKind: 'platform_user',
+      hackathonSlug: 'codex-spring',
+      hackathonState: 'judge_review',
+      hasExistingApplication: false
+    })).toEqual({
+      to: '/hackathons/codex-spring',
+      external: false
+    })
+
+    expect(resolveParticipantRegistrationEntry({
+      actorKind: 'platform_user',
+      hackathonSlug: 'codex-spring',
+      hackathonState: 'registration_open',
+      hasExistingApplication: true
+    })).toEqual({
+      to: '/account/hackathons/codex-spring',
+      external: false
+    })
+
+    expect(resolveParticipantRegistrationEntry({
+      actorKind: 'platform_user',
+      hackathonSlug: 'codex-spring',
+      hackathonState: 'registration_open',
+      hasExistingApplication: false
+    })).toBeNull()
   })
 
   test('returns registration submission policy based on lifecycle, profile, and terms acceptance', () => {

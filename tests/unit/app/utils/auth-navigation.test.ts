@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest'
 
 import {
   accountDashboardHref,
-  accountSettingsHref,
   authLogoutHref,
   buildAccountSettingsHref,
   buildAuthLoginHref,
@@ -35,7 +34,7 @@ describe('auth navigation helpers', () => {
   test('routes authenticated identities to account settings, but preserves platform user return targets', () => {
     expect(resolveActorAppRedirect({
       kind: 'authenticated_identity'
-    }, '/account/judging')).toBe(accountSettingsHref)
+    }, '/account/judging')).toBe('/account/settings?returnTo=%2Faccount%2Fjudging')
 
     expect(resolveActorAppRedirect({
       kind: 'platform_user'

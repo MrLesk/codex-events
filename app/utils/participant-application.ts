@@ -1,5 +1,7 @@
 import type { PublicHackathon, PublicHackathonState } from '~/composables/useHackathonPresentation'
 
+import { buildAccountSettingsHref, buildAuthLoginHref } from './auth-navigation'
+
 export interface ParticipantSessionUser {
   sub: string
   email?: string | null
@@ -359,6 +361,49 @@ export function getHackathonApplicationAvailabilityMessage(state: PublicHackatho
   }
 
   return 'Applications are closed for this hackathon.'
+}
+
+export function shouldShowPublicRegistrationEntry(state: PublicHackathonState) {
+  return state === 'registration_open'
+}
+
+export function resolveParticipantRegistrationEntry(options: {
+  actorKind: ParticipantActor['kind']
+  hackathonSlug: string
+  hackathonState: PublicHackathonState
+  hasExistingApplication: boolean
+}) {
+  const registerHref = `/hackathons/${options.hackathonSlug}/register`
+
+  if (options.actorKind === 'anonymous') {
+    return {
+      to: buildAuthLoginHref(registerHref),
+      external: true
+    }
+  }
+
+  if (options.actorKind === 'authenticated_identity') {
+    return {
+      to: buildAccountSettingsHref(registerHref),
+      external: false
+    }
+  }
+
+  if (options.hasExistingApplication) {
+    return {
+      to: `/account/hackathons/${options.hackathonSlug}`,
+      external: false
+    }
+  }
+
+  if (!shouldShowPublicRegistrationEntry(options.hackathonState)) {
+    return {
+      to: `/hackathons/${options.hackathonSlug}`,
+      external: false
+    }
+  }
+
+  return null
 }
 
 const openAiOrgIdPattern = /^(org_|org-)[A-Za-z0-9_-]+$/

@@ -31,7 +31,7 @@ export function resolveActorAppRedirect(actor: RedirectAwareActor, returnTo: str
   const normalizedReturnTo = normalizeAuthReturnTo(returnTo, accountDashboardHref)
 
   if (actor.kind === 'authenticated_identity') {
-    return accountSettingsHref
+    return buildAccountSettingsHref(normalizedReturnTo)
   }
 
   return normalizedReturnTo

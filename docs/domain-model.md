@@ -116,6 +116,7 @@ This is the canonical record that a user applied to participate in a specific ha
 Rules:
 
 - A user can have at most one application per hackathon.
+- The public registration route is an application-entry flow only. Once a user has an application for a hackathon, ongoing status and participation workflow continue in the account-scoped hackathon workspace rather than in the public registration route.
 - Application approval is handled by hackathon admins.
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.

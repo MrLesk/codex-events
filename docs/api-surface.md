@@ -263,6 +263,9 @@ Operational notes:
 - Application review API actions remain successful even when queue enqueue fails.
 - Queue-consumer delivery outcomes are retried under queue retry policy and provider-aware retry guards.
 - Queue enqueue outcomes are recorded in audit metadata for operational visibility.
+- Public registration entry is available only while the hackathon is in `registration_open`.
+- The public registration route `/hackathons/:slug/register` is a narrow application-entry flow rather than a participant workspace. Anonymous visitors are sent to Auth0 login, authenticated users without a platform account are sent to account completion, existing applicants are sent to `/account/hackathons/:slug`, and users without an application are sent back to the public hackathon detail page when registration is no longer open.
+- Public registration copy should stay focused on completing and submitting an application. Application status, approval outcome, team formation follow-up, and other ongoing participant workflow belong in the account-scoped hackathon workspace.
 
 ## Teams
 
