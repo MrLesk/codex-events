@@ -32,7 +32,7 @@ if (!slug.value) {
 const [
   { data: hackathonResponse, error: hackathonError },
   { data: criteriaResponse },
-  { data: prizesResponse, error: prizesError }
+  { data: prizesResponse }
 ] = await Promise.all([
   useFetch<PublicApiDataResponse<PublicHackathon>>(() => `/api/public/hackathons/${slug.value}`, {
     key: () => `public-hackathon-detail:${slug.value}`
@@ -62,7 +62,7 @@ if (!hackathonResponse.value?.data) {
 const hackathon = computed(() => hackathonResponse.value!.data)
 const criteria = computed(() => criteriaResponse.value?.data ?? [])
 const prizes = computed(() => prizesResponse.value?.data ?? [])
-const prizesErrorMessage = computed(() => prizesError.value ? 'Published awards could not be loaded right now.' : undefined)
+const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 const registerRouteHref = computed(() => `/hackathons/${slug.value}/register`)
 const registerEntryHref = computed(() => buildAuthLoginHref(registerRouteHref.value))
 
@@ -242,6 +242,7 @@ useSeoMeta({
               Overview
             </button>
             <button
+              v-if="hasPublishedPrizes"
               id="public-tab-prizes"
               type="button"
               role="tab"
@@ -299,14 +300,13 @@ useSeoMeta({
       </section>
 
       <section
-        v-else-if="activePublicSection === 'prizes'"
+        v-else-if="hasPublishedPrizes && activePublicSection === 'prizes'"
         id="public-tab-panel-prizes"
         role="tabpanel"
         aria-labelledby="public-tab-prizes"
       >
         <HackathonPrizeList
           :prizes="prizes"
-          :error-message="prizesErrorMessage"
         />
       </section>
 

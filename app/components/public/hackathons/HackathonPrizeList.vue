@@ -3,7 +3,6 @@ import type { PublicPrize } from '~/composables/useHackathonPresentation'
 
 const props = defineProps<{
   prizes: PublicPrize[]
-  errorMessage?: string
 }>()
 
 function getPodiumCup(prize: PublicPrize) {
@@ -45,17 +44,8 @@ function getPodiumCup(prize: PublicPrize) {
       Published awards
     </h2>
 
-    <AppAlert
-      v-if="errorMessage"
-      color="warning"
-      variant="subtle"
-      icon="i-lucide-triangle-alert"
-      title="Prizes unavailable"
-      :description="errorMessage"
-    />
-
     <div
-      v-else-if="prizes.length === 0"
+      v-if="prizes.length === 0"
       class="text-[14px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]"
     >
       This program has not published prize definitions yet.
