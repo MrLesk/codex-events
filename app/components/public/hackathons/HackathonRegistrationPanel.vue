@@ -776,14 +776,11 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
               </p>
 
               <div :class="inlineSectionBodyClass">
-                <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
-                  If your application is approved, you confirm that you can attend in person on {{ inPersonCommitmentDateLabel }} in {{ hackathonLocationLabel }}.
-                </p>
                 <AppCheckbox
                   v-model="inPersonAttendanceCommitment"
                   :disabled="isSubmitting"
                 >
-                  I commit to attending in person on that date in {{ hackathonLocationLabel }} if approved.
+                  If approved, I commit to attending in person on {{ inPersonCommitmentDateLabel }} in {{ hackathonLocationLabel }}.
                 </AppCheckbox>
                 <p
                   v-if="submitAttempted && inPersonAttendanceCommitmentError"
