@@ -72,6 +72,39 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 - Reject fallback-based implementations when a direct canonical implementation is possible.
 - For any code changes, run validation before handoff: at minimum `bun run test:unit` must pass locally. If tests cannot be run, explicitly report that limitation and why.
 
+## Communication Style
+
+- Respond briefly and pragmatically.
+- Default to a few sentences, not long explanations.
+- Lead with the answer or result.
+- Include only the minimum context needed to act safely.
+- Expand only when the user explicitly asks for more detail.
+- Keep progress updates short and factual.
+
+## User POV For Copy And UX
+
+- When writing product copy, labels, helper text, empty states, or UX flows, write from the point of view of the current product actor:
+  - hackathon participant
+  - hackathon judge
+  - hackathon admin
+  - platform admin
+- Before proposing or editing copy, identify the actor, what they are trying to do, and what they already know at that moment.
+- Prefer the user's mental model over internal implementation language.
+- Do not write copy that only makes sense to contributors who have read the docs or know the schema.
+- Do not expose backend concepts, internal entities, lifecycle mechanics, or implementation details unless the product explicitly requires them.
+- Labels and field descriptions must be understandable on first read by the target actor without extra platform context.
+- Helper text should explain only what the actor needs to provide or decide, not what the system is doing internally.
+- Button, form, and workflow copy should focus on user intent and outcome, not technical process.
+- Avoid overly technical explanations of what happens after an action unless that detail changes the user's decision.
+- If a screen or flow is actor-specific, optimize the copy and information hierarchy for that actor rather than for a generic platform operator.
+- When uncertain between internal precision and user clarity, prefer user clarity and keep internal precision in code, schema, and admin-only operational docs.
+- For any meaningful UX or copy change, explicitly validate:
+  - Who is the actor?
+  - What is their goal?
+  - What terms would they naturally use?
+  - What information do they need before acting?
+  - What implementation detail can be safely omitted?
+
 <!-- BACKLOG.MD MCP GUIDELINES START -->
 
 <CRITICAL_INSTRUCTION>
