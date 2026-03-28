@@ -85,7 +85,7 @@ const teamIntentOptions: Array<{
   },
   {
     value: 'unknown',
-    label: "I'll decide later",
+    label: 'I\'ll decide later',
     icon: 'i-lucide-circle-help'
   }
 ]
@@ -104,6 +104,8 @@ const maxTeamMemberHints = computed(() => Math.max(0, props.maxTeamMembers - 1))
 const applicationTermsPageHref = computed(() => `/hackathons/${props.hackathon.slug}/application-terms`)
 
 const requiredChipClass = 'rounded-full border border-amber-600/35 bg-amber-500/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 dark:border-amber-300/35 dark:bg-amber-300/12 dark:text-amber-200'
+const inlineSectionClass = 'space-y-3 border-t border-black/8 pt-4 dark:border-white/[0.08]'
+const inlineSectionBodyClass = 'space-y-3 border-l border-black/[0.06] pl-3 dark:border-white/[0.06] sm:pl-4'
 
 const registrationSchema = computed(() => buildParticipantRegistrationFormSchema({
   profileFields: props.profileFields,
@@ -523,73 +525,77 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                   </p>
                 </label>
               </div>
-            </div>
 
-            <section
-              v-if="hackathonCreditProfileFields.length > 0"
-              class="space-y-3 rounded-lg border border-black/8 px-3 py-3 dark:border-white/[0.08]"
-            >
-              <p class="text-[13px] font-medium text-highlighted dark:text-white">
-                OpenAI account details
-              </p>
-              <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
-                We use these details to connect your application to the right OpenAI account.
-              </p>
+              <div
+                v-if="hackathonCreditProfileFields.length > 0"
+                :class="inlineSectionClass"
+              >
+                <div class="space-y-1">
+                  <p class="text-[13px] font-medium text-highlighted dark:text-white">
+                    OpenAI account details
+                  </p>
+                  <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
+                    We use these details to connect your application to the right OpenAI account.
+                  </p>
+                </div>
 
-              <div class="grid gap-3 md:grid-cols-2">
-                <label
-                  v-for="field in hackathonCreditProfileFields"
-                  :key="field.key"
-                  class="space-y-1"
-                >
-                  <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
-                    <span>{{ field.label }}</span>
-                    <span
-                      v-if="field.required"
-                      :class="requiredChipClass"
-                      aria-label="Required field"
+                <div :class="inlineSectionBodyClass">
+                  <div class="grid gap-3 md:grid-cols-2">
+                    <label
+                      v-for="field in hackathonCreditProfileFields"
+                      :key="field.key"
+                      class="space-y-1"
                     >
-                      Required
-                    </span>
-                  </span>
-                  <input
-                    v-model="profileForm[field.key]"
-                    :type="getProfileFieldType(field.key) === 'email' ? 'email' : 'text'"
-                    :inputmode="getProfileFieldType(field.key) === 'url' ? 'url' : undefined"
-                    :disabled="isSubmitting || isSavingProfile"
-                    class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
-                    :class="submitAttempted && profileFieldErrors[field.key]
-                      ? 'border-error/45 focus:border-error dark:border-error/50'
-                      : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
-                    :placeholder="getProfileFieldPlaceholder(field.key)"
-                  >
-                  <p
-                    v-if="submitAttempted && profileFieldErrors[field.key]"
-                    class="text-[11px] text-error"
-                  >
-                    {{ profileFieldErrors[field.key] }}
-                  </p>
-                  <p
-                    v-if="field.key === 'openaiOrgId'"
-                    class="text-[11px] text-neutral-500 dark:text-[#8C8C8C]"
-                  >
-                    Use your OpenAI organization ID. Find it at
-                    <a
-                      href="https://platform.openai.com/orgid"
-                      target="_blank"
-                      rel="noreferrer"
-                      class="inline-flex items-center gap-1 text-sky-700 underline-offset-2 transition-colors hover:text-sky-800 hover:underline dark:text-sky-300 dark:hover:text-sky-200"
-                    >
-                      platform.openai.com/orgid
-                      <AppIcon
-                        name="i-lucide-external-link"
-                        class="size-3.5"
-                      />
-                    </a>
-                  </p>
-                </label>
+                      <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
+                        <span>{{ field.label }}</span>
+                        <span
+                          v-if="field.required"
+                          :class="requiredChipClass"
+                          aria-label="Required field"
+                        >
+                          Required
+                        </span>
+                      </span>
+                      <input
+                        v-model="profileForm[field.key]"
+                        :type="getProfileFieldType(field.key) === 'email' ? 'email' : 'text'"
+                        :inputmode="getProfileFieldType(field.key) === 'url' ? 'url' : undefined"
+                        :disabled="isSubmitting || isSavingProfile"
+                        class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
+                        :class="submitAttempted && profileFieldErrors[field.key]
+                          ? 'border-error/45 focus:border-error dark:border-error/50'
+                          : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                        :placeholder="getProfileFieldPlaceholder(field.key)"
+                      >
+                      <p
+                        v-if="submitAttempted && profileFieldErrors[field.key]"
+                        class="text-[11px] text-error"
+                      >
+                        {{ profileFieldErrors[field.key] }}
+                      </p>
+                      <p
+                        v-if="field.key === 'openaiOrgId'"
+                        class="text-[11px] text-neutral-500 dark:text-[#8C8C8C]"
+                      >
+                        Use your OpenAI organization ID. Find it at
+                        <a
+                          href="https://platform.openai.com/orgid"
+                          target="_blank"
+                          rel="noreferrer"
+                          class="inline-flex items-center gap-1 text-sky-700 underline-offset-2 transition-colors hover:text-sky-800 hover:underline dark:text-sky-300 dark:hover:text-sky-200"
+                        >
+                          platform.openai.com/orgid
+                          <AppIcon
+                            name="i-lucide-external-link"
+                            class="size-3.5"
+                          />
+                        </a>
+                      </p>
+                    </label>
+                  </div>
+                </div>
               </div>
-            </section>
+            </div>
 
             <AppAlert
               v-if="submissionPolicyReason"
@@ -598,7 +604,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
               :description="submissionPolicyReason"
             />
 
-            <section class="space-y-3 rounded-lg border border-black/8 px-3 py-3 dark:border-white/[0.08]">
+            <section :class="inlineSectionClass">
               <div class="flex items-center gap-2">
                 <p class="text-[13px] font-medium text-highlighted dark:text-white">
                   Your application
@@ -611,64 +617,66 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                 </span>
               </div>
 
-              <label class="space-y-1">
-                <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
-                  <span>Why this hackathon</span>
-                  <span
-                    v-if="hackathon.requireWhyThisHackathon"
-                    :class="requiredChipClass"
-                  >
-                    Required
+              <div :class="inlineSectionBodyClass">
+                <label class="space-y-1">
+                  <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
+                    <span>Why this hackathon</span>
+                    <span
+                      v-if="hackathon.requireWhyThisHackathon"
+                      :class="requiredChipClass"
+                    >
+                      Required
+                    </span>
                   </span>
-                </span>
-                <textarea
-                  v-model="whyThisHackathon"
-                  rows="5"
-                  :disabled="isSubmitting || isSavingProfile"
-                  class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
-                  :class="submitAttempted && whyThisHackathonError
-                    ? 'border-error/45 focus:border-error dark:border-error/50'
-                    : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
-                  placeholder="Share your motivation and what you want to build."
-                />
-                <p
-                  v-if="submitAttempted && whyThisHackathonError"
-                  class="text-[11px] text-error"
-                >
-                  {{ whyThisHackathonError }}
-                </p>
-              </label>
+                  <textarea
+                    v-model="whyThisHackathon"
+                    rows="5"
+                    :disabled="isSubmitting || isSavingProfile"
+                    class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
+                    :class="submitAttempted && whyThisHackathonError
+                      ? 'border-error/45 focus:border-error dark:border-error/50'
+                      : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                    placeholder="Share your motivation and what you want to build."
+                  />
+                  <p
+                    v-if="submitAttempted && whyThisHackathonError"
+                    class="text-[11px] text-error"
+                  >
+                    {{ whyThisHackathonError }}
+                  </p>
+                </label>
 
-              <label class="space-y-1">
-                <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
-                  <span>Proof of execution URL</span>
-                  <span
-                    v-if="hackathon.requireProofOfExecution"
-                    :class="requiredChipClass"
-                  >
-                    Required
+                <label class="space-y-1">
+                  <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
+                    <span>Proof of execution URL</span>
+                    <span
+                      v-if="hackathon.requireProofOfExecution"
+                      :class="requiredChipClass"
+                    >
+                      Required
+                    </span>
                   </span>
-                </span>
-                <input
-                  v-model="proofOfExecutionUrl"
-                  type="url"
-                  :disabled="isSubmitting || isSavingProfile"
-                  class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
-                  :class="submitAttempted && proofOfExecutionUrlError
-                    ? 'border-error/45 focus:border-error dark:border-error/50'
-                    : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
-                  placeholder="https://github.com/your-project or https://demo.example.com"
-                >
-                <p class="text-[11px] text-neutral-500 dark:text-[#8C8C8C]">
-                  Share a link that shows something you have already built or shipped.
-                </p>
-                <p
-                  v-if="submitAttempted && proofOfExecutionUrlError"
-                  class="text-[11px] text-error"
-                >
-                  {{ proofOfExecutionUrlError }}
-                </p>
-              </label>
+                  <input
+                    v-model="proofOfExecutionUrl"
+                    type="url"
+                    :disabled="isSubmitting || isSavingProfile"
+                    class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
+                    :class="submitAttempted && proofOfExecutionUrlError
+                      ? 'border-error/45 focus:border-error dark:border-error/50'
+                      : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                    placeholder="https://github.com/your-project or https://demo.example.com"
+                  >
+                  <p class="text-[11px] text-neutral-500 dark:text-[#8C8C8C]">
+                    Share a link that shows something you have already built or shipped.
+                  </p>
+                  <p
+                    v-if="submitAttempted && proofOfExecutionUrlError"
+                    class="text-[11px] text-error"
+                  >
+                    {{ proofOfExecutionUrlError }}
+                  </p>
+                </label>
+              </div>
             </section>
 
             <div class="space-y-2">
@@ -761,26 +769,29 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
 
             <section
               v-if="hackathon.inPersonEvent"
-              class="space-y-2 rounded-lg border border-black/8 px-3 py-3 dark:border-white/[0.08]"
+              :class="inlineSectionClass"
             >
               <p class="text-[13px] font-medium text-highlighted dark:text-white">
                 In-person attendance commitment
               </p>
-              <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
-                If your application is approved, you confirm that you can attend in person on {{ inPersonCommitmentDateLabel }} in {{ hackathonLocationLabel }}.
-              </p>
-              <AppCheckbox
-                v-model="inPersonAttendanceCommitment"
-                :disabled="isSubmitting"
-              >
-                I commit to attending in person on that date in {{ hackathonLocationLabel }} if approved.
-              </AppCheckbox>
-              <p
-                v-if="submitAttempted && inPersonAttendanceCommitmentError"
-                class="text-[11px] text-error"
-              >
-                {{ inPersonAttendanceCommitmentError }}
-              </p>
+
+              <div :class="inlineSectionBodyClass">
+                <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
+                  If your application is approved, you confirm that you can attend in person on {{ inPersonCommitmentDateLabel }} in {{ hackathonLocationLabel }}.
+                </p>
+                <AppCheckbox
+                  v-model="inPersonAttendanceCommitment"
+                  :disabled="isSubmitting"
+                >
+                  I commit to attending in person on that date in {{ hackathonLocationLabel }} if approved.
+                </AppCheckbox>
+                <p
+                  v-if="submitAttempted && inPersonAttendanceCommitmentError"
+                  class="text-[11px] text-error"
+                >
+                  {{ inPersonAttendanceCommitmentError }}
+                </p>
+              </div>
             </section>
 
             <AppCheckbox
