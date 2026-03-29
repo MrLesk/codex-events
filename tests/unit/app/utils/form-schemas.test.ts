@@ -90,6 +90,21 @@ describe('hackathon config form schema', () => {
     expect(result.success).toBe(true)
   })
 
+  test('accepts markdown-formatted descriptions', () => {
+    const result = hackathonConfigFormSchema.safeParse({
+      ...createValidHackathonFormState(),
+      description: '  ## Overview\n\n- Build\n- Demo  '
+    })
+
+    expect(result.success).toBe(true)
+
+    if (!result.success) {
+      return
+    }
+
+    expect(result.data.description).toBe('## Overview\n\n- Build\n- Demo')
+  })
+
   test('rejects non-http luma event URLs', () => {
     const result = hackathonConfigFormSchema.safeParse({
       ...createValidHackathonFormState(),

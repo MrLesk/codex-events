@@ -2,6 +2,8 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
+import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
+
 import type { HackathonFormState } from '~/utils/admin-workspace'
 
 import { createHackathonSlug } from '~/utils/admin-workspace'
@@ -367,16 +369,15 @@ const submitConfigForm = handleSubmit(() => {
             <span class="text-xs text-muted">Optional public Luma event link for this hackathon. Leave blank if you are not using Luma.</span>
           </label>
 
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Description</span>
-            <textarea
-              v-model="form.description"
-              rows="6"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-              placeholder="Describe the event, focus areas, and expectations for participants."
-              required
-            />
-          </label>
+          <AdminMarkdownEditorField
+            v-model="form.description"
+            name="hackathon-description-editor"
+            editor-id="hackathon-description-editor"
+            label="Description"
+            description="Write the public overview shown to participants. Markdown headings, lists, links, and emphasis are supported."
+            placeholder="Describe the event, focus areas, and expectations for participants."
+            required
+          />
 
           <div class="grid gap-3">
             <div class="space-y-1">

@@ -262,6 +262,7 @@ describe('admin-workspace form helpers', () => {
 
   test('maps hackathon records into editable form state', () => {
     const hackathon = createHackathon({
+      description: '# Overview\n\n- Build something ambitious\n- Share what you learned',
       backgroundImageUrl: 'https://example.com/background.jpg',
       bannerImageUrl: 'https://example.com/banner.jpg',
       lumaEventUrl: 'https://lu.ma/codex-builders',
@@ -282,6 +283,7 @@ describe('admin-workspace form helpers', () => {
     expect(formState).toMatchObject({
       name: hackathon.name,
       slug: hackathon.slug,
+      description: '# Overview\n\n- Build something ambitious\n- Share what you learned',
       city: hackathon.city,
       country: hackathon.country,
       address: hackathon.address,
