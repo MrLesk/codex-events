@@ -5,7 +5,7 @@ status: Done
 assignee:
   - '@codex'
 created_date: '2026-03-29 13:39'
-updated_date: '2026-03-29 13:40'
+updated_date: '2026-03-29 13:49'
 labels: []
 dependencies: []
 priority: high
@@ -31,6 +31,8 @@ Extend the existing GitHub Actions workflow so the shared Cloudflare dev environ
 Added a `deploy-dev` job to `.github/workflows/ci.yml` that runs only for `push` events on `refs/heads/main`, waits for `backend-checks`, cancels stale in-flight deploys through a dedicated concurrency group, installs Bun dependencies, applies the remote dev D1 migrations with `bun run db:migrate:dev`, and then publishes the shared Cloudflare Worker with `bun run deploy:dev`.
 
 Updated `README.md` and `DEVELOPMENT.md` so the shared dev deployment flow now documents automatic GitHub Actions publishing on `main`, the required repository secrets (`CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`), and the existing local manual recovery path using `CLOUDFLARE_MGMT_TOKEN`.
+
+Follow-up after the first push: fixed pre-existing lint regressions in `app/utils/hackathon-role-roster.ts` and `tests/unit/app/utils/hackathon-role-roster.test.ts` that were blocking `backend-checks`, so the deploy job can now reach its gate on `main` pushes.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
@@ -51,6 +53,8 @@ Validation:
 Risks and follow-ups:
 - The workflow expects repository secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` to be configured before the first `main` push deploy can succeed.
 - Manual recovery still uses the documented local Wrangler commands with `CLOUDFLARE_MGMT_TOKEN` if GitHub Actions is unavailable.
+
+A follow-up commit fixed the roster-file lint regressions that initially blocked `backend-checks`, so the deploy job can now run once the fast CI gate passes.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done

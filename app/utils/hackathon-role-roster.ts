@@ -79,16 +79,17 @@ export function buildRoleRosterRows(
 
     const haystack = `${user.displayName} ${user.email} ${user.id}`.toLowerCase()
     return haystack.includes(normalizedQuery)
-  }).sort((left, right) => compareRosterUsers(left, right, currentHackathonAdminIds))
-    .map((user): HackathonRoleRosterRow => {
-    const assignment = roleAssignments.find(existingAssignment =>
-      existingAssignment.role === role && existingAssignment.userId === user.id
-    ) ?? null
-
-    return {
-      ...user,
-      assignment,
-      isAssigned: assignment !== null
-    }
   })
+    .sort((left, right) => compareRosterUsers(left, right, currentHackathonAdminIds))
+    .map((user): HackathonRoleRosterRow => {
+      const assignment = roleAssignments.find(existingAssignment =>
+        existingAssignment.role === role && existingAssignment.userId === user.id
+      ) ?? null
+
+      return {
+        ...user,
+        assignment,
+        isAssigned: assignment !== null
+      }
+    })
 }

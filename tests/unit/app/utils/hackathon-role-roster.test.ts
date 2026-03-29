@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import {
   buildAssignedRoleRosterRows,
-  buildRoleRosterRows,
+  buildRoleRosterRows
 } from '../../../../app/utils/hackathon-role-roster'
 
 describe('hackathon role roster helpers', () => {
