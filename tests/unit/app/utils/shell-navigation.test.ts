@@ -15,9 +15,13 @@ describe('isShellNavigationLinkActive', () => {
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'overview', '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'prizes', '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'judging', '/account')).toBe(false)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'participants', '/account')).toBe(false)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'submissions', '/account')).toBe(false)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'operations', '/account')).toBe(false)
 
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'judging', '/account/judging')).toBe(true)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'participants', '/account/admin')).toBe(true)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'submissions', '/account/admin')).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'settings', '/account/admin')).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'operations', '/account/admin')).toBe(true)
   })

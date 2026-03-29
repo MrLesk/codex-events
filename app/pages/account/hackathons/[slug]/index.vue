@@ -82,6 +82,8 @@ const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
   judges: 'Judges',
   staff: 'Staff',
   judging: 'Judging',
+  participants: 'Participants',
+  submissions: 'Submissions',
   operations: 'Operations',
   settings: 'Settings'
 }
@@ -150,9 +152,9 @@ const accessRecord = computed(() => [
 const accessRecordId = computed(() => accessRecord.value?.id ?? '')
 
 if (!accessRecord.value) {
-  throw createError({
-    statusCode: 401,
-    statusMessage: 'This hackathon is not available in your account workspace.'
+  await navigateTo(`/hackathons/${slug.value}`, {
+    redirectCode: 302,
+    replace: true
   })
 }
 
@@ -181,6 +183,7 @@ const canAdmin = computed(() => {
 
   return actor.value.isPlatformAdmin || (accessRecord.value?.roles.includes('hackathon_admin') ?? false)
 })
+
 const workspaceBackLink = computed(() => canAdmin.value
   ? {
       to: '/account/admin',
@@ -706,13 +709,42 @@ useSeoMeta({
       </section>
 
       <section
+        v-else-if="activeSection === 'participants'"
+        id="account-tab-panel-participants"
+        role="tabpanel"
+        aria-labelledby="account-tab-participants"
+        class="space-y-8"
+      >
+        <AccountHackathonAdminOperationsPanel
+          :slug="slug"
+          section="participants"
+        />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'submissions'"
+        id="account-tab-panel-submissions"
+        role="tabpanel"
+        aria-labelledby="account-tab-submissions"
+        class="space-y-8"
+      >
+        <AccountHackathonAdminOperationsPanel
+          :slug="slug"
+          section="submissions"
+        />
+      </section>
+
+      <section
         v-else-if="activeSection === 'operations'"
         id="account-tab-panel-operations"
         role="tabpanel"
         aria-labelledby="account-tab-operations"
         class="space-y-8"
       >
-        <AccountHackathonAdminOperationsPanel :slug="slug" />
+        <AccountHackathonAdminOperationsPanel
+          :slug="slug"
+          section="operations"
+        />
         <AccountHackathonCompetitionPanel :slug="slug" />
       </section>
 

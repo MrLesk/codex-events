@@ -27,11 +27,14 @@ export default defineApiHandler(async (event) => {
   assertApplicationReviewable(application)
 
   const updatedAt = new Date().toISOString()
+  const nextPreApprovalStatus = application.preApprovalStatus === 'rejected'
+    ? null
+    : 'rejected'
 
   await database
     .update(userApplications)
     .set({
-      preApprovalStatus: 'rejected',
+      preApprovalStatus: nextPreApprovalStatus,
       updatedAt
     })
     .where(eq(userApplications.id, application.id))
@@ -40,18 +43,21 @@ export default defineApiHandler(async (event) => {
     actorUserId: actor.platformUser.id,
     entityType: 'user_application',
     entityId: application.id,
-    action: 'user_application.review_decision_staged',
+    action: nextPreApprovalStatus === 'rejected'
+      ? 'user_application.review_decision_staged'
+      : 'user_application.review_decision_cleared',
     metadata: {
       hackathonId,
       userId: application.userId,
-      decision: 'rejected',
+      decision: nextPreApprovalStatus,
+      previousDecision: application.preApprovalStatus,
       stage: 'pre_approval'
     }
   })
 
   return apiData(serializeUserApplication({
     ...application,
-    preApprovalStatus: 'rejected',
+    preApprovalStatus: nextPreApprovalStatus,
     updatedAt
   }, {
     applicationTermsDocument

@@ -16,15 +16,21 @@ import {
   formatHackathonState,
   getAdminSubmissionInterventionPolicy,
   getCurrentLifecycleControl,
+  getParticipantsLimitSummary,
   normalizeApiError
 } from '~/utils/admin-workspace'
 
+type AccountHackathonAdminOperationsSection = 'participants' | 'submissions' | 'operations'
+type AccountHackathonParticipantView = 'applications' | 'approved'
+
 const props = defineProps<{
   slug: string
+  section: AccountHackathonAdminOperationsSection
 }>()
 
 const toast = useToast()
 const slug = computed(() => props.slug.trim())
+const section = computed(() => props.section)
 
 if (!slug.value) {
   throw createError({
@@ -63,9 +69,11 @@ type ApplyStagedApplicationDecisionsResponse = ApiDataResponse<{
   approvedCount: number
   rejectedCount: number
 }>
+type StageApplicationResponse = ApiDataResponse<AdminApplicationRecord>
 
 const mutationError = ref('')
 const pendingActionKey = ref<string | null>(null)
+const participantView = ref<AccountHackathonParticipantView>('applications')
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
@@ -311,8 +319,12 @@ const actionableTeamCount = computed(() => {
   }).length
 })
 
+const showParticipantsSection = computed(() => section.value === 'participants')
+const showSubmissionsSection = computed(() => section.value === 'submissions')
+const showLifecycleSection = computed(() => section.value === 'operations')
+
 const applicationSummaryValue = computed(() => {
-  if (applicationsStatus.value === 'pending') {
+  if (applicationsStatus.value === 'idle' || applicationsStatus.value === 'pending') {
     return 'Loading...'
   }
 
@@ -321,6 +333,73 @@ const applicationSummaryValue = computed(() => {
   }
 
   return `${applications.value.length}`
+})
+
+function formatParticipantMetricValue(value: number) {
+  if (applicationsStatus.value === 'idle' || applicationsStatus.value === 'pending') {
+    return 'Loading...'
+  }
+
+  if (applicationsStatus.value === 'error') {
+    return 'Unavailable'
+  }
+
+  return `${value}`
+}
+
+const submittedParticipantSummaryValue = computed(() =>
+  formatParticipantMetricValue(
+    applications.value.filter(application => application.status === 'submitted').length
+  )
+)
+
+const approvedParticipantSummaryValue = computed(() =>
+  formatParticipantMetricValue(
+    applications.value.filter(application => application.status === 'approved').length
+  )
+)
+
+const rejectedParticipantSummaryValue = computed(() =>
+  formatParticipantMetricValue(
+    applications.value.filter(application => application.status === 'rejected').length
+  )
+)
+
+const stagedParticipantSummaryValue = computed(() =>
+  formatParticipantMetricValue(
+    applications.value.filter(
+      application => application.status === 'submitted' && Boolean(application.preApprovalStatus)
+    ).length
+  )
+)
+
+const participantsLimitSummary = computed(() =>
+  getParticipantsLimitSummary(
+    applications.value,
+    currentHackathon.value?.participantsLimit ?? null
+  )
+)
+
+const filteredParticipantCount = computed(() => {
+  if (participantView.value === 'approved') {
+    return applications.value.filter(application => application.status === 'approved').length
+  }
+
+  return applications.value.filter(application => application.status === 'submitted').length
+})
+
+const participantFilterTotalLabel = computed(() => {
+  if (applicationsStatus.value === 'idle' || applicationsStatus.value === 'pending') {
+    return 'Loading...'
+  }
+
+  if (applicationsStatus.value === 'error') {
+    return 'Unavailable'
+  }
+
+  return participantView.value === 'approved'
+    ? `${filteredParticipantCount.value} approved participants`
+    : `${filteredParticipantCount.value} applications`
 })
 
 const teamSummaryValue = computed(() => {
@@ -375,48 +454,149 @@ async function refreshOperations() {
   await loadOperationsData(currentTeamPage.value)
 }
 
-async function runMutation(actionKey: string, action: () => Promise<void>, successTitle: string, successDescription: string) {
+function replaceApplicationsLocally(updatedApplications: AdminApplicationRecord[]) {
+  if (updatedApplications.length === 0) {
+    return
+  }
+
+  const updatedApplicationsById = new Map(
+    updatedApplications.map(application => [application.id, application])
+  )
+
+  applications.value = applications.value.map((application) => {
+    const updatedApplication = updatedApplicationsById.get(application.id)
+
+    if (!updatedApplication) {
+      return application
+    }
+
+    return {
+      ...application,
+      ...updatedApplication,
+      user: updatedApplication.user ?? application.user,
+      applicationTermsDocument: updatedApplication.applicationTermsDocument ?? application.applicationTermsDocument
+    }
+  })
+}
+
+async function runMutation<Result>(
+  actionKey: string,
+  action: () => Promise<Result>,
+  options?: {
+    title: string
+    description: string
+  },
+  mutationOptions?: {
+    skipRefresh?: boolean
+    onSuccess?: (result: Result) => void | Promise<void>
+  }
+) {
   mutationError.value = ''
   pendingActionKey.value = actionKey
+  const scrollPosition = import.meta.client
+    ? {
+        left: window.scrollX,
+        top: window.scrollY
+      }
+    : null
 
   try {
-    await action()
-    toast.add({
-      title: successTitle,
-      description: successDescription,
-      color: 'success'
-    })
-    await refreshOperations()
+    const result = await action()
+
+    if (mutationOptions?.onSuccess) {
+      await mutationOptions.onSuccess(result)
+    }
+
+    if (options) {
+      toast.add({
+        title: options.title,
+        description: options.description,
+        color: 'success'
+      })
+    }
+
+    if (!mutationOptions?.skipRefresh) {
+      await refreshOperations()
+    }
   } catch (error) {
     mutationError.value = normalizeApiError(error).message
   } finally {
     pendingActionKey.value = null
+
+    if (scrollPosition) {
+      await nextTick()
+      window.scrollTo({
+        left: scrollPosition.left,
+        top: scrollPosition.top
+      })
+    }
   }
 }
 
 async function approveApplication(application: AdminApplicationRecord) {
   await runMutation(
     `stage:approved:${application.id}`,
-    async () => {
-      await $fetch(`/api/hackathons/${application.hackathonId}/applications/${application.id}/actions/approve`, {
+    async () => await $fetch<StageApplicationResponse>(
+      `/api/hackathons/${application.hackathonId}/applications/${application.id}/actions/approve`,
+      {
         method: 'POST'
-      })
-    },
-    'Decision staged',
-    'Approval was staged. It will apply only after you save staged decisions.'
+      }
+    ),
+    undefined,
+    {
+      skipRefresh: true,
+      onSuccess: response => replaceApplicationsLocally([response.data])
+    }
   )
 }
 
 async function rejectApplication(application: AdminApplicationRecord) {
   await runMutation(
     `stage:rejected:${application.id}`,
-    async () => {
-      await $fetch(`/api/hackathons/${application.hackathonId}/applications/${application.id}/actions/reject`, {
+    async () => await $fetch<StageApplicationResponse>(
+      `/api/hackathons/${application.hackathonId}/applications/${application.id}/actions/reject`,
+      {
         method: 'POST'
-      })
-    },
-    'Decision staged',
-    'Rejection was staged. It will apply only after you save staged decisions.'
+      }
+    ),
+    undefined,
+    {
+      skipRefresh: true,
+      onSuccess: response => replaceApplicationsLocally([response.data])
+    }
+  )
+}
+
+async function approveApplicationGroup(applicationsToApprove: AdminApplicationRecord[]) {
+  const submittedApplications = applicationsToApprove.filter(application => application.status === 'submitted')
+  const shouldClearApproval = submittedApplications.length > 0
+    && submittedApplications.every(application => application.preApprovalStatus === 'approved')
+  const targetApplications = shouldClearApproval
+    ? submittedApplications.filter(application => application.preApprovalStatus === 'approved')
+    : submittedApplications.filter(application => application.preApprovalStatus !== 'approved')
+  const sortedApplicationIds = submittedApplications
+    .map(application => application.id)
+    .sort((left, right) => left.localeCompare(right))
+
+  if (targetApplications.length === 0) {
+    return
+  }
+
+  await runMutation(
+    `stage:approved-team:${sortedApplicationIds.join('__')}`,
+    async () => await Promise.all(targetApplications.map(async (application) =>
+      await $fetch<StageApplicationResponse>(
+        `/api/hackathons/${application.hackathonId}/applications/${application.id}/actions/approve`,
+        {
+          method: 'POST'
+        }
+      )
+    )),
+    undefined,
+    {
+      skipRefresh: true,
+      onSuccess: responses => replaceApplicationsLocally(responses.map(response => response.data))
+    }
   )
 }
 
@@ -438,8 +618,10 @@ async function applyStagedApplicationDecisions() {
         })
       }
     },
-    'Staged decisions applied',
-    'Application outcomes were applied and participant emails were queued.'
+    {
+      title: 'Staged decisions applied',
+      description: 'Application outcomes were applied and participant emails were queued.'
+    }
   )
 }
 
@@ -456,8 +638,10 @@ async function adminWithdrawSubmission(payload: {
         body: payload
       })
     },
-    'Submission admin-withdrawn',
-    'The submission has been removed from competition on a recorded team-admin request.'
+    {
+      title: 'Submission admin-withdrawn',
+      description: 'The submission has been removed from competition on a recorded team-admin request.'
+    }
   )
 }
 
@@ -475,8 +659,10 @@ async function disqualifySubmission(payload: {
         }
       })
     },
-    'Submission disqualified',
-    'The submission has been removed from competition through the admin workflow.'
+    {
+      title: 'Submission disqualified',
+      description: 'The submission has been removed from competition through the admin workflow.'
+    }
   )
 }
 
@@ -492,9 +678,15 @@ async function runLifecycleAction() {
         method: 'POST'
       })
     },
-    'Lifecycle updated',
-    `${lifecycleControl.value.label} completed successfully.`
+    {
+      title: 'Lifecycle updated',
+      description: `${lifecycleControl.value.label} completed successfully.`
+    }
   )
+}
+
+function selectParticipantView(nextView: AccountHackathonParticipantView) {
+  participantView.value = nextView
 }
 </script>
 
@@ -525,7 +717,10 @@ async function runLifecycleAction() {
     />
 
     <template v-else-if="currentHackathon">
-      <section class="grid gap-4 lg:grid-cols-4">
+      <section
+        v-if="showLifecycleSection"
+        class="grid gap-4 lg:grid-cols-4"
+      >
         <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Hackathon state
@@ -564,7 +759,7 @@ async function runLifecycleAction() {
       </section>
 
       <AppCard
-        v-if="lifecycleControl"
+        v-if="showLifecycleSection && lifecycleControl"
         class="rounded-xl hackathon-workspace-detail-panel"
       >
         <template #header>
@@ -611,18 +806,102 @@ async function runLifecycleAction() {
         </div>
       </AppCard>
 
-      <AdminApplicationsReviewPanel
-        :applications="applications"
-        :participants-limit="currentHackathon.participantsLimit ?? null"
-        :is-loading="applicationsStatus === 'pending'"
-        :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
-        :pending-action-key="pendingActionKey"
-        @approve="approveApplication"
-        @reject="rejectApplication"
-        @save-decisions="applyStagedApplicationDecisions"
-      />
+      <section
+        v-if="showParticipantsSection"
+        class="space-y-4"
+      >
+        <div
+          class="grid gap-4 md:grid-cols-2"
+          :class="participantsLimitSummary ? 'xl:grid-cols-5' : 'xl:grid-cols-4'"
+        >
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Awaiting review
+            </p>
+            <p class="mt-2 text-xl font-semibold text-highlighted">
+              {{ submittedParticipantSummaryValue }}
+            </p>
+          </div>
 
-      <section class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Approved
+            </p>
+            <p class="mt-2 text-xl font-semibold text-highlighted">
+              {{ approvedParticipantSummaryValue }}
+            </p>
+          </div>
+
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Rejected
+            </p>
+            <p class="mt-2 text-xl font-semibold text-highlighted">
+              {{ rejectedParticipantSummaryValue }}
+            </p>
+          </div>
+
+          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Staged
+            </p>
+            <p class="mt-2 text-xl font-semibold text-highlighted">
+              {{ stagedParticipantSummaryValue }}
+            </p>
+          </div>
+
+          <div
+            v-if="participantsLimitSummary"
+            class="rounded-xl hackathon-workspace-detail-inset px-5 py-5"
+          >
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Participants limit
+            </p>
+            <p class="mt-2 text-xl font-semibold text-highlighted">
+              {{ participantsLimitSummary.participantsLimit }}
+            </p>
+          </div>
+        </div>
+
+        <div class="hackathon-workspace-detail-inset flex flex-col gap-4 rounded-xl p-2">
+          <div class="flex min-w-0 flex-wrap items-center gap-1">
+            <button
+              class="rounded-lg px-4 py-1.5 text-[13px] transition-colors"
+              :class="participantView === 'applications' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+              @click="selectParticipantView('applications')"
+            >
+              Applications
+            </button>
+            <button
+              class="rounded-lg px-4 py-1.5 text-[13px] transition-colors"
+              :class="participantView === 'approved' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+              @click="selectParticipantView('approved')"
+            >
+              Approved
+            </button>
+            <span class="ml-4 border-l border-black/8 pl-4 text-[13px] text-neutral-700 dark:border-white/[0.08] dark:text-[#8C8C8C]">
+              {{ participantFilterTotalLabel }}
+            </span>
+          </div>
+        </div>
+
+        <AdminApplicationsReviewPanel
+          :applications="applications"
+          :view="participantView"
+          :is-loading="applicationsStatus === 'pending'"
+          :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
+          :pending-action-key="pendingActionKey"
+          @approve="approveApplication"
+          @approve-team="approveApplicationGroup"
+          @reject="rejectApplication"
+          @save-decisions="applyStagedApplicationDecisions"
+        />
+      </section>
+
+      <section
+        v-if="showSubmissionsSection"
+        class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]"
+      >
         <AdminTeamsOperationsPanel
           :teams="operationalTeams"
           :total-teams="totalTeams"

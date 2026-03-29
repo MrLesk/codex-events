@@ -5,6 +5,8 @@ export const accountHackathonWorkspaceTabs = [
   'judges',
   'staff',
   'judging',
+  'participants',
+  'submissions',
   'operations',
   'settings'
 ] as const
@@ -40,7 +42,7 @@ export function getAccountHackathonTabAccess(
   }
 
   if (canAdmin) {
-    availableTabs.push('operations', 'settings')
+    availableTabs.push('participants', 'submissions', 'operations', 'settings')
   }
 
   return {

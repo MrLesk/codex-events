@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import type { AdminApplicationRecord } from '~/utils/admin-workspace'
+import type {
+  AdminApplicationReviewGroup,
+  AdminApplicationReviewPendingTeammate,
+  AdminApplicationReviewView
+} from '~/utils/admin-application-review'
 
 import {
-  formatApplicationStatus,
-  getApplicationStatusColor,
-  getParticipantsLimitSummary
+  buildAdminApplicationReviewGroups,
+  filterAdminApplicationReviewGroups
+} from '~/utils/admin-application-review'
+import {
+  getApplicationStatusColor
 } from '~/utils/admin-workspace'
 
 const props = defineProps<{
   applications: AdminApplicationRecord[]
-  participantsLimit?: number | null
+  view: AdminApplicationReviewView
   isLoading?: boolean
   errorMessage?: string
   pendingActionKey?: string | null
@@ -17,39 +24,105 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   approve: [application: AdminApplicationRecord]
+  approveTeam: [applications: AdminApplicationRecord[]]
   reject: [application: AdminApplicationRecord]
   saveDecisions: []
 }>()
 
-const submittedCount = computed(() =>
-  props.applications.filter(application => application.status === 'submitted').length
-)
-const approvedCount = computed(() =>
-  props.applications.filter(application => application.status === 'approved').length
-)
-const rejectedCount = computed(() =>
-  props.applications.filter(application => application.status === 'rejected').length
-)
 const stagedCount = computed(() =>
   props.applications.filter(application => application.status === 'submitted' && Boolean(application.preApprovalStatus)).length
 )
-const stagedApprovedCount = computed(() =>
-  props.applications.filter(
-    application => application.status === 'submitted' && application.preApprovalStatus === 'approved'
-  ).length
-)
-const stagedRejectedCount = computed(() =>
-  props.applications.filter(
-    application => application.status === 'submitted' && application.preApprovalStatus === 'rejected'
-  ).length
-)
-const participantsLimitSummary = computed(() =>
-  getParticipantsLimitSummary(props.applications, props.participantsLimit)
+const applicationReviewGroups = computed(() =>
+  filterAdminApplicationReviewGroups(
+    buildAdminApplicationReviewGroups(props.applications),
+    props.view
+  )
 )
 
 function stageDecisionActionKey(applicationId: string, decision: 'approved' | 'rejected') {
   return `stage:${decision}:${applicationId}`
 }
+
+function stageGroupApprovalActionKey(group: AdminApplicationReviewGroup) {
+  const sortedApplicationIds = group.applicants
+    .map(applicant => applicant.application.id)
+    .sort((left, right) => left.localeCompare(right))
+
+  return `stage:approved-team:${sortedApplicationIds.join('__')}`
+}
+
+function formatPendingTeammateLabel(pendingTeammate: AdminApplicationReviewPendingTeammate) {
+  return pendingTeammate.fullName ?? pendingTeammate.email ?? 'Unnamed teammate hint'
+}
+
+function canApproveTeam(group: AdminApplicationReviewGroup) {
+  return group.applicants.length > 1 || group.pendingTeammates.length > 0
+}
+
+function hasGroupApprovalSelected(group: AdminApplicationReviewGroup) {
+  return canApproveTeam(group)
+    && group.applicants.every(applicant => applicant.application.preApprovalStatus === 'approved')
+}
+
+function hasApplicantApprovalSelected(applicant: AdminApplicationReviewGroup['applicants'][number], group: AdminApplicationReviewGroup) {
+  return applicant.application.preApprovalStatus === 'approved' && !hasGroupApprovalSelected(group)
+}
+
+function hasApplicantRejectionSelected(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return applicant.application.preApprovalStatus === 'rejected'
+}
+
+function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject', isActive: boolean) {
+  const baseClass = 'inline-flex w-full items-center justify-between rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45'
+
+  if (isActive) {
+    switch (tone) {
+      case 'approve':
+        return `${baseClass} border-success/30 bg-success/12 text-success hover:bg-success/16`
+      case 'approve_team':
+        return `${baseClass} border-success/35 bg-success/16 text-success hover:bg-success/20`
+      case 'reject':
+        return `${baseClass} border-error/30 bg-error/12 text-error hover:bg-error/16`
+    }
+  }
+
+  return `${baseClass} border-black/8 bg-transparent text-toned hover:border-black/20 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.18] dark:hover:text-white`
+}
+
+const reviewContent = computed(() => {
+  if (props.view === 'approved') {
+    return {
+      title: 'Approved Participants',
+      description: 'Browse approved participants and inferred teammate groupings.'
+    }
+  }
+
+  return {
+    title: 'Participant Review',
+    description: 'Review incoming applications, then save once to apply decisions and trigger participant emails.'
+  }
+})
+
+const emptyState = computed(() => {
+  if (props.applications.length === 0) {
+    return {
+      title: 'No participant records yet',
+      description: 'This hackathon does not currently have participant records to review.'
+    }
+  }
+
+  if (props.view === 'approved') {
+    return {
+      title: 'No approved participants yet',
+      description: 'Approved participants will appear here after staged decisions are saved.'
+    }
+  }
+
+  return {
+    title: 'No applications awaiting review',
+    description: 'Submitted applications will appear here until they are approved or rejected.'
+  }
+})
 </script>
 
 <template>
@@ -57,10 +130,10 @@ function stageDecisionActionKey(applicationId: string, decision: 'approved' | 'r
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
-          Application Review
+          {{ reviewContent.title }}
         </h2>
         <p class="text-sm text-muted">
-          Stage registration decisions, then save once to apply them and trigger participant emails.
+          {{ reviewContent.description }}
         </p>
       </div>
     </template>
@@ -70,7 +143,7 @@ function stageDecisionActionKey(applicationId: string, decision: 'approved' | 'r
         v-if="errorMessage"
         color="error"
         variant="soft"
-        title="Application records unavailable"
+        title="Participant records unavailable"
         :description="errorMessage"
       />
 
@@ -78,58 +151,15 @@ function stageDecisionActionKey(applicationId: string, decision: 'approved' | 'r
         v-else-if="isLoading"
         color="neutral"
         variant="soft"
-        title="Loading applications"
-        description="Admin application records are still loading."
+        title="Loading participants"
+        description="Participant records are still loading."
       />
 
       <template v-else>
-        <AppAlert
-          v-if="participantsLimitSummary"
-          color="info"
-          variant="soft"
-          title="Participants limit"
-          :description="`${participantsLimitSummary.description} Staged decisions: ${stagedCount} total (${stagedApprovedCount} approve, ${stagedRejectedCount} reject).`"
-        />
-
-        <div class="grid gap-4 md:grid-cols-4">
-          <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Awaiting review
-            </p>
-            <p class="mt-2 text-2xl font-semibold text-highlighted">
-              {{ submittedCount }}
-            </p>
-          </div>
-
-          <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Approved
-            </p>
-            <p class="mt-2 text-2xl font-semibold text-highlighted">
-              {{ approvedCount }}
-            </p>
-          </div>
-
-          <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Rejected
-            </p>
-            <p class="mt-2 text-2xl font-semibold text-highlighted">
-              {{ rejectedCount }}
-            </p>
-          </div>
-
-          <div class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Staged
-            </p>
-            <p class="mt-2 text-2xl font-semibold text-highlighted">
-              {{ stagedCount }}
-            </p>
-          </div>
-        </div>
-
-        <div class="hackathon-workspace-detail-inset flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-4">
+        <div
+          v-if="view === 'applications'"
+          class="hackathon-workspace-detail-inset flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-4"
+        >
           <p class="text-sm text-muted">
             Save applies staged decisions and then queues participant emails.
           </p>
@@ -145,174 +175,228 @@ function stageDecisionActionKey(applicationId: string, decision: 'approved' | 'r
         </div>
 
         <div
-          v-if="applications.length > 0"
-          class="grid gap-4"
+          v-if="applicationReviewGroups.length > 0"
+          class="grid gap-5"
         >
-          <article
-            v-for="application in applications"
-            :key="application.id"
-            :data-testid="`admin-application-${application.id}`"
-            class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
+          <section
+            v-for="group in applicationReviewGroups"
+            :key="group.id"
+            :data-testid="`admin-application-group-${group.id}`"
+            class="hackathon-workspace-detail-inset overflow-hidden rounded-xl"
           >
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div class="space-y-3">
+            <div class="divide-y divide-black/8 dark:divide-white/[0.08]">
+              <article
+                v-for="applicant in group.applicants"
+                :key="applicant.application.id"
+                :data-testid="`admin-application-${applicant.application.id}`"
+                class="grid gap-5 px-5 py-5"
+                :class="view === 'applications' && applicant.application.status === 'submitted' ? 'xl:grid-cols-[minmax(0,1fr)_14rem] xl:items-center' : ''"
+              >
+                <div class="min-w-0 space-y-3">
+                  <div class="space-y-3">
+                    <div class="space-y-1">
+                      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                        Participant
+                      </p>
+                      <h4 class="text-lg font-semibold text-highlighted">
+                        {{ applicant.application.user?.displayName ?? applicant.application.user?.email ?? applicant.application.userId }}
+                      </h4>
+                      <p class="text-sm text-toned">
+                        {{ applicant.application.user?.email ?? applicant.application.userId }}
+                      </p>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2 text-xs text-muted">
+                      <AppBadge
+                        v-if="applicant.application.status === 'approved'"
+                        :color="getApplicationStatusColor(applicant.application.status)"
+                        variant="soft"
+                      >
+                        Approved
+                      </AppBadge>
+                      <AppBadge
+                        v-if="applicant.hasFuzzyMatch"
+                        color="warning"
+                        variant="soft"
+                      >
+                        Fuzzy teammate match
+                      </AppBadge>
+                      <a
+                        v-if="applicant.application.user?.lumaUsername"
+                        :href="`https://luma.com/user/${encodeURIComponent(applicant.application.user.lumaUsername)}`"
+                        target="_blank"
+                        rel="noreferrer"
+                        class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
+                      >
+                        Luma: @{{ applicant.application.user.lumaUsername }}
+                        <AppIcon
+                          name="i-lucide-external-link"
+                          class="size-3"
+                        />
+                      </a>
+                      <a
+                        v-if="applicant.application.user?.githubProfileUrl"
+                        :href="applicant.application.user.githubProfileUrl"
+                        target="_blank"
+                        rel="noreferrer"
+                        class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
+                      >
+                        GitHub
+                        <AppIcon
+                          name="i-lucide-external-link"
+                          class="size-3"
+                        />
+                      </a>
+                      <span
+                        v-if="applicant.application.user?.chatgptEmail"
+                        class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
+                      >
+                        ChatGPT: {{ applicant.application.user.chatgptEmail }}
+                      </span>
+                      <span
+                        v-if="applicant.application.user?.openaiOrgId"
+                        class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
+                      >
+                        OpenAI org: {{ applicant.application.user.openaiOrgId }}
+                      </span>
+                      <a
+                        v-if="applicant.application.user?.linkedinProfileUrl"
+                        :href="applicant.application.user.linkedinProfileUrl"
+                        target="_blank"
+                        rel="noreferrer"
+                        class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
+                      >
+                        LinkedIn
+                        <AppIcon
+                          name="i-lucide-external-link"
+                          class="size-3"
+                        />
+                      </a>
+                      <a
+                        v-if="applicant.application.user?.xProfileUrl"
+                        :href="applicant.application.user.xProfileUrl"
+                        target="_blank"
+                        rel="noreferrer"
+                        class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
+                      >
+                        X
+                        <AppIcon
+                          name="i-lucide-external-link"
+                          class="size-3"
+                        />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  v-if="view === 'applications' && applicant.application.status === 'submitted'"
+                  class="grid gap-2 self-center xl:pl-2"
+                >
+                  <button
+                    type="button"
+                    :data-testid="`admin-application-approve-${applicant.application.id}`"
+                    :class="getDecisionButtonClass('approve', hasApplicantApprovalSelected(applicant, group))"
+                    :disabled="pendingActionKey !== null && pendingActionKey !== stageDecisionActionKey(applicant.application.id, 'approved')"
+                    @click="emit('approve', applicant.application)"
+                  >
+                    <span>Approve</span>
+                    <AppIcon
+                      v-if="pendingActionKey === stageDecisionActionKey(applicant.application.id, 'approved')"
+                      name="i-lucide-loader-circle"
+                      class="size-4 animate-spin"
+                    />
+                    <AppIcon
+                      v-else
+                      name="i-lucide-thumbs-up"
+                      class="size-4"
+                    />
+                  </button>
+
+                  <button
+                    v-if="canApproveTeam(group)"
+                    type="button"
+                    :data-testid="`admin-application-approve-team-${applicant.application.id}`"
+                    :class="getDecisionButtonClass('approve_team', hasGroupApprovalSelected(group))"
+                    :disabled="pendingActionKey !== null && pendingActionKey !== stageGroupApprovalActionKey(group)"
+                    @click="emit('approveTeam', group.applicants.map(groupApplicant => groupApplicant.application))"
+                  >
+                    <span>Approve Team</span>
+                    <span
+                      v-if="pendingActionKey === stageGroupApprovalActionKey(group)"
+                      class="flex items-center gap-1"
+                    >
+                      <AppIcon
+                        name="i-lucide-loader-circle"
+                        class="size-4 animate-spin"
+                      />
+                    </span>
+                    <span
+                      v-else
+                      class="flex items-center gap-1"
+                    >
+                      <AppIcon
+                        name="i-lucide-thumbs-up"
+                        class="size-4"
+                      />
+                      <AppIcon
+                        name="i-lucide-thumbs-up"
+                        class="size-4"
+                      />
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    :data-testid="`admin-application-reject-${applicant.application.id}`"
+                    :class="getDecisionButtonClass('reject', hasApplicantRejectionSelected(applicant))"
+                    :disabled="pendingActionKey !== null && pendingActionKey !== stageDecisionActionKey(applicant.application.id, 'rejected')"
+                    @click="emit('reject', applicant.application)"
+                  >
+                    <span>Reject</span>
+                    <AppIcon
+                      v-if="pendingActionKey === stageDecisionActionKey(applicant.application.id, 'rejected')"
+                      name="i-lucide-loader-circle"
+                      class="size-4 animate-spin"
+                    />
+                    <AppIcon
+                      v-else
+                      name="i-lucide-thumbs-down"
+                      class="size-4"
+                    />
+                  </button>
+                </div>
+              </article>
+              <article
+                v-for="pendingTeammate in group.pendingTeammates"
+                :key="pendingTeammate.id"
+                class="px-5 py-5"
+              >
                 <div class="space-y-1">
                   <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                    Applicant
+                    Unmatched participant
                   </p>
-                  <h3 class="text-lg font-semibold text-highlighted">
-                    {{ application.user?.displayName ?? application.user?.email ?? application.userId }}
-                  </h3>
-                  <p class="text-sm text-toned">
-                    {{ application.user?.email ?? application.userId }}
+                  <p class="text-lg font-semibold text-highlighted">
+                    {{ formatPendingTeammateLabel(pendingTeammate) }}
+                  </p>
+                  <p
+                    v-if="pendingTeammate.email && pendingTeammate.email !== formatPendingTeammateLabel(pendingTeammate)"
+                    class="text-sm text-toned"
+                  >
+                    {{ pendingTeammate.email }}
                   </p>
                 </div>
-
-                <div class="flex flex-wrap gap-2 text-xs text-muted">
-                  <span
-                    v-if="application.user?.lumaUsername"
-                    class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
-                  >
-                    Luma: @{{ application.user.lumaUsername }}
-                  </span>
-                  <a
-                    v-if="application.user?.githubProfileUrl"
-                    :href="application.user.githubProfileUrl"
-                    target="_blank"
-                    rel="noreferrer"
-                    class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
-                  >
-                    GitHub
-                    <AppIcon
-                      name="i-lucide-external-link"
-                      class="size-3"
-                    />
-                  </a>
-                  <span
-                    v-if="application.user?.chatgptEmail"
-                    class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
-                  >
-                    ChatGPT: {{ application.user.chatgptEmail }}
-                  </span>
-                  <span
-                    v-if="application.user?.openaiOrgId"
-                    class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
-                  >
-                    OpenAI org: {{ application.user.openaiOrgId }}
-                  </span>
-                  <a
-                    v-if="application.user?.linkedinProfileUrl"
-                    :href="application.user.linkedinProfileUrl"
-                    target="_blank"
-                    rel="noreferrer"
-                    class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
-                  >
-                    LinkedIn
-                    <AppIcon
-                      name="i-lucide-external-link"
-                      class="size-3"
-                    />
-                  </a>
-                  <a
-                    v-if="application.user?.xProfileUrl"
-                    :href="application.user.xProfileUrl"
-                    target="_blank"
-                    rel="noreferrer"
-                    class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
-                  >
-                    X
-                    <AppIcon
-                      name="i-lucide-external-link"
-                      class="size-3"
-                    />
-                  </a>
-                </div>
-              </div>
-
-              <AppBadge
-                :color="getApplicationStatusColor(application.status)"
-                variant="soft"
-                class="self-start"
-              >
-                {{ formatApplicationStatus(application.status) }}
-              </AppBadge>
+              </article>
             </div>
-
-            <div
-              v-if="application.status === 'submitted' && application.preApprovalStatus"
-              class="mt-4"
-            >
-              <AppBadge
-                :color="getApplicationStatusColor(application.preApprovalStatus)"
-                variant="soft"
-              >
-                Staged: {{ formatApplicationStatus(application.preApprovalStatus) }}
-              </AppBadge>
-            </div>
-
-            <div class="mt-5 grid gap-3 text-sm text-toned md:grid-cols-3">
-              <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  Submitted
-                </p>
-                <p class="mt-1">
-                  {{ application.submittedAt }}
-                </p>
-              </div>
-
-              <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  Reviewed
-                </p>
-                <p class="mt-1">
-                  {{ application.reviewedAt ?? 'Not reviewed yet' }}
-                </p>
-              </div>
-
-              <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  Terms acceptance
-                </p>
-                <p class="mt-1 break-all">
-                  {{ application.applicationTermsDocumentId }}
-                </p>
-              </div>
-            </div>
-
-            <div
-              v-if="application.status === 'submitted'"
-              class="mt-5 flex flex-wrap gap-3"
-            >
-              <AppButton
-                color="success"
-                :data-testid="`admin-application-approve-${application.id}`"
-                :loading="pendingActionKey === stageDecisionActionKey(application.id, 'approved')"
-                :disabled="pendingActionKey !== null && pendingActionKey !== stageDecisionActionKey(application.id, 'approved')"
-                @click="emit('approve', application)"
-              >
-                Stage approval
-              </AppButton>
-
-              <AppButton
-                color="error"
-                variant="soft"
-                :data-testid="`admin-application-reject-${application.id}`"
-                :loading="pendingActionKey === stageDecisionActionKey(application.id, 'rejected')"
-                :disabled="pendingActionKey !== null && pendingActionKey !== stageDecisionActionKey(application.id, 'rejected')"
-                @click="emit('reject', application)"
-              >
-                Stage rejection
-              </AppButton>
-            </div>
-          </article>
+          </section>
         </div>
 
         <AppAlert
           v-else
           color="neutral"
           variant="soft"
-          title="No applications yet"
-          description="This hackathon does not currently have application records to review."
+          :title="emptyState.title"
+          :description="emptyState.description"
         />
       </template>
     </div>

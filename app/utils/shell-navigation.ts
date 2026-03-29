@@ -6,6 +6,8 @@ export interface ShellNavigationMatchOptions {
   accountHackathonNavigationMode?: 'participant' | 'admin'
 }
 
+const accountHackathonAdminTabs = ['participants', 'submissions', 'operations', 'settings'] as const
+
 function isAccountHackathonDetailPath(path: string) {
   return path.startsWith('/account/hackathons/')
 }
@@ -37,7 +39,7 @@ export function isShellNavigationLinkActive(
       return false
     }
 
-    return normalizedTab !== 'judging' && normalizedTab !== 'operations' && normalizedTab !== 'settings'
+    return normalizedTab !== 'judging' && !accountHackathonAdminTabs.includes(normalizedTab as (typeof accountHackathonAdminTabs)[number])
   }
 
   if (targetPath === '/account/judging') {
@@ -50,7 +52,7 @@ export function isShellNavigationLinkActive(
   if (targetPath === '/account/admin') {
     return currentPath === '/account/admin'
       || (isAccountHackathonDetailPath(currentPath)
-        && (accountHackathonUsesAdminNavigation || normalizedTab === 'operations' || normalizedTab === 'settings'))
+        && (accountHackathonUsesAdminNavigation || accountHackathonAdminTabs.includes(normalizedTab as (typeof accountHackathonAdminTabs)[number])))
   }
 
   return currentPath === targetPath || currentPath.startsWith(`${targetPath}/`)

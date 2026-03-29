@@ -726,6 +726,80 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
+  test('staging approval toggles off when the same submitted application is approved again', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/approve',
+          handler: approveApplicationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      status: 'submitted',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    })
+
+    const firstResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/approve', {
+      method: 'POST'
+    })
+    expect(firstResponse.status).toBe(200)
+    expect(await firstResponse.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        preApprovalStatus: 'approved'
+      }
+    })
+
+    const secondResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/approve', {
+      method: 'POST'
+    })
+    expect(secondResponse.status).toBe(200)
+    expect(await secondResponse.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        preApprovalStatus: null
+      }
+    })
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.review_decision_staged',
+        metadata: expect.objectContaining({
+          decision: 'approved',
+          previousDecision: null
+        })
+      }),
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.review_decision_cleared',
+        metadata: expect.objectContaining({
+          decision: null,
+          previousDecision: 'approved'
+        })
+      })
+    ]))
+  })
+
   test('admin can stage rejection and apply it in batch', async () => {
     const queueProducer = createQueueProducerStub()
     const harness = createApiRouteTestHarness({
@@ -804,6 +878,80 @@ describe('TASK-3.6 application routes', () => {
     }), {
       contentType: 'json'
     })
+  })
+
+  test('staging rejection toggles off when the same submitted application is rejected again', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/reject',
+          handler: rejectApplicationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      status: 'submitted',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    })
+
+    const firstResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/reject', {
+      method: 'POST'
+    })
+    expect(firstResponse.status).toBe(200)
+    expect(await firstResponse.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        preApprovalStatus: 'rejected'
+      }
+    })
+
+    const secondResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/reject', {
+      method: 'POST'
+    })
+    expect(secondResponse.status).toBe(200)
+    expect(await secondResponse.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        preApprovalStatus: null
+      }
+    })
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.review_decision_staged',
+        metadata: expect.objectContaining({
+          decision: 'rejected',
+          previousDecision: null
+        })
+      }),
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.review_decision_cleared',
+        metadata: expect.objectContaining({
+          decision: null,
+          previousDecision: 'rejected'
+        })
+      })
+    ]))
   })
 
   test('applying staged decisions remains successful when queue enqueue fails', async () => {

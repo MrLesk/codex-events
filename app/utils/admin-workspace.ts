@@ -148,6 +148,7 @@ export interface AdminApplicationRecord {
   reviewedByUserId: string | null
   applicationTermsDocumentId: string
   applicationTermsAcceptedAt: string
+  registrationDetailsJson: string
   createdAt: string
   updatedAt: string
   user?: OperationalUserSummary
