@@ -119,17 +119,15 @@ const timelineEntries = computed(() => [
             </div>
 
             <div
-              class="flex items-center gap-2 self-start pt-1.5 text-neutral-500 dark:text-[#A3A3A3]"
+              class="flex items-center justify-center text-neutral-500 dark:text-[#A3A3A3]"
               aria-hidden="true"
             >
-              <span class="hidden h-px w-3 bg-black/8 dark:bg-white/[0.08] sm:block" />
               <span class="inline-flex size-7 items-center justify-center rounded-full border border-black/8 bg-white/78 dark:border-white/[0.08] dark:bg-white/[0.04]">
                 <AppIcon
                   name="i-lucide-arrow-right"
                   class="size-3.5"
                 />
               </span>
-              <span class="hidden h-px w-3 bg-black/8 dark:bg-white/[0.08] sm:block" />
             </div>
 
             <div class="min-w-0 text-right">
