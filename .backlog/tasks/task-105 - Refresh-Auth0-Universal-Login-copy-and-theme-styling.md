@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - codex
 created_date: '2026-03-29 20:01'
-updated_date: '2026-03-29 20:42'
+updated_date: '2026-03-29 20:50'
 labels: []
 dependencies: []
 priority: high
@@ -48,6 +48,10 @@ Re-applying the bootstrap against the dev tenant exposed an Auth0 API quirk: `PU
 Re-ran `AUTH0_CUSTOM_DOMAIN=auth.dev.codex-hackathons.com AUTH0_APP_BASE_URL=https://dev.codex-hackathons.com AUTH0_LOGIN_URI=https://dev.codex-hackathons.com/auth/login bun tools/auth0/auth0-bootstrap.ts apply`; Auth0 cleared the hosted signup consent partials for both `signup-id` and `signup`, and the bootstrap finished with `Auth0 bootstrap check passed`.
 
 Validation: `bunx vitest run tests/unit/tools/auth0/auth0-bootstrap.test.ts` passed and `bun run test:unit` passed (52 files, 245 tests).
+
+The retried `v0.1.0` production release run on commit `cc1bf72` cleared the original Auth0 partials failure, then stopped at `Lint` because `tools/auth0/auth0-bootstrap.ts` still had a stale `expectedPartials` local that violated `@typescript-eslint/no-unused-vars`.
+
+Removed the dead local variable, re-ran `bun run lint` successfully with the existing `vue/no-v-html` warnings only, and re-ran `bun run test:unit` successfully (52 files, 245 tests).
 <!-- SECTION:NOTES:END -->
 
 ## Definition of Done

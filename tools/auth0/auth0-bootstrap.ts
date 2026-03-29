@@ -913,8 +913,6 @@ async function getSignupPartials(config: TenantConfig, token: string, promptKey:
 }
 
 async function ensureSignupPartials(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
-  const expectedPartials = ''
-
   for (const promptKey of signupPromptKeys) {
     let currentPartials = await getSignupPartials(config, token, promptKey)
     let signupPartials = currentPartials[promptKey] ?? {}
