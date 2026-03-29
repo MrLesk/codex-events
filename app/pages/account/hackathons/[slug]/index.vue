@@ -102,6 +102,16 @@ const accountHackathonNavigationMode = useState<'participant' | 'admin'>(
 )
 const { actor } = useAccountLifecycleActor()
 
+function isApplicationSubmittedNotice(notice: typeof route.query.notice) {
+  const firstNotice = Array.isArray(notice) ? notice[0] : notice
+
+  if (typeof firstNotice !== 'string') {
+    return false
+  }
+
+  return firstNotice.trim().toLowerCase() === 'application_submitted'
+}
+
 if (!slug.value) {
   throw createError({
     statusCode: 404,
@@ -283,10 +293,29 @@ watchEffect(() => {
   }, { replace: true })
 })
 
+onMounted(() => {
+  if (!applicationSubmittedNoticeVisible.value || !isApplicationSubmittedNotice(route.query.notice)) {
+    return
+  }
+
+  const nextQuery = {
+    ...route.query
+  }
+
+  delete nextQuery.notice
+
+  void navigateTo({
+    path: route.path,
+    query: nextQuery,
+    hash: route.hash
+  }, { replace: true })
+})
+
 const teamsHref = computed(() => `/hackathons/${slug.value}/teams`)
 const activeTeamHref = computed(() =>
   participationRecord.value?.activeTeam ? `/hackathons/${slug.value}/teams/${participationRecord.value.activeTeam.id}` : null
 )
+const applicationSubmittedNoticeVisible = ref(isApplicationSubmittedNotice(route.query.notice))
 const applicationStatusLabel = computed(() =>
   applicationStatus.value ? formatParticipantApplicationStatus(applicationStatus.value) : ''
 )
@@ -482,6 +511,15 @@ useSeoMeta({
               Track your application, team, and project here as they become available.
             </p>
           </div>
+
+          <AppAlert
+            v-if="applicationSubmittedNoticeVisible"
+            data-testid="account-hackathon-application-submitted-notice"
+            color="success"
+            variant="soft"
+            title="Registration submitted"
+            description="Your registration was submitted successfully."
+          />
 
           <AppAlert
             v-if="applicationStatus && applicationStatus !== 'approved'"
