@@ -6,7 +6,7 @@ export {
   isProofOfExecutionLinksValid,
   normalizeProofOfExecutionLinks,
   parseProofOfExecutionLinks
-} from '../../shared/proof-of-execution-links'
+} from '#proof-of-execution-links'
 
 export interface ParticipantSessionUser {
   sub: string

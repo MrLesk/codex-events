@@ -6,7 +6,7 @@ import { z } from 'zod'
 import {
   isProofOfExecutionLinksValid,
   normalizeProofOfExecutionLinks
-} from '../../shared/proof-of-execution-links'
+} from '#proof-of-execution-links'
 import { requirePlatformActor } from '../auth/actor'
 import { getDatabase, type AppDatabase } from '../database/client'
 import {

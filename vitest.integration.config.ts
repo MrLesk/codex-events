@@ -5,6 +5,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   resolve: {
     alias: {
+      '#proof-of-execution-links': fileURLToPath(new URL('./shared/proof-of-execution-links.ts', import.meta.url)),
       '#platform-legal': fileURLToPath(new URL('./shared/platform-legal.ts', import.meta.url))
     }
   },
