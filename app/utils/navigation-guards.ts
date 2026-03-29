@@ -6,7 +6,10 @@ import { buildAuthLoginHref, resolveActorAppRedirect } from './auth-navigation'
 export type HackathonScopedRole = 'hackathon_admin' | 'judge'
 type SessionActor = ResolvedSessionActor
 type PlatformSessionActor = Extract<ResolvedSessionActor, { kind: 'platform_user' }>
-type RedirectNavigationResult = { redirect: ReturnType<typeof navigateTo> }
+export type RedirectNavigationResult = {
+  redirectTo: string
+  external?: boolean
+}
 type AuthenticatedNavigationResult = { actor: SessionActor }
 type PlatformNavigationResult = { actor: PlatformSessionActor }
 
@@ -27,7 +30,8 @@ export async function ensureAuthenticatedActor(
 ): Promise<RedirectNavigationResult | AuthenticatedNavigationResult> {
   if (!useUser().value) {
     return {
-      redirect: navigateTo(buildAuthLoginHref(to.fullPath), { external: true })
+      redirectTo: buildAuthLoginHref(to.fullPath),
+      external: true
     }
   }
 
@@ -41,7 +45,8 @@ export async function ensureAuthenticatedActor(
 
   if (!actor) {
     return {
-      redirect: navigateTo(buildAuthLoginHref(to.fullPath), { external: true })
+      redirectTo: buildAuthLoginHref(to.fullPath),
+      external: true
     }
   }
 
@@ -49,7 +54,7 @@ export async function ensureAuthenticatedActor(
 
   if (redirectTarget !== to.fullPath) {
     return {
-      redirect: navigateTo(redirectTarget)
+      redirectTo: redirectTarget
     }
   }
 
@@ -64,7 +69,7 @@ export async function ensurePlatformAccountActor(
 ): Promise<RedirectNavigationResult | PlatformNavigationResult> {
   const resolvedSession = await ensureAuthenticatedActor(to, navigationFetch)
 
-  if ('redirect' in resolvedSession) {
+  if ('redirectTo' in resolvedSession) {
     return resolvedSession
   }
 
@@ -85,8 +90,8 @@ export async function ensureAccountPageAccess(
   const navigationFetch = getNavigationFetch()
   const resolvedSession = await ensurePlatformAccountActor(to, navigationFetch)
 
-  if ('redirect' in resolvedSession) {
-    return resolvedSession.redirect
+  if ('redirectTo' in resolvedSession) {
+    return resolvedSession
   }
 
   if (!hasAccess(resolvedSession.actor)) {
@@ -101,8 +106,8 @@ export async function ensureHackathonRoleForSlugRoute(
   const navigationFetch = getNavigationFetch()
   const resolvedSession = await ensurePlatformAccountActor(to, navigationFetch)
 
-  if ('redirect' in resolvedSession) {
-    return resolvedSession.redirect
+  if ('redirectTo' in resolvedSession) {
+    return resolvedSession
   }
 
   const actor = resolvedSession.actor

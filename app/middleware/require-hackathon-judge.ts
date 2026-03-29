@@ -1,5 +1,12 @@
 import { ensureHackathonRoleForSlugRoute } from '~/utils/navigation-guards'
 
 export default defineNuxtRouteMiddleware(async (to) => {
-  return await ensureHackathonRoleForSlugRoute(to, ['hackathon_admin', 'judge'])
+  const redirect = await ensureHackathonRoleForSlugRoute(to, ['hackathon_admin', 'judge'])
+
+  if (redirect) {
+    return navigateTo(
+      redirect.redirectTo,
+      redirect.external ? { external: true } : undefined
+    )
+  }
 })

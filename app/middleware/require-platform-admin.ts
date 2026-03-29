@@ -1,9 +1,16 @@
 import { ensureAccountPageAccess } from '~/utils/navigation-guards'
 
 export default defineNuxtRouteMiddleware(async (to) => {
-  return await ensureAccountPageAccess(
+  const redirect = await ensureAccountPageAccess(
     to,
     actor => actor.isPlatformAdmin,
     'Platform admin access required.'
   )
+
+  if (redirect) {
+    return navigateTo(
+      redirect.redirectTo,
+      redirect.external ? { external: true } : undefined
+    )
+  }
 })
