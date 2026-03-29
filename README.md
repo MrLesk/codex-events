@@ -90,13 +90,15 @@ The repository includes an Auth0 tenant automation command that codifies require
 The automation covers:
 
 - custom domain presence/readiness and primary/default status
-- optional Auth0 Universal Login branding sync (colors/logo/favicon) when branding env vars are provided
+- Auth0 application display name plus Universal Login branding sync (primary color, page background, logo, favicon)
 - signup prompt links and required consent checkbox partial
 - post-login Action code/deployment for consent claims
 - post-login Action binding
 - required Auth0 application callback/logout/origin URLs
 - Auth0 application default login URI (`initiate_login_uri`) for password-reset return navigation
 - Auth0 tenant default redirection URI (`default_redirection_uri`) as fallback return navigation
+
+By default the branding sync uses the canonical Codex Hackathons wordmark asset served from `/auth0/codex-hackathons-wordmark.svg` on your `AUTH0_APP_BASE_URL`. Override `AUTH0_APP_DISPLAY_NAME`, `AUTH0_BRANDING_LOGO_URL`, or the color variables if your deployment needs different branding.
 
 ### Platform Admin Bootstrap
 

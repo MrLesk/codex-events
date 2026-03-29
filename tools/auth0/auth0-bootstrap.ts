@@ -8,6 +8,7 @@ interface TenantConfig {
   managementClientSecret: string
   managementAudience: string
   appClientId: string
+  appDisplayName: string
   appBaseUrl: string
   loginUri: string
   customDomain: string
@@ -37,6 +38,7 @@ interface Auth0CustomDomain {
 
 interface Auth0Client {
   client_id: string
+  name?: string
   callbacks?: string[]
   allowed_logout_urls?: string[]
   web_origins?: string[]
@@ -86,6 +88,10 @@ interface Auth0BindingsResponse {
 const consentClaimNamespace = 'https://codex-hackathons/consents'
 const defaultActionName = 'codex-signup-consent-claims'
 const defaultActionRuntime = 'node22'
+const defaultAuth0AppDisplayName = 'Codex Hackathons'
+const defaultBrandingPrimaryColor = '#030213'
+const defaultBrandingPageBackgroundColor = '#f3f3f5'
+const defaultBrandingWordmarkPath = '/auth0/codex-hackathons-wordmark.svg'
 const termsConsentCheckboxId = 'ulp-terms-of-service'
 const privacyConsentCheckboxId = 'ulp-privacy-policy'
 const consentHelperMessageId = 'ulp-consent-helper'
@@ -163,6 +169,7 @@ Environment variables:
 - AUTH0_MGMT_CLIENT_SECRET (fallback: AUTH0_TEST_MGMT_CLIENT_SECRET)
 - AUTH0_MGMT_AUDIENCE (fallback: AUTH0_TEST_MGMT_AUDIENCE or https://<AUTH0_DOMAIN>/api/v2/)
 - AUTH0_APP_CLIENT_ID (fallback: NUXT_AUTH0_CLIENT_ID)
+- AUTH0_APP_DISPLAY_NAME (default: ${defaultAuth0AppDisplayName})
 - AUTH0_APP_BASE_URL (fallback: NUXT_AUTH0_APP_BASE_URL)
 - AUTH0_LOGIN_URI (required when AUTH0_APP_BASE_URL is not https; must be https)
 - AUTH0_CUSTOM_DOMAIN (fallback: NUXT_AUTH0_DOMAIN)
@@ -170,10 +177,10 @@ Environment variables:
 - AUTH0_PRIVACY_URL (default: <AUTH0_APP_BASE_URL>/privacy-policy)
 - AUTH0_CONSENT_ACTION_NAME (default: ${defaultActionName})
 - AUTH0_CONSENT_ACTION_RUNTIME (default: ${defaultActionRuntime})
-- AUTH0_BRANDING_PRIMARY_COLOR (optional hex color, example: #1f2937)
-- AUTH0_BRANDING_PAGE_BACKGROUND_COLOR (optional hex color, example: #f8fafc)
-- AUTH0_BRANDING_LOGO_URL (optional URL)
-- AUTH0_BRANDING_FAVICON_URL (optional URL)
+- AUTH0_BRANDING_PRIMARY_COLOR (default: ${defaultBrandingPrimaryColor})
+- AUTH0_BRANDING_PAGE_BACKGROUND_COLOR (default: ${defaultBrandingPageBackgroundColor})
+- AUTH0_BRANDING_LOGO_URL (default: <AUTH0_APP_BASE_URL>${defaultBrandingWordmarkPath} when AUTH0_APP_BASE_URL is https)
+- AUTH0_BRANDING_FAVICON_URL (default: <AUTH0_APP_BASE_URL>/favicon.ico when AUTH0_APP_BASE_URL is https)
 `
 }
 
@@ -277,6 +284,10 @@ function requireConfigField(value: string, name: string) {
   return value
 }
 
+function buildPublicAssetUrl(appBaseUrl: string, path: string) {
+  return normalizeUrlString(new URL(path, `${appBaseUrl}/`).toString())
+}
+
 function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
   const tenantDomain = requireConfigField(
     firstDefinedValue(environment.AUTH0_DOMAIN, environment.AUTH0_TEST_DOMAIN),
@@ -290,6 +301,12 @@ function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
   const normalizedAppBaseUrl = normalizeUrlString(appBaseUrl)
   const inferredLoginUri = normalizedAppBaseUrl.startsWith('https://')
     ? `${normalizedAppBaseUrl}/auth/login`
+    : ''
+  const inferredBrandingLogoUrl = normalizedAppBaseUrl.startsWith('https://')
+    ? buildPublicAssetUrl(normalizedAppBaseUrl, defaultBrandingWordmarkPath)
+    : ''
+  const inferredBrandingFaviconUrl = normalizedAppBaseUrl.startsWith('https://')
+    ? buildPublicAssetUrl(normalizedAppBaseUrl, '/favicon.ico')
     : ''
   const defaultManagementAudience = `${normalizeDomain(tenantDomain)}/api/v2/`
 
@@ -312,6 +329,7 @@ function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
       firstDefinedValue(environment.AUTH0_APP_CLIENT_ID, environment.NUXT_AUTH0_CLIENT_ID),
       'AUTH0_APP_CLIENT_ID (or NUXT_AUTH0_CLIENT_ID)'
     ),
+    appDisplayName: firstDefinedValue(environment.AUTH0_APP_DISPLAY_NAME, defaultAuth0AppDisplayName),
     appBaseUrl: normalizedAppBaseUrl,
     loginUri: normalizeHttpsUrlString(
       requireConfigField(
@@ -328,13 +346,16 @@ function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     privacyUrl: normalizeUrlString(firstDefinedValue(environment.AUTH0_PRIVACY_URL, `${normalizedAppBaseUrl}/privacy-policy`)),
     actionName: firstDefinedValue(environment.AUTH0_CONSENT_ACTION_NAME, defaultActionName),
     actionRuntime: firstDefinedValue(environment.AUTH0_CONSENT_ACTION_RUNTIME, defaultActionRuntime),
-    brandingPrimaryColor: normalizeOptionalHexColor(environment.AUTH0_BRANDING_PRIMARY_COLOR, 'AUTH0_BRANDING_PRIMARY_COLOR'),
+    brandingPrimaryColor: normalizeOptionalHexColor(
+      firstDefinedValue(environment.AUTH0_BRANDING_PRIMARY_COLOR, defaultBrandingPrimaryColor),
+      'AUTH0_BRANDING_PRIMARY_COLOR'
+    ),
     brandingPageBackgroundColor: normalizeOptionalHexColor(
-      environment.AUTH0_BRANDING_PAGE_BACKGROUND_COLOR,
+      firstDefinedValue(environment.AUTH0_BRANDING_PAGE_BACKGROUND_COLOR, defaultBrandingPageBackgroundColor),
       'AUTH0_BRANDING_PAGE_BACKGROUND_COLOR'
     ),
-    brandingLogoUrl: normalizeOptionalUrl(environment.AUTH0_BRANDING_LOGO_URL),
-    brandingFaviconUrl: normalizeOptionalUrl(environment.AUTH0_BRANDING_FAVICON_URL)
+    brandingLogoUrl: normalizeOptionalUrl(firstDefinedValue(environment.AUTH0_BRANDING_LOGO_URL, inferredBrandingLogoUrl)),
+    brandingFaviconUrl: normalizeOptionalUrl(firstDefinedValue(environment.AUTH0_BRANDING_FAVICON_URL, inferredBrandingFaviconUrl))
   }
 }
 
@@ -575,24 +596,28 @@ async function ensureClientUrls(config: TenantConfig, token: string, mode: Comma
   const requiredLogoutUrls = [config.appBaseUrl]
   const requiredOrigins = [baseOrigin]
   const expectedLoginUri = config.loginUri
+  const expectedDisplayName = config.appDisplayName
 
   const callbacks = asSet(client.callbacks)
   const allowedLogoutUrls = asSet(client.allowed_logout_urls)
   const webOrigins = asSet(client.web_origins)
   const allowedOrigins = asSet(client.allowed_origins)
   const currentLoginUri = client.initiate_login_uri ? normalizeUrlString(client.initiate_login_uri) : ''
+  const currentDisplayName = client.name?.trim() ?? ''
 
   const callbackChanged = addAll(callbacks, requiredCallbacks)
   const logoutChanged = addAll(allowedLogoutUrls, requiredLogoutUrls)
   const webOriginsChanged = addAll(webOrigins, requiredOrigins)
   const allowedOriginsChanged = addAll(allowedOrigins, requiredOrigins)
   const loginUriChanged = currentLoginUri !== expectedLoginUri
-  const needsPatch = callbackChanged || logoutChanged || webOriginsChanged || allowedOriginsChanged || loginUriChanged
+  const displayNameChanged = currentDisplayName !== expectedDisplayName
+  const needsPatch = callbackChanged || logoutChanged || webOriginsChanged || allowedOriginsChanged || loginUriChanged || displayNameChanged
 
   if (mode === 'apply' && needsPatch) {
     await auth0ManagementRequest(config, token, `/api/v2/clients/${encodeURIComponent(config.appClientId)}`, {
       method: 'PATCH',
       body: JSON.stringify({
+        name: expectedDisplayName,
         callbacks: [...callbacks].sort(),
         allowed_logout_urls: [...allowedLogoutUrls].sort(),
         web_origins: [...webOrigins].sort(),
@@ -600,7 +625,7 @@ async function ensureClientUrls(config: TenantConfig, token: string, mode: Comma
         initiate_login_uri: expectedLoginUri
       })
     })
-    console.log(`Applied: ensured callback/logout/origin URLs and initiate_login_uri on Auth0 client ${config.appClientId}.`)
+    console.log(`Applied: ensured display name, callback/logout/origin URLs, and initiate_login_uri on Auth0 client ${config.appClientId}.`)
   }
 
   const verifiedClient = mode === 'apply' && needsPatch
@@ -630,6 +655,10 @@ async function ensureClientUrls(config: TenantConfig, token: string, mode: Comma
 
   if (verifiedLoginUri !== expectedLoginUri) {
     failures.push(`Auth0 client ${config.appClientId} initiate_login_uri is ${verifiedClient.initiate_login_uri ?? 'unset'}, expected ${expectedLoginUri}.`)
+  }
+
+  if ((verifiedClient.name?.trim() ?? '') !== expectedDisplayName) {
+    failures.push(`Auth0 client ${config.appClientId} name is ${verifiedClient.name ?? 'unset'}, expected ${expectedDisplayName}.`)
   }
 }
 
