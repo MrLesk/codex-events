@@ -16,6 +16,8 @@ import {
 import { routeIdParamsSchema } from '../../../../../utils/hackathon-management'
 import { parseValidatedParams } from '../../../../../utils/validation'
 
+type UserApplicationRecord = typeof userApplications.$inferSelect
+
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)
@@ -40,8 +42,9 @@ export default defineApiHandler(async (event) => {
   }
 
   const applicantsById = new Map<string, typeof users.$inferSelect>()
+  const stagedApplicantIds = stagedApplications.map((application: UserApplicationRecord) => application.userId)
   const relatedUsers = await database.query.users.findMany({
-    where: inArray(users.id, stagedApplications.map(application => application.userId))
+    where: inArray(users.id, stagedApplicantIds)
   })
 
   for (const user of relatedUsers) {

@@ -18,6 +18,11 @@ import {
 } from '../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
+const fixtureRegistrationOpensAt = '2020-03-20T12:00:00.000Z'
+const fixtureRegistrationClosesAt = '2099-03-23T12:00:00.000Z'
+const fixtureSubmissionOpensAt = '2099-03-23T12:00:00.000Z'
+const fixtureSubmissionClosesAt = '2099-03-25T12:00:00.000Z'
+
 function createQueueProducerStub(options?: {
   failSend?: boolean
 }) {
@@ -85,10 +90,10 @@ async function seedApplicationContext(
     city: 'Vienna',
     country: 'Austria',
     address: 'Fixture Address',
-    registrationOpensAt: '2026-03-20T12:00:00.000Z',
-    registrationClosesAt: '2026-03-23T12:00:00.000Z',
-    submissionOpensAt: '2026-03-23T12:00:00.000Z',
-    submissionClosesAt: '2026-03-25T12:00:00.000Z',
+    registrationOpensAt: fixtureRegistrationOpensAt,
+    registrationClosesAt: fixtureRegistrationClosesAt,
+    submissionOpensAt: fixtureSubmissionOpensAt,
+    submissionClosesAt: fixtureSubmissionClosesAt,
     state: 'registration_open',
     maxTeamMembers: 5,
     inPersonEvent: options?.inPersonEvent ?? false,
@@ -205,6 +210,7 @@ describe('TASK-3.6 application routes', () => {
       data: {
         userId: 'regular_user',
         status: 'submitted',
+        preApprovalStatus: null,
         applicationTermsDocumentId: 'terms_app_2',
         registrationDetailsJson: expect.any(String)
       }

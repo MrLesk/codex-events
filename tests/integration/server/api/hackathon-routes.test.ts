@@ -87,7 +87,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
   async function insertHackathonsInBatches(
     harness: ReturnType<typeof createApiRouteTestHarness>,
     rows: Array<typeof hackathons.$inferInsert>,
-    chunkSize = 4
+    chunkSize = 3
   ) {
     for (let index = 0; index < rows.length; index += chunkSize) {
       await harness.database.insert(hackathons).values(rows.slice(index, index + chunkSize))
