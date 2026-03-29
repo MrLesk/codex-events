@@ -1,10 +1,10 @@
 ---
 id: TASK-111
 title: Fix production platform registration page failure
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-03-29 21:50'
-updated_date: '2026-03-29 22:23'
+updated_date: '2026-03-29 22:28'
 labels: []
 dependencies: []
 documentation:
@@ -21,10 +21,10 @@ Investigate and fix the production error that returns HTTP 500 on `/account/regi
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `/account/register` loads successfully in production for a user who has not completed current platform registration
-- [ ] #2 The platform registration page can render the current platform Terms and Privacy Policy content without server errors
-- [ ] #3 Participant registration flows that redirect to `/account/register` no longer dead-end on a production 500
-- [ ] #4 Relevant automated test coverage is added or updated for the failing path
+- [x] #1 `/account/register` loads successfully in production for a user who has not completed current platform registration
+- [x] #2 The platform registration page can render the current platform Terms and Privacy Policy content without server errors
+- [x] #3 Participant registration flows that redirect to `/account/register` no longer dead-end on a production 500
+- [x] #4 Relevant automated test coverage is added or updated for the failing path
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -54,14 +54,24 @@ March 30: Refactored `useCurrentPlatformDocuments()` away from the async `useFet
 Validation: `bunx vitest run tests/unit/server/middleware/local-d1-binding.test.ts tests/unit/app/composables/useCurrentPlatformDocuments.test.ts`, `bun run typecheck`, `bun run test:unit`, and `bun run build:cloudflare` passed.
 <!-- SECTION:NOTES:END -->
 
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Restricted the local D1/Wrangler proxy middleware to local development and test execution so deployed Workers requests, including Nuxt error-page requests, never try to import the `wrangler` package. Refactored `useCurrentPlatformDocuments()` to use the SSR-safe `useAsyncData` plus request-fetch pattern already used by the working session/shell composables, and updated `/account/register` to consume those composables without awaited wrapper calls.
+
+Added focused regression coverage for the production-only middleware guard and the current-platform-documents composable shape. Validation passed with `bunx vitest run tests/unit/server/middleware/local-d1-binding.test.ts tests/unit/app/composables/useCurrentPlatformDocuments.test.ts`, `bun run typecheck`, `bun run test:unit`, and `bun run build:cloudflare`.
+
+Published release `v0.1.0` again and verified production run `23720526260` completed successfully. Live verification against `https://codex-hackathons.com/account/register?returnTo=%2Fhackathons%2Fcodex-vienna-2026-04-18%2Fregister` no longer returns 500: Worker tail shows clean `Ok` responses and the authenticated browser session now redirects through to the hackathon registration page instead of crashing. Residual verification gap: this live check used an account that already had current platform consent, so the production fix was verified on the exact route and redirect path rather than by creating a fresh no-consent identity in production.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
