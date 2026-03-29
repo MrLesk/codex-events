@@ -120,12 +120,11 @@ These values identify the Cloudflare account and storage resources used by the p
 
 The canonical stack expects Cloudflare Workers for application hosting, D1 for the primary relational database, R2 for file storage (including profile icons and hackathon images), Queues for asynchronous jobs, and Cron Triggers for scheduled platform tasks. See [`docs/tech-stack.md`](docs/tech-stack.md).
 
-The repository `wrangler.jsonc` keeps top-level bindings pointed at local development resources and defines a separate `dev` environment for the shared Cloudflare dev deployment. The current dev deployment is published at `https://dev.codex-hackathons.com` and is managed with:
+The repository `wrangler.jsonc` keeps top-level bindings pointed at local development resources and defines a separate `dev` environment for the shared Cloudflare dev deployment. The current dev deployment is published at `https://dev.codex-hackathons.com`.
 
-- `bun run db:migrate:dev`
-- `bun run deploy:dev`
+Pushes to `main` now publish that shared dev environment automatically through GitHub Actions after the fast CI gate passes. The deploy job applies `bun run db:migrate:dev` and then `bun run deploy:dev` with the repository secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`.
 
-When operating the shared dev environment, export `CLOUDFLARE_MGMT_TOKEN` and let the scripts pass it through to Wrangler as `CLOUDFLARE_API_TOKEN`.
+For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run the same scripts locally. They pass the management token through to Wrangler as `CLOUDFLARE_API_TOKEN`.
 
 ## Documentation Map
 

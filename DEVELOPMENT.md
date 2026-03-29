@@ -103,12 +103,21 @@ The deployed dev environment uses:
 - application URL: `https://dev.codex-hackathons.com`
 - Auth0 custom domain: `https://auth.dev.codex-hackathons.com`
 
-When you operate the shared dev environment, export `CLOUDFLARE_MGMT_TOKEN` and run:
+Pushes to `main` publish the shared dev environment automatically through `.github/workflows/ci.yml` after the fast CI checks pass. The deploy job uses these repository secrets:
+
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+
+It applies the remote dev D1 migrations first and then deploys the Worker.
+
+For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run:
 
 ```bash
 bun run db:migrate:dev
 bun run deploy:dev
 ```
+
+Pull requests and non-`main` pushes do not publish the shared dev environment.
 
 If Auth0 needs to be re-aligned with the deployed dev hostname split, apply the bootstrap with explicit overrides:
 
