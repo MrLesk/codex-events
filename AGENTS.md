@@ -80,7 +80,7 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 - Do not bloat the code. Every added line must be justified by a concrete requirement in the current task.
 - You are penalized for extra lines, branches, helpers, fallbacks, or state that are not strictly necessary to implement the requested behavior safely.
 - Do not add defensive UI or runtime fallbacks for states that are already prevented by routing, permissions, or upstream invariants unless the user explicitly asks for them.
-- For any code changes, run validation before handoff: at minimum `bun run test:unit` must pass locally. If tests cannot be run, explicitly report that limitation and why.
+- For any code changes, run validation before handoff and before committing: `bun run lint`, `bun run typecheck`, and `bun run test:unit` must pass locally. If any required validation cannot be run, explicitly report that limitation and why.
 
 ## Communication Style
 
