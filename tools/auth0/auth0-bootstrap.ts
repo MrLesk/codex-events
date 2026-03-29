@@ -96,21 +96,11 @@ const defaultAuth0AppDisplayName = 'Codex Hackathons'
 const defaultBrandingPrimaryColor = '#030213'
 const defaultBrandingPageBackgroundColor = '#f3f3f5'
 const defaultBrandingWordmarkPath = '/auth0/codex-hackathons-wordmark.svg'
-const defaultUniversalLoginPageTemplate = [
-  '<!DOCTYPE html>',
-  '<html>',
-  '  <head>',
-  '    {%- auth0:head -%}',
-  '  </head>',
-  '  <body class="_widget-auto-layout">',
-  '    {%- auth0:widget -%}',
-  '  </body>',
-  '</html>'
-].join('\n')
 const termsConsentCheckboxId = 'ulp-terms-of-service'
 const privacyConsentCheckboxId = 'ulp-privacy-policy'
 const consentHelperMessageId = 'ulp-consent-helper'
 const consentGuardScriptMarker = 'consent-guard-v2'
+const loginPromptKey = 'login' as const
 const signupPromptKeys = ['signup-id', 'signup'] as const
 type SignupPromptKey = typeof signupPromptKeys[number]
 
@@ -138,6 +128,33 @@ function buildConsentCheckboxPartials(config: TenantConfig) {
     `<div class="ulp-field"><input class="ulp-input" type="checkbox" id="${privacyConsentCheckboxId}" name="${privacyConsentCheckboxId}" required><label for="${privacyConsentCheckboxId}">I agree to the <a href="${config.privacyUrl}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</label></div>`,
     `<p id="${consentHelperMessageId}" role="alert" aria-live="polite">Accept both consents to continue.</p>`,
     `<script data-consent-guard="${consentGuardScriptMarker}">(function(){function init(){var terms=document.getElementById('${termsConsentCheckboxId}');var privacy=document.getElementById('${privacyConsentCheckboxId}');var helper=document.getElementById('${consentHelperMessageId}');var submitButton=document.querySelector('button[type="submit"],button[name="action"]:not([value])');var socialButtons=Array.prototype.slice.call(document.querySelectorAll('button[name="action"][value],button[data-action-button-social],button[data-provider],a[data-action-button-social],a[href*="connection="]'));if(!terms||!privacy||!submitButton){return;}function setDisabled(el,disabled){if('disabled'in el){el.disabled=disabled;}el.setAttribute('aria-disabled',String(disabled));el.classList.toggle('consent-disabled',disabled);}function update(){var ready=Boolean(terms.checked&&privacy.checked);setDisabled(submitButton,!ready);submitButton.title=ready?'':'Accept both consents to continue';socialButtons.forEach(function(button){setDisabled(button,!ready);button.title=ready?'':'Accept both consents to continue';});if(helper){helper.style.display=ready?'none':'block';}}terms.addEventListener('change',update);privacy.addEventListener('change',update);update();}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}else{init();}})();</script>`
+  ].join('\n')
+}
+
+export function buildUniversalLoginPageTemplate(config: TenantConfig) {
+  const linkColor = config.brandingPrimaryColor || defaultBrandingPrimaryColor
+
+  return [
+    '<!DOCTYPE html>',
+    '<html>',
+    '  <head>',
+    '    {%- auth0:head -%}',
+    '    <style>',
+    `      body._widget-auto-layout a { color: ${linkColor} !important; }`,
+    `      body._widget-auto-layout a:hover { color: ${linkColor} !important; opacity: 0.88; }`,
+    `      body._widget-auto-layout a:focus-visible { outline: 2px solid ${linkColor}; outline-offset: 2px; }`,
+    '      body._widget-auto-layout #prompt-logo-center {',
+    '        display: block;',
+    '        width: min(320px, 100%);',
+    '        height: auto;',
+    '        margin: 0 auto;',
+    '      }',
+    '    </style>',
+    '  </head>',
+    '  <body class="_widget-auto-layout">',
+    '    {%- auth0:widget -%}',
+    '  </body>',
+    '</html>'
   ].join('\n')
 }
 
@@ -378,6 +395,14 @@ function buildExpectedConsentText(config: TenantConfig) {
   return `I agree to the [Terms and Conditions](${config.termsUrl}) and [Privacy Policy](${config.privacyUrl}).`
 }
 
+export function buildExpectedLoginCustomText(config: TenantConfig) {
+  return {
+    [loginPromptKey]: {
+      description: `Sign in to access your hackathons, applications, submissions, and judging workspace in ${config.appDisplayName}.`
+    }
+  } as const
+}
+
 function hasRequiredConsentUi(partial: string | undefined, config: TenantConfig) {
   const normalized = normalizeMultiline(partial)
 
@@ -390,6 +415,16 @@ function hasRequiredConsentUi(partial: string | undefined, config: TenantConfig)
     && normalized.includes(config.privacyUrl)
     && normalized.includes(`id="${consentHelperMessageId}"`)
     && normalized.includes(`data-consent-guard="${consentGuardScriptMarker}"`)
+}
+
+function hasRequiredLoginText(
+  customText: Record<string, Record<string, string>> | undefined,
+  config: TenantConfig
+) {
+  const expected = buildExpectedLoginCustomText(config)
+  const description = normalizeMultiline(customText?.[loginPromptKey]?.description)
+
+  return description === normalizeMultiline(expected[loginPromptKey].description)
 }
 
 function buildExpectedResetPasswordCustomText(config: TenantConfig) {
@@ -797,6 +832,13 @@ async function getSignupCustomText(config: TenantConfig, token: string, promptKe
   return await response.json() as Record<string, { ['var-tos']?: string }>
 }
 
+async function getLoginCustomText(config: TenantConfig, token: string) {
+  const response = await auth0ManagementRequest(config, token, `/api/v2/prompts/${loginPromptKey}/custom-text/en`, {
+    method: 'GET'
+  })
+  return await response.json() as Record<string, Record<string, string>>
+}
+
 async function getUniversalLoginPageTemplate(config: TenantConfig, token: string) {
   const response = await auth0ManagementRequest(
     config,
@@ -816,22 +858,51 @@ async function getUniversalLoginPageTemplate(config: TenantConfig, token: string
 }
 
 async function ensureUniversalLoginPageTemplate(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  const expectedBody = buildUniversalLoginPageTemplate(config)
   let pageTemplate = await getUniversalLoginPageTemplate(config, token)
+  let currentBody = pageTemplate?.body ?? ''
 
-  if (mode === 'apply' && !pageTemplate?.body?.trim()) {
+  if (mode === 'apply' && normalizeMultiline(currentBody) !== normalizeMultiline(expectedBody)) {
     await auth0ManagementRequest(config, token, '/api/v2/branding/templates/universal-login', {
       method: 'PUT',
       headers: {
         'content-type': 'text/html'
       },
-      body: defaultUniversalLoginPageTemplate
+      body: expectedBody
     })
-    console.log('Applied: created default Universal Login page template required for prompt partials.')
+    console.log('Applied: synced canonical Universal Login page template.')
     pageTemplate = await getUniversalLoginPageTemplate(config, token)
+    currentBody = pageTemplate?.body ?? ''
   }
 
-  if (!pageTemplate?.body?.trim()) {
-    failures.push('Auth0 Universal Login page template is missing; prompt partials require a page template on the tenant.')
+  if (normalizeMultiline(currentBody) !== normalizeMultiline(expectedBody)) {
+    failures.push('Auth0 Universal Login page template does not match the canonical Codex Hackathons template.')
+  }
+}
+
+async function ensureLoginCustomText(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  const expected = buildExpectedLoginCustomText(config)
+  let current = await getLoginCustomText(config, token)
+
+  if (
+    mode === 'apply'
+    && normalizeMultiline(JSON.stringify(current)) !== normalizeMultiline(JSON.stringify(expected))
+  ) {
+    await auth0ManagementRequest(config, token, `/api/v2/prompts/${loginPromptKey}/custom-text/en`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        [loginPromptKey]: {
+          ...current[loginPromptKey],
+          ...expected[loginPromptKey]
+        }
+      })
+    })
+    current = await getLoginCustomText(config, token)
+    console.log('Applied: updated login prompt description copy.')
+  }
+
+  if (!hasRequiredLoginText(current, config)) {
+    failures.push('Auth0 login prompt copy is missing the canonical Codex Hackathons subtitle.')
   }
 }
 
@@ -1096,6 +1167,7 @@ export async function main() {
     await ensureTenantDefaultRedirection(config, managementToken, mode, failures)
     await ensureBranding(config, managementToken, mode, failures)
     await ensureUniversalLoginPageTemplate(config, managementToken, mode, failures)
+    await ensureLoginCustomText(config, managementToken, mode, failures)
     await ensureSignupCustomText(config, managementToken, mode, failures)
     await ensureSignupPartials(config, managementToken, mode, failures)
     await ensureResetPasswordCustomText(config, managementToken, mode, failures)

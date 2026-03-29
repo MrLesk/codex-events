@@ -40,7 +40,8 @@ These commands enforce required Auth0 tenant configuration:
 
 - custom domain readiness and default assignment
 - Auth0 application display name plus Universal Login branding sync (primary color, page background, logo, favicon)
-- Universal Login page template presence required for signup prompt partials
+- Universal Login page template sync for canonical login-link styling and signup prompt partials
+- login prompt subtitle copy
 - signup prompt policy links and mandatory consent checkbox
 - post-login consent Action deployment and trigger binding
 - required callback/logout/origin URL inclusion on the Auth0 application

@@ -91,7 +91,8 @@ The automation covers:
 
 - custom domain presence/readiness and primary/default status
 - Auth0 application display name plus Universal Login branding sync (primary color, page background, logo, favicon)
-- Universal Login page template presence required for signup prompt partials
+- Universal Login page template sync for canonical login-link styling and signup prompt partials
+- login prompt subtitle copy
 - signup prompt links and required consent checkbox partial
 - post-login Action code/deployment for consent claims
 - post-login Action binding
