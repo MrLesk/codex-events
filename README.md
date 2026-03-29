@@ -49,12 +49,19 @@ These values configure authentication for the Nuxt application:
 - `NUXT_AUTH0_SESSION_SECRET`
 - `NUXT_AUTH0_APP_BASE_URL`
 - `NUXT_AUTH0_AUDIENCE`
+- `NUXT_AUTH0_MANAGEMENT_DOMAIN`
+- `NUXT_AUTH0_MANAGEMENT_CLIENT_ID`
+- `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET`
+- `NUXT_AUTH0_MANAGEMENT_AUDIENCE`
+- `NUXT_AUTH0_DATABASE_CONNECTION_NAME`
+- `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
 - `NUXT_PROFILE_ICONS_BINDING`
 - `NUXT_HACKATHON_IMAGES_BINDING`
 
 For your Auth0 Regular Web Application, configure callback and logout URLs for the domain where you run this app. For example:
 
 - Callback URL: `https://your-domain.example/auth/callback`
+- Callback URL: `https://your-domain.example/auth/link/callback`
 - Logout URL: `https://your-domain.example`
 
 If you also use an Auth0 custom domain, keep it separate from the application hostname. The deployed dev environment in this repository uses:
@@ -97,6 +104,7 @@ The automation covers:
 - post-login Action deployment
 - post-login Action binding
 - required Auth0 application callback/logout/origin URLs
+- required callback inclusion for the explicit account-linking reauthentication flow
 - Auth0 application default login URI (`initiate_login_uri`) for password-reset return navigation
 - Auth0 tenant default redirection URI (`default_redirection_uri`) as fallback return navigation
 

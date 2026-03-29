@@ -632,6 +632,149 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(acceptances).toHaveLength(0)
   })
 
+  test('POST /api/account/registration requests account linking for a verified social identity that matches an existing password account email', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler }
+      ],
+      sessionUser: {
+        sub: 'google-oauth2|existing-google-user',
+        email: 'existing-user@example.com',
+        email_verified: true,
+        name: 'Existing User'
+      },
+      runtimeConfig: {
+        auth0: {
+          appBaseUrl: 'https://dev.codex-hackathons.com',
+          managementDomain: 'codex-hackathons-dev.eu.auth0.com',
+          managementClientId: 'management-client-id',
+          managementClientSecret: 'management-client-secret',
+          managementAudience: 'https://codex-hackathons-dev.eu.auth0.com/api/v2/',
+          databaseConnectionName: 'Username-Password-Authentication',
+          accountLinkChallengeSecret: 'link-secret'
+        }
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'existing_platform_user',
+      auth0Subject: 'auth0|existing-password-user',
+      email: 'existing-user@example.com',
+      displayName: 'Existing User'
+    })
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/account/registration', {
+      method: 'POST',
+      body: JSON.stringify({
+        privacyPolicyDocumentId: 'privacy_v1',
+        platformTermsDocumentId: 'terms_v1',
+        returnTo: '/hackathons/fixture/register'
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'platform_account_link_required',
+        details: {
+          email: 'existing-user@example.com',
+          linkLoginHref: '/auth/link/login'
+        }
+      }
+    })
+    expect(response.headers.get('set-cookie')).toContain('codex_platform_account_link=')
+  })
+
+  test('POST /api/account/registration keeps unverified social identities blocked on existing platform account email conflicts', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler }
+      ],
+      sessionUser: {
+        sub: 'google-oauth2|unverified-google-user',
+        email: 'existing-user@example.com',
+        email_verified: false,
+        name: 'Existing User'
+      },
+      runtimeConfig: {
+        auth0: {
+          appBaseUrl: 'https://dev.codex-hackathons.com',
+          managementDomain: 'codex-hackathons-dev.eu.auth0.com',
+          managementClientId: 'management-client-id',
+          managementClientSecret: 'management-client-secret',
+          managementAudience: 'https://codex-hackathons-dev.eu.auth0.com/api/v2/',
+          databaseConnectionName: 'Username-Password-Authentication',
+          accountLinkChallengeSecret: 'link-secret'
+        }
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'existing_platform_user',
+      auth0Subject: 'auth0|existing-password-user',
+      email: 'existing-user@example.com',
+      displayName: 'Existing User'
+    })
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/account/registration', {
+      method: 'POST',
+      body: JSON.stringify({
+        privacyPolicyDocumentId: 'privacy_v1',
+        platformTermsDocumentId: 'terms_v1',
+        returnTo: '/hackathons/fixture/register'
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'platform_account_email_conflict',
+        details: {
+          email: 'existing-user@example.com'
+        }
+      }
+    })
+    expect(response.headers.get('set-cookie')).toBeNull()
+  })
+
   test('PATCH /api/account rejects authenticated identities without a platform account', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

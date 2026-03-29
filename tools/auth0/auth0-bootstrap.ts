@@ -608,8 +608,9 @@ function hasAll(set: Set<string>, required: string[]) {
 async function ensureClientUrls(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
   const client = await getClient(config, token)
   const callbackUrl = new URL('/auth/callback', `${config.appBaseUrl}/`).toString()
+  const linkCallbackUrl = new URL('/auth/link/callback', `${config.appBaseUrl}/`).toString()
   const baseOrigin = new URL(config.appBaseUrl).origin
-  const requiredCallbacks = [callbackUrl]
+  const requiredCallbacks = [callbackUrl, linkCallbackUrl]
   const requiredLogoutUrls = [config.appBaseUrl]
   const requiredOrigins = [baseOrigin]
   const expectedLoginUri = config.loginUri
@@ -655,7 +656,7 @@ async function ensureClientUrls(config: TenantConfig, token: string, mode: Comma
   const verifiedLoginUri = verifiedClient.initiate_login_uri ? normalizeUrlString(verifiedClient.initiate_login_uri) : ''
 
   if (!hasAll(verifiedCallbacks, requiredCallbacks)) {
-    failures.push(`Auth0 client ${config.appClientId} is missing required callback URL ${callbackUrl}.`)
+    failures.push(`Auth0 client ${config.appClientId} is missing required callback URLs ${requiredCallbacks.join(', ')}.`)
   }
 
   if (!hasAll(verifiedAllowedLogoutUrls, requiredLogoutUrls)) {

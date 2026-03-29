@@ -12,6 +12,7 @@ import {
 import { buildAuditLogInsert, writeAuditLog } from '../database/audit-log'
 import { ApiError } from './api-error'
 import { assertGuard } from './lifecycle-guard'
+import { isVerifiedSocialIdentityLinkCandidate } from './platform-account-linking'
 import { assertCurrentPlatformDocument, getCurrentPlatformDocument } from './platform-documents'
 
 function sanitizeTimestampForIdentifier(timestamp: string) {
@@ -297,6 +298,25 @@ async function assertPlatformAccountRegistrationAllowed(
       isNull(users.deletedAt)
     )
   })
+
+  if (
+    existingEmail
+    && isVerifiedSocialIdentityLinkCandidate({
+      currentAuth0Subject: actor.sessionUser.sub,
+      currentIdentityEmailVerified: actor.sessionUser.email_verified === true,
+      existingPlatformAuth0Subject: existingEmail.auth0Subject
+    })
+  ) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'platform_account_link_required',
+      message: 'A platform account already exists for this email address. Sign in to your existing account to link this login method.',
+      details: {
+        email,
+        primaryAuth0Subject: existingEmail.auth0Subject
+      }
+    })
+  }
 
   assertGuard(!existingEmail, {
     code: 'platform_account_email_conflict',

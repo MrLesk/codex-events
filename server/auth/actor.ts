@@ -10,6 +10,7 @@ import { hasAcceptedCurrentPlatformDocuments } from '../utils/platform-documents
 interface SessionUserProfile {
   sub: string
   email?: string | null
+  email_verified?: boolean | null
   name?: string | null
   nickname?: string | null
   picture?: string | null
@@ -80,6 +81,7 @@ function readSessionUser(session: SessionLike | null | undefined): SessionUserPr
   return {
     sub: session.user.sub,
     email: session.user.email ?? null,
+    email_verified: typeof session.user.email_verified === 'boolean' ? session.user.email_verified : null,
     name: session.user.name ?? null,
     nickname: session.user.nickname ?? null,
     picture: session.user.picture ?? null

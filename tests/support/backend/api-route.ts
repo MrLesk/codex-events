@@ -1,6 +1,7 @@
 import type { EventHandler } from 'h3'
 
 import { createApp, createRouter, eventHandler, toWebHandler } from 'h3'
+import { vi } from 'vitest'
 
 import { createDatabase, setDatabase } from '../../../server/database/client'
 import { createTestD1Database } from './fake-d1'
@@ -26,6 +27,7 @@ export function createApiRouteTestHarness(options: {
   sessionUser?: TestSessionUser | null
   cloudflareEnv?: Record<string, unknown>
   runtimeConfig?: {
+    auth0?: Record<string, unknown>
     database?: {
       binding?: string
     }
@@ -54,6 +56,7 @@ export function createApiRouteTestHarness(options: {
   const router = createRouter()
 
   stubAuth0Session(options.sessionUser ?? null)
+  vi.stubGlobal('useRuntimeConfig', ((event) => event.context.runtimeConfig) as typeof useRuntimeConfig)
 
   app.use(eventHandler((event) => {
     const databaseBinding = options.runtimeConfig?.database?.binding ?? 'DB'
@@ -74,7 +77,9 @@ export function createApiRouteTestHarness(options: {
       }
     } as never
     event.context.runtimeConfig = {
-      auth0: {},
+      auth0: {
+        ...(options.runtimeConfig?.auth0 ?? {})
+      },
       database: {
         binding: databaseBinding
       },

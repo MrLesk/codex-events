@@ -48,11 +48,15 @@ export function createBackendTestEvent(options?: {
   bindingName?: string
   d1Database?: TestD1Database
   sessionUser?: TestSessionUser | null
+  runtimeConfig?: {
+    auth0?: Record<string, unknown>
+  }
 }) {
   const bindingName = options?.bindingName ?? 'DB'
   const d1Database = options?.d1Database ?? createTestD1Database()
 
   stubAuth0Session(options?.sessionUser ?? null)
+  vi.stubGlobal('useRuntimeConfig', ((runtimeEvent: H3Event) => runtimeEvent.context.runtimeConfig) as typeof useRuntimeConfig)
 
   const event = {
     context: {
@@ -62,7 +66,9 @@ export function createBackendTestEvent(options?: {
         }
       },
       runtimeConfig: {
-        auth0: {},
+        auth0: {
+          ...(options?.runtimeConfig?.auth0 ?? {})
+        },
         database: {
           binding: bindingName
         }

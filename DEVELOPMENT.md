@@ -21,6 +21,12 @@ NUXT_AUTH0_CLIENT_SECRET=your-auth0-client-secret
 NUXT_AUTH0_SESSION_SECRET=$(openssl rand -hex 64)
 NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
 NUXT_AUTH0_AUDIENCE=
+NUXT_AUTH0_MANAGEMENT_DOMAIN=your-tenant.auth0.com
+NUXT_AUTH0_MANAGEMENT_CLIENT_ID=your-management-client-id
+NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET=your-management-client-secret
+NUXT_AUTH0_MANAGEMENT_AUDIENCE=https://your-tenant.auth0.com/api/v2/
+NUXT_AUTH0_DATABASE_CONNECTION_NAME=Username-Password-Authentication
+NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET=$(openssl rand -hex 32)
 NUXT_DATABASE_BINDING=DB
 NUXT_PROFILE_ICONS_BINDING=PROFILE_ICONS
 NUXT_HACKATHON_IMAGES_BINDING=HACKATHON_IMAGES
@@ -28,7 +34,7 @@ NUXT_HACKATHON_IMAGES_BINDING=HACKATHON_IMAGES
 
 Local Auth0 dashboard settings:
 
-- Allowed Callback URLs: `http://localhost:3000/auth/callback`
+- Allowed Callback URLs: `http://localhost:3000/auth/callback, http://localhost:3000/auth/link/callback`
 - Allowed Logout URLs: `http://localhost:3000`
 
 Auth0 bootstrap automation:
@@ -47,6 +53,7 @@ These commands enforce required Auth0 tenant configuration:
 - required callback/logout/origin URL inclusion on the Auth0 application
 - default login URI (`initiate_login_uri`) for password-reset return routing
 - tenant default redirection URI fallback (`default_redirection_uri`) for reset-password error states
+- required callback inclusion for the explicit account-linking reauthentication flow at `/auth/link/callback`
 
 By default the script reads `NUXT_AUTH0_*` plus `AUTH0_TEST_MGMT_*`. You can override with explicit `AUTH0_*` variables (`AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_MGMT_AUDIENCE`, `AUTH0_APP_CLIENT_ID`, `AUTH0_APP_DISPLAY_NAME`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_LOGIN_URI`, `AUTH0_TERMS_URL`, `AUTH0_PRIVACY_URL`, `AUTH0_BRANDING_PRIMARY_COLOR`, `AUTH0_BRANDING_PAGE_BACKGROUND_COLOR`, `AUTH0_BRANDING_LOGO_URL`, `AUTH0_BRANDING_FAVICON_URL`).
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL`/`NUXT_AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.

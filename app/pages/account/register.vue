@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { ApiErrorShape } from '~/utils/admin-workspace'
+
+import { normalizeApiError } from '~/utils/admin-workspace'
 import { renderMarkdown } from '~/utils/markdown'
 import {
   accountDashboardHref,
@@ -26,9 +29,37 @@ const {
 const privacyAccepted = ref(false)
 const termsAccepted = ref(false)
 const submitAttempted = ref(false)
+const accountLinkState = reactive({
+  required: false,
+  email: '',
+  href: '/auth/link/login'
+})
 const submitState = reactive({
   pending: false,
   error: ''
+})
+
+const linkingError = computed<ApiErrorShape | null>(() => {
+  const errorCode = typeof route.query.linkingError === 'string'
+    ? route.query.linkingError.trim()
+    : ''
+
+  if (!errorCode) {
+    return null
+  }
+
+  const messages: Record<string, string> = {
+    expired: 'Your account-linking session expired. Accept the current documents again to start over.',
+    invalid: 'The account-linking session could not be verified. Accept the current documents again to start over.',
+    login_failed: 'We could not complete the sign-in to your existing account. Accept the current documents again to restart linking.',
+    mismatch: 'You signed in with a different account. Accept the current documents again, then sign in with the existing password account for this email address.',
+    failed: 'The login method could not be linked right now. Accept the current documents again to restart linking.'
+  }
+
+  return {
+    code: errorCode,
+    message: messages[errorCode] ?? 'The login method could not be linked right now. Try again.'
+  }
 })
 
 const privacyPolicyHtml = computed(() => {
@@ -52,6 +83,7 @@ if (
   status.value !== 'pending'
   && actor.value.kind === 'platform_user'
   && actor.value.hasAcceptedCurrentPlatformDocuments
+  && !linkingError.value
 ) {
   await navigateTo(returnTo.value, { replace: true })
 }
@@ -59,6 +91,9 @@ if (
 async function submitPlatformConsent() {
   submitAttempted.value = true
   submitState.error = ''
+  accountLinkState.required = false
+  accountLinkState.email = ''
+  accountLinkState.href = '/auth/link/login'
 
   if (!isReadyToSubmit.value || !privacyPolicyDocument.value || !platformTermsDocument.value) {
     return
@@ -71,6 +106,7 @@ async function submitPlatformConsent() {
       await $fetch('/api/account/registration', {
         method: 'POST',
         body: {
+          returnTo: returnTo.value,
           privacyPolicyDocumentId: privacyPolicyDocument.value.id,
           platformTermsDocumentId: platformTermsDocument.value.id
         }
@@ -95,9 +131,20 @@ async function submitPlatformConsent() {
     await refresh()
     await navigateTo(returnTo.value, { replace: true })
   } catch (error) {
-    submitState.error = error instanceof Error
-      ? error.message
-      : 'Unable to finish account registration right now.'
+    const apiError = normalizeApiError(error)
+
+    if (apiError.code === 'platform_account_link_required') {
+      accountLinkState.required = true
+      accountLinkState.email = typeof apiError.details?.email === 'string'
+        ? apiError.details.email
+        : ''
+      accountLinkState.href = typeof apiError.details?.linkLoginHref === 'string'
+        ? apiError.details.linkLoginHref
+        : '/auth/link/login'
+      return
+    }
+
+    submitState.error = apiError.message || 'Unable to finish account registration right now.'
   } finally {
     submitState.pending = false
   }
@@ -162,6 +209,33 @@ useSeoMeta({
           title="Registration could not be completed"
           :description="submitState.error"
         />
+
+        <AppAlert
+          v-if="linkingError"
+          color="warning"
+          variant="soft"
+          title="Existing account sign-in required"
+          :description="linkingError.message"
+        />
+
+        <section
+          v-if="accountLinkState.required"
+          class="rounded-xl border border-primary/15 bg-primary/6 p-6"
+        >
+          <div class="space-y-3">
+            <h2 class="text-[18px] font-semibold text-highlighted dark:text-white">
+              Sign in to your existing account once
+            </h2>
+            <p class="max-w-3xl text-sm text-neutral-700 dark:text-[#A3A3A3]">
+              {{ accountLinkState.email || 'This email address' }} already has a Codex Hackathons account. Sign in with that account&apos;s password to connect Google. After that, you can use either sign-in method.
+            </p>
+            <AppButton
+              :to="accountLinkState.href"
+              label="Sign In To Existing Account"
+              size="lg"
+            />
+          </div>
+        </section>
 
         <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
           <div class="space-y-4">
