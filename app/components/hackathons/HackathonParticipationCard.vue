@@ -6,7 +6,7 @@ import {
   formatParticipationStageLabel,
   formatParticipationStatusLabel,
   getParticipationStageColor,
-  getParticipationStatusColor,
+  getParticipationStatusColor
 } from '~/utils/hackathon-participation'
 import { formatHackathonDateWithWeekday, formatHackathonLocation } from '~/composables/useHackathonPresentation'
 
