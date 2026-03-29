@@ -478,8 +478,6 @@ useSeoMeta({
         aria-labelledby="account-tab-overview"
         class="space-y-7"
       >
-        <HackathonOverviewPanel :description="hackathon.description" />
-
         <section
           v-if="hasParticipantContext"
           class="space-y-4"
@@ -595,6 +593,8 @@ useSeoMeta({
             </section>
           </template>
         </section>
+
+        <HackathonOverviewPanel :description="hackathon.description" />
       </section>
 
       <section
