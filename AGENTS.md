@@ -77,6 +77,9 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 - Do not add general-purpose extensibility for hypothetical future needs unless the user explicitly asks for it.
 - Optimize for systems that are easy to understand, query, and operate at scale, even when that means rejecting more textbook modeling patterns.
 - Reject fallback-based implementations when a direct canonical implementation is possible.
+- Do not bloat the code. Every added line must be justified by a concrete requirement in the current task.
+- You are penalized for extra lines, branches, helpers, fallbacks, or state that are not strictly necessary to implement the requested behavior safely.
+- Do not add defensive UI or runtime fallbacks for states that are already prevented by routing, permissions, or upstream invariants unless the user explicitly asks for them.
 - For any code changes, run validation before handoff: at minimum `bun run test:unit` must pass locally. If tests cannot be run, explicitly report that limitation and why.
 
 ## Communication Style

@@ -253,6 +253,13 @@ export interface PrizeDefinition {
   createdAt: string
 }
 
+export interface HackathonRoleUserSummary {
+  id: string
+  email: string
+  displayName: string
+  isPlatformAdmin: boolean
+}
+
 export interface HackathonRoleAssignment {
   id: string
   hackathonId: string
@@ -260,12 +267,7 @@ export interface HackathonRoleAssignment {
   role: 'hackathon_admin' | 'judge'
   isInJudgePool: boolean
   createdAt: string
-  user?: {
-    id: string
-    email: string
-    displayName: string
-    isPlatformAdmin: boolean
-  }
+  user?: HackathonRoleUserSummary
 }
 
 export interface TeamSummary {

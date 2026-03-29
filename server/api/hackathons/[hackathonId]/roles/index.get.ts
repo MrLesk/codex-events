@@ -4,7 +4,11 @@ import { getDatabase } from '../../../../database/client'
 import { hackathonRoleAssignments, users } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiList } from '../../../../utils/api-response'
-import { requireHackathonAdmin, routeIdParamsSchema, serializeHackathonRoleAssignment } from '../../../../utils/hackathon-management'
+import {
+  requireHackathonAdmin,
+  routeIdParamsSchema,
+  serializeHackathonRoleAssignment
+} from '../../../../utils/hackathon-management'
 import { parseValidatedParams } from '../../../../utils/validation'
 
 type HackathonRoleAssignmentRecord = typeof hackathonRoleAssignments.$inferSelect

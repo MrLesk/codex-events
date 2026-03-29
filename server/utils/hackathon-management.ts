@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, count, desc, eq, inArray, isNull, like, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNull, like, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { getRequestActor } from '../auth/actor'
@@ -61,6 +61,12 @@ export const hackathonListQuerySchema = z.object({
   page_size: z.coerce.number().int().min(1).max(100).default(20),
   state: stateEnumSchema.optional(),
   slug: z.string().trim().min(1).optional()
+})
+
+export const listHackathonRoleCandidatesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  page_size: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().trim().min(1).optional()
 })
 
 const agendaItemSchema = z.object({
@@ -617,6 +623,64 @@ export async function listVisibleHackathons(
   return { items, total, page, pageSize }
 }
 
+export async function listHackathonRoleCandidates(
+  database: AppDatabase,
+  hackathonId: string,
+  input: z.infer<typeof listHackathonRoleCandidatesQuerySchema>
+) {
+  const filters = [isNull(users.deletedAt)]
+
+  if (input.search) {
+    filters.push(or(
+      like(users.displayName, `%${input.search}%`),
+      like(users.email, `%${input.search}%`),
+      like(users.id, `%${input.search}%`)
+    )!)
+  }
+
+  const currentHackathonAdminRows = await database.query.hackathonRoleAssignments.findMany({
+    columns: {
+      userId: true
+    },
+    where: and(
+      eq(hackathonRoleAssignments.hackathonId, hackathonId),
+      eq(hackathonRoleAssignments.role, 'hackathon_admin')
+    )
+  })
+  const currentHackathonAdminIds = currentHackathonAdminRows.map(row => row.userId)
+  const where = and(...filters)
+  const orderBy = [
+    desc(sql<number>`case when ${users.isPlatformAdmin} then 1 else 0 end`),
+    ...(currentHackathonAdminIds.length > 0
+      ? [desc(sql<number>`case when ${inArray(users.id, currentHackathonAdminIds)} then 1 else 0 end`)]
+      : []),
+    asc(users.displayName),
+    asc(users.email),
+    asc(users.id)
+  ]
+
+  const items = await database
+    .select()
+    .from(users)
+    .where(where)
+    .orderBy(...orderBy)
+    .limit(input.page_size)
+    .offset((input.page - 1) * input.page_size)
+
+  const totalRows = await database
+    .select({ total: count() })
+    .from(users)
+    .where(where)
+  const total = totalRows[0]?.total ?? 0
+
+  return {
+    items,
+    total,
+    page: input.page,
+    pageSize: input.page_size
+  }
+}
+
 export async function getCurrentHackathonTerms(
   database: AppDatabase,
   hackathon: HackathonRecord
@@ -761,14 +825,18 @@ export function serializeHackathonRoleAssignment(
     createdAt: assignment.createdAt,
     ...(user
       ? {
-          user: {
-            id: user.id,
-            email: user.email,
-            displayName: user.displayName,
-            isPlatformAdmin: user.isPlatformAdmin
-          }
+          user: serializeHackathonRoleUserSummary(user)
         }
       : {})
+  }
+}
+
+export function serializeHackathonRoleUserSummary(user: typeof users.$inferSelect) {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    isPlatformAdmin: user.isPlatformAdmin
   }
 }
 

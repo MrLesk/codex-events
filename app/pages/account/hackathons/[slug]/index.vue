@@ -613,8 +613,8 @@ useSeoMeta({
           :hackathon-id="accessRecordId"
           role="judge"
           title="Judges"
-          description="Manage the explicit judge roster for this hackathon."
-          empty-assigned-message="No judges have been explicitly assigned yet."
+          description="Choose who can review submissions for this hackathon."
+          empty-assigned-message="No judges yet. Search below to add one."
         />
 
         <AppCard
@@ -641,8 +641,8 @@ useSeoMeta({
           :hackathon-id="accessRecordId"
           role="hackathon_admin"
           title="Staff"
-          description="Manage the hackathon-admin staff roster for this hackathon."
-          empty-assigned-message="No hackathon admins have been explicitly assigned yet."
+          description="Choose who can manage this hackathon with you."
+          empty-assigned-message="No admins yet. Search below to add one."
         />
 
         <AppCard

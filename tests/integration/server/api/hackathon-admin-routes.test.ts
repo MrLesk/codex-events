@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
 import roleListHandler from '../../../../server/api/hackathons/[hackathonId]/roles/index.get'
+import roleCandidatesListHandler from '../../../../server/api/hackathons/[hackathonId]/roles/candidates/index.get'
 import rolePutHandler from '../../../../server/api/hackathons/[hackathonId]/roles/[userId].put'
 import rolePatchHandler from '../../../../server/api/hackathons/[hackathonId]/roles/[userId].patch'
 import roleDeleteHandler from '../../../../server/api/hackathons/[hackathonId]/roles/[userId].delete'
@@ -29,6 +30,7 @@ import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 async function seedHackathonContext(
   harness: ReturnType<typeof createApiRouteTestHarness>,
   options?: {
+    includeHackathonAdminAssignment?: boolean
     state?: typeof hackathons.$inferInsert.state
   }
 ) {
@@ -79,14 +81,16 @@ async function seedHackathonContext(
     createdByUserId: 'platform_admin'
   })
 
-  await harness.database.insert(hackathonRoleAssignments).values({
-    id: 'role_hackathon_admin',
-    hackathonId: 'hackathon_1',
-    userId: 'hackathon_admin',
-    role: 'hackathon_admin',
-    isInJudgePool: false,
-    createdAt: '2026-03-22T12:00:00.000Z'
-  })
+  if (options?.includeHackathonAdminAssignment !== false) {
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_hackathon_admin',
+      hackathonId: 'hackathon_1',
+      userId: 'hackathon_admin',
+      role: 'hackathon_admin',
+      isInJudgePool: false,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+  }
 }
 
 describe('TASK-3.5 hackathon admin route groups', () => {
@@ -104,6 +108,7 @@ describe('TASK-3.5 hackathon admin route groups', () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/hackathons/:hackathonId/roles', handler: roleListHandler },
+        { method: 'get', path: '/api/hackathons/:hackathonId/roles/candidates', handler: roleCandidatesListHandler },
         { method: 'put', path: '/api/hackathons/:hackathonId/roles/:userId', handler: rolePutHandler },
         { method: 'patch', path: '/api/hackathons/:hackathonId/roles/:userId', handler: rolePatchHandler },
         { method: 'delete', path: '/api/hackathons/:hackathonId/roles/:userId', handler: roleDeleteHandler }
@@ -124,7 +129,63 @@ describe('TASK-3.5 hackathon admin route groups', () => {
           userId: 'hackathon_admin',
           role: 'hackathon_admin'
         })
-      ]
+      ],
+      meta: {
+        total: 1
+      }
+    })
+
+    const candidatePageOneResponse = await harness.request(
+      '/api/hackathons/hackathon_1/roles/candidates?search=admin&page=1&page_size=1'
+    )
+    expect(candidatePageOneResponse.status).toBe(200)
+    expect(await candidatePageOneResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          id: 'platform_admin',
+          isPlatformAdmin: true
+        })
+      ],
+      meta: {
+        page: 1,
+        pageSize: 1,
+        total: 2
+      }
+    })
+
+    const candidatePageTwoResponse = await harness.request(
+      '/api/hackathons/hackathon_1/roles/candidates?search=admin&page=2&page_size=1'
+    )
+    expect(candidatePageTwoResponse.status).toBe(200)
+    expect(await candidatePageTwoResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          id: 'hackathon_admin',
+          isPlatformAdmin: false
+        })
+      ],
+      meta: {
+        page: 2,
+        pageSize: 1,
+        total: 2
+      }
+    })
+
+    const candidateByIdResponse = await harness.request(
+      '/api/hackathons/hackathon_1/roles/candidates?search=regular_user&page=1&page_size=10'
+    )
+    expect(candidateByIdResponse.status).toBe(200)
+    expect(await candidateByIdResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          id: 'regular_user'
+        })
+      ],
+      meta: {
+        page: 1,
+        pageSize: 10,
+        total: 1
+      }
     })
 
     const createResponse = await harness.request('/api/hackathons/hackathon_1/roles/judge_user', {
@@ -206,6 +267,41 @@ describe('TASK-3.5 hackathon admin route groups', () => {
         userId: 'judge_user',
         deleted: true
       }
+    })
+  })
+
+  test('candidate search still works when the hackathon has no current hackathon-admin assignments', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/roles/candidates', handler: roleCandidatesListHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedHackathonContext(harness, {
+      includeHackathonAdminAssignment: false
+    })
+
+    const candidateResponse = await harness.request('/api/hackathons/hackathon_1/roles/candidates?page=1&page_size=10')
+    expect(candidateResponse.status).toBe(200)
+    const candidatePayload = await candidateResponse.json()
+    expect(candidatePayload).toMatchObject({
+      meta: {
+        page: 1,
+        pageSize: 10,
+        total: 4
+      }
+    })
+    expect(candidatePayload.data[0]).toMatchObject({
+      id: 'platform_admin',
+      isPlatformAdmin: true
+    })
+    expect(candidatePayload.data[1]).toMatchObject({
+      id: 'hackathon_admin',
+      isPlatformAdmin: false
     })
   })
 
