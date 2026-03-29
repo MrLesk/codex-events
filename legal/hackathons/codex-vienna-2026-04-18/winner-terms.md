@@ -1,5 +1,3 @@
-# Codex Community Hackathon - Vienna Winner Terms
-
 These Vienna Winner Terms apply only to a participant or team selected for a prize in the `Codex Community Hackathon - Vienna`. They supplement the Codex Hackathons platform Terms and Conditions and Privacy Policy and govern Vienna-specific award and redemption rules for this hackathon. If these Vienna Winner Terms conflict with the platform terms for this hackathon, these Vienna Winner Terms control to the extent of the conflict.
 
 ## 1. Relationship to the Vienna application terms

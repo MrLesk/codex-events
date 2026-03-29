@@ -1,5 +1,3 @@
-# Codex Community Hackathon - Vienna Application Terms
-
 These Vienna Application Terms apply to the `Codex Community Hackathon - Vienna` and supplement the Codex Hackathons platform Terms and Conditions and Privacy Policy. They govern event-specific application, in-person participation, team, submission, judging, and prize rules for this hackathon. If these Vienna Application Terms conflict with the platform terms for this hackathon, these Vienna Application Terms control to the extent of the conflict.
 
 ## 1. Event details

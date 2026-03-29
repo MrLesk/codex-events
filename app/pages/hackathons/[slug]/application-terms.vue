@@ -117,7 +117,9 @@ const applicationTermsHtml = computed(() => {
   }
 
   const normalizedMarkdown = content.replaceAll('\\n', '\n')
-  return renderMarkdown(normalizedMarkdown)
+  return renderMarkdown(normalizedMarkdown, {
+    stripLeadingHeading: true
+  })
 })
 const termsPublishedLabel = computed(() => {
   if (!currentApplicationTerms.value) {
