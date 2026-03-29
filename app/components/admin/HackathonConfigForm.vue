@@ -434,8 +434,21 @@ const submitConfigForm = handleSubmit(() => {
                   Drop agenda item here
                 </div>
 
-                <div class="grid gap-3 md:grid-cols-[auto_minmax(0,1fr)]">
-                  <div class="flex items-center">
+                <div class="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-4">
+                  <div class="flex w-11 flex-col items-center justify-center gap-3 self-center">
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      :aria-label="`Move ${item.title || `agenda item ${index + 1}`} up`"
+                      :disabled="index === 0"
+                      @click="moveAgendaItem(item.id, -1)"
+                    >
+                      <AppIcon
+                        name="i-lucide-arrow-up"
+                        class="size-4"
+                      />
+                    </button>
+
                     <button
                       type="button"
                       data-agenda-sort-handle
@@ -447,63 +460,44 @@ const submitConfigForm = handleSubmit(() => {
                         class="size-4.5 transition group-hover:scale-105"
                       />
                     </button>
+
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      :aria-label="`Move ${item.title || `agenda item ${index + 1}`} down`"
+                      :disabled="index === form.agendaItems.length - 1"
+                      @click="moveAgendaItem(item.id, 1)"
+                    >
+                      <AppIcon
+                        name="i-lucide-arrow-down"
+                        class="size-4"
+                      />
+                    </button>
                   </div>
 
                   <div class="grid gap-3">
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                      <div class="flex items-center gap-2">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                          Agenda item {{ index + 1 }}
-                        </p>
-                      </div>
+                    <label class="grid gap-2">
+                      <span class="text-xs font-medium text-toned">Title</span>
+                      <input
+                        v-model="item.title"
+                        type="text"
+                        class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
+                        placeholder="Opening workshop"
+                        required
+                      >
+                    </label>
 
-                      <div class="flex items-center gap-2">
-                        <AppButton
-                          type="button"
-                          color="neutral"
-                          variant="ghost"
-                          size="sm"
-                          :disabled="index === 0"
-                          @click="moveAgendaItem(item.id, -1)"
-                        >
-                          Move up
-                        </AppButton>
-                        <AppButton
-                          type="button"
-                          color="neutral"
-                          variant="ghost"
-                          size="sm"
-                          :disabled="index === form.agendaItems.length - 1"
-                          @click="moveAgendaItem(item.id, 1)"
-                        >
-                          Move down
-                        </AppButton>
-                        <AppButton
-                          type="button"
-                          color="neutral"
-                          variant="ghost"
-                          size="sm"
-                          @click="removeAgendaItem(item.id)"
-                        >
-                          Remove
-                        </AppButton>
-                      </div>
-                    </div>
+                    <label class="grid gap-2">
+                      <span class="text-xs font-medium text-toned">Description</span>
+                      <textarea
+                        v-model="item.details"
+                        rows="1"
+                        class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
+                        placeholder="Optional notes for this agenda item."
+                      />
+                    </label>
 
-                    <div class="grid gap-3">
-                      <label class="grid gap-2">
-                        <span class="text-xs font-medium text-toned">Title</span>
-                        <input
-                          v-model="item.title"
-                          type="text"
-                          class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                          placeholder="Opening workshop"
-                          required
-                        >
-                      </label>
-                    </div>
-
-                    <div class="grid gap-3 md:grid-cols-2">
+                    <div class="grid gap-3 pb-2 md:grid-cols-2">
                       <label class="grid gap-2">
                         <span class="text-xs font-medium text-toned">Starts at</span>
                         <input
@@ -523,16 +517,20 @@ const submitConfigForm = handleSubmit(() => {
                         >
                       </label>
                     </div>
+                  </div>
 
-                    <label class="grid gap-2">
-                      <span class="text-xs font-medium text-toned">Details</span>
-                      <textarea
-                        v-model="item.details"
-                        rows="3"
-                        class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                        placeholder="Optional notes for this agenda item."
+                  <div class="flex w-11 items-center justify-center self-center">
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
+                      :aria-label="`Delete ${item.title || `agenda item ${index + 1}`}`"
+                      @click="removeAgendaItem(item.id)"
+                    >
+                      <AppIcon
+                        name="i-lucide-trash-2"
+                        class="size-4"
                       />
-                    </label>
+                    </button>
                   </div>
                 </div>
               </article>
