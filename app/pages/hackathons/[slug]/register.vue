@@ -122,7 +122,6 @@ watch(() => accountActor.value, (actor) => {
   profileForm.xProfileUrl = actor.platformUser.xProfileUrl ?? ''
   profileForm.linkedinProfileUrl = actor.platformUser.linkedinProfileUrl ?? ''
   profileForm.githubProfileUrl = actor.platformUser.githubProfileUrl ?? ''
-  profileForm.chatgptEmail = actor.platformUser.chatgptEmail ?? ''
   profileForm.openaiOrgId = actor.platformUser.openaiOrgId ?? ''
   profileForm.lumaUsername = actor.platformUser.lumaUsername ?? ''
 }, { immediate: true })
