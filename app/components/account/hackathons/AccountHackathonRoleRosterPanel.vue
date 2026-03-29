@@ -788,26 +788,25 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
           </template>
         </div>
 
-      <div class="flex flex-col items-start gap-3">
-        <AppButton
-          v-if="hasMoreCandidates && candidateUsersStatus !== 'error'"
-          color="neutral"
-          variant="outline"
-          :loading="isLoadingMoreCandidates"
-          @click="loadMoreCandidates"
-        >
-          Load more
-        </AppButton>
+        <div class="flex flex-col items-start gap-3">
+          <AppButton
+            v-if="hasMoreCandidates && candidateUsersStatus !== 'error'"
+            color="neutral"
+            variant="outline"
+            :loading="isLoadingMoreCandidates"
+            @click="loadMoreCandidates"
+          >
+            Load more
+          </AppButton>
 
-        <AppAlert
-          v-if="loadMoreCandidatesErrorMessage"
-          color="warning"
-          variant="soft"
-          title="More users unavailable"
-          :description="loadMoreCandidatesErrorMessage"
-        />
-      </div>
-
+          <AppAlert
+            v-if="loadMoreCandidatesErrorMessage"
+            color="warning"
+            variant="soft"
+            title="More users unavailable"
+            :description="loadMoreCandidatesErrorMessage"
+          />
+        </div>
       </div>
     </div>
   </AppCard>
