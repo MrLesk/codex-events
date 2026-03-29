@@ -2,6 +2,7 @@
 import type { PublicApiListResponse, PublicHackathon } from '~/composables/useHackathonPresentation'
 
 import HackathonCard from '~/components/public/hackathons/HackathonCard.vue'
+import { getPublicHomepageHackathonView, type PublicHomepageTab } from '~/utils/public-homepage'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
 const publicHackathonsPageSize = 4
@@ -12,12 +13,11 @@ const total = ref(0)
 const isLoadingMore = ref(false)
 const loadMoreError = ref<string>()
 const homepageTabs = ['active', 'past'] as const
-type HomepageTab = (typeof homepageTabs)[number]
-const activeTab = computed<HomepageTab>(() =>
+const activeTab = computed<PublicHomepageTab>(() =>
   resolveTabQueryValue(route.query.tab, homepageTabs, 'active')
 )
 
-async function selectHomepageTab(nextTab: HomepageTab) {
+async function selectHomepageTab(nextTab: PublicHomepageTab) {
   if (normalizeTabQueryValue(route.query.tab) === nextTab) {
     return
   }
@@ -56,17 +56,28 @@ const pastTotal = ref(
 )
 
 const hasMoreHackathons = computed(() => hackathons.value.length < total.value)
+const loadedActiveHackathonCount = computed(() =>
+  hackathons.value.filter(hackathon => hackathon.state !== 'completed').length
+)
+const homepageHackathonView = computed(() =>
+  getPublicHomepageHackathonView(
+    activeTab.value,
+    total.value,
+    pastTotal.value,
+    loadedActiveHackathonCount.value
+  )
+)
 const filteredHackathons = computed(() => hackathons.value.filter((hackathon) => {
   const isPast = hackathon.state === 'completed'
 
-  return activeTab.value === 'past' ? isPast : !isPast
+  return homepageHackathonView.value.effectiveTab === 'past' ? isPast : !isPast
 }))
 const currentFilterTotal = computed(() => {
-  if (activeTab.value === 'past') {
+  if (homepageHackathonView.value.effectiveTab === 'past') {
     return pastTotal.value
   }
 
-  return Math.max(total.value - pastTotal.value, 0)
+  return homepageHackathonView.value.activeHackathonCount
 })
 const canLoadMoreForCurrentFilter = computed(() => {
   if (!hasMoreHackathons.value) {
@@ -77,7 +88,7 @@ const canLoadMoreForCurrentFilter = computed(() => {
 })
 const visibleHackathonCount = computed(() => filteredHackathons.value.length)
 const loadMoreSummary = computed(() => {
-  return `Showing ${visibleHackathonCount.value} out of ${currentFilterTotal.value} ${activeTab.value} hackathons.`
+  return `Showing ${visibleHackathonCount.value} out of ${currentFilterTotal.value} ${homepageHackathonView.value.effectiveTab} hackathons.`
 })
 
 async function loadMoreHackathons() {
@@ -143,7 +154,10 @@ useSeoMeta({
     />
 
     <template v-else>
-      <div class="app-surface-panel flex flex-col gap-4 rounded-xl p-2">
+      <div
+        v-if="homepageHackathonView.showFilters"
+        class="app-surface-panel flex flex-col gap-4 rounded-xl p-2"
+      >
         <div class="flex min-w-0 flex-wrap items-center gap-1">
           <button
             class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
@@ -185,7 +199,7 @@ useSeoMeta({
           No programs in this view
         </p>
         <p class="mt-3 text-lg font-semibold text-highlighted dark:text-white">
-          There are no {{ activeTab }} hackathons in the currently loaded results.
+          There are no {{ homepageHackathonView.effectiveTab }} hackathons in the currently loaded results.
         </p>
       </div>
 
@@ -193,11 +207,15 @@ useSeoMeta({
         v-else
         class="relative space-y-16 pt-6"
       >
-        <div class="absolute bottom-0 left-0 top-0 hidden w-1 bg-black/16 dark:bg-white/[0.2] lg:block" />
+        <div
+          v-if="!homepageHackathonView.useSingleActiveLayout"
+          class="absolute bottom-0 left-0 top-0 hidden w-1 bg-black/16 dark:bg-white/[0.2] lg:block"
+        />
         <HackathonCard
           v-for="hackathon in filteredHackathons"
           :key="hackathon.slug"
           :hackathon="hackathon"
+          :show-timeline-rail="!homepageHackathonView.useSingleActiveLayout"
         />
       </div>
     </template>

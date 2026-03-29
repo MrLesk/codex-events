@@ -3,9 +3,12 @@ import type { PublicHackathon } from '~/composables/useHackathonPresentation'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   hackathon: PublicHackathon
-}>()
+  showTimelineRail?: boolean
+}>(), {
+  showTimelineRail: true
+})
 
 const heroImage = computed(() => {
   const bannerImageUrl = props.hackathon.bannerImageUrl?.trim()
@@ -39,15 +42,20 @@ const ctaLabel = computed(() => {
 
 <template>
   <div class="relative">
-    <div class="absolute left-[-10px] top-5 hidden h-5 w-5 rounded-full border-4 border-background bg-neutral-500 dark:bg-[#A3A3A3] lg:block" />
-
-    <div class="absolute left-[-66px] top-[22px] hidden text-[12px] font-medium leading-none text-neutral-500 dark:text-[#8C8C8C] lg:block">
-      {{ timelineDateLabel }}
+    <div
+      v-if="props.showTimelineRail"
+      class="absolute left-[-66px] top-5 hidden lg:block"
+    >
+      <div class="absolute left-[56px] top-0 h-5 w-5 rounded-full border-4 border-background bg-neutral-500 dark:bg-[#A3A3A3]" />
+      <div class="absolute left-0 top-[2px] text-[12px] font-medium leading-none text-neutral-500 dark:text-[#8C8C8C]">
+        {{ timelineDateLabel }}
+      </div>
     </div>
 
     <NuxtLink
       :to="`/hackathons/${hackathon.slug}`"
-      class="group block lg:ml-8"
+      class="group block"
+      :class="props.showTimelineRail ? 'lg:ml-8' : ''"
       :data-testid="`public-hackathon-card-${hackathon.slug}`"
     >
       <div class="app-surface-panel overflow-hidden rounded-3xl transition-colors group-hover:border-black/20 dark:group-hover:border-white/[0.2]">
