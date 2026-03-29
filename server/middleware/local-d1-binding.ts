@@ -48,7 +48,10 @@ export default defineEventHandler(async (event) => {
   const hasHackathonImagesBinding = Boolean(cloudflareEnv?.[hackathonImagesBindingName])
   const hasApplicationReviewEmailQueueBinding = Boolean(cloudflareEnv?.[applicationReviewEmailQueueBindingName])
 
-  if (hasDatabaseBinding && hasProfileIconsBinding && hasHackathonImagesBinding && hasApplicationReviewEmailQueueBinding) {
+  // Production requests should use their real D1 binding directly. The local Wrangler
+  // platform proxy is only valid when we need to bootstrap a local request that has no
+  // database binding at all.
+  if (hasDatabaseBinding) {
     return
   }
 
