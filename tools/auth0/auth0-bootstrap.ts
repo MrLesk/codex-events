@@ -288,7 +288,7 @@ function buildPublicAssetUrl(appBaseUrl: string, path: string) {
   return normalizeUrlString(new URL(path, `${appBaseUrl}/`).toString())
 }
 
-function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
+export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
   const tenantDomain = requireConfigField(
     firstDefinedValue(environment.AUTH0_DOMAIN, environment.AUTH0_TEST_DOMAIN),
     'AUTH0_DOMAIN (or AUTH0_TEST_DOMAIN)'
@@ -1026,7 +1026,7 @@ async function ensureActionBinding(
   }
 }
 
-async function main() {
+export async function main() {
   try {
     const mode = parseCommandMode(process.argv[2])
     const config = resolveConfig(process.env)
@@ -1064,4 +1064,11 @@ async function main() {
   }
 }
 
-await main()
+if (import.meta.main) {
+  main()
+    .catch((error) => {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(message)
+      process.exit(1)
+    })
+}
