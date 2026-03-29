@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import AdminMarkdownEditorClient from '~/components/admin/AdminMarkdownEditorClient.client.vue'
-
 const model = defineModel<string>({
   required: true
 })
