@@ -138,7 +138,7 @@ Production publishes from GitHub Releases through `.github/workflows/release-pro
 The workflow starts when you manually publish a GitHub Release. The release tag is the canonical version source for that run:
 
 - `v1.2.3` becomes package version `1.2.3`
-- the workflow validates, migrates, and deploys production from the tagged commit
+- the workflow assumes the tagged commit on `main` already passed CI, then migrates and deploys production from that tagged commit
 - after a successful release it commits the matching `package.json` version back to `main`
 
 The GitHub `production` environment must provide these secrets before the workflow can run:

@@ -71,21 +71,6 @@ jobs:
       - name: Sync package.json to release version
         run: bun run release:version "${{ steps.release_version.outputs.release_tag }}" --write
 
-      - name: Lint
-        run: bun run lint
-
-      - name: Typecheck
-        run: bun run typecheck
-
-      - name: Unit tests
-        run: bun run test:unit
-
-      - name: Integration tests
-        run: bun run test:integration
-
-      - name: Build Cloudflare bundle
-        run: bun run build:cloudflare
-
       - name: Ensure production Auth0 custom domain and verification DNS
         env:
           AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
