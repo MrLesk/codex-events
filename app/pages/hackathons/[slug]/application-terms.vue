@@ -95,7 +95,7 @@ const detailSummary = computed(() => [
 const workspaceErrorMessage = ref('')
 const currentApplicationTerms = ref<ParticipantApplicationTermsDocument | null>(null)
 
-if (accountActor.value?.kind === 'platform_user') {
+if (accountActor.value?.kind === 'platform_user' && accountActor.value.hasAcceptedCurrentPlatformDocuments) {
   const requestFetch = import.meta.server ? useRequestFetch() : $fetch
 
   try {

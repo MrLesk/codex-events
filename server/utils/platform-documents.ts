@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 
 import type { AppDatabase } from '../database/client'
 import {
@@ -52,6 +52,34 @@ export async function getCurrentPlatformDocuments(database: AppDatabase) {
   )
 
   return Object.fromEntries(documents) as Record<PlatformDocumentType, PlatformDocumentRecord | null>
+}
+
+export async function hasAcceptedCurrentPlatformDocuments(
+  database: AppDatabase,
+  userId: string
+) {
+  const currentDocuments = await getCurrentPlatformDocuments(database)
+  const requiredDocuments = platformDocumentTypes
+    .map(documentType => currentDocuments[documentType])
+    .filter((document): document is PlatformDocumentRecord => Boolean(document))
+
+  if (requiredDocuments.length !== platformDocumentTypes.length) {
+    return true
+  }
+
+  const acceptances = await database.query.userPlatformDocumentAcceptances.findMany({
+    where: and(
+      eq(userPlatformDocumentAcceptances.userId, userId),
+      inArray(
+        userPlatformDocumentAcceptances.platformDocumentId,
+        requiredDocuments.map(document => document.id)
+      )
+    )
+  })
+
+  const acceptedDocumentIds = new Set(acceptances.map(acceptance => acceptance.platformDocumentId))
+
+  return requiredDocuments.every(document => acceptedDocumentIds.has(document.id))
 }
 
 export function assertCurrentPlatformDocument(

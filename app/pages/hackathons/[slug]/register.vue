@@ -147,7 +147,7 @@ watch(() => hackathon.value.inPersonEvent, (isInPersonEvent) => {
   }
 }, { immediate: true })
 
-if (accountActor.value?.kind === 'platform_user') {
+if (accountActor.value?.kind === 'platform_user' && accountActor.value.hasAcceptedCurrentPlatformDocuments) {
   const requestFetch = import.meta.server ? useRequestFetch() : $fetch
 
   try {
@@ -161,6 +161,7 @@ if (accountActor.value?.kind === 'platform_user') {
 
     const routeResolution = resolveParticipantRegistrationEntry({
       actorKind: accountActor.value.kind,
+      hasAcceptedCurrentPlatformDocuments: accountActor.value.hasAcceptedCurrentPlatformDocuments,
       hackathonSlug: slug.value,
       hackathonState: hackathon.value.state,
       registrationOpensAt: hackathon.value.registrationOpensAt,

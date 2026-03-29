@@ -40,10 +40,10 @@ These commands enforce required Auth0 tenant configuration:
 
 - custom domain readiness and default assignment
 - Auth0 application display name plus Universal Login branding sync (primary color, page background, logo, favicon)
-- Universal Login page template sync for canonical login-link styling and signup prompt partials
+- Universal Login page template sync for canonical login-link styling
 - login prompt subtitle copy
-- signup prompt policy links and mandatory consent checkbox
-- post-login consent Action deployment and trigger binding
+- signup prompt consent text/partials cleared so platform consent stays app-owned at `/account/register`
+- post-login Action deployment and trigger binding
 - required callback/logout/origin URL inclusion on the Auth0 application
 - default login URI (`initiate_login_uri`) for password-reset return routing
 - tenant default redirection URI fallback (`default_redirection_uri`) for reset-password error states

@@ -1,12 +1,12 @@
 import { setHeader } from 'h3'
 
-import { requirePlatformAccountActor } from '../../auth/actor'
+import { requirePlatformActor } from '../../auth/actor'
 import { defineApiHandler } from '../../utils/api-handler'
 import { ApiError } from '../../utils/api-error'
 import { getProfileIconObject } from '../../utils/profile-icons'
 
 export default defineApiHandler(async (event) => {
-  const actor = await requirePlatformAccountActor(event)
+  const actor = await requirePlatformActor(event)
 
   if (!actor.platformUser.profileIconUpdatedAt) {
     throw new ApiError({

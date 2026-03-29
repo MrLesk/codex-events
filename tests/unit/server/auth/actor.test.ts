@@ -30,11 +30,43 @@ function createEvent(sessionUser?: SessionUser | null) {
   return event
 }
 
-function createDatabaseMock(user?: Record<string, unknown> | null) {
+function createDatabaseMock(
+  user?: Record<string, unknown> | null,
+  options?: {
+    hasAcceptedCurrentPlatformDocuments?: boolean
+    currentDocumentsAvailable?: boolean
+  }
+) {
+  let currentDocumentCallCount = 0
+  const hasAcceptedCurrentPlatformDocuments = options?.hasAcceptedCurrentPlatformDocuments ?? true
+  const currentDocumentsAvailable = options?.currentDocumentsAvailable ?? true
+
   return {
     query: {
       users: {
         findFirst: vi.fn(async () => user ?? undefined)
+      },
+      platformDocuments: {
+        findFirst: vi.fn(async () => {
+          if (!currentDocumentsAvailable) {
+            return undefined
+          }
+
+          currentDocumentCallCount += 1
+
+          return currentDocumentCallCount === 1
+            ? { id: 'privacy_v1', documentType: 'privacy_policy' }
+            : { id: 'terms_v1', documentType: 'platform_terms' }
+        })
+      },
+      userPlatformDocumentAcceptances: {
+        findMany: vi.fn(async () => hasAcceptedCurrentPlatformDocuments
+          ? [
+              { platformDocumentId: 'privacy_v1' },
+              { platformDocumentId: 'terms_v1' }
+            ]
+          : []
+        )
       }
     }
   } as never
@@ -52,7 +84,8 @@ describe('request actor resolution', () => {
     await expect(getRequestActor(event)).resolves.toMatchObject({
       kind: 'anonymous',
       isAuthenticated: false,
-      hasPlatformAccount: false
+      hasPlatformAccount: false,
+      hasAcceptedCurrentPlatformDocuments: false
     })
   })
 
@@ -64,6 +97,7 @@ describe('request actor resolution', () => {
       kind: 'authenticated_identity',
       isAuthenticated: true,
       hasPlatformAccount: false,
+      hasAcceptedCurrentPlatformDocuments: false,
       sessionUser: {
         sub: 'auth0|user_1',
         email: 'user@example.com'
@@ -84,6 +118,7 @@ describe('request actor resolution', () => {
     await expect(getRequestActor(event)).resolves.toMatchObject({
       kind: 'platform_user',
       hasPlatformAccount: true,
+      hasAcceptedCurrentPlatformDocuments: true,
       platformUser: {
         id: 'user_1',
         isPlatformAdmin: true
@@ -109,6 +144,28 @@ describe('request actor resolution', () => {
     expect(database.query.users.findFirst).toHaveBeenCalledTimes(1)
   })
 
+  test('keeps a platform account actor consent-blocked when current platform documents are not accepted', async () => {
+    const event = createEvent({ sub: 'auth0|user_1', email: 'user@example.com' })
+    setDatabase(event, createDatabaseMock({
+      id: 'user_1',
+      auth0Subject: 'auth0|user_1',
+      email: 'user@example.com',
+      displayName: 'User One',
+      isPlatformAdmin: false
+    }, {
+      hasAcceptedCurrentPlatformDocuments: false
+    }))
+
+    await expect(getRequestActor(event)).resolves.toMatchObject({
+      kind: 'platform_user',
+      hasPlatformAccount: true,
+      hasAcceptedCurrentPlatformDocuments: false,
+      platformUser: {
+        id: 'user_1'
+      }
+    })
+  })
+
   test('requires an authenticated actor for protected flows', async () => {
     const event = createEvent()
     setDatabase(event, createDatabaseMock())
@@ -121,5 +178,22 @@ describe('request actor resolution', () => {
     setDatabase(event, createDatabaseMock())
 
     await expect(requirePlatformActor(event)).rejects.toBeInstanceOf(ApiError)
+  })
+
+  test('requires current platform consent for regular platform authorization', async () => {
+    const event = createEvent({ sub: 'auth0|user_1', email: 'user@example.com' })
+    setDatabase(event, createDatabaseMock({
+      id: 'user_1',
+      auth0Subject: 'auth0|user_1',
+      email: 'user@example.com',
+      displayName: 'User One',
+      isPlatformAdmin: false
+    }, {
+      hasAcceptedCurrentPlatformDocuments: false
+    }))
+
+    await expect(requirePlatformActor(event)).rejects.toMatchObject({
+      code: 'platform_consent_required'
+    })
   })
 })

@@ -36,11 +36,39 @@ function createDatabaseMock(options?: {
   hackathonRoleAssignment?: Record<string, unknown> | null
   teamMembership?: Record<string, unknown> | null
   judgeAssignment?: Record<string, unknown> | null
+  hasAcceptedCurrentPlatformDocuments?: boolean
+  currentDocumentsAvailable?: boolean
 }) {
+  let currentDocumentCallCount = 0
+  const hasAcceptedCurrentPlatformDocuments = options?.hasAcceptedCurrentPlatformDocuments ?? true
+  const currentDocumentsAvailable = options?.currentDocumentsAvailable ?? true
+
   return {
     query: {
       users: {
         findFirst: vi.fn(async () => options?.user ?? undefined)
+      },
+      platformDocuments: {
+        findFirst: vi.fn(async () => {
+          if (!currentDocumentsAvailable) {
+            return undefined
+          }
+
+          currentDocumentCallCount += 1
+
+          return currentDocumentCallCount === 1
+            ? { id: 'privacy_v1', documentType: 'privacy_policy' }
+            : { id: 'terms_v1', documentType: 'platform_terms' }
+        })
+      },
+      userPlatformDocumentAcceptances: {
+        findMany: vi.fn(async () => hasAcceptedCurrentPlatformDocuments
+          ? [
+              { platformDocumentId: 'privacy_v1' },
+              { platformDocumentId: 'terms_v1' }
+            ]
+          : []
+        )
       },
       hackathonRoleAssignments: {
         findFirst: vi.fn(async () => options?.hackathonRoleAssignment ?? undefined)

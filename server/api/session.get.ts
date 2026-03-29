@@ -17,6 +17,7 @@ export default defineApiHandler(async (event) => {
         kind: actor.kind,
         isAuthenticated: actor.isAuthenticated,
         hasPlatformAccount: actor.hasPlatformAccount,
+        hasAcceptedCurrentPlatformDocuments: actor.hasAcceptedCurrentPlatformDocuments,
         sessionUser: actor.sessionUser,
         platformUser: null,
         isPlatformAdmin: false,
@@ -36,6 +37,7 @@ export default defineApiHandler(async (event) => {
       kind: actor.kind,
       isAuthenticated: actor.isAuthenticated,
       hasPlatformAccount: actor.hasPlatformAccount,
+      hasAcceptedCurrentPlatformDocuments: actor.hasAcceptedCurrentPlatformDocuments,
       sessionUser: actor.sessionUser,
       platformUser: {
         id: actor.platformUser.id,

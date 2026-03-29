@@ -2,6 +2,7 @@
 import AppShellFooter from '~/components/shell/AppShellFooter.vue'
 import AppShellHeader from '~/components/shell/AppShellHeader.vue'
 import AppShellNavigation from '~/components/shell/AppShellNavigation.vue'
+import { accountRegisterHref } from '~/utils/auth-navigation'
 
 const { actor, hasPlatformAccount, sidebarGroups } = useShellNavigation()
 const route = useRoute()
@@ -13,7 +14,7 @@ const isAccountRoute = computed(() =>
   route.path === '/account' || route.path.startsWith('/account/')
 )
 const showWorkspaceSidebar = computed(() =>
-  hasPlatformAccount.value || isAccountRoute.value
+  hasPlatformAccount.value
 )
 const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_identity')
 
@@ -81,7 +82,7 @@ watch(isSidebarCollapsed, (nextValue) => {
 
         <main class="min-w-0 flex-1 pb-10 lg:pb-14">
           <AppContainer
-            v-if="showIdentityAlert"
+            v-if="showIdentityAlert && route.path !== accountRegisterHref"
             class="pt-6 lg:pt-8"
           >
             <AppAlert
@@ -90,7 +91,7 @@ watch(isSidebarCollapsed, (nextValue) => {
               icon="i-lucide-id-card"
               class="mb-6 rounded-xl border border-info/20 bg-info/6"
               title="Finish your platform account before entering participant workflows"
-              description="Your Auth0 session is active, but the platform account record is missing. Sign out and sign back in to trigger automatic account provisioning from Auth0 consent claims."
+              description="Accept the current platform Privacy Policy and Platform Terms to continue into account and participant workspaces."
             />
           </AppContainer>
 

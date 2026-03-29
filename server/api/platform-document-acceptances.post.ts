@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { requirePlatformActor } from '../auth/actor'
+import { requirePlatformAccountActor } from '../auth/actor'
 import { getDatabase } from '../database/client'
 import { defineApiHandler } from '../utils/api-handler'
 import { apiData } from '../utils/api-response'
@@ -12,7 +12,7 @@ const bodySchema = z.object({
 })
 
 export default defineApiHandler(async (event) => {
-  const actor = await requirePlatformActor(event)
+  const actor = await requirePlatformAccountActor(event)
   const body = await parseValidatedBody(event, bodySchema)
 
   const { acceptance, document } = await recordPlatformDocumentAcceptance(

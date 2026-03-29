@@ -1,4 +1,4 @@
-import { requirePlatformAccountActor } from '../../auth/actor'
+import { requirePlatformActor } from '../../auth/actor'
 import { getDatabase } from '../../database/client'
 import {
   updatePlatformAccountProfileIconTimestamp
@@ -8,7 +8,7 @@ import { apiData } from '../../utils/api-response'
 import { deleteProfileIconObject } from '../../utils/profile-icons'
 
 export default defineApiHandler(async (event) => {
-  const actor = await requirePlatformAccountActor(event)
+  const actor = await requirePlatformActor(event)
 
   if (actor.platformUser.profileIconUpdatedAt) {
     await deleteProfileIconObject(event, actor.platformUser.id)

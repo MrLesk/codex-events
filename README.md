@@ -91,10 +91,10 @@ The automation covers:
 
 - custom domain presence/readiness and primary/default status
 - Auth0 application display name plus Universal Login branding sync (primary color, page background, logo, favicon)
-- Universal Login page template sync for canonical login-link styling and signup prompt partials
+- Universal Login page template sync for canonical login-link styling
 - login prompt subtitle copy
-- signup prompt links and required consent checkbox partial
-- post-login Action code/deployment for consent claims
+- signup prompt consent text/partials cleared so platform consent stays app-owned in the application
+- post-login Action deployment
 - post-login Action binding
 - required Auth0 application callback/logout/origin URLs
 - Auth0 application default login URI (`initiate_login_uri`) for password-reset return navigation

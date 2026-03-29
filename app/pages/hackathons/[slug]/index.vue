@@ -76,7 +76,7 @@ const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 const requestFetch = import.meta.server ? useRequestFetch() : $fetch
 const hasHackathonWorkspaceAccess = ref(false)
 
-if (accountActor.value.kind === 'platform_user') {
+if (accountActor.value.kind === 'platform_user' && accountActor.value.hasAcceptedCurrentPlatformDocuments) {
   try {
     const accountHackathonsResponse = await requestFetch<AccountHackathonsResponse>('/api/account/hackathons')
     const accessibleHackathons = [
@@ -114,6 +114,7 @@ const detailSummary = computed(() => [
 const primaryAction = computed(() =>
   resolvePublicHackathonPrimaryAction({
     actorKind: accountActor.value.kind,
+    hasAcceptedCurrentPlatformDocuments: accountActor.value.hasAcceptedCurrentPlatformDocuments,
     hackathonSlug: slug.value,
     hackathonState: hackathon.value.state,
     registrationOpensAt: hackathon.value.registrationOpensAt,

@@ -245,7 +245,7 @@ const profileSubmitLabel = computed(() => 'Save')
           color="warning"
           variant="subtle"
           title="Account provisioning is not complete"
-          description="Sign out and sign back in to re-provision your platform account from Auth0 consent claims."
+          description="Finish account registration on the dedicated account-registration screen before editing profile settings."
         />
 
         <section class="space-y-5">

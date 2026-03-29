@@ -24,8 +24,8 @@ Key characteristics:
 
 Rules:
 
-- Platform account provisioning depends on Auth0 signup consent for the platform `privacy_policy` and `platform_terms`.
-- After the authenticated callback, the platform provisions the account and records platform-document acceptance.
+- Platform account provisioning happens only after the authenticated user accepts the current platform `privacy_policy` and `platform_terms` in the app-owned account-registration flow.
+- Regular platform-user access requires current accepted versions of the platform `privacy_policy` and `platform_terms` in platform data.
 - The reusable platform profile fields are managed from account settings.
 - A user with `is_platform_admin = true` is a platform admin.
 - Platform admins can create hackathons.
@@ -65,9 +65,9 @@ Current platform document types:
 
 Rules:
 
-- Platform registration uses platform-wide documents only.
-- The Auth0 signup experience references platform policy and terms links for account creation.
-- After callback, platform provisioning requires a consent signal from Auth0 and records platform-document acceptance in product data.
+- Platform registration and re-consent use platform-wide documents only.
+- The application-owned `/account/register` flow records exact accepted platform-document versions in product data.
+- Current acceptance of both platform documents is required for regular platform-user access.
 - Platform documents are versioned.
 
 ### HackathonTermsDocument

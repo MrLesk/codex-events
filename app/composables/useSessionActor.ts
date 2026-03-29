@@ -36,6 +36,7 @@ interface AnonymousSessionActor {
   kind: 'anonymous'
   isAuthenticated: false
   hasPlatformAccount: false
+  hasAcceptedCurrentPlatformDocuments: false
   sessionUser: null
   platformUser: null
   isPlatformAdmin: false
@@ -46,6 +47,7 @@ interface AuthenticatedIdentitySessionActor {
   kind: 'authenticated_identity'
   isAuthenticated: true
   hasPlatformAccount: false
+  hasAcceptedCurrentPlatformDocuments: false
   sessionUser: SessionActorUser
   platformUser: null
   isPlatformAdmin: false
@@ -56,6 +58,7 @@ interface PlatformSessionActor {
   kind: 'platform_user'
   isAuthenticated: true
   hasPlatformAccount: true
+  hasAcceptedCurrentPlatformDocuments: boolean
   sessionUser: SessionActorUser
   platformUser: SessionActorPlatformUser
   isPlatformAdmin: boolean
@@ -75,6 +78,7 @@ function buildAnonymousSessionActor(): AnonymousSessionActor {
     kind: 'anonymous',
     isAuthenticated: false,
     hasPlatformAccount: false,
+    hasAcceptedCurrentPlatformDocuments: false,
     sessionUser: null,
     platformUser: null,
     isPlatformAdmin: false,
@@ -87,6 +91,7 @@ function buildAuthenticatedIdentityFallback(user: ReturnType<typeof useUser>['va
     kind: 'authenticated_identity',
     isAuthenticated: true,
     hasPlatformAccount: false,
+    hasAcceptedCurrentPlatformDocuments: false,
     sessionUser: {
       sub: user?.sub ?? '',
       email: user?.email ?? null,

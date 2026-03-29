@@ -2,7 +2,9 @@ import { describe, expect, test } from 'vitest'
 
 import {
   accountDashboardHref,
+  accountRegisterHref,
   authLogoutHref,
+  buildAccountRegisterHref,
   buildAccountSettingsHref,
   buildAuthLoginHref,
   normalizeAuthReturnTo,
@@ -17,6 +19,7 @@ describe('auth navigation helpers', () => {
   test('builds account settings route with return target', () => {
     expect(buildAccountSettingsHref('/hackathons/fixture')).toBe('/account/settings?returnTo=%2Fhackathons%2Ffixture')
     expect(buildAccountSettingsHref('/account')).toBe('/account/settings?returnTo=%2Faccount')
+    expect(buildAccountRegisterHref('/hackathons/fixture/register')).toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister')
   })
 
   test('falls back to the account dashboard when the return target is empty', () => {
@@ -31,17 +34,34 @@ describe('auth navigation helpers', () => {
     expect(normalizeAuthReturnTo('not-a-path', '/account')).toBe('/account')
   })
 
-  test('routes authenticated identities to account settings, but preserves platform user return targets', () => {
+  test('routes incomplete actors to account registration and preserves complete platform user return targets', () => {
     expect(resolveActorAppRedirect({
-      kind: 'authenticated_identity'
-    }, '/account/judging')).toBe('/account/settings?returnTo=%2Faccount%2Fjudging')
+      kind: 'authenticated_identity',
+      hasAcceptedCurrentPlatformDocuments: false
+    }, '/account/judging')).toBe('/account/register?returnTo=%2Faccount%2Fjudging')
 
     expect(resolveActorAppRedirect({
-      kind: 'platform_user'
-    }, '/account')).toBe(accountDashboardHref)
+      kind: 'platform_user',
+      hasAcceptedCurrentPlatformDocuments: false
+    }, '/account')).toBe('/account/register?returnTo=%2Faccount')
 
     expect(resolveActorAppRedirect({
-      kind: 'platform_user'
+      kind: 'platform_user',
+      hasAcceptedCurrentPlatformDocuments: true
     }, '/account')).toBe(accountDashboardHref)
+  })
+
+  test('keeps incomplete actors on the account-registration route and redirects complete actors out of it', () => {
+    expect(resolveActorAppRedirect({
+      kind: 'authenticated_identity',
+      hasAcceptedCurrentPlatformDocuments: false
+    }, `${accountRegisterHref}?returnTo=%2Fhackathons%2Ffixture%2Fregister`))
+      .toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister')
+
+    expect(resolveActorAppRedirect({
+      kind: 'platform_user',
+      hasAcceptedCurrentPlatformDocuments: true
+    }, `${accountRegisterHref}?returnTo=%2Fhackathons%2Ffixture%2Fregister`))
+      .toBe('/hackathons/fixture/register')
   })
 })

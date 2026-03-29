@@ -6,6 +6,7 @@ import { getDatabase } from '../database/client'
 import { hackathonRoleAssignments, judgeAssignments, teamMembers } from '../database/schema'
 import { ApiError } from '../utils/api-error'
 import {
+  assertRegularPlatformAccess,
   getRequestActor,
   type PlatformActor
 } from './actor'
@@ -36,17 +37,8 @@ export interface JudgeAssignmentAuthorization {
 }
 
 function requireResolvedPlatformActor(actor: Awaited<ReturnType<typeof getRequestActor>>): PlatformActor {
-  if (actor.kind === 'platform_user') {
-    return actor
-  }
-
-  throw new ApiError({
-    statusCode: actor.kind === 'anonymous' ? 401 : 403,
-    code: actor.kind === 'anonymous' ? 'unauthenticated' : 'platform_account_required',
-    message: actor.kind === 'anonymous'
-      ? 'This operation requires an authenticated session.'
-      : 'This operation requires a platform account.'
-  })
+  assertRegularPlatformAccess(actor)
+  return actor
 }
 
 export async function resolveHackathonAuthorization(

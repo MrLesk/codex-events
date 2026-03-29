@@ -142,7 +142,7 @@ Operations:
 | --- | --- | --- | --- |
 | List current platform documents | `GET /api/platform-documents/current` | public or authenticated user | Returns the current `privacy_policy` and `platform_terms` versions used for platform registration and account flows. |
 | List platform document versions for a type | `GET /api/platform-documents/:documentType/versions` | authenticated user | Returns available published versions for the document type. |
-| Record platform document acceptance | `POST /api/platform-document-acceptances` | authenticated user | Requires the exact `PlatformDocument` version being accepted. Rejects unknown or unpublished versions. |
+| Record platform document acceptance | `POST /api/platform-document-acceptances` | authenticated user with a platform account | Requires the exact `PlatformDocument` version being accepted. Rejects unknown or unpublished versions. Used when an existing platform account must accept the current platform documents before normal workspace access resumes. |
 
 Testing:
 - Unit: exact-version acceptance rules.
@@ -158,17 +158,17 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Create platform account after terms acceptance | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record and records acceptance of the current required platform documents. |
-| Update own platform account profile | `PATCH /api/account` | authenticated user with a platform account | Updates canonical `firstName` and `familyName` plus the platform profile fields that affect hackathon application eligibility, including optional X, LinkedIn, and GitHub profile links, an optional ChatGPT email, an optional OpenAI org ID, and an optional Luma username. |
-| Get own profile icon | `GET /api/account/profile-icon` | authenticated user with a platform account | Returns the uploaded profile icon object for the caller. |
-| Upload or replace own profile icon | `POST /api/account/profile-icon` | authenticated user with a platform account | Accepts multipart upload for a single profile icon image and replaces any prior icon object. |
-| Remove own profile icon | `DELETE /api/account/profile-icon` | authenticated user with a platform account | Deletes the caller's uploaded profile icon and clears profile-icon metadata on the platform user record. |
+| Create platform account after terms acceptance | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record and records acceptance of the current required platform documents. The frontend-owned completion route is `/account/register`. |
+| Update own platform account profile | `PATCH /api/account` | authenticated user with a platform account and current platform-document acceptance | Updates canonical `firstName` and `familyName` plus the platform profile fields that affect hackathon application eligibility, including optional X, LinkedIn, and GitHub profile links, an optional ChatGPT email, an optional OpenAI org ID, and an optional Luma username. |
+| Get own profile icon | `GET /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Returns the uploaded profile icon object for the caller. |
+| Upload or replace own profile icon | `POST /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Accepts multipart upload for a single profile icon image and replaces any prior icon object. |
+| Remove own profile icon | `DELETE /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Deletes the caller's uploaded profile icon and clears profile-icon metadata on the platform user record. |
 | Delete own account | `DELETE /api/account` | authenticated user | Performs GDPR-compliant account deletion handling and writes the required audit trail. |
 
 Testing:
 - Unit: registration acceptance-version rules, profile normalization, profile-icon upload guards, and deletion guard semantics.
-- Integration: registration persistence, profile updates, profile-icon object flows, document-acceptance linkage, deletion effects, and audit creation.
-- End-to-end: authenticated post-Auth0 callback provisioning, profile management including profile icon updates, and account deletion flows.
+- Integration: registration persistence, current-consent gating, profile updates, profile-icon object flows, document-acceptance linkage, deletion effects, and audit creation.
+- End-to-end: authenticated account-registration completion, profile management including profile icon updates, and account deletion flows.
 
 ## Hackathons
 

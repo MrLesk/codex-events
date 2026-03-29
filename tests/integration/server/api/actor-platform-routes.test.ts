@@ -149,7 +149,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
-  test('GET /api/session provisions a missing platform account when signup consent claims are present', async () => {
+  test('GET /api/session keeps a missing platform account as an authenticated identity even when legacy signup consent claims are present', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/session', handler: sessionHandler }
@@ -194,27 +194,71 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(await response.json()).toMatchObject({
       data: {
         actor: {
+          kind: 'authenticated_identity',
+          hasPlatformAccount: false,
+          hasAcceptedCurrentPlatformDocuments: false,
+          platformUser: null
+        }
+      }
+    })
+    expect(createdUser).toBeUndefined()
+    expect(acceptances).toHaveLength(0)
+    expect(auditEntries).toHaveLength(0)
+  })
+
+  test('GET /api/session marks a platform account consent-blocked when current required platform documents are not accepted', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|consent-blocked-user',
+        email: 'consent-blocked@example.com',
+        name: 'Consent Blocked'
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'user_consent_blocked',
+      auth0Subject: 'auth0|consent-blocked-user',
+      email: 'consent-blocked@example.com',
+      displayName: 'Consent Blocked'
+    })
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/session')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        actor: {
           kind: 'platform_user',
           hasPlatformAccount: true,
+          hasAcceptedCurrentPlatformDocuments: false,
           platformUser: {
-            id: createdUser?.id,
-            email: 'consented-user@example.com',
-            displayName: 'Consented User'
+            id: 'user_consent_blocked'
           }
         }
       }
     })
-    expect(createdUser?.email).toBe('consented-user@example.com')
-    expect(acceptances).toHaveLength(2)
-    expect(acceptances.map(acceptance => acceptance.platformDocumentId).sort()).toEqual(['privacy_v1', 'terms_v1'])
-    expect(auditEntries).toEqual([
-      expect.objectContaining({
-        actorUserId: createdUser?.id,
-        entityType: 'user',
-        entityId: createdUser?.id,
-        action: 'account.registered'
-      })
-    ])
   })
 
   test('GET /api/platform-documents/current returns current documents publicly', async () => {
@@ -487,6 +531,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
         actor: {
           kind: 'platform_user',
           hasPlatformAccount: true,
+          hasAcceptedCurrentPlatformDocuments: true,
           platformUser: {
             id: createdUser?.id,
             email: 'new-user@example.com',
@@ -612,6 +657,60 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(await response.json()).toMatchObject({
       error: {
         code: 'platform_account_required'
+      }
+    })
+  })
+
+  test('PATCH /api/account rejects platform users who have not accepted the current platform documents', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'patch', path: '/api/account', handler: accountPatchHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|consent-patch-user',
+        email: 'consent-patch@example.com',
+        name: 'Consent Patch'
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'user_consent_patch',
+      auth0Subject: 'auth0|consent-patch-user',
+      email: 'consent-patch@example.com',
+      displayName: 'Consent Patch'
+    })
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/account', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        firstName: 'Consent',
+        familyName: 'Patch'
+      })
+    })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'platform_consent_required'
       }
     })
   })

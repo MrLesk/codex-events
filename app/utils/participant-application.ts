@@ -1,6 +1,6 @@
 import type { PublicHackathon, PublicHackathonState } from '~/composables/useHackathonPresentation'
 
-import { buildAccountSettingsHref, buildAuthLoginHref } from './auth-navigation'
+import { buildAccountRegisterHref, buildAuthLoginHref } from './auth-navigation'
 
 export {
   isProofOfExecutionLinksValid,
@@ -37,6 +37,7 @@ export type ParticipantActor
     kind: 'anonymous'
     isAuthenticated: false
     hasPlatformAccount: false
+    hasAcceptedCurrentPlatformDocuments: false
     sessionUser: null
     platformUser: null
     isPlatformAdmin: false
@@ -46,6 +47,7 @@ export type ParticipantActor
     kind: 'authenticated_identity'
     isAuthenticated: true
     hasPlatformAccount: false
+    hasAcceptedCurrentPlatformDocuments: false
     sessionUser: ParticipantSessionUser
     platformUser: null
     isPlatformAdmin: false
@@ -55,6 +57,7 @@ export type ParticipantActor
     kind: 'platform_user'
     isAuthenticated: true
     hasPlatformAccount: true
+    hasAcceptedCurrentPlatformDocuments: boolean
     sessionUser: ParticipantSessionUser
     platformUser: ParticipantPlatformUserProfile
     isPlatformAdmin: boolean
@@ -288,6 +291,7 @@ export function buildAnonymousParticipantActor(): ParticipantActor {
     kind: 'anonymous',
     isAuthenticated: false,
     hasPlatformAccount: false,
+    hasAcceptedCurrentPlatformDocuments: false,
     sessionUser: null,
     platformUser: null,
     isPlatformAdmin: false,
@@ -300,6 +304,7 @@ export function buildAuthenticatedIdentityParticipantActor(sessionUser: Particip
     kind: 'authenticated_identity',
     isAuthenticated: true,
     hasPlatformAccount: false,
+    hasAcceptedCurrentPlatformDocuments: false,
     sessionUser,
     platformUser: null,
     isPlatformAdmin: false,
@@ -408,6 +413,7 @@ export interface PublicHackathonPrimaryAction {
 
 export function resolvePublicHackathonPrimaryAction(options: {
   actorKind: ParticipantActor['kind']
+  hasAcceptedCurrentPlatformDocuments?: boolean
   hackathonSlug: string
   hackathonState: PublicHackathonState
   registrationOpensAt: string
@@ -416,6 +422,7 @@ export function resolvePublicHackathonPrimaryAction(options: {
   now?: Date
 }): PublicHackathonPrimaryAction | null {
   const registerHref = `/hackathons/${options.hackathonSlug}/register`
+  const registerCompletionHref = buildAccountRegisterHref(registerHref)
 
   if (shouldShowPublicRegistrationEntry(
     options.hackathonState,
@@ -426,15 +433,18 @@ export function resolvePublicHackathonPrimaryAction(options: {
     if (options.actorKind === 'anonymous') {
       return {
         label: 'Register',
-        to: buildAuthLoginHref(registerHref),
+        to: buildAuthLoginHref(registerCompletionHref),
         external: true
       }
     }
 
-    if (options.actorKind === 'authenticated_identity') {
+    if (
+      options.actorKind === 'authenticated_identity'
+      || !options.hasAcceptedCurrentPlatformDocuments
+    ) {
       return {
         label: 'Register',
-        to: buildAccountSettingsHref(registerHref),
+        to: registerCompletionHref,
         external: false
       }
     }
@@ -450,6 +460,14 @@ export function resolvePublicHackathonPrimaryAction(options: {
     return null
   }
 
+  if (options.actorKind === 'platform_user' && !options.hasAcceptedCurrentPlatformDocuments) {
+    return {
+      label: 'Open workspace',
+      to: buildAccountRegisterHref(`/account/hackathons/${options.hackathonSlug}`),
+      external: false
+    }
+  }
+
   return {
     label: 'Open workspace',
     to: `/account/hackathons/${options.hackathonSlug}`,
@@ -459,6 +477,7 @@ export function resolvePublicHackathonPrimaryAction(options: {
 
 export function resolveParticipantRegistrationEntry(options: {
   actorKind: ParticipantActor['kind']
+  hasAcceptedCurrentPlatformDocuments?: boolean
   hackathonSlug: string
   hackathonState: PublicHackathonState
   registrationOpensAt: string
@@ -467,6 +486,7 @@ export function resolveParticipantRegistrationEntry(options: {
   now?: Date
 }) {
   const registerHref = `/hackathons/${options.hackathonSlug}/register`
+  const registerCompletionHref = buildAccountRegisterHref(registerHref)
 
   if (options.hasExistingApplication) {
     return {
@@ -489,14 +509,17 @@ export function resolveParticipantRegistrationEntry(options: {
 
   if (options.actorKind === 'anonymous') {
     return {
-      to: buildAuthLoginHref(registerHref),
+      to: buildAuthLoginHref(registerCompletionHref),
       external: true
     }
   }
 
-  if (options.actorKind === 'authenticated_identity') {
+  if (
+    options.actorKind === 'authenticated_identity'
+    || !options.hasAcceptedCurrentPlatformDocuments
+  ) {
     return {
-      to: buildAccountSettingsHref(registerHref),
+      to: registerCompletionHref,
       external: false
     }
   }

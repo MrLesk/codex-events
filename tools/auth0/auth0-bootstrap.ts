@@ -98,38 +98,9 @@ const defaultBrandingPageBackgroundColor = '#f3f3f5'
 const defaultBrandingWordmarkPath = '/auth0/codex-hackathons-wordmark.svg'
 const termsConsentCheckboxId = 'ulp-terms-of-service'
 const privacyConsentCheckboxId = 'ulp-privacy-policy'
-const consentHelperMessageId = 'ulp-consent-helper'
-const consentGuardScriptMarker = 'consent-guard-v2'
 const loginPromptKey = 'login' as const
 const signupPromptKeys = ['signup-id', 'signup'] as const
 type SignupPromptKey = typeof signupPromptKeys[number]
-
-function buildConsentCheckboxPartials(config: TenantConfig) {
-  return [
-    '<style>',
-    `#${consentHelperMessageId} {`,
-    '  margin-top: 8px;',
-    '  font-size: 12px;',
-    '  color: #b42318;',
-    '}',
-    'button[disabled][type="submit"], button[disabled][name="action"] {',
-    '  cursor: not-allowed;',
-    '  opacity: 0.65;',
-    '  filter: saturate(0.7);',
-    '}',
-    '.consent-disabled {',
-    '  cursor: not-allowed !important;',
-    '  opacity: 0.65 !important;',
-    '  filter: saturate(0.7) !important;',
-    '  pointer-events: none !important;',
-    '}',
-    '</style>',
-    `<div class="ulp-field"><input class="ulp-input" type="checkbox" id="${termsConsentCheckboxId}" name="${termsConsentCheckboxId}" required><label for="${termsConsentCheckboxId}">I agree to the <a href="${config.termsUrl}" target="_blank" rel="noopener noreferrer">Terms and Conditions</a>.</label></div>`,
-    `<div class="ulp-field"><input class="ulp-input" type="checkbox" id="${privacyConsentCheckboxId}" name="${privacyConsentCheckboxId}" required><label for="${privacyConsentCheckboxId}">I agree to the <a href="${config.privacyUrl}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</label></div>`,
-    `<p id="${consentHelperMessageId}" role="alert" aria-live="polite">Accept both consents to continue.</p>`,
-    `<script data-consent-guard="${consentGuardScriptMarker}">(function(){function init(){var terms=document.getElementById('${termsConsentCheckboxId}');var privacy=document.getElementById('${privacyConsentCheckboxId}');var helper=document.getElementById('${consentHelperMessageId}');var submitButton=document.querySelector('button[type="submit"],button[name="action"]:not([value])');var socialButtons=Array.prototype.slice.call(document.querySelectorAll('button[name="action"][value],button[data-action-button-social],button[data-provider],a[data-action-button-social],a[href*="connection="]'));if(!terms||!privacy||!submitButton){return;}function setDisabled(el,disabled){if('disabled'in el){el.disabled=disabled;}el.setAttribute('aria-disabled',String(disabled));el.classList.toggle('consent-disabled',disabled);}function update(){var ready=Boolean(terms.checked&&privacy.checked);setDisabled(submitButton,!ready);submitButton.title=ready?'':'Accept both consents to continue';socialButtons.forEach(function(button){setDisabled(button,!ready);button.title=ready?'':'Accept both consents to continue';});if(helper){helper.style.display=ready?'none':'block';}}terms.addEventListener('change',update);privacy.addEventListener('change',update);update();}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}else{init();}})();</script>`
-  ].join('\n')
-}
 
 export function buildUniversalLoginPageTemplate(config: TenantConfig) {
   const linkColor = config.brandingPrimaryColor || defaultBrandingPrimaryColor
@@ -391,8 +362,8 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
   }
 }
 
-function buildExpectedConsentText(config: TenantConfig) {
-  return `I agree to the [Terms and Conditions](${config.termsUrl}) and [Privacy Policy](${config.privacyUrl}).`
+function buildExpectedConsentText() {
+  return ''
 }
 
 export function buildExpectedLoginCustomText(config: TenantConfig) {
@@ -403,18 +374,8 @@ export function buildExpectedLoginCustomText(config: TenantConfig) {
   } as const
 }
 
-function hasRequiredConsentUi(partial: string | undefined, config: TenantConfig) {
-  const normalized = normalizeMultiline(partial)
-
-  return normalized.includes(`id="${termsConsentCheckboxId}"`)
-    && normalized.includes(`name="${termsConsentCheckboxId}"`)
-    && normalized.includes(`id="${privacyConsentCheckboxId}"`)
-    && normalized.includes(`name="${privacyConsentCheckboxId}"`)
-    && normalized.includes('required')
-    && normalized.includes(config.termsUrl)
-    && normalized.includes(config.privacyUrl)
-    && normalized.includes(`id="${consentHelperMessageId}"`)
-    && normalized.includes(`data-consent-guard="${consentGuardScriptMarker}"`)
+function hasClearedSignupPartials(partial: string | undefined) {
+  return normalizeMultiline(partial) === ''
 }
 
 function hasRequiredLoginText(
@@ -907,7 +868,7 @@ async function ensureLoginCustomText(config: TenantConfig, token: string, mode: 
 }
 
 async function ensureSignupCustomText(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
-  const expectedConsentText = buildExpectedConsentText(config)
+  const expectedConsentText = buildExpectedConsentText()
   for (const promptKey of signupPromptKeys) {
     let currentCustomText = await getSignupCustomText(config, token, promptKey)
     let currentValue = currentCustomText[promptKey]?.['var-tos'] ?? ''
@@ -924,11 +885,11 @@ async function ensureSignupCustomText(config: TenantConfig, token: string, mode:
       })
       currentCustomText = await getSignupCustomText(config, token, promptKey)
       currentValue = currentCustomText[promptKey]?.['var-tos'] ?? ''
-      console.log(`Applied: updated signup prompt (${promptKey}) consent text (var-tos).`)
+      console.log(`Applied: cleared signup prompt (${promptKey}) custom consent text (var-tos).`)
     }
 
     if (normalizeMultiline(currentValue) !== normalizeMultiline(expectedConsentText)) {
-      failures.push(`Auth0 signup prompt (${promptKey}) custom text var-tos does not match expected privacy/terms links.`)
+      failures.push(`Auth0 signup prompt (${promptKey}) custom text var-tos should be empty because platform consent is app-owned.`)
     }
   }
 }
@@ -941,7 +902,7 @@ async function getSignupPartials(config: TenantConfig, token: string, promptKey:
 }
 
 async function ensureSignupPartials(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
-  const expectedPartials = buildConsentCheckboxPartials(config)
+  const expectedPartials = ''
 
   for (const promptKey of signupPromptKeys) {
     let currentPartials = await getSignupPartials(config, token, promptKey)
@@ -961,11 +922,11 @@ async function ensureSignupPartials(config: TenantConfig, token: string, mode: C
       currentPartials = await getSignupPartials(config, token, promptKey)
       signupPartials = currentPartials[promptKey] ?? {}
       currentFormContentEnd = signupPartials['form-content-end']
-      console.log(`Applied: ensured canonical signup consent UI partial for ${promptKey}.`)
+      console.log(`Applied: cleared signup prompt partial form-content-end for ${promptKey}.`)
     }
 
-    if (!hasRequiredConsentUi(currentFormContentEnd, config)) {
-      failures.push(`Auth0 signup prompt (${promptKey}) partial form-content-end is missing required two-consent UI and guard behavior.`)
+    if (!hasClearedSignupPartials(currentFormContentEnd)) {
+      failures.push(`Auth0 signup prompt (${promptKey}) partial form-content-end should be empty because platform consent is app-owned.`)
     }
   }
 }
