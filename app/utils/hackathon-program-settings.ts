@@ -33,7 +33,7 @@ export function getHackathonConfigFormModeView(
       showProgramIdentitySection: true,
       showProgramSettingsSections: false,
       basicsHeading: 'Schedule',
-      basicsDescription: 'Update the agenda shown to participants in the Details tab.',
+      basicsDescription: 'Set the schedule participants see in the Details tab. Drag items or use the arrow controls to reorder them.',
       programIdentityDescription: 'Update the location and imagery shown in the public Details tab.'
     }
   }

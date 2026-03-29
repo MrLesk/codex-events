@@ -393,13 +393,6 @@ const submitConfigForm = handleSubmit(() => {
             v-if="showAgendaItemsSection"
             class="grid gap-3"
           >
-            <div class="space-y-1">
-              <span class="text-sm font-medium text-toned">Agenda items</span>
-              <p class="text-xs text-muted">
-                Use the left handle to drag agenda items into a new order. This order is what participants see.
-              </p>
-            </div>
-
             <div
               v-if="form.agendaItems.length === 0"
               class="grid gap-3 rounded-xl border border-dashed border-black/10 px-4 py-4 text-sm text-muted dark:border-white/[0.08]"
