@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import { createEmptyHackathonFormState } from '../../../../app/utils/admin-workspace'
 import {
+  buildParticipantRegistrationFormSchema,
   hackathonConfigFormSchema,
   imprintContactFormSchema
 } from '../../../../app/utils/form-schemas'
@@ -113,5 +114,58 @@ describe('hackathon config form schema', () => {
 
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe('Enter a valid Luma event URL.')
+  })
+})
+
+describe('participant registration form schema', () => {
+  const registrationSchema = buildParticipantRegistrationFormSchema({
+    profileFields: [],
+    maxTeamMembers: 4,
+    hasCurrentApplicationTerms: false,
+    isInPersonEvent: false,
+    requireWhyThisHackathon: false,
+    requireProofOfExecution: false
+  })
+
+  function createValidRegistrationFormState() {
+    return {
+      termsAccepted: false,
+      inPersonAttendanceCommitment: false,
+      teamIntent: 'unknown' as const,
+      teamMemberHints: [],
+      whyThisHackathon: '',
+      proofOfExecutionUrl: '',
+      profileForm: {
+        firstName: 'Ada',
+        familyName: 'Lovelace',
+        xProfileUrl: '',
+        linkedinProfileUrl: '',
+        githubProfileUrl: '',
+        chatgptEmail: '',
+        openaiOrgId: '',
+        lumaUsername: ''
+      }
+    }
+  }
+
+  test('accepts comma-separated proof links', () => {
+    const result = registrationSchema.safeParse({
+      ...createValidRegistrationFormState(),
+      proofOfExecutionUrl: 'https://github.com/example/project, https://demo.example.com/app'
+    })
+
+    expect(result.success).toBe(true)
+  })
+
+  test('rejects invalid proof links inside a comma-separated list', () => {
+    const result = registrationSchema.safeParse({
+      ...createValidRegistrationFormState(),
+      proofOfExecutionUrl: 'https://github.com/example/project, ftp://example.com/file'
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.flatten().fieldErrors.proofOfExecutionUrl).toEqual([
+      'Enter valid proof links. Separate multiple links with commas.'
+    ])
   })
 })

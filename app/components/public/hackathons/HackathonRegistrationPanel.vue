@@ -648,7 +648,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
 
                 <label class="space-y-1">
                   <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
-                    <span>Proof of execution URL</span>
+                    <span>Proof of execution links</span>
                     <span
                       v-if="hackathon.requireProofOfExecution"
                       :class="requiredChipClass"
@@ -664,10 +664,10 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                     :class="submitAttempted && proofOfExecutionUrlError
                       ? 'border-error/45 focus:border-error dark:border-error/50'
                       : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
-                    placeholder="https://github.com/your-project or https://demo.example.com"
+                    placeholder="https://github.com/your-project, https://demo.example.com"
                   >
                   <p class="text-[11px] text-neutral-500 dark:text-[#8C8C8C]">
-                    Share a link that shows something you have already built or shipped.
+                    Share link(s) that show something you have already built or shipped. Separate multiple links with commas.
                   </p>
                   <p
                     v-if="submitAttempted && proofOfExecutionUrlError"

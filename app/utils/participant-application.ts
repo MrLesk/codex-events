@@ -2,6 +2,12 @@ import type { PublicHackathon, PublicHackathonState } from '~/composables/useHac
 
 import { buildAccountSettingsHref, buildAuthLoginHref } from './auth-navigation'
 
+export {
+  isProofOfExecutionLinksValid,
+  normalizeProofOfExecutionLinks,
+  parseProofOfExecutionLinks
+} from '../../shared/proof-of-execution-links'
+
 export interface ParticipantSessionUser {
   sub: string
   email?: string | null

@@ -967,7 +967,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
-              Require proof-of-execution URL in applications
+              Require proof-of-execution links in applications
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">

@@ -201,7 +201,7 @@ describe('TASK-3.6 application routes', () => {
           }
         ],
         whyThisHackathon: 'I want to build a practical project with other builders.',
-        proofOfExecutionUrl: 'https://github.com/regular/previous-project'
+        proofOfExecutionUrl: 'https://github.com/regular/previous-project, https://demo.example.com/regular/project'
       })
     })
 
@@ -239,7 +239,7 @@ describe('TASK-3.6 application routes', () => {
         ],
         inPersonAttendanceCommitment: false,
         whyThisHackathon: 'I want to build a practical project with other builders.',
-        proofOfExecutionUrl: 'https://github.com/regular/previous-project'
+        proofOfExecutionUrl: 'https://github.com/regular/previous-project, https://demo.example.com/regular/project'
       })
     })
   })
@@ -349,7 +349,7 @@ describe('TASK-3.6 application routes', () => {
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2',
         whyThisHackathon: 'I want to collaborate and build.',
-        proofOfExecutionUrl: 'https://github.com/regular/shipped-work'
+        proofOfExecutionUrl: 'https://github.com/regular/shipped-work, https://demo.example.com/regular/work'
       })
     })
 
@@ -367,11 +367,11 @@ describe('TASK-3.6 application routes', () => {
       teamMembers: [],
       inPersonAttendanceCommitment: false,
       whyThisHackathon: 'I want to collaborate and build.',
-      proofOfExecutionUrl: 'https://github.com/regular/shipped-work'
+      proofOfExecutionUrl: 'https://github.com/regular/shipped-work, https://demo.example.com/regular/work'
     }))
   })
 
-  test('POST /api/hackathons/:hackathonId/applications rejects non-http proof-of-execution URLs', async () => {
+  test('POST /api/hackathons/:hackathonId/applications rejects invalid proof-of-execution links', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
@@ -388,7 +388,7 @@ describe('TASK-3.6 application routes', () => {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2',
-        proofOfExecutionUrl: 'ftp://example.com/work'
+        proofOfExecutionUrl: 'https://github.com/regular/work, ftp://example.com/work'
       })
     })
 

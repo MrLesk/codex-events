@@ -10,6 +10,7 @@ import {
   buildAdminApplicationReviewGroups,
   filterAdminApplicationReviewGroups
 } from '~/utils/admin-application-review'
+import { parseProofOfExecutionLinks } from '~/utils/participant-application'
 import {
   getApplicationStatusColor
 } from '~/utils/admin-workspace'
@@ -32,12 +33,35 @@ const emit = defineEmits<{
 const stagedCount = computed(() =>
   props.applications.filter(application => application.status === 'submitted' && Boolean(application.preApprovalStatus)).length
 )
+const whyThisHackathonPreviewCharacterLimit = 280
+const proofLinksPreviewCount = 2
+const expandedApplicationSectionKeys = ref(new Set<string>())
 const applicationReviewGroups = computed(() =>
   filterAdminApplicationReviewGroups(
     buildAdminApplicationReviewGroups(props.applications),
     props.view
   )
 )
+
+function getApplicationSectionKey(applicationId: string, section: 'motivation' | 'proof') {
+  return `${applicationId}:${section}`
+}
+
+function isApplicationSectionExpanded(sectionKey: string) {
+  return expandedApplicationSectionKeys.value.has(sectionKey)
+}
+
+function toggleApplicationSection(sectionKey: string) {
+  const nextExpandedKeys = new Set(expandedApplicationSectionKeys.value)
+
+  if (nextExpandedKeys.has(sectionKey)) {
+    nextExpandedKeys.delete(sectionKey)
+  } else {
+    nextExpandedKeys.add(sectionKey)
+  }
+
+  expandedApplicationSectionKeys.value = nextExpandedKeys
+}
 
 function stageDecisionActionKey(applicationId: string, decision: 'approved' | 'rejected') {
   return `stage:${decision}:${applicationId}`
@@ -70,6 +94,58 @@ function hasApplicantApprovalSelected(applicant: AdminApplicationReviewGroup['ap
 
 function hasApplicantRejectionSelected(applicant: AdminApplicationReviewGroup['applicants'][number]) {
   return applicant.application.preApprovalStatus === 'rejected'
+}
+
+function getWhyThisHackathonValue(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return applicant.registrationDetails.whyThisHackathon.trim()
+}
+
+function shouldShowWhyThisHackathon(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return getWhyThisHackathonValue(applicant).length > 0
+}
+
+function shouldShowWhyThisHackathonToggle(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return getWhyThisHackathonValue(applicant).length > whyThisHackathonPreviewCharacterLimit
+}
+
+function getVisibleWhyThisHackathon(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  const whyThisHackathon = getWhyThisHackathonValue(applicant)
+  const sectionKey = getApplicationSectionKey(applicant.application.id, 'motivation')
+
+  if (
+    isApplicationSectionExpanded(sectionKey)
+    || whyThisHackathon.length <= whyThisHackathonPreviewCharacterLimit
+  ) {
+    return whyThisHackathon
+  }
+
+  return `${whyThisHackathon.slice(0, whyThisHackathonPreviewCharacterLimit).trimEnd()}…`
+}
+
+function getProofOfExecutionLinks(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return parseProofOfExecutionLinks(applicant.registrationDetails.proofOfExecutionUrl)
+}
+
+function shouldShowProofOfExecutionLinks(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return getProofOfExecutionLinks(applicant).length > 0
+}
+
+function shouldShowProofOfExecutionToggle(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return getProofOfExecutionLinks(applicant).length > proofLinksPreviewCount
+}
+
+function getVisibleProofOfExecutionLinks(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  const proofLinks = getProofOfExecutionLinks(applicant)
+  const sectionKey = getApplicationSectionKey(applicant.application.id, 'proof')
+
+  if (
+    isApplicationSectionExpanded(sectionKey)
+    || proofLinks.length <= proofLinksPreviewCount
+  ) {
+    return proofLinks
+  }
+
+  return proofLinks.slice(0, proofLinksPreviewCount)
 }
 
 function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject', isActive: boolean) {
@@ -199,11 +275,13 @@ const emptyState = computed(() => {
                         Participant
                       </p>
                       <h4 class="text-lg font-semibold text-highlighted">
-                        {{ applicant.application.user?.displayName ?? applicant.application.user?.email ?? applicant.application.userId }}
+                        <template v-if="applicant.application.user?.displayName && applicant.application.user?.email && applicant.application.user.displayName !== applicant.application.user.email">
+                          {{ applicant.application.user.displayName }} - {{ applicant.application.user.email }}
+                        </template>
+                        <template v-else>
+                          {{ applicant.application.user?.displayName ?? applicant.application.user?.email ?? applicant.application.userId }}
+                        </template>
                       </h4>
-                      <p class="text-sm text-toned">
-                        {{ applicant.application.user?.email ?? applicant.application.userId }}
-                      </p>
                     </div>
 
                     <div class="flex flex-wrap gap-2 text-xs text-muted">
@@ -286,6 +364,71 @@ const emptyState = computed(() => {
                         />
                       </a>
                     </div>
+                  </div>
+
+                  <div
+                    v-if="shouldShowWhyThisHackathon(applicant) || shouldShowProofOfExecutionLinks(applicant)"
+                    class="space-y-3"
+                  >
+                    <div
+                      v-if="shouldShowProofOfExecutionLinks(applicant)"
+                      class="space-y-2"
+                    >
+                      <div class="flex items-start justify-between gap-3">
+                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                          Proof links
+                        </p>
+                        <button
+                          v-if="shouldShowProofOfExecutionToggle(applicant)"
+                          type="button"
+                          class="shrink-0 text-[12px] font-medium text-highlighted transition-colors hover:text-toned dark:text-white dark:hover:text-[#D9D9D9]"
+                          @click="toggleApplicationSection(getApplicationSectionKey(applicant.application.id, 'proof'))"
+                        >
+                          {{ isApplicationSectionExpanded(getApplicationSectionKey(applicant.application.id, 'proof')) ? 'Show less' : `Show all ${getProofOfExecutionLinks(applicant).length}` }}
+                        </button>
+                      </div>
+                      <div class="space-y-1.5">
+                        <a
+                          v-for="link in getVisibleProofOfExecutionLinks(applicant)"
+                          :key="link"
+                          :href="link"
+                          target="_blank"
+                          rel="noreferrer"
+                          :title="link"
+                          class="flex w-full items-start gap-2 text-xs text-sky-700 transition hover:text-sky-800 dark:text-sky-300 dark:hover:text-sky-200"
+                        >
+                          <AppIcon
+                            name="i-lucide-external-link"
+                            class="mt-0.5 size-3 shrink-0"
+                          />
+                          <span class="min-w-0 break-all leading-5">
+                            {{ link }}
+                          </span>
+                        </a>
+                      </div>
+                    </div>
+
+                    <section
+                      v-if="shouldShowWhyThisHackathon(applicant)"
+                      class="rounded-lg border border-black/8 bg-black/[0.02] px-4 py-3 dark:border-white/[0.08] dark:bg-white/[0.02]"
+                    >
+                      <div class="flex items-start justify-between gap-3">
+                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                          Why this hackathon
+                        </p>
+                        <button
+                          v-if="shouldShowWhyThisHackathonToggle(applicant)"
+                          type="button"
+                          class="shrink-0 text-[12px] font-medium text-highlighted transition-colors hover:text-toned dark:text-white dark:hover:text-[#D9D9D9]"
+                          @click="toggleApplicationSection(getApplicationSectionKey(applicant.application.id, 'motivation'))"
+                        >
+                          {{ isApplicationSectionExpanded(getApplicationSectionKey(applicant.application.id, 'motivation')) ? 'Show less' : 'Show more' }}
+                        </button>
+                      </div>
+                      <p class="mt-2 whitespace-pre-line text-sm leading-6 text-toned">
+                        {{ getVisibleWhyThisHackathon(applicant) }}
+                      </p>
+                    </section>
                   </div>
                 </div>
 

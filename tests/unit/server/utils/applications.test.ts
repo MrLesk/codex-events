@@ -301,7 +301,7 @@ describe('application utilities', () => {
       ],
       inPersonAttendanceCommitment: true,
       whyThisHackathon: ' I have shipped similar projects before. ',
-      proofOfExecutionUrl: 'https://github.com/example/shipped-work'
+      proofOfExecutionUrl: ' https://github.com/example/shipped-work, https://demo.example.com/project '
     })).toBe(JSON.stringify({
       teamIntent: 'team',
       teamMembers: [
@@ -315,7 +315,7 @@ describe('application utilities', () => {
       ],
       inPersonAttendanceCommitment: true,
       whyThisHackathon: 'I have shipped similar projects before.',
-      proofOfExecutionUrl: 'https://github.com/example/shipped-work'
+      proofOfExecutionUrl: 'https://github.com/example/shipped-work, https://demo.example.com/project'
     }))
 
     expect(() => serializeRegistrationDetailsJson({
@@ -372,7 +372,7 @@ describe('application utilities', () => {
     })).toThrowError(ApiError)
   })
 
-  test('rejects non-http proof-of-execution URLs', () => {
+  test('rejects invalid proof-of-execution links', () => {
     expect(() => serializeRegistrationDetailsJson({
       id: 'hackathon_1',
       maxTeamMembers: 4,
@@ -384,7 +384,7 @@ describe('application utilities', () => {
       registrationTeamMembers: [],
       inPersonAttendanceCommitment: false,
       whyThisHackathon: '',
-      proofOfExecutionUrl: 'ftp://example.com/project'
+      proofOfExecutionUrl: 'https://github.com/example/project, ftp://example.com/project'
     })).toThrowError(ApiError)
   })
 

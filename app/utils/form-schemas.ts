@@ -7,6 +7,7 @@ import type {
 } from './participant-application'
 
 import {
+  isProofOfExecutionLinksValid,
   isOpenAiOrgIdFormatValid,
   isParticipantProfileUrlValid,
   isParticipantSocialProfileUrlValid
@@ -36,6 +37,13 @@ const slugSchema = z
 function createOptionalHttpUrlSchema(message: string) {
   return z.string().trim().refine(
     value => value.length === 0 || isHttpUrl(value),
+    message
+  )
+}
+
+function createOptionalProofOfExecutionLinksSchema(message: string) {
+  return z.string().trim().refine(
+    value => value.length === 0 || isProofOfExecutionLinksValid(value),
     message
   )
 }
@@ -247,7 +255,7 @@ export function buildParticipantRegistrationFormSchema(options: {
       email: z.string()
     })),
     whyThisHackathon: z.string().trim().max(4000),
-    proofOfExecutionUrl: createOptionalHttpUrlSchema('Enter a valid proof of execution URL.'),
+    proofOfExecutionUrl: createOptionalProofOfExecutionLinksSchema('Enter valid proof links. Separate multiple links with commas.'),
     profileForm: z.object({
       firstName: z.string().trim().min(1).max(120),
       familyName: z.string().trim().min(1).max(120),

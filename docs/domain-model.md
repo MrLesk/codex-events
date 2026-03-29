@@ -51,7 +51,7 @@ Key characteristics:
 - Each hackathon can define a maximum team member limit.
 - Each hackathon can optionally define a participant approval limit used as an indicative planning target during admin review.
 - Each hackathon can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma username, for registration.
-- Each hackathon can require a `why this hackathon` response and a proof-of-execution URL in applications.
+- Each hackathon can require a `why this hackathon` response and proof-of-execution links in applications.
 - Each hackathon references its own application terms and winner terms.
 
 ### PlatformDocument
@@ -128,9 +128,9 @@ Rules:
 - A user application records a registration team-intent hint: `solo`, `team`, or `unknown`.
 - When the registration team-intent hint is `team`, the user application can include free-form teammate hints captured during application (name/family-name and/or email per hinted member).
 - A user application can include a free-form `why this hackathon` response.
-- A user application can include a proof-of-execution URL.
+- A user application can include one or more proof-of-execution links.
 - If the hackathon requires motivation, the `why this hackathon` response must be non-empty.
-- If the hackathon requires proof of execution, the proof-of-execution URL must be non-empty and use `http` or `https`.
+- If the hackathon requires proof of execution, at least one proof-of-execution link must be non-empty and every provided link must use `http` or `https`.
 
 ### Team
 

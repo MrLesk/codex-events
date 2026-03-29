@@ -3,6 +3,10 @@ import type { H3Event } from 'h3'
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
+import {
+  isProofOfExecutionLinksValid,
+  normalizeProofOfExecutionLinks
+} from '../../shared/proof-of-execution-links'
 import { requirePlatformActor } from '../auth/actor'
 import { getDatabase, type AppDatabase } from '../database/client'
 import {
@@ -67,25 +71,16 @@ function normalizeTextValue(value: string | null | undefined) {
   return value.trim()
 }
 
-function isHttpUrl(value: string) {
-  try {
-    const parsed = new URL(value)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
 function normalizeProofOfExecutionUrl(value: string | null | undefined) {
-  const normalized = normalizeTextValue(value)
+  const normalized = normalizeProofOfExecutionLinks(value)
 
   if (!normalized) {
     return ''
   }
 
-  assertGuard(isHttpUrl(normalized), {
+  assertGuard(isProofOfExecutionLinksValid(normalized), {
     code: 'proof_of_execution_url_invalid',
-    message: 'Proof of execution URL must use the http or https scheme.'
+    message: 'Proof of execution links must use the http or https scheme.'
   })
 
   return normalized
@@ -136,7 +131,7 @@ export function serializeRegistrationDetailsJson(
 
   assertGuard(!hackathon.requireProofOfExecution || proofOfExecutionUrl.length > 0, {
     code: 'proof_of_execution_required',
-    message: 'A proof-of-execution URL is required for this hackathon.',
+    message: 'At least one proof-of-execution link is required for this hackathon.',
     details: {
       hackathonId: hackathon.id
     }

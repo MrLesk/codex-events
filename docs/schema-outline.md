@@ -110,7 +110,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce approval writes by itself.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - `require_why_this_hackathon` controls whether applications must include a non-empty `whyThisHackathon` response.
-- `require_proof_of_execution` controls whether applications must include a non-empty `proofOfExecutionUrl`.
+- `require_proof_of_execution` controls whether applications must include at least one proof link in `proofOfExecutionUrl`.
 - `luma_event_url` is optional because not every hackathon has a linked Luma event.
 - `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`).
 
@@ -242,7 +242,7 @@ It describes the intended persistent model at the level of entities, key fields,
   - `teamMembers`: free-form teammate hints captured during application (name/family-name and/or email)
   - `inPersonAttendanceCommitment`: boolean commitment required when the hackathon has `in_person_event = true`
   - `whyThisHackathon`: trimmed free-form motivation text
-  - `proofOfExecutionUrl`: optional URL that points to prior execution evidence
+  - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
 
 ## Team

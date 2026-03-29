@@ -6,14 +6,17 @@ import {
   getHackathonApplicationAvailabilityMessage,
   getParticipantApplicationSubmissionPolicy,
   getParticipantApplicationStatusColor,
+  isProofOfExecutionLinksValid,
   isParticipantProfileUrlValid,
   isParticipantSocialProfileUrlValid,
   isOpenAiOrgIdFormatValid,
   listHackathonProfileFields,
   listMissingRequiredProfileFields,
   listRequiredProfileFields,
+  normalizeProofOfExecutionLinks,
   normalizeParticipantProfileUrl,
   normalizeParticipantTeamMemberHintsForSubmission,
+  parseProofOfExecutionLinks,
   parseParticipantRegistrationDetailsJson,
   resolvePublicHackathonPrimaryAction,
   resolveParticipantRegistrationEntry,
@@ -443,6 +446,20 @@ describe('participant application helpers', () => {
     expect(isParticipantProfileUrlValid('github.com/codex')).toBe(true)
     expect(isParticipantProfileUrlValid('https://github.com/codex')).toBe(true)
     expect(isParticipantProfileUrlValid('nota url')).toBe(false)
+  })
+
+  test('parses and validates comma-separated proof-of-execution links', () => {
+    expect(parseProofOfExecutionLinks(' https://github.com/example/project , https://demo.example.com/app ')).toEqual([
+      'https://github.com/example/project',
+      'https://demo.example.com/app'
+    ])
+
+    expect(normalizeProofOfExecutionLinks(' https://github.com/example/project , , https://demo.example.com/app ')).toBe(
+      'https://github.com/example/project, https://demo.example.com/app'
+    )
+
+    expect(isProofOfExecutionLinksValid('https://github.com/example/project, https://demo.example.com/app')).toBe(true)
+    expect(isProofOfExecutionLinksValid('https://github.com/example/project, ftp://example.com/file')).toBe(false)
   })
 
   test('validates social profile URL domains by field', () => {
