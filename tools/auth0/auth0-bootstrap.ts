@@ -59,6 +59,10 @@ interface Auth0Branding {
   }
 }
 
+interface Auth0UniversalLoginPageTemplate {
+  body?: string
+}
+
 interface Auth0ActionVersion {
   id: string
   code?: string
@@ -92,6 +96,17 @@ const defaultAuth0AppDisplayName = 'Codex Hackathons'
 const defaultBrandingPrimaryColor = '#030213'
 const defaultBrandingPageBackgroundColor = '#f3f3f5'
 const defaultBrandingWordmarkPath = '/auth0/codex-hackathons-wordmark.svg'
+const defaultUniversalLoginPageTemplate = [
+  '<!DOCTYPE html>',
+  '<html>',
+  '  <head>',
+  '    {%- auth0:head -%}',
+  '  </head>',
+  '  <body class="_widget-auto-layout">',
+  '    {%- auth0:widget -%}',
+  '  </body>',
+  '</html>'
+].join('\n')
 const termsConsentCheckboxId = 'ulp-terms-of-service'
 const privacyConsentCheckboxId = 'ulp-privacy-policy'
 const consentHelperMessageId = 'ulp-consent-helper'
@@ -782,6 +797,44 @@ async function getSignupCustomText(config: TenantConfig, token: string, promptKe
   return await response.json() as Record<string, { ['var-tos']?: string }>
 }
 
+async function getUniversalLoginPageTemplate(config: TenantConfig, token: string) {
+  const response = await auth0ManagementRequest(
+    config,
+    token,
+    '/api/v2/branding/templates/universal-login',
+    {
+      method: 'GET'
+    },
+    { ignoreNotFound: true }
+  )
+
+  if (response.status === 404) {
+    return null
+  }
+
+  return await response.json() as Auth0UniversalLoginPageTemplate
+}
+
+async function ensureUniversalLoginPageTemplate(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  let pageTemplate = await getUniversalLoginPageTemplate(config, token)
+
+  if (mode === 'apply' && !pageTemplate?.body?.trim()) {
+    await auth0ManagementRequest(config, token, '/api/v2/branding/templates/universal-login', {
+      method: 'PUT',
+      headers: {
+        'content-type': 'text/html'
+      },
+      body: defaultUniversalLoginPageTemplate
+    })
+    console.log('Applied: created default Universal Login page template required for prompt partials.')
+    pageTemplate = await getUniversalLoginPageTemplate(config, token)
+  }
+
+  if (!pageTemplate?.body?.trim()) {
+    failures.push('Auth0 Universal Login page template is missing; prompt partials require a page template on the tenant.')
+  }
+}
+
 async function ensureSignupCustomText(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
   const expectedConsentText = buildExpectedConsentText(config)
   for (const promptKey of signupPromptKeys) {
@@ -1042,6 +1095,7 @@ export async function main() {
     await ensureClientUrls(config, managementToken, mode, failures)
     await ensureTenantDefaultRedirection(config, managementToken, mode, failures)
     await ensureBranding(config, managementToken, mode, failures)
+    await ensureUniversalLoginPageTemplate(config, managementToken, mode, failures)
     await ensureSignupCustomText(config, managementToken, mode, failures)
     await ensureSignupPartials(config, managementToken, mode, failures)
     await ensureResetPasswordCustomText(config, managementToken, mode, failures)
