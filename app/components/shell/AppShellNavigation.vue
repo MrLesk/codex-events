@@ -15,7 +15,7 @@ const accountHackathonNavigationMode = useState<'participant' | 'admin'>(
 </script>
 
 <template>
-  <nav class="space-y-7 text-[#A3A3A3]">
+  <nav class="space-y-7 text-neutral-600 dark:text-[#A3A3A3]">
     <section
       v-for="(group, groupIndex) in props.groups"
       :key="`${group.label || 'group'}-${groupIndex}`"
@@ -23,7 +23,7 @@ const accountHackathonNavigationMode = useState<'participant' | 'admin'>(
     >
       <p
         v-if="group.label"
-        class="px-3 text-[11px] font-semibold tracking-[0.02em] text-[#8C8C8C] uppercase transition-opacity duration-150"
+        class="px-3 text-[11px] font-semibold tracking-[0.02em] text-neutral-500 uppercase transition-opacity duration-150 dark:text-[#8C8C8C]"
         :class="props.collapsed ? 'opacity-0' : 'opacity-100'"
       >
         {{ group.label }}
@@ -32,7 +32,7 @@ const accountHackathonNavigationMode = useState<'participant' | 'admin'>(
         v-else-if="groupIndex > 0"
         class="px-2 py-1.5"
       >
-        <div class="h-px bg-white/[0.08]" />
+        <div class="h-px bg-black/8 dark:bg-white/[0.08]" />
       </div>
 
       <div class="flex flex-col gap-1">
@@ -46,8 +46,8 @@ const accountHackathonNavigationMode = useState<'participant' | 'admin'>(
             isShellNavigationLinkActive(route.path, route.query.tab, item.to, {
               accountHackathonNavigationMode
             })
-              ? 'bg-[#282828] text-white'
-              : 'text-[#ECECEC] hover:bg-[#1A1A1A] hover:text-white'
+              ? 'bg-black/8 text-highlighted dark:bg-[#282828] dark:text-white'
+              : 'text-neutral-700 hover:bg-black/6 hover:text-highlighted dark:text-[#ECECEC] dark:hover:bg-[#1A1A1A] dark:hover:text-white'
           ]"
           :title="props.collapsed ? item.label : undefined"
         >

@@ -483,118 +483,120 @@ useSeoMeta({
       >
         <section
           v-if="hasParticipantContext"
-          class="space-y-4"
+          class="hackathon-workspace-detail-panel rounded-xl p-6"
         >
-          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-            <p class="text-[20px] font-medium text-highlighted dark:text-white">
-              Your participation
-            </p>
-            <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
-              Track your application, team, and project here as they become available.
-            </p>
-          </div>
+          <div class="space-y-4">
+            <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+              <p class="text-[20px] font-medium text-highlighted dark:text-white">
+                Your participation
+              </p>
+              <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
+                Track your application, team, and project here as they become available.
+              </p>
+            </div>
 
-          <AppAlert
-            v-if="applicationSubmittedNoticeVisible"
-            data-testid="account-hackathon-application-submitted-notice"
-            color="success"
-            variant="soft"
-            title="Registration submitted"
-            description="Your registration was submitted successfully."
-          />
-
-          <AppAlert
-            v-if="applicationStatus && applicationStatus !== 'approved'"
-            :color="applicationStatus === 'submitted' ? 'warning' : 'error'"
-            variant="soft"
-            title="Application status"
-            :description="applicationStatusSummary"
-          />
-
-          <template v-else-if="applicationStatus === 'approved'">
             <AppAlert
-              :color="teamFormationAvailability.isOpen ? 'success' : 'neutral'"
+              v-if="applicationSubmittedNoticeVisible"
+              data-testid="account-hackathon-application-submitted-notice"
+              color="success"
               variant="soft"
-              title="Team formation"
-              :description="teamFormationAvailability.summary"
+              title="Registration submitted"
+              description="Your registration was submitted successfully."
             />
 
-            <section class="grid gap-4 lg:grid-cols-2">
-              <AppCard class="hackathon-workspace-detail-inset p-6">
-                <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                  Team workspace
-                </h2>
+            <AppAlert
+              v-if="applicationStatus && applicationStatus !== 'approved'"
+              :color="applicationStatus === 'submitted' ? 'warning' : 'error'"
+              variant="soft"
+              title="Application status"
+              :description="applicationStatusSummary"
+            />
 
-                <template v-if="participationRecord?.activeTeam">
-                  <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    Current team: <span class="font-semibold text-highlighted dark:text-white">{{ participationRecord.activeTeam.name }}</span>
-                  </p>
-                  <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    Role: {{ participationRecord.activeTeam.membershipRole }} • {{ participationRecord.activeTeam.activeMemberCount }} active members
-                  </p>
+            <template v-else-if="applicationStatus === 'approved'">
+              <AppAlert
+                :color="teamFormationAvailability.isOpen ? 'success' : 'neutral'"
+                variant="soft"
+                title="Team formation"
+                :description="teamFormationAvailability.summary"
+              />
 
-                  <AppButton
-                    v-if="activeTeamHref"
-                    :to="activeTeamHref"
-                    color="neutral"
-                    variant="solid"
-                    trailing-icon="i-lucide-arrow-up-right"
-                    class="mt-4"
-                  >
-                    Open team workspace
-                  </AppButton>
-                </template>
-
-                <template v-else>
-                  <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    You are approved for this hackathon, but you do not have an active team yet.
-                  </p>
-
-                  <AppButton
-                    :to="teamsHref"
-                    color="neutral"
-                    variant="solid"
-                    trailing-icon="i-lucide-arrow-up-right"
-                    class="mt-4"
-                  >
-                    Open team directory
-                  </AppButton>
-                </template>
-              </AppCard>
-
-              <AppCard class="hackathon-workspace-detail-inset p-6">
-                <div class="flex flex-wrap items-center justify-between gap-3">
+              <section class="grid gap-4 lg:grid-cols-2">
+                <AppCard class="hackathon-workspace-detail-inset p-6">
                   <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                    Submission
+                    Team workspace
                   </h2>
-                  <AppBadge
+
+                  <template v-if="participationRecord?.activeTeam">
+                    <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                      Current team: <span class="font-semibold text-highlighted dark:text-white">{{ participationRecord.activeTeam.name }}</span>
+                    </p>
+                    <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                      Role: {{ participationRecord.activeTeam.membershipRole }} • {{ participationRecord.activeTeam.activeMemberCount }} active members
+                    </p>
+
+                    <AppButton
+                      v-if="activeTeamHref"
+                      :to="activeTeamHref"
+                      color="neutral"
+                      variant="solid"
+                      trailing-icon="i-lucide-arrow-up-right"
+                      class="mt-4"
+                    >
+                      Open team workspace
+                    </AppButton>
+                  </template>
+
+                  <template v-else>
+                    <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                      You are approved for this hackathon, but you do not have an active team yet.
+                    </p>
+
+                    <AppButton
+                      :to="teamsHref"
+                      color="neutral"
+                      variant="solid"
+                      trailing-icon="i-lucide-arrow-up-right"
+                      class="mt-4"
+                    >
+                      Open team directory
+                    </AppButton>
+                  </template>
+                </AppCard>
+
+                <AppCard class="hackathon-workspace-detail-inset p-6">
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+                      Submission
+                    </h2>
+                    <AppBadge
+                      color="neutral"
+                      variant="soft"
+                      class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                    >
+                      {{ submissionStatusLabel }}
+                    </AppBadge>
+                  </div>
+
+                  <p class="mt-3 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                    {{ submissionSummary }}
+                  </p>
+                  <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                    {{ submissionRoleSummary }}
+                  </p>
+
+                  <AppButton
+                    :to="activeTeamHref ?? teamsHref"
                     color="neutral"
-                    variant="soft"
-                    class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                    variant="solid"
+                    trailing-icon="i-lucide-arrow-up-right"
+                    class="mt-4"
                   >
-                    {{ submissionStatusLabel }}
-                  </AppBadge>
-                </div>
-
-                <p class="mt-3 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                  {{ submissionSummary }}
-                </p>
-                <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                  {{ submissionRoleSummary }}
-                </p>
-
-                <AppButton
-                  :to="activeTeamHref ?? teamsHref"
-                  color="neutral"
-                  variant="solid"
-                  trailing-icon="i-lucide-arrow-up-right"
-                  class="mt-4"
-                >
-                  {{ activeTeamHref ? 'Open team submission workspace' : 'Open team directory' }}
-                </AppButton>
-              </AppCard>
-            </section>
-          </template>
+                    {{ activeTeamHref ? 'Open team submission workspace' : 'Open team directory' }}
+                  </AppButton>
+                </AppCard>
+              </section>
+            </template>
+          </div>
         </section>
 
         <HackathonOverviewPanel :description="hackathon.description" />
