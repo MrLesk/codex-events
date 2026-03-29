@@ -117,7 +117,7 @@ const canLoadWinners = computed(() =>
 const judgeChoices = computed<JudgeChoice[]>(() =>
   roleAssignments.value
     .filter((assignment): assignment is HackathonRoleAssignment & { user: NonNullable<HackathonRoleAssignment['user']> } =>
-      assignment.role === 'judge' && assignment.isInJudgePool && Boolean(assignment.user)
+      assignment.isInJudgePool && Boolean(assignment.user)
     )
     .map(assignment => ({
       value: assignment.userId,

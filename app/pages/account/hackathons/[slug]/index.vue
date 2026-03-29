@@ -651,8 +651,8 @@ useSeoMeta({
           :hackathon-id="accessRecordId"
           role="judge"
           title="Judges"
-          description="Choose who can review submissions for this hackathon."
-          empty-assigned-message="No judges yet. Search below to add one."
+          description="Judges review submissions. Staff members also appear here when judging is enabled for them."
+          empty-assigned-message="No judges yet. Staff members can also review once judging is enabled."
         />
 
         <AppCard
@@ -679,8 +679,8 @@ useSeoMeta({
           :hackathon-id="accessRecordId"
           role="hackathon_admin"
           title="Staff"
-          description="Choose who can manage this hackathon with you."
-          empty-assigned-message="No admins yet. Search below to add one."
+          description="Staff can manage this hackathon. Staff members can also review submissions when judging is enabled."
+          empty-assigned-message="No staff yet. Existing judges keep judging when staff access is added."
         />
 
         <AppCard

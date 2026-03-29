@@ -8,6 +8,8 @@ export type HackathonRosterRole = HackathonRoleAssignment['role']
 export interface HackathonRoleRosterRow extends HackathonRoleUserSummary {
   assignment: HackathonRoleAssignment | null
   isAssigned: boolean
+  isHackathonAdmin: boolean
+  isInJudgePool: boolean
 }
 
 function compareRosterUsers(
@@ -45,6 +47,28 @@ function listCurrentHackathonAdminIds(roleAssignments: HackathonRoleAssignment[]
   )
 }
 
+function findRoleAssignment(
+  roleAssignments: HackathonRoleAssignment[],
+  userId: string
+) {
+  return roleAssignments.find(assignment => assignment.userId === userId) ?? null
+}
+
+function isAssignedToRoster(
+  assignment: HackathonRoleAssignment | null,
+  role: HackathonRosterRole
+) {
+  if (!assignment) {
+    return false
+  }
+
+  if (role === 'hackathon_admin') {
+    return assignment.role === 'hackathon_admin'
+  }
+
+  return assignment.isInJudgePool
+}
+
 export function buildAssignedRoleRosterRows(
   roleAssignments: HackathonRoleAssignment[],
   role: HackathonRosterRole
@@ -53,12 +77,14 @@ export function buildAssignedRoleRosterRows(
 
   return roleAssignments
     .filter((assignment): assignment is HackathonRoleAssignment & { user: HackathonRoleUserSummary } =>
-      assignment.role === role && assignment.user !== undefined
+      isAssignedToRoster(assignment, role) && assignment.user !== undefined
     )
     .map((assignment): HackathonRoleRosterRow => ({
       ...assignment.user,
       assignment,
-      isAssigned: true
+      isAssigned: true,
+      isHackathonAdmin: assignment.role === 'hackathon_admin',
+      isInJudgePool: assignment.isInJudgePool
     }))
     .sort((left, right) => compareRosterUsers(left, right, currentHackathonAdminIds))
 }
@@ -82,14 +108,14 @@ export function buildRoleRosterRows(
   })
     .sort((left, right) => compareRosterUsers(left, right, currentHackathonAdminIds))
     .map((user): HackathonRoleRosterRow => {
-      const assignment = roleAssignments.find(existingAssignment =>
-        existingAssignment.role === role && existingAssignment.userId === user.id
-      ) ?? null
+      const assignment = findRoleAssignment(roleAssignments, user.id)
 
       return {
         ...user,
         assignment,
-        isAssigned: assignment !== null
+        isAssigned: isAssignedToRoster(assignment, role),
+        isHackathonAdmin: assignment?.role === 'hackathon_admin',
+        isInJudgePool: assignment?.isInJudgePool ?? false
       }
     })
 }

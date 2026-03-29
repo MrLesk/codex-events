@@ -4,7 +4,10 @@ import type {
   HackathonRoleAssignment,
   HackathonRoleUserSummary
 } from '~/utils/admin-workspace'
-import type { HackathonRosterRole } from '~/utils/hackathon-role-roster'
+import type {
+  HackathonRoleRosterRow,
+  HackathonRosterRole
+} from '~/utils/hackathon-role-roster'
 
 import { normalizeApiError } from '~/utils/admin-workspace'
 import {
@@ -53,29 +56,27 @@ const candidateRows = computed(() =>
   ).filter(row => appliedCandidateSearch.value.length > 0 || !row.isAssigned)
 )
 const hasMoreCandidates = computed(() => candidateUsers.value.length < candidateUsersTotal.value)
-const hackathonAdminUserIds = computed(() =>
-  new Set(
-    roleAssignments.value
-      .filter(assignment => assignment.role === 'hackathon_admin')
-      .map(assignment => assignment.userId)
-  )
-)
-
-const roleLabel = computed(() => props.role === 'judge' ? 'judge' : 'hackathon admin')
-const assignButtonLabel = computed(() => props.role === 'judge' ? 'Add judge' : 'Add admin')
-const assignSuccessTitle = computed(() => props.role === 'judge' ? 'Judge assigned' : 'Hackathon admin assigned')
-const assignSuccessDescription = computed(() =>
+const staffJudgeRows = computed(() =>
   props.role === 'judge'
-    ? 'The judge roster was updated for this hackathon.'
-    : 'The admin roster was updated for this hackathon.'
+    ? assignedRows.value.filter(row => row.isHackathonAdmin)
+    : []
 )
-const removeSuccessTitle = computed(() => props.role === 'judge' ? 'Judge removed' : 'Hackathon admin removed')
-const removeSuccessDescription = computed(() =>
+const reviewOnlyJudgeRows = computed(() =>
   props.role === 'judge'
-    ? 'The judge roster was updated for this hackathon.'
-    : 'The admin roster was updated for this hackathon.'
+    ? assignedRows.value.filter(row => !row.isHackathonAdmin)
+    : []
 )
-const addSectionTitle = computed(() => props.role === 'judge' ? 'Add judges' : 'Add admins')
+const roleLabel = computed(() => props.role === 'judge' ? 'judge access' : 'staff access')
+const addSectionTitle = computed(() =>
+  props.role === 'judge'
+    ? 'Add judges or enable judging'
+    : 'Add staff or grant admin access'
+)
+const addSectionDescription = computed(() =>
+  props.role === 'judge'
+    ? 'Search by name, email, or user ID. Staff members can also review submissions.'
+    : 'Search by name, email, or user ID. Existing judges keep judging when staff access is added.'
+)
 const emptyCandidateMessage = computed(() =>
   appliedCandidateSearch.value.length > 0
     ? 'No people match this search.'
@@ -85,12 +86,47 @@ const emptyCandidateMessage = computed(() =>
 )
 const candidateSkeletonRowCount = 3
 
-function getAssignmentActionKey(prefix: 'assign' | 'remove', userId: string) {
+function getAssignmentActionKey(prefix: 'assign' | 'remove' | 'toggle', userId: string) {
   return `${props.role}:${prefix}:${userId}`
 }
 
-function isCurrentHackathonAdmin(userId: string) {
-  return hackathonAdminUserIds.value.has(userId)
+function findRoleAssignment(userId: string) {
+  return roleAssignments.value.find(assignment => assignment.userId === userId) ?? null
+}
+
+function getCandidateActionLabel(row: HackathonRoleRosterRow) {
+  if (props.role === 'hackathon_admin') {
+    if (row.isAssigned) {
+      return row.isInJudgePool ? 'Staff + judge' : 'Already on staff'
+    }
+
+    return row.assignment?.role === 'judge' ? 'Add staff access' : 'Add staff'
+  }
+
+  if (row.isAssigned) {
+    return row.isHackathonAdmin ? 'Staff + judge' : 'Already a judge'
+  }
+
+  return row.isHackathonAdmin ? 'Allow judging' : 'Add judge'
+}
+
+function isCandidateActionDisabled(row: HackathonRoleRosterRow) {
+  return row.isAssigned
+}
+
+function getAssignedActionLabel(row: HackathonRoleRosterRow) {
+  if (props.role === 'hackathon_admin') {
+    return row.isInJudgePool ? 'Stop judging' : 'Allow judging'
+  }
+
+  return row.isHackathonAdmin ? 'Stop judging' : 'Remove from judges'
+}
+
+function isPendingAction(
+  userId: string,
+  prefixes: Array<'assign' | 'remove' | 'toggle'> = ['assign', 'remove', 'toggle']
+) {
+  return prefixes.some(prefix => pendingActionKey.value === getAssignmentActionKey(prefix, userId))
 }
 
 function resetCandidateState() {
@@ -264,40 +300,159 @@ async function runMutation(
   }
 }
 
+async function putRoleAssignment(
+  userId: string,
+  role: HackathonRosterRole,
+  isInJudgePool: boolean,
+  successTitle: string,
+  successDescription: string
+) {
+  await runMutation(
+    getAssignmentActionKey('assign', userId),
+    async () => {
+      await $fetch(`/api/hackathons/${props.hackathonId}/roles/${userId}`, {
+        method: 'PUT',
+        body: {
+          role,
+          isInJudgePool
+        }
+      })
+    },
+    successTitle,
+    successDescription
+  )
+}
+
+async function patchJudgePool(
+  userId: string,
+  isInJudgePool: boolean,
+  successTitle: string,
+  successDescription: string
+) {
+  await runMutation(
+    getAssignmentActionKey('toggle', userId),
+    async () => {
+      await $fetch(`/api/hackathons/${props.hackathonId}/roles/${userId}`, {
+        method: 'PATCH',
+        body: {
+          isInJudgePool
+        }
+      })
+    },
+    successTitle,
+    successDescription
+  )
+}
+
+async function deleteRoleAssignment(
+  userId: string,
+  successTitle: string,
+  successDescription: string
+) {
+  await runMutation(
+    getAssignmentActionKey('remove', userId),
+    async () => {
+      await $fetch(`/api/hackathons/${props.hackathonId}/roles/${userId}`, {
+        method: 'DELETE'
+      })
+    },
+    successTitle,
+    successDescription
+  )
+}
+
 async function assignRole(userId: string) {
   const trimmedUserId = userId.trim()
 
   if (!trimmedUserId) {
-    mutationError.value = `Pick a registered user before assigning ${roleLabel.value} access.`
+    mutationError.value = `Pick a registered user before assigning ${roleLabel.value}.`
     return
   }
 
-  await runMutation(
-    getAssignmentActionKey('assign', trimmedUserId),
-    async () => {
-      await $fetch(`/api/hackathons/${props.hackathonId}/roles/${trimmedUserId}`, {
-        method: 'PUT',
-        body: {
-          role: props.role,
-          isInJudgePool: props.role === 'judge'
-        }
-      })
-    },
-    assignSuccessTitle.value,
-    assignSuccessDescription.value
+  const existingAssignment = findRoleAssignment(trimmedUserId)
+
+  if (props.role === 'hackathon_admin') {
+    await putRoleAssignment(
+      trimmedUserId,
+      'hackathon_admin',
+      existingAssignment?.isInJudgePool ?? false,
+      existingAssignment?.role === 'judge' ? 'Staff access granted' : 'Staff member added',
+      existingAssignment?.role === 'judge'
+        ? 'This person kept judge access and now also has staff access.'
+        : 'The staff roster was updated for this hackathon.'
+    )
+    return
+  }
+
+  if (existingAssignment?.role === 'hackathon_admin') {
+    await patchJudgePool(
+      trimmedUserId,
+      true,
+      'Judging enabled',
+      'This staff member can now review submissions.'
+    )
+    return
+  }
+
+  await putRoleAssignment(
+    trimmedUserId,
+    'judge',
+    true,
+    'Judge added',
+    'The judges roster was updated for this hackathon.'
+  )
+}
+
+async function toggleStaffJudging(assignment: HackathonRoleAssignment) {
+  if (assignment.role !== 'hackathon_admin') {
+    return
+  }
+
+  await patchJudgePool(
+    assignment.userId,
+    !assignment.isInJudgePool,
+    assignment.isInJudgePool ? 'Judging disabled' : 'Judging enabled',
+    assignment.isInJudgePool
+      ? 'This staff member still has admin access.'
+      : 'This staff member can now review submissions.'
   )
 }
 
 async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
-  await runMutation(
-    getAssignmentActionKey('remove', assignment.userId),
-    async () => {
-      await $fetch(`/api/hackathons/${props.hackathonId}/roles/${assignment.userId}`, {
-        method: 'DELETE'
-      })
-    },
-    removeSuccessTitle.value,
-    removeSuccessDescription.value
+  if (props.role === 'hackathon_admin') {
+    if (assignment.role === 'hackathon_admin' && assignment.isInJudgePool) {
+      await putRoleAssignment(
+        assignment.userId,
+        'judge',
+        true,
+        'Staff access removed',
+        'This person remains in Judges as a review-only judge.'
+      )
+      return
+    }
+
+    await deleteRoleAssignment(
+      assignment.userId,
+      'Staff access removed',
+      'The staff roster was updated for this hackathon.'
+    )
+    return
+  }
+
+  if (assignment.role === 'hackathon_admin') {
+    await patchJudgePool(
+      assignment.userId,
+      false,
+      'Judging disabled',
+      'This person still has staff access.'
+    )
+    return
+  }
+
+  await deleteRoleAssignment(
+    assignment.userId,
+    'Judge removed',
+    'The judges roster was updated for this hackathon.'
   )
 }
 </script>
@@ -330,125 +485,129 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
         :description="workspace.roleAssignments.error.value.message"
       />
 
-      <div class="flex items-center justify-between gap-3">
-        <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-          Assigned {{ props.role === 'judge' ? 'judges' : 'hackathon admins' }}
-        </h3>
-        <p class="text-xs text-muted">
-          {{ assignedRows.length }} assigned
-        </p>
-      </div>
-
-      <div class="grid gap-3">
-        <div
-          v-for="row in assignedRows"
-          :key="row.id"
-          class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
-        >
-          <div class="min-w-0 flex-1 space-y-0.5">
-            <div class="flex flex-wrap items-center gap-2">
-              <p class="font-semibold text-highlighted">
-                {{ row.displayName }}
-              </p>
-              <AppBadge
-                v-if="row.isPlatformAdmin"
-                color="primary"
-                variant="soft"
-                class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-              >
-                Platform admin
-              </AppBadge>
-              <AppBadge
-                v-if="props.role === 'judge' && isCurrentHackathonAdmin(row.id)"
-                color="neutral"
-                variant="soft"
-                class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-              >
-                Hackathon admin
-              </AppBadge>
-            </div>
-            <p class="text-sm text-muted">
-              {{ row.email }}
-            </p>
-          </div>
-
-          <AppButton
-            size="sm"
-            color="error"
-            variant="soft"
-            class="shrink-0 self-start md:self-auto"
-            :loading="pendingActionKey === getAssignmentActionKey('remove', row.id)"
-            @click="row.assignment ? removeRoleAssignment(row.assignment) : undefined"
-          >
-            Remove
-          </AppButton>
-        </div>
-
-        <p
-          v-if="assignedRows.length === 0"
-          class="text-sm text-muted"
-        >
-          {{ emptyAssignedMessage }}
-        </p>
-      </div>
-
-      <div class="flex items-center justify-between gap-3">
-        <div class="space-y-1">
+      <div class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+        <div class="flex items-center justify-between gap-3">
           <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-            {{ addSectionTitle }}
+            {{ props.role === 'judge' ? 'Current judges' : 'Current staff' }}
           </h3>
-          <p class="text-sm text-muted">
-            Search by name, email, or user ID.
+          <p class="text-xs text-muted">
+            {{ assignedRows.length }} assigned
           </p>
         </div>
-      </div>
 
-      <input
-        v-model="candidateSearchInput"
-        type="search"
-        name="role-candidate-search"
-        autocomplete="off"
-        autocapitalize="none"
-        autocorrect="off"
-        spellcheck="false"
-        data-1p-ignore="true"
-        data-lpignore="true"
-        data-bwignore="true"
-        class="w-full rounded-lg border border-black/8 bg-white/90 px-4 py-3 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-        placeholder="Search users by name, email, or user ID"
-      >
-
-      <AppAlert
-        v-if="candidateUsersStatus === 'error'"
-        color="error"
-        variant="soft"
-        title="Unable to load candidate users"
-        :description="candidateUsersErrorMessage"
-      />
-
-      <div
-        v-else
-        class="grid gap-3"
-      >
-        <template v-if="candidateUsersStatus === 'pending' && candidateUsers.length === 0">
+        <div
+          v-if="props.role === 'judge' && assignedRows.length > 0"
+          class="space-y-5"
+        >
           <div
-            v-for="index in candidateSkeletonRowCount"
-            :key="`candidate-skeleton-${index}`"
-            class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
-            aria-hidden="true"
+            v-if="staffJudgeRows.length > 0"
+            class="space-y-3"
           >
-            <div class="space-y-1.5">
-              <div class="h-5 w-36 rounded-full bg-black/8 dark:bg-white/[0.08] animate-pulse" />
-              <div class="h-4 w-52 rounded-full bg-black/6 dark:bg-white/[0.06] animate-pulse" />
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+              Staff who judge
+            </p>
+
+            <div
+              v-for="row in staffJudgeRows"
+              :key="row.id"
+              class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
+            >
+              <div class="min-w-0 flex-1 space-y-0.5">
+                <div class="flex flex-wrap items-center gap-2">
+                  <p class="mr-1 font-semibold text-highlighted">
+                    {{ row.displayName }}
+                  </p>
+                  <AppBadge
+                    color="primary"
+                    variant="soft"
+                    class="ml-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                  >
+                    Staff
+                  </AppBadge>
+                  <AppBadge
+                    v-if="row.isPlatformAdmin"
+                    color="primary"
+                    variant="soft"
+                    class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                  >
+                    Platform admin
+                  </AppBadge>
+                </div>
+                <p class="text-sm text-muted">
+                  {{ row.email }}
+                </p>
+              </div>
+
+              <AppButton
+                size="sm"
+                color="neutral"
+                variant="soft"
+                class="shrink-0 self-start md:self-auto"
+                :loading="isPendingAction(row.id)"
+                @click="row.assignment ? removeRoleAssignment(row.assignment) : undefined"
+              >
+                Stop judging
+              </AppButton>
             </div>
-
-            <div class="h-8 w-24 rounded-lg bg-black/6 dark:bg-white/[0.06] animate-pulse md:self-auto" />
           </div>
-        </template>
 
-        <template v-else>
           <div
-            v-for="row in candidateRows"
+            v-if="staffJudgeRows.length > 0 && reviewOnlyJudgeRows.length > 0"
+            class="border-t border-black/8 pt-5 dark:border-white/[0.08]"
+          />
+
+          <div
+            v-if="reviewOnlyJudgeRows.length > 0"
+            class="space-y-3"
+          >
+            <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
+              Review-only judges
+            </p>
+
+            <div
+              v-for="row in reviewOnlyJudgeRows"
+              :key="row.id"
+              class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
+            >
+              <div class="min-w-0 flex-1 space-y-0.5">
+                <div class="flex flex-wrap items-center gap-2">
+                  <p class="font-semibold text-highlighted">
+                    {{ row.displayName }}
+                  </p>
+                  <AppBadge
+                    v-if="row.isPlatformAdmin"
+                    color="primary"
+                    variant="soft"
+                    class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                  >
+                    Platform admin
+                  </AppBadge>
+                </div>
+                <p class="text-sm text-muted">
+                  {{ row.email }}
+                </p>
+              </div>
+
+              <AppButton
+                size="sm"
+                color="error"
+                variant="soft"
+                class="shrink-0 self-start md:self-auto"
+                :loading="isPendingAction(row.id)"
+                @click="row.assignment ? removeRoleAssignment(row.assignment) : undefined"
+              >
+                Remove from judges
+              </AppButton>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-else-if="assignedRows.length > 0"
+          class="grid gap-3"
+        >
+          <div
+            v-for="row in assignedRows"
             :key="row.id"
             class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
           >
@@ -458,12 +617,12 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
                   {{ row.displayName }}
                 </p>
                 <AppBadge
-                  v-if="row.isAssigned"
-                  color="success"
+                  v-if="row.isInJudgePool"
+                  color="primary"
                   variant="soft"
-                  class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                  class="ml-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
                 >
-                  Assigned
+                  Judge
                 </AppBadge>
                 <AppBadge
                   v-if="row.isPlatformAdmin"
@@ -473,40 +632,161 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
                 >
                   Platform admin
                 </AppBadge>
-                <AppBadge
-                  v-if="isCurrentHackathonAdmin(row.id)"
-                  color="neutral"
-                  variant="soft"
-                  class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
-                >
-                  Hackathon admin
-                </AppBadge>
               </div>
               <p class="text-sm text-muted">
                 {{ row.email }}
               </p>
             </div>
 
-            <AppButton
-              size="sm"
-              :color="row.isAssigned ? 'error' : 'neutral'"
-              variant="soft"
-              class="shrink-0 self-start md:self-auto"
-              :loading="pendingActionKey === getAssignmentActionKey(row.isAssigned ? 'remove' : 'assign', row.id)"
-              @click="row.isAssigned && row.assignment ? removeRoleAssignment(row.assignment) : assignRole(row.id)"
-            >
-              {{ row.isAssigned ? 'Remove' : assignButtonLabel }}
-            </AppButton>
-          </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <AppButton
+                size="sm"
+                color="neutral"
+                variant="soft"
+                class="shrink-0 self-start md:self-auto"
+                :loading="isPendingAction(row.id, ['toggle'])"
+                @click="row.assignment ? toggleStaffJudging(row.assignment) : undefined"
+              >
+                {{ getAssignedActionLabel(row) }}
+              </AppButton>
 
-          <p
-            v-if="candidateRows.length === 0"
-            class="text-sm text-muted"
-          >
-            {{ emptyCandidateMessage }}
-          </p>
-        </template>
+              <AppButton
+                size="sm"
+                color="error"
+                variant="soft"
+                class="shrink-0 self-start md:self-auto"
+                :loading="isPendingAction(row.id)"
+                @click="row.assignment ? removeRoleAssignment(row.assignment) : undefined"
+              >
+                Remove staff access
+              </AppButton>
+            </div>
+          </div>
+        </div>
+
+        <p
+          v-else
+          class="text-sm text-muted"
+        >
+          {{ emptyAssignedMessage }}
+        </p>
       </div>
+
+      <div class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+        <div class="space-y-1">
+          <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+            {{ addSectionTitle }}
+          </h3>
+          <p class="text-sm text-muted">
+            {{ addSectionDescription }}
+          </p>
+        </div>
+
+        <input
+          v-model="candidateSearchInput"
+          type="search"
+          name="role-candidate-search"
+          autocomplete="off"
+          autocapitalize="none"
+          autocorrect="off"
+          spellcheck="false"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-bwignore="true"
+          class="w-full rounded-lg border border-black/8 bg-white/90 px-4 py-3 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+          placeholder="Search users by name, email, or user ID"
+        >
+
+        <AppAlert
+          v-if="candidateUsersStatus === 'error'"
+          color="error"
+          variant="soft"
+          title="Unable to load candidate users"
+          :description="candidateUsersErrorMessage"
+        />
+
+        <div
+          v-else
+          class="grid gap-3"
+        >
+          <template v-if="candidateUsersStatus === 'pending' && candidateUsers.length === 0">
+            <div
+              v-for="index in candidateSkeletonRowCount"
+              :key="`candidate-skeleton-${index}`"
+              class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
+              aria-hidden="true"
+            >
+              <div class="space-y-1.5">
+                <div class="h-5 w-36 rounded-full bg-black/8 dark:bg-white/[0.08] animate-pulse" />
+                <div class="h-4 w-52 rounded-full bg-black/6 dark:bg-white/[0.06] animate-pulse" />
+              </div>
+
+              <div class="h-8 w-24 rounded-lg bg-black/6 dark:bg-white/[0.06] animate-pulse md:self-auto" />
+            </div>
+          </template>
+
+          <template v-else>
+            <div
+              v-for="row in candidateRows"
+              :key="row.id"
+              class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
+            >
+              <div class="min-w-0 flex-1 space-y-0.5">
+                <div class="flex flex-wrap items-center gap-2">
+                  <p class="mr-1 font-semibold text-highlighted">
+                    {{ row.displayName }}
+                  </p>
+                  <AppBadge
+                    v-if="props.role === 'hackathon_admin' && row.isInJudgePool"
+                    color="primary"
+                    variant="soft"
+                    class="ml-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                  >
+                    Judge
+                  </AppBadge>
+                  <AppBadge
+                    v-if="row.isPlatformAdmin"
+                    color="primary"
+                    variant="soft"
+                    class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                  >
+                    Platform admin
+                  </AppBadge>
+                  <AppBadge
+                    v-if="props.role === 'judge' && row.isHackathonAdmin"
+                    color="primary"
+                    variant="soft"
+                    class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                  >
+                    Staff
+                  </AppBadge>
+                </div>
+                <p class="text-sm text-muted">
+                  {{ row.email }}
+                </p>
+              </div>
+
+              <AppButton
+                size="sm"
+                color="neutral"
+                variant="soft"
+                class="shrink-0 self-start md:self-auto"
+                :disabled="isCandidateActionDisabled(row)"
+                :loading="!isCandidateActionDisabled(row) && isPendingAction(row.id)"
+                @click="isCandidateActionDisabled(row) ? undefined : assignRole(row.id)"
+              >
+                {{ getCandidateActionLabel(row) }}
+              </AppButton>
+            </div>
+
+            <p
+              v-if="candidateRows.length === 0"
+              class="text-sm text-muted"
+            >
+              {{ emptyCandidateMessage }}
+            </p>
+          </template>
+        </div>
 
       <div class="flex flex-col items-start gap-3">
         <AppButton
@@ -526,6 +806,8 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
           title="More users unavailable"
           :description="loadMoreCandidatesErrorMessage"
         />
+      </div>
+
       </div>
     </div>
   </AppCard>
