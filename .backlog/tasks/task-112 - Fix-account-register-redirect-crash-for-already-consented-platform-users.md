@@ -1,10 +1,10 @@
 ---
 id: TASK-112
 title: Fix account register redirect crash for already-consented platform users
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-03-29 22:36'
-updated_date: '2026-03-29 22:38'
+updated_date: '2026-03-29 22:43'
 labels: []
 dependencies: []
 documentation:
@@ -21,9 +21,9 @@ Investigate and fix the production failure where a platform user with current pl
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `/account/register?returnTo=/account` redirects successfully for a platform user who has already accepted current platform documents
-- [ ] #2 The redirect path no longer throws `[nuxt] instance unavailable` in production
-- [ ] #3 Relevant automated regression coverage is added or updated for the redirect helper or middleware path
+- [x] #1 `/account/register?returnTo=/account` redirects successfully for a platform user who has already accepted current platform documents
+- [x] #2 The redirect path no longer throws `[nuxt] instance unavailable` in production
+- [x] #3 Relevant automated regression coverage is added or updated for the redirect helper or middleware path
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -47,14 +47,24 @@ March 30: Refactored the navigation guard helpers to return redirect descriptors
 Validation: `bunx vitest run tests/unit/app/utils/auth-navigation.test.ts tests/unit/app/utils/navigation-guards.test.ts`, `bun run typecheck`, and `bun run test:unit` passed.
 <!-- SECTION:NOTES:END -->
 
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Reworked the client-side auth/navigation guard flow so redirect helpers no longer call `navigateTo()` from inside async utility functions after awaiting `/api/session`. The helpers now return redirect descriptors, and the actual `navigateTo()` call happens only inside the Nuxt route middleware context. Updated all route middleware that depends on these helpers to execute redirects from the middleware file itself.
+
+Added focused regression coverage in `tests/unit/app/utils/navigation-guards.test.ts` for the exact authenticated redirect case from `/account/register?returnTo=/account`, plus the anonymous login redirect descriptor path. Validation passed with `bunx vitest run tests/unit/app/utils/auth-navigation.test.ts tests/unit/app/utils/navigation-guards.test.ts`, `bun run typecheck`, and `bun run test:unit`.
+
+Published release `v0.1.0` again and verified production run `23720789459` completed successfully on commit `ffe95ba`. Live verification with the platform admin browser session showed `GET /account/register?returnTo=/account -> GET /account` with clean Worker logs and the account dashboard rendered normally. No canonical docs changed; this was a runtime redirect fix in the existing platform-access model.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
