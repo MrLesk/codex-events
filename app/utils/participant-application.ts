@@ -540,6 +540,26 @@ export function createParticipantTeamMemberHintRows(maxTeamMembers: number): Par
   }))
 }
 
+export function areParticipantTeamMemberHintsEqual(
+  left: ParticipantRegistrationTeamMemberHint[],
+  right: ParticipantRegistrationTeamMemberHint[]
+) {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((leftMember, index) => {
+    const rightMember = right[index]
+
+    if (!rightMember) {
+      return false
+    }
+
+    return leftMember.fullName === rightMember.fullName
+      && leftMember.email === rightMember.email
+  })
+}
+
 export function parseParticipantRegistrationDetailsJson(value: string | null | undefined): ParticipantRegistrationDetails {
   if (!value) {
     return {

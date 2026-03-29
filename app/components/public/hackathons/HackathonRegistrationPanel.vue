@@ -11,6 +11,7 @@ import type {
   ParticipantRegistrationTeamMemberHint
 } from '~/utils/participant-application'
 
+import { areParticipantTeamMemberHintsEqual } from '~/utils/participant-application'
 import { buildParticipantRegistrationFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
 
@@ -174,7 +175,12 @@ watch(values, (nextValues) => {
   whyThisHackathon.value = nextValues.whyThisHackathon ?? ''
   proofOfExecutionUrl.value = nextValues.proofOfExecutionUrl ?? ''
   teamIntent.value = nextValues.teamIntent ?? 'unknown'
-  teamMemberHints.value = cloneFormValues(nextValues.teamMemberHints ?? [])
+
+  const nextTeamMemberHints = cloneFormValues(nextValues.teamMemberHints ?? [])
+
+  if (!areParticipantTeamMemberHintsEqual(teamMemberHints.value, nextTeamMemberHints)) {
+    teamMemberHints.value = nextTeamMemberHints
+  }
 
   if (nextValues.profileForm) {
     Object.assign(profileForm.value, cloneFormValues(nextValues.profileForm))

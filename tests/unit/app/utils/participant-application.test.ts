@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest'
+import { nextTick, reactive, ref, watch } from 'vue'
 
 import {
+  areParticipantTeamMemberHintsEqual,
   createParticipantTeamMemberHintRows,
   formatParticipantApplicationStatus,
   getHackathonApplicationAvailabilityMessage,
@@ -23,6 +25,7 @@ import {
   shouldShowPublicRegistrationEntry,
   summarizeParticipantApplicationStatus
 } from '../../../../app/utils/participant-application'
+import { cloneFormValues } from '../../../../app/utils/form-values'
 
 describe('participant application helpers', () => {
   test('lists only the required profile fields missing from the platform account', () => {
@@ -125,6 +128,118 @@ describe('participant application helpers', () => {
       required: false,
       visible: false
     })
+  })
+
+  test('compares team member hint arrays by value', () => {
+    expect(areParticipantTeamMemberHintsEqual([
+      { fullName: 'Ada Lovelace', email: 'ada@example.com' },
+      { fullName: '', email: '' }
+    ], [
+      { fullName: 'Ada Lovelace', email: 'ada@example.com' },
+      { fullName: '', email: '' }
+    ])).toBe(true)
+
+    expect(areParticipantTeamMemberHintsEqual([
+      { fullName: 'Ada Lovelace', email: 'ada@example.com' }
+    ], [
+      { fullName: 'Ada Lovelace', email: 'ada@openai.com' }
+    ])).toBe(false)
+  })
+
+  test('syncing checkbox changes does not recurse when team member hints are unchanged', async () => {
+    const termsAccepted = ref(false)
+    const inPersonAttendanceCommitment = ref(false)
+    const whyThisHackathon = ref('')
+    const proofOfExecutionUrl = ref('')
+    const teamIntent = ref<'solo' | 'team' | 'unknown'>('unknown')
+    const teamMemberHints = ref(createParticipantTeamMemberHintRows(2))
+    const profileForm = ref({
+      firstName: '',
+      familyName: '',
+      xProfileUrl: '',
+      linkedinProfileUrl: '',
+      githubProfileUrl: '',
+      chatgptEmail: '',
+      openaiOrgId: '',
+      lumaUsername: ''
+    })
+    const syncingFromModels = ref(false)
+    const values = reactive({
+      termsAccepted: termsAccepted.value,
+      inPersonAttendanceCommitment: inPersonAttendanceCommitment.value,
+      whyThisHackathon: whyThisHackathon.value,
+      proofOfExecutionUrl: proofOfExecutionUrl.value,
+      teamIntent: teamIntent.value,
+      teamMemberHints: cloneFormValues(teamMemberHints.value),
+      profileForm: cloneFormValues(profileForm.value)
+    })
+
+    let modelToFormSyncCount = 0
+    let formToModelSyncCount = 0
+
+    const syncValuesFromModels = () => {
+      Object.assign(values, {
+        termsAccepted: termsAccepted.value,
+        inPersonAttendanceCommitment: inPersonAttendanceCommitment.value,
+        whyThisHackathon: whyThisHackathon.value,
+        proofOfExecutionUrl: proofOfExecutionUrl.value,
+        teamIntent: teamIntent.value,
+        teamMemberHints: cloneFormValues(teamMemberHints.value),
+        profileForm: cloneFormValues(profileForm.value)
+      })
+    }
+
+    watch([
+      termsAccepted,
+      inPersonAttendanceCommitment,
+      whyThisHackathon,
+      proofOfExecutionUrl,
+      teamIntent,
+      teamMemberHints,
+      profileForm
+    ], () => {
+      modelToFormSyncCount += 1
+      syncingFromModels.value = true
+      syncValuesFromModels()
+      syncingFromModels.value = false
+    }, {
+      deep: true,
+      immediate: true
+    })
+
+    watch(values, (nextValues) => {
+      if (syncingFromModels.value) {
+        return
+      }
+
+      formToModelSyncCount += 1
+      termsAccepted.value = nextValues.termsAccepted ?? false
+      inPersonAttendanceCommitment.value = nextValues.inPersonAttendanceCommitment ?? false
+      whyThisHackathon.value = nextValues.whyThisHackathon ?? ''
+      proofOfExecutionUrl.value = nextValues.proofOfExecutionUrl ?? ''
+      teamIntent.value = nextValues.teamIntent ?? 'unknown'
+
+      const nextTeamMemberHints = cloneFormValues(nextValues.teamMemberHints ?? [])
+
+      if (!areParticipantTeamMemberHintsEqual(teamMemberHints.value, nextTeamMemberHints)) {
+        teamMemberHints.value = nextTeamMemberHints
+      }
+
+      if (nextValues.profileForm) {
+        Object.assign(profileForm.value, cloneFormValues(nextValues.profileForm))
+      }
+    }, {
+      deep: true
+    })
+
+    termsAccepted.value = true
+    await nextTick()
+    await nextTick()
+
+    expect(termsAccepted.value).toBe(true)
+    expect(values.termsAccepted).toBe(true)
+    expect(formToModelSyncCount).toBe(1)
+    expect(modelToFormSyncCount).toBe(2)
   })
 
   test('formats participant application statuses and summaries for reviewed states', () => {
