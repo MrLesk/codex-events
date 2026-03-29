@@ -139,6 +139,7 @@ const agendaItemSchema = z.object({
 export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object({
   name: requiredTextSchema,
   slug: slugSchema,
+  lumaEventUrl: createOptionalHttpUrlSchema('Enter a valid Luma event URL.'),
   description: requiredTextSchema,
   agendaItems: z.array(agendaItemSchema).superRefine((items, context) => {
     const ids = new Set<string>()

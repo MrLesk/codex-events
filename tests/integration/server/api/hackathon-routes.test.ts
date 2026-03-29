@@ -952,6 +952,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       body: JSON.stringify({
         name: 'New Hackathon',
         slug: 'new-hackathon',
+        lumaEventUrl: 'https://lu.ma/new-hackathon',
         description: 'New hackathon',
         agendaItems: [
           {
@@ -989,6 +990,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       data: {
         name: 'New Hackathon',
         slug: 'new-hackathon',
+        lumaEventUrl: 'https://lu.ma/new-hackathon',
         state: 'draft',
         createdByUserId: 'platform_admin',
         agendaItems: [
@@ -1005,6 +1007,12 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         requireProofOfExecution: true
       }
     })
+
+    const createdHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.slug, 'new-hackathon')
+    })
+
+    expect(createdHackathon?.lumaEventUrl).toBe('https://lu.ma/new-hackathon')
 
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual([
@@ -1071,6 +1079,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       method: 'PATCH',
       body: JSON.stringify({
         description: 'Updated description',
+        lumaEventUrl: 'https://lu.ma/patch-hackathon',
         agendaItems: [
           {
             id: 'agenda_item_2',
@@ -1098,6 +1107,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       data: {
         id: 'hackathon_patch',
         description: 'Updated description',
+        lumaEventUrl: 'https://lu.ma/patch-hackathon',
         agendaItems: [
           expect.objectContaining({
             id: 'agenda_item_2',
@@ -1115,6 +1125,12 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         requireProofOfExecution: true
       }
     })
+
+    const updatedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_patch')
+    })
+
+    expect(updatedHackathon?.lumaEventUrl).toBe('https://lu.ma/patch-hackathon')
   })
 
   test('PATCH /api/hackathons/:hackathonId rewrites managed image URLs when slug changes', async () => {

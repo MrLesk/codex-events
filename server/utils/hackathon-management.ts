@@ -39,6 +39,13 @@ const slugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slugs must use lowercase letters, numbers, and hyphens only.')
 
 const nullableUrlSchema = z.string().url().nullable().optional()
+const nullableHttpUrlSchema = z.string().url()
+  .refine((value) => {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  }, 'Expected an http or https URL.')
+  .nullable()
+  .optional()
 const nullableTrimmedStringSchema = z.string().trim().min(1).nullable().optional()
 
 const roleEnumSchema = z.enum(hackathonRoleTypes)
@@ -119,6 +126,7 @@ const hackathonConfigShape = {
   agendaItems: agendaItemsSchema,
   backgroundImageUrl: nullableUrlSchema,
   bannerImageUrl: nullableUrlSchema,
+  lumaEventUrl: nullableHttpUrlSchema,
   city: z.string().trim().min(1),
   country: z.string().trim().min(1),
   address: z.string().trim().min(1),
@@ -147,6 +155,7 @@ export const updateHackathonBodySchema = z.object({
   agendaItems: agendaItemsSchema.optional(),
   backgroundImageUrl: hackathonConfigShape.backgroundImageUrl.optional(),
   bannerImageUrl: hackathonConfigShape.bannerImageUrl.optional(),
+  lumaEventUrl: hackathonConfigShape.lumaEventUrl.optional(),
   city: hackathonConfigShape.city.optional(),
   country: hackathonConfigShape.country.optional(),
   address: hackathonConfigShape.address.optional(),

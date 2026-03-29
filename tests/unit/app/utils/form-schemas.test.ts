@@ -1,6 +1,29 @@
 import { describe, expect, test } from 'vitest'
 
-import { imprintContactFormSchema } from '../../../../app/utils/form-schemas'
+import { createEmptyHackathonFormState } from '../../../../app/utils/admin-workspace'
+import {
+  hackathonConfigFormSchema,
+  imprintContactFormSchema
+} from '../../../../app/utils/form-schemas'
+
+function createValidHackathonFormState() {
+  return {
+    ...createEmptyHackathonFormState(),
+    name: 'Codex Spring Builders 2026',
+    slug: 'codex-spring-builders-2026',
+    description: 'Canonical fixture hackathon.',
+    city: 'Vienna',
+    country: 'Austria',
+    address: 'Operngasse 20, 1040 Vienna',
+    registrationOpensAt: '2026-03-20T12:00',
+    registrationClosesAt: '2026-03-22T12:00',
+    submissionOpensAt: '2026-03-22T12:00',
+    submissionClosesAt: '2026-03-24T12:00',
+    requireChatgptEmail: false,
+    requireOpenaiOrgId: false,
+    requireLumaProfile: false
+  }
+}
 
 describe('form schemas', () => {
   test('validates imprint contact submissions with trimmed values', () => {
@@ -57,5 +80,23 @@ describe('form schemas', () => {
     }
 
     expect(result.error.flatten().fieldErrors.message).toEqual(['Enter a message.'])
+  })
+})
+
+describe('hackathon config form schema', () => {
+  test('allows an empty luma event URL', () => {
+    const result = hackathonConfigFormSchema.safeParse(createValidHackathonFormState())
+
+    expect(result.success).toBe(true)
+  })
+
+  test('rejects non-http luma event URLs', () => {
+    const result = hackathonConfigFormSchema.safeParse({
+      ...createValidHackathonFormState(),
+      lumaEventUrl: 'ftp://lu.ma/codex-builders'
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toBe('Enter a valid Luma event URL.')
   })
 })

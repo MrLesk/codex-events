@@ -37,6 +37,7 @@ export default defineApiHandler(async (event) => {
     agendaItemsJson: serializeHackathonAgendaItems(body.agendaItems),
     backgroundImageUrl: body.backgroundImageUrl ?? null,
     bannerImageUrl: body.bannerImageUrl ?? null,
+    lumaEventUrl: body.lumaEventUrl ?? null,
     city: body.city,
     country: body.country,
     address: body.address,

@@ -32,6 +32,7 @@ async function createHackathon(form: HackathonFormState) {
       body: {
         name: form.name,
         slug: form.slug,
+        lumaEventUrl: form.lumaEventUrl.trim() || null,
         description: form.description,
         agendaItems: toHackathonAgendaPayload(form.agendaItems),
         city: form.city,

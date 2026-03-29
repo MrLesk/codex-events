@@ -415,6 +415,7 @@ async function saveConfiguration(configForm: HackathonFormState) {
       body: {
         name: configForm.name,
         slug: configForm.slug,
+        lumaEventUrl: configForm.lumaEventUrl.trim() || null,
         description: configForm.description,
         agendaItems: toHackathonAgendaPayload(configForm.agendaItems),
         city: configForm.city,

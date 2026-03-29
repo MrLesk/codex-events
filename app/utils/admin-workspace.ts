@@ -162,6 +162,7 @@ export interface HackathonRecord {
   agendaItems: HackathonAgendaItem[]
   backgroundImageUrl: string | null
   bannerImageUrl: string | null
+  lumaEventUrl: string | null
   city: string
   country: string
   address: string
@@ -195,6 +196,7 @@ export interface HackathonRecord {
 export interface HackathonFormState {
   name: string
   slug: string
+  lumaEventUrl: string
   description: string
   agendaItems: HackathonFormAgendaItem[]
   backgroundImageUrl: string
@@ -773,6 +775,7 @@ export function createEmptyHackathonFormState(): HackathonFormState {
   return {
     name: '',
     slug: '',
+    lumaEventUrl: '',
     description: '',
     agendaItems: [],
     backgroundImageUrl: '',
@@ -802,6 +805,7 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
   return {
     name: hackathon.name,
     slug: hackathon.slug,
+    lumaEventUrl: hackathon.lumaEventUrl ?? '',
     description: hackathon.description,
     agendaItems: [...hackathon.agendaItems]
       .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
