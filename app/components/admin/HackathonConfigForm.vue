@@ -1,14 +1,22 @@
 <script setup lang="ts">
+import Sortable from 'sortablejs'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
 import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
 
 import type { HackathonFormState } from '~/utils/admin-workspace'
+import type { HackathonProgramSettingsMode } from '~/utils/hackathon-program-settings'
 
-import { createHackathonSlug } from '~/utils/admin-workspace'
+import {
+  createHackathonSlug,
+  getNextAgendaItemDefaultTimes
+} from '~/utils/admin-workspace'
+import { getCountryOptions } from '~/utils/country-options'
 import { hackathonConfigFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
+import { getHackathonConfigFormModeView } from '~/utils/hackathon-program-settings'
+import { moveListItemByIndex } from '~/utils/reorder-list'
 
 const form = defineModel<HackathonFormState>('form', {
   required: true
@@ -22,10 +30,13 @@ const emit = defineEmits<{
   removeBannerImage: []
 }>()
 
+type AgendaFormItem = HackathonFormState['agendaItems'][number]
+
 const props = defineProps<{
   isSubmitting?: boolean
   submitLabel: string
   helperText?: string
+  mode?: HackathonProgramSettingsMode
   autoGenerateSlug?: boolean
   canUploadManagedImages?: boolean
   backgroundImageUploadPending?: boolean
@@ -36,12 +47,26 @@ const props = defineProps<{
   bannerImageUploadError?: string
 }>()
 
+const formMode = computed<HackathonProgramSettingsMode>(() => props.mode ?? 'full')
+const formModeView = computed(() => getHackathonConfigFormModeView(formMode.value))
+const showBasicInformationFields = computed(() => formModeView.value.showBasicInformationFields)
+const showAgendaItemsSection = computed(() => formModeView.value.showAgendaItemsSection)
+const showProgramIdentitySection = computed(() => formModeView.value.showProgramIdentitySection)
+const showProgramSettingsSections = computed(() => formModeView.value.showProgramSettingsSections)
+const showInlineDetailsActions = computed(() => formMode.value === 'details')
+const basicsHeading = computed(() => formModeView.value.basicsHeading)
+const basicsDescription = computed(() => formModeView.value.basicsDescription)
+const programIdentityDescription = computed(() => formModeView.value.programIdentityDescription)
+const countryOptions = computed(() => getCountryOptions(form.value.country))
+
 const hasManuallyEditedSlug = ref(false)
 const isProgrammaticSlugUpdate = ref(false)
 const backgroundImageInput = ref<HTMLInputElement | null>(null)
 const bannerImageInput = ref<HTMLInputElement | null>(null)
-const draggedAgendaItemId = ref<string | null>(null)
+const activeAgendaDragId = ref<string | null>(null)
 const agendaDropTargetId = ref<string | null>(null)
+const agendaListElement = ref<HTMLElement | null>(null)
+let agendaSortable: Sortable | null = null
 
 const managedBackgroundImageUrl = computed(() => form.value.backgroundImageUrl.trim())
 const managedBannerImageUrl = computed(() => form.value.bannerImageUrl.trim())
@@ -116,18 +141,21 @@ function nextAgendaDisplayOrder() {
   return form.value.agendaItems.length + 1
 }
 
-function normalizeAgendaDisplayOrder() {
-  form.value.agendaItems = form.value.agendaItems.map((item, index) => ({
+function applyAgendaOrderFromList(items: AgendaFormItem[]) {
+  form.value.agendaItems = items.map((item, index) => ({
     ...item,
     displayOrder: index + 1
   }))
 }
 
 function addAgendaItem() {
+  const previousItem = form.value.agendaItems[form.value.agendaItems.length - 1] ?? null
+  const { startsAt, endsAt } = getNextAgendaItemDefaultTimes(previousItem)
+
   form.value.agendaItems.push({
     id: createAgendaItemId(),
-    startsAt: '',
-    endsAt: '',
+    startsAt,
+    endsAt,
     title: '',
     details: '',
     displayOrder: nextAgendaDisplayOrder()
@@ -135,8 +163,7 @@ function addAgendaItem() {
 }
 
 function removeAgendaItem(itemId: string) {
-  form.value.agendaItems = form.value.agendaItems.filter(item => item.id !== itemId)
-  normalizeAgendaDisplayOrder()
+  applyAgendaOrderFromList(form.value.agendaItems.filter(item => item.id !== itemId))
 }
 
 function moveAgendaItem(itemId: string, direction: -1 | 1) {
@@ -152,86 +179,53 @@ function moveAgendaItem(itemId: string, direction: -1 | 1) {
     return
   }
 
-  const reordered = [...form.value.agendaItems]
-  const [movedItem] = reordered.splice(currentIndex, 1)
-
-  if (!movedItem) {
-    return
-  }
-
-  reordered.splice(nextIndex, 0, movedItem)
-  form.value.agendaItems = reordered
-  normalizeAgendaDisplayOrder()
+  applyAgendaOrderFromList(moveListItemByIndex(form.value.agendaItems, currentIndex, nextIndex))
 }
 
-function reorderAgendaItems(sourceId: string, targetId: string) {
-  if (!sourceId || sourceId === targetId) {
-    return
-  }
-
-  const sourceIndex = form.value.agendaItems.findIndex(item => item.id === sourceId)
-  const targetIndex = form.value.agendaItems.findIndex(item => item.id === targetId)
-
-  if (sourceIndex < 0 || targetIndex < 0) {
-    return
-  }
-
-  const reordered = [...form.value.agendaItems]
-  const [movedItem] = reordered.splice(sourceIndex, 1)
-
-  if (!movedItem) {
-    return
-  }
-
-  reordered.splice(targetIndex, 0, movedItem)
-  form.value.agendaItems = reordered
-  normalizeAgendaDisplayOrder()
-}
-
-function onAgendaDragStart(itemId: string, event: DragEvent) {
-  draggedAgendaItemId.value = itemId
+function destroyAgendaSortable() {
+  agendaSortable?.destroy()
+  agendaSortable = null
+  activeAgendaDragId.value = null
   agendaDropTargetId.value = null
-
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', itemId)
-  }
 }
 
-function onAgendaDragOver(itemId: string) {
-  if (!draggedAgendaItemId.value || draggedAgendaItemId.value === itemId) {
-    agendaDropTargetId.value = null
+function initializeAgendaSortable() {
+  if (!import.meta.client || !showAgendaItemsSection.value || !agendaListElement.value || form.value.agendaItems.length === 0) {
+    destroyAgendaSortable()
     return
   }
 
-  agendaDropTargetId.value = itemId
-}
+  destroyAgendaSortable()
 
-function onAgendaDragLeave(itemId: string) {
-  if (agendaDropTargetId.value === itemId) {
-    agendaDropTargetId.value = null
-  }
-}
+  agendaSortable = Sortable.create(agendaListElement.value, {
+    animation: 180,
+    handle: '[data-agenda-sort-handle]',
+    draggable: '[data-agenda-row]',
+    dataIdAttr: 'data-agenda-id',
+    ghostClass: 'opacity-45',
+    chosenClass: 'cursor-grabbing',
+    dragClass: 'cursor-grabbing',
+    onChoose(event) {
+      activeAgendaDragId.value = event.item.dataset.agendaId ?? null
+      agendaDropTargetId.value = null
+    },
+    onMove(event) {
+      const relatedId = event.related?.dataset.agendaId ?? null
+      agendaDropTargetId.value = relatedId !== activeAgendaDragId.value ? relatedId : null
+      return true
+    },
+    onEnd(event) {
+      const oldIndex = event.oldDraggableIndex ?? event.oldIndex
+      const newIndex = event.newDraggableIndex ?? event.newIndex
 
-function onAgendaDrop(targetId: string, event: DragEvent) {
-  event.preventDefault()
+      if (oldIndex !== undefined && newIndex !== undefined) {
+        applyAgendaOrderFromList(moveListItemByIndex(form.value.agendaItems, oldIndex, newIndex))
+      }
 
-  const sourceFromEvent = event.dataTransfer?.getData('text/plain')?.trim() ?? ''
-  const sourceId = draggedAgendaItemId.value ?? sourceFromEvent
-
-  agendaDropTargetId.value = null
-  draggedAgendaItemId.value = null
-
-  if (!sourceId) {
-    return
-  }
-
-  reorderAgendaItems(sourceId, targetId)
-}
-
-function onAgendaDragEnd() {
-  draggedAgendaItemId.value = null
-  agendaDropTargetId.value = null
+      activeAgendaDragId.value = null
+      agendaDropTargetId.value = null
+    }
+  })
 }
 
 const {
@@ -309,6 +303,20 @@ const validationErrorMessages = computed(() => {
   return [...new Set(Object.values(errors.value).filter((value): value is string => Boolean(value)))]
 })
 
+const agendaItemsOrderKey = computed(() => form.value.agendaItems.map(item => item.id).join('|'))
+
+watch([agendaItemsOrderKey, showAgendaItemsSection], async () => {
+  await nextTick()
+  initializeAgendaSortable()
+}, {
+  immediate: true,
+  flush: 'post'
+})
+
+onBeforeUnmount(() => {
+  destroyAgendaSortable()
+})
+
 const submitConfigForm = handleSubmit(() => {
   emit('submit')
 })
@@ -327,63 +335,68 @@ const submitConfigForm = handleSubmit(() => {
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
-              Basic Information
+              {{ basicsHeading }}
             </h2>
             <p class="text-sm text-muted">
-              Set the public basics for this hackathon: name, slug, description, and agenda.
+              {{ basicsDescription }}
             </p>
           </div>
         </template>
 
         <div class="grid gap-5">
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Hackathon name</span>
-            <input
-              v-model="form.name"
-              type="text"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-              placeholder="Codex Spring Builders 2026"
+          <template v-if="showBasicInformationFields">
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Hackathon name</span>
+              <input
+                v-model="form.name"
+                type="text"
+                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+                placeholder="Codex Spring Builders 2026"
+                required
+              >
+            </label>
+
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Slug (the path in the URL, for example: codex-hackathons.com/hackathons/codex-spring-builders-2026)</span>
+              <input
+                v-model="form.slug"
+                type="text"
+                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+                placeholder="codex-spring-builders-2026"
+                required
+              >
+            </label>
+
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Luma event URL</span>
+              <input
+                v-model="form.lumaEventUrl"
+                type="url"
+                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+                placeholder="https://lu.ma/your-event"
+              >
+              <span class="text-xs text-muted">Optional public Luma event link for this hackathon. Leave blank if you are not using Luma.</span>
+            </label>
+
+            <AdminMarkdownEditorField
+              v-model="form.description"
+              name="hackathon-description-editor"
+              editor-id="hackathon-description-editor"
+              label="Description"
+              description="Write the public overview shown to participants. Markdown headings, lists, links, and emphasis are supported."
+              placeholder="Describe the event, focus areas, and expectations for participants."
               required
-            >
-          </label>
+            />
+          </template>
 
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Slug (the path in the URL, for example: codex-hackathons.com/hackathons/codex-spring-builders-2026)</span>
-            <input
-              v-model="form.slug"
-              type="text"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-              placeholder="codex-spring-builders-2026"
-              required
-            >
-          </label>
-
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Luma event URL</span>
-            <input
-              v-model="form.lumaEventUrl"
-              type="url"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-              placeholder="https://lu.ma/your-event"
-            >
-            <span class="text-xs text-muted">Optional public Luma event link for this hackathon. Leave blank if you are not using Luma.</span>
-          </label>
-
-          <AdminMarkdownEditorField
-            v-model="form.description"
-            name="hackathon-description-editor"
-            editor-id="hackathon-description-editor"
-            label="Description"
-            description="Write the public overview shown to participants. Markdown headings, lists, links, and emphasis are supported."
-            placeholder="Describe the event, focus areas, and expectations for participants."
-            required
-          />
-
-          <div class="grid gap-3">
+          <div
+            v-if="showAgendaItemsSection"
+            class="grid gap-3"
+          >
             <div class="space-y-1">
               <span class="text-sm font-medium text-toned">Agenda items</span>
               <p class="text-xs text-muted">
-                Drag items to reorder the schedule. This order is what participants see.
+                Use the left handle to drag agenda items into a new order. This order is what participants see.
               </p>
             </div>
 
@@ -392,125 +405,140 @@ const submitConfigForm = handleSubmit(() => {
               class="grid gap-3 rounded-xl border border-dashed border-black/10 px-4 py-4 text-sm text-muted dark:border-white/[0.08]"
             >
               <p>No agenda items yet.</p>
-              <AppButton
-                type="button"
-                color="neutral"
-                variant="soft"
-                size="sm"
-                class="w-fit"
-                @click="addAgendaItem"
-              >
-                Add first item
-              </AppButton>
             </div>
 
             <div
               v-else
+              ref="agendaListElement"
               class="grid gap-3"
             >
               <article
                 v-for="(item, index) in form.agendaItems"
                 :key="item.id"
-                class="grid gap-3 rounded-lg border border-black/8 p-4 transition-colors dark:border-white/[0.08]"
-                :class="agendaDropTargetId === item.id ? 'border-black/25 dark:border-white/[0.25]' : ''"
-                @dragover.prevent="onAgendaDragOver(item.id)"
-                @dragleave="onAgendaDragLeave(item.id)"
-                @drop="onAgendaDrop(item.id, $event)"
+                :data-agenda-id="item.id"
+                data-agenda-row
+                class="rounded-xl border bg-white/88 p-3 transition-all dark:bg-[#111111]"
+                :class="[
+                  agendaDropTargetId === item.id
+                    ? 'border-dashed border-black/30 ring-2 ring-black/6 dark:border-white/[0.32] dark:ring-white/[0.08]'
+                    : 'border-black/8 dark:border-white/[0.08]',
+                  activeAgendaDragId === item.id
+                    ? 'shadow-[0_16px_40px_-34px_rgba(15,23,42,0.55)]'
+                    : ''
+                ]"
               >
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <div class="flex items-center gap-2">
+                <div
+                  v-if="agendaDropTargetId === item.id"
+                  class="mb-3 rounded-lg border border-dashed border-black/18 bg-black/[0.03] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted dark:border-white/[0.14] dark:bg-white/[0.03]"
+                >
+                  Drop agenda item here
+                </div>
+
+                <div class="grid gap-3 md:grid-cols-[auto_minmax(0,1fr)]">
+                  <div class="flex items-center">
                     <button
                       type="button"
-                      class="rounded-md border border-black/8 bg-white px-2 py-1 text-xs font-medium text-toned transition hover:border-black/25 hover:text-highlighted dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.25]"
-                      draggable="true"
-                      @dragstart="onAgendaDragStart(item.id, $event)"
-                      @dragend="onAgendaDragEnd"
+                      data-agenda-sort-handle
+                      class="group inline-flex h-11 w-11 cursor-grab items-center justify-center rounded-xl border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted active:cursor-grabbing dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      :aria-label="`Drag to reorder ${item.title || `agenda item ${index + 1}`}`"
                     >
-                      Drag
+                      <AppIcon
+                        name="i-lucide-grip-vertical"
+                        class="size-4.5 transition group-hover:scale-105"
+                      />
                     </button>
-                    <p class="text-xs font-medium uppercase tracking-wide text-toned">
-                      Agenda item {{ index + 1 }}
-                    </p>
                   </div>
 
-                  <div class="flex items-center gap-2">
-                    <AppButton
-                      type="button"
-                      color="neutral"
-                      variant="ghost"
-                      size="sm"
-                      :disabled="index === 0"
-                      @click="moveAgendaItem(item.id, -1)"
-                    >
-                      Move up
-                    </AppButton>
-                    <AppButton
-                      type="button"
-                      color="neutral"
-                      variant="ghost"
-                      size="sm"
-                      :disabled="index === form.agendaItems.length - 1"
-                      @click="moveAgendaItem(item.id, 1)"
-                    >
-                      Move down
-                    </AppButton>
-                    <AppButton
-                      type="button"
-                      color="neutral"
-                      variant="ghost"
-                      size="sm"
-                      @click="removeAgendaItem(item.id)"
-                    >
-                      Remove
-                    </AppButton>
+                  <div class="grid gap-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                      <div class="flex items-center gap-2">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                          Agenda item {{ index + 1 }}
+                        </p>
+                      </div>
+
+                      <div class="flex items-center gap-2">
+                        <AppButton
+                          type="button"
+                          color="neutral"
+                          variant="ghost"
+                          size="sm"
+                          :disabled="index === 0"
+                          @click="moveAgendaItem(item.id, -1)"
+                        >
+                          Move up
+                        </AppButton>
+                        <AppButton
+                          type="button"
+                          color="neutral"
+                          variant="ghost"
+                          size="sm"
+                          :disabled="index === form.agendaItems.length - 1"
+                          @click="moveAgendaItem(item.id, 1)"
+                        >
+                          Move down
+                        </AppButton>
+                        <AppButton
+                          type="button"
+                          color="neutral"
+                          variant="ghost"
+                          size="sm"
+                          @click="removeAgendaItem(item.id)"
+                        >
+                          Remove
+                        </AppButton>
+                      </div>
+                    </div>
+
+                    <div class="grid gap-3">
+                      <label class="grid gap-2">
+                        <span class="text-xs font-medium text-toned">Title</span>
+                        <input
+                          v-model="item.title"
+                          type="text"
+                          class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
+                          placeholder="Opening workshop"
+                          required
+                        >
+                      </label>
+                    </div>
+
+                    <div class="grid gap-3 md:grid-cols-2">
+                      <label class="grid gap-2">
+                        <span class="text-xs font-medium text-toned">Starts at</span>
+                        <input
+                          v-model="item.startsAt"
+                          type="datetime-local"
+                          class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
+                          required
+                        >
+                      </label>
+
+                      <label class="grid gap-2">
+                        <span class="text-xs font-medium text-toned">Ends at</span>
+                        <input
+                          v-model="item.endsAt"
+                          type="datetime-local"
+                          class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
+                        >
+                      </label>
+                    </div>
+
+                    <label class="grid gap-2">
+                      <span class="text-xs font-medium text-toned">Details</span>
+                      <textarea
+                        v-model="item.details"
+                        rows="3"
+                        class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
+                        placeholder="Optional notes for this agenda item."
+                      />
+                    </label>
                   </div>
                 </div>
-
-                <div class="grid gap-3">
-                  <label class="grid gap-2">
-                    <span class="text-xs font-medium text-toned">Title</span>
-                    <input
-                      v-model="item.title"
-                      type="text"
-                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                      placeholder="Opening workshop"
-                      required
-                    >
-                  </label>
-                </div>
-
-                <div class="grid gap-3 md:grid-cols-2">
-                  <label class="grid gap-2">
-                    <span class="text-xs font-medium text-toned">Starts at</span>
-                    <input
-                      v-model="item.startsAt"
-                      type="datetime-local"
-                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                      required
-                    >
-                  </label>
-
-                  <label class="grid gap-2">
-                    <span class="text-xs font-medium text-toned">Ends at</span>
-                    <input
-                      v-model="item.endsAt"
-                      type="datetime-local"
-                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                    >
-                  </label>
-                </div>
-
-                <label class="grid gap-2">
-                  <span class="text-xs font-medium text-toned">Details</span>
-                  <textarea
-                    v-model="item.details"
-                    rows="3"
-                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                    placeholder="Optional notes for this agenda item."
-                  />
-                </label>
               </article>
+            </div>
 
+            <div class="flex flex-wrap items-center justify-between gap-3">
               <AppButton
                 type="button"
                 color="neutral"
@@ -519,7 +547,7 @@ const submitConfigForm = handleSubmit(() => {
                 class="w-fit"
                 @click="addAgendaItem"
               >
-                Add item
+                {{ form.agendaItems.length === 0 ? 'Add first item' : 'Add item' }}
               </AppButton>
             </div>
           </div>
@@ -527,6 +555,7 @@ const submitConfigForm = handleSubmit(() => {
       </AppCard>
 
       <AppCard
+        v-if="showProgramIdentitySection"
         id="admin-config-identity"
         class="scroll-mt-28 rounded-xl hackathon-workspace-detail-panel"
       >
@@ -536,44 +565,64 @@ const submitConfigForm = handleSubmit(() => {
               Program Identity
             </h2>
             <p class="text-sm text-muted">
-              Configure location, imagery, and participant profile requirements.
+              {{ programIdentityDescription }}
             </p>
           </div>
         </template>
 
         <div class="grid gap-5">
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">City</span>
-            <input
-              v-model="form.city"
-              type="text"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-              placeholder="Vienna"
-              required
-            >
-          </label>
+          <div class="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.6fr)]">
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">City</span>
+              <input
+                v-model="form.city"
+                type="text"
+                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+                placeholder="Vienna"
+                required
+              >
+            </label>
 
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Country</span>
-            <input
-              v-model="form.country"
-              type="text"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-              placeholder="Austria"
-              required
-            >
-          </label>
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Country</span>
+              <div class="relative">
+                <select
+                  v-model="form.country"
+                  class="w-full appearance-none rounded-lg border border-black/8 bg-white py-3 pl-4 pr-11 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                  required
+                >
+                  <option
+                    disabled
+                    value=""
+                  >
+                    Select a country
+                  </option>
+                  <option
+                    v-for="option in countryOptions"
+                    :key="option.value"
+                    :value="option.value"
+                  >
+                    {{ option.label }}
+                  </option>
+                </select>
+                <AppIcon
+                  name="i-lucide-chevron-down"
+                  class="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-muted"
+                />
+              </div>
+            </label>
 
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Address</span>
-            <input
-              v-model="form.address"
-              type="text"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-              placeholder="Operngasse 20, 1040 Vienna"
-              required
-            >
-          </label>
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Address</span>
+              <input
+                v-model="form.address"
+                type="text"
+                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+                placeholder="Operngasse 20, 1040 Vienna"
+                required
+              >
+            </label>
+          </div>
 
           <section
             v-if="showBackgroundImageSection"
@@ -740,11 +789,44 @@ const submitConfigForm = handleSubmit(() => {
               {{ props.bannerImageUploadError }}
             </p>
           </section>
+
+          <div
+            v-if="showInlineDetailsActions"
+            class="flex flex-col gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08] sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div class="max-w-3xl space-y-3">
+              <p class="text-sm text-muted">
+                {{ helperText ?? 'Save your changes to update this hackathon.' }}
+              </p>
+
+              <AppAlert
+                v-if="validationErrorMessages.length > 0"
+                color="error"
+                variant="soft"
+                title="Form validation failed"
+                :description="validationErrorMessages[0]"
+              />
+            </div>
+
+            <AppButton
+              type="submit"
+              :loading="isSubmitting"
+              :disabled="isSubmitting"
+              color="primary"
+              size="lg"
+              class="justify-center"
+            >
+              {{ submitLabel }}
+            </AppButton>
+          </div>
         </div>
       </AppCard>
     </section>
 
-    <section class="space-y-6">
+    <section
+      v-if="showProgramSettingsSections"
+      class="space-y-6"
+    >
       <AppCard
         id="admin-config-timeline"
         class="scroll-mt-28 rounded-xl hackathon-workspace-detail-panel"
@@ -928,7 +1010,10 @@ const submitConfigForm = handleSubmit(() => {
       </AppCard>
     </section>
 
-    <div class="hackathon-workspace-detail-inset flex flex-col gap-4 rounded-xl px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+    <div
+      v-if="!showInlineDetailsActions"
+      class="hackathon-workspace-detail-inset flex flex-col gap-4 rounded-xl px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
+    >
       <p class="max-w-3xl text-sm text-muted">
         {{ helperText ?? 'Save your changes to update this hackathon.' }}
       </p>

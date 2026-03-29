@@ -5,6 +5,7 @@ import type {
   HackathonFormState,
   HackathonRecord
 } from '~/utils/admin-workspace'
+import type { HackathonProgramSettingsMode } from '~/utils/hackathon-program-settings'
 
 import {
   createEmptyHackathonFormState,
@@ -23,6 +24,7 @@ const emit = defineEmits<{
 const props = defineProps<{
   initialHackathon?: HackathonRecord | null
   autoGenerateSlug?: boolean
+  mode?: HackathonProgramSettingsMode
   submitLabel: string
   helperText?: string
   submitError?: string
@@ -69,6 +71,7 @@ function submitForm() {
     <HackathonConfigForm
       v-model:form="form"
       :is-submitting="isSubmitting"
+      :mode="mode"
       :submit-label="submitLabel"
       :helper-text="helperText"
       :auto-generate-slug="autoGenerateSlug"

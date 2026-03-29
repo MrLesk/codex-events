@@ -21,6 +21,10 @@ import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOver
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
 import {
+  getAccountHackathonTabAccess,
+  type AccountHackathonWorkspaceTab
+} from '~/utils/account-hackathon-tabs'
+import {
   formatParticipantApplicationStatus,
   getParticipantApplicationStatusColor,
   summarizeParticipantApplicationStatus
@@ -71,19 +75,7 @@ interface AccountHackathonsResponse {
   }
 }
 
-const _allWorkspaceTabs = [
-  'overview',
-  'prizes',
-  'details',
-  'judges',
-  'staff',
-  'judging',
-  'operations',
-  'settings'
-] as const
-type WorkspaceSectionTab = (typeof _allWorkspaceTabs)[number]
-
-const workspaceTabLabels: Record<WorkspaceSectionTab, string> = {
+const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
   overview: 'Overview',
   prizes: 'Prizes',
   details: 'Details',
@@ -205,32 +197,21 @@ const hasParticipantContext = computed(() =>
   Boolean(applicationStatus.value || participationRecord.value?.activeTeam || participationRecord.value?.latestTeam)
 )
 
-const availableTabs = computed<WorkspaceSectionTab[]>(() => {
-  const tabs: WorkspaceSectionTab[] = ['overview']
-
-  if (hasPublishedPrizes.value) {
-    tabs.push('prizes')
-  }
-
-  tabs.push('details', 'judges', 'staff')
-
-  if (canJudge.value) {
-    tabs.push('judging')
-  }
-
-  if (canAdmin.value) {
-    tabs.push('operations', 'settings')
-  }
-
-  return tabs
-})
+const tabAccess = computed(() =>
+  getAccountHackathonTabAccess({
+    hasPublishedPrizes: hasPublishedPrizes.value,
+    canJudge: canJudge.value,
+    canAdmin: canAdmin.value
+  })
+)
+const availableTabs = computed(() => tabAccess.value.availableTabs)
 const visibleTabs = computed(() =>
   availableTabs.value.map(tab => ({
     id: tab,
     label: workspaceTabLabels[tab]
   }))
 )
-const activeSection = computed<WorkspaceSectionTab>(() =>
+const activeSection = computed<AccountHackathonWorkspaceTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
 
@@ -242,7 +223,7 @@ onUnmounted(() => {
   accountHackathonNavigationMode.value = 'participant'
 })
 
-async function selectWorkspaceSection(nextSection: WorkspaceSectionTab) {
+async function selectWorkspaceSection(nextSection: AccountHackathonWorkspaceTab) {
   if (normalizeTabQueryValue(route.query.tab) === nextSection) {
     return
   }
@@ -621,8 +602,18 @@ useSeoMeta({
         id="account-tab-panel-prizes"
         role="tabpanel"
         aria-labelledby="account-tab-prizes"
+        class="space-y-8"
       >
         <HackathonPrizeList :prizes="prizes" />
+
+        <AccountHackathonAdminSettingsPanel
+          v-if="tabAccess.showPrizeConfiguration"
+          :slug="slug"
+          :show-program-settings="false"
+          :show-terms-management="false"
+          :show-criteria-configuration="false"
+          :show-prize-configuration="true"
+        />
       </section>
 
       <section
@@ -638,6 +629,15 @@ useSeoMeta({
         />
 
         <HackathonAgendaPanel :agenda-items="hackathon.agendaItems" />
+
+        <AccountHackathonAdminSettingsPanel
+          v-if="tabAccess.showAgendaConfigurationInDetails"
+          :slug="slug"
+          program-settings-mode="details"
+          :show-terms-management="false"
+          :show-criteria-configuration="false"
+          :show-prize-configuration="false"
+        />
       </section>
 
       <section
@@ -722,7 +722,13 @@ useSeoMeta({
         role="tabpanel"
         aria-labelledby="account-tab-settings"
       >
-        <AccountHackathonAdminSettingsPanel :slug="slug" />
+        <AccountHackathonAdminSettingsPanel
+          :slug="slug"
+          program-settings-mode="settings"
+          :show-terms-management="true"
+          :show-criteria-configuration="true"
+          :show-prize-configuration="false"
+        />
       </section>
     </AppContainer>
   </div>

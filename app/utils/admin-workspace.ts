@@ -801,6 +801,22 @@ export function createEmptyHackathonFormState(): HackathonFormState {
   }
 }
 
+export function getNextAgendaItemDefaultTimes(previousItem?: HackathonFormAgendaItem | null) {
+  const previousEndsAt = previousItem?.endsAt?.trim() ?? ''
+
+  if (!previousEndsAt) {
+    return {
+      startsAt: '',
+      endsAt: ''
+    }
+  }
+
+  return {
+    startsAt: previousEndsAt,
+    endsAt: previousEndsAt
+  }
+}
+
 export function createHackathonFormState(hackathon: HackathonRecord): HackathonFormState {
   return {
     name: hackathon.name,

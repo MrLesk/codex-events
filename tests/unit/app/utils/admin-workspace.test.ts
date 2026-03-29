@@ -24,6 +24,7 @@ import {
   fromDateTimeLocalValue,
   getAdminJudgeAssignmentInterventionPolicy,
   getAdminWorkspaceSubjectKey,
+  getNextAgendaItemDefaultTimes,
   getAdminSubmissionInterventionPolicy,
   getApplicationStatusColor,
   getCurrentLifecycleControl,
@@ -306,6 +307,39 @@ describe('admin-workspace form helpers', () => {
     })
     expect(fromDateTimeLocalValue(formState.agendaItems[0].startsAt)).toBe('2026-03-22T11:00:00.000Z')
     expect(fromDateTimeLocalValue(formState.agendaItems[0].endsAt)).toBe('2026-03-22T12:00:00.000Z')
+  })
+
+  test('defaults a new agenda item to the previous end time when available', () => {
+    expect(getNextAgendaItemDefaultTimes({
+      id: 'agenda-item-1',
+      startsAt: '2026-03-22T11:00',
+      endsAt: '2026-03-22T12:00',
+      title: 'Opening',
+      details: '',
+      displayOrder: 1
+    })).toEqual({
+      startsAt: '2026-03-22T12:00',
+      endsAt: '2026-03-22T12:00'
+    })
+  })
+
+  test('leaves new agenda item times blank without a previous end time', () => {
+    expect(getNextAgendaItemDefaultTimes()).toEqual({
+      startsAt: '',
+      endsAt: ''
+    })
+
+    expect(getNextAgendaItemDefaultTimes({
+      id: 'agenda-item-1',
+      startsAt: '2026-03-22T11:00',
+      endsAt: '',
+      title: 'Opening',
+      details: '',
+      displayOrder: 1
+    })).toEqual({
+      startsAt: '',
+      endsAt: ''
+    })
   })
 
   test('normalizes authenticated subjects for cache-key partitioning', () => {

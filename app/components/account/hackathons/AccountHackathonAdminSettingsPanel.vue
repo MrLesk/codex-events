@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import Sortable from 'sortablejs'
+
 import type {
   ApiDataResponse,
   EvaluationCriterion,
@@ -7,6 +9,8 @@ import type {
   PrizeDefinition,
   TermsDocument
 } from '~/utils/admin-workspace'
+import type { HackathonProgramSettingsMode } from '~/utils/hackathon-program-settings'
+import { moveListItemByIndex } from '~/utils/reorder-list'
 
 import {
   formatHackathonState,
@@ -15,10 +19,22 @@ import {
   normalizeApiError,
   toHackathonAgendaPayload
 } from '~/utils/admin-workspace'
+import { getHackathonProgramSettingsCopy } from '~/utils/hackathon-program-settings'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   slug: string
-}>()
+  showProgramSettings?: boolean
+  programSettingsMode?: HackathonProgramSettingsMode
+  showTermsManagement?: boolean
+  showCriteriaConfiguration?: boolean
+  showPrizeConfiguration?: boolean
+}>(), {
+  showProgramSettings: true,
+  programSettingsMode: 'settings',
+  showTermsManagement: true,
+  showCriteriaConfiguration: true,
+  showPrizeConfiguration: true
+})
 
 type CriterionEditState = Pick<EvaluationCriterion, 'name' | 'description' | 'weight' | 'displayOrder'>
 type PrizeEditState = Pick<PrizeDefinition, 'name' | 'description' | 'rewardType' | 'rewardValue' | 'awardScope' | 'rankStart' | 'rankEnd' | 'displayOrder'> & {
@@ -100,12 +116,16 @@ const criterionEdits = reactive<Record<string, CriterionEditState>>({})
 const prizeEdits = reactive<Record<string, PrizeEditState>>({})
 const draggedCriterionId = ref<string | null>(null)
 const criterionDropTargetId = ref<string | null>(null)
-const draggedPrizeId = ref<string | null>(null)
+const activePrizeDragId = ref<string | null>(null)
 const prizeDropTargetId = ref<string | null>(null)
+const prizeListElement = ref<HTMLElement | null>(null)
+let prizeSortable: Sortable | null = null
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const actor = computed(() => workspace.actor.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
+const programSettingsCopy = computed(() => getHackathonProgramSettingsCopy(props.programSettingsMode))
+const showProgramSnapshot = computed(() => props.programSettingsMode === 'settings')
 const criteria = computed(() => workspace.criteria.data.value?.data ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
 const orderedCriteria = computed(() =>
@@ -310,58 +330,54 @@ function onCriterionDragEnd() {
   criterionDropTargetId.value = null
 }
 
-function reorderPrizes(sourceId: string, targetId: string) {
-  applyPrizeOrderFromList(moveItemWithinList(orderedPrizes.value, sourceId, targetId))
-}
-
 function movePrize(prizeId: string, direction: -1 | 1) {
   applyPrizeOrderFromList(moveItemByDirection(orderedPrizes.value, prizeId, direction))
 }
 
-function onPrizeDragStart(prizeId: string, event: DragEvent) {
-  draggedPrizeId.value = prizeId
+function destroyPrizeSortable() {
+  prizeSortable?.destroy()
+  prizeSortable = null
+  activePrizeDragId.value = null
   prizeDropTargetId.value = null
-
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', prizeId)
-  }
 }
 
-function onPrizeDragOver(prizeId: string) {
-  if (!draggedPrizeId.value || draggedPrizeId.value === prizeId) {
-    prizeDropTargetId.value = null
+function initializePrizeSortable() {
+  if (!import.meta.client || !props.showPrizeConfiguration || !prizeListElement.value) {
+    destroyPrizeSortable()
     return
   }
 
-  prizeDropTargetId.value = prizeId
-}
+  destroyPrizeSortable()
 
-function onPrizeDragLeave(prizeId: string) {
-  if (prizeDropTargetId.value === prizeId) {
-    prizeDropTargetId.value = null
-  }
-}
+  prizeSortable = Sortable.create(prizeListElement.value, {
+    animation: 180,
+    handle: '[data-prize-sort-handle]',
+    draggable: '[data-prize-row]',
+    dataIdAttr: 'data-prize-id',
+    ghostClass: 'opacity-45',
+    chosenClass: 'cursor-grabbing',
+    dragClass: 'cursor-grabbing',
+    onChoose(event) {
+      activePrizeDragId.value = event.item.dataset.prizeId ?? null
+      prizeDropTargetId.value = null
+    },
+    onMove(event) {
+      const relatedId = event.related?.dataset.prizeId ?? null
+      prizeDropTargetId.value = relatedId !== activePrizeDragId.value ? relatedId : null
+      return true
+    },
+    onEnd(event) {
+      const oldIndex = event.oldDraggableIndex ?? event.oldIndex
+      const newIndex = event.newDraggableIndex ?? event.newIndex
 
-function onPrizeDrop(targetId: string, event: DragEvent) {
-  event.preventDefault()
+      if (oldIndex !== undefined && newIndex !== undefined) {
+        applyPrizeOrderFromList(moveListItemByIndex(orderedPrizes.value, oldIndex, newIndex))
+      }
 
-  const sourceFromEvent = event.dataTransfer?.getData('text/plain')?.trim() ?? ''
-  const sourceId = draggedPrizeId.value ?? sourceFromEvent
-
-  draggedPrizeId.value = null
-  prizeDropTargetId.value = null
-
-  if (!sourceId) {
-    return
-  }
-
-  reorderPrizes(sourceId, targetId)
-}
-
-function onPrizeDragEnd() {
-  draggedPrizeId.value = null
-  prizeDropTargetId.value = null
+      activePrizeDragId.value = null
+      prizeDropTargetId.value = null
+    }
+  })
 }
 
 watch(criteria, (items) => {
@@ -381,6 +397,18 @@ watch(prizes, (items) => {
   )
 }, {
   immediate: true
+})
+
+watch([orderedPrizes, () => props.showPrizeConfiguration], async () => {
+  await nextTick()
+  initializePrizeSortable()
+}, {
+  immediate: true,
+  flush: 'post'
+})
+
+onBeforeUnmount(() => {
+  destroyPrizeSortable()
 })
 
 async function runMutation(action: () => Promise<void>, successTitle: string, successDescription: string) {
@@ -404,6 +432,60 @@ async function saveConfiguration(configForm: HackathonFormState) {
     return
   }
 
+  if (props.programSettingsMode === 'details') {
+    await patchConfiguration(
+      {
+        agendaItems: toHackathonAgendaPayload(configForm.agendaItems),
+        city: configForm.city,
+        country: configForm.country,
+        address: configForm.address
+      },
+      programSettingsCopy.value.successTitle,
+      programSettingsCopy.value.successDescription
+    )
+    return
+  }
+
+  await patchConfiguration(
+    {
+      name: configForm.name,
+      slug: configForm.slug,
+      lumaEventUrl: configForm.lumaEventUrl.trim() || null,
+      description: configForm.description,
+      agendaItems: toHackathonAgendaPayload(configForm.agendaItems),
+      city: configForm.city,
+      country: configForm.country,
+      address: configForm.address,
+      registrationOpensAt: fromDateTimeLocalValue(configForm.registrationOpensAt),
+      registrationClosesAt: fromDateTimeLocalValue(configForm.registrationClosesAt),
+      submissionOpensAt: fromDateTimeLocalValue(configForm.submissionOpensAt),
+      submissionClosesAt: fromDateTimeLocalValue(configForm.submissionClosesAt),
+      maxTeamMembers: configForm.maxTeamMembers,
+      participantsLimit: configForm.participantsLimit,
+      inPersonEvent: configForm.inPersonEvent,
+      requireXProfile: configForm.requireXProfile,
+      requireLinkedinProfile: configForm.requireLinkedinProfile,
+      requireGithubProfile: configForm.requireGithubProfile,
+      requireChatgptEmail: configForm.requireChatgptEmail,
+      requireOpenaiOrgId: configForm.requireOpenaiOrgId,
+      requireLumaProfile: configForm.requireLumaProfile,
+      requireWhyThisHackathon: configForm.requireWhyThisHackathon,
+      requireProofOfExecution: configForm.requireProofOfExecution
+    },
+    programSettingsCopy.value.successTitle,
+    programSettingsCopy.value.successDescription
+  )
+}
+
+async function patchConfiguration(
+  body: Record<string, unknown>,
+  successTitle: string,
+  successDescription: string
+) {
+  if (!currentHackathon.value) {
+    return
+  }
+
   mutationError.value = ''
   isSavingConfig.value = true
 
@@ -412,36 +494,12 @@ async function saveConfiguration(configForm: HackathonFormState) {
 
     await $fetch(updateUrl, {
       method: 'PATCH',
-      body: {
-        name: configForm.name,
-        slug: configForm.slug,
-        lumaEventUrl: configForm.lumaEventUrl.trim() || null,
-        description: configForm.description,
-        agendaItems: toHackathonAgendaPayload(configForm.agendaItems),
-        city: configForm.city,
-        country: configForm.country,
-        address: configForm.address,
-        registrationOpensAt: fromDateTimeLocalValue(configForm.registrationOpensAt),
-        registrationClosesAt: fromDateTimeLocalValue(configForm.registrationClosesAt),
-        submissionOpensAt: fromDateTimeLocalValue(configForm.submissionOpensAt),
-        submissionClosesAt: fromDateTimeLocalValue(configForm.submissionClosesAt),
-        maxTeamMembers: configForm.maxTeamMembers,
-        participantsLimit: configForm.participantsLimit,
-        inPersonEvent: configForm.inPersonEvent,
-        requireXProfile: configForm.requireXProfile,
-        requireLinkedinProfile: configForm.requireLinkedinProfile,
-        requireGithubProfile: configForm.requireGithubProfile,
-        requireChatgptEmail: configForm.requireChatgptEmail,
-        requireOpenaiOrgId: configForm.requireOpenaiOrgId,
-        requireLumaProfile: configForm.requireLumaProfile,
-        requireWhyThisHackathon: configForm.requireWhyThisHackathon,
-        requireProofOfExecution: configForm.requireProofOfExecution
-      }
+      body
     })
 
     toast.add({
-      title: 'Configuration saved',
-      description: 'Hackathon settings now match the latest admin updates.',
+      title: successTitle,
+      description: successDescription,
       color: 'success'
     })
 
@@ -782,19 +840,23 @@ async function setCurrentTerms(document: TermsDocument) {
     />
 
     <template v-else-if="currentHackathon">
-      <section class="space-y-6">
+      <section
+        v-if="props.showProgramSettings"
+        class="space-y-6"
+      >
         <AdminHackathonCreateEditForm
           :initial-hackathon="currentHackathon"
           :can-upload-managed-images="true"
           :is-submitting="isSavingConfig"
+          :mode="props.programSettingsMode"
           :background-image-upload-pending="imageMutationState.background.pending"
           :background-image-upload-success="imageMutationState.background.success"
           :background-image-upload-error="imageMutationState.background.error"
           :banner-image-upload-pending="imageMutationState.banner.pending"
           :banner-image-upload-success="imageMutationState.banner.success"
           :banner-image-upload-error="imageMutationState.banner.error"
-          submit-label="Save Configuration"
-          helper-text="This workspace stays focused on setup controls. Day-to-day application, team, submission, and lifecycle operations now live in the dedicated Operations workspace."
+          :submit-label="programSettingsCopy.submitLabel"
+          :helper-text="programSettingsCopy.helperText"
           @submit="saveConfiguration"
           @upload-background-image="uploadBackgroundImage"
           @remove-background-image="removeBackgroundImage"
@@ -802,7 +864,10 @@ async function setCurrentTerms(document: TermsDocument) {
           @remove-banner-image="removeBannerImage"
         />
 
-        <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+        <AppCard
+          v-if="showProgramSnapshot"
+          class="rounded-xl hackathon-workspace-detail-panel"
+        >
           <template #header>
             <div class="flex flex-wrap items-center gap-3">
               <h2 class="text-lg font-semibold text-highlighted">
@@ -841,7 +906,10 @@ async function setCurrentTerms(document: TermsDocument) {
         </AppCard>
       </section>
 
-      <div class="space-y-1">
+      <div
+        v-if="props.showTermsManagement || props.showCriteriaConfiguration"
+        class="space-y-1"
+      >
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Program Rules
         </p>
@@ -851,7 +919,10 @@ async function setCurrentTerms(document: TermsDocument) {
       </div>
 
       <section class="space-y-6">
-        <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+        <AppCard
+          v-if="props.showTermsManagement"
+          class="rounded-xl hackathon-workspace-detail-panel"
+        >
           <template #header>
             <div class="space-y-1">
               <h2 class="text-lg font-semibold text-highlighted">
@@ -971,255 +1042,226 @@ async function setCurrentTerms(document: TermsDocument) {
           </div>
         </AppCard>
 
-        <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+        <AppCard
+          v-if="props.showCriteriaConfiguration"
+          class="rounded-xl hackathon-workspace-detail-panel"
+        >
           <template #header>
             <div class="space-y-1">
               <h2 class="text-lg font-semibold text-highlighted">
-                Criteria and Prizes
+                Judging Criteria
               </h2>
               <p class="text-sm text-muted">
-                Configure the canonical scoring dimensions and prize definitions that later operational tasks rely on.
+                Configure the canonical scoring dimensions that later judging and leaderboard workflows rely on.
               </p>
             </div>
           </template>
 
-          <div class="space-y-8">
-            <div class="grid gap-4">
-              <div class="grid gap-4 md:grid-cols-2">
-                <input
-                  v-model="criteriaDraft.name"
-                  type="text"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                  placeholder="Criterion name"
-                >
-                <input
-                  v-model.number="criteriaDraft.weight"
-                  type="number"
-                  min="0"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                  placeholder="Weight"
-                >
-              </div>
-              <textarea
-                v-model="criteriaDraft.description"
-                rows="3"
+          <div class="grid gap-4">
+            <div class="grid gap-4 md:grid-cols-2">
+              <input
+                v-model="criteriaDraft.name"
+                type="text"
                 class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                placeholder="Criterion description"
-              />
-              <AppButton
-                color="primary"
-                label="Add Criterion"
-                @click="createCriterion"
-              />
-              <div class="space-y-3">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <p class="text-xs text-muted">
-                    Drag to reorder criteria.
-                  </p>
-                  <AppButton
-                    size="sm"
-                    variant="soft"
-                    :disabled="!hasCriterionOrderChanges || isSavingCriterionOrder || isSavingPrizeOrder"
-                    :loading="isSavingCriterionOrder"
-                    @click="saveCriterionOrder"
-                  >
-                    Save criterion order
-                  </AppButton>
-                </div>
+                placeholder="Criterion name"
+              >
+              <input
+                v-model.number="criteriaDraft.weight"
+                type="number"
+                min="0"
+                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+                placeholder="Weight"
+              >
+            </div>
+            <textarea
+              v-model="criteriaDraft.description"
+              rows="3"
+              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+              placeholder="Criterion description"
+            />
+            <AppButton
+              color="primary"
+              label="Add Criterion"
+              @click="createCriterion"
+            />
+            <div class="space-y-3">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs text-muted">
+                  Drag to reorder criteria.
+                </p>
+                <AppButton
+                  size="sm"
+                  variant="soft"
+                  :disabled="!hasCriterionOrderChanges || isSavingCriterionOrder || isSavingPrizeOrder"
+                  :loading="isSavingCriterionOrder"
+                  @click="saveCriterionOrder"
+                >
+                  Save criterion order
+                </AppButton>
+              </div>
 
-                <div class="grid gap-3">
-                  <div
-                    v-for="(criterion, index) in orderedCriteria"
-                    :key="criterion.id"
-                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 transition-colors dark:border-white/[0.08] dark:bg-[#111111]"
-                    :class="criterionDropTargetId === criterion.id ? 'border-black/25 dark:border-white/[0.25]' : ''"
-                    @dragover.prevent="onCriterionDragOver(criterion.id)"
-                    @dragleave="onCriterionDragLeave(criterion.id)"
-                    @drop="onCriterionDrop(criterion.id, $event)"
-                  >
-                    <div class="grid gap-4">
-                      <div class="flex flex-wrap items-center justify-between gap-3">
-                        <div class="flex items-center gap-2">
-                          <button
-                            type="button"
-                            class="rounded-md border border-black/8 bg-white px-2 py-1 text-xs font-medium text-toned transition hover:border-black/25 hover:text-highlighted dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.25]"
-                            draggable="true"
-                            @dragstart="onCriterionDragStart(criterion.id, $event)"
-                            @dragend="onCriterionDragEnd"
-                          >
-                            Drag
-                          </button>
-                          <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
-                            Criterion {{ index + 1 }}
-                          </p>
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                          <AppButton
-                            size="sm"
-                            variant="ghost"
-                            color="neutral"
-                            :disabled="index === 0"
-                            @click="moveCriterion(criterion.id, -1)"
-                          >
-                            Move up
-                          </AppButton>
-                          <AppButton
-                            size="sm"
-                            variant="ghost"
-                            color="neutral"
-                            :disabled="index === orderedCriteria.length - 1"
-                            @click="moveCriterion(criterion.id, 1)"
-                          >
-                            Move down
-                          </AppButton>
-                          <AppButton
-                            size="sm"
-                            variant="soft"
-                            @click="updateCriterion(criterion.id)"
-                          >
-                            Save updates
-                          </AppButton>
-                        </div>
+              <div class="grid gap-3">
+                <div
+                  v-for="(criterion, index) in orderedCriteria"
+                  :key="criterion.id"
+                  class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 transition-colors dark:border-white/[0.08] dark:bg-[#111111]"
+                  :class="criterionDropTargetId === criterion.id ? 'border-black/25 dark:border-white/[0.25]' : ''"
+                  @dragover.prevent="onCriterionDragOver(criterion.id)"
+                  @dragleave="onCriterionDragLeave(criterion.id)"
+                  @drop="onCriterionDrop(criterion.id, $event)"
+                >
+                  <div class="grid gap-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                      <div class="flex items-center gap-2">
+                        <button
+                          type="button"
+                          class="rounded-md border border-black/8 bg-white px-2 py-1 text-xs font-medium text-toned transition hover:border-black/25 hover:text-highlighted dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.25]"
+                          draggable="true"
+                          @dragstart="onCriterionDragStart(criterion.id, $event)"
+                          @dragend="onCriterionDragEnd"
+                        >
+                          Drag
+                        </button>
+                        <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
+                          Criterion {{ index + 1 }}
+                        </p>
                       </div>
 
-                      <div class="grid gap-4 md:grid-cols-[1fr_140px]">
-                        <input
-                          v-model="getCriterionEdit(criterion).name"
-                          type="text"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Criterion name"
+                      <div class="flex items-center gap-2">
+                        <AppButton
+                          size="sm"
+                          variant="ghost"
+                          color="neutral"
+                          :disabled="index === 0"
+                          @click="moveCriterion(criterion.id, -1)"
                         >
-                        <input
-                          v-model.number="getCriterionEdit(criterion).weight"
-                          type="number"
-                          min="0"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Weight"
+                          Move up
+                        </AppButton>
+                        <AppButton
+                          size="sm"
+                          variant="ghost"
+                          color="neutral"
+                          :disabled="index === orderedCriteria.length - 1"
+                          @click="moveCriterion(criterion.id, 1)"
                         >
+                          Move down
+                        </AppButton>
+                        <AppButton
+                          size="sm"
+                          variant="soft"
+                          @click="updateCriterion(criterion.id)"
+                        >
+                          Save updates
+                        </AppButton>
                       </div>
-
-                      <textarea
-                        v-model="getCriterionEdit(criterion).description"
-                        rows="3"
-                        class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                        placeholder="Criterion description"
-                      />
                     </div>
+
+                    <div class="grid gap-4 md:grid-cols-[1fr_140px]">
+                      <input
+                        v-model="getCriterionEdit(criterion).name"
+                        type="text"
+                        class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                        placeholder="Criterion name"
+                      >
+                      <input
+                        v-model.number="getCriterionEdit(criterion).weight"
+                        type="number"
+                        min="0"
+                        class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                        placeholder="Weight"
+                      >
+                    </div>
+
+                    <textarea
+                      v-model="getCriterionEdit(criterion).description"
+                      rows="3"
+                      class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                      placeholder="Criterion description"
+                    />
                   </div>
                 </div>
               </div>
             </div>
+          </div>
+        </AppCard>
 
-            <div class="grid gap-4">
-              <div class="grid gap-4 md:grid-cols-2">
-                <input
-                  v-model="prizeDraft.name"
-                  type="text"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                  placeholder="Prize name"
-                >
-                <input
-                  v-model="prizeDraft.rewardValue"
-                  type="text"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                  placeholder="Reward value"
-                >
-              </div>
-              <textarea
-                v-model="prizeDraft.description"
-                rows="3"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                placeholder="Prize description"
-              />
-              <div class="grid gap-4 md:grid-cols-4">
-                <select
-                  v-model="prizeDraft.rewardType"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                >
-                  <option value="api_credits">
-                    API credits
-                  </option>
-                  <option value="subscription">
-                    Subscription
-                  </option>
-                  <option value="physical">
-                    Physical
-                  </option>
-                  <option value="other">
-                    Other
-                  </option>
-                </select>
-                <select
-                  v-model="prizeDraft.awardScope"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                >
-                  <option value="team">
-                    Team
-                  </option>
-                  <option value="member">
-                    Member
-                  </option>
-                </select>
-                <input
-                  v-model.number="prizeDraft.rankStart"
-                  type="number"
-                  min="1"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                  placeholder="Rank start"
-                >
-                <input
-                  v-model.number="prizeDraft.rankEnd"
-                  type="number"
-                  min="1"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
-                  placeholder="Rank end"
-                >
-              </div>
-              <AppButton
-                color="primary"
-                label="Add Prize"
-                @click="createPrize"
-              />
-              <div class="space-y-3">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <p class="text-xs text-muted">
-                    Drag to reorder prizes.
-                  </p>
-                  <AppButton
-                    size="sm"
-                    variant="soft"
-                    :disabled="!hasPrizeOrderChanges || isSavingPrizeOrder || isSavingCriterionOrder"
-                    :loading="isSavingPrizeOrder"
-                    @click="savePrizeOrder"
-                  >
-                    Save prize order
-                  </AppButton>
-                </div>
+        <AppCard
+          v-if="props.showPrizeConfiguration"
+          class="rounded-xl hackathon-workspace-detail-panel"
+        >
+          <template #header>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold text-highlighted">
+                Prize Configuration
+              </h2>
+              <p class="text-sm text-muted">
+                Configure prize definitions and ordering for the outcomes and redemption flows.
+              </p>
+            </div>
+          </template>
 
-                <div class="grid gap-3">
+          <div class="grid gap-4">
+            <div class="space-y-3">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <p class="text-xs text-muted">
+                  Use the left handle to drag prizes into a new order.
+                </p>
+                <AppButton
+                  size="sm"
+                  variant="soft"
+                  :disabled="!hasPrizeOrderChanges || isSavingPrizeOrder || isSavingCriterionOrder"
+                  :loading="isSavingPrizeOrder"
+                  @click="savePrizeOrder"
+                >
+                  Save prize order
+                </AppButton>
+              </div>
+
+              <div
+                ref="prizeListElement"
+                class="grid gap-3"
+              >
+                <div
+                  v-for="(prize, index) in orderedPrizes"
+                  :key="prize.id"
+                  :data-prize-id="prize.id"
+                  data-prize-row
+                  class="rounded-xl border bg-white/88 p-3 transition-all dark:bg-[#111111]"
+                  :class="[
+                    prizeDropTargetId === prize.id
+                      ? 'border-dashed border-black/30 ring-2 ring-black/6 dark:border-white/[0.32] dark:ring-white/[0.08]'
+                      : 'border-black/8 dark:border-white/[0.08]',
+                    activePrizeDragId === prize.id
+                      ? 'shadow-[0_16px_40px_-34px_rgba(15,23,42,0.55)]'
+                      : ''
+                  ]"
+                >
                   <div
-                    v-for="(prize, index) in orderedPrizes"
-                    :key="prize.id"
-                    class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 transition-colors dark:border-white/[0.08] dark:bg-[#111111]"
-                    :class="prizeDropTargetId === prize.id ? 'border-black/25 dark:border-white/[0.25]' : ''"
-                    @dragover.prevent="onPrizeDragOver(prize.id)"
-                    @dragleave="onPrizeDragLeave(prize.id)"
-                    @drop="onPrizeDrop(prize.id, $event)"
+                    v-if="prizeDropTargetId === prize.id"
+                    class="mb-3 rounded-lg border border-dashed border-black/18 bg-black/[0.03] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted dark:border-white/[0.14] dark:bg-white/[0.03]"
                   >
-                    <div class="grid gap-4">
-                      <div class="flex flex-wrap items-center justify-between gap-3">
+                    Drop prize here
+                  </div>
+
+                  <div class="grid gap-3 md:grid-cols-[auto_minmax(0,1fr)]">
+                    <div class="flex items-center">
+                      <button
+                        type="button"
+                        data-prize-sort-handle
+                        class="group inline-flex h-11 w-11 cursor-grab items-center justify-center rounded-xl border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted active:cursor-grabbing dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                        :aria-label="`Drag to reorder ${getPrizeEdit(prize).name || `prize ${index + 1}`}`"
+                      >
+                        <AppIcon
+                          name="i-lucide-grip-vertical"
+                          class="size-4.5 transition group-hover:scale-105"
+                        />
+                      </button>
+                    </div>
+
+                    <div class="grid gap-2.5">
+                      <div class="flex flex-wrap items-start justify-between gap-3">
                         <div class="flex items-center gap-2">
-                          <button
-                            type="button"
-                            class="rounded-md border border-black/8 bg-white px-2 py-1 text-xs font-medium text-toned transition hover:border-black/25 hover:text-highlighted dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.25]"
-                            draggable="true"
-                            @dragstart="onPrizeDragStart(prize.id, $event)"
-                            @dragend="onPrizeDragEnd"
-                          >
-                            Drag
-                          </button>
-                          <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
+                          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
                             Prize {{ index + 1 }}
                           </p>
                         </div>
@@ -1253,86 +1295,229 @@ async function setCurrentTerms(document: TermsDocument) {
                         </div>
                       </div>
 
-                      <div class="grid gap-4 md:grid-cols-2">
-                        <input
-                          v-model="getPrizeEdit(prize).name"
-                          type="text"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Prize name"
-                        >
-                        <input
-                          v-model="getPrizeEdit(prize).rewardValue"
-                          type="text"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Reward value"
-                        >
+                      <div class="grid gap-2.5 md:grid-cols-[minmax(0,1.8fr)_140px_110px]">
+                        <label class="grid gap-1">
+                          <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Prize name</span>
+                          <input
+                            v-model="getPrizeEdit(prize).name"
+                            type="text"
+                            class="rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="Best overall"
+                          >
+                        </label>
+                        <label class="grid gap-1">
+                          <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Reward value</span>
+                          <input
+                            v-model="getPrizeEdit(prize).rewardValue"
+                            type="text"
+                            class="rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="5000"
+                          >
+                        </label>
+                        <label class="grid gap-1">
+                          <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Currency</span>
+                          <input
+                            v-model="getPrizeEdit(prize).rewardCurrency"
+                            type="text"
+                            class="rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="USD"
+                          >
+                        </label>
                       </div>
 
-                      <textarea
-                        v-model="getPrizeEdit(prize).description"
-                        rows="3"
-                        class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                        placeholder="Prize description"
-                      />
-
-                      <div class="grid gap-4 md:grid-cols-5">
-                        <select
-                          v-model="getPrizeEdit(prize).rewardType"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                        >
-                          <option value="api_credits">
-                            API credits
-                          </option>
-                          <option value="subscription">
-                            Subscription
-                          </option>
-                          <option value="physical">
-                            Physical
-                          </option>
-                          <option value="other">
-                            Other
-                          </option>
-                        </select>
-                        <select
-                          v-model="getPrizeEdit(prize).awardScope"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                        >
-                          <option value="team">
-                            Team
-                          </option>
-                          <option value="member">
-                            Member
-                          </option>
-                        </select>
-                        <input
-                          v-model="getPrizeEdit(prize).rewardCurrency"
-                          type="text"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Currency"
-                        >
-                        <input
-                          v-model.number="getPrizeEdit(prize).rankStart"
-                          type="number"
-                          min="1"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Rank start"
-                        >
-                        <input
-                          v-model.number="getPrizeEdit(prize).rankEnd"
-                          type="number"
-                          min="1"
-                          class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
-                          placeholder="Rank end"
-                        >
+                      <div class="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_120px_88px_88px]">
+                        <label class="grid gap-1">
+                          <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Reward type</span>
+                          <select
+                            v-model="getPrizeEdit(prize).rewardType"
+                            class="rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                          >
+                            <option value="api_credits">
+                              API credits
+                            </option>
+                            <option value="subscription">
+                              Subscription
+                            </option>
+                            <option value="physical">
+                              Physical
+                            </option>
+                            <option value="other">
+                              Other
+                            </option>
+                          </select>
+                        </label>
+                        <label class="grid gap-1">
+                          <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Awarded to</span>
+                          <select
+                            v-model="getPrizeEdit(prize).awardScope"
+                            class="rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                          >
+                            <option value="team">
+                              Team
+                            </option>
+                            <option value="member">
+                              Member
+                            </option>
+                          </select>
+                        </label>
+                        <label class="grid gap-1">
+                          <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Rank from</span>
+                          <input
+                            v-model.number="getPrizeEdit(prize).rankStart"
+                            type="number"
+                            min="1"
+                            class="rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="1"
+                          >
+                        </label>
+                        <label class="grid gap-1">
+                          <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Rank to</span>
+                          <input
+                            v-model.number="getPrizeEdit(prize).rankEnd"
+                            type="number"
+                            min="1"
+                            class="rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                            placeholder="1"
+                          >
+                        </label>
                       </div>
 
-                      <div class="text-sm text-muted">
-                        {{ prize.rewardType }} • ranks {{ prize.rankStart }}-{{ prize.rankEnd }}
-                      </div>
+                      <label class="grid gap-1">
+                        <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Description</span>
+                        <textarea
+                          v-model="getPrizeEdit(prize).description"
+                          rows="1"
+                          class="min-h-10 rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                          placeholder="Explain what the winner receives."
+                        />
+                      </label>
                     </div>
                   </div>
                 </div>
+
+                <p
+                  v-if="orderedPrizes.length === 0"
+                  class="text-sm text-muted"
+                >
+                  No prizes configured yet.
+                </p>
               </div>
+            </div>
+
+            <div class="rounded-xl border border-dashed border-black/12 bg-black/[0.02] p-4 dark:border-white/[0.1] dark:bg-white/[0.02]">
+              <div class="mb-3 flex flex-wrap items-start justify-between gap-3">
+                <div class="space-y-1">
+                  <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+                    Add Prize
+                  </h3>
+                  <p class="text-sm text-muted">
+                    New prize details are entered here below the configured prize list.
+                  </p>
+                </div>
+
+                <AppButton
+                  color="primary"
+                  label="Add Prize"
+                  @click="createPrize"
+                />
+              </div>
+
+              <div class="grid gap-2.5 md:grid-cols-[minmax(0,1.8fr)_140px_110px]">
+                <label class="grid gap-1">
+                  <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Prize name</span>
+                  <input
+                    v-model="prizeDraft.name"
+                    type="text"
+                    class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                    placeholder="Best overall"
+                  >
+                </label>
+                <label class="grid gap-1">
+                  <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Reward value</span>
+                  <input
+                    v-model="prizeDraft.rewardValue"
+                    type="text"
+                    class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                    placeholder="5000"
+                  >
+                </label>
+                <label class="grid gap-1">
+                  <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Currency</span>
+                  <input
+                    v-model="prizeDraft.rewardCurrency"
+                    type="text"
+                    class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                    placeholder="USD"
+                  >
+                </label>
+              </div>
+
+              <div class="mt-2.5 grid gap-2.5 md:grid-cols-[minmax(0,1fr)_120px_88px_88px]">
+                <label class="grid gap-1">
+                  <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Reward type</span>
+                  <select
+                    v-model="prizeDraft.rewardType"
+                    class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                  >
+                    <option value="api_credits">
+                      API credits
+                    </option>
+                    <option value="subscription">
+                      Subscription
+                    </option>
+                    <option value="physical">
+                      Physical
+                    </option>
+                    <option value="other">
+                      Other
+                    </option>
+                  </select>
+                </label>
+                <label class="grid gap-1">
+                  <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Awarded to</span>
+                  <select
+                    v-model="prizeDraft.awardScope"
+                    class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                  >
+                    <option value="team">
+                      Team
+                    </option>
+                    <option value="member">
+                      Member
+                    </option>
+                  </select>
+                </label>
+                <label class="grid gap-1">
+                  <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Rank from</span>
+                  <input
+                    v-model.number="prizeDraft.rankStart"
+                    type="number"
+                    min="1"
+                    class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                    placeholder="1"
+                  >
+                </label>
+                <label class="grid gap-1">
+                  <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Rank to</span>
+                  <input
+                    v-model.number="prizeDraft.rankEnd"
+                    type="number"
+                    min="1"
+                    class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                    placeholder="1"
+                  >
+                </label>
+              </div>
+
+              <label class="mt-2.5 grid gap-1">
+                <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Description</span>
+                <textarea
+                  v-model="prizeDraft.description"
+                  rows="1"
+                  class="min-h-10 w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                  placeholder="Explain what the winner receives."
+                />
+              </label>
             </div>
           </div>
         </AppCard>

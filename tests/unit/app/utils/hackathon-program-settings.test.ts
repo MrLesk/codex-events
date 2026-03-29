@@ -1,0 +1,52 @@
+import { describe, expect, test } from 'vitest'
+
+import {
+  getHackathonConfigFormModeView,
+  getHackathonProgramSettingsCopy
+} from '../../../../app/utils/hackathon-program-settings'
+
+describe('hackathon program settings mode view', () => {
+  test('keeps schedule and program identity together in details mode', () => {
+    expect(getHackathonConfigFormModeView('details')).toEqual({
+      showBasicInformationFields: false,
+      showAgendaItemsSection: true,
+      showProgramIdentitySection: true,
+      showProgramSettingsSections: false,
+      basicsHeading: 'Schedule',
+      basicsDescription: 'Update the agenda shown to participants in the Details tab.',
+      programIdentityDescription: 'Update the location and imagery shown in the public Details tab.'
+    })
+  })
+
+  test('hides program identity in settings mode', () => {
+    expect(getHackathonConfigFormModeView('settings')).toEqual({
+      showBasicInformationFields: true,
+      showAgendaItemsSection: false,
+      showProgramIdentitySection: false,
+      showProgramSettingsSections: true,
+      basicsHeading: 'Basic Information',
+      basicsDescription: 'Set the public basics for this hackathon: name, slug, and description.',
+      programIdentityDescription: ''
+    })
+  })
+})
+
+describe('hackathon program settings copy', () => {
+  test('explains the public details impact for details mode', () => {
+    expect(getHackathonProgramSettingsCopy('details')).toEqual({
+      submitLabel: 'Save Details',
+      helperText: 'Changes here update the public Details tab participants see, including the schedule, location, and imagery.',
+      successTitle: 'Details updated',
+      successDescription: 'The public Details tab now shows the latest schedule, location, and imagery.'
+    })
+  })
+
+  test('keeps settings copy focused on non-details configuration', () => {
+    expect(getHackathonProgramSettingsCopy('settings')).toEqual({
+      submitLabel: 'Save Configuration',
+      helperText: 'Use Settings for the hackathon setup, timeline, and participation rules. Edit the public Details tab content from the Details tab.',
+      successTitle: 'Configuration saved',
+      successDescription: 'Hackathon settings now match the latest admin updates.'
+    })
+  })
+})
