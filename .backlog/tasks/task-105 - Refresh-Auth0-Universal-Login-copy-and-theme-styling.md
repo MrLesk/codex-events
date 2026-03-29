@@ -2,9 +2,10 @@
 id: TASK-105
 title: Refresh Auth0 Universal Login copy and theme styling
 status: In Progress
-assignee: []
+assignee:
+  - codex
 created_date: '2026-03-29 20:01'
-updated_date: '2026-03-29 20:07'
+updated_date: '2026-03-29 20:42'
 labels: []
 dependencies: []
 priority: high
@@ -25,6 +26,14 @@ Update the hosted Auth0 Universal Login experience so it matches the Codex Hacka
 - [x] #5 Unit coverage or equivalent validation covers the new bootstrap expectations and asset behavior.
 <!-- AC:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Update the Auth0 bootstrap signup-partials cleanup to remove the `form-content-end` key instead of writing an empty string, and treat a `404` partials response as an already-cleared prompt.
+2. Add focused unit coverage for the payload-building behavior so the cleanup contract stays reproducible.
+3. Re-run `bun tools/auth0/auth0-bootstrap.ts apply` against the dev tenant with the documented dev-domain overrides, then run `bun run test:unit` and capture the outcome in task notes.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
@@ -33,6 +42,12 @@ Implemented canonical Auth0 login subtitle copy, Universal Login template link s
 Applied Auth0 bootstrap successfully against the dev tenant; login prompt custom text and Universal Login template now match the new canonical state there.
 
 Manual `bun run deploy:dev` is blocked from this shell because the available Cloudflare API token lacks Worker deploy permission for service `codex-hackathons-dev` (Cloudflare API authentication error 10000).
+
+Re-applying the bootstrap against the dev tenant exposed an Auth0 API quirk: `PUT /api/v2/prompts/{prompt}/partials` rejects `form-content-end: ""` for `signup-id` with `400 invalid_body`. The bootstrap now removes the `form-content-end` key entirely and treats a `404` partials read as an already-cleared prompt.
+
+Re-ran `AUTH0_CUSTOM_DOMAIN=auth.dev.codex-hackathons.com AUTH0_APP_BASE_URL=https://dev.codex-hackathons.com AUTH0_LOGIN_URI=https://dev.codex-hackathons.com/auth/login bun tools/auth0/auth0-bootstrap.ts apply`; Auth0 cleared the hosted signup consent partials for both `signup-id` and `signup`, and the bootstrap finished with `Auth0 bootstrap check passed`.
+
+Validation: `bunx vitest run tests/unit/tools/auth0/auth0-bootstrap.test.ts` passed and `bun run test:unit` passed (52 files, 245 tests).
 <!-- SECTION:NOTES:END -->
 
 ## Definition of Done

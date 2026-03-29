@@ -374,6 +374,12 @@ export function buildExpectedLoginCustomText(config: TenantConfig) {
   } as const
 }
 
+export function buildClearedSignupPartials(signupPartials: Record<string, string>) {
+  const { ['form-content-end']: _ignored, ...remainingPartials } = signupPartials
+
+  return remainingPartials
+}
+
 function hasClearedSignupPartials(partial: string | undefined) {
   return normalizeMultiline(partial) === ''
 }
@@ -897,7 +903,12 @@ async function ensureSignupCustomText(config: TenantConfig, token: string, mode:
 async function getSignupPartials(config: TenantConfig, token: string, promptKey: SignupPromptKey) {
   const response = await auth0ManagementRequest(config, token, `/api/v2/prompts/${promptKey}/partials`, {
     method: 'GET'
-  })
+  }, { ignoreNotFound: true })
+
+  if (response.status === 404) {
+    return {}
+  }
+
   return await response.json() as Record<string, Record<string, string>>
 }
 
@@ -909,14 +920,11 @@ async function ensureSignupPartials(config: TenantConfig, token: string, mode: C
     let signupPartials = currentPartials[promptKey] ?? {}
     let currentFormContentEnd = signupPartials['form-content-end']
 
-    if (mode === 'apply' && normalizeMultiline(currentFormContentEnd) !== normalizeMultiline(expectedPartials)) {
+    if (mode === 'apply' && !hasClearedSignupPartials(currentFormContentEnd)) {
       await auth0ManagementRequest(config, token, `/api/v2/prompts/${promptKey}/partials`, {
         method: 'PUT',
         body: JSON.stringify({
-          [promptKey]: {
-            ...signupPartials,
-            'form-content-end': expectedPartials
-          }
+          [promptKey]: buildClearedSignupPartials(signupPartials)
         })
       })
       currentPartials = await getSignupPartials(config, token, promptKey)

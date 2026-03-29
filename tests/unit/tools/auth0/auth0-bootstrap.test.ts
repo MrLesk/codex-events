@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  buildClearedSignupPartials,
   buildExpectedLoginCustomText,
   buildUniversalLoginPageTemplate,
   resolveConfig
@@ -82,5 +83,18 @@ describe('auth0 bootstrap config', () => {
     expect(template).toContain('body._widget-auto-layout a { color: #030213 !important; }')
     expect(template).toContain('body._widget-auto-layout #prompt-logo-center {')
     expect(template).toContain('{%- auth0:widget -%}')
+  })
+
+  test('clears only the hosted signup consent partial while preserving other prompt partials', () => {
+    expect(buildClearedSignupPartials({
+      'form-content-start': '<p>Custom start</p>',
+      'form-content-end': '<p>Consent checkboxes</p>'
+    })).toEqual({
+      'form-content-start': '<p>Custom start</p>'
+    })
+
+    expect(buildClearedSignupPartials({
+      'form-content-end': '<p>Consent checkboxes</p>'
+    })).toEqual({})
   })
 })
