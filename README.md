@@ -128,6 +128,8 @@ Pushes to `main` now publish that shared dev environment automatically through G
 
 For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run the same scripts locally. They pass the management token through to Wrangler as `CLOUDFLARE_API_TOKEN`.
 
+The repository also includes a production release workflow. Publishing a GitHub Release triggers `.github/workflows/release-production.yml`, which derives the deployed package version from the release tag, applies production Auth0 and Cloudflare changes, deploys `https://codex-hackathons.com`, and then commits the matching `package.json` version back to `main`.
+
 ## Documentation Map
 
 - [`docs/README.md`](docs/README.md): canonical documentation index

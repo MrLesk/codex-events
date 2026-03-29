@@ -46,6 +46,7 @@
 			"name": "codex-hackathons-dev",
 			"main": ".output/server/index.mjs",
 			"workers_dev": true,
+			"preview_urls": false,
 			"build": {
 				"command": "bun run build:cloudflare"
 			},
@@ -94,6 +95,67 @@
 				"consumers": [
 					{
 						"queue": "dev-codex-hackathons-application-review-email-delivery",
+						"max_batch_size": 10,
+						"max_batch_timeout": 5,
+						"max_retries": 10,
+						"retry_delay": 120
+					}
+				]
+			}
+		},
+		"production": {
+			"name": "codex-hackathons",
+			"main": ".output/server/index.mjs",
+			"workers_dev": false,
+			"preview_urls": false,
+			"build": {
+				"command": "bun run build:cloudflare"
+			},
+			"assets": {
+				"binding": "ASSETS",
+				"directory": ".output/public"
+			},
+			"routes": [
+				{
+					"pattern": "codex-hackathons.com",
+					"custom_domain": true
+				}
+			],
+			"vars": {
+				"NUXT_AUTH0_DOMAIN": "auth.codex-hackathons.com",
+				"NUXT_AUTH0_APP_BASE_URL": "https://codex-hackathons.com",
+				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING": "APPLICATION_REVIEW_EMAIL_QUEUE",
+				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "codex-hackathons-application-review-email-delivery",
+				"NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS": "120"
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "codex-hackathons",
+					"database_id": "4a138b1e-0267-47c4-8124-ab75cb530e28",
+					"migrations_dir": "drizzle"
+				}
+			],
+			"r2_buckets": [
+				{
+					"binding": "PROFILE_ICONS",
+					"bucket_name": "codex-hackathons-profile-icons"
+				},
+				{
+					"binding": "HACKATHON_IMAGES",
+					"bucket_name": "codex-hackathons-hackathon-images"
+				}
+			],
+			"queues": {
+				"producers": [
+					{
+						"binding": "APPLICATION_REVIEW_EMAIL_QUEUE",
+						"queue": "codex-hackathons-application-review-email-delivery"
+					}
+				],
+				"consumers": [
+					{
+						"queue": "codex-hackathons-application-review-email-delivery",
 						"max_batch_size": 10,
 						"max_batch_timeout": 5,
 						"max_retries": 10,

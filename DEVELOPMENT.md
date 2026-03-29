@@ -129,6 +129,43 @@ AUTH0_LOGIN_URI=https://dev.codex-hackathons.com/auth/login \
 bun tools/auth0/auth0-bootstrap.ts apply
 ```
 
+## Production Release Pipeline
+
+Production publishes from GitHub Releases through `.github/workflows/release-production.yml`.
+
+The workflow starts when you manually publish a GitHub Release. The release tag is the canonical version source for that run:
+
+- `v1.2.3` becomes package version `1.2.3`
+- the workflow validates, migrates, and deploys production from the tagged commit
+- after a successful release it commits the matching `package.json` version back to `main`
+
+The GitHub `production` environment must provide these secrets before the workflow can run:
+
+- `AUTH0_APP_CLIENT_ID`
+- `AUTH0_MGMT_CLIENT_ID`
+- `AUTH0_MGMT_CLIENT_SECRET`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `CLOUDFLARE_API_TOKEN`
+- `NUXT_AUTH0_AUDIENCE`
+- `NUXT_AUTH0_CLIENT_SECRET`
+- `NUXT_AUTH0_SESSION_SECRET`
+- `NUXT_RESEND_API_KEY`
+- `NUXT_RESEND_FROM_EMAIL`
+- `NUXT_RESEND_REPLY_TO`
+
+The workflow uses these production hostnames:
+
+- application URL: `https://codex-hackathons.com`
+- Auth0 custom domain: `https://auth.codex-hackathons.com`
+
+On the first successful production release, the workflow also:
+
+- creates or reuses the Auth0 custom domain
+- creates or updates the required Cloudflare DNS-only CNAME verification record
+- waits for Auth0 verification and certificate provisioning before applying the rest of the tenant bootstrap
+
+If Auth0 returns `operation_not_supported` with a verified-billing-method message while creating the custom domain, add billing information in the production Auth0 tenant and rerun the release. The release cannot finish the custom-domain setup until Auth0 allows custom-domain creation for that tenant.
+
 ## Validation
 
 Run the standard project checks with:

@@ -1,0 +1,152 @@
+name: release-production
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  release-production:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-production
+      cancel-in-progress: false
+    permissions:
+      contents: write
+    environment:
+      name: production
+      url: https://codex-hackathons.com
+    env:
+      CI: true
+      AUTH0_DOMAIN: codex-hackathons.eu.auth0.com
+      AUTH0_APP_BASE_URL: https://codex-hackathons.com
+      AUTH0_CUSTOM_DOMAIN: auth.codex-hackathons.com
+      AUTH0_LOGIN_URI: https://codex-hackathons.com/auth/login
+      AUTH0_APP_DISPLAY_NAME: Codex Hackathons
+      AUTH0_MGMT_AUDIENCE: https://codex-hackathons.eu.auth0.com/api/v2/
+      NUXT_AUTH0_DOMAIN: auth.codex-hackathons.com
+      NUXT_AUTH0_APP_BASE_URL: https://codex-hackathons.com
+      NUXT_AUTH0_CLIENT_ID: ${{ secrets.AUTH0_APP_CLIENT_ID }}
+      NUXT_AUTH0_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_CLIENT_SECRET }}
+      NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}
+      NUXT_AUTH0_AUDIENCE: ${{ secrets.NUXT_AUTH0_AUDIENCE }}
+      NUXT_RESEND_API_KEY: ${{ secrets.NUXT_RESEND_API_KEY }}
+      NUXT_RESEND_FROM_EMAIL: ${{ secrets.NUXT_RESEND_FROM_EMAIL }}
+      NUXT_RESEND_FROM_NAME: Codex Hackathons
+      NUXT_RESEND_REPLY_TO: ${{ secrets.NUXT_RESEND_REPLY_TO }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v6.0.2
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Install bun
+        uses: oven-sh/setup-bun@v2.2.0
+        with:
+          bun-version: 1.3.11
+
+      - name: Cache Bun install cache
+        uses: actions/cache@v5.0.4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-install-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-install-
+
+      - name: Install dependencies
+        run: bun ci
+
+      - name: Derive release version
+        id: release_version
+        run: |
+          release_tag='${{ github.event.release.tag_name }}'
+          release_version="$(bun run release:version "$release_tag")"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "release_version=$release_version" >> "$GITHUB_OUTPUT"
+
+      - name: Sync package.json to release version
+        run: bun run release:version "${{ steps.release_version.outputs.release_tag }}" --write
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Unit tests
+        run: bun run test:unit
+
+      - name: Integration tests
+        run: bun run test:integration
+
+      - name: Build Cloudflare bundle
+        run: bun run build:cloudflare
+
+      - name: Ensure production Auth0 custom domain and verification DNS
+        env:
+          AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
+          AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+        run: bun run auth0:custom-domain
+
+      - name: Upload production Worker secrets
+        run: |
+          jq -n \
+            --arg auth0ClientId "$NUXT_AUTH0_CLIENT_ID" \
+            --arg auth0ClientSecret "$NUXT_AUTH0_CLIENT_SECRET" \
+            --arg auth0SessionSecret "$NUXT_AUTH0_SESSION_SECRET" \
+            --arg auth0Audience "$NUXT_AUTH0_AUDIENCE" \
+            --arg resendApiKey "$NUXT_RESEND_API_KEY" \
+            --arg resendFromEmail "$NUXT_RESEND_FROM_EMAIL" \
+            --arg resendFromName "$NUXT_RESEND_FROM_NAME" \
+            --arg resendReplyTo "$NUXT_RESEND_REPLY_TO" \
+            '{
+              NUXT_AUTH0_CLIENT_ID: $auth0ClientId,
+              NUXT_AUTH0_CLIENT_SECRET: $auth0ClientSecret,
+              NUXT_AUTH0_SESSION_SECRET: $auth0SessionSecret,
+              NUXT_AUTH0_AUDIENCE: $auth0Audience,
+              NUXT_RESEND_API_KEY: $resendApiKey,
+              NUXT_RESEND_FROM_EMAIL: $resendFromEmail,
+              NUXT_RESEND_FROM_NAME: $resendFromName,
+              NUXT_RESEND_REPLY_TO: $resendReplyTo
+            }' > .wrangler-production-secrets.json
+          bunx wrangler secret bulk .wrangler-production-secrets.json --env production --config wrangler.jsonc
+          rm .wrangler-production-secrets.json
+
+      - name: Apply production Auth0 configuration
+        env:
+          AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
+          AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+          AUTH0_APP_CLIENT_ID: ${{ secrets.AUTH0_APP_CLIENT_ID }}
+        run: bun tools/auth0/auth0-bootstrap.ts apply
+
+      - name: Apply production D1 migrations
+        run: bun run db:migrate:production
+
+      - name: Deploy production Worker
+        run: bun run deploy:production
+
+      - name: Commit package version back to main
+        env:
+          RELEASE_TAG: ${{ steps.release_version.outputs.release_tag }}
+          RELEASE_VERSION: ${{ steps.release_version.outputs.release_version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git restore --source=HEAD --staged --worktree package.json
+          git checkout main
+          git pull --ff-only origin main
+          bun run release:version "$RELEASE_TAG" --write
+
+          if git diff --quiet -- package.json; then
+            echo "package.json already matches ${RELEASE_VERSION}."
+            exit 0
+          fi
+
+          git add package.json
+          git commit --cleanup=verbatim -m "chore(release): sync package version to ${RELEASE_VERSION} [skip ci]"
+          git push origin HEAD:main
