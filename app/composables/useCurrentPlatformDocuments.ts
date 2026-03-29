@@ -15,10 +15,16 @@ interface CurrentPlatformDocumentsResponse {
   }
 }
 
-export async function useCurrentPlatformDocuments() {
-  const request = await useFetch<CurrentPlatformDocumentsResponse>('/api/platform-documents/current', {
-    key: 'current-platform-documents'
-  })
+export function useCurrentPlatformDocuments() {
+  const apiFetch = import.meta.server ? useRequestFetch() : $fetch
+
+  const request = useAsyncData<CurrentPlatformDocumentsResponse | null>(
+    'current-platform-documents',
+    async () => await apiFetch<CurrentPlatformDocumentsResponse>('/api/platform-documents/current'),
+    {
+      default: () => null
+    }
+  )
 
   return {
     ...request,

@@ -35,6 +35,12 @@ function isQueueProducerLike(value: unknown): value is QueueProducerLike {
   return typeof candidate.send === 'function'
 }
 
+function shouldUseLocalPlatformProxy() {
+  return import.meta.dev
+    || process.env.NODE_ENV === 'test'
+    || Boolean(process.env.VITEST)
+}
+
 export default defineEventHandler(async (event) => {
   const runtimeConfig = useRuntimeConfig(event)
   const databaseBindingName = runtimeConfig.database?.binding ?? 'DB'
@@ -48,10 +54,9 @@ export default defineEventHandler(async (event) => {
   const hasHackathonImagesBinding = Boolean(cloudflareEnv?.[hackathonImagesBindingName])
   const hasApplicationReviewEmailQueueBinding = Boolean(cloudflareEnv?.[applicationReviewEmailQueueBindingName])
 
-  // Production requests should use their real D1 binding directly. The local Wrangler
-  // platform proxy is only valid when we need to bootstrap a local request that has no
-  // database binding at all.
-  if (hasDatabaseBinding) {
+  // The local Wrangler platform proxy is only valid for Bun/Vitest execution in this
+  // repository. Deployed Workers requests must never try to load the `wrangler` package.
+  if (hasDatabaseBinding || !shouldUseLocalPlatformProxy()) {
     return
   }
 

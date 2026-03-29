@@ -15,13 +15,13 @@ const returnTo = computed(() => normalizeAuthReturnTo(
   typeof route.query.returnTo === 'string' ? route.query.returnTo : null,
   accountDashboardHref
 ))
-const { actor, status, refresh } = await useAccountLifecycleActor()
+const { actor, status, refresh } = useAccountLifecycleActor()
 const {
   documents,
   privacyPolicyDocument,
   platformTermsDocument,
   status: documentsStatus
-} = await useCurrentPlatformDocuments()
+} = useCurrentPlatformDocuments()
 
 const privacyAccepted = ref(false)
 const termsAccepted = ref(false)

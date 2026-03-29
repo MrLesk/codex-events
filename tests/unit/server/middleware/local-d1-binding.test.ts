@@ -55,6 +55,7 @@ describe('local D1 binding middleware', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   test('does not load the local Wrangler proxy when the request already has a database binding', async () => {
@@ -70,6 +71,19 @@ describe('local D1 binding middleware', () => {
     await middleware(event)
 
     expect(createLocalPlatformProxy).not.toHaveBeenCalled()
+  })
+
+  test('does not load the local Wrangler proxy for production requests without a database binding', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    vi.stubEnv('VITEST', '')
+
+    const middleware = await loadMiddleware()
+    const event = createEvent()
+
+    await middleware(event)
+
+    expect(createLocalPlatformProxy).not.toHaveBeenCalled()
+    expect(event.context.d1Database).toBeUndefined()
   })
 
   test('loads the local Wrangler proxy when the request has no database binding', async () => {
