@@ -584,7 +584,7 @@ async function approveApplicationGroup(applicationsToApprove: AdminApplicationRe
 
   await runMutation(
     `stage:approved-team:${sortedApplicationIds.join('__')}`,
-    async () => await Promise.all(targetApplications.map(async (application) =>
+    async () => await Promise.all(targetApplications.map(async application =>
       await $fetch<StageApplicationResponse>(
         `/api/hackathons/${application.hackathonId}/applications/${application.id}/actions/approve`,
         {
