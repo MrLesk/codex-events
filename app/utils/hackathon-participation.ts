@@ -10,7 +10,9 @@ export interface HackathonParticipationHackathonSummary {
   city: string
   country: string
   state: PublicHackathonState
+  startsAt: string
   registrationOpensAt: string
+  registrationClosesAt: string
   submissionClosesAt: string
 }
 
@@ -52,49 +54,43 @@ export interface HackathonParticipationApiDataResponse<T> {
   data: T
 }
 
-const fullDateFormatter = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric'
-})
-
 export function normalizeHackathonParticipationApiError(error: unknown) {
   return normalizeParticipantApiError(error)
 }
 
-export function formatParticipationDate(value: string | null | undefined) {
-  if (!value) {
-    return 'Not recorded'
-  }
-
-  return fullDateFormatter.format(new Date(value))
-}
-
 export function formatParticipationStatusLabel(record: HackathonParticipationRecord) {
-  if (record.activeTeam) {
-    return 'Active team'
-  }
-
   if (record.application?.status === 'approved') {
-    return record.latestTeam ? 'Alumni team member' : 'Approved'
+    return 'Approved'
   }
 
   if (record.application?.status === 'submitted') {
-    return 'Application submitted'
+    return 'Pending review'
   }
 
   if (record.application?.status === 'rejected') {
-    return 'Application rejected'
+    return 'Not approved'
+  }
+
+  if (record.activeTeam) {
+    return 'Team active'
+  }
+
+  if (record.latestSubmission?.status === 'submitted' || record.latestSubmission?.status === 'locked') {
+    return 'Project submitted'
+  }
+
+  if (record.latestSubmission?.status === 'draft') {
+    return 'Draft saved'
+  }
+
+  if (record.latestTeam) {
+    return 'Participated'
   }
 
   return 'Participation'
 }
 
 export function getParticipationStatusColor(record: HackathonParticipationRecord) {
-  if (record.activeTeam) {
-    return 'primary'
-  }
-
   if (record.application?.status === 'approved') {
     return 'success'
   }
@@ -107,35 +103,65 @@ export function getParticipationStatusColor(record: HackathonParticipationRecord
     return 'error'
   }
 
+  if (record.activeTeam) {
+    return 'primary'
+  }
+
+  if (record.latestSubmission?.status === 'submitted') {
+    return 'primary'
+  }
+
+  if (record.latestSubmission?.status === 'locked') {
+    return 'info'
+  }
+
+  if (record.latestSubmission?.status === 'draft') {
+    return 'warning'
+  }
+
   return 'neutral'
 }
 
-export function summarizeParticipationRecord(record: HackathonParticipationRecord) {
+export function formatParticipationStageLabel(record: HackathonParticipationRecord) {
+  if (record.application) {
+    return 'Application submitted'
+  }
+
+  if (record.latestSubmission?.status === 'submitted' || record.latestSubmission?.status === 'locked') {
+    return 'Project submitted'
+  }
+
+  if (record.latestSubmission?.status === 'draft') {
+    return 'Draft saved'
+  }
+
   if (record.activeTeam) {
-    if (record.latestSubmission?.status === 'submitted') {
-      return 'Your team has an active submitted project in this hackathon.'
-    }
-
-    if (record.latestSubmission?.status === 'draft') {
-      return 'Your team is currently active and working on a draft submission.'
-    }
-
-    return 'You are currently active on a team in this hackathon.'
+    return 'Team active'
   }
 
-  if (record.application?.status === 'approved') {
-    return record.latestTeam
-      ? 'You participated previously through a team in this hackathon.'
-      : 'You were approved for this hackathon.'
+  return null
+}
+
+export function getParticipationStageColor(record: HackathonParticipationRecord) {
+  if (record.application) {
+    return 'neutral'
   }
 
-  if (record.application?.status === 'submitted') {
-    return 'Your application is still pending review.'
+  if (record.latestSubmission?.status === 'submitted') {
+    return 'primary'
   }
 
-  if (record.application?.status === 'rejected') {
-    return 'Your application outcome was rejected.'
+  if (record.latestSubmission?.status === 'locked') {
+    return 'info'
   }
 
-  return 'Participation history is available for this hackathon.'
+  if (record.latestSubmission?.status === 'draft') {
+    return 'warning'
+  }
+
+  if (record.activeTeam) {
+    return 'primary'
+  }
+
+  return 'neutral'
 }

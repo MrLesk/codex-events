@@ -11,6 +11,7 @@ import {
   teams,
   userApplications
 } from '../database/schema'
+import { parseHackathonAgendaItems } from './hackathon-management'
 import { serializeSubmission } from './submissions'
 
 type HackathonRecord = typeof hackathons.$inferSelect
@@ -41,6 +42,25 @@ function sortByRecentTimestampDesc(left: string | null | undefined, right: strin
   return toTimestamp(right) - toTimestamp(left)
 }
 
+function getHackathonStartsAt(hackathon: HackathonRecord) {
+  const agendaItems = parseHackathonAgendaItems(hackathon.agendaItemsJson)
+  let earliestStartAt = hackathon.submissionOpensAt
+  let earliestStartAtTimestamp = Date.parse(earliestStartAt)
+
+  for (const item of agendaItems) {
+    const agendaItemStartsAtTimestamp = Date.parse(item.startsAt)
+
+    if (Number.isNaN(agendaItemStartsAtTimestamp) || agendaItemStartsAtTimestamp >= earliestStartAtTimestamp) {
+      continue
+    }
+
+    earliestStartAt = item.startsAt
+    earliestStartAtTimestamp = agendaItemStartsAtTimestamp
+  }
+
+  return earliestStartAt
+}
+
 function serializeHackathonSummary(hackathon: HackathonRecord) {
   return {
     id: hackathon.id,
@@ -49,7 +69,9 @@ function serializeHackathonSummary(hackathon: HackathonRecord) {
     city: hackathon.city,
     country: hackathon.country,
     state: hackathon.state,
+    startsAt: getHackathonStartsAt(hackathon),
     registrationOpensAt: hackathon.registrationOpensAt,
+    registrationClosesAt: hackathon.registrationClosesAt,
     submissionClosesAt: hackathon.submissionClosesAt
   }
 }

@@ -8,27 +8,27 @@ definePageMeta({
 
 const workspace = useHackathonParticipationWorkspace()
 
-function isUpcomingHackathon(registrationOpensAt: string) {
-  const startsAt = Date.parse(registrationOpensAt)
+function isUpcomingHackathon(startsAt: string) {
+  const parsedStartsAt = Date.parse(startsAt)
 
-  if (Number.isNaN(startsAt)) {
+  if (Number.isNaN(parsedStartsAt)) {
     return false
   }
 
-  return startsAt > Date.now()
+  return parsedStartsAt > Date.now()
 }
 
 const isLoading = computed(() =>
   workspace.status.value === 'idle' || workspace.status.value === 'pending'
 )
 const activeHackathons = computed(() =>
-  workspace.currentHackathons.value.filter(record => !isUpcomingHackathon(record.hackathon.registrationOpensAt))
+  workspace.currentHackathons.value.filter(record => !isUpcomingHackathon(record.hackathon.startsAt))
 )
 const upcomingHackathons = computed(() =>
   [...workspace.currentHackathons.value]
-    .filter(record => isUpcomingHackathon(record.hackathon.registrationOpensAt))
+    .filter(record => isUpcomingHackathon(record.hackathon.startsAt))
     .sort((left, right) =>
-      Date.parse(left.hackathon.registrationOpensAt) - Date.parse(right.hackathon.registrationOpensAt)
+      Date.parse(left.hackathon.startsAt) - Date.parse(right.hackathon.startsAt)
     )
 )
 const pastHackathons = computed(() => workspace.pastHackathons.value)
@@ -48,18 +48,12 @@ useSeoMeta({
   <div class="pb-14">
     <section class="border-b border-black/8 dark:border-white/[0.08]">
       <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
-        <div class="space-y-2 pb-4">
+        <div class="pb-4">
           <div class="flex flex-wrap items-start justify-between gap-4">
-            <div class="space-y-2">
-              <p class="text-[11px] font-semibold tracking-[0.18em] text-muted uppercase">
-                Account workspace
-              </p>
+            <div>
               <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
                 My hackathons
               </h1>
-              <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-                Pick up your current hackathons, keep track of upcoming ones, and revisit the ones you already finished.
-              </p>
             </div>
 
             <AppButton
@@ -127,12 +121,9 @@ useSeoMeta({
           v-if="activeHackathons.length > 0"
           class="space-y-4"
         >
-          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+          <div class="border-b border-black/8 pb-3 dark:border-white/[0.08]">
             <p class="text-[20px] font-medium text-highlighted dark:text-white">
-              Active now
-            </p>
-            <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
-              Your current hackathons stay at the top so you can get back to work quickly.
+              Current
             </p>
           </div>
 
@@ -149,12 +140,9 @@ useSeoMeta({
           v-if="upcomingHackathons.length > 0"
           class="space-y-4"
         >
-          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+          <div class="border-b border-black/8 pb-3 dark:border-white/[0.08]">
             <p class="text-[20px] font-medium text-highlighted dark:text-white">
               Upcoming
-            </p>
-            <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
-              These hackathons are on your horizon next.
             </p>
           </div>
 
@@ -171,12 +159,9 @@ useSeoMeta({
           v-if="pastHackathons.length > 0"
           class="space-y-4"
         >
-          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+          <div class="border-b border-black/8 pb-3 dark:border-white/[0.08]">
             <p class="text-[20px] font-medium text-highlighted dark:text-white">
               Past
-            </p>
-            <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
-              Revisit the hackathons you already completed.
             </p>
           </div>
 

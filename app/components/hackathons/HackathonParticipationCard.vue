@@ -3,13 +3,12 @@ import type { HackathonParticipationRecord } from '~/utils/hackathon-participati
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import {
-  formatParticipationDate,
+  formatParticipationStageLabel,
   formatParticipationStatusLabel,
+  getParticipationStageColor,
   getParticipationStatusColor,
-  summarizeParticipationRecord
 } from '~/utils/hackathon-participation'
-import { formatHackathonWindow } from '~/composables/useHackathonPresentation'
-import { formatTeamSubmissionStatus } from '~/utils/team-submission'
+import { formatHackathonDateWithWeekday, formatHackathonLocation } from '~/composables/useHackathonPresentation'
 
 const props = defineProps<{
   record: HackathonParticipationRecord
@@ -35,10 +34,17 @@ const primaryActionLabel = computed(() => {
 
   return 'Open workspace'
 })
-const displayedTeam = computed(() => props.record.activeTeam ?? props.record.latestTeam)
+const hackathonMetaLabel = computed(() => [
+  formatHackathonDateWithWeekday(props.record.hackathon.startsAt),
+  formatHackathonLocation(props.record.hackathon)
+].filter(Boolean).join(' - '))
+const participationStageLabel = computed(() => formatParticipationStageLabel(props.record))
+const participationStageColor = computed(() => getParticipationStageColor(props.record))
 const participationStatusLabel = computed(() => formatParticipationStatusLabel(props.record))
 const participationStatusColor = computed(() => getParticipationStatusColor(props.record))
-const participationSummary = computed(() => summarizeParticipationRecord(props.record))
+const showParticipationStageBadge = computed(() =>
+  Boolean(participationStageLabel.value) && participationStageLabel.value !== participationStatusLabel.value
+)
 </script>
 
 <template>
@@ -47,78 +53,40 @@ const participationSummary = computed(() => summarizeParticipationRecord(props.r
     class="app-surface-panel overflow-hidden rounded-xl"
   >
     <div class="space-y-5 p-6">
-      <div class="flex flex-wrap items-start justify-between gap-4 border-b border-black/8 pb-5 dark:border-white/[0.08]">
+      <div class="flex flex-wrap items-start justify-between gap-4">
         <div class="space-y-2">
-          <p class="text-[11px] font-semibold tracking-[0.18em] text-muted uppercase">
-            {{ formatHackathonLocation(props.record.hackathon) }}
-          </p>
           <h2 class="text-[24px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
             {{ props.record.hackathon.name }}
           </h2>
           <p class="text-[14px] text-neutral-500 dark:text-[#A3A3A3]">
-            {{ formatHackathonWindow(props.record.hackathon.registrationOpensAt, props.record.hackathon.submissionClosesAt) }}
+            {{ hackathonMetaLabel }}
           </p>
         </div>
 
-        <HackathonStateBadge :state="props.record.hackathon.state" />
+        <HackathonStateBadge
+          :state="props.record.hackathon.state"
+          :registration-opens-at="props.record.hackathon.registrationOpensAt"
+          :registration-closes-at="props.record.hackathon.registrationClosesAt"
+        />
       </div>
 
-      <p class="text-[14px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]">
-        {{ participationSummary }}
-      </p>
-
-      <div class="grid gap-3 sm:grid-cols-3">
-        <div class="app-surface-panel-elevated rounded-xl px-4 py-4">
-          <p class="text-[11px] font-semibold tracking-[0.16em] text-muted uppercase">
-            Team
-          </p>
-          <p class="mt-2 text-[14px] text-highlighted dark:text-white">
-            {{ displayedTeam?.name ?? 'No team yet' }}
-          </p>
-          <p
-            v-if="displayedTeam"
-            class="mt-1 text-[12px] text-neutral-500 dark:text-[#8C8C8C]"
-          >
-            {{ displayedTeam.membershipRole }} • {{ displayedTeam.activeMemberCount }} active members
-          </p>
-        </div>
-
-        <div class="app-surface-panel-elevated rounded-xl px-4 py-4">
-          <p class="text-[11px] font-semibold tracking-[0.16em] text-muted uppercase">
-            Participation
-          </p>
-          <p class="mt-2 text-[14px] text-highlighted dark:text-white">
-            {{ participationStatusLabel }}
-          </p>
-        </div>
-
-        <div class="app-surface-panel-elevated rounded-xl px-4 py-4">
-          <p class="text-[11px] font-semibold tracking-[0.16em] text-muted uppercase">
-            Last activity
-          </p>
-          <p class="mt-2 text-[14px] text-highlighted dark:text-white">
-            {{ formatParticipationDate(props.record.lastActivityAt) }}
-          </p>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap items-center justify-between gap-3 border-t border-black/8 pt-4 dark:border-white/[0.08]">
+      <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
         <div class="flex flex-wrap items-center gap-2">
+          <AppBadge
+            v-if="showParticipationStageBadge"
+            :color="participationStageColor"
+            variant="subtle"
+            class="rounded-full px-3 py-1 font-semibold tracking-[0.16em] uppercase"
+          >
+            {{ participationStageLabel }}
+          </AppBadge>
+
           <AppBadge
             :color="participationStatusColor"
             variant="soft"
             class="rounded-full px-3 py-1 font-semibold tracking-[0.16em] uppercase"
           >
             {{ participationStatusLabel }}
-          </AppBadge>
-
-          <AppBadge
-            v-if="props.record.latestSubmission"
-            color="neutral"
-            variant="subtle"
-            class="rounded-full px-3 py-1 font-medium"
-          >
-            {{ formatTeamSubmissionStatus(props.record.latestSubmission.status) }}
           </AppBadge>
         </div>
 
