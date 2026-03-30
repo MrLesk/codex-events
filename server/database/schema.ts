@@ -49,6 +49,8 @@ export const users = sqliteTable(
     displayName: text('display_name').notNull(),
     firstName: text('first_name').notNull().default(''),
     familyName: text('family_name').notNull().default(''),
+    company: text('company'),
+    bio: text('bio'),
     isPlatformAdmin: integer('is_platform_admin', { mode: 'boolean' }).notNull().default(false),
     xProfileUrl: text('x_profile_url'),
     linkedinProfileUrl: text('linkedin_profile_url'),

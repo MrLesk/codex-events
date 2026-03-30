@@ -81,6 +81,11 @@ export const accountProfileFormSchema = z.object({
   lumaUsername: z.string().trim().max(120)
 })
 
+export const accountSettingsProfileFormSchema = accountProfileFormSchema.extend({
+  company: z.string().trim().max(120),
+  bio: z.string().trim().max(4000)
+})
+
 export const imprintContactFormSchema = z.object({
   name: z.string().trim().min(1, 'Enter your name.').max(120, 'Name must be 120 characters or fewer.'),
   email: z.string().trim().min(1, 'Enter your email address.').email('Enter a valid email address.'),

@@ -14,6 +14,8 @@ const { actor, status, refresh } = await useAccountLifecycleActor()
 const profileForm = reactive({
   firstName: '',
   familyName: '',
+  company: '',
+  bio: '',
   xProfileUrl: '',
   linkedinProfileUrl: '',
   githubProfileUrl: '',
@@ -51,6 +53,8 @@ watch(
 
     profileForm.firstName = nextActor.platformUser.firstName
     profileForm.familyName = nextActor.platformUser.familyName
+    profileForm.company = nextActor.platformUser.company ?? ''
+    profileForm.bio = nextActor.platformUser.bio ?? ''
     profileForm.xProfileUrl = nextActor.platformUser.xProfileUrl ?? ''
     profileForm.linkedinProfileUrl = nextActor.platformUser.linkedinProfileUrl ?? ''
     profileForm.githubProfileUrl = nextActor.platformUser.githubProfileUrl ?? ''
@@ -72,6 +76,8 @@ async function saveProfile() {
       body: {
         firstName: profileForm.firstName,
         familyName: profileForm.familyName,
+        company: profileForm.company,
+        bio: profileForm.bio,
         xProfileUrl: profileForm.xProfileUrl,
         linkedinProfileUrl: profileForm.linkedinProfileUrl,
         githubProfileUrl: profileForm.githubProfileUrl,

@@ -57,6 +57,7 @@ Depending on how you use the platform, we may process:
 
 ### Optional profile data
 
+- company and bio
 - X, LinkedIn, and GitHub profile links
 - ChatGPT email
 - OpenAI organization ID

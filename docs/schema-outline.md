@@ -21,6 +21,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `display_name`
 - `first_name`
 - `family_name`
+- `company`
+- `bio`
 - `is_platform_admin`
 - `x_profile_url`
 - `linkedin_profile_url`
@@ -42,6 +44,8 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `auth0_subject` stores the authenticated Auth0 subject used to resolve the platform actor from the application session.
 - `first_name` and `family_name` are the canonical user-name fields managed by account profile flows.
+- `company` stores an optional single-line company or affiliation value managed from account settings.
+- `bio` stores an optional free-form profile summary managed from account settings.
 - `display_name` stores the current presentation name derived from canonical name fields.
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.

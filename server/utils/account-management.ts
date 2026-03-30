@@ -55,6 +55,8 @@ export const platformAccountRegistrationBodySchema = z.object({
 export const platformAccountProfileBodySchema = z.object({
   firstName: z.string().trim().min(1).max(120),
   familyName: z.string().trim().min(1).max(120),
+  company: z.string().trim().max(120).optional(),
+  bio: z.string().trim().max(4000).optional(),
   xProfileUrl: profileUrlSchema,
   linkedinProfileUrl: profileUrlSchema,
   githubProfileUrl: profileUrlSchema,
@@ -160,6 +162,8 @@ export function serializePlatformUser(user: PlatformUserRecord) {
     displayName: user.displayName,
     firstName: user.firstName,
     familyName: user.familyName,
+    company: user.company,
+    bio: user.bio,
     isPlatformAdmin: user.isPlatformAdmin,
     xProfileUrl: user.xProfileUrl,
     linkedinProfileUrl: user.linkedinProfileUrl,
@@ -195,6 +199,8 @@ function buildPlatformAccountInsert(
     displayName: registrationNameParts.displayName,
     firstName: registrationNameParts.firstName,
     familyName: registrationNameParts.familyName,
+    company: null,
+    bio: null,
     isPlatformAdmin: false,
     xProfileUrl: null,
     linkedinProfileUrl: null,
@@ -220,6 +226,12 @@ function buildPlatformAccountProfilePatch(
     displayName: `${firstName} ${familyName}`.trim(),
     firstName,
     familyName,
+    ...(input.company !== undefined
+      ? { company: normalizeOptionalString(input.company) }
+      : {}),
+    ...(input.bio !== undefined
+      ? { bio: normalizeOptionalString(input.bio) }
+      : {}),
     ...(input.xProfileUrl !== undefined
       ? { xProfileUrl: normalizeOptionalUrl(input.xProfileUrl) }
       : {}),
@@ -496,6 +508,8 @@ export function buildDeletedUserPatch(userId: string, deletedAt: string) {
     displayName: 'Deleted User',
     firstName: 'Deleted',
     familyName: 'User',
+    company: null,
+    bio: null,
     isPlatformAdmin: false,
     xProfileUrl: null,
     linkedinProfileUrl: null,

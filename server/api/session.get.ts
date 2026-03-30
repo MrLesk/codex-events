@@ -45,6 +45,8 @@ export default defineApiHandler(async (event) => {
         displayName: actor.platformUser.displayName,
         firstName: actor.platformUser.firstName,
         familyName: actor.platformUser.familyName,
+        company: actor.platformUser.company,
+        bio: actor.platformUser.bio,
         isPlatformAdmin: actor.platformUser.isPlatformAdmin,
         xProfileUrl: actor.platformUser.xProfileUrl,
         linkedinProfileUrl: actor.platformUser.linkedinProfileUrl,

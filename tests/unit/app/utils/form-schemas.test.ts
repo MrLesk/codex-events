@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import { createEmptyHackathonFormState } from '../../../../app/utils/admin-workspace'
 import {
+  accountSettingsProfileFormSchema,
   buildParticipantRegistrationFormSchema,
   hackathonConfigFormSchema,
   imprintContactFormSchema
@@ -27,6 +28,30 @@ function createValidHackathonFormState() {
 }
 
 describe('form schemas', () => {
+  test('validates and trims account settings company and bio fields', () => {
+    const result = accountSettingsProfileFormSchema.safeParse({
+      firstName: '  Ada  ',
+      familyName: '  Lovelace  ',
+      company: '  Analytical Engines Ltd.  ',
+      bio: '  Building thoughtful developer tools.  ',
+      xProfileUrl: '',
+      linkedinProfileUrl: '',
+      githubProfileUrl: '',
+      chatgptEmail: '',
+      openaiOrgId: '',
+      lumaUsername: ''
+    })
+
+    expect(result.success).toBe(true)
+
+    if (!result.success) {
+      return
+    }
+
+    expect(result.data.company).toBe('Analytical Engines Ltd.')
+    expect(result.data.bio).toBe('Building thoughtful developer tools.')
+  })
+
   test('validates imprint contact submissions with trimmed values', () => {
     const result = imprintContactFormSchema.safeParse({
       name: '  Ada Lovelace  ',

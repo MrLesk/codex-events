@@ -2,12 +2,14 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
-import { accountProfileFormSchema } from '~/utils/form-schemas'
+import { accountSettingsProfileFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
 
 interface AccountSettingsProfileFormModel {
   firstName: string
   familyName: string
+  company: string
+  bio: string
   xProfileUrl: string
   linkedinProfileUrl: string
   githubProfileUrl: string
@@ -41,7 +43,7 @@ const {
   setValues,
   handleSubmit
 } = useForm({
-  validationSchema: toTypedSchema(accountProfileFormSchema),
+  validationSchema: toTypedSchema(accountSettingsProfileFormSchema),
   initialValues: cloneFormValues(model.value)
 })
 
@@ -124,6 +126,66 @@ const submitProfileForm = handleSubmit(() => {
             class="text-xs text-error"
           >
             {{ errors.familyName }}
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-default/70 bg-default/45 p-5">
+      <div class="mb-4 flex items-center gap-2">
+        <AppIcon
+          name="i-lucide-file-text"
+          class="size-4 text-dimmed"
+        />
+        <p class="text-sm font-semibold text-highlighted">
+          About
+        </p>
+      </div>
+
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <label
+            class="text-sm font-medium text-highlighted"
+            for="account-company"
+          >
+            Company
+          </label>
+          <input
+            id="account-company"
+            v-model="model.company"
+            type="text"
+            placeholder="Your company or team"
+            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
+            :class="submitCount > 0 && errors.company ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+          >
+          <p
+            v-if="submitCount > 0 && errors.company"
+            class="text-xs text-error"
+          >
+            {{ errors.company }}
+          </p>
+        </div>
+
+        <div class="space-y-2">
+          <label
+            class="text-sm font-medium text-highlighted"
+            for="account-bio"
+          >
+            Bio
+          </label>
+          <textarea
+            id="account-bio"
+            v-model="model.bio"
+            rows="5"
+            placeholder="Share a short introduction about what you do or like to build."
+            class="min-h-32 w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm leading-6 text-toned outline-none transition focus:border-primary"
+            :class="submitCount > 0 && errors.bio ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+          />
+          <p
+            v-if="submitCount > 0 && errors.bio"
+            class="text-xs text-error"
+          >
+            {{ errors.bio }}
           </p>
         </div>
       </div>
