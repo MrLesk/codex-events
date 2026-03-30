@@ -158,7 +158,7 @@ describe('Auth0 account-link routes', () => {
       if (url === 'https://codex-hackathons-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user/identities') {
         expect(init?.method).toBe('POST')
         expect(init?.headers).toMatchObject({
-          authorization: 'Bearer management-access-token',
+          'authorization': 'Bearer management-access-token',
           'content-type': 'application/json'
         })
         expect(JSON.parse(String(init?.body))).toEqual({

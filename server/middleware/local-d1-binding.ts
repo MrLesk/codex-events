@@ -50,10 +50,6 @@ export default defineEventHandler(async (event) => {
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
 
   const hasDatabaseBinding = Boolean(event.context.d1Database || cloudflareEnv?.[databaseBindingName])
-  const hasProfileIconsBinding = Boolean(cloudflareEnv?.[profileIconsBindingName])
-  const hasHackathonImagesBinding = Boolean(cloudflareEnv?.[hackathonImagesBindingName])
-  const hasApplicationReviewEmailQueueBinding = Boolean(cloudflareEnv?.[applicationReviewEmailQueueBindingName])
-
   // The local Wrangler platform proxy is only valid for Bun/Vitest execution in this
   // repository. Deployed Workers requests must never try to load the `wrangler` package.
   if (hasDatabaseBinding || !shouldUseLocalPlatformProxy()) {

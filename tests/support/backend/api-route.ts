@@ -1,4 +1,4 @@
-import type { EventHandler } from 'h3'
+import type { EventHandler, H3Event } from 'h3'
 
 import { createApp, createRouter, eventHandler, toWebHandler } from 'h3'
 import { vi } from 'vitest'
@@ -56,7 +56,7 @@ export function createApiRouteTestHarness(options: {
   const router = createRouter()
 
   stubAuth0Session(options.sessionUser ?? null)
-  vi.stubGlobal('useRuntimeConfig', ((event) => event.context.runtimeConfig) as typeof useRuntimeConfig)
+  vi.stubGlobal('useRuntimeConfig', ((runtimeEvent: H3Event) => runtimeEvent.context.runtimeConfig) as typeof useRuntimeConfig)
 
   app.use(eventHandler((event) => {
     const databaseBinding = options.runtimeConfig?.database?.binding ?? 'DB'
