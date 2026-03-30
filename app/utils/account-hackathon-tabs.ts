@@ -6,6 +6,7 @@ export const accountHackathonWorkspaceTabs = [
   'staff',
   'judging',
   'participants',
+  'teams',
   'submissions',
   'operations',
   'settings'
@@ -16,7 +17,8 @@ export type AccountHackathonWorkspaceTab = (typeof accountHackathonWorkspaceTabs
 export interface AccountHackathonTabAccessOptions {
   hasPublishedPrizes: boolean
   canJudge: boolean
-  canAdmin: boolean
+  canManage: boolean
+  canViewParticipantsAndTeams: boolean
 }
 
 export interface AccountHackathonTabAccess {
@@ -28,10 +30,10 @@ export interface AccountHackathonTabAccess {
 export function getAccountHackathonTabAccess(
   options: AccountHackathonTabAccessOptions
 ): AccountHackathonTabAccess {
-  const { hasPublishedPrizes, canJudge, canAdmin } = options
+  const { hasPublishedPrizes, canJudge, canManage, canViewParticipantsAndTeams } = options
   const availableTabs: AccountHackathonWorkspaceTab[] = ['overview']
 
-  if (hasPublishedPrizes || canAdmin) {
+  if (hasPublishedPrizes || canManage) {
     availableTabs.push('prizes')
   }
 
@@ -41,13 +43,19 @@ export function getAccountHackathonTabAccess(
     availableTabs.push('judging')
   }
 
-  if (canAdmin) {
-    availableTabs.push('participants', 'submissions', 'operations', 'settings')
+  if (canViewParticipantsAndTeams) {
+    availableTabs.push('participants')
+  }
+
+  if (canManage) {
+    availableTabs.push('submissions', 'operations', 'settings')
+  } else if (canViewParticipantsAndTeams) {
+    availableTabs.push('teams')
   }
 
   return {
     availableTabs,
-    showPrizeConfiguration: canAdmin,
-    showAgendaConfigurationInDetails: canAdmin
+    showPrizeConfiguration: canManage,
+    showAgendaConfigurationInDetails: canManage
   }
 }

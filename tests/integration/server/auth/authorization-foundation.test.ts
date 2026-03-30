@@ -62,6 +62,12 @@ describe('backend integration foundation', () => {
         auth0Subject: 'auth0|hackathon_admin',
         email: 'hackathon-admin@example.com',
         displayName: 'Hackathon Admin'
+      },
+      {
+        id: 'user_staff',
+        auth0Subject: 'auth0|staff',
+        email: 'staff@example.com',
+        displayName: 'Staff Persona'
       }
     ])
 
@@ -89,6 +95,7 @@ describe('backend integration foundation', () => {
         userId: 'user_hackathon_admin',
         role: 'hackathon_admin',
         isInJudgePool: false,
+        isStaff: false,
         createdAt: now
       },
       {
@@ -97,6 +104,16 @@ describe('backend integration foundation', () => {
         userId: 'user_judge',
         role: 'judge',
         isInJudgePool: true,
+        isStaff: false,
+        createdAt: now
+      },
+      {
+        id: 'role_staff',
+        hackathonId: 'hackathon_1',
+        userId: 'user_staff',
+        role: 'staff',
+        isInJudgePool: false,
+        isStaff: true,
         createdAt: now
       }
     ])
@@ -149,7 +166,9 @@ describe('backend integration foundation', () => {
     expect(hackathonAuthorization).toMatchObject({
       explicitRole: 'judge',
       canReviewThroughAssignment: true,
-      isInJudgePool: true
+      isInJudgePool: true,
+      isStaff: false,
+      canViewParticipantsAndTeams: false
     })
     expect(teamAuthorization).toMatchObject({
       isTeamAdmin: true
@@ -157,6 +176,70 @@ describe('backend integration foundation', () => {
     expect(assignmentAuthorization).toMatchObject({
       actingRole: 'assigned_judge',
       visibility: 'blind'
+    })
+  })
+
+  test('resolves explicit staff authorization against the real Drizzle query layer', async () => {
+    const { event, d1Database, database } = createBackendTestEvent({
+      sessionUser: {
+        sub: 'auth0|staff',
+        email: 'staff@example.com',
+        name: 'Staff Persona'
+      }
+    })
+    d1Databases.push(d1Database)
+    const now = fixtureTimestamp()
+
+    await database.insert(users).values([
+      {
+        id: 'user_platform_admin',
+        auth0Subject: 'auth0|platform_admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        isPlatformAdmin: true
+      },
+      {
+        id: 'user_staff',
+        auth0Subject: 'auth0|staff',
+        email: 'staff@example.com',
+        displayName: 'Staff Persona'
+      }
+    ])
+
+    await database.insert(hackathons).values({
+      id: 'hackathon_1',
+      name: 'Fixture Hackathon',
+      slug: 'fixture-hackathon',
+      description: 'Fixture hackathon',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'user_platform_admin'
+    })
+
+    await database.insert(hackathonRoleAssignments).values({
+      id: 'role_staff',
+      hackathonId: 'hackathon_1',
+      userId: 'user_staff',
+      role: 'staff',
+      isInJudgePool: false,
+      isStaff: true,
+      createdAt: now
+    })
+
+    await expect(resolveHackathonAuthorization(event, 'hackathon_1')).resolves.toMatchObject({
+      explicitRole: 'staff',
+      isHackathonAdmin: false,
+      canReviewThroughAssignment: false,
+      isInJudgePool: false,
+      isStaff: true,
+      canViewParticipantsAndTeams: true
     })
   })
 })

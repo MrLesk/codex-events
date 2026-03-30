@@ -8,6 +8,10 @@ import {
   normalizeProofOfExecutionLinks
 } from '#proof-of-execution-links'
 import { requirePlatformActor } from '../auth/actor'
+import {
+  assertHackathonParticipantVisibilityAccess,
+  resolveHackathonAuthorization
+} from '../auth/authorization'
 import { getDatabase, type AppDatabase } from '../database/client'
 import {
   userApplications,
@@ -443,6 +447,20 @@ export async function requireHackathonAdminApplicationContext(event: H3Event, ha
     hackathon,
     authorization,
     database: getDatabase(event)
+  }
+}
+
+export async function requireHackathonApplicationVisibilityContext(event: H3Event, hackathonId: string) {
+  const database = getDatabase(event)
+  const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
+  const authorization = await resolveHackathonAuthorization(event, hackathonId)
+
+  assertHackathonParticipantVisibilityAccess(authorization)
+
+  return {
+    hackathon,
+    authorization,
+    database
   }
 }
 

@@ -127,6 +127,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `user_id`
 - `role`
 - `is_in_judge_pool`
+- `is_staff`
 - `created_at`
 
 ### Enums
@@ -134,16 +135,21 @@ It describes the intended persistent model at the level of entities, key fields,
 - `role`
   - `hackathon_admin`
   - `judge`
+  - `staff`
 
 ### Constraints
 
 - `unique (hackathon_id, user_id)`
-- `role = judge` requires `is_in_judge_pool = true`
+- `role = judge` requires `is_in_judge_pool = true and is_staff = false`
+- `role = staff` requires `is_staff = true and is_in_judge_pool = false`
 
 ### Notes
 
 - Every platform admin also has a `hackathon_admin` assignment row for each hackathon.
 - `is_in_judge_pool` controls automatic judge distribution.
+- `is_staff` records staff designation for the assignment.
+- `hackathon_admin` can set `is_in_judge_pool` and `is_staff` independently.
+- Non-admin `staff` and `judge` assignments remain distinct.
 
 ## PlatformDocument
 

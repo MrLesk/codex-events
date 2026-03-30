@@ -15,11 +15,18 @@ import AccountHackathonAdminOperationsPanel from '~/components/account/hackathon
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
 import AccountHackathonCompetitionPanel from '~/components/account/hackathons/AccountHackathonCompetitionPanel.vue'
 import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
+import AccountHackathonParticipantVisibilityPanel from '~/components/account/hackathons/AccountHackathonParticipantVisibilityPanel.vue'
 import AccountHackathonRoleRosterPanel from '~/components/account/hackathons/AccountHackathonRoleRosterPanel.vue'
+import AccountHackathonTeamVisibilityPanel from '~/components/account/hackathons/AccountHackathonTeamVisibilityPanel.vue'
 import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
 import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOverviewPanel.vue'
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
+import {
+  hasHackathonAdminAccess,
+  hasHackathonJudgingAccess,
+  hasHackathonParticipantVisibilityAccess
+} from '~/utils/admin-workspace'
 import {
   getAccountHackathonTabAccess,
   type AccountHackathonWorkspaceTab
@@ -65,7 +72,7 @@ interface AccountHackathonAccessRecord {
     role: 'member' | 'admin'
   } | null
   submissionStatus: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified' | null
-  roles: Array<'hackathon_admin' | 'judge'>
+  roles: Array<'hackathon_admin' | 'judge' | 'staff'>
 }
 
 interface AccountHackathonsResponse {
@@ -83,6 +90,7 @@ const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
   staff: 'Staff',
   judging: 'Judging',
   participants: 'Participants',
+  teams: 'Teams',
   submissions: 'Submissions',
   operations: 'Operations',
   settings: 'Settings'
@@ -174,15 +182,23 @@ const hackathon = computed(() => hackathonResponse.value!.data)
 const criteriaCount = computed(() => criteriaResponse.value?.data.length ?? 0)
 const prizes = computed(() => prizesResponse.value?.data ?? [])
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
-
-const canJudge = computed(() => accessRecord.value?.roles.includes('judge') ?? false)
+const canJudge = computed(() =>
+  actor.value.kind === 'platform_user'
+    ? hasHackathonJudgingAccess(actor.value, accessRecordId.value)
+    : false
+)
 const canAdmin = computed(() => {
   if (actor.value.kind !== 'platform_user') {
     return false
   }
 
-  return actor.value.isPlatformAdmin || (accessRecord.value?.roles.includes('hackathon_admin') ?? false)
+  return hasHackathonAdminAccess(actor.value, accessRecordId.value)
 })
+const canViewParticipantsAndTeams = computed(() =>
+  actor.value.kind === 'platform_user'
+    ? hasHackathonParticipantVisibilityAccess(actor.value, accessRecordId.value)
+    : false
+)
 
 const workspaceBackLink = computed(() => canAdmin.value
   ? {
@@ -204,7 +220,8 @@ const tabAccess = computed(() =>
   getAccountHackathonTabAccess({
     hasPublishedPrizes: hasPublishedPrizes.value,
     canJudge: canJudge.value,
-    canAdmin: canAdmin.value
+    canManage: canAdmin.value,
+    canViewParticipantsAndTeams: canViewParticipantsAndTeams.value
   })
 )
 const availableTabs = computed(() => tabAccess.value.availableTabs)
@@ -656,8 +673,8 @@ useSeoMeta({
           :hackathon-id="accessRecordId"
           role="judge"
           title="Judges"
-          description="Judges review submissions. Staff members also appear here when judging is enabled for them."
-          empty-assigned-message="No judges yet. Staff members can also review once judging is enabled."
+          description="Judges review submissions. Admins can also review when judging is enabled for their admin assignment."
+          empty-assigned-message="No judges yet. Admins can also review once judging is enabled."
         />
 
         <AppCard
@@ -682,10 +699,10 @@ useSeoMeta({
         <AccountHackathonRoleRosterPanel
           v-if="canAdmin"
           :hackathon-id="accessRecordId"
-          role="hackathon_admin"
+          role="staff"
           title="Staff"
-          description="Staff can manage this hackathon. Staff members can also review submissions when judging is enabled."
-          empty-assigned-message="No staff yet. Existing judges keep judging when staff access is added."
+          description="Staff can see participant and team data for this hackathon. Admins can also be marked as staff separately."
+          empty-assigned-message="No staff yet. Admins can also be marked as staff when they need internal visibility."
         />
 
         <AppCard
@@ -718,9 +735,25 @@ useSeoMeta({
         class="space-y-8"
       >
         <AccountHackathonAdminOperationsPanel
+          v-if="canAdmin"
           :slug="slug"
           section="participants"
         />
+
+        <AccountHackathonParticipantVisibilityPanel
+          v-else-if="canViewParticipantsAndTeams"
+          :hackathon-id="accessRecordId"
+        />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'teams'"
+        id="account-tab-panel-teams"
+        role="tabpanel"
+        aria-labelledby="account-tab-teams"
+        class="space-y-8"
+      >
+        <AccountHackathonTeamVisibilityPanel :hackathon-id="accessRecordId" />
       </section>
 
       <section

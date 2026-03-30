@@ -29,7 +29,7 @@ Rules:
 - The reusable platform profile fields are managed from account settings.
 - A user with `is_platform_admin = true` is a platform admin.
 - Platform admins can create hackathons.
-- Hackathon admins and platform admins can assign judges and hackathon admins within their hackathons.
+- Hackathon admins and platform admins can assign staff, judges, and hackathon admins within their hackathons.
 - Platform admins implicitly have hackathon-admin permissions in every hackathon.
 
 ### Hackathon
@@ -95,15 +95,18 @@ Hackathon roles:
 
 - `hackathon_admin`
 - `judge`
+- `staff`
 
 Rules:
 
 - A user has at most one explicit hackathon role per hackathon.
-- `hackathon_admin` includes judge permissions.
+- Staff can see participant and team data for the hackathon but cannot perform admin operations.
 - Every platform admin also has a `HackathonRoleAssignment` row with role `hackathon_admin` for every hackathon.
-- `HackathonRoleAssignment` includes `is_in_judge_pool` to control automatic judge distribution.
-- A user with role `judge` must be in the automatic judge distribution pool.
-- A user with role `hackathon_admin` can be in or out of the automatic judge distribution pool.
+- `HackathonRoleAssignment` includes `is_in_judge_pool` to control automatic judge distribution and `is_staff` to record staff designation.
+- A user with role `judge` must be in the automatic judge distribution pool and must not be marked as staff.
+- A user with role `staff` must be marked as staff and must not be in the automatic judge distribution pool.
+- A user with role `hackathon_admin` can be in or out of the automatic judge distribution pool and can be in or out of staff designation.
+- Only a user with role `hackathon_admin` can combine admin access with judging participation and/or staff designation.
 - Any actor performing a judge review sees the blind judging view rather than the admin view.
 - The blind judging view includes anonymized application information and excludes team identity.
 

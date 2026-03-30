@@ -425,7 +425,7 @@ export async function getBlindAssignmentDetail(
   }
 }
 
-export async function requireJudgeAssignmentContext(
+async function getJudgeAssignmentRequestContext(
   event: H3Event,
   hackathonId: string,
   assignmentId: string
@@ -445,8 +445,6 @@ export async function requireJudgeAssignmentContext(
     }
   })
 
-  assertBlindJudgeAssignmentAccess(assignmentAuthorization)
-
   const assignment = await getJudgeAssignmentOrThrow(database, assignmentId)
   const hackathonAuthorization = await resolveHackathonAuthorization(event, hackathonId)
 
@@ -458,6 +456,16 @@ export async function requireJudgeAssignmentContext(
     assignmentAuthorization,
     hackathonAuthorization
   }
+}
+
+export async function requireJudgeAssignmentContext(
+  event: H3Event,
+  hackathonId: string,
+  assignmentId: string
+) {
+  const context = await getJudgeAssignmentRequestContext(event, hackathonId, assignmentId)
+  assertBlindJudgeAssignmentAccess(context.assignmentAuthorization)
+  return context
 }
 
 export function assertJudgeReviewLifecycleState(
@@ -638,7 +646,7 @@ export async function requireAdminAssignmentContext(
   hackathonId: string,
   assignmentId: string
 ) {
-  const context = await requireJudgeAssignmentContext(event, hackathonId, assignmentId)
+  const context = await getJudgeAssignmentRequestContext(event, hackathonId, assignmentId)
   assertHackathonAdminAccess(context.hackathonAuthorization)
   return context
 }
@@ -648,7 +656,7 @@ export function assertAssignmentReviewActor(
   actorUserId: string
 ) {
   assertGuard(
-    authorization.actingRole === 'admin_via_assignment' || authorization.assignedJudgeUserId === actorUserId,
+    authorization.assignedJudgeUserId === actorUserId,
     {
       statusCode: 403,
       code: 'judge_assignment_access_denied',

@@ -21,6 +21,7 @@ const props = defineProps<{
   isLoading?: boolean
   errorMessage?: string
   pendingActionKey?: string | null
+  readOnly?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -169,13 +170,17 @@ const reviewContent = computed(() => {
   if (props.view === 'approved') {
     return {
       title: 'Approved Participants',
-      description: 'Browse approved participants and inferred teammate groupings.'
+      description: props.readOnly
+        ? 'Browse approved participants and inferred teammate groupings.'
+        : 'Browse approved participants and inferred teammate groupings.'
     }
   }
 
   return {
-    title: 'Participant Review',
-    description: 'Review incoming applications, then save once to apply decisions and trigger participant emails.'
+    title: props.readOnly ? 'Participant Directory' : 'Participant Review',
+    description: props.readOnly
+      ? 'Browse hackathon participants and teammate hints without review actions.'
+      : 'Review incoming applications, then save once to apply decisions and trigger participant emails.'
   }
 })
 
@@ -196,7 +201,9 @@ const emptyState = computed(() => {
 
   return {
     title: 'No applications awaiting review',
-    description: 'Submitted applications will appear here until they are approved or rejected.'
+    description: props.readOnly
+      ? 'Visible participant application records will appear here.'
+      : 'Submitted applications will appear here until they are approved or rejected.'
   }
 })
 </script>
@@ -233,7 +240,7 @@ const emptyState = computed(() => {
 
       <template v-else>
         <div
-          v-if="view === 'applications'"
+          v-if="view === 'applications' && !readOnly"
           class="hackathon-workspace-detail-inset flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-4"
         >
           <p class="text-sm text-muted">
@@ -433,7 +440,7 @@ const emptyState = computed(() => {
                 </div>
 
                 <div
-                  v-if="view === 'applications' && applicant.application.status === 'submitted'"
+                  v-if="!readOnly && view === 'applications' && applicant.application.status === 'submitted'"
                   class="grid gap-2 self-center xl:pl-2"
                 >
                   <button

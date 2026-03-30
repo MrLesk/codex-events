@@ -8,6 +8,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 - `approved_user`: a user whose `UserApplication` for a specific hackathon is approved
 - `team_member`: a user with an active `TeamMember` record on a team
 - `team_admin`: a `team_member` whose team role is `admin`
+- `staff`: a user with explicit `staff` access in a hackathon, or a `hackathon_admin` whose assignment is also marked as staff
 - `judge`: a user assigned to review through a `JudgeAssignment`
 - `hackathon_admin`: a user with explicit `hackathon_admin` access in a hackathon
 - `platform_admin`: a user with `is_platform_admin = true`
@@ -17,9 +18,13 @@ This document defines the canonical permissions for the Codex hackathon platform
 ## Permission Inheritance
 
 - `platform_admin` includes all `hackathon_admin` permissions in every hackathon.
-- `hackathon_admin` includes judge permissions when acting through a `JudgeAssignment`.
+- `hackathon_admin` can use judge permissions only when that admin also participates in judging through a `JudgeAssignment`.
 - The automatic judge distribution pool is controlled by `HackathonRoleAssignment.is_in_judge_pool`.
-- A `judge` role must be in the automatic judge distribution pool.
+- Staff designation is controlled by `HackathonRoleAssignment.is_staff`.
+- Non-admin `judge` and `staff` assignments are mutually exclusive.
+- A `judge` role must be in the automatic judge distribution pool and must not be marked as staff.
+- A `staff` role must be marked as staff and must not be in the automatic judge distribution pool.
+- A `hackathon_admin` assignment can independently opt into judging participation and staff designation.
 - A user acting through a `JudgeAssignment` uses the blind judging view even if that user is also an admin.
 - Admin visibility outside the judge review flow is not restricted by the blind judging view.
 
@@ -34,51 +39,55 @@ This document defines the canonical permissions for the Codex hackathon platform
 
 ## Hackathon Lifecycle Actions
 
-| Action | Approved User | Judge | Hackathon Admin | Platform Admin | System |
-| --- | --- | --- | --- | --- | --- |
-| Open registration | No | No | No | No | Yes |
-| Open submission | No | No | Yes | Yes | No |
-| Start judging preparation | No | No | Yes | Yes | No |
-| Start judge review | No | No | Yes | Yes | No |
-| Move to shortlist | No | No | Yes | Yes | No |
-| Announce winners | No | No | Yes | Yes | No |
-| Complete hackathon | No | No | Yes | Yes | No |
+| Action | Approved User | Staff | Judge | Hackathon Admin | Platform Admin | System |
+| --- | --- | --- | --- | --- | --- | --- |
+| Open registration | No | No | No | No | No | Yes |
+| Open submission | No | No | No | Yes | Yes | No |
+| Start judging preparation | No | No | No | Yes | Yes | No |
+| Start judge review | No | No | No | Yes | Yes | No |
+| Move to shortlist | No | No | No | Yes | Yes | No |
+| Announce winners | No | No | No | Yes | Yes | No |
+| Complete hackathon | No | No | No | Yes | Yes | No |
 
 ## Hackathon Role Assignment Permissions
 
 | Action | Hackathon Admin | Platform Admin |
 | --- | --- | --- |
 | List explicit hackathon role assignments | Yes | Yes |
+| Assign or replace `staff` role assignments | Yes | Yes |
+| Remove `staff` role assignments | Yes | Yes |
 | Assign or replace `judge` role assignments | Yes | Yes |
 | Remove `judge` role assignments | Yes | Yes |
 | Assign or replace `hackathon_admin` role assignments | Yes | Yes |
 | Remove `hackathon_admin` role assignments | Yes | Yes |
-| Update explicit judge-pool participation | Yes | Yes |
+| Update explicit judging participation for an admin assignment | Yes | Yes |
+| Update explicit staff designation for an admin assignment | Yes | Yes |
 
 ## Application Permissions
 
-| Action | User | Approved User | Hackathon Admin | Platform Admin |
-| --- | --- | --- | --- | --- |
-| Submit `UserApplication` | Yes, if no application exists for the hackathon and the hackathon is `registration_open` | No | No | No |
-| View own application | Yes | Yes | No | No |
-| View hackathon application records | No | No | Yes | Yes |
-| Approve application | No | No | Yes | Yes |
-| Reject application | No | No | Yes | Yes |
+| Action | User | Approved User | Staff | Hackathon Admin | Platform Admin |
+| --- | --- | --- | --- | --- | --- |
+| Submit `UserApplication` | Yes, if no application exists for the hackathon and the hackathon is `registration_open` | No | No | No | No |
+| View own application | Yes | Yes | No | No | No |
+| View hackathon application records | No | No | Yes | Yes | Yes |
+| Approve application | No | No | No | Yes | Yes |
+| Reject application | No | No | No | Yes | Yes |
 
 ## Team Permissions
 
-| Action | User | Approved User | Team Member | Team Admin | Hackathon Admin | Platform Admin |
-| --- | --- | --- | --- | --- | --- | --- |
-| Create team | No | Yes, during `registration_open` or `submission_open` | No | No | No | No |
-| Search teams | No | Yes, during `registration_open` or `submission_open` | Yes | Yes | Yes | Yes |
-| Request to join open team | No | Yes, during `registration_open` or `submission_open` | No | No | No | No |
-| Cancel own pending join request | No | Yes | No | No | No | No |
-| Rename team | No | No | No | Yes | No | No |
-| Approve join request | No | No | No | Yes, only while team remains open and capacity is available | No | No |
-| Reject join request | No | No | No | Yes | No | No |
-| Remove team member | No | No | No | Yes, only if at least one active team admin remains | No | No |
-| Leave team during `registration_open` or `submission_open` | No | No | Yes, only if at least one active team admin remains | Yes, only if at least one active team admin remains | No | No |
-| Leave team after submission closes | No | No | Yes, only if at least one active team admin remains and at least one active team member remains | Yes, only if at least one active team admin remains and at least one active team member remains | No | No |
+| Action | User | Approved User | Team Member | Team Admin | Staff | Hackathon Admin | Platform Admin |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Create team | No | Yes, during `registration_open` or `submission_open` | No | No | No | No | No |
+| Search teams | No | Yes, during `registration_open` or `submission_open` | Yes | Yes | Yes | Yes | Yes |
+| View team detail | No | Yes, during `registration_open` or `submission_open` | Yes | Yes | Yes | Yes | Yes |
+| Request to join open team | No | Yes, during `registration_open` or `submission_open` | No | No | No | No | No |
+| Cancel own pending join request | No | Yes | No | No | No | No | No |
+| Rename team | No | No | No | Yes | No | No | No |
+| Approve join request | No | No | No | Yes, only while team remains open and capacity is available | No | No | No |
+| Reject join request | No | No | No | Yes | No | No | No |
+| Remove team member | No | No | No | Yes, only if at least one active team admin remains | No | No | No |
+| Leave team during `registration_open` or `submission_open` | No | No | Yes, only if at least one active team admin remains | Yes, only if at least one active team admin remains | No | No | No |
+| Leave team after submission closes | No | No | Yes, only if at least one active team admin remains and at least one active team member remains | Yes, only if at least one active team admin remains and at least one active team member remains | No | No | No |
 
 ## Hackathon Image Permissions
 
@@ -134,6 +143,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 ## Visibility Rules
 
 - Users can view only their own application records.
+- Staff can view hackathon-wide participant and team data.
 - Team members can view their own team membership and submission data.
 - Team admins can view team join requests and manage team membership.
 - Judges see only the blind judging view for assigned submissions.

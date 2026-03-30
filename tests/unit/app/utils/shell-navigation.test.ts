@@ -26,6 +26,18 @@ describe('isShellNavigationLinkActive', () => {
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'operations', '/account/admin')).toBe(true)
   })
 
+  test('keeps participant navigation active for staff-only visibility tabs', () => {
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'participants', '/account', {
+      accountHackathonNavigationMode: 'participant'
+    })).toBe(true)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'teams', '/account', {
+      accountHackathonNavigationMode: 'participant'
+    })).toBe(true)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'participants', '/account/admin', {
+      accountHackathonNavigationMode: 'participant'
+    })).toBe(false)
+  })
+
   test('keeps admin dashboard active for admin-accessible hackathon detail routes', () => {
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', undefined, '/account/admin', {
       accountHackathonNavigationMode: 'admin'

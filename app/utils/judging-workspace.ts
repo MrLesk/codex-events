@@ -4,6 +4,7 @@ import type {
   HackathonRecord,
   SessionActor
 } from './admin-workspace'
+import { isHackathonRoleJudgingEnabled } from './admin-workspace'
 
 export type JudgeAssignmentStatus = 'assigned' | 'judge_started' | 'judge_completed' | 'skipped'
 export type JudgeIneligibilityStatus = 'eligible' | 'ineligible'
@@ -146,7 +147,7 @@ export function filterReviewableHackathons(
 
   const reviewableHackathonIds = new Set(
     actor.hackathonRoles
-      .filter(role => role.role === 'judge' || role.role === 'hackathon_admin')
+      .filter(role => isHackathonRoleJudgingEnabled(role))
       .map(role => role.hackathonId)
   )
 
@@ -163,7 +164,7 @@ export function filterExplicitJudgeHackathons(
 
   const explicitJudgeHackathonIds = new Set(
     actor.hackathonRoles
-      .filter(role => role.role === 'judge')
+      .filter(role => isHackathonRoleJudgingEnabled(role))
       .map(role => role.hackathonId)
   )
 

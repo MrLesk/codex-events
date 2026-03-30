@@ -17,8 +17,11 @@ export default defineApiHandler(async (event) => {
   const database = getDatabase(event)
   const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
   const authorization = await resolveHackathonAuthorization(event, hackathonId)
+  const canViewShortlist = authorization.isPlatformAdmin
+    || authorization.isHackathonAdmin
+    || authorization.canReviewThroughAssignment
 
-  assertGuard(authorization.canReviewThroughAssignment, {
+  assertGuard(canViewShortlist, {
     statusCode: 403,
     code: 'shortlist_access_denied',
     message: 'This operation requires judge or hackathon admin access.',

@@ -1,6 +1,10 @@
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 
 import { accountDashboardHref, buildAuthLoginHref } from '~/utils/auth-navigation'
+import {
+  isHackathonRoleJudgingEnabled,
+  isHackathonRoleStaffEnabled
+} from '~/utils/admin-workspace'
 
 interface ShellPrizeRedemptionsResponse {
   data: Array<{
@@ -82,7 +86,7 @@ export function useShellNavigation() {
   const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
     && (actor.value.isPlatformAdmin || actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin')))
   const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
-    && actor.value.hackathonRoles.some(role => role.role === 'judge'))
+    && actor.value.hackathonRoles.some(role => isHackathonRoleJudgingEnabled(role)))
   const hasPrizeRecipientAccess = computed(() => pendingPrizeRedemptions.value.length > 0)
   const prizeRedemptionsErrorMessage = computed(() => {
     if (actor.value.kind !== 'platform_user' || !pendingPrizeRedemptionsError.value) {
@@ -113,7 +117,11 @@ export function useShellNavigation() {
       chips.push('Hackathon admin')
     }
 
-    if (actor.value.hackathonRoles.some(role => role.role === 'judge')) {
+    if (actor.value.hackathonRoles.some(role => isHackathonRoleStaffEnabled(role))) {
+      chips.push('Staff')
+    }
+
+    if (actor.value.hackathonRoles.some(role => isHackathonRoleJudgingEnabled(role))) {
       chips.push('Judge')
     }
 

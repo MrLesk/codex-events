@@ -62,13 +62,14 @@ Milestone 1 UI validation reuses the same stable Auth0 personas, cookie-backed b
 
 Within the full Auth0-backed BDD gate, the UI coverage remains intentionally scoped to the canonical actor-facing surfaces:
 
-- it targets the public, participant, judge, admin, and prize-recipient browser flows introduced by Milestone 1
+- it targets the public, participant, staff, judge, admin, and prize-recipient browser flows introduced by Milestone 1
 - it does not replace the broader backend workflow coverage under `TASK-3.*`
 - it keeps destructive account-deletion coverage in the full `bun run test:bdd` suite
 
 When backend constraints prevent complete actor-facing UI coverage, the gap must be documented explicitly in the owning task summary rather than implied away. Current known limitations are:
 
 - cross-cutting shell states that are only exercised incidentally by role-specific routes do not yet have a dedicated standalone Milestone 1 browser feature
+- staff-specific internal visibility flows do not yet have a dedicated standalone browser feature and currently rely on broader unit and integration coverage
 
 ## Core Rules
 
@@ -76,7 +77,7 @@ When backend constraints prevent complete actor-facing UI coverage, the gap must
 - End-to-end tests do not bypass login with fake tokens, mock identity payloads, or test-only authorization shortcuts.
 - Auth0 remains responsible for identity.
 - The platform database remains responsible for authorization.
-- Platform roles such as platform admin, hackathon admin, and judge are never modeled as Auth0 roles for application behavior.
+- Platform roles such as platform admin, hackathon admin, staff, and judge are never modeled as Auth0 roles for application behavior.
 
 ## Auth0 Test Tenant
 
@@ -92,10 +93,11 @@ Auth0 Management API access is used only to provision and reset Auth0-side test 
 
 ## Stable E2E Personas
 
-The platform maintains four stable Auth0 personas for role-based end-to-end coverage:
+The platform maintains five stable Auth0 personas for role-based end-to-end coverage:
 
 - `platform_admin`
 - `hackathon_admin`
+- `staff`
 - `judge`
 - `regular_user`
 
@@ -115,7 +117,7 @@ End-to-end test bootstrap must also seed the platform database with:
 
 - a `User` record for each Auth0 persona
 - `is_platform_admin = true` for the platform-admin persona
-- `HackathonRoleAssignment` rows for hackathon-admin and judge personas
+- `HackathonRoleAssignment` rows for hackathon-admin, staff, and judge personas
 - any required `UserApplication`, team, submission, or hackathon fixtures needed by the scenario under test
 
 The mapping between Auth0 identity and platform user is based on the Auth0 subject stored on the platform user record.

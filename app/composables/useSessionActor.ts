@@ -29,8 +29,9 @@ interface SessionActorPlatformUser {
 
 interface SessionActorHackathonRole {
   hackathonId: string
-  role: 'hackathon_admin' | 'judge'
+  role: 'hackathon_admin' | 'judge' | 'staff'
   isInJudgePool: boolean
+  isStaff: boolean
   createdAt: string
 }
 

@@ -26,7 +26,7 @@ export const hackathonStates = [
   'completed'
 ] as const
 
-export const hackathonRoleTypes = ['hackathon_admin', 'judge'] as const
+export const hackathonRoleTypes = ['hackathon_admin', 'judge', 'staff'] as const
 export const platformDocumentTypes = ['privacy_policy', 'platform_terms'] as const
 export const hackathonTermsDocumentTypes = ['application_terms', 'winner_terms'] as const
 export const userApplicationStatuses = ['submitted', 'approved', 'rejected'] as const
@@ -139,13 +139,18 @@ export const hackathonRoleAssignments = sqliteTable(
       .references(() => users.id),
     role: text('role', { enum: hackathonRoleTypes }).notNull(),
     isInJudgePool: integer('is_in_judge_pool', { mode: 'boolean' }).notNull().default(false),
+    isStaff: integer('is_staff', { mode: 'boolean' }).notNull().default(false),
     createdAt: createdAtColumn()
   },
   table => [
     uniqueIndex('hackathon_role_assignments_hackathon_user_idx').on(table.hackathonId, table.userId),
     check(
       'hackathon_role_assignments_judge_pool_check',
-      sql`(${table.role} != 'judge') or (${table.isInJudgePool} = 1)`
+      sql`(${table.role} != 'judge') or ((${table.isInJudgePool} = 1) and (${table.isStaff} = 0))`
+    ),
+    check(
+      'hackathon_role_assignments_staff_flag_check',
+      sql`(${table.role} != 'staff') or ((${table.isStaff} = 1) and (${table.isInJudgePool} = 0))`
     )
   ]
 )

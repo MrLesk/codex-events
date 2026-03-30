@@ -10,7 +10,6 @@ export const hackathonStateOrder = [
 ] as const
 
 export type HackathonState = typeof hackathonStateOrder[number]
-
 export interface ApiErrorShape {
   code: string
   message: string
@@ -99,8 +98,9 @@ export interface OperationalUserSummary {
 
 export interface HackathonRoleSummary {
   hackathonId: string
-  role: 'hackathon_admin' | 'judge'
+  role: HackathonScopedRole
   isInJudgePool: boolean
+  isStaff: boolean
   createdAt: string
 }
 
@@ -267,8 +267,9 @@ export interface HackathonRoleAssignment {
   id: string
   hackathonId: string
   userId: string
-  role: 'hackathon_admin' | 'judge'
+  role: HackathonScopedRole
   isInJudgePool: boolean
+  isStaff: boolean
   createdAt: string
   user?: HackathonRoleUserSummary
 }
@@ -473,6 +474,18 @@ export function isAdminActor(actor: SessionActor | null | undefined) {
   return actor.hackathonRoles.some(role => role.role === 'hackathon_admin')
 }
 
+export function isHackathonRoleJudgingEnabled(
+  role: Pick<HackathonRoleSummary, 'role' | 'isInJudgePool'>
+) {
+  return role.role === 'judge' || (role.role === 'hackathon_admin' && role.isInJudgePool)
+}
+
+export function isHackathonRoleStaffEnabled(
+  role: Pick<HackathonRoleSummary, 'role' | 'isStaff'>
+) {
+  return role.role === 'staff' || (role.role === 'hackathon_admin' && role.isStaff)
+}
+
 export function canCreateHackathon(actor: SessionActor | null | undefined) {
   return Boolean(actor?.hasPlatformAccount && actor.isPlatformAdmin)
 }
@@ -491,6 +504,35 @@ export function hasHackathonAdminAccess(actor: SessionActor | null | undefined, 
   }
 
   return actor.hackathonRoles.some(role => role.hackathonId === hackathonId && role.role === 'hackathon_admin')
+}
+
+export function hasHackathonParticipantVisibilityAccess(
+  actor: SessionActor | null | undefined,
+  hackathonId: string
+) {
+  if (!actor?.hasPlatformAccount) {
+    return false
+  }
+
+  if (actor.isPlatformAdmin) {
+    return true
+  }
+
+  return actor.hackathonRoles.some(role =>
+    role.hackathonId === hackathonId
+    && (role.role === 'hackathon_admin' || role.role === 'staff')
+  )
+}
+
+export function hasHackathonJudgingAccess(actor: SessionActor | null | undefined, hackathonId: string) {
+  if (!actor?.hasPlatformAccount) {
+    return false
+  }
+
+  return actor.hackathonRoles.some(role =>
+    role.hackathonId === hackathonId
+    && isHackathonRoleJudgingEnabled(role)
+  )
 }
 
 export function filterManageableHackathons(hackathons: HackathonRecord[], actor: SessionActor | null | undefined) {

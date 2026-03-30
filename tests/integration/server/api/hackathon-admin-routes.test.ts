@@ -55,6 +55,12 @@ async function seedHackathonContext(
       displayName: 'Judge User'
     },
     {
+      id: 'staff_user',
+      auth0Subject: 'auth0|staff',
+      email: 'staff@example.com',
+      displayName: 'Staff User'
+    },
+    {
       id: 'regular_user',
       auth0Subject: 'auth0|regular_user',
       email: 'regular@example.com',
@@ -192,7 +198,8 @@ describe('TASK-3.5 hackathon admin route groups', () => {
       method: 'PUT',
       body: JSON.stringify({
         role: 'judge',
-        isInJudgePool: true
+        isInJudgePool: true,
+        isStaff: false
       })
     })
     expect(createResponse.status).toBe(200)
@@ -200,7 +207,26 @@ describe('TASK-3.5 hackathon admin route groups', () => {
       data: {
         userId: 'judge_user',
         role: 'judge',
-        isInJudgePool: true
+        isInJudgePool: true,
+        isStaff: false
+      }
+    })
+
+    const createStaffResponse = await harness.request('/api/hackathons/hackathon_1/roles/staff_user', {
+      method: 'PUT',
+      body: JSON.stringify({
+        role: 'staff',
+        isInJudgePool: false,
+        isStaff: true
+      })
+    })
+    expect(createStaffResponse.status).toBe(200)
+    expect(await createStaffResponse.json()).toMatchObject({
+      data: {
+        userId: 'staff_user',
+        role: 'staff',
+        isInJudgePool: false,
+        isStaff: true
       }
     })
 
@@ -213,7 +239,24 @@ describe('TASK-3.5 hackathon admin route groups', () => {
     expect(invalidPatchResponse.status).toBe(409)
     expect(await invalidPatchResponse.json()).toMatchObject({
       error: {
-        code: 'judge_pool_required'
+        code: 'judge_role_flags_invalid'
+      }
+    })
+
+    const adminCapabilityPatchResponse = await harness.request('/api/hackathons/hackathon_1/roles/hackathon_admin', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        isInJudgePool: true,
+        isStaff: true
+      })
+    })
+    expect(adminCapabilityPatchResponse.status).toBe(200)
+    expect(await adminCapabilityPatchResponse.json()).toMatchObject({
+      data: {
+        userId: 'hackathon_admin',
+        role: 'hackathon_admin',
+        isInJudgePool: true,
+        isStaff: true
       }
     })
 
@@ -247,7 +290,8 @@ describe('TASK-3.5 hackathon admin route groups', () => {
       method: 'PUT',
       body: JSON.stringify({
         role: 'judge',
-        isInJudgePool: true
+        isInJudgePool: true,
+        isStaff: false
       })
     })
     expect(createJudgeResponse.status).toBe(200)
@@ -292,7 +336,7 @@ describe('TASK-3.5 hackathon admin route groups', () => {
       meta: {
         page: 1,
         pageSize: 10,
-        total: 4
+        total: 5
       }
     })
     expect(candidatePayload.data[0]).toMatchObject({

@@ -83,6 +83,7 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
       hackathonId: 'hackathon-1',
       role: 'judge',
       isInJudgePool: true,
+      isStaff: false,
       createdAt: '2026-03-01T00:00:00.000Z'
     }],
     ...overrides
@@ -143,19 +144,21 @@ function createCriterion(overrides: Partial<EvaluationCriterion> = {}): Evaluati
 }
 
 describe('judging-workspace filters', () => {
-  test('limits reviewable hackathons to judge and hackathon-admin roles for non-platform admins', () => {
+  test('limits reviewable hackathons to judge-enabled roles for non-platform admins', () => {
     const actor = createActor({
       hackathonRoles: [
         {
           hackathonId: 'hackathon-1',
           role: 'judge',
           isInJudgePool: true,
+          isStaff: false,
           createdAt: '2026-03-01T00:00:00.000Z'
         },
         {
           hackathonId: 'hackathon-2',
           role: 'hackathon_admin',
-          isInJudgePool: false,
+          isInJudgePool: true,
+          isStaff: false,
           createdAt: '2026-03-01T00:00:00.000Z'
         }
       ]
@@ -172,19 +175,21 @@ describe('judging-workspace filters', () => {
     ])
   })
 
-  test('limits explicit judge hackathons to actual judge roles only', () => {
+  test('includes judge-enabled admin assignments in the judging workspace', () => {
     const actor = createActor({
       hackathonRoles: [
         {
           hackathonId: 'hackathon-1',
           role: 'judge',
           isInJudgePool: true,
+          isStaff: false,
           createdAt: '2026-03-01T00:00:00.000Z'
         },
         {
           hackathonId: 'hackathon-2',
           role: 'hackathon_admin',
-          isInJudgePool: false,
+          isInJudgePool: true,
+          isStaff: true,
           createdAt: '2026-03-01T00:00:00.000Z'
         }
       ]
@@ -194,7 +199,10 @@ describe('judging-workspace filters', () => {
       createHackathon({ id: 'hackathon-2', slug: 'admin-hackathon', name: 'Admin Hackathon' })
     ]
 
-    expect(filterExplicitJudgeHackathons(hackathons, actor).map(hackathon => hackathon.id)).toEqual(['hackathon-1'])
+    expect(filterExplicitJudgeHackathons(hackathons, actor).map(hackathon => hackathon.id)).toEqual([
+      'hackathon-1',
+      'hackathon-2'
+    ])
   })
 
   test('filters assignment lists to the current actor even when other assignments are visible upstream', () => {

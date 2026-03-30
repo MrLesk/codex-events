@@ -14,10 +14,12 @@ import {
 export interface HackathonAuthorization {
   hackathonId: string
   isPlatformAdmin: boolean
-  explicitRole: 'hackathon_admin' | 'judge' | null
+  explicitRole: 'hackathon_admin' | 'judge' | 'staff' | null
   isHackathonAdmin: boolean
   canReviewThroughAssignment: boolean
   isInJudgePool: boolean
+  isStaff: boolean
+  canViewParticipantsAndTeams: boolean
 }
 
 export interface TeamAuthorization {
@@ -31,7 +33,7 @@ export interface JudgeAssignmentAuthorization {
   assignmentId: string
   hackathonId: string
   assignedJudgeUserId: string
-  actingRole: 'assigned_judge' | 'admin_via_assignment' | null
+  actingRole: 'assigned_judge' | null
   canAccess: boolean
   visibility: 'blind' | 'forbidden'
 }
@@ -53,8 +55,10 @@ export async function resolveHackathonAuthorization(
       isPlatformAdmin: true,
       explicitRole: 'hackathon_admin',
       isHackathonAdmin: true,
-      canReviewThroughAssignment: true,
-      isInJudgePool: false
+      canReviewThroughAssignment: false,
+      isInJudgePool: false,
+      isStaff: false,
+      canViewParticipantsAndTeams: true
     }
   }
 
@@ -68,14 +72,18 @@ export async function resolveHackathonAuthorization(
 
   const explicitRole = assignment?.role ?? null
   const isHackathonAdmin = explicitRole === 'hackathon_admin'
+  const isInJudgePool = assignment?.isInJudgePool ?? false
+  const isStaff = assignment?.isStaff ?? false
 
   return {
     hackathonId,
     isPlatformAdmin: false,
     explicitRole,
     isHackathonAdmin,
-    canReviewThroughAssignment: isHackathonAdmin || explicitRole === 'judge',
-    isInJudgePool: assignment?.isInJudgePool ?? false
+    canReviewThroughAssignment: explicitRole === 'judge' || (isHackathonAdmin && isInJudgePool),
+    isInJudgePool,
+    isStaff,
+    canViewParticipantsAndTeams: isHackathonAdmin || isStaff
   }
 }
 
@@ -88,6 +96,19 @@ export function assertHackathonAdminAccess(authorization: HackathonAuthorization
     statusCode: 403,
     code: 'hackathon_admin_required',
     message: 'This operation requires hackathon admin access.',
+    details: { hackathonId: authorization.hackathonId }
+  })
+}
+
+export function assertHackathonParticipantVisibilityAccess(authorization: HackathonAuthorization) {
+  if (authorization.canViewParticipantsAndTeams) {
+    return
+  }
+
+  throw new ApiError({
+    statusCode: 403,
+    code: 'hackathon_participant_visibility_required',
+    message: 'This operation requires hackathon participant visibility access.',
     details: { hackathonId: authorization.hackathonId }
   })
 }
@@ -163,17 +184,15 @@ export async function resolveJudgeAssignmentAuthorization(
     })
   }
 
-  const hackathonAuthorization = await resolveHackathonAuthorization(event, assignment.hackathonId)
   const isAssignedJudge = assignment.judgeUserId === actor.platformUser.id
-  const isAdminReviewer = !isAssignedJudge && hackathonAuthorization.isHackathonAdmin
 
   return {
     assignmentId,
     hackathonId: assignment.hackathonId,
     assignedJudgeUserId: assignment.judgeUserId,
-    actingRole: isAssignedJudge ? 'assigned_judge' : isAdminReviewer ? 'admin_via_assignment' : null,
-    canAccess: isAssignedJudge || isAdminReviewer,
-    visibility: isAssignedJudge || isAdminReviewer ? 'blind' : 'forbidden'
+    actingRole: isAssignedJudge ? 'assigned_judge' : null,
+    canAccess: isAssignedJudge,
+    visibility: isAssignedJudge ? 'blind' : 'forbidden'
   }
 }
 

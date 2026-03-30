@@ -15,8 +15,11 @@ export default defineApiHandler(async (event) => {
 
   await getVisibleHackathonOrThrow(event, hackathonId)
   const authorization = await resolveHackathonAuthorization(event, hackathonId)
+  const canViewLeaderboard = authorization.isPlatformAdmin
+    || authorization.isHackathonAdmin
+    || authorization.canReviewThroughAssignment
 
-  assertGuard(authorization.canReviewThroughAssignment, {
+  assertGuard(canViewLeaderboard, {
     statusCode: 403,
     code: 'leaderboard_access_denied',
     message: 'This operation requires judge or hackathon admin access.',

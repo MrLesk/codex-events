@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger
 } from '~/components/ui/dropdown-menu'
 import { authLogoutHref } from '~/utils/auth-navigation'
+import { isHackathonRoleJudgingEnabled } from '~/utils/admin-workspace'
 
 const props = defineProps<{
   name?: string | null
@@ -20,7 +21,7 @@ const displayName = computed(() => props.name?.trim() || 'Developer User')
 const displayEmail = computed(() => props.email?.trim() || 'Signed in')
 const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
 const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
-  && actor.value.hackathonRoles.some(role => role.role === 'judge'))
+  && actor.value.hackathonRoles.some(role => isHackathonRoleJudgingEnabled(role)))
 const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
   && (actor.value.isPlatformAdmin || actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin')))
 </script>

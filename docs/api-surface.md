@@ -185,8 +185,8 @@ Operations:
 | List public prizes | `GET /api/public/hackathons/:slug/prizes` | public or authenticated user | Returns the public prize definitions for the exact public hackathon slug. |
 | Get public background image | `GET /api/public/hackathons/:slug/images/background` | public or authenticated user | Returns the uploaded hackathon background image bytes for the exact public hackathon slug when configured. |
 | Get public banner image | `GET /api/public/hackathons/:slug/images/banner` | public or authenticated user | Returns the uploaded hackathon banner image bytes for the exact public hackathon slug when configured. |
-| List caller-visible hackathons | `GET /api/hackathons` | public or authenticated user | Returns hackathons visible to the caller. Authenticated admins can see draft hackathons they are allowed to manage here. |
-| Get caller-visible hackathon detail | `GET /api/hackathons/:hackathonId` | public or authenticated user | Returns canonical hackathon fields, including structured `agendaItems`, and current terms references for a hackathon visible to the caller. |
+| List caller-visible hackathons | `GET /api/hackathons` | public or authenticated user | Returns hackathons visible to the caller. Authenticated admins can see draft hackathons they are allowed to manage here, and staff-visible internal hackathons are included when the caller has staff access to them. |
+| Get caller-visible hackathon detail | `GET /api/hackathons/:hackathonId` | public or authenticated user | Returns canonical hackathon fields, including structured `agendaItems`, and current terms references for a hackathon visible to the caller. Staff-visible internal hackathons are included when the caller has staff access to that hackathon. |
 | Create hackathon | `POST /api/hackathons` | platform admin | Creates a `draft` hackathon with canonical configuration, including structured `agendaItems`, location fields (`city`, `country`, and `address`), team size and participant limits, `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. |
 | Update hackathon configuration | `PATCH /api/hackathons/:hackathonId` | hackathon admin or platform admin | Updates canonical configuration fields, including schedule, structured `agendaItems`, images, location fields (`city`, `country`, and `address`), team size and participant limits, required profile flags, `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. |
 | Upload hackathon background image | `POST /api/hackathons/:hackathonId/images/background` | hackathon admin or platform admin | Accepts multipart upload for the background image and updates `backgroundImageUrl` to the platform-managed public image endpoint. |
@@ -215,24 +215,24 @@ Notes:
 Testing:
 - Unit: lifecycle transitions and guard rules.
 - Integration: role enforcement and configuration persistence.
-- End-to-end: admin lifecycle actions and public or authenticated reads.
+- End-to-end: admin lifecycle actions, staff-visible internal reads, and public or authenticated reads.
 
 ## Hackathon Roles
 
 Purpose:
-- Manage hackathon-scoped admin and judge assignments.
+- Manage hackathon-scoped admin, staff, and judge assignments.
 
 Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | List role assignments | `GET /api/hackathons/:hackathonId/roles` | hackathon admin or platform admin | Returns explicit assignments for the hackathon. |
-| Create or replace role assignment | `PUT /api/hackathons/:hackathonId/roles/:userId` | hackathon admin or platform admin | Supports `hackathon_admin` or `judge` roles and `is_in_judge_pool`. |
+| Create or replace role assignment | `PUT /api/hackathons/:hackathonId/roles/:userId` | hackathon admin or platform admin | Supports `hackathon_admin`, `judge`, or `staff` roles plus the `is_in_judge_pool` and `is_staff` capability flags. |
 | Remove explicit role assignment | `DELETE /api/hackathons/:hackathonId/roles/:userId` | hackathon admin or platform admin | Removes the explicit assignment. Platform-admin inheritance remains implicit. |
-| Update judge-pool participation | `PATCH /api/hackathons/:hackathonId/roles/:userId` | hackathon admin or platform admin | `judge` must remain in the automatic judge pool. |
+| Update role-assignment capability flags | `PATCH /api/hackathons/:hackathonId/roles/:userId` | hackathon admin or platform admin | Updates admin-only `is_in_judge_pool` and `is_staff` flags without replacing the explicit role. `judge` must remain in the automatic judge pool, `staff` must remain marked as staff, and non-admin staff and judges remain distinct. |
 
 Testing:
-- Unit: role invariants and judge-pool rules.
+- Unit: role invariants plus judge-pool and staff-flag rules.
 - Integration: assignment uniqueness and permission enforcement.
 - End-to-end: admin role-management flows.
 
@@ -258,7 +258,7 @@ Testing:
 ## Applications
 
 Purpose:
-- Support hackathon application submission and admin review.
+- Support hackathon application submission, participant visibility, and admin review.
 
 Operations:
 
@@ -266,7 +266,7 @@ Operations:
 | --- | --- | --- | --- |
 | Submit application | `POST /api/hackathons/:hackathonId/applications` | authenticated user | Allowed only in `registration_open`, only if no prior application exists, and only if the user profile satisfies the hackathon's required profile flags. Requires exact-version acceptance of the current application terms. Carries registration hint payload with `registrationTeamIntent` (`solo`, `team`, `unknown`) and optional teammate hints, plus optional `whyThisHackathon` and `proofOfExecutionUrl`, where `proofOfExecutionUrl` accepts one or more comma-separated `http` or `https` links. For in-person hackathons, also requires `inPersonAttendanceCommitment = true`. If configured, also requires non-empty `whyThisHackathon` and/or at least one proof link in `proofOfExecutionUrl`. |
 | Get own application | `GET /api/hackathons/:hackathonId/applications/me` | authenticated user | Returns the caller's application for the hackathon, if present. |
-| List hackathon applications | `GET /api/hackathons/:hackathonId/applications` | hackathon admin or platform admin | Returns application records for review workflows. |
+| List hackathon applications | `GET /api/hackathons/:hackathonId/applications` | staff, hackathon admin, or platform admin | Returns application records for participant-visibility and review workflows. Staff access is read-only. |
 | Stage application approval | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/approve` | hackathon admin or platform admin | Persists `pre_approval_status = approved` for a `submitted` application without changing canonical status. |
 | Stage application rejection | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/reject` | hackathon admin or platform admin | Persists `pre_approval_status = rejected` for a `submitted` application without changing canonical status. |
 | Apply staged application decisions | `POST /api/hackathons/:hackathonId/applications/actions/apply-staged-decisions` | hackathon admin or platform admin | Applies all staged decisions for `submitted` applications, transitions canonical status, records reviewer metadata, and enqueues participant-facing decision emails. |
@@ -274,7 +274,7 @@ Operations:
 Testing:
 - Unit: application guard and state-transition rules.
 - Integration: exact-version acceptance persistence and review actions.
-- End-to-end: applicant and admin review flows.
+- End-to-end: applicant, staff visibility, and admin review flows.
 
 Operational notes:
 - Application review API actions remain successful even when queue enqueue fails.
@@ -287,14 +287,14 @@ Operational notes:
 ## Teams
 
 Purpose:
-- Support team creation, discovery, and team management.
+- Support team creation, discovery, internal visibility, and team management.
 
 Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| List teams | `GET /api/hackathons/:hackathonId/teams` | approved user, team member, team admin, hackathon admin, or platform admin | Search and filter support applies only while team discovery is allowed to the actor. |
-| Get team detail | `GET /api/hackathons/:hackathonId/teams/:teamId` | approved user, team member, team admin, hackathon admin, or platform admin | Returns team fields, active members, and join openness according to visibility rules. |
+| List teams | `GET /api/hackathons/:hackathonId/teams` | approved user, team member, team admin, staff, hackathon admin, or platform admin | Search and filter support applies only while team discovery is allowed to the actor. Staff access is read-only and is not limited to the participant team-formation window. |
+| Get team detail | `GET /api/hackathons/:hackathonId/teams/:teamId` | approved user, team member, team admin, staff, hackathon admin, or platform admin | Returns team fields, active members, and join openness according to visibility rules. Staff access is read-only. |
 | Create team | `POST /api/hackathons/:hackathonId/teams` | approved user | Allowed only in `registration_open` or `submission_open`. Creator becomes an admin member automatically. |
 | Rename team | `PATCH /api/hackathons/:hackathonId/teams/:teamId` | team admin | Updates team name and slug-oriented identity fields. |
 | Update join openness | `PATCH /api/hackathons/:hackathonId/teams/:teamId/join-policy` | team admin | Controls `is_open_to_join_requests`. |
@@ -304,7 +304,7 @@ Operations:
 Testing:
 - Unit: one-team-per-hackathon, active-admin, and active-member rules.
 - Integration: team creation, rename, join openness, and membership updates.
-- End-to-end: approved-user and team-admin management flows.
+- End-to-end: approved-user, staff visibility, and team-admin management flows.
 
 ## Team Join Requests
 
@@ -446,6 +446,7 @@ Testing:
 
 - A user can have at most one `UserApplication` per hackathon.
 - A user can have at most one active team membership per hackathon.
+- Non-admin `staff` and `judge` assignments remain distinct.
 - Team formation is available only during `registration_open` and `submission_open`.
 - Submission creation and editing are available only during `submission_open`.
 - A draft submission that is never submitted is treated as no submission for judging and dashboard purposes.

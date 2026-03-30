@@ -18,8 +18,11 @@ export default defineApiHandler(async (event) => {
 
   await getVisibleHackathonOrThrow(event, hackathonId)
   const authorization = await resolveHackathonAuthorization(event, hackathonId)
+  const canViewAssignments = authorization.isPlatformAdmin
+    || authorization.isHackathonAdmin
+    || authorization.canReviewThroughAssignment
 
-  assertGuard(authorization.canReviewThroughAssignment, {
+  assertGuard(canViewAssignments, {
     statusCode: 403,
     code: 'judge_assignment_access_denied',
     message: 'This operation requires judge assignment access.',
@@ -29,7 +32,7 @@ export default defineApiHandler(async (event) => {
   })
 
   const assignments: Array<typeof judgeAssignments.$inferSelect> = await database.query.judgeAssignments.findMany({
-    where: authorization.isHackathonAdmin
+    where: authorization.isPlatformAdmin || authorization.isHackathonAdmin
       ? and(
           eq(judgeAssignments.hackathonId, hackathonId),
           inArray(judgeAssignments.status, ['assigned', 'judge_started'])

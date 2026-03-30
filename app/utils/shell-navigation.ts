@@ -25,6 +25,8 @@ export function isShellNavigationLinkActive(
   const normalizedTab = normalizeTabQueryValue(currentTab)
   const accountHackathonUsesAdminNavigation = isAccountHackathonDetailPath(currentPath)
     && options.accountHackathonNavigationMode === 'admin'
+  const accountHackathonUsesParticipantNavigation = isAccountHackathonDetailPath(currentPath)
+    && options.accountHackathonNavigationMode === 'participant'
 
   if (targetPath === '/account') {
     if (currentPath === '/account') {
@@ -37,6 +39,10 @@ export function isShellNavigationLinkActive(
 
     if (accountHackathonUsesAdminNavigation) {
       return false
+    }
+
+    if (accountHackathonUsesParticipantNavigation) {
+      return normalizedTab !== 'judging'
     }
 
     return normalizedTab !== 'judging' && !accountHackathonAdminTabs.includes(normalizedTab as (typeof accountHackathonAdminTabs)[number])
@@ -52,7 +58,13 @@ export function isShellNavigationLinkActive(
   if (targetPath === '/account/admin') {
     return currentPath === '/account/admin'
       || (isAccountHackathonDetailPath(currentPath)
-        && (accountHackathonUsesAdminNavigation || accountHackathonAdminTabs.includes(normalizedTab as (typeof accountHackathonAdminTabs)[number])))
+        && (
+          accountHackathonUsesAdminNavigation
+          || (
+            !accountHackathonUsesParticipantNavigation
+            && accountHackathonAdminTabs.includes(normalizedTab as (typeof accountHackathonAdminTabs)[number])
+          )
+        ))
   }
 
   return currentPath === targetPath || currentPath.startsWith(`${targetPath}/`)

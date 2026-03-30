@@ -7,7 +7,7 @@ import { hackathonRoleAssignments } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
 import {
-  assertRoleJudgePoolInvariant,
+  assertRoleCapabilityInvariant,
   getActiveUserOrThrow,
   requireHackathonAdmin,
   roleAssignmentParamsSchema,
@@ -25,7 +25,10 @@ export default defineApiHandler(async (event) => {
 
   await requireHackathonAdmin(event, hackathonId)
   const user = await getActiveUserOrThrow(database, userId)
-  assertRoleJudgePoolInvariant(body.role, body.isInJudgePool)
+  assertRoleCapabilityInvariant(body.role, {
+    isInJudgePool: body.isInJudgePool,
+    isStaff: body.isStaff
+  })
 
   const existingAssignment = await database.query.hackathonRoleAssignments.findFirst({
     where: and(
@@ -41,7 +44,8 @@ export default defineApiHandler(async (event) => {
       .update(hackathonRoleAssignments)
       .set({
         role: body.role,
-        isInJudgePool: body.isInJudgePool
+        isInJudgePool: body.isInJudgePool,
+        isStaff: body.isStaff
       })
       .where(eq(hackathonRoleAssignments.id, existingAssignment.id))
   } else {
@@ -51,6 +55,7 @@ export default defineApiHandler(async (event) => {
       userId,
       role: body.role,
       isInJudgePool: body.isInJudgePool,
+      isStaff: body.isStaff,
       createdAt
     })
   }
@@ -71,7 +76,8 @@ export default defineApiHandler(async (event) => {
       hackathonId,
       userId,
       role: body.role,
-      isInJudgePool: body.isInJudgePool
+      isInJudgePool: body.isInJudgePool,
+      isStaff: body.isStaff
     }
   })
 

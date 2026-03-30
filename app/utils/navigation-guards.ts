@@ -3,7 +3,7 @@ import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 
 import { buildAuthLoginHref, resolveActorAppRedirect } from './auth-navigation'
 
-export type HackathonScopedRole = 'hackathon_admin' | 'judge'
+export type HackathonScopedRole = 'hackathon_admin' | 'judge' | 'staff'
 type SessionActor = ResolvedSessionActor
 type PlatformSessionActor = Extract<ResolvedSessionActor, { kind: 'platform_user' }>
 export type RedirectNavigationResult = {
@@ -140,9 +140,25 @@ export async function ensureHackathonRoleForSlugRoute(
     })
   }
 
-  const hasAllowedRole = (actor.hackathonRoles ?? []).some(assignment =>
-    assignment.hackathonId === hackathonId && roles.includes(assignment.role as HackathonScopedRole)
-  )
+  const hasAllowedRole = (actor.hackathonRoles ?? []).some((assignment) => {
+    if (assignment.hackathonId !== hackathonId) {
+      return false
+    }
+
+    if (roles.includes(assignment.role as HackathonScopedRole)) {
+      return true
+    }
+
+    if (roles.includes('judge') && assignment.role === 'hackathon_admin' && assignment.isInJudgePool) {
+      return true
+    }
+
+    if (roles.includes('staff') && assignment.role === 'hackathon_admin' && assignment.isStaff) {
+      return true
+    }
+
+    return false
+  })
 
   if (hasAllowedRole) {
     return

@@ -7,7 +7,8 @@ describe('getAccountHackathonTabAccess', () => {
     expect(getAccountHackathonTabAccess({
       hasPublishedPrizes: false,
       canJudge: false,
-      canAdmin: false
+      canManage: false,
+      canViewParticipantsAndTeams: false
     })).toEqual({
       availableTabs: ['overview', 'details', 'judges', 'staff'],
       showPrizeConfiguration: false,
@@ -19,7 +20,8 @@ describe('getAccountHackathonTabAccess', () => {
     expect(getAccountHackathonTabAccess({
       hasPublishedPrizes: true,
       canJudge: false,
-      canAdmin: false
+      canManage: false,
+      canViewParticipantsAndTeams: false
     })).toEqual({
       availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff'],
       showPrizeConfiguration: false,
@@ -31,7 +33,8 @@ describe('getAccountHackathonTabAccess', () => {
     expect(getAccountHackathonTabAccess({
       hasPublishedPrizes: false,
       canJudge: false,
-      canAdmin: true
+      canManage: true,
+      canViewParticipantsAndTeams: true
     })).toEqual({
       availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff', 'participants', 'submissions', 'operations', 'settings'],
       showPrizeConfiguration: true,
@@ -39,11 +42,25 @@ describe('getAccountHackathonTabAccess', () => {
     })
   })
 
+  test('shows participant and team visibility tabs to staff without admin operations', () => {
+    expect(getAccountHackathonTabAccess({
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: true
+    })).toEqual({
+      availableTabs: ['overview', 'details', 'judges', 'staff', 'participants', 'teams'],
+      showPrizeConfiguration: false,
+      showAgendaConfigurationInDetails: false
+    })
+  })
+
   test('preserves judge and admin tabs alongside the admin prize configuration surface', () => {
     expect(getAccountHackathonTabAccess({
       hasPublishedPrizes: true,
       canJudge: true,
-      canAdmin: true
+      canManage: true,
+      canViewParticipantsAndTeams: true
     })).toEqual({
       availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff', 'judging', 'participants', 'submissions', 'operations', 'settings'],
       showPrizeConfiguration: true,

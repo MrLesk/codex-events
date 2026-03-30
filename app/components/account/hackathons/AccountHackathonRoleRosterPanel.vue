@@ -56,7 +56,7 @@ const candidateRows = computed(() =>
   ).filter(row => appliedCandidateSearch.value.length > 0 || !row.isAssigned)
 )
 const hasMoreCandidates = computed(() => candidateUsers.value.length < candidateUsersTotal.value)
-const staffJudgeRows = computed(() =>
+const adminJudgeRows = computed(() =>
   props.role === 'judge'
     ? assignedRows.value.filter(row => row.isHackathonAdmin)
     : []
@@ -70,12 +70,12 @@ const roleLabel = computed(() => props.role === 'judge' ? 'judge access' : 'staf
 const addSectionTitle = computed(() =>
   props.role === 'judge'
     ? 'Add judges or enable judging'
-    : 'Add staff or grant admin access'
+    : 'Add staff access'
 )
 const addSectionDescription = computed(() =>
   props.role === 'judge'
-    ? 'Search by name, email, or user ID. Staff members can also review submissions.'
-    : 'Search by name, email, or user ID. Existing judges keep judging when staff access is added.'
+    ? 'Search by name, email, or user ID. Admins can also review submissions when judging is enabled for their admin assignment.'
+    : 'Search by name, email, or user ID. Staff and judge access stay separate unless the person is already a hackathon admin.'
 )
 const emptyCandidateMessage = computed(() =>
   appliedCandidateSearch.value.length > 0
@@ -95,31 +95,31 @@ function findRoleAssignment(userId: string) {
 }
 
 function getCandidateActionLabel(row: HackathonRoleRosterRow) {
-  if (props.role === 'hackathon_admin') {
+  if (props.role === 'staff') {
     if (row.isAssigned) {
-      return row.isInJudgePool ? 'Staff + judge' : 'Already on staff'
+      return row.isHackathonAdmin ? 'Already on staff' : 'Already staff'
     }
 
-    return row.assignment?.role === 'judge' ? 'Add staff access' : 'Add staff'
+    if (row.isHackathonAdmin) {
+      return 'Grant staff access'
+    }
+
+    return row.assignment?.role === 'judge' ? 'Replace judge with staff' : 'Add staff'
   }
 
   if (row.isAssigned) {
-    return row.isHackathonAdmin ? 'Staff + judge' : 'Already a judge'
+    return row.isHackathonAdmin ? 'Already judging' : 'Already a judge'
   }
 
-  return row.isHackathonAdmin ? 'Allow judging' : 'Add judge'
+  if (row.isHackathonAdmin) {
+    return 'Enable judging'
+  }
+
+  return row.assignment?.role === 'staff' ? 'Replace staff with judge' : 'Add judge'
 }
 
 function isCandidateActionDisabled(row: HackathonRoleRosterRow) {
   return row.isAssigned
-}
-
-function getAssignedActionLabel(row: HackathonRoleRosterRow) {
-  if (props.role === 'hackathon_admin') {
-    return row.isInJudgePool ? 'Stop judging' : 'Allow judging'
-  }
-
-  return row.isHackathonAdmin ? 'Stop judging' : 'Remove from judges'
 }
 
 function isPendingAction(
@@ -304,6 +304,7 @@ async function putRoleAssignment(
   userId: string,
   role: HackathonRosterRole,
   isInJudgePool: boolean,
+  isStaff: boolean,
   successTitle: string,
   successDescription: string
 ) {
@@ -314,7 +315,8 @@ async function putRoleAssignment(
         method: 'PUT',
         body: {
           role,
-          isInJudgePool
+          isInJudgePool,
+          isStaff
         }
       })
     },
@@ -323,9 +325,12 @@ async function putRoleAssignment(
   )
 }
 
-async function patchJudgePool(
+async function patchRoleCapabilities(
   userId: string,
-  isInJudgePool: boolean,
+  updates: {
+    isInJudgePool?: boolean
+    isStaff?: boolean
+  },
   successTitle: string,
   successDescription: string
 ) {
@@ -334,9 +339,7 @@ async function patchJudgePool(
     async () => {
       await $fetch(`/api/hackathons/${props.hackathonId}/roles/${userId}`, {
         method: 'PATCH',
-        body: {
-          isInJudgePool
-        }
+        body: updates
       })
     },
     successTitle,
@@ -371,25 +374,40 @@ async function assignRole(userId: string) {
 
   const existingAssignment = findRoleAssignment(trimmedUserId)
 
-  if (props.role === 'hackathon_admin') {
+  if (props.role === 'staff') {
+    if (existingAssignment?.role === 'hackathon_admin') {
+      await patchRoleCapabilities(
+        trimmedUserId,
+        {
+          isStaff: true
+        },
+        'Staff access granted',
+        'This admin can now see participant and team data through the staff surface.'
+      )
+      return
+    }
+
     await putRoleAssignment(
       trimmedUserId,
-      'hackathon_admin',
-      existingAssignment?.isInJudgePool ?? false,
+      'staff',
+      false,
+      true,
       existingAssignment?.role === 'judge' ? 'Staff access granted' : 'Staff member added',
       existingAssignment?.role === 'judge'
-        ? 'This person kept judge access and now also has staff access.'
+        ? 'Judge access was replaced with staff access.'
         : 'The staff roster was updated for this hackathon.'
     )
     return
   }
 
   if (existingAssignment?.role === 'hackathon_admin') {
-    await patchJudgePool(
+    await patchRoleCapabilities(
       trimmedUserId,
-      true,
+      {
+        isInJudgePool: true
+      },
       'Judging enabled',
-      'This staff member can now review submissions.'
+      'This admin can now review submissions through judge assignments.'
     )
     return
   }
@@ -398,35 +416,26 @@ async function assignRole(userId: string) {
     trimmedUserId,
     'judge',
     true,
+    false,
     'Judge added',
-    'The judges roster was updated for this hackathon.'
-  )
-}
-
-async function toggleStaffJudging(assignment: HackathonRoleAssignment) {
-  if (assignment.role !== 'hackathon_admin') {
-    return
-  }
-
-  await patchJudgePool(
-    assignment.userId,
-    !assignment.isInJudgePool,
-    assignment.isInJudgePool ? 'Judging disabled' : 'Judging enabled',
-    assignment.isInJudgePool
-      ? 'This staff member still has admin access.'
-      : 'This staff member can now review submissions.'
+    existingAssignment?.role === 'staff'
+      ? 'Staff access was replaced with judge access.'
+      : 'The judges roster was updated for this hackathon.'
   )
 }
 
 async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
-  if (props.role === 'hackathon_admin') {
-    if (assignment.role === 'hackathon_admin' && assignment.isInJudgePool) {
-      await putRoleAssignment(
+  if (props.role === 'staff') {
+    if (assignment.role === 'hackathon_admin') {
+      await patchRoleCapabilities(
         assignment.userId,
-        'judge',
-        true,
+        {
+          isStaff: false
+        },
         'Staff access removed',
-        'This person remains in Judges as a review-only judge.'
+        assignment.isInJudgePool
+          ? 'This admin still has judging enabled.'
+          : 'This admin no longer appears in the staff roster.'
       )
       return
     }
@@ -440,11 +449,15 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
   }
 
   if (assignment.role === 'hackathon_admin') {
-    await patchJudgePool(
+    await patchRoleCapabilities(
       assignment.userId,
-      false,
+      {
+        isInJudgePool: false
+      },
       'Judging disabled',
-      'This person still has staff access.'
+      assignment.isStaff
+        ? 'This admin still has staff access.'
+        : 'This admin no longer appears in the judges roster.'
     )
     return
   }
@@ -500,15 +513,15 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
           class="space-y-5"
         >
           <div
-            v-if="staffJudgeRows.length > 0"
+            v-if="adminJudgeRows.length > 0"
             class="space-y-3"
           >
             <p class="text-xs font-semibold uppercase tracking-[0.16em] text-muted">
-              Staff who judge
+              Admins who judge
             </p>
 
             <div
-              v-for="row in staffJudgeRows"
+              v-for="row in adminJudgeRows"
               :key="row.id"
               class="min-h-[4.75rem] flex flex-col gap-3 rounded-lg border border-black/8 bg-white/85 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-white/[0.08] dark:bg-[#111111]"
             >
@@ -522,7 +535,7 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
                     variant="soft"
                     class="ml-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
                   >
-                    Staff
+                    Admin
                   </AppBadge>
                   <AppBadge
                     v-if="row.isPlatformAdmin"
@@ -552,7 +565,7 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
           </div>
 
           <div
-            v-if="staffJudgeRows.length > 0 && reviewOnlyJudgeRows.length > 0"
+            v-if="adminJudgeRows.length > 0 && reviewOnlyJudgeRows.length > 0"
             class="border-t border-black/8 pt-5 dark:border-white/[0.08]"
           />
 
@@ -617,6 +630,14 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
                   {{ row.displayName }}
                 </p>
                 <AppBadge
+                  v-if="row.isStaff"
+                  color="primary"
+                  variant="soft"
+                  class="ml-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                >
+                  Staff
+                </AppBadge>
+                <AppBadge
                   v-if="row.isInJudgePool"
                   color="primary"
                   variant="soft"
@@ -639,17 +660,6 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
             </div>
 
             <div class="flex flex-wrap items-center gap-2">
-              <AppButton
-                size="sm"
-                color="neutral"
-                variant="soft"
-                class="shrink-0 self-start md:self-auto"
-                :loading="isPendingAction(row.id, ['toggle'])"
-                @click="row.assignment ? toggleStaffJudging(row.assignment) : undefined"
-              >
-                {{ getAssignedActionLabel(row) }}
-              </AppButton>
-
               <AppButton
                 size="sm"
                 color="error"
@@ -737,7 +747,7 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
                     {{ row.displayName }}
                   </p>
                   <AppBadge
-                    v-if="props.role === 'hackathon_admin' && row.isInJudgePool"
+                    v-if="props.role === 'staff' && row.isInJudgePool"
                     color="primary"
                     variant="soft"
                     class="ml-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
@@ -754,6 +764,14 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
                   </AppBadge>
                   <AppBadge
                     v-if="props.role === 'judge' && row.isHackathonAdmin"
+                    color="primary"
+                    variant="soft"
+                    class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
+                  >
+                    Admin
+                  </AppBadge>
+                  <AppBadge
+                    v-if="props.role === 'judge' && row.isStaff"
                     color="primary"
                     variant="soft"
                     class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"

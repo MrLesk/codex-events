@@ -63,8 +63,9 @@ export type ParticipantActor
     isPlatformAdmin: boolean
     hackathonRoles: Array<{
       hackathonId: string
-      role: 'hackathon_admin' | 'judge'
+      role: 'hackathon_admin' | 'judge' | 'staff'
       isInJudgePool: boolean
+      isStaff: boolean
       createdAt: string
     }>
   }

@@ -375,6 +375,58 @@ describe('TASK-3.7 judging assignment routes', () => {
     expect(payload.data[0]?.blindSubmission).not.toHaveProperty('teamName')
   })
 
+  test('hackathon admins can list all active assignments without judge participation enabled', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/judging/assignments', handler: listJudgeAssignmentsHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedBaseJudgingRecords(harness)
+    await harness.database.insert(judgeAssignments).values([
+      {
+        id: 'assignment_1',
+        hackathonId: 'hackathon_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        status: 'assigned',
+        assignedAt: '2026-03-25T12:10:00.000Z',
+        createdAt: '2026-03-25T12:10:00.000Z'
+      },
+      {
+        id: 'assignment_2',
+        hackathonId: 'hackathon_1',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_b',
+        status: 'judge_started',
+        assignedAt: '2026-03-25T12:11:00.000Z',
+        startedAt: '2026-03-25T12:12:00.000Z',
+        createdAt: '2026-03-25T12:11:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments')
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          id: 'assignment_1'
+        }),
+        expect.objectContaining({
+          id: 'assignment_2'
+        })
+      ],
+      meta: {
+        total: 2
+      }
+    })
+  })
+
   test('assigned judges can start and complete a review with criterion scores', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -644,7 +696,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     expect(assignmentRows.find(row => row.id !== 'assignment_1' && row.submissionId === 'submission_1')?.judgeUserId).toBe('judge_b')
   })
 
-  test('admins can mark an assignment ineligible and later revert that decision', async () => {
+  test('admins can mark an assignment ineligible when assigned and later revert that decision', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
@@ -670,7 +722,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       id: 'assignment_1',
       hackathonId: 'hackathon_1',
       submissionId: 'submission_1',
-      judgeUserId: 'judge_a',
+      judgeUserId: 'platform_admin',
       status: 'judge_started',
       assignedAt: '2026-03-25T12:10:00.000Z',
       startedAt: '2026-03-25T12:12:00.000Z',

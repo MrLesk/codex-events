@@ -64,6 +64,7 @@ export default defineApiHandler(async (event) => {
         hackathonId: assignment.hackathonId,
         role: assignment.role,
         isInJudgePool: assignment.isInJudgePool,
+        isStaff: assignment.isStaff,
         createdAt: assignment.createdAt
       }))
     }

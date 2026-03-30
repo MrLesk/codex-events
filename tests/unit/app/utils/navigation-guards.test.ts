@@ -59,4 +59,98 @@ describe('navigation guards', () => {
     })
     expect(navigateTo).not.toHaveBeenCalled()
   })
+
+  test('allows judge routes for judge-enabled hackathon admins only', async () => {
+    useUser.mockReturnValue({
+      value: {
+        sub: 'auth0|admin-judge'
+      }
+    })
+
+    const navigationFetch = vi.fn()
+      .mockResolvedValueOnce({
+        data: {
+          actor: {
+            kind: 'platform_user',
+            hasPlatformAccount: true,
+            hasAcceptedCurrentPlatformDocuments: true,
+            isPlatformAdmin: false,
+            hackathonRoles: [{
+              hackathonId: 'hackathon-1',
+              role: 'hackathon_admin',
+              isInJudgePool: true,
+              isStaff: true,
+              createdAt: '2026-03-01T00:00:00.000Z'
+            }]
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 'hackathon-1'
+        }
+      })
+
+    vi.stubGlobal('$fetch', navigationFetch as never)
+
+    const { ensureHackathonRoleForSlugRoute } = await import('../../../../app/utils/navigation-guards')
+
+    await expect(ensureHackathonRoleForSlugRoute({
+      fullPath: '/hackathons/codex/judging',
+      params: {
+        slug: 'codex'
+      }
+    } as never, ['judge'])).resolves.toBeUndefined()
+
+    expect(navigationFetch).toHaveBeenCalledTimes(2)
+    expect(navigationFetch).toHaveBeenNthCalledWith(1, '/api/session')
+    expect(navigationFetch).toHaveBeenNthCalledWith(2, '/api/hackathons/slug/codex')
+  })
+
+  test('allows staff routes for staff-enabled hackathon admins only', async () => {
+    useUser.mockReturnValue({
+      value: {
+        sub: 'auth0|admin-staff'
+      }
+    })
+
+    const navigationFetch = vi.fn()
+      .mockResolvedValueOnce({
+        data: {
+          actor: {
+            kind: 'platform_user',
+            hasPlatformAccount: true,
+            hasAcceptedCurrentPlatformDocuments: true,
+            isPlatformAdmin: false,
+            hackathonRoles: [{
+              hackathonId: 'hackathon-1',
+              role: 'hackathon_admin',
+              isInJudgePool: false,
+              isStaff: true,
+              createdAt: '2026-03-01T00:00:00.000Z'
+            }]
+          }
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: 'hackathon-1'
+        }
+      })
+
+    vi.stubGlobal('$fetch', navigationFetch as never)
+
+    const { ensureHackathonRoleForSlugRoute } = await import('../../../../app/utils/navigation-guards')
+
+    await expect(ensureHackathonRoleForSlugRoute({
+      fullPath: '/hackathons/codex/staff',
+      params: {
+        slug: 'codex'
+      }
+    } as never, ['staff'])).resolves.toBeUndefined()
+
+    expect(navigationFetch).toHaveBeenCalledTimes(2)
+    expect(navigationFetch).toHaveBeenNthCalledWith(1, '/api/session')
+    expect(navigationFetch).toHaveBeenNthCalledWith(2, '/api/hackathons/slug/codex')
+  })
 })

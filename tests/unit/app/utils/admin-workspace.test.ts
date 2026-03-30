@@ -24,6 +24,8 @@ import {
   fromDateTimeLocalValue,
   getAdminJudgeAssignmentInterventionPolicy,
   getAdminWorkspaceSubjectKey,
+  hasHackathonJudgingAccess,
+  hasHackathonParticipantVisibilityAccess,
   getNextAgendaItemDefaultTimes,
   getAdminSubmissionInterventionPolicy,
   getApplicationStatusColor,
@@ -95,6 +97,7 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
       hackathonId: 'hackathon-1',
       role: 'hackathon_admin',
       isInJudgePool: false,
+      isStaff: false,
       createdAt: '2026-03-01T00:00:00.000Z'
     }],
     ...overrides
@@ -247,6 +250,39 @@ describe('admin-workspace access helpers', () => {
         isPlatformAdmin: true
       }
     }))).toBe(true)
+  })
+
+  test('grants participant visibility to explicit staff without admin mutations', () => {
+    const actor = createActor({
+      hackathonRoles: [{
+        hackathonId: 'hackathon-1',
+        role: 'staff',
+        isInJudgePool: false,
+        isStaff: true,
+        createdAt: '2026-03-01T00:00:00.000Z'
+      }]
+    })
+
+    expect(hasHackathonParticipantVisibilityAccess(actor, 'hackathon-1')).toBe(true)
+    expect(hasHackathonParticipantVisibilityAccess(actor, 'hackathon-2')).toBe(false)
+    expect(hasHackathonJudgingAccess(actor, 'hackathon-1')).toBe(false)
+    expect(canMutateRoleAssignments(actor)).toBe(false)
+  })
+
+  test('grants judging access only when an admin assignment is judge-enabled', () => {
+    const adminActor = createActor()
+    const judgingAdminActor = createActor({
+      hackathonRoles: [{
+        hackathonId: 'hackathon-1',
+        role: 'hackathon_admin',
+        isInJudgePool: true,
+        isStaff: true,
+        createdAt: '2026-03-01T00:00:00.000Z'
+      }]
+    })
+
+    expect(hasHackathonJudgingAccess(adminActor, 'hackathon-1')).toBe(false)
+    expect(hasHackathonJudgingAccess(judgingAdminActor, 'hackathon-1')).toBe(true)
   })
 })
 

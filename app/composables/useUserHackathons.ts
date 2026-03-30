@@ -2,7 +2,7 @@ import type { PublicHackathonState } from './useHackathonPresentation'
 
 export type UserApplicationStatus = 'submitted' | 'approved' | 'rejected'
 export type UserSubmissionStatus = 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified' | null
-export type UserHackathonRole = 'hackathon_admin' | 'judge'
+export type UserHackathonRole = 'hackathon_admin' | 'judge' | 'staff'
 export type UserHackathonPrimaryActionIcon = 'i-lucide-arrow-up-right' | 'i-lucide-users' | 'i-lucide-rocket'
 
 export interface UserHackathonEntry {
@@ -88,7 +88,15 @@ export function resolveUserSubmissionStatusColor(status: UserSubmissionStatus) {
 }
 
 export function formatUserHackathonRole(role: UserHackathonRole) {
-  return role === 'hackathon_admin' ? 'Hackathon admin' : 'Judge'
+  if (role === 'hackathon_admin') {
+    return 'Hackathon admin'
+  }
+
+  if (role === 'judge') {
+    return 'Judge'
+  }
+
+  return 'Staff'
 }
 
 export function resolveUserHackathonPrimaryAction(entry: UserHackathonEntry): UserHackathonPrimaryAction {

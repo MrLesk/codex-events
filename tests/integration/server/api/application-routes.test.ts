@@ -65,6 +65,12 @@ async function seedApplicationContext(
       displayName: 'Hackathon Admin'
     },
     {
+      id: 'staff_user',
+      auth0Subject: 'auth0|staff',
+      email: 'staff@example.com',
+      displayName: 'Staff User'
+    },
+    {
       id: 'regular_user',
       auth0Subject: 'auth0|regular_user',
       email: 'regular@example.com',
@@ -109,14 +115,26 @@ async function seedApplicationContext(
     createdByUserId: 'platform_admin'
   })
 
-  await harness.database.insert(hackathonRoleAssignments).values({
-    id: 'role_hackathon_admin',
-    hackathonId: 'hackathon_1',
-    userId: 'hackathon_admin',
-    role: 'hackathon_admin',
-    isInJudgePool: false,
-    createdAt: '2026-03-22T12:00:00.000Z'
-  })
+  await harness.database.insert(hackathonRoleAssignments).values([
+    {
+      id: 'role_hackathon_admin',
+      hackathonId: 'hackathon_1',
+      userId: 'hackathon_admin',
+      role: 'hackathon_admin',
+      isInJudgePool: false,
+      isStaff: false,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    },
+    {
+      id: 'role_staff',
+      hackathonId: 'hackathon_1',
+      userId: 'staff_user',
+      role: 'staff',
+      isInJudgePool: false,
+      isStaff: true,
+      createdAt: '2026-03-22T12:01:00.000Z'
+    }
+  ])
 
   await harness.database.insert(hackathonTermsDocuments).values([
     {
@@ -723,6 +741,63 @@ describe('TASK-3.6 application routes', () => {
       hackathonSlug: 'fixture-hackathon'
     }), {
       contentType: 'json'
+    })
+  })
+
+  test('staff can list applications but cannot stage review decisions', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/applications', handler: applicationsListHandler },
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/approve',
+          handler: approveApplicationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|staff',
+        email: 'staff@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      status: 'submitted',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    })
+
+    const listResponse = await harness.request('/api/hackathons/hackathon_1/applications')
+    expect(listResponse.status).toBe(200)
+    expect(await listResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          id: 'application_1',
+          user: expect.objectContaining({
+            id: 'regular_user'
+          })
+        })
+      ],
+      meta: {
+        total: 1
+      }
+    })
+
+    const approveResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/approve', {
+      method: 'POST'
+    })
+    expect(approveResponse.status).toBe(403)
+    expect(await approveResponse.json()).toMatchObject({
+      error: {
+        code: 'hackathon_admin_required'
+      }
     })
   })
 

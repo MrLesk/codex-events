@@ -5,14 +5,37 @@ import {
   assertHackathonSchedule,
   buildHackathonUpdatePayload,
   assertOpenSubmissionAllowed,
-  assertRoleJudgePoolInvariant
+  assertRoleCapabilityInvariant
 } from '../../../../server/utils/hackathon-management'
 
 describe('hackathon management utilities', () => {
-  test('requires judges to remain in the automatic judge pool', () => {
-    expect(() => assertRoleJudgePoolInvariant('judge', false)).toThrowError(ApiError)
-    expect(() => assertRoleJudgePoolInvariant('judge', true)).not.toThrow()
-    expect(() => assertRoleJudgePoolInvariant('hackathon_admin', false)).not.toThrow()
+  test('enforces canonical role capability combinations', () => {
+    expect(() => assertRoleCapabilityInvariant('judge', {
+      isInJudgePool: false,
+      isStaff: false
+    })).toThrowError(ApiError)
+    expect(() => assertRoleCapabilityInvariant('judge', {
+      isInJudgePool: true,
+      isStaff: false
+    })).not.toThrow()
+
+    expect(() => assertRoleCapabilityInvariant('staff', {
+      isInJudgePool: false,
+      isStaff: false
+    })).toThrowError(ApiError)
+    expect(() => assertRoleCapabilityInvariant('staff', {
+      isInJudgePool: false,
+      isStaff: true
+    })).not.toThrow()
+
+    expect(() => assertRoleCapabilityInvariant('hackathon_admin', {
+      isInJudgePool: false,
+      isStaff: false
+    })).not.toThrow()
+    expect(() => assertRoleCapabilityInvariant('hackathon_admin', {
+      isInJudgePool: true,
+      isStaff: true
+    })).not.toThrow()
   })
 
   test('validates canonical hackathon schedule ordering', () => {

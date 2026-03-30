@@ -185,12 +185,17 @@ export const roleAssignmentParamsSchema = routeIdParamsSchema.extend({
 
 export const roleAssignmentUpsertBodySchema = z.object({
   role: roleEnumSchema,
-  isInJudgePool: z.coerce.boolean()
+  isInJudgePool: z.coerce.boolean().default(false),
+  isStaff: z.coerce.boolean().default(false)
 })
 
 export const roleAssignmentPatchBodySchema = z.object({
-  isInJudgePool: z.coerce.boolean()
-})
+  isInJudgePool: z.coerce.boolean().optional(),
+  isStaff: z.coerce.boolean().optional()
+}).refine(
+  input => input.isInJudgePool !== undefined || input.isStaff !== undefined,
+  'At least one role capability flag must be provided.'
+)
 
 export const termsDocumentParamsSchema = routeIdParamsSchema.extend({
   documentType: termsDocumentTypeSchema
@@ -327,7 +332,7 @@ function buildPublicHackathonVisibilityWhere(filters: ReturnType<typeof buildHac
 function isDraftVisibleToActor(
   actor: Awaited<ReturnType<typeof getRequestActor>>,
   hackathonId: string,
-  adminHackathonIds: Set<string>
+  internalHackathonIds: Set<string>
 ) {
   if (actor.kind !== 'platform_user') {
     return false
@@ -337,18 +342,41 @@ function isDraftVisibleToActor(
     return true
   }
 
-  return adminHackathonIds.has(hackathonId)
+  return internalHackathonIds.has(hackathonId)
 }
 
-export function assertRoleJudgePoolInvariant(role: typeof hackathonRoleTypes[number], isInJudgePool: boolean) {
-  assertGuard(role !== 'judge' || isInJudgePool, {
-    code: 'judge_pool_required',
-    message: 'Judge role assignments must remain in the automatic judge pool.',
-    details: {
-      role,
-      isInJudgePool
-    }
-  })
+export function assertRoleCapabilityInvariant(
+  role: typeof hackathonRoleTypes[number],
+  capabilities: {
+    isInJudgePool: boolean
+    isStaff: boolean
+  }
+) {
+  if (role === 'judge') {
+    assertGuard(capabilities.isInJudgePool && !capabilities.isStaff, {
+      code: 'judge_role_flags_invalid',
+      message: 'Judge role assignments must remain in the automatic judge pool and cannot also be staff.',
+      details: {
+        role,
+        isInJudgePool: capabilities.isInJudgePool,
+        isStaff: capabilities.isStaff
+      }
+    })
+
+    return
+  }
+
+  if (role === 'staff') {
+    assertGuard(capabilities.isStaff && !capabilities.isInJudgePool, {
+      code: 'staff_role_flags_invalid',
+      message: 'Staff role assignments must remain marked as staff and cannot also be in the judge pool.',
+      details: {
+        role,
+        isInJudgePool: capabilities.isInJudgePool,
+        isStaff: capabilities.isStaff
+      }
+    })
+  }
 }
 
 export function assertHackathonSchedule(input: {
@@ -464,7 +492,7 @@ export async function getHackathonOrThrow(database: AppDatabase, hackathonId: st
   return hackathon
 }
 
-async function getActorAdminHackathonIds(
+async function getActorInternalHackathonIds(
   database: AppDatabase,
   actor: Awaited<ReturnType<typeof getRequestActor>>
 ) {
@@ -473,9 +501,12 @@ async function getActorAdminHackathonIds(
   }
 
   const assignments = await database.query.hackathonRoleAssignments.findMany({
+    columns: {
+      hackathonId: true
+    },
     where: and(
       eq(hackathonRoleAssignments.userId, actor.platformUser.id),
-      eq(hackathonRoleAssignments.role, 'hackathon_admin')
+      inArray(hackathonRoleAssignments.role, ['hackathon_admin', 'staff'])
     )
   })
 
@@ -491,9 +522,9 @@ export async function getVisibleHackathonOrThrow(event: H3Event, hackathonId: st
     return hackathon
   }
 
-  const adminHackathonIds = await getActorAdminHackathonIds(database, actor)
+  const internalHackathonIds = await getActorInternalHackathonIds(database, actor)
 
-  if (isDraftVisibleToActor(actor, hackathonId, adminHackathonIds)) {
+  if (isDraftVisibleToActor(actor, hackathonId, internalHackathonIds)) {
     return hackathon
   }
 
@@ -525,9 +556,9 @@ export async function getVisibleHackathonBySlugOrThrow(event: H3Event, slug: str
     return hackathon
   }
 
-  const adminHackathonIds = await getActorAdminHackathonIds(database, actor)
+  const internalHackathonIds = await getActorInternalHackathonIds(database, actor)
 
-  if (isDraftVisibleToActor(actor, hackathon.id, adminHackathonIds)) {
+  if (isDraftVisibleToActor(actor, hackathon.id, internalHackathonIds)) {
     return hackathon
   }
 
@@ -611,10 +642,10 @@ export async function listVisibleHackathons(
     return { items, total, page, pageSize }
   }
 
-  const adminHackathonIds = await getActorAdminHackathonIds(database, actor)
+  const internalHackathonIds = await getActorInternalHackathonIds(database, actor)
   const visibilityClauses = [
     ...buildPublicHackathonVisibilityClauses(),
-    ...(adminHackathonIds.size > 0 ? [inArray(hackathons.id, [...adminHackathonIds])] : [])
+    ...(internalHackathonIds.size > 0 ? [inArray(hackathons.id, [...internalHackathonIds])] : [])
   ]
   const visibilityWhere = baseWhere
     ? and(baseWhere, or(...visibilityClauses))
@@ -831,6 +862,7 @@ export function serializeHackathonRoleAssignment(
     userId: assignment.userId,
     role: assignment.role,
     isInJudgePool: assignment.isInJudgePool,
+    isStaff: assignment.isStaff,
     createdAt: assignment.createdAt,
     ...(user
       ? {

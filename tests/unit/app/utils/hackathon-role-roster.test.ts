@@ -6,13 +6,14 @@ import {
 } from '../../../../app/utils/hackathon-role-roster'
 
 describe('hackathon role roster helpers', () => {
-  test('builds assigned rows from the matching role assignments and sorts platform admins first', () => {
+  test('builds assigned judge rows from explicit judges and judge-enabled admins', () => {
     const roleAssignments = [{
       id: 'assignment-1',
       hackathonId: 'hackathon-1',
       userId: 'user-2',
       role: 'judge',
       isInJudgePool: true,
+      isStaff: false,
       createdAt: '2026-03-01T10:00:00.000Z',
       user: {
         id: 'user-2',
@@ -24,8 +25,9 @@ describe('hackathon role roster helpers', () => {
       id: 'assignment-2',
       hackathonId: 'hackathon-1',
       userId: 'user-1',
-      role: 'judge',
+      role: 'hackathon_admin',
       isInJudgePool: true,
+      isStaff: true,
       createdAt: '2026-03-01T10:00:00.000Z',
       user: {
         id: 'user-1',
@@ -42,8 +44,9 @@ describe('hackathon role roster helpers', () => {
       isPlatformAdmin: true,
       assignment: roleAssignments[1],
       isAssigned: true,
-      isHackathonAdmin: false,
-      isInJudgePool: true
+      isHackathonAdmin: true,
+      isInJudgePool: true,
+      isStaff: true
     }, {
       id: 'user-2',
       email: 'bravo@example.com',
@@ -52,11 +55,12 @@ describe('hackathon role roster helpers', () => {
       assignment: roleAssignments[0],
       isAssigned: true,
       isHackathonAdmin: false,
-      isInJudgePool: true
+      isInJudgePool: true,
+      isStaff: false
     }])
   })
 
-  test('includes admin reviewers in the judges roster and exposes assignment state for both tabs', () => {
+  test('builds staff and judge candidate rows from the canonical staff role and admin-only flags', () => {
     const candidateUsers = [{
       id: 'user-2',
       email: 'bravo@example.com',
@@ -75,7 +79,7 @@ describe('hackathon role roster helpers', () => {
     }, {
       id: 'user-4',
       email: 'delta@example.com',
-      displayName: 'Delta Staff Reviewer',
+      displayName: 'Delta Staff',
       isPlatformAdmin: false
     }]
 
@@ -85,6 +89,7 @@ describe('hackathon role roster helpers', () => {
       userId: 'user-1',
       role: 'hackathon_admin',
       isInJudgePool: false,
+      isStaff: true,
       createdAt: '2026-03-01T10:00:00.000Z',
       user: candidateUsers[1]
     }, {
@@ -93,19 +98,21 @@ describe('hackathon role roster helpers', () => {
       userId: 'user-3',
       role: 'judge',
       isInJudgePool: true,
+      isStaff: false,
       createdAt: '2026-03-01T10:00:00.000Z',
       user: candidateUsers[2]
     }, {
       id: 'assignment-3',
       hackathonId: 'hackathon-1',
       userId: 'user-4',
-      role: 'hackathon_admin',
-      isInJudgePool: true,
+      role: 'staff',
+      isInJudgePool: false,
+      isStaff: true,
       createdAt: '2026-03-01T10:00:00.000Z',
       user: candidateUsers[3]
     }] as never
 
-    expect(buildRoleRosterRows(candidateUsers, roleAssignments, 'hackathon_admin', '')).toEqual([{
+    expect(buildRoleRosterRows(candidateUsers, roleAssignments, 'staff', '')).toEqual([{
       id: 'user-1',
       email: 'alpha@example.com',
       displayName: 'Alpha Admin',
@@ -113,16 +120,8 @@ describe('hackathon role roster helpers', () => {
       assignment: roleAssignments[0],
       isAssigned: true,
       isHackathonAdmin: true,
-      isInJudgePool: false
-    }, {
-      id: 'user-4',
-      email: 'delta@example.com',
-      displayName: 'Delta Staff Reviewer',
-      isPlatformAdmin: false,
-      assignment: roleAssignments[2],
-      isAssigned: true,
-      isHackathonAdmin: true,
-      isInJudgePool: true
+      isInJudgePool: false,
+      isStaff: true
     }, {
       id: 'user-2',
       email: 'bravo@example.com',
@@ -131,7 +130,8 @@ describe('hackathon role roster helpers', () => {
       assignment: null,
       isAssigned: false,
       isHackathonAdmin: false,
-      isInJudgePool: false
+      isInJudgePool: false,
+      isStaff: false
     }, {
       id: 'user-3',
       email: 'charlie@example.com',
@@ -140,38 +140,40 @@ describe('hackathon role roster helpers', () => {
       assignment: roleAssignments[1],
       isAssigned: false,
       isHackathonAdmin: false,
-      isInJudgePool: true
-    }])
-
-    expect(buildRoleRosterRows(candidateUsers, roleAssignments, 'judge', 'bravo')).toEqual([{
-      id: 'user-2',
-      email: 'bravo@example.com',
-      displayName: 'Bravo Builder',
-      isPlatformAdmin: false,
-      assignment: null,
-      isAssigned: false,
-      isHackathonAdmin: false,
-      isInJudgePool: false
-    }])
-
-    expect(buildAssignedRoleRosterRows(roleAssignments, 'judge')).toEqual([{
+      isInJudgePool: true,
+      isStaff: false
+    }, {
       id: 'user-4',
       email: 'delta@example.com',
-      displayName: 'Delta Staff Reviewer',
+      displayName: 'Delta Staff',
       isPlatformAdmin: false,
       assignment: roleAssignments[2],
       isAssigned: true,
+      isHackathonAdmin: false,
+      isInJudgePool: false,
+      isStaff: true
+    }])
+
+    expect(buildAssignedRoleRosterRows(roleAssignments, 'staff')).toEqual([{
+      id: 'user-1',
+      email: 'alpha@example.com',
+      displayName: 'Alpha Admin',
+      isPlatformAdmin: true,
+      assignment: roleAssignments[0],
+      isAssigned: true,
       isHackathonAdmin: true,
-      isInJudgePool: true
+      isInJudgePool: false,
+      isStaff: true
     }, {
-      id: 'user-3',
-      email: 'charlie@example.com',
-      displayName: 'Charlie Judge',
+      id: 'user-4',
+      email: 'delta@example.com',
+      displayName: 'Delta Staff',
       isPlatformAdmin: false,
-      assignment: roleAssignments[1],
+      assignment: roleAssignments[2],
       isAssigned: true,
       isHackathonAdmin: false,
-      isInJudgePool: true
+      isInJudgePool: false,
+      isStaff: true
     }])
 
     expect(buildRoleRosterRows(candidateUsers, roleAssignments, 'judge', '')).toEqual([{
@@ -182,16 +184,8 @@ describe('hackathon role roster helpers', () => {
       assignment: roleAssignments[0],
       isAssigned: false,
       isHackathonAdmin: true,
-      isInJudgePool: false
-    }, {
-      id: 'user-4',
-      email: 'delta@example.com',
-      displayName: 'Delta Staff Reviewer',
-      isPlatformAdmin: false,
-      assignment: roleAssignments[2],
-      isAssigned: true,
-      isHackathonAdmin: true,
-      isInJudgePool: true
+      isInJudgePool: false,
+      isStaff: true
     }, {
       id: 'user-2',
       email: 'bravo@example.com',
@@ -200,7 +194,8 @@ describe('hackathon role roster helpers', () => {
       assignment: null,
       isAssigned: false,
       isHackathonAdmin: false,
-      isInJudgePool: false
+      isInJudgePool: false,
+      isStaff: false
     }, {
       id: 'user-3',
       email: 'charlie@example.com',
@@ -209,7 +204,18 @@ describe('hackathon role roster helpers', () => {
       assignment: roleAssignments[1],
       isAssigned: true,
       isHackathonAdmin: false,
-      isInJudgePool: true
+      isInJudgePool: true,
+      isStaff: false
+    }, {
+      id: 'user-4',
+      email: 'delta@example.com',
+      displayName: 'Delta Staff',
+      isPlatformAdmin: false,
+      assignment: roleAssignments[2],
+      isAssigned: false,
+      isHackathonAdmin: false,
+      isInJudgePool: false,
+      isStaff: true
     }])
   })
 })

@@ -2,14 +2,19 @@ import type {
   HackathonRoleAssignment,
   HackathonRoleUserSummary
 } from './admin-workspace'
+import {
+  isHackathonRoleJudgingEnabled,
+  isHackathonRoleStaffEnabled
+} from './admin-workspace'
 
-export type HackathonRosterRole = HackathonRoleAssignment['role']
+export type HackathonRosterRole = 'judge' | 'staff'
 
 export interface HackathonRoleRosterRow extends HackathonRoleUserSummary {
   assignment: HackathonRoleAssignment | null
   isAssigned: boolean
   isHackathonAdmin: boolean
   isInJudgePool: boolean
+  isStaff: boolean
 }
 
 function compareRosterUsers(
@@ -62,11 +67,11 @@ function isAssignedToRoster(
     return false
   }
 
-  if (role === 'hackathon_admin') {
-    return assignment.role === 'hackathon_admin'
+  if (role === 'staff') {
+    return isHackathonRoleStaffEnabled(assignment)
   }
 
-  return assignment.isInJudgePool
+  return isHackathonRoleJudgingEnabled(assignment)
 }
 
 export function buildAssignedRoleRosterRows(
@@ -84,7 +89,8 @@ export function buildAssignedRoleRosterRows(
       assignment,
       isAssigned: true,
       isHackathonAdmin: assignment.role === 'hackathon_admin',
-      isInJudgePool: assignment.isInJudgePool
+      isInJudgePool: assignment.isInJudgePool,
+      isStaff: assignment.isStaff
     }))
     .sort((left, right) => compareRosterUsers(left, right, currentHackathonAdminIds))
 }
@@ -115,7 +121,8 @@ export function buildRoleRosterRows(
         assignment,
         isAssigned: isAssignedToRoster(assignment, role),
         isHackathonAdmin: assignment?.role === 'hackathon_admin',
-        isInJudgePool: assignment?.isInJudgePool ?? false
+        isInJudgePool: assignment?.isInJudgePool ?? false,
+        isStaff: assignment?.isStaff ?? false
       }
     })
 }

@@ -4,6 +4,7 @@ import { getTableConfig } from 'drizzle-orm/sqlite-core'
 
 import {
   auditLogs,
+  hackathonRoleAssignments,
   hackathons,
   judgeAssignments,
   prizes,
@@ -20,9 +21,9 @@ describe('shared schema foundation', () => {
     expect(getTableName(users)).toBe('users')
     expect(columns.auth0Subject.name).toBe('auth0_subject')
     expect(columns.firstName.name).toBe('first_name')
+    expect(columns.familyName.name).toBe('family_name')
     expect(columns.company.name).toBe('company')
     expect(columns.bio.name).toBe('bio')
-    expect(columns.familyName.name).toBe('family_name')
     expect(columns.profileIconUpdatedAt.name).toBe('profile_icon_updated_at')
   })
 
@@ -41,10 +42,12 @@ describe('shared schema foundation', () => {
 
   it('defines schedule and entity checks on shared tables', () => {
     const hackathonColumns = getTableColumns(hackathons)
+    const roleAssignmentColumns = getTableColumns(hackathonRoleAssignments)
     const applicationColumns = getTableColumns(userApplications)
     const prizeColumns = getTableColumns(prizes)
     const prizeChecks = getTableConfig(prizes).checks.map(checkItem => checkItem.name)
     const hackathonChecks = getTableConfig(hackathons).checks.map(checkItem => checkItem.name)
+    const roleAssignmentChecks = getTableConfig(hackathonRoleAssignments).checks.map(checkItem => checkItem.name)
     const auditIndexes = getTableConfig(auditLogs).indexes.map(index => index.config.name)
 
     expect(hackathonColumns.lumaEventUrl.name).toBe('luma_event_url')
@@ -54,12 +57,15 @@ describe('shared schema foundation', () => {
     expect(hackathonColumns.participantsLimit.name).toBe('participants_limit')
     expect(hackathonColumns.requireWhyThisHackathon.name).toBe('require_why_this_hackathon')
     expect(hackathonColumns.requireProofOfExecution.name).toBe('require_proof_of_execution')
+    expect(roleAssignmentColumns.isStaff.name).toBe('is_staff')
     expect(applicationColumns.preApprovalStatus.name).toBe('pre_approval_status')
     expect(prizeColumns.displayOrder.name).toBe('display_order')
     expect(prizeChecks).toContain('prizes_rank_order_check')
     expect(hackathonChecks).toContain('hackathons_max_team_members_check')
     expect(hackathonChecks).toContain('hackathons_participants_limit_check')
     expect(hackathonChecks).toContain('hackathons_schedule_order_check')
+    expect(roleAssignmentChecks).toContain('hackathon_role_assignments_judge_pool_check')
+    expect(roleAssignmentChecks).toContain('hackathon_role_assignments_staff_flag_check')
     expect(auditIndexes).toContain('audit_logs_entity_idx')
   })
 })
