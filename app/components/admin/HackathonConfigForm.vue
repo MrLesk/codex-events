@@ -3,6 +3,7 @@ import Sortable from 'sortablejs'
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
+import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
 
 import type { HackathonFormState } from '~/utils/admin-workspace'
@@ -427,8 +428,8 @@ const submitConfigForm = handleSubmit(() => {
                   Drop agenda item here
                 </div>
 
-                <div class="grid gap-4 sm:grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] sm:items-center">
-                  <div class="flex flex-wrap items-center gap-3 sm:w-11 sm:flex-col sm:justify-center sm:self-center">
+                <AdminEditorRowShell>
+                  <template #controls>
                     <button
                       type="button"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
@@ -466,7 +467,7 @@ const submitConfigForm = handleSubmit(() => {
                         class="size-4"
                       />
                     </button>
-                  </div>
+                  </template>
 
                   <div class="grid gap-3">
                     <label class="grid gap-2">
@@ -512,7 +513,7 @@ const submitConfigForm = handleSubmit(() => {
                     </div>
                   </div>
 
-                  <div class="flex items-center justify-start sm:w-11 sm:justify-center sm:self-center">
+                  <template #actions>
                     <button
                       type="button"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
@@ -524,8 +525,8 @@ const submitConfigForm = handleSubmit(() => {
                         class="size-4"
                       />
                     </button>
-                  </div>
-                </div>
+                  </template>
+                </AdminEditorRowShell>
               </article>
             </div>
 

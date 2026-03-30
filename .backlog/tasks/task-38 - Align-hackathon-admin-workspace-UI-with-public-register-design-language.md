@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-03-27 17:45'
-updated_date: '2026-03-27 18:32'
+updated_date: '2026-03-30 21:26'
 labels: []
 dependencies: []
 priority: high
@@ -29,12 +29,13 @@ Bring the hackathon admin workspace at /hackathons/:slug/admin (including settin
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-Proposed implementation plan (pending user approval):
-1) Rework admin hackathon page chrome to match the public/register style by updating the three slug admin pages (`app/pages/hackathons/[slug]/admin/index.vue`, `operations.vue`, `competition.vue`) to use a top bordered/glass section with `max-w-[68rem]` containers and the shared admin header + tab strip.
-2) Restyle shared admin header and tabs components (`app/components/admin/AdminWorkspaceHeader.vue`, `AdminHackathonWorkspaceTabs.vue`) so tabs follow the same underline/tab treatment used on the hackathon detail/register pages and the heading typography aligns with that surface.
-3) Introduce scoped admin-surface style overrides in `app/assets/css/main.css` under a wrapper class (for example `.admin-modern-surface`) so admin cards and controls (`[data-slot="card"]`, `.app-inset-card`, `.app-inset-card-tight`, `.app-inset-field`) match register-style card/input visuals without changing non-admin pages.
-4) Update remaining admin-only metric blocks in the three admin pages to use a shared register-style metric class and keep existing labels/test ids intact.
-5) Validate with `bun run test:unit` and report any gaps if broader checks are not run.
+1. Extract a reusable admin editor row shell component that matches the current agenda item layout: controls column on the left, main form/content in the center, destructive action on the right.
+2. Add subtle vertical delimiters inside the shell between the left controls and center content, and between the center content and right-side delete action.
+3. Migrate the schedule agenda rows in `app/components/admin/HackathonConfigForm.vue` to the shared shell first, preserving existing move/drag/delete behavior and field bindings.
+4. After the shared shell is proven in the schedule editor, reuse it for prize rows in the hackathon admin settings panel so both editors share the same structure.
+5. Validate with `bun run lint`, `bun run typecheck`, and `bun run test:unit`, then summarize any residual gaps.
+
+6. Extract the duplicated shared-shell sidebar wrapper from `app/layouts/profile.vue` and `app/layouts/hackathon-detail.vue` into a single reusable shell component so the sidebar background, border, positioning, and collapse affordances cannot drift between layouts.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -47,6 +48,18 @@ Updated shared admin chrome components so the header and workspace tabs align wi
 Validated desktop and mobile rendering manually at localhost admin/settings, admin/operations, and admin/competition after implementation.
 
 Reopened after UX review feedback: the prior scoped override approach still felt like nested card layering. Follow-up implementation will remove override-driven styling and switch admin surfaces to the same flat utility composition pattern used on public/register pages.
+
+Extracted a reusable admin editor row shell component with a slotted center content area and built-in separators between controls, main content, and right-side actions.
+
+Migrated the schedule agenda rows in `app/components/admin/HackathonConfigForm.vue` to the shared shell while preserving move up/down, drag handle, delete, and existing field bindings.
+
+Validation passed with `bun run lint` (existing unrelated `vue/no-v-html` warnings only), `bun run typecheck`, and `bun run test:unit`.
+
+Extracted the shared shell sidebar into `app/components/shell/AppShellSidebar.vue`, preserving the known-good fixed sidebar markup, background, border, blur, and collapse storage key from production.
+
+Updated `app/layouts/profile.vue` and `app/layouts/hackathon-detail.vue` to consume the shared sidebar component so sidebar background changes now live in one place.
+
+Validation passed with `bun run lint` (existing unrelated `vue/no-v-html` warnings only), `bun run typecheck`, and `bun run test:unit`.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
