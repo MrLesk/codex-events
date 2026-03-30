@@ -253,6 +253,13 @@
     cursor: not-allowed;
   }
 
+  /* Prevent iOS Safari focus zoom on editable controls. */
+  @media (hover: none) and (pointer: coarse) {
+    :is(input, textarea, select, [data-slot='input']):not([type='button']):not([type='checkbox']):not([type='color']):not([type='file']):not([type='hidden']):not([type='image']):not([type='radio']):not([type='range']):not([type='reset']):not([type='submit']) {
+      font-size: 16px !important;
+    }
+  }
+
   ::selection {
     background: var(--app-selection);
     color: var(--text-highlighted);
