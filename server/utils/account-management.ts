@@ -119,30 +119,11 @@ type PlatformUserRecord = typeof users.$inferSelect
 type PlatformAccountRegistrationInput = z.infer<typeof platformAccountRegistrationBodySchema>
 type PlatformAccountProfileInput = z.infer<typeof platformAccountProfileBodySchema>
 
-function splitNameParts(value: string) {
-  const normalized = value.trim()
-  const [firstName = '', ...rest] = normalized.split(/\s+/)
-
-  return {
-    firstName,
-    familyName: rest.join(' ')
-  }
-}
-
-function buildRegistrationNameParts(actor: AuthenticatedIdentityActor) {
-  const fallbackName = actor.sessionUser.name?.trim()
+function buildRegistrationDisplayName(actor: AuthenticatedIdentityActor) {
+  return actor.sessionUser.name?.trim()
     || actor.sessionUser.nickname?.trim()
     || actor.sessionUser.email?.trim()
-    || 'New User'
-  const nameParts = splitNameParts(fallbackName)
-  const firstName = nameParts.firstName || 'New'
-  const familyName = nameParts.familyName || 'User'
-
-  return {
-    firstName,
-    familyName,
-    displayName: `${firstName} ${familyName}`.trim()
-  }
+    || 'User'
 }
 
 function normalizeOptionalUrl(value: string | null | undefined) {
@@ -190,15 +171,13 @@ function buildPlatformAccountInsert(
     message: 'The authenticated identity does not expose an email address required for platform account registration.'
   })
 
-  const registrationNameParts = buildRegistrationNameParts(actor)
-
   return {
     id: crypto.randomUUID(),
     auth0Subject: actor.sessionUser.sub,
     email: email!,
-    displayName: registrationNameParts.displayName,
-    firstName: registrationNameParts.firstName,
-    familyName: registrationNameParts.familyName,
+    displayName: buildRegistrationDisplayName(actor),
+    firstName: '',
+    familyName: '',
     company: null,
     bio: null,
     isPlatformAdmin: false,

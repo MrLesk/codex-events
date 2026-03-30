@@ -502,8 +502,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         user: {
           email: 'new-user@example.com',
           displayName: 'New User',
-          firstName: 'New',
-          familyName: 'User',
+          firstName: '',
+          familyName: '',
           githubProfileUrl: null,
           chatgptEmail: null,
           openaiOrgId: null,
@@ -526,8 +526,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     expect(createdUser?.email).toBe('new-user@example.com')
     expect(createdUser?.displayName).toBe('New User')
-    expect(createdUser?.firstName).toBe('New')
-    expect(createdUser?.familyName).toBe('User')
+    expect(createdUser?.firstName).toBe('')
+    expect(createdUser?.familyName).toBe('')
     expect(createdUser?.githubProfileUrl).toBeNull()
     expect(createdUser?.chatgptEmail).toBeNull()
     expect(createdUser?.openaiOrgId).toBeNull()
@@ -552,8 +552,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
             id: createdUser?.id,
             email: 'new-user@example.com',
             displayName: 'New User',
-            firstName: 'New',
-            familyName: 'User',
+            firstName: '',
+            familyName: '',
             chatgptEmail: null,
             openaiOrgId: null,
             lumaUsername: null,
@@ -561,6 +561,68 @@ describe('TASK-3.5 actor-facing API routes', () => {
           }
         }
       }
+    })
+  })
+
+  test('POST /api/account/registration uses the email as the initial presentation label without seeding canonical names', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|email-only-user',
+        email: 'email-only-user@example.com'
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/account/registration', {
+      method: 'POST',
+      body: JSON.stringify({
+        privacyPolicyDocumentId: 'privacy_v1',
+        platformTermsDocumentId: 'terms_v1'
+      })
+    })
+
+    const createdUser = await harness.database.query.users.findFirst({
+      where: eq(users.auth0Subject, 'auth0|email-only-user')
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        user: {
+          email: 'email-only-user@example.com',
+          displayName: 'email-only-user@example.com',
+          firstName: '',
+          familyName: ''
+        }
+      }
+    })
+    expect(createdUser).toMatchObject({
+      email: 'email-only-user@example.com',
+      displayName: 'email-only-user@example.com',
+      firstName: '',
+      familyName: ''
     })
   })
 

@@ -43,10 +43,10 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - `auth0_subject` stores the authenticated Auth0 subject used to resolve the platform actor from the application session.
-- `first_name` and `family_name` are the canonical user-name fields managed by account profile flows.
+- `first_name` and `family_name` are the canonical user-name fields managed by account profile flows and can remain blank immediately after platform account registration.
 - `company` stores an optional single-line company or affiliation value managed from account settings.
 - `bio` stores an optional free-form profile summary managed from account settings.
-- `display_name` stores the current presentation name derived from canonical name fields.
+- `display_name` stores the current presentation name. It is derived from canonical name fields after profile completion and can temporarily fall back to authenticated-identity presentation data before canonical names are filled.
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
 - `profile_icon_updated_at` records when the current profile icon object was last replaced.
