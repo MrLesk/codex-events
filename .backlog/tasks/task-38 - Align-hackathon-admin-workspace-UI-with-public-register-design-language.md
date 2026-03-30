@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-03-27 17:45'
-updated_date: '2026-03-30 21:26'
+updated_date: '2026-03-30 21:38'
 labels: []
 dependencies: []
 priority: high
@@ -36,6 +36,8 @@ Bring the hackathon admin workspace at /hackathons/:slug/admin (including settin
 5. Validate with `bun run lint`, `bun run typecheck`, and `bun run test:unit`, then summarize any residual gaps.
 
 6. Extract the duplicated shared-shell sidebar wrapper from `app/layouts/profile.vue` and `app/layouts/hackathon-detail.vue` into a single reusable shell component so the sidebar background, border, positioning, and collapse affordances cannot drift between layouts.
+
+7. Revise the prize configuration UX to use a single bottom save action instead of `Save prize order` and per-row `Save updates`, make each prize row fill the available width, add per-row delete affordances consistent with the schedule editor, and replace the separate draft-style add-prize form with a simple bottom-left `Add prize` action that inserts a new editable row into the list.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -58,6 +60,12 @@ Validation passed with `bun run lint` (existing unrelated `vue/no-v-html` warnin
 Extracted the shared shell sidebar into `app/components/shell/AppShellSidebar.vue`, preserving the known-good fixed sidebar markup, background, border, blur, and collapse storage key from production.
 
 Updated `app/layouts/profile.vue` and `app/layouts/hackathon-detail.vue` to consume the shared sidebar component so sidebar background changes now live in one place.
+
+Validation passed with `bun run lint` (existing unrelated `vue/no-v-html` warnings only), `bun run typecheck`, and `bun run test:unit`.
+
+Reused `app/components/admin/AdminEditorRowShell.vue` for existing prize rows in `app/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue`, moving reorder controls to the left gutter and the row save action to the right slot while keeping the existing prize bindings and actions unchanged.
+
+Capped the visual width of the prize name and reward type controls within the shared shell so those fields no longer stretch across the full editor width.
 
 Validation passed with `bun run lint` (existing unrelated `vue/no-v-html` warnings only), `bun run typecheck`, and `bun run test:unit`.
 <!-- SECTION:NOTES:END -->
