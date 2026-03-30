@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - '@codex'
 created_date: '2026-03-27 17:45'
-updated_date: '2026-03-30 21:38'
+updated_date: '2026-03-30 22:05'
 labels: []
 dependencies: []
 priority: high
@@ -68,6 +68,8 @@ Reused `app/components/admin/AdminEditorRowShell.vue` for existing prize rows in
 Capped the visual width of the prize name and reward type controls within the shared shell so those fields no longer stretch across the full editor width.
 
 Validation passed with `bun run lint` (existing unrelated `vue/no-v-html` warnings only), `bun run typecheck`, and `bun run test:unit`.
+
+Patched the shared authenticated shell so the footer offsets itself by the live sidebar width on large screens instead of centering against the full viewport. The sidebar and footer now share the same collapse state key and width helpers, which prevents the expanded fixed sidebar from covering the footer cookie/local-storage disclosure copy on account-facing layouts. Validation: bun run lint (existing vue/no-v-html warnings only), bun run typecheck, bun run test:unit.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

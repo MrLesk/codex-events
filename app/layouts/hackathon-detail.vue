@@ -27,7 +27,10 @@ const isAccountRoute = computed(() =>
         </main>
       </div>
 
-      <AppShellFooter class="mt-auto" />
+      <AppShellFooter
+        class="mt-auto"
+        :with-sidebar="isAccountRoute"
+      />
     </div>
   </div>
 </template>

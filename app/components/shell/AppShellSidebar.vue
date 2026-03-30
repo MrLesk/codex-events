@@ -1,5 +1,11 @@
 <script setup lang="ts">
 import AppShellNavigation from '~/components/shell/AppShellNavigation.vue'
+import {
+  appShellSidebarCollapsedStateKey,
+  appShellSidebarCollapseStorageKey,
+  getAppShellSidebarPanelClass,
+  getAppShellSidebarRailClass
+} from '~/utils/shell-sidebar'
 
 import type { ShellNavigationGroup } from '~/composables/useShellNavigation'
 
@@ -7,8 +13,7 @@ const props = defineProps<{
   groups: ShellNavigationGroup[]
 }>()
 
-const sidebarCollapseStorageKey = 'codex-hackathons-sidebar-collapsed'
-const isSidebarCollapsed = ref(false)
+const isSidebarCollapsed = useState<boolean>(appShellSidebarCollapsedStateKey, () => false)
 
 function toggleSidebarCollapse() {
   isSidebarCollapsed.value = !isSidebarCollapsed.value
@@ -16,7 +21,7 @@ function toggleSidebarCollapse() {
 
 onMounted(() => {
   try {
-    isSidebarCollapsed.value = localStorage.getItem(sidebarCollapseStorageKey) === 'true'
+    isSidebarCollapsed.value = localStorage.getItem(appShellSidebarCollapseStorageKey) === 'true'
   } catch {
     // Ignore storage access failures and keep default collapsed state.
   }
@@ -24,7 +29,7 @@ onMounted(() => {
 
 watch(isSidebarCollapsed, (nextValue) => {
   try {
-    localStorage.setItem(sidebarCollapseStorageKey, nextValue ? 'true' : 'false')
+    localStorage.setItem(appShellSidebarCollapseStorageKey, nextValue ? 'true' : 'false')
   } catch {
     // Ignore storage access failures and keep runtime state.
   }
@@ -34,11 +39,11 @@ watch(isSidebarCollapsed, (nextValue) => {
 <template>
   <aside
     class="shrink-0 text-neutral-600 transition-[width] duration-200 dark:text-[#A3A3A3]"
-    :class="isSidebarCollapsed ? 'w-[68px] min-w-[68px]' : 'w-[260px] min-w-[260px]'"
+    :class="getAppShellSidebarRailClass(isSidebarCollapsed)"
   >
     <div
       class="fixed left-0 top-[4.5rem] z-30 flex h-[calc(100vh-4.5rem)] flex-col overflow-hidden border-r border-black/8 bg-white/70 px-3 pb-4 pt-3 backdrop-blur-md dark:border-white/[0.08] dark:bg-black/70"
-      :class="isSidebarCollapsed ? 'w-[68px]' : 'w-[260px]'"
+      :class="getAppShellSidebarPanelClass(isSidebarCollapsed)"
     >
       <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-none">
         <AppShellNavigation

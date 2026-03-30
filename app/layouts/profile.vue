@@ -44,7 +44,10 @@ const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_ide
         </main>
       </div>
 
-      <AppShellFooter class="mt-auto" />
+      <AppShellFooter
+        class="mt-auto"
+        :with-sidebar="showWorkspaceSidebar"
+      />
     </div>
   </div>
 </template>
