@@ -12,8 +12,11 @@ import {
   storageStatePathForPersona,
   type StablePersona
 } from './support/personas.ts'
+import { applyLocalBddD1StateRoot } from './support/local-d1-state.ts'
 import { resetPlatformFixtures } from './support/platform-fixtures.ts'
 import { loginAndPersistStorageState } from './support/session-state.ts'
+
+applyLocalBddD1StateRoot()
 
 async function sleep(milliseconds: number) {
   return new Promise(resolve => setTimeout(resolve, milliseconds))

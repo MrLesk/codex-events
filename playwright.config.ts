@@ -20,6 +20,7 @@ const destructiveAuthenticatedBddTestDir = defineBddConfig({
   steps: 'tests/bdd/steps/**/*.ts',
   outputDir: '.features-gen/authenticated-destructive'
 })
+const localBddD1StateRootShellExpression = '${LOCAL_D1_STATE_ROOT:-${LOCAL_BDD_D1_STATE_ROOT:-.wrangler/state-bdd}}'
 
 export default defineConfig({
   testDir: '.',
@@ -58,7 +59,7 @@ export default defineConfig({
     }
   ],
   webServer: {
-    command: 'bun run db:local:guard && nuxt dev --host 0.0.0.0 --port 3000',
+    command: `LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} bun run db:local:guard && LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} nuxt dev --host 0.0.0.0 --port 3000`,
     url: 'http://localhost:3000',
     reuseExistingServer: false,
     timeout: 120000

@@ -11,7 +11,8 @@
     "db:local:guard": "bun tools/d1/ensure-local-state-path.ts",
     "db:migrate:dev": "CLOUDFLARE_API_TOKEN=${CLOUDFLARE_MGMT_TOKEN:-$CLOUDFLARE_API_TOKEN} wrangler d1 migrations apply DB --remote --env dev --config wrangler.jsonc",
     "db:migrate:production": "CLOUDFLARE_API_TOKEN=${CLOUDFLARE_MGMT_TOKEN:-$CLOUDFLARE_API_TOKEN} wrangler d1 migrations apply DB --remote --env production --config wrangler.jsonc",
-    "dev": "bun run db:local:guard && CI=1 wrangler d1 migrations apply DB --local --persist-to ${LOCAL_D1_STATE_ROOT:-.wrangler/state} --config wrangler.jsonc && nuxt dev",
+    "dev": "LOCAL_D1_STATE_ROOT=${LOCAL_D1_STATE_ROOT:-${LOCAL_DEV_D1_STATE_ROOT:-.wrangler/state}} bun run dev:inner",
+    "dev:inner": "bun run db:local:guard && CI=1 wrangler d1 migrations apply DB --local --persist-to ${LOCAL_D1_STATE_ROOT} --config wrangler.jsonc && nuxt dev",
     "deploy:dev": "CLOUDFLARE_API_TOKEN=${CLOUDFLARE_MGMT_TOKEN:-$CLOUDFLARE_API_TOKEN} wrangler deploy --env dev --config wrangler.jsonc",
     "deploy:production": "CLOUDFLARE_API_TOKEN=${CLOUDFLARE_MGMT_TOKEN:-$CLOUDFLARE_API_TOKEN} wrangler deploy --env production --config wrangler.jsonc",
     "db:generate": "drizzle-kit generate",
@@ -22,7 +23,8 @@
     "test:bdd:install": "playwright install chromium",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:bdd": "bun run db:local:guard && bun tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && bun tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1",
+    "test:bdd": "LOCAL_D1_STATE_ROOT=${LOCAL_D1_STATE_ROOT:-${LOCAL_BDD_D1_STATE_ROOT:-.wrangler/state-bdd}} bun run test:bdd:inner",
+    "test:bdd:inner": "bun run db:local:guard && bun tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && bun tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1",
     "test:all": "bun run test:unit && bun run test:integration && bun run test:bdd"
   },
   "dependencies": {

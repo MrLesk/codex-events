@@ -162,6 +162,40 @@ The GitHub `production` environment must provide these secrets before the workfl
 - `NUXT_RESEND_FROM_EMAIL`
 - `NUXT_RESEND_REPLY_TO`
 
+Least-privilege external credential requirements for the current production workflow:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_MGMT_TOKEN` when you run the same recovery commands locally
+
+These Cloudflare tokens currently need:
+
+- account permission `Workers Scripts Write` for `wrangler secret bulk` and `wrangler deploy`
+- account permission `D1 Write` for `wrangler d1 migrations apply --remote`
+- zone permission `Zone Zone Read` on `codex-hackathons.com` so `tools/auth0/auth0-custom-domain.ts` can resolve the production zone
+- zone permission `DNS Write` on `codex-hackathons.com` so `tools/auth0/auth0-custom-domain.ts` can create or update the Auth0 verification CNAME
+
+The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` currently needs these Auth0 Management API scopes:
+
+- `read:clients`
+- `update:clients`
+- `read:tenant_settings`
+- `update:tenant_settings`
+- `read:branding`
+- `update:branding`
+- `delete:branding`
+- `read:prompts`
+- `update:prompts`
+- `read:custom_domains`
+- `create:custom_domains`
+- `update:custom_domains`
+- `read:actions`
+- `create:actions`
+- `update:actions`
+- `read:triggers`
+- `update:triggers`
+
+`AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. `NUXT_RESEND_API_KEY` should be a send-capable Resend API key for the sender identity configured by `NUXT_RESEND_FROM_EMAIL`; the checked-in production workflow does not currently require any additional repository-specific Resend scopes.
+
 The workflow uses these production hostnames:
 
 - application URL: `https://codex-hackathons.com`
@@ -217,6 +251,13 @@ AUTH0_TEST_CONNECTION_NAME=codex-hackathons-e2e-users
 
 For platform fixture reset and authenticated browser coverage, the repository uses the local D1 binding declared in `wrangler.jsonc`. The bootstrap flow clears persisted local D1 data before recreating schema and fixtures through Cloudflare's local D1 runtime.
 
+The repository now treats D1 targets as four distinct environments:
+
+- local app development D1
+- local Auth0-backed BDD D1
+- remote dev D1
+- remote production D1
+
 Install the Playwright browser for local runs:
 
 ```bash
@@ -233,7 +274,15 @@ This is the canonical local BDD command. It bootstraps the stable Auth0 personas
 
 BDD source files live under `tests/bdd/`: feature files in `tests/bdd/features`, matching step definitions in `tests/bdd/steps`, and authenticated bootstrap support in `tests/bdd/bootstrap.ts` plus `tests/bdd/support`. Generated files are written under `.features-gen/` and should not be edited by hand.
 
-For authenticated runs, the local D1 state under `.wrangler/state` is the default deterministic fixture target. You can override the persist root by setting `LOCAL_D1_STATE_ROOT` (for example `LOCAL_D1_STATE_ROOT=.wrangler/state-bdd-alt bun run test:bdd`).
+By default, local app development uses `.wrangler/state` and authenticated BDD uses `.wrangler/state-bdd`. You can override them independently with `LOCAL_DEV_D1_STATE_ROOT` and `LOCAL_BDD_D1_STATE_ROOT`, or override the current process directly with `LOCAL_D1_STATE_ROOT`.
+
+Examples:
+
+```bash
+LOCAL_BDD_D1_STATE_ROOT=.wrangler/state-bdd-alt bun run test:bdd
+LOCAL_DEV_D1_STATE_ROOT=.wrangler/state-dev-alt bun run dev
+LOCAL_D1_STATE_ROOT=.wrangler/state-one-off bun tests/bdd/bootstrap.ts
+```
 
 The bootstrap flow clears the selected persisted local Cloudflare state, reapplies migrations, reseeds the fixture dataset, clears `tests/bdd/.auth/`, and then performs fresh real Auth0 logins for the stable personas before saving new storage-state artifacts.
 
