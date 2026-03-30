@@ -1,6 +1,6 @@
 <template>
   <footer class="relative z-20 border-t border-black/10 bg-white/70 backdrop-blur-md dark:border-white/[0.08] dark:bg-black/70">
-    <AppContainer class="flex flex-col items-center gap-3 py-6 text-center text-sm text-neutral-900 dark:text-[#E5E5E5] sm:flex-row sm:items-center sm:justify-between sm:text-left">
+    <AppContainer class="flex flex-col items-center gap-3 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-center text-sm text-neutral-900 dark:text-[#E5E5E5] sm:flex-row sm:items-center sm:justify-between sm:py-6 sm:text-left">
       <p class="text-xs text-neutral-600 dark:text-[#A3A3A3]">
         We use only strictly necessary cookies and local storage for authentication, security, and site preferences.
       </p>
