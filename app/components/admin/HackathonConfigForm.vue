@@ -427,8 +427,8 @@ const submitConfigForm = handleSubmit(() => {
                   Drop agenda item here
                 </div>
 
-                <div class="grid grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center gap-4">
-                  <div class="flex w-11 flex-col items-center justify-center gap-3 self-center">
+                <div class="grid gap-4 sm:grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] sm:items-center">
+                  <div class="flex flex-wrap items-center gap-3 sm:w-11 sm:flex-col sm:justify-center sm:self-center">
                     <button
                       type="button"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
@@ -512,7 +512,7 @@ const submitConfigForm = handleSubmit(() => {
                     </div>
                   </div>
 
-                  <div class="flex w-11 items-center justify-center self-center">
+                  <div class="flex items-center justify-start sm:w-11 sm:justify-center sm:self-center">
                     <button
                       type="button"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"

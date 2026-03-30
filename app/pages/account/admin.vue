@@ -55,9 +55,6 @@ useSeoMeta({
         <div class="space-y-2 pb-4">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="space-y-2">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                Account workspace
-              </p>
               <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
                 Admin dashboard
               </h1>

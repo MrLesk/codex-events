@@ -1127,7 +1127,7 @@ async function setCurrentTerms(document: TermsDocument) {
                         </p>
                       </div>
 
-                      <div class="flex items-center gap-2">
+                      <div class="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
                         <AppButton
                           size="sm"
                           variant="ghost"
@@ -1266,7 +1266,7 @@ async function setCurrentTerms(document: TermsDocument) {
                           </p>
                         </div>
 
-                        <div class="flex items-center gap-2">
+                        <div class="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
                           <AppButton
                             size="sm"
                             variant="ghost"
