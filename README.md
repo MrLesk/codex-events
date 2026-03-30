@@ -110,6 +110,8 @@ The automation covers:
 
 By default the branding sync uses the canonical Codex Hackathons wordmark asset served from `/auth0/codex-hackathons-wordmark.svg` on your `AUTH0_APP_BASE_URL`. Override `AUTH0_APP_DISPLAY_NAME`, `AUTH0_BRANDING_LOGO_URL`, or the color variables if your deployment needs different branding.
 
+If you automate tenant bootstrap in production, authorize the Auth0 Management API machine-to-machine application only for the scopes required by the checked-in bootstrap scripts. The current exact scope list is documented in [`DEVELOPMENT.md`](DEVELOPMENT.md#production-release-pipeline).
+
 ### Platform Admin Bootstrap
 
 Platform-admin authorization is stored in platform data (`users.is_platform_admin`) rather than Auth0 roles.
@@ -131,6 +133,8 @@ These values identify the Cloudflare account and storage resources used by the p
 - `CLOUDFLARE_R2_BUCKET`
 
 The canonical stack expects Cloudflare Workers for application hosting, D1 for the primary relational database, R2 for file storage (including profile icons and hackathon images), Queues for asynchronous jobs, and Cron Triggers for scheduled platform tasks. See [`docs/tech-stack.md`](docs/tech-stack.md).
+
+For least-privilege production deployment, the Cloudflare token used by this repository needs permission to deploy the Worker, upload Worker secrets, apply remote D1 migrations, and manage the Auth0 custom-domain verification CNAME on the production zone. The current exact permission list is documented in [`DEVELOPMENT.md`](DEVELOPMENT.md#production-release-pipeline).
 
 The repository `wrangler.jsonc` keeps top-level bindings pointed at local development resources and defines a separate `dev` environment for the shared Cloudflare dev deployment. The current dev deployment is published at `https://dev.codex-hackathons.com`.
 
