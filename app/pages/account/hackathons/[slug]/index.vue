@@ -93,6 +93,7 @@ const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
   teams: 'Teams',
   submissions: 'Submissions',
   operations: 'Operations',
+  admins: 'Admins',
   settings: 'Settings'
 }
 
@@ -781,6 +782,21 @@ useSeoMeta({
           section="operations"
         />
         <AccountHackathonCompetitionPanel :slug="slug" />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'admins'"
+        id="account-tab-panel-admins"
+        role="tabpanel"
+        aria-labelledby="account-tab-admins"
+      >
+        <AccountHackathonRoleRosterPanel
+          :hackathon-id="accessRecordId"
+          role="admin"
+          title="Admins"
+          description="Admins can manage the internal workspace for this hackathon. Promoting a judge or staff member keeps their current capability on the admin assignment."
+          empty-assigned-message="No admins yet. Add an admin here when someone needs full hackathon management access."
+        />
       </section>
 
       <section

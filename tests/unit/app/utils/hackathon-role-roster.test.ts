@@ -2,7 +2,10 @@ import { describe, expect, test } from 'vitest'
 
 import {
   buildAssignedRoleRosterRows,
-  buildRoleRosterRows
+  buildRoleRosterRows,
+  deriveAdminCapableRoleFlags,
+  isAdminCapableHackathonUser,
+  listHackathonRoleRosterBadges
 } from '../../../../app/utils/hackathon-role-roster'
 
 describe('hackathon role roster helpers', () => {
@@ -58,6 +61,109 @@ describe('hackathon role roster helpers', () => {
       isInJudgePool: true,
       isStaff: false
     }])
+  })
+
+  test('treats platform admins as admin-capable even when the stored role row is stale', () => {
+    const candidateUsers = [{
+      id: 'user-1',
+      email: 'alpha@example.com',
+      displayName: 'Alpha Admin',
+      isPlatformAdmin: true
+    }, {
+      id: 'user-2',
+      email: 'bravo@example.com',
+      displayName: 'Bravo Builder',
+      isPlatformAdmin: false
+    }]
+
+    const roleAssignments = [{
+      id: 'assignment-1',
+      hackathonId: 'hackathon-1',
+      userId: 'user-1',
+      role: 'judge',
+      isInJudgePool: true,
+      isStaff: false,
+      createdAt: '2026-03-01T10:00:00.000Z',
+      user: candidateUsers[0]
+    }] as never
+
+    expect(isAdminCapableHackathonUser(roleAssignments[0], candidateUsers[0])).toBe(true)
+    expect(deriveAdminCapableRoleFlags(roleAssignments[0], { isStaff: true })).toEqual({
+      isInJudgePool: true,
+      isStaff: true
+    })
+
+    expect(buildAssignedRoleRosterRows(roleAssignments, 'admin')).toEqual([{
+      id: 'user-1',
+      email: 'alpha@example.com',
+      displayName: 'Alpha Admin',
+      isPlatformAdmin: true,
+      assignment: roleAssignments[0],
+      isAssigned: true,
+      isHackathonAdmin: true,
+      isInJudgePool: true,
+      isStaff: false
+    }])
+
+    expect(buildRoleRosterRows(candidateUsers, roleAssignments, 'admin', '')).toEqual([{
+      id: 'user-1',
+      email: 'alpha@example.com',
+      displayName: 'Alpha Admin',
+      isPlatformAdmin: true,
+      assignment: roleAssignments[0],
+      isAssigned: true,
+      isHackathonAdmin: true,
+      isInJudgePool: true,
+      isStaff: false
+    }, {
+      id: 'user-2',
+      email: 'bravo@example.com',
+      displayName: 'Bravo Builder',
+      isPlatformAdmin: false,
+      assignment: null,
+      isAssigned: false,
+      isHackathonAdmin: false,
+      isInJudgePool: false,
+      isStaff: false
+    }])
+
+    expect(buildRoleRosterRows(candidateUsers, roleAssignments, 'staff', '')).toEqual([{
+      id: 'user-1',
+      email: 'alpha@example.com',
+      displayName: 'Alpha Admin',
+      isPlatformAdmin: true,
+      assignment: roleAssignments[0],
+      isAssigned: false,
+      isHackathonAdmin: true,
+      isInJudgePool: true,
+      isStaff: false
+    }, {
+      id: 'user-2',
+      email: 'bravo@example.com',
+      displayName: 'Bravo Builder',
+      isPlatformAdmin: false,
+      assignment: null,
+      isAssigned: false,
+      isHackathonAdmin: false,
+      isInJudgePool: false,
+      isStaff: false
+    }])
+  })
+
+  test('lists the same badges for a row regardless of which roster tab renders it', () => {
+    expect(listHackathonRoleRosterBadges({
+      isHackathonAdmin: true,
+      isStaff: true,
+      isInJudgePool: true,
+      isPlatformAdmin: true
+    })).toEqual(['admin', 'staff', 'judge', 'platform_admin'])
+
+    expect(listHackathonRoleRosterBadges({
+      isHackathonAdmin: false,
+      isStaff: false,
+      isInJudgePool: true,
+      isPlatformAdmin: false
+    })).toEqual(['judge'])
   })
 
   test('builds staff and judge candidate rows from the canonical staff role and admin-only flags', () => {
@@ -176,6 +282,18 @@ describe('hackathon role roster helpers', () => {
       isStaff: true
     }])
 
+    expect(buildAssignedRoleRosterRows(roleAssignments, 'admin')).toEqual([{
+      id: 'user-1',
+      email: 'alpha@example.com',
+      displayName: 'Alpha Admin',
+      isPlatformAdmin: true,
+      assignment: roleAssignments[0],
+      isAssigned: true,
+      isHackathonAdmin: true,
+      isInJudgePool: false,
+      isStaff: true
+    }])
+
     expect(buildRoleRosterRows(candidateUsers, roleAssignments, 'judge', '')).toEqual([{
       id: 'user-1',
       email: 'alpha@example.com',
@@ -203,6 +321,48 @@ describe('hackathon role roster helpers', () => {
       isPlatformAdmin: false,
       assignment: roleAssignments[1],
       isAssigned: true,
+      isHackathonAdmin: false,
+      isInJudgePool: true,
+      isStaff: false
+    }, {
+      id: 'user-4',
+      email: 'delta@example.com',
+      displayName: 'Delta Staff',
+      isPlatformAdmin: false,
+      assignment: roleAssignments[2],
+      isAssigned: false,
+      isHackathonAdmin: false,
+      isInJudgePool: false,
+      isStaff: true
+    }])
+
+    expect(buildRoleRosterRows(candidateUsers, roleAssignments, 'admin', '')).toEqual([{
+      id: 'user-1',
+      email: 'alpha@example.com',
+      displayName: 'Alpha Admin',
+      isPlatformAdmin: true,
+      assignment: roleAssignments[0],
+      isAssigned: true,
+      isHackathonAdmin: true,
+      isInJudgePool: false,
+      isStaff: true
+    }, {
+      id: 'user-2',
+      email: 'bravo@example.com',
+      displayName: 'Bravo Builder',
+      isPlatformAdmin: false,
+      assignment: null,
+      isAssigned: false,
+      isHackathonAdmin: false,
+      isInJudgePool: false,
+      isStaff: false
+    }, {
+      id: 'user-3',
+      email: 'charlie@example.com',
+      displayName: 'Charlie Judge',
+      isPlatformAdmin: false,
+      assignment: roleAssignments[1],
+      isAssigned: false,
       isHackathonAdmin: false,
       isInJudgePool: true,
       isStaff: false

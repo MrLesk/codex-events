@@ -230,6 +230,24 @@ describe('TASK-3.5 hackathon admin route groups', () => {
       }
     })
 
+    const createAdminResponse = await harness.request('/api/hackathons/hackathon_1/roles/regular_user', {
+      method: 'PUT',
+      body: JSON.stringify({
+        role: 'hackathon_admin',
+        isInJudgePool: false,
+        isStaff: false
+      })
+    })
+    expect(createAdminResponse.status).toBe(200)
+    expect(await createAdminResponse.json()).toMatchObject({
+      data: {
+        userId: 'regular_user',
+        role: 'hackathon_admin',
+        isInJudgePool: false,
+        isStaff: false
+      }
+    })
+
     const invalidPatchResponse = await harness.request('/api/hackathons/hackathon_1/roles/judge_user', {
       method: 'PATCH',
       body: JSON.stringify({

@@ -7,7 +7,7 @@ import {
   isHackathonRoleStaffEnabled
 } from './admin-workspace'
 
-export type HackathonRosterRole = 'judge' | 'staff'
+export type HackathonRosterRole = 'judge' | 'staff' | 'admin'
 
 export interface HackathonRoleRosterRow extends HackathonRoleUserSummary {
   assignment: HackathonRoleAssignment | null
@@ -15,6 +15,54 @@ export interface HackathonRoleRosterRow extends HackathonRoleUserSummary {
   isHackathonAdmin: boolean
   isInJudgePool: boolean
   isStaff: boolean
+}
+
+export type HackathonRoleRosterBadge = 'admin' | 'staff' | 'judge' | 'platform_admin'
+
+export function isAdminCapableHackathonUser(
+  assignment: HackathonRoleAssignment | null | undefined,
+  user?: HackathonRoleUserSummary | null
+) {
+  return assignment?.role === 'hackathon_admin'
+    || assignment?.user?.isPlatformAdmin === true
+    || user?.isPlatformAdmin === true
+}
+
+export function deriveAdminCapableRoleFlags(
+  assignment: HackathonRoleAssignment | null | undefined,
+  overrides: Partial<Pick<HackathonRoleAssignment, 'isInJudgePool' | 'isStaff'>> = {}
+) {
+  const currentIsInJudgePool = assignment?.role === 'judge' || assignment?.isInJudgePool === true
+  const currentIsStaff = assignment?.role === 'staff' || assignment?.isStaff === true
+
+  return {
+    isInJudgePool: overrides.isInJudgePool ?? currentIsInJudgePool,
+    isStaff: overrides.isStaff ?? currentIsStaff
+  }
+}
+
+export function listHackathonRoleRosterBadges(
+  row: Pick<HackathonRoleRosterRow, 'isHackathonAdmin' | 'isStaff' | 'isInJudgePool' | 'isPlatformAdmin'>
+) {
+  const badges: HackathonRoleRosterBadge[] = []
+
+  if (row.isHackathonAdmin) {
+    badges.push('admin')
+  }
+
+  if (row.isStaff) {
+    badges.push('staff')
+  }
+
+  if (row.isInJudgePool) {
+    badges.push('judge')
+  }
+
+  if (row.isPlatformAdmin) {
+    badges.push('platform_admin')
+  }
+
+  return badges
 }
 
 function compareRosterUsers(
@@ -67,6 +115,10 @@ function isAssignedToRoster(
     return false
   }
 
+  if (role === 'admin') {
+    return isAdminCapableHackathonUser(assignment)
+  }
+
   if (role === 'staff') {
     return isHackathonRoleStaffEnabled(assignment)
   }
@@ -88,7 +140,7 @@ export function buildAssignedRoleRosterRows(
       ...assignment.user,
       assignment,
       isAssigned: true,
-      isHackathonAdmin: assignment.role === 'hackathon_admin',
+      isHackathonAdmin: isAdminCapableHackathonUser(assignment, assignment.user),
       isInJudgePool: assignment.isInJudgePool,
       isStaff: assignment.isStaff
     }))
@@ -115,12 +167,15 @@ export function buildRoleRosterRows(
     .sort((left, right) => compareRosterUsers(left, right, currentHackathonAdminIds))
     .map((user): HackathonRoleRosterRow => {
       const assignment = findRoleAssignment(roleAssignments, user.id)
+      const isHackathonAdmin = isAdminCapableHackathonUser(assignment, user)
 
       return {
         ...user,
         assignment,
-        isAssigned: isAssignedToRoster(assignment, role),
-        isHackathonAdmin: assignment?.role === 'hackathon_admin',
+        isAssigned: role === 'admin'
+          ? isHackathonAdmin
+          : isAssignedToRoster(assignment, role),
+        isHackathonAdmin,
         isInJudgePool: assignment?.isInJudgePool ?? false,
         isStaff: assignment?.isStaff ?? false
       }
