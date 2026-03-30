@@ -1,18 +1,66 @@
-import { Miniflare } from 'miniflare'
+import { DatabaseSync as SqliteDatabase } from 'node:sqlite'
 
-import { applySqlStatements, readMigrationStatements } from './migrations'
+import { readMigrationSql } from './migrations'
 
-const testDatabaseId = '00000000-0000-0000-0000-000000000001'
+type SqliteParameter = ArrayBuffer | ArrayBufferView | bigint | boolean | null | number | string
+
+interface D1ResultMeta {
+  changed_db: boolean
+  changes: number
+  duration: number
+  last_row_id: number
+  rows_read: number
+  rows_written: number
+  served_by: string
+  size_after: number
+}
+
+interface D1QueryResult<TResult> {
+  meta: D1ResultMeta
+  results: TResult[]
+  success: true
+}
+
+interface D1RunResult {
+  meta: D1ResultMeta
+  success: true
+}
+
+function normalizeParameters(parameters: unknown[]) {
+  return parameters.map((parameter) => {
+    if (parameter === undefined) {
+      return null
+    }
+
+    if (typeof parameter === 'boolean') {
+      return parameter ? 1 : 0
+    }
+
+    return parameter as SqliteParameter
+  })
+}
+
+function createResultMeta(options: {
+  changes?: number
+  lastRowId?: number
+  rowsRead?: number
+  rowsWritten?: number
+}) {
+  return {
+    served_by: 'node.sqlite',
+    duration: 0,
+    changes: options.changes ?? 0,
+    last_row_id: options.lastRowId ?? 0,
+    changed_db: (options.changes ?? 0) > 0,
+    size_after: 0,
+    rows_read: options.rowsRead ?? 0,
+    rows_written: options.rowsWritten ?? options.changes ?? 0
+  } satisfies D1ResultMeta
+}
 
 class TestD1PreparedStatement {
   constructor(
-    private readonly getDatabase: () => Promise<{ prepare: (sql: string) => {
-      bind: (...parameters: unknown[]) => unknown
-      run: () => Promise<unknown>
-      all: <TResult = Record<string, unknown>>() => Promise<TResult>
-      raw: () => Promise<unknown[][]>
-      first: (columnName?: string) => Promise<unknown>
-    } }>,
+    private readonly getDatabase: () => Promise<SqliteDatabase>,
     private readonly sql: string,
     private readonly parameters: unknown[] = []
   ) {}
@@ -22,75 +70,91 @@ class TestD1PreparedStatement {
   }
 
   async run(...parameters: unknown[]) {
-    const statement = await this.resolveStatement(parameters)
-    return await statement.run()
+    const effectiveParameters = this.resolveParameters(parameters)
+    const result = (await this.getDatabase()).prepare(this.sql).run(...effectiveParameters)
+
+    return {
+      success: true,
+      meta: createResultMeta({
+        changes: result.changes,
+        lastRowId: Number(result.lastInsertRowid ?? 0)
+      })
+    } satisfies D1RunResult
   }
 
   async all<TResult = Record<string, unknown>>(...parameters: unknown[]) {
-    const statement = await this.resolveStatement(parameters)
-    return await statement.all<TResult>()
+    const effectiveParameters = this.resolveParameters(parameters)
+    const results = (await this.getDatabase()).prepare(this.sql).all(...effectiveParameters) as TResult[]
+
+    return {
+      success: true,
+      meta: createResultMeta({ rowsRead: results.length }),
+      results
+    } satisfies D1QueryResult<TResult>
   }
 
   async raw(...parameters: unknown[]) {
-    const statement = await this.resolveStatement(parameters)
-    return await statement.raw()
+    const effectiveParameters = this.resolveParameters(parameters)
+    const statement = (await this.getDatabase()).prepare(this.sql)
+    statement.setReturnArrays(true)
+    return statement.all(...effectiveParameters) as unknown[][]
   }
 
   async first<TResult = unknown>(columnNameOrParameter?: string | unknown, ...parameters: unknown[]) {
-    if (typeof columnNameOrParameter === 'string' && parameters.length === 0 && this.parameters.length > 0) {
-      const statement = await this.resolveStatement([])
-      return await statement.first(columnNameOrParameter) as TResult
-    }
-
     if (typeof columnNameOrParameter === 'string' && parameters.length === 0) {
-      const statement = await this.resolveStatement([])
-      return await statement.first(columnNameOrParameter) as TResult
+      const row = (await this.getDatabase()).prepare(this.sql).get(
+        ...this.resolveParameters([])
+      ) as Record<string, unknown> | null
+      return row?.[columnNameOrParameter] as TResult
     }
 
-    const statement = await this.resolveStatement(
-      columnNameOrParameter === undefined ? parameters : [columnNameOrParameter, ...parameters]
-    )
+    const effectiveParameters = columnNameOrParameter === undefined
+      ? parameters
+      : [columnNameOrParameter, ...parameters]
+    const row = (await this.getDatabase()).prepare(this.sql).get(
+      ...this.resolveParameters(effectiveParameters)
+    ) as Record<string, unknown> | null
 
-    return await statement.first() as TResult
+    return row as TResult
   }
 
   async toPreparedStatement() {
-    return await this.resolveStatement([])
+    return this
   }
 
-  private async resolveStatement(parameters: unknown[]) {
-    const database = await this.getDatabase()
-    let statement = database.prepare(this.sql)
-    const effectiveParameters = parameters.length > 0 ? parameters : this.parameters
+  async executeForBatch() {
+    const normalizedSql = this.sql.trimStart().toLowerCase()
 
-    if (effectiveParameters.length > 0) {
-      statement = statement.bind(...effectiveParameters) as typeof statement
+    if (
+      normalizedSql.startsWith('select')
+      || normalizedSql.startsWith('with')
+      || normalizedSql.startsWith('pragma')
+    ) {
+      return await this.all()
     }
 
-    return statement
+    return await this.run()
+  }
+
+  private resolveParameters(parameters: unknown[]) {
+    return normalizeParameters(parameters.length > 0 ? parameters : this.parameters)
   }
 }
 
 export class TestD1Database {
-  private readonly miniflare = new Miniflare({
-    modules: true,
-    script: 'export default { async fetch() { return new Response("ok") } }',
-    d1Databases: {
-      DB: testDatabaseId
-    }
-  })
-
-  private readonly d1Database = this.miniflare.getD1Database('DB')
+  private readonly database = new SqliteDatabase(':memory:')
 
   private readonly ready: Promise<void>
 
+  private closed = false
+
   constructor(options?: { applyMigrations?: boolean }) {
     this.ready = (async () => {
-      const d1Database = await this.d1Database
-
-      if (options?.applyMigrations !== false) {
-        await applySqlStatements(d1Database, readMigrationStatements())
+      if (options?.applyMigrations === false) {
+        return
       }
+
+      this.database.exec(readMigrationSql())
     })()
   }
 
@@ -99,24 +163,37 @@ export class TestD1Database {
   }
 
   async batch(statements: TestD1PreparedStatement[]) {
-    const d1Database = await this.getDatabase()
-    const preparedStatements = await Promise.all(statements.map(async statement => await statement.toPreparedStatement()))
+    const results: Array<D1QueryResult<Record<string, unknown>> | D1RunResult> = []
 
-    return await d1Database.batch(preparedStatements)
+    for (const statement of statements) {
+      results.push(await statement.executeForBatch())
+    }
+
+    return results
   }
 
   async exec(sql: string) {
-    const d1Database = await this.getDatabase()
-    await applySqlStatements(d1Database, sql)
+    await this.ready
+    this.database.exec(sql)
   }
 
   async close() {
-    await this.miniflare.dispose()
+    if (this.closed) {
+      return
+    }
+
+    this.closed = true
+    await this.ready
+    this.database.close()
+  }
+
+  async first<TResult = unknown>(sql: string, ...parameters: unknown[]) {
+    return await this.prepare(sql).first<TResult>(...parameters)
   }
 
   private async getDatabase() {
     await this.ready
-    return await this.d1Database
+    return this.database
   }
 }
 

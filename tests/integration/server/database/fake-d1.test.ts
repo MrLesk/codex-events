@@ -35,4 +35,53 @@ describe('TestD1Database', () => {
       email: 'user@example.com'
     })
   })
+
+  test('keeps concurrently active test databases isolated from each other', async () => {
+    const firstDatabase = createTestD1Database()
+    const secondDatabase = createTestD1Database()
+    databases.push(firstDatabase, secondDatabase)
+    const firstAppDatabase = createDatabase(firstDatabase as never)
+    const secondAppDatabase = createDatabase(secondDatabase as never)
+
+    await firstAppDatabase.insert(users).values({
+      id: 'user_1',
+      auth0Subject: 'auth0|user_1',
+      email: 'user@example.com',
+      displayName: 'User One'
+    })
+
+    const firstUser = await firstAppDatabase.query.users.findFirst({
+      where: eq(users.auth0Subject, 'auth0|user_1')
+    })
+    const secondUser = await secondAppDatabase.query.users.findFirst({
+      where: eq(users.auth0Subject, 'auth0|user_1')
+    })
+
+    expect(firstUser).toMatchObject({
+      id: 'user_1'
+    })
+    expect(secondUser).toBeUndefined()
+  })
+
+  test('starts sequential test databases from a clean migrated state', async () => {
+    for (let iteration = 0; iteration < 6; iteration += 1) {
+      const d1Database = createTestD1Database()
+      const database = createDatabase(d1Database as never)
+
+      await database.insert(users).values({
+        id: 'user_1',
+        auth0Subject: 'auth0|user_1',
+        email: 'user@example.com',
+        displayName: `User ${iteration}`
+      })
+
+      await expect(database.query.users.findFirst({
+        where: eq(users.auth0Subject, 'auth0|user_1')
+      })).resolves.toMatchObject({
+        id: 'user_1'
+      })
+
+      await d1Database.close()
+    }
+  })
 })
