@@ -49,28 +49,9 @@ useSeoMeta({
     <section class="border-b border-black/8 dark:border-white/[0.08]">
       <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
         <div class="pb-4">
-          <div class="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-                My hackathons
-              </h1>
-            </div>
-
-            <AppButton
-              to="/"
-              color="neutral"
-              variant="solid"
-              class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-            >
-              Explore hackathons
-              <template #trailing>
-                <AppIcon
-                  name="i-lucide-arrow-up-right"
-                  class="size-3.5"
-                />
-              </template>
-            </AppButton>
-          </div>
+          <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+            My hackathons
+          </h1>
         </div>
       </AppContainer>
     </section>
@@ -118,25 +99,6 @@ useSeoMeta({
 
       <template v-else>
         <section
-          v-if="activeHackathons.length > 0"
-          class="space-y-4"
-        >
-          <div class="border-b border-black/8 pb-3 dark:border-white/[0.08]">
-            <p class="text-[20px] font-medium text-highlighted dark:text-white">
-              Current
-            </p>
-          </div>
-
-          <div class="grid gap-5">
-            <HackathonParticipationCard
-              v-for="record in activeHackathons"
-              :key="record.hackathon.id"
-              :record="record"
-            />
-          </div>
-        </section>
-
-        <section
           v-if="upcomingHackathons.length > 0"
           class="space-y-4"
         >
@@ -149,6 +111,25 @@ useSeoMeta({
           <div class="grid gap-5">
             <HackathonParticipationCard
               v-for="record in upcomingHackathons"
+              :key="record.hackathon.id"
+              :record="record"
+            />
+          </div>
+        </section>
+
+        <section
+          v-if="activeHackathons.length > 0"
+          class="space-y-4"
+        >
+          <div class="border-b border-black/8 pb-3 dark:border-white/[0.08]">
+            <p class="text-[20px] font-medium text-highlighted dark:text-white">
+              Current
+            </p>
+          </div>
+
+          <div class="grid gap-5">
+            <HackathonParticipationCard
+              v-for="record in activeHackathons"
               :key="record.hackathon.id"
               :record="record"
             />
@@ -171,6 +152,33 @@ useSeoMeta({
               :key="record.hackathon.id"
               :record="record"
             />
+          </div>
+        </section>
+
+        <section class="rounded-[1.5rem] border border-black/8 bg-white px-6 py-8 dark:border-white/[0.08] dark:bg-[#111111]">
+          <div class="max-w-2xl space-y-3">
+            <h2 class="text-[24px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+              Find more hackathons to join
+            </h2>
+            <p class="text-[15px] text-neutral-600 dark:text-[#A3A3A3]">
+              Explore the open hackathons on the public side of the platform and apply when you are ready to participate.
+            </p>
+            <div class="pt-1">
+              <AppButton
+                to="/"
+                color="neutral"
+                variant="solid"
+                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+              >
+                Explore hackathons
+                <template #trailing>
+                  <AppIcon
+                    name="i-lucide-arrow-up-right"
+                    class="size-3.5"
+                  />
+                </template>
+              </AppButton>
+            </div>
           </div>
         </section>
       </template>
