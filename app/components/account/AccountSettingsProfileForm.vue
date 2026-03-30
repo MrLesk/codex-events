@@ -349,7 +349,7 @@ const submitProfileForm = handleSubmit(() => {
             id="account-openai-org-id"
             v-model="model.openaiOrgId"
             type="text"
-            placeholder="org_1234567890"
+            placeholder="org-1234567890"
             class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
             :class="submitCount > 0 && errors.openaiOrgId ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
           >

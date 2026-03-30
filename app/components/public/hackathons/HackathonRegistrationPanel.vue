@@ -381,7 +381,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
     case 'chatgptEmail':
       return 'you@example.com'
     case 'openaiOrgId':
-      return 'org_1234567890'
+      return 'org-1234567890'
     case 'lumaUsername':
       return 'your-luma-name'
   }
