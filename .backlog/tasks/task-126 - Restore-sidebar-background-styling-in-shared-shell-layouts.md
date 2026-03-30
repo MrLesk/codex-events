@@ -1,11 +1,11 @@
 ---
 id: TASK-126
 title: Restore sidebar background styling in shared shell layouts
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-03-30 20:47'
-updated_date: '2026-03-30 20:54'
+updated_date: '2026-03-30 21:07'
 labels: []
 dependencies: []
 priority: high
@@ -27,15 +27,13 @@ Investigate and fix the recent regression where the shared account/sidebar shell
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Discovery showed the likely trigger on March 30, 2026 was TASK-114 (commit b23aebf), which changed the profile shell sidebar container from fixed to sticky as part of the mobile/responsive sidebar improvement. The sidebar surface class itself still used bg-white/70, which became too low-contrast in light mode and read as if the background color was gone. Final fix: keep the responsive/mobile behavior from TASK-114, but restore visible shell contrast by switching the sidebar surface in the shared profile and hackathon-detail layouts from bg-white/70 to bg-default/88.
-
-User clarified that production uses the intended sidebar background colors and only wants the shared sidebar background colors reverted to match production markup. No new commit requested for this follow-up.
+Discovery showed the likely trigger on March 30, 2026 was TASK-114 (commit b23aebf), which changed the profile shell sidebar container from fixed to sticky as part of the mobile/responsive sidebar improvement. The first follow-up restored the production sidebar colors. The final fix keeps those production colors, moves the full-height sidebar background and border to the aside column itself, and changes the hackathon-detail sidebar panel from fixed to sticky so the sidebar spans the page height and no longer sits outside the page scroll container.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-The recent March 30, 2026 sidebar/mobile change in TASK-114 was the likely trigger on the profile shell. It changed the sidebar positioning behavior, which exposed that the current light-mode sidebar surface was still using bg-white/70 and therefore blended into the page background. Updated the shared sidebar surface in app/layouts/profile.vue and app/layouts/hackathon-detail.vue to use bg-default/88 instead. That restores visible background contrast without undoing the responsive/mobile sidebar behavior. Validation passed: bun run lint (existing vue/no-v-html warnings only), bun run typecheck, and bun run test:unit. No docs or config changes were needed.
+The sidebar regression came from the recent shared shell/mobile sidebar work: the sidebar background was only applied to the inner panel and the hackathon-detail sidebar still used a fixed overlay, which caused the visible background to stop spanning the full page height and blocked page scrolling when hovering the sidebar. The final fix keeps the production sidebar colors (`bg-white/70` and `dark:bg-black/70`), moves the background and border to the full aside column in profile and hackathon-detail layouts, and switches the hackathon-detail panel from fixed to sticky so it stays inside the page scroll container. Validation passed: bun run lint (existing vue/no-v-html warnings only), bun run typecheck, and bun run test:unit. No docs or config changes were needed.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done

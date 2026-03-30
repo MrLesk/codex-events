@@ -42,11 +42,11 @@ watch(isSidebarCollapsed, (nextValue) => {
       <div class="relative flex items-stretch">
         <aside
           v-if="isAccountRoute"
-          class="block shrink-0 text-neutral-600 transition-[width] duration-200 dark:text-[#A3A3A3]"
+          class="block shrink-0 self-stretch border-r border-black/8 bg-white/70 text-neutral-600 transition-[width] duration-200 dark:border-white/[0.08] dark:bg-black/70 dark:text-[#A3A3A3]"
           :class="isSidebarCollapsed ? 'w-[68px] min-w-[68px]' : 'w-[260px] min-w-[260px]'"
         >
           <div
-            class="fixed left-0 top-[4.5rem] z-30 flex h-[calc(100vh-4.5rem)] flex-col border-r border-black/8 bg-white/70 px-3 pb-4 pt-3 backdrop-blur-md dark:border-white/[0.08] dark:bg-black/70"
+            class="sticky top-0 z-30 flex h-[calc(100vh-4.5rem)] flex-col overflow-hidden px-3 pb-4 pt-3 backdrop-blur-md"
             :class="isSidebarCollapsed ? 'w-[68px]' : 'w-[260px]'"
           >
             <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-none">
