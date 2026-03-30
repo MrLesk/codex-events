@@ -31,7 +31,8 @@ export default defineApiHandler(async (event) => {
 
   return new Response(await icon.arrayBuffer(), {
     headers: {
-      'content-type': icon.httpMetadata?.contentType ?? 'application/octet-stream'
+      'content-type': icon.httpMetadata?.contentType ?? 'application/octet-stream',
+      'x-content-type-options': 'nosniff'
     }
   })
 })

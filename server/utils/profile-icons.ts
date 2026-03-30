@@ -1,15 +1,17 @@
 import type { H3Event } from 'h3'
 
 import { ApiError } from './api-error'
+import {
+  detectSupportedImageContentType,
+  supportedImageContentTypes,
+  type SupportedImageContentType
+} from './image-signatures'
 
 export const profileIconMaxBytes = 1024 * 1024
 
-export const profileIconContentTypes = [
-  'image/jpeg',
-  'image/png'
-] as const
+export const profileIconContentTypes = supportedImageContentTypes
 
-type ProfileIconContentType = typeof profileIconContentTypes[number]
+type ProfileIconContentType = SupportedImageContentType
 
 interface R2HttpMetadataLike {
   contentType?: string
@@ -113,9 +115,9 @@ export function assertValidProfileIconPart(part: {
     })
   }
 
-  const contentType = part.type?.trim().toLowerCase() as ProfileIconContentType | undefined
+  const contentType = detectSupportedImageContentType(part.data)
 
-  if (!contentType || !profileIconContentTypes.includes(contentType)) {
+  if (!contentType) {
     throw new ApiError({
       statusCode: 400,
       code: 'profile_icon_content_type_invalid',
@@ -139,7 +141,7 @@ export function assertValidProfileIconPart(part: {
   }
 
   return {
-    contentType,
+    contentType: contentType as ProfileIconContentType,
     data: part.data
   }
 }

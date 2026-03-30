@@ -2,6 +2,11 @@ import type { EventHandler, H3Event } from 'h3'
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
+import {
+  authenticatedUploadRateLimitBindingName,
+  publicContactRateLimitBindingName
+} from '../../../../server/utils/rate-limit'
+
 const { createLocalPlatformProxy } = vi.hoisted(() => ({
   createLocalPlatformProxy: vi.fn()
 }))
@@ -104,13 +109,21 @@ describe('local D1 binding middleware', () => {
     const applicationReviewEmailQueue = {
       send: vi.fn()
     }
+    const publicContactRateLimiter = {
+      limit: vi.fn(async () => ({ success: true }))
+    }
+    const authenticatedUploadRateLimiter = {
+      limit: vi.fn(async () => ({ success: true }))
+    }
 
     createLocalPlatformProxy.mockResolvedValue({
       env: {
         DB: d1Database,
         PROFILE_ICONS: profileIconsBucket,
         HACKATHON_IMAGES: hackathonImagesBucket,
-        APPLICATION_REVIEW_EMAIL_QUEUE: applicationReviewEmailQueue
+        APPLICATION_REVIEW_EMAIL_QUEUE: applicationReviewEmailQueue,
+        [publicContactRateLimitBindingName]: publicContactRateLimiter,
+        [authenticatedUploadRateLimitBindingName]: authenticatedUploadRateLimiter
       }
     })
 
@@ -124,5 +137,7 @@ describe('local D1 binding middleware', () => {
     expect(event.context.cloudflare?.env.PROFILE_ICONS).toBe(profileIconsBucket)
     expect(event.context.cloudflare?.env.HACKATHON_IMAGES).toBe(hackathonImagesBucket)
     expect(event.context.cloudflare?.env.APPLICATION_REVIEW_EMAIL_QUEUE).toBe(applicationReviewEmailQueue)
+    expect(event.context.cloudflare?.env[publicContactRateLimitBindingName]).toBe(publicContactRateLimiter)
+    expect(event.context.cloudflare?.env[authenticatedUploadRateLimitBindingName]).toBe(authenticatedUploadRateLimiter)
   })
 })

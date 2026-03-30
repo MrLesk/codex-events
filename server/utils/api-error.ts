@@ -2,6 +2,8 @@ import type { H3Event } from 'h3'
 
 import { setResponseStatus } from 'h3'
 
+const unexpectedErrorMessage = 'An unexpected error occurred.'
+
 export interface ApiErrorOptions {
   statusCode: number
   code: string
@@ -33,24 +35,23 @@ export function toApiError(error: unknown) {
     return error
   }
 
-  if (error instanceof Error) {
-    return new ApiError({
-      statusCode: 500,
-      code: 'internal_error',
-      message: error.message || 'An unexpected error occurred.',
-      cause: error
-    })
-  }
-
   return new ApiError({
     statusCode: 500,
     code: 'internal_error',
-    message: 'An unexpected error occurred.',
-    details: { error }
+    message: unexpectedErrorMessage,
+    cause: error
   })
 }
 
 export function sendApiError(event: H3Event, error: unknown) {
+  if (!isApiError(error)) {
+    console.error('Unhandled API error', {
+      method: event.node.req.method ?? 'UNKNOWN',
+      url: event.node.req.url ?? '',
+      error
+    })
+  }
+
   const apiError = toApiError(error)
   setResponseStatus(event, apiError.statusCode)
 

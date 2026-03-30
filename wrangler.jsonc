@@ -6,6 +6,24 @@
 		"nodejs_compat",
 		"no_nodejs_compat_v2"
 	],
+	"ratelimits": [
+		{
+			"name": "PUBLIC_CONTACT_RATE_LIMITER",
+			"namespace_id": "1001",
+			"simple": {
+				"limit": 5,
+				"period": 60
+			}
+		},
+		{
+			"name": "AUTHENTICATED_UPLOAD_RATE_LIMITER",
+			"namespace_id": "1002",
+			"simple": {
+				"limit": 10,
+				"period": 60
+			}
+		}
+	],
 	"d1_databases": [
 		{
 			"binding": "DB",
@@ -50,6 +68,24 @@
 			"build": {
 				"command": "bun run build:cloudflare"
 			},
+			"ratelimits": [
+				{
+					"name": "PUBLIC_CONTACT_RATE_LIMITER",
+					"namespace_id": "2001",
+					"simple": {
+						"limit": 5,
+						"period": 60
+					}
+				},
+				{
+					"name": "AUTHENTICATED_UPLOAD_RATE_LIMITER",
+					"namespace_id": "2002",
+					"simple": {
+						"limit": 10,
+						"period": 60
+					}
+				}
+			],
 			"assets": {
 				"binding": "ASSETS",
 				"directory": ".output/public"
@@ -111,6 +147,24 @@
 			"build": {
 				"command": "bun run build:cloudflare"
 			},
+			"ratelimits": [
+				{
+					"name": "PUBLIC_CONTACT_RATE_LIMITER",
+					"namespace_id": "3001",
+					"simple": {
+						"limit": 5,
+						"period": 60
+					}
+				},
+				{
+					"name": "AUTHENTICATED_UPLOAD_RATE_LIMITER",
+					"namespace_id": "3002",
+					"simple": {
+						"limit": 10,
+						"period": 60
+					}
+				}
+			],
 			"assets": {
 				"binding": "ASSETS",
 				"directory": ".output/public"

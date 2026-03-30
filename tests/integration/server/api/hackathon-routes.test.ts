@@ -35,11 +35,25 @@ import {
   userApplications,
   users
 } from '../../../../server/database/schema'
+import { authenticatedUploadRateLimitBindingName } from '../../../../server/utils/rate-limit'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 describe('TASK-3.5 hackathon CRUD routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
   const hackathonImagesBindingName = 'HACKATHON_IMAGES'
+  const pngSignatureBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+
+  function createOversizedPngBytes(size: number) {
+    const data = new Uint8Array(size)
+    data.set(pngSignatureBytes)
+    return data
+  }
+
+  function createRateLimiter(success = true) {
+    return {
+      limit: vi.fn(async () => ({ success }))
+    }
+  }
 
   class InMemoryR2Bucket {
     private readonly objects = new Map<string, { body: Uint8Array, contentType?: string }>()
@@ -1220,7 +1234,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         email: 'hackathon-admin@example.com'
       },
       cloudflareEnv: {
-        [hackathonImagesBindingName]: hackathonImagesBucket
+        [hackathonImagesBindingName]: hackathonImagesBucket,
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         hackathonImages: {
@@ -1272,7 +1287,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     const backgroundUploadForm = new FormData()
     backgroundUploadForm.append(
       'file',
-      new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }),
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
       'background.png'
     )
 
@@ -1293,12 +1308,13 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
 
     expect(backgroundResponse.status).toBe(200)
     expect(backgroundResponse.headers.get('content-type')).toBe('image/png')
-    expect(new Uint8Array(await backgroundResponse.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]))
+    expect(backgroundResponse.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(new Uint8Array(await backgroundResponse.arrayBuffer())).toEqual(pngSignatureBytes)
 
     const bannerUploadForm = new FormData()
     bannerUploadForm.append(
       'file',
-      new Blob([new Uint8Array([9, 8, 7])], { type: 'image/png' }),
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
       'banner.png'
     )
 
@@ -1319,7 +1335,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
 
     expect(bannerResponse.status).toBe(200)
     expect(bannerResponse.headers.get('content-type')).toBe('image/png')
-    expect(new Uint8Array(await bannerResponse.arrayBuffer())).toEqual(new Uint8Array([9, 8, 7]))
+    expect(bannerResponse.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(new Uint8Array(await bannerResponse.arrayBuffer())).toEqual(pngSignatureBytes)
 
     const backgroundDeleteResponse = await harness.request('/api/hackathons/hackathon_images/images/background', {
       method: 'DELETE'
@@ -1375,7 +1392,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         email: 'hackathon-admin@example.com'
       },
       cloudflareEnv: {
-        [hackathonImagesBindingName]: hackathonImagesBucket
+        [hackathonImagesBindingName]: hackathonImagesBucket,
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         hackathonImages: {
@@ -1424,16 +1442,16 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       createdAt: '2026-03-22T12:00:00.000Z'
     })
 
-    const invalidTypeForm = new FormData()
-    invalidTypeForm.append(
+    const invalidImageForm = new FormData()
+    invalidImageForm.append(
       'file',
-      new Blob([new Uint8Array([1, 2, 3])], { type: 'image/gif' }),
-      'background.gif'
+      new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'image/png' }),
+      'background.png'
     )
 
     const invalidTypeResponse = await harness.request('/api/hackathons/hackathon_images/images/background', {
       method: 'POST',
-      body: invalidTypeForm
+      body: invalidImageForm
     })
 
     expect(invalidTypeResponse.status).toBe(400)
@@ -1446,7 +1464,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     const oversizedForm = new FormData()
     oversizedForm.append(
       'file',
-      new Blob([new Uint8Array((5 * 1024 * 1024) + 1)], { type: 'image/png' }),
+      new Blob([createOversizedPngBytes((5 * 1024 * 1024) + 1)], { type: 'image/png' }),
       'background.png'
     )
 
@@ -1459,6 +1477,88 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(await oversizedResponse.json()).toMatchObject({
       error: {
         code: 'hackathon_image_file_too_large'
+      }
+    })
+  })
+
+  test('POST /api/hackathons/:hackathonId/images/background returns 429 when the authenticated upload rate limit is exceeded', async () => {
+    const hackathonImagesBucket = new InMemoryR2Bucket()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/images/background', handler: hackathonBackgroundImagePostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      },
+      cloudflareEnv: {
+        [hackathonImagesBindingName]: hackathonImagesBucket,
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter(false)
+      },
+      runtimeConfig: {
+        hackathonImages: {
+          binding: hackathonImagesBindingName
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'hackathon_admin',
+        auth0Subject: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com',
+        displayName: 'Hackathon Admin'
+      }
+    ])
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_images',
+      name: 'Image Hackathon',
+      slug: 'image-hackathon',
+      description: 'Hackathon with managed images',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_admin',
+      hackathonId: 'hackathon_images',
+      userId: 'hackathon_admin',
+      role: 'hackathon_admin',
+      isInJudgePool: false,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    const uploadForm = new FormData()
+    uploadForm.append(
+      'file',
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
+      'background.png'
+    )
+
+    const response = await harness.request('/api/hackathons/hackathon_images/images/background', {
+      method: 'POST',
+      body: uploadForm
+    })
+
+    expect(response.status).toBe(429)
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'upload_rate_limited',
+        message: 'Too many uploads were submitted. Please wait before trying again.'
       }
     })
   })

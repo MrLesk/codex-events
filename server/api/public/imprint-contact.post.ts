@@ -2,9 +2,11 @@ import { ApiError } from '../../utils/api-error'
 import { defineApiHandler } from '../../utils/api-handler'
 import { apiData } from '../../utils/api-response'
 import { publicLegalContactBodySchema, sendPublicLegalContactEmail } from '../../utils/legal-contact'
+import { assertPublicContactRateLimit } from '../../utils/rate-limit'
 import { parseValidatedBody } from '../../utils/validation'
 
 export default defineApiHandler(async (event) => {
+  await assertPublicContactRateLimit(event)
   const body = await parseValidatedBody(event, publicLegalContactBodySchema)
   const result = await sendPublicLegalContactEmail(event, body)
 

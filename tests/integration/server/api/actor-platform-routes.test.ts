@@ -20,12 +20,26 @@ import {
   userPlatformDocumentAcceptances,
   users
 } from '../../../../server/database/schema'
+import { authenticatedUploadRateLimitBindingName } from '../../../../server/utils/rate-limit'
 import { fixtureTimestamp } from '../../../support/backend/runtime'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 describe('TASK-3.5 actor-facing API routes', () => {
   const databases: Array<ReturnType<typeof createApiRouteTestHarness>> = []
   const profileIconBindingName = 'PROFILE_ICONS'
+  const pngSignatureBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+
+  function createOversizedPngBytes(size: number) {
+    const data = new Uint8Array(size)
+    data.set(pngSignatureBytes)
+    return data
+  }
+
+  function createRateLimiter(success = true) {
+    return {
+      limit: vi.fn(async () => ({ success }))
+    }
+  }
 
   class InMemoryR2Bucket {
     private readonly objects = new Map<string, { body: Uint8Array, contentType?: string }>()
@@ -1052,7 +1066,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         name: 'Profile Icon User'
       },
       cloudflareEnv: {
-        [profileIconBindingName]: profileIconsBucket
+        [profileIconBindingName]: profileIconsBucket,
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         profileIcons: {
@@ -1072,7 +1087,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const uploadForm = new FormData()
     uploadForm.append(
       'file',
-      new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'image/png' }),
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
       'profile.png'
     )
 
@@ -1096,7 +1111,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(iconResponse.headers.get('cache-control')).toBe('private, max-age=31536000, immutable')
     expect(iconResponse.headers.get('vary')).toBe('Cookie')
     expect(iconResponse.headers.get('content-type')).toBe('image/png')
-    expect(new Uint8Array(await iconResponse.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3, 4]))
+    expect(iconResponse.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(new Uint8Array(await iconResponse.arrayBuffer())).toEqual(pngSignatureBytes)
 
     const sessionResponse = await harness.request('/api/session')
     const sessionPayload = await sessionResponse.json()
@@ -1147,7 +1163,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         name: 'Profile Icon Guard'
       },
       cloudflareEnv: {
-        [profileIconBindingName]: profileIconsBucket
+        [profileIconBindingName]: profileIconsBucket,
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         profileIcons: {
@@ -1164,16 +1181,16 @@ describe('TASK-3.5 actor-facing API routes', () => {
       displayName: 'Profile Icon Guard'
     })
 
-    const invalidTypeForm = new FormData()
-    invalidTypeForm.append(
+    const invalidImageForm = new FormData()
+    invalidImageForm.append(
       'file',
-      new Blob([new Uint8Array([1, 2, 3])], { type: 'image/gif' }),
-      'profile.gif'
+      new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'image/png' }),
+      'profile.png'
     )
 
     const invalidTypeResponse = await harness.request('/api/account/profile-icon', {
       method: 'POST',
-      body: invalidTypeForm
+      body: invalidImageForm
     })
 
     expect(invalidTypeResponse.status).toBe(400)
@@ -1186,7 +1203,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const oversizedForm = new FormData()
     oversizedForm.append(
       'file',
-      new Blob([new Uint8Array(1024 * 1024 + 1)], { type: 'image/png' }),
+      new Blob([createOversizedPngBytes(1024 * 1024 + 1)], { type: 'image/png' }),
       'profile.png'
     )
 
@@ -1199,6 +1216,57 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(await oversizedResponse.json()).toMatchObject({
       error: {
         code: 'profile_icon_file_too_large'
+      }
+    })
+  })
+
+  test('POST /api/account/profile-icon returns 429 when the authenticated upload rate limit is exceeded', async () => {
+    const profileIconsBucket = new InMemoryR2Bucket()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/profile-icon', handler: accountProfileIconPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|profile-icon-guard-user',
+        email: 'profile-icon-guard@example.com',
+        name: 'Profile Icon Guard'
+      },
+      cloudflareEnv: {
+        [profileIconBindingName]: profileIconsBucket,
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter(false)
+      },
+      runtimeConfig: {
+        profileIcons: {
+          binding: profileIconBindingName
+        }
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'user_profile_icon_guard',
+      auth0Subject: 'auth0|profile-icon-guard-user',
+      email: 'profile-icon-guard@example.com',
+      displayName: 'Profile Icon Guard'
+    })
+
+    const uploadForm = new FormData()
+    uploadForm.append(
+      'file',
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
+      'profile.png'
+    )
+
+    const response = await harness.request('/api/account/profile-icon', {
+      method: 'POST',
+      body: uploadForm
+    })
+
+    expect(response.status).toBe(429)
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'upload_rate_limited',
+        message: 'Too many uploads were submitted. Please wait before trying again.'
       }
     })
   })
@@ -1224,7 +1292,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         email: 'delete-me@example.com'
       },
       cloudflareEnv: {
-        [profileIconBindingName]: profileIconsBucket
+        [profileIconBindingName]: profileIconsBucket,
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
         profileIcons: {

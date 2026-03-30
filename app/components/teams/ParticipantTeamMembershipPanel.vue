@@ -64,7 +64,12 @@ const emit = defineEmits<{
             </div>
 
             <p class="text-sm text-toned">
-              {{ member.user?.email ?? member.userId }} • Joined {{ member.joinedAt }}
+              <template v-if="member.user?.email">
+                {{ member.user.email }} • Joined {{ member.joinedAt }}
+              </template>
+              <template v-else>
+                Joined {{ member.joinedAt }}
+              </template>
             </p>
 
             <p

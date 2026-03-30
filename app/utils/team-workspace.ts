@@ -18,8 +18,8 @@ export type TeamWorkspaceApiListResponse<T> = ParticipantApiListResponse<T>
 
 export interface TeamUserSummary {
   id: string
-  email: string
   displayName: string
+  email?: string | null
   xProfileUrl?: string | null
   linkedinProfileUrl?: string | null
   githubProfileUrl?: string | null

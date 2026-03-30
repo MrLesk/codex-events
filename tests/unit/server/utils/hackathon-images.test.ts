@@ -26,6 +26,15 @@ function createBucketStub() {
   }
 }
 
+const jpegSignatureBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xdb])
+const pngSignatureBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+
+function createOversizedPngBytes(size: number) {
+  const data = new Uint8Array(size)
+  data.set(pngSignatureBytes)
+  return data
+}
+
 describe('hackathon image utilities', () => {
   test('builds canonical hackathon image object keys', () => {
     expect(hackathonImageObjectKey('hackathon_1', 'background')).toBe('hackathons/hackathon_1/background-image')
@@ -37,32 +46,35 @@ describe('hackathon image utilities', () => {
     expect(publicHackathonImagePath('codex-spring', 'banner')).toBe('/api/public/hackathons/codex-spring/images/banner')
   })
 
-  test('accepts valid image files under the size limit', () => {
-    const result = assertValidHackathonImagePart({
-      type: 'image/png',
-      data: new Uint8Array([1, 2, 3])
+  test('accepts supported image signatures and derives the content type from bytes', () => {
+    const pngResult = assertValidHackathonImagePart({
+      type: 'image/gif',
+      data: pngSignatureBytes
     })
 
-    expect(result.contentType).toBe('image/png')
-    expect(result.data.byteLength).toBe(3)
+    expect(pngResult.contentType).toBe('image/png')
+    expect(pngResult.data.byteLength).toBe(pngSignatureBytes.byteLength)
+
+    const jpegResult = assertValidHackathonImagePart({
+      type: 'image/png',
+      data: jpegSignatureBytes
+    })
+
+    expect(jpegResult.contentType).toBe('image/jpeg')
+    expect(jpegResult.data.byteLength).toBe(jpegSignatureBytes.byteLength)
   })
 
-  test('rejects unsupported content types', () => {
+  test('rejects unsupported file bytes even when the declared type is allowed', () => {
     expect(() => assertValidHackathonImagePart({
-      type: 'image/gif',
-      data: new Uint8Array([1])
-    })).toThrowError(ApiError)
-
-    expect(() => assertValidHackathonImagePart({
-      type: 'image/gif',
-      data: new Uint8Array([1])
+      type: 'image/png',
+      data: new Uint8Array([1, 2, 3, 4])
     })).toThrowError(/JPEG or PNG/)
   })
 
   test('rejects files larger than 5MB', () => {
     expect(() => assertValidHackathonImagePart({
       type: 'image/png',
-      data: new Uint8Array(hackathonImageMaxBytes + 1)
+      data: createOversizedPngBytes(hackathonImageMaxBytes + 1)
     })).toThrowError(/5MB or smaller/)
   })
 
@@ -165,7 +177,7 @@ describe('hackathon image utilities', () => {
 
     await putHackathonImageObject(event, 'hackathon_1', 'background', {
       contentType: 'image/png',
-      data: Buffer.from([1, 2, 3]) as unknown as Uint8Array
+      data: Buffer.from(pngSignatureBytes) as unknown as Uint8Array
     })
 
     expect(putCalls).toHaveLength(1)

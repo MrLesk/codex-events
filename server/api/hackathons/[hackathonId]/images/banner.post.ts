@@ -18,11 +18,13 @@ import {
   routeIdParamsSchema,
   serializeHackathon
 } from '../../../../utils/hackathon-management'
+import { assertAuthenticatedUploadRateLimit } from '../../../../utils/rate-limit'
 import { parseValidatedParams } from '../../../../utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)
+  await assertAuthenticatedUploadRateLimit(event, `authenticated-upload:${actor.platformUser.id}`)
   const { hackathon } = await requireHackathonAdmin(event, hackathonId)
   const multipart = await readMultipartFormData(event)
   const filePart = multipart?.find(part => part.name === 'file')

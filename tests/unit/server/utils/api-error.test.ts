@@ -16,11 +16,21 @@ describe('api error helpers', () => {
     expect(error.details).toEqual({ currentState: 'draft' })
   })
 
-  test('normalize unknown errors into internal API errors', () => {
+  test('normalize unexpected Error instances into generic internal API errors', () => {
     const normalized = toApiError(new Error('boom'))
 
     expect(normalized.statusCode).toBe(500)
     expect(normalized.code).toBe('internal_error')
-    expect(normalized.message).toBe('boom')
+    expect(normalized.message).toBe('An unexpected error occurred.')
+    expect(normalized.cause).toBeInstanceOf(Error)
+  })
+
+  test('normalize non-Error throwables into generic internal API errors', () => {
+    const normalized = toApiError({ boom: true })
+
+    expect(normalized.statusCode).toBe(500)
+    expect(normalized.code).toBe('internal_error')
+    expect(normalized.message).toBe('An unexpected error occurred.')
+    expect(normalized.cause).toEqual({ boom: true })
   })
 })

@@ -102,7 +102,12 @@ async function seedTeamFormationContext(
       auth0Subject: 'auth0|team_admin',
       email: 'team-admin@example.com',
       displayName: 'Team Admin',
-      githubProfileUrl: 'https://github.com/team-admin'
+      xProfileUrl: 'https://x.com/team-admin',
+      linkedinProfileUrl: 'https://linkedin.com/in/team-admin',
+      githubProfileUrl: 'https://github.com/team-admin',
+      chatgptEmail: 'team-admin-chatgpt@example.com',
+      openaiOrgId: 'org_team_admin',
+      lumaUsername: 'team-admin'
     },
     {
       id: 'team_member',
@@ -358,6 +363,96 @@ describe('TASK-3.6 team formation routes', () => {
       data: {
         id: 'team_1',
         isOpenToJoinRequests: false
+      }
+    })
+  })
+
+  test('team detail redacts member contact data for approved non-members but preserves it for members and admins', async () => {
+    const outsiderHarness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|requester',
+        email: 'requester@example.com'
+      }
+    })
+    harnesses.push(outsiderHarness)
+    await seedTeamFormationContext(outsiderHarness)
+
+    const outsiderResponse = await outsiderHarness.request('/api/hackathons/hackathon_1/teams/team_1')
+    expect(outsiderResponse.status).toBe(200)
+    const outsiderBody = await outsiderResponse.json()
+    const outsiderAdminMember = outsiderBody.data.members.find((member: { userId: string }) => member.userId === 'team_admin')
+    expect(outsiderAdminMember).toMatchObject({
+      userId: 'team_admin',
+      user: {
+        id: 'team_admin',
+        displayName: 'Team Admin'
+      }
+    })
+    expect(outsiderAdminMember.user).not.toHaveProperty('email')
+    expect(outsiderAdminMember.user).not.toHaveProperty('xProfileUrl')
+    expect(outsiderAdminMember.user).not.toHaveProperty('linkedinProfileUrl')
+    expect(outsiderAdminMember.user).not.toHaveProperty('githubProfileUrl')
+    expect(outsiderAdminMember.user).not.toHaveProperty('chatgptEmail')
+    expect(outsiderAdminMember.user).not.toHaveProperty('openaiOrgId')
+    expect(outsiderAdminMember.user).not.toHaveProperty('lumaUsername')
+
+    const memberHarness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_member',
+        email: 'team-member@example.com'
+      }
+    })
+    harnesses.push(memberHarness)
+    await seedTeamFormationContext(memberHarness)
+
+    const memberResponse = await memberHarness.request('/api/hackathons/hackathon_1/teams/team_1')
+    expect(memberResponse.status).toBe(200)
+    await expect(memberResponse.json()).resolves.toMatchObject({
+      data: {
+        members: expect.arrayContaining([
+          expect.objectContaining({
+            userId: 'team_admin',
+            user: expect.objectContaining({
+              email: 'team-admin@example.com',
+              xProfileUrl: 'https://x.com/team-admin',
+              linkedinProfileUrl: 'https://linkedin.com/in/team-admin',
+              githubProfileUrl: 'https://github.com/team-admin',
+              chatgptEmail: 'team-admin-chatgpt@example.com',
+              openaiOrgId: 'org_team_admin',
+              lumaUsername: 'team-admin'
+            })
+          })
+        ])
+      }
+    })
+
+    const adminHarness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(adminHarness)
+    await seedTeamFormationContext(adminHarness)
+
+    const adminResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams/team_1')
+    expect(adminResponse.status).toBe(200)
+    await expect(adminResponse.json()).resolves.toMatchObject({
+      data: {
+        members: expect.arrayContaining([
+          expect.objectContaining({
+            userId: 'team_admin',
+            user: expect.objectContaining({
+              email: 'team-admin@example.com',
+              chatgptEmail: 'team-admin-chatgpt@example.com',
+              openaiOrgId: 'org_team_admin',
+              lumaUsername: 'team-admin'
+            })
+          })
+        ])
       }
     })
   })

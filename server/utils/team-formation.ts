@@ -88,7 +88,15 @@ export function isTeamFormationState(state: HackathonRecord['state']) {
   return state === 'registration_open' || state === 'submission_open'
 }
 
-export function serializeTeamMember(member: TeamMemberRecord, user?: UserRecord | null) {
+export function serializeTeamMember(
+  member: TeamMemberRecord,
+  user?: UserRecord | null,
+  options?: {
+    includeSensitiveUserFields?: boolean
+  }
+) {
+  const includeSensitiveUserFields = options?.includeSensitiveUserFields ?? true
+
   return {
     id: member.id,
     teamId: member.teamId,
@@ -101,14 +109,18 @@ export function serializeTeamMember(member: TeamMemberRecord, user?: UserRecord 
       ? {
           user: {
             id: user.id,
-            email: user.email,
             displayName: user.displayName,
-            xProfileUrl: user.xProfileUrl,
-            linkedinProfileUrl: user.linkedinProfileUrl,
-            githubProfileUrl: user.githubProfileUrl,
-            chatgptEmail: user.chatgptEmail,
-            openaiOrgId: user.openaiOrgId,
-            lumaUsername: user.lumaUsername
+            ...(includeSensitiveUserFields
+              ? {
+                  email: user.email,
+                  xProfileUrl: user.xProfileUrl,
+                  linkedinProfileUrl: user.linkedinProfileUrl,
+                  githubProfileUrl: user.githubProfileUrl,
+                  chatgptEmail: user.chatgptEmail,
+                  openaiOrgId: user.openaiOrgId,
+                  lumaUsername: user.lumaUsername
+                }
+              : {})
           }
         }
       : {})
@@ -380,14 +392,25 @@ export async function listVisibleTeams(
   }
 }
 
-export async function getTeamWithMembersOrThrow(database: AppDatabase, hackathonId: string, teamId: string) {
+export async function getTeamWithMembersOrThrow(
+  database: AppDatabase,
+  hackathonId: string,
+  teamId: string,
+  options?: {
+    includeSensitiveUserFields?: boolean
+  }
+) {
   const team = await getTeamOrThrow(database, hackathonId, teamId)
   const members = await getActiveTeamMembers(database, team.id)
   const usersById = await getUsersByIds(database, members.map(member => member.userId))
 
   return {
     team,
-    members: members.map(member => serializeTeamMember(member, usersById.get(member.userId) ?? null))
+    members: members.map(member => serializeTeamMember(
+      member,
+      usersById.get(member.userId) ?? null,
+      options
+    ))
   }
 }
 

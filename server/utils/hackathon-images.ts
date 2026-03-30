@@ -3,13 +3,15 @@ import type { H3Event } from 'h3'
 import { getRequestURL } from 'h3'
 
 import { ApiError } from './api-error'
+import {
+  detectSupportedImageContentType,
+  supportedImageContentTypes,
+  type SupportedImageContentType
+} from './image-signatures'
 
 export const hackathonImageMaxBytes = 5 * 1024 * 1024
 
-export const hackathonImageContentTypes = [
-  'image/jpeg',
-  'image/png'
-] as const
+export const hackathonImageContentTypes = supportedImageContentTypes
 
 export const hackathonImageSlots = [
   'background',
@@ -17,7 +19,7 @@ export const hackathonImageSlots = [
 ] as const
 
 export type HackathonImageSlot = typeof hackathonImageSlots[number]
-type HackathonImageContentType = typeof hackathonImageContentTypes[number]
+type HackathonImageContentType = SupportedImageContentType
 
 interface R2HttpMetadataLike {
   contentType?: string
@@ -130,9 +132,9 @@ export function assertValidHackathonImagePart(part: {
     })
   }
 
-  const contentType = part.type?.trim().toLowerCase() as HackathonImageContentType | undefined
+  const contentType = detectSupportedImageContentType(part.data)
 
-  if (!contentType || !hackathonImageContentTypes.includes(contentType)) {
+  if (!contentType) {
     throw new ApiError({
       statusCode: 400,
       code: 'hackathon_image_content_type_invalid',
@@ -156,7 +158,7 @@ export function assertValidHackathonImagePart(part: {
   }
 
   return {
-    contentType,
+    contentType: contentType as HackathonImageContentType,
     data: part.data
   }
 }

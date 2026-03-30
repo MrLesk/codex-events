@@ -5,7 +5,8 @@ import {
   assertHackathonAllowsTeamFormation,
   assertJoinRequestPending,
   assertLeaveOrRemovalAllowed,
-  assertTeamDiscoveryAllowed
+  assertTeamDiscoveryAllowed,
+  serializeTeamMember
 } from '../../../../server/utils/team-formation'
 
 function createHackathon(state: 'registration_open' | 'submission_open' | 'judging_preparation') {
@@ -137,5 +138,52 @@ describe('team formation utilities', () => {
       reviewedByUserId: 'user_admin',
       createdAt: '2026-03-22T12:00:00.000Z'
     })).toThrowError(ApiError)
+  })
+
+  test('team member serialization can redact sensitive user fields for non-members', () => {
+    const member = {
+      id: 'membership_1',
+      teamId: 'team_1',
+      userId: 'user_1',
+      role: 'member',
+      joinedAt: '2026-03-22T12:00:00.000Z',
+      leftAt: null,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    } as Parameters<typeof serializeTeamMember>[0]
+    const user = {
+      id: 'user_1',
+      email: 'user@example.com',
+      displayName: 'Visible User',
+      xProfileUrl: 'https://x.com/visible-user',
+      linkedinProfileUrl: 'https://linkedin.com/in/visible-user',
+      githubProfileUrl: 'https://github.com/visible-user',
+      chatgptEmail: 'visible-user-chatgpt@example.com',
+      openaiOrgId: 'org_visible_user',
+      lumaUsername: 'visible-user'
+    } as NonNullable<Parameters<typeof serializeTeamMember>[1]>
+
+    const fullMember = serializeTeamMember(member, user)
+    expect(fullMember.user).toMatchObject({
+      email: 'user@example.com',
+      githubProfileUrl: 'https://github.com/visible-user',
+      chatgptEmail: 'visible-user-chatgpt@example.com',
+      openaiOrgId: 'org_visible_user',
+      lumaUsername: 'visible-user'
+    })
+
+    const redactedMember = serializeTeamMember(member, user, {
+      includeSensitiveUserFields: false
+    })
+    expect(redactedMember.user).toMatchObject({
+      id: 'user_1',
+      displayName: 'Visible User'
+    })
+    expect(redactedMember.user).not.toHaveProperty('email')
+    expect(redactedMember.user).not.toHaveProperty('xProfileUrl')
+    expect(redactedMember.user).not.toHaveProperty('linkedinProfileUrl')
+    expect(redactedMember.user).not.toHaveProperty('githubProfileUrl')
+    expect(redactedMember.user).not.toHaveProperty('chatgptEmail')
+    expect(redactedMember.user).not.toHaveProperty('openaiOrgId')
+    expect(redactedMember.user).not.toHaveProperty('lumaUsername')
   })
 })

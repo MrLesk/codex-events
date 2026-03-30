@@ -7,6 +7,7 @@ import { createAuthenticatedApiClient } from '../support/api-client'
 import { stablePersonaKeys, type StablePersonaKey } from '../support/personas'
 
 const { When, Then } = createBdd()
+const pngSignatureBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
 type ScenarioState = {
   response?: APIResponse
@@ -104,7 +105,7 @@ When('the saved {string} session uploads a background image for the remembered m
         file: {
           name: 'background.png',
           mimeType: 'image/png',
-          buffer: Buffer.from([1, 2, 3, 4])
+          buffer: pngSignatureBytes
         }
       }
     })
@@ -141,7 +142,8 @@ Then('the remembered managed hackathon background image endpoint should return t
 
     expect(response.ok()).toBe(true)
     expect(response.headers()['content-type']).toContain('image/png')
-    expect(new Uint8Array(await response.body())).toEqual(new Uint8Array([1, 2, 3, 4]))
+    expect(response.headers()['x-content-type-options']).toBe('nosniff')
+    expect(new Uint8Array(await response.body())).toEqual(new Uint8Array(pngSignatureBytes))
   } finally {
     await apiClient.dispose()
   }

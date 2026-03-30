@@ -11,9 +11,11 @@ import {
   assertValidProfileIconPart,
   putProfileIconObject
 } from '../../utils/profile-icons'
+import { assertAuthenticatedUploadRateLimit } from '../../utils/rate-limit'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
+  await assertAuthenticatedUploadRateLimit(event, `authenticated-upload:${actor.platformUser.id}`)
   const multipart = await readMultipartFormData(event)
   const filePart = multipart?.find(part => part.name === 'file')
   const validFile = assertValidProfileIconPart(filePart ?? {})

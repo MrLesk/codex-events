@@ -36,7 +36,8 @@ export default defineApiHandler(async (event) => {
 
   return new Response(await image.arrayBuffer(), {
     headers: {
-      'content-type': image.httpMetadata?.contentType ?? 'application/octet-stream'
+      'content-type': image.httpMetadata?.contentType ?? 'application/octet-stream',
+      'x-content-type-options': 'nosniff'
     }
   })
 })

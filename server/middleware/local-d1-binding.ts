@@ -1,6 +1,10 @@
 import type { D1DatabaseBinding } from '../database/client'
 
 import { ApiError } from '../utils/api-error'
+import {
+  authenticatedUploadRateLimitBindingName,
+  publicContactRateLimitBindingName
+} from '../utils/rate-limit'
 import { createLocalPlatformProxy } from '../database/local-platform-proxy'
 
 const localPlatformProxyCache = new Map<'local', Promise<Awaited<ReturnType<typeof createLocalPlatformProxy>>>>()
@@ -13,6 +17,14 @@ interface R2BucketLike {
 
 interface QueueProducerLike {
   send: (message: unknown, options?: unknown) => Promise<void>
+}
+
+interface RateLimitBindingLike {
+  limit: (options: {
+    key: string
+  }) => Promise<{
+    success: boolean
+  }>
 }
 
 function isR2BucketLike(value: unknown): value is R2BucketLike {
@@ -33,6 +45,15 @@ function isQueueProducerLike(value: unknown): value is QueueProducerLike {
 
   const candidate = value as Partial<QueueProducerLike>
   return typeof candidate.send === 'function'
+}
+
+function isRateLimitBindingLike(value: unknown): value is RateLimitBindingLike {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Partial<RateLimitBindingLike>
+  return typeof candidate.limit === 'function'
 }
 
 function shouldUseLocalPlatformProxy() {
@@ -81,6 +102,10 @@ export default defineEventHandler(async (event) => {
       ? undefined
       : proxyEnv.APPLICATION_REVIEW_EMAIL_QUEUE)
   const applicationReviewEmailQueue = existingApplicationReviewEmailQueue ?? proxyApplicationReviewEmailQueue
+  const existingPublicContactRateLimiter = cloudflareEnv?.[publicContactRateLimitBindingName]
+  const publicContactRateLimiter = existingPublicContactRateLimiter ?? proxyEnv[publicContactRateLimitBindingName]
+  const existingAuthenticatedUploadRateLimiter = cloudflareEnv?.[authenticatedUploadRateLimitBindingName]
+  const authenticatedUploadRateLimiter = existingAuthenticatedUploadRateLimiter ?? proxyEnv[authenticatedUploadRateLimitBindingName]
 
   if (!d1Database) {
     throw new ApiError({
@@ -108,6 +133,17 @@ export default defineEventHandler(async (event) => {
 
   if (!event.context.cloudflare.env[applicationReviewEmailQueueBindingName] && isQueueProducerLike(applicationReviewEmailQueue)) {
     event.context.cloudflare.env[applicationReviewEmailQueueBindingName] = applicationReviewEmailQueue as never
+  }
+
+  if (!event.context.cloudflare.env[publicContactRateLimitBindingName] && isRateLimitBindingLike(publicContactRateLimiter)) {
+    event.context.cloudflare.env[publicContactRateLimitBindingName] = publicContactRateLimiter as never
+  }
+
+  if (
+    !event.context.cloudflare.env[authenticatedUploadRateLimitBindingName]
+    && isRateLimitBindingLike(authenticatedUploadRateLimiter)
+  ) {
+    event.context.cloudflare.env[authenticatedUploadRateLimitBindingName] = authenticatedUploadRateLimiter as never
   }
 
   const profileIconContext = event.context as typeof event.context & { profileIconsBucket?: R2BucketLike }
