@@ -1,5 +1,5 @@
-export const platformLegalLastUpdatedIso = '2026-03-28'
-export const platformLegalLastUpdatedLabel = '28 March 2026'
+export const platformLegalLastUpdatedIso = '2026-03-30'
+export const platformLegalLastUpdatedLabel = '30 March 2026'
 
 export const platformOperatorName = 'Alexandru Gavrilescu'
 export const platformOperatorAddress = 'Zentagasse 33/2, 1050 Vienna, Austria'
@@ -216,10 +216,11 @@ Providing optional profile fields is voluntary. Not providing optional fields ma
 
 At launch, the platform does **not** use cookies or similar technologies for advertising, cross-site tracking, or behavioral profiling.
 
-We do use technical mechanisms that are strictly necessary to run the service, such as:
+We do use strictly necessary cookies and similar local storage mechanisms to run the service, such as:
 
 - authentication and session state
 - security and abuse-prevention controls
+- site preferences such as selected theme and navigation state
 - functionality required to keep the platform working correctly
 
 If we later introduce non-essential analytics, marketing, or profiling technologies, we will update the legal notices and any consent flows as needed.
