@@ -203,14 +203,6 @@ useSeoMeta({
         />
 
         <AppAlert
-          v-if="submitState.error"
-          color="error"
-          variant="soft"
-          title="Registration could not be completed"
-          :description="submitState.error"
-        />
-
-        <AppAlert
           v-if="linkingError"
           color="warning"
           variant="soft"
@@ -299,17 +291,27 @@ useSeoMeta({
           </div>
         </section>
 
-        <div class="flex justify-end">
-          <AppButton
-            type="submit"
-            color="neutral"
-            variant="solid"
-            :loading="submitState.pending"
-            :disabled="submitState.pending"
-            class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-          >
-            Continue
-          </AppButton>
+        <div class="space-y-4">
+          <AppAlert
+            v-if="submitState.error"
+            color="error"
+            variant="soft"
+            title="Registration could not be completed"
+            :description="submitState.error"
+          />
+
+          <div class="flex justify-end">
+            <AppButton
+              type="submit"
+              color="neutral"
+              variant="solid"
+              :loading="submitState.pending"
+              :disabled="submitState.pending"
+              class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+            >
+              Continue
+            </AppButton>
+          </div>
         </div>
       </form>
     </AppContainer>
