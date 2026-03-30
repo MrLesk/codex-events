@@ -1,30 +1,13 @@
 import { createRequire } from 'node:module'
 
+import initSqlJs from 'sql.js'
+
 import { readMigrationSql } from './migrations'
 
-type SqliteParameter = ArrayBuffer | ArrayBufferView | bigint | boolean | null | number | string
-
-type SqliteQueryResult = {
-  changes: number
-  lastInsertRowid?: bigint | number
-}
-
-type SqliteStatement = {
-  all: (...parameters: SqliteParameter[]) => unknown[]
-  get: (...parameters: SqliteParameter[]) => unknown
-  run: (...parameters: SqliteParameter[]) => SqliteQueryResult
-  setReturnArrays?: (enabled: boolean) => void
-  values?: (...parameters: SqliteParameter[]) => unknown[][]
-}
-
-type SqliteDatabase = {
-  close: () => void
-  exec: (sql: string) => void
-  prepare?: (sql: string) => SqliteStatement
-  query?: (sql: string) => SqliteStatement
-}
-
-type SqliteDatabaseConstructor = new (filename: string) => SqliteDatabase
+type SqlJsModule = Awaited<ReturnType<typeof initSqlJs>>
+type SqlJsDatabase = InstanceType<SqlJsModule['Database']>
+type SqlJsStatement = InstanceType<SqlJsModule['Statement']>
+type SqlJsParameter = Uint8Array | null | number | string
 
 interface D1ResultMeta {
   changed_db: boolean
@@ -49,20 +32,13 @@ interface D1RunResult {
 }
 
 const require = createRequire(import.meta.url)
-
-function loadSqliteDatabaseConstructor() {
-  try {
-    const sqliteModule = require('node:sqlite') as { DatabaseSync: SqliteDatabaseConstructor }
-    return sqliteModule.DatabaseSync as SqliteDatabaseConstructor
-  } catch {
-    const sqliteModule = require('bun:sqlite') as { Database: SqliteDatabaseConstructor }
-    return sqliteModule.Database as SqliteDatabaseConstructor
-  }
-}
+const sqlJsReady = initSqlJs({
+  locateFile: file => require.resolve(`sql.js/dist/${file}`)
+})
 
 function normalizeParameters(parameters: unknown[]) {
-  return parameters.map((parameter) => {
-    if (parameter === undefined) {
+  return parameters.map((parameter): SqlJsParameter => {
+    if (parameter === undefined || parameter === null) {
       return null
     }
 
@@ -70,20 +46,30 @@ function normalizeParameters(parameters: unknown[]) {
       return parameter ? 1 : 0
     }
 
-    return parameter as SqliteParameter
+    if (typeof parameter === 'bigint') {
+      return Number(parameter)
+    }
+
+    if (parameter instanceof Uint8Array) {
+      return parameter
+    }
+
+    if (parameter instanceof ArrayBuffer) {
+      return new Uint8Array(parameter)
+    }
+
+    if (ArrayBuffer.isView(parameter)) {
+      return new Uint8Array(parameter.buffer, parameter.byteOffset, parameter.byteLength)
+    }
+
+    return parameter as number | string
   })
 }
 
-function prepareSqliteStatement(database: SqliteDatabase, sql: string) {
-  if (typeof database.query === 'function') {
-    return database.query(sql)
+function bindStatement(statement: SqlJsStatement, parameters: SqlJsParameter[]) {
+  if (parameters.length > 0) {
+    statement.bind(parameters)
   }
-
-  if (typeof database.prepare === 'function') {
-    return database.prepare(sql)
-  }
-
-  throw new TypeError('SQLite test backend does not expose a supported statement API.')
 }
 
 function createResultMeta(options: {
@@ -93,7 +79,7 @@ function createResultMeta(options: {
   rowsWritten?: number
 }) {
   return {
-    served_by: 'test.sqlite',
+    served_by: 'sql.js',
     duration: 0,
     changes: options.changes ?? 0,
     last_row_id: options.lastRowId ?? 0,
@@ -104,9 +90,19 @@ function createResultMeta(options: {
   } satisfies D1ResultMeta
 }
 
+async function createSqlJsDatabase() {
+  const SQL = await sqlJsReady
+  return new SQL.Database()
+}
+
+function readLastInsertRowId(database: SqlJsDatabase) {
+  const [result] = database.exec('select last_insert_rowid() as id')
+  return Number(result?.values?.[0]?.[0] ?? 0)
+}
+
 class TestD1PreparedStatement {
   constructor(
-    private readonly getDatabase: () => Promise<SqliteDatabase>,
+    private readonly getDatabase: () => Promise<SqlJsDatabase>,
     private readonly sql: string,
     private readonly parameters: unknown[] = []
   ) {}
@@ -116,55 +112,80 @@ class TestD1PreparedStatement {
   }
 
   async run(...parameters: unknown[]) {
-    const effectiveParameters = this.resolveParameters(parameters)
-    const result = prepareSqliteStatement(await this.getDatabase(), this.sql).run(...effectiveParameters)
+    const database = await this.getDatabase()
+    const statement = database.prepare(this.sql)
 
-    return {
-      success: true,
-      meta: createResultMeta({
-        changes: result.changes,
-        lastRowId: Number(result.lastInsertRowid ?? 0)
-      })
-    } satisfies D1RunResult
+    try {
+      bindStatement(statement, this.resolveParameters(parameters))
+      statement.step()
+
+      const normalizedSql = this.sql.trimStart().toLowerCase()
+      const isInsert = normalizedSql.startsWith('insert')
+
+      return {
+        success: true,
+        meta: createResultMeta({
+          changes: database.getRowsModified(),
+          lastRowId: isInsert ? readLastInsertRowId(database) : 0
+        })
+      } satisfies D1RunResult
+    } finally {
+      statement.free()
+    }
   }
 
   async all<TResult = Record<string, unknown>>(...parameters: unknown[]) {
-    const effectiveParameters = this.resolveParameters(parameters)
-    const results = prepareSqliteStatement(await this.getDatabase(), this.sql).all(...effectiveParameters) as TResult[]
+    const database = await this.getDatabase()
+    const statement = database.prepare(this.sql)
 
-    return {
-      success: true,
-      meta: createResultMeta({ rowsRead: results.length }),
-      results
-    } satisfies D1QueryResult<TResult>
+    try {
+      bindStatement(statement, this.resolveParameters(parameters))
+
+      const results: TResult[] = []
+
+      while (statement.step()) {
+        results.push(statement.getAsObject() as TResult)
+      }
+
+      return {
+        success: true,
+        meta: createResultMeta({ rowsRead: results.length }),
+        results
+      } satisfies D1QueryResult<TResult>
+    } finally {
+      statement.free()
+    }
   }
 
   async raw(...parameters: unknown[]) {
-    const effectiveParameters = this.resolveParameters(parameters)
-    const statement = prepareSqliteStatement(await this.getDatabase(), this.sql)
+    const database = await this.getDatabase()
+    const statement = database.prepare(this.sql)
 
-    if (typeof statement.values === 'function') {
-      return statement.values(...effectiveParameters) as unknown[][]
+    try {
+      bindStatement(statement, this.resolveParameters(parameters))
+
+      const results: unknown[][] = []
+
+      while (statement.step()) {
+        results.push(statement.get())
+      }
+
+      return results
+    } finally {
+      statement.free()
     }
-
-    statement.setReturnArrays?.(true)
-    return statement.all(...effectiveParameters) as unknown[][]
   }
 
   async first<TResult = unknown>(columnNameOrParameter?: string | unknown, ...parameters: unknown[]) {
+    const row = await this.readFirstRow(
+      columnNameOrParameter === undefined || typeof columnNameOrParameter === 'string'
+        ? parameters
+        : [columnNameOrParameter, ...parameters]
+    )
+
     if (typeof columnNameOrParameter === 'string' && parameters.length === 0) {
-      const row = prepareSqliteStatement(await this.getDatabase(), this.sql).get(
-        ...this.resolveParameters([])
-      ) as Record<string, unknown> | null
       return row?.[columnNameOrParameter] as TResult
     }
-
-    const effectiveParameters = columnNameOrParameter === undefined
-      ? parameters
-      : [columnNameOrParameter, ...parameters]
-    const row = prepareSqliteStatement(await this.getDatabase(), this.sql).get(
-      ...this.resolveParameters(effectiveParameters)
-    ) as Record<string, unknown> | null
 
     return row as TResult
   }
@@ -187,13 +208,30 @@ class TestD1PreparedStatement {
     return await this.run()
   }
 
+  private async readFirstRow(parameters: unknown[]) {
+    const database = await this.getDatabase()
+    const statement = database.prepare(this.sql)
+
+    try {
+      bindStatement(statement, this.resolveParameters(parameters))
+
+      if (!statement.step()) {
+        return null
+      }
+
+      return statement.getAsObject() as Record<string, unknown>
+    } finally {
+      statement.free()
+    }
+  }
+
   private resolveParameters(parameters: unknown[]) {
     return normalizeParameters(parameters.length > 0 ? parameters : this.parameters)
   }
 }
 
 export class TestD1Database {
-  private readonly database = new (loadSqliteDatabaseConstructor())(':memory:')
+  private readonly database = createSqlJsDatabase()
 
   private readonly ready: Promise<void>
 
@@ -201,11 +239,13 @@ export class TestD1Database {
 
   constructor(options?: { applyMigrations?: boolean }) {
     this.ready = (async () => {
+      const database = await this.database
+
       if (options?.applyMigrations === false) {
         return
       }
 
-      this.database.exec(readMigrationSql())
+      database.run(readMigrationSql())
     })()
   }
 
@@ -224,8 +264,8 @@ export class TestD1Database {
   }
 
   async exec(sql: string) {
-    await this.ready
-    this.database.exec(sql)
+    const database = await this.getDatabase()
+    database.run(sql)
   }
 
   async close() {
@@ -234,8 +274,8 @@ export class TestD1Database {
     }
 
     this.closed = true
-    await this.ready
-    this.database.close()
+    const database = await this.getDatabase()
+    database.close()
   }
 
   async first<TResult = unknown>(sql: string, ...parameters: unknown[]) {
@@ -243,8 +283,9 @@ export class TestD1Database {
   }
 
   private async getDatabase() {
+    const database = await this.database
     await this.ready
-    return this.database
+    return database
   }
 }
 
