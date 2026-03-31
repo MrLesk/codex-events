@@ -35,17 +35,8 @@ function sortHackathonsByFreshness(items: HackathonRecord[]) {
   )
 }
 
-function pickSubmissionForTeam(teamId: string, records: SubmissionRecord[]) {
-  const activeSubmission = records.find(record =>
-    record.teamId === teamId
-    && (record.status === 'draft' || record.status === 'submitted' || record.status === 'locked')
-  )
-
-  if (activeSubmission) {
-    return activeSubmission
-  }
-
-  return records.find(record => record.teamId === teamId) ?? null
+function isActiveSubmission(record: SubmissionRecord) {
+  return record.status === 'draft' || record.status === 'submitted' || record.status === 'locked'
 }
 
 function serializeHackathonParticipation(
@@ -145,17 +136,32 @@ export default defineApiHandler(async (event) => {
     where: inArray(hackathons.id, hackathonIds)
   })
   const orderedHackathons = sortHackathonsByFreshness(hackathonRecords)
+  const applicationByHackathonId = new Map(applications.map(record => [record.hackathonId, record] as const))
+  const teamByHackathonId = new Map(teamRecords.map(record => [record.hackathonId, record] as const))
+  const membershipByTeamId = new Map(memberships.map(record => [record.teamId, record] as const))
+  const submissionByTeamId = new Map<string, SubmissionRecord>()
+  const rolesByHackathonId = new Map<string, HackathonRoleAssignmentRecord[]>()
+
+  for (const submission of submissionsByTeam) {
+    const current = submissionByTeamId.get(submission.teamId)
+
+    if (!current || (!isActiveSubmission(current) && isActiveSubmission(submission))) {
+      submissionByTeamId.set(submission.teamId, submission)
+    }
+  }
+
+  for (const roleAssignment of roleAssignments) {
+    const records = rolesByHackathonId.get(roleAssignment.hackathonId) ?? []
+    records.push(roleAssignment)
+    rolesByHackathonId.set(roleAssignment.hackathonId, records)
+  }
 
   const payload = orderedHackathons.map((hackathon) => {
-    const application = applications.find(record => record.hackathonId === hackathon.id) ?? null
-    const team = teamRecords.find(record => record.hackathonId === hackathon.id) ?? null
-    const membership = team
-      ? memberships.find(record => record.teamId === team.id) ?? null
-      : null
-    const submission = team
-      ? pickSubmissionForTeam(team.id, submissionsByTeam)
-      : null
-    const relevantRoles = roleAssignments.filter(record => record.hackathonId === hackathon.id)
+    const application = applicationByHackathonId.get(hackathon.id) ?? null
+    const team = teamByHackathonId.get(hackathon.id) ?? null
+    const membership = team ? membershipByTeamId.get(team.id) ?? null : null
+    const submission = team ? submissionByTeamId.get(team.id) ?? null : null
+    const relevantRoles = rolesByHackathonId.get(hackathon.id) ?? []
 
     return serializeHackathonParticipation(
       hackathon,

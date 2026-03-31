@@ -44,14 +44,29 @@ export async function getCurrentPlatformDocument(
 }
 
 export async function getCurrentPlatformDocuments(database: AppDatabase) {
-  const documents = await Promise.all(
-    platformDocumentTypes.map(async (documentType) => {
-      const document = await getCurrentPlatformDocument(database, documentType)
-      return [documentType, document] as const
-    })
-  )
+  const currentDocuments = Object.fromEntries(
+    platformDocumentTypes.map(documentType => [documentType, null])
+  ) as Record<PlatformDocumentType, PlatformDocumentRecord | null>
+  const unresolvedDocumentTypes = new Set(platformDocumentTypes)
+  const documents = await database.query.platformDocuments.findMany({
+    where: inArray(platformDocuments.documentType, platformDocumentTypes),
+    orderBy: [desc(platformDocuments.version)]
+  })
 
-  return Object.fromEntries(documents) as Record<PlatformDocumentType, PlatformDocumentRecord | null>
+  for (const document of documents) {
+    if (!unresolvedDocumentTypes.has(document.documentType)) {
+      continue
+    }
+
+    currentDocuments[document.documentType] = document
+    unresolvedDocumentTypes.delete(document.documentType)
+
+    if (unresolvedDocumentTypes.size === 0) {
+      break
+    }
+  }
+
+  return currentDocuments
 }
 
 export async function hasAcceptedCurrentPlatformDocuments(

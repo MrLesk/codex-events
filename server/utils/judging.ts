@@ -371,58 +371,123 @@ export async function getBlindAssignmentDetail(
   database: AppDatabase,
   assignment: JudgeAssignmentRecord
 ) {
-  const submission = await database.query.submissions.findFirst({
-    where: eq(submissions.id, assignment.submissionId)
-  })
+  const [detail] = await getBlindAssignmentDetails(database, [assignment])
 
-  if (!submission) {
+  if (!detail) {
     throw new ApiError({
       statusCode: 404,
-      code: 'submission_not_found',
-      message: 'The requested submission was not found for this judge assignment.',
-      details: {
-        assignmentId: assignment.id,
-        submissionId: assignment.submissionId
-      }
+      code: 'judge_assignment_not_found',
+      message: 'The requested judge assignment was not found.',
+      details: { assignmentId: assignment.id }
     })
   }
 
-  const activeMembers = await database.query.teamMembers.findMany({
-    where: and(
-      eq(teamMembers.teamId, submission.teamId),
-      isNull(teamMembers.leftAt)
-    ),
-    orderBy: [asc(teamMembers.joinedAt), asc(teamMembers.createdAt)]
-  })
+  return detail
+}
 
-  const applications = activeMembers.length === 0
+export async function getBlindAssignmentDetails(
+  database: AppDatabase,
+  assignments: JudgeAssignmentRecord[]
+) {
+  if (assignments.length === 0) {
+    return []
+  }
+
+  const submissionIds = [...new Set(assignments.map(assignment => assignment.submissionId))]
+  const hackathonIds = [...new Set(assignments.map(assignment => assignment.hackathonId))]
+
+  const submissionRows = await database.query.submissions.findMany({
+    where: inArray(submissions.id, submissionIds)
+  })
+  const submissionsById = new Map(submissionRows.map(submission => [submission.id, submission]))
+  const teamIds = [...new Set(submissionRows.map(submission => submission.teamId))]
+
+  const [activeMembers, criteria, criterionScores] = await Promise.all([
+    teamIds.length === 0
+      ? Promise.resolve([])
+      : database.query.teamMembers.findMany({
+          where: and(
+            inArray(teamMembers.teamId, teamIds),
+            isNull(teamMembers.leftAt)
+          ),
+          orderBy: [asc(teamMembers.joinedAt), asc(teamMembers.createdAt)]
+        }),
+    database.query.evaluationCriteria.findMany({
+      where: inArray(evaluationCriteria.hackathonId, hackathonIds),
+      orderBy: [asc(evaluationCriteria.hackathonId), asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)]
+    }),
+    database.query.judgeCriterionScores.findMany({
+      where: inArray(
+        judgeCriterionScores.judgeAssignmentId,
+        assignments.map(assignment => assignment.id)
+      ),
+      orderBy: [asc(judgeCriterionScores.createdAt)]
+    })
+  ])
+
+  const activeMembersByTeamId = new Map<string, Array<(typeof activeMembers)[number]>>()
+
+  for (const member of activeMembers) {
+    const members = activeMembersByTeamId.get(member.teamId) ?? []
+    members.push(member)
+    activeMembersByTeamId.set(member.teamId, members)
+  }
+
+  const criteriaById = new Map(criteria.map(criterion => [criterion.id, criterion]))
+
+  const criterionScoresByAssignmentId = new Map<string, Array<(typeof criterionScores)[number]>>()
+
+  for (const score of criterionScores) {
+    const scores = criterionScoresByAssignmentId.get(score.judgeAssignmentId) ?? []
+    scores.push(score)
+    criterionScoresByAssignmentId.set(score.judgeAssignmentId, scores)
+  }
+
+  const applicationUserIds = [...new Set(activeMembers.map(member => member.userId))]
+  const applicationRows = applicationUserIds.length === 0
     ? []
     : await database.query.userApplications.findMany({
         where: and(
-          eq(userApplications.hackathonId, assignment.hackathonId),
-          inArray(userApplications.userId, activeMembers.map(member => member.userId))
+          inArray(userApplications.hackathonId, hackathonIds),
+          inArray(userApplications.userId, applicationUserIds)
         ),
         orderBy: [asc(userApplications.submittedAt), asc(userApplications.createdAt)]
       })
+  const applicationsByHackathonAndUserId = new Map<string, typeof applicationRows[number]>()
 
-  const criteria = await database.query.evaluationCriteria.findMany({
-    where: eq(evaluationCriteria.hackathonId, assignment.hackathonId),
-    orderBy: [asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)]
-  })
-  const criteriaById = new Map(criteria.map(criterion => [criterion.id, criterion]))
-
-  const criterionScores = await database.query.judgeCriterionScores.findMany({
-    where: eq(judgeCriterionScores.judgeAssignmentId, assignment.id),
-    orderBy: [asc(judgeCriterionScores.createdAt)]
-  })
-
-  return {
-    ...serializeJudgeAssignment(assignment),
-    blindSubmission: serializeBlindSubmission(submission, applications),
-    criterionScores: criterionScores.map(score =>
-      serializeJudgeCriterionScore(score, criteriaById.get(score.evaluationCriterionId) ?? null)
-    )
+  for (const application of applicationRows) {
+    applicationsByHackathonAndUserId.set(`${application.hackathonId}:${application.userId}`, application)
   }
+
+  return assignments.map((assignment) => {
+    const submission = submissionsById.get(assignment.submissionId)
+
+    if (!submission) {
+      throw new ApiError({
+        statusCode: 404,
+        code: 'submission_not_found',
+        message: 'The requested submission was not found for this judge assignment.',
+        details: {
+          assignmentId: assignment.id,
+          submissionId: assignment.submissionId
+        }
+      })
+    }
+
+    const assignmentMembers = activeMembersByTeamId.get(submission.teamId) ?? []
+    const applications = assignmentMembers
+      .map(member => applicationsByHackathonAndUserId.get(`${assignment.hackathonId}:${member.userId}`) ?? null)
+      .filter((application): application is NonNullable<typeof application> => Boolean(application))
+    const assignmentScores = criterionScoresByAssignmentId.get(assignment.id) ?? []
+
+    return {
+      ...serializeJudgeAssignment(assignment),
+      blindSubmission: serializeBlindSubmission(submission, applications),
+      criterionScores: assignmentScores.map(score =>
+        serializeJudgeCriterionScore(score, criteriaById.get(score.evaluationCriterionId) ?? null)
+      )
+    }
+  })
 }
 
 async function getJudgeAssignmentRequestContext(

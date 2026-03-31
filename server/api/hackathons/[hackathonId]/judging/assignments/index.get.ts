@@ -8,7 +8,7 @@ import { defineApiHandler } from '../../../../../utils/api-handler'
 import { apiList } from '../../../../../utils/api-response'
 import { assertGuard } from '../../../../../utils/lifecycle-guard'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '../../../../../utils/hackathon-management'
-import { getBlindAssignmentDetail } from '../../../../../utils/judging'
+import { getBlindAssignmentDetails } from '../../../../../utils/judging'
 import { parseValidatedParams } from '../../../../../utils/validation'
 
 export default defineApiHandler(async (event) => {
@@ -44,7 +44,7 @@ export default defineApiHandler(async (event) => {
         )
   })
 
-  const data = await Promise.all(assignments.map(assignment => getBlindAssignmentDetail(database, assignment)))
+  const data = await getBlindAssignmentDetails(database, assignments)
 
   return apiList(data, {
     total: data.length

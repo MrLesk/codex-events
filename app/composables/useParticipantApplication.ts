@@ -2,7 +2,6 @@ import type { PublicHackathon } from './useHackathonPresentation'
 import type {
   ParticipantActor,
   ParticipantApiDataResponse,
-  ParticipantApiListResponse,
   ParticipantApplicationRecord,
   ParticipantCurrentTermsResponse,
   ParticipantRegistrationTeamIntent,
@@ -17,35 +16,15 @@ import {
   normalizeParticipantApiError
 } from '~/utils/participant-application'
 
-async function findVisibleHackathonBySlug(
+async function getVisibleHackathonBySlug(
   slug: string,
   apiFetch: typeof $fetch
 ) {
-  const pageSize = 100
-  let page = 1
+  const response = await apiFetch<ParticipantApiDataResponse<VisibleHackathonRecord>>(
+    `/api/hackathons/slug/${encodeURIComponent(slug)}`
+  )
 
-  while (true) {
-    const response = await apiFetch<ParticipantApiListResponse<VisibleHackathonRecord>>('/api/hackathons', {
-      query: {
-        page,
-        page_size: pageSize
-      }
-    })
-    const matchingHackathon = response.data.find(hackathon => hackathon.slug === slug)
-
-    if (matchingHackathon) {
-      return matchingHackathon
-    }
-
-    const total = response.meta?.total ?? response.data.length
-    const loadedItems = page * pageSize
-
-    if (response.data.length === 0 || loadedItems >= total) {
-      return null
-    }
-
-    page += 1
-  }
+  return response.data
 }
 
 function toFallbackSessionUser(user: ReturnType<typeof useUser>['value']): ParticipantSessionUser {
@@ -116,7 +95,7 @@ export function useParticipantApplication(
         return null
       }
 
-      return await findVisibleHackathonBySlug(resolvedSlug.value, apiFetch)
+      return await getVisibleHackathonBySlug(resolvedSlug.value, apiFetch)
     },
     {
       default: () => null,

@@ -8,8 +8,7 @@ import type {
   TeamJoinRequestRecord,
   TeamSummaryRecord,
   TeamWorkspaceActor,
-  TeamWorkspaceApiDataResponse,
-  TeamWorkspaceApiListResponse
+  TeamWorkspaceApiDataResponse
 } from '~/utils/team-workspace'
 
 import {
@@ -23,35 +22,15 @@ type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 const visibleTeamsPageSize = 6
 const ownTeamLookupPageSize = 100
 
-async function findVisibleHackathonBySlug(
+async function getVisibleHackathonBySlug(
   slug: string,
   apiFetch: typeof $fetch
 ) {
-  const pageSize = 100
-  let page = 1
+  const response = await apiFetch<TeamWorkspaceApiDataResponse<VisibleHackathonRecord>>(
+    `/api/hackathons/slug/${encodeURIComponent(slug)}`
+  )
 
-  while (true) {
-    const response = await apiFetch<TeamWorkspaceApiListResponse<VisibleHackathonRecord>>('/api/hackathons', {
-      query: {
-        page,
-        page_size: pageSize
-      }
-    })
-    const matchingHackathon = response.data.find(hackathon => hackathon.slug === slug)
-
-    if (matchingHackathon) {
-      return matchingHackathon
-    }
-
-    const total = response.meta?.total ?? response.data.length
-    const loadedItems = page * pageSize
-
-    if (response.data.length === 0 || loadedItems >= total) {
-      return null
-    }
-
-    page += 1
-  }
+  return response.data
 }
 
 function toSectionErrorMessage(error: unknown, fallback: string) {
@@ -129,7 +108,7 @@ export function useTeamFormationWorkspace(
         return null
       }
 
-      return await findVisibleHackathonBySlug(resolvedSlug.value, apiFetch)
+      return await getVisibleHackathonBySlug(resolvedSlug.value, apiFetch)
     },
     {
       default: () => null,
