@@ -73,6 +73,22 @@ export const users = sqliteTable(
   ]
 )
 
+export const userAuthIdentities = sqliteTable(
+  'user_auth_identities',
+  {
+    id: idColumn(),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id),
+    auth0Subject: text('auth0_subject').notNull(),
+    createdAt: createdAtColumn()
+  },
+  table => [
+    uniqueIndex('user_auth_identities_auth0_subject_idx').on(table.auth0Subject),
+    index('user_auth_identities_user_idx').on(table.userId)
+  ]
+)
+
 export const hackathons = sqliteTable(
   'hackathons',
   {
@@ -144,6 +160,12 @@ export const hackathonRoleAssignments = sqliteTable(
   },
   table => [
     uniqueIndex('hackathon_role_assignments_hackathon_user_idx').on(table.hackathonId, table.userId),
+    index('hackathon_role_assignments_user_created_idx').on(table.userId, table.createdAt),
+    index('hackathon_role_assignments_hackathon_judge_pool_created_idx').on(
+      table.hackathonId,
+      table.isInJudgePool,
+      table.createdAt
+    ),
     check(
       'hackathon_role_assignments_judge_pool_check',
       sql`(${table.role} != 'judge') or ((${table.isInJudgePool} = 1) and (${table.isStaff} = 0))`
@@ -237,7 +259,9 @@ export const userApplications = sqliteTable(
     updatedAt: updatedAtColumn()
   },
   table => [
-    uniqueIndex('user_applications_hackathon_user_idx').on(table.hackathonId, table.userId)
+    uniqueIndex('user_applications_hackathon_user_idx').on(table.hackathonId, table.userId),
+    index('user_applications_user_submitted_idx').on(table.userId, table.submittedAt),
+    index('user_applications_hackathon_submitted_idx').on(table.hackathonId, table.submittedAt)
   ]
 )
 
@@ -282,7 +306,13 @@ export const teamMembers = sqliteTable(
     uniqueIndex('team_members_team_user_active_idx')
       .on(table.teamId, table.userId)
       .where(sql`${table.leftAt} is null`),
-    index('team_members_user_idx').on(table.userId)
+    index('team_members_user_idx').on(table.userId),
+    index('team_members_user_active_joined_idx')
+      .on(table.userId, table.joinedAt, table.createdAt)
+      .where(sql`${table.leftAt} is null`),
+    index('team_members_team_active_joined_idx')
+      .on(table.teamId, table.joinedAt, table.createdAt)
+      .where(sql`${table.leftAt} is null`)
   ]
 )
 
@@ -331,7 +361,8 @@ export const submissions = sqliteTable(
   table => [
     uniqueIndex('submissions_active_team_idx')
       .on(table.teamId)
-      .where(sql`${table.status} in ('draft', 'submitted', 'locked')`)
+      .where(sql`${table.status} in ('draft', 'submitted', 'locked')`),
+    index('submissions_team_updated_idx').on(table.teamId, table.updatedAt)
   ]
 )
 
@@ -384,7 +415,8 @@ export const judgeAssignments = sqliteTable(
     uniqueIndex('judge_assignments_active_submission_idx')
       .on(table.submissionId)
       .where(sql`${table.status} in ('assigned', 'judge_started')`),
-    index('judge_assignments_judge_idx').on(table.judgeUserId)
+    index('judge_assignments_judge_idx').on(table.judgeUserId),
+    index('judge_assignments_hackathon_status_judge_idx').on(table.hackathonId, table.status, table.judgeUserId)
   ]
 )
 
@@ -430,6 +462,7 @@ export const prizes = sqliteTable(
     createdAt: createdAtColumn()
   },
   table => [
+    index('prizes_hackathon_display_order_idx').on(table.hackathonId, table.displayOrder),
     check('prizes_rank_order_check', sql`${table.rankStart} <= ${table.rankEnd}`)
   ]
 )
@@ -500,6 +533,7 @@ export const auditLogs = sqliteTable(
 
 export const schema = {
   users,
+  userAuthIdentities,
   hackathons,
   hackathonRoleAssignments,
   platformDocuments,

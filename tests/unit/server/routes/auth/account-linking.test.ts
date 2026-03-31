@@ -1,7 +1,8 @@
+import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import accountRegistrationPostHandler from '../../../../../server/api/account/registration.post'
-import { platformDocuments, users } from '../../../../../server/database/schema'
+import { platformDocuments, userAuthIdentities, users } from '../../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
 
 const {
@@ -245,7 +246,31 @@ describe('Auth0 account-link routes', () => {
           : input.url
 
       if (url === 'https://codex-hackathons-dev.eu.auth0.com/oauth/token') {
-        return new Response(JSON.stringify({ access_token: 'management-access-token' }), {
+        return new Response(JSON.stringify({
+          access_token: 'management-access-token',
+          scope: 'read:users update:users'
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+      }
+
+      if (url === 'https://codex-hackathons-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user') {
+        expect(init?.method).toBe('GET')
+        expect(init?.headers).toMatchObject({
+          authorization: 'Bearer management-access-token'
+        })
+
+        return new Response(JSON.stringify({
+          identities: [
+            {
+              provider: 'auth0',
+              user_id: 'existing-password-user'
+            }
+          ]
+        }), {
           status: 200,
           headers: {
             'content-type': 'application/json'
@@ -264,7 +289,16 @@ describe('Auth0 account-link routes', () => {
           user_id: 'existing-google-user'
         })
 
-        return new Response(JSON.stringify({}), { status: 201 })
+        return new Response(JSON.stringify([
+          {
+            provider: 'auth0',
+            user_id: 'existing-password-user'
+          },
+          {
+            provider: 'google-oauth2',
+            user_id: 'existing-google-user'
+          }
+        ]), { status: 201 })
       }
 
       return new Response('not found', { status: 404 })
@@ -279,10 +313,18 @@ describe('Auth0 account-link routes', () => {
     })
 
     expect(readPlatformAccountLinkAuthenticatedSubject).toHaveBeenCalledWith(expect.any(Object))
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(clearPlatformAccountLinkAuthentication).toHaveBeenCalledWith(expect.any(Object))
     expect(response.status).toBe(302)
     expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister')
+    const storedGoogleIdentity = await harness.database.query.userAuthIdentities.findFirst({
+      where: eq(userAuthIdentities.auth0Subject, 'google-oauth2|existing-google-user')
+    })
+
+    expect(storedGoogleIdentity).toMatchObject({
+      userId: 'existing_platform_user',
+      auth0Subject: 'google-oauth2|existing-google-user'
+    })
   })
 
   test('GET /auth/link/complete redirects with mismatch when isolated verification resolves to a different password account', async () => {

@@ -15,6 +15,7 @@ A platform user with an account that exists independently from any specific hack
 Key characteristics:
 
 - Can authenticate into the platform without registering for a hackathon.
+- Can have one primary Auth0 subject plus additional linked Auth0 identities that all resolve to the same platform account.
 - Can apply to hackathons.
 - Can join at most one team per hackathon.
 - Can be marked with `is_platform_admin`.
@@ -26,13 +27,27 @@ Rules:
 
 - Platform account provisioning happens only after the authenticated user accepts the current platform `privacy_policy` and `platform_terms` in the app-owned account-registration flow.
 - Platform account registration can create the user before canonical `first_name` and `family_name` are filled. Those fields are completed through later profile or application flows.
+- A platform user stores one primary Auth0 subject on the user record and can have additional linked Auth0 identities recorded separately.
 - When an authenticated social identity must be linked to an existing platform account, the pre-link identity does not record platform-document acceptance. After linking, the existing platform account either proceeds immediately if current acceptance already exists or completes current platform consent through `/account/register`.
+- Regular platform-user actor resolution uses the linked Auth0 identity records rather than only the primary Auth0 subject stored on the user row.
 - Regular platform-user access requires current accepted versions of the platform `privacy_policy` and `platform_terms` in platform data.
 - The reusable platform profile fields are managed from account settings.
 - A user with `is_platform_admin = true` is a platform admin.
 - Platform admins can create hackathons.
 - Hackathon admins and platform admins can assign staff, judges, and hackathon admins within their hackathons.
 - Platform admins implicitly have hackathon-admin permissions in every hackathon.
+
+### UserAuthIdentity
+
+A linked Auth0 identity that resolves to one platform user.
+
+Rules:
+
+- Every active platform user has at least one `UserAuthIdentity`.
+- A `UserAuthIdentity` stores one Auth0 subject.
+- An Auth0 subject can belong to at most one platform user.
+- A user can have multiple `UserAuthIdentity` records after account linking.
+- When account linking succeeds, the linked Auth0 identities are recorded in platform data so future sessions from any linked login method resolve to the same platform user.
 
 ### Hackathon
 

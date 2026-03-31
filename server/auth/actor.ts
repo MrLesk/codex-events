@@ -1,13 +1,18 @@
 import type { H3Event } from 'h3'
-
-import { and, eq, isNull } from 'drizzle-orm'
+import type { users } from '../database/schema'
 
 import { getDatabase } from '../database/client'
-import { users } from '../database/schema'
 import { ApiError } from '../utils/api-error'
 import {
+  ensurePlatformUserAuthIdentities,
+  findActivePlatformUserById,
+  findPlatformUserByAuth0Subject
+} from '../utils/platform-auth-identities'
+import {
   findLinkablePlatformAccountIdentity,
+  listPlatformAccountIdentitySubjects,
   serializePlatformAccountLinkState,
+  type LinkablePlatformAccountIdentity,
   type PlatformAccountLinkState
 } from '../utils/platform-account-linking'
 import { hasAcceptedCurrentPlatformDocuments } from '../utils/platform-documents'
@@ -102,14 +107,19 @@ async function getAuth0Session(event: H3Event): Promise<SessionLike | null> {
 }
 
 async function findPlatformUserBySubject(event: H3Event, auth0Subject: string) {
-  const database = getDatabase(event)
+  return await findPlatformUserByAuth0Subject(getDatabase(event), auth0Subject)
+}
 
-  return database.query.users.findFirst({
-    where: and(
-      eq(users.auth0Subject, auth0Subject),
-      isNull(users.deletedAt)
-    )
-  })
+export async function getRequestLinkablePlatformAccountIdentity(
+  event: H3Event,
+  sessionUser: SessionUserProfile
+): Promise<LinkablePlatformAccountIdentity | null> {
+  event.context.linkablePlatformAccountIdentity ??= findLinkablePlatformAccountIdentity(
+    getDatabase(event),
+    sessionUser
+  )
+
+  return await event.context.linkablePlatformAccountIdentity
 }
 
 function buildAuthenticatedIdentityActor(
@@ -129,12 +139,68 @@ function buildAuthenticatedIdentityActor(
   }
 }
 
+async function buildPlatformActor(
+  database: ReturnType<typeof getDatabase>,
+  sessionUser: SessionUserProfile,
+  platformUser: PlatformUserRecord
+): Promise<PlatformActor> {
+  return {
+    kind: 'platform_user',
+    isAuthenticated: true,
+    hasPlatformAccount: true,
+    hasAcceptedCurrentPlatformDocuments: await hasAcceptedCurrentPlatformDocuments(
+      database,
+      platformUser.id
+    ),
+    sessionUser,
+    platformUser
+  }
+}
+
+async function reconcileLinkedPlatformAccountIdentity(
+  event: H3Event,
+  database: ReturnType<typeof getDatabase>,
+  sessionUser: SessionUserProfile,
+  accountLinkCandidate: LinkablePlatformAccountIdentity | null
+) {
+  if (!accountLinkCandidate) {
+    return null
+  }
+
+  try {
+    const linkedAuth0Subjects = await listPlatformAccountIdentitySubjects(
+      event,
+      accountLinkCandidate.primaryAuth0Subject
+    )
+
+    if (!linkedAuth0Subjects.includes(sessionUser.sub)) {
+      return null
+    }
+
+    await ensurePlatformUserAuthIdentities(database, {
+      userId: accountLinkCandidate.userId,
+      auth0Subjects: linkedAuth0Subjects
+    })
+
+    return await findActivePlatformUserById(database, accountLinkCandidate.userId)
+  } catch (error) {
+    console.error('Platform linked-identity reconciliation failed', {
+      currentAuth0Subject: sessionUser.sub,
+      primaryAuth0Subject: accountLinkCandidate.primaryAuth0Subject,
+      error
+    })
+
+    return null
+  }
+}
+
 export function setRequestActor(event: H3Event, actor: RequestActor | Promise<RequestActor>) {
   event.context.requestActor = actor
 }
 
 export async function resolveRequestActor(event: H3Event): Promise<RequestActor> {
   const sessionUser = readSessionUser(await getAuth0Session(event))
+  const database = getDatabase(event)
 
   if (!sessionUser) {
     return {
@@ -150,20 +216,20 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
   const platformUser = await findPlatformUserBySubject(event, sessionUser.sub)
 
   if (platformUser) {
-    return {
-      kind: 'platform_user',
-      isAuthenticated: true,
-      hasPlatformAccount: true,
-      hasAcceptedCurrentPlatformDocuments: await hasAcceptedCurrentPlatformDocuments(
-        getDatabase(event),
-        platformUser.id
-      ),
-      sessionUser,
-      platformUser
-    }
+    return await buildPlatformActor(database, sessionUser, platformUser)
   }
 
-  const accountLinkCandidate = await findLinkablePlatformAccountIdentity(getDatabase(event), sessionUser)
+  const accountLinkCandidate = await getRequestLinkablePlatformAccountIdentity(event, sessionUser)
+  const reconciledPlatformUser = await reconcileLinkedPlatformAccountIdentity(
+    event,
+    database,
+    sessionUser,
+    accountLinkCandidate
+  )
+
+  if (reconciledPlatformUser) {
+    return await buildPlatformActor(database, sessionUser, reconciledPlatformUser)
+  }
 
   return buildAuthenticatedIdentityActor(sessionUser, {
     accountLink: accountLinkCandidate ? serializePlatformAccountLinkState(accountLinkCandidate) : null

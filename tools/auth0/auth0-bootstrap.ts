@@ -102,6 +102,28 @@ const loginPromptKey = 'login' as const
 const signupPromptKeys = ['signup-id', 'signup'] as const
 type SignupPromptKey = typeof signupPromptKeys[number]
 
+export const requiredManagementApiScopes = [
+  'read:clients',
+  'update:clients',
+  'read:tenant_settings',
+  'update:tenant_settings',
+  'read:branding',
+  'update:branding',
+  'delete:branding',
+  'read:prompts',
+  'update:prompts',
+  'read:custom_domains',
+  'create:custom_domains',
+  'update:custom_domains',
+  'read:users',
+  'read:actions',
+  'create:actions',
+  'update:actions',
+  'read:triggers',
+  'update:triggers',
+  'update:users'
+] as const
+
 export function buildUniversalLoginPageTemplate(config: TenantConfig) {
   const linkColor = config.brandingPrimaryColor || defaultBrandingPrimaryColor
 
@@ -191,6 +213,63 @@ function normalizeDomain(domain: string) {
   return domain.startsWith('http://') || domain.startsWith('https://')
     ? domain
     : `https://${domain}`
+}
+
+function splitScopeString(value: string | undefined) {
+  return (value ?? '')
+    .split(/\s+/)
+    .map(scope => scope.trim())
+    .filter(Boolean)
+}
+
+function readJwtScopeClaims(accessToken: string) {
+  const parts = accessToken.split('.')
+
+  if (parts.length !== 3) {
+    return {
+      permissions: [] as string[],
+      scope: ''
+    }
+  }
+
+  try {
+    const encodedPayload = parts[1] ?? ''
+    const payload = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8')) as {
+      permissions?: unknown
+      scope?: unknown
+    }
+
+    return {
+      permissions: Array.isArray(payload.permissions)
+        ? payload.permissions.filter((permission): permission is string => typeof permission === 'string')
+        : [],
+      scope: typeof payload.scope === 'string' ? payload.scope : ''
+    }
+  } catch {
+    return {
+      permissions: [] as string[],
+      scope: ''
+    }
+  }
+}
+
+export function assertManagementAccessTokenScopes(options: {
+  accessToken: string
+  responseScope?: string
+  requiredScopes?: readonly string[]
+}) {
+  const jwtClaims = readJwtScopeClaims(options.accessToken)
+  const grantedScopes = new Set([
+    ...splitScopeString(options.responseScope),
+    ...splitScopeString(jwtClaims.scope),
+    ...jwtClaims.permissions
+  ])
+  const missingScopes = (options.requiredScopes ?? requiredManagementApiScopes)
+    .filter(scope => !grantedScopes.has(scope))
+
+  if (missingScopes.length > 0) {
+    throw new Error(`Auth0 management token is missing required scopes: ${missingScopes.join(', ')}`)
+  }
 }
 
 function normalizeMultiline(value: string | undefined) {
@@ -466,11 +545,16 @@ async function getManagementAccessToken(config: TenantConfig) {
     throw new Error(`Auth0 management token request failed with status ${response.status}: ${reason}`)
   }
 
-  const payload = await response.json() as { access_token?: string }
+  const payload = await response.json() as { access_token?: string, scope?: string }
 
   if (!payload.access_token) {
     throw new Error('Auth0 management token response did not include an access token.')
   }
+
+  assertManagementAccessTokenScopes({
+    accessToken: payload.access_token,
+    responseScope: payload.scope
+  })
 
   return payload.access_token
 }

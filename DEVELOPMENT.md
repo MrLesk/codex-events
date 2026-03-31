@@ -193,11 +193,15 @@ The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CL
 - `read:custom_domains`
 - `create:custom_domains`
 - `update:custom_domains`
+- `read:users`
 - `read:actions`
 - `create:actions`
 - `update:actions`
 - `read:triggers`
 - `update:triggers`
+- `update:users`
+
+The `read:users` and `update:users` scopes are required by the runtime account-linking flow. The app reads linked Auth0 identities to reconcile cross-device sessions and posts to Auth0's user identities endpoint when a verified social login must be connected to an existing password-backed platform account.
 
 `AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. `NUXT_RESEND_API_KEY` should be a send-capable Resend API key for the sender identity configured by `NUXT_RESEND_FROM_EMAIL`; the checked-in production workflow does not currently require any additional repository-specific Resend scopes.
 

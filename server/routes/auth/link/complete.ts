@@ -1,5 +1,6 @@
 import { defineEventHandler, sendRedirect } from 'h3'
 
+import { getDatabase } from '../../../database/client'
 import {
   buildPlatformAccountLinkRedirect,
   clearPlatformAccountLinkAuthentication,
@@ -8,6 +9,11 @@ import {
   readPlatformAccountLinkAuthenticatedSubject,
   readPlatformAccountLinkChallenge
 } from '../../../utils/platform-account-linking'
+import { isApiError } from '../../../utils/api-error'
+import {
+  ensurePlatformUserAuthIdentities,
+  findPlatformUserByAuth0Subject
+} from '../../../utils/platform-auth-identities'
 
 export default defineEventHandler(async (event) => {
   const challengeResult = await readPlatformAccountLinkChallenge(event)
@@ -30,12 +36,36 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    await linkPlatformAccountIdentity(
+    const linkedAuth0Subjects = await linkPlatformAccountIdentity(
       event,
       challengeResult.challenge.primaryAuth0Subject,
       challengeResult.challenge.secondaryAuth0Subject
     )
-  } catch {
+    const database = getDatabase(event)
+    const platformUser = await findPlatformUserByAuth0Subject(
+      database,
+      challengeResult.challenge.primaryAuth0Subject
+    )
+
+    if (!platformUser) {
+      throw new Error('The linked platform user could not be resolved after Auth0 account linking.')
+    }
+
+    await ensurePlatformUserAuthIdentities(database, {
+      userId: platformUser.id,
+      auth0Subjects: linkedAuth0Subjects
+    })
+  } catch (error) {
+    console.error('Platform account linking failed', {
+      primaryAuth0Subject: challengeResult.challenge.primaryAuth0Subject,
+      secondaryAuth0Subject: challengeResult.challenge.secondaryAuth0Subject,
+      error: isApiError(error)
+        ? {
+            code: error.code,
+            message: error.message
+          }
+        : error
+    })
     await clearPlatformAccountLinkAuthentication(event)
     clearPlatformAccountLinkChallenge(event)
     return sendRedirect(event, buildPlatformAccountLinkRedirect(challengeResult.challenge.returnTo, 'failed'))

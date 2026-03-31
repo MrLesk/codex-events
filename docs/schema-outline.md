@@ -42,7 +42,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Notes
 
-- `auth0_subject` stores the authenticated Auth0 subject used to resolve the platform actor from the application session.
+- `auth0_subject` stores the primary Auth0 subject for the platform user.
 - `first_name` and `family_name` are the canonical user-name fields managed by account profile flows and can remain blank immediately after platform account registration.
 - `company` stores an optional single-line company or affiliation value managed from account settings.
 - `bio` stores an optional free-form profile summary managed from account settings.
@@ -50,6 +50,27 @@ It describes the intended persistent model at the level of entities, key fields,
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
 - `profile_icon_updated_at` records when the current profile icon object was last replaced.
+- Platform actor resolution uses `UserAuthIdentity` records so multiple linked Auth0 subjects can resolve to the same user.
+
+## UserAuthIdentity
+
+### Key Fields
+
+- `id`
+- `user_id`
+- `auth0_subject`
+- `created_at`
+
+### Constraints
+
+- `auth0_subject` is unique.
+
+### Notes
+
+- Each row links one Auth0 subject to one platform user.
+- Every active user has at least one `UserAuthIdentity`.
+- Linked-login flows add additional `UserAuthIdentity` rows for the same `user_id`.
+- Soft-deleting a user removes that user's `UserAuthIdentity` rows.
 
 ## Hackathon
 

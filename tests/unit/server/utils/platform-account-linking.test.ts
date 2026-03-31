@@ -77,6 +77,10 @@ function createEvent() {
           clientSecret: 'client-secret',
           databaseConnectionName: 'Username-Password-Authentication',
           domain: 'codex-hackathons-dev.eu.auth0.com',
+          managementAudience: 'https://codex-hackathons-dev.eu.auth0.com/api/v2/',
+          managementClientId: 'management-client-id',
+          managementClientSecret: 'management-client-secret',
+          managementDomain: 'codex-hackathons-dev.eu.auth0.com',
           sessionConfiguration: {
             rolling: false
           },
@@ -85,6 +89,14 @@ function createEvent() {
       }
     }
   } as H3Event
+}
+
+function createFixtureJwt(payload: Record<string, unknown>) {
+  return [
+    Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url'),
+    Buffer.from(JSON.stringify(payload)).toString('base64url'),
+    'signature'
+  ].join('.')
 }
 
 describe('platform account-link Auth0 helper', () => {
@@ -163,5 +175,45 @@ describe('platform account-link Auth0 helper', () => {
     expect(getSession).toHaveBeenCalledWith({ event })
     expect(stateStoreDelete).toHaveBeenCalledWith('__a0_platform_account_link_session', { event })
     expect(transactionStoreDelete).toHaveBeenCalledWith('__a0_platform_account_link_tx', { event })
+  })
+
+  test('fails early when the Auth0 management token lacks update:users for account linking', async () => {
+    const event = createEvent()
+    const linking = await import('../../../../server/utils/platform-account-linking')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url
+
+      if (url === 'https://codex-hackathons-dev.eu.auth0.com/oauth/token') {
+        return new Response(JSON.stringify({
+          access_token: createFixtureJwt({
+            permissions: ['read:clients']
+          }),
+          scope: 'read:clients'
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+      }
+
+      return new Response('not found', { status: 404 })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(linking.linkPlatformAccountIdentity(
+      event,
+      'auth0|existing-password-user',
+      'google-oauth2|existing-google-user'
+    )).rejects.toMatchObject({
+      code: 'platform_account_linking_unavailable',
+      message: 'Auth0 management token is missing the update:users scope required for account linking.'
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 })

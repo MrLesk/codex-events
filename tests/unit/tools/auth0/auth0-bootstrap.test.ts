@@ -1,11 +1,21 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  assertManagementAccessTokenScopes,
   buildClearedSignupPartials,
   buildExpectedLoginCustomText,
   buildUniversalLoginPageTemplate,
+  requiredManagementApiScopes,
   resolveConfig
 } from '../../../../tools/auth0/auth0-bootstrap'
+
+function createFixtureJwt(payload: Record<string, unknown>) {
+  return [
+    Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url'),
+    Buffer.from(JSON.stringify(payload)).toString('base64url'),
+    'signature'
+  ].join('.')
+}
 
 describe('auth0 bootstrap config', () => {
   test('infers the canonical branding defaults from an https app base url', () => {
@@ -96,5 +106,25 @@ describe('auth0 bootstrap config', () => {
     expect(buildClearedSignupPartials({
       'form-content-end': '<p>Consent checkboxes</p>'
     })).toEqual({})
+  })
+
+  test('requires update:users in the Auth0 management token scope set', () => {
+    const accessToken = createFixtureJwt({
+      permissions: requiredManagementApiScopes.filter(scope => scope !== 'update:users')
+    })
+
+    expect(() => assertManagementAccessTokenScopes({
+      accessToken
+    })).toThrow('update:users')
+  })
+
+  test('accepts management tokens that include the full required scope set', () => {
+    const accessToken = createFixtureJwt({
+      permissions: [...requiredManagementApiScopes]
+    })
+
+    expect(() => assertManagementAccessTokenScopes({
+      accessToken
+    })).not.toThrow()
   })
 })

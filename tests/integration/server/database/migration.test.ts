@@ -52,6 +52,42 @@ describe('shared database migration', () => {
     await insertUser.run('user_3', 'auth0|shared-subject', 'deleted@example.com', 'Deleted User', 0, now, now, now)
   })
 
+  test('creates and removes primary linked-auth-identity rows with user inserts and soft deletion', async () => {
+    const now = isoTimestamp(0)
+
+    await database.prepare(`
+      insert into users (id, auth0_subject, email, display_name, is_platform_admin, created_at, updated_at, deleted_at)
+      values (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('user_1', 'auth0|user_1', 'user@example.com', 'User One', 0, now, now, null)
+
+    const insertedIdentities = await database.prepare(`
+      select user_id, auth0_subject
+      from user_auth_identities
+      where user_id = ?
+    `).all<{ user_id: string, auth0_subject: string }>('user_1')
+
+    expect(insertedIdentities.results).toEqual([
+      {
+        user_id: 'user_1',
+        auth0_subject: 'auth0|user_1'
+      }
+    ])
+
+    await database.prepare(`
+      update users
+      set auth0_subject = ?, deleted_at = ?, updated_at = ?
+      where id = ?
+    `).run('deleted_user_1_20260322120000000', isoTimestamp(1), isoTimestamp(1), 'user_1')
+
+    const deletedIdentities = await database.prepare(`
+      select auth0_subject
+      from user_auth_identities
+      where user_id = ?
+    `).all<{ auth0_subject: string }>('user_1')
+
+    expect(deletedIdentities.results).toEqual([])
+  })
+
   test('prevents more than one active team membership per hackathon', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'user_1', now)

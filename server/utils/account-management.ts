@@ -6,12 +6,14 @@ import type { AppDatabase } from '../database/client'
 import {
   hackathonRoleAssignments,
   platformDocuments,
+  userAuthIdentities,
   userPlatformDocumentAcceptances,
   users
 } from '../database/schema'
 import { buildAuditLogInsert, writeAuditLog } from '../database/audit-log'
 import { ApiError } from './api-error'
 import { assertGuard } from './lifecycle-guard'
+import { findPlatformUserByAuth0Subject } from './platform-auth-identities'
 import { findLinkablePlatformAccountIdentity } from './platform-account-linking'
 import { assertCurrentPlatformDocument, getCurrentPlatformDocument } from './platform-documents'
 
@@ -263,12 +265,7 @@ async function assertPlatformAccountRegistrationAllowed(
   database: AppDatabase,
   actor: AuthenticatedIdentityActor
 ) {
-  const existingSubject = await database.query.users.findFirst({
-    where: and(
-      eq(users.auth0Subject, actor.sessionUser.sub),
-      isNull(users.deletedAt)
-    )
-  })
+  const existingSubject = await findPlatformUserByAuth0Subject(database, actor.sessionUser.sub)
 
   assertGuard(!existingSubject, {
     code: 'platform_account_already_exists',
@@ -511,6 +508,9 @@ export async function deletePlatformAccount(
       .update(users)
       .set(deletedUserPatch)
       .where(eq(users.id, actor.userId)),
+    database
+      .delete(userAuthIdentities)
+      .where(eq(userAuthIdentities.userId, actor.userId)),
     database
       .delete(userPlatformDocumentAcceptances)
       .where(eq(userPlatformDocumentAcceptances.userId, actor.userId)),

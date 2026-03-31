@@ -22,6 +22,7 @@ import {
   submissions,
   teamMembers,
   teams,
+  userAuthIdentities,
   userApplications,
   userPlatformDocumentAcceptances,
   users
@@ -45,6 +46,14 @@ describe('TASK-3.5 actor-facing API routes', () => {
     return {
       limit: vi.fn(async () => ({ success }))
     }
+  }
+
+  function createFixtureJwt(payload: Record<string, unknown>) {
+    return [
+      Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url'),
+      Buffer.from(JSON.stringify(payload)).toString('base64url'),
+      'signature'
+    ].join('.')
   }
 
   class InMemoryR2Bucket {
@@ -477,6 +486,106 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
+  test('GET /api/session reconciles a linked social identity through Auth0 and stores the missing identity row', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      sessionUser: {
+        sub: 'google-oauth2|existing-google-user',
+        email: 'existing-user@example.com',
+        email_verified: true,
+        name: 'Existing User'
+      },
+      runtimeConfig: {
+        auth0: {
+          managementDomain: 'codex-hackathons-dev.eu.auth0.com',
+          managementClientId: 'management-client-id',
+          managementClientSecret: 'management-client-secret',
+          managementAudience: 'https://codex-hackathons-dev.eu.auth0.com/api/v2/'
+        }
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'existing_platform_user',
+      auth0Subject: 'auth0|existing-password-user',
+      email: 'existing-user@example.com',
+      displayName: 'Existing User'
+    })
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url
+
+      if (url === 'https://codex-hackathons-dev.eu.auth0.com/oauth/token') {
+        return new Response(JSON.stringify({
+          access_token: createFixtureJwt({
+            permissions: ['read:users']
+          }),
+          scope: 'read:users'
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+      }
+
+      if (url === 'https://codex-hackathons-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user') {
+        return new Response(JSON.stringify({
+          identities: [
+            {
+              provider: 'auth0',
+              user_id: 'existing-password-user'
+            },
+            {
+              provider: 'google-oauth2',
+              user_id: 'existing-google-user'
+            }
+          ]
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+      }
+
+      return new Response('not found', { status: 404 })
+    })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await harness.request('/api/session')
+    const storedGoogleIdentity = await harness.database.query.userAuthIdentities.findFirst({
+      where: eq(userAuthIdentities.auth0Subject, 'google-oauth2|existing-google-user')
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        actor: {
+          kind: 'platform_user',
+          hasPlatformAccount: true,
+          platformUser: {
+            id: 'existing_platform_user',
+            email: 'existing-user@example.com'
+          }
+        }
+      }
+    })
+    expect(storedGoogleIdentity).toMatchObject({
+      userId: 'existing_platform_user',
+      auth0Subject: 'google-oauth2|existing-google-user'
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   test('GET /api/session marks a platform account consent-blocked when current required platform documents are not accepted', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -775,6 +884,9 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const createdUser = await harness.database.query.users.findFirst({
       where: eq(users.auth0Subject, 'auth0|new-user')
     })
+    const createdPrimaryIdentity = await harness.database.query.userAuthIdentities.findFirst({
+      where: eq(userAuthIdentities.auth0Subject, 'auth0|new-user')
+    })
     const acceptances = await harness.database.select().from(userPlatformDocumentAcceptances)
     const auditEntries = await harness.database.select().from(auditLogs)
     const sessionResponse = await harness.request('/api/session')
@@ -788,6 +900,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(createdUser?.openaiOrgId).toBeNull()
     expect(createdUser?.lumaUsername).toBeNull()
     expect(createdUser?.profileIconUpdatedAt).toBeNull()
+    expect(createdPrimaryIdentity).toMatchObject({
+      userId: createdUser?.id,
+      auth0Subject: 'auth0|new-user'
+    })
     expect(acceptances).toHaveLength(2)
     expect(auditEntries).toEqual([
       expect.objectContaining({
@@ -1695,6 +1811,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     const deletedUser = await harness.database.query.users.findFirst({
       where: eq(users.id, 'user_delete')
     })
+    const deletedIdentities = await harness.database.select().from(userAuthIdentities)
     const deletedAcceptances = await harness.database.select().from(userPlatformDocumentAcceptances)
     const deletedAssignments = await harness.database.select().from(hackathonRoleAssignments)
     const auditEntries = await harness.database.select().from(auditLogs)
@@ -1703,6 +1820,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(deletedUser?.displayName).toBe('Deleted User')
     expect(deletedUser?.isPlatformAdmin).toBe(false)
     expect(deletedUser?.profileIconUpdatedAt).toBeNull()
+    expect(deletedIdentities).toHaveLength(0)
     expect(deletedAcceptances).toHaveLength(0)
     expect(deletedAssignments).toHaveLength(0)
     expect(await profileIconsBucket.get('users/user_delete/profile-icon')).toBeNull()

@@ -18,16 +18,26 @@ type SessionUser = {
   sub: string
 }
 
+type EventContext = H3Event['context'] & {
+  runtimeConfig?: {
+    auth0?: Record<string, unknown>
+  }
+}
+
 function createEvent(sessionUser?: SessionUser | null) {
   const event = {
     context: {
-      cloudflare: { env: {} }
-    }
+      cloudflare: { env: {} },
+      runtimeConfig: {
+        auth0: {}
+      }
+    } satisfies EventContext
   } as H3Event
 
   vi.stubGlobal('useAuth0', vi.fn(() => ({
     getSession: vi.fn(async () => sessionUser ? { user: sessionUser } : null)
   })))
+  vi.stubGlobal('useRuntimeConfig', ((runtimeEvent: H3Event) => runtimeEvent.context.runtimeConfig) as typeof useRuntimeConfig)
 
   return event
 }
@@ -43,9 +53,22 @@ function createDatabaseMock(options?: {
   let currentDocumentCallCount = 0
   const hasAcceptedCurrentPlatformDocuments = options?.hasAcceptedCurrentPlatformDocuments ?? true
   const currentDocumentsAvailable = options?.currentDocumentsAvailable ?? true
+  const auth0Subject = typeof options?.user?.auth0Subject === 'string'
+    ? options.user.auth0Subject
+    : null
 
   return {
     query: {
+      userAuthIdentities: {
+        findFirst: vi.fn(async () => auth0Subject && options?.user
+          ? {
+              id: 'identity_1',
+              userId: options.user.id,
+              auth0Subject,
+              createdAt: '2026-03-22T12:00:00.000Z'
+            }
+          : undefined)
+      },
       users: {
         findFirst: vi.fn(async () => options?.user ?? undefined)
       },
@@ -60,6 +83,16 @@ function createDatabaseMock(options?: {
           return currentDocumentCallCount === 1
             ? { id: 'privacy_v1', documentType: 'privacy_policy' }
             : { id: 'terms_v1', documentType: 'platform_terms' }
+        }),
+        findMany: vi.fn(async () => {
+          if (!currentDocumentsAvailable) {
+            return []
+          }
+
+          return [
+            { id: 'privacy_v1', documentType: 'privacy_policy', version: 1 },
+            { id: 'terms_v1', documentType: 'platform_terms', version: 1 }
+          ]
         })
       },
       userPlatformDocumentAcceptances: {
