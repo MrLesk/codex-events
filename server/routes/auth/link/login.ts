@@ -1,15 +1,13 @@
 import { defineEventHandler, sendRedirect } from 'h3'
 
-import { getRequestActor } from '../../../auth/actor'
-import { getDatabase } from '../../../database/client'
+import { getRequestActor, getRequestLinkablePlatformAccountIdentity } from '../../../auth/actor'
 import {
   buildPlatformAccountLinkRedirect,
+  clearPlatformAccountLinkAuthentication,
   clearPlatformAccountLinkChallenge,
-  findLinkablePlatformAccountIdentity,
-  getPlatformAccountLinkCallbackUrl,
-  getPlatformAccountLinkDatabaseConnectionName,
   issuePlatformAccountLinkChallenge,
-  readPlatformAccountLinkChallenge
+  readPlatformAccountLinkChallenge,
+  startPlatformAccountLinkAuthentication
 } from '../../../utils/platform-account-linking'
 
 export default defineEventHandler(async (event) => {
@@ -19,7 +17,7 @@ export default defineEventHandler(async (event) => {
     const actor = await getRequestActor(event)
 
     if (actor.kind === 'authenticated_identity') {
-      const linkableIdentity = await findLinkablePlatformAccountIdentity(getDatabase(event), actor.sessionUser)
+      const linkableIdentity = await getRequestLinkablePlatformAccountIdentity(event, actor.sessionUser)
 
       if (linkableIdentity) {
         challengeResult = {
@@ -36,19 +34,12 @@ export default defineEventHandler(async (event) => {
   }
 
   if (!challengeResult.ok || !challengeResult.challenge) {
+    await clearPlatformAccountLinkAuthentication(event)
     clearPlatformAccountLinkChallenge(event)
     return sendRedirect(event, buildPlatformAccountLinkRedirect(null, challengeResult.reason === 'expired' ? 'expired' : 'invalid'))
   }
 
-  const auth0 = useAuth0(event)
-  const authorizationUrl = await auth0.startInteractiveLogin({
-    authorizationParams: {
-      connection: getPlatformAccountLinkDatabaseConnectionName(event),
-      prompt: 'login',
-      login_hint: challengeResult.challenge.email,
-      redirect_uri: getPlatformAccountLinkCallbackUrl(event)
-    }
-  })
+  const authorizationUrl = await startPlatformAccountLinkAuthentication(event, challengeResult.challenge.email)
 
   return sendRedirect(event, authorizationUrl.href)
 })

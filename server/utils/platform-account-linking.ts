@@ -1,8 +1,20 @@
 import type { H3Event } from 'h3'
 import type { AppDatabase } from '../database/client'
+import type {
+  CookieHandler,
+  CookieSerializeOptions,
+  SessionConfiguration,
+  SessionStore
+} from '@auth0/auth0-server-js'
 
+import {
+  CookieTransactionStore,
+  ServerClient,
+  StatefulStateStore,
+  StatelessStateStore
+} from '@auth0/auth0-server-js'
 import { and, eq, isNull } from 'drizzle-orm'
-import { deleteCookie, getCookie, getRequestURL, setCookie } from 'h3'
+import { deleteCookie, getCookie, getRequestURL, parseCookies, setCookie } from 'h3'
 
 import { accountDashboardHref, buildAccountRegisterHref, normalizeAuthReturnTo } from '../../app/utils/auth-navigation'
 import { users } from '../database/schema'
@@ -10,6 +22,8 @@ import { ApiError } from './api-error'
 
 const challengeCookieName = 'codex_platform_account_link'
 const challengeLifetimeSeconds = 10 * 60
+const linkSessionIdentifier = '__a0_platform_account_link_session'
+const linkTransactionIdentifier = '__a0_platform_account_link_tx'
 const textEncoder = new TextEncoder()
 
 export interface PlatformAccountLinkChallenge {
@@ -30,6 +44,12 @@ interface PlatformAccountLinkConfig {
 interface PlatformAccountLinkLoginConfig extends PlatformAccountLinkConfig {
   databaseConnectionName: string
   appBaseUrl: string
+  domain: string
+  clientId: string
+  clientSecret: string
+  sessionSecret: string
+  audience?: string
+  sessionConfiguration?: SessionConfiguration
 }
 
 interface PlatformAccountLinkManagementConfig {
@@ -55,6 +75,70 @@ export interface LinkablePlatformAccountIdentity {
   userId: string
   email: string
   primaryAuth0Subject: string
+}
+
+interface PlatformAccountLinkSessionLike {
+  user?: {
+    sub?: string | null
+  } | null
+}
+
+interface PlatformAccountLinkAuth0StoreOptions {
+  event: H3Event
+}
+
+type PlatformAccountLinkStateStore
+  = StatefulStateStore<PlatformAccountLinkAuth0StoreOptions>
+    | StatelessStateStore<PlatformAccountLinkAuth0StoreOptions>
+
+type RequestScopedPlatformAccountLinkAuth0Context = H3Event['context'] & {
+  auth0ClientOptions?: {
+    domain?: string
+    clientId?: string
+    clientSecret?: string
+    appBaseUrl?: string
+    audience?: string
+    sessionSecret?: string
+    sessionConfiguration?: SessionConfiguration
+  }
+  auth0SessionStore?: SessionStore<PlatformAccountLinkAuth0StoreOptions>
+  platformAccountLinkAuth0Client?: ServerClient<PlatformAccountLinkAuth0StoreOptions>
+  platformAccountLinkStateStore?: PlatformAccountLinkStateStore
+  platformAccountLinkTransactionStore?: CookieTransactionStore<PlatformAccountLinkAuth0StoreOptions>
+}
+
+class H3PlatformAccountLinkCookieHandler implements CookieHandler<PlatformAccountLinkAuth0StoreOptions> {
+  setCookie(name: string, value: string, options?: CookieSerializeOptions, storeOptions?: PlatformAccountLinkAuth0StoreOptions) {
+    if (!storeOptions?.event) {
+      throw new Error('Store options with an event are required to set a cookie.')
+    }
+
+    setCookie(storeOptions.event, name, value, options)
+  }
+
+  getCookie(name: string, storeOptions?: PlatformAccountLinkAuth0StoreOptions) {
+    if (!storeOptions?.event) {
+      throw new Error('Store options with an event are required to get a cookie.')
+    }
+
+    return getCookie(storeOptions.event, name)
+  }
+
+  getCookies(storeOptions?: PlatformAccountLinkAuth0StoreOptions) {
+    if (!storeOptions?.event) {
+      throw new Error('Store options with an event are required to get cookies.')
+    }
+
+    return parseCookies(storeOptions.event)
+  }
+
+  deleteCookie(name: string, storeOptions?: PlatformAccountLinkAuth0StoreOptions) {
+    if (!storeOptions?.event) {
+      throw new Error('Store options with an event are required to delete a cookie.')
+    }
+
+    deleteCookie(storeOptions.event, name)
+  }
 }
 
 function bytesToBase64Url(bytes: Uint8Array) {
@@ -113,18 +197,35 @@ function readBaseConfig(event: H3Event): PlatformAccountLinkConfig {
 }
 
 function readLoginConfig(event: H3Event): PlatformAccountLinkLoginConfig {
-  const auth0Config = useRuntimeConfig(event).auth0 as Record<string, string | undefined>
-  const appBaseUrl = auth0Config.appBaseUrl?.trim() ?? ''
-  const databaseConnectionName = auth0Config.databaseConnectionName?.trim() ?? ''
+  const auth0Config = (
+    (event.context as RequestScopedPlatformAccountLinkAuth0Context).auth0ClientOptions
+    ?? useRuntimeConfig(event).auth0
+  ) as Record<string, string | SessionConfiguration | undefined>
+  const appBaseUrl = typeof auth0Config.appBaseUrl === 'string' ? auth0Config.appBaseUrl.trim() : ''
+  const databaseConnectionName = typeof auth0Config.databaseConnectionName === 'string'
+    ? auth0Config.databaseConnectionName.trim()
+    : ''
+  const domain = typeof auth0Config.domain === 'string' ? auth0Config.domain.trim() : ''
+  const clientId = typeof auth0Config.clientId === 'string' ? auth0Config.clientId.trim() : ''
+  const clientSecret = typeof auth0Config.clientSecret === 'string' ? auth0Config.clientSecret.trim() : ''
+  const sessionSecret = typeof auth0Config.sessionSecret === 'string' ? auth0Config.sessionSecret.trim() : ''
 
-  if (!appBaseUrl || !databaseConnectionName) {
+  if (!appBaseUrl || !databaseConnectionName || !domain || !clientId || !clientSecret || !sessionSecret) {
     throw buildAccountLinkError('Account linking is not configured correctly yet. Sign in with your existing password instead.')
   }
 
   return {
     ...readBaseConfig(event),
     appBaseUrl,
-    databaseConnectionName
+    databaseConnectionName,
+    domain,
+    clientId,
+    clientSecret,
+    sessionSecret,
+    audience: typeof auth0Config.audience === 'string' ? auth0Config.audience.trim() || undefined : undefined,
+    sessionConfiguration: typeof auth0Config.sessionConfiguration === 'object' && auth0Config.sessionConfiguration
+      ? auth0Config.sessionConfiguration as SessionConfiguration
+      : undefined
   }
 }
 
@@ -213,6 +314,62 @@ function buildCookieOptions(event: H3Event) {
     secure: protocol === 'https:',
     path: '/',
     maxAge: challengeLifetimeSeconds
+  }
+}
+
+function getPlatformAccountLinkAuth0Client(event: H3Event) {
+  const context = event.context as RequestScopedPlatformAccountLinkAuth0Context
+
+  if (
+    context.platformAccountLinkAuth0Client
+    && context.platformAccountLinkStateStore
+    && context.platformAccountLinkTransactionStore
+  ) {
+    return {
+      client: context.platformAccountLinkAuth0Client,
+      stateStore: context.platformAccountLinkStateStore,
+      transactionStore: context.platformAccountLinkTransactionStore
+    }
+  }
+
+  const loginConfig = readLoginConfig(event)
+  const cookieHandler = new H3PlatformAccountLinkCookieHandler()
+  const transactionStore = new CookieTransactionStore<PlatformAccountLinkAuth0StoreOptions>(
+    { secret: loginConfig.sessionSecret },
+    cookieHandler
+  )
+  const stateStore: PlatformAccountLinkStateStore = context.auth0SessionStore
+    ? new StatefulStateStore<PlatformAccountLinkAuth0StoreOptions>({
+        ...(loginConfig.sessionConfiguration ?? {}),
+        secret: loginConfig.sessionSecret,
+        store: context.auth0SessionStore
+      }, cookieHandler)
+    : new StatelessStateStore<PlatformAccountLinkAuth0StoreOptions>({
+        ...(loginConfig.sessionConfiguration ?? {}),
+        secret: loginConfig.sessionSecret
+      }, cookieHandler)
+  const client = new ServerClient<PlatformAccountLinkAuth0StoreOptions>({
+    domain: loginConfig.domain,
+    clientId: loginConfig.clientId,
+    clientSecret: loginConfig.clientSecret,
+    authorizationParams: {
+      audience: loginConfig.audience,
+      redirect_uri: getPlatformAccountLinkCallbackUrl(event)
+    },
+    transactionIdentifier: linkTransactionIdentifier,
+    stateIdentifier: linkSessionIdentifier,
+    transactionStore,
+    stateStore
+  })
+
+  context.platformAccountLinkAuth0Client = client
+  context.platformAccountLinkStateStore = stateStore
+  context.platformAccountLinkTransactionStore = transactionStore
+
+  return {
+    client,
+    stateStore,
+    transactionStore
   }
 }
 
@@ -354,6 +511,46 @@ export function clearPlatformAccountLinkChallenge(event: H3Event) {
     ...buildCookieOptions(event),
     maxAge: 0
   })
+}
+
+export async function startPlatformAccountLinkAuthentication(event: H3Event, email: string) {
+  const { client } = getPlatformAccountLinkAuth0Client(event)
+
+  return await client.startInteractiveLogin({
+    authorizationParams: {
+      connection: getPlatformAccountLinkDatabaseConnectionName(event),
+      prompt: 'login',
+      login_hint: email,
+      redirect_uri: getPlatformAccountLinkCallbackUrl(event)
+    }
+  }, {
+    event
+  })
+}
+
+export async function completePlatformAccountLinkAuthentication(event: H3Event) {
+  const { client } = getPlatformAccountLinkAuth0Client(event)
+
+  await client.completeInteractiveLogin(
+    new URL(event.node.req.url as string, readLoginConfig(event).appBaseUrl),
+    { event }
+  )
+}
+
+export async function readPlatformAccountLinkAuthenticatedSubject(event: H3Event) {
+  const { client } = getPlatformAccountLinkAuth0Client(event)
+  const session = await client.getSession({ event }) as PlatformAccountLinkSessionLike | undefined
+
+  return session?.user?.sub?.trim() ?? ''
+}
+
+export async function clearPlatformAccountLinkAuthentication(event: H3Event) {
+  const { stateStore, transactionStore } = getPlatformAccountLinkAuth0Client(event)
+
+  await Promise.all([
+    stateStore.delete(linkSessionIdentifier, { event }),
+    transactionStore.delete(linkTransactionIdentifier, { event })
+  ])
 }
 
 export function buildPlatformAccountLinkRedirect(returnTo: string | null | undefined, reason?: PlatformAccountLinkErrorReason) {

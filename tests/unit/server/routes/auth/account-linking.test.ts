@@ -1,24 +1,76 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import accountRegistrationPostHandler from '../../../../../server/api/account/registration.post'
-import authLinkCallbackHandler from '../../../../../server/routes/auth/link/callback'
-import authLinkCompleteHandler from '../../../../../server/routes/auth/link/complete'
-import authLinkLoginHandler from '../../../../../server/routes/auth/link/login'
 import { platformDocuments, users } from '../../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
+
+const {
+  clearPlatformAccountLinkAuthentication,
+  completePlatformAccountLinkAuthentication,
+  readPlatformAccountLinkAuthenticatedSubject,
+  startPlatformAccountLinkAuthentication
+} = vi.hoisted(() => ({
+  startPlatformAccountLinkAuthentication: vi.fn(),
+  completePlatformAccountLinkAuthentication: vi.fn(),
+  readPlatformAccountLinkAuthenticatedSubject: vi.fn(),
+  clearPlatformAccountLinkAuthentication: vi.fn(async () => {})
+}))
+
+vi.mock('../../../../../server/utils/platform-account-linking', async () => {
+  const actual = await vi.importActual<typeof import('../../../../../server/utils/platform-account-linking')>(
+    '../../../../../server/utils/platform-account-linking'
+  )
+
+  return {
+    ...actual,
+    startPlatformAccountLinkAuthentication,
+    completePlatformAccountLinkAuthentication,
+    readPlatformAccountLinkAuthenticatedSubject,
+    clearPlatformAccountLinkAuthentication
+  }
+})
+
+async function loadHandlers() {
+  const [
+    loginModule,
+    callbackModule,
+    completeModule
+  ] = await Promise.all([
+    import('../../../../../server/routes/auth/link/login'),
+    import('../../../../../server/routes/auth/link/callback'),
+    import('../../../../../server/routes/auth/link/complete')
+  ])
+
+  return {
+    authLinkLoginHandler: loginModule.default,
+    authLinkCallbackHandler: callbackModule.default,
+    authLinkCompleteHandler: completeModule.default
+  }
+}
 
 describe('Auth0 account-link routes', () => {
   const databases: Array<ReturnType<typeof createApiRouteTestHarness>> = []
 
   afterEach(async () => {
     vi.unstubAllGlobals()
+    vi.resetModules()
+    startPlatformAccountLinkAuthentication.mockReset()
+    completePlatformAccountLinkAuthentication.mockReset()
+    readPlatformAccountLinkAuthenticatedSubject.mockReset()
+    clearPlatformAccountLinkAuthentication.mockReset()
+    clearPlatformAccountLinkAuthentication.mockResolvedValue(undefined)
 
     while (databases.length > 0) {
       await databases.pop()?.d1Database.close()
     }
   })
 
-  function createLinkHarness() {
+  async function createLinkHarness() {
+    const {
+      authLinkLoginHandler,
+      authLinkCallbackHandler,
+      authLinkCompleteHandler
+    } = await loadHandlers()
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler },
@@ -85,22 +137,20 @@ describe('Auth0 account-link routes', () => {
   }
 
   test('GET /auth/link/login starts explicit password reauthentication from a valid challenge', async () => {
-    const harness = createLinkHarness()
+    const harness = await createLinkHarness()
     await seedExistingPlatformAccount(harness)
 
-    const socialSessionUser = {
-      sub: 'google-oauth2|existing-google-user',
-      email: 'existing-user@example.com',
-      email_verified: true,
-      name: 'Existing User'
-    }
-    const startInteractiveLogin = vi.fn(async () => new URL('https://auth.example.test/authorize'))
-
     vi.stubGlobal('useAuth0', vi.fn(() => ({
-      getSession: vi.fn(async () => ({ user: socialSessionUser })),
-      startInteractiveLogin,
-      completeInteractiveLogin: vi.fn()
+      getSession: vi.fn(async () => ({
+        user: {
+          sub: 'google-oauth2|existing-google-user',
+          email: 'existing-user@example.com',
+          email_verified: true,
+          name: 'Existing User'
+        }
+      }))
     })))
+    startPlatformAccountLinkAuthentication.mockResolvedValue(new URL('https://auth.example.test/authorize'))
 
     const cookie = await createLinkChallengeCookie(harness)
     const response = await harness.request('/auth/link/login', {
@@ -111,69 +161,82 @@ describe('Auth0 account-link routes', () => {
 
     expect(response.status).toBe(302)
     expect(response.headers.get('location')).toBe('https://auth.example.test/authorize')
-    expect(startInteractiveLogin).toHaveBeenCalledWith({
-      authorizationParams: {
-        connection: 'Username-Password-Authentication',
-        prompt: 'login',
-        login_hint: 'existing-user@example.com',
-        redirect_uri: 'https://dev.codex-hackathons.com/auth/link/callback'
-      }
-    })
+    expect(startPlatformAccountLinkAuthentication).toHaveBeenCalledWith(
+      expect.any(Object),
+      'existing-user@example.com'
+    )
   })
 
   test('GET /auth/link/login bootstraps a challenge from the authenticated social identity when no cookie exists', async () => {
-    const harness = createLinkHarness()
+    const harness = await createLinkHarness()
     await seedExistingPlatformAccount(harness)
 
-    const socialSessionUser = {
-      sub: 'google-oauth2|existing-google-user',
-      email: 'existing-user@example.com',
-      email_verified: true,
-      name: 'Existing User'
-    }
-    const startInteractiveLogin = vi.fn(async () => new URL('https://auth.example.test/authorize'))
-
     vi.stubGlobal('useAuth0', vi.fn(() => ({
-      getSession: vi.fn(async () => ({ user: socialSessionUser })),
-      startInteractiveLogin,
-      completeInteractiveLogin: vi.fn()
+      getSession: vi.fn(async () => ({
+        user: {
+          sub: 'google-oauth2|existing-google-user',
+          email: 'existing-user@example.com',
+          email_verified: true,
+          name: 'Existing User'
+        }
+      }))
     })))
+    startPlatformAccountLinkAuthentication.mockResolvedValue(new URL('https://auth.example.test/authorize'))
 
     const response = await harness.request('/auth/link/login')
 
     expect(response.status).toBe(302)
     expect(response.headers.get('location')).toBe('https://auth.example.test/authorize')
     expect(response.headers.get('set-cookie')).toContain('codex_platform_account_link=')
-    expect(startInteractiveLogin).toHaveBeenCalledWith({
-      authorizationParams: {
-        connection: 'Username-Password-Authentication',
-        prompt: 'login',
-        login_hint: 'existing-user@example.com',
-        redirect_uri: 'https://dev.codex-hackathons.com/auth/link/callback'
-      }
-    })
+    expect(startPlatformAccountLinkAuthentication).toHaveBeenCalledWith(
+      expect.any(Object),
+      'existing-user@example.com'
+    )
   })
 
-  test('GET /auth/link/callback completes login and defers identity verification to a fresh request', async () => {
-    const harness = createLinkHarness()
+  test('GET /auth/link/callback completes link authentication and defers identity verification to a fresh request', async () => {
+    const harness = await createLinkHarness()
     await seedExistingPlatformAccount(harness)
 
-    const socialSessionUser = {
-      sub: 'google-oauth2|existing-google-user',
-      email: 'existing-user@example.com',
-      email_verified: true,
-      name: 'Existing User'
-    }
-    const primarySessionUser = {
-      sub: 'auth0|existing-password-user',
-      email: 'existing-user@example.com',
-      email_verified: true,
-      name: 'Existing User'
-    }
-    let currentSessionUser = socialSessionUser
-    const completeInteractiveLogin = vi.fn(async () => {
-      currentSessionUser = primarySessionUser
+    completePlatformAccountLinkAuthentication.mockResolvedValue(undefined)
+    vi.stubGlobal('useAuth0', vi.fn(() => ({
+      getSession: vi.fn(async () => ({
+        user: {
+          sub: 'google-oauth2|existing-google-user',
+          email: 'existing-user@example.com',
+          email_verified: true,
+          name: 'Existing User'
+        }
+      }))
+    })))
+
+    const cookie = await createLinkChallengeCookie(harness)
+    const response = await harness.request('/auth/link/callback?code=fixture&state=fixture', {
+      headers: {
+        cookie
+      }
     })
+
+    expect(completePlatformAccountLinkAuthentication).toHaveBeenCalledWith(expect.any(Object))
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe('/auth/link/complete')
+  })
+
+  test('GET /auth/link/complete links the social identity after isolated password-account verification', async () => {
+    const harness = await createLinkHarness()
+    await seedExistingPlatformAccount(harness)
+
+    vi.stubGlobal('useAuth0', vi.fn(() => ({
+      getSession: vi.fn(async () => ({
+        user: {
+          sub: 'google-oauth2|existing-google-user',
+          email: 'existing-user@example.com',
+          email_verified: true,
+          name: 'Existing User'
+        }
+      }))
+    })))
+    readPlatformAccountLinkAuthenticatedSubject.mockResolvedValue('auth0|existing-password-user')
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string'
         ? input
@@ -206,40 +269,24 @@ describe('Auth0 account-link routes', () => {
 
       return new Response('not found', { status: 404 })
     })
-
     vi.stubGlobal('fetch', fetchMock)
-    vi.stubGlobal('useAuth0', vi.fn(() => ({
-      getSession: vi.fn(async () => ({ user: currentSessionUser })),
-      startInteractiveLogin: vi.fn(),
-      completeInteractiveLogin
-    })))
 
     const cookie = await createLinkChallengeCookie(harness)
-    const response = await harness.request('/auth/link/callback?code=fixture&state=fixture', {
+    const response = await harness.request('/auth/link/complete', {
       headers: {
         cookie
       }
     })
 
-    expect(completeInteractiveLogin).toHaveBeenCalled()
-    expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('/auth/link/complete')
-    expect(fetchMock).not.toHaveBeenCalled()
-
-    const completeResponse = await harness.request('/auth/link/complete', {
-      headers: {
-        cookie
-      }
-    })
-
+    expect(readPlatformAccountLinkAuthenticatedSubject).toHaveBeenCalledWith(expect.any(Object))
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(completeResponse.status).toBe(302)
-    expect(completeResponse.headers.get('location')).toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister')
-    expect(completeResponse.headers.get('set-cookie')).toContain('codex_platform_account_link=')
+    expect(clearPlatformAccountLinkAuthentication).toHaveBeenCalledWith(expect.any(Object))
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister')
   })
 
-  test('GET /auth/link/complete redirects with mismatch when the fresh session is not the expected password account', async () => {
-    const harness = createLinkHarness()
+  test('GET /auth/link/complete redirects with mismatch when isolated verification resolves to a different password account', async () => {
+    const harness = await createLinkHarness()
     await seedExistingPlatformAccount(harness)
 
     vi.stubGlobal('useAuth0', vi.fn(() => ({
@@ -250,26 +297,11 @@ describe('Auth0 account-link routes', () => {
           email_verified: true,
           name: 'Existing User'
         }
-      })),
-      startInteractiveLogin: vi.fn(),
-      completeInteractiveLogin: vi.fn()
+      }))
     })))
+    readPlatformAccountLinkAuthenticatedSubject.mockResolvedValue('auth0|different-password-user')
 
     const cookie = await createLinkChallengeCookie(harness)
-
-    vi.stubGlobal('useAuth0', vi.fn(() => ({
-      getSession: vi.fn(async () => ({
-        user: {
-          sub: 'auth0|different-password-user',
-          email: 'different-user@example.com',
-          email_verified: true,
-          name: 'Different User'
-        }
-      })),
-      startInteractiveLogin: vi.fn(),
-      completeInteractiveLogin: vi.fn()
-    })))
-
     const response = await harness.request('/auth/link/complete', {
       headers: {
         cookie

@@ -2,16 +2,12 @@ import { defineEventHandler, sendRedirect } from 'h3'
 
 import {
   buildPlatformAccountLinkRedirect,
+  clearPlatformAccountLinkAuthentication,
   clearPlatformAccountLinkChallenge,
   linkPlatformAccountIdentity,
+  readPlatformAccountLinkAuthenticatedSubject,
   readPlatformAccountLinkChallenge
 } from '../../../utils/platform-account-linking'
-
-interface Auth0SessionLike {
-  user?: {
-    sub?: string | null
-  } | null
-}
 
 export default defineEventHandler(async (event) => {
   const challengeResult = await readPlatformAccountLinkChallenge(event)
@@ -20,15 +16,15 @@ export default defineEventHandler(async (event) => {
     : null
 
   if (!challengeResult.ok || !challengeResult.challenge) {
+    await clearPlatformAccountLinkAuthentication(event)
     clearPlatformAccountLinkChallenge(event)
     return sendRedirect(event, buildPlatformAccountLinkRedirect(fallbackReturnTo, challengeResult.reason === 'expired' ? 'expired' : 'invalid'))
   }
 
-  const auth0 = useAuth0(event)
-  const session = await auth0.getSession() as Auth0SessionLike | null
-  const authenticatedSubject = session?.user?.sub?.trim() ?? ''
+  const authenticatedSubject = await readPlatformAccountLinkAuthenticatedSubject(event)
 
   if (!authenticatedSubject || authenticatedSubject !== challengeResult.challenge.primaryAuth0Subject) {
+    await clearPlatformAccountLinkAuthentication(event)
     clearPlatformAccountLinkChallenge(event)
     return sendRedirect(event, buildPlatformAccountLinkRedirect(challengeResult.challenge.returnTo, 'mismatch'))
   }
@@ -40,10 +36,12 @@ export default defineEventHandler(async (event) => {
       challengeResult.challenge.secondaryAuth0Subject
     )
   } catch {
+    await clearPlatformAccountLinkAuthentication(event)
     clearPlatformAccountLinkChallenge(event)
     return sendRedirect(event, buildPlatformAccountLinkRedirect(challengeResult.challenge.returnTo, 'failed'))
   }
 
+  await clearPlatformAccountLinkAuthentication(event)
   clearPlatformAccountLinkChallenge(event)
   return sendRedirect(event, buildPlatformAccountLinkRedirect(challengeResult.challenge.returnTo))
 })
