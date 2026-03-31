@@ -1,10 +1,12 @@
 import { defineEventHandler, sendRedirect } from 'h3'
 
-import { getRequestActor, getRequestLinkablePlatformAccountIdentity } from '../../../auth/actor'
+import { getRequestActor } from '../../../auth/actor'
+import { getDatabase } from '../../../database/client'
 import {
   buildPlatformAccountLinkRedirect,
   clearPlatformAccountLinkAuthentication,
   clearPlatformAccountLinkChallenge,
+  findLinkablePlatformAccountIdentity,
   issuePlatformAccountLinkChallenge,
   readPlatformAccountLinkChallenge,
   startPlatformAccountLinkAuthentication
@@ -17,7 +19,7 @@ export default defineEventHandler(async (event) => {
     const actor = await getRequestActor(event)
 
     if (actor.kind === 'authenticated_identity') {
-      const linkableIdentity = await getRequestLinkablePlatformAccountIdentity(event, actor.sessionUser)
+      const linkableIdentity = await findLinkablePlatformAccountIdentity(getDatabase(event), actor.sessionUser)
 
       if (linkableIdentity) {
         challengeResult = {
