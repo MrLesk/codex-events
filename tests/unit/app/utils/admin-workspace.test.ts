@@ -33,6 +33,7 @@ import {
   getJudgeAssignmentStatusColor,
   getParticipantsLimitSummary,
   hasHackathonAdminAccess,
+  normalizeApiError,
   getSubmissionStatusColor,
   toDateTimeLocalValue
 } from '../../../../app/utils/admin-workspace'
@@ -475,6 +476,22 @@ describe('admin-workspace lifecycle controls', () => {
 })
 
 describe('admin-workspace operational helpers', () => {
+  test('extracts canonical API messages from fetch-style upload errors', () => {
+    expect(normalizeApiError({
+      response: {
+        _data: {
+          error: {
+            code: 'profile_icon_file_too_large',
+            message: 'Profile icons must be 1MB or smaller.'
+          }
+        }
+      }
+    })).toEqual({
+      code: 'profile_icon_file_too_large',
+      message: 'Profile icons must be 1MB or smaller.'
+    })
+  })
+
   test('collects paginated items until the full set is loaded', async () => {
     const responses = [
       {

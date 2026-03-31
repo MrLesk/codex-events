@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AccountSettingsProfileForm from '~/components/account/AccountSettingsProfileForm.vue'
+import { normalizeApiError } from '~/utils/admin-workspace'
 import { authLogoutHref } from '~/utils/auth-navigation'
 import { buildProfileIconHref } from '~/utils/profile-icon'
 
@@ -145,9 +146,7 @@ async function uploadProfileIcon(event: Event) {
     await refresh()
     profileIconState.success = 'Profile icon updated.'
   } catch (error) {
-    profileIconState.error = error instanceof Error
-      ? error.message
-      : 'Unable to upload profile icon.'
+    profileIconState.error = normalizeApiError(error).message
   } finally {
     if (target) {
       target.value = ''

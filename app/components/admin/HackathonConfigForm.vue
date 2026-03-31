@@ -625,7 +625,7 @@ const submitConfigForm = handleSubmit(() => {
                 Background image
               </h3>
               <p class="text-xs text-muted">
-                Managed image upload only. JPG/PNG up to 1mb.
+                Managed image upload only. JPG/PNG up to 5MB.
               </p>
             </div>
 
@@ -708,7 +708,7 @@ const submitConfigForm = handleSubmit(() => {
                 Banner image
               </h3>
               <p class="text-xs text-muted">
-                Managed image upload only. JPG/PNG up to 1mb.
+                Managed image upload only. JPG/PNG up to 5MB.
               </p>
             </div>
 
