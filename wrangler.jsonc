@@ -99,6 +99,9 @@
 			"vars": {
 				"NUXT_AUTH0_DOMAIN": "auth.dev.codex-hackathons.com",
 				"NUXT_AUTH0_APP_BASE_URL": "https://dev.codex-hackathons.com",
+				"NUXT_AUTH0_MANAGEMENT_DOMAIN": "codex-hackathons-dev.eu.auth0.com",
+				"NUXT_AUTH0_MANAGEMENT_AUDIENCE": "https://codex-hackathons-dev.eu.auth0.com/api/v2/",
+				"NUXT_AUTH0_DATABASE_CONNECTION_NAME": "codex-hackathons-e2e-users",
 				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING": "APPLICATION_REVIEW_EMAIL_QUEUE",
 				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "dev-codex-hackathons-application-review-email-delivery",
 				"NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS": "120"

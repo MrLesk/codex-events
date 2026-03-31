@@ -123,7 +123,21 @@ Pushes to `main` publish the shared dev environment automatically through `.gith
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
 
-It applies the remote dev D1 migrations first and then deploys the Worker.
+The shared dev Worker also requires these Cloudflare Worker secrets to already exist in the deployed environment:
+
+- `NUXT_AUTH0_CLIENT_ID`
+- `NUXT_AUTH0_CLIENT_SECRET`
+- `NUXT_AUTH0_SESSION_SECRET`
+- `NUXT_AUTH0_AUDIENCE`
+- `NUXT_AUTH0_MANAGEMENT_CLIENT_ID`
+- `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET`
+- `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
+- `NUXT_RESEND_API_KEY`
+- `NUXT_RESEND_FROM_EMAIL`
+- `NUXT_RESEND_FROM_NAME`
+- `NUXT_RESEND_REPLY_TO`
+
+It applies the remote dev D1 migrations first and then deploys the Worker. The checked-in dev `wrangler.jsonc` supplies the shared dev Auth0 management domain, management audience, and password connection name as plaintext vars.
 
 For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run:
 
