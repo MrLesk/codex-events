@@ -1,10 +1,10 @@
 ---
 id: TASK-130
 title: Fix production account-linking runtime config in release workflow
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-03-31 17:24'
-updated_date: '2026-03-31 17:25'
+updated_date: '2026-03-31 21:21'
 labels:
   - production
   - auth0
@@ -40,16 +40,34 @@ Validation: `bun run lint` passed with existing `vue/no-v-html` warnings only; `
 Canonical docs already documented the required Auth0 env vars, so no doc changes were needed.
 
 Remaining external step: deploy a new production release so the patched workflow can publish the new runtime configuration to Cloudflare.
+
+Committed and pushed the workflow/config fix on `main` as `5c177a7` (`TASK-130 - Fix production account-linking runtime config in release workflow`).
+
+Repository still has unrelated unstaged local changes in other app/server files that were intentionally excluded from this commit.
+
+Remaining step is an actual production release execution so Cloudflare receives the new runtime config.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Updated the production release path so Auth0 account-linking runtime configuration is published for the Worker. The workflow and runtime config changes were already committed and pushed on `main` as `5c177a7` (`TASK-130 - Fix production account-linking runtime config in release workflow`).
+
+The task acceptance criteria are satisfied: the production release workflow now publishes the required Auth0 account-linking configuration, production runtime config includes the required non-secret values, and the notes record the manual production secret requirement for `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`.
+
+Validation recorded in task notes: `bun run lint`, `bun run typecheck`, and `bun run test:unit` passed at implementation time. Canonical docs already covered the required Auth0 env vars, so no doc changes were needed.
+
+Residual operational follow-up: run the next production release so Cloudflare receives the updated runtime configuration.
+<!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
 - [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
