@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   formatTeamSubmissionStatus,
   getCreateSubmissionAvailability,
+  hasHackathonEnteredSubmissionPhase,
   getTeamSubmissionStateSummary,
   getTeamSubmissionStatusColor,
   getSubmitSubmissionAvailability,
@@ -30,6 +31,20 @@ function createSubmission(status: TeamSubmissionRecord['status']): TeamSubmissio
 }
 
 describe('team submission helpers', () => {
+  test('treats submission_open and later states as the visible participant submission phase', () => {
+    expect(hasHackathonEnteredSubmissionPhase({
+      state: 'registration_open'
+    })).toBe(false)
+
+    expect(hasHackathonEnteredSubmissionPhase({
+      state: 'submission_open'
+    })).toBe(true)
+
+    expect(hasHackathonEnteredSubmissionPhase({
+      state: 'judge_review'
+    })).toBe(true)
+  })
+
   test('allows creating the first draft only for team admins during submission_open', () => {
     expect(getCreateSubmissionAvailability({
       state: 'submission_open'

@@ -74,6 +74,10 @@ export function getTeamSubmissionStatusColor(status: TeamSubmissionWorkspaceStat
   }
 }
 
+export function hasHackathonEnteredSubmissionPhase(hackathon: Pick<PublicHackathon, 'state'>) {
+  return hackathon.state !== 'draft' && hackathon.state !== 'registration_open'
+}
+
 export function getTeamSubmissionStateSummary(
   hackathon: Pick<PublicHackathon, 'state'>,
   submission: TeamSubmissionRecord | null | undefined

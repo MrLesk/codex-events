@@ -40,7 +40,8 @@ import { getTeamFormationAvailability } from '~/utils/team-workspace'
 import {
   formatTeamSubmissionStatus,
   getTeamSubmissionStateSummary,
-  getTeamSubmissionWorkspaceStatus
+  getTeamSubmissionWorkspaceStatus,
+  hasHackathonEnteredSubmissionPhase
 } from '~/utils/team-submission'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
@@ -341,6 +342,7 @@ const teamFormationAvailability = computed(() =>
     Boolean(participationRecord.value?.activeTeam)
   )
 )
+const showTeamAndSubmissionCards = computed(() => hasHackathonEnteredSubmissionPhase(hackathon.value))
 const submissionStatus = computed(() =>
   getTeamSubmissionWorkspaceStatus(participationRecord.value?.latestSubmission ?? null)
 )
@@ -538,7 +540,10 @@ useSeoMeta({
                 :description="teamFormationAvailability.summary"
               />
 
-              <section class="grid gap-4 lg:grid-cols-2">
+              <section
+                v-if="showTeamAndSubmissionCards"
+                class="grid gap-4 lg:grid-cols-2"
+              >
                 <AppCard class="hackathon-workspace-detail-inset p-6">
                   <h2 class="text-xl font-semibold text-highlighted dark:text-white">
                     Team workspace
