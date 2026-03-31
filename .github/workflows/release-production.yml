@@ -30,6 +30,9 @@ jobs:
       NUXT_AUTH0_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_CLIENT_SECRET }}
       NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}
       NUXT_AUTH0_AUDIENCE: ${{ secrets.NUXT_AUTH0_AUDIENCE }}
+      NUXT_AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
+      NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+      NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ${{ secrets.NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET }}
       NUXT_RESEND_API_KEY: ${{ secrets.NUXT_RESEND_API_KEY }}
       NUXT_RESEND_FROM_EMAIL: ${{ secrets.NUXT_RESEND_FROM_EMAIL }}
       NUXT_RESEND_FROM_NAME: Codex Hackathons
@@ -84,6 +87,9 @@ jobs:
             --arg auth0ClientSecret "$NUXT_AUTH0_CLIENT_SECRET" \
             --arg auth0SessionSecret "$NUXT_AUTH0_SESSION_SECRET" \
             --arg auth0Audience "$NUXT_AUTH0_AUDIENCE" \
+            --arg auth0ManagementClientId "$NUXT_AUTH0_MANAGEMENT_CLIENT_ID" \
+            --arg auth0ManagementClientSecret "$NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET" \
+            --arg accountLinkChallengeSecret "$NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET" \
             --arg resendApiKey "$NUXT_RESEND_API_KEY" \
             --arg resendFromEmail "$NUXT_RESEND_FROM_EMAIL" \
             --arg resendFromName "$NUXT_RESEND_FROM_NAME" \
@@ -93,6 +99,9 @@ jobs:
               NUXT_AUTH0_CLIENT_SECRET: $auth0ClientSecret,
               NUXT_AUTH0_SESSION_SECRET: $auth0SessionSecret,
               NUXT_AUTH0_AUDIENCE: $auth0Audience,
+              NUXT_AUTH0_MANAGEMENT_CLIENT_ID: $auth0ManagementClientId,
+              NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: $auth0ManagementClientSecret,
+              NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: $accountLinkChallengeSecret,
               NUXT_RESEND_API_KEY: $resendApiKey,
               NUXT_RESEND_FROM_EMAIL: $resendFromEmail,
               NUXT_RESEND_FROM_NAME: $resendFromName,
