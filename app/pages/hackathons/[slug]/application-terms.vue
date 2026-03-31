@@ -229,10 +229,12 @@ useSeoMeta({
           </div>
         </div>
 
+        <!-- eslint-disable vue/no-v-html -->
         <div
           class="hackathon-markdown"
           v-html="applicationTermsHtml"
         />
+        <!-- eslint-enable vue/no-v-html -->
       </section>
     </AppContainer>
   </div>

@@ -254,10 +254,12 @@ useSeoMeta({
               </p>
             </div>
 
+            <!-- eslint-disable vue/no-v-html -->
             <div
               class="hackathon-markdown max-h-[24rem] overflow-y-auto rounded-lg border border-black/8 bg-white p-5 dark:border-white/[0.08] dark:bg-black/20"
               v-html="privacyPolicyHtml"
             />
+            <!-- eslint-enable vue/no-v-html -->
 
             <AppCheckbox
               v-model="privacyAccepted"
@@ -288,10 +290,12 @@ useSeoMeta({
               </p>
             </div>
 
+            <!-- eslint-disable vue/no-v-html -->
             <div
               class="hackathon-markdown max-h-[24rem] overflow-y-auto rounded-lg border border-black/8 bg-white p-5 dark:border-white/[0.08] dark:bg-black/20"
               v-html="platformTermsHtml"
             />
+            <!-- eslint-enable vue/no-v-html -->
 
             <AppCheckbox
               v-model="termsAccepted"

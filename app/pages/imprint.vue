@@ -164,10 +164,12 @@ useSeoMeta({
 
     <AppContainer class="relative z-10 grid max-w-[68rem] gap-6 pb-10 pt-6 sm:pb-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
       <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
+        <!-- eslint-disable vue/no-v-html -->
         <div
           class="hackathon-markdown"
           v-html="imprintHtml"
         />
+        <!-- eslint-enable vue/no-v-html -->
       </section>
 
       <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/92">
