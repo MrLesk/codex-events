@@ -4,7 +4,7 @@ import type {
   ApiListResponse
 } from '~/utils/admin-workspace'
 
-type ParticipantView = 'applications' | 'approved'
+type ParticipantView = 'applications' | 'approved' | 'rejected'
 
 const props = defineProps<{
   hackathonId: string
@@ -58,6 +58,11 @@ const filteredCountLabel = computed(() => {
   if (participantView.value === 'approved') {
     const count = applications.value.filter(application => application.status === 'approved').length
     return `${count} approved participants`
+  }
+
+  if (participantView.value === 'rejected') {
+    const count = applications.value.filter(application => application.status === 'rejected').length
+    return `${count} rejected participants`
   }
 
   const count = applications.value.filter(application => application.status === 'submitted').length
@@ -115,6 +120,13 @@ function selectParticipantView(nextView: ParticipantView) {
           @click="selectParticipantView('approved')"
         >
           Approved
+        </button>
+        <button
+          class="rounded-lg px-4 py-1.5 text-[13px] transition-colors"
+          :class="participantView === 'rejected' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+          @click="selectParticipantView('rejected')"
+        >
+          Rejected
         </button>
         <span class="ml-4 border-l border-black/8 pl-4 text-[13px] text-neutral-700 dark:border-white/[0.08] dark:text-[#8C8C8C]">
           {{ filteredCountLabel }}

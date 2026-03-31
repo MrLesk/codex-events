@@ -176,6 +176,15 @@ const reviewContent = computed(() => {
     }
   }
 
+  if (props.view === 'rejected') {
+    return {
+      title: 'Rejected Participants',
+      description: props.readOnly
+        ? 'Browse rejected participant records and inferred teammate groupings.'
+        : 'Browse rejected participant records and inferred teammate groupings.'
+    }
+  }
+
   return {
     title: props.readOnly ? 'Participant Directory' : 'Participant Review',
     description: props.readOnly
@@ -196,6 +205,13 @@ const emptyState = computed(() => {
     return {
       title: 'No approved participants yet',
       description: 'Approved participants will appear here after staged decisions are saved.'
+    }
+  }
+
+  if (props.view === 'rejected') {
+    return {
+      title: 'No rejected participants yet',
+      description: 'Rejected participants will appear here after staged decisions are saved.'
     }
   }
 
@@ -298,6 +314,13 @@ const emptyState = computed(() => {
                         variant="soft"
                       >
                         Approved
+                      </AppBadge>
+                      <AppBadge
+                        v-if="applicant.application.status === 'rejected'"
+                        :color="getApplicationStatusColor(applicant.application.status)"
+                        variant="soft"
+                      >
+                        Rejected
                       </AppBadge>
                       <AppBadge
                         v-if="applicant.hasFuzzyMatch"

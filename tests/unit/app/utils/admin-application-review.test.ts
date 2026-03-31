@@ -307,4 +307,53 @@ describe('buildAdminApplicationReviewGroups', () => {
       }]
     })])
   })
+
+  test('filters rejected participant records without surfacing teammate hints from hidden applicants', () => {
+    const applications = [
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com',
+        status: 'rejected',
+        submittedAt: '2026-03-29T12:00:00.000Z',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Bob Example',
+          email: 'bob@example.com'
+        }, {
+          fullName: 'Carol Example',
+          email: 'carol@example.com'
+        }]
+      }),
+      createApplication({
+        id: 'application-2',
+        displayName: 'Bob Example',
+        email: 'bob@example.com',
+        status: 'approved',
+        submittedAt: '2026-03-29T11:00:00.000Z',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Alice Example',
+          email: 'alice@example.com'
+        }, {
+          fullName: 'Dave Example',
+          email: 'dave@example.com'
+        }]
+      })
+    ]
+
+    const groups = buildAdminApplicationReviewGroups(applications)
+
+    expect(filterAdminApplicationReviewGroups(groups, 'rejected')).toEqual([expect.objectContaining({
+      applicants: [expect.objectContaining({
+        application: applications[0]
+      })],
+      pendingTeammates: [{
+        id: 'email:carol@example.com',
+        fullName: 'Carol Example',
+        email: 'carol@example.com',
+        mentionedByApplicationIds: ['application-1']
+      }]
+    })])
+  })
 })

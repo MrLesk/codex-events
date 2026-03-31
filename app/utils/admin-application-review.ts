@@ -7,7 +7,7 @@ export const adminApplicationFuzzyNameThreshold = 0.92
 const adminApplicationFuzzyNameUniquenessMargin = 0.03
 
 export type AdminApplicationReviewMatchKind = 'exact_email' | 'fuzzy_name'
-export type AdminApplicationReviewView = 'applications' | 'approved'
+export type AdminApplicationReviewView = 'applications' | 'approved' | 'rejected'
 
 export interface AdminApplicationReviewApplicant {
   application: AdminApplicationRecord
@@ -504,11 +504,16 @@ export function filterAdminApplicationReviewGroups(
   view: AdminApplicationReviewView
 ): AdminApplicationReviewGroup[] {
   return groups.flatMap((group) => {
-    const applicants = group.applicants.filter(applicant =>
-      view === 'applications'
-        ? applicant.application.status === 'submitted'
-        : applicant.application.status === 'approved'
-    )
+    const applicants = group.applicants.filter((applicant) => {
+      switch (view) {
+        case 'applications':
+          return applicant.application.status === 'submitted'
+        case 'approved':
+          return applicant.application.status === 'approved'
+        case 'rejected':
+          return applicant.application.status === 'rejected'
+      }
+    })
 
     if (applicants.length === 0) {
       return []

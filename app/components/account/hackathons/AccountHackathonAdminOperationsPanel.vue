@@ -21,7 +21,7 @@ import {
 } from '~/utils/admin-workspace'
 
 type AccountHackathonAdminOperationsSection = 'participants' | 'submissions' | 'operations'
-type AccountHackathonParticipantView = 'applications' | 'approved'
+type AccountHackathonParticipantView = 'applications' | 'approved' | 'rejected'
 
 const props = defineProps<{
   slug: string
@@ -385,6 +385,10 @@ const filteredParticipantCount = computed(() => {
     return applications.value.filter(application => application.status === 'approved').length
   }
 
+  if (participantView.value === 'rejected') {
+    return applications.value.filter(application => application.status === 'rejected').length
+  }
+
   return applications.value.filter(application => application.status === 'submitted').length
 })
 
@@ -397,9 +401,15 @@ const participantFilterTotalLabel = computed(() => {
     return 'Unavailable'
   }
 
-  return participantView.value === 'approved'
-    ? `${filteredParticipantCount.value} approved participants`
-    : `${filteredParticipantCount.value} applications`
+  if (participantView.value === 'approved') {
+    return `${filteredParticipantCount.value} approved participants`
+  }
+
+  if (participantView.value === 'rejected') {
+    return `${filteredParticipantCount.value} rejected participants`
+  }
+
+  return `${filteredParticipantCount.value} applications`
 })
 
 const teamSummaryValue = computed(() => {
@@ -878,6 +888,13 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
               @click="selectParticipantView('approved')"
             >
               Approved
+            </button>
+            <button
+              class="rounded-lg px-4 py-1.5 text-[13px] transition-colors"
+              :class="participantView === 'rejected' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+              @click="selectParticipantView('rejected')"
+            >
+              Rejected
             </button>
             <span class="ml-4 border-l border-black/8 pl-4 text-[13px] text-neutral-700 dark:border-white/[0.08] dark:text-[#8C8C8C]">
               {{ participantFilterTotalLabel }}
