@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import accountRegistrationPostHandler from '../../../../../server/api/account/registration.post'
 import authLinkCallbackHandler from '../../../../../server/routes/auth/link/callback'
+import authLinkCompleteHandler from '../../../../../server/routes/auth/link/complete'
 import authLinkLoginHandler from '../../../../../server/routes/auth/link/login'
 import { platformDocuments, users } from '../../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
@@ -22,7 +23,8 @@ describe('Auth0 account-link routes', () => {
       routes: [
         { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler },
         { method: 'get', path: '/auth/link/login', handler: authLinkLoginHandler },
-        { method: 'get', path: '/auth/link/callback', handler: authLinkCallbackHandler }
+        { method: 'get', path: '/auth/link/callback', handler: authLinkCallbackHandler },
+        { method: 'get', path: '/auth/link/complete', handler: authLinkCompleteHandler }
       ],
       runtimeConfig: {
         auth0: {
@@ -152,7 +154,7 @@ describe('Auth0 account-link routes', () => {
     })
   })
 
-  test('GET /auth/link/callback links the social identity after reauthenticating the existing password account', async () => {
+  test('GET /auth/link/callback completes login and defers identity verification to a fresh request', async () => {
     const harness = createLinkHarness()
     await seedExistingPlatformAccount(harness)
 
@@ -220,9 +222,61 @@ describe('Auth0 account-link routes', () => {
     })
 
     expect(completeInteractiveLogin).toHaveBeenCalled()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister')
-    expect(response.headers.get('set-cookie')).toContain('codex_platform_account_link=')
+    expect(response.headers.get('location')).toBe('/auth/link/complete')
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    const completeResponse = await harness.request('/auth/link/complete', {
+      headers: {
+        cookie
+      }
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(completeResponse.status).toBe(302)
+    expect(completeResponse.headers.get('location')).toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister')
+    expect(completeResponse.headers.get('set-cookie')).toContain('codex_platform_account_link=')
+  })
+
+  test('GET /auth/link/complete redirects with mismatch when the fresh session is not the expected password account', async () => {
+    const harness = createLinkHarness()
+    await seedExistingPlatformAccount(harness)
+
+    vi.stubGlobal('useAuth0', vi.fn(() => ({
+      getSession: vi.fn(async () => ({
+        user: {
+          sub: 'google-oauth2|existing-google-user',
+          email: 'existing-user@example.com',
+          email_verified: true,
+          name: 'Existing User'
+        }
+      })),
+      startInteractiveLogin: vi.fn(),
+      completeInteractiveLogin: vi.fn()
+    })))
+
+    const cookie = await createLinkChallengeCookie(harness)
+
+    vi.stubGlobal('useAuth0', vi.fn(() => ({
+      getSession: vi.fn(async () => ({
+        user: {
+          sub: 'auth0|different-password-user',
+          email: 'different-user@example.com',
+          email_verified: true,
+          name: 'Different User'
+        }
+      })),
+      startInteractiveLogin: vi.fn(),
+      completeInteractiveLogin: vi.fn()
+    })))
+
+    const response = await harness.request('/auth/link/complete', {
+      headers: {
+        cookie
+      }
+    })
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister&linkingError=mismatch')
   })
 })
