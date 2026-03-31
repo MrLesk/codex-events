@@ -9,6 +9,7 @@ import {
   getParticipantApplicationSubmissionPolicy,
   getParticipantApplicationStatusColor,
   isProofOfExecutionLinksValid,
+  isParticipantApplicationSubmittedNotice,
   isParticipantProfileUrlValid,
   isParticipantSocialProfileUrlValid,
   isOpenAiOrgIdFormatValid,
@@ -21,6 +22,7 @@ import {
   parseProofOfExecutionLinks,
   parseParticipantRegistrationDetailsJson,
   resolvePublicHackathonPrimaryAction,
+  resolveParticipantApplicationSubmittedTransition,
   resolveParticipantRegistrationEntry,
   shouldShowPublicRegistrationEntry,
   summarizeParticipantApplicationStatus
@@ -394,6 +396,26 @@ describe('participant application helpers', () => {
       to: '/hackathons/codex-spring',
       external: false
     })
+  })
+
+  test('resolves the application-submitted transition into the account workspace', () => {
+    expect(resolveParticipantApplicationSubmittedTransition('codex-spring')).toEqual({
+      title: 'Application submitted',
+      description: 'Opening your hackathon workspace so you can track your application status. This can take a moment.',
+      to: {
+        path: '/account/hackathons/codex-spring',
+        query: {
+          notice: 'application_submitted'
+        }
+      }
+    })
+  })
+
+  test('recognizes the one-time application-submitted notice query', () => {
+    expect(isParticipantApplicationSubmittedNotice('application_submitted')).toBe(true)
+    expect(isParticipantApplicationSubmittedNotice([' application_submitted '])).toBe(true)
+    expect(isParticipantApplicationSubmittedNotice('different_notice')).toBe(false)
+    expect(isParticipantApplicationSubmittedNotice(undefined)).toBe(false)
   })
 
   test('keeps the public detail CTA as Register while registration is open', () => {

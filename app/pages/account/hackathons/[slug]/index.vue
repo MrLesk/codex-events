@@ -34,6 +34,7 @@ import {
 import {
   formatParticipantApplicationStatus,
   getParticipantApplicationStatusColor,
+  isParticipantApplicationSubmittedNotice,
   summarizeParticipantApplicationStatus
 } from '~/utils/participant-application'
 import { getTeamFormationAvailability } from '~/utils/team-workspace'
@@ -105,16 +106,6 @@ const accountHackathonNavigationMode = useState<'participant' | 'admin'>(
   () => 'participant'
 )
 const { actor } = useAccountLifecycleActor()
-
-function isApplicationSubmittedNotice(notice: typeof route.query.notice) {
-  const firstNotice = Array.isArray(notice) ? notice[0] : notice
-
-  if (typeof firstNotice !== 'string') {
-    return false
-  }
-
-  return firstNotice.trim().toLowerCase() === 'application_submitted'
-}
 
 if (!slug.value) {
   throw createError({
@@ -297,7 +288,7 @@ watchEffect(() => {
 })
 
 onMounted(() => {
-  if (!applicationSubmittedNoticeVisible.value || !isApplicationSubmittedNotice(route.query.notice)) {
+  if (!applicationSubmittedNoticeVisible.value || !isParticipantApplicationSubmittedNotice(route.query.notice)) {
     return
   }
 
@@ -318,7 +309,7 @@ const teamsHref = computed(() => `/hackathons/${slug.value}/teams`)
 const activeTeamHref = computed(() =>
   participationRecord.value?.activeTeam ? `/hackathons/${slug.value}/teams/${participationRecord.value.activeTeam.id}` : null
 )
-const applicationSubmittedNoticeVisible = ref(isApplicationSubmittedNotice(route.query.notice))
+const applicationSubmittedNoticeVisible = ref(isParticipantApplicationSubmittedNotice(route.query.notice))
 const applicationStatusLabel = computed(() =>
   applicationStatus.value ? formatParticipantApplicationStatus(applicationStatus.value) : ''
 )

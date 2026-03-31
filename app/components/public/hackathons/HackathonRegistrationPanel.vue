@@ -5,6 +5,7 @@ import { useForm } from 'vee-validate'
 import type { PublicHackathon } from '~/composables/useHackathonPresentation'
 import type {
   HackathonProfileField,
+  ParticipantApplicationSubmittedTransition,
   ParticipantApplicationSubmissionPolicy,
   ParticipantApplicationTermsDocument,
   ParticipantRegistrationTeamIntent,
@@ -57,6 +58,7 @@ const props = defineProps<{
   isSavingProfile?: boolean
   profileError?: string
   submissionError?: string
+  submissionTransition?: ParticipantApplicationSubmittedTransition | null
   isLoading?: boolean
   workspaceErrorMessage?: string
 }>()
@@ -408,27 +410,54 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
       />
 
       <template v-else>
-        <AppAlert
-          v-if="profileError"
-          color="error"
-          variant="soft"
-          title="Profile update failed"
-          :description="profileError"
-        />
+        <article
+          v-if="submissionTransition"
+          class="rounded-[1.75rem] border border-success/30 bg-success/10 px-6 py-6 shadow-[0_24px_54px_-42px_rgba(16,110,66,0.45)]"
+        >
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div class="flex size-12 shrink-0 items-center justify-center rounded-full border border-success/30 bg-white/80 text-success-700 dark:bg-black/20 dark:text-success-300">
+              <AppIcon
+                name="i-lucide-loader-circle"
+                class="size-5 animate-spin"
+              />
+            </div>
 
-        <AppAlert
-          v-if="submissionError"
-          color="error"
-          variant="soft"
-          title="Application submission failed"
-          :description="submissionError"
-        />
+            <div class="space-y-2">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-success-700 dark:text-success-300">
+                Application received
+              </p>
+              <h2 class="text-[24px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+                {{ submissionTransition.title }}
+              </h2>
+              <p class="max-w-2xl text-[14px] leading-6 text-neutral-700 dark:text-[#B4B4B4]">
+                {{ submissionTransition.description }}
+              </p>
+            </div>
+          </div>
+        </article>
 
-        <template v-if="canRenderSubmissionForm">
-          <form
-            class="space-y-4 rounded-xl border border-black/8 bg-white/80 px-4 pb-20 pt-4 dark:border-white/[0.08] dark:bg-[#171717]/80 md:pb-4"
-            @submit.prevent="handleSubmitAttempt"
-          >
+        <template v-else>
+          <AppAlert
+            v-if="profileError"
+            color="error"
+            variant="soft"
+            title="Profile update failed"
+            :description="profileError"
+          />
+
+          <AppAlert
+            v-if="submissionError"
+            color="error"
+            variant="soft"
+            title="Application submission failed"
+            :description="submissionError"
+          />
+
+          <template v-if="canRenderSubmissionForm">
+            <form
+              class="space-y-4 rounded-xl border border-black/8 bg-white/80 px-4 pb-20 pt-4 dark:border-white/[0.08] dark:bg-[#171717]/80 md:pb-4"
+              @submit.prevent="handleSubmitAttempt"
+            >
             <div class="space-y-3">
               <div class="flex items-center justify-between gap-3">
                 <p class="text-[13px] font-medium text-highlighted dark:text-white">
@@ -866,16 +895,17 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
             <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
               After you apply, we will review your application. If you are approved, you can create a team or join one while team formation is open.
             </p>
-          </form>
-        </template>
+            </form>
+          </template>
 
-        <template v-else>
-          <AppAlert
-            color="neutral"
-            variant="soft"
-            title="Registration closed"
-            description="Registration closed while you were on this page. Head back to the hackathon page for the latest status."
-          />
+          <template v-else>
+            <AppAlert
+              color="neutral"
+              variant="soft"
+              title="Registration closed"
+              description="Registration closed while you were on this page. Head back to the hackathon page for the latest status."
+            />
+          </template>
         </template>
       </template>
     </div>

@@ -9,6 +9,7 @@ import type {
   ParticipantApiDataResponse,
   ParticipantCurrentTermsResponse,
   ParticipantApplicationTermsDocument,
+  ParticipantApplicationSubmittedTransition,
   ParticipantRegistrationTeamMemberHint
 } from '~/utils/participant-application'
 
@@ -20,6 +21,7 @@ import {
   normalizeParticipantApiError,
   normalizeParticipantProfileUrl,
   normalizeParticipantTeamMemberHintsForSubmission,
+  resolveParticipantApplicationSubmittedTransition,
   resolveParticipantRegistrationEntry
 } from '~/utils/participant-application'
 
@@ -30,7 +32,7 @@ definePageMeta({
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
-const { actor: accountActor, status: accountActorStatus, refresh: refreshAccountActor } = await useAccountLifecycleActor()
+const { actor: accountActor, status: accountActorStatus } = await useAccountLifecycleActor()
 
 if (!slug.value) {
   throw createError({
@@ -110,6 +112,7 @@ const currentApplicationTerms = ref<ParticipantApplicationTermsDocument | null>(
 const workspaceErrorMessage = ref('')
 const submissionError = ref('')
 const isSubmitting = ref(false)
+const submissionTransition = ref<ParticipantApplicationSubmittedTransition | null>(null)
 const visibleHackathonId = ref<string | null>(null)
 
 watch(() => accountActor.value, (actor) => {
@@ -222,6 +225,7 @@ async function submitParticipantApplication() {
 
   profileSaveError.value = ''
   submissionError.value = ''
+  submissionTransition.value = null
   isSubmitting.value = true
   isSavingProfile.value = true
 
@@ -239,7 +243,6 @@ async function submitParticipantApplication() {
         lumaUsername: profileForm.lumaUsername
       }
     })
-    await refreshAccountActor()
   } catch (error) {
     profileSaveError.value = normalizeParticipantApiError(error).message
     isSubmitting.value = false
@@ -268,22 +271,20 @@ async function submitParticipantApplication() {
       body: applicationPayload
     })
 
-    const ownApplicationResponse = await $fetch<ParticipantApiDataResponse<ParticipantApplicationRecord | null>>(
-      `/api/hackathons/${visibleHackathonId.value}/applications/me`
-    )
-    hasExistingApplication.value = Boolean(ownApplicationResponse.data)
-    applicationTermsAccepted.value = false
-    inPersonAttendanceCommitment.value = false
-    whyThisHackathon.value = ''
-    proofOfExecutionUrl.value = ''
-    await navigateTo({
-      path: `/account/hackathons/${slug.value}`,
-      query: {
-        notice: 'application_submitted'
-      }
-    })
+    const nextSubmissionTransition = resolveParticipantApplicationSubmittedTransition(slug.value)
+
+    hasExistingApplication.value = true
+    submissionTransition.value = nextSubmissionTransition
+
+    await nextTick()
+    await navigateTo(nextSubmissionTransition.to, { replace: true })
   } catch (error) {
-    submissionError.value = normalizeParticipantApiError(error).message
+    if (submissionTransition.value) {
+      submissionTransition.value = null
+      submissionError.value = 'Your application was submitted. Open the hackathon workspace from your account to keep going.'
+    } else {
+      submissionError.value = normalizeParticipantApiError(error).message
+    }
   } finally {
     isSubmitting.value = false
     isSavingProfile.value = false
@@ -394,6 +395,7 @@ useSeoMeta({
           :is-saving-profile="isSavingProfile"
           :profile-error="profileSaveError"
           :submission-error="submissionError"
+          :submission-transition="submissionTransition"
           :workspace-error-message="workspaceErrorMessage"
           @submit-application="submitParticipantApplication"
         />

@@ -528,6 +528,44 @@ export function resolveParticipantRegistrationEntry(options: {
   return null
 }
 
+export interface ParticipantApplicationSubmittedTransition {
+  title: string
+  description: string
+  to: {
+    path: string
+    query: {
+      notice: 'application_submitted'
+    }
+  }
+}
+
+export function resolveParticipantApplicationSubmittedTransition(
+  hackathonSlug: string
+): ParticipantApplicationSubmittedTransition {
+  return {
+    title: 'Application submitted',
+    description: 'Opening your hackathon workspace so you can track your application status. This can take a moment.',
+    to: {
+      path: `/account/hackathons/${hackathonSlug}`,
+      query: {
+        notice: 'application_submitted'
+      }
+    }
+  }
+}
+
+export function isParticipantApplicationSubmittedNotice(
+  notice: string | null | Array<string | null> | undefined
+) {
+  const firstNotice = Array.isArray(notice) ? notice[0] : notice
+
+  if (typeof firstNotice !== 'string') {
+    return false
+  }
+
+  return firstNotice.trim().toLowerCase() === 'application_submitted'
+}
+
 const openAiOrgIdPattern = /^(org_|org-)[A-Za-z0-9_-]+$/
 
 export function isOpenAiOrgIdFormatValid(value: string) {
