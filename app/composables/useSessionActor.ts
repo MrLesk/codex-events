@@ -35,6 +35,12 @@ interface SessionActorHackathonRole {
   createdAt: string
 }
 
+interface SessionActorAccountLink {
+  required: true
+  email: string
+  linkLoginHref: '/auth/link/login'
+}
+
 interface AnonymousSessionActor {
   kind: 'anonymous'
   isAuthenticated: false
@@ -51,6 +57,7 @@ interface AuthenticatedIdentitySessionActor {
   isAuthenticated: true
   hasPlatformAccount: false
   hasAcceptedCurrentPlatformDocuments: false
+  accountLink: SessionActorAccountLink | null
   sessionUser: SessionActorUser
   platformUser: null
   isPlatformAdmin: false
@@ -95,6 +102,7 @@ function buildAuthenticatedIdentityFallback(user: ReturnType<typeof useUser>['va
     isAuthenticated: true,
     hasPlatformAccount: false,
     hasAcceptedCurrentPlatformDocuments: false,
+    accountLink: null,
     sessionUser: {
       sub: user?.sub ?? '',
       email: user?.email ?? null,
