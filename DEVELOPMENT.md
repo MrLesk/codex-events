@@ -37,6 +37,11 @@ Local Auth0 dashboard settings:
 - Allowed Callback URLs: `http://localhost:3000/auth/callback, http://localhost:3000/auth/link/callback`
 - Allowed Logout URLs: `http://localhost:3000`
 
+Local Auth0 runtime notes:
+
+- `NUXT_AUTH0_DOMAIN` is the Auth0 issuer host, not the app host. For the shared dev tenant split, use `auth.dev.codex-hackathons.com` or the underlying Auth0 tenant domain, not `dev.codex-hackathons.com`.
+- When `NUXT_AUTH0_APP_BASE_URL=http://localhost:3000`, the app intentionally uses a non-secure Auth0 session cookie for local development so Safari can persist the login callback session on `localhost`. HTTPS environments continue to use secure cookies.
+
 Auth0 bootstrap automation:
 
 - `bun tools/auth0/auth0-bootstrap.ts apply`
