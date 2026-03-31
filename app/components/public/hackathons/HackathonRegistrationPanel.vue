@@ -640,16 +640,10 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
             />
 
             <section :class="inlineSectionClass">
-              <div class="flex items-center gap-2">
+              <div>
                 <p class="text-[13px] font-medium text-highlighted dark:text-white">
                   Your application
                 </p>
-                <span
-                  v-if="hackathon.requireWhyThisHackathon || hackathon.requireProofOfExecution"
-                  :class="requiredChipClass"
-                >
-                  Required fields may apply
-                </span>
               </div>
 
               <div :class="inlineSectionBodyClass">
@@ -671,7 +665,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                     :class="submitAttempted && whyThisHackathonError
                       ? 'border-error/45 focus:border-error dark:border-error/50'
                       : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
-                    placeholder="Share your motivation and what you want to build."
+                    placeholder="Share what motivates you to apply and what build direction or track you'd like to participate in."
                   />
                   <p
                     v-if="submitAttempted && whyThisHackathonError"
