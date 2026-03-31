@@ -2,6 +2,10 @@
 import type { ApiErrorShape } from '~/utils/admin-workspace'
 
 import { normalizeApiError } from '~/utils/admin-workspace'
+import {
+  getAccountRegistrationIntro,
+  isAccountRegistrationLinkOnlyMode
+} from '~/utils/account-registration'
 import { renderMarkdown } from '~/utils/markdown'
 import {
   accountDashboardHref,
@@ -49,11 +53,11 @@ const linkingError = computed<ApiErrorShape | null>(() => {
   }
 
   const messages: Record<string, string> = {
-    expired: 'Your account-linking session expired. Accept the current documents again to start over.',
-    invalid: 'The account-linking session could not be verified. Accept the current documents again to start over.',
-    login_failed: 'We could not complete the sign-in to your existing account. Accept the current documents again to restart linking.',
-    mismatch: 'You signed in with a different account. Accept the current documents again, then sign in with the existing password account for this email address.',
-    failed: 'The login method could not be linked right now. Accept the current documents again to restart linking.'
+    expired: 'Your account-linking session expired. Try signing in to your existing account again.',
+    invalid: 'The account-linking session could not be verified. Try signing in to your existing account again.',
+    login_failed: 'We could not complete the sign-in to your existing account. Try again.',
+    mismatch: 'You signed in with a different account. Sign in with the existing password account for this email address instead.',
+    failed: 'The login method could not be linked right now. Try signing in to your existing account again.'
   }
 
   return {
@@ -78,6 +82,31 @@ const isReadyToSubmit = computed(() =>
   && privacyAccepted.value
   && termsAccepted.value
 )
+const linkOnlyMode = computed(() => isAccountRegistrationLinkOnlyMode(actor.value, accountLinkState.required))
+const accountRegistrationIntro = computed(() => getAccountRegistrationIntro(linkOnlyMode.value))
+const resolvedAccountLinkState = computed(() => {
+  if (accountLinkState.required) {
+    return {
+      required: true,
+      email: accountLinkState.email,
+      href: accountLinkState.href
+    }
+  }
+
+  if (actor.value.kind === 'authenticated_identity' && actor.value.accountLink?.required) {
+    return {
+      required: true,
+      email: actor.value.accountLink.email,
+      href: actor.value.accountLink.linkLoginHref
+    }
+  }
+
+  return {
+    required: false,
+    email: '',
+    href: '/auth/link/login'
+  }
+})
 
 if (
   status.value !== 'pending'
@@ -163,10 +192,10 @@ useSeoMeta({
         <div class="pb-4">
           <div class="space-y-2">
             <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-              Finish account registration
+              {{ accountRegistrationIntro.title }}
             </h1>
             <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-              Review the current platform Privacy Policy and Platform Terms, then accept both to continue into your account and hackathon workspaces.
+              {{ accountRegistrationIntro.description }}
             </p>
           </div>
         </div>
@@ -175,7 +204,7 @@ useSeoMeta({
 
     <AppContainer class="max-w-[68rem] space-y-6 pt-6">
       <AppAlert
-        v-if="status === 'pending' || documentsStatus === 'pending'"
+        v-if="status === 'pending' || (!linkOnlyMode && documentsStatus === 'pending')"
         color="neutral"
         variant="soft"
         title="Loading account registration"
@@ -183,7 +212,7 @@ useSeoMeta({
       />
 
       <AppAlert
-        v-else-if="!documents?.privacy_policy || !documents?.platform_terms"
+        v-else-if="!linkOnlyMode && (!documents?.privacy_policy || !documents?.platform_terms)"
         color="warning"
         variant="soft"
         title="Platform documents unavailable"
@@ -196,6 +225,7 @@ useSeoMeta({
         @submit.prevent="submitPlatformConsent"
       >
         <AppAlert
+          v-if="!linkOnlyMode"
           color="info"
           variant="soft"
           title="Platform consent is required"
@@ -211,25 +241,9 @@ useSeoMeta({
         />
 
         <section
-          v-if="accountLinkState.required"
-          class="rounded-xl border border-primary/15 bg-primary/6 p-6"
+          v-if="!linkOnlyMode"
+          class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
         >
-          <div class="space-y-3">
-            <h2 class="text-[18px] font-semibold text-highlighted dark:text-white">
-              Sign in to your existing account once
-            </h2>
-            <p class="max-w-3xl text-sm text-neutral-700 dark:text-[#A3A3A3]">
-              {{ accountLinkState.email || 'This email address' }} already has a Codex Hackathons account. Sign in with that account&apos;s password to connect Google. After that, you can use either sign-in method.
-            </p>
-            <AppButton
-              :to="accountLinkState.href"
-              label="Sign In To Existing Account"
-              size="lg"
-            />
-          </div>
-        </section>
-
-        <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
           <div class="space-y-4">
             <div class="space-y-2">
               <h2 class="text-[20px] font-medium text-highlighted dark:text-white">
@@ -260,7 +274,10 @@ useSeoMeta({
           </div>
         </section>
 
-        <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
+        <section
+          v-if="!linkOnlyMode"
+          class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
+        >
           <div class="space-y-4">
             <div class="space-y-2">
               <h2 class="text-[20px] font-medium text-highlighted dark:text-white">
@@ -292,6 +309,26 @@ useSeoMeta({
         </section>
 
         <div class="space-y-4">
+          <section
+            v-if="resolvedAccountLinkState.required"
+            class="rounded-xl border border-primary/15 bg-primary/6 p-6"
+          >
+            <div class="space-y-3">
+              <h2 class="text-[18px] font-semibold text-highlighted dark:text-white">
+                Sign in to your existing account once
+              </h2>
+              <p class="max-w-3xl text-sm text-neutral-700 dark:text-[#A3A3A3]">
+                {{ resolvedAccountLinkState.email || 'This email address' }} already has a Codex Hackathons account. Sign in with that account&apos;s password to connect Google. After that, you can use either sign-in method.
+              </p>
+              <AppButton
+                :to="resolvedAccountLinkState.href"
+                external
+                label="Sign In To Existing Account"
+                size="lg"
+              />
+            </div>
+          </section>
+
           <AppAlert
             v-if="submitState.error"
             color="error"
@@ -300,7 +337,10 @@ useSeoMeta({
             :description="submitState.error"
           />
 
-          <div class="flex justify-end">
+          <div
+            v-if="!linkOnlyMode"
+            class="flex justify-end"
+          >
             <AppButton
               type="submit"
               color="neutral"

@@ -26,6 +26,7 @@ Rules:
 
 - Platform account provisioning happens only after the authenticated user accepts the current platform `privacy_policy` and `platform_terms` in the app-owned account-registration flow.
 - Platform account registration can create the user before canonical `first_name` and `family_name` are filled. Those fields are completed through later profile or application flows.
+- When an authenticated social identity must be linked to an existing platform account, the pre-link identity does not record platform-document acceptance. After linking, the existing platform account either proceeds immediately if current acceptance already exists or completes current platform consent through `/account/register`.
 - Regular platform-user access requires current accepted versions of the platform `privacy_policy` and `platform_terms` in platform data.
 - The reusable platform profile fields are managed from account settings.
 - A user with `is_platform_admin = true` is a platform admin.
@@ -68,6 +69,7 @@ Rules:
 
 - Platform registration and re-consent use platform-wide documents only.
 - The application-owned `/account/register` flow records exact accepted platform-document versions in product data.
+- When `/account/register` is resolving an existing-account linking flow, platform-document acceptance is deferred until the linked platform account is known.
 - Current acceptance of both platform documents is required for regular platform-user access.
 - Platform documents are versioned.
 

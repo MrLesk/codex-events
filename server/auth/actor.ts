@@ -5,6 +5,11 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { getDatabase } from '../database/client'
 import { users } from '../database/schema'
 import { ApiError } from '../utils/api-error'
+import {
+  findLinkablePlatformAccountIdentity,
+  serializePlatformAccountLinkState,
+  type PlatformAccountLinkState
+} from '../utils/platform-account-linking'
 import { hasAcceptedCurrentPlatformDocuments } from '../utils/platform-documents'
 
 interface SessionUserProfile {
@@ -37,6 +42,7 @@ export interface AuthenticatedIdentityActor {
   isAuthenticated: true
   hasPlatformAccount: false
   hasAcceptedCurrentPlatformDocuments: false
+  accountLink: PlatformAccountLinkState | null
   sessionUser: SessionUserProfile
   platformUser: null
 }
@@ -106,12 +112,18 @@ async function findPlatformUserBySubject(event: H3Event, auth0Subject: string) {
   })
 }
 
-function buildAuthenticatedIdentityActor(sessionUser: SessionUserProfile): AuthenticatedIdentityActor {
+function buildAuthenticatedIdentityActor(
+  sessionUser: SessionUserProfile,
+  options?: {
+    accountLink?: PlatformAccountLinkState | null
+  }
+): AuthenticatedIdentityActor {
   return {
     kind: 'authenticated_identity',
     isAuthenticated: true,
     hasPlatformAccount: false,
     hasAcceptedCurrentPlatformDocuments: false,
+    accountLink: options?.accountLink ?? null,
     sessionUser,
     platformUser: null
   }
@@ -151,7 +163,11 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
     }
   }
 
-  return buildAuthenticatedIdentityActor(sessionUser)
+  const accountLinkCandidate = await findLinkablePlatformAccountIdentity(getDatabase(event), sessionUser)
+
+  return buildAuthenticatedIdentityActor(sessionUser, {
+    accountLink: accountLinkCandidate ? serializePlatformAccountLinkState(accountLinkCandidate) : null
+  })
 }
 
 export async function getRequestActor(event: H3Event): Promise<RequestActor> {

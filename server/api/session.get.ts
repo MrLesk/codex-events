@@ -18,6 +18,7 @@ export default defineApiHandler(async (event) => {
         isAuthenticated: actor.isAuthenticated,
         hasPlatformAccount: actor.hasPlatformAccount,
         hasAcceptedCurrentPlatformDocuments: actor.hasAcceptedCurrentPlatformDocuments,
+        accountLink: actor.accountLink,
         sessionUser: actor.sessionUser,
         platformUser: null,
         isPlatformAdmin: false,

@@ -1,8 +1,11 @@
 import type { H3Event } from 'h3'
+import type { AppDatabase } from '../database/client'
 
+import { and, eq, isNull } from 'drizzle-orm'
 import { deleteCookie, getCookie, getRequestURL, setCookie } from 'h3'
 
 import { accountDashboardHref, buildAccountRegisterHref, normalizeAuthReturnTo } from '../../app/utils/auth-navigation'
+import { users } from '../database/schema'
 import { ApiError } from './api-error'
 
 const challengeCookieName = 'codex_platform_account_link'
@@ -40,6 +43,18 @@ interface PlatformAccountLinkChallengeResult {
   ok: boolean
   reason?: PlatformAccountLinkChallengeStatus
   challenge?: PlatformAccountLinkChallenge
+}
+
+export interface PlatformAccountLinkState {
+  required: true
+  email: string
+  linkLoginHref: '/auth/link/login'
+}
+
+export interface LinkablePlatformAccountIdentity {
+  userId: string
+  email: string
+  primaryAuth0Subject: string
 }
 
 function bytesToBase64Url(bytes: Uint8Array) {
@@ -211,6 +226,53 @@ export function isVerifiedSocialIdentityLinkCandidate(options: {
     && options.existingPlatformAuth0Subject.startsWith('auth0|')
 }
 
+export function serializePlatformAccountLinkState(candidate: LinkablePlatformAccountIdentity): PlatformAccountLinkState {
+  return {
+    required: true,
+    email: candidate.email,
+    linkLoginHref: '/auth/link/login'
+  }
+}
+
+export async function findLinkablePlatformAccountIdentity(
+  database: AppDatabase,
+  sessionUser: {
+    sub: string
+    email?: string | null
+    email_verified?: boolean | null
+  }
+) {
+  const email = sessionUser.email?.trim()
+
+  if (!email) {
+    return null
+  }
+
+  const existingPlatformAccount = await database.query.users.findFirst({
+    where: and(
+      eq(users.email, email),
+      isNull(users.deletedAt)
+    )
+  })
+
+  if (
+    !existingPlatformAccount
+    || !isVerifiedSocialIdentityLinkCandidate({
+      currentAuth0Subject: sessionUser.sub,
+      currentIdentityEmailVerified: sessionUser.email_verified === true,
+      existingPlatformAuth0Subject: existingPlatformAccount.auth0Subject
+    })
+  ) {
+    return null
+  }
+
+  return {
+    userId: existingPlatformAccount.id,
+    email,
+    primaryAuth0Subject: existingPlatformAccount.auth0Subject
+  } satisfies LinkablePlatformAccountIdentity
+}
+
 export function parseAuth0IdentitySubject(subject: string) {
   const separatorIndex = subject.indexOf('|')
 
@@ -245,6 +307,8 @@ export async function issuePlatformAccountLinkChallenge(
   const signature = await signChallengePayload(payload, config.challengeSecret)
 
   setCookie(event, challengeCookieName, `${payload}.${signature}`, buildCookieOptions(event))
+
+  return challenge
 }
 
 export async function readPlatformAccountLinkChallenge(event: H3Event): Promise<PlatformAccountLinkChallengeResult> {

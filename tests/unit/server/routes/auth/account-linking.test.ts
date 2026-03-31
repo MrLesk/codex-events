@@ -119,6 +119,39 @@ describe('Auth0 account-link routes', () => {
     })
   })
 
+  test('GET /auth/link/login bootstraps a challenge from the authenticated social identity when no cookie exists', async () => {
+    const harness = createLinkHarness()
+    await seedExistingPlatformAccount(harness)
+
+    const socialSessionUser = {
+      sub: 'google-oauth2|existing-google-user',
+      email: 'existing-user@example.com',
+      email_verified: true,
+      name: 'Existing User'
+    }
+    const startInteractiveLogin = vi.fn(async () => new URL('https://auth.example.test/authorize'))
+
+    vi.stubGlobal('useAuth0', vi.fn(() => ({
+      getSession: vi.fn(async () => ({ user: socialSessionUser })),
+      startInteractiveLogin,
+      completeInteractiveLogin: vi.fn()
+    })))
+
+    const response = await harness.request('/auth/link/login')
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe('https://auth.example.test/authorize')
+    expect(response.headers.get('set-cookie')).toContain('codex_platform_account_link=')
+    expect(startInteractiveLogin).toHaveBeenCalledWith({
+      authorizationParams: {
+        connection: 'Username-Password-Authentication',
+        prompt: 'login',
+        login_hint: 'existing-user@example.com',
+        redirect_uri: 'https://dev.codex-hackathons.com/auth/link/callback'
+      }
+    })
+  })
+
   test('GET /auth/link/callback links the social identity after reauthenticating the existing password account', async () => {
     const harness = createLinkHarness()
     await seedExistingPlatformAccount(harness)

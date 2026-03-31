@@ -158,7 +158,7 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Create platform account after terms acceptance | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record, allows canonical `firstName` and `familyName` to remain blank until later profile completion, and records acceptance of the current required platform documents. The frontend-owned completion route is `/account/register`. |
+| Create platform account after terms acceptance | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record, allows canonical `firstName` and `familyName` to remain blank until later profile completion, and records acceptance of the current required platform documents. The frontend-owned completion route is `/account/register`. When the authenticated identity must be linked to an existing platform account instead, the route returns the link-required outcome before any platform-document acceptance is recorded for the pre-link identity. |
 | Update own platform account profile | `PATCH /api/account` | authenticated user with a platform account and current platform-document acceptance | Updates canonical `firstName` and `familyName` plus optional profile fields such as `company`, `bio`, X, LinkedIn, and GitHub profile links, an optional ChatGPT email, an optional OpenAI org ID, and an optional Luma username. |
 | Get own profile icon | `GET /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Returns the uploaded profile icon object for the caller. |
 | Upload or replace own profile icon | `POST /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Accepts multipart upload for a single profile icon image and replaces any prior icon object. |
@@ -169,6 +169,10 @@ Testing:
 - Unit: registration acceptance-version rules, profile normalization, profile-icon upload guards, and deletion guard semantics.
 - Integration: registration persistence, current-consent gating, profile updates, profile-icon object flows, document-acceptance linkage, deletion effects, and audit creation.
 - End-to-end: authenticated account-registration completion, profile management including profile icon updates, and account deletion flows.
+
+Operational notes:
+- `/api/session` can expose a link-required hint for an authenticated identity whose verified social login matches an existing password-backed platform account.
+- When `/account/register` is in a link-required state, the UI can bypass the platform-document review UI and send the user directly into existing-account reauthentication. After linking, current platform-document acceptance is evaluated on the linked platform account.
 
 ## Hackathons
 
