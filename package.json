@@ -18,6 +18,7 @@
     "db:generate": "drizzle-kit generate",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
+    "notices:generate": "bun tools/licenses/generate-third-party-notices.ts",
     "typecheck": "nuxt typecheck",
     "release:version": "bun tools/releases/release-version.ts",
     "test:bdd:install": "playwright install chromium",

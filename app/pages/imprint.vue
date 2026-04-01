@@ -163,14 +163,37 @@ useSeoMeta({
     </section>
 
     <AppContainer class="relative z-10 grid max-w-[68rem] gap-6 pb-10 pt-6 sm:pb-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
-      <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
-        <!-- eslint-disable vue/no-v-html -->
-        <div
-          class="hackathon-markdown"
-          v-html="imprintHtml"
-        />
-        <!-- eslint-enable vue/no-v-html -->
-      </section>
+      <div class="space-y-6">
+        <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
+          <!-- eslint-disable vue/no-v-html -->
+          <div
+            class="hackathon-markdown"
+            v-html="imprintHtml"
+          />
+          <!-- eslint-enable vue/no-v-html -->
+        </section>
+
+        <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
+          <div class="space-y-2">
+            <h2 class="text-lg font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+              Open-source notices
+            </h2>
+            <p class="text-sm text-neutral-700 dark:text-[#A3A3A3]">
+              Runtime third-party dependency notices and bundled license texts are published on a separate page.
+            </p>
+            <NuxtLink
+              to="/third-party-notices"
+              class="inline-flex items-center gap-2 text-sm font-medium text-highlighted transition-colors hover:text-highlighted/80 dark:text-white dark:hover:text-[#D7D7D7]"
+            >
+              Review third-party notices
+              <AppIcon
+                name="i-lucide-arrow-right"
+                class="size-4"
+              />
+            </NuxtLink>
+          </div>
+        </section>
+      </div>
 
       <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/92">
         <div class="space-y-4">

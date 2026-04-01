@@ -294,6 +294,12 @@ Generate the current Drizzle migration from the canonical schema with:
 bun run db:generate
 ```
 
+Refresh the generated third-party notices module after runtime dependency changes with:
+
+```bash
+bun run notices:generate
+```
+
 ## End-to-End Tests
 
 The repository uses `Playwright` with `playwright-bdd`, so end-to-end coverage is authored as Gherkin feature files plus step definitions and generated into Playwright tests before execution.
