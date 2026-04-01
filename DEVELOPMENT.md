@@ -138,17 +138,16 @@ The deployed dev environment uses:
 - application URL: `https://dev.codex-hackathons.com`
 - Auth0 custom domain: `https://auth.dev.codex-hackathons.com`
 
-Pushes to `main` publish the shared dev environment automatically through `.github/workflows/ci.yml` after the fast CI checks pass. The deploy job uses these repository secrets:
+Pushes to `main` publish the shared dev environment automatically through `.github/workflows/ci.yml` after the fast CI checks pass. The shared dev deploy and Auth0-backed BDD jobs use the GitHub Actions `dev` environment.
+
+The GitHub `dev` environment must provide these secrets:
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
-
-The shared dev Worker also requires these Cloudflare Worker secrets to already exist in the deployed environment:
-
 - `NUXT_AUTH0_CLIENT_ID`
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_AUTH0_SESSION_SECRET`
-- `NUXT_AUTH0_AUDIENCE`
+- `NUXT_AUTH0_AUDIENCE` when the shared dev Auth0 application uses a non-empty audience
 - `NUXT_AUTH0_MANAGEMENT_CLIENT_ID`
 - `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET`
 - `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
@@ -157,8 +156,21 @@ The shared dev Worker also requires these Cloudflare Worker secrets to already e
 - `NUXT_RESEND_FROM_NAME`
 - `NUXT_RESEND_REPLY_TO`
 - `NUXT_LUMA_API_KEY` when any shared dev hackathon uses Luma sync
+- `AUTH0_TEST_DOMAIN`
+- `AUTH0_TEST_MGMT_CLIENT_ID`
+- `AUTH0_TEST_MGMT_CLIENT_SECRET`
+- `AUTH0_TEST_MGMT_AUDIENCE`
+- `AUTH0_TEST_CONNECTION_NAME`
+- `E2E_PLATFORM_ADMIN_EMAIL`
+- `E2E_PLATFORM_ADMIN_PASSWORD`
+- `E2E_HACKATHON_ADMIN_EMAIL`
+- `E2E_HACKATHON_ADMIN_PASSWORD`
+- `E2E_JUDGE_EMAIL`
+- `E2E_JUDGE_PASSWORD`
+- `E2E_REGULAR_USER_EMAIL`
+- `E2E_REGULAR_USER_PASSWORD`
 
-The deploy workflow creates or reuses the Cloudflare Queues declared for the `dev` environment in `wrangler.jsonc`, then applies the remote dev D1 migrations, and then deploys the Worker. The checked-in dev `wrangler.jsonc` supplies the shared dev Auth0 management domain, management audience, and password connection name as plaintext vars.
+The deploy workflow creates or reuses the Cloudflare Queues declared for the `dev` environment in `wrangler.jsonc`, uploads the shared dev Worker secrets from the GitHub `dev` environment, applies the remote dev D1 migrations, and then deploys the Worker. The checked-in dev `wrangler.jsonc` supplies the shared dev Auth0 management domain, management audience, and password connection name as plaintext vars.
 
 For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run:
 
@@ -167,7 +179,7 @@ bun run db:migrate:dev
 bun run deploy:dev
 ```
 
-Pull requests and non-`main` pushes do not publish the shared dev environment.
+Pull requests and non-`main` pushes do not publish the shared dev environment. The Auth0-backed BDD workflow also reads its CI secrets from the GitHub `dev` environment.
 
 If Auth0 needs to be re-aligned with the deployed dev hostname split, apply the bootstrap with explicit overrides:
 

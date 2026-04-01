@@ -159,7 +159,7 @@ For least-privilege production deployment, the Cloudflare token used by this rep
 
 The repository `wrangler.jsonc` keeps top-level bindings pointed at local development resources and defines a separate `dev` environment for the shared Cloudflare dev deployment. The current dev deployment is published at `https://dev.codex-hackathons.com`.
 
-Pushes to `main` now publish that shared dev environment automatically through GitHub Actions after the fast CI gate passes. The deploy job applies `bun run db:migrate:dev` and then `bun run deploy:dev` with the repository secrets `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`.
+Pushes to `main` now publish that shared dev environment automatically through GitHub Actions after the fast CI gate passes. The workflow uses a dedicated GitHub Actions `dev` environment, syncs the shared dev Worker secrets, applies `bun run db:migrate:dev`, and then runs `bun run deploy:dev`.
 
 For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run the same scripts locally. They pass the management token through to Wrangler as `CLOUDFLARE_API_TOKEN`.
 
