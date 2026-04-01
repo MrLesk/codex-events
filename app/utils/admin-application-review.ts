@@ -1,3 +1,5 @@
+import Fuse from 'fuse.js'
+
 import type { AdminApplicationRecord } from './admin-workspace'
 import type { ParticipantRegistrationDetails } from './participant-application'
 
@@ -32,6 +34,41 @@ export interface AdminApplicationReviewGroup {
   latestSubmittedAt: string
 }
 
+const adminApplicationReviewSearchKeys: Array<{ name: string, weight: number }> = [
+  {
+    name: 'applicants.application.user.displayName',
+    weight: 0.35
+  },
+  {
+    name: 'applicants.application.user.email',
+    weight: 0.35
+  },
+  {
+    name: 'applicants.application.userId',
+    weight: 0.2
+  },
+  {
+    name: 'applicants.application.user.lumaEmail',
+    weight: 0.1
+  },
+  {
+    name: 'applicants.application.user.chatgptEmail',
+    weight: 0.1
+  },
+  {
+    name: 'applicants.application.user.openaiOrgId',
+    weight: 0.1
+  },
+  {
+    name: 'pendingTeammates.fullName',
+    weight: 0.2
+  },
+  {
+    name: 'pendingTeammates.email',
+    weight: 0.2
+  }
+]
+
 interface NormalizedTeammateHint {
   id: string
   fullName: string | null
@@ -57,6 +94,18 @@ function normalizeEmail(value: string | null | undefined) {
   }
 
   return value.trim().toLowerCase()
+}
+
+function normalizeSearchValue(value: string | null | undefined) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
 }
 
 function normalizeName(value: string | null | undefined) {
@@ -234,6 +283,23 @@ function buildPendingHintKey(hint: NormalizedTeammateHint) {
   }
 
   return hint.id
+}
+
+function listAdminApplicationReviewGroupSearchValues(group: AdminApplicationReviewGroup) {
+  return [
+    ...group.applicants.flatMap(applicant => [
+      applicant.application.user?.displayName ?? '',
+      applicant.application.user?.email ?? '',
+      applicant.application.userId,
+      applicant.application.user?.lumaEmail ?? '',
+      applicant.application.user?.chatgptEmail ?? '',
+      applicant.application.user?.openaiOrgId ?? ''
+    ]),
+    ...group.pendingTeammates.flatMap(pendingTeammate => [
+      pendingTeammate.fullName ?? '',
+      pendingTeammate.email ?? ''
+    ])
+  ].map(normalizeSearchValue).filter(value => value.length > 0)
 }
 
 export function buildAdminApplicationReviewGroups(applications: AdminApplicationRecord[]) {
@@ -531,4 +597,38 @@ export function filterAdminApplicationReviewGroups(
       hasFuzzyMatch: applicants.some(applicant => applicant.hasFuzzyMatch)
     }]
   })
+}
+
+export function searchAdminApplicationReviewGroups(
+  groups: AdminApplicationReviewGroup[],
+  query: string
+): AdminApplicationReviewGroup[] {
+  const normalizedQuery = query.trim()
+
+  if (normalizedQuery.length === 0) {
+    return groups
+  }
+
+  const normalizedSearchQuery = normalizeSearchValue(normalizedQuery)
+  const directMatches = groups.filter(group =>
+    listAdminApplicationReviewGroupSearchValues(group).some(value =>
+      value.includes(normalizedSearchQuery)
+    )
+  )
+
+  if (directMatches.length > 0) {
+    return directMatches
+  }
+
+  const fuse = new Fuse(groups, {
+    ignoreDiacritics: true,
+    ignoreFieldNorm: true,
+    ignoreLocation: true,
+    keys: adminApplicationReviewSearchKeys,
+    minMatchCharLength: 1,
+    shouldSort: true,
+    threshold: 0.3
+  })
+
+  return fuse.search(normalizedQuery).map(result => result.item)
 }

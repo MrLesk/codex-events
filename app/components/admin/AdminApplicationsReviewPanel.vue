@@ -8,21 +8,29 @@ import type {
 
 import {
   buildAdminApplicationReviewGroups,
-  filterAdminApplicationReviewGroups
+  filterAdminApplicationReviewGroups,
+  searchAdminApplicationReviewGroups
 } from '~/utils/admin-application-review'
 import { parseProofOfExecutionLinks } from '~/utils/participant-application'
 import {
   getApplicationStatusColor
 } from '~/utils/admin-workspace'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   applications: AdminApplicationRecord[]
   view: AdminApplicationReviewView
   isLoading?: boolean
   errorMessage?: string
   pendingActionKey?: string | null
   readOnly?: boolean
-}>()
+  searchEnabled?: boolean
+}>(), {
+  isLoading: false,
+  errorMessage: '',
+  pendingActionKey: null,
+  readOnly: false,
+  searchEnabled: false
+})
 
 const emit = defineEmits<{
   approve: [application: AdminApplicationRecord]
@@ -37,10 +45,14 @@ const stagedCount = computed(() =>
 const whyThisHackathonPreviewCharacterLimit = 280
 const proofLinksPreviewCount = 2
 const expandedApplicationSectionKeys = ref(new Set<string>())
+const searchQuery = ref('')
 const applicationReviewGroups = computed(() =>
-  filterAdminApplicationReviewGroups(
-    buildAdminApplicationReviewGroups(props.applications),
-    props.view
+  searchAdminApplicationReviewGroups(
+    filterAdminApplicationReviewGroups(
+      buildAdminApplicationReviewGroups(props.applications),
+      props.view
+    ),
+    props.searchEnabled ? searchQuery.value : ''
   )
 )
 const failedLumaSyncApplications = computed(() => {
@@ -241,6 +253,27 @@ const emptyState = computed(() => {
     }
   }
 
+  if (props.searchEnabled && searchQuery.value.trim().length > 0) {
+    if (props.view === 'approved') {
+      return {
+        title: 'No approved participants match this search',
+        description: 'Try a different name, email, user ID, or teammate hint.'
+      }
+    }
+
+    if (props.view === 'rejected') {
+      return {
+        title: 'No rejected participants match this search',
+        description: 'Try a different name, email, user ID, or teammate hint.'
+      }
+    }
+
+    return {
+      title: 'No applications match this search',
+      description: 'Try a different name, email, user ID, or teammate hint.'
+    }
+  }
+
   if (props.view === 'approved') {
     return {
       title: 'No approved participants yet',
@@ -302,6 +335,22 @@ const emptyState = computed(() => {
           :title="failedLumaSyncAlert.title"
           :description="failedLumaSyncAlert.description"
         />
+
+        <input
+          v-if="searchEnabled"
+          v-model="searchQuery"
+          type="search"
+          name="participant-review-search"
+          autocomplete="off"
+          autocapitalize="none"
+          autocorrect="off"
+          spellcheck="false"
+          data-1p-ignore="true"
+          data-lpignore="true"
+          data-bwignore="true"
+          class="w-full rounded-lg border border-black/8 bg-white/90 px-4 py-3 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+          placeholder="Search participants by name, email, user ID, or teammate hint"
+        >
 
         <div
           v-if="view === 'applications' && !readOnly"

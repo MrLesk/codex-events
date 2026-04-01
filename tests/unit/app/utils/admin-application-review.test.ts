@@ -2,7 +2,8 @@ import { describe, expect, test } from 'vitest'
 
 import {
   buildAdminApplicationReviewGroups,
-  filterAdminApplicationReviewGroups
+  filterAdminApplicationReviewGroups,
+  searchAdminApplicationReviewGroups
 } from '../../../../app/utils/admin-application-review'
 import type { AdminApplicationRecord } from '../../../../app/utils/admin-workspace'
 
@@ -355,5 +356,142 @@ describe('buildAdminApplicationReviewGroups', () => {
         mentionedByApplicationIds: ['application-1']
       }]
     })])
+  })
+})
+
+describe('searchAdminApplicationReviewGroups', () => {
+  test('returns grouped results when a participant identity field matches the search query', () => {
+    const applications = [
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com',
+        submittedAt: '2026-03-29T12:00:00.000Z',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Bob Example',
+          email: 'bob@example.com'
+        }]
+      }),
+      createApplication({
+        id: 'application-2',
+        displayName: 'Bob Example',
+        email: 'bob@example.com',
+        submittedAt: '2026-03-29T11:00:00.000Z',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Alice Example',
+          email: 'alice@example.com'
+        }]
+      }),
+      createApplication({
+        id: 'application-3',
+        displayName: 'Cara Solo',
+        email: 'cara@example.com',
+        submittedAt: '2026-03-29T10:00:00.000Z'
+      })
+    ]
+
+    const groups = buildAdminApplicationReviewGroups(applications)
+    const results = searchAdminApplicationReviewGroups(groups, 'bob@example.com')
+
+    expect(results).toHaveLength(1)
+    expect(results[0]).toEqual(expect.objectContaining({
+      id: 'application-1__application-2',
+      applicants: expect.arrayContaining([
+        expect.objectContaining({
+          application: applications[0]
+        }),
+        expect.objectContaining({
+          application: applications[1]
+        })
+      ])
+    }))
+  })
+
+  test('matches by user ID and returns the full grouped context', () => {
+    const applications = [
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com'
+      }),
+      createApplication({
+        id: 'application-2',
+        displayName: 'Bob Example',
+        email: 'bob@example.com'
+      })
+    ]
+
+    const groups = buildAdminApplicationReviewGroups(applications)
+    const results = searchAdminApplicationReviewGroups(groups, 'user-application-2')
+
+    expect(results).toEqual([expect.objectContaining({
+      id: 'application-2',
+      applicants: [expect.objectContaining({
+        application: applications[1]
+      })]
+    })])
+  })
+
+  test('matches unmatched teammate hints without removing the surrounding group context', () => {
+    const applications = [
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Carol Example',
+          email: 'carol@example.com'
+        }]
+      }),
+      createApplication({
+        id: 'application-2',
+        displayName: 'Bob Example',
+        email: 'bob@example.com'
+      })
+    ]
+
+    const groups = buildAdminApplicationReviewGroups(applications)
+    const results = searchAdminApplicationReviewGroups(groups, 'carol@example.com')
+
+    expect(results).toEqual([expect.objectContaining({
+      id: 'application-1',
+      applicants: [expect.objectContaining({
+        application: applications[0]
+      })],
+      pendingTeammates: [{
+        id: 'email:carol@example.com',
+        fullName: 'Carol Example',
+        email: 'carol@example.com',
+        mentionedByApplicationIds: ['application-1']
+      }]
+    })])
+  })
+
+  test('falls back to Fuse.js fuzzy matching for lightly misspelled participant names', () => {
+    const applications = [
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com'
+      }),
+      createApplication({
+        id: 'application-2',
+        displayName: 'Bob Example',
+        email: 'bob@example.com'
+      })
+    ]
+
+    const groups = buildAdminApplicationReviewGroups(applications)
+    const results = searchAdminApplicationReviewGroups(groups, 'Bbo Example')
+
+    expect(results[0]).toEqual(expect.objectContaining({
+      id: 'application-2',
+      applicants: [expect.objectContaining({
+        application: applications[1]
+      })]
+    }))
   })
 })

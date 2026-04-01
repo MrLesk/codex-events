@@ -908,6 +908,7 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
           :is-loading="applicationsStatus === 'pending'"
           :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
           :pending-action-key="pendingActionKey"
+          search-enabled
           @approve="approveApplication"
           @approve-team="approveApplicationGroup"
           @reject="rejectApplication"
