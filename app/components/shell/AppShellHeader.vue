@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { buildAuthLoginHref } from '~/utils/auth-navigation'
+import { buildAuthLoginHref, buildGitHubAuthLoginHref } from '~/utils/auth-navigation'
 import { buildProfileIconHref } from '~/utils/profile-icon'
 
 const route = useRoute()
@@ -7,6 +7,7 @@ const user = useUser()
 const { actor } = useSessionActor()
 
 const authEntryHref = computed(() => buildAuthLoginHref(route.fullPath || '/'))
+const githubAuthEntryHref = computed(() => buildGitHubAuthLoginHref(route.fullPath || '/'))
 const profileName = computed(() => {
   if (actor.value.kind === 'platform_user') {
     return actor.value.platformUser.displayName
@@ -60,6 +61,17 @@ const profileAvatarSrc = computed(() => {
 
         <AppButton
           v-else
+          :to="githubAuthEntryHref"
+          external
+          label="GitHub"
+          icon="i-lucide-github"
+          color="neutral"
+          variant="outline"
+          class="rounded-full"
+        />
+
+        <AppButton
+          v-if="!user"
           :to="authEntryHref"
           external
           label="Sign in"

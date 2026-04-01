@@ -24,6 +24,7 @@ interface SessionUserProfile {
   name?: string | null
   nickname?: string | null
   picture?: string | null
+  githubProfileUrl?: string | null
   [key: string]: unknown
 }
 
@@ -84,10 +85,24 @@ function buildPlatformConsentRequiredError(actor: PlatformActor) {
   })
 }
 
+function buildGitHubProfileUrl(username: string | null | undefined) {
+  const normalizedUsername = username?.trim()
+
+  if (!normalizedUsername) {
+    return null
+  }
+
+  return `https://github.com/${encodeURIComponent(normalizedUsername)}`
+}
+
 function readSessionUser(session: SessionLike | null | undefined): SessionUserProfile | null {
   if (!session?.user?.sub) {
     return null
   }
+
+  const githubProfileUrl = session.user.sub.startsWith('github|')
+    ? buildGitHubProfileUrl(session.user.nickname ?? null)
+    : null
 
   return {
     sub: session.user.sub,
@@ -95,7 +110,8 @@ function readSessionUser(session: SessionLike | null | undefined): SessionUserPr
     email_verified: typeof session.user.email_verified === 'boolean' ? session.user.email_verified : null,
     name: session.user.name ?? null,
     nickname: session.user.nickname ?? null,
-    picture: session.user.picture ?? null
+    picture: session.user.picture ?? null,
+    githubProfileUrl
   }
 }
 

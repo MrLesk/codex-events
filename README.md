@@ -54,6 +54,7 @@ These values configure authentication for the Nuxt application:
 - `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET`
 - `NUXT_AUTH0_MANAGEMENT_AUDIENCE`
 - `NUXT_AUTH0_DATABASE_CONNECTION_NAME`
+- `NUXT_AUTH0_GITHUB_CONNECTION_NAME`
 - `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
 - `NUXT_PROFILE_ICONS_BINDING`
 - `NUXT_HACKATHON_IMAGES_BINDING`
@@ -63,6 +64,12 @@ For your Auth0 Regular Web Application, configure callback and logout URLs for t
 - Callback URL: `https://your-domain.example/auth/callback`
 - Callback URL: `https://your-domain.example/auth/link/callback`
 - Logout URL: `https://your-domain.example`
+
+If you enable GitHub social login, create an Auth0 GitHub social connection, enable it for the same Regular Web Application, and configure the GitHub OAuth app callback to point at your Auth0 domain rather than your application domain. For example:
+
+- GitHub OAuth callback URL: `https://auth.your-platform.example/login/callback`
+
+The app assumes the GitHub connection is named `github` unless you override it with `NUXT_AUTH0_GITHUB_CONNECTION_NAME`.
 
 If you also use an Auth0 custom domain, keep it separate from the application hostname. The deployed dev environment in this repository uses:
 

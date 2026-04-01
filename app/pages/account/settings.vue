@@ -58,7 +58,9 @@ watch(
     profileForm.bio = nextActor.platformUser.bio ?? ''
     profileForm.xProfileUrl = nextActor.platformUser.xProfileUrl ?? ''
     profileForm.linkedinProfileUrl = nextActor.platformUser.linkedinProfileUrl ?? ''
-    profileForm.githubProfileUrl = nextActor.platformUser.githubProfileUrl ?? ''
+    profileForm.githubProfileUrl = nextActor.platformUser.githubProfileUrl
+      ?? nextActor.sessionUser.githubProfileUrl
+      ?? ''
     profileForm.chatgptEmail = nextActor.platformUser.chatgptEmail ?? ''
     profileForm.openaiOrgId = nextActor.platformUser.openaiOrgId ?? ''
     profileForm.lumaUsername = nextActor.platformUser.lumaUsername ?? ''

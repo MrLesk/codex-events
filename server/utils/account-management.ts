@@ -185,7 +185,7 @@ function buildPlatformAccountInsert(
     isPlatformAdmin: false,
     xProfileUrl: null,
     linkedinProfileUrl: null,
-    githubProfileUrl: null,
+    githubProfileUrl: normalizeOptionalUrl(actor.sessionUser.githubProfileUrl),
     chatgptEmail: null,
     openaiOrgId: null,
     lumaUsername: null,

@@ -16,6 +16,7 @@ type SessionUser = {
   email?: string | null
   email_verified?: boolean | null
   name?: string | null
+  nickname?: string | null
 }
 
 type EventContext = H3Event['context'] & {
@@ -137,6 +138,23 @@ describe('request actor resolution', () => {
       sessionUser: {
         sub: 'auth0|user_1',
         email: 'user@example.com'
+      }
+    })
+  })
+
+  test('derives a GitHub profile URL for authenticated GitHub identities', async () => {
+    const event = createEvent({
+      sub: 'github|user_1',
+      email: 'user@example.com',
+      nickname: 'github-user'
+    })
+    setDatabase(event, createDatabaseMock())
+
+    await expect(getRequestActor(event)).resolves.toMatchObject({
+      kind: 'authenticated_identity',
+      sessionUser: {
+        sub: 'github|user_1',
+        githubProfileUrl: 'https://github.com/github-user'
       }
     })
   })

@@ -4,6 +4,7 @@ interface SessionActorUser {
   name?: string | null
   nickname?: string | null
   picture?: string | null
+  githubProfileUrl?: string | null
 }
 
 interface SessionActorPlatformUser {
@@ -83,6 +84,14 @@ interface SessionActorResponse {
 
 export type ResolvedSessionActor = AnonymousSessionActor | AuthenticatedIdentitySessionActor | PlatformSessionActor
 
+function buildGitHubProfileUrlFromUser(user: ReturnType<typeof useUser>['value']) {
+  const username = user?.sub?.startsWith('github|')
+    ? user.nickname?.trim()
+    : ''
+
+  return username ? `https://github.com/${encodeURIComponent(username)}` : null
+}
+
 function buildAnonymousSessionActor(): AnonymousSessionActor {
   return {
     kind: 'anonymous',
@@ -108,7 +117,8 @@ function buildAuthenticatedIdentityFallback(user: ReturnType<typeof useUser>['va
       email: user?.email ?? null,
       name: user?.name ?? null,
       nickname: user?.nickname ?? null,
-      picture: user?.picture ?? null
+      picture: user?.picture ?? null,
+      githubProfileUrl: buildGitHubProfileUrlFromUser(user)
     },
     platformUser: null,
     isPlatformAdmin: false,

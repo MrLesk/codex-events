@@ -486,6 +486,36 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
+  test('GET /api/session exposes a derived GitHub profile URL for GitHub-backed sessions', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      sessionUser: {
+        sub: 'github|fixture-user',
+        email: 'fixture-user@example.com',
+        nickname: 'fixture-user',
+        name: 'Fixture User'
+      }
+    })
+    databases.push(harness)
+
+    const response = await harness.request('/api/session')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        actor: {
+          kind: 'authenticated_identity',
+          sessionUser: {
+            sub: 'github|fixture-user',
+            githubProfileUrl: 'https://github.com/fixture-user'
+          }
+        }
+      }
+    })
+  })
+
   test('GET /api/session reconciles a linked social identity through Auth0 and stores the missing identity row', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -929,6 +959,80 @@ describe('TASK-3.5 actor-facing API routes', () => {
             openaiOrgId: null,
             lumaUsername: null,
             profileIconUpdatedAt: null
+          }
+        }
+      }
+    })
+  })
+
+  test('POST /api/account/registration stores the GitHub profile URL for GitHub-backed sessions', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler },
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      sessionUser: {
+        sub: 'github|new-github-user',
+        email: 'new-github-user@example.com',
+        nickname: 'new-github-user',
+        name: 'New GitHub User'
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/account/registration', {
+      method: 'POST',
+      body: JSON.stringify({
+        privacyPolicyDocumentId: 'privacy_v1',
+        platformTermsDocumentId: 'terms_v1'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        user: {
+          email: 'new-github-user@example.com',
+          githubProfileUrl: 'https://github.com/new-github-user'
+        }
+      }
+    })
+
+    const createdUser = await harness.database.query.users.findFirst({
+      where: eq(users.auth0Subject, 'github|new-github-user')
+    })
+    const sessionResponse = await harness.request('/api/session')
+
+    expect(createdUser?.githubProfileUrl).toBe('https://github.com/new-github-user')
+    expect(await sessionResponse.json()).toMatchObject({
+      data: {
+        actor: {
+          kind: 'platform_user',
+          sessionUser: {
+            sub: 'github|new-github-user',
+            githubProfileUrl: 'https://github.com/new-github-user'
+          },
+          platformUser: {
+            githubProfileUrl: 'https://github.com/new-github-user'
           }
         }
       }

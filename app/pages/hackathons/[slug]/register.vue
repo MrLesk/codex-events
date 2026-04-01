@@ -124,7 +124,9 @@ watch(() => accountActor.value, (actor) => {
   profileForm.familyName = actor.platformUser.familyName
   profileForm.xProfileUrl = actor.platformUser.xProfileUrl ?? ''
   profileForm.linkedinProfileUrl = actor.platformUser.linkedinProfileUrl ?? ''
-  profileForm.githubProfileUrl = actor.platformUser.githubProfileUrl ?? ''
+  profileForm.githubProfileUrl = actor.platformUser.githubProfileUrl
+    ?? actor.sessionUser.githubProfileUrl
+    ?? ''
   profileForm.openaiOrgId = actor.platformUser.openaiOrgId ?? ''
   profileForm.lumaUsername = actor.platformUser.lumaUsername ?? ''
 }, { immediate: true })
