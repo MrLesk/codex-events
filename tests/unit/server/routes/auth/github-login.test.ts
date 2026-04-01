@@ -41,7 +41,9 @@ describe('Auth0 GitHub login route', () => {
         returnTo: '/hackathons/fixture/register'
       },
       authorizationParams: {
-        connection: 'codex-github'
+        connection: 'codex-github',
+        scope: 'openid profile email',
+        connection_scope: 'user:email'
       }
     })
   })
@@ -73,7 +75,9 @@ describe('Auth0 GitHub login route', () => {
         returnTo: '/account'
       },
       authorizationParams: {
-        connection: 'github'
+        connection: 'github',
+        scope: 'openid profile email',
+        connection_scope: 'user:email'
       }
     })
   })

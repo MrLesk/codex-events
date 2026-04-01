@@ -1,5 +1,12 @@
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 
+type AccountRegistrationErrorLike = {
+  code?: string | null
+  message?: string | null
+}
+
+export const missingIdentityEmailMessage = 'This sign-in method did not share an email address. Codex Hackathons needs an email address to create your account. Sign in with a login method that shares your email address, then try again.'
+
 export function isAccountRegistrationLinkOnlyMode(
   actor: ResolvedSessionActor,
   hasPendingLinkRequirement: boolean
@@ -20,4 +27,14 @@ export function getAccountRegistrationIntro(linkOnlyMode: boolean) {
     title: 'Finish account registration',
     description: 'Review the current platform Privacy Policy and Platform Terms, then accept both to continue into your account and hackathon workspaces.'
   }
+}
+
+export function getAccountRegistrationSubmitErrorMessage(error: AccountRegistrationErrorLike | null | undefined) {
+  if (error?.code === 'identity_email_unavailable') {
+    return missingIdentityEmailMessage
+  }
+
+  const message = error?.message?.trim()
+
+  return message || 'Unable to finish account registration right now.'
 }

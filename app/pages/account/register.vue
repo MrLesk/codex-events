@@ -3,8 +3,10 @@ import type { ApiErrorShape } from '~/utils/admin-workspace'
 
 import { normalizeApiError } from '~/utils/admin-workspace'
 import {
+  getAccountRegistrationSubmitErrorMessage,
   getAccountRegistrationIntro,
-  isAccountRegistrationLinkOnlyMode
+  isAccountRegistrationLinkOnlyMode,
+  missingIdentityEmailMessage
 } from '~/utils/account-registration'
 import { renderMarkdown } from '~/utils/markdown'
 import {
@@ -107,6 +109,11 @@ const resolvedAccountLinkState = computed(() => {
     href: '/auth/link/login'
   }
 })
+const identityEmailUnavailable = computed(() =>
+  actor.value.kind === 'authenticated_identity'
+  && !resolvedAccountLinkState.value.required
+  && !actor.value.sessionUser.email?.trim()
+)
 
 if (
   status.value !== 'pending'
@@ -125,6 +132,11 @@ async function submitPlatformConsent() {
   accountLinkState.href = '/auth/link/login'
 
   if (!isReadyToSubmit.value || !privacyPolicyDocument.value || !platformTermsDocument.value) {
+    return
+  }
+
+  if (identityEmailUnavailable.value) {
+    submitState.error = missingIdentityEmailMessage
     return
   }
 
@@ -173,7 +185,7 @@ async function submitPlatformConsent() {
       return
     }
 
-    submitState.error = apiError.message || 'Unable to finish account registration right now.'
+    submitState.error = getAccountRegistrationSubmitErrorMessage(apiError)
   } finally {
     submitState.pending = false
   }
@@ -238,6 +250,14 @@ useSeoMeta({
           variant="soft"
           title="Existing account sign-in required"
           :description="linkingError.message"
+        />
+
+        <AppAlert
+          v-if="identityEmailUnavailable"
+          color="warning"
+          variant="soft"
+          title="Email address required"
+          :description="missingIdentityEmailMessage"
         />
 
         <section
@@ -350,7 +370,7 @@ useSeoMeta({
               color="neutral"
               variant="solid"
               :loading="submitState.pending"
-              :disabled="submitState.pending"
+              :disabled="submitState.pending || identityEmailUnavailable"
               class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
             >
               Continue

@@ -1,8 +1,10 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  getAccountRegistrationSubmitErrorMessage,
   getAccountRegistrationIntro,
-  isAccountRegistrationLinkOnlyMode
+  isAccountRegistrationLinkOnlyMode,
+  missingIdentityEmailMessage
 } from '../../../../app/utils/account-registration'
 
 describe('account registration helpers', () => {
@@ -40,5 +42,19 @@ describe('account registration helpers', () => {
       title: 'Connect your existing account',
       description: 'Sign in to your existing Codex Hackathons account once to connect this login method.'
     })
+  })
+
+  test('returns a clear message when account registration is blocked by a missing identity email', () => {
+    expect(getAccountRegistrationSubmitErrorMessage({
+      code: 'identity_email_unavailable',
+      message: 'The authenticated identity does not expose an email address required for platform account registration.'
+    })).toBe(missingIdentityEmailMessage)
+  })
+
+  test('falls back to the API error message for other account registration failures', () => {
+    expect(getAccountRegistrationSubmitErrorMessage({
+      code: 'platform_account_email_conflict',
+      message: 'An active platform account already exists for this email address.'
+    })).toBe('An active platform account already exists for this email address.')
   })
 })

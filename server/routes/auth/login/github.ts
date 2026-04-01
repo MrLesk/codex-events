@@ -17,7 +17,9 @@ export default defineEventHandler(async (event) => {
       returnTo
     },
     authorizationParams: {
-      connection
+      connection,
+      scope: 'openid profile email',
+      connection_scope: 'user:email'
     }
   })
 

@@ -1101,6 +1101,59 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
+  test('POST /api/account/registration rejects authenticated identities that do not expose an email address', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler }
+      ],
+      sessionUser: {
+        sub: 'github|missing-email-user',
+        nickname: 'missing-email-user'
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/account/registration', {
+      method: 'POST',
+      body: JSON.stringify({
+        privacyPolicyDocumentId: 'privacy_v1',
+        platformTermsDocumentId: 'terms_v1'
+      })
+    })
+
+    const createdUser = await harness.database.query.users.findFirst({
+      where: eq(users.auth0Subject, 'github|missing-email-user')
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'identity_email_unavailable',
+        message: 'The authenticated identity does not expose an email address required for platform account registration.'
+      }
+    })
+    expect(createdUser).toBeUndefined()
+  })
+
   test('POST /api/account/registration rejects outdated or mismatched platform document ids', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
