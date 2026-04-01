@@ -112,8 +112,8 @@ function startAnotherContactMessage() {
 }
 
 useSeoMeta({
-  title: 'Imprint',
-  description: 'Legal notice and contact details for Codex Hackathons.'
+  title: 'Legal Notice | Codex Hackathons',
+  description: 'Find operator details and contact information for Codex Hackathons.'
 })
 </script>
 

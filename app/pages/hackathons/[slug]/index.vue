@@ -126,13 +126,6 @@ const showPrimaryAction = computed(() => Boolean(primaryAction.value))
 const primaryActionHref = computed(() => primaryAction.value?.to ?? '')
 const isPrimaryActionExternal = computed(() => primaryAction.value?.external ?? false)
 const primaryActionLabel = computed(() => primaryAction.value?.label ?? '')
-const seoDescription = computed(() => hackathon.value.description
-  .replace(/`([^`]+)`/g, '$1')
-  .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-  .replace(/[*_#>-]+/g, ' ')
-  .replace(/\s+/g, ' ')
-  .trim())
-
 const publicSectionTabs = ['overview', 'prizes', 'details'] as const
 type PublicSectionTab = (typeof publicSectionTabs)[number]
 const activePublicSection = computed<PublicSectionTab>(() =>
@@ -171,7 +164,7 @@ watchEffect(() => {
 
 useSeoMeta({
   title: () => `${hackathon.value.name} | Codex Hackathons`,
-  description: () => seoDescription.value
+  description: () => `See the schedule, location, prizes, and application details for ${hackathon.value.name}.`
 })
 </script>
 

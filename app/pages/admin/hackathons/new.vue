@@ -71,6 +71,11 @@ async function createHackathon(form: HackathonFormState) {
     isSubmitting.value = false
   }
 }
+
+useSeoMeta({
+  title: 'Create Hackathon | Codex Hackathons',
+  description: 'Set up a new hackathon and save it as a draft.'
+})
 </script>
 
 <template>

@@ -294,8 +294,8 @@ async function submitParticipantApplication() {
 }
 
 useSeoMeta({
-  title: () => `Register | ${hackathon.value.name} | Codex Hackathons`,
-  description: () => `Submit your registration for ${hackathon.value.name}.`
+  title: () => `Apply to ${hackathon.value.name} | Codex Hackathons`,
+  description: () => `Complete your application for ${hackathon.value.name}.`
 })
 </script>
 

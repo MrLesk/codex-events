@@ -40,7 +40,7 @@ const hasHackathons = computed(() =>
 
 useSeoMeta({
   title: 'My Hackathons | Codex Hackathons',
-  description: 'View the hackathons where you are participating now, returning soon, or have participated in before.'
+  description: 'See your current, upcoming, and past hackathons.'
 })
 </script>
 

@@ -43,8 +43,8 @@ async function submitPrizeRedemption(redemptionId: string) {
 }
 
 useSeoMeta({
-  title: 'Prize Redemptions | Codex Hackathons',
-  description: 'Complete pending winner-facing prize redemption tasks across visible hackathons.'
+  title: 'Claim Your Prizes | Codex Hackathons',
+  description: 'Submit the details needed to receive any prizes you have won.'
 })
 </script>
 

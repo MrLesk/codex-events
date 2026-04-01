@@ -192,8 +192,12 @@ async function submitPlatformConsent() {
 }
 
 useSeoMeta({
-  title: 'Finish Account Registration | Codex Hackathons',
-  description: 'Review and accept the current platform Privacy Policy and Platform Terms to continue.'
+  title: () => linkOnlyMode.value
+    ? 'Connect Your Account | Codex Hackathons'
+    : 'Finish Setting Up Your Account | Codex Hackathons',
+  description: () => linkOnlyMode.value
+    ? 'Connect this sign-in method to your existing Codex Hackathons account.'
+    : 'Accept the current Privacy Policy and Terms so you can continue.'
 })
 </script>
 

@@ -9,8 +9,8 @@ import {
 const privacyHtml = computed(() => renderMarkdown(platformPrivacyPolicyMarkdown))
 
 useSeoMeta({
-  title: 'Privacy Policy',
-  description: 'Privacy Policy for the Codex Hackathons platform operated from Vienna, Austria.'
+  title: 'Privacy Policy | Codex Hackathons',
+  description: 'Read how Codex Hackathons handles personal data.'
 })
 </script>
 

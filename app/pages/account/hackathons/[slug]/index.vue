@@ -31,6 +31,7 @@ import {
   getAccountHackathonTabAccess,
   type AccountHackathonWorkspaceTab
 } from '~/utils/account-hackathon-tabs'
+import { getAccountHackathonSeoContent } from '~/utils/account-hackathon-seo'
 import {
   formatParticipantApplicationStatus,
   getParticipantApplicationStatusColor,
@@ -227,6 +228,7 @@ const visibleTabs = computed(() =>
 const activeSection = computed<AccountHackathonWorkspaceTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
+const activeSectionSeo = computed(() => getAccountHackathonSeoContent(activeSection.value, hackathon.value.name))
 
 watchEffect(() => {
   accountHackathonNavigationMode.value = canAdmin.value ? 'admin' : 'participant'
@@ -389,8 +391,8 @@ const detailSummary = computed(() => [
 ].join(' • '))
 
 useSeoMeta({
-  title: () => `${hackathon.value.name} | Codex Hackathons`,
-  description: () => `View the account workspace for ${hackathon.value.name}.`
+  title: () => activeSectionSeo.value.title,
+  description: () => activeSectionSeo.value.description
 })
 </script>
 

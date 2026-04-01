@@ -123,8 +123,8 @@ async function loadMoreHackathons() {
 }
 
 useSeoMeta({
-  title: 'Codex Hackathons',
-  description: 'Discover current Codex hackathon programs, lifecycle timing, public evaluation criteria, prize structures, and current terms references.'
+  title: 'Find a Hackathon | Codex Hackathons',
+  description: 'Browse current and past Codex community hackathons and find the ones you want to join.'
 })
 </script>
 

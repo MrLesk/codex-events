@@ -134,8 +134,8 @@ const termsPublishedLabel = computed(() => {
 })
 
 useSeoMeta({
-  title: () => `${hackathon.value.name} Application Terms | Codex Hackathons`,
-  description: () => `Application terms for ${hackathon.value.name}.`
+  title: () => `Application Terms | ${hackathon.value.name} | Codex Hackathons`,
+  description: () => `Read the application terms for ${hackathon.value.name}.`
 })
 </script>
 

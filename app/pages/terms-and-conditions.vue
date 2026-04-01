@@ -9,8 +9,8 @@ import {
 const termsHtml = computed(() => renderMarkdown(platformTermsMarkdown))
 
 useSeoMeta({
-  title: 'Terms and Conditions',
-  description: 'Terms and Conditions for using the Codex Hackathons platform.'
+  title: 'Terms and Conditions | Codex Hackathons',
+  description: 'Read the rules for using Codex Hackathons.'
 })
 </script>
 

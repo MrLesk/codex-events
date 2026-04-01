@@ -204,6 +204,11 @@ const isPlatformAccountUnavailable = computed(() =>
   status.value !== 'pending' && actor.value?.kind !== 'platform_user'
 )
 const profileSubmitLabel = computed(() => 'Save')
+
+useSeoMeta({
+  title: 'Profile Settings | Codex Hackathons',
+  description: 'Update the profile details you use across hackathons.'
+})
 </script>
 
 <template>

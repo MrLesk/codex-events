@@ -232,8 +232,8 @@ async function markIneligible() {
 }
 
 useSeoMeta({
-  title: () => `${assignment.value?.blindSubmission.projectName ?? 'Blind submission'} | Judge Workspace`,
-  description: () => assignment.value?.blindSubmission.summary ?? describeJudgeAssignmentStatus(assignment.value?.status ?? 'assigned')
+  title: () => `Review Submission | ${hackathonResponse.value!.data.name} | Codex Hackathons`,
+  description: () => `Review this submission and record your scores for ${hackathonResponse.value!.data.name}.`
 })
 </script>
 

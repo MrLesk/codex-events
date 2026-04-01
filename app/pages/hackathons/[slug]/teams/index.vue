@@ -182,8 +182,8 @@ async function cancelJoinRequest(payload: {
 }
 
 useSeoMeta({
-  title: () => `${hackathon.value.name} Teams | Codex Hackathons`,
-  description: () => `Create or join participant teams for ${hackathon.value.name}.`
+  title: () => `Teams | ${hackathon.value.name} | Codex Hackathons`,
+  description: () => `Create a team, browse open teams, or ask to join one for ${hackathon.value.name}.`
 })
 </script>
 

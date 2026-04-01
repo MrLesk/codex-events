@@ -51,14 +51,7 @@ useHead({
   }
 })
 
-const title = 'Codex Hackathons'
-const description = 'The internal platform for running Codex community hackathons with Auth0-backed platform authentication.'
-
 useSeoMeta({
-  title,
-  description,
-  ogTitle: title,
-  ogDescription: description,
   twitterCard: 'summary_large_image'
 })
 </script>

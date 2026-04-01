@@ -70,8 +70,8 @@ const listItems = computed(() =>
 )
 
 useSeoMeta({
-  title: 'Judge Dashboard | Codex Hackathons',
-  description: 'See the hackathons where you are assigned as a judge and open their blind-review workspaces.'
+  title: 'My Judging | Codex Hackathons',
+  description: 'See the hackathons you are judging and continue your reviews.'
 })
 </script>
 

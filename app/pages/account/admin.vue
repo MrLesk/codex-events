@@ -43,8 +43,8 @@ const listItems = computed(() =>
 )
 
 useSeoMeta({
-  title: 'Admin Dashboard | Codex Hackathons',
-  description: 'See the hackathons you can manage and open their operations and settings surfaces.'
+  title: 'Manage Hackathons | Codex Hackathons',
+  description: 'Open the hackathons you manage and run applications, judging, and outcomes.'
 })
 </script>
 

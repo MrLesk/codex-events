@@ -401,8 +401,8 @@ async function withdrawSubmission() {
 }
 
 useSeoMeta({
-  title: () => `${workspace.currentTeam.value?.name ?? 'Team'} | ${hackathon.value.name} | Codex Hackathons`,
-  description: () => `Review team membership and collaboration access for ${hackathon.value.name}.`
+  title: () => `Team | ${hackathon.value.name} | Codex Hackathons`,
+  description: () => `Manage your team, members, join requests, and submission for ${hackathon.value.name}.`
 })
 </script>
 
