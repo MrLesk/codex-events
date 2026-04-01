@@ -156,8 +156,9 @@ The shared dev Worker also requires these Cloudflare Worker secrets to already e
 - `NUXT_RESEND_FROM_EMAIL`
 - `NUXT_RESEND_FROM_NAME`
 - `NUXT_RESEND_REPLY_TO`
+- `NUXT_LUMA_API_KEY` when any shared dev hackathon uses Luma sync
 
-It applies the remote dev D1 migrations first and then deploys the Worker. The checked-in dev `wrangler.jsonc` supplies the shared dev Auth0 management domain, management audience, and password connection name as plaintext vars.
+The deploy workflow creates or reuses the Cloudflare Queues declared for the `dev` environment in `wrangler.jsonc`, then applies the remote dev D1 migrations, and then deploys the Worker. The checked-in dev `wrangler.jsonc` supplies the shared dev Auth0 management domain, management audience, and password connection name as plaintext vars.
 
 For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run:
 
@@ -197,6 +198,7 @@ The GitHub `production` environment must provide these secrets before the workfl
 - `NUXT_AUTH0_AUDIENCE`
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_AUTH0_SESSION_SECRET`
+- `NUXT_LUMA_API_KEY`
 - `NUXT_RESEND_API_KEY`
 - `NUXT_RESEND_FROM_EMAIL`
 - `NUXT_RESEND_REPLY_TO`
@@ -208,7 +210,7 @@ Least-privilege external credential requirements for the current production work
 
 These Cloudflare tokens currently need:
 
-- account permission `Workers Scripts Write` for `wrangler secret bulk` and `wrangler deploy`
+- account permission `Workers Scripts Write` for `wrangler secret bulk`, `wrangler queues create`, and `wrangler deploy`
 - account permission `D1 Write` for `wrangler d1 migrations apply --remote`
 - zone permission `Zone Zone Read` on `codex-hackathons.com` so `tools/auth0/auth0-custom-domain.ts` can resolve the production zone
 - zone permission `DNS Write` on `codex-hackathons.com` so `tools/auth0/auth0-custom-domain.ts` can create or update the Auth0 verification CNAME
@@ -237,7 +239,7 @@ The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CL
 
 The `read:users` and `update:users` scopes are required by the runtime account-linking flow. The app reads linked Auth0 identities to reconcile cross-device sessions and posts to Auth0's user identities endpoint when a verified social login must be connected to an existing password-backed platform account.
 
-`AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. `NUXT_RESEND_API_KEY` should be a send-capable Resend API key for the sender identity configured by `NUXT_RESEND_FROM_EMAIL`; the checked-in production workflow does not currently require any additional repository-specific Resend scopes.
+`AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. `NUXT_RESEND_API_KEY` should be a send-capable Resend API key for the sender identity configured by `NUXT_RESEND_FROM_EMAIL`; the checked-in production workflow does not currently require any additional repository-specific Resend scopes. The release workflow creates or reuses the Cloudflare Queues declared for the `production` environment in `wrangler.jsonc` before it uploads Worker secrets, applies migrations, and deploys the Worker.
 
 The workflow uses these production hostnames:
 

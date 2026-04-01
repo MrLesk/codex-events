@@ -81,6 +81,18 @@ jobs:
       - name: Install dependencies
         run: bun ci
 
+      - name: Ensure shared dev Cloudflare Queues
+        run: |
+          set -euo pipefail
+          while IFS= read -r queue_name; do
+            [ -n "$queue_name" ] || continue
+            if bunx wrangler queues info "$queue_name" --env dev --config wrangler.jsonc >/dev/null 2>&1; then
+              echo "Queue ${queue_name} already exists."
+            else
+              bunx wrangler queues create "$queue_name" --env dev --config wrangler.jsonc
+            fi
+          done < <(jq -r '.env.dev.queues.producers[].queue' wrangler.jsonc)
+
       - name: Apply shared dev D1 migrations
         run: bun run db:migrate:dev
 
