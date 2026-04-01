@@ -46,5 +46,8 @@ describe('platform fixture reset sql', () => {
     expect(sql).toContain('insert into hackathons')
     expect(sql).toContain('insert into hackathon_role_assignments')
     expect(sql).toContain('registration_open')
+    expect(sql).toContain('draft-managed-hackathon')
+    expect(sql).toContain('https://luma.com/a4i7qtbo')
+    expect(sql).toContain('set luma_event_url')
   })
 })

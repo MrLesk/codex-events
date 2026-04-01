@@ -13,6 +13,7 @@ import { applySqlStatements } from '../../support/backend/migrations.ts'
 const fixtureTimestamp = '2026-03-22T12:00:00.000Z'
 export const fixtureHackathonId = 'hackathon_e2e_fixture'
 export const fixtureDraftHackathonId = 'hackathon_e2e_draft_fixture'
+const fixtureDraftLumaEventUrl = 'https://luma.com/a4i7qtbo'
 const fixtureParticipantApplicationHackathonId = 'hackathon_e2e_participant_application_fixture'
 const fixtureApiTeamFormationHackathonId = 'hackathon_e2e_api_team_formation_fixture'
 const fixtureParticipantProfileRequirementHackathonId = 'hackathon_e2e_participant_profile_requirement_fixture'
@@ -298,6 +299,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Draft Fixture Address',
       '2026-03-27T12:00:00.000Z',
       '2026-03-29T12:00:00.000Z',
@@ -310,7 +312,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       0,
       0,
       0,
-      0,
+      1,
       null,
       null,
       ${sqlLiteral(platformAdminId)},
@@ -935,6 +937,9 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       (${sqlLiteral(fixtureOutcomesWinnerTermsId)}, ${sqlLiteral(fixtureOutcomesHackathonId)}, 'winner_terms', 1, 'Outcomes Winner Terms', 'E2E outcomes winner terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       (${sqlLiteral(fixtureCompetitionShortlistWinnerTermsId)}, ${sqlLiteral(fixtureCompetitionShortlistHackathonId)}, 'winner_terms', 1, 'Competition Shortlist Winner Terms', 'E2E competition shortlist winner terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       (${sqlLiteral(fixtureCompetitionCompleteWinnerTermsId)}, ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}, 'winner_terms', 1, 'Competition Complete Winner Terms', 'E2E competition complete winner terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+    `update hackathons
+      set luma_event_url = ${sqlLiteral(fixtureDraftLumaEventUrl)}
+      where id = ${sqlLiteral(fixtureDraftHackathonId)}`,
     `insert into hackathon_role_assignments (
       id, hackathon_id, user_id, role, is_in_judge_pool, created_at
     ) values

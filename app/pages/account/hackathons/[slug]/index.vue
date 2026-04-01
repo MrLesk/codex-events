@@ -85,6 +85,10 @@ interface AccountHackathonsResponse {
   }
 }
 
+type AccountWorkspaceHackathon = PublicHackathon & {
+  id: string
+}
+
 const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
   overview: 'Overview',
   prizes: 'Prizes',
@@ -115,21 +119,12 @@ if (!slug.value) {
   })
 }
 
-const [
-  { data: hackathonResponse, error: hackathonError },
-  { data: criteriaResponse },
-  { data: prizesResponse }
-] = await Promise.all([
-  useFetch<PublicApiDataResponse<PublicHackathon>>(() => `/api/public/hackathons/${slug.value}`, {
-    key: () => `account-hackathon-detail:${slug.value}`
-  }),
-  useFetch<PublicApiListResponse<{ name: string }>>(() => `/api/public/hackathons/${slug.value}/evaluation-criteria`, {
-    key: () => `account-hackathon-criteria:${slug.value}`
-  }),
-  useFetch<PublicApiListResponse<PublicPrize>>(() => `/api/public/hackathons/${slug.value}/prizes`, {
-    key: () => `account-hackathon-prizes:${slug.value}`
-  })
-])
+const {
+  data: hackathonResponse,
+  error: hackathonError
+} = await useFetch<PublicApiDataResponse<AccountWorkspaceHackathon>>(() => `/api/hackathons/slug/${slug.value}`, {
+  key: () => `account-hackathon-detail:${slug.value}`
+})
 
 if (hackathonError.value) {
   throw createError({
@@ -146,7 +141,17 @@ if (!hackathonResponse.value?.data) {
 }
 
 const requestFetch = import.meta.server ? useRequestFetch() : $fetch
-const accountHackathonsResponse = await requestFetch<AccountHackathonsResponse>('/api/account/hackathons')
+const [
+  criteriaResponse,
+  prizesResponse,
+  accountHackathonsResponse,
+  participationResponse
+] = await Promise.all([
+  requestFetch<PublicApiListResponse<{ name: string }>>(`/api/hackathons/${hackathonResponse.value.data.id}/evaluation-criteria`),
+  requestFetch<PublicApiListResponse<PublicPrize>>(`/api/hackathons/${hackathonResponse.value.data.id}/prizes`),
+  requestFetch<AccountHackathonsResponse>('/api/account/hackathons'),
+  requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>('/api/hackathons/participation')
+])
 const accessRecord = computed(() => [
   ...accountHackathonsResponse.data.current,
   ...accountHackathonsResponse.data.past
@@ -160,9 +165,6 @@ if (!accessRecord.value) {
   })
 }
 
-const participationResponse = await requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>(
-  '/api/hackathons/participation'
-)
 const participationRecord = computed<HackathonParticipationRecord | null>(() => {
   const records = [
     ...participationResponse.data.current,
@@ -173,8 +175,8 @@ const participationRecord = computed<HackathonParticipationRecord | null>(() => 
 })
 
 const hackathon = computed(() => hackathonResponse.value!.data)
-const criteriaCount = computed(() => criteriaResponse.value?.data.length ?? 0)
-const prizes = computed(() => prizesResponse.value?.data ?? [])
+const criteriaCount = computed(() => criteriaResponse.data.length)
+const prizes = computed(() => prizesResponse.data)
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 const canJudge = computed(() =>
   actor.value.kind === 'platform_user'

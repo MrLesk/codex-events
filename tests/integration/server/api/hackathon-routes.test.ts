@@ -6,6 +6,9 @@ import hackathonsGetHandler from '../../../../server/api/hackathons/index.get'
 import hackathonParticipationGetHandler from '../../../../server/api/hackathons/participation.get'
 import hackathonsPostHandler from '../../../../server/api/hackathons/index.post'
 import hackathonDetailGetHandler from '../../../../server/api/hackathons/[hackathonId]/index.get'
+import hackathonCriteriaGetHandler from '../../../../server/api/hackathons/[hackathonId]/evaluation-criteria/index.get'
+import hackathonPrizesGetHandler from '../../../../server/api/hackathons/[hackathonId]/prizes/index.get'
+import hackathonBySlugGetHandler from '../../../../server/api/hackathons/slug/[slug]/index.get'
 import publicHackathonsGetHandler from '../../../../server/api/public/hackathons/index.get'
 import publicHackathonDetailGetHandler from '../../../../server/api/public/hackathons/[slug]/index.get'
 import publicHackathonCriteriaGetHandler from '../../../../server/api/public/hackathons/[slug]/evaluation-criteria/index.get'
@@ -188,6 +191,131 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         total: 1
       }
     })
+  })
+
+  test('internal draft workspace endpoints resolve for authorized actors while public draft endpoints stay hidden', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/slug/:slug', handler: hackathonBySlugGetHandler },
+        { method: 'get', path: '/api/hackathons/:hackathonId/evaluation-criteria', handler: hackathonCriteriaGetHandler },
+        { method: 'get', path: '/api/hackathons/:hackathonId/prizes', handler: hackathonPrizesGetHandler },
+        { method: 'get', path: '/api/public/hackathons/:slug', handler: publicHackathonDetailGetHandler },
+        { method: 'get', path: '/api/public/hackathons/:slug/evaluation-criteria', handler: publicHackathonCriteriaGetHandler },
+        { method: 'get', path: '/api/public/hackathons/:slug/prizes', handler: publicHackathonPrizesGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|internal_admin',
+        email: 'internal-admin@example.com',
+        name: 'Internal Admin'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'internal_admin',
+        auth0Subject: 'auth0|internal_admin',
+        email: 'internal-admin@example.com',
+        displayName: 'Internal Admin'
+      }
+    ])
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_draft_internal',
+      name: 'Draft Internal Hackathon',
+      slug: 'draft-internal-hackathon',
+      description: 'Draft only',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      lumaEventUrl: 'https://luma.com/a4i7qtbo',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'draft',
+      maxTeamMembers: 5,
+      requireLumaEmail: true,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_draft_internal_admin',
+      hackathonId: 'hackathon_draft_internal',
+      userId: 'internal_admin',
+      role: 'hackathon_admin',
+      isInJudgePool: false,
+      createdAt: '2026-03-20T12:30:00.000Z'
+    })
+    await harness.database.insert(evaluationCriteria).values({
+      id: 'criterion_draft_internal',
+      hackathonId: 'hackathon_draft_internal',
+      name: 'Craft',
+      description: 'Quality',
+      weight: 100,
+      displayOrder: 1,
+      createdAt: '2026-03-20T12:31:00.000Z'
+    })
+    await harness.database.insert(prizes).values({
+      id: 'prize_draft_internal',
+      hackathonId: 'hackathon_draft_internal',
+      name: 'Internal Prize',
+      description: 'Internal only',
+      rewardType: 'api_credits',
+      rewardValue: '100',
+      rewardCurrency: 'USD',
+      awardScope: 'team',
+      rankStart: 1,
+      rankEnd: 1,
+      createdAt: '2026-03-20T12:32:00.000Z'
+    })
+
+    const internalDetailResponse = await harness.request('/api/hackathons/slug/draft-internal-hackathon')
+    expect(internalDetailResponse.status).toBe(200)
+    expect(await internalDetailResponse.json()).toMatchObject({
+      data: {
+        id: 'hackathon_draft_internal',
+        slug: 'draft-internal-hackathon',
+        state: 'draft',
+        lumaEventUrl: 'https://luma.com/a4i7qtbo',
+        requireLumaEmail: true
+      }
+    })
+
+    const internalCriteriaResponse = await harness.request('/api/hackathons/hackathon_draft_internal/evaluation-criteria')
+    expect(internalCriteriaResponse.status).toBe(200)
+    expect(await internalCriteriaResponse.json()).toMatchObject({
+      data: [
+        {
+          id: 'criterion_draft_internal',
+          name: 'Craft'
+        }
+      ]
+    })
+
+    const internalPrizesResponse = await harness.request('/api/hackathons/hackathon_draft_internal/prizes')
+    expect(internalPrizesResponse.status).toBe(200)
+    expect(await internalPrizesResponse.json()).toMatchObject({
+      data: [
+        {
+          id: 'prize_draft_internal',
+          name: 'Internal Prize'
+        }
+      ]
+    })
+
+    const publicDetailResponse = await harness.request('/api/public/hackathons/draft-internal-hackathon')
+    expect(publicDetailResponse.status).toBe(404)
+
+    const publicCriteriaResponse = await harness.request('/api/public/hackathons/draft-internal-hackathon/evaluation-criteria')
+    expect(publicCriteriaResponse.status).toBe(404)
+
+    const publicPrizesResponse = await harness.request('/api/public/hackathons/draft-internal-hackathon/prizes')
+    expect(publicPrizesResponse.status).toBe(404)
   })
 
   test('GET /api/hackathons/participation requires a platform account', async () => {
