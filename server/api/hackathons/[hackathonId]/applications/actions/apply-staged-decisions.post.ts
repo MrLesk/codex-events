@@ -5,11 +5,17 @@ import { writeAuditLog } from '../../../../../database/audit-log'
 import { userApplications, users } from '../../../../../database/schema'
 import { defineApiHandler } from '../../../../../utils/api-handler'
 import {
+  buildApplicationLumaSyncQueueMessage,
+  enqueueApplicationLumaSyncMessage,
+  getApplicationLumaSyncFailureStatus
+} from '../../../../../utils/application-luma-sync-queue'
+import {
   buildApplicationReviewEmailQueueMessage,
   enqueueApplicationReviewEmailMessage
 } from '../../../../../utils/application-review-email-queue'
 import { apiData } from '../../../../../utils/api-response'
 import {
+  isHackathonLumaSyncEnabled,
   requireHackathonAdminApplicationContext,
   serializeUserApplication
 } from '../../../../../utils/applications'
@@ -17,6 +23,7 @@ import { routeIdParamsSchema } from '../../../../../utils/hackathon-management'
 import { parseValidatedParams } from '../../../../../utils/validation'
 
 type UserApplicationRecord = typeof userApplications.$inferSelect
+type UserApplicationLumaSyncStatus = typeof userApplications.$inferSelect['lumaSyncStatus']
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
@@ -54,6 +61,7 @@ export default defineApiHandler(async (event) => {
   const appliedApplications: ReturnType<typeof serializeUserApplication>[] = []
   let approvedCount = 0
   let rejectedCount = 0
+  const shouldSyncLuma = isHackathonLumaSyncEnabled(hackathon)
 
   for (const application of stagedApplications) {
     const decision = application.preApprovalStatus
@@ -63,15 +71,18 @@ export default defineApiHandler(async (event) => {
     }
 
     const reviewedAt = new Date().toISOString()
+    let lumaSyncStatus: UserApplicationLumaSyncStatus = shouldSyncLuma ? 'not_synced' : null
+    let updatedAt = reviewedAt
 
     await database
       .update(userApplications)
       .set({
         status: decision,
         preApprovalStatus: null,
+        lumaSyncStatus,
         reviewedAt,
         reviewedByUserId: actor.platformUser.id,
-        updatedAt: reviewedAt
+        updatedAt
       })
       .where(eq(userApplications.id, application.id))
 
@@ -112,6 +123,43 @@ export default defineApiHandler(async (event) => {
       }
     })
 
+    if (shouldSyncLuma) {
+      const lumaEnqueueResult = await enqueueApplicationLumaSyncMessage(
+        event,
+        buildApplicationLumaSyncQueueMessage({
+          applicationId: application.id,
+          decision
+        })
+      )
+
+      if (lumaEnqueueResult.status !== 'enqueued') {
+        lumaSyncStatus = getApplicationLumaSyncFailureStatus(decision)
+        updatedAt = new Date().toISOString()
+
+        await database
+          .update(userApplications)
+          .set({
+            lumaSyncStatus,
+            updatedAt
+          })
+          .where(eq(userApplications.id, application.id))
+      }
+
+      await writeAuditLog(database, {
+        actorUserId: actor.platformUser.id,
+        entityType: 'user_application',
+        entityId: application.id,
+        action: 'user_application.luma_sync_enqueued',
+        metadata: {
+          hackathonId,
+          userId: application.userId,
+          decision,
+          enqueue: lumaEnqueueResult,
+          appliedFromStage: 'pre_approval'
+        }
+      })
+    }
+
     if (decision === 'approved') {
       approvedCount += 1
     } else {
@@ -122,9 +170,10 @@ export default defineApiHandler(async (event) => {
       ...application,
       status: decision,
       preApprovalStatus: null,
+      lumaSyncStatus,
       reviewedAt,
       reviewedByUserId: actor.platformUser.id,
-      updatedAt: reviewedAt
+      updatedAt
     }, {
       user: applicant ?? null
     }))

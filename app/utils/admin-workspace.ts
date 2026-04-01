@@ -143,6 +143,7 @@ export interface AdminApplicationRecord {
   userId: string
   status: 'submitted' | 'approved' | 'rejected'
   preApprovalStatus?: 'approved' | 'rejected' | null
+  lumaSyncStatus?: 'not_synced' | 'approve_synced' | 'reject_synced' | 'approve_failed' | 'reject_failed' | null
   submittedAt: string
   reviewedAt: string | null
   reviewedByUserId: string | null

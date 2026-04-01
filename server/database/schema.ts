@@ -31,6 +31,13 @@ export const platformDocumentTypes = ['privacy_policy', 'platform_terms'] as con
 export const hackathonTermsDocumentTypes = ['application_terms', 'winner_terms'] as const
 export const userApplicationStatuses = ['submitted', 'approved', 'rejected'] as const
 export const userApplicationPreApprovalStatuses = ['approved', 'rejected'] as const
+export const userApplicationLumaSyncStatuses = [
+  'not_synced',
+  'approve_synced',
+  'reject_synced',
+  'approve_failed',
+  'reject_failed'
+] as const
 export const teamMemberRoles = ['member', 'admin'] as const
 export const teamJoinRequestStatuses = ['pending', 'approved', 'rejected', 'canceled'] as const
 export const submissionStatuses = ['draft', 'submitted', 'withdrawn', 'locked', 'disqualified'] as const
@@ -245,6 +252,7 @@ export const userApplications = sqliteTable(
       .references(() => users.id),
     status: text('status', { enum: userApplicationStatuses }).notNull().default('submitted'),
     preApprovalStatus: text('pre_approval_status', { enum: userApplicationPreApprovalStatuses }),
+    lumaSyncStatus: text('luma_sync_status', { enum: userApplicationLumaSyncStatuses }),
     submittedAt: text('submitted_at').notNull().default(currentTimestamp),
     reviewedAt: text('reviewed_at'),
     reviewedByUserId: text('reviewed_by_user_id').references(() => users.id),

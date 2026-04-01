@@ -9,6 +9,7 @@ import {
   assertInPersonAttendanceCommitment,
   assertNoExistingApplication,
   assertUserMeetsHackathonProfileRequirements,
+  getInitialApplicationLumaSyncStatus,
   serializeRegistrationDetailsJson,
   serializeUserApplication,
   submitApplicationBodySchema
@@ -42,6 +43,7 @@ export default defineApiHandler(async (event) => {
 
   const submittedAt = new Date().toISOString()
   const applicationId = crypto.randomUUID()
+  const lumaSyncStatus = getInitialApplicationLumaSyncStatus(hackathon)
 
   await database.insert(userApplications).values({
     id: applicationId,
@@ -49,6 +51,7 @@ export default defineApiHandler(async (event) => {
     userId: actor.platformUser.id,
     status: 'submitted',
     preApprovalStatus: null,
+    lumaSyncStatus,
     submittedAt,
     applicationTermsDocumentId: currentTermsDocument.id,
     applicationTermsAcceptedAt: submittedAt,
@@ -63,6 +66,7 @@ export default defineApiHandler(async (event) => {
     userId: actor.platformUser.id,
     status: 'submitted',
     preApprovalStatus: null,
+    lumaSyncStatus,
     submittedAt,
     reviewedAt: null,
     reviewedByUserId: null,

@@ -48,6 +48,14 @@ export function createApiRouteTestHarness(options: {
       queueName?: string
       retryDelaySeconds?: number
     }
+    luma?: {
+      apiKey?: string
+      apiBaseUrl?: string
+      profileBaseUrl?: string
+      queueBinding?: string
+      queueName?: string
+      retryDelaySeconds?: number
+    }
   }
 }) {
   const d1Database = createTestD1Database()
@@ -69,6 +77,12 @@ export function createApiRouteTestHarness(options: {
     const reviewEmailsQueueBinding = options.runtimeConfig?.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
     const reviewEmailsQueueName = options.runtimeConfig?.applicationReviewEmails?.queueName ?? 'codex-hackathons-application-review-email-delivery'
     const reviewEmailsRetryDelaySeconds = options.runtimeConfig?.applicationReviewEmails?.retryDelaySeconds ?? 120
+    const lumaApiKey = options.runtimeConfig?.luma?.apiKey ?? ''
+    const lumaApiBaseUrl = options.runtimeConfig?.luma?.apiBaseUrl ?? 'https://public-api.luma.com'
+    const lumaProfileBaseUrl = options.runtimeConfig?.luma?.profileBaseUrl ?? 'https://luma.com'
+    const lumaQueueBinding = options.runtimeConfig?.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
+    const lumaQueueName = options.runtimeConfig?.luma?.queueName ?? 'codex-hackathons-application-luma-sync'
+    const lumaRetryDelaySeconds = options.runtimeConfig?.luma?.retryDelaySeconds ?? 120
 
     event.context.cloudflare = {
       env: {
@@ -99,6 +113,14 @@ export function createApiRouteTestHarness(options: {
         queueBinding: reviewEmailsQueueBinding,
         queueName: reviewEmailsQueueName,
         retryDelaySeconds: reviewEmailsRetryDelaySeconds
+      },
+      luma: {
+        apiKey: lumaApiKey,
+        apiBaseUrl: lumaApiBaseUrl,
+        profileBaseUrl: lumaProfileBaseUrl,
+        queueBinding: lumaQueueBinding,
+        queueName: lumaQueueName,
+        retryDelaySeconds: lumaRetryDelaySeconds
       }
     }
     event.context.auth0ClientOptions = {}

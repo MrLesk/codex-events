@@ -78,7 +78,8 @@ async function seedApplicationContext(
       xProfileUrl: 'https://x.example/regular',
       githubProfileUrl: 'https://github.com/regular',
       chatgptEmail: 'regular@chatgpt.example',
-      openaiOrgId: 'org_regular'
+      openaiOrgId: 'org_regular',
+      lumaUsername: 'bpirvu'
     },
     {
       id: 'missing_profile_user',
@@ -544,6 +545,47 @@ describe('TASK-3.6 application routes', () => {
     expect(response.status).toBe(200)
   })
 
+  test('POST /api/hackathons/:hackathonId/applications stores not_synced for Luma-enabled hackathons', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaProfile: true,
+      lumaEventUrl: 'https://luma.com/codex'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        userId: 'regular_user',
+        lumaSyncStatus: 'not_synced'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+
+    expect(storedApplication?.lumaSyncStatus).toBe('not_synced')
+  })
+
   test('POST /api/hackathons/:hackathonId/applications rejects users missing a required ChatGPT email and OpenAI org ID', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -955,6 +997,111 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
+  test('applying staged approval enqueues Luma sync and keeps lumaSyncStatus as not_synced until the worker completes', async () => {
+    const reviewEmailQueueProducer = createQueueProducerStub()
+    const lumaQueueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/approve',
+          handler: approveApplicationHandler
+        },
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/actions/apply-staged-decisions',
+          handler: applyStagedDecisionsHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: reviewEmailQueueProducer,
+        APPLICATION_LUMA_SYNC_QUEUE: lumaQueueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        },
+        luma: {
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaProfile: true,
+      lumaEventUrl: 'https://luma.com/codex'
+    })
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      status: 'submitted',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    })
+
+    const approveResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/approve', {
+      method: 'POST'
+    })
+    expect(approveResponse.status).toBe(200)
+
+    const applyResponse = await harness.request('/api/hackathons/hackathon_1/applications/actions/apply-staged-decisions', {
+      method: 'POST'
+    })
+    expect(applyResponse.status).toBe(200)
+    expect(await applyResponse.json()).toMatchObject({
+      data: {
+        appliedCount: 1,
+        approvedCount: 1,
+        rejectedCount: 0,
+        applications: [
+          expect.objectContaining({
+            id: 'application_1',
+            status: 'approved',
+            lumaSyncStatus: 'not_synced'
+          })
+        ]
+      }
+    })
+
+    expect(reviewEmailQueueProducer.send).toHaveBeenCalledTimes(1)
+    expect(lumaQueueProducer.send).toHaveBeenCalledTimes(1)
+    expect(lumaQueueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: 'application_1',
+      decision: 'approved'
+    }), {
+      contentType: 'json'
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication?.lumaSyncStatus).toBe('not_synced')
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.luma_sync_enqueued',
+        metadata: expect.objectContaining({
+          decision: 'approved',
+          enqueue: expect.objectContaining({
+            status: 'enqueued'
+          })
+        })
+      })
+    ]))
+  })
+
   test('staging rejection toggles off when the same submitted application is rejected again', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -1096,6 +1243,101 @@ describe('TASK-3.6 application routes', () => {
           enqueue: expect.objectContaining({
             status: 'failed',
             reason: 'queue_send_error'
+          })
+        })
+      })
+    ]))
+  })
+
+  test('applying staged decisions marks Luma sync as failed when the Luma queue binding is unavailable', async () => {
+    const reviewEmailQueueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/reject',
+          handler: rejectApplicationHandler
+        },
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/actions/apply-staged-decisions',
+          handler: applyStagedDecisionsHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: reviewEmailQueueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        },
+        luma: {
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaProfile: true,
+      lumaEventUrl: 'https://luma.com/codex'
+    })
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      status: 'submitted',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    })
+
+    const rejectResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/reject', {
+      method: 'POST'
+    })
+    expect(rejectResponse.status).toBe(200)
+
+    const applyResponse = await harness.request('/api/hackathons/hackathon_1/applications/actions/apply-staged-decisions', {
+      method: 'POST'
+    })
+    expect(applyResponse.status).toBe(200)
+    expect(await applyResponse.json()).toMatchObject({
+      data: {
+        appliedCount: 1,
+        approvedCount: 0,
+        rejectedCount: 1,
+        applications: [
+          expect.objectContaining({
+            id: 'application_1',
+            status: 'rejected',
+            lumaSyncStatus: 'reject_failed'
+          })
+        ]
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication?.lumaSyncStatus).toBe('reject_failed')
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.luma_sync_enqueued',
+        metadata: expect.objectContaining({
+          decision: 'rejected',
+          enqueue: expect.objectContaining({
+            status: 'skipped',
+            reason: 'queue_binding_missing:APPLICATION_LUMA_SYNC_QUEUE'
           })
         })
       })

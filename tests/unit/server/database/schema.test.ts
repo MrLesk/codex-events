@@ -66,6 +66,7 @@ describe('shared schema foundation', () => {
     expect(hackathonColumns.requireProofOfExecution.name).toBe('require_proof_of_execution')
     expect(roleAssignmentColumns.isStaff.name).toBe('is_staff')
     expect(applicationColumns.preApprovalStatus.name).toBe('pre_approval_status')
+    expect(applicationColumns.lumaSyncStatus.name).toBe('luma_sync_status')
     expect(prizeColumns.displayOrder.name).toBe('display_order')
     expect(prizeChecks).toContain('prizes_rank_order_check')
     expect(hackathonChecks).toContain('hackathons_max_team_members_check')

@@ -273,7 +273,7 @@ Operations:
 | List hackathon applications | `GET /api/hackathons/:hackathonId/applications` | staff, hackathon admin, or platform admin | Returns application records for participant-visibility and review workflows. Staff access is read-only. |
 | Stage application approval | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/approve` | hackathon admin or platform admin | Persists `pre_approval_status = approved` for a `submitted` application without changing canonical status. |
 | Stage application rejection | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/reject` | hackathon admin or platform admin | Persists `pre_approval_status = rejected` for a `submitted` application without changing canonical status. |
-| Apply staged application decisions | `POST /api/hackathons/:hackathonId/applications/actions/apply-staged-decisions` | hackathon admin or platform admin | Applies all staged decisions for `submitted` applications, transitions canonical status, records reviewer metadata, and enqueues participant-facing decision emails. |
+| Apply staged application decisions | `POST /api/hackathons/:hackathonId/applications/actions/apply-staged-decisions` | hackathon admin or platform admin | Applies all staged decisions for `submitted` applications, transitions canonical status, records reviewer metadata, enqueues participant-facing decision emails, and enqueues Luma guest-status sync when the hackathon requires a Luma profile and defines a Luma event URL. |
 
 Testing:
 - Unit: application guard and state-transition rules.
@@ -284,6 +284,7 @@ Operational notes:
 - Application review API actions remain successful even when queue enqueue fails.
 - Queue-consumer delivery outcomes are retried under queue retry policy and provider-aware retry guards.
 - Queue enqueue outcomes are recorded in audit metadata for operational visibility.
+- Luma-enabled hackathons persist per-application Luma sync state so admins can identify manual Luma follow-up after asynchronous sync failures.
 - Public registration entry is available only while the hackathon is in `registration_open`.
 - The public registration route `/hackathons/:slug/register` is a narrow application-entry flow rather than a participant workspace. Anonymous visitors are sent to Auth0 login, authenticated users without a platform account are sent to account completion, existing applicants are sent to `/account/hackathons/:slug`, and users without an application are sent back to the public hackathon detail page when registration is no longer open.
 - Public registration copy should stay focused on completing and submitting an application. Application status, approval outcome, team formation follow-up, and other ongoing participant workflow belong in the account-scoped hackathon workspace.

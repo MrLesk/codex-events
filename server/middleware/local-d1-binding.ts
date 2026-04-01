@@ -68,6 +68,7 @@ export default defineEventHandler(async (event) => {
   const profileIconsBindingName = runtimeConfig.profileIcons?.binding ?? 'PROFILE_ICONS'
   const hackathonImagesBindingName = runtimeConfig.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
   const applicationReviewEmailQueueBindingName = runtimeConfig.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
+  const applicationLumaSyncQueueBindingName = runtimeConfig.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
 
   const hasDatabaseBinding = Boolean(event.context.d1Database || cloudflareEnv?.[databaseBindingName])
@@ -102,6 +103,12 @@ export default defineEventHandler(async (event) => {
       ? undefined
       : proxyEnv.APPLICATION_REVIEW_EMAIL_QUEUE)
   const applicationReviewEmailQueue = existingApplicationReviewEmailQueue ?? proxyApplicationReviewEmailQueue
+  const existingApplicationLumaSyncQueue = cloudflareEnv?.[applicationLumaSyncQueueBindingName]
+  const proxyApplicationLumaSyncQueue = proxyEnv[applicationLumaSyncQueueBindingName]
+    ?? (applicationLumaSyncQueueBindingName === 'APPLICATION_LUMA_SYNC_QUEUE'
+      ? undefined
+      : proxyEnv.APPLICATION_LUMA_SYNC_QUEUE)
+  const applicationLumaSyncQueue = existingApplicationLumaSyncQueue ?? proxyApplicationLumaSyncQueue
   const existingPublicContactRateLimiter = cloudflareEnv?.[publicContactRateLimitBindingName]
   const publicContactRateLimiter = existingPublicContactRateLimiter ?? proxyEnv[publicContactRateLimitBindingName]
   const existingAuthenticatedUploadRateLimiter = cloudflareEnv?.[authenticatedUploadRateLimitBindingName]
@@ -133,6 +140,10 @@ export default defineEventHandler(async (event) => {
 
   if (!event.context.cloudflare.env[applicationReviewEmailQueueBindingName] && isQueueProducerLike(applicationReviewEmailQueue)) {
     event.context.cloudflare.env[applicationReviewEmailQueueBindingName] = applicationReviewEmailQueue as never
+  }
+
+  if (!event.context.cloudflare.env[applicationLumaSyncQueueBindingName] && isQueueProducerLike(applicationLumaSyncQueue)) {
+    event.context.cloudflare.env[applicationLumaSyncQueueBindingName] = applicationLumaSyncQueue as never
   }
 
   if (!event.context.cloudflare.env[publicContactRateLimitBindingName] && isRateLimitBindingLike(publicContactRateLimiter)) {

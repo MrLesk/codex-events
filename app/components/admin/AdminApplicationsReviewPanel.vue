@@ -43,6 +43,42 @@ const applicationReviewGroups = computed(() =>
     props.view
   )
 )
+const failedLumaSyncApplications = computed(() => {
+  if (props.view === 'approved') {
+    return props.applications.filter(application =>
+      application.status === 'approved' && application.lumaSyncStatus === 'approve_failed'
+    )
+  }
+
+  if (props.view === 'rejected') {
+    return props.applications.filter(application =>
+      application.status === 'rejected' && application.lumaSyncStatus === 'reject_failed'
+    )
+  }
+
+  return []
+})
+const failedLumaSyncAlert = computed(() => {
+  if (failedLumaSyncApplications.value.length === 0) {
+    return null
+  }
+
+  if (props.view === 'approved') {
+    return {
+      title: 'Some approvals did not sync to Luma',
+      description: `${failedLumaSyncApplications.value.length} approved participant${failedLumaSyncApplications.value.length === 1 ? '' : 's'} still need manual approval in Luma.`
+    }
+  }
+
+  if (props.view === 'rejected') {
+    return {
+      title: 'Some rejections did not sync to Luma',
+      description: `${failedLumaSyncApplications.value.length} rejected participant${failedLumaSyncApplications.value.length === 1 ? '' : 's'} still need manual rejection in Luma.`
+    }
+  }
+
+  return null
+})
 
 function getApplicationSectionKey(applicationId: string, section: 'motivation' | 'proof') {
   return `${applicationId}:${section}`
@@ -147,6 +183,10 @@ function getVisibleProofOfExecutionLinks(applicant: AdminApplicationReviewGroup[
   }
 
   return proofLinks.slice(0, proofLinksPreviewCount)
+}
+
+function hasFailedLumaSync(application: AdminApplicationRecord) {
+  return application.lumaSyncStatus === 'approve_failed' || application.lumaSyncStatus === 'reject_failed'
 }
 
 function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject', isActive: boolean) {
@@ -255,6 +295,14 @@ const emptyState = computed(() => {
       />
 
       <template v-else>
+        <AppAlert
+          v-if="failedLumaSyncAlert"
+          color="warning"
+          variant="soft"
+          :title="failedLumaSyncAlert.title"
+          :description="failedLumaSyncAlert.description"
+        />
+
         <div
           v-if="view === 'applications' && !readOnly"
           class="hackathon-workspace-detail-inset flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-4"
@@ -321,6 +369,13 @@ const emptyState = computed(() => {
                         variant="soft"
                       >
                         Rejected
+                      </AppBadge>
+                      <AppBadge
+                        v-if="hasFailedLumaSync(applicant.application)"
+                        color="warning"
+                        variant="soft"
+                      >
+                        Luma sync failed
                       </AppBadge>
                       <AppBadge
                         v-if="applicant.hasFuzzyMatch"

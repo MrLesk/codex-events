@@ -90,6 +90,18 @@ function normalizeProofOfExecutionUrl(value: string | null | undefined) {
   return normalized
 }
 
+export function isHackathonLumaSyncEnabled(
+  hackathon: Pick<HackathonRecord, 'requireLumaProfile' | 'lumaEventUrl'>
+) {
+  return hackathon.requireLumaProfile && Boolean(hackathon.lumaEventUrl?.trim())
+}
+
+export function getInitialApplicationLumaSyncStatus(
+  hackathon: Pick<HackathonRecord, 'requireLumaProfile' | 'lumaEventUrl'>
+) {
+  return isHackathonLumaSyncEnabled(hackathon) ? 'not_synced' as const : null
+}
+
 export function serializeRegistrationDetailsJson(
   hackathon: Pick<HackathonRecord, 'id' | 'maxTeamMembers' | 'inPersonEvent' | 'requireWhyThisHackathon' | 'requireProofOfExecution'>,
   payload: Pick<SubmitApplicationBody, 'registrationTeamIntent' | 'registrationTeamMembers' | 'inPersonAttendanceCommitment' | 'whyThisHackathon' | 'proofOfExecutionUrl'>
@@ -180,6 +192,7 @@ export function serializeUserApplication(
     userId: application.userId,
     status: application.status,
     preApprovalStatus: application.preApprovalStatus,
+    lumaSyncStatus: application.lumaSyncStatus,
     submittedAt: application.submittedAt,
     reviewedAt: application.reviewedAt,
     reviewedByUserId: application.reviewedByUserId,
@@ -252,9 +265,7 @@ export function assertUserMeetsHackathonProfileRequirements(user: UserRecord, ha
     missingFields.push('openaiOrgId')
   }
 
-  const hasLinkedLumaEvent = Boolean(hackathon.lumaEventUrl?.trim())
-
-  if (hackathon.requireLumaProfile && hasLinkedLumaEvent && !user.lumaUsername) {
+  if (isHackathonLumaSyncEnabled(hackathon) && !user.lumaUsername) {
     missingFields.push('lumaUsername')
   }
 

@@ -141,6 +141,7 @@ Rules:
 - Application approval is handled by hackathon admins.
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
+- If the hackathon requires a Luma profile and has a Luma event URL, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
 - A user must be approved before creating or joining a team in that hackathon.
 - Blind judging uses application information without exposing team identity.
 - User application acceptance references the exact application terms version accepted for that hackathon.
@@ -152,6 +153,8 @@ Rules:
 - A user application can include one or more proof-of-execution links.
 - If the hackathon requires motivation, the `why this hackathon` response must be non-empty.
 - If the hackathon requires proof of execution, at least one proof-of-execution link must be non-empty and every provided link must use `http` or `https`.
+- A `UserApplication` can persist a Luma sync outcome of `not_synced`, `approve_synced`, `reject_synced`, `approve_failed`, or `reject_failed`.
+- `not_synced` is used only for hackathons where Luma sync is enabled.
 
 ### Team
 

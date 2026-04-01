@@ -38,6 +38,9 @@ function createEvent(options?: {
         },
         applicationReviewEmails: {
           queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        },
+        luma: {
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
         }
       },
       d1Database: options?.d1Database
@@ -109,6 +112,9 @@ describe('local D1 binding middleware', () => {
     const applicationReviewEmailQueue = {
       send: vi.fn()
     }
+    const applicationLumaSyncQueue = {
+      send: vi.fn()
+    }
     const publicContactRateLimiter = {
       limit: vi.fn(async () => ({ success: true }))
     }
@@ -122,6 +128,7 @@ describe('local D1 binding middleware', () => {
         PROFILE_ICONS: profileIconsBucket,
         HACKATHON_IMAGES: hackathonImagesBucket,
         APPLICATION_REVIEW_EMAIL_QUEUE: applicationReviewEmailQueue,
+        APPLICATION_LUMA_SYNC_QUEUE: applicationLumaSyncQueue,
         [publicContactRateLimitBindingName]: publicContactRateLimiter,
         [authenticatedUploadRateLimitBindingName]: authenticatedUploadRateLimiter
       }
@@ -137,6 +144,7 @@ describe('local D1 binding middleware', () => {
     expect(event.context.cloudflare?.env.PROFILE_ICONS).toBe(profileIconsBucket)
     expect(event.context.cloudflare?.env.HACKATHON_IMAGES).toBe(hackathonImagesBucket)
     expect(event.context.cloudflare?.env.APPLICATION_REVIEW_EMAIL_QUEUE).toBe(applicationReviewEmailQueue)
+    expect(event.context.cloudflare?.env.APPLICATION_LUMA_SYNC_QUEUE).toBe(applicationLumaSyncQueue)
     expect(event.context.cloudflare?.env[publicContactRateLimitBindingName]).toBe(publicContactRateLimiter)
     expect(event.context.cloudflare?.env[authenticatedUploadRateLimitBindingName]).toBe(authenticatedUploadRateLimiter)
   })

@@ -94,6 +94,19 @@ Set `NUXT_RESEND_API_KEY` as a secret in deployed environments (for example, a C
 
 Application review APIs enqueue email delivery work to a Cloudflare Queue. Ensure your Worker has both producer and consumer queue configuration for the queue identified by `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME` and bound through `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING`.
 
+### Luma Sync Runtime
+
+These values configure the optional Luma approval and rejection sync used by hackathons that require a Luma username and define a Luma event URL:
+
+- `NUXT_LUMA_API_KEY`
+- `NUXT_LUMA_API_BASE_URL`
+- `NUXT_LUMA_PROFILE_BASE_URL`
+- `NUXT_LUMA_QUEUE_BINDING`
+- `NUXT_LUMA_QUEUE_NAME`
+- `NUXT_LUMA_RETRY_DELAY_SECONDS`
+
+Set `NUXT_LUMA_API_KEY` as a secret in deployed environments. The default runtime uses Luma's public API base URL and public profile host, while the queue binding and name must match the Cloudflare Queue producer and consumer configuration exposed to the Worker.
+
 ### Auth0 Bootstrap Configuration Drift Control
 
 The repository includes an Auth0 tenant automation command that codifies required Auth0 tenant configuration:

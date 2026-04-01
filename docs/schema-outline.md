@@ -246,6 +246,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `reviewed_at`
 - `reviewed_by_user_id`
 - `pre_approval_status`
+- `luma_sync_status`
 - `application_terms_document_id`
 - `application_terms_accepted_at`
 - `registration_details_json`
@@ -261,6 +262,12 @@ It describes the intended persistent model at the level of entities, key fields,
 - `pre_approval_status`
   - `approved`
   - `rejected`
+- `luma_sync_status`
+  - `not_synced`
+  - `approve_synced`
+  - `reject_synced`
+  - `approve_failed`
+  - `reject_failed`
 
 ### Constraints
 
@@ -275,6 +282,7 @@ It describes the intended persistent model at the level of entities, key fields,
   - `whyThisHackathon`: trimmed free-form motivation text
   - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
+- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for hackathons that require a Luma profile and define a `luma_event_url`.
 
 ## Team
 

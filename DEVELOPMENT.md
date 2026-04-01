@@ -31,6 +31,15 @@ NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET=$(openssl rand -hex 32)
 NUXT_DATABASE_BINDING=DB
 NUXT_PROFILE_ICONS_BINDING=PROFILE_ICONS
 NUXT_HACKATHON_IMAGES_BINDING=HACKATHON_IMAGES
+NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING=APPLICATION_REVIEW_EMAIL_QUEUE
+NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME=codex-hackathons-application-review-email-delivery
+NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS=120
+NUXT_LUMA_API_KEY=
+NUXT_LUMA_API_BASE_URL=https://public-api.luma.com
+NUXT_LUMA_PROFILE_BASE_URL=https://luma.com
+NUXT_LUMA_QUEUE_BINDING=APPLICATION_LUMA_SYNC_QUEUE
+NUXT_LUMA_QUEUE_NAME=codex-hackathons-application-luma-sync
+NUXT_LUMA_RETRY_DELAY_SECONDS=120
 ```
 
 Local Auth0 dashboard settings:
@@ -92,6 +101,12 @@ Hackathon background and banner uploads use a dedicated Cloudflare R2 binding at
 
 - `NUXT_HACKATHON_IMAGES_BINDING` should match the R2 binding used for hackathon background and banner image objects. The canonical default is `HACKATHON_IMAGES`.
 - local development uses the repository `wrangler.jsonc` R2 bucket binding for hackathon image object storage.
+
+Application decision emails and optional Luma guest-status sync both use Cloudflare Queues at runtime:
+
+- `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING` and `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for participant decision emails.
+- `NUXT_LUMA_QUEUE_BINDING` and `NUXT_LUMA_QUEUE_NAME` should match the producer and consumer queue configuration for Luma sync jobs.
+- `NUXT_LUMA_API_KEY` is only required when you operate hackathons that use Luma sync.
 
 ## Local Development
 
