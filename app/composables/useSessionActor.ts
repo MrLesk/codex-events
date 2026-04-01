@@ -21,6 +21,7 @@ interface SessionActorPlatformUser {
   githubProfileUrl: string | null
   chatgptEmail: string | null
   openaiOrgId: string | null
+  lumaEmail: string | null
   lumaUsername: string | null
   profileIconUpdatedAt: string | null
   createdAt: string

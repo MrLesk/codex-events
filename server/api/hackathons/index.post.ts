@@ -53,7 +53,7 @@ export default defineApiHandler(async (event) => {
     requireGithubProfile: body.requireGithubProfile,
     requireChatgptEmail: body.requireChatgptEmail,
     requireOpenaiOrgId: body.requireOpenaiOrgId,
-    requireLumaProfile: body.requireLumaProfile,
+    requireLumaEmail: body.requireLumaEmail,
     requireWhyThisHackathon: body.requireWhyThisHackathon,
     requireProofOfExecution: body.requireProofOfExecution,
     state: 'draft',

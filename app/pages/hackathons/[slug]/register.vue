@@ -103,7 +103,7 @@ const profileForm = reactive({
   githubProfileUrl: '',
   chatgptEmail: '',
   openaiOrgId: '',
-  lumaUsername: ''
+  lumaEmail: ''
 })
 const isSavingProfile = ref(false)
 const profileSaveError = ref('')
@@ -127,8 +127,9 @@ watch(() => accountActor.value, (actor) => {
   profileForm.githubProfileUrl = actor.platformUser.githubProfileUrl
     ?? actor.sessionUser.githubProfileUrl
     ?? ''
+  profileForm.chatgptEmail = actor.platformUser.chatgptEmail ?? ''
   profileForm.openaiOrgId = actor.platformUser.openaiOrgId ?? ''
-  profileForm.lumaUsername = actor.platformUser.lumaUsername ?? ''
+  profileForm.lumaEmail = actor.platformUser.lumaEmail ?? ''
 }, { immediate: true })
 
 watch(() => hackathon.value.maxTeamMembers, (maxTeamMembers) => {
@@ -242,7 +243,7 @@ async function submitParticipantApplication() {
         githubProfileUrl: normalizeParticipantProfileUrl(profileForm.githubProfileUrl),
         chatgptEmail: profileForm.chatgptEmail,
         openaiOrgId: profileForm.openaiOrgId,
-        lumaUsername: profileForm.lumaUsername
+        lumaEmail: profileForm.lumaEmail
       }
     })
   } catch (error) {

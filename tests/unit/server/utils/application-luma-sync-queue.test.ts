@@ -15,7 +15,8 @@ import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
   processApplicationLumaSyncQueueBatch,
-  processApplicationLumaSyncQueueMessage
+  processApplicationLumaSyncQueueMessage,
+  resolveLumaEmailFromUsername
 } from '../../../../server/utils/application-luma-sync-queue'
 import { createTestD1Database } from '../../../support/backend/fake-d1'
 
@@ -80,8 +81,9 @@ function createHtmlResponse(html: string, status: number = 200) {
 async function seedLumaSyncContext(options?: {
   decision?: 'approved' | 'rejected'
   lumaSyncStatus?: typeof userApplications.$inferSelect['lumaSyncStatus']
+  lumaEmail?: string | null
   lumaUsername?: string | null
-  requireLumaProfile?: boolean
+  requireLumaEmail?: boolean
   lumaEventUrl?: string | null
 }) {
   const d1Database = createTestD1Database()
@@ -101,6 +103,7 @@ async function seedLumaSyncContext(options?: {
       auth0Subject: 'auth0|regular_user',
       email: 'regular@example.com',
       displayName: 'Regular User',
+      lumaEmail: options?.lumaEmail ?? 'regular@example.com',
       lumaUsername: options?.lumaUsername ?? 'bpirvu'
     }
   ])
@@ -119,7 +122,7 @@ async function seedLumaSyncContext(options?: {
     submissionClosesAt: '2026-03-25T12:00:00.000Z',
     state: 'registration_open',
     maxTeamMembers: 5,
-    requireLumaProfile: options?.requireLumaProfile ?? true,
+    requireLumaEmail: options?.requireLumaEmail ?? true,
     lumaEventUrl: options?.lumaEventUrl ?? 'https://luma.com/codex',
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
@@ -208,17 +211,6 @@ describe('application luma sync queue utilities', () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
 
-      if (url.pathname === '/user/bpirvu') {
-        expect(init).toEqual(expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            'accept': 'text/html',
-            'user-agent': expect.stringContaining('Mozilla/5.0')
-          })
-        }))
-        return createHtmlResponse('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"user":{"username":"bpirvu","api_id":"usr-123"}}}}</script>')
-      }
-
       if (url.pathname === '/v1/calendar/lookup-event') {
         return createJsonResponse({
           event: {
@@ -227,18 +219,13 @@ describe('application luma sync queue utilities', () => {
         })
       }
 
-      if (url.pathname === '/v1/event/get-guests') {
+      if (url.pathname === '/v1/event/get-guest') {
+        expect(url.searchParams.get('id')).toBe('regular@example.com')
         return createJsonResponse({
-          entries: [
-            {
-              guest: {
-                id: 'gst-123',
-                user_id: 'usr-123',
-                user_email: 'regular@example.com'
-              }
-            }
-          ],
-          has_more: false
+          guest: {
+            id: 'gst-123',
+            user_email: 'regular@example.com'
+          }
         })
       }
 
@@ -294,15 +281,14 @@ describe('application luma sync queue utilities', () => {
           eventApiId: 'evt-123',
           guestId: 'gst-123',
           guestEmail: 'regular@example.com',
-          lumaUserApiId: 'usr-123',
-          lumaUsername: 'bpirvu'
+          lumaEmail: 'regular@example.com'
         })
       })
     ]))
 
-    expect(fetchImpl).toHaveBeenCalledTimes(4)
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
     expect(fetchImpl).toHaveBeenNthCalledWith(
-      2,
+      1,
       expect.stringContaining('/v1/calendar/lookup-event?platform=luma'),
       expect.objectContaining({
         method: 'GET',
@@ -312,6 +298,65 @@ describe('application luma sync queue utilities', () => {
         })
       })
     )
+  })
+
+  test('resolveLumaEmailFromUsername resolves the legacy Luma email from the hackathon event guest list', async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/user/bpirvu') {
+        expect(init).toEqual(expect.objectContaining({
+          method: 'GET',
+          headers: expect.objectContaining({
+            'accept': 'text/html',
+            'user-agent': expect.stringContaining('Mozilla/5.0')
+          })
+        }))
+        return createHtmlResponse('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"user":{"username":"bpirvu","api_id":"usr-123"}}}}</script>')
+      }
+
+      if (url.pathname === '/v1/calendar/lookup-event') {
+        return createJsonResponse({
+          event: {
+            api_id: 'evt-123'
+          }
+        })
+      }
+
+      if (url.pathname === '/v1/event/get-guests') {
+        return createJsonResponse({
+          entries: [
+            {
+              guest: {
+                id: 'gst-123',
+                user_id: 'usr-123',
+                user_email: 'legacy-luma@example.com'
+              }
+            }
+          ],
+          has_more: false
+        })
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url.toString()}`)
+    })
+
+    await expect(resolveLumaEmailFromUsername({
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaUsername: 'bpirvu'
+    }, {
+      runtimeConfig: {
+        luma: {
+          apiKey: 'luma_test_key'
+        }
+      },
+      fetchImpl
+    })).resolves.toEqual({
+      eventApiId: 'evt-123',
+      guestId: 'gst-123',
+      guestEmail: 'legacy-luma@example.com',
+      lumaUserApiId: 'usr-123'
+    })
   })
 
   test('queue message processing stores reject_failed for non-retryable sync failures', async () => {
@@ -328,10 +373,6 @@ describe('application luma sync queue utilities', () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
 
-      if (url.pathname === '/user/bpirvu') {
-        return createHtmlResponse('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"user":{"username":"bpirvu","api_id":"usr-123"}}}}</script>')
-      }
-
       if (url.pathname === '/v1/calendar/lookup-event') {
         return createJsonResponse({
           event: {
@@ -340,10 +381,9 @@ describe('application luma sync queue utilities', () => {
         })
       }
 
-      if (url.pathname === '/v1/event/get-guests') {
+      if (url.pathname === '/v1/event/get-guest') {
         return createJsonResponse({
-          entries: [],
-          has_more: false
+          guest: null
         })
       }
 
@@ -378,13 +418,7 @@ describe('application luma sync queue utilities', () => {
     const { d1Database, database } = await seedLumaSyncContext()
     d1Databases.push(d1Database)
     const message = createQueueMessage()
-    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
-      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
-
-      if (url.pathname === '/user/bpirvu') {
-        return createHtmlResponse('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"user":{"username":"bpirvu","api_id":"usr-123"}}}}</script>')
-      }
-
+    const fetchImpl = vi.fn(async () => {
       return createJsonResponse({
         error: 'rate limit'
       }, 429)

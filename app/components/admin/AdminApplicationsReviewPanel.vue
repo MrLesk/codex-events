@@ -384,19 +384,12 @@ const emptyState = computed(() => {
                       >
                         Fuzzy teammate match
                       </AppBadge>
-                      <a
-                        v-if="applicant.application.user?.lumaUsername"
-                        :href="`https://luma.com/user/${encodeURIComponent(applicant.application.user.lumaUsername)}`"
-                        target="_blank"
-                        rel="noreferrer"
-                        class="inline-flex items-center gap-1 rounded-full border border-black/10 px-3 py-1 text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
+                      <span
+                        v-if="applicant.application.user?.lumaEmail"
+                        class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
                       >
-                        Luma: @{{ applicant.application.user.lumaUsername }}
-                        <AppIcon
-                          name="i-lucide-external-link"
-                          class="size-3"
-                        />
-                      </a>
+                        Luma: {{ applicant.application.user.lumaEmail }}
+                      </span>
                       <a
                         v-if="applicant.application.user?.githubProfileUrl"
                         :href="applicant.application.user.githubProfileUrl"

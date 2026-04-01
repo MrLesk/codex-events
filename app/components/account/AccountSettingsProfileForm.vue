@@ -15,7 +15,7 @@ interface AccountSettingsProfileFormModel {
   githubProfileUrl: string
   chatgptEmail: string
   openaiOrgId: string
-  lumaUsername: string
+  lumaEmail: string
 }
 
 const model = defineModel<AccountSettingsProfileFormModel>({ required: true })
@@ -206,23 +206,23 @@ const submitProfileForm = handleSubmit(() => {
         <div class="space-y-2">
           <label
             class="text-sm font-medium text-highlighted"
-            for="account-luma-username"
+            for="account-luma-email"
           >
-            Luma username
+            Luma email
           </label>
           <input
-            id="account-luma-username"
-            v-model="model.lumaUsername"
-            type="text"
-            placeholder="your-luma-name"
+            id="account-luma-email"
+            v-model="model.lumaEmail"
+            type="email"
+            placeholder="you@example.com"
             class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
-            :class="submitCount > 0 && errors.lumaUsername ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+            :class="submitCount > 0 && errors.lumaEmail ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
           >
           <p
-            v-if="submitCount > 0 && errors.lumaUsername"
+            v-if="submitCount > 0 && errors.lumaEmail"
             class="text-xs text-error"
           >
-            {{ errors.lumaUsername }}
+            {{ errors.lumaEmail }}
           </p>
         </div>
 

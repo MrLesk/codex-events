@@ -494,7 +494,7 @@ async function saveConfiguration(configForm: HackathonFormState) {
       requireGithubProfile: configForm.requireGithubProfile,
       requireChatgptEmail: configForm.requireChatgptEmail,
       requireOpenaiOrgId: configForm.requireOpenaiOrgId,
-      requireLumaProfile: configForm.requireLumaProfile,
+      requireLumaEmail: configForm.requireLumaEmail,
       requireWhyThisHackathon: configForm.requireWhyThisHackathon,
       requireProofOfExecution: configForm.requireProofOfExecution
     },

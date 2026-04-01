@@ -50,7 +50,7 @@ async function createHackathon(form: HackathonFormState) {
         requireGithubProfile: form.requireGithubProfile,
         requireChatgptEmail: form.requireChatgptEmail,
         requireOpenaiOrgId: form.requireOpenaiOrgId,
-        requireLumaProfile: form.requireLumaProfile,
+        requireLumaEmail: form.requireLumaEmail,
         requireWhyThisHackathon: form.requireWhyThisHackathon,
         requireProofOfExecution: form.requireProofOfExecution
       }

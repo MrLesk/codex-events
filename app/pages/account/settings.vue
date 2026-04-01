@@ -22,7 +22,7 @@ const profileForm = reactive({
   githubProfileUrl: '',
   chatgptEmail: '',
   openaiOrgId: '',
-  lumaUsername: ''
+  lumaEmail: ''
 })
 
 const saveState = reactive({
@@ -63,7 +63,7 @@ watch(
       ?? ''
     profileForm.chatgptEmail = nextActor.platformUser.chatgptEmail ?? ''
     profileForm.openaiOrgId = nextActor.platformUser.openaiOrgId ?? ''
-    profileForm.lumaUsername = nextActor.platformUser.lumaUsername ?? ''
+    profileForm.lumaEmail = nextActor.platformUser.lumaEmail ?? ''
   },
   { immediate: true }
 )
@@ -86,7 +86,7 @@ async function saveProfile() {
         githubProfileUrl: profileForm.githubProfileUrl,
         chatgptEmail: profileForm.chatgptEmail,
         openaiOrgId: profileForm.openaiOrgId,
-        lumaUsername: profileForm.lumaUsername
+        lumaEmail: profileForm.lumaEmail
       }
     })
 

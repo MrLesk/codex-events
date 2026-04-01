@@ -29,6 +29,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `github_profile_url`
 - `chatgpt_email`
 - `openai_org_id`
+- `luma_email`
 - `luma_username`
 - `profile_icon_updated_at`
 - `created_at`
@@ -47,10 +48,12 @@ It describes the intended persistent model at the level of entities, key fields,
 - `company` stores an optional single-line company or affiliation value managed from account settings.
 - `bio` stores an optional free-form profile summary managed from account settings.
 - `display_name` stores the current presentation name. It is derived from canonical name fields after profile completion and can temporarily fall back to authenticated-identity presentation data before canonical names are filled.
+- `luma_email` stores the canonical Luma email used for hackathon profile requirements and Luma approval-state synchronization.
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
 - `profile_icon_updated_at` records when the current profile icon object was last replaced.
 - Platform actor resolution uses `UserAuthIdentity` records so multiple linked Auth0 subjects can resolve to the same user.
+- `luma_username` is retained only as legacy migration data for users who registered before Luma email became the canonical profile field.
 
 ## UserAuthIdentity
 
@@ -282,7 +285,7 @@ It describes the intended persistent model at the level of entities, key fields,
   - `whyThisHackathon`: trimmed free-form motivation text
   - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
-- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for hackathons that require a Luma profile and define a `luma_event_url`.
+- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for hackathons that require a Luma email and define a `luma_event_url`.
 
 ## Team
 

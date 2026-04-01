@@ -76,6 +76,7 @@ export interface PlatformUserProfile {
   githubProfileUrl?: string | null
   chatgptEmail?: string | null
   openaiOrgId?: string | null
+  lumaEmail?: string | null
   lumaUsername?: string | null
   profileIconUpdatedAt?: string | null
   createdAt?: string | null
@@ -92,6 +93,7 @@ export interface OperationalUserSummary {
   githubProfileUrl?: string | null
   chatgptEmail?: string | null
   openaiOrgId?: string | null
+  lumaEmail?: string | null
   lumaUsername?: string | null
   profileIconUpdatedAt?: string | null
 }
@@ -181,7 +183,7 @@ export interface HackathonRecord {
   requireGithubProfile: boolean
   requireChatgptEmail: boolean
   requireOpenaiOrgId: boolean
-  requireLumaProfile: boolean
+  requireLumaEmail: boolean
   requireWhyThisHackathon: boolean
   requireProofOfExecution: boolean
   currentApplicationTermsDocumentId: string | null
@@ -218,7 +220,7 @@ export interface HackathonFormState {
   requireGithubProfile: boolean
   requireChatgptEmail: boolean
   requireOpenaiOrgId: boolean
-  requireLumaProfile: boolean
+  requireLumaEmail: boolean
   requireWhyThisHackathon: boolean
   requireProofOfExecution: boolean
 }
@@ -839,7 +841,7 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     requireGithubProfile: false,
     requireChatgptEmail: true,
     requireOpenaiOrgId: true,
-    requireLumaProfile: true,
+    requireLumaEmail: true,
     requireWhyThisHackathon: false,
     requireProofOfExecution: false
   }
@@ -894,7 +896,7 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
     requireGithubProfile: hackathon.requireGithubProfile,
     requireChatgptEmail: hackathon.requireChatgptEmail,
     requireOpenaiOrgId: hackathon.requireOpenaiOrgId,
-    requireLumaProfile: hackathon.requireLumaProfile,
+    requireLumaEmail: hackathon.requireLumaEmail,
     requireWhyThisHackathon: hackathon.requireWhyThisHackathon,
     requireProofOfExecution: hackathon.requireProofOfExecution
   }

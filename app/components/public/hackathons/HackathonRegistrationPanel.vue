@@ -42,7 +42,7 @@ const profileForm = defineModel<{
   githubProfileUrl: string
   chatgptEmail: string
   openaiOrgId: string
-  lumaUsername: string
+  lumaEmail: string
 }>('profileForm', {
   required: true
 })
@@ -204,7 +204,7 @@ const profileFieldErrors = computed(() => {
     githubProfileUrl: currentErrors['profileForm.githubProfileUrl'] ?? '',
     chatgptEmail: currentErrors['profileForm.chatgptEmail'] ?? '',
     openaiOrgId: currentErrors['profileForm.openaiOrgId'] ?? '',
-    lumaUsername: currentErrors['profileForm.lumaUsername'] ?? ''
+    lumaEmail: currentErrors['profileForm.lumaEmail'] ?? ''
   }
 })
 
@@ -369,7 +369,11 @@ function handleSubmitAttempt(event?: Event) {
 }
 
 function getProfileFieldType(key: HackathonProfileField['key']) {
-  return key === 'chatgptEmail' ? 'email' : key.includes('Url') ? 'url' : 'text'
+  return key === 'chatgptEmail' || key === 'lumaEmail'
+    ? 'email'
+    : key.includes('Url')
+      ? 'url'
+      : 'text'
 }
 
 function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
@@ -384,8 +388,8 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
       return 'you@example.com'
     case 'openaiOrgId':
       return 'org-1234567890'
-    case 'lumaUsername':
-      return 'your-luma-name'
+    case 'lumaEmail':
+      return 'you@example.com'
   }
 }
 </script>

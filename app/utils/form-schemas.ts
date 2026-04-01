@@ -78,7 +78,7 @@ export const accountProfileFormSchema = z.object({
   ),
   chatgptEmail: optionalEmailSchema,
   openaiOrgId: z.string().trim().max(120),
-  lumaUsername: z.string().trim().max(120)
+  lumaEmail: optionalEmailSchema
 })
 
 export const accountSettingsProfileFormSchema = accountProfileFormSchema.extend({
@@ -187,7 +187,7 @@ export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object
   requireGithubProfile: z.boolean(),
   requireChatgptEmail: z.boolean(),
   requireOpenaiOrgId: z.boolean(),
-  requireLumaProfile: z.boolean(),
+  requireLumaEmail: z.boolean(),
   requireWhyThisHackathon: z.boolean(),
   requireProofOfExecution: z.boolean()
 }).superRefine((input, context) => {
@@ -284,7 +284,7 @@ export function buildParticipantRegistrationFormSchema(options: {
         value => value.length === 0 || isOpenAiOrgIdFormatValid(value),
         'Use an OpenAI org ID like org_123abc.'
       ),
-      lumaUsername: z.string().trim().max(120)
+      lumaEmail: optionalEmailSchema
     })
   }).superRefine((input, context) => {
     if (options.hasCurrentApplicationTerms && !input.termsAccepted) {

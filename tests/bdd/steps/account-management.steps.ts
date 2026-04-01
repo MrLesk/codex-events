@@ -108,7 +108,7 @@ When('I update the account profile links', async ({ page }) => {
   await page.getByLabel('LinkedIn profile URL').fill('https://linkedin.com/in/regular-user-updated')
   await page.getByLabel('ChatGPT email').fill('regular-user-updated@chatgpt.example')
   await page.getByLabel('OpenAI org ID').fill('org_regular_user_updated')
-  await page.getByLabel('Luma username').fill('regular-user-updated')
+  await page.getByLabel('Luma email').fill('regular-user-updated@luma.example')
   await page.getByLabel('X profile URL').fill('https://x.com/regular-user-updated')
   await page.getByRole('button', { name: 'Save' }).click()
 })
@@ -120,7 +120,7 @@ Then('the account profile should show the updated links', async ({ page }) => {
   await expect(page.getByLabel('LinkedIn profile URL')).toHaveValue('https://linkedin.com/in/regular-user-updated')
   await expect(page.getByLabel('ChatGPT email')).toHaveValue('regular-user-updated@chatgpt.example')
   await expect(page.getByLabel('OpenAI org ID')).toHaveValue('org_regular_user_updated')
-  await expect(page.getByLabel('Luma username')).toHaveValue('regular-user-updated')
+  await expect(page.getByLabel('Luma email')).toHaveValue('regular-user-updated@luma.example')
   await expect(page.getByLabel('X profile URL')).toHaveValue('https://x.com/regular-user-updated')
 })
 

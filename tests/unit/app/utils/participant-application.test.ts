@@ -37,7 +37,7 @@ describe('participant application helpers', () => {
       requireGithubProfile: true,
       requireChatgptEmail: true,
       requireOpenaiOrgId: true,
-      requireLumaProfile: true,
+      requireLumaEmail: true,
       lumaEventUrl: 'https://luma.com/codex'
     }, {
       xProfileUrl: null,
@@ -45,7 +45,7 @@ describe('participant application helpers', () => {
       githubProfileUrl: null,
       chatgptEmail: null,
       openaiOrgId: null,
-      lumaUsername: null
+      lumaEmail: null
     })).toEqual([
       {
         key: 'xProfileUrl',
@@ -64,8 +64,8 @@ describe('participant application helpers', () => {
         label: 'OpenAI org ID'
       },
       {
-        key: 'lumaUsername',
-        label: 'Luma username'
+        key: 'lumaEmail',
+        label: 'Luma email'
       }
     ])
   })
@@ -77,7 +77,7 @@ describe('participant application helpers', () => {
       requireGithubProfile: true,
       requireChatgptEmail: false,
       requireOpenaiOrgId: true,
-      requireLumaProfile: false,
+      requireLumaEmail: false,
       lumaEventUrl: null
     })).toEqual([
       { key: 'xProfileUrl', label: 'X profile URL' },
@@ -93,7 +93,7 @@ describe('participant application helpers', () => {
       requireGithubProfile: true,
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
-      requireLumaProfile: true,
+      requireLumaEmail: true,
       lumaEventUrl: 'https://luma.com/codex'
     })).toEqual([
       { key: 'xProfileUrl', label: 'X profile URL', required: true, visible: true },
@@ -101,18 +101,18 @@ describe('participant application helpers', () => {
       { key: 'githubProfileUrl', label: 'GitHub profile URL', required: true, visible: true },
       { key: 'chatgptEmail', label: 'ChatGPT email', required: false, visible: false },
       { key: 'openaiOrgId', label: 'OpenAI org ID', required: false, visible: false },
-      { key: 'lumaUsername', label: 'Luma username', required: true, visible: true }
+      { key: 'lumaEmail', label: 'Luma email', required: true, visible: true }
     ])
   })
 
-  test('does not require or show luma username when no luma event URL is configured', () => {
+  test('does not require or show luma email when no luma event URL is configured', () => {
     expect(listRequiredProfileFields({
       requireXProfile: false,
       requireLinkedinProfile: false,
       requireGithubProfile: false,
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
-      requireLumaProfile: true,
+      requireLumaEmail: true,
       lumaEventUrl: null
     })).toEqual([])
 
@@ -122,11 +122,11 @@ describe('participant application helpers', () => {
       requireGithubProfile: false,
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
-      requireLumaProfile: true,
+      requireLumaEmail: true,
       lumaEventUrl: null
-    }).find(field => field.key === 'lumaUsername')).toEqual({
-      key: 'lumaUsername',
-      label: 'Luma username',
+    }).find(field => field.key === 'lumaEmail')).toEqual({
+      key: 'lumaEmail',
+      label: 'Luma email',
       required: false,
       visible: false
     })
@@ -163,7 +163,7 @@ describe('participant application helpers', () => {
       githubProfileUrl: '',
       chatgptEmail: '',
       openaiOrgId: '',
-      lumaUsername: ''
+      lumaEmail: ''
     })
     const syncingFromModels = ref(false)
     const values = reactive({

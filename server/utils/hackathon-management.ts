@@ -142,7 +142,7 @@ const hackathonConfigShape = {
   requireGithubProfile: z.coerce.boolean().default(false),
   requireChatgptEmail: z.coerce.boolean().default(false),
   requireOpenaiOrgId: z.coerce.boolean().default(false),
-  requireLumaProfile: z.coerce.boolean().default(false),
+  requireLumaEmail: z.coerce.boolean().default(false),
   requireWhyThisHackathon: z.coerce.boolean().default(false),
   requireProofOfExecution: z.coerce.boolean().default(false)
 } satisfies Record<string, z.ZodTypeAny>
@@ -171,7 +171,7 @@ export const updateHackathonBodySchema = z.object({
   requireGithubProfile: hackathonConfigShape.requireGithubProfile.optional(),
   requireChatgptEmail: hackathonConfigShape.requireChatgptEmail.optional(),
   requireOpenaiOrgId: hackathonConfigShape.requireOpenaiOrgId.optional(),
-  requireLumaProfile: hackathonConfigShape.requireLumaProfile.optional(),
+  requireLumaEmail: hackathonConfigShape.requireLumaEmail.optional(),
   requireWhyThisHackathon: hackathonConfigShape.requireWhyThisHackathon.optional(),
   requireProofOfExecution: hackathonConfigShape.requireProofOfExecution.optional()
 }).refine(
@@ -779,7 +779,7 @@ export function serializeHackathon(
     requireGithubProfile: hackathon.requireGithubProfile,
     requireChatgptEmail: hackathon.requireChatgptEmail,
     requireOpenaiOrgId: hackathon.requireOpenaiOrgId,
-    requireLumaProfile: hackathon.requireLumaProfile,
+    requireLumaEmail: hackathon.requireLumaEmail,
     requireWhyThisHackathon: hackathon.requireWhyThisHackathon,
     requireProofOfExecution: hackathon.requireProofOfExecution,
     currentApplicationTermsDocumentId: hackathon.currentApplicationTermsDocumentId,
@@ -838,7 +838,7 @@ export function serializePublicHackathon(
     requireGithubProfile: hackathon.requireGithubProfile,
     requireChatgptEmail: hackathon.requireChatgptEmail,
     requireOpenaiOrgId: hackathon.requireOpenaiOrgId,
-    requireLumaProfile: hackathon.requireLumaProfile,
+    requireLumaEmail: hackathon.requireLumaEmail,
     requireWhyThisHackathon: hackathon.requireWhyThisHackathon,
     requireProofOfExecution: hackathon.requireProofOfExecution,
     ...(currentTerms

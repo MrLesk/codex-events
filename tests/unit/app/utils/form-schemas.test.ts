@@ -23,7 +23,7 @@ function createValidHackathonFormState() {
     submissionClosesAt: '2026-03-24T12:00',
     requireChatgptEmail: false,
     requireOpenaiOrgId: false,
-    requireLumaProfile: false
+    requireLumaEmail: false
   }
 }
 
@@ -39,7 +39,7 @@ describe('form schemas', () => {
       githubProfileUrl: '',
       chatgptEmail: '',
       openaiOrgId: '',
-      lumaUsername: ''
+      lumaEmail: ''
     })
 
     expect(result.success).toBe(true)
@@ -168,7 +168,7 @@ describe('participant registration form schema', () => {
         githubProfileUrl: '',
         chatgptEmail: '',
         openaiOrgId: '',
-        lumaUsername: ''
+        lumaEmail: ''
       }
     }
   }

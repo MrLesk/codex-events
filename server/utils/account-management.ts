@@ -64,7 +64,7 @@ export const platformAccountProfileBodySchema = z.object({
   githubProfileUrl: profileUrlSchema,
   chatgptEmail: optionalEmailSchema,
   openaiOrgId: z.string().trim().max(120).optional(),
-  lumaUsername: z.string().trim().max(120).optional()
+  lumaEmail: optionalEmailSchema
 }).superRefine((input, context) => {
   const socialProfileRules: Array<{
     key: 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl'
@@ -153,6 +153,7 @@ export function serializePlatformUser(user: PlatformUserRecord) {
     githubProfileUrl: user.githubProfileUrl,
     chatgptEmail: user.chatgptEmail,
     openaiOrgId: user.openaiOrgId,
+    lumaEmail: user.lumaEmail,
     lumaUsername: user.lumaUsername,
     profileIconUpdatedAt: user.profileIconUpdatedAt,
     createdAt: user.createdAt,
@@ -188,6 +189,7 @@ function buildPlatformAccountInsert(
     githubProfileUrl: normalizeOptionalUrl(actor.sessionUser.githubProfileUrl),
     chatgptEmail: null,
     openaiOrgId: null,
+    lumaEmail: null,
     lumaUsername: null,
     profileIconUpdatedAt: null,
     createdAt,
@@ -228,8 +230,8 @@ function buildPlatformAccountProfilePatch(
     ...(input.openaiOrgId !== undefined
       ? { openaiOrgId: normalizeOptionalString(input.openaiOrgId) }
       : {}),
-    ...(input.lumaUsername !== undefined
-      ? { lumaUsername: normalizeOptionalString(input.lumaUsername) }
+    ...(input.lumaEmail !== undefined
+      ? { lumaEmail: normalizeOptionalString(input.lumaEmail) }
       : {}),
     updatedAt
   } satisfies Partial<typeof users.$inferInsert>
@@ -487,6 +489,7 @@ export function buildDeletedUserPatch(userId: string, deletedAt: string) {
     githubProfileUrl: null,
     chatgptEmail: null,
     openaiOrgId: null,
+    lumaEmail: null,
     lumaUsername: null,
     profileIconUpdatedAt: null,
     updatedAt: deletedAt,

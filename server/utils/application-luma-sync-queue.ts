@@ -40,7 +40,7 @@ export const applicationLumaSyncQueueMessageSchema = z.object({
   enqueuedAt: z.string().trim().min(1)
 })
 
-type ApplicationLumaSyncRuntimeConfig = z.infer<typeof applicationLumaSyncRuntimeConfigSchema>
+export type ApplicationLumaSyncRuntimeConfig = z.infer<typeof applicationLumaSyncRuntimeConfigSchema>
 
 export type ApplicationLumaSyncQueueMessage = z.infer<typeof applicationLumaSyncQueueMessageSchema>
 
@@ -128,6 +128,10 @@ function resolveQueueRuntimeConfigFromUnknown(candidate: unknown): ApplicationLu
   const parsed = applicationLumaSyncRuntimeConfigSchema.safeParse(candidate)
 
   return parsed.success ? parsed.data : {}
+}
+
+export function resolveApplicationLumaSyncRuntimeConfig(candidate: unknown) {
+  return resolveQueueRuntimeConfigFromUnknown(candidate)
 }
 
 function isQueueProducerLike(value: unknown): value is QueueProducerLike {
@@ -490,6 +494,75 @@ async function findGuestByLumaUserId(
   })
 }
 
+async function findGuestByEmail(
+  eventApiId: string,
+  email: string,
+  options: {
+    config: ApplicationLumaSyncRuntimeConfig
+    fetchImpl: FetchLike
+  }
+) {
+  const payload = await requestLumaJson('/v1/event/get-guest', {
+    config: options.config,
+    fetchImpl: options.fetchImpl,
+    query: {
+      event_id: eventApiId,
+      id: email
+    }
+  }) as {
+    guest?: {
+      id?: string
+      user_email?: string
+    } | null
+  }
+
+  if (payload.guest?.id && payload.guest.user_email) {
+    return {
+      guestId: payload.guest.id,
+      guestEmail: payload.guest.user_email
+    }
+  }
+
+  throw new PermanentLumaSyncError('luma_event_guest_not_found', {
+    eventApiId,
+    email
+  })
+}
+
+export async function resolveLumaEmailFromUsername(
+  input: {
+    lumaEventUrl: string
+    lumaUsername: string
+  },
+  options: {
+    runtimeConfig: unknown
+    fetchImpl?: FetchLike
+  }
+) {
+  const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig)
+  const fetchImpl = options.fetchImpl ?? fetch
+
+  const lumaUserApiId = await resolveLumaUserApiId(input.lumaUsername, {
+    config,
+    fetchImpl
+  })
+  const eventApiId = await resolveLumaEventApiId(input.lumaEventUrl, {
+    config,
+    fetchImpl
+  })
+  const { guestEmail, guestId } = await findGuestByLumaUserId(eventApiId, lumaUserApiId, {
+    config,
+    fetchImpl
+  })
+
+  return {
+    eventApiId,
+    guestId,
+    guestEmail,
+    lumaUserApiId
+  }
+}
+
 async function updateLumaGuestStatus(
   input: {
     eventApiId: string
@@ -750,16 +823,16 @@ export async function processApplicationLumaSyncQueueMessage(
     }
   }
 
-  const lumaUsername = user.lumaUsername?.trim()
+  const lumaEmail = user.lumaEmail?.trim()
 
-  if (!lumaUsername) {
+  if (!lumaEmail) {
     await recordTerminalLumaSyncOutcome(database, {
       applicationId: application.id,
       status: failureStatus,
       action: 'user_application.luma_sync_failed',
       metadata: {
         decision: parsedMessage.data.decision,
-        reason: 'luma_username_missing'
+        reason: 'luma_email_missing'
       }
     })
     message.ack()
@@ -767,7 +840,7 @@ export async function processApplicationLumaSyncQueueMessage(
     return {
       messageId: message.id,
       action: 'ack',
-      reason: 'luma_username_missing'
+      reason: 'luma_email_missing'
     }
   }
 
@@ -791,15 +864,11 @@ export async function processApplicationLumaSyncQueueMessage(
   }
 
   try {
-    const lumaUserApiId = await resolveLumaUserApiId(lumaUsername, {
-      config,
-      fetchImpl
-    })
     const eventApiId = await resolveLumaEventApiId(hackathon.lumaEventUrl!.trim(), {
       config,
       fetchImpl
     })
-    const { guestId, guestEmail } = await findGuestByLumaUserId(eventApiId, lumaUserApiId, {
+    const { guestId, guestEmail } = await findGuestByEmail(eventApiId, lumaEmail, {
       config,
       fetchImpl
     })
@@ -822,8 +891,7 @@ export async function processApplicationLumaSyncQueueMessage(
         eventApiId,
         guestId,
         guestEmail,
-        lumaUserApiId,
-        lumaUsername
+        lumaEmail
       }
     })
 

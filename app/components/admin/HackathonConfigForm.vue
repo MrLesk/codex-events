@@ -946,11 +946,11 @@ const submitConfigForm = handleSubmit(() => {
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
-                v-model="form.requireLumaProfile"
+                v-model="form.requireLumaEmail"
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
-              Require Luma username for applications
+              Require Luma email for applications
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">

@@ -992,7 +992,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         requireGithubProfile: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
-        requireLumaProfile: true,
+        requireLumaEmail: true,
         requireWhyThisHackathon: true,
         requireProofOfExecution: true
       })
@@ -1016,7 +1016,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         inPersonEvent: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
-        requireLumaProfile: true,
+        requireLumaEmail: true,
         requireWhyThisHackathon: true,
         requireProofOfExecution: true
       }
@@ -1110,7 +1110,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         inPersonEvent: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
-        requireLumaProfile: true,
+        requireLumaEmail: true,
         requireWhyThisHackathon: true,
         requireProofOfExecution: true
       })
@@ -1134,7 +1134,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         inPersonEvent: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
-        requireLumaProfile: true,
+        requireLumaEmail: true,
         requireWhyThisHackathon: true,
         requireProofOfExecution: true
       }

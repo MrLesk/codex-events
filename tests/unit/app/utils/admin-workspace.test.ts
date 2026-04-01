@@ -63,7 +63,7 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     requireGithubProfile: true,
     requireChatgptEmail: false,
     requireOpenaiOrgId: false,
-    requireLumaProfile: false,
+    requireLumaEmail: false,
     requireWhyThisHackathon: false,
     requireProofOfExecution: false,
     currentApplicationTermsDocumentId: null,

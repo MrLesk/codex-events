@@ -96,7 +96,7 @@ Application review APIs enqueue email delivery work to a Cloudflare Queue. Ensur
 
 ### Luma Sync Runtime
 
-These values configure the optional Luma approval and rejection sync used by hackathons that require a Luma username and define a Luma event URL:
+These values configure the optional Luma approval and rejection sync used by hackathons that require a Luma email and define a Luma event URL:
 
 - `NUXT_LUMA_API_KEY`
 - `NUXT_LUMA_API_BASE_URL`
@@ -105,7 +105,7 @@ These values configure the optional Luma approval and rejection sync used by hac
 - `NUXT_LUMA_QUEUE_NAME`
 - `NUXT_LUMA_RETRY_DELAY_SECONDS`
 
-Set `NUXT_LUMA_API_KEY` as a secret in deployed environments. The default runtime uses Luma's public API base URL and public profile host, while the queue binding and name must match the Cloudflare Queue producer and consumer configuration exposed to the Worker.
+Set `NUXT_LUMA_API_KEY` as a secret in deployed environments. The default runtime uses Luma's public API base URL, and the public profile host remains configurable for the one-time legacy username-to-email backfill route. The queue binding and name must match the Cloudflare Queue producer and consumer configuration exposed to the Worker.
 The checked-in GitHub Actions deploy workflows create or reuse the configured Cloudflare Queues automatically before deployment. If you deploy outside those workflows, create the queues declared in `wrangler.jsonc` first.
 
 ### Auth0 Bootstrap Configuration Drift Control

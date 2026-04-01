@@ -43,7 +43,7 @@ async function seedApplicationContext(
     requireGithubProfile?: boolean
     requireChatgptEmail?: boolean
     requireOpenaiOrgId?: boolean
-    requireLumaProfile?: boolean
+    requireLumaEmail?: boolean
     requireWhyThisHackathon?: boolean
     requireProofOfExecution?: boolean
     lumaEventUrl?: string | null
@@ -79,6 +79,7 @@ async function seedApplicationContext(
       githubProfileUrl: 'https://github.com/regular',
       chatgptEmail: 'regular@chatgpt.example',
       openaiOrgId: 'org_regular',
+      lumaEmail: 'regular@luma.example',
       lumaUsername: 'bpirvu'
     },
     {
@@ -107,7 +108,7 @@ async function seedApplicationContext(
     requireGithubProfile: options?.requireGithubProfile ?? false,
     requireChatgptEmail: options?.requireChatgptEmail ?? false,
     requireOpenaiOrgId: options?.requireOpenaiOrgId ?? false,
-    requireLumaProfile: options?.requireLumaProfile ?? false,
+    requireLumaEmail: options?.requireLumaEmail ?? false,
     requireWhyThisHackathon: options?.requireWhyThisHackathon ?? false,
     requireProofOfExecution: options?.requireProofOfExecution ?? false,
     lumaEventUrl: options?.lumaEventUrl ?? null,
@@ -485,7 +486,7 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('POST /api/hackathons/:hackathonId/applications rejects users missing a required luma username', async () => {
+  test('POST /api/hackathons/:hackathonId/applications rejects users missing a required luma email', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
@@ -497,7 +498,7 @@ describe('TASK-3.6 application routes', () => {
     })
     harnesses.push(harness)
     await seedApplicationContext(harness, {
-      requireLumaProfile: true,
+      requireLumaEmail: true,
       lumaEventUrl: 'https://luma.com/codex'
     })
 
@@ -513,13 +514,13 @@ describe('TASK-3.6 application routes', () => {
       error: {
         code: 'required_profile_fields_missing',
         details: {
-          missingFields: ['lumaUsername']
+          missingFields: ['lumaEmail']
         }
       }
     })
   })
 
-  test('POST /api/hackathons/:hackathonId/applications does not require luma username when no luma event URL is configured', async () => {
+  test('POST /api/hackathons/:hackathonId/applications does not require luma email when no luma event URL is configured', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
@@ -531,7 +532,7 @@ describe('TASK-3.6 application routes', () => {
     })
     harnesses.push(harness)
     await seedApplicationContext(harness, {
-      requireLumaProfile: true,
+      requireLumaEmail: true,
       lumaEventUrl: null
     })
 
@@ -557,7 +558,7 @@ describe('TASK-3.6 application routes', () => {
     })
     harnesses.push(harness)
     await seedApplicationContext(harness, {
-      requireLumaProfile: true,
+      requireLumaEmail: true,
       lumaEventUrl: 'https://luma.com/codex'
     })
 
@@ -1032,7 +1033,7 @@ describe('TASK-3.6 application routes', () => {
     })
     harnesses.push(harness)
     await seedApplicationContext(harness, {
-      requireLumaProfile: true,
+      requireLumaEmail: true,
       lumaEventUrl: 'https://luma.com/codex'
     })
 
@@ -1282,7 +1283,7 @@ describe('TASK-3.6 application routes', () => {
     })
     harnesses.push(harness)
     await seedApplicationContext(harness, {
-      requireLumaProfile: true,
+      requireLumaEmail: true,
       lumaEventUrl: 'https://luma.com/codex'
     })
 

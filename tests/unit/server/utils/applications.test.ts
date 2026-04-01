@@ -148,7 +148,7 @@ describe('application utilities', () => {
     })).toThrowError(ApiError)
   })
 
-  test('luma username requirement only applies when a luma event URL is configured', () => {
+  test('luma email requirement only applies when a luma event URL is configured', () => {
     expect(() => assertUserMeetsHackathonProfileRequirements({
       id: 'user_1',
       auth0Subject: 'auth0|user_1',
@@ -160,6 +160,7 @@ describe('application utilities', () => {
       githubProfileUrl: null,
       chatgptEmail: null,
       openaiOrgId: null,
+      lumaEmail: null,
       lumaUsername: null,
       profileIconUpdatedAt: null,
       createdAt: '2026-03-20T10:00:00.000Z',
@@ -189,7 +190,7 @@ describe('application utilities', () => {
       requireGithubProfile: false,
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
-      requireLumaProfile: true,
+      requireLumaEmail: true,
       currentApplicationTermsDocumentId: null,
       currentWinnerTermsDocumentId: null,
       createdByUserId: 'creator_1',
@@ -208,6 +209,7 @@ describe('application utilities', () => {
       githubProfileUrl: null,
       chatgptEmail: null,
       openaiOrgId: null,
+      lumaEmail: null,
       lumaUsername: null,
       profileIconUpdatedAt: null,
       createdAt: '2026-03-20T10:00:00.000Z',
@@ -237,7 +239,7 @@ describe('application utilities', () => {
       requireGithubProfile: false,
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
-      requireLumaProfile: true,
+      requireLumaEmail: true,
       currentApplicationTermsDocumentId: null,
       currentWinnerTermsDocumentId: null,
       createdByUserId: 'creator_1',

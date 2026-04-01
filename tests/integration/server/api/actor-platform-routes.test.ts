@@ -901,6 +901,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
           githubProfileUrl: null,
           chatgptEmail: null,
           openaiOrgId: null,
+          lumaEmail: null,
           lumaUsername: null,
           profileIconUpdatedAt: null
         },
@@ -928,6 +929,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(createdUser?.githubProfileUrl).toBeNull()
     expect(createdUser?.chatgptEmail).toBeNull()
     expect(createdUser?.openaiOrgId).toBeNull()
+    expect(createdUser?.lumaEmail).toBeNull()
     expect(createdUser?.lumaUsername).toBeNull()
     expect(createdUser?.profileIconUpdatedAt).toBeNull()
     expect(createdPrimaryIdentity).toMatchObject({
@@ -957,6 +959,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
             familyName: '',
             chatgptEmail: null,
             openaiOrgId: null,
+            lumaEmail: null,
             lumaUsername: null,
             profileIconUpdatedAt: null
           }
@@ -1569,7 +1572,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
         githubProfileUrl: '',
         chatgptEmail: 'account-user@chatgpt.example',
         openaiOrgId: 'org_account_user',
-        lumaUsername: 'account-user'
+        lumaEmail: 'account-user@luma.example'
       })
     })
 
@@ -1588,7 +1591,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
           githubProfileUrl: null,
           chatgptEmail: 'account-user@chatgpt.example',
           openaiOrgId: 'org_account_user',
-          lumaUsername: 'account-user'
+          lumaEmail: 'account-user@luma.example'
         }
       }
     })
@@ -1609,7 +1612,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       githubProfileUrl: null,
       chatgptEmail: 'account-user@chatgpt.example',
       openaiOrgId: 'org_account_user',
-      lumaUsername: 'account-user'
+      lumaEmail: 'account-user@luma.example'
     })
     expect(auditEntries).toEqual([
       expect.objectContaining({

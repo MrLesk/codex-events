@@ -54,6 +54,7 @@ export default defineApiHandler(async (event) => {
         githubProfileUrl: actor.platformUser.githubProfileUrl,
         chatgptEmail: actor.platformUser.chatgptEmail,
         openaiOrgId: actor.platformUser.openaiOrgId,
+        lumaEmail: actor.platformUser.lumaEmail,
         lumaUsername: actor.platformUser.lumaUsername,
         profileIconUpdatedAt: actor.platformUser.profileIconUpdatedAt,
         createdAt: actor.platformUser.createdAt,

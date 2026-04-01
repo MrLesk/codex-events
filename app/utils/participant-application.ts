@@ -28,6 +28,7 @@ export interface ParticipantPlatformUserProfile {
   githubProfileUrl?: string | null
   chatgptEmail?: string | null
   openaiOrgId?: string | null
+  lumaEmail?: string | null
   lumaUsername?: string | null
   profileIconUpdatedAt?: string | null
 }
@@ -137,7 +138,7 @@ export interface ParticipantApiListResponse<T> {
 }
 
 export interface RequiredProfileField {
-  key: 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaUsername'
+  key: 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaEmail'
   label: string
 }
 
@@ -149,9 +150,9 @@ export interface HackathonProfileField extends RequiredProfileField {
 const requiredProfileFieldRules: Array<{
   key: RequiredProfileField['key']
   label: RequiredProfileField['label']
-  isRequired: (hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile' | 'lumaEventUrl'>) => boolean
+  isRequired: (hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail' | 'lumaEventUrl'>) => boolean
   isVisible: (hackathon: Pick<PublicHackathon, 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'lumaEventUrl'>) => boolean
-  hasValue: (platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaUsername'>) => boolean
+  hasValue: (platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaEmail'>) => boolean
 }> = [
   {
     key: 'xProfileUrl',
@@ -189,16 +190,16 @@ const requiredProfileFieldRules: Array<{
     hasValue: platformUser => Boolean(platformUser.openaiOrgId)
   },
   {
-    key: 'lumaUsername',
-    label: 'Luma username',
-    isRequired: hackathon => hackathon.requireLumaProfile && Boolean(hackathon.lumaEventUrl?.trim()),
+    key: 'lumaEmail',
+    label: 'Luma email',
+    isRequired: hackathon => hackathon.requireLumaEmail && Boolean(hackathon.lumaEventUrl?.trim()),
     isVisible: hackathon => Boolean(hackathon.lumaEventUrl?.trim()),
-    hasValue: platformUser => Boolean(platformUser.lumaUsername)
+    hasValue: platformUser => Boolean(platformUser.lumaEmail)
   }
 ]
 
 export function listRequiredProfileFields(
-  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile' | 'lumaEventUrl'>
+  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail' | 'lumaEventUrl'>
 ) {
   return requiredProfileFieldRules
     .filter(rule => rule.isVisible(hackathon) && rule.isRequired(hackathon))
@@ -209,7 +210,7 @@ export function listRequiredProfileFields(
 }
 
 export function listHackathonProfileFields(
-  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile' | 'lumaEventUrl'>
+  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail' | 'lumaEventUrl'>
 ): HackathonProfileField[] {
   return requiredProfileFieldRules.map(rule => ({
     key: rule.key,
@@ -314,8 +315,8 @@ export function buildAuthenticatedIdentityParticipantActor(sessionUser: Particip
 }
 
 export function listMissingRequiredProfileFields(
-  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaProfile' | 'lumaEventUrl'>,
-  platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaUsername'>
+  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail' | 'lumaEventUrl'>,
+  platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaEmail'>
 ) {
   return requiredProfileFieldRules
     .filter(rule => rule.isVisible(hackathon) && rule.isRequired(hackathon) && !rule.hasValue(platformUser))

@@ -20,7 +20,7 @@ Key characteristics:
 - Can join at most one team per hackathon.
 - Can be marked with `is_platform_admin`.
 - Stores canonical `first_name` and `family_name` values used for profile management.
-- Can optionally store a company, a bio, X, LinkedIn, and GitHub profile links, a ChatGPT email, an OpenAI org ID, a Luma username, and a profile icon uploaded from account settings.
+- Can optionally store a company, a bio, X, LinkedIn, and GitHub profile links, a ChatGPT email, an OpenAI org ID, a Luma email, a legacy Luma username, and a profile icon uploaded from account settings.
 - Can delete their account, subject to GDPR-compliant handling.
 
 Rules:
@@ -67,7 +67,7 @@ Key characteristics:
 - Each hackathon has a judging flow that is activated manually.
 - Each hackathon can define a maximum team member limit.
 - Each hackathon can optionally define a participant approval limit used as an indicative planning target during admin review.
-- Each hackathon can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma username, for registration.
+- Each hackathon can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma email, for registration.
 - Each hackathon can require a `why this hackathon` response and proof-of-execution links in applications.
 - Each hackathon references its own application terms and winner terms.
 
@@ -141,7 +141,8 @@ Rules:
 - Application approval is handled by hackathon admins.
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
-- If the hackathon requires a Luma profile and has a Luma event URL, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
+- If the hackathon requires a Luma email and has a Luma event URL, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
+- Platform admins can run a hackathon-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - A user must be approved before creating or joining a team in that hackathon.
 - Blind judging uses application information without exposing team identity.
 - User application acceptance references the exact application terms version accepted for that hackathon.
