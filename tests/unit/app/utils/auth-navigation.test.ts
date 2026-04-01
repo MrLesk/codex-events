@@ -7,7 +7,6 @@ import {
   buildAccountRegisterHref,
   buildAccountSettingsHref,
   buildAuthLoginHref,
-  buildGitHubAuthLoginHref,
   normalizeAuthReturnTo,
   resolveActorAppRedirect
 } from '../../../../app/utils/auth-navigation'
@@ -15,7 +14,6 @@ import {
 describe('auth navigation helpers', () => {
   test('builds a login redirect with an encoded return target', () => {
     expect(buildAuthLoginHref('/account?tab=judging')).toBe('/auth/login?returnTo=%2Faccount%3Ftab%3Djudging')
-    expect(buildGitHubAuthLoginHref('/account?tab=judging')).toBe('/auth/login/github?returnTo=%2Faccount%3Ftab%3Djudging')
   })
 
   test('builds account settings route with return target', () => {
@@ -27,7 +25,6 @@ describe('auth navigation helpers', () => {
   test('falls back to the account dashboard when the return target is empty', () => {
     expect(buildAuthLoginHref('')).toBe('/auth/login?returnTo=%2Faccount')
     expect(buildAuthLoginHref(undefined)).toBe('/auth/login?returnTo=%2Faccount')
-    expect(buildGitHubAuthLoginHref('')).toBe('/auth/login/github?returnTo=%2Faccount')
     expect(authLogoutHref).toBe('/auth/logout')
   })
 

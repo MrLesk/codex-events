@@ -25,13 +25,6 @@ export function buildAuthLoginHref(returnTo: string | null | undefined) {
   return `/auth/login?returnTo=${encodeURIComponent(loginReturnTo)}`
 }
 
-export function buildGitHubAuthLoginHref(returnTo: string | null | undefined) {
-  const normalizedReturnTo = normalizeAuthReturnTo(returnTo, accountDashboardHref)
-  const loginReturnTo = normalizedReturnTo === '/' ? accountDashboardHref : normalizedReturnTo
-
-  return `/auth/login/github?returnTo=${encodeURIComponent(loginReturnTo)}`
-}
-
 export function buildAccountRegisterHref(returnTo: string | null | undefined) {
   return `${accountRegisterHref}?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo, accountDashboardHref))}`
 }

@@ -26,7 +26,6 @@ export default defineNuxtConfig({
       sessionSecret: '',
       appBaseUrl: 'http://localhost:3000',
       audience: '',
-      githubConnectionName: 'github',
       managementDomain: '',
       managementClientId: '',
       managementClientSecret: '',
