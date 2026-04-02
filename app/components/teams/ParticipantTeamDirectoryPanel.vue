@@ -167,67 +167,70 @@ function submitCreateForm() {
             :description="canCreateTeam.reason"
           />
 
-          <form
-            class="space-y-4"
-            @submit.prevent="submitCreateForm"
-          >
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Team name</span>
-              <input
-                v-model="form.name"
-                type="text"
-                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-                placeholder="North Star Builders"
-                :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
-              >
-              <p
-                v-if="submitCount > 0 && errors.name"
-                class="text-xs text-error"
-              >
-                {{ errors.name }}
-              </p>
-            </label>
-
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Team slug</span>
-              <input
-                v-model="form.slug"
-                type="text"
-                class="app-inset-field px-4 py-3 text-sm text-highlighted outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                :class="submitCount > 0 && errors.slug ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-                placeholder="north-star-builders"
-                :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
-              >
-              <p
-                v-if="submitCount > 0 && errors.slug"
-                class="text-xs text-error"
-              >
-                {{ errors.slug }}
-              </p>
-            </label>
-
-            <label class="flex items-center gap-3 app-inset-choice px-4 py-3 text-sm text-toned">
-              <input
-                v-model="form.isOpenToJoinRequests"
-                type="checkbox"
-                class="size-4 rounded border-default"
-                :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
-              >
-              Open this team to join requests immediately
-            </label>
-
-            <AppButton
-              type="button"
-              color="primary"
-              :loading="isCreatingTeam"
-              :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
-              data-testid="participant-team-create-submit"
-              @click="submitCreateForm"
+          <div class="app-inset-card px-5 py-5">
+            <form
+              class="space-y-5"
+              @submit.prevent="submitCreateForm"
             >
-              Create team
-            </AppButton>
-          </form>
+              <label class="grid gap-2">
+                <span class="text-sm font-medium text-toned">Team name</span>
+                <input
+                  v-model="form.name"
+                  type="text"
+                  class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition disabled:cursor-not-allowed disabled:opacity-60"
+                  :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+                  placeholder="North Star Builders"
+                  :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
+                >
+                <p
+                  v-if="submitCount > 0 && errors.name"
+                  class="text-xs text-error"
+                >
+                  {{ errors.name }}
+                </p>
+              </label>
+
+              <label class="grid gap-2">
+                <span class="text-sm font-medium text-toned">Team slug</span>
+                <input
+                  v-model="form.slug"
+                  type="text"
+                  class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition disabled:cursor-not-allowed disabled:opacity-60"
+                  :class="submitCount > 0 && errors.slug ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+                  placeholder="north-star-builders"
+                  :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
+                >
+                <p
+                  v-if="submitCount > 0 && errors.slug"
+                  class="text-xs text-error"
+                >
+                  {{ errors.slug }}
+                </p>
+              </label>
+
+              <label class="flex items-center gap-3 rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned">
+                <input
+                  v-model="form.isOpenToJoinRequests"
+                  type="checkbox"
+                  class="size-4 rounded border-default text-primary accent-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
+                  :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
+                >
+                Open this team to join requests immediately
+              </label>
+
+              <div class="flex flex-wrap gap-3">
+                <AppButton
+                  type="submit"
+                  color="primary"
+                  :loading="isCreatingTeam"
+                  :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
+                  data-testid="participant-team-create-submit"
+                >
+                  Create team
+                </AppButton>
+              </div>
+            </form>
+          </div>
         </div>
       </AppCard>
 
