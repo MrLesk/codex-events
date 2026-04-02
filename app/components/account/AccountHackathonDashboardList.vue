@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { collapseMarkdownToPlainText } from '~/utils/hackathon-description'
-import { formatHackathonState, getHackathonStateColor, type HackathonState } from '~/utils/admin-workspace'
+import {
+  formatHackathonState,
+  getHackathonDashboardStateBadgePresentation,
+  type HackathonState
+} from '~/utils/admin-workspace'
 
 export interface AccountHackathonDashboardListItem {
   id: string
@@ -57,6 +61,10 @@ function getDescriptionPreview(item: AccountHackathonDashboardListItem) {
 function shouldShowDescriptionToggle(item: AccountHackathonDashboardListItem) {
   return getNormalizedDescription(item.description).length > descriptionPreviewCharacterLimit
 }
+
+function getStateBadgePresentation(state: HackathonState) {
+  return getHackathonDashboardStateBadgePresentation(state)
+}
 </script>
 
 <template>
@@ -106,9 +114,12 @@ function shouldShowDescriptionToggle(item: AccountHackathonDashboardListItem) {
                 {{ item.name }}
               </p>
               <AppBadge
-                :color="getHackathonStateColor(item.state)"
-                variant="soft"
-                class="rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
+                :color="getStateBadgePresentation(item.state).color"
+                :variant="getStateBadgePresentation(item.state).variant"
+                :class="[
+                  'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
+                  getStateBadgePresentation(item.state).className
+                ]"
               >
                 {{ formatHackathonState(item.state) }}
               </AppBadge>

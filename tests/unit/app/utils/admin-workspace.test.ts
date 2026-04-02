@@ -24,6 +24,7 @@ import {
   fromDateTimeLocalValue,
   getAdminJudgeAssignmentInterventionPolicy,
   getAdminWorkspaceSubjectKey,
+  getHackathonDashboardStateBadgePresentation,
   hasHackathonJudgingAccess,
   hasHackathonParticipantVisibilityAccess,
   getNextAgendaItemDefaultTimes,
@@ -203,6 +204,20 @@ function createNoSubmissionEntry(overrides: Partial<NoSubmissionEntry> = {}): No
 }
 
 describe('admin-workspace access helpers', () => {
+  test('renders a visible draft chip treatment on the admin dashboard', () => {
+    expect(getHackathonDashboardStateBadgePresentation('draft')).toEqual({
+      color: 'neutral',
+      variant: 'outline',
+      className: 'border-black/10 bg-black/[0.04] text-neutral-700 dark:border-white/[0.14] dark:bg-white/[0.08] dark:text-white/85'
+    })
+
+    expect(getHackathonDashboardStateBadgePresentation('registration_open')).toEqual({
+      color: 'info',
+      variant: 'soft',
+      className: ''
+    })
+  })
+
   test('filters hackathons by explicit hackathon-admin access for non-platform admins', () => {
     const actor = createActor()
     const hackathons = [

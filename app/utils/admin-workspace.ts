@@ -581,6 +581,26 @@ export function getHackathonStateColor(state: HackathonState) {
   }
 }
 
+export function getHackathonDashboardStateBadgePresentation(state: HackathonState): {
+  color: 'primary' | 'secondary' | 'neutral' | 'success' | 'warning' | 'error' | 'info'
+  variant: 'soft' | 'outline'
+  className: string
+} {
+  if (state === 'draft') {
+    return {
+      color: 'neutral' as const,
+      variant: 'outline' as const,
+      className: 'border-black/10 bg-black/[0.04] text-neutral-700 dark:border-white/[0.14] dark:bg-white/[0.08] dark:text-white/85'
+    }
+  }
+
+  return {
+    color: getHackathonStateColor(state),
+    variant: 'soft' as const,
+    className: ''
+  }
+}
+
 export function formatApplicationStatus(status: AdminApplicationRecord['status']) {
   return startCase(status)
 }
