@@ -12,6 +12,30 @@ import {
 } from '../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
+function createLumaEventHtml(options?: {
+  eventApiId?: string
+  slug?: string
+}) {
+  const eventApiId = options?.eventApiId ?? 'evt-123'
+  const slug = options?.slug ?? 'codex'
+
+  return `<meta name="apple-itunes-app" content="app-id=1546150895, app-argument=luma://event/${eventApiId}"/><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+    props: {
+      pageProps: {
+        initialData: {
+          data: {
+            api_id: eventApiId,
+            event: {
+              api_id: eventApiId,
+              url: slug
+            }
+          }
+        }
+      }
+    }
+  })}</script>`
+}
+
 describe('admin luma backfill routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
 
@@ -139,15 +163,11 @@ describe('admin luma backfill routes', () => {
         })
       }
 
-      if (url.pathname === '/v1/calendar/lookup-event') {
-        return new Response(JSON.stringify({
-          event: {
-            api_id: 'evt-123'
-          }
-        }), {
+      if (url.hostname === 'luma.com' && url.pathname === '/codex') {
+        return new Response(createLumaEventHtml(), {
           status: 200,
           headers: {
-            'content-type': 'application/json'
+            'content-type': 'text/html'
           }
         })
       }

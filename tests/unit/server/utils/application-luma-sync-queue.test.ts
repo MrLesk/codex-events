@@ -81,6 +81,30 @@ function createHtmlResponse(html: string, status: number = 200) {
   })
 }
 
+function createLumaEventHtml(options?: {
+  eventApiId?: string
+  slug?: string
+}) {
+  const eventApiId = options?.eventApiId ?? 'evt-123'
+  const slug = options?.slug ?? 'codex'
+
+  return `<meta name="apple-itunes-app" content="app-id=1546150895, app-argument=luma://event/${eventApiId}"/><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
+    props: {
+      pageProps: {
+        initialData: {
+          data: {
+            api_id: eventApiId,
+            event: {
+              api_id: eventApiId,
+              url: slug
+            }
+          }
+        }
+      }
+    }
+  })}</script>`
+}
+
 async function seedLumaSyncContext(options?: {
   decision?: 'approved' | 'rejected'
   lumaSyncStatus?: typeof userApplications.$inferSelect['lumaSyncStatus']
@@ -217,12 +241,8 @@ describe('application luma sync queue utilities', () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
 
-      if (url.pathname === '/v1/calendar/lookup-event') {
-        return createJsonResponse({
-          event: {
-            api_id: 'evt-123'
-          }
-        })
+      if (url.hostname === 'luma.com' && url.pathname === '/codex') {
+        return createHtmlResponse(createLumaEventHtml())
       }
 
       if (url.pathname === '/v1/event/get-guest') {
@@ -295,12 +315,12 @@ describe('application luma sync queue utilities', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(3)
     expect(fetchImpl).toHaveBeenNthCalledWith(
       1,
-      expect.stringContaining('/v1/calendar/lookup-event?platform=luma'),
+      'https://luma.com/codex',
       expect.objectContaining({
         method: 'GET',
         headers: expect.objectContaining({
-          'user-agent': expect.stringContaining('Mozilla/5.0'),
-          'x-luma-api-key': 'luma_test_key'
+          'accept': 'text/html',
+          'user-agent': expect.stringContaining('Mozilla/5.0')
         })
       })
     )
@@ -321,12 +341,8 @@ describe('application luma sync queue utilities', () => {
         return createHtmlResponse('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"user":{"username":"bpirvu","api_id":"usr-123"}}}}</script>')
       }
 
-      if (url.pathname === '/v1/calendar/lookup-event') {
-        return createJsonResponse({
-          event: {
-            api_id: 'evt-123'
-          }
-        })
+      if (url.hostname === 'luma.com' && url.pathname === '/codex') {
+        return createHtmlResponse(createLumaEventHtml())
       }
 
       if (url.pathname === '/v1/event/get-guests') {
@@ -374,12 +390,8 @@ describe('application luma sync queue utilities', () => {
 
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
 
-      if (url.pathname === '/v1/calendar/lookup-event') {
-        return Promise.resolve(createJsonResponse({
-          event: {
-            api_id: 'evt-123'
-          }
-        }))
+      if (url.hostname === 'luma.com' && url.pathname === '/codex') {
+        return Promise.resolve(createHtmlResponse(createLumaEventHtml()))
       }
 
       if (url.pathname === '/v1/event/get-guest') {
@@ -435,12 +447,8 @@ describe('application luma sync queue utilities', () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
 
-      if (url.pathname === '/v1/calendar/lookup-event') {
-        return createJsonResponse({
-          event: {
-            api_id: 'evt-123'
-          }
-        })
+      if (url.hostname === 'luma.com' && url.pathname === '/codex') {
+        return createHtmlResponse(createLumaEventHtml())
       }
 
       if (url.pathname === '/v1/event/get-guest') {
@@ -482,9 +490,7 @@ describe('application luma sync queue utilities', () => {
     const message = createQueueMessage()
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const fetchImpl = vi.fn(async () => {
-      return createJsonResponse({
-        error: 'rate limit'
-      }, 429)
+      return createHtmlResponse('rate limit', 429)
     })
 
     const result = await processApplicationLumaSyncQueueMessage(message, {
@@ -513,7 +519,7 @@ describe('application luma sync queue utilities', () => {
       retryDelaySeconds: 90,
       reason: 'luma_request_retryable_status',
       details: {
-        path: '/v1/calendar/lookup-event',
+        path: 'https://luma.com/codex',
         statusCode: 429,
         message: 'rate limit'
       }
