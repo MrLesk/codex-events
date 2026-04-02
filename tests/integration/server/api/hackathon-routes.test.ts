@@ -1096,6 +1096,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         name: 'New Hackathon',
         slug: 'new-hackathon',
         lumaEventUrl: 'https://lu.ma/new-hackathon',
+        lumaEventApiId: 'evt-newhackathon123',
         description: 'New hackathon',
         agendaItems: [
           {
@@ -1134,6 +1135,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         name: 'New Hackathon',
         slug: 'new-hackathon',
         lumaEventUrl: 'https://lu.ma/new-hackathon',
+        lumaEventApiId: 'evt-newhackathon123',
         state: 'draft',
         createdByUserId: 'platform_admin',
         agendaItems: [
@@ -1156,6 +1158,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     })
 
     expect(createdHackathon?.lumaEventUrl).toBe('https://lu.ma/new-hackathon')
+    expect(createdHackathon?.lumaEventApiId).toBe('evt-newhackathon123')
 
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual([
@@ -1223,6 +1226,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       body: JSON.stringify({
         description: 'Updated description',
         lumaEventUrl: 'https://lu.ma/patch-hackathon',
+        lumaEventApiId: 'evt-patchhackathon123',
         agendaItems: [
           {
             id: 'agenda_item_2',
@@ -1251,6 +1255,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         id: 'hackathon_patch',
         description: 'Updated description',
         lumaEventUrl: 'https://lu.ma/patch-hackathon',
+        lumaEventApiId: 'evt-patchhackathon123',
         agendaItems: [
           expect.objectContaining({
             id: 'agenda_item_2',
@@ -1274,6 +1279,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     })
 
     expect(updatedHackathon?.lumaEventUrl).toBe('https://lu.ma/patch-hackathon')
+    expect(updatedHackathon?.lumaEventApiId).toBe('evt-patchhackathon123')
   })
 
   test('PATCH /api/hackathons/:hackathonId rewrites managed image URLs when slug changes', async () => {

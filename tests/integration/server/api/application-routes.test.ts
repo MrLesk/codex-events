@@ -47,6 +47,7 @@ async function seedApplicationContext(
     requireWhyThisHackathon?: boolean
     requireProofOfExecution?: boolean
     lumaEventUrl?: string | null
+    lumaEventApiId?: string | null
     inPersonEvent?: boolean
   }
 ) {
@@ -112,6 +113,7 @@ async function seedApplicationContext(
     requireWhyThisHackathon: options?.requireWhyThisHackathon ?? false,
     requireProofOfExecution: options?.requireProofOfExecution ?? false,
     lumaEventUrl: options?.lumaEventUrl ?? null,
+    lumaEventApiId: options?.lumaEventApiId ?? null,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
     createdByUserId: 'platform_admin'
@@ -498,8 +500,7 @@ describe('TASK-3.6 application routes', () => {
     })
     harnesses.push(harness)
     await seedApplicationContext(harness, {
-      requireLumaEmail: true,
-      lumaEventUrl: 'https://luma.com/codex'
+      requireLumaEmail: true
     })
 
     const response = await harness.request('/api/hackathons/hackathon_1/applications', {
@@ -520,20 +521,21 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('POST /api/hackathons/:hackathonId/applications does not require luma email when no luma event URL is configured', async () => {
+  test('POST /api/hackathons/:hackathonId/applications does not arm Luma sync when no Luma event API id is configured', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
-        sub: 'auth0|missing_profile',
-        email: 'missing-profile@example.com'
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
       }
     })
     harnesses.push(harness)
     await seedApplicationContext(harness, {
       requireLumaEmail: true,
-      lumaEventUrl: null
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: null
     })
 
     const response = await harness.request('/api/hackathons/hackathon_1/applications', {
@@ -544,6 +546,12 @@ describe('TASK-3.6 application routes', () => {
     })
 
     expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        userId: 'regular_user',
+        lumaSyncStatus: null
+      }
+    })
   })
 
   test('POST /api/hackathons/:hackathonId/applications stores not_synced for Luma-enabled hackathons', async () => {
@@ -559,7 +567,8 @@ describe('TASK-3.6 application routes', () => {
     harnesses.push(harness)
     await seedApplicationContext(harness, {
       requireLumaEmail: true,
-      lumaEventUrl: 'https://luma.com/codex'
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
     })
 
     const response = await harness.request('/api/hackathons/hackathon_1/applications', {
@@ -1041,7 +1050,8 @@ describe('TASK-3.6 application routes', () => {
     harnesses.push(harness)
     await seedApplicationContext(harness, {
       requireLumaEmail: true,
-      lumaEventUrl: 'https://luma.com/codex'
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
     })
 
     await harness.database.insert(userApplications).values({
@@ -1291,7 +1301,8 @@ describe('TASK-3.6 application routes', () => {
     harnesses.push(harness)
     await seedApplicationContext(harness, {
       requireLumaEmail: true,
-      lumaEventUrl: 'https://luma.com/codex'
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
     })
 
     await harness.database.insert(userApplications).values({

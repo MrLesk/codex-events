@@ -456,7 +456,7 @@ export function describeWindowStatus(
   return state === 'draft' || state === 'registration_open' ? 'Upcoming' : 'Closed'
 }
 
-export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail' | 'lumaEventUrl'>) {
+export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>) {
   const profiles: string[] = []
 
   if (hackathon.requireXProfile) {
@@ -479,7 +479,7 @@ export function listRequiredProfiles(hackathon: Pick<PublicHackathon, 'requireXP
     profiles.push('OpenAI org ID')
   }
 
-  if (hackathon.requireLumaEmail && Boolean(hackathon.lumaEventUrl?.trim())) {
+  if (hackathon.requireLumaEmail) {
     profiles.push('Luma email')
   }
 

@@ -59,7 +59,8 @@ Key characteristics:
 - Each hackathon can define a background image and a banner image.
 - Each hackathon can define structured agenda items for public schedule display and admin editing.
 - Each hackathon can be marked as an in-person event.
-- Each hackathon can optionally reference a Luma event URL.
+- Each hackathon can optionally reference a public Luma event URL.
+- Each hackathon can optionally store a Luma event API ID used for operational sync.
 - Each hackathon has a city, country, and address.
 - Each hackathon has its own registration window.
 - Each hackathon has a registration flow that can be activated manually within its configured registration window.
@@ -142,7 +143,7 @@ Rules:
 - Application approval is handled by hackathon admins.
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
-- If the hackathon requires a Luma email and has a Luma event URL, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
+- If the hackathon requires a Luma email and has a Luma event API ID, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
 - Platform admins can run a hackathon-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - A user must be approved before creating or joining a team in that hackathon.
 - Blind judging uses application information without exposing team identity.

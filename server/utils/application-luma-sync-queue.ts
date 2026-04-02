@@ -403,66 +403,6 @@ function normalizeLumaUsername(value: string) {
   return value.trim().replace(/^@/, '').toLowerCase()
 }
 
-async function requestLumaEventHtml(
-  lumaEventUrl: string,
-  options: {
-    fetchImpl: FetchLike
-  }
-) {
-  let response: Response
-
-  try {
-    response = await options.fetchImpl(lumaEventUrl, {
-      method: 'GET',
-      headers: {
-        'accept': 'text/html',
-        'user-agent': defaultLumaRequestUserAgent
-      }
-    })
-  } catch (error) {
-    throw new RetryableLumaSyncError('luma_request_transport_error', {
-      path: lumaEventUrl,
-      message: error instanceof Error ? error.message : 'Unexpected transport error'
-    })
-  }
-
-  const html = await response.text()
-
-  if (!response.ok) {
-    const message = html || response.statusText || 'Luma request failed'
-
-    if (response.status === 429 || response.status >= 500) {
-      throw new RetryableLumaSyncError('luma_request_retryable_status', {
-        path: lumaEventUrl,
-        statusCode: response.status,
-        message
-      })
-    }
-
-    throw new PermanentLumaSyncError('luma_request_failed', {
-      path: lumaEventUrl,
-      statusCode: response.status,
-      message
-    })
-  }
-
-  return html
-}
-
-function normalizeLumaEventSlug(value: string) {
-  return value.trim().replace(/^\/+|\/+$/g, '').toLowerCase()
-}
-
-function getNormalizedLumaEventSlug(lumaEventUrl: string) {
-  try {
-    const url = new URL(lumaEventUrl)
-    const lastPathSegment = url.pathname.split('/').filter(Boolean).at(-1)
-    return lastPathSegment ? normalizeLumaEventSlug(lastPathSegment) : null
-  } catch {
-    return null
-  }
-}
-
 function extractNextDataJson(html: string) {
   const match = html.match(/<script[^>]+id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i)
 
@@ -474,20 +414,6 @@ function extractNextDataJson(html: string) {
     return JSON.parse(match[1]) as unknown
   } catch {
     throw new PermanentLumaSyncError('luma_profile_next_data_invalid')
-  }
-}
-
-function tryExtractNextDataJson(html: string) {
-  const match = html.match(/<script[^>]+id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i)
-
-  if (!match?.[1]) {
-    return null
-  }
-
-  try {
-    return JSON.parse(match[1]) as unknown
-  } catch {
-    return null
   }
 }
 
@@ -531,63 +457,6 @@ function findLumaUserApiId(value: unknown, normalizedUsername: string): string |
   return null
 }
 
-function findLumaEventApiId(value: unknown, normalizedEventSlug: string): string | null {
-  if (Array.isArray(value)) {
-    for (const entry of value) {
-      const apiId = findLumaEventApiId(entry, normalizedEventSlug)
-
-      if (apiId) {
-        return apiId
-      }
-    }
-
-    return null
-  }
-
-  if (!value || typeof value !== 'object') {
-    return null
-  }
-
-  const candidate = value as Record<string, unknown>
-  const apiId = typeof candidate.api_id === 'string'
-    ? candidate.api_id.trim()
-    : null
-  const candidateUrl = typeof candidate.url === 'string'
-    ? normalizeLumaEventSlug(candidate.url)
-    : null
-  const nestedEvent = candidate.event && typeof candidate.event === 'object'
-    ? candidate.event as Record<string, unknown>
-    : null
-  const nestedEventApiId = typeof nestedEvent?.api_id === 'string'
-    ? nestedEvent.api_id.trim()
-    : null
-  const nestedEventUrl = typeof nestedEvent?.url === 'string'
-    ? normalizeLumaEventSlug(nestedEvent.url)
-    : null
-
-  if (candidateUrl === normalizedEventSlug && apiId?.startsWith('evt-')) {
-    return apiId
-  }
-
-  if (nestedEventUrl === normalizedEventSlug && nestedEventApiId?.startsWith('evt-')) {
-    return nestedEventApiId
-  }
-
-  if (nestedEventUrl === normalizedEventSlug && apiId?.startsWith('evt-')) {
-    return apiId
-  }
-
-  for (const nestedValue of Object.values(candidate)) {
-    const nestedApiId = findLumaEventApiId(nestedValue, normalizedEventSlug)
-
-    if (nestedApiId) {
-      return nestedApiId
-    }
-  }
-
-  return null
-}
-
 async function resolveLumaUserApiId(
   username: string,
   options: {
@@ -607,33 +476,6 @@ async function resolveLumaUserApiId(
 
   return apiId
 }
-
-async function resolveLumaEventApiId(
-  lumaEventUrl: string,
-  options: {
-    config: ApplicationLumaSyncRuntimeConfig
-    fetchImpl: FetchLike
-  }
-) {
-  const html = await requestLumaEventHtml(lumaEventUrl, {
-    fetchImpl: options.fetchImpl
-  })
-  const normalizedEventSlug = getNormalizedLumaEventSlug(lumaEventUrl)
-  const nextData = tryExtractNextDataJson(html)
-  const eventApiId = normalizedEventSlug && nextData
-    ? findLumaEventApiId(nextData, normalizedEventSlug)
-    : null
-  const fallbackEventApiId = html.match(/luma:\/\/event\/(evt-[A-Za-z0-9]+)/i)?.[1] ?? null
-
-  if (!eventApiId && !fallbackEventApiId) {
-    throw new PermanentLumaSyncError('luma_event_not_found', {
-      lumaEventUrl
-    })
-  }
-
-  return eventApiId ?? fallbackEventApiId!
-}
-
 async function findGuestByLumaUserId(
   eventApiId: string,
   lumaUserApiId: string,
@@ -724,7 +566,7 @@ async function findGuestByEmail(
 
 export async function resolveLumaEmailFromUsername(
   input: {
-    lumaEventUrl: string
+    lumaEventApiId: string
     lumaUsername: string
   },
   options: {
@@ -739,17 +581,13 @@ export async function resolveLumaEmailFromUsername(
     config,
     fetchImpl
   })
-  const eventApiId = await resolveLumaEventApiId(input.lumaEventUrl, {
-    config,
-    fetchImpl
-  })
-  const { guestEmail, guestId } = await findGuestByLumaUserId(eventApiId, lumaUserApiId, {
+  const { guestEmail, guestId } = await findGuestByLumaUserId(input.lumaEventApiId, lumaUserApiId, {
     config,
     fetchImpl
   })
 
   return {
-    eventApiId,
+    eventApiId: input.lumaEventApiId,
     guestId,
     guestEmail,
     lumaUserApiId
@@ -1044,10 +882,7 @@ export async function processApplicationLumaSyncQueueMessage(
   }
 
   try {
-    const eventApiId = await resolveLumaEventApiId(hackathon.lumaEventUrl!.trim(), {
-      config,
-      fetchImpl
-    })
+    const eventApiId = hackathon.lumaEventApiId!.trim()
     const { guestId, guestEmail } = await findGuestByEmail(eventApiId, lumaEmail, {
       config,
       fetchImpl

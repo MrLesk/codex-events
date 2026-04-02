@@ -140,6 +140,16 @@ describe('hackathon config form schema', () => {
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe('Enter a valid Luma event URL.')
   })
+
+  test('rejects invalid luma event API ids', () => {
+    const result = hackathonConfigFormSchema.safeParse({
+      ...createValidHackathonFormState(),
+      lumaEventApiId: 'abc-123'
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toBe('Enter a valid Luma event API ID like evt-123.')
+  })
 })
 
 describe('participant registration form schema', () => {

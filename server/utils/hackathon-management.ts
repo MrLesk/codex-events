@@ -46,6 +46,11 @@ const nullableHttpUrlSchema = z.string().url()
   }, 'Expected an http or https URL.')
   .nullable()
   .optional()
+const nullableLumaEventApiIdSchema = z.string()
+  .trim()
+  .regex(/^evt-[A-Za-z0-9]+$/, 'Expected a Luma event API ID like evt-123.')
+  .nullable()
+  .optional()
 const nullableTrimmedStringSchema = z.string().trim().min(1).nullable().optional()
 
 const roleEnumSchema = z.enum(hackathonRoleTypes)
@@ -127,6 +132,7 @@ const hackathonConfigShape = {
   backgroundImageUrl: nullableUrlSchema,
   bannerImageUrl: nullableUrlSchema,
   lumaEventUrl: nullableHttpUrlSchema,
+  lumaEventApiId: nullableLumaEventApiIdSchema,
   city: z.string().trim().min(1),
   country: z.string().trim().min(1),
   address: z.string().trim().min(1),
@@ -156,6 +162,7 @@ export const updateHackathonBodySchema = z.object({
   backgroundImageUrl: hackathonConfigShape.backgroundImageUrl.optional(),
   bannerImageUrl: hackathonConfigShape.bannerImageUrl.optional(),
   lumaEventUrl: hackathonConfigShape.lumaEventUrl.optional(),
+  lumaEventApiId: hackathonConfigShape.lumaEventApiId.optional(),
   city: hackathonConfigShape.city.optional(),
   country: hackathonConfigShape.country.optional(),
   address: hackathonConfigShape.address.optional(),
@@ -763,6 +770,7 @@ export function serializeHackathon(
     backgroundImageUrl: hackathon.backgroundImageUrl,
     bannerImageUrl: hackathon.bannerImageUrl,
     lumaEventUrl: hackathon.lumaEventUrl,
+    lumaEventApiId: hackathon.lumaEventApiId,
     city: hackathon.city,
     country: hackathon.country,
     address: hackathon.address,

@@ -379,6 +379,17 @@ const submitConfigForm = handleSubmit(() => {
               <span class="text-xs text-muted">Optional public Luma event link for this hackathon. Leave blank if you are not using Luma.</span>
             </label>
 
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Luma event API ID</span>
+              <input
+                v-model="form.lumaEventApiId"
+                type="text"
+                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
+                placeholder="evt-FSlTqAmG9QanU4s"
+              >
+              <span class="text-xs text-muted">Required for Luma approval and rejection sync. This uses the Luma event API id, not the public URL.</span>
+            </label>
+
             <AdminMarkdownEditorField
               v-model="form.description"
               name="hackathon-description-editor"

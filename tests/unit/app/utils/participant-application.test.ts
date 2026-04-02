@@ -37,8 +37,7 @@ describe('participant application helpers', () => {
       requireGithubProfile: true,
       requireChatgptEmail: true,
       requireOpenaiOrgId: true,
-      requireLumaEmail: true,
-      lumaEventUrl: 'https://luma.com/codex'
+      requireLumaEmail: true
     }, {
       xProfileUrl: null,
       linkedinProfileUrl: 'https://linkedin.com/in/member',
@@ -77,8 +76,7 @@ describe('participant application helpers', () => {
       requireGithubProfile: true,
       requireChatgptEmail: false,
       requireOpenaiOrgId: true,
-      requireLumaEmail: false,
-      lumaEventUrl: null
+      requireLumaEmail: false
     })).toEqual([
       { key: 'xProfileUrl', label: 'X profile URL' },
       { key: 'githubProfileUrl', label: 'GitHub profile URL' },
@@ -93,8 +91,7 @@ describe('participant application helpers', () => {
       requireGithubProfile: true,
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
-      requireLumaEmail: true,
-      lumaEventUrl: 'https://luma.com/codex'
+      requireLumaEmail: true
     })).toEqual([
       { key: 'xProfileUrl', label: 'X profile URL', required: true, visible: true },
       { key: 'linkedinProfileUrl', label: 'LinkedIn profile URL', required: false, visible: true },
@@ -105,16 +102,20 @@ describe('participant application helpers', () => {
     ])
   })
 
-  test('does not require or show luma email when no luma event URL is configured', () => {
+  test('shows and requires luma email whenever the hackathon requires it', () => {
     expect(listRequiredProfileFields({
       requireXProfile: false,
       requireLinkedinProfile: false,
       requireGithubProfile: false,
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
-      requireLumaEmail: true,
-      lumaEventUrl: null
-    })).toEqual([])
+      requireLumaEmail: true
+    })).toEqual([
+      {
+        key: 'lumaEmail',
+        label: 'Luma email'
+      }
+    ])
 
     expect(listHackathonProfileFields({
       requireXProfile: false,
@@ -122,13 +123,12 @@ describe('participant application helpers', () => {
       requireGithubProfile: false,
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
-      requireLumaEmail: true,
-      lumaEventUrl: null
+      requireLumaEmail: true
     }).find(field => field.key === 'lumaEmail')).toEqual({
       key: 'lumaEmail',
       label: 'Luma email',
-      required: false,
-      visible: false
+      required: true,
+      visible: true
     })
   })
 

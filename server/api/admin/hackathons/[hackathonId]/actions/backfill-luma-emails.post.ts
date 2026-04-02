@@ -90,7 +90,7 @@ export default defineApiHandler(async (event) => {
 
     try {
       const { guestEmail } = await resolveLumaEmailFromUsername({
-        lumaEventUrl: hackathon.lumaEventUrl!.trim(),
+        lumaEventApiId: hackathon.lumaEventApiId!.trim(),
         lumaUsername
       }, {
         runtimeConfig

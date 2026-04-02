@@ -90,14 +90,20 @@ function normalizeProofOfExecutionUrl(value: string | null | undefined) {
   return normalized
 }
 
-export function isHackathonLumaSyncEnabled(
-  hackathon: Pick<HackathonRecord, 'requireLumaEmail' | 'lumaEventUrl'>
+export function isHackathonLumaEmailRequired(
+  hackathon: Pick<HackathonRecord, 'requireLumaEmail'>
 ) {
-  return hackathon.requireLumaEmail && Boolean(hackathon.lumaEventUrl?.trim())
+  return hackathon.requireLumaEmail
+}
+
+export function isHackathonLumaSyncEnabled(
+  hackathon: Pick<HackathonRecord, 'requireLumaEmail' | 'lumaEventApiId'>
+) {
+  return isHackathonLumaEmailRequired(hackathon) && Boolean(hackathon.lumaEventApiId?.trim())
 }
 
 export function getInitialApplicationLumaSyncStatus(
-  hackathon: Pick<HackathonRecord, 'requireLumaEmail' | 'lumaEventUrl'>
+  hackathon: Pick<HackathonRecord, 'requireLumaEmail' | 'lumaEventApiId'>
 ) {
   return isHackathonLumaSyncEnabled(hackathon) ? 'not_synced' as const : null
 }
@@ -267,7 +273,7 @@ export function assertUserMeetsHackathonProfileRequirements(user: UserRecord, ha
     missingFields.push('openaiOrgId')
   }
 
-  if (isHackathonLumaSyncEnabled(hackathon) && !user.lumaEmail) {
+  if (isHackathonLumaEmailRequired(hackathon) && !user.lumaEmail) {
     missingFields.push('lumaEmail')
   }
 

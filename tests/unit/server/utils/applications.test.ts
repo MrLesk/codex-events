@@ -196,7 +196,7 @@ describe('application utilities', () => {
     })).toThrowError(ApiError)
   })
 
-  test('luma email requirement only applies when a luma event URL is configured', () => {
+  test('luma email requirement applies whenever the hackathon requires it', () => {
     expect(() => assertUserMeetsHackathonProfileRequirements({
       id: 'user_1',
       auth0Subject: 'auth0|user_1',
@@ -222,55 +222,7 @@ describe('application utilities', () => {
       backgroundImageUrl: null,
       bannerImageUrl: null,
       lumaEventUrl: null,
-      city: 'Vienna',
-      country: 'Austria',
-      address: 'Fixture Address',
-      registrationOpensAt: '2026-03-20T12:00:00.000Z',
-      registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      submissionOpensAt: '2026-03-23T12:00:00.000Z',
-      submissionClosesAt: '2026-03-25T12:00:00.000Z',
-      state: 'registration_open',
-      maxTeamMembers: 5,
-      participantsLimit: null,
-      inPersonEvent: false,
-      requireXProfile: false,
-      requireLinkedinProfile: false,
-      requireGithubProfile: false,
-      requireChatgptEmail: false,
-      requireOpenaiOrgId: false,
-      requireLumaEmail: true,
-      currentApplicationTermsDocumentId: null,
-      currentWinnerTermsDocumentId: null,
-      createdByUserId: 'creator_1',
-      createdAt: '2026-03-20T10:00:00.000Z',
-      updatedAt: '2026-03-20T10:00:00.000Z'
-    })).not.toThrow()
-
-    expect(() => assertUserMeetsHackathonProfileRequirements({
-      id: 'user_1',
-      auth0Subject: 'auth0|user_1',
-      email: 'user@example.com',
-      displayName: 'User',
-      isPlatformAdmin: false,
-      xProfileUrl: null,
-      linkedinProfileUrl: null,
-      githubProfileUrl: null,
-      chatgptEmail: null,
-      openaiOrgId: null,
-      lumaEmail: null,
-      lumaUsername: null,
-      profileIconUpdatedAt: null,
-      createdAt: '2026-03-20T10:00:00.000Z',
-      updatedAt: '2026-03-20T10:00:00.000Z',
-      deletedAt: null
-    }, {
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
-      description: 'Fixture hackathon',
-      backgroundImageUrl: null,
-      bannerImageUrl: null,
-      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: null,
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address',

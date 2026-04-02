@@ -41,6 +41,13 @@ function createOptionalHttpUrlSchema(message: string) {
   )
 }
 
+function createOptionalLumaEventApiIdSchema(message: string) {
+  return z.string().trim().refine(
+    value => value.length === 0 || /^evt-[A-Za-z0-9]+$/.test(value),
+    message
+  )
+}
+
 function createOptionalProofOfExecutionLinksSchema(message: string) {
   return z.string().trim().refine(
     value => value.length === 0 || isProofOfExecutionLinksValid(value),
@@ -153,6 +160,7 @@ export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object
   name: requiredTextSchema,
   slug: slugSchema,
   lumaEventUrl: createOptionalHttpUrlSchema('Enter a valid Luma event URL.'),
+  lumaEventApiId: createOptionalLumaEventApiIdSchema('Enter a valid Luma event API ID like evt-123.'),
   description: requiredTextSchema,
   agendaItems: z.array(agendaItemSchema).superRefine((items, context) => {
     const ids = new Set<string>()

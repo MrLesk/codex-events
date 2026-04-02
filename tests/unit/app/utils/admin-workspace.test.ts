@@ -50,6 +50,7 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     backgroundImageUrl: null,
     bannerImageUrl: null,
     lumaEventUrl: null,
+    lumaEventApiId: null,
     city: 'Vienna',
     country: 'Austria',
     address: 'Operngasse 20',
@@ -320,6 +321,7 @@ describe('admin-workspace form helpers', () => {
       backgroundImageUrl: 'https://example.com/background.jpg',
       bannerImageUrl: 'https://example.com/banner.jpg',
       lumaEventUrl: 'https://lu.ma/codex-builders',
+      lumaEventApiId: 'evt-123',
       agendaItems: [
         {
           id: 'agenda-item-1',
@@ -344,6 +346,7 @@ describe('admin-workspace form helpers', () => {
       backgroundImageUrl: 'https://example.com/background.jpg',
       bannerImageUrl: 'https://example.com/banner.jpg',
       lumaEventUrl: 'https://lu.ma/codex-builders',
+      lumaEventApiId: 'evt-123',
       maxTeamMembers: 5,
       participantsLimit: null,
       inPersonEvent: false,

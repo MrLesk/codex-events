@@ -12,30 +12,6 @@ import {
 } from '../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
-function createLumaEventHtml(options?: {
-  eventApiId?: string
-  slug?: string
-}) {
-  const eventApiId = options?.eventApiId ?? 'evt-123'
-  const slug = options?.slug ?? 'codex'
-
-  return `<meta name="apple-itunes-app" content="app-id=1546150895, app-argument=luma://event/${eventApiId}"/><script id="__NEXT_DATA__" type="application/json">${JSON.stringify({
-    props: {
-      pageProps: {
-        initialData: {
-          data: {
-            api_id: eventApiId,
-            event: {
-              api_id: eventApiId,
-              url: slug
-            }
-          }
-        }
-      }
-    }
-  })}</script>`
-}
-
 describe('admin luma backfill routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
 
@@ -47,7 +23,7 @@ describe('admin luma backfill routes', () => {
     }
   })
 
-  test('platform admins can backfill Luma emails for legacy usernames in a Luma-enabled hackathon', async () => {
+  test('platform admins can backfill Luma emails for legacy usernames in a hackathon with a configured Luma event API id', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/admin/hackathons/:hackathonId/actions/backfill-luma-emails', handler: backfillLumaEmailsHandler }
@@ -105,6 +81,7 @@ describe('admin luma backfill routes', () => {
       maxTeamMembers: 5,
       requireLumaEmail: true,
       lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123',
       currentApplicationTermsDocumentId: null,
       currentWinnerTermsDocumentId: null,
       createdByUserId: 'platform_admin'
@@ -156,15 +133,6 @@ describe('admin luma backfill routes', () => {
 
       if (url.pathname === '/user/bpirvu') {
         return new Response('<script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{"user":{"username":"bpirvu","api_id":"usr-123"}}}}</script>', {
-          status: 200,
-          headers: {
-            'content-type': 'text/html'
-          }
-        })
-      }
-
-      if (url.hostname === 'luma.com' && url.pathname === '/codex') {
-        return new Response(createLumaEventHtml(), {
           status: 200,
           headers: {
             'content-type': 'text/html'
@@ -248,7 +216,7 @@ describe('admin luma backfill routes', () => {
         })
       })
     ]))
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   test('non-platform admins cannot backfill Luma emails', async () => {
@@ -295,6 +263,7 @@ describe('admin luma backfill routes', () => {
       maxTeamMembers: 5,
       requireLumaEmail: true,
       lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123',
       currentApplicationTermsDocumentId: null,
       currentWinnerTermsDocumentId: null,
       createdByUserId: 'platform_admin'
