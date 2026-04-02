@@ -172,6 +172,7 @@ describe('application luma sync queue utilities', () => {
     }
 
     resetApplicationLumaSyncStartupRecoveryForTest()
+    vi.unstubAllGlobals()
   })
 
   test('enqueue sends json payload to the configured queue binding', async () => {
@@ -362,6 +363,62 @@ describe('application luma sync queue utilities', () => {
       guestEmail: 'legacy-luma@example.com',
       lumaUserApiId: 'usr-123'
     })
+  })
+
+  test('queue message processing preserves the global fetch binding when no fetch implementation is injected', async () => {
+    const { d1Database, database } = await seedLumaSyncContext()
+    d1Databases.push(d1Database)
+    const message = createQueueMessage()
+    const fetchMock = vi.fn(function (this: unknown, input: string | URL | Request, init?: RequestInit) {
+      expect(this).toBe(globalThis)
+
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/v1/calendar/lookup-event') {
+        return Promise.resolve(createJsonResponse({
+          event: {
+            api_id: 'evt-123'
+          }
+        }))
+      }
+
+      if (url.pathname === '/v1/event/get-guest') {
+        expect(url.searchParams.get('id')).toBe('regular@example.com')
+        return Promise.resolve(createJsonResponse({
+          guest: {
+            id: 'gst-123',
+            user_email: 'regular@example.com'
+          }
+        }))
+      }
+
+      if (url.pathname === '/v1/event/update-guest-status') {
+        expect(init?.method).toBe('POST')
+        return Promise.resolve(createJsonResponse({}))
+      }
+
+      return Promise.reject(new Error(`Unexpected fetch URL: ${url.toString()}`))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = await processApplicationLumaSyncQueueMessage(message, {
+      database,
+      runtimeConfig: {
+        luma: {
+          apiKey: 'luma_test_key',
+          retryDelaySeconds: 90
+        }
+      }
+    })
+
+    expect(result).toEqual({
+      messageId: 'msg_1',
+      action: 'ack',
+      reason: 'luma_sync_completed'
+    })
+    expect(message.ack).toHaveBeenCalledTimes(1)
+    expect(message.retry).not.toHaveBeenCalled()
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 
   test('queue message processing stores reject_failed for non-retryable sync failures', async () => {

@@ -97,6 +97,14 @@ interface FetchLike {
   (input: string | URL | Request, init?: RequestInit): Promise<Response>
 }
 
+function resolveFetchImpl(fetchImpl?: FetchLike): FetchLike {
+  if (fetchImpl) {
+    return fetchImpl
+  }
+
+  return (input, init) => globalThis.fetch(input, init)
+}
+
 interface QueueDatabaseRecord {
   application: typeof userApplications.$inferSelect
   hackathon: typeof hackathons.$inferSelect | null
@@ -599,7 +607,7 @@ export async function resolveLumaEmailFromUsername(
   }
 ) {
   const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig)
-  const fetchImpl = options.fetchImpl ?? fetch
+  const fetchImpl = resolveFetchImpl(options.fetchImpl)
 
   const lumaUserApiId = await resolveLumaUserApiId(input.lumaUsername, {
     config,
@@ -822,7 +830,7 @@ export async function processApplicationLumaSyncQueueMessage(
     cloudflareEnv: options?.cloudflareEnv,
     d1Database: options?.d1Database
   })
-  const fetchImpl = options?.fetchImpl ?? fetch
+  const fetchImpl = resolveFetchImpl(options?.fetchImpl)
   const queueRecord = await getQueueRecord(database, parsedMessage.data.applicationId)
 
   if (!queueRecord) {
