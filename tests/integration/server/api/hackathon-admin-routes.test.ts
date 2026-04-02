@@ -442,6 +442,14 @@ describe('TASK-3.5 hackathon admin route groups', () => {
       }
     })
 
+    const hackathonAfterCreate = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_1')
+    })
+    expect(hackathonAfterCreate).toMatchObject({
+      currentApplicationTermsDocumentId: 'terms_app_1',
+      currentWinnerTermsDocumentId: 'terms_win_1'
+    })
+
     const setCurrentResponse = await harness.request('/api/hackathons/hackathon_1/terms/application_terms/actions/set-current', {
       method: 'POST',
       body: JSON.stringify({
@@ -452,6 +460,131 @@ describe('TASK-3.5 hackathon admin route groups', () => {
     expect(await setCurrentResponse.json()).toMatchObject({
       data: {
         currentApplicationTermsDocumentId: createVersionPayload.data.id
+      }
+    })
+  })
+
+  test('creating the first terms version for each document type auto-selects it as current', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/terms/current', handler: currentTermsHandler },
+        { method: 'post', path: '/api/hackathons/:hackathonId/terms/:documentType/versions', handler: termsVersionsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedHackathonContext(harness)
+
+    const createApplicationTermsResponse = await harness.request('/api/hackathons/hackathon_1/terms/application_terms/versions', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Application Terms v1',
+        content: 'Application terms v1'
+      })
+    })
+    expect(createApplicationTermsResponse.status).toBe(200)
+    const applicationTermsPayload = await createApplicationTermsResponse.json()
+    expect(applicationTermsPayload).toMatchObject({
+      data: {
+        documentType: 'application_terms',
+        version: 1
+      }
+    })
+
+    const hackathonAfterApplicationTerms = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_1')
+    })
+    expect(hackathonAfterApplicationTerms).toMatchObject({
+      currentApplicationTermsDocumentId: applicationTermsPayload.data.id,
+      currentWinnerTermsDocumentId: null
+    })
+
+    const createWinnerTermsResponse = await harness.request('/api/hackathons/hackathon_1/terms/winner_terms/versions', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Winner Terms v1',
+        content: 'Winner terms v1'
+      })
+    })
+    expect(createWinnerTermsResponse.status).toBe(200)
+    const winnerTermsPayload = await createWinnerTermsResponse.json()
+    expect(winnerTermsPayload).toMatchObject({
+      data: {
+        documentType: 'winner_terms',
+        version: 1
+      }
+    })
+
+    const currentTermsResponse = await harness.request('/api/hackathons/hackathon_1/terms/current')
+    expect(currentTermsResponse.status).toBe(200)
+    expect(await currentTermsResponse.json()).toMatchObject({
+      data: {
+        application_terms: {
+          id: applicationTermsPayload.data.id
+        },
+        winner_terms: {
+          id: winnerTermsPayload.data.id
+        }
+      }
+    })
+  })
+
+  test('creating a later terms version does not auto-select it when earlier versions exist without a current reference', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/terms/current', handler: currentTermsHandler },
+        { method: 'post', path: '/api/hackathons/:hackathonId/terms/:documentType/versions', handler: termsVersionsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedHackathonContext(harness)
+
+    await harness.database.insert(hackathonTermsDocuments).values({
+      id: 'terms_app_1',
+      hackathonId: 'hackathon_1',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Application Terms v1',
+      content: 'Application terms v1',
+      publishedAt: '2026-03-01T00:00:00.000Z'
+    })
+
+    const createVersionResponse = await harness.request('/api/hackathons/hackathon_1/terms/application_terms/versions', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Application Terms v2',
+        content: 'Application terms v2'
+      })
+    })
+    expect(createVersionResponse.status).toBe(200)
+    expect(await createVersionResponse.json()).toMatchObject({
+      data: {
+        documentType: 'application_terms',
+        version: 2
+      }
+    })
+
+    const hackathonAfterCreate = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_1')
+    })
+    expect(hackathonAfterCreate).toMatchObject({
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null
+    })
+
+    const currentTermsResponse = await harness.request('/api/hackathons/hackathon_1/terms/current')
+    expect(currentTermsResponse.status).toBe(200)
+    expect(await currentTermsResponse.json()).toMatchObject({
+      data: {
+        application_terms: null,
+        winner_terms: null
       }
     })
   })

@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { requirePlatformActor } from '../../../../../auth/actor'
 import { writeAuditLog } from '../../../../../database/audit-log'
 import { getDatabase } from '../../../../../database/client'
-import { hackathonTermsDocuments } from '../../../../../database/schema'
+import { hackathonTermsDocuments, hackathons } from '../../../../../database/schema'
 import { defineApiHandler } from '../../../../../utils/api-handler'
 import { apiData } from '../../../../../utils/api-response'
 import {
@@ -37,6 +37,21 @@ export default defineApiHandler(async (event) => {
     publishedAt: body.publishedAt ?? createdAt,
     createdAt
   })
+
+  if (version === 1) {
+    await database
+      .update(hackathons)
+      .set(documentType === 'application_terms'
+        ? {
+            currentApplicationTermsDocumentId: documentId,
+            updatedAt: createdAt
+          }
+        : {
+            currentWinnerTermsDocumentId: documentId,
+            updatedAt: createdAt
+          })
+      .where(eq(hackathons.id, hackathonId))
+  }
 
   const document = await database.query.hackathonTermsDocuments.findFirst({
     where: eq(hackathonTermsDocuments.id, documentId)
