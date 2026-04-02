@@ -1,30 +1,51 @@
 <script setup lang="ts">
 import AccountHackathonDashboardList from '~/components/account/AccountHackathonDashboardList.vue'
+import {
+  adminOverviewTabs,
+  countAdminOverviewHackathonsByTab,
+  getAdminOverviewTabForHackathon,
+  type AdminOverviewTab
+} from '~/utils/admin-overview'
 import { canCreateHackathon } from '~/utils/admin-workspace'
+import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
 definePageMeta({
   layout: 'profile',
   middleware: ['require-account-admin']
 })
 
+const route = useRoute()
 const workspace = useAdminWorkspace()
+const adminOverviewNow = Date.now()
+const adminOverviewTabLabels: Record<AdminOverviewTab, string> = {
+  active: 'Active',
+  upcoming: 'Upcoming',
+  past: 'Past'
+}
 
 const isPlatformAdmin = computed(() => workspace.actor.value?.isPlatformAdmin === true)
 const canCreate = computed(() => canCreateHackathon(workspace.actor.value))
 const manageableHackathons = computed(() => workspace.manageableHackathons.value)
-const activeOperationsCount = computed(() =>
-  manageableHackathons.value.filter(hackathon => hackathon.state !== 'draft' && hackathon.state !== 'completed').length
+const activeTab = computed<AdminOverviewTab>(() =>
+  resolveTabQueryValue(route.query.tab, adminOverviewTabs, 'active')
 )
-const draftCount = computed(() =>
-  manageableHackathons.value.filter(hackathon => hackathon.state === 'draft').length
+const filterCounts = computed(() =>
+  countAdminOverviewHackathonsByTab(manageableHackathons.value, adminOverviewNow)
 )
-const judgingFlowCount = computed(() =>
+const filterTabs = computed(() =>
+  adminOverviewTabs.map(tab => ({
+    id: tab,
+    label: adminOverviewTabLabels[tab],
+    count: filterCounts.value[tab]
+  }))
+)
+const filteredHackathons = computed(() =>
   manageableHackathons.value.filter(hackathon =>
-    ['judging_preparation', 'judge_review', 'shortlist'].includes(hackathon.state)
-  ).length
+    getAdminOverviewTabForHackathon(hackathon, adminOverviewNow) === activeTab.value
+  )
 )
 const listItems = computed(() =>
-  manageableHackathons.value.map(hackathon => ({
+  filteredHackathons.value.map(hackathon => ({
     id: hackathon.id,
     name: hackathon.name,
     description: isPlatformAdmin.value
@@ -41,6 +62,59 @@ const listItems = computed(() =>
     ]
   }))
 )
+const listContent = computed(() => {
+  if (activeTab.value === 'upcoming') {
+    return {
+      title: isPlatformAdmin.value ? 'Upcoming hackathons' : 'Upcoming hackathons you manage',
+      description: isPlatformAdmin.value
+        ? 'Draft and future hackathons stay here until they move into active operations.'
+        : 'Draft and future hackathons you manage stay here until they move into active operations.',
+      emptyTitle: 'No upcoming hackathons',
+      emptyDescription: isPlatformAdmin.value
+        ? 'Draft and future hackathons will appear here.'
+        : 'When you manage a draft or future hackathon, it will appear here.'
+    }
+  }
+
+  if (activeTab.value === 'past') {
+    return {
+      title: isPlatformAdmin.value ? 'Past hackathons' : 'Past hackathons you managed',
+      description: isPlatformAdmin.value
+        ? 'Completed hackathons remain available for reference and follow-up work.'
+        : 'Completed hackathons you managed remain available for reference and follow-up work.',
+      emptyTitle: 'No past hackathons',
+      emptyDescription: isPlatformAdmin.value
+        ? 'Completed hackathons will appear here once they are closed.'
+        : 'Completed hackathons you managed will appear here once they are closed.'
+    }
+  }
+
+  return {
+    title: isPlatformAdmin.value ? 'Active hackathons' : 'Active hackathons you manage',
+    description: isPlatformAdmin.value
+      ? 'Use the shared list surface to jump into live operations, settings, judging, and outcome workflows.'
+      : 'Open the hackathons you currently manage and continue work in operations or settings.',
+    emptyTitle: 'No active hackathons',
+    emptyDescription: isPlatformAdmin.value
+      ? 'Active hackathons will appear here once they move out of draft and before completion.'
+      : 'When a manageable hackathon is live or in progress, it will appear here.'
+  }
+})
+
+async function selectAdminOverviewTab(nextTab: AdminOverviewTab) {
+  if (normalizeTabQueryValue(route.query.tab) === nextTab) {
+    return
+  }
+
+  await navigateTo({
+    path: route.path,
+    query: {
+      ...route.query,
+      tab: nextTab
+    },
+    hash: route.hash
+  })
+}
 
 useSeoMeta({
   title: 'Manage Hackathons | Codex Hackathons',
@@ -113,45 +187,32 @@ useSeoMeta({
       />
 
       <template v-else>
-        <section class="grid gap-4 sm:grid-cols-3">
-          <div class="rounded-xl border border-black/8 bg-white p-4 dark:border-white/[0.08] dark:bg-[#111111]">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              {{ isPlatformAdmin ? 'Total hackathons' : 'Manageable hackathons' }}
-            </p>
-            <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ manageableHackathons.length }}
-            </p>
-          </div>
-
-          <div class="rounded-xl border border-black/8 bg-white p-4 dark:border-white/[0.08] dark:bg-[#111111]">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              Active operations
-            </p>
-            <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ activeOperationsCount }}
-            </p>
-          </div>
-
-          <div class="rounded-xl border border-black/8 bg-white p-4 dark:border-white/[0.08] dark:bg-[#111111]">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              {{ isPlatformAdmin ? 'Drafts in setup' : 'In judging flow' }}
-            </p>
-            <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ isPlatformAdmin ? draftCount : judgingFlowCount }}
-            </p>
+        <section class="app-surface-panel flex flex-col gap-4 rounded-xl p-2">
+          <div class="flex min-w-0 flex-wrap items-center gap-1">
+            <button
+              v-for="tab in filterTabs"
+              :key="tab.id"
+              class="inline-flex items-center gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors"
+              :class="activeTab === tab.id ? 'bg-black font-medium text-white dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+              @click="void selectAdminOverviewTab(tab.id)"
+            >
+              <span>{{ tab.label }}</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+                :class="activeTab === tab.id ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+              >
+                {{ tab.count }}
+              </span>
+            </button>
           </div>
         </section>
 
         <AccountHackathonDashboardList
-          :title="isPlatformAdmin ? 'All hackathons' : 'Hackathons you manage'"
-          :description="isPlatformAdmin
-            ? 'Use the same shared list surface to jump into operations and settings for any hackathon.'
-            : 'Each hackathon opens into the shared account detail surface, with Operations preselected so you can continue work immediately.'"
+          :title="listContent.title"
+          :description="listContent.description"
           :items="listItems"
-          :empty-title="isPlatformAdmin ? 'No hackathons yet' : 'No manageable hackathons yet'"
-          :empty-description="isPlatformAdmin
-            ? 'Create the first hackathon to start operating the platform.'
-            : 'When you receive admin access, those hackathons will appear here.'"
+          :empty-title="listContent.emptyTitle"
+          :empty-description="listContent.emptyDescription"
         />
       </template>
     </AppContainer>
