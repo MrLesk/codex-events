@@ -115,33 +115,35 @@ function submitCreateForm() {
         </div>
       </template>
 
-      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div class="space-y-2">
-          <div class="flex flex-wrap items-center gap-3">
-            <h3 class="text-2xl font-semibold text-highlighted dark:text-white">
-              {{ currentTeam.name }}
-            </h3>
-            <AppBadge
-              color="success"
-              variant="soft"
-              class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
-            >
-              {{ currentTeam.activeMemberCount ?? currentTeam.members.length }} active member{{ (currentTeam.activeMemberCount ?? currentTeam.members.length) === 1 ? '' : 's' }}
-            </AppBadge>
+      <div class="app-inset-card px-5 py-5">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div class="space-y-2">
+            <div class="flex flex-wrap items-center gap-3">
+              <h3 class="text-2xl font-semibold text-highlighted dark:text-white">
+                {{ currentTeam.name }}
+              </h3>
+              <AppBadge
+                color="success"
+                variant="soft"
+                class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
+              >
+                {{ currentTeam.activeMemberCount ?? currentTeam.members.length }} active member{{ (currentTeam.activeMemberCount ?? currentTeam.members.length) === 1 ? '' : 's' }}
+              </AppBadge>
+            </div>
+            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+              Team slug: {{ currentTeam.slug }}.
+            </p>
           </div>
-          <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-            Team slug: {{ currentTeam.slug }}.
-          </p>
-        </div>
 
-        <AppButton
-          v-if="currentTeamHref?.trim()"
-          :to="currentTeamHref"
-          color="primary"
-          icon="i-lucide-arrow-right"
-        >
-          Open team workspace
-        </AppButton>
+          <AppButton
+            v-if="currentTeamHref?.trim()"
+            :to="currentTeamHref"
+            color="primary"
+            icon="i-lucide-arrow-right"
+          >
+            Open team workspace
+          </AppButton>
+        </div>
       </div>
     </AppCard>
 
