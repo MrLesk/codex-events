@@ -7,7 +7,7 @@ import { afterEach, describe, expect, test } from 'vitest'
 import {
   collectRuntimeThirdPartyNotices,
   findInstalledPackageDirectory,
-  formatThirdPartyNoticesModule,
+  formatThirdPartyNoticesPayload,
   normalizePackageLicense,
   normalizePackageUrl
 } from '../../../tools/licenses/generate-third-party-notices'
@@ -183,8 +183,8 @@ describe('third-party notices generator', () => {
     expect(notices.some(notice => notice.name === 'dev-tool')).toBe(false)
   })
 
-  test('formats a stable generated TypeScript module', () => {
-    const source = formatThirdPartyNoticesModule([
+  test('formats a stable generated notices payload', () => {
+    const payload = formatThirdPartyNoticesPayload([
       {
         homepageUrl: null,
         license: 'Apache-2.0',
@@ -199,8 +199,16 @@ describe('third-party notices generator', () => {
       }
     ], new Date('2026-04-01T12:00:00.000Z'))
 
-    expect(source).toContain('thirdPartyNoticesGeneratedAtIso = "2026-04-01T12:00:00.000Z"')
-    expect(source).toContain('thirdPartyNoticesScopeLabel')
-    expect(source).toContain('"name": "fuse.js"')
+    expect(payload).toMatchObject({
+      generatedAtIso: '2026-04-01T12:00:00.000Z',
+      generatedAtLabel: '1 April 2026 at 12:00',
+      scopeLabel: 'Installed runtime dependencies from package.json and their resolved transitive dependencies.'
+    })
+    expect(payload.notices).toEqual([
+      expect.objectContaining({
+        name: 'fuse.js',
+        licenseText: 'Example license text'
+      })
+    ])
   })
 })

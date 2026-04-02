@@ -64,8 +64,7 @@ export default defineNuxtConfig({
   },
   alias: {
     '#proof-of-execution-links': fileURLToPath(new URL('./shared/proof-of-execution-links.ts', import.meta.url)),
-    '#platform-legal': fileURLToPath(new URL('./shared/platform-legal.ts', import.meta.url)),
-    '#third-party-notices': fileURLToPath(new URL('./shared/third-party-notices.generated.ts', import.meta.url))
+    '#platform-legal': fileURLToPath(new URL('./shared/platform-legal.ts', import.meta.url))
   },
 
   compatibilityDate: '2025-01-15',

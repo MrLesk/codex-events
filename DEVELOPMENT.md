@@ -294,7 +294,7 @@ Generate the current Drizzle migration from the canonical schema with:
 bun run db:generate
 ```
 
-Refresh the generated third-party notices module after runtime dependency changes with:
+Refresh the generated third-party notices asset after runtime dependency changes with:
 
 ```bash
 bun run notices:generate

@@ -1,13 +1,51 @@
 <script setup lang="ts">
-import {
-  thirdPartyNotices,
-  thirdPartyNoticesGeneratedAtLabel,
-  thirdPartyNoticesScopeLabel
-} from '#third-party-notices'
+interface ThirdPartyNoticeRecord {
+  homepageUrl: string | null
+  license: string | null
+  licenseFileName: string | null
+  licenseText: string | null
+  name: string
+  noticeFileName: string | null
+  noticeText: string | null
+  registryUrl: string
+  repositoryUrl: string | null
+  version: string
+}
 
-const totalLicenseCount = new Set(
-  thirdPartyNotices.map(notice => notice.license ?? 'Undeclared')
-).size
+interface ThirdPartyNoticesPayload {
+  generatedAtIso: string
+  generatedAtLabel: string
+  notices: ThirdPartyNoticeRecord[]
+  scopeLabel: string
+}
+
+const {
+  data: noticesPayload,
+  error: noticesError
+} = await useFetch<ThirdPartyNoticesPayload>('/third-party-notices.generated.json', {
+  key: 'third-party-notices'
+})
+
+if (noticesError.value) {
+  throw createError({
+    statusCode: noticesError.value.statusCode ?? noticesError.value.status ?? 500,
+    statusMessage: noticesError.value.statusMessage ?? 'Unable to load third-party notices.'
+  })
+}
+
+if (!noticesPayload.value) {
+  throw createError({
+    statusCode: 500,
+    statusMessage: 'Unable to load third-party notices.'
+  })
+}
+
+const thirdPartyNotices = computed(() => noticesPayload.value!.notices)
+const thirdPartyNoticesGeneratedAtLabel = computed(() => noticesPayload.value!.generatedAtLabel)
+const thirdPartyNoticesScopeLabel = computed(() => noticesPayload.value!.scopeLabel)
+const totalLicenseCount = computed(() => new Set(
+  thirdPartyNotices.value.map(notice => notice.license ?? 'Undeclared')
+).size)
 
 useSeoMeta({
   title: 'Third-Party Notices | Codex Hackathons',
