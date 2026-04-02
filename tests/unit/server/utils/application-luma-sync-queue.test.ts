@@ -423,6 +423,7 @@ describe('application luma sync queue utilities', () => {
     const { d1Database, database } = await seedLumaSyncContext()
     d1Databases.push(d1Database)
     const message = createQueueMessage()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const fetchImpl = vi.fn(async () => {
       return createJsonResponse({
         error: 'rate limit'
@@ -447,6 +448,19 @@ describe('application luma sync queue utilities', () => {
     })
     expect(message.retry).toHaveBeenCalledWith({ delaySeconds: 90 })
     expect(message.ack).not.toHaveBeenCalled()
+    expect(consoleError).toHaveBeenCalledWith('Retryable Luma sync queue failure.', {
+      messageId: 'msg_1',
+      applicationId: 'application_1',
+      decision: 'approved',
+      attempts: 1,
+      retryDelaySeconds: 90,
+      reason: 'luma_request_retryable_status',
+      details: {
+        path: '/v1/calendar/lookup-event',
+        statusCode: 429,
+        message: 'rate limit'
+      }
+    })
 
     const storedApplication = await database.query.userApplications.findFirst({
       where: eq(userApplications.id, 'application_1')
@@ -455,6 +469,7 @@ describe('application luma sync queue utilities', () => {
 
     const auditRows = await database.select().from(auditLogs)
     expect(auditRows).toEqual([])
+    consoleError.mockRestore()
   })
 
   test('startup recovery re-enqueues stale not_synced Luma applications', async () => {

@@ -130,6 +130,30 @@ class PermanentLumaSyncError extends Error {
   }
 }
 
+function sanitizeRetryableLumaSyncLogDetails(details?: Record<string, unknown>) {
+  if (!details) {
+    return undefined
+  }
+
+  const safeDetails: Record<string, unknown> = {}
+
+  if (typeof details.path === 'string' && details.path.length > 0) {
+    safeDetails.path = details.path
+  }
+
+  if (typeof details.statusCode === 'number') {
+    safeDetails.statusCode = details.statusCode
+  }
+
+  if (typeof details.message === 'string' && details.message.length > 0) {
+    safeDetails.message = details.message.slice(0, 200)
+  }
+
+  return Object.keys(safeDetails).length > 0
+    ? safeDetails
+    : undefined
+}
+
 function resolveQueueRuntimeConfig(event: H3Event): ApplicationLumaSyncRuntimeConfig {
   const eventRuntimeConfig = (event.context as H3Event['context'] & { runtimeConfig?: unknown }).runtimeConfig
   const runtimeConfigGetter = (globalThis as { useRuntimeConfig?: (event: H3Event) => unknown }).useRuntimeConfig
@@ -926,8 +950,18 @@ export async function processApplicationLumaSyncQueueMessage(
     }
   } catch (error) {
     if (error instanceof RetryableLumaSyncError) {
+      const retryDelaySeconds = getRetryDelaySeconds(config)
+      console.error('Retryable Luma sync queue failure.', {
+        messageId: message.id,
+        applicationId: application.id,
+        decision: parsedMessage.data.decision,
+        attempts: message.attempts,
+        retryDelaySeconds,
+        reason: error.message,
+        details: sanitizeRetryableLumaSyncLogDetails(error.details)
+      })
       message.retry({
-        delaySeconds: getRetryDelaySeconds(config)
+        delaySeconds: retryDelaySeconds
       })
 
       return {
