@@ -1,14 +1,16 @@
 import { execFileSync } from 'node:child_process'
-import { mkdirSync, rmSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join, resolve } from 'node:path'
 import type { ProvisionedStablePersona } from './personas.ts'
 
-import {
-  createLocalPlatformProxy,
-  localPlatformPersistPath,
-  localWranglerConfigPath
-} from '../../../server/database/local-platform-proxy.ts'
-import { applySqlStatements } from '../../support/backend/migrations.ts'
+import { resolveLocalBddD1StateRoot } from './local-d1-state.ts'
+
+const localWranglerConfigPath = resolve(process.cwd(), 'wrangler.jsonc')
+
+function resolveLocalPlatformPersistPath(environment: NodeJS.ProcessEnv) {
+  return resolve(resolveLocalBddD1StateRoot(environment), 'v3')
+}
 
 const fixtureTimestamp = '2026-03-22T12:00:00.000Z'
 export const fixtureHackathonId = 'hackathon_e2e_fixture'
@@ -246,6 +248,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
     'delete from platform_documents',
     'delete from hackathon_role_assignments',
     'delete from hackathons',
+    'delete from user_auth_identities',
     'delete from users',
     `insert into users (
       id, auth0_subject, email, display_name, is_platform_admin,
@@ -257,6 +260,21 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
     ) values
       (${sqlLiteral(fixturePrivacyDocumentId)}, 'privacy_policy', 1, 'Privacy Policy', 'E2E privacy policy', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)}),
       (${sqlLiteral(fixtureTermsDocumentId)}, 'platform_terms', 1, 'Platform Terms', 'E2E platform terms', ${sqlLiteral(fixtureTimestamp)}, ${sqlLiteral(fixtureTimestamp)})`,
+    `insert into user_platform_document_acceptances (
+      id, user_id, platform_document_id, accepted_at
+    ) values
+      ('acceptance_platform_admin_privacy_fixture', ${sqlLiteral(platformAdminId)}, ${sqlLiteral(fixturePrivacyDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('acceptance_platform_admin_terms_fixture', ${sqlLiteral(platformAdminId)}, ${sqlLiteral(fixtureTermsDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('acceptance_hackathon_admin_privacy_fixture', ${sqlLiteral(hackathonAdminId)}, ${sqlLiteral(fixturePrivacyDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('acceptance_hackathon_admin_terms_fixture', ${sqlLiteral(hackathonAdminId)}, ${sqlLiteral(fixtureTermsDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('acceptance_judge_privacy_fixture', ${sqlLiteral(judgeId)}, ${sqlLiteral(fixturePrivacyDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('acceptance_judge_terms_fixture', ${sqlLiteral(judgeId)}, ${sqlLiteral(fixtureTermsDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('acceptance_regular_user_privacy_fixture', ${sqlLiteral(regularUserId)}, ${sqlLiteral(fixturePrivacyDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('acceptance_regular_user_terms_fixture', ${sqlLiteral(regularUserId)}, ${sqlLiteral(fixtureTermsDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('acceptance_backup_judge_privacy_fixture', ${sqlLiteral(backupJudgeId)}, ${sqlLiteral(fixturePrivacyDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('acceptance_backup_judge_terms_fixture', ${sqlLiteral(backupJudgeId)}, ${sqlLiteral(fixtureTermsDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('acceptance_judging_participant_two_privacy_fixture', ${sqlLiteral(judgingParticipantTwoId)}, ${sqlLiteral(fixturePrivacyDocumentId)}, ${sqlLiteral(fixtureTimestamp)}),
+      ('acceptance_judging_participant_two_terms_fixture', ${sqlLiteral(judgingParticipantTwoId)}, ${sqlLiteral(fixtureTermsDocumentId)}, ${sqlLiteral(fixtureTimestamp)})`,
     `insert into hackathons (
       id, name, slug, description, background_image_url, banner_image_url, city, country, address,
       registration_opens_at, registration_closes_at, submission_opens_at, submission_closes_at,
@@ -327,6 +345,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Participant Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-24T12:00:00.000Z',
@@ -354,6 +373,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'API Team Formation Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-24T12:00:00.000Z',
@@ -381,6 +401,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Participant Profile Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-24T12:00:00.000Z',
@@ -408,6 +429,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Participant Approved Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-24T12:00:00.000Z',
@@ -435,6 +457,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Participant Rejected Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-24T12:00:00.000Z',
@@ -462,6 +485,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Participant Team Create Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-24T12:00:00.000Z',
@@ -489,6 +513,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Participant Team Join Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-24T12:00:00.000Z',
@@ -516,6 +541,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Participant Team Solo Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-24T12:00:00.000Z',
@@ -543,6 +569,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'API Solo Team Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-24T12:00:00.000Z',
@@ -570,6 +597,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Participant Submission Create Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-21T12:00:00.000Z',
@@ -597,6 +625,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Participant Submission Locked Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-21T12:00:00.000Z',
@@ -624,6 +653,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Prize Workspace Fixture Address',
       '2026-03-08T12:00:00.000Z',
       '2026-03-10T12:00:00.000Z',
@@ -651,6 +681,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Berlin',
+      'Germany',
       'Operations Fixture Address',
       '2026-03-20T12:00:00.000Z',
       '2026-03-21T12:00:00.000Z',
@@ -678,6 +709,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Judging Fixture Address',
       '2026-03-10T12:00:00.000Z',
       '2026-03-12T12:00:00.000Z',
@@ -705,6 +737,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Judge Workspace Fixture Address',
       '2026-03-11T12:00:00.000Z',
       '2026-03-13T12:00:00.000Z',
@@ -732,6 +765,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Outcomes Fixture Address',
       '2026-03-08T12:00:00.000Z',
       '2026-03-10T12:00:00.000Z',
@@ -759,6 +793,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Competition Reassign Fixture Address',
       '2026-03-08T12:00:00.000Z',
       '2026-03-10T12:00:00.000Z',
@@ -786,6 +821,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Competition Force Skip Fixture Address',
       '2026-03-08T12:00:00.000Z',
       '2026-03-10T12:00:00.000Z',
@@ -813,6 +849,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Competition Shortlist Fixture Address',
       '2026-03-08T12:00:00.000Z',
       '2026-03-10T12:00:00.000Z',
@@ -840,6 +877,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Competition Complete Fixture Address',
       '2026-03-08T12:00:00.000Z',
       '2026-03-10T12:00:00.000Z',
@@ -867,6 +905,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Overflow Fixture Address',
       '2026-03-06T12:00:00.000Z',
       '2026-03-08T12:00:00.000Z',
@@ -894,6 +933,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       null,
       null,
       'Vienna',
+      'Austria',
       'Archive Fixture Address',
       '2026-03-04T12:00:00.000Z',
       '2026-03-06T12:00:00.000Z',
@@ -1190,6 +1230,8 @@ export function buildPlatformFixtureResetSql(personas: ProvisionedStablePersona[
 }
 
 function applyLocalD1Migrations(environment: NodeJS.ProcessEnv) {
+  const localPlatformPersistPath = resolveLocalPlatformPersistPath(environment)
+
   execFileSync(
     'bun',
     [
@@ -1216,22 +1258,53 @@ function applyLocalD1Migrations(environment: NodeJS.ProcessEnv) {
   )
 }
 
+function applyFixtureSql(environment: NodeJS.ProcessEnv, fixtureSql: string) {
+  const localPlatformPersistPath = resolveLocalPlatformPersistPath(environment)
+  const tempDirectory = mkdtempSync(join(tmpdir(), 'codex-hackathons-bdd-fixtures-'))
+  const fixtureSqlPath = join(tempDirectory, 'platform-fixtures.sql')
+
+  try {
+    writeFileSync(fixtureSqlPath, fixtureSql, 'utf8')
+    execFileSync(
+      'bun',
+      [
+        'x',
+        'wrangler',
+        'd1',
+        'execute',
+        'DB',
+        '--local',
+        '--persist-to',
+        dirname(localPlatformPersistPath),
+        '--config',
+        localWranglerConfigPath,
+        '--file',
+        fixtureSqlPath
+      ],
+      {
+        cwd: process.cwd(),
+        env: {
+          ...environment,
+          CI: '1'
+        },
+        stdio: 'pipe'
+      }
+    )
+  } finally {
+    rmSync(tempDirectory, { recursive: true, force: true })
+  }
+}
+
 export async function resetPlatformFixtures(
   personas: ProvisionedStablePersona[],
   environment: NodeJS.ProcessEnv = process.env
 ) {
+  const localPlatformPersistPath = resolveLocalPlatformPersistPath(environment)
   const fixtureSql = buildFixtureSql(personas)
   mkdirSync(dirname(localPlatformPersistPath), { recursive: true })
   rmSync(localPlatformPersistPath, { recursive: true, force: true })
   applyLocalD1Migrations(environment)
-
-  const proxy = await createLocalPlatformProxy()
-
-  try {
-    await applySqlStatements(proxy.env.DB, fixtureSql)
-  } finally {
-    await proxy.dispose()
-  }
+  applyFixtureSql(environment, fixtureSql)
 
   return {
     hackathonId: fixtureHackathonId,

@@ -10,6 +10,11 @@ export function getAccountHackathonSeoContent(
         title: `${hackathonName} Overview | Codex Hackathons`,
         description: `See your status, timeline, and key details for ${hackathonName}.`
       }
+    case 'team':
+      return {
+        title: `Team | ${hackathonName} | Codex Hackathons`,
+        description: `Create a team, manage membership, and continue your project work for ${hackathonName}.`
+      }
     case 'prizes':
       return {
         title: `Prizes | ${hackathonName} | Codex Hackathons`,

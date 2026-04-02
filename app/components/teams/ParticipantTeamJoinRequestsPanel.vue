@@ -20,13 +20,13 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <AppCard class="border border-default/70 bg-elevated/90">
+  <AppCard class="rounded-xl hackathon-workspace-detail-panel p-6">
     <template #header>
       <div class="space-y-1">
-        <h2 class="text-lg font-semibold text-highlighted">
-          Join Requests
+        <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+          Join requests
         </h2>
-        <p class="text-sm text-muted">
+        <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
           Team admins review pending requests here. Approved users join immediately after approval through the canonical membership rules.
         </p>
       </div>
@@ -62,7 +62,7 @@ const emit = defineEmits<{
           <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div class="space-y-2">
               <div class="flex flex-wrap items-center gap-3">
-                <h3 class="text-lg font-semibold text-highlighted">
+                <h3 class="text-lg font-semibold text-highlighted dark:text-white">
                   {{ request.user?.displayName ?? request.userId }}
                 </h3>
 

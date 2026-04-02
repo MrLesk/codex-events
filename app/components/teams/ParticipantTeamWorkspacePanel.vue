@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { toTypedSchema } from '@vee-validate/zod'
-import { useForm } from 'vee-validate'
-
 import type {
   TeamActionAvailability,
   TeamDetailRecord,
@@ -10,6 +7,7 @@ import type {
 
 import { teamProfileFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
+import { createTeamSlug } from '~/utils/team-workspace'
 
 const settings = defineModel<{
   name: string
@@ -44,44 +42,67 @@ function isActionPending(actionKey: string) {
   return props.pendingActionKey === actionKey
 }
 
-const {
-  errors,
-  submitCount,
-  values,
-  setValues,
-  handleSubmit
-} = useForm({
-  validationSchema: toTypedSchema(teamProfileFormSchema),
-  initialValues: cloneFormValues(settings.value)
+const errors = reactive({
+  name: '',
+  slug: ''
+})
+const submitCount = ref(0)
+
+const hasManuallyEditedSlug = ref(false)
+
+watch(() => settings.value.name, (nextName) => {
+  if (hasManuallyEditedSlug.value) {
+    return
+  }
+
+  const nextSlug = createTeamSlug(nextName)
+
+  if (settings.value.slug !== nextSlug) {
+    settings.value.slug = nextSlug
+  }
 })
 
-watch(() => settings.value, (nextSettings) => {
-  setValues(cloneFormValues(nextSettings), false)
-}, {
-  deep: true,
-  immediate: true
+watch(() => settings.value.slug, (nextSlug) => {
+  hasManuallyEditedSlug.value = nextSlug.length > 0
+    && nextSlug !== createTeamSlug(settings.value.name)
 })
 
-watch(values, (nextValues) => {
-  Object.assign(settings.value, cloneFormValues(nextValues))
-}, {
-  deep: true
-})
+function validateTeamProfile() {
+  errors.name = ''
+  errors.slug = ''
 
-const submitProfileForm = handleSubmit(() => {
+  const result = teamProfileFormSchema.safeParse(cloneFormValues(settings.value))
+
+  if (result.success) {
+    return true
+  }
+
+  const fieldErrors = result.error.flatten().fieldErrors
+  errors.name = fieldErrors.name?.[0] ?? ''
+  errors.slug = fieldErrors.slug?.[0] ?? ''
+  return false
+}
+
+function submitProfileForm() {
+  submitCount.value += 1
+
+  if (!validateTeamProfile()) {
+    return
+  }
+
   emit('submitProfile')
-})
+}
 </script>
 
 <template>
   <AppCard
     data-testid="participant-team-workspace-panel"
-    class="border border-default/70 bg-elevated/90"
+    class="rounded-xl hackathon-workspace-detail-panel p-6"
   >
     <template #header>
       <div class="space-y-1">
         <div class="flex flex-wrap items-center gap-3">
-          <h2 class="text-2xl font-semibold text-highlighted">
+          <h2 class="text-2xl font-semibold text-highlighted dark:text-white">
             {{ team.name }}
           </h2>
 
@@ -101,8 +122,8 @@ const submitProfileForm = handleSubmit(() => {
           </AppBadge>
         </div>
 
-        <p class="text-sm text-muted">
-          Team slug: {{ team.slug }}. Current membership management and join-request review stay inside this workspace.
+        <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+          Team slug: {{ team.slug }}. Team membership, join requests, and submission work stay together in this tab.
         </p>
       </div>
     </template>
@@ -152,10 +173,10 @@ const submitProfileForm = handleSubmit(() => {
       >
         <div class="space-y-4 app-inset-card px-5 py-5">
           <div class="space-y-1">
-            <h3 class="text-lg font-semibold text-highlighted">
+            <h3 class="text-lg font-semibold text-highlighted dark:text-white">
               Team profile
             </h3>
-            <p class="text-sm text-muted">
+            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
               Team admins can rename the team and update the canonical slug while team formation remains open.
             </p>
           </div>
@@ -212,10 +233,10 @@ const submitProfileForm = handleSubmit(() => {
 
         <div class="space-y-4 app-inset-card px-5 py-5">
           <div class="space-y-1">
-            <h3 class="text-lg font-semibold text-highlighted">
+            <h3 class="text-lg font-semibold text-highlighted dark:text-white">
               Join policy
             </h3>
-            <p class="text-sm text-muted">
+            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
               Team admins control whether approved participants can submit new join requests.
             </p>
           </div>
@@ -236,7 +257,7 @@ const submitProfileForm = handleSubmit(() => {
       <section class="app-inset-card px-5 py-5">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div class="space-y-2">
-            <h3 class="text-lg font-semibold text-highlighted">
+            <h3 class="text-lg font-semibold text-highlighted dark:text-white">
               Membership actions
             </h3>
             <p

@@ -74,7 +74,7 @@ export interface TeamActionAvailability {
 
 export interface TeamDirectoryEntry {
   team: TeamSummaryRecord
-  detailHref: string
+  detailHref: string | null
   isOwnTeam: boolean
   hasPendingJoinRequest: boolean
   pendingJoinRequestId: string | null

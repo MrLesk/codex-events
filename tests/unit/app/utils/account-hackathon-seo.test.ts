@@ -10,6 +10,13 @@ describe('account hackathon seo helpers', () => {
     })
   })
 
+  test('returns participant-facing metadata for the team tab', () => {
+    expect(getAccountHackathonSeoContent('team', 'Buildathon')).toEqual({
+      title: 'Team | Buildathon | Codex Hackathons',
+      description: 'Create a team, manage membership, and continue your project work for Buildathon.'
+    })
+  })
+
   test('returns admin-facing metadata for the operations tab', () => {
     expect(getAccountHackathonSeoContent('operations', 'Buildathon')).toEqual({
       title: 'Manage Buildathon | Codex Hackathons',

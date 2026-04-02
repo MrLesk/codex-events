@@ -111,13 +111,13 @@ const submitSubmissionForm = handleSubmit(() => {
 <template>
   <AppCard
     data-testid="participant-submission-panel"
-    class="border border-default/70 bg-elevated/90"
+    class="rounded-xl hackathon-workspace-detail-panel p-6"
   >
     <template #header>
       <div class="space-y-1">
         <div class="flex flex-wrap items-center gap-3">
-          <h2 class="text-lg font-semibold text-highlighted">
-            Project Submission
+          <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+            Project submission
           </h2>
 
           <AppBadge
@@ -222,7 +222,7 @@ const submitSubmissionForm = handleSubmit(() => {
 
         <div class="app-inset-card px-5 py-5">
           <div class="space-y-1">
-            <h3 class="text-lg font-semibold text-highlighted">
+            <h3 class="text-lg font-semibold text-highlighted dark:text-white">
               {{ submission ? 'Submission details' : 'Start the first draft' }}
             </h3>
             <p

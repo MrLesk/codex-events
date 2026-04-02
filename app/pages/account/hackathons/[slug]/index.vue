@@ -12,6 +12,7 @@ import type {
 } from '~/utils/hackathon-participation'
 
 import AccountHackathonAdminOperationsPanel from '~/components/account/hackathons/AccountHackathonAdminOperationsPanel.vue'
+import AccountHackathonParticipantTeamPanel from '~/components/account/hackathons/AccountHackathonParticipantTeamPanel.vue'
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
 import AccountHackathonCompetitionPanel from '~/components/account/hackathons/AccountHackathonCompetitionPanel.vue'
 import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
@@ -93,6 +94,7 @@ type AccountWorkspaceHackathon = PublicHackathon & {
 
 const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
   overview: 'Overview',
+  team: 'Team',
   prizes: 'Prizes',
   details: 'Details',
   judges: 'Judges',
@@ -224,6 +226,7 @@ const hasParticipantContext = computed(() =>
 
 const tabAccess = computed(() =>
   getAccountHackathonTabAccess({
+    hasParticipantAccessRecord: Boolean(accessRecord.value),
     hasPublishedPrizes: hasPublishedPrizes.value,
     canJudge: canJudge.value,
     canManage: canAdmin.value,
@@ -319,10 +322,7 @@ onMounted(() => {
   }, { replace: true })
 })
 
-const teamsHref = computed(() => `/hackathons/${slug.value}/teams`)
-const activeTeamHref = computed(() =>
-  participationRecord.value?.activeTeam ? `/hackathons/${slug.value}/teams/${participationRecord.value.activeTeam.id}` : null
-)
+const teamTabHref = computed(() => `/account/hackathons/${slug.value}?tab=team`)
 const applicationSubmittedNoticeVisible = ref(isParticipantApplicationSubmittedNotice(route.query.notice))
 const applicationStatusLabel = computed(() =>
   applicationStatus.value ? formatParticipantApplicationStatus(applicationStatus.value) : ''
@@ -563,8 +563,7 @@ useSeoMeta({
                     </p>
 
                     <AppButton
-                      v-if="activeTeamHref"
-                      :to="activeTeamHref"
+                      :to="teamTabHref"
                       color="neutral"
                       variant="solid"
                       trailing-icon="i-lucide-arrow-up-right"
@@ -580,13 +579,13 @@ useSeoMeta({
                     </p>
 
                     <AppButton
-                      :to="teamsHref"
+                      :to="teamTabHref"
                       color="neutral"
                       variant="solid"
                       trailing-icon="i-lucide-arrow-up-right"
                       class="mt-4"
                     >
-                      Open team directory
+                      Open Team tab
                     </AppButton>
                   </template>
                 </AppCard>
@@ -613,13 +612,13 @@ useSeoMeta({
                   </p>
 
                   <AppButton
-                    :to="activeTeamHref ?? teamsHref"
+                    :to="teamTabHref"
                     color="neutral"
                     variant="solid"
                     trailing-icon="i-lucide-arrow-up-right"
                     class="mt-4"
                   >
-                    {{ activeTeamHref ? 'Open team submission workspace' : 'Open team directory' }}
+                    Open Team tab
                   </AppButton>
                 </AppCard>
               </section>
@@ -628,6 +627,18 @@ useSeoMeta({
         </section>
 
         <HackathonOverviewPanel :description="hackathon.description" />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'team'"
+        id="account-tab-panel-team"
+        role="tabpanel"
+        aria-labelledby="account-tab-team"
+        class="space-y-8"
+      >
+        <AccountHackathonParticipantTeamPanel
+          :hackathon="hackathon"
+        />
       </section>
 
       <section

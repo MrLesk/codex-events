@@ -14,11 +14,11 @@ const props = defineProps<{
   record: HackathonParticipationRecord
 }>()
 
-const hackathonHref = computed(() => `/hackathons/${props.record.hackathon.slug}`)
 const accountHackathonHref = computed(() => `/account/hackathons/${props.record.hackathon.slug}`)
-const teamsHref = computed(() => `${hackathonHref.value}/teams`)
 const teamWorkspaceHref = computed(() =>
-  props.record.activeTeam ? `${teamsHref.value}/${props.record.activeTeam.id}` : null
+  props.record.application?.status === 'approved' || props.record.activeTeam
+    ? `${accountHackathonHref.value}?tab=team`
+    : null
 )
 const primaryActionHref = computed(() => {
   if (teamWorkspaceHref.value) {

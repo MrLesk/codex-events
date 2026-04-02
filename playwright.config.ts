@@ -45,6 +45,7 @@ export default defineConfig({
       name: 'chromium-authenticated-bdd',
       testDir: authenticatedBddTestDir,
       testMatch: ['**/*.spec.js'],
+      workers: 1,
       use: {
         ...devices['Desktop Chrome']
       }

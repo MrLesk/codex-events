@@ -44,12 +44,47 @@ function getScenarioState(page: Page) {
   return state
 }
 
+async function waitForParticipantTeamTabToSettle(page: Page) {
+  const workspacePanel = page.getByTestId('participant-team-workspace-panel')
+  const directoryPanel = page.getByTestId('participant-team-directory-panel')
+  const createButton = page.getByTestId('participant-team-create-submit')
+
+  await expect.poll(async () => {
+    if (await workspacePanel.isVisible().catch(() => false)) {
+      return 'workspace'
+    }
+
+    const isCreateButtonVisible = await createButton.isVisible().catch(() => false)
+
+    if (isCreateButtonVisible && await createButton.isEnabled().catch(() => false)) {
+      return 'create-ready'
+    }
+
+    if (await directoryPanel.isVisible().catch(() => false)) {
+      return 'directory'
+    }
+
+    return 'loading'
+  }, {
+    timeout: 15_000
+  }).not.toBe('loading')
+}
+
 function parsePersonaKey(personaKey: string): StablePersonaKey {
   if (stablePersonaKeys.includes(personaKey as StablePersonaKey)) {
     return personaKey as StablePersonaKey
   }
 
   throw new Error(`Unknown stable persona key: ${personaKey}`)
+}
+
+function createTeamSlug(name: string) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
 }
 
 async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
@@ -86,19 +121,11 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
   }
 }
 
-When('I open the participant team workspace link', async ({ page }) => {
-  await Promise.all([
-    page.waitForURL(/\/hackathons\/[^/]+\/teams$/),
-    page.getByTestId('participant-team-workspace-link').click()
-  ])
-
-  await expect(page.getByTestId('participant-team-directory-panel')).toBeVisible()
-})
-
-When('I open the participant team directory for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
+When('I open the participant Team tab for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto(`/hackathons/${slug}/teams`)
-  await expect(page.getByTestId('participant-team-directory-panel')).toBeVisible()
+  await page.goto(`/account/hackathons/${slug}?tab=team`)
+  await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
+  await waitForParticipantTeamTabToSettle(page)
 })
 
 Then('I should see the participant team card {string}', async ({ page }, teamName: string) => {
@@ -109,18 +136,41 @@ When('I create a participant team named {string}', async ({ page }, baseName: st
   const uniqueTeamName = `${baseName} ${Date.now()}`
   getScenarioState(page).createdTeamName = uniqueTeamName
 
-  await page.getByLabel('Team name').fill(uniqueTeamName)
+  await expect(page.getByTestId('participant-team-create-submit')).toBeEnabled({
+    timeout: 15_000
+  })
+  await page.waitForTimeout(1_000)
 
-  await Promise.all([
-    page.waitForResponse(response =>
-      response.url().includes('/api/hackathons/')
-      && response.url().includes('/teams')
-      && response.request().method() === 'POST'
-      && response.ok()
-    ),
-    page.waitForURL(/\/hackathons\/[^/]+\/teams\/[^/]+$/),
-    page.getByTestId('participant-team-create-submit').click()
-  ])
+  const createForm = page.locator('form').filter({
+    has: page.getByTestId('participant-team-create-submit')
+  })
+  const teamNameInput = createForm.getByLabel('Team name')
+  const teamSlugInput = createForm.getByLabel('Team slug')
+  const expectedSlug = createTeamSlug(uniqueTeamName)
+
+  await expect.poll(async () => {
+    await teamNameInput.fill(uniqueTeamName)
+    return await teamNameInput.inputValue()
+  }, {
+    timeout: 5_000
+  }).toBe(uniqueTeamName)
+
+  await expect.poll(async () => {
+    await teamSlugInput.fill(expectedSlug)
+    return await teamSlugInput.inputValue()
+  }, {
+    timeout: 5_000
+  }).toBe(expectedSlug)
+
+  await page.waitForTimeout(1_000)
+  await page.getByTestId('participant-team-create-submit').click()
+
+  await expect(page.getByTestId('participant-team-workspace-panel').getByRole('heading', {
+    name: uniqueTeamName,
+    exact: true
+  })).toBeVisible({
+    timeout: 15_000
+  })
 })
 
 Then('I should be in the participant team workspace for the created team', async ({ page }) => {
@@ -130,7 +180,12 @@ Then('I should be in the participant team workspace for the created team', async
     throw new Error('No created team name is available for this scenario.')
   }
 
-  await expect(page.getByTestId('participant-team-workspace-panel').getByText(createdTeamName)).toBeVisible()
+  await expect(page.getByTestId('participant-team-workspace-panel').getByRole('heading', {
+    name: createdTeamName,
+    exact: true
+  })).toBeVisible({
+    timeout: 15_000
+  })
 })
 
 Then('I should see the participant team text {string}', async ({ page }, text: string) => {
@@ -140,21 +195,13 @@ Then('I should see the participant team text {string}', async ({ page }, text: s
 })
 
 Then('I should see the participant current team {string}', async ({ page }, teamName: string) => {
-  await expect(page.getByText(teamName, {
+  await expect(page.getByTestId('participant-team-workspace-panel').getByRole('heading', {
+    name: teamName,
     exact: true
-  })).toBeVisible()
-  await expect(page.getByRole('link', {
-    name: 'Open team workspace'
-  })).toBeVisible()
-})
-
-When('I open my participant team workspace', async ({ page }) => {
-  await Promise.all([
-    page.waitForURL(/\/hackathons\/[^/]+\/teams\/[^/]+$/),
-    page.getByRole('link', {
-      name: 'Open team workspace'
-    }).click()
-  ])
+  })).toBeVisible({
+    timeout: 15_000
+  })
+  await expect(page.getByTestId('participant-team-workspace-panel')).toBeVisible()
 })
 
 Then('the participant team action {string} should be disabled', async ({ page }, actionName: string) => {

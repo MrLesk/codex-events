@@ -1,7 +1,6 @@
 import type { PublicHackathon } from './useHackathonPresentation'
 import type {
-  ParticipantApplicationRecord,
-  VisibleHackathonRecord
+  ParticipantApplicationRecord
 } from '~/utils/participant-application'
 import type {
   TeamDetailRecord,
@@ -12,7 +11,6 @@ import type {
 } from '~/utils/team-workspace'
 
 import {
-  createTeamWorkspaceFallbackActor,
   getOwnTeamMembership,
   normalizeTeamWorkspaceApiError
 } from '~/utils/team-workspace'
@@ -22,115 +20,43 @@ type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 const visibleTeamsPageSize = 6
 const ownTeamLookupPageSize = 100
 
-async function getVisibleHackathonBySlug(
-  slug: string,
-  apiFetch: typeof $fetch
-) {
-  const response = await apiFetch<TeamWorkspaceApiDataResponse<VisibleHackathonRecord>>(
-    `/api/hackathons/slug/${encodeURIComponent(slug)}`
-  )
-
-  return response.data
-}
-
 function toSectionErrorMessage(error: unknown, fallback: string) {
   const message = normalizeTeamWorkspaceApiError(error).message
   return message && message.length > 0 ? message : fallback
 }
 
 export function useTeamFormationWorkspace(
-  hackathon: MaybeRefOrGetter<PublicHackathon>,
-  slug: MaybeRefOrGetter<string>,
+  hackathon: MaybeRefOrGetter<PublicHackathon & {
+    id: string
+  }>,
   options?: {
     teamId?: MaybeRefOrGetter<string | null | undefined>
   }
 ) {
-  const apiFetch = $fetch
-  const user = useUser()
+  const apiFetch = import.meta.server ? useRequestFetch() : $fetch
+  const { actor, status: actorStatus } = useAccountLifecycleActor()
   const resolvedHackathon = computed(() => toValue(hackathon))
-  const resolvedSlug = computed(() => toValue(slug))
   const resolvedTeamId = computed(() => {
     const teamId = toValue(options?.teamId ?? null)
     return typeof teamId === 'string' && teamId.trim().length > 0 ? teamId : null
   })
-  const authSubject = computed(() => user.value?.sub ?? 'anonymous')
+  const authSubject = computed(() => actor.value.kind === 'anonymous' ? 'anonymous' : actor.value.sessionUser.sub)
   const rememberedPendingJoinRequestIds = useState<Record<string, string>>(
     'team-workspace-remembered-pending-join-request-ids',
     () => ({})
   )
+  const typedActor = computed<TeamWorkspaceActor | null>(() => actor.value)
+  const actorUserId = computed(() => typedActor.value?.kind === 'platform_user' ? typedActor.value.platformUser.id : null)
+  const actorErrorMessage = computed(() => '')
 
-  const actorRequest = useAsyncData<TeamWorkspaceActor | null>(
-    () => `team-workspace-actor:${authSubject.value}`,
-    async () => {
-      if (!user.value?.sub) {
-        return null
-      }
-
-      const response = await apiFetch<TeamWorkspaceApiDataResponse<{ actor: TeamWorkspaceActor }>>('/api/session')
-      return response.data.actor
-    },
-    {
-      default: () => null,
-      watch: [computed(() => user.value?.sub ?? null)],
-      server: false
-    }
-  )
-
-  const actor = computed<TeamWorkspaceActor | null>(() => {
-    if (!user.value?.sub) {
-      return createTeamWorkspaceFallbackActor(user.value)
-    }
-
-    if (actorRequest.status.value === 'idle' || actorRequest.status.value === 'pending') {
-      return null
-    }
-
-    if (actorRequest.error.value) {
-      return null
-    }
-
-    return actorRequest.data.value ?? createTeamWorkspaceFallbackActor(user.value)
-  })
-
-  const actorUserId = computed(() => actor.value?.kind === 'platform_user' ? actor.value.platformUser.id : null)
-  const actorErrorMessage = computed(() => {
-    if (!actorRequest.error.value) {
-      return ''
-    }
-
-    return normalizeTeamWorkspaceApiError(actorRequest.error.value).message
-  })
-
-  const visibleHackathonRequest = useAsyncData<VisibleHackathonRecord | null>(
-    () => `team-workspace-visible-hackathon:${authSubject.value}:${resolvedSlug.value}`,
-    async () => {
-      if (actor.value?.kind !== 'platform_user') {
-        return null
-      }
-
-      return await getVisibleHackathonBySlug(resolvedSlug.value, apiFetch)
-    },
-    {
-      default: () => null,
-      watch: [actor, resolvedSlug],
-      server: false
-    }
-  )
-
-  const visibleHackathon = computed(() => visibleHackathonRequest.data.value)
-  const visibleHackathonId = computed(() => visibleHackathon.value?.id ?? null)
-  const visibleHackathonErrorMessage = computed(() => {
-    if (!visibleHackathonRequest.error.value) {
-      return ''
-    }
-
-    return normalizeTeamWorkspaceApiError(visibleHackathonRequest.error.value).message
-  })
+  const visibleHackathon = computed(() => resolvedHackathon.value)
+  const visibleHackathonId = computed(() => resolvedHackathon.value.id)
+  const visibleHackathonErrorMessage = computed(() => '')
 
   const ownApplicationRequest = useAsyncData<ParticipantApplicationRecord | null>(
     () => `team-workspace-own-application:${authSubject.value}:${visibleHackathonId.value ?? 'none'}`,
     async () => {
-      if (actor.value?.kind !== 'platform_user' || !visibleHackathonId.value) {
+      if (typedActor.value?.kind !== 'platform_user' || !visibleHackathonId.value) {
         return null
       }
 
@@ -142,8 +68,7 @@ export function useTeamFormationWorkspace(
     },
     {
       default: () => null,
-      watch: [actor, visibleHackathonId],
-      server: false
+      watch: [typedActor, visibleHackathonId]
     }
   )
 
@@ -261,7 +186,7 @@ export function useTeamFormationWorkspace(
   }
 
   async function loadVisibleTeams(pageCount: number = 1, options?: { loadMore?: boolean }) {
-    if (!visibleHackathonId.value || actor.value?.kind !== 'platform_user') {
+    if (!visibleHackathonId.value || typedActor.value?.kind !== 'platform_user') {
       resetVisibleTeamsState()
       return
     }
@@ -325,7 +250,7 @@ export function useTeamFormationWorkspace(
   }
 
   async function loadOwnTeam() {
-    if (!visibleHackathonId.value || actor.value?.kind !== 'platform_user') {
+    if (!visibleHackathonId.value || typedActor.value?.kind !== 'platform_user') {
       resetOwnTeamState()
       return
     }
@@ -357,6 +282,14 @@ export function useTeamFormationWorkspace(
           if (getOwnTeamMembership(detail, actorUserId.value)) {
             ownTeam.value = detail
             ownTeamStatus.value = 'success'
+            ownTeamErrorMessage.value = ''
+
+            if (!resolvedTeamId.value || resolvedTeamId.value === detail.id) {
+              currentTeam.value = detail
+              currentTeamStatus.value = 'success'
+              currentTeamErrorMessage.value = ''
+            }
+
             return
           }
         }
@@ -383,7 +316,7 @@ export function useTeamFormationWorkspace(
   }
 
   async function loadCurrentTeam() {
-    if (!visibleHackathonId.value || !resolvedTeamId.value || actor.value?.kind !== 'platform_user') {
+    if (!visibleHackathonId.value || !resolvedTeamId.value || typedActor.value?.kind !== 'platform_user') {
       resetCurrentTeamState()
       return
     }
@@ -477,6 +410,10 @@ export function useTeamFormationWorkspace(
 
       ownTeam.value = response.data
       ownTeamStatus.value = 'success'
+      ownTeamErrorMessage.value = ''
+      currentTeam.value = response.data
+      currentTeamStatus.value = 'success'
+      currentTeamErrorMessage.value = ''
       await loadVisibleTeams(1)
       return response.data
     })
@@ -723,12 +660,16 @@ export function useTeamFormationWorkspace(
   })
 
   watch([visibleHackathonId, resolvedTeamId, actorUserId], async ([hackathonId, teamId, userId]) => {
-    resetCurrentTeamState()
-
     if (!hackathonId || !teamId || !userId) {
+      resetCurrentTeamState()
       return
     }
 
+    if (currentTeam.value?.id === teamId && currentTeamStatus.value === 'success') {
+      return
+    }
+
+    resetCurrentTeamState()
     await loadCurrentTeam()
   }, {
     immediate: true
@@ -748,9 +689,9 @@ export function useTeamFormationWorkspace(
   })
 
   return {
-    actor,
+    actor: typedActor,
     actorErrorMessage,
-    actorStatus: computed(() => actorRequest.status.value),
+    actorStatus,
     currentTeam,
     currentTeamErrorMessage,
     currentTeamMembership,
@@ -793,7 +734,13 @@ export function useTeamFormationWorkspace(
     visibleHackathon,
     visibleHackathonErrorMessage,
     visibleHackathonId,
-    visibleHackathonStatus: computed(() => visibleHackathonRequest.status.value),
+    visibleHackathonStatus: computed(() => {
+      if (actorStatus.value === 'idle' || actorStatus.value === 'pending') {
+        return actorStatus.value
+      }
+
+      return 'success'
+    }),
     visibleTeams,
     visibleTeamsErrorMessage,
     visibleTeamsStatus,

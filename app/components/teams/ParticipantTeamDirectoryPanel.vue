@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { toTypedSchema } from '@vee-validate/zod'
-import { useForm } from 'vee-validate'
-
 import type {
   TeamActionAvailability,
   TeamDetailRecord,
@@ -10,6 +7,7 @@ import type {
 
 import { teamDirectoryCreateFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
+import { createTeamSlug } from '~/utils/team-workspace'
 
 const form = defineModel<{
   name: string
@@ -21,7 +19,7 @@ const form = defineModel<{
 
 const props = defineProps<{
   currentTeam?: TeamDetailRecord | null
-  currentTeamHref?: string
+  currentTeamHref?: string | null
   teams: TeamDirectoryEntry[]
   totalTeams?: number
   canCreateTeam: TeamActionAvailability
@@ -48,48 +46,71 @@ function isActionPending(actionKey: string) {
   return props.pendingActionKey === actionKey
 }
 
-const {
-  errors,
-  submitCount,
-  values,
-  setValues,
-  handleSubmit
-} = useForm({
-  validationSchema: toTypedSchema(teamDirectoryCreateFormSchema),
-  initialValues: cloneFormValues(form.value)
+const errors = reactive({
+  name: '',
+  slug: ''
+})
+const submitCount = ref(0)
+
+const hasManuallyEditedSlug = ref(false)
+
+watch(() => form.value.name, (nextName) => {
+  if (hasManuallyEditedSlug.value) {
+    return
+  }
+
+  const nextSlug = createTeamSlug(nextName)
+
+  if (form.value.slug !== nextSlug) {
+    form.value.slug = nextSlug
+  }
 })
 
-watch(() => form.value, (nextForm) => {
-  setValues(cloneFormValues(nextForm), false)
-}, {
-  deep: true,
-  immediate: true
+watch(() => form.value.slug, (nextSlug) => {
+  hasManuallyEditedSlug.value = nextSlug.length > 0
+    && nextSlug !== createTeamSlug(form.value.name)
 })
 
-watch(values, (nextValues) => {
-  Object.assign(form.value, cloneFormValues(nextValues))
-}, {
-  deep: true
-})
+function validateCreateForm() {
+  errors.name = ''
+  errors.slug = ''
 
-const submitCreateForm = handleSubmit(() => {
+  const result = teamDirectoryCreateFormSchema.safeParse(cloneFormValues(form.value))
+
+  if (result.success) {
+    return true
+  }
+
+  const fieldErrors = result.error.flatten().fieldErrors
+  errors.name = fieldErrors.name?.[0] ?? ''
+  errors.slug = fieldErrors.slug?.[0] ?? ''
+  return false
+}
+
+function submitCreateForm() {
+  submitCount.value += 1
+
+  if (!validateCreateForm()) {
+    return
+  }
+
   emit('submitCreate')
-})
+}
 </script>
 
 <template>
   <div class="space-y-6">
     <AppCard
       v-if="currentTeam"
-      class="border border-success/30 bg-success/5"
+      class="rounded-xl hackathon-workspace-detail-panel p-6"
     >
       <template #header>
         <div class="space-y-1">
-          <h2 class="text-lg font-semibold text-highlighted">
-            Current Team
+          <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+            Current team
           </h2>
-          <p class="text-sm text-muted">
-            You already belong to an active team in this hackathon. Team updates and join-request review happen inside the dedicated team workspace.
+          <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+            You already belong to a team in this hackathon. Team updates and join-request review now happen in this Team tab.
           </p>
         </div>
       </template>
@@ -97,23 +118,24 @@ const submitCreateForm = handleSubmit(() => {
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div class="space-y-2">
           <div class="flex flex-wrap items-center gap-3">
-            <h3 class="text-xl font-semibold text-highlighted">
+            <h3 class="text-2xl font-semibold text-highlighted dark:text-white">
               {{ currentTeam.name }}
             </h3>
             <AppBadge
               color="success"
               variant="soft"
+              class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
             >
               {{ currentTeam.activeMemberCount ?? currentTeam.members.length }} active member{{ (currentTeam.activeMemberCount ?? currentTeam.members.length) === 1 ? '' : 's' }}
             </AppBadge>
           </div>
-          <p class="text-sm text-toned">
+          <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
             Team slug: {{ currentTeam.slug }}.
           </p>
         </div>
 
         <AppButton
-          v-if="currentTeamHref"
+          v-if="currentTeamHref?.trim()"
           :to="currentTeamHref"
           color="primary"
           icon="i-lucide-arrow-right"
@@ -124,14 +146,14 @@ const submitCreateForm = handleSubmit(() => {
     </AppCard>
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-      <AppCard class="border border-default/70 bg-elevated/90">
+      <AppCard class="rounded-xl hackathon-workspace-detail-panel p-6">
         <template #header>
           <div class="space-y-1">
-            <h2 class="text-lg font-semibold text-highlighted">
-              Create Team
+            <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+              Create a team
             </h2>
-            <p class="text-sm text-muted">
-              Team creation follows the canonical approval and lifecycle rules for the current hackathon.
+            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+              Start a new team here when your application and the hackathon lifecycle allow it.
             </p>
           </div>
         </template>
@@ -196,11 +218,12 @@ const submitCreateForm = handleSubmit(() => {
             </label>
 
             <AppButton
-              type="submit"
+              type="button"
               color="primary"
               :loading="isCreatingTeam"
               :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
               data-testid="participant-team-create-submit"
+              @click="submitCreateForm"
             >
               Create team
             </AppButton>
@@ -210,15 +233,15 @@ const submitCreateForm = handleSubmit(() => {
 
       <AppCard
         data-testid="participant-team-directory-panel"
-        class="border border-default/70 bg-elevated/90"
+        class="rounded-xl hackathon-workspace-detail-panel p-6"
       >
         <template #header>
           <div class="space-y-1">
-            <h2 class="text-lg font-semibold text-highlighted">
-              Team Directory
+            <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+              Join a team
             </h2>
-            <p class="text-sm text-muted">
-              Approved participants can browse visible teams and request to join the teams that remain open.
+            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+              Browse visible teams and request to join the ones that are still open.
             </p>
           </div>
         </template>
@@ -287,6 +310,7 @@ const submitCreateForm = handleSubmit(() => {
 
                 <div class="flex flex-wrap gap-3">
                   <AppButton
+                    v-if="entry.detailHref?.trim()"
                     :to="entry.detailHref"
                     color="neutral"
                     variant="outline"

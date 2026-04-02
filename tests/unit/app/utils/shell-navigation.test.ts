@@ -13,6 +13,7 @@ describe('isShellNavigationLinkActive', () => {
   test('maps account hackathon detail tabs to the correct sidebar entry', () => {
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', undefined, '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'overview', '/account')).toBe(true)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'team', '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'prizes', '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'judging', '/account')).toBe(false)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'participants', '/account')).toBe(false)
@@ -28,6 +29,9 @@ describe('isShellNavigationLinkActive', () => {
 
   test('keeps participant navigation active for staff-only visibility tabs', () => {
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'participants', '/account', {
+      accountHackathonNavigationMode: 'participant'
+    })).toBe(true)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'team', '/account', {
       accountHackathonNavigationMode: 'participant'
     })).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'teams', '/account', {

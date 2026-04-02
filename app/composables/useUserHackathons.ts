@@ -103,7 +103,7 @@ export function resolveUserHackathonPrimaryAction(entry: UserHackathonEntry): Us
   if (entry.team) {
     return {
       label: entry.state === 'completed' ? 'Review team workspace' : 'Open team workspace',
-      to: `/hackathons/${entry.slug}/teams/${entry.team.id}`,
+      to: `/account/hackathons/${entry.slug}?tab=team`,
       icon: 'i-lucide-arrow-up-right'
     }
   }
@@ -111,7 +111,7 @@ export function resolveUserHackathonPrimaryAction(entry: UserHackathonEntry): Us
   if (entry.applicationStatus === 'approved') {
     return {
       label: entry.state === 'completed' ? 'Review teams' : 'Form your team',
-      to: `/hackathons/${entry.slug}/teams`,
+      to: `/account/hackathons/${entry.slug}?tab=team`,
       icon: 'i-lucide-users'
     }
   }
