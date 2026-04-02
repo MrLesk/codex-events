@@ -108,8 +108,8 @@ Behavior:
 ### Transitions
 
 - `draft -> registration_open`
-  Actor: system.
-  Guard: hackathon configuration is ready and the registration window is open.
+  Actor: hackathon admin or platform admin.
+  Guard: hackathon configuration is ready, the registration window is open, and an admin opens registration manually.
 - `registration_open -> submission_open`
   Actor: hackathon admin or platform admin.
   Guard: registration is closed, the submission window is open, and an admin starts submission manually.

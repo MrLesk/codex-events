@@ -410,6 +410,33 @@ describe('admin-workspace lifecycle controls', () => {
     })
   })
 
+  test('shows a draft publish control only while the registration window is active', () => {
+    const control = getCurrentLifecycleControl(
+      createHackathon({
+        state: 'draft',
+        registrationOpensAt: '2026-03-20T10:00:00.000Z',
+        registrationClosesAt: '2026-03-22T10:00:00.000Z'
+      }),
+      {
+        submittedSubmissionCount: 0,
+        judgePoolCount: 0,
+        lockedSubmissionCount: 0,
+        activeAssignmentCount: 0,
+        lockedLeaderboardEntryCount: 0,
+        completedReviewCount: 0,
+        prizeCount: 0,
+        hasCurrentWinnerTerms: false
+      },
+      new Date('2026-03-19T10:00:00.000Z')
+    )
+
+    expect(control).toMatchObject({
+      key: 'open_registration',
+      isEnabled: false,
+      code: 'registration_window_not_open_yet'
+    })
+  })
+
   test('enables shortlist transition only when every locked submission is fully reviewed', () => {
     const control = getCurrentLifecycleControl(
       createHackathon({ state: 'judge_review' }),

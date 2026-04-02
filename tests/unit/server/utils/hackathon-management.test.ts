@@ -4,6 +4,7 @@ import { ApiError } from '../../../../server/utils/api-error'
 import {
   assertHackathonSchedule,
   buildHackathonUpdatePayload,
+  assertOpenRegistrationAllowed,
   assertOpenSubmissionAllowed,
   assertRoleCapabilityInvariant
 } from '../../../../server/utils/hackathon-management'
@@ -116,6 +117,80 @@ describe('hackathon management utilities', () => {
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
       requireLumaEmail: false,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    }, now)).toThrowError(ApiError)
+  })
+
+  test('allows opening registration only from draft while the registration window is active', () => {
+    const now = new Date('2026-03-21T13:00:00.000Z')
+
+    expect(() => assertOpenRegistrationAllowed({
+      id: 'hackathon_1',
+      name: 'Fixture Hackathon',
+      slug: 'fixture-hackathon',
+      description: 'Fixture hackathon',
+      agendaItemsJson: '[]',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      lumaEventUrl: null,
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'draft',
+      maxTeamMembers: 5,
+      participantsLimit: null,
+      inPersonEvent: false,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaEmail: false,
+      requireWhyThisHackathon: false,
+      requireProofOfExecution: false,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    }, now)).not.toThrow()
+
+    expect(() => assertOpenRegistrationAllowed({
+      id: 'hackathon_1',
+      name: 'Fixture Hackathon',
+      slug: 'fixture-hackathon',
+      description: 'Fixture hackathon',
+      agendaItemsJson: '[]',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      lumaEventUrl: null,
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-24T12:00:00.000Z',
+      registrationClosesAt: '2026-03-25T12:00:00.000Z',
+      submissionOpensAt: '2026-03-25T12:00:00.000Z',
+      submissionClosesAt: '2026-03-27T12:00:00.000Z',
+      state: 'draft',
+      maxTeamMembers: 5,
+      participantsLimit: null,
+      inPersonEvent: false,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaEmail: false,
+      requireWhyThisHackathon: false,
+      requireProofOfExecution: false,
       currentApplicationTermsDocumentId: null,
       currentWinnerTermsDocumentId: null,
       createdByUserId: 'creator_1',

@@ -1156,3 +1156,27 @@ export function assertOpenSubmissionAllowed(hackathon: HackathonRecord, now = ne
     details: { hackathonId: hackathon.id }
   })
 }
+
+export function assertOpenRegistrationAllowed(hackathon: HackathonRecord, now = new Date()) {
+  assertAllowedState(hackathon.state, ['draft'], {
+    code: 'hackathon_state_invalid',
+    message: 'Registration can only be opened from draft.',
+    details: { hackathonId: hackathon.id }
+  })
+
+  const nowTimestamp = now.getTime()
+  const registrationOpensAt = Date.parse(hackathon.registrationOpensAt)
+  const registrationClosesAt = Date.parse(hackathon.registrationClosesAt)
+
+  assertGuard(nowTimestamp >= registrationOpensAt, {
+    code: 'registration_window_not_open_yet',
+    message: 'Registration cannot be opened before the configured registration window starts.',
+    details: { hackathonId: hackathon.id }
+  })
+
+  assertGuard(nowTimestamp < registrationClosesAt, {
+    code: 'registration_window_closed',
+    message: 'Registration can only be opened while the configured registration window is open.',
+    details: { hackathonId: hackathon.id }
+  })
+}

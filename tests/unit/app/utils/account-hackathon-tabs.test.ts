@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'vitest'
 
-import { getAccountHackathonTabAccess } from '../../../../app/utils/account-hackathon-tabs'
+import {
+  canAccessAccountHackathonWorkspace,
+  getAccountHackathonTabAccess,
+  resolveAccountHackathonScopedId
+} from '../../../../app/utils/account-hackathon-tabs'
 
 describe('getAccountHackathonTabAccess', () => {
   test('hides the prizes tab and admin prize configuration for non-admins when no prizes are published', () => {
@@ -66,5 +70,21 @@ describe('getAccountHackathonTabAccess', () => {
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
+  })
+
+  test('allows internal workspace access without an account-hackathons record when the actor can manage the draft', () => {
+    expect(canAccessAccountHackathonWorkspace({
+      hasAccessRecord: false,
+      canJudge: false,
+      canManage: true,
+      canViewParticipantsAndTeams: false
+    })).toBe(true)
+  })
+
+  test('falls back to the loaded hackathon id when the account access record is missing', () => {
+    expect(resolveAccountHackathonScopedId({
+      accessRecordId: '',
+      hackathonId: 'hackathon_draft_internal'
+    })).toBe('hackathon_draft_internal')
   })
 })

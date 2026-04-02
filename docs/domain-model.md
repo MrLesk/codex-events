@@ -62,6 +62,7 @@ Key characteristics:
 - Each hackathon can optionally reference a Luma event URL.
 - Each hackathon has a city, country, and address.
 - Each hackathon has its own registration window.
+- Each hackathon has a registration flow that can be activated manually within its configured registration window.
 - Each hackathon has its own submission window.
 - Each hackathon has a submission flow that can be activated manually within its configured submission window.
 - Each hackathon has a judging flow that is activated manually.

@@ -133,7 +133,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Notes
 
-- `registration_open` is system-driven by the configured registration window.
+- `registration_open` is manually activated by an admin while the configured registration window is open.
 - `submission_open` is manually activated by an admin within the configured submission window.
 - `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce approval writes by itself.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.

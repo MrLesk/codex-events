@@ -9,6 +9,7 @@ import hackathonDetailGetHandler from '../../../../server/api/hackathons/[hackat
 import hackathonCriteriaGetHandler from '../../../../server/api/hackathons/[hackathonId]/evaluation-criteria/index.get'
 import hackathonPrizesGetHandler from '../../../../server/api/hackathons/[hackathonId]/prizes/index.get'
 import hackathonBySlugGetHandler from '../../../../server/api/hackathons/slug/[slug]/index.get'
+import openRegistrationPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/open-registration.post'
 import publicHackathonsGetHandler from '../../../../server/api/public/hackathons/index.get'
 import publicHackathonDetailGetHandler from '../../../../server/api/public/hackathons/[slug]/index.get'
 import publicHackathonCriteriaGetHandler from '../../../../server/api/public/hackathons/[slug]/evaluation-criteria/index.get'
@@ -1757,6 +1758,76 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         entityType: 'hackathon',
         entityId: 'hackathon_open_submission',
         action: 'hackathon.open_submission'
+      })
+    ])
+  })
+
+  test('POST /api/hackathons/:hackathonId/actions/open-registration opens registration and audits the state change', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/open-registration',
+          handler: openRegistrationPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'platform_admin',
+      auth0Subject: 'auth0|platform_admin',
+      email: 'platform-admin@example.com',
+      displayName: 'Platform Admin',
+      isPlatformAdmin: true
+    })
+
+    const now = Date.now()
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_open_registration',
+      name: 'Open Registration Hackathon',
+      slug: 'open-registration-hackathon',
+      description: 'Open registration',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: new Date(now - 86_400_000).toISOString(),
+      registrationClosesAt: new Date(now + 86_400_000).toISOString(),
+      submissionOpensAt: new Date(now + 86_400_000).toISOString(),
+      submissionClosesAt: new Date(now + 172_800_000).toISOString(),
+      state: 'draft',
+      maxTeamMembers: 5,
+      createdByUserId: 'platform_admin'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_open_registration/actions/open-registration', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'hackathon_open_registration',
+        state: 'registration_open'
+      }
+    })
+
+    const updatedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_open_registration')
+    })
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(updatedHackathon?.state).toBe('registration_open')
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'hackathon',
+        entityId: 'hackathon_open_registration',
+        action: 'hackathon.open_registration'
       })
     ])
   })

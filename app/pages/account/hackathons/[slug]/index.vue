@@ -28,7 +28,9 @@ import {
   hasHackathonParticipantVisibilityAccess
 } from '~/utils/admin-workspace'
 import {
+  canAccessAccountHackathonWorkspace,
   getAccountHackathonTabAccess,
+  resolveAccountHackathonScopedId,
   type AccountHackathonWorkspaceTab
 } from '~/utils/account-hackathon-tabs'
 import { getAccountHackathonSeoContent } from '~/utils/account-hackathon-seo'
@@ -156,14 +158,6 @@ const accessRecord = computed(() => [
   ...accountHackathonsResponse.data.current,
   ...accountHackathonsResponse.data.past
 ].find(record => record.slug === slug.value) ?? null)
-const accessRecordId = computed(() => accessRecord.value?.id ?? '')
-
-if (!accessRecord.value) {
-  await navigateTo(`/hackathons/${slug.value}`, {
-    redirectCode: 302,
-    replace: true
-  })
-}
 
 const participationRecord = computed<HackathonParticipationRecord | null>(() => {
   const records = [
@@ -175,12 +169,16 @@ const participationRecord = computed<HackathonParticipationRecord | null>(() => 
 })
 
 const hackathon = computed(() => hackathonResponse.value!.data)
+const workspaceHackathonId = computed(() => resolveAccountHackathonScopedId({
+  accessRecordId: accessRecord.value?.id,
+  hackathonId: hackathon.value.id
+}))
 const criteriaCount = computed(() => criteriaResponse.data.length)
 const prizes = computed(() => prizesResponse.data)
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 const canJudge = computed(() =>
   actor.value.kind === 'platform_user'
-    ? hasHackathonJudgingAccess(actor.value, accessRecordId.value)
+    ? hasHackathonJudgingAccess(actor.value, hackathon.value.id)
     : false
 )
 const canAdmin = computed(() => {
@@ -188,13 +186,25 @@ const canAdmin = computed(() => {
     return false
   }
 
-  return hasHackathonAdminAccess(actor.value, accessRecordId.value)
+  return hasHackathonAdminAccess(actor.value, hackathon.value.id)
 })
 const canViewParticipantsAndTeams = computed(() =>
   actor.value.kind === 'platform_user'
-    ? hasHackathonParticipantVisibilityAccess(actor.value, accessRecordId.value)
+    ? hasHackathonParticipantVisibilityAccess(actor.value, hackathon.value.id)
     : false
 )
+
+if (!canAccessAccountHackathonWorkspace({
+  hasAccessRecord: Boolean(accessRecord.value),
+  canJudge: canJudge.value,
+  canManage: canAdmin.value,
+  canViewParticipantsAndTeams: canViewParticipantsAndTeams.value
+})) {
+  await navigateTo(`/hackathons/${slug.value}`, {
+    redirectCode: 302,
+    replace: true
+  })
+}
 
 const workspaceBackLink = computed(() => canAdmin.value
   ? {
@@ -671,7 +681,7 @@ useSeoMeta({
       >
         <AccountHackathonRoleRosterPanel
           v-if="canAdmin"
-          :hackathon-id="accessRecordId"
+          :hackathon-id="workspaceHackathonId"
           role="judge"
           title="Judges"
           description="Judges review submissions. Admins can also review when judging is enabled for their admin assignment."
@@ -699,7 +709,7 @@ useSeoMeta({
       >
         <AccountHackathonRoleRosterPanel
           v-if="canAdmin"
-          :hackathon-id="accessRecordId"
+          :hackathon-id="workspaceHackathonId"
           role="staff"
           title="Staff"
           description="Staff can see participant and team data for this hackathon. Admins can also be marked as staff separately."
@@ -743,7 +753,7 @@ useSeoMeta({
 
         <AccountHackathonParticipantVisibilityPanel
           v-else-if="canViewParticipantsAndTeams"
-          :hackathon-id="accessRecordId"
+          :hackathon-id="workspaceHackathonId"
         />
       </section>
 
@@ -754,7 +764,7 @@ useSeoMeta({
         aria-labelledby="account-tab-teams"
         class="space-y-8"
       >
-        <AccountHackathonTeamVisibilityPanel :hackathon-id="accessRecordId" />
+        <AccountHackathonTeamVisibilityPanel :hackathon-id="workspaceHackathonId" />
       </section>
 
       <section
@@ -791,7 +801,7 @@ useSeoMeta({
         aria-labelledby="account-tab-admins"
       >
         <AccountHackathonRoleRosterPanel
-          :hackathon-id="accessRecordId"
+          :hackathon-id="workspaceHackathonId"
           role="admin"
           title="Admins"
           description="Admins can manage the internal workspace for this hackathon. Promoting a judge or staff member keeps their current capability on the admin assignment."

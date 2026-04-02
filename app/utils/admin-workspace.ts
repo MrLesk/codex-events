@@ -427,7 +427,7 @@ export interface LifecycleMetrics {
 }
 
 export interface LifecycleControl {
-  key: 'open_submission' | 'start_judging_preparation' | 'start_judge_review' | 'start_shortlist' | 'announce_winners' | 'complete'
+  key: 'open_registration' | 'open_submission' | 'start_judging_preparation' | 'start_judge_review' | 'start_shortlist' | 'announce_winners' | 'complete'
   label: string
   description: string
   endpoint: string
@@ -987,8 +987,33 @@ export function getCurrentLifecycleControl(
   now: Date = new Date()
 ): LifecycleControl | null {
   switch (hackathon.state) {
-    case 'draft':
-      return null
+    case 'draft': {
+      const registrationOpensAt = Date.parse(hackathon.registrationOpensAt)
+      const registrationClosesAt = Date.parse(hackathon.registrationClosesAt)
+      const nowTimestamp = now.getTime()
+      const isEnabled = nowTimestamp >= registrationOpensAt && nowTimestamp < registrationClosesAt
+
+      let reason: string | undefined
+      let code: string | undefined
+
+      if (nowTimestamp < registrationOpensAt) {
+        reason = 'Registration can only be opened once the configured registration window starts.'
+        code = 'registration_window_not_open_yet'
+      } else if (nowTimestamp >= registrationClosesAt) {
+        reason = 'Registration can only be opened while the configured registration window is active.'
+        code = 'registration_window_closed'
+      }
+
+      return {
+        key: 'open_registration',
+        label: 'Open Registration',
+        description: 'Publish the hackathon and move it into the application phase.',
+        endpoint: `/api/hackathons/${hackathon.id}/actions/open-registration`,
+        isEnabled,
+        reason,
+        code
+      }
+    }
     case 'registration_open': {
       const registrationClosesAt = Date.parse(hackathon.registrationClosesAt)
       const submissionOpensAt = Date.parse(hackathon.submissionOpensAt)
