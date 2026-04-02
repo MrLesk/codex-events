@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { eq } from 'drizzle-orm'
+import { asc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { writeAuditLog } from '../database/audit-log'
@@ -15,6 +15,7 @@ import { isHackathonLumaSyncEnabled } from './applications'
 export const defaultApplicationLumaSyncQueueBinding = 'APPLICATION_LUMA_SYNC_QUEUE'
 export const defaultApplicationLumaSyncQueueName = 'codex-hackathons-application-luma-sync'
 export const defaultApplicationLumaSyncRetryDelaySeconds = 120
+export const defaultApplicationLumaSyncStartupRecoveryBatchSize = 10
 export const defaultLumaApiBaseUrl = 'https://public-api.luma.com'
 export const defaultLumaProfileBaseUrl = 'https://luma.com'
 export const defaultLumaRequestUserAgent
@@ -65,6 +66,13 @@ export type ApplicationLumaSyncQueueMessageOutcome = {
   reason: string
 }
 
+export type ApplicationLumaSyncStartupRecoveryResult = {
+  status: 'recovered' | 'skipped'
+  reason: string
+  recoveredCount: number
+  applicationIds: string[]
+}
+
 interface QueueProducerLike {
   send: (message: unknown, options?: {
     contentType?: 'text' | 'json' | 'bytes' | 'v8'
@@ -94,6 +102,13 @@ interface QueueDatabaseRecord {
   hackathon: typeof hackathons.$inferSelect | null
   user: typeof users.$inferSelect | null
 }
+
+type RecoverableApplicationRecord = typeof userApplications.$inferSelect & {
+  status: 'approved' | 'rejected'
+  reviewedAt: string
+}
+
+let applicationLumaSyncStartupRecoveryPromise: Promise<ApplicationLumaSyncStartupRecoveryResult> | null = null
 
 class RetryableLumaSyncError extends Error {
   constructor(
@@ -140,6 +155,26 @@ function isQueueProducerLike(value: unknown): value is QueueProducerLike {
   }
 
   return typeof (value as Partial<QueueProducerLike>).send === 'function'
+}
+
+function resolveQueueProducerFromCloudflareEnv(
+  config: ApplicationLumaSyncRuntimeConfig,
+  cloudflareEnv?: Record<string, unknown>
+) {
+  const bindingName = getQueueBindingName(config)
+  const producerCandidate = cloudflareEnv?.[bindingName]
+
+  if (isQueueProducerLike(producerCandidate)) {
+    return {
+      producer: producerCandidate,
+      bindingName
+    }
+  }
+
+  return {
+    producer: null,
+    bindingName
+  }
 }
 
 function getQueueBindingName(config: ApplicationLumaSyncRuntimeConfig) {
@@ -691,21 +726,8 @@ export function buildApplicationLumaSyncQueueMessage(
 
 export function getApplicationLumaSyncQueueProducer(event: H3Event) {
   const config = resolveQueueRuntimeConfig(event)
-  const bindingName = getQueueBindingName(config)
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
-  const producerCandidate = cloudflareEnv?.[bindingName]
-
-  if (isQueueProducerLike(producerCandidate)) {
-    return {
-      producer: producerCandidate,
-      bindingName
-    }
-  }
-
-  return {
-    producer: null,
-    bindingName
-  }
+  return resolveQueueProducerFromCloudflareEnv(config, cloudflareEnv)
 }
 
 export async function enqueueApplicationLumaSyncMessage(
@@ -973,4 +995,136 @@ export async function processApplicationLumaSyncQueueBatch(
     skipped: false,
     outcomes
   }
+}
+
+function getStartupRecoveryStaleBefore(config: ApplicationLumaSyncRuntimeConfig, now = new Date()) {
+  return new Date(now.getTime() - (getRetryDelaySeconds(config) * 1000)).toISOString()
+}
+
+async function listRecoverableLumaSyncApplications(
+  database: AppDatabase,
+  staleBefore: string
+) {
+  const candidates = await database.query.userApplications.findMany({
+    where: eq(userApplications.lumaSyncStatus, 'not_synced'),
+    orderBy: [asc(userApplications.updatedAt)],
+    limit: defaultApplicationLumaSyncStartupRecoveryBatchSize
+  })
+
+  return candidates.filter((application): application is RecoverableApplicationRecord => {
+    return application.updatedAt <= staleBefore
+      && (application.status === 'approved' || application.status === 'rejected')
+      && typeof application.reviewedAt === 'string'
+      && application.reviewedAt.length > 0
+  })
+}
+
+export async function recoverStaleApplicationLumaSyncMessages(options?: {
+  runtimeConfig?: unknown
+  cloudflareEnv?: Record<string, unknown>
+  d1Database?: D1DatabaseBinding
+  database?: AppDatabase
+}) {
+  const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
+  const { producer, bindingName } = resolveQueueProducerFromCloudflareEnv(config, options?.cloudflareEnv)
+
+  if (!producer) {
+    return {
+      status: 'skipped',
+      reason: `queue_binding_missing:${bindingName}`,
+      recoveredCount: 0,
+      applicationIds: []
+    } satisfies ApplicationLumaSyncStartupRecoveryResult
+  }
+
+  const database = await resolveProcessingDatabase({
+    database: options?.database,
+    runtimeConfig: options?.runtimeConfig,
+    cloudflareEnv: options?.cloudflareEnv,
+    d1Database: options?.d1Database
+  })
+  const staleBefore = getStartupRecoveryStaleBefore(config)
+  const staleApplications = await listRecoverableLumaSyncApplications(database, staleBefore)
+
+  if (staleApplications.length === 0) {
+    return {
+      status: 'skipped',
+      reason: 'no_stale_applications',
+      recoveredCount: 0,
+      applicationIds: []
+    } satisfies ApplicationLumaSyncStartupRecoveryResult
+  }
+
+  const relatedHackathons = await database.query.hackathons.findMany({
+    where: inArray(hackathons.id, [...new Set(staleApplications.map(application => application.hackathonId))])
+  })
+  const hackathonsById = new Map(relatedHackathons.map(hackathon => [hackathon.id, hackathon]))
+  const recoveredApplicationIds: string[] = []
+
+  for (const application of staleApplications) {
+    const hackathon = hackathonsById.get(application.hackathonId)
+
+    if (!hackathon || !isHackathonLumaSyncEnabled(hackathon)) {
+      continue
+    }
+
+    const recoveredAt = new Date().toISOString()
+    await producer.send(buildApplicationLumaSyncQueueMessage({
+      applicationId: application.id,
+      decision: application.status
+    }), {
+      contentType: 'json'
+    })
+    await database
+      .update(userApplications)
+      .set({
+        updatedAt: recoveredAt
+      })
+      .where(eq(userApplications.id, application.id))
+
+    await writeAuditLog(database, {
+      entityType: 'user_application',
+      entityId: application.id,
+      action: 'user_application.luma_sync_recovery_enqueued',
+      createdAt: recoveredAt,
+      metadata: {
+        decision: application.status,
+        recoveryTrigger: 'startup',
+        queueName: getQueueName(config),
+        staleBefore
+      }
+    })
+
+    recoveredApplicationIds.push(application.id)
+  }
+
+  if (recoveredApplicationIds.length === 0) {
+    return {
+      status: 'skipped',
+      reason: 'no_recoverable_stale_applications',
+      recoveredCount: 0,
+      applicationIds: []
+    } satisfies ApplicationLumaSyncStartupRecoveryResult
+  }
+
+  return {
+    status: 'recovered',
+    reason: 'stale_applications_reenqueued',
+    recoveredCount: recoveredApplicationIds.length,
+    applicationIds: recoveredApplicationIds
+  } satisfies ApplicationLumaSyncStartupRecoveryResult
+}
+
+export function scheduleApplicationLumaSyncStartupRecovery(options?: {
+  runtimeConfig?: unknown
+  cloudflareEnv?: Record<string, unknown>
+  d1Database?: D1DatabaseBinding
+  database?: AppDatabase
+}) {
+  applicationLumaSyncStartupRecoveryPromise ??= recoverStaleApplicationLumaSyncMessages(options)
+  return applicationLumaSyncStartupRecoveryPromise
+}
+
+export function resetApplicationLumaSyncStartupRecoveryForTest() {
+  applicationLumaSyncStartupRecoveryPromise = null
 }

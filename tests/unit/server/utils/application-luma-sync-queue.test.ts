@@ -16,7 +16,10 @@ import {
   enqueueApplicationLumaSyncMessage,
   processApplicationLumaSyncQueueBatch,
   processApplicationLumaSyncQueueMessage,
-  resolveLumaEmailFromUsername
+  recoverStaleApplicationLumaSyncMessages,
+  resetApplicationLumaSyncStartupRecoveryForTest,
+  resolveLumaEmailFromUsername,
+  scheduleApplicationLumaSyncStartupRecovery
 } from '../../../../server/utils/application-luma-sync-queue'
 import { createTestD1Database } from '../../../support/backend/fake-d1'
 
@@ -167,6 +170,8 @@ describe('application luma sync queue utilities', () => {
     while (d1Databases.length > 0) {
       await d1Databases.pop()?.close()
     }
+
+    resetApplicationLumaSyncStartupRecoveryForTest()
   })
 
   test('enqueue sends json payload to the configured queue binding', async () => {
@@ -450,6 +455,91 @@ describe('application luma sync queue utilities', () => {
 
     const auditRows = await database.select().from(auditLogs)
     expect(auditRows).toEqual([])
+  })
+
+  test('startup recovery re-enqueues stale not_synced Luma applications', async () => {
+    const { d1Database, database } = await seedLumaSyncContext()
+    d1Databases.push(d1Database)
+    const send = vi.fn(async () => undefined)
+
+    const result = await recoverStaleApplicationLumaSyncMessages({
+      database,
+      cloudflareEnv: {
+        APPLICATION_LUMA_SYNC_QUEUE: { send }
+      },
+      runtimeConfig: {
+        luma: {
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
+          queueName: 'codex-hackathons-application-luma-sync',
+          retryDelaySeconds: 90
+        }
+      }
+    })
+
+    expect(result).toEqual({
+      status: 'recovered',
+      reason: 'stale_applications_reenqueued',
+      recoveredCount: 1,
+      applicationIds: ['application_1']
+    })
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: 'application_1',
+      decision: 'approved'
+    }), {
+      contentType: 'json'
+    })
+
+    const storedApplication = await database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication?.lumaSyncStatus).toBe('not_synced')
+    expect(storedApplication?.updatedAt).not.toBe('2026-03-22T12:30:00.000Z')
+
+    const auditRows = await database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.luma_sync_recovery_enqueued',
+        metadata: expect.objectContaining({
+          decision: 'approved',
+          recoveryTrigger: 'startup',
+          queueName: 'codex-hackathons-application-luma-sync'
+        })
+      })
+    ]))
+  })
+
+  test('startup recovery only schedules one re-enqueue pass per isolate', async () => {
+    const { d1Database, database } = await seedLumaSyncContext()
+    d1Databases.push(d1Database)
+    const send = vi.fn(async () => undefined)
+    const options = {
+      database,
+      cloudflareEnv: {
+        APPLICATION_LUMA_SYNC_QUEUE: { send }
+      },
+      runtimeConfig: {
+        luma: {
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
+          queueName: 'codex-hackathons-application-luma-sync',
+          retryDelaySeconds: 90
+        }
+      }
+    }
+
+    const firstPass = scheduleApplicationLumaSyncStartupRecovery(options)
+    const secondPass = scheduleApplicationLumaSyncStartupRecovery(options)
+
+    expect(firstPass).toBe(secondPass)
+    await expect(firstPass).resolves.toEqual({
+      status: 'recovered',
+      reason: 'stale_applications_reenqueued',
+      recoveredCount: 1,
+      applicationIds: ['application_1']
+    })
+    expect(send).toHaveBeenCalledTimes(1)
   })
 
   test('queue batch processing skips unrelated queues', async () => {
