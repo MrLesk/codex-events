@@ -161,7 +161,7 @@ Reset logic must:
 - recreate or normalize platform authorization rows and scenario data before test execution
 - avoid coupling one test's authorization state to another test's leftovers
 
-For local authenticated validation, the repository uses the D1 binding declared in `wrangler.jsonc` and treats the local app and local BDD databases as separate persistence roots. Local app development defaults to `.wrangler/state`, authenticated BDD defaults to `.wrangler/state-bdd`, and `LOCAL_D1_STATE_ROOT` remains available as an explicit one-off override for the current process. The local bootstrap lifecycle is explicit: clear the selected persisted local D1 state, recreate it from migrations, seed the canonical fixture dataset, clear saved session-state artifacts, and then perform fresh real Auth0 logins.
+For local authenticated validation, the repository uses the D1 binding declared in `wrangler.jsonc` and treats the local app and local BDD databases as separate persistence roots. Local app development defaults to `.wrangler/state`, authenticated BDD defaults to `.wrangler/state-bdd`, and BDD overrides must use `LOCAL_BDD_D1_STATE_ROOT`. The BDD harness fails fast if its resolved state root matches the normal local app root. The local bootstrap lifecycle is explicit: clear the selected persisted local D1 state, recreate it from migrations, seed the canonical fixture dataset, clear saved session-state artifacts, and then perform fresh real Auth0 logins.
 
 ## Unsupported Patterns
 

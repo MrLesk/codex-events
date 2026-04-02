@@ -24,7 +24,7 @@
     "test:bdd:install": "playwright install chromium",
     "test:unit": "vitest run tests/unit",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "test:bdd": "LOCAL_D1_STATE_ROOT=${LOCAL_D1_STATE_ROOT:-${LOCAL_BDD_D1_STATE_ROOT:-.wrangler/state-bdd}} bun run test:bdd:inner",
+    "test:bdd": "LOCAL_BDD_D1_STATE_ROOT=${LOCAL_BDD_D1_STATE_ROOT:-.wrangler/state-bdd} LOCAL_D1_STATE_ROOT=${LOCAL_BDD_D1_STATE_ROOT:-.wrangler/state-bdd} bun run test:bdd:inner",
     "test:bdd:inner": "bun run db:local:guard && bun tests/bdd/bootstrap.ts && bddgen && playwright test --project chromium-bdd --project chromium-authenticated-bdd && bun tests/bdd/bootstrap.ts && playwright test --project chromium-authenticated-destructive-bdd --workers=1",
     "test:all": "bun run test:unit && bun run test:integration && bun run test:bdd"
   },
