@@ -837,6 +837,18 @@ export function buildAdminWorkspaceCacheKey(...parts: Array<string>) {
   return parts.join(':')
 }
 
+export function getTermsVersionPublishErrorMessage(title: string, content: string) {
+  if (title.trim().length === 0) {
+    return 'Enter a title before publishing this terms version.'
+  }
+
+  if (content.trim().length === 0) {
+    return 'Enter the terms content before publishing this terms version.'
+  }
+
+  return ''
+}
+
 export function createEmptyHackathonFormState(): HackathonFormState {
   return {
     name: '',

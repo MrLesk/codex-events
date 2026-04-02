@@ -33,6 +33,7 @@ import {
   getCurrentLifecycleControl,
   getJudgeAssignmentStatusColor,
   getParticipantsLimitSummary,
+  getTermsVersionPublishErrorMessage,
   hasHackathonAdminAccess,
   normalizeApiError,
   getSubmissionStatusColor,
@@ -398,6 +399,30 @@ describe('admin-workspace form helpers', () => {
     expect(getAdminWorkspaceSubjectKey('  auth0|admin  ')).toBe('auth0|admin')
     expect(getAdminWorkspaceSubjectKey('')).toBe('anonymous')
     expect(buildAdminWorkspaceCacheKey('admin-workspace-session', 'auth0|admin')).toBe('admin-workspace-session:auth0|admin')
+  })
+
+  test('requires a title before publishing a terms version', () => {
+    expect(getTermsVersionPublishErrorMessage('', 'Canonical application terms')).toBe(
+      'Enter a title before publishing this terms version.'
+    )
+
+    expect(getTermsVersionPublishErrorMessage('   ', 'Canonical application terms')).toBe(
+      'Enter a title before publishing this terms version.'
+    )
+  })
+
+  test('requires content before publishing a terms version', () => {
+    expect(getTermsVersionPublishErrorMessage('Application Terms v2', '')).toBe(
+      'Enter the terms content before publishing this terms version.'
+    )
+
+    expect(getTermsVersionPublishErrorMessage('Application Terms v2', '   ')).toBe(
+      'Enter the terms content before publishing this terms version.'
+    )
+  })
+
+  test('allows publishing a terms version when title and content are present', () => {
+    expect(getTermsVersionPublishErrorMessage(' Application Terms v2 ', ' Canonical application terms ')).toBe('')
   })
 })
 

@@ -17,6 +17,7 @@ import {
   formatHackathonState,
   fromDateTimeLocalValue,
   getHackathonStateColor,
+  getTermsVersionPublishErrorMessage,
   normalizeApiError,
   toHackathonAgendaPayload
 } from '~/utils/admin-workspace'
@@ -83,6 +84,7 @@ const isSavingConfig = ref(false)
 const isSavingCriterionOrder = ref(false)
 const isSavingPrizes = ref(false)
 const mutationError = ref('')
+const hasAttemptedTermsVersionPublish = ref(false)
 const imageMutationState = reactive({
   background: {
     pending: false,
@@ -123,6 +125,9 @@ const programSettingsCopy = computed(() => getHackathonProgramSettingsCopy(props
 const showProgramSnapshot = computed(() => props.programSettingsMode === 'settings')
 const criteria = computed(() => workspace.criteria.data.value?.data ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
+const termsVersionPublishErrorMessage = computed(() =>
+  getTermsVersionPublishErrorMessage(termsDraft.title, termsDraft.content)
+)
 const orderedCriteria = computed(() =>
   [...criteria.value].sort((left, right) => {
     const leftOrder = getCriterionEdit(left).displayOrder
@@ -844,17 +849,31 @@ async function createTermsVersion() {
     return
   }
 
+  hasAttemptedTermsVersionPublish.value = true
+  mutationError.value = ''
+
+  if (termsVersionPublishErrorMessage.value) {
+    return
+  }
+
+  const title = termsDraft.title.trim()
+  const content = termsDraft.content.trim()
+  const successDescription = termsDraft.documentType === 'application_terms'
+    ? 'A new application terms version is now available. Set it as current to use it in registration.'
+    : 'A new winner terms version is now available. Set it as current to use it in prize redemption.'
+
   await runMutation(async () => {
     await $fetch(`/api/hackathons/${hackathon.id}/terms/${termsDraft.documentType}/versions`, {
       method: 'POST',
       body: {
-        title: termsDraft.title,
-        content: termsDraft.content
+        title,
+        content
       }
     })
+    hasAttemptedTermsVersionPublish.value = false
     termsDraft.title = ''
     termsDraft.content = ''
-  }, 'Terms version published', 'A new hackathon terms version is now available.')
+  }, 'Terms version published', successDescription)
 }
 
 async function setCurrentTerms(document: TermsDocument) {
@@ -991,7 +1010,7 @@ async function setCurrentTerms(document: TermsDocument) {
                 Terms Management
               </h2>
               <p class="text-sm text-muted">
-                Publish exact versions and set the current application or winner terms references.
+                Publishing creates a version. Use Set current to make application terms active in registration or winner terms active in prize redemption.
               </p>
             </div>
           </template>
@@ -1018,6 +1037,7 @@ async function setCurrentTerms(document: TermsDocument) {
                 <input
                   v-model="termsDraft.title"
                   type="text"
+                  required
                   class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                   placeholder="Spring 2026 Application Terms v2"
                 >
@@ -1029,10 +1049,18 @@ async function setCurrentTerms(document: TermsDocument) {
               <textarea
                 v-model="termsDraft.content"
                 rows="5"
+                required
                 class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="Enter the canonical terms content."
               />
             </label>
+
+            <p
+              v-if="hasAttemptedTermsVersionPublish && termsVersionPublishErrorMessage"
+              class="text-sm text-error"
+            >
+              {{ termsVersionPublishErrorMessage }}
+            </p>
 
             <AppButton
               color="primary"
