@@ -12,11 +12,13 @@ import {
   searchAdminApplicationReviewGroups
 } from '~/utils/admin-application-review'
 import { parseProofOfExecutionLinks } from '~/utils/participant-application'
+import { buildProfileIconHref } from '~/utils/profile-icon'
 import {
   getApplicationStatusColor
 } from '~/utils/admin-workspace'
 
 const props = withDefaults(defineProps<{
+  hackathonId: string
   applications: AdminApplicationRecord[]
   view: AdminApplicationReviewView
   isLoading?: boolean
@@ -199,6 +201,26 @@ function getVisibleProofOfExecutionLinks(applicant: AdminApplicationReviewGroup[
 
 function hasFailedLumaSync(application: AdminApplicationRecord) {
   return application.lumaSyncStatus === 'approve_failed' || application.lumaSyncStatus === 'reject_failed'
+}
+
+function getApplicantIdentityLabel(application: AdminApplicationRecord) {
+  if (application.user?.displayName && application.user?.email && application.user.displayName !== application.user.email) {
+    return `${application.user.displayName} - ${application.user.email}`
+  }
+
+  return application.user?.displayName ?? application.user?.email ?? application.userId
+}
+
+function getApplicantAvatarAlt(application: AdminApplicationRecord) {
+  return application.user?.displayName ?? application.user?.email ?? application.userId
+}
+
+function getApplicantProfileIconHref(application: AdminApplicationRecord) {
+  return buildProfileIconHref(
+    application.userId,
+    application.user?.profileIconUpdatedAt,
+    props.hackathonId
+  )
 }
 
 function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject', isActive: boolean) {
@@ -390,18 +412,21 @@ const emptyState = computed(() => {
               >
                 <div class="min-w-0 space-y-3">
                   <div class="space-y-3">
-                    <div class="space-y-1">
-                      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                        Participant
-                      </p>
-                      <h4 class="text-lg font-semibold text-highlighted">
-                        <template v-if="applicant.application.user?.displayName && applicant.application.user?.email && applicant.application.user.displayName !== applicant.application.user.email">
-                          {{ applicant.application.user.displayName }} - {{ applicant.application.user.email }}
-                        </template>
-                        <template v-else>
-                          {{ applicant.application.user?.displayName ?? applicant.application.user?.email ?? applicant.application.userId }}
-                        </template>
-                      </h4>
+                    <div class="flex items-start gap-3">
+                      <AppAvatar
+                        size="lg"
+                        :src="getApplicantProfileIconHref(applicant.application)"
+                        :alt="getApplicantAvatarAlt(applicant.application)"
+                        class="shrink-0"
+                      />
+                      <div class="min-w-0 space-y-1">
+                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                          Participant
+                        </p>
+                        <h4 class="text-lg font-semibold text-highlighted">
+                          {{ getApplicantIdentityLabel(applicant.application) }}
+                        </h4>
+                      </div>
                     </div>
 
                     <div class="flex flex-wrap gap-2 text-xs text-muted">

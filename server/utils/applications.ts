@@ -213,7 +213,8 @@ export function serializeUserApplication(
             chatgptEmail: options.user.chatgptEmail,
             openaiOrgId: options.user.openaiOrgId,
             lumaEmail: options.user.lumaEmail,
-            lumaUsername: options.user.lumaUsername
+            lumaUsername: options.user.lumaUsername,
+            profileIconUpdatedAt: options.user.profileIconUpdatedAt
           }
         }
       : {}),

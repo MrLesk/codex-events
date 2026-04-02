@@ -6,10 +6,58 @@ import {
   assertApplicationReviewable,
   assertHackathonAllowsApplications,
   assertUserMeetsHackathonProfileRequirements,
+  serializeUserApplication,
   serializeRegistrationDetailsJson
 } from '../../../../server/utils/applications'
 
 describe('application utilities', () => {
+  test('serializeUserApplication includes the user profile icon version when present', () => {
+    expect(serializeUserApplication({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'user_1',
+      status: 'submitted',
+      preApprovalStatus: null,
+      lumaSyncStatus: null,
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      reviewedAt: null,
+      reviewedByUserId: null,
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      registrationDetailsJson: '{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisHackathon":"","proofOfExecutionUrl":""}',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    }, {
+      user: {
+        id: 'user_1',
+        auth0Subject: 'auth0|user_1',
+        email: 'user@example.com',
+        displayName: 'User',
+        firstName: '',
+        familyName: '',
+        company: null,
+        bio: null,
+        isPlatformAdmin: false,
+        xProfileUrl: null,
+        linkedinProfileUrl: null,
+        githubProfileUrl: null,
+        chatgptEmail: null,
+        openaiOrgId: null,
+        lumaEmail: null,
+        lumaUsername: null,
+        profileIconUpdatedAt: '2026-03-28T12:34:56.000Z',
+        createdAt: '2026-03-20T10:00:00.000Z',
+        updatedAt: '2026-03-20T10:00:00.000Z',
+        deletedAt: null
+      }
+    })).toMatchObject({
+      user: {
+        id: 'user_1',
+        profileIconUpdatedAt: '2026-03-28T12:34:56.000Z'
+      }
+    })
+  })
+
   test('applications can only be submitted while registration is open', () => {
     expect(() => assertHackathonAllowsApplications({
       id: 'hackathon_1',

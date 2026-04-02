@@ -696,6 +696,12 @@ describe('TASK-3.6 application routes', () => {
     })
     harnesses.push(harness)
     await seedApplicationContext(harness)
+    await harness.database
+      .update(users)
+      .set({
+        profileIconUpdatedAt: '2026-03-28T12:34:56.000Z'
+      })
+      .where(eq(users.id, 'regular_user'))
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
@@ -719,7 +725,8 @@ describe('TASK-3.6 application routes', () => {
       expect.objectContaining({
         id: 'application_1',
         user: expect.objectContaining({
-          id: 'regular_user'
+          id: 'regular_user',
+          profileIconUpdatedAt: '2026-03-28T12:34:56.000Z'
         })
       })
     ]))

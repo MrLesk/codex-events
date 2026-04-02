@@ -903,6 +903,7 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
         </div>
 
         <AdminApplicationsReviewPanel
+          :hackathon-id="hackathonId"
           :applications="applications"
           :view="participantView"
           :is-loading="applicationsStatus === 'pending'"

@@ -135,6 +135,7 @@ function selectParticipantView(nextView: ParticipantView) {
     </div>
 
     <AdminApplicationsReviewPanel
+      :hackathon-id="props.hackathonId"
       :applications="applications"
       :view="participantView"
       :is-loading="status === 'pending'"
