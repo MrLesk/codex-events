@@ -113,7 +113,6 @@ describe('hackathon participation badge helpers', () => {
     expect(getParticipationStatusColor(record)).toBe('primary')
   })
 
-
   test('always routes participation cards to the overview workspace', () => {
     const record = buildRecord({
       application: {
