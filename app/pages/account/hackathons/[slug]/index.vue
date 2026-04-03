@@ -301,6 +301,7 @@ const visibleTabs = computed(() =>
 const activeSection = computed<AccountHackathonWorkspaceTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
+const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
 const activeSectionSeo = computed(() => getAccountHackathonSeoContent(activeSection.value, hackathon.value.name))
 
 watchEffect(() => {
@@ -884,6 +885,7 @@ useSeoMeta({
       >
         <AccountHackathonParticipantTeamPanel
           :hackathon="hackathon"
+          :selected-team-slug="selectedTeamSlug"
         />
       </section>
 
