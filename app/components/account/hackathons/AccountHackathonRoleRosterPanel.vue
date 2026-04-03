@@ -668,17 +668,19 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
 </script>
 
 <template>
-  <AppCard class="hackathon-workspace-detail-panel p-6">
-    <div class="space-y-4">
-      <div class="space-y-1">
-        <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+  <AppCard class="hackathon-workspace-detail-panel">
+    <template #header>
+      <div class="space-y-1 border-b border-black/8 pb-5 dark:border-white/[0.08]">
+        <h2 class="text-lg font-semibold text-highlighted dark:text-white">
           {{ title }}
         </h2>
         <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
           {{ description }}
         </p>
       </div>
+    </template>
 
+    <div class="space-y-4">
       <AppAlert
         v-if="mutationError"
         color="error"
@@ -695,7 +697,7 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
         :description="workspace.roleAssignments.error.value.message"
       />
 
-      <div class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+      <div class="space-y-4">
         <div class="flex items-center justify-between gap-3">
           <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
             {{ currentAssignmentsTitle }}

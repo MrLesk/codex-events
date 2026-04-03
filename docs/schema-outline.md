@@ -601,3 +601,5 @@ These are computed from persisted data and do not require separate canonical ent
 - shortlist ordering
 - leaderboard
 - no-submission team section
+- published judge roster
+- published staff roster

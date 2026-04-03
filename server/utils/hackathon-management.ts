@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { and, asc, count, desc, eq, inArray, isNull, like, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { getRequestActor } from '../auth/actor'
+import { getRequestActor, requirePlatformActor } from '../auth/actor'
 import {
   assertHackathonAdminAccess,
   resolveHackathonAuthorization
@@ -21,6 +21,9 @@ import {
   prizeAwardScopes,
   prizeRewardTypes,
   prizes,
+  teamMembers,
+  teams,
+  userApplications,
   users
 } from '../database/schema'
 import { ApiError } from './api-error'
@@ -278,6 +281,7 @@ type HackathonRoleAssignmentRecord = typeof hackathonRoleAssignments.$inferSelec
 type HackathonTermsDocumentRecord = typeof hackathonTermsDocuments.$inferSelect
 type EvaluationCriterionRecord = typeof evaluationCriteria.$inferSelect
 type PrizeRecord = typeof prizes.$inferSelect
+type UserRecord = typeof users.$inferSelect
 export type HackathonAgendaItem = z.infer<typeof agendaItemSchema>
 
 const publicHackathonStates = [
@@ -289,6 +293,39 @@ const publicHackathonStates = [
   'winners_announced',
   'completed'
 ] as const
+
+export const publishedHackathonRosterRoles = ['judge', 'staff'] as const
+export type PublishedHackathonRosterRole = (typeof publishedHackathonRosterRoles)[number]
+
+function buildPublishedHackathonRosterFullName(user: Pick<UserRecord, 'displayName' | 'firstName' | 'familyName'>) {
+  const fullName = `${user.firstName.trim()} ${user.familyName.trim()}`.trim()
+
+  return fullName || user.displayName
+}
+
+function comparePublishedHackathonRosterMembers(
+  left: ReturnType<typeof serializePublishedHackathonRosterMember>,
+  right: ReturnType<typeof serializePublishedHackathonRosterMember>
+) {
+  const fullNameOrder = left.fullName.localeCompare(right.fullName)
+
+  if (fullNameOrder !== 0) {
+    return fullNameOrder
+  }
+
+  return left.id.localeCompare(right.id)
+}
+
+export function isHackathonRolePublishedInRoster(
+  assignment: Pick<HackathonRoleAssignmentRecord, 'role' | 'isInJudgePool' | 'isStaff'>,
+  role: PublishedHackathonRosterRole
+) {
+  if (role === 'judge') {
+    return assignment.role === 'judge' || (assignment.role === 'hackathon_admin' && assignment.isInJudgePool)
+  }
+
+  return assignment.role === 'staff' || (assignment.role === 'hackathon_admin' && assignment.isStaff)
+}
 
 export function serializeHackathonAgendaItems(items: HackathonAgendaItem[]) {
   return JSON.stringify(
@@ -604,6 +641,70 @@ export async function requireHackathonAdmin(event: H3Event, hackathonId: string)
   return { hackathon, authorization }
 }
 
+export async function requireHackathonWorkspaceAccess(event: H3Event, hackathonId: string) {
+  const actor = await requirePlatformActor(event)
+  const database = getDatabase(event)
+  const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
+
+  if (actor.platformUser.isPlatformAdmin) {
+    return {
+      actor,
+      database,
+      hackathon
+    }
+  }
+
+  const hasApplication = await database.query.userApplications.findFirst({
+    columns: {
+      id: true
+    },
+    where: and(
+      eq(userApplications.hackathonId, hackathonId),
+      eq(userApplications.userId, actor.platformUser.id)
+    )
+  })
+
+  const hasRoleAssignment = await database.query.hackathonRoleAssignments.findFirst({
+    columns: {
+      id: true
+    },
+    where: and(
+      eq(hackathonRoleAssignments.hackathonId, hackathonId),
+      eq(hackathonRoleAssignments.userId, actor.platformUser.id)
+    )
+  })
+
+  const activeMembership = await database
+    .select({
+      teamId: teamMembers.teamId
+    })
+    .from(teamMembers)
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .where(and(
+      eq(teamMembers.userId, actor.platformUser.id),
+      isNull(teamMembers.leftAt),
+      eq(teams.hackathonId, hackathonId)
+    ))
+    .limit(1)
+
+  if (!hasApplication && !hasRoleAssignment && activeMembership.length === 0) {
+    throw new ApiError({
+      statusCode: 403,
+      code: 'hackathon_workspace_access_required',
+      message: 'This operation requires access to the hackathon workspace.',
+      details: {
+        hackathonId
+      }
+    })
+  }
+
+  return {
+    actor,
+    database,
+    hackathon
+  }
+}
+
 export async function listPublicHackathons(
   database: AppDatabase,
   input: z.infer<typeof hackathonListQuerySchema>
@@ -726,6 +827,63 @@ export async function listHackathonRoleCandidates(
     page: input.page,
     pageSize: input.page_size
   }
+}
+
+export async function listPublishedHackathonRosterMembers(
+  database: AppDatabase,
+  hackathonId: string,
+  role: PublishedHackathonRosterRole
+) {
+  const assignments = await database.query.hackathonRoleAssignments.findMany({
+    where: eq(hackathonRoleAssignments.hackathonId, hackathonId),
+    orderBy: [asc(hackathonRoleAssignments.createdAt)]
+  })
+  const visibleAssignments = assignments.filter(assignment => isHackathonRolePublishedInRoster(assignment, role))
+
+  if (visibleAssignments.length === 0) {
+    return []
+  }
+
+  const relatedUsers = await database.query.users.findMany({
+    where: and(
+      inArray(users.id, visibleAssignments.map(assignment => assignment.userId)),
+      isNull(users.deletedAt)
+    )
+  })
+  const usersById = new Map<string, UserRecord>(
+    relatedUsers.map(user => [user.id, user])
+  )
+
+  return visibleAssignments
+    .map(assignment => usersById.get(assignment.userId) ?? null)
+    .filter((user): user is UserRecord => Boolean(user))
+    .map(serializePublishedHackathonRosterMember)
+    .sort(comparePublishedHackathonRosterMembers)
+}
+
+export async function isUserVisibleInPublishedHackathonRoster(
+  database: AppDatabase,
+  hackathonId: string,
+  userId: string
+) {
+  const assignment = await database.query.hackathonRoleAssignments.findFirst({
+    columns: {
+      role: true,
+      isInJudgePool: true,
+      isStaff: true
+    },
+    where: and(
+      eq(hackathonRoleAssignments.hackathonId, hackathonId),
+      eq(hackathonRoleAssignments.userId, userId)
+    )
+  })
+
+  if (!assignment) {
+    return false
+  }
+
+  return isHackathonRolePublishedInRoster(assignment, 'judge')
+    || isHackathonRolePublishedInRoster(assignment, 'staff')
 }
 
 export async function getCurrentHackathonTerms(
@@ -886,6 +1044,19 @@ export function serializeHackathonRoleUserSummary(user: typeof users.$inferSelec
     email: user.email,
     displayName: user.displayName,
     isPlatformAdmin: user.isPlatformAdmin
+  }
+}
+
+export function serializePublishedHackathonRosterMember(user: UserRecord) {
+  return {
+    id: user.id,
+    fullName: buildPublishedHackathonRosterFullName(user),
+    company: user.company,
+    bio: user.bio,
+    xProfileUrl: user.xProfileUrl,
+    linkedinProfileUrl: user.linkedinProfileUrl,
+    githubProfileUrl: user.githubProfileUrl,
+    profileIconUpdatedAt: user.profileIconUpdatedAt
   }
 }
 

@@ -161,7 +161,7 @@ Operations:
 | --- | --- | --- | --- |
 | Create platform account after terms acceptance | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record, allows canonical `firstName` and `familyName` to remain blank until later profile completion, and records acceptance of the current required platform documents. The frontend-owned completion route is `/account/register`. When the authenticated identity must be linked to an existing platform account instead, the route returns the link-required outcome before any platform-document acceptance is recorded for the pre-link identity. |
 | Update own platform account profile | `PATCH /api/account` | authenticated user with a platform account and current platform-document acceptance | Updates canonical `firstName` and `familyName` plus optional profile fields such as `company`, `bio`, X, LinkedIn, and GitHub profile links, an optional ChatGPT email, an optional OpenAI org ID, and an optional Luma email. |
-| Get own profile icon | `GET /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Returns the uploaded profile icon object for the caller. |
+| Get profile icon | `GET /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Returns the uploaded profile icon object for the caller. When `user` and `hackathon` query parameters are provided, this route can also return the uploaded profile icon for another user who is visible to the caller through hackathon-scoped participant visibility or the published judge or staff rosters for that hackathon. |
 | Upload or replace own profile icon | `POST /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Accepts multipart upload for a single profile icon image and replaces any prior icon object. |
 | Remove own profile icon | `DELETE /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Deletes the caller's uploaded profile icon and clears profile-icon metadata on the platform user record. |
 | Delete own account | `DELETE /api/account` | authenticated user | Performs GDPR-compliant account deletion handling and writes the required audit trail. |
@@ -251,13 +251,15 @@ Operations:
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | List role assignments | `GET /api/hackathons/:hackathonId/roles` | hackathon admin or platform admin | Returns explicit assignments for the hackathon. |
+| List published judges | `GET /api/hackathons/:hackathonId/judges` | authenticated workspace user | Returns the published judge roster for the account-scoped hackathon workspace. The roster includes explicit judges plus admin assignments with judging enabled, and exposes only avatar-support data plus public profile-card fields. |
+| List published staff | `GET /api/hackathons/:hackathonId/staff` | authenticated workspace user | Returns the published staff roster for the account-scoped hackathon workspace. The roster includes explicit staff plus admin assignments with staff visibility enabled, and exposes only avatar-support data plus public profile-card fields. |
 | Create or replace role assignment | `PUT /api/hackathons/:hackathonId/roles/:userId` | hackathon admin or platform admin | Supports `hackathon_admin`, `judge`, or `staff` roles plus the `is_in_judge_pool` and `is_staff` capability flags. |
 | Remove explicit role assignment | `DELETE /api/hackathons/:hackathonId/roles/:userId` | hackathon admin or platform admin | Removes the explicit assignment. Platform-admin inheritance remains implicit. |
 | Update role-assignment capability flags | `PATCH /api/hackathons/:hackathonId/roles/:userId` | hackathon admin or platform admin | Updates admin-only `is_in_judge_pool` and `is_staff` flags without replacing the explicit role. `judge` must remain in the automatic judge pool, `staff` must remain marked as staff, and non-admin staff and judges remain distinct. |
 
 Testing:
 - Unit: role invariants plus judge-pool and staff-flag rules.
-- Integration: assignment uniqueness and permission enforcement.
+- Integration: assignment uniqueness, permission enforcement, and published-roster visibility rules.
 - End-to-end: admin role-management flows.
 
 ## Hackathon Terms

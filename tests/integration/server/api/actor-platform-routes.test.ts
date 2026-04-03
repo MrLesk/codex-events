@@ -1898,6 +1898,155 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
+  test('GET /api/account/profile-icon supports published roster reads for workspace users', async () => {
+    const profileIconsBucket = new InMemoryR2Bucket()
+    await profileIconsBucket.put(
+      'users/user_judge_icon/profile-icon',
+      pngSignatureBytes,
+      {
+        httpMetadata: {
+          contentType: 'image/png'
+        }
+      }
+    )
+
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/profile-icon', handler: accountProfileIconGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant-roster-viewer',
+        email: 'participant-roster-viewer@example.com',
+        name: 'Participant Viewer'
+      },
+      cloudflareEnv: {
+        [profileIconBindingName]: profileIconsBucket
+      },
+      runtimeConfig: {
+        profileIcons: {
+          binding: profileIconBindingName
+        }
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'user_participant_roster_viewer',
+        auth0Subject: 'auth0|participant-roster-viewer',
+        email: 'participant-roster-viewer@example.com',
+        displayName: 'Participant Viewer'
+      },
+      {
+        id: 'user_judge_icon',
+        auth0Subject: 'auth0|judge-profile-icon',
+        email: 'judge-profile-icon@example.com',
+        displayName: 'Judge Icon User',
+        profileIconUpdatedAt: fixtureTimestamp()
+      },
+      {
+        id: 'user_unrelated_icon',
+        auth0Subject: 'auth0|unrelated-profile-icon',
+        email: 'unrelated-profile-icon@example.com',
+        displayName: 'Unrelated Icon User',
+        profileIconUpdatedAt: fixtureTimestamp()
+      }
+    ])
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+    await harness.database.insert(userPlatformDocumentAcceptances).values([
+      {
+        id: 'acceptance_participant_roster_viewer_privacy',
+        userId: 'user_participant_roster_viewer',
+        platformDocumentId: 'privacy_v1',
+        acceptedAt: '2026-03-03T00:00:00.000Z'
+      },
+      {
+        id: 'acceptance_participant_roster_viewer_terms',
+        userId: 'user_participant_roster_viewer',
+        platformDocumentId: 'terms_v1',
+        acceptedAt: '2026-03-03T00:00:00.000Z'
+      }
+    ])
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_profile_icon',
+      name: 'Profile Icon Fixture Hackathon',
+      slug: 'profile-icon-fixture-hackathon',
+      description: 'Fixture hackathon',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'user_participant_roster_viewer'
+    })
+    await harness.database.insert(hackathonTermsDocuments).values({
+      id: 'hackathon_terms_profile_icon_v1',
+      hackathonId: 'hackathon_profile_icon',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Application Terms v1',
+      content: 'Terms',
+      publishedAt: '2026-03-03T00:00:00.000Z'
+    })
+    await harness.database.insert(userApplications).values({
+      id: 'application_participant_roster_viewer',
+      hackathonId: 'hackathon_profile_icon',
+      userId: 'user_participant_roster_viewer',
+      status: 'submitted',
+      applicationTermsDocumentId: 'hackathon_terms_profile_icon_v1',
+      applicationTermsAcceptedAt: '2026-03-03T00:00:00.000Z'
+    })
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_judge_profile_icon',
+      hackathonId: 'hackathon_profile_icon',
+      userId: 'user_judge_icon',
+      role: 'judge',
+      isInJudgePool: true,
+      createdAt: fixtureTimestamp()
+    })
+
+    const iconResponse = await harness.request(
+      '/api/account/profile-icon?user=user_judge_icon&hackathon=hackathon_profile_icon'
+    )
+
+    expect(iconResponse.status).toBe(200)
+    expect(iconResponse.headers.get('content-type')).toBe('image/png')
+    expect(iconResponse.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(new Uint8Array(await iconResponse.arrayBuffer())).toEqual(pngSignatureBytes)
+
+    const hiddenIconResponse = await harness.request(
+      '/api/account/profile-icon?user=user_unrelated_icon&hackathon=hackathon_profile_icon'
+    )
+
+    expect(hiddenIconResponse.status).toBe(404)
+    expect(await hiddenIconResponse.json()).toMatchObject({
+      error: {
+        code: 'profile_icon_not_found'
+      }
+    })
+  })
+
   test('POST /api/account/profile-icon rejects invalid content types and oversized files', async () => {
     const profileIconsBucket = new InMemoryR2Bucket()
     const harness = createApiRouteTestHarness({

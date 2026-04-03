@@ -7,7 +7,9 @@ import hackathonParticipationGetHandler from '../../../../server/api/hackathons/
 import hackathonsPostHandler from '../../../../server/api/hackathons/index.post'
 import hackathonDetailGetHandler from '../../../../server/api/hackathons/[hackathonId]/index.get'
 import hackathonCriteriaGetHandler from '../../../../server/api/hackathons/[hackathonId]/evaluation-criteria/index.get'
+import hackathonJudgesGetHandler from '../../../../server/api/hackathons/[hackathonId]/judges/index.get'
 import hackathonPrizesGetHandler from '../../../../server/api/hackathons/[hackathonId]/prizes/index.get'
+import hackathonStaffGetHandler from '../../../../server/api/hackathons/[hackathonId]/staff/index.get'
 import hackathonBySlugGetHandler from '../../../../server/api/hackathons/slug/[slug]/index.get'
 import openRegistrationPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/open-registration.post'
 import publicHackathonsGetHandler from '../../../../server/api/public/hackathons/index.get'
@@ -31,11 +33,13 @@ import {
   hackathonTermsDocuments,
   hackathons,
   judgeAssignments,
+  platformDocuments,
   prizes,
   prizeEligibilitySnapshots,
   submissions,
   teamMembers,
   teams,
+  userPlatformDocumentAcceptances,
   userApplications,
   users
 } from '../../../../server/database/schema'
@@ -124,6 +128,44 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     const day = String(Math.floor(offset / 24) + 1).padStart(2, '0')
     const hour = String(offset % 24).padStart(2, '0')
     return `2026-04-${day}T${hour}:00:00.000Z`
+  }
+
+  async function seedCurrentPlatformConsent(
+    harness: ReturnType<typeof createApiRouteTestHarness>,
+    userId: string
+  ) {
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+    await harness.database.insert(userPlatformDocumentAcceptances).values([
+      {
+        id: `acceptance_${userId}_privacy`,
+        userId,
+        platformDocumentId: 'privacy_v1',
+        acceptedAt: '2026-03-03T00:00:00.000Z'
+      },
+      {
+        id: `acceptance_${userId}_terms`,
+        userId,
+        platformDocumentId: 'terms_v1',
+        acceptedAt: '2026-03-03T00:00:00.000Z'
+      }
+    ])
   }
 
   test('GET /api/hackathons hides draft hackathons from public callers', async () => {
@@ -592,6 +634,250 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
             }
           }
         ]
+      }
+    })
+  })
+
+  test('workspace users can read published judge and staff rosters without admin-only fields', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/judges', handler: hackathonJudgesGetHandler },
+        { method: 'get', path: '/api/hackathons/:hackathonId/staff', handler: hackathonStaffGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant_viewer',
+        email: 'participant-viewer@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'participant_viewer',
+        auth0Subject: 'auth0|participant_viewer',
+        email: 'participant-viewer@example.com',
+        displayName: 'Participant Viewer',
+        firstName: 'Participant',
+        familyName: 'Viewer'
+      },
+      {
+        id: 'judge_user',
+        auth0Subject: 'auth0|judge_user',
+        email: 'judge@example.com',
+        displayName: 'Judge User',
+        firstName: 'Judge',
+        familyName: 'User',
+        company: 'Codex Labs',
+        bio: 'Reviews technical execution.',
+        xProfileUrl: 'https://x.com/judge-user',
+        profileIconUpdatedAt: '2026-03-15T10:00:00.000Z'
+      },
+      {
+        id: 'staff_user',
+        auth0Subject: 'auth0|staff_user',
+        email: 'staff@example.com',
+        displayName: 'Staff User',
+        firstName: 'Staff',
+        familyName: 'User',
+        company: 'Community Ops',
+        bio: 'Keeps the event moving.',
+        linkedinProfileUrl: 'https://linkedin.com/in/staff-user'
+      },
+      {
+        id: 'admin_user',
+        auth0Subject: 'auth0|admin_user',
+        email: 'admin@example.com',
+        displayName: 'Admin User',
+        firstName: 'Admin',
+        familyName: 'User',
+        company: 'Codex Community',
+        bio: 'Supports operations and judging.',
+        githubProfileUrl: 'https://github.com/admin-user'
+      }
+    ])
+    await seedCurrentPlatformConsent(harness, 'participant_viewer')
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_1',
+      name: 'Fixture Hackathon',
+      slug: 'fixture-hackathon',
+      description: 'Fixture hackathon',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'admin_user'
+    })
+    await harness.database.insert(hackathonTermsDocuments).values({
+      id: 'terms_app_1',
+      hackathonId: 'hackathon_1',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Application Terms v1',
+      content: 'Terms',
+      publishedAt: '2026-03-03T00:00:00.000Z'
+    })
+    await harness.database.insert(userApplications).values({
+      id: 'application_viewer',
+      hackathonId: 'hackathon_1',
+      userId: 'participant_viewer',
+      status: 'submitted',
+      applicationTermsDocumentId: 'terms_app_1',
+      applicationTermsAcceptedAt: '2026-03-03T00:00:00.000Z'
+    })
+    await harness.database.insert(hackathonRoleAssignments).values([
+      {
+        id: 'assignment_judge_user',
+        hackathonId: 'hackathon_1',
+        userId: 'judge_user',
+        role: 'judge',
+        isInJudgePool: true,
+        isStaff: false,
+        createdAt: '2026-03-10T09:00:00.000Z'
+      },
+      {
+        id: 'assignment_staff_user',
+        hackathonId: 'hackathon_1',
+        userId: 'staff_user',
+        role: 'staff',
+        isInJudgePool: false,
+        isStaff: true,
+        createdAt: '2026-03-10T09:05:00.000Z'
+      },
+      {
+        id: 'assignment_admin_user',
+        hackathonId: 'hackathon_1',
+        userId: 'admin_user',
+        role: 'hackathon_admin',
+        isInJudgePool: true,
+        isStaff: true,
+        createdAt: '2026-03-10T09:10:00.000Z'
+      }
+    ])
+
+    const judgesResponse = await harness.request('/api/hackathons/hackathon_1/judges')
+    expect(judgesResponse.status).toBe(200)
+    const judgesPayload = await judgesResponse.json()
+    expect(judgesPayload).toMatchObject({
+      meta: {
+        total: 2
+      }
+    })
+    expect(judgesPayload.data).toEqual([
+      {
+        id: 'admin_user',
+        fullName: 'Admin User',
+        company: 'Codex Community',
+        bio: 'Supports operations and judging.',
+        xProfileUrl: null,
+        linkedinProfileUrl: null,
+        githubProfileUrl: 'https://github.com/admin-user',
+        profileIconUpdatedAt: null
+      },
+      {
+        id: 'judge_user',
+        fullName: 'Judge User',
+        company: 'Codex Labs',
+        bio: 'Reviews technical execution.',
+        xProfileUrl: 'https://x.com/judge-user',
+        linkedinProfileUrl: null,
+        githubProfileUrl: null,
+        profileIconUpdatedAt: '2026-03-15T10:00:00.000Z'
+      }
+    ])
+    expect(judgesPayload.data[0]).not.toHaveProperty('email')
+    expect(judgesPayload.data[0]).not.toHaveProperty('isPlatformAdmin')
+    expect(judgesPayload.data[0]).not.toHaveProperty('chatgptEmail')
+    expect(judgesPayload.data[0]).not.toHaveProperty('openaiOrgId')
+    expect(judgesPayload.data[0]).not.toHaveProperty('lumaEmail')
+
+    const staffResponse = await harness.request('/api/hackathons/hackathon_1/staff')
+    expect(staffResponse.status).toBe(200)
+    expect(await staffResponse.json()).toMatchObject({
+      data: [
+        {
+          id: 'admin_user',
+          fullName: 'Admin User',
+          githubProfileUrl: 'https://github.com/admin-user'
+        },
+        {
+          id: 'staff_user',
+          fullName: 'Staff User',
+          linkedinProfileUrl: 'https://linkedin.com/in/staff-user'
+        }
+      ],
+      meta: {
+        total: 2
+      }
+    })
+  })
+
+  test('published roster reads require workspace access for the hackathon', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/judges', handler: hackathonJudgesGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|unrelated_user',
+        email: 'unrelated@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'unrelated_user',
+        auth0Subject: 'auth0|unrelated_user',
+        email: 'unrelated@example.com',
+        displayName: 'Unrelated User'
+      },
+      {
+        id: 'admin_user',
+        auth0Subject: 'auth0|admin_user',
+        email: 'admin@example.com',
+        displayName: 'Admin User'
+      }
+    ])
+    await seedCurrentPlatformConsent(harness, 'unrelated_user')
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_1',
+      name: 'Fixture Hackathon',
+      slug: 'fixture-hackathon',
+      description: 'Fixture hackathon',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'admin_user'
+    })
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'assignment_admin_user',
+      hackathonId: 'hackathon_1',
+      userId: 'admin_user',
+      role: 'hackathon_admin',
+      isInJudgePool: true,
+      isStaff: true,
+      createdAt: '2026-03-10T09:10:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/judges')
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'hackathon_workspace_access_required'
       }
     })
   })

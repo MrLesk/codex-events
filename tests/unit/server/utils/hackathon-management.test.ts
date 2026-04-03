@@ -6,7 +6,9 @@ import {
   buildHackathonUpdatePayload,
   assertOpenRegistrationAllowed,
   assertOpenSubmissionAllowed,
-  assertRoleCapabilityInvariant
+  assertRoleCapabilityInvariant,
+  isHackathonRolePublishedInRoster,
+  serializePublishedHackathonRosterMember
 } from '../../../../server/utils/hackathon-management'
 
 describe('hackathon management utilities', () => {
@@ -266,5 +268,88 @@ describe('hackathon management utilities', () => {
     expect(patch).not.toHaveProperty('agendaItems')
     expect(patch).not.toHaveProperty('name')
     expect(typeof patch.updatedAt).toBe('string')
+  })
+
+  test('derives published judge and staff rosters from canonical role assignments', () => {
+    expect(isHackathonRolePublishedInRoster({
+      role: 'judge',
+      isInJudgePool: true,
+      isStaff: false
+    }, 'judge')).toBe(true)
+
+    expect(isHackathonRolePublishedInRoster({
+      role: 'hackathon_admin',
+      isInJudgePool: true,
+      isStaff: false
+    }, 'judge')).toBe(true)
+
+    expect(isHackathonRolePublishedInRoster({
+      role: 'hackathon_admin',
+      isInJudgePool: false,
+      isStaff: true
+    }, 'staff')).toBe(true)
+
+    expect(isHackathonRolePublishedInRoster({
+      role: 'staff',
+      isInJudgePool: false,
+      isStaff: true
+    }, 'judge')).toBe(false)
+  })
+
+  test('serializes published roster members with full-name fallback and public profile fields only', () => {
+    expect(serializePublishedHackathonRosterMember({
+      id: 'user_1',
+      auth0Subject: 'auth0|user_1',
+      email: 'hidden@example.com',
+      displayName: 'Display Name',
+      firstName: 'Display',
+      familyName: 'Name',
+      company: 'Codex Labs',
+      bio: 'Builds careful systems.',
+      isPlatformAdmin: true,
+      xProfileUrl: 'https://x.com/display-name',
+      linkedinProfileUrl: 'https://linkedin.com/in/display-name',
+      githubProfileUrl: 'https://github.com/display-name',
+      chatgptEmail: 'hidden-chatgpt@example.com',
+      openaiOrgId: 'org-hidden',
+      lumaEmail: 'hidden-luma@example.com',
+      lumaUsername: 'hidden-luma',
+      profileIconUpdatedAt: '2026-03-20T12:00:00.000Z',
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-02T00:00:00.000Z',
+      deletedAt: null
+    })).toEqual({
+      id: 'user_1',
+      fullName: 'Display Name',
+      company: 'Codex Labs',
+      bio: 'Builds careful systems.',
+      xProfileUrl: 'https://x.com/display-name',
+      linkedinProfileUrl: 'https://linkedin.com/in/display-name',
+      githubProfileUrl: 'https://github.com/display-name',
+      profileIconUpdatedAt: '2026-03-20T12:00:00.000Z'
+    })
+
+    expect(serializePublishedHackathonRosterMember({
+      id: 'user_2',
+      auth0Subject: 'auth0|user_2',
+      email: 'fallback@example.com',
+      displayName: 'Fallback Display',
+      firstName: '',
+      familyName: '',
+      company: null,
+      bio: null,
+      isPlatformAdmin: false,
+      xProfileUrl: null,
+      linkedinProfileUrl: null,
+      githubProfileUrl: null,
+      chatgptEmail: null,
+      openaiOrgId: null,
+      lumaEmail: null,
+      lumaUsername: null,
+      profileIconUpdatedAt: null,
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-02T00:00:00.000Z',
+      deletedAt: null
+    }).fullName).toBe('Fallback Display')
   })
 })

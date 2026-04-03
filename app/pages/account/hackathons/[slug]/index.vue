@@ -16,6 +16,7 @@ import AccountHackathonParticipantTeamPanel from '~/components/account/hackathon
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
 import AccountHackathonCompetitionPanel from '~/components/account/hackathons/AccountHackathonCompetitionPanel.vue'
 import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
+import AccountHackathonPublishedRosterPanel from '~/components/account/hackathons/AccountHackathonPublishedRosterPanel.vue'
 import AccountHackathonParticipantVisibilityPanel from '~/components/account/hackathons/AccountHackathonParticipantVisibilityPanel.vue'
 import AccountHackathonRoleRosterPanel from '~/components/account/hackathons/AccountHackathonRoleRosterPanel.vue'
 import AccountHackathonTeamVisibilityPanel from '~/components/account/hackathons/AccountHackathonTeamVisibilityPanel.vue'
@@ -699,17 +700,13 @@ useSeoMeta({
           empty-assigned-message="No judges yet. Admins can also review once judging is enabled."
         />
 
-        <AppCard
+        <AccountHackathonPublishedRosterPanel
           v-else
-          class="hackathon-workspace-detail-panel p-6"
-        >
-          <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-            Judges
-          </h2>
-          <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-            Judge roster publishing is not exposed yet. This tab is reserved for the official hackathon judge list.
-          </p>
-        </AppCard>
+          :hackathon-id="workspaceHackathonId"
+          role="judge"
+          title="Judges"
+          description="Meet the people reviewing submissions for this hackathon."
+        />
       </section>
 
       <section
@@ -727,17 +724,13 @@ useSeoMeta({
           empty-assigned-message="No staff yet. Admins can also be marked as staff when they need internal visibility."
         />
 
-        <AppCard
+        <AccountHackathonPublishedRosterPanel
           v-else
-          class="hackathon-workspace-detail-panel p-6"
-        >
-          <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-            Staff
-          </h2>
-          <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-            Staff roster publishing is not exposed yet. This tab is reserved for the official hackathon staff list.
-          </p>
-        </AppCard>
+          :hackathon-id="workspaceHackathonId"
+          role="staff"
+          title="Staff"
+          description="Meet the people supporting this hackathon behind the scenes."
+        />
       </section>
 
       <section

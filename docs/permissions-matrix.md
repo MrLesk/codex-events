@@ -5,6 +5,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 ## Actor Definitions
 
 - `user`: an authenticated platform user with no special team or hackathon authority
+- `workspace_user`: a platform user who can access a specific hackathon in `/account/hackathons/:slug` because that user has a hackathon application, an active team membership, or a hackathon role assignment for that hackathon
 - `approved_user`: a user whose `UserApplication` for a specific hackathon is approved
 - `team_member`: a user with an active `TeamMember` record on a team
 - `team_admin`: a `team_member` whose team role is `admin`
@@ -65,6 +66,13 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Remove `hackathon_admin` role assignments | Yes | Yes |
 | Update explicit judging participation for an admin assignment | Yes | Yes |
 | Update explicit staff designation for an admin assignment | Yes | Yes |
+
+## Published Roster Permissions
+
+| Action | Workspace User | Staff | Judge | Hackathon Admin | Platform Admin |
+| --- | --- | --- | --- | --- | --- |
+| View published judge roster in the account workspace | Yes | Yes | Yes | Yes | Yes |
+| View published staff roster in the account workspace | Yes | Yes | Yes | Yes | Yes |
 
 ## Application Permissions
 
@@ -147,6 +155,8 @@ This document defines the canonical permissions for the Codex hackathon platform
 
 - Users can view only their own application records.
 - Staff can view hackathon-wide participant and team data.
+- Workspace users can view the published judge and staff rosters for hackathons they can access in `/account/hackathons/:slug`.
+- Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Team members can view their own team membership and submission data.
 - Team admins can view team join requests and manage team membership.
 - Judges see only the blind judging view for assigned submissions.

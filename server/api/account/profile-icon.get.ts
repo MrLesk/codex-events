@@ -3,10 +3,14 @@ import { setHeader } from 'h3'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '../../auth/actor'
+import { resolveHackathonAuthorization } from '../../auth/authorization'
 import { users, userApplications } from '../../database/schema'
-import { requireHackathonApplicationVisibilityContext } from '../../utils/applications'
 import { defineApiHandler } from '../../utils/api-handler'
 import { ApiError } from '../../utils/api-error'
+import {
+  isUserVisibleInPublishedHackathonRoster,
+  requireHackathonWorkspaceAccess
+} from '../../utils/hackathon-management'
 import { getProfileIconObject } from '../../utils/profile-icons'
 import { parseValidatedQuery } from '../../utils/validation'
 
@@ -35,18 +39,26 @@ export default defineApiHandler(async (event) => {
       })
     }
 
-    const { database } = await requireHackathonApplicationVisibilityContext(event, query.hackathon)
-    const hasHackathonApplication = await database.query.userApplications.findFirst({
-      columns: {
-        id: true
-      },
-      where: and(
-        eq(userApplications.hackathonId, query.hackathon),
-        eq(userApplications.userId, requestedUserId)
-      )
-    })
+    const { database } = await requireHackathonWorkspaceAccess(event, query.hackathon)
+    const authorization = await resolveHackathonAuthorization(event, query.hackathon)
+    const hasHackathonApplication = authorization.canViewParticipantsAndTeams
+      ? await database.query.userApplications.findFirst({
+          columns: {
+            id: true
+          },
+          where: and(
+            eq(userApplications.hackathonId, query.hackathon),
+            eq(userApplications.userId, requestedUserId)
+          )
+        })
+      : null
+    const isPublishedRosterMember = await isUserVisibleInPublishedHackathonRoster(
+      database,
+      query.hackathon,
+      requestedUserId
+    )
 
-    if (!hasHackathonApplication) {
+    if (!hasHackathonApplication && !isPublishedRosterMember) {
       throw new ApiError({
         statusCode: 404,
         code: 'profile_icon_not_found',

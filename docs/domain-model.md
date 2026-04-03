@@ -129,6 +129,11 @@ Rules:
 - A user with role `staff` must be marked as staff and must not be in the automatic judge distribution pool.
 - A user with role `hackathon_admin` can be in or out of the automatic judge distribution pool and can be in or out of staff designation.
 - Only a user with role `hackathon_admin` can combine admin access with judging participation and/or staff designation.
+- The account-scoped hackathon workspace publishes a judge roster and a staff roster derived from `HackathonRoleAssignment`.
+- The published judge roster includes explicit `judge` assignments plus `hackathon_admin` assignments with `is_in_judge_pool = true`.
+- The published staff roster includes explicit `staff` assignments plus `hackathon_admin` assignments with `is_staff = true`.
+- Published judge and staff rosters are visible to any platform user who can access that hackathon in the account-scoped workspace.
+- Published roster cards expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Any actor performing a judge review sees the blind judging view rather than the admin view.
 - The blind judging view includes anonymized application information and excludes team identity.
 
