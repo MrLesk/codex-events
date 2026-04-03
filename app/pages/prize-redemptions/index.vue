@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatHackathonDate } from '~/composables/useHackathonPresentation'
 import {
   describePrizeRedemptionRecipient,
   formatPrizeRedemptionStatus,
@@ -200,7 +201,7 @@ useSeoMeta({
                   </h3>
                   <p class="text-sm text-toned">
                     <template v-if="task.currentWinnerTerms">
-                      Version {{ task.currentWinnerTerms.version }} published {{ task.currentWinnerTerms.publishedAt }}.
+                      Version {{ task.currentWinnerTerms.version }} published {{ formatHackathonDate(task.currentWinnerTerms.publishedAt) }}.
                     </template>
                     <template v-else>
                       The current winner terms could not be resolved for this hackathon.

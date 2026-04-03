@@ -5,6 +5,7 @@ import type {
   TeamMemberRecord
 } from '~/utils/team-workspace'
 
+import { formatTimestamp } from '~/utils/date-formatting'
 import { teamProfileFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
 
@@ -129,7 +130,7 @@ function submitProfileForm() {
             Created
           </p>
           <p class="mt-2 text-sm font-medium text-highlighted">
-            {{ team.createdAt }}
+            {{ formatTimestamp(team.createdAt) }}
           </p>
         </div>
 

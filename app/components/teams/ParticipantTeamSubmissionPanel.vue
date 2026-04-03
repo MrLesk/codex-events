@@ -13,6 +13,7 @@ import {
   getTeamSubmissionStatusColor,
   getTeamSubmissionWorkspaceStatus
 } from '~/utils/team-submission'
+import { formatTimestamp } from '~/utils/date-formatting'
 import { teamSubmissionFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
 
@@ -179,7 +180,7 @@ const submitSubmissionForm = handleSubmit(() => {
               Submitted at
             </p>
             <p class="mt-2 text-sm font-medium text-highlighted">
-              {{ submission?.submittedAt ?? 'Not submitted yet' }}
+              {{ formatTimestamp(submission?.submittedAt, 'Not submitted yet') }}
             </p>
           </div>
 
@@ -188,7 +189,7 @@ const submitSubmissionForm = handleSubmit(() => {
               Last updated
             </p>
             <p class="mt-2 text-sm font-medium text-highlighted">
-              {{ submission?.updatedAt ?? 'No submission record yet' }}
+              {{ formatTimestamp(submission?.updatedAt, 'No submission record yet') }}
             </p>
           </div>
         </div>

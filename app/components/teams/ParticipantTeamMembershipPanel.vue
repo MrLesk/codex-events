@@ -5,6 +5,7 @@ import type {
   TeamMemberRecord
 } from '~/utils/team-workspace'
 
+import { formatTimestamp } from '~/utils/date-formatting'
 import { formatTeamMemberRole } from '~/utils/team-workspace'
 
 defineProps<{
@@ -65,10 +66,10 @@ const emit = defineEmits<{
 
             <p class="text-sm text-toned">
               <template v-if="member.user?.email">
-                {{ member.user.email }} • Joined {{ member.joinedAt }}
+                {{ member.user.email }} • Joined {{ formatTimestamp(member.joinedAt) }}
               </template>
               <template v-else>
-                Joined {{ member.joinedAt }}
+                Joined {{ formatTimestamp(member.joinedAt) }}
               </template>
             </p>
 

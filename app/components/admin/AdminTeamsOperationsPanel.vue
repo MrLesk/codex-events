@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AdminOperationalTeam } from '~/utils/admin-workspace'
 
+import { formatTimestamp } from '~/utils/date-formatting'
 import {
   formatSubmissionStatus,
   getSubmissionStatusColor
@@ -222,7 +223,7 @@ function formatAdminNames(team: AdminOperationalTeam) {
                     Last submission event
                   </p>
                   <p class="mt-1">
-                    {{ team.submission?.submittedAt ?? team.submission?.updatedAt ?? 'No submission record' }}
+                    {{ formatTimestamp(team.submission?.submittedAt ?? team.submission?.updatedAt, 'No submission record') }}
                   </p>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TeamJoinRequestRecord } from '~/utils/team-workspace'
 
+import { formatTimestamp } from '~/utils/date-formatting'
 import {
   formatTeamJoinRequestStatus,
   getTeamJoinRequestStatusColor
@@ -75,14 +76,14 @@ const emit = defineEmits<{
               </div>
 
               <p class="text-sm text-toned">
-                {{ request.user?.email ?? request.userId }} • Requested {{ request.requestedAt }}
+                {{ request.user?.email ?? request.userId }} • Requested {{ formatTimestamp(request.requestedAt) }}
               </p>
 
               <p
                 v-if="request.reviewedAt"
                 class="text-sm text-muted"
               >
-                Reviewed {{ request.reviewedAt }} by {{ request.reviewedByUserId ?? 'system' }}.
+                Reviewed {{ formatTimestamp(request.reviewedAt) }} by {{ request.reviewedByUserId ?? 'system' }}.
               </p>
             </div>
 

@@ -18,6 +18,7 @@ import {
   filterExplicitJudgeHackathons,
   filterAssignmentsForActor,
   filterReviewableHackathons,
+  formatJudgeTimestamp,
   getJudgeWorkspaceSubjectKey,
   hasIncompleteCriterionScores,
   listAllVisibleHackathons,
@@ -144,6 +145,20 @@ function createCriterion(overrides: Partial<EvaluationCriterion> = {}): Evaluati
 }
 
 describe('judging-workspace filters', () => {
+  test('formats judge timestamps with the shared operational timestamp style', () => {
+    const value = '2026-03-24T10:00:00.000Z'
+
+    expect(formatJudgeTimestamp(value)).toBe(new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    }).format(new Date(value)))
+
+    expect(formatJudgeTimestamp(null)).toBe('Not recorded')
+  })
+
   test('limits reviewable hackathons to judge-enabled roles for non-platform admins', () => {
     const actor = createActor({
       hackathonRoles: [

@@ -5,6 +5,7 @@ import type {
   SessionActor
 } from './admin-workspace'
 import { isHackathonRoleJudgingEnabled } from './admin-workspace'
+import { formatTimestamp } from './date-formatting'
 
 export type JudgeAssignmentStatus = 'assigned' | 'judge_started' | 'judge_completed' | 'skipped'
 export type JudgeIneligibilityStatus = 'eligible' | 'ineligible'
@@ -113,14 +114,6 @@ const ineligibilityColors: Record<JudgeIneligibilityStatus, 'neutral' | 'error' 
   eligible: 'success',
   ineligible: 'error'
 }
-
-const fullDateFormatter = new Intl.DateTimeFormat('en-US', {
-  month: 'short',
-  day: 'numeric',
-  year: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit'
-})
 
 export function getJudgeWorkspaceSubjectKey(subject?: string | null) {
   return subject?.trim() || 'anonymous'
@@ -271,11 +264,7 @@ export function canMarkJudgeAssignmentIneligible(
 }
 
 export function formatJudgeTimestamp(value: string | null | undefined) {
-  if (!value) {
-    return 'Not recorded'
-  }
-
-  return fullDateFormatter.format(new Date(value))
+  return formatTimestamp(value, 'Not recorded')
 }
 
 export function formatBlindApplicationCount(count: number) {
