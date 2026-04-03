@@ -19,12 +19,6 @@ import { requireApprovedUserForHackathon } from './applications'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from './hackathon-management'
 
-const slugSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slugs must use lowercase letters, numbers, and hyphens only.')
-
 const teamNameSchema = z.string().trim().min(1)
 
 export const teamParamsSchema = routeIdParamsSchema.extend({
@@ -47,13 +41,11 @@ export const listTeamsQuerySchema = z.object({
 
 export const createTeamBodySchema = z.object({
   name: teamNameSchema,
-  slug: slugSchema,
   isOpenToJoinRequests: z.coerce.boolean().default(true)
 })
 
 export const updateTeamBodySchema = z.object({
-  name: teamNameSchema.optional(),
-  slug: slugSchema.optional()
+  name: teamNameSchema.optional()
 }).refine(
   input => Object.keys(input).length > 0,
   'At least one team field must be provided.'
@@ -72,6 +64,54 @@ type TeamRecord = typeof teams.$inferSelect
 type TeamMemberRecord = typeof teamMembers.$inferSelect
 type TeamJoinRequestRecord = typeof teamJoinRequests.$inferSelect
 type UserRecord = typeof users.$inferSelect
+
+export function createTeamSlug(name: string) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+}
+
+export async function resolveAvailableTeamSlug(
+  database: AppDatabase,
+  hackathonId: string,
+  name: string,
+  options?: {
+    excludeTeamId?: string
+  }
+) {
+  const baseSlug = createTeamSlug(name)
+
+  assertGuard(baseSlug.length > 0, {
+    code: 'team_slug_invalid',
+    message: 'Team names must include at least one letter or number.',
+    details: {
+      hackathonId,
+      name
+    },
+    statusCode: 400
+  })
+
+  let suffix = 1
+
+  while (true) {
+    const candidateSlug = suffix === 1 ? baseSlug : `${baseSlug}-${suffix}`
+    const existingTeam = await database.query.teams.findFirst({
+      where: and(
+        eq(teams.hackathonId, hackathonId),
+        eq(teams.slug, candidateSlug)
+      )
+    })
+
+    if (!existingTeam || existingTeam.id === options?.excludeTeamId) {
+      return candidateSlug
+    }
+
+    suffix += 1
+  }
+}
 
 export function assertHackathonAllowsTeamFormation(hackathon: HackathonRecord) {
   assertAllowedState(hackathon.state, ['registration_open', 'submission_open'], {
@@ -320,31 +360,6 @@ export async function getOwnApplicationStatus(
   })
 
   return application?.status ?? null
-}
-
-export async function assertTeamSlugAvailable(
-  database: AppDatabase,
-  hackathonId: string,
-  slug: string,
-  options?: {
-    excludeTeamId?: string
-  }
-) {
-  const existing = await database.query.teams.findFirst({
-    where: and(
-      eq(teams.hackathonId, hackathonId),
-      eq(teams.slug, slug)
-    )
-  })
-
-  assertGuard(!existing || existing.id === options?.excludeTeamId, {
-    code: 'team_slug_exists',
-    message: 'A team with this slug already exists in the hackathon.',
-    details: {
-      hackathonId,
-      slug
-    }
-  })
 }
 
 export async function listVisibleTeams(

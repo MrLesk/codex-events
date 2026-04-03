@@ -1,7 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
 import {
-  createTeamSlug,
   formatTeamJoinRequestStatus,
   formatTeamMemberRole,
   getCreateTeamAvailability,
@@ -51,7 +50,7 @@ describe('team workspace helpers', () => {
       state: 'registration_open'
     }, 'approved', false)).toEqual({
       isOpen: true,
-      summary: 'Approved participants can create teams and request to join open teams right now.'
+      summary: 'You can create a team or request to join an open team right now.'
     })
 
     expect(getTeamFormationAvailability({
@@ -187,7 +186,6 @@ describe('team workspace helpers', () => {
   })
 
   test('formats stable labels for team helpers', () => {
-    expect(createTeamSlug(' North Star Builders ')).toBe('north-star-builders')
     expect(formatTeamMemberRole('admin')).toBe('Admin')
     expect(formatTeamJoinRequestStatus('pending')).toBe('Pending')
     expect(getTeamJoinRequestStatusColor('approved')).toBe('success')

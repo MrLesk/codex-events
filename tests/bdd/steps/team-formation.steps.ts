@@ -39,14 +39,6 @@ function parsePersonaKey(personaKey: string): StablePersonaKey {
   throw new Error(`Unknown stable persona key: ${personaKey}`)
 }
 
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-}
-
 When('the saved {string} session submits an application for the fixture hackathon', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
   const hackathonId = platformFixtureIds.apiTeamFormationHackathonId
@@ -129,7 +121,6 @@ Then('the remembered application should be approved by {string}', async ({ page 
 
 When('the saved {string} session creates an open team named {string}', async ({ page }, personaKey: string, teamName: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
-  const uniqueSlug = `${slugify(teamName)}-${Date.now()}`
   const state = getScenarioState(page)
   const hackathonId = state.hackathonId ?? platformFixtureIds.apiSoloTeamHackathonId
 
@@ -137,7 +128,6 @@ When('the saved {string} session creates an open team named {string}', async ({ 
     const response = await apiClient.post(`/api/hackathons/${hackathonId}/teams`, {
       data: {
         name: teamName,
-        slug: uniqueSlug,
         isOpenToJoinRequests: true
       }
     })

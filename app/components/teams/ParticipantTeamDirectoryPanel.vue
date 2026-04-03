@@ -7,11 +7,9 @@ import type {
 
 import { teamDirectoryCreateFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
-import { createTeamSlug } from '~/utils/team-workspace'
 
 const form = defineModel<{
   name: string
-  slug: string
   isOpenToJoinRequests: boolean
 }>('form', {
   required: true
@@ -47,33 +45,12 @@ function isActionPending(actionKey: string) {
 }
 
 const errors = reactive({
-  name: '',
-  slug: ''
+  name: ''
 })
 const submitCount = ref(0)
 
-const hasManuallyEditedSlug = ref(false)
-
-watch(() => form.value.name, (nextName) => {
-  if (hasManuallyEditedSlug.value) {
-    return
-  }
-
-  const nextSlug = createTeamSlug(nextName)
-
-  if (form.value.slug !== nextSlug) {
-    form.value.slug = nextSlug
-  }
-})
-
-watch(() => form.value.slug, (nextSlug) => {
-  hasManuallyEditedSlug.value = nextSlug.length > 0
-    && nextSlug !== createTeamSlug(form.value.name)
-})
-
 function validateCreateForm() {
   errors.name = ''
-  errors.slug = ''
 
   const result = teamDirectoryCreateFormSchema.safeParse(cloneFormValues(form.value))
 
@@ -83,7 +60,6 @@ function validateCreateForm() {
 
   const fieldErrors = result.error.flatten().fieldErrors
   errors.name = fieldErrors.name?.[0] ?? ''
-  errors.slug = fieldErrors.slug?.[0] ?? ''
   return false
 }
 
@@ -141,26 +117,27 @@ function submitCreateForm() {
             color="primary"
             icon="i-lucide-arrow-right"
           >
-            Open team workspace
+            Open team
           </AppButton>
         </div>
       </div>
     </AppCard>
 
     <div class="grid gap-6 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-      <AppCard class="rounded-xl hackathon-workspace-detail-panel p-6">
-        <template #header>
-          <div class="space-y-1">
+      <AppCard
+        class="rounded-xl hackathon-workspace-detail-panel"
+        :ui="{ body: 'p-5' }"
+      >
+        <div class="space-y-4">
+          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
             <h2 class="text-xl font-semibold text-highlighted dark:text-white">
               Create a team
             </h2>
             <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-              Start a new team here when your application and the hackathon lifecycle allow it.
+              Start your own team here if you want to lead the group. We create the team slug automatically.
             </p>
           </div>
-        </template>
 
-        <div class="space-y-4">
           <AppAlert
             v-if="!canCreateTeam.isAllowed"
             color="warning"
@@ -169,89 +146,67 @@ function submitCreateForm() {
             :description="canCreateTeam.reason"
           />
 
-          <div class="app-inset-card px-5 py-5">
-            <form
-              class="space-y-5"
-              @submit.prevent="submitCreateForm"
+          <form
+            class="space-y-4"
+            @submit.prevent="submitCreateForm"
+          >
+            <AppFormField
+              name="participant-team-name"
+              label="Team name"
             >
-              <label class="grid gap-2">
-                <span class="text-sm font-medium text-toned">Team name</span>
-                <input
-                  v-model="form.name"
-                  type="text"
-                  class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition disabled:cursor-not-allowed disabled:opacity-60"
-                  :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-                  placeholder="North Star Builders"
-                  :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
-                >
-                <p
-                  v-if="submitCount > 0 && errors.name"
-                  class="text-xs text-error"
-                >
-                  {{ errors.name }}
-                </p>
-              </label>
+              <input
+                id="participant-team-name"
+                v-model="form.name"
+                type="text"
+                placeholder="North Star Builders"
+                class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition"
+                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+                :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
+              >
+              <p
+                v-if="submitCount > 0 && errors.name"
+                class="text-xs text-error"
+              >
+                {{ errors.name }}
+              </p>
+            </AppFormField>
 
-              <label class="grid gap-2">
-                <span class="text-sm font-medium text-toned">Team slug</span>
-                <input
-                  v-model="form.slug"
-                  type="text"
-                  class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition disabled:cursor-not-allowed disabled:opacity-60"
-                  :class="submitCount > 0 && errors.slug ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-                  placeholder="north-star-builders"
-                  :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
-                >
-                <p
-                  v-if="submitCount > 0 && errors.slug"
-                  class="text-xs text-error"
-                >
-                  {{ errors.slug }}
-                </p>
-              </label>
+            <AppCheckbox
+              v-model="form.isOpenToJoinRequests"
+              :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
+              label="Open this team to join requests immediately"
+            />
 
-              <label class="flex items-center gap-3 rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned">
-                <input
-                  v-model="form.isOpenToJoinRequests"
-                  type="checkbox"
-                  class="size-4 rounded border-default text-primary accent-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
-                  :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
-                >
-                Open this team to join requests immediately
-              </label>
-
-              <div class="flex flex-wrap gap-3">
-                <AppButton
-                  type="submit"
-                  color="primary"
-                  :loading="isCreatingTeam"
-                  :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
-                  data-testid="participant-team-create-submit"
-                >
-                  Create team
-                </AppButton>
-              </div>
-            </form>
-          </div>
+            <div class="flex flex-wrap gap-3">
+              <AppButton
+                type="submit"
+                color="primary"
+                :loading="isCreatingTeam"
+                :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
+                data-testid="participant-team-create-submit"
+              >
+                Create team
+              </AppButton>
+            </div>
+          </form>
         </div>
       </AppCard>
 
       <AppCard
         data-testid="participant-team-directory-panel"
-        class="rounded-xl hackathon-workspace-detail-panel p-6"
+        class="rounded-xl hackathon-workspace-detail-panel"
+        :ui="{ body: 'p-5' }"
       >
-        <template #header>
-          <div class="space-y-1">
+        <div class="space-y-4">
+          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
             <h2 class="text-xl font-semibold text-highlighted dark:text-white">
               Join a team
             </h2>
             <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-              Browse visible teams and request to join the ones that are still open.
+              Browse the listed teams and request to join one that is still open.
             </p>
           </div>
-        </template>
 
-        <div class="space-y-4">
           <AppAlert
             v-if="teamErrorMessage"
             color="error"

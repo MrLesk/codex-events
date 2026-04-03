@@ -6,6 +6,7 @@ import {
   assertJoinRequestPending,
   assertLeaveOrRemovalAllowed,
   assertTeamDiscoveryAllowed,
+  createTeamSlug,
   serializeTeamMember
 } from '../../../../server/utils/team-formation'
 
@@ -38,6 +39,11 @@ function createHackathon(state: 'registration_open' | 'submission_open' | 'judgi
 }
 
 describe('team formation utilities', () => {
+  test('creates team slug bases from team names', () => {
+    expect(createTeamSlug(' North Star Builders ')).toBe('north-star-builders')
+    expect(createTeamSlug('Team!!!')).toBe('team')
+  })
+
   test('team formation is limited to registration_open and submission_open', () => {
     expect(() => assertHackathonAllowsTeamFormation(createHackathon('registration_open'))).not.toThrow()
     expect(() => assertHackathonAllowsTeamFormation(createHackathon('submission_open'))).not.toThrow()

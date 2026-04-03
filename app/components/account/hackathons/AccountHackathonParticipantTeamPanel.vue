@@ -41,12 +41,10 @@ const workspace = useTeamFormationWorkspace(
 
 const createForm = reactive({
   name: '',
-  slug: '',
   isOpenToJoinRequests: true
 })
 const teamSettings = reactive({
   name: '',
-  slug: '',
   isOpenToJoinRequests: false
 })
 const submissionForm = reactive({
@@ -65,13 +63,11 @@ watch(() => workspace.ownTeam.value?.id ?? null, (nextTeamId) => {
 watch(() => workspace.currentTeam.value?.id ?? null, () => {
   if (!workspace.currentTeam.value) {
     teamSettings.name = ''
-    teamSettings.slug = ''
     teamSettings.isOpenToJoinRequests = false
     return
   }
 
   teamSettings.name = workspace.currentTeam.value.name
-  teamSettings.slug = workspace.currentTeam.value.slug
   teamSettings.isOpenToJoinRequests = workspace.currentTeam.value.isOpenToJoinRequests
 }, {
   immediate: true
@@ -117,6 +113,70 @@ const isWorkspaceLoading = computed(() => {
 const teamFormationAvailability = computed(() =>
   getTeamFormationAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
 )
+const teamPanelTitle = computed(() => {
+  if (workspace.ownTeam.value) {
+    return 'Continue with your team'
+  }
+
+  switch (ownApplicationStatus.value) {
+    case 'approved':
+      return teamFormationAvailability.value.isOpen ? 'Explore team options' : 'Team formation is closed'
+    case 'submitted':
+      return 'Approval is still pending'
+    case 'rejected':
+      return 'You were not approved'
+    case 'withdrawn':
+      return 'Participation withdrawn'
+    default:
+      return 'Team formation'
+  }
+})
+const teamPanelStatusLabel = computed(() => {
+  if (workspace.ownTeam.value) {
+    return 'On a team'
+  }
+
+  switch (ownApplicationStatus.value) {
+    case 'approved':
+      return teamFormationAvailability.value.isOpen ? 'Ready now' : 'Closed'
+    case 'submitted':
+      return 'Pending'
+    case 'rejected':
+      return 'Not approved'
+    case 'withdrawn':
+      return 'Withdrawn'
+    default:
+      return 'Locked'
+  }
+})
+const teamPanelStatusColor = computed(() => {
+  if (workspace.ownTeam.value || (ownApplicationStatus.value === 'approved' && teamFormationAvailability.value.isOpen)) {
+    return 'success'
+  }
+
+  if (ownApplicationStatus.value === 'submitted') {
+    return 'warning'
+  }
+
+  if (ownApplicationStatus.value === 'rejected' || ownApplicationStatus.value === 'withdrawn') {
+    return 'error'
+  }
+
+  return 'neutral'
+})
+const teamPanelSummary = computed(() => {
+  const ownTeam = workspace.ownTeam.value
+
+  if (ownTeam) {
+    return `You're already on ${ownTeam.name}. Use this page to manage members, review join requests, and keep your team details up to date.`
+  }
+
+  if (ownApplicationStatus.value === 'approved' && teamFormationAvailability.value.isOpen) {
+    return 'If you want to work with other participants, you can create a team or request to join one of the listed teams below.'
+  }
+
+  return teamFormationAvailability.value.summary
+})
 const createTeamAvailability = computed(() =>
   getCreateTeamAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
 )
@@ -204,7 +264,6 @@ const currentPendingJoinRequestId = computed(() =>
 
 function resetCreateForm() {
   createForm.name = ''
-  createForm.slug = ''
   createForm.isOpenToJoinRequests = true
 }
 
@@ -220,7 +279,6 @@ function buildSubmissionInput() {
 async function submitCreateTeam() {
   const createdTeam = await workspace.createTeam({
     name: createForm.name,
-    slug: createForm.slug,
     isOpenToJoinRequests: createForm.isOpenToJoinRequests
   })
 
@@ -232,7 +290,7 @@ async function submitCreateTeam() {
   resetCreateForm()
   toast.add({
     title: 'Team created',
-    description: 'Your team workspace is now active in this hackathon.',
+    description: 'Your team is ready. You can now manage members and join requests here.',
     color: 'success'
   })
 }
@@ -270,8 +328,7 @@ async function cancelJoinRequest(payload: {
 
 async function submitTeamProfile() {
   const updatedTeam = await workspace.updateCurrentTeamProfile({
-    name: teamSettings.name,
-    slug: teamSettings.slug
+    name: teamSettings.name
   })
 
   if (!updatedTeam) {
@@ -280,7 +337,7 @@ async function submitTeamProfile() {
 
   toast.add({
     title: 'Team profile updated',
-    description: 'The team name and slug were updated.',
+    description: 'The team name was updated.',
     color: 'success'
   })
 }
@@ -421,25 +478,30 @@ async function withdrawSubmission() {
     class="space-y-6"
   >
     <section class="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-      <AppCard class="rounded-xl hackathon-workspace-detail-panel p-6">
-        <div class="space-y-2">
+      <AppCard
+        class="rounded-xl hackathon-workspace-detail-panel"
+        :ui="{ body: 'p-5' }"
+      >
+        <div class="space-y-4">
           <div class="flex flex-wrap items-center gap-3">
-            <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-              Team workspace
+            <h2 class="text-[20px] font-medium text-highlighted dark:text-white">
+              {{ teamPanelTitle }}
             </h2>
 
             <AppBadge
-              :color="teamFormationAvailability.isOpen ? 'success' : 'neutral'"
+              :color="teamPanelStatusColor"
               variant="soft"
               class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
             >
-              {{ teamFormationAvailability.isOpen ? 'Open for team work' : 'Team work limited' }}
+              {{ teamPanelStatusLabel }}
             </AppBadge>
           </div>
 
-          <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-            {{ teamFormationAvailability.summary }}
-          </p>
+          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+              {{ teamPanelSummary }}
+            </p>
+          </div>
         </div>
       </AppCard>
 
@@ -455,7 +517,7 @@ async function withdrawSubmission() {
 
         <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Visible teams
+            Teams listed
           </p>
           <p class="mt-2 text-xl font-semibold text-highlighted dark:text-white">
             {{ workspace.visibleTeamsStatus.value === 'pending' ? 'Loading...' : workspace.visibleTeamsTotal.value || workspace.visibleTeams.value.length }}
@@ -477,8 +539,8 @@ async function withdrawSubmission() {
       v-if="isWorkspaceLoading"
       color="neutral"
       variant="soft"
-      title="Loading team workspace"
-      description="Resolving your participant team access for this hackathon."
+      title="Loading team access"
+      description="Checking what team actions are available to you in this hackathon."
     />
 
     <template v-else-if="actor?.kind === 'platform_user'">
@@ -502,8 +564,8 @@ async function withdrawSubmission() {
         v-else-if="!workspace.visibleHackathonId.value"
         color="error"
         variant="soft"
-        title="Team workspace unavailable"
-        description="The current hackathon could not be resolved for participant team actions."
+        title="Team access unavailable"
+        description="The current hackathon could not be resolved for team actions."
       />
 
       <AppAlert
@@ -596,14 +658,14 @@ async function withdrawSubmission() {
           color="neutral"
           variant="soft"
           title="Loading your team"
-          description="Resolving your current team workspace and submission state."
+          description="Checking your current team details and submission status."
         />
 
         <AppAlert
           v-else-if="workspace.ownTeam.value && workspace.currentTeamErrorMessage.value"
           color="error"
           variant="soft"
-          title="Team workspace unavailable"
+          title="Team unavailable"
           :description="workspace.currentTeamErrorMessage.value"
         />
 
@@ -634,7 +696,7 @@ async function withdrawSubmission() {
       v-else
       color="error"
       variant="soft"
-      title="Team workspace unavailable"
+      title="Team access unavailable"
       description="Participant team actions require a platform user session."
     />
   </div>

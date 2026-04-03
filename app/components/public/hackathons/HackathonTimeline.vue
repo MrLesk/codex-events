@@ -4,6 +4,7 @@ import type { PublicHackathon } from '~/composables/useHackathonPresentation'
 const props = defineProps<{
   hackathon: PublicHackathon
   criteriaCount?: number
+  showAddress?: boolean
 }>()
 
 function formatAttendanceLabel(hackathon: Pick<PublicHackathon, 'inPersonEvent'>) {
@@ -40,7 +41,18 @@ const eventDetailRows = computed(() => {
   if (props.hackathon.inPersonEvent) {
     rows.push({
       label: 'Location',
-      value: formatLocationLabel(props.hackathon)
+      value: props.showAddress
+        ? formatHackathonLocation(props.hackathon)
+        : formatLocationLabel(props.hackathon)
+    })
+  }
+
+  const address = props.hackathon.address.trim()
+
+  if (props.showAddress && address) {
+    rows.push({
+      label: 'Address',
+      value: address
     })
   }
 

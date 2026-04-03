@@ -6,9 +6,9 @@ import { defineApiHandler } from '../../../../../utils/api-handler'
 import { apiData } from '../../../../../utils/api-response'
 import {
   assertHackathonAllowsTeamFormation,
-  assertTeamSlugAvailable,
   getTeamWithMembersOrThrow,
   requireTeamAdminContext,
+  resolveAvailableTeamSlug,
   serializeTeam,
   teamParamsSchema,
   updateTeamBodySchema
@@ -22,12 +22,11 @@ export default defineApiHandler(async (event) => {
   const { database, hackathon, team } = await requireTeamAdminContext(event, hackathonId, teamId)
 
   assertHackathonAllowsTeamFormation(hackathon)
-
-  if (body.slug && body.slug !== team.slug) {
-    await assertTeamSlugAvailable(database, hackathonId, body.slug, {
-      excludeTeamId: team.id
-    })
-  }
+  const slug = body.name
+    ? await resolveAvailableTeamSlug(database, hackathonId, body.name, {
+        excludeTeamId: team.id
+      })
+    : team.slug
 
   const updatedAt = new Date().toISOString()
 
@@ -35,6 +34,7 @@ export default defineApiHandler(async (event) => {
     .update(teams)
     .set({
       ...body,
+      slug,
       updatedAt
     })
     .where(eq(teams.id, team.id))

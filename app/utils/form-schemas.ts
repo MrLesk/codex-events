@@ -102,14 +102,11 @@ export const imprintContactFormSchema = z.object({
 
 export const teamDirectoryCreateFormSchema = z.object({
   name: requiredTextSchema,
-  slug: slugSchema,
   isOpenToJoinRequests: z.boolean()
 })
 
 export const teamProfileFormSchema = z.object({
-  name: requiredTextSchema,
-  slug: slugSchema,
-  isOpenToJoinRequests: z.boolean()
+  name: requiredTextSchema
 })
 
 export const teamSubmissionFormSchema = z.object({

@@ -4,9 +4,9 @@ import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
 import {
   assertNoActiveTeamMembershipForHackathon,
-  assertTeamSlugAvailable,
   createTeamBodySchema,
   requireTeamFormationApprovedContext,
+  resolveAvailableTeamSlug,
   serializeTeam,
   serializeTeamMember
 } from '../../../../utils/team-formation'
@@ -20,7 +20,7 @@ export default defineApiHandler(async (event) => {
   const { database } = await requireTeamFormationApprovedContext(event, hackathonId)
 
   await assertNoActiveTeamMembershipForHackathon(database, hackathonId, actor.platformUser.id)
-  await assertTeamSlugAvailable(database, hackathonId, body.slug)
+  const slug = await resolveAvailableTeamSlug(database, hackathonId, body.name)
 
   const now = new Date().toISOString()
   const teamId = crypto.randomUUID()
@@ -31,7 +31,7 @@ export default defineApiHandler(async (event) => {
       id: teamId,
       hackathonId,
       name: body.name,
-      slug: body.slug,
+      slug,
       isOpenToJoinRequests: body.isOpenToJoinRequests,
       createdByUserId: actor.platformUser.id,
       createdAt: now,
@@ -51,7 +51,7 @@ export default defineApiHandler(async (event) => {
     id: teamId,
     hackathonId,
     name: body.name,
-    slug: body.slug,
+    slug,
     isOpenToJoinRequests: body.isOpenToJoinRequests,
     createdByUserId: actor.platformUser.id,
     createdAt: now,

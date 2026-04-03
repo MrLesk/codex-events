@@ -49,7 +49,6 @@ import {
   shouldShowParticipantOverviewStatusBanner,
   summarizeParticipantApplicationStatus
 } from '~/utils/participant-application'
-import { getTeamFormationAvailability } from '~/utils/team-workspace'
 import {
   formatTeamSubmissionStatus,
   getTeamSubmissionStateSummary,
@@ -399,13 +398,19 @@ const withdrawApplicationAvailability = computed(() =>
 )
 const withdrawalDescription = 'If you withdraw, you will no longer be eligible to participate or attend in person through this application.'
 
-const teamFormationAvailability = computed(() =>
-  getTeamFormationAvailability(
-    hackathon.value,
-    applicationStatus.value,
-    Boolean(participationRecord.value?.activeTeam)
-  )
+const approvedOverviewTeamActionTitle = computed(() =>
+  participationRecord.value?.activeTeam ? 'Continue with your team' : 'Explore team options'
 )
+const approvedOverviewTeamActionDescription = computed(() => {
+  const activeTeam = participationRecord.value?.activeTeam
+
+  if (activeTeam) {
+    return `You're already on ${activeTeam.name}. Use the Team tab to manage members and keep your team details up to date before submissions open.`
+  }
+
+  return 'If you want to work with other participants, you can create a team or request to join one from the Team tab before submissions open.'
+})
+const approvedOverviewDetailsActionDescription = 'Check the schedule, location, and full address before the hackathon starts.'
 const showTeamAndSubmissionCards = computed(() => hasHackathonEnteredSubmissionPhase(hackathon.value))
 const submissionStatus = computed(() =>
   getTeamSubmissionWorkspaceStatus(participationRecord.value?.latestSubmission ?? null)
@@ -420,10 +425,10 @@ const submissionRoleSummary = computed(() => {
   }
 
   if (participationRecord.value.activeTeam.membershipRole === 'admin') {
-    return 'You are a team admin and can manage submission actions when lifecycle guards allow them.'
+    return 'You are a team admin and can manage submission actions when they are available.'
   }
 
-  return 'You are a team member with read-only submission visibility. Team admins manage submission actions.'
+  return 'You can review the submission here. Team admins handle submission actions.'
 })
 
 const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
@@ -684,76 +689,59 @@ useSeoMeta({
               :description="withdrawApplicationErrorMessage"
             />
 
-            <section
-              v-if="applicationStatus === 'submitted' || applicationStatus === 'approved'"
-              class="rounded-xl hackathon-workspace-detail-inset px-5 py-5"
-            >
-              <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div class="space-y-2">
-                  <p class="text-sm font-semibold text-highlighted dark:text-white">
-                    Withdraw from this hackathon
-                  </p>
-                  <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    {{ withdrawalDescription }}
-                  </p>
-                  <p
-                    v-if="!withdrawApplicationAvailability.isAllowed && withdrawApplicationAvailability.reason"
-                    class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
-                  >
-                    {{ withdrawApplicationAvailability.reason }}
-                  </p>
-                </div>
-
-                <AppButton
-                  color="error"
-                  variant="soft"
-                  :loading="isWithdrawApplicationPending"
-                  :disabled="!withdrawApplicationAvailability.isAllowed || isWithdrawApplicationPending"
-                  @click="withdrawOwnApplication"
-                >
-                  Withdraw participation
-                </AppButton>
-              </div>
-            </section>
-
             <template v-if="applicationStatus === 'approved'">
-              <AppAlert
+              <section
                 v-if="showApprovedOverviewActions"
-                color="neutral"
-                variant="soft"
-                title="Open team workspace"
-                :description="teamFormationAvailability.summary"
+                class="grid gap-4 lg:grid-cols-2"
               >
-                <div class="mt-3 flex flex-wrap gap-3">
-                  <AppButton
-                    :to="teamTabHref"
-                    color="neutral"
-                    variant="solid"
-                    trailing-icon="i-lucide-arrow-up-right"
-                  >
-                    Open Team tab
-                  </AppButton>
-                </div>
-              </AppAlert>
+                <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+                  <div class="flex h-full flex-col gap-4">
+                    <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+                      <h2 class="text-lg font-semibold text-highlighted dark:text-white">
+                        {{ approvedOverviewTeamActionTitle }}
+                      </h2>
+                      <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                        {{ approvedOverviewTeamActionDescription }}
+                      </p>
+                    </div>
 
-              <AppAlert
-                v-if="showApprovedOverviewActions"
-                color="neutral"
-                variant="soft"
-                title="Check event details"
-                description="Review the full schedule, event details, and participant address information for this hackathon."
-              >
-                <div class="mt-3 flex flex-wrap gap-3">
-                  <AppButton
-                    :to="detailsTabHref"
-                    color="neutral"
-                    variant="solid"
-                    trailing-icon="i-lucide-arrow-up-right"
-                  >
-                    Open Details tab
-                  </AppButton>
+                    <div>
+                      <AppButton
+                        :to="teamTabHref"
+                        color="neutral"
+                        variant="solid"
+                        trailing-icon="i-lucide-arrow-up-right"
+                      >
+                        Go to Team
+                      </AppButton>
+                    </div>
+                  </div>
                 </div>
-              </AppAlert>
+
+                <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+                  <div class="flex h-full flex-col gap-4">
+                    <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+                      <h2 class="text-lg font-semibold text-highlighted dark:text-white">
+                        Review the event details
+                      </h2>
+                      <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                        {{ approvedOverviewDetailsActionDescription }}
+                      </p>
+                    </div>
+
+                    <div>
+                      <AppButton
+                        :to="detailsTabHref"
+                        color="neutral"
+                        variant="solid"
+                        trailing-icon="i-lucide-arrow-up-right"
+                      >
+                        Open Details
+                      </AppButton>
+                    </div>
+                  </div>
+                </div>
+              </section>
 
               <section
                 v-if="showTeamAndSubmissionCards"
@@ -761,7 +749,7 @@ useSeoMeta({
               >
                 <AppCard class="hackathon-workspace-detail-inset p-6">
                   <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                    Team workspace
+                    Team
                   </h2>
 
                   <template v-if="participationRecord?.activeTeam">
@@ -779,7 +767,7 @@ useSeoMeta({
                       trailing-icon="i-lucide-arrow-up-right"
                       class="mt-4"
                     >
-                      Open team workspace
+                      Go to Team
                     </AppButton>
                   </template>
 
@@ -795,7 +783,7 @@ useSeoMeta({
                       trailing-icon="i-lucide-arrow-up-right"
                       class="mt-4"
                     >
-                      Open Team tab
+                      Go to Team
                     </AppButton>
                   </template>
                 </AppCard>
@@ -828,11 +816,43 @@ useSeoMeta({
                     trailing-icon="i-lucide-arrow-up-right"
                     class="mt-4"
                   >
-                    Open Team tab
+                    Go to Team
                   </AppButton>
                 </AppCard>
               </section>
             </template>
+
+            <section
+              v-if="applicationStatus === 'submitted' || applicationStatus === 'approved'"
+              class="rounded-xl hackathon-workspace-detail-inset px-5 py-5"
+            >
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="space-y-2">
+                  <p class="text-sm font-semibold text-highlighted dark:text-white">
+                    Withdraw from this hackathon
+                  </p>
+                  <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                    {{ withdrawalDescription }}
+                  </p>
+                  <p
+                    v-if="!withdrawApplicationAvailability.isAllowed && withdrawApplicationAvailability.reason"
+                    class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
+                  >
+                    {{ withdrawApplicationAvailability.reason }}
+                  </p>
+                </div>
+
+                <AppButton
+                  color="error"
+                  variant="soft"
+                  :loading="isWithdrawApplicationPending"
+                  :disabled="!withdrawApplicationAvailability.isAllowed || isWithdrawApplicationPending"
+                  @click="withdrawOwnApplication"
+                >
+                  Withdraw participation
+                </AppButton>
+              </div>
+            </section>
           </div>
         </section>
 
@@ -880,6 +900,7 @@ useSeoMeta({
         <HackathonTimeline
           :hackathon="hackathon"
           :criteria-count="criteriaCount"
+          :show-address="applicationStatus === 'approved'"
         />
 
         <HackathonAgendaPanel :agenda-items="hackathon.agendaItems" />

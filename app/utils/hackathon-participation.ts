@@ -55,8 +55,22 @@ export interface HackathonParticipationApiDataResponse<T> {
   data: T
 }
 
+export interface HackathonParticipationPrimaryAction {
+  href: string
+  label: string
+}
+
 export function normalizeHackathonParticipationApiError(error: unknown) {
   return normalizeParticipantApiError(error)
+}
+
+export function getHackathonParticipationPrimaryAction(
+  record: Pick<HackathonParticipationRecord, 'hackathon' | 'application' | 'activeTeam'>
+): HackathonParticipationPrimaryAction {
+  return {
+    href: `/account/hackathons/${record.hackathon.slug}`,
+    label: 'Open overview'
+  }
 }
 
 export function formatParticipationStatusLabel(record: HackathonParticipationRecord) {

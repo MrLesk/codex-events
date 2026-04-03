@@ -78,15 +78,6 @@ function parsePersonaKey(personaKey: string): StablePersonaKey {
   throw new Error(`Unknown stable persona key: ${personaKey}`)
 }
 
-function createTeamSlug(name: string) {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-{2,}/g, '-')
-}
-
 async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
   const storageStatePath = storageStatePathForPersona(personaKey)
 
@@ -145,8 +136,6 @@ When('I create a participant team named {string}', async ({ page }, baseName: st
     has: page.getByTestId('participant-team-create-submit')
   })
   const teamNameInput = createForm.getByLabel('Team name')
-  const teamSlugInput = createForm.getByLabel('Team slug')
-  const expectedSlug = createTeamSlug(uniqueTeamName)
 
   await expect.poll(async () => {
     await teamNameInput.fill(uniqueTeamName)
@@ -154,13 +143,6 @@ When('I create a participant team named {string}', async ({ page }, baseName: st
   }, {
     timeout: 5_000
   }).toBe(uniqueTeamName)
-
-  await expect.poll(async () => {
-    await teamSlugInput.fill(expectedSlug)
-    return await teamSlugInput.inputValue()
-  }, {
-    timeout: 5_000
-  }).toBe(expectedSlug)
 
   await page.waitForTimeout(1_000)
   await page.getByTestId('participant-team-create-submit').click()

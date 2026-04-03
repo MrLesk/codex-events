@@ -294,7 +294,6 @@ describe('TASK-3.6 team formation routes', () => {
       method: 'POST',
       body: JSON.stringify({
         name: 'Requester Team',
-        slug: 'requester-team',
         isOpenToJoinRequests: false
       })
     })
@@ -323,6 +322,43 @@ describe('TASK-3.6 team formation routes', () => {
     expect(createdTeam).toBeTruthy()
   })
 
+  test('create team derives a unique slug from the submitted team name', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|requester',
+        email: 'requester@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedTeamFormationContext(harness)
+
+    const createResponse = await harness.request('/api/hackathons/hackathon_1/teams', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Alpha Team',
+        isOpenToJoinRequests: true
+      })
+    })
+
+    expect(createResponse.status).toBe(200)
+    expect(await createResponse.json()).toMatchObject({
+      data: {
+        name: 'Alpha Team',
+        slug: 'alpha-team-2',
+        isOpenToJoinRequests: true
+      }
+    })
+
+    const createdTeam = await harness.database.query.teams.findFirst({
+      where: and(
+        eq(teams.hackathonId, 'hackathon_1'),
+        eq(teams.slug, 'alpha-team-2')
+      )
+    })
+    expect(createdTeam).toBeTruthy()
+  })
+
   test('team admins can rename teams and update join openness', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
@@ -337,8 +373,7 @@ describe('TASK-3.6 team formation routes', () => {
     const renameResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1', {
       method: 'PATCH',
       body: JSON.stringify({
-        name: 'Renamed Alpha',
-        slug: 'renamed-alpha'
+        name: 'Beta Team'
       })
     })
 
@@ -346,8 +381,8 @@ describe('TASK-3.6 team formation routes', () => {
     expect(await renameResponse.json()).toMatchObject({
       data: {
         id: 'team_1',
-        name: 'Renamed Alpha',
-        slug: 'renamed-alpha'
+        name: 'Beta Team',
+        slug: 'beta-team-2'
       }
     })
 

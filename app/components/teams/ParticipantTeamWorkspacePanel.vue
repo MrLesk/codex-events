@@ -7,11 +7,9 @@ import type {
 
 import { teamProfileFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
-import { createTeamSlug } from '~/utils/team-workspace'
 
 const settings = defineModel<{
   name: string
-  slug: string
   isOpenToJoinRequests: boolean
 }>('settings', {
   required: true
@@ -43,33 +41,12 @@ function isActionPending(actionKey: string) {
 }
 
 const errors = reactive({
-  name: '',
-  slug: ''
+  name: ''
 })
 const submitCount = ref(0)
 
-const hasManuallyEditedSlug = ref(false)
-
-watch(() => settings.value.name, (nextName) => {
-  if (hasManuallyEditedSlug.value) {
-    return
-  }
-
-  const nextSlug = createTeamSlug(nextName)
-
-  if (settings.value.slug !== nextSlug) {
-    settings.value.slug = nextSlug
-  }
-})
-
-watch(() => settings.value.slug, (nextSlug) => {
-  hasManuallyEditedSlug.value = nextSlug.length > 0
-    && nextSlug !== createTeamSlug(settings.value.name)
-})
-
 function validateTeamProfile() {
   errors.name = ''
-  errors.slug = ''
 
   const result = teamProfileFormSchema.safeParse(cloneFormValues(settings.value))
 
@@ -79,7 +56,6 @@ function validateTeamProfile() {
 
   const fieldErrors = result.error.flatten().fieldErrors
   errors.name = fieldErrors.name?.[0] ?? ''
-  errors.slug = fieldErrors.slug?.[0] ?? ''
   return false
 }
 
@@ -177,7 +153,7 @@ function submitProfileForm() {
               Team profile
             </h3>
             <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-              Team admins can rename the team and update the canonical slug while team formation remains open.
+              Team admins can rename the team while team formation remains open. The team slug updates automatically.
             </p>
           </div>
 
@@ -199,23 +175,6 @@ function submitProfileForm() {
                 class="text-xs text-error"
               >
                 {{ errors.name }}
-              </p>
-            </label>
-
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Team slug</span>
-              <input
-                v-model="settings.slug"
-                type="text"
-                class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-                :class="submitCount > 0 && errors.slug ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-                :disabled="isActionPending(`update-team:${team.id}`)"
-              >
-              <p
-                v-if="submitCount > 0 && errors.slug"
-                class="text-xs text-error"
-              >
-                {{ errors.slug }}
               </p>
             </label>
 

@@ -5,6 +5,7 @@ import type { HackathonParticipationRecord } from '../../../../app/utils/hackath
 import {
   formatParticipationStageLabel,
   formatParticipationStatusLabel,
+  getHackathonParticipationPrimaryAction,
   getParticipationStageColor,
   getParticipationStatusColor
 } from '../../../../app/utils/hackathon-participation'
@@ -110,5 +111,34 @@ describe('hackathon participation badge helpers', () => {
     expect(getParticipationStageColor(record)).toBe('primary')
     expect(formatParticipationStatusLabel(record)).toBe('Project submitted')
     expect(getParticipationStatusColor(record)).toBe('primary')
+  })
+
+
+  test('always routes participation cards to the overview workspace', () => {
+    const record = buildRecord({
+      application: {
+        id: 'application-1',
+        status: 'approved',
+        submittedAt: '2026-03-09T09:00:00Z',
+        withdrawnAt: null,
+        reviewedAt: '2026-03-12T09:00:00Z',
+        updatedAt: '2026-03-12T09:00:00Z'
+      },
+      activeTeam: {
+        id: 'team-1',
+        name: 'North Star Builders',
+        slug: 'north-star-builders',
+        membershipRole: 'admin',
+        joinedAt: '2026-03-15T09:00:00Z',
+        leftAt: null,
+        isActiveMembership: true,
+        activeMemberCount: 3
+      }
+    })
+
+    expect(getHackathonParticipationPrimaryAction(record)).toEqual({
+      href: '/account/hackathons/vienna',
+      label: 'Open overview'
+    })
   })
 })

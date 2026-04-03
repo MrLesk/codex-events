@@ -99,15 +99,6 @@ export function normalizeTeamWorkspaceApiError(error: unknown) {
   return normalizeParticipantApiError(error)
 }
 
-export function createTeamSlug(name: string) {
-  return name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .replace(/-{2,}/g, '-')
-}
-
 export function getOwnTeamMembership(team: TeamDetailRecord | null | undefined, userId: string | null | undefined) {
   if (!team || !userId) {
     return null
@@ -144,7 +135,7 @@ export function getTeamFormationAvailability(
   if (hackathon.state === 'registration_open' || hackathon.state === 'submission_open') {
     return {
       isOpen: true,
-      summary: 'Approved participants can create teams and request to join open teams right now.'
+      summary: 'You can create a team or request to join an open team right now.'
     }
   }
 

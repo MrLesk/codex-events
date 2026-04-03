@@ -5,6 +5,7 @@ import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBa
 import {
   formatParticipationStageLabel,
   formatParticipationStatusLabel,
+  getHackathonParticipationPrimaryAction,
   getParticipationStageColor,
   getParticipationStatusColor
 } from '~/utils/hackathon-participation'
@@ -14,26 +15,7 @@ const props = defineProps<{
   record: HackathonParticipationRecord
 }>()
 
-const accountHackathonHref = computed(() => `/account/hackathons/${props.record.hackathon.slug}`)
-const teamWorkspaceHref = computed(() =>
-  props.record.application?.status === 'approved' || props.record.activeTeam
-    ? `${accountHackathonHref.value}?tab=team`
-    : null
-)
-const primaryActionHref = computed(() => {
-  if (teamWorkspaceHref.value) {
-    return teamWorkspaceHref.value
-  }
-
-  return accountHackathonHref.value
-})
-const primaryActionLabel = computed(() => {
-  if (teamWorkspaceHref.value) {
-    return 'Open team workspace'
-  }
-
-  return 'Open workspace'
-})
+const primaryAction = computed(() => getHackathonParticipationPrimaryAction(props.record))
 const hackathonMetaLabel = computed(() => [
   formatHackathonDateWithWeekday(props.record.hackathon.startsAt),
   formatHackathonLocation(props.record.hackathon)
@@ -91,13 +73,13 @@ const showParticipationStageBadge = computed(() =>
         </div>
 
         <AppButton
-          :to="primaryActionHref"
+          :to="primaryAction.href"
           color="neutral"
           variant="solid"
           trailing-icon="i-lucide-arrow-up-right"
           class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
         >
-          {{ primaryActionLabel }}
+          {{ primaryAction.label }}
         </AppButton>
       </div>
     </div>
