@@ -168,7 +168,6 @@ The repository also includes a production release workflow. Publishing a GitHub 
 ## Documentation Map
 
 - [`docs/README.md`](docs/README.md): canonical documentation index
-- [`docs/design-reference.md`](docs/design-reference.md): how to use the `Figma-Design/` reference correctly
 - [`docs/testing-strategy.md`](docs/testing-strategy.md): canonical testing model, including Auth0-backed E2E rules
 - [`DEVELOPMENT.md`](DEVELOPMENT.md): contributor setup, local development, validation, and test commands
 

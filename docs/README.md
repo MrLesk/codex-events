@@ -20,4 +20,3 @@ This directory contains the canonical product and engineering documentation for 
 - [tech-stack.md](tech-stack.md): canonical application stack and infrastructure choices
 - [testing-strategy.md](testing-strategy.md): canonical testing layers, Auth0-backed E2E strategy, and fixture rules
 - [security-analysis.md](security-analysis.md): repository security findings and remediation scope from the 2026-03-30 review
-- [design-reference.md](design-reference.md): role of the `Figma-Design/` folder and how to use it correctly
