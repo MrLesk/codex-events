@@ -365,14 +365,6 @@ const rejectedParticipantSummaryValue = computed(() =>
   )
 )
 
-const stagedParticipantSummaryValue = computed(() =>
-  formatParticipantMetricValue(
-    applications.value.filter(
-      application => application.status === 'submitted' && Boolean(application.preApprovalStatus)
-    ).length
-  )
-)
-
 const participantsLimitSummary = computed(() =>
   getParticipantsLimitSummary(
     applications.value,
@@ -822,7 +814,7 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
       >
         <div
           class="grid gap-4 md:grid-cols-2"
-          :class="participantsLimitSummary ? 'xl:grid-cols-5' : 'xl:grid-cols-4'"
+          :class="participantsLimitSummary ? 'xl:grid-cols-4' : 'xl:grid-cols-3'"
         >
           <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
@@ -848,15 +840,6 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
             </p>
             <p class="mt-2 text-xl font-semibold text-highlighted">
               {{ rejectedParticipantSummaryValue }}
-            </p>
-          </div>
-
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Staged
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ stagedParticipantSummaryValue }}
             </p>
           </div>
 
