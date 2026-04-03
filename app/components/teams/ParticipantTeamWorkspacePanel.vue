@@ -8,6 +8,7 @@ import type {
 import { formatTimestamp } from '~/utils/date-formatting'
 import { teamProfileFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
+import { buildAbsoluteAccountHackathonTeamTabHref } from '~/utils/team-query'
 
 const settings = defineModel<{
   name: string
@@ -17,6 +18,7 @@ const settings = defineModel<{
 })
 
 const props = defineProps<{
+  hackathonSlug: string
   team: TeamDetailRecord
   membership?: TeamMemberRecord | null
   canManageTeam?: boolean
@@ -25,6 +27,8 @@ const props = defineProps<{
   pendingJoinRequestId?: string | null
   pendingActionKey?: string | null
 }>()
+
+const toast = useToast()
 
 const emit = defineEmits<{
   submitProfile: []
@@ -69,6 +73,37 @@ function submitProfileForm() {
 
   emit('submitProfile')
 }
+
+async function copyTeamLink() {
+  if (!import.meta.client || !window.isSecureContext || !navigator.clipboard) {
+    toast.add({
+      title: 'Copy unavailable',
+      description: 'This browser could not copy the team link right now.',
+      color: 'error'
+    })
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(buildAbsoluteAccountHackathonTeamTabHref(
+      window.location.origin,
+      props.hackathonSlug,
+      props.team.slug
+    ))
+
+    toast.add({
+      title: 'Team link copied',
+      description: 'The direct team link was copied to your clipboard.',
+      color: 'success'
+    })
+  } catch {
+    toast.add({
+      title: 'Copy failed',
+      description: 'The team link could not be copied right now.',
+      color: 'error'
+    })
+  }
+}
 </script>
 
 <template>
@@ -77,31 +112,42 @@ function submitProfileForm() {
     class="rounded-xl hackathon-workspace-detail-panel"
   >
     <template #header>
-      <div class="space-y-1">
-        <div class="flex flex-wrap items-center gap-3">
-          <h2 class="text-2xl font-semibold text-highlighted dark:text-white">
-            {{ team.name }}
-          </h2>
+      <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div class="space-y-1">
+          <div class="flex flex-wrap items-center gap-3">
+            <h2 class="text-2xl font-semibold text-highlighted dark:text-white">
+              {{ team.name }}
+            </h2>
 
-          <AppBadge
-            :color="team.isOpenToJoinRequests ? 'success' : 'neutral'"
-            variant="soft"
-          >
-            {{ team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
-          </AppBadge>
+            <AppBadge
+              :color="team.isOpenToJoinRequests ? 'success' : 'neutral'"
+              variant="soft"
+            >
+              {{ team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+            </AppBadge>
 
-          <AppBadge
-            v-if="membership"
-            color="primary"
-            variant="soft"
-          >
-            {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
-          </AppBadge>
+            <AppBadge
+              v-if="membership"
+              color="primary"
+              variant="soft"
+            >
+              {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
+            </AppBadge>
+          </div>
+
+          <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+            Share this team with a direct link or continue managing collaboration from this tab.
+          </p>
         </div>
 
-        <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-          Team slug: {{ team.slug }}. Team membership, join requests, and submission work stay together in this tab.
-        </p>
+        <AppButton
+          color="neutral"
+          variant="outline"
+          icon="i-lucide-copy"
+          @click="copyTeamLink"
+        >
+          Copy team link
+        </AppButton>
       </div>
     </template>
 

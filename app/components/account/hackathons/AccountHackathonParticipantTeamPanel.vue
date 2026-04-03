@@ -738,6 +738,7 @@ async function withdrawSubmission() {
           <div class="grid gap-6">
             <ParticipantTeamWorkspacePanel
               v-model:settings="teamSettings"
+              :hackathon-slug="props.hackathon.slug"
               :team="workspace.currentTeam.value"
               :membership="workspace.currentTeamMembership.value"
               :can-manage-team="canManageTeam"

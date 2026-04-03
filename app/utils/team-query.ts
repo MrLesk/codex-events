@@ -34,3 +34,11 @@ export function buildAccountHackathonTeamTabHref(hackathonSlug: string, teamSlug
 
   return `${baseHref}&team=${encodeURIComponent(normalizedTeamSlug)}`
 }
+
+export function buildAbsoluteAccountHackathonTeamTabHref(
+  origin: string,
+  hackathonSlug: string,
+  teamSlug?: string | null
+) {
+  return new URL(buildAccountHackathonTeamTabHref(hackathonSlug, teamSlug), origin).toString()
+}
