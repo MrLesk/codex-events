@@ -41,6 +41,11 @@ import {
 } from '~/utils/account-hackathon-tabs'
 import { getAccountHackathonSeoContent } from '~/utils/account-hackathon-seo'
 import {
+  createEmptyPublishedHackathonRosterLoadState,
+  loadPublishedHackathonRoster,
+  type PublishedHackathonRosterMember
+} from '~/utils/hackathon-published-roster'
+import {
   formatParticipantApplicationStatus,
   getParticipantApplicationWithdrawalAvailability,
   getParticipantApplicationStatusColor,
@@ -152,16 +157,38 @@ if (!hackathonResponse.value?.data) {
 }
 
 const requestFetch = import.meta.server ? useRequestFetch() : $fetch
+const shouldPrefetchPublishedRosters = actor.value.kind === 'platform_user'
+  && !hasHackathonAdminAccess(actor.value, hackathonResponse.value.data.id)
 const [
   criteriaResponse,
   prizesResponse,
   accountHackathonsResponse,
-  participationResponse
+  participationResponse,
+  publishedJudgesRoster,
+  publishedStaffRoster
 ] = await Promise.all([
   requestFetch<PublicApiListResponse<{ name: string }>>(`/api/hackathons/${hackathonResponse.value.data.id}/evaluation-criteria`),
   requestFetch<PublicApiListResponse<PublicPrize>>(`/api/hackathons/${hackathonResponse.value.data.id}/prizes`),
   requestFetch<AccountHackathonsResponse>('/api/account/hackathons'),
-  requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>('/api/hackathons/participation')
+  requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>('/api/hackathons/participation'),
+  shouldPrefetchPublishedRosters
+    ? loadPublishedHackathonRoster(
+        path => requestFetch<PublicApiListResponse<PublishedHackathonRosterMember>>(path),
+        {
+          hackathonId: hackathonResponse.value.data.id,
+          role: 'judge'
+        }
+      )
+    : Promise.resolve(createEmptyPublishedHackathonRosterLoadState()),
+  shouldPrefetchPublishedRosters
+    ? loadPublishedHackathonRoster(
+        path => requestFetch<PublicApiListResponse<PublishedHackathonRosterMember>>(path),
+        {
+          hackathonId: hackathonResponse.value.data.id,
+          role: 'staff'
+        }
+      )
+    : Promise.resolve(createEmptyPublishedHackathonRosterLoadState())
 ])
 const toast = useToast()
 const accountHackathonsData = ref(accountHackathonsResponse.data)
@@ -933,6 +960,7 @@ useSeoMeta({
         <AccountHackathonPublishedRosterPanel
           v-else
           :hackathon-id="workspaceHackathonId"
+          :roster="publishedJudgesRoster"
           role="judge"
           title="Judges"
           description="Meet the people reviewing submissions for this hackathon."
@@ -957,6 +985,7 @@ useSeoMeta({
         <AccountHackathonPublishedRosterPanel
           v-else
           :hackathon-id="workspaceHackathonId"
+          :roster="publishedStaffRoster"
           role="staff"
           title="Staff"
           description="Meet the people supporting this hackathon behind the scenes."

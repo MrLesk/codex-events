@@ -1,3 +1,5 @@
+import { normalizeParticipantApiError } from './participant-application'
+
 export type PublishedHackathonRosterRole = 'judge' | 'staff'
 
 export interface PublishedHackathonRosterMember {
@@ -15,6 +17,46 @@ export interface PublishedHackathonRosterLink {
   key: 'x' | 'linkedin' | 'github'
   label: 'X' | 'LinkedIn' | 'GitHub'
   href: string
+}
+
+export interface PublishedHackathonRosterLoadState {
+  members: PublishedHackathonRosterMember[]
+  errorMessage: string | null
+}
+
+export function getPublishedHackathonRosterEndpoint(role: PublishedHackathonRosterRole) {
+  return role === 'judge' ? 'judges' : 'staff'
+}
+
+export function createEmptyPublishedHackathonRosterLoadState(): PublishedHackathonRosterLoadState {
+  return {
+    members: [],
+    errorMessage: null
+  }
+}
+
+export async function loadPublishedHackathonRoster(
+  request: (path: string) => Promise<{ data: PublishedHackathonRosterMember[] }>,
+  input: {
+    hackathonId: string
+    role: PublishedHackathonRosterRole
+  }
+): Promise<PublishedHackathonRosterLoadState> {
+  try {
+    const response = await request(
+      `/api/hackathons/${input.hackathonId}/${getPublishedHackathonRosterEndpoint(input.role)}`
+    )
+
+    return {
+      members: response.data,
+      errorMessage: null
+    }
+  } catch (error) {
+    return {
+      members: [],
+      errorMessage: normalizeParticipantApiError(error).message
+    }
+  }
 }
 
 function normalizeUrl(value: string | null | undefined) {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ApiListResponse } from '~/utils/admin-workspace'
 import type {
+  PublishedHackathonRosterLoadState,
   PublishedHackathonRosterMember,
   PublishedHackathonRosterRole
 } from '~/utils/hackathon-published-roster'
@@ -11,24 +11,12 @@ import { buildProfileIconHref } from '~/utils/profile-icon'
 const props = defineProps<{
   hackathonId: string
   role: PublishedHackathonRosterRole
+  roster: PublishedHackathonRosterLoadState
   title: string
   description: string
 }>()
 
-const endpoint = computed(() => props.role === 'judge' ? 'judges' : 'staff')
-const {
-  data,
-  error,
-  status
-} = useFetch<ApiListResponse<PublishedHackathonRosterMember>>(
-  () => `/api/hackathons/${props.hackathonId}/${endpoint.value}`,
-  {
-    key: () => `account-hackathon-published-roster:${props.hackathonId}:${props.role}`,
-    watch: [() => props.hackathonId, () => props.role]
-  }
-)
-
-const members = computed(() => data.value?.data ?? [])
+const members = computed(() => props.roster.members)
 const emptyState = computed(() => props.role === 'judge'
   ? {
       title: 'No judges published yet',
@@ -38,15 +26,6 @@ const emptyState = computed(() => props.role === 'judge'
       title: 'No staff published yet',
       description: 'Assigned staff will appear here once the official staff roster is set for this hackathon.'
     })
-const loadingState = computed(() => props.role === 'judge'
-  ? {
-      title: 'Loading judges',
-      description: 'Fetching the published judge roster for this hackathon.'
-    }
-  : {
-      title: 'Loading staff',
-      description: 'Fetching the published staff roster for this hackathon.'
-    })
 const errorState = computed(() => props.role === 'judge'
   ? {
       title: 'Judge roster unavailable'
@@ -54,6 +33,7 @@ const errorState = computed(() => props.role === 'judge'
   : {
       title: 'Staff roster unavailable'
     })
+const errorMessage = computed(() => props.roster.errorMessage?.trim() ?? '')
 
 function getMemberProfileIconHref(member: PublishedHackathonRosterMember) {
   return buildProfileIconHref(
@@ -79,19 +59,11 @@ function getMemberProfileIconHref(member: PublishedHackathonRosterMember) {
 
     <div class="space-y-6">
       <AppAlert
-        v-if="error"
+        v-if="errorMessage"
         color="error"
         variant="soft"
         :title="errorState.title"
-        :description="error.message"
-      />
-
-      <AppAlert
-        v-else-if="status === 'pending'"
-        color="neutral"
-        variant="soft"
-        :title="loadingState.title"
-        :description="loadingState.description"
+        :description="errorMessage"
       />
 
       <AppAlert
