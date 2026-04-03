@@ -143,7 +143,7 @@ export interface AdminApplicationRecord {
   id: string
   hackathonId: string
   userId: string
-  status: 'submitted' | 'approved' | 'rejected'
+  status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
   preApprovalStatus?: 'approved' | 'rejected' | null
   lumaSyncStatus?: 'not_synced' | 'approve_synced' | 'reject_synced' | 'approve_failed' | 'reject_failed' | null
   submittedAt: string
@@ -615,6 +615,8 @@ export function getApplicationStatusColor(status: AdminApplicationRecord['status
       return 'success'
     case 'rejected':
       return 'error'
+    case 'withdrawn':
+      return 'neutral'
   }
 }
 

@@ -111,10 +111,15 @@ interface QueueDatabaseRecord {
   user: typeof users.$inferSelect | null
 }
 
-type RecoverableApplicationRecord = typeof userApplications.$inferSelect & {
-  status: 'approved' | 'rejected'
-  reviewedAt: string
-}
+type RecoverableApplicationRecord
+  = | (typeof userApplications.$inferSelect & {
+    status: 'approved' | 'rejected'
+    reviewedAt: string
+  })
+  | (typeof userApplications.$inferSelect & {
+    status: 'withdrawn'
+    withdrawnAt: string
+  })
 
 let applicationLumaSyncStartupRecoveryPromise: Promise<ApplicationLumaSyncStartupRecoveryResult> | null = null
 
@@ -1015,11 +1020,24 @@ async function listRecoverableLumaSyncApplications(
   })
 
   return candidates.filter((application): application is RecoverableApplicationRecord => {
-    return application.updatedAt <= staleBefore
-      && (application.status === 'approved' || application.status === 'rejected')
+    if (application.updatedAt > staleBefore) {
+      return false
+    }
+
+    if ((application.status === 'approved' || application.status === 'rejected')
       && typeof application.reviewedAt === 'string'
-      && application.reviewedAt.length > 0
+      && application.reviewedAt.length > 0) {
+      return true
+    }
+
+    return application.status === 'withdrawn'
+      && typeof application.withdrawnAt === 'string'
+      && application.withdrawnAt.length > 0
   })
+}
+
+function getRecoverableApplicationLumaSyncDecision(application: RecoverableApplicationRecord): ApplicationLumaSyncDecision {
+  return application.status === 'withdrawn' ? 'rejected' : application.status
 }
 
 export async function recoverStaleApplicationLumaSyncMessages(options?: {
@@ -1071,10 +1089,11 @@ export async function recoverStaleApplicationLumaSyncMessages(options?: {
       continue
     }
 
+    const decision = getRecoverableApplicationLumaSyncDecision(application)
     const recoveredAt = new Date().toISOString()
     await producer.send(buildApplicationLumaSyncQueueMessage({
       applicationId: application.id,
-      decision: application.status
+      decision
     }), {
       contentType: 'json'
     })
@@ -1091,7 +1110,7 @@ export async function recoverStaleApplicationLumaSyncMessages(options?: {
       action: 'user_application.luma_sync_recovery_enqueued',
       createdAt: recoveredAt,
       metadata: {
-        decision: application.status,
+        decision,
         recoveryTrigger: 'startup',
         queueName: getQueueName(config),
         staleBefore

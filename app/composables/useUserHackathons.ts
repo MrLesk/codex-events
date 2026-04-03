@@ -1,6 +1,6 @@
 import type { PublicHackathonState } from './useHackathonPresentation'
 
-export type UserApplicationStatus = 'submitted' | 'approved' | 'rejected'
+export type UserApplicationStatus = 'submitted' | 'approved' | 'rejected' | 'withdrawn'
 export type UserSubmissionStatus = 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified' | null
 export type UserHackathonRole = 'hackathon_admin' | 'judge' | 'staff'
 export type UserHackathonPrimaryActionIcon = 'i-lucide-arrow-up-right' | 'i-lucide-users' | 'i-lucide-rocket'
@@ -63,6 +63,8 @@ export function resolveUserApplicationStatusColor(status: UserApplicationStatus)
       return 'success'
     case 'rejected':
       return 'error'
+    case 'withdrawn':
+      return 'neutral'
   }
 }
 

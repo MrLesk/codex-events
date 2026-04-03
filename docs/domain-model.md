@@ -148,11 +148,15 @@ Rules:
 - A user can have at most one application per hackathon.
 - The public registration route is an application-entry flow only. Once a user has an application for a hackathon, ongoing status and participation workflow continue in the account-scoped hackathon workspace rather than in the public registration route.
 - Application approval is handled by hackathon admins.
+- A participant can withdraw their own application while they do not have an active team membership in that hackathon.
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
 - If the hackathon requires a Luma email and has a Luma event API ID, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
+- If the hackathon requires a Luma email and has a Luma event API ID, participant withdrawal also enqueues the canonical Luma rejection sync so the user is removed from the event guest list.
 - Platform admins can run a hackathon-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - A user must be approved before creating or joining a team in that hackathon.
+- Withdrawal ends participation eligibility for the hackathon, including in-person attendance eligibility when applicable.
+- Withdrawal retains the application record for auditability, exact-version terms acceptance, and operational history. It does not hard-delete the application.
 - Blind judging uses application information without exposing team identity.
 - User application acceptance references the exact application terms version accepted for that hackathon.
 - A user can submit a `UserApplication` only if the user profile satisfies that hackathon's required profile rules.

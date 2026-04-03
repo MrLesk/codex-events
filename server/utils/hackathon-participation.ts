@@ -81,6 +81,7 @@ function serializeApplicationSummary(application: ApplicationRecord) {
     id: application.id,
     status: application.status,
     submittedAt: application.submittedAt,
+    withdrawnAt: application.withdrawnAt,
     reviewedAt: application.reviewedAt,
     updatedAt: application.updatedAt
   }

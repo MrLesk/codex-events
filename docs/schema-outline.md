@@ -248,6 +248,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `user_id`
 - `status`
 - `submitted_at`
+- `withdrawn_at`
 - `reviewed_at`
 - `reviewed_by_user_id`
 - `pre_approval_status`
@@ -264,6 +265,7 @@ It describes the intended persistent model at the level of entities, key fields,
   - `submitted`
   - `approved`
   - `rejected`
+  - `withdrawn`
 - `pre_approval_status`
   - `approved`
   - `rejected`
@@ -286,8 +288,10 @@ It describes the intended persistent model at the level of entities, key fields,
   - `inPersonAttendanceCommitment`: boolean commitment required when the hackathon has `in_person_event = true`
   - `whyThisHackathon`: trimmed free-form motivation text
   - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence
+- `withdrawn_at` records when the participant withdrew from the hackathon.
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
-- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for hackathons that require a Luma email and define a `luma_event_url`.
+- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for hackathons that require a Luma email and define a `luma_event_api_id`.
+- Withdrawal retains the application record rather than deleting it so participation history, terms acceptance, and audit context remain available.
 
 ## Team
 

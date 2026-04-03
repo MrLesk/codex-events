@@ -14,6 +14,8 @@ import {
 } from '../auth/authorization'
 import { getDatabase, type AppDatabase } from '../database/client'
 import {
+  teamMembers,
+  teams,
   userApplications,
   users
 } from '../database/schema'
@@ -200,6 +202,7 @@ export function serializeUserApplication(
     preApprovalStatus: application.preApprovalStatus,
     lumaSyncStatus: application.lumaSyncStatus,
     submittedAt: application.submittedAt,
+    withdrawnAt: application.withdrawnAt,
     reviewedAt: application.reviewedAt,
     reviewedByUserId: application.reviewedByUserId,
     applicationTermsDocumentId: application.applicationTermsDocumentId,
@@ -404,6 +407,48 @@ export function assertApplicationReviewable(application: UserApplicationRecord) 
     message: 'Only submitted applications can be reviewed.',
     details: {
       applicationId: application.id
+    }
+  })
+}
+
+export function assertApplicationWithdrawable(application: UserApplicationRecord) {
+  assertAllowedState(application.status, ['submitted', 'approved'], {
+    code: 'user_application_state_invalid',
+    message: 'Only submitted or approved applications can be withdrawn.',
+    details: {
+      applicationId: application.id
+    }
+  })
+}
+
+export async function assertNoActiveTeamMembershipForApplicationWithdrawal(
+  database: AppDatabase,
+  hackathonId: string,
+  userId: string
+) {
+  const activeMemberships = await database.query.teamMembers.findMany({
+    where: and(
+      eq(teamMembers.userId, userId),
+      isNull(teamMembers.leftAt)
+    )
+  })
+
+  if (activeMemberships.length === 0) {
+    return
+  }
+
+  const relatedTeams = await database.query.teams.findMany({
+    where: inArray(teams.id, activeMemberships.map(membership => membership.teamId))
+  })
+
+  const hasActiveHackathonTeamMembership = relatedTeams.some(team => team.hackathonId === hackathonId)
+
+  assertGuard(!hasActiveHackathonTeamMembership, {
+    code: 'user_application_withdrawal_blocked',
+    message: 'Leave your active team before withdrawing from this hackathon.',
+    details: {
+      hackathonId,
+      userId
     }
   })
 }

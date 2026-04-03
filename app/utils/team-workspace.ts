@@ -118,7 +118,7 @@ export function getOwnTeamMembership(team: TeamDetailRecord | null | undefined, 
 
 export function getTeamFormationAvailability(
   hackathon: Pick<PublicHackathon, 'state'>,
-  applicationStatus: 'submitted' | 'approved' | 'rejected' | null,
+  applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null,
   isTeamMember: boolean
 ) {
   if (isTeamMember) {
@@ -135,7 +135,9 @@ export function getTeamFormationAvailability(
         ? 'Team formation unlocks only after your application is approved.'
         : applicationStatus === 'rejected'
           ? 'Rejected applicants cannot create or join teams in this hackathon.'
-          : 'Team formation requires an approved application for this hackathon.'
+          : applicationStatus === 'withdrawn'
+            ? 'Withdrawn participants cannot create or join teams in this hackathon.'
+            : 'Team formation requires an approved application for this hackathon.'
     }
   }
 
@@ -154,7 +156,7 @@ export function getTeamFormationAvailability(
 
 export function getCreateTeamAvailability(
   hackathon: Pick<PublicHackathon, 'state'>,
-  applicationStatus: 'submitted' | 'approved' | 'rejected' | null,
+  applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null,
   hasTeamMembership: boolean
 ): TeamActionAvailability {
   if (hasTeamMembership) {
@@ -171,7 +173,9 @@ export function getCreateTeamAvailability(
         ? 'Only approved applicants can create teams.'
         : applicationStatus === 'rejected'
           ? 'Rejected applicants cannot create teams.'
-          : 'Create-team access requires an approved application.'
+          : applicationStatus === 'withdrawn'
+            ? 'Withdrawn participants cannot create teams.'
+            : 'Create-team access requires an approved application.'
     }
   }
 
@@ -191,7 +195,7 @@ export function getJoinTeamAvailability(
   hackathon: Pick<PublicHackathon, 'state' | 'maxTeamMembers'>,
   team: Pick<TeamSummaryRecord, 'id' | 'isOpenToJoinRequests'>,
   options: {
-    applicationStatus: 'submitted' | 'approved' | 'rejected' | null
+    applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
     hasTeamMembership: boolean
     activeMemberCount: number
     hasPendingJoinRequest: boolean
@@ -226,7 +230,9 @@ export function getJoinTeamAvailability(
         ? 'Only approved applicants can request to join a team.'
         : options.applicationStatus === 'rejected'
           ? 'Rejected applicants cannot request to join teams.'
-          : 'Join requests require an approved application.'
+          : options.applicationStatus === 'withdrawn'
+            ? 'Withdrawn participants cannot request to join teams.'
+            : 'Join requests require an approved application.'
     }
   }
 

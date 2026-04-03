@@ -103,8 +103,9 @@ export interface ParticipantApplicationRecord {
   id: string
   hackathonId: string
   userId: string
-  status: 'submitted' | 'approved' | 'rejected'
+  status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
   submittedAt: string
+  withdrawnAt: string | null
   reviewedAt: string | null
   reviewedByUserId: string | null
   applicationTermsDocumentId: string
@@ -135,6 +136,11 @@ export interface ParticipantApiListResponse<T> {
     pageSize?: number
     total?: number
   }
+}
+
+export interface ParticipantApplicationActionAvailability {
+  isAllowed: boolean
+  reason?: string
 }
 
 export interface RequiredProfileField {
@@ -334,6 +340,8 @@ export function formatParticipantApplicationStatus(status: ParticipantApplicatio
       return 'Approved'
     case 'rejected':
       return 'Rejected'
+    case 'withdrawn':
+      return 'Withdrawn'
   }
 }
 
@@ -345,6 +353,8 @@ export function getParticipantApplicationStatusColor(status: ParticipantApplicat
       return 'success'
     case 'rejected':
       return 'error'
+    case 'withdrawn':
+      return 'neutral'
   }
 }
 
@@ -361,6 +371,60 @@ export function summarizeParticipantApplicationStatus(
         : 'You are approved for this hackathon. Team actions now depend on the current hackathon lifecycle state.'
     case 'rejected':
       return 'This application was rejected. You cannot submit another application to the same hackathon.'
+    case 'withdrawn':
+      return 'You withdrew from this hackathon. You are no longer eligible to participate or attend in person through this application.'
+  }
+}
+
+export function shouldShowParticipantOverviewStatusBanner(
+  status: ParticipantApplicationRecord['status'] | null,
+  hackathonState: PublicHackathonState
+) {
+  if (!status) {
+    return false
+  }
+
+  if (status !== 'approved') {
+    return true
+  }
+
+  return hackathonState === 'registration_open'
+}
+
+export function getParticipantApplicationWithdrawalAvailability(options: {
+  applicationStatus: ParticipantApplicationRecord['status'] | null
+  hasActiveTeamMembership: boolean
+}): ParticipantApplicationActionAvailability {
+  if (!options.applicationStatus) {
+    return {
+      isAllowed: false,
+      reason: 'No application is available to withdraw for this hackathon.'
+    }
+  }
+
+  if (options.hasActiveTeamMembership) {
+    return {
+      isAllowed: false,
+      reason: 'Leave your active team before withdrawing from this hackathon.'
+    }
+  }
+
+  if (options.applicationStatus === 'withdrawn') {
+    return {
+      isAllowed: false,
+      reason: 'This application is already withdrawn.'
+    }
+  }
+
+  if (options.applicationStatus === 'rejected') {
+    return {
+      isAllowed: false,
+      reason: 'Rejected applications cannot be withdrawn.'
+    }
+  }
+
+  return {
+    isAllowed: true
   }
 }
 
@@ -723,6 +787,13 @@ export function getParticipantApplicationSubmissionPolicy(options: {
     return {
       isAllowed: false,
       reason: 'Rejected applicants cannot submit another application to the same hackathon.'
+    }
+  }
+
+  if (options.applicationStatus === 'withdrawn') {
+    return {
+      isAllowed: false,
+      reason: 'Withdrawn participants cannot submit another application to the same hackathon.'
     }
   }
 

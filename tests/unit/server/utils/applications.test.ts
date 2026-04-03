@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import { ApiError } from '../../../../server/utils/api-error'
 import {
+  assertApplicationWithdrawable,
   assertInPersonAttendanceCommitment,
   assertApplicationReviewable,
   assertHackathonAllowsApplications,
@@ -20,6 +21,7 @@ describe('application utilities', () => {
       preApprovalStatus: null,
       lumaSyncStatus: null,
       submittedAt: '2026-03-22T12:10:00.000Z',
+      withdrawnAt: null,
       reviewedAt: null,
       reviewedByUserId: null,
       applicationTermsDocumentId: 'terms_app_2',
@@ -255,7 +257,9 @@ describe('application utilities', () => {
       userId: 'user_1',
       status: 'submitted',
       preApprovalStatus: null,
+      lumaSyncStatus: null,
       submittedAt: '2026-03-22T12:00:00.000Z',
+      withdrawnAt: null,
       reviewedAt: null,
       reviewedByUserId: null,
       applicationTermsDocumentId: 'terms_1',
@@ -271,7 +275,9 @@ describe('application utilities', () => {
       userId: 'user_1',
       status: 'approved',
       preApprovalStatus: null,
+      lumaSyncStatus: null,
       submittedAt: '2026-03-22T12:00:00.000Z',
+      withdrawnAt: null,
       reviewedAt: '2026-03-22T12:05:00.000Z',
       reviewedByUserId: 'admin_1',
       applicationTermsDocumentId: 'terms_1',
@@ -279,6 +285,80 @@ describe('application utilities', () => {
       registrationDetailsJson: '{"teamIntent":"unknown","teamMembers":[]}',
       createdAt: '2026-03-22T12:00:00.000Z',
       updatedAt: '2026-03-22T12:05:00.000Z'
+    })).toThrowError(ApiError)
+  })
+
+  test('only submitted or approved applications can be withdrawn', () => {
+    expect(() => assertApplicationWithdrawable({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'user_1',
+      status: 'submitted',
+      preApprovalStatus: null,
+      lumaSyncStatus: null,
+      submittedAt: '2026-03-22T12:00:00.000Z',
+      withdrawnAt: null,
+      reviewedAt: null,
+      reviewedByUserId: null,
+      applicationTermsDocumentId: 'terms_1',
+      applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+      registrationDetailsJson: '{"teamIntent":"unknown","teamMembers":[]}',
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:00:00.000Z'
+    })).not.toThrow()
+
+    expect(() => assertApplicationWithdrawable({
+      id: 'application_2',
+      hackathonId: 'hackathon_1',
+      userId: 'user_1',
+      status: 'approved',
+      preApprovalStatus: null,
+      lumaSyncStatus: null,
+      submittedAt: '2026-03-22T12:00:00.000Z',
+      withdrawnAt: null,
+      reviewedAt: '2026-03-22T12:05:00.000Z',
+      reviewedByUserId: 'admin_1',
+      applicationTermsDocumentId: 'terms_1',
+      applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+      registrationDetailsJson: '{"teamIntent":"unknown","teamMembers":[]}',
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:05:00.000Z'
+    })).not.toThrow()
+
+    expect(() => assertApplicationWithdrawable({
+      id: 'application_3',
+      hackathonId: 'hackathon_1',
+      userId: 'user_1',
+      status: 'rejected',
+      preApprovalStatus: null,
+      lumaSyncStatus: null,
+      submittedAt: '2026-03-22T12:00:00.000Z',
+      withdrawnAt: null,
+      reviewedAt: '2026-03-22T12:05:00.000Z',
+      reviewedByUserId: 'admin_1',
+      applicationTermsDocumentId: 'terms_1',
+      applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+      registrationDetailsJson: '{"teamIntent":"unknown","teamMembers":[]}',
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:05:00.000Z'
+    })).toThrowError(ApiError)
+
+    expect(() => assertApplicationWithdrawable({
+      id: 'application_4',
+      hackathonId: 'hackathon_1',
+      userId: 'user_1',
+      status: 'withdrawn',
+      preApprovalStatus: null,
+      lumaSyncStatus: null,
+      submittedAt: '2026-03-22T12:00:00.000Z',
+      withdrawnAt: '2026-03-23T12:00:00.000Z',
+      reviewedAt: null,
+      reviewedByUserId: null,
+      applicationTermsDocumentId: 'terms_1',
+      applicationTermsAcceptedAt: '2026-03-22T12:00:00.000Z',
+      registrationDetailsJson: '{"teamIntent":"unknown","teamMembers":[]}',
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-23T12:00:00.000Z'
     })).toThrowError(ApiError)
   })
 

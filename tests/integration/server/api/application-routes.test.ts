@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm'
 import applicationsListHandler from '../../../../server/api/hackathons/[hackathonId]/applications/index.get'
 import applicationsPostHandler from '../../../../server/api/hackathons/[hackathonId]/applications/index.post'
 import ownApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/me.get'
+import withdrawOwnApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/me/actions/withdraw.post'
 import approveApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/[applicationId]/actions/approve.post'
 import applyStagedDecisionsHandler from '../../../../server/api/hackathons/[hackathonId]/applications/actions/apply-staged-decisions.post'
 import rejectApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/[applicationId]/actions/reject.post'
@@ -13,6 +14,8 @@ import {
   hackathonRoleAssignments,
   hackathonTermsDocuments,
   hackathons,
+  teamMembers,
+  teams,
   userApplications,
   users
 } from '../../../../server/database/schema'
@@ -672,6 +675,319 @@ describe('TASK-3.6 application routes', () => {
         }
       }
     })
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications/me/actions/withdraw transitions the caller application and writes an audit record', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/me/actions/withdraw',
+          handler: withdrawOwnApplicationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      status: 'submitted',
+      preApprovalStatus: 'approved',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications/me/actions/withdraw', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        status: 'withdrawn',
+        preApprovalStatus: null,
+        withdrawnAt: expect.any(String)
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+
+    expect(storedApplication).toMatchObject({
+      status: 'withdrawn',
+      preApprovalStatus: null
+    })
+    expect(storedApplication?.withdrawnAt).toBeTruthy()
+
+    const auditRecords = await harness.database.query.auditLogs.findMany({
+      where: eq(auditLogs.entityId, 'application_1')
+    })
+
+    expect(auditRecords).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.withdrawn'
+      })
+    ]))
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications/me/actions/withdraw is blocked while the caller still has an active team', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/me/actions/withdraw',
+          handler: withdrawOwnApplicationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      status: 'approved',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      reviewedAt: '2026-03-22T12:20:00.000Z',
+      reviewedByUserId: 'hackathon_admin',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:20:00.000Z'
+    })
+    await harness.database.insert(teams).values({
+      id: 'team_1',
+      hackathonId: 'hackathon_1',
+      name: 'Active Team',
+      slug: 'active-team',
+      isOpenToJoinRequests: true,
+      createdByUserId: 'regular_user',
+      createdAt: '2026-03-22T12:30:00.000Z',
+      updatedAt: '2026-03-22T12:30:00.000Z'
+    })
+    await harness.database.insert(teamMembers).values({
+      id: 'team_member_1',
+      teamId: 'team_1',
+      userId: 'regular_user',
+      role: 'admin',
+      joinedAt: '2026-03-22T12:30:00.000Z',
+      leftAt: null,
+      createdAt: '2026-03-22T12:30:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications/me/actions/withdraw', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'user_application_withdrawal_blocked'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+
+    expect(storedApplication).toMatchObject({
+      status: 'approved',
+      withdrawnAt: null
+    })
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications/me/actions/withdraw enqueues Luma rejection for Luma-enabled hackathons', async () => {
+    const lumaQueueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/me/actions/withdraw',
+          handler: withdrawOwnApplicationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_LUMA_SYNC_QUEUE: lumaQueueProducer
+      },
+      runtimeConfig: {
+        luma: {
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaEmail: true,
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
+    })
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      status: 'approved',
+      lumaSyncStatus: 'approve_synced',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      reviewedAt: '2026-03-22T12:20:00.000Z',
+      reviewedByUserId: 'hackathon_admin',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:20:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications/me/actions/withdraw', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        status: 'withdrawn',
+        lumaSyncStatus: 'not_synced',
+        withdrawnAt: expect.any(String)
+      }
+    })
+
+    expect(lumaQueueProducer.send).toHaveBeenCalledTimes(1)
+    expect(lumaQueueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: 'application_1',
+      decision: 'rejected'
+    }), {
+      contentType: 'json'
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication).toMatchObject({
+      status: 'withdrawn',
+      lumaSyncStatus: 'not_synced'
+    })
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.luma_sync_enqueued',
+        metadata: expect.objectContaining({
+          decision: 'rejected',
+          trigger: 'participant_withdrawal',
+          enqueue: expect.objectContaining({
+            status: 'enqueued'
+          })
+        })
+      })
+    ]))
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications/me/actions/withdraw marks Luma sync as failed when the Luma queue binding is unavailable', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/applications/me/actions/withdraw',
+          handler: withdrawOwnApplicationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      },
+      runtimeConfig: {
+        luma: {
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaEmail: true,
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
+    })
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_1',
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      status: 'approved',
+      lumaSyncStatus: 'approve_synced',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      reviewedAt: '2026-03-22T12:20:00.000Z',
+      reviewedByUserId: 'hackathon_admin',
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:20:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications/me/actions/withdraw', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'application_1',
+        status: 'withdrawn',
+        lumaSyncStatus: 'reject_failed'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_1')
+    })
+    expect(storedApplication).toMatchObject({
+      status: 'withdrawn',
+      lumaSyncStatus: 'reject_failed'
+    })
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.luma_sync_enqueued',
+        metadata: expect.objectContaining({
+          decision: 'rejected',
+          trigger: 'participant_withdrawal',
+          enqueue: expect.objectContaining({
+            status: 'skipped',
+            reason: 'queue_binding_missing:APPLICATION_LUMA_SYNC_QUEUE'
+          })
+        })
+      })
+    ]))
   })
 
   test('admin application routes list, stage decisions, and apply them with audit logging', async () => {

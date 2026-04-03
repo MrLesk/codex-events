@@ -5,6 +5,7 @@ import {
   areParticipantTeamMemberHintsEqual,
   createParticipantTeamMemberHintRows,
   formatParticipantApplicationStatus,
+  getParticipantApplicationWithdrawalAvailability,
   getHackathonApplicationAvailabilityMessage,
   getParticipantApplicationSubmissionPolicy,
   getParticipantApplicationStatusColor,
@@ -24,6 +25,7 @@ import {
   resolvePublicHackathonPrimaryAction,
   resolveParticipantApplicationSubmittedTransition,
   resolveParticipantRegistrationEntry,
+  shouldShowParticipantOverviewStatusBanner,
   shouldShowPublicRegistrationEntry,
   summarizeParticipantApplicationStatus
 } from '../../../../app/utils/participant-application'
@@ -248,15 +250,51 @@ describe('participant application helpers', () => {
     expect(formatParticipantApplicationStatus('submitted')).toBe('Submitted')
     expect(formatParticipantApplicationStatus('approved')).toBe('Approved')
     expect(formatParticipantApplicationStatus('rejected')).toBe('Rejected')
+    expect(formatParticipantApplicationStatus('withdrawn')).toBe('Withdrawn')
 
     expect(getParticipantApplicationStatusColor('submitted')).toBe('warning')
     expect(getParticipantApplicationStatusColor('approved')).toBe('success')
     expect(getParticipantApplicationStatusColor('rejected')).toBe('error')
+    expect(getParticipantApplicationStatusColor('withdrawn')).toBe('neutral')
 
     expect(summarizeParticipantApplicationStatus('submitted', 'registration_open')).toContain('under review')
     expect(summarizeParticipantApplicationStatus('submitted', 'registration_open')).toContain('after approval')
     expect(summarizeParticipantApplicationStatus('approved', 'registration_open')).toContain('approved to create a team')
     expect(summarizeParticipantApplicationStatus('rejected', 'registration_open')).toContain('cannot submit another application')
+    expect(summarizeParticipantApplicationStatus('withdrawn', 'registration_open')).toContain('withdrew from this hackathon')
+  })
+
+  test('shows the overview status banner until approval transitions into submission work', () => {
+    expect(shouldShowParticipantOverviewStatusBanner('submitted', 'registration_open')).toBe(true)
+    expect(shouldShowParticipantOverviewStatusBanner('rejected', 'completed')).toBe(true)
+    expect(shouldShowParticipantOverviewStatusBanner('approved', 'registration_open')).toBe(true)
+    expect(shouldShowParticipantOverviewStatusBanner('approved', 'submission_open')).toBe(false)
+    expect(shouldShowParticipantOverviewStatusBanner(null, 'registration_open')).toBe(false)
+  })
+
+  test('computes participant application withdrawal availability from status and team membership', () => {
+    expect(getParticipantApplicationWithdrawalAvailability({
+      applicationStatus: 'submitted',
+      hasActiveTeamMembership: false
+    })).toEqual({
+      isAllowed: true
+    })
+
+    expect(getParticipantApplicationWithdrawalAvailability({
+      applicationStatus: 'approved',
+      hasActiveTeamMembership: true
+    })).toEqual({
+      isAllowed: false,
+      reason: 'Leave your active team before withdrawing from this hackathon.'
+    })
+
+    expect(getParticipantApplicationWithdrawalAvailability({
+      applicationStatus: 'withdrawn',
+      hasActiveTeamMembership: false
+    })).toEqual({
+      isAllowed: false,
+      reason: 'This application is already withdrawn.'
+    })
   })
 
   test('describes whether the hackathon currently allows new applications', () => {

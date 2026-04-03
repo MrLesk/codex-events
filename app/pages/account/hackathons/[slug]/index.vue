@@ -10,13 +10,17 @@ import type {
   HackathonParticipationPayload,
   HackathonParticipationRecord
 } from '~/utils/hackathon-participation'
+import type {
+  ParticipantApiDataResponse,
+  ParticipantApplicationRecord
+} from '~/utils/participant-application'
 
 import AccountHackathonAdminOperationsPanel from '~/components/account/hackathons/AccountHackathonAdminOperationsPanel.vue'
+import AccountHackathonPublishedRosterPanel from '~/components/account/hackathons/AccountHackathonPublishedRosterPanel.vue'
 import AccountHackathonParticipantTeamPanel from '~/components/account/hackathons/AccountHackathonParticipantTeamPanel.vue'
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
 import AccountHackathonCompetitionPanel from '~/components/account/hackathons/AccountHackathonCompetitionPanel.vue'
 import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
-import AccountHackathonPublishedRosterPanel from '~/components/account/hackathons/AccountHackathonPublishedRosterPanel.vue'
 import AccountHackathonParticipantVisibilityPanel from '~/components/account/hackathons/AccountHackathonParticipantVisibilityPanel.vue'
 import AccountHackathonRoleRosterPanel from '~/components/account/hackathons/AccountHackathonRoleRosterPanel.vue'
 import AccountHackathonTeamVisibilityPanel from '~/components/account/hackathons/AccountHackathonTeamVisibilityPanel.vue'
@@ -38,8 +42,11 @@ import {
 import { getAccountHackathonSeoContent } from '~/utils/account-hackathon-seo'
 import {
   formatParticipantApplicationStatus,
+  getParticipantApplicationWithdrawalAvailability,
   getParticipantApplicationStatusColor,
   isParticipantApplicationSubmittedNotice,
+  normalizeParticipantApiError,
+  shouldShowParticipantOverviewStatusBanner,
   summarizeParticipantApplicationStatus
 } from '~/utils/participant-application'
 import { getTeamFormationAvailability } from '~/utils/team-workspace'
@@ -71,7 +78,7 @@ interface AccountHackathonAccessRecord {
   registrationClosesAt: string
   submissionOpensAt: string
   submissionClosesAt: string
-  applicationStatus: 'submitted' | 'approved' | 'rejected' | null
+  applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
   team: {
     id: string
     name: string
@@ -157,15 +164,20 @@ const [
   requestFetch<AccountHackathonsResponse>('/api/account/hackathons'),
   requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>('/api/hackathons/participation')
 ])
+const toast = useToast()
+const accountHackathonsData = ref(accountHackathonsResponse.data)
+const participationData = ref(participationResponse.data)
+const isWithdrawApplicationPending = ref(false)
+const withdrawApplicationErrorMessage = ref('')
 const accessRecord = computed(() => [
-  ...accountHackathonsResponse.data.current,
-  ...accountHackathonsResponse.data.past
+  ...accountHackathonsData.value.current,
+  ...accountHackathonsData.value.past
 ].find(record => record.slug === slug.value) ?? null)
 
 const participationRecord = computed<HackathonParticipationRecord | null>(() => {
   const records = [
-    ...participationResponse.data.current,
-    ...participationResponse.data.past
+    ...participationData.value.current,
+    ...participationData.value.past
   ]
 
   return records.find(record => record.hackathon.slug === slug.value) ?? null
@@ -324,6 +336,7 @@ onMounted(() => {
 })
 
 const teamTabHref = computed(() => `/account/hackathons/${slug.value}?tab=team`)
+const detailsTabHref = computed(() => `/account/hackathons/${slug.value}?tab=details`)
 const applicationSubmittedNoticeVisible = ref(isParticipantApplicationSubmittedNotice(route.query.notice))
 const applicationStatusLabel = computed(() =>
   applicationStatus.value ? formatParticipantApplicationStatus(applicationStatus.value) : ''
@@ -340,6 +353,51 @@ const applicationStatusSummary = computed(() =>
     ? summarizeParticipantApplicationStatus(applicationStatus.value, hackathon.value.state)
     : ''
 )
+const showHeaderApplicationStatusSummary = computed(() =>
+  Boolean(applicationStatusSummary.value) && applicationStatus.value !== 'approved'
+)
+const showOverviewApplicationStatusBanner = computed(() =>
+  shouldShowParticipantOverviewStatusBanner(applicationStatus.value, hackathon.value.state)
+)
+const showApprovedOverviewActions = computed(() =>
+  applicationStatus.value === 'approved' && !hasHackathonEnteredSubmissionPhase(hackathon.value)
+)
+const applicationStatusNoticeTitle = computed(() => {
+  switch (applicationStatus.value) {
+    case 'submitted':
+      return 'Approval pending'
+    case 'approved':
+      return 'Approved for this hackathon'
+    case 'rejected':
+      return 'Not approved'
+    case 'withdrawn':
+      return 'Participation withdrawn'
+    default:
+      return 'Application status'
+  }
+})
+const applicationStatusNoticeColor = computed(() => {
+  if (!applicationStatus.value) {
+    return 'neutral'
+  }
+
+  if (applicationStatus.value === 'submitted') {
+    return 'warning'
+  }
+
+  if (applicationStatus.value === 'rejected') {
+    return 'error'
+  }
+
+  return 'neutral'
+})
+const withdrawApplicationAvailability = computed(() =>
+  getParticipantApplicationWithdrawalAvailability({
+    applicationStatus: applicationStatus.value,
+    hasActiveTeamMembership: Boolean(participationRecord.value?.activeTeam)
+  })
+)
+const withdrawalDescription = 'If you withdraw, you will no longer be eligible to participate or attend in person through this application.'
 
 const teamFormationAvailability = computed(() =>
   getTeamFormationAvailability(
@@ -402,6 +460,86 @@ const detailSummary = computed(() => [
   formatHackathonLocation(hackathon.value),
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
+
+function updateAccessRecordApplicationStatus(nextStatus: ParticipantApplicationRecord['status']) {
+  const patchRecords = (records: AccountHackathonAccessRecord[]) =>
+    records.map(record => record.slug === slug.value
+      ? {
+          ...record,
+          applicationStatus: nextStatus
+        }
+      : record)
+
+  accountHackathonsData.value = {
+    current: patchRecords(accountHackathonsData.value.current),
+    past: patchRecords(accountHackathonsData.value.past)
+  }
+}
+
+function updateParticipationRecordApplication(nextApplication: ParticipantApplicationRecord) {
+  const patchRecords = (records: HackathonParticipationRecord[]) =>
+    records.map(record => record.hackathon.slug === slug.value
+      ? {
+          ...record,
+          application: {
+            id: nextApplication.id,
+            status: nextApplication.status,
+            submittedAt: nextApplication.submittedAt,
+            withdrawnAt: nextApplication.withdrawnAt,
+            reviewedAt: nextApplication.reviewedAt,
+            updatedAt: nextApplication.updatedAt
+          }
+        }
+      : record)
+
+  participationData.value = {
+    current: patchRecords(participationData.value.current),
+    past: patchRecords(participationData.value.past)
+  }
+}
+
+async function withdrawOwnApplication() {
+  if (!import.meta.client || !withdrawApplicationAvailability.value.isAllowed || isWithdrawApplicationPending.value) {
+    if (!withdrawApplicationAvailability.value.isAllowed) {
+      withdrawApplicationErrorMessage.value = withdrawApplicationAvailability.value.reason ?? ''
+    }
+
+    return
+  }
+
+  const confirmed = window.confirm(
+    `Withdraw from this hackathon?\n\n${withdrawalDescription}`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  isWithdrawApplicationPending.value = true
+  withdrawApplicationErrorMessage.value = ''
+
+  try {
+    const response = await $fetch<ParticipantApiDataResponse<ParticipantApplicationRecord>>(
+      `/api/hackathons/${hackathon.value.id}/applications/me/actions/withdraw`,
+      {
+        method: 'POST'
+      }
+    )
+
+    updateAccessRecordApplicationStatus(response.data.status)
+    updateParticipationRecordApplication(response.data)
+    applicationSubmittedNoticeVisible.value = false
+    toast.add({
+      title: 'Participation withdrawn',
+      description: 'You are no longer eligible to participate in this hackathon.',
+      color: 'success'
+    })
+  } catch (error) {
+    withdrawApplicationErrorMessage.value = normalizeParticipantApiError(error).message
+  } finally {
+    isWithdrawApplicationPending.value = false
+  }
+}
 
 useSeoMeta({
   title: () => activeSectionSeo.value.title,
@@ -468,7 +606,7 @@ useSeoMeta({
             </div>
 
             <p
-              v-if="applicationStatusSummary"
+              v-if="showHeaderApplicationStatusSummary"
               class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]"
             >
               {{ applicationStatusSummary }}
@@ -531,20 +669,91 @@ useSeoMeta({
             />
 
             <AppAlert
-              v-if="applicationStatus && applicationStatus !== 'approved'"
-              :color="applicationStatus === 'submitted' ? 'warning' : 'error'"
+              v-if="showOverviewApplicationStatusBanner"
+              :color="applicationStatus === 'approved' ? 'success' : applicationStatusNoticeColor"
               variant="soft"
-              title="Application status"
+              :title="applicationStatusNoticeTitle"
               :description="applicationStatusSummary"
             />
 
-            <template v-else-if="applicationStatus === 'approved'">
+            <AppAlert
+              v-if="withdrawApplicationErrorMessage"
+              color="error"
+              variant="soft"
+              title="Unable to withdraw participation"
+              :description="withdrawApplicationErrorMessage"
+            />
+
+            <section
+              v-if="applicationStatus === 'submitted' || applicationStatus === 'approved'"
+              class="rounded-xl hackathon-workspace-detail-inset px-5 py-5"
+            >
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="space-y-2">
+                  <p class="text-sm font-semibold text-highlighted dark:text-white">
+                    Withdraw from this hackathon
+                  </p>
+                  <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                    {{ withdrawalDescription }}
+                  </p>
+                  <p
+                    v-if="!withdrawApplicationAvailability.isAllowed && withdrawApplicationAvailability.reason"
+                    class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
+                  >
+                    {{ withdrawApplicationAvailability.reason }}
+                  </p>
+                </div>
+
+                <AppButton
+                  color="error"
+                  variant="soft"
+                  :loading="isWithdrawApplicationPending"
+                  :disabled="!withdrawApplicationAvailability.isAllowed || isWithdrawApplicationPending"
+                  @click="withdrawOwnApplication"
+                >
+                  Withdraw participation
+                </AppButton>
+              </div>
+            </section>
+
+            <template v-if="applicationStatus === 'approved'">
               <AppAlert
-                :color="teamFormationAvailability.isOpen ? 'success' : 'neutral'"
+                v-if="showApprovedOverviewActions"
+                color="neutral"
                 variant="soft"
-                title="Team formation"
+                title="Open team workspace"
                 :description="teamFormationAvailability.summary"
-              />
+              >
+                <div class="mt-3 flex flex-wrap gap-3">
+                  <AppButton
+                    :to="teamTabHref"
+                    color="neutral"
+                    variant="solid"
+                    trailing-icon="i-lucide-arrow-up-right"
+                  >
+                    Open Team tab
+                  </AppButton>
+                </div>
+              </AppAlert>
+
+              <AppAlert
+                v-if="showApprovedOverviewActions"
+                color="neutral"
+                variant="soft"
+                title="Check event details"
+                description="Review the full schedule, event details, and participant address information for this hackathon."
+              >
+                <div class="mt-3 flex flex-wrap gap-3">
+                  <AppButton
+                    :to="detailsTabHref"
+                    color="neutral"
+                    variant="solid"
+                    trailing-icon="i-lucide-arrow-up-right"
+                  >
+                    Open Details tab
+                  </AppButton>
+                </div>
+              </AppAlert>
 
               <section
                 v-if="showTeamAndSubmissionCards"

@@ -83,16 +83,18 @@ function createHtmlResponse(html: string, status: number = 200) {
 
 async function seedLumaSyncContext(options?: {
   decision?: 'approved' | 'rejected'
+  applicationStatus?: typeof userApplications.$inferSelect['status']
   lumaSyncStatus?: typeof userApplications.$inferSelect['lumaSyncStatus']
   lumaEmail?: string | null
   lumaUsername?: string | null
   requireLumaEmail?: boolean
   lumaEventUrl?: string | null
   lumaEventApiId?: string | null
+  withdrawnAt?: string | null
 }) {
   const d1Database = createTestD1Database()
   const database = createDatabase(d1Database as never)
-  const decision = options?.decision ?? 'approved'
+  const applicationStatus = options?.applicationStatus ?? options?.decision ?? 'approved'
 
   await database.insert(users).values([
     {
@@ -148,15 +150,24 @@ async function seedLumaSyncContext(options?: {
     id: 'application_1',
     hackathonId: 'hackathon_1',
     userId: 'regular_user',
-    status: decision,
+    status: applicationStatus,
     lumaSyncStatus: options?.lumaSyncStatus ?? 'not_synced',
     submittedAt: '2026-03-22T12:10:00.000Z',
-    reviewedAt: '2026-03-22T12:30:00.000Z',
-    reviewedByUserId: 'platform_admin',
+    withdrawnAt: applicationStatus === 'withdrawn'
+      ? options?.withdrawnAt ?? '2026-03-22T12:35:00.000Z'
+      : null,
+    reviewedAt: applicationStatus === 'withdrawn'
+      ? null
+      : '2026-03-22T12:30:00.000Z',
+    reviewedByUserId: applicationStatus === 'withdrawn'
+      ? null
+      : 'platform_admin',
     applicationTermsDocumentId: 'terms_app_1',
     applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
     createdAt: '2026-03-22T12:10:00.000Z',
-    updatedAt: '2026-03-22T12:30:00.000Z'
+    updatedAt: applicationStatus === 'withdrawn'
+      ? options?.withdrawnAt ?? '2026-03-22T12:35:00.000Z'
+      : '2026-03-22T12:30:00.000Z'
   })
 
   return {
@@ -533,6 +544,56 @@ describe('application luma sync queue utilities', () => {
         action: 'user_application.luma_sync_recovery_enqueued',
         metadata: expect.objectContaining({
           decision: 'approved',
+          recoveryTrigger: 'startup',
+          queueName: 'codex-hackathons-application-luma-sync'
+        })
+      })
+    ]))
+  })
+
+  test('startup recovery re-enqueues stale withdrawn applications as rejected Luma syncs', async () => {
+    const { d1Database, database } = await seedLumaSyncContext({
+      applicationStatus: 'withdrawn'
+    })
+    d1Databases.push(d1Database)
+    const send = vi.fn(async () => undefined)
+
+    const result = await recoverStaleApplicationLumaSyncMessages({
+      database,
+      cloudflareEnv: {
+        APPLICATION_LUMA_SYNC_QUEUE: { send }
+      },
+      runtimeConfig: {
+        luma: {
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
+          queueName: 'codex-hackathons-application-luma-sync',
+          retryDelaySeconds: 90
+        }
+      }
+    })
+
+    expect(result).toEqual({
+      status: 'recovered',
+      reason: 'stale_applications_reenqueued',
+      recoveredCount: 1,
+      applicationIds: ['application_1']
+    })
+    expect(send).toHaveBeenCalledTimes(1)
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: 'application_1',
+      decision: 'rejected'
+    }), {
+      contentType: 'json'
+    })
+
+    const auditRows = await database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'user_application',
+        entityId: 'application_1',
+        action: 'user_application.luma_sync_recovery_enqueued',
+        metadata: expect.objectContaining({
+          decision: 'rejected',
           recoveryTrigger: 'startup',
           queueName: 'codex-hackathons-application-luma-sync'
         })

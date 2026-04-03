@@ -80,6 +80,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | --- | --- | --- | --- | --- | --- |
 | Submit `UserApplication` | Yes, if no application exists for the hackathon and the hackathon is `registration_open` | No | No | No | No |
 | View own application | Yes | Yes | No | No | No |
+| Withdraw own application | Yes, if the application is still `submitted` and the user has no active team membership in the hackathon | Yes, if the application is `approved` and the user has no active team membership in the hackathon | No | No | No |
 | View hackathon application records | No | No | Yes | Yes | Yes |
 | Approve application | No | No | No | Yes | Yes |
 | Reject application | No | No | No | Yes | Yes |

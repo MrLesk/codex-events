@@ -131,6 +131,7 @@ Behavior:
 - `submitted`
 - `approved`
 - `rejected`
+- `withdrawn`
 
 ### State Meanings
 
@@ -163,12 +164,31 @@ Behavior:
 - The user cannot join a team.
 - The user cannot submit another application to the same hackathon.
 
+#### `withdrawn`
+
+The participant withdrew from the hackathon.
+
+Behavior:
+
+- The user is no longer eligible to participate in the hackathon.
+- The user is no longer eligible to attend the hackathon in person through this application when the event is in person.
+- When Luma sync is enabled for the hackathon, withdrawal also triggers Luma guest removal for this participant.
+- The user cannot create a team.
+- The user cannot join a team.
+- The application record remains stored for auditability and exact-version terms acceptance history.
+
 ### Transitions
 
 - `submitted -> approved`
   Actor: hackathon admin or platform admin applying staged decisions.
 - `submitted -> rejected`
   Actor: hackathon admin or platform admin applying staged decisions.
+- `submitted -> withdrawn`
+  Actor: applicant.
+  Guard: the user has no active team membership in the hackathon.
+- `approved -> withdrawn`
+  Actor: participant.
+  Guard: the user has no active team membership in the hackathon.
 
 ## Team Join Request
 

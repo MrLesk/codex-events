@@ -18,8 +18,9 @@ export interface HackathonParticipationHackathonSummary {
 
 export interface HackathonParticipationApplicationSummary {
   id: string
-  status: 'submitted' | 'approved' | 'rejected'
+  status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
   submittedAt: string
+  withdrawnAt: string | null
   reviewedAt: string | null
   updatedAt: string
 }
@@ -71,6 +72,10 @@ export function formatParticipationStatusLabel(record: HackathonParticipationRec
     return 'Not approved'
   }
 
+  if (record.application?.status === 'withdrawn') {
+    return 'Withdrawn'
+  }
+
   if (record.activeTeam) {
     return 'Team active'
   }
@@ -103,6 +108,10 @@ export function getParticipationStatusColor(record: HackathonParticipationRecord
     return 'error'
   }
 
+  if (record.application?.status === 'withdrawn') {
+    return 'neutral'
+  }
+
   if (record.activeTeam) {
     return 'primary'
   }
@@ -124,6 +133,10 @@ export function getParticipationStatusColor(record: HackathonParticipationRecord
 
 export function formatParticipationStageLabel(record: HackathonParticipationRecord) {
   if (record.application) {
+    if (record.application.status === 'withdrawn') {
+      return 'Application withdrawn'
+    }
+
     return 'Application submitted'
   }
 

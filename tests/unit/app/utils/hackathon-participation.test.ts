@@ -31,6 +31,7 @@ function buildRecord(
       id: 'application-1',
       status: 'submitted',
       submittedAt: '2026-03-09T09:00:00Z',
+      withdrawnAt: null,
       reviewedAt: null,
       updatedAt: '2026-03-10T09:00:00Z'
     },
@@ -57,6 +58,7 @@ describe('hackathon participation badge helpers', () => {
         id: 'application-1',
         status: 'approved',
         submittedAt: '2026-03-09T09:00:00Z',
+        withdrawnAt: null,
         reviewedAt: '2026-03-12T09:00:00Z',
         updatedAt: '2026-03-12T09:00:00Z'
       }
@@ -73,6 +75,7 @@ describe('hackathon participation badge helpers', () => {
         id: 'application-1',
         status: 'rejected',
         submittedAt: '2026-03-09T09:00:00Z',
+        withdrawnAt: null,
         reviewedAt: '2026-03-12T09:00:00Z',
         updatedAt: '2026-03-12T09:00:00Z'
       }
