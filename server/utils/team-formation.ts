@@ -36,6 +36,7 @@ export const teamJoinRequestParamsSchema = routeIdParamsSchema.extend({
 export const listTeamsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   page_size: z.coerce.number().int().min(1).max(100).default(20),
+  slug: z.string().trim().min(1).optional(),
   search: z.string().trim().min(1).optional()
 })
 
@@ -368,6 +369,10 @@ export async function listVisibleTeams(
   query: z.infer<typeof listTeamsQuerySchema>
 ) {
   const filters = [eq(teams.hackathonId, hackathonId)]
+
+  if (query.slug) {
+    filters.push(eq(teams.slug, query.slug))
+  }
 
   if (query.search) {
     filters.push(or(

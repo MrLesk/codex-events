@@ -10,6 +10,7 @@ import ParticipantTeamJoinRequestsPanel from '~/components/teams/ParticipantTeam
 import ParticipantTeamMembershipPanel from '~/components/teams/ParticipantTeamMembershipPanel.vue'
 import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSubmissionPanel.vue'
 import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWorkspacePanel.vue'
+import { buildAccountHackathonTeamTabHref } from '~/utils/team-query'
 import {
   getCreateTeamAvailability,
   getJoinTeamAvailability,
@@ -29,10 +30,14 @@ const props = defineProps<{
   hackathon: PublicHackathon & {
     id: string
   }
+  selectedTeamSlug?: string | null
 }>()
 
 const toast = useToast()
 const selectedTeamId = ref<string | null>(null)
+const selectedTeamStatus = ref<'idle' | 'pending' | 'success' | 'error'>('idle')
+const selectedTeamErrorMessage = ref('')
+let selectedTeamRequestVersion = 0
 const workspace = useTeamFormationWorkspace(
   computed(() => props.hackathon),
   {
@@ -55,8 +60,76 @@ const submissionForm = reactive({
   demoUrl: ''
 })
 
-watch(() => workspace.ownTeam.value?.id ?? null, (nextTeamId) => {
-  selectedTeamId.value = nextTeamId
+const visibleTeamSlugs = computed(() =>
+  workspace.visibleTeams.value.map(team => team.slug).join(':')
+)
+
+function buildTeamTabHref(teamSlug?: string | null) {
+  return buildAccountHackathonTeamTabHref(props.hackathon.slug, teamSlug)
+}
+
+async function syncSelectedTeamId() {
+  const requestedTeamSlug = props.selectedTeamSlug?.trim().toLowerCase() ?? ''
+  const requestVersion = ++selectedTeamRequestVersion
+
+  selectedTeamErrorMessage.value = ''
+
+  if (!requestedTeamSlug) {
+    selectedTeamId.value = workspace.ownTeam.value?.id ?? null
+    selectedTeamStatus.value = 'success'
+    return
+  }
+
+  if (workspace.ownTeam.value?.slug === requestedTeamSlug) {
+    selectedTeamId.value = workspace.ownTeam.value.id
+    selectedTeamStatus.value = 'success'
+    return
+  }
+
+  const matchingVisibleTeam = workspace.visibleTeams.value.find(team => team.slug === requestedTeamSlug)
+
+  if (matchingVisibleTeam) {
+    selectedTeamId.value = matchingVisibleTeam.id
+    selectedTeamStatus.value = 'success'
+    return
+  }
+
+  selectedTeamId.value = null
+  selectedTeamStatus.value = 'pending'
+
+  try {
+    const resolvedTeam = await workspace.findVisibleTeamBySlug(requestedTeamSlug)
+
+    if (requestVersion !== selectedTeamRequestVersion) {
+      return
+    }
+
+    if (resolvedTeam) {
+      selectedTeamId.value = resolvedTeam.id
+      selectedTeamStatus.value = 'success'
+      return
+    }
+
+    selectedTeamId.value = workspace.ownTeam.value?.id ?? null
+    selectedTeamStatus.value = 'error'
+    selectedTeamErrorMessage.value = 'The selected team from this link is not available in this hackathon.'
+  } catch {
+    if (requestVersion !== selectedTeamRequestVersion) {
+      return
+    }
+
+    selectedTeamId.value = workspace.ownTeam.value?.id ?? null
+    selectedTeamStatus.value = 'error'
+    selectedTeamErrorMessage.value = 'The selected team from this link could not be loaded right now.'
+  }
+}
+
+watch([
+  () => props.selectedTeamSlug ?? null,
+  () => workspace.ownTeam.value?.id ?? null,
+  visibleTeamSlugs
+], () => {
+  void syncSelectedTeamId()
 }, {
   immediate: true
 })
@@ -116,7 +189,24 @@ const isWorkspaceLoading = computed(() => {
 const teamFormationAvailability = computed(() =>
   getTeamFormationAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
 )
+const isViewingExternalTeam = computed(() =>
+  Boolean(workspace.currentTeam.value && !workspace.currentTeamMembership.value)
+)
+const isViewingSharedTeam = computed(() =>
+  Boolean(
+    workspace.ownTeam.value
+    && workspace.currentTeam.value
+    && workspace.ownTeam.value.id !== workspace.currentTeam.value.id
+  )
+)
+const backToOwnTeamHref = computed(() =>
+  workspace.ownTeam.value ? buildTeamTabHref(workspace.ownTeam.value.slug) : null
+)
 const teamPanelTitle = computed(() => {
+  if (isViewingExternalTeam.value && workspace.currentTeam.value) {
+    return `Viewing ${workspace.currentTeam.value.name}`
+  }
+
   if (workspace.ownTeam.value) {
     return 'Continue with your team'
   }
@@ -135,6 +225,10 @@ const teamPanelTitle = computed(() => {
   }
 })
 const teamPanelStatusLabel = computed(() => {
+  if (isViewingExternalTeam.value) {
+    return 'Shared team'
+  }
+
   if (workspace.ownTeam.value) {
     return 'On a team'
   }
@@ -153,6 +247,10 @@ const teamPanelStatusLabel = computed(() => {
   }
 })
 const teamPanelStatusColor = computed(() => {
+  if (isViewingExternalTeam.value) {
+    return 'neutral'
+  }
+
   if (workspace.ownTeam.value || (ownApplicationStatus.value === 'approved' && teamFormationAvailability.value.isOpen)) {
     return 'success'
   }
@@ -169,6 +267,15 @@ const teamPanelStatusColor = computed(() => {
 })
 const teamPanelSummary = computed(() => {
   const ownTeam = workspace.ownTeam.value
+  const currentTeam = workspace.currentTeam.value
+
+  if (isViewingSharedTeam.value && ownTeam && currentTeam) {
+    return `You are on ${ownTeam.name}. This page is showing ${currentTeam.name} from a direct team link. Use Back to my team to return to your own workspace.`
+  }
+
+  if (isViewingExternalTeam.value && currentTeam) {
+    return `You are viewing ${currentTeam.name}. Request to join if the team is open and you are still eligible to switch teams.`
+  }
 
   if (ownTeam) {
     return `You're already on ${ownTeam.name}. Use this page to manage members, review join requests, and keep your team details up to date.`
@@ -185,15 +292,16 @@ const createTeamAvailability = computed(() =>
 )
 const directoryEntries = computed<TeamDirectoryEntry[]>(() => {
   const ownTeamId = workspace.ownTeam.value?.id ?? null
+  const selectedExternalTeamId = workspace.currentTeamMembership.value ? null : workspace.currentTeam.value?.id ?? null
 
   return workspace.visibleTeams.value
-    .filter(team => team.id !== ownTeamId)
+    .filter(team => team.id !== ownTeamId && team.id !== selectedExternalTeamId)
     .map((team) => {
       const pendingJoinRequestId = workspace.getRememberedPendingJoinRequestId(team.id)
 
       return {
         team,
-        detailHref: null,
+        detailHref: buildTeamTabHref(team.slug),
         isOwnTeam: false,
         hasPendingJoinRequest: Boolean(pendingJoinRequestId),
         pendingJoinRequestId,
@@ -480,6 +588,20 @@ async function withdrawSubmission() {
     data-testid="account-hackathon-team-panel"
     class="space-y-6"
   >
+    <div
+      v-if="isViewingSharedTeam && backToOwnTeamHref"
+      class="flex"
+    >
+      <AppButton
+        :to="backToOwnTeamHref"
+        color="neutral"
+        variant="outline"
+        icon="i-lucide-arrow-left"
+      >
+        Back to my team
+      </AppButton>
+    </div>
+
     <section class="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
       <AppCard
         class="rounded-xl hackathon-workspace-detail-panel"
@@ -596,7 +718,23 @@ async function withdrawSubmission() {
           :description="workspace.ownTeamErrorMessage.value"
         />
 
-        <template v-if="workspace.ownTeam.value && workspace.currentTeam.value">
+        <AppAlert
+          v-if="selectedTeamStatus === 'pending'"
+          color="neutral"
+          variant="soft"
+          title="Loading selected team"
+          description="Resolving the team from the shared link."
+        />
+
+        <AppAlert
+          v-else-if="selectedTeamErrorMessage"
+          color="warning"
+          variant="soft"
+          title="Selected team unavailable"
+          :description="selectedTeamErrorMessage"
+        />
+
+        <template v-if="workspace.currentTeam.value">
           <div class="grid gap-6">
             <ParticipantTeamWorkspacePanel
               v-model:settings="teamSettings"
@@ -636,6 +774,7 @@ async function withdrawSubmission() {
             />
 
             <ParticipantTeamMembershipPanel
+              v-if="workspace.currentTeamMembership.value"
               :team="workspace.currentTeam.value"
               :membership="workspace.currentTeamMembership.value"
               :can-manage-team="canManageTeam"
@@ -657,15 +796,15 @@ async function withdrawSubmission() {
         </template>
 
         <AppAlert
-          v-else-if="workspace.ownTeam.value && workspace.currentTeamStatus.value === 'pending'"
+          v-else-if="workspace.currentTeamStatus.value === 'pending'"
           color="neutral"
           variant="soft"
-          title="Loading your team"
-          description="Checking your current team details."
+          :title="props.selectedTeamSlug ? 'Loading selected team' : 'Loading your team'"
+          :description="props.selectedTeamSlug ? 'Checking the selected team details.' : 'Checking your current team details.'"
         />
 
         <AppAlert
-          v-else-if="workspace.ownTeam.value && workspace.currentTeamErrorMessage.value"
+          v-else-if="workspace.currentTeamErrorMessage.value"
           color="error"
           variant="soft"
           title="Team unavailable"
@@ -673,9 +812,9 @@ async function withdrawSubmission() {
         />
 
         <ParticipantTeamDirectoryPanel
-          v-else
+          v-if="!workspace.currentTeamMembership.value"
           v-model:form="createForm"
-          :current-team="workspace.ownTeam.value"
+          :current-team="null"
           :current-team-href="null"
           :teams="directoryEntries"
           :total-teams="workspace.visibleTeamsTotal.value"

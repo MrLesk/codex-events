@@ -173,6 +173,31 @@ export function useTeamFormationWorkspace(
     )
   }
 
+  async function findVisibleTeamBySlug(teamSlug: string) {
+    if (!visibleHackathonId.value || typedActor.value?.kind !== 'platform_user') {
+      return null
+    }
+
+    const normalizedTeamSlug = teamSlug.trim().toLowerCase()
+
+    if (!normalizedTeamSlug) {
+      return null
+    }
+
+    const response = await apiFetch<TeamWorkspaceApiListResponse<TeamSummaryRecord>>(
+      `/api/hackathons/${visibleHackathonId.value}/teams`,
+      {
+        query: {
+          page: 1,
+          page_size: 1,
+          slug: normalizedTeamSlug
+        }
+      }
+    )
+
+    return response.data.find(team => team.slug === normalizedTeamSlug) ?? null
+  }
+
   async function fetchTeamDetail(teamId: string) {
     if (!visibleHackathonId.value) {
       throw new Error('The current hackathon team route could not be resolved.')
@@ -694,6 +719,7 @@ export function useTeamFormationWorkspace(
     currentTeamErrorMessage,
     currentTeamMembership,
     currentTeamStatus,
+    findVisibleTeamBySlug,
     forgetPendingJoinRequest,
     getRememberedPendingJoinRequestId,
     hasMoreVisibleTeams,

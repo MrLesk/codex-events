@@ -322,6 +322,34 @@ describe('TASK-3.6 team formation routes', () => {
     expect(createdTeam).toBeTruthy()
   })
 
+  test('team list can resolve an exact visible team by slug for shared team links', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|requester',
+        email: 'requester@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedTeamFormationContext(harness)
+
+    const response = await harness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=1&slug=beta-team')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      meta: {
+        total: 1
+      },
+      data: [
+        expect.objectContaining({
+          id: 'team_2',
+          slug: 'beta-team',
+          name: 'Beta Team'
+        })
+      ]
+    })
+  })
+
   test('create team derives a unique slug from the submitted team name', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),

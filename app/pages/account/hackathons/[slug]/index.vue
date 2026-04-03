@@ -60,6 +60,7 @@ import {
   getTeamSubmissionWorkspaceStatus,
   hasHackathonEnteredSubmissionPhase
 } from '~/utils/team-submission'
+import { buildAccountHackathonTeamTabHref, normalizeTeamSlugQueryValue } from '~/utils/team-query'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
 definePageMeta({
@@ -301,6 +302,7 @@ const visibleTabs = computed(() =>
 const activeSection = computed<AccountHackathonWorkspaceTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
+const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
 const activeSectionSeo = computed(() => getAccountHackathonSeoContent(activeSection.value, hackathon.value.name))
 
 watchEffect(() => {
@@ -344,7 +346,12 @@ onMounted(() => {
   }, { replace: true })
 })
 
-const teamTabHref = computed(() => `/account/hackathons/${slug.value}?tab=team`)
+const teamTabTargetSlug = computed(() =>
+  participationRecord.value?.activeTeam?.slug
+  ?? accessRecord.value?.team?.slug
+  ?? selectedTeamSlug.value
+)
+const teamTabHref = computed(() => buildAccountHackathonTeamTabHref(slug.value, teamTabTargetSlug.value))
 const detailsTabHref = computed(() => `/account/hackathons/${slug.value}?tab=details`)
 const applicationSubmittedNoticeVisible = ref(isParticipantApplicationSubmittedNotice(route.query.notice))
 const applicationStatusLabel = computed(() =>
@@ -879,6 +886,7 @@ useSeoMeta({
       >
         <AccountHackathonParticipantTeamPanel
           :hackathon="hackathon"
+          :selected-team-slug="selectedTeamSlug"
         />
       </section>
 
