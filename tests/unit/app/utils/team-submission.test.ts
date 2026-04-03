@@ -9,6 +9,7 @@ import {
   getSubmitSubmissionAvailability,
   getUpdateSubmissionAvailability,
   getWithdrawSubmissionAvailability,
+  shouldShowParticipantSubmissionWorkspace,
   type TeamSubmissionRecord
 } from '../../../../app/utils/team-submission'
 
@@ -43,6 +44,20 @@ describe('team submission helpers', () => {
     expect(hasHackathonEnteredSubmissionPhase({
       state: 'judge_review'
     })).toBe(true)
+  })
+
+  test('shows the participant submission workspace only after submission starts and only for team members', () => {
+    expect(shouldShowParticipantSubmissionWorkspace({
+      state: 'registration_open'
+    }, true)).toBe(false)
+
+    expect(shouldShowParticipantSubmissionWorkspace({
+      state: 'submission_open'
+    }, true)).toBe(true)
+
+    expect(shouldShowParticipantSubmissionWorkspace({
+      state: 'judge_review'
+    }, false)).toBe(false)
   })
 
   test('allows creating the first draft only for team admins during submission_open', () => {

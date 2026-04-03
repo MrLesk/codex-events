@@ -78,6 +78,13 @@ export function hasHackathonEnteredSubmissionPhase(hackathon: Pick<PublicHackath
   return hackathon.state !== 'draft' && hackathon.state !== 'registration_open'
 }
 
+export function shouldShowParticipantSubmissionWorkspace(
+  hackathon: Pick<PublicHackathon, 'state'>,
+  hasTeamMembership: boolean
+) {
+  return hasTeamMembership && hasHackathonEnteredSubmissionPhase(hackathon)
+}
+
 export function getTeamSubmissionStateSummary(
   hackathon: Pick<PublicHackathon, 'state'>,
   submission: TeamSubmissionRecord | null | undefined

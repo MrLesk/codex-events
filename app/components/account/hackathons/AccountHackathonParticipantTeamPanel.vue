@@ -20,6 +20,7 @@ import {
 import {
   getCreateSubmissionAvailability,
   getSubmitSubmissionAvailability,
+  shouldShowParticipantSubmissionWorkspace,
   getUpdateSubmissionAvailability,
   getWithdrawSubmissionAvailability
 } from '~/utils/team-submission'
@@ -74,7 +75,9 @@ watch(() => workspace.currentTeam.value?.id ?? null, () => {
 })
 
 const canManageTeam = computed(() => workspace.isCurrentTeamAdmin.value)
-const canViewSubmission = computed(() => Boolean(workspace.currentTeamMembership.value))
+const canViewSubmission = computed(() =>
+  shouldShowParticipantSubmissionWorkspace(props.hackathon, Boolean(workspace.currentTeamMembership.value))
+)
 const submissionWorkspace = useTeamSubmissionWorkspace(
   computed(() => props.hackathon),
   {
@@ -658,7 +661,7 @@ async function withdrawSubmission() {
           color="neutral"
           variant="soft"
           title="Loading your team"
-          description="Checking your current team details and submission status."
+          description="Checking your current team details."
         />
 
         <AppAlert
