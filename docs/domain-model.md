@@ -34,6 +34,8 @@ Rules:
 - The reusable platform profile fields are managed from account settings.
 - A user with `is_platform_admin = true` is a platform admin.
 - Platform admins can create hackathons.
+- Platform admins can grant platform-admin access to other active users.
+- Granting platform-admin access also normalizes the user's explicit `hackathon_admin` assignment coverage across every hackathon.
 - Hackathon admins and platform admins can assign staff, judges, and hackathon admins within their hackathons.
 - Platform admins implicitly have hackathon-admin permissions in every hackathon.
 

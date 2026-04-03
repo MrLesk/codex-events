@@ -141,21 +141,33 @@ useSeoMeta({
               </p>
             </div>
 
-            <AppButton
-              v-if="canCreate"
-              to="/admin/hackathons/new"
-              color="neutral"
-              variant="solid"
-              class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-            >
-              Create hackathon
-              <template #trailing>
-                <AppIcon
-                  name="i-lucide-plus"
-                  class="size-3.5"
-                />
-              </template>
-            </AppButton>
+            <div class="flex flex-wrap items-center gap-3">
+              <AppButton
+                v-if="isPlatformAdmin"
+                to="/account/platform-admins"
+                color="neutral"
+                variant="outline"
+                class="h-auto rounded-lg px-4 py-2 text-[13px] font-medium"
+              >
+                Manage platform admins
+              </AppButton>
+
+              <AppButton
+                v-if="canCreate"
+                to="/admin/hackathons/new"
+                color="neutral"
+                variant="solid"
+                class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+              >
+                Create hackathon
+                <template #trailing>
+                  <AppIcon
+                    name="i-lucide-plus"
+                    class="size-3.5"
+                  />
+                </template>
+              </AppButton>
+            </div>
           </div>
         </div>
       </AppContainer>

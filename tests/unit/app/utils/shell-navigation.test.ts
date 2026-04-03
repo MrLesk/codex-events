@@ -66,6 +66,7 @@ describe('isShellNavigationLinkActive', () => {
   test('keeps exact dashboard roots active for their own pages', () => {
     expect(isShellNavigationLinkActive('/account/judging', undefined, '/account/judging')).toBe(true)
     expect(isShellNavigationLinkActive('/account/admin', undefined, '/account/admin')).toBe(true)
+    expect(isShellNavigationLinkActive('/account/platform-admins', undefined, '/account/admin')).toBe(true)
     expect(isShellNavigationLinkActive('/account/settings', undefined, '/account/settings')).toBe(true)
   })
 })

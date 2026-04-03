@@ -2,13 +2,15 @@ import 'dotenv/config'
 
 import { and, eq, isNull } from 'drizzle-orm'
 
-import { buildAuditLogInsert } from '../../server/database/audit-log'
 import { createDatabase, type D1DatabaseBinding } from '../../server/database/client'
 import { createLocalPlatformProxy } from '../../server/database/local-platform-proxy'
 import {
-  hackathonRoleAssignments,
   users
 } from '../../server/database/schema'
+import {
+  assessPlatformAdminGrantState,
+  grantPlatformAdminAccess
+} from '../../server/utils/platform-admins'
 
 type CommandMode = 'apply' | 'check'
 
@@ -17,17 +19,6 @@ interface ScriptArgs {
   email: string | null
   auth0Subject: string | null
   bindingName: string
-}
-
-interface BootstrapAssessment {
-  userIsPlatformAdmin: boolean
-  missingHackathonAdminAssignmentHackathonIds: string[]
-  nonAdminHackathonAssignments: Array<{
-    assignmentId: string
-    hackathonId: string
-    role: typeof hackathonRoleAssignments.$inferSelect.role
-    isInJudgePool: boolean
-  }>
 }
 
 export function getUsageMessage() {
@@ -139,70 +130,6 @@ async function resolveTargetUser(
   return user
 }
 
-async function assessBootstrapState(
-  database: ReturnType<typeof createDatabase>,
-  userId: string
-): Promise<BootstrapAssessment> {
-  const [hackathonRows, assignmentRows] = await Promise.all([
-    database.query.hackathons.findMany({
-      columns: {
-        id: true
-      }
-    }),
-    database.query.hackathonRoleAssignments.findMany({
-      where: eq(hackathonRoleAssignments.userId, userId),
-      columns: {
-        id: true,
-        hackathonId: true,
-        role: true,
-        isInJudgePool: true
-      }
-    })
-  ])
-
-  const user = await database.query.users.findFirst({
-    columns: {
-      isPlatformAdmin: true
-    },
-    where: eq(users.id, userId)
-  })
-
-  if (!user) {
-    throw new Error(`The target platform user "${userId}" could not be loaded.`)
-  }
-
-  const assignmentByHackathonId = new Map(
-    assignmentRows.map(assignment => [assignment.hackathonId, assignment] as const)
-  )
-
-  const missingHackathonAdminAssignmentHackathonIds: string[] = []
-  const nonAdminHackathonAssignments: BootstrapAssessment['nonAdminHackathonAssignments'] = []
-
-  for (const hackathon of hackathonRows) {
-    const assignment = assignmentByHackathonId.get(hackathon.id)
-
-    if (!assignment) {
-      missingHackathonAdminAssignmentHackathonIds.push(hackathon.id)
-      continue
-    }
-
-    if (assignment.role !== 'hackathon_admin') {
-      nonAdminHackathonAssignments.push({
-        assignmentId: assignment.id,
-        hackathonId: assignment.hackathonId,
-        role: assignment.role,
-        isInJudgePool: assignment.isInJudgePool
-      })
-    }
-  }
-
-  return {
-    userIsPlatformAdmin: user.isPlatformAdmin,
-    missingHackathonAdminAssignmentHackathonIds,
-    nonAdminHackathonAssignments
-  }
-}
-
 export async function run() {
   const scriptArgs = parseScriptArgs(process.argv.slice(2))
   const proxy = await createLocalPlatformProxy()
@@ -221,7 +148,7 @@ export async function run() {
       email: scriptArgs.email,
       auth0Subject: scriptArgs.auth0Subject
     })
-    const before = await assessBootstrapState(database, targetUser.id)
+    const before = await assessPlatformAdminGrantState(database, targetUser.id)
     const isCompliantBefore = before.userIsPlatformAdmin
       && before.missingHackathonAdminAssignmentHackathonIds.length === 0
       && before.nonAdminHackathonAssignments.length === 0
@@ -247,79 +174,13 @@ export async function run() {
       return
     }
 
-    const executedAt = new Date().toISOString()
-    let userPromoted = false
-    let createdHackathonAdminAssignments = 0
-    let updatedHackathonAdminAssignments = 0
-    const updates = []
+    const applied = await grantPlatformAdminAccess(database, {
+      actorUserId: null,
+      userId: targetUser.id,
+      action: 'platform_admin.bootstrap_granted'
+    })
 
-    if (!before.userIsPlatformAdmin) {
-      userPromoted = true
-      updates.push(
-        database
-          .update(users)
-          .set({
-            isPlatformAdmin: true,
-            updatedAt: executedAt
-          })
-          .where(eq(users.id, targetUser.id))
-      )
-    }
-
-    for (const hackathonId of before.missingHackathonAdminAssignmentHackathonIds) {
-      createdHackathonAdminAssignments += 1
-      updates.push(
-        database.insert(hackathonRoleAssignments).values({
-          id: crypto.randomUUID(),
-          hackathonId,
-          userId: targetUser.id,
-          role: 'hackathon_admin',
-          isInJudgePool: false,
-          createdAt: executedAt
-        })
-      )
-    }
-
-    for (const assignment of before.nonAdminHackathonAssignments) {
-      updatedHackathonAdminAssignments += 1
-      updates.push(
-        database
-          .update(hackathonRoleAssignments)
-          .set({
-            role: 'hackathon_admin'
-          })
-          .where(eq(hackathonRoleAssignments.id, assignment.assignmentId))
-      )
-    }
-
-    const appliedChanges = userPromoted
-      || createdHackathonAdminAssignments > 0
-      || updatedHackathonAdminAssignments > 0
-
-    if (appliedChanges) {
-      updates.push(
-        buildAuditLogInsert(database, {
-          actorUserId: null,
-          entityType: 'user',
-          entityId: targetUser.id,
-          action: 'platform_admin.bootstrap_granted',
-          metadata: {
-            email: targetUser.email,
-            auth0Subject: targetUser.auth0Subject,
-            userPromoted,
-            createdHackathonAdminAssignments,
-            updatedHackathonAdminAssignments
-          },
-          createdAt: executedAt
-        }).query
-      )
-    }
-
-    if (updates.length > 0) {
-      await database.batch(updates)
-    }
-
-    const after = await assessBootstrapState(database, targetUser.id)
+    const after = await assessPlatformAdminGrantState(database, targetUser.id)
     const isCompliantAfter = after.userIsPlatformAdmin
       && after.missingHackathonAdminAssignmentHackathonIds.length === 0
       && after.nonAdminHackathonAssignments.length === 0
@@ -333,12 +194,7 @@ export async function run() {
       },
       before,
       after,
-      applied: {
-        userPromoted,
-        createdHackathonAdminAssignments,
-        updatedHackathonAdminAssignments,
-        wroteAuditLog: appliedChanges
-      },
+      applied,
       compliant: isCompliantAfter
     }
 

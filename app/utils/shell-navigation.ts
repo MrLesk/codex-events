@@ -57,6 +57,7 @@ export function isShellNavigationLinkActive(
 
   if (targetPath === '/account/admin') {
     return currentPath === '/account/admin'
+      || currentPath === '/account/platform-admins'
       || (isAccountHackathonDetailPath(currentPath)
         && (
           accountHackathonUsesAdminNavigation

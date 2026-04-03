@@ -35,6 +35,9 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Create account and authenticate | Yes | Yes |
 | Delete own account | Yes | Yes |
 | Create hackathon | No | Yes |
+| View platform admin roster | No | Yes |
+| Search active users for platform-admin management | No | Yes |
+| Grant platform admin access | No | Yes |
 | Assign hackathon admins across any hackathon | No | Yes |
 
 ## Hackathon Lifecycle Actions

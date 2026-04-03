@@ -87,6 +87,7 @@ The canonical backend domains are:
 - `legal`
 - `platform-documents`
 - `account`
+- `platform-admins`
 - `hackathons`
 - `hackathon-roles`
 - `hackathon-terms`
@@ -173,6 +174,24 @@ Testing:
 Operational notes:
 - `/api/session` can expose a link-required hint for an authenticated identity whose verified social login matches an existing password-backed platform account.
 - When `/account/register` is in a link-required state, the UI can bypass the platform-document review UI and send the user directly into existing-account reauthentication. After linking, current platform-document acceptance is evaluated on the linked platform account.
+
+## Platform Admins
+
+Purpose:
+- Support platform-admin roster reads and platform-admin promotion from the authenticated account workspace.
+
+Operations:
+
+| Operation | Method And Path | Actor | Guards And Notes |
+| --- | --- | --- | --- |
+| List current platform admins | `GET /api/platform-admins` | platform admin | Returns active platform users with `isPlatformAdmin = true`. |
+| List platform-admin candidates | `GET /api/platform-admins/candidates` | platform admin | Returns active users for roster search with pagination and fuzzy search over display name, email, and user ID. |
+| Grant platform admin access | `PUT /api/platform-admins/:userId` | platform admin | Grants platform-admin access to the target active user. Promotion also normalizes explicit `hackathon_admin` assignment coverage across every existing hackathon and writes an audit record. |
+
+Testing:
+- Unit: platform-admin grant invariants and candidate ordering or filtering rules.
+- Integration: role enforcement, active-user filtering, promotion persistence, assignment normalization, and audit creation.
+- End-to-end: Auth0-backed platform-admin management flows.
 
 ## Hackathons
 
@@ -462,6 +481,7 @@ Testing:
 - Prize-eligible team membership freezes when the hackathon enters `judging_preparation`.
 - Blind judging excludes team identity even when the reviewing actor is also an admin.
 - Shortlist ordering and leaderboard data remain computed views rather than separate canonical entities.
+- Granting platform-admin access also normalizes explicit `hackathon_admin` assignment coverage across existing hackathons.
 
 ## Test Coverage Matrix
 
@@ -471,6 +491,7 @@ Testing:
 | Legal | Required | Required | Not required |
 | Platform documents | Required | Required | Required |
 | Account | Required | Required | Required |
+| Platform admins | Required | Required | Required |
 | Hackathons | Required | Required | Required for actor-facing admin and public flows |
 | Hackathon roles | Required | Required | Required |
 | Hackathon terms | Required | Required | Required where the flow is actor-facing |

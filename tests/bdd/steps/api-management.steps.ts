@@ -180,6 +180,30 @@ Then('the fixture role response should include user {string} as {string}', async
   ]))
 })
 
+When('the saved {string} session grants platform-admin access to {string}', async ({ page }, personaKey: string, userId: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.put(`/api/platform-admins/${userId}`)
+    getScenarioState(page).response = response
+    getScenarioState(page).json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the platform-admin grant response should promote user {string}', async ({ page }, userId: string) => {
+  expect(getScenarioState(page).response?.ok()).toBe(true)
+  expect(getScenarioState(page).json).toMatchObject({
+    data: {
+      user: {
+        id: userId,
+        isPlatformAdmin: true
+      }
+    }
+  })
+})
+
 When('the saved {string} session opens submission for the fixture hackathon', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 

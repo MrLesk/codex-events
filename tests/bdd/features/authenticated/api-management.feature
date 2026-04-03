@@ -20,6 +20,13 @@ Feature: TASK-3.5 authenticated API management flows
     When the saved "hackathon_admin" session lists fixture hackathon roles
     Then the fixture role response should include user "user_judge" as "judge"
 
+  Scenario: Platform admin can grant platform-admin access through the API
+    Given the saved "platform_admin" Auth0 session state exists
+    When the saved "platform_admin" session grants platform-admin access to "user_regular_user"
+    Then the platform-admin grant response should promote user "user_regular_user"
+    When the saved "regular_user" session requests the current API actor context
+    Then the API actor platform-admin flag should be "true"
+
   Scenario: Opening submission is blocked while registration remains open
     Given the saved "hackathon_admin" Auth0 session state exists
     And the saved "hackathon_admin" session opens submission for the fixture hackathon
