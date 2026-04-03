@@ -43,7 +43,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff', 'participants', 'submissions', 'operations', 'admins', 'settings'],
+      availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff', 'participants', 'submissions', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
@@ -63,7 +63,7 @@ describe('getAccountHackathonTabAccess', () => {
     })
   })
 
-  test('preserves judge and admin tabs alongside the admin prize configuration surface', () => {
+  test('preserves judge and admin workspace sections alongside the admin prize configuration surface', () => {
     expect(getAccountHackathonTabAccess({
       hasParticipantAccessRecord: true,
       hasPublishedPrizes: true,
@@ -71,7 +71,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'team', 'prizes', 'details', 'judges', 'staff', 'judging', 'participants', 'submissions', 'operations', 'admins', 'settings'],
+      availableTabs: ['overview', 'team', 'prizes', 'details', 'judges', 'staff', 'judging', 'participants', 'submissions', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })

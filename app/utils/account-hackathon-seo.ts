@@ -60,11 +60,6 @@ export function getAccountHackathonSeoContent(
         title: `Manage ${hackathonName} | Codex Hackathons`,
         description: `Run approvals, judging, and outcomes for ${hackathonName}.`
       }
-    case 'admins':
-      return {
-        title: `Admin Access | ${hackathonName} | Codex Hackathons`,
-        description: `Manage admin, judge, and staff access for ${hackathonName}.`
-      }
     case 'settings':
       return {
         title: `Settings | ${hackathonName} | Codex Hackathons`,

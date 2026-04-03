@@ -117,7 +117,6 @@ const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
   teams: 'Teams',
   submissions: 'Submissions',
   operations: 'Operations',
-  admins: 'Admins',
   settings: 'Settings'
 }
 
@@ -158,8 +157,8 @@ if (!hackathonResponse.value?.data) {
 }
 
 const requestFetch = import.meta.server ? useRequestFetch() : $fetch
-const shouldPrefetchPublishedRosters = actor.value.kind === 'platform_user'
-  && !hasHackathonAdminAccess(actor.value, hackathonResponse.value.data.id)
+const shouldPrefetchPublishedJudgesRoster = actor.value.kind === 'platform_user'
+const shouldPrefetchPublishedStaffRoster = actor.value.kind === 'platform_user'
 const [
   criteriaResponse,
   prizesResponse,
@@ -172,7 +171,7 @@ const [
   requestFetch<PublicApiListResponse<PublicPrize>>(`/api/hackathons/${hackathonResponse.value.data.id}/prizes`),
   requestFetch<AccountHackathonsResponse>('/api/account/hackathons'),
   requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>('/api/hackathons/participation'),
-  shouldPrefetchPublishedRosters
+  shouldPrefetchPublishedJudgesRoster
     ? loadPublishedHackathonRoster(
         path => requestFetch<PublicApiListResponse<PublishedHackathonRosterMember>>(path),
         {
@@ -181,7 +180,7 @@ const [
         }
       )
     : Promise.resolve(createEmptyPublishedHackathonRosterLoadState()),
-  shouldPrefetchPublishedRosters
+  shouldPrefetchPublishedStaffRoster
     ? loadPublishedHackathonRoster(
         path => requestFetch<PublicApiListResponse<PublishedHackathonRosterMember>>(path),
         {
@@ -302,7 +301,6 @@ const visibleTabs = computed(() =>
 const activeSection = computed<AccountHackathonWorkspaceTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
-const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
 const activeSectionSeo = computed(() => getAccountHackathonSeoContent(activeSection.value, hackathon.value.name))
 
 watchEffect(() => {
@@ -886,7 +884,6 @@ useSeoMeta({
       >
         <AccountHackathonParticipantTeamPanel
           :hackathon="hackathon"
-          :selected-team-slug="selectedTeamSlug"
         />
       </section>
 
@@ -939,23 +936,15 @@ useSeoMeta({
         id="account-tab-panel-judges"
         role="tabpanel"
         aria-labelledby="account-tab-judges"
+        class="space-y-8"
       >
-        <AccountHackathonRoleRosterPanel
-          v-if="canAdmin"
-          :hackathon-id="workspaceHackathonId"
-          role="judge"
-          title="Judges"
-          description="Judges review submissions. Admins can also review when judging is enabled for their admin assignment."
-          empty-assigned-message="No judges yet. Admins can also review once judging is enabled."
-        />
-
         <AccountHackathonPublishedRosterPanel
-          v-else
           :hackathon-id="workspaceHackathonId"
           :roster="publishedJudgesRoster"
           role="judge"
           title="Judges"
           description="Meet the people reviewing submissions for this hackathon."
+          :management-hackathon-id="canAdmin ? workspaceHackathonId : null"
         />
       </section>
 
@@ -964,23 +953,24 @@ useSeoMeta({
         id="account-tab-panel-staff"
         role="tabpanel"
         aria-labelledby="account-tab-staff"
+        class="space-y-8"
       >
-        <AccountHackathonRoleRosterPanel
-          v-if="canAdmin"
-          :hackathon-id="workspaceHackathonId"
-          role="staff"
-          title="Staff"
-          description="Staff can see participant and team data for this hackathon. Admins can also be marked as staff separately."
-          empty-assigned-message="No staff yet. Admins can also be marked as staff when they need internal visibility."
-        />
-
         <AccountHackathonPublishedRosterPanel
-          v-else
           :hackathon-id="workspaceHackathonId"
           :roster="publishedStaffRoster"
           role="staff"
           title="Staff"
           description="Meet the people supporting this hackathon behind the scenes."
+          :management-hackathon-id="canAdmin ? workspaceHackathonId : null"
+        />
+
+        <AccountHackathonRoleRosterPanel
+          v-if="canAdmin"
+          :hackathon-id="workspaceHackathonId"
+          role="admin"
+          title="Admins"
+          description="Admins can manage the internal workspace for this hackathon. Promoting a judge or staff member keeps their current capability on the admin assignment."
+          empty-assigned-message="No admins yet. Add an admin here when someone needs full hackathon management access."
         />
       </section>
 
@@ -1047,21 +1037,6 @@ useSeoMeta({
           section="operations"
         />
         <AccountHackathonCompetitionPanel :slug="slug" />
-      </section>
-
-      <section
-        v-else-if="activeSection === 'admins'"
-        id="account-tab-panel-admins"
-        role="tabpanel"
-        aria-labelledby="account-tab-admins"
-      >
-        <AccountHackathonRoleRosterPanel
-          :hackathon-id="workspaceHackathonId"
-          role="admin"
-          title="Admins"
-          description="Admins can manage the internal workspace for this hackathon. Promoting a judge or staff member keeps their current capability on the admin assignment."
-          empty-assigned-message="No admins yet. Add an admin here when someone needs full hackathon management access."
-        />
       </section>
 
       <section
