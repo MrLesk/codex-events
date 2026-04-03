@@ -1,18 +1,12 @@
 <script setup lang="ts">
-import type { InputTypeHTMLAttribute } from 'vue'
-
 import { cn } from '~/lib/utils'
 
 const [modelValue, modelModifiers] = defineModel<string | number | undefined>()
 
 const props = withDefaults(defineProps<{
-  type?: InputTypeHTMLAttribute
-  placeholder?: string
   disabled?: boolean
   size?: 'sm' | 'md' | 'lg' | 'xl'
 }>(), {
-  type: 'text' as InputTypeHTMLAttribute,
-  placeholder: undefined,
   disabled: false,
   size: 'md'
 })
@@ -50,11 +44,11 @@ const normalizedValue = computed({
 </script>
 
 <template>
-  <input
+  <select
     v-model="normalizedValue"
-    :type="props.type"
-    :placeholder="props.placeholder"
     :disabled="props.disabled"
     :class="cn('w-full rounded-lg border border-black/8 bg-white text-highlighted outline-none transition disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25]', sizeClasses)"
   >
+    <slot />
+  </select>
 </template>

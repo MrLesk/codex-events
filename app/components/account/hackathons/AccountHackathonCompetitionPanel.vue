@@ -647,24 +647,21 @@ async function completeHackathon() {
 
           <div class="space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
-              <input
+              <AppInput
                 v-model="criteriaDraft.name"
                 type="text"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="Criterion name"
-              >
-              <input
+              />
+              <AppInput
                 v-model.number="criteriaDraft.weight"
                 type="number"
                 min="0"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="Weight"
-              >
+              />
             </div>
-            <textarea
+            <AppTextarea
               v-model="criteriaDraft.description"
               rows="3"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               placeholder="Criterion description"
             />
             <AppButton
@@ -674,39 +671,35 @@ async function completeHackathon() {
               @click="createCriterion"
             />
 
-            <div class="grid gap-3">
+            <div class="grid grid-cols-1 gap-3">
               <div
                 v-for="criterion in criteria"
                 :key="criterion.id"
                 class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4"
               >
-                <div class="grid gap-4">
+                <div class="grid grid-cols-1 gap-4">
                   <div class="grid gap-4 md:grid-cols-[1fr_120px_120px]">
-                    <input
+                    <AppInput
                       v-model="getCriterionEdit(criterion).name"
                       type="text"
-                      class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                       placeholder="Criterion name"
-                    >
-                    <input
+                    />
+                    <AppInput
                       v-model.number="getCriterionEdit(criterion).weight"
                       type="number"
                       min="0"
-                      class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                       placeholder="Weight"
-                    >
-                    <input
+                    />
+                    <AppInput
                       v-model.number="getCriterionEdit(criterion).displayOrder"
                       type="number"
                       min="1"
-                      class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                       placeholder="Order"
-                    >
+                    />
                   </div>
-                  <textarea
+                  <AppTextarea
                     v-model="getCriterionEdit(criterion).description"
                     rows="3"
-                    class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                     placeholder="Criterion description"
                   />
                   <div class="flex flex-wrap items-center justify-between gap-3">

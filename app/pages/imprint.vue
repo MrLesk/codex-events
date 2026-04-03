@@ -238,15 +238,14 @@ useSeoMeta({
               name="imprint-contact-name"
               label="Name"
             >
-              <input
+              <AppInput
                 id="imprint-contact-name"
                 v-model="contactForm.name"
                 type="text"
                 maxlength="120"
                 autocomplete="name"
-                class="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-neutral-900 outline-none transition dark:border-white/[0.08] dark:bg-[#181818] dark:text-white"
                 :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-highlighted'"
-              >
+              />
               <p
                 v-if="submitCount > 0 && errors.name"
                 class="text-xs text-error"
@@ -259,14 +258,13 @@ useSeoMeta({
               name="imprint-contact-email"
               label="Email"
             >
-              <input
+              <AppInput
                 id="imprint-contact-email"
                 v-model="contactForm.email"
                 type="email"
                 autocomplete="email"
-                class="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-neutral-900 outline-none transition dark:border-white/[0.08] dark:bg-[#181818] dark:text-white"
                 :class="submitCount > 0 && errors.email ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-highlighted'"
-              >
+              />
               <p
                 v-if="submitCount > 0 && errors.email"
                 class="text-xs text-error"
@@ -293,12 +291,11 @@ useSeoMeta({
               name="imprint-contact-message"
               label="Message"
             >
-              <textarea
+              <AppTextarea
                 id="imprint-contact-message"
                 v-model="contactForm.message"
                 maxlength="4000"
                 rows="7"
-                class="w-full rounded-xl border border-black/10 bg-white px-4 py-3 text-sm text-neutral-900 outline-none transition dark:border-white/[0.08] dark:bg-[#181818] dark:text-white"
                 :class="submitCount > 0 && errors.message ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-highlighted'"
               />
               <p

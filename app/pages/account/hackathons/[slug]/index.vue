@@ -659,12 +659,12 @@ useSeoMeta({
         aria-labelledby="account-tab-overview"
         class="space-y-7"
       >
-        <section
+        <AppCard
           v-if="hasParticipantContext"
-          class="hackathon-workspace-detail-panel rounded-xl p-6"
+          class="hackathon-workspace-detail-panel rounded-xl"
         >
-          <div class="space-y-4">
-            <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+          <template #header>
+            <div class="space-y-1">
               <p class="text-[20px] font-medium text-highlighted dark:text-white">
                 Your participation
               </p>
@@ -672,7 +672,9 @@ useSeoMeta({
                 Track your application, team, and project here as they become available.
               </p>
             </div>
+          </template>
 
+          <div class="space-y-4">
             <AppAlert
               v-if="applicationSubmittedNoticeVisible"
               data-testid="account-hackathon-application-submitted-notice"
@@ -756,7 +758,7 @@ useSeoMeta({
                 v-if="showTeamAndSubmissionCards"
                 class="grid gap-4 lg:grid-cols-2"
               >
-                <AppCard class="hackathon-workspace-detail-inset p-6">
+                <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
                   <h2 class="text-xl font-semibold text-highlighted dark:text-white">
                     Team
                   </h2>
@@ -795,9 +797,9 @@ useSeoMeta({
                       Go to Team
                     </AppButton>
                   </template>
-                </AppCard>
+                </div>
 
-                <AppCard class="hackathon-workspace-detail-inset p-6">
+                <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
                   <div class="flex flex-wrap items-center justify-between gap-3">
                     <h2 class="text-xl font-semibold text-highlighted dark:text-white">
                       Submission
@@ -827,7 +829,7 @@ useSeoMeta({
                   >
                     Go to Team
                   </AppButton>
-                </AppCard>
+                </div>
               </section>
             </template>
 
@@ -863,7 +865,7 @@ useSeoMeta({
               </div>
             </section>
           </div>
-        </section>
+        </AppCard>
 
         <HackathonOverviewPanel :description="hackathon.description" />
       </section>

@@ -17,6 +17,8 @@ const props = withDefaults(defineProps<{
 })
 
 const slots = useSlots()
+const hasHeaderSlot = computed(() => Boolean(slots.header))
+const hasDefaultSlot = computed(() => Boolean(slots.default))
 
 const rootClass = computed(() =>
   cn(
@@ -29,7 +31,7 @@ const rootClass = computed(() =>
 
 const bodyClass = computed(() =>
   cn(
-    slots.header ? 'px-6 pb-6 pt-4' : 'p-6',
+    hasHeaderSlot.value ? 'px-6 pb-6 pt-4' : 'p-6',
     props.ui.body
   )
 )
@@ -38,12 +40,16 @@ const bodyClass = computed(() =>
 <template>
   <UiCard :class="rootClass">
     <div
-      v-if="$slots.header"
+      v-if="hasHeaderSlot"
       class="px-6 pt-6"
+      :class="hasDefaultSlot ? 'border-b border-black/8 pb-3 dark:border-white/[0.08]' : 'pb-6'"
     >
       <slot name="header" />
     </div>
-    <div :class="bodyClass">
+    <div
+      v-if="hasDefaultSlot"
+      :class="bodyClass"
+    >
       <slot />
     </div>
   </UiCard>

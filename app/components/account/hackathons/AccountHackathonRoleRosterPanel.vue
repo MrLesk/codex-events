@@ -670,7 +670,7 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
 <template>
   <AppCard class="hackathon-workspace-detail-panel">
     <template #header>
-      <div class="space-y-1 border-b border-black/8 pb-5 dark:border-white/[0.08]">
+      <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted dark:text-white">
           {{ title }}
         </h2>
@@ -872,7 +872,7 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
           </p>
         </div>
 
-        <input
+        <AppInput
           v-model="candidateSearchInput"
           type="search"
           name="role-candidate-search"
@@ -883,9 +883,8 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
           data-1p-ignore="true"
           data-lpignore="true"
           data-bwignore="true"
-          class="w-full rounded-lg border border-black/8 bg-white/90 px-4 py-3 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
           placeholder="Search users by name, email, or user ID"
-        >
+        />
 
         <AppAlert
           v-if="candidateUsersStatus === 'error'"

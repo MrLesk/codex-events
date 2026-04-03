@@ -86,7 +86,7 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
                 step="1"
                 :disabled="disabled || readonly"
                 :data-testid="`judge-criterion-score-${draft.evaluationCriterionId}`"
-                class="mt-3 w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-lg font-semibold text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
+                class="app-inset-field mt-3 w-full px-3 py-2.5 text-lg font-semibold text-highlighted disabled:opacity-70"
                 @input="updateDraft(index, 'score', ($event.target as HTMLInputElement).value)"
               >
             </div>
@@ -104,7 +104,7 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
               :value="draft.comment"
               rows="3"
               :disabled="disabled || readonly"
-              class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm leading-7 text-toned outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
+              class="app-inset-field w-full px-3 py-2.5 text-sm leading-6 disabled:opacity-70"
               @input="updateDraft(index, 'comment', ($event.target as HTMLTextAreaElement).value)"
             />
           </div>

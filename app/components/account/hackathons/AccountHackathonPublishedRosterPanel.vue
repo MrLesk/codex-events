@@ -47,7 +47,7 @@ function getMemberProfileIconHref(member: PublishedHackathonRosterMember) {
 <template>
   <AppCard class="rounded-xl hackathon-workspace-detail-panel">
     <template #header>
-      <div class="space-y-1 border-b border-black/8 pb-5 dark:border-white/[0.08]">
+      <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
           {{ props.title }}
         </h2>

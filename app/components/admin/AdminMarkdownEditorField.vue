@@ -43,7 +43,7 @@ function updateFallbackValue(event: Event) {
           :value="model"
           :required="props.required"
           rows="10"
-          class="w-full rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+          class="app-inset-field w-full px-3 py-2.5 text-sm leading-6 outline-none"
           :placeholder="props.placeholder"
           @input="updateFallbackValue"
         />

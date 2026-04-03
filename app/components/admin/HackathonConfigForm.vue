@@ -344,49 +344,45 @@ const submitConfigForm = handleSubmit(() => {
           </div>
         </template>
 
-        <div class="grid gap-5">
+        <div class="grid grid-cols-1 gap-5">
           <template v-if="showBasicInformationFields">
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Hackathon name</span>
-              <input
+              <AppInput
                 v-model="form.name"
                 type="text"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="Codex Spring Builders 2026"
                 required
-              >
+              />
             </label>
 
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Slug (the path in the URL, for example: codex-hackathons.com/hackathons/codex-spring-builders-2026)</span>
-              <input
+              <AppInput
                 v-model="form.slug"
                 type="text"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="codex-spring-builders-2026"
                 required
-              >
+              />
             </label>
 
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Luma event URL</span>
-              <input
+              <AppInput
                 v-model="form.lumaEventUrl"
                 type="url"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="https://lu.ma/your-event"
-              >
+              />
               <span class="text-xs text-muted">Optional public Luma event link for this hackathon. Leave blank if you are not using Luma.</span>
             </label>
 
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Luma event API ID</span>
-              <input
+              <AppInput
                 v-model="form.lumaEventApiId"
                 type="text"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="evt-FSlTqAmG9QanU4s"
-              >
+              />
               <span class="text-xs text-muted">Required for Luma approval and rejection sync. This uses the Luma event API id, not the public URL.</span>
             </label>
 
@@ -403,7 +399,7 @@ const submitConfigForm = handleSubmit(() => {
 
           <div
             v-if="showAgendaItemsSection"
-            class="grid gap-3"
+            class="grid grid-cols-1 gap-3"
           >
             <div
               v-if="form.agendaItems.length === 0"
@@ -415,7 +411,7 @@ const submitConfigForm = handleSubmit(() => {
             <div
               v-else
               ref="agendaListElement"
-              class="grid gap-3"
+              class="grid grid-cols-1 gap-3"
             >
               <article
                 v-for="(item, index) in form.agendaItems"
@@ -480,24 +476,23 @@ const submitConfigForm = handleSubmit(() => {
                     </button>
                   </template>
 
-                  <div class="grid gap-3">
+                  <div class="grid grid-cols-1 gap-3">
                     <label class="grid gap-2">
                       <span class="text-xs font-medium text-toned">Title</span>
-                      <input
+                      <AppInput
                         v-model="item.title"
                         type="text"
-                        class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
                         placeholder="Opening workshop"
                         required
-                      >
+                      />
                     </label>
 
                     <label class="grid gap-2">
                       <span class="text-xs font-medium text-toned">Description</span>
-                      <textarea
+                      <AppTextarea
                         v-model="item.details"
                         rows="1"
-                        class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
+                        class="min-h-10"
                         placeholder="Optional notes for this agenda item."
                       />
                     </label>
@@ -505,21 +500,19 @@ const submitConfigForm = handleSubmit(() => {
                     <div class="grid gap-3 pb-2 md:grid-cols-2">
                       <label class="grid gap-2">
                         <span class="text-xs font-medium text-toned">Starts at</span>
-                        <input
+                        <AppInput
                           v-model="item.startsAt"
                           type="datetime-local"
-                          class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
                           required
-                        >
+                        />
                       </label>
 
                       <label class="grid gap-2">
                         <span class="text-xs font-medium text-toned">Ends at</span>
-                        <input
+                        <AppInput
                           v-model="item.endsAt"
                           type="datetime-local"
-                          class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-3 py-2 text-sm text-highlighted outline-none"
-                        >
+                        />
                       </label>
                     </div>
                   </div>
@@ -573,25 +566,23 @@ const submitConfigForm = handleSubmit(() => {
           </div>
         </template>
 
-        <div class="grid gap-5">
+        <div class="grid grid-cols-1 gap-5">
           <div class="grid gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1.6fr)]">
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">City</span>
-              <input
+              <AppInput
                 v-model="form.city"
                 type="text"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="Vienna"
                 required
-              >
+              />
             </label>
 
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Country</span>
-              <div class="relative">
-                <select
+              <div>
+                <AppSelect
                   v-model="form.country"
-                  class="w-full appearance-none rounded-lg border border-black/8 bg-white py-3 pl-4 pr-11 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                   required
                 >
                   <option
@@ -607,29 +598,24 @@ const submitConfigForm = handleSubmit(() => {
                   >
                     {{ option.label }}
                   </option>
-                </select>
-                <AppIcon
-                  name="i-lucide-chevron-down"
-                  class="pointer-events-none absolute right-4 top-1/2 size-4 -translate-y-1/2 text-muted"
-                />
+                </AppSelect>
               </div>
             </label>
 
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Address</span>
-              <input
+              <AppInput
                 v-model="form.address"
                 type="text"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="Operngasse 20, 1040 Vienna"
                 required
-              >
+              />
             </label>
           </div>
 
           <section
             v-if="showBackgroundImageSection"
-            class="grid gap-3"
+            class="grid grid-cols-1 gap-3"
           >
             <div class="space-y-1">
               <h3 class="text-sm font-medium text-toned">
@@ -712,7 +698,7 @@ const submitConfigForm = handleSubmit(() => {
 
           <section
             v-if="showBannerImageSection"
-            class="grid gap-3"
+            class="grid grid-cols-1 gap-3"
           >
             <div class="space-y-1">
               <h3 class="text-sm font-medium text-toned">
@@ -848,42 +834,38 @@ const submitConfigForm = handleSubmit(() => {
         <div class="grid gap-5 md:grid-cols-2">
           <label class="grid gap-2">
             <span class="text-sm font-medium text-toned">Registration opens</span>
-            <input
+            <AppInput
               v-model="form.registrationOpensAt"
               type="datetime-local"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               required
-            >
+            />
           </label>
 
           <label class="grid gap-2">
             <span class="text-sm font-medium text-toned">Registration closes</span>
-            <input
+            <AppInput
               v-model="form.registrationClosesAt"
               type="datetime-local"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               required
-            >
+            />
           </label>
 
           <label class="grid gap-2">
             <span class="text-sm font-medium text-toned">Submission opens</span>
-            <input
+            <AppInput
               v-model="form.submissionOpensAt"
               type="datetime-local"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               required
-            >
+            />
           </label>
 
           <label class="grid gap-2">
             <span class="text-sm font-medium text-toned">Submission closes</span>
-            <input
+            <AppInput
               v-model="form.submissionClosesAt"
               type="datetime-local"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               required
-            >
+            />
           </label>
         </div>
       </AppCard>
@@ -903,31 +885,29 @@ const submitConfigForm = handleSubmit(() => {
           </div>
         </template>
 
-        <div class="grid gap-5">
+        <div class="grid grid-cols-1 gap-5">
           <label class="grid gap-2">
             <span class="text-sm font-medium text-toned">Maximum team members</span>
-            <input
+            <AppInput
               v-model.number="form.maxTeamMembers"
               type="number"
               min="1"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               required
-            >
+            />
           </label>
 
           <label class="grid gap-2">
             <span class="text-sm font-medium text-toned">Participants limit</span>
-            <input
+            <AppInput
               v-model="participantsLimitInput"
               type="number"
               min="1"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               placeholder="Leave empty for no limit"
-            >
+            />
             <span class="text-xs text-muted">Maximum approved participants for the hackathon. Leave blank for no cap.</span>
           </label>
 
-          <div class="grid gap-3">
+          <div class="grid grid-cols-1 gap-3">
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.inPersonEvent"

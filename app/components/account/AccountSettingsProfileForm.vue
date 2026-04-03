@@ -92,13 +92,12 @@ const submitProfileForm = handleSubmit(() => {
           >
             First name
           </label>
-          <input
+          <AppInput
             id="account-first-name"
             v-model="model.firstName"
             type="text"
-            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
             :class="submitCount > 0 && errors.firstName ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-          >
+          />
           <p
             v-if="submitCount > 0 && errors.firstName"
             class="text-xs text-error"
@@ -114,13 +113,12 @@ const submitProfileForm = handleSubmit(() => {
           >
             Family name
           </label>
-          <input
+          <AppInput
             id="account-family-name"
             v-model="model.familyName"
             type="text"
-            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
             :class="submitCount > 0 && errors.familyName ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-          >
+          />
           <p
             v-if="submitCount > 0 && errors.familyName"
             class="text-xs text-error"
@@ -150,14 +148,13 @@ const submitProfileForm = handleSubmit(() => {
           >
             Company
           </label>
-          <input
+          <AppInput
             id="account-company"
             v-model="model.company"
             type="text"
             placeholder="Your company or team"
-            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
             :class="submitCount > 0 && errors.company ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-          >
+          />
           <p
             v-if="submitCount > 0 && errors.company"
             class="text-xs text-error"
@@ -173,12 +170,11 @@ const submitProfileForm = handleSubmit(() => {
           >
             Bio
           </label>
-          <textarea
+          <AppTextarea
             id="account-bio"
             v-model="model.bio"
             rows="5"
             placeholder="Share a short introduction about what you do or like to build."
-            class="min-h-32 w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm leading-6 text-toned outline-none transition focus:border-primary"
             :class="submitCount > 0 && errors.bio ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
           />
           <p
@@ -210,14 +206,13 @@ const submitProfileForm = handleSubmit(() => {
           >
             Luma email
           </label>
-          <input
+          <AppInput
             id="account-luma-email"
             v-model="model.lumaEmail"
             type="email"
             placeholder="you@example.com"
-            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
             :class="submitCount > 0 && errors.lumaEmail ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-          >
+          />
           <p
             v-if="submitCount > 0 && errors.lumaEmail"
             class="text-xs text-error"
@@ -233,15 +228,14 @@ const submitProfileForm = handleSubmit(() => {
           >
             X profile URL
           </label>
-          <input
+          <AppInput
             id="account-x-profile-url"
             v-model="model.xProfileUrl"
             type="text"
             inputmode="url"
             placeholder="https://x.com/your-name"
-            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
             :class="submitCount > 0 && errors.xProfileUrl ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-          >
+          />
           <p
             v-if="submitCount > 0 && errors.xProfileUrl"
             class="text-xs text-error"
@@ -257,15 +251,14 @@ const submitProfileForm = handleSubmit(() => {
           >
             GitHub profile URL
           </label>
-          <input
+          <AppInput
             id="account-github-profile-url"
             v-model="model.githubProfileUrl"
             type="text"
             inputmode="url"
             placeholder="https://github.com/your-name"
-            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
             :class="submitCount > 0 && errors.githubProfileUrl ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-          >
+          />
           <p
             v-if="submitCount > 0 && errors.githubProfileUrl"
             class="text-xs text-error"
@@ -281,15 +274,14 @@ const submitProfileForm = handleSubmit(() => {
           >
             LinkedIn profile URL
           </label>
-          <input
+          <AppInput
             id="account-linkedin-profile-url"
             v-model="model.linkedinProfileUrl"
             type="text"
             inputmode="url"
             placeholder="https://linkedin.com/in/your-name"
-            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
             :class="submitCount > 0 && errors.linkedinProfileUrl ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-          >
+          />
           <p
             v-if="submitCount > 0 && errors.linkedinProfileUrl"
             class="text-xs text-error"
@@ -322,14 +314,13 @@ const submitProfileForm = handleSubmit(() => {
           >
             ChatGPT email
           </label>
-          <input
+          <AppInput
             id="account-chatgpt-email"
             v-model="model.chatgptEmail"
             type="email"
             placeholder="you@example.com"
-            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
             :class="submitCount > 0 && errors.chatgptEmail ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-          >
+          />
           <p
             v-if="submitCount > 0 && errors.chatgptEmail"
             class="text-xs text-error"
@@ -345,14 +336,13 @@ const submitProfileForm = handleSubmit(() => {
           >
             OpenAI org ID
           </label>
-          <input
+          <AppInput
             id="account-openai-org-id"
             v-model="model.openaiOrgId"
             type="text"
             placeholder="org-1234567890"
-            class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
             :class="submitCount > 0 && errors.openaiOrgId ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-          >
+          />
           <p
             v-if="submitCount > 0 && errors.openaiOrgId"
             class="text-xs text-error"

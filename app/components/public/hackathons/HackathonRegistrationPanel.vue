@@ -477,16 +477,15 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                       Required
                     </span>
                   </span>
-                  <input
+                  <AppInput
                     v-model="profileForm.firstName"
                     type="text"
                     :disabled="isSubmitting || isSavingProfile"
-                    class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
                     :class="submitAttempted && profileFieldErrors.firstName
                       ? 'border-error/45 focus:border-error dark:border-error/50'
-                      : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                      : 'focus:border-primary'"
                     placeholder="Ada"
-                  >
+                  />
                   <p
                     v-if="submitAttempted && profileFieldErrors.firstName"
                     class="text-[11px] text-error"
@@ -502,16 +501,15 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                       Required
                     </span>
                   </span>
-                  <input
+                  <AppInput
                     v-model="profileForm.familyName"
                     type="text"
                     :disabled="isSubmitting || isSavingProfile"
-                    class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
                     :class="submitAttempted && profileFieldErrors.familyName
                       ? 'border-error/45 focus:border-error dark:border-error/50'
-                      : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                      : 'focus:border-primary'"
                     placeholder="Lovelace"
-                  >
+                  />
                   <p
                     v-if="submitAttempted && profileFieldErrors.familyName"
                     class="text-[11px] text-error"
@@ -545,17 +543,16 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                       Required
                     </span>
                   </span>
-                  <input
+                  <AppInput
                     v-model="profileForm[field.key]"
                     :type="getProfileFieldType(field.key) === 'email' ? 'email' : 'text'"
                     :inputmode="getProfileFieldType(field.key) === 'url' ? 'url' : undefined"
                     :disabled="isSubmitting || isSavingProfile"
-                    class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
                     :class="submitAttempted && profileFieldErrors[field.key]
                       ? 'border-error/45 focus:border-error dark:border-error/50'
-                      : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                      : 'focus:border-primary'"
                     :placeholder="getProfileFieldPlaceholder(field.key)"
-                  >
+                  />
                   <p
                     v-if="submitAttempted && profileFieldErrors[field.key]"
                     class="text-[11px] text-error"
@@ -595,17 +592,16 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                           Required
                         </span>
                       </span>
-                      <input
+                      <AppInput
                         v-model="profileForm[field.key]"
                         :type="getProfileFieldType(field.key) === 'email' ? 'email' : 'text'"
                         :inputmode="getProfileFieldType(field.key) === 'url' ? 'url' : undefined"
                         :disabled="isSubmitting || isSavingProfile"
-                        class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
                         :class="submitAttempted && profileFieldErrors[field.key]
                           ? 'border-error/45 focus:border-error dark:border-error/50'
-                          : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                          : 'focus:border-primary'"
                         :placeholder="getProfileFieldPlaceholder(field.key)"
-                      >
+                      />
                       <p
                         v-if="submitAttempted && profileFieldErrors[field.key]"
                         class="text-[11px] text-error"
@@ -661,14 +657,13 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                       Required
                     </span>
                   </span>
-                  <textarea
+                  <AppTextarea
                     v-model="whyThisHackathon"
                     rows="5"
                     :disabled="isSubmitting || isSavingProfile"
-                    class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
                     :class="submitAttempted && whyThisHackathonError
                       ? 'border-error/45 focus:border-error dark:border-error/50'
-                      : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                      : 'focus:border-primary'"
                     placeholder="Share what motivates you to apply and what build direction or track you'd like to participate in."
                   />
                   <p
@@ -689,16 +684,15 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                       Required
                     </span>
                   </span>
-                  <input
+                  <AppInput
                     v-model="proofOfExecutionUrl"
                     type="url"
                     :disabled="isSubmitting || isSavingProfile"
-                    class="w-full rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
                     :class="submitAttempted && proofOfExecutionUrlError
                       ? 'border-error/45 focus:border-error dark:border-error/50'
-                      : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                      : 'focus:border-primary'"
                     placeholder="https://github.com/your-project, https://demo.example.com"
-                  >
+                  />
                   <p class="text-[11px] text-neutral-500 dark:text-[#8C8C8C]">
                     Share link(s) that show something you have already built or shipped. Separate multiple links with commas.
                   </p>
@@ -773,23 +767,22 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                   Teammate {{ index + 1 }}
                 </p>
                 <div class="grid gap-3 md:grid-cols-2">
-                  <input
+                  <AppInput
                     v-model="member.fullName"
                     type="text"
                     :disabled="!canEditRegistrationHint"
-                    class="rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:text-white"
+                    class="focus:border-primary"
                     placeholder="Name and family name"
-                  >
-                  <input
+                  />
+                  <AppInput
                     v-model="member.email"
                     type="email"
                     :disabled="!canEditRegistrationHint"
-                    class="rounded-lg border bg-white px-3 py-2 text-sm text-highlighted outline-none transition dark:bg-[#111111] dark:text-white"
                     :class="submitAttempted && teamMemberEmailErrors[index]
                       ? 'border-error/45 focus:border-error dark:border-error/50'
-                      : 'border-black/8 focus:border-black/25 dark:border-white/[0.08]'"
+                      : 'focus:border-primary'"
                     placeholder="Email"
-                  >
+                  />
                 </div>
                 <p
                   v-if="submitAttempted && teamMemberEmailErrors[index]"

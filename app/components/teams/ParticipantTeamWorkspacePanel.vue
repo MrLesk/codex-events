@@ -74,7 +74,7 @@ function submitProfileForm() {
 <template>
   <AppCard
     data-testid="participant-team-workspace-panel"
-    class="rounded-xl hackathon-workspace-detail-panel p-6"
+    class="rounded-xl hackathon-workspace-detail-panel"
   >
     <template #header>
       <div class="space-y-1">
@@ -107,7 +107,7 @@ function submitProfileForm() {
 
     <div class="space-y-6">
       <div class="grid gap-4 md:grid-cols-3">
-        <div class="app-inset-card-tight px-4 py-4">
+        <div class="app-inset-card px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Team name
           </p>
@@ -116,7 +116,7 @@ function submitProfileForm() {
           </p>
         </div>
 
-        <div class="app-inset-card-tight px-4 py-4">
+        <div class="app-inset-card px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Active members
           </p>
@@ -125,7 +125,7 @@ function submitProfileForm() {
           </p>
         </div>
 
-        <div class="app-inset-card-tight px-4 py-4">
+        <div class="app-inset-card px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Created
           </p>
@@ -134,7 +134,7 @@ function submitProfileForm() {
           </p>
         </div>
 
-        <div class="app-inset-card-tight px-4 py-4">
+        <div class="app-inset-card px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Join policy
           </p>
@@ -149,7 +149,7 @@ function submitProfileForm() {
         class="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]"
       >
         <div class="space-y-4 app-inset-card px-5 py-5">
-          <div class="space-y-1">
+          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
             <h3 class="text-lg font-semibold text-highlighted dark:text-white">
               Team profile
             </h3>
@@ -162,22 +162,21 @@ function submitProfileForm() {
             class="space-y-4"
             @submit.prevent="submitProfileForm"
           >
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Team name</span>
-              <input
+            <AppFormField label="Team name">
+              <AppInput
                 v-model="settings.name"
-                type="text"
-                class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+                size="xl"
+                class="w-full"
+                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
                 :disabled="isActionPending(`update-team:${team.id}`)"
-              >
+              />
               <p
                 v-if="submitCount > 0 && errors.name"
                 class="text-xs text-error"
               >
                 {{ errors.name }}
               </p>
-            </label>
+            </AppFormField>
 
             <AppButton
               type="submit"
@@ -192,7 +191,7 @@ function submitProfileForm() {
         </div>
 
         <div class="space-y-4 app-inset-card px-5 py-5">
-          <div class="space-y-1">
+          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
             <h3 class="text-lg font-semibold text-highlighted dark:text-white">
               Join policy
             </h3>
@@ -201,25 +200,24 @@ function submitProfileForm() {
             </p>
           </div>
 
-          <label class="flex items-center gap-3 rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-toned">
-            <input
-              :checked="settings.isOpenToJoinRequests"
-              type="checkbox"
-              class="size-4 rounded border-default"
-              :disabled="isActionPending(`update-team-join-policy:${team.id}`)"
-              @change="emit('toggleJoinPolicy', !settings.isOpenToJoinRequests)"
-            >
-            Open this team to join requests
-          </label>
+          <AppCheckbox
+            :model-value="settings.isOpenToJoinRequests"
+            :disabled="isActionPending(`update-team-join-policy:${team.id}`)"
+            label="Open this team to join requests"
+            class="text-sm text-toned"
+            @update:model-value="emit('toggleJoinPolicy', $event)"
+          />
         </div>
       </section>
 
       <section class="app-inset-card px-5 py-5">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div class="space-y-2">
-            <h3 class="text-lg font-semibold text-highlighted dark:text-white">
-              Membership actions
-            </h3>
+            <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+              <h3 class="text-lg font-semibold text-highlighted dark:text-white">
+                Membership actions
+              </h3>
+            </div>
             <p
               v-if="membership && !leaveAvailability.isAllowed && leaveAvailability.reason"
               class="text-sm text-muted"

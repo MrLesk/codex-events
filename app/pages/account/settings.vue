@@ -356,13 +356,12 @@ useSeoMeta({
                   >
                     First name
                   </label>
-                  <input
+                  <AppInput
                     id="account-first-name-inline"
                     v-model="profileForm.firstName"
                     type="text"
                     required
-                    class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
-                  >
+                  />
                 </div>
 
                 <div class="space-y-2">
@@ -372,13 +371,12 @@ useSeoMeta({
                   >
                     Family name
                   </label>
-                  <input
+                  <AppInput
                     id="account-family-name-inline"
                     v-model="profileForm.familyName"
                     type="text"
                     required
-                    class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition focus:border-primary"
-                  >
+                  />
                 </div>
               </div>
             </div>
@@ -436,12 +434,12 @@ useSeoMeta({
                 >
                   Type "delete my account" to continue
                 </label>
-                <input
+                <AppInput
                   id="account-delete-confirmation"
                   v-model="deletionState.confirmationText"
                   type="text"
-                  class="w-full rounded-lg border border-error/30 bg-white px-3 py-2.5 text-sm text-toned outline-none transition focus:border-error dark:bg-[#111111]"
-                >
+                  class="border-error/30 focus:border-error dark:border-error/40"
+                />
               </div>
 
               <AppAlert

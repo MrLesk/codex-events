@@ -1020,9 +1020,8 @@ async function setCurrentTerms(document: TermsDocument) {
             <div class="grid gap-4 md:grid-cols-[0.4fr_0.6fr]">
               <label class="grid gap-2">
                 <span class="text-sm font-medium text-toned">Document type</span>
-                <select
+                <AppSelect
                   v-model="termsDraft.documentType"
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 >
                   <option value="application_terms">
                     Application terms
@@ -1030,28 +1029,26 @@ async function setCurrentTerms(document: TermsDocument) {
                   <option value="winner_terms">
                     Winner terms
                   </option>
-                </select>
+                </AppSelect>
               </label>
 
               <label class="grid gap-2">
                 <span class="text-sm font-medium text-toned">Title</span>
-                <input
+                <AppInput
                   v-model="termsDraft.title"
                   type="text"
                   required
-                  class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                   placeholder="Spring 2026 Application Terms v2"
-                >
+                />
               </label>
             </div>
 
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Content</span>
-              <textarea
+              <AppTextarea
                 v-model="termsDraft.content"
                 rows="5"
                 required
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="Enter the canonical terms content."
               />
             </label>
@@ -1148,26 +1145,23 @@ async function setCurrentTerms(document: TermsDocument) {
             </div>
           </template>
 
-          <div class="grid gap-4">
+          <div class="grid grid-cols-1 gap-4">
             <div class="grid gap-4 md:grid-cols-2">
-              <input
+              <AppInput
                 v-model="criteriaDraft.name"
                 type="text"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="Criterion name"
-              >
-              <input
+              />
+              <AppInput
                 v-model.number="criteriaDraft.weight"
                 type="number"
                 min="0"
-                class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                 placeholder="Weight"
-              >
+              />
             </div>
-            <textarea
+            <AppTextarea
               v-model="criteriaDraft.description"
               rows="3"
-              class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
               placeholder="Criterion description"
             />
             <AppButton
@@ -1191,7 +1185,7 @@ async function setCurrentTerms(document: TermsDocument) {
                 </AppButton>
               </div>
 
-              <div class="grid gap-3">
+              <div class="grid grid-cols-1 gap-3">
                 <div
                   v-for="(criterion, index) in orderedCriteria"
                   :key="criterion.id"
@@ -1201,7 +1195,7 @@ async function setCurrentTerms(document: TermsDocument) {
                   @dragleave="onCriterionDragLeave(criterion.id)"
                   @drop="onCriterionDrop(criterion.id, $event)"
                 >
-                  <div class="grid gap-4">
+                  <div class="grid grid-cols-1 gap-4">
                     <div class="flex flex-wrap items-center justify-between gap-3">
                       <div class="flex items-center gap-2">
                         <button
@@ -1248,25 +1242,22 @@ async function setCurrentTerms(document: TermsDocument) {
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-[1fr_140px]">
-                      <input
+                      <AppInput
                         v-model="getCriterionEdit(criterion).name"
                         type="text"
-                        class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                         placeholder="Criterion name"
-                      >
-                      <input
+                      />
+                      <AppInput
                         v-model.number="getCriterionEdit(criterion).weight"
                         type="number"
                         min="0"
-                        class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                         placeholder="Weight"
-                      >
+                      />
                     </div>
 
-                    <textarea
+                    <AppTextarea
                       v-model="getCriterionEdit(criterion).description"
                       rows="3"
-                      class="rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                       placeholder="Criterion description"
                     />
                   </div>
@@ -1291,11 +1282,11 @@ async function setCurrentTerms(document: TermsDocument) {
             </div>
           </template>
 
-          <div class="grid gap-4">
+          <div class="grid grid-cols-1 gap-4">
             <div class="space-y-3">
               <div
                 ref="prizeListElement"
-                class="grid gap-3"
+                class="grid grid-cols-1 gap-3"
               >
                 <div
                   v-for="(prize, index) in orderedPrizes"
@@ -1362,43 +1353,39 @@ async function setCurrentTerms(document: TermsDocument) {
                       </button>
                     </template>
 
-                    <div class="grid gap-2.5">
+                    <div class="grid grid-cols-1 gap-2.5">
                       <div class="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_140px_110px]">
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Prize name</span>
-                          <input
+                          <AppInput
                             v-model="getPrizeEdit(prize).name"
                             type="text"
-                            class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                             placeholder="Best overall"
-                          >
+                          />
                         </label>
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Reward value</span>
-                          <input
+                          <AppInput
                             v-model="getPrizeEdit(prize).rewardValue"
                             type="text"
-                            class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                             placeholder="5000"
-                          >
+                          />
                         </label>
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Currency</span>
-                          <input
+                          <AppInput
                             v-model="getPrizeEdit(prize).rewardCurrency"
                             type="text"
-                            class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                             placeholder="USD"
-                          >
+                          />
                         </label>
                       </div>
 
                       <div class="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_120px_88px_88px]">
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Reward type</span>
-                          <select
+                          <AppSelect
                             v-model="getPrizeEdit(prize).rewardType"
-                            class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                           >
                             <option value="api_credits">
                               API credits
@@ -1412,13 +1399,12 @@ async function setCurrentTerms(document: TermsDocument) {
                             <option value="other">
                               Other
                             </option>
-                          </select>
+                          </AppSelect>
                         </label>
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Awarded to</span>
-                          <select
+                          <AppSelect
                             v-model="getPrizeEdit(prize).awardScope"
-                            class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                           >
                             <option value="team">
                               Team
@@ -1426,36 +1412,34 @@ async function setCurrentTerms(document: TermsDocument) {
                             <option value="member">
                               Member
                             </option>
-                          </select>
+                          </AppSelect>
                         </label>
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Rank from</span>
-                          <input
+                          <AppInput
                             v-model.number="getPrizeEdit(prize).rankStart"
                             type="number"
                             min="1"
-                            class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                             placeholder="1"
-                          >
+                          />
                         </label>
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Rank to</span>
-                          <input
+                          <AppInput
                             v-model.number="getPrizeEdit(prize).rankEnd"
                             type="number"
                             min="1"
-                            class="w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
                             placeholder="1"
-                          >
+                          />
                         </label>
                       </div>
 
                       <label class="grid gap-1">
                         <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Description</span>
-                        <textarea
+                        <AppTextarea
                           v-model="getPrizeEdit(prize).description"
                           rows="1"
-                          class="min-h-10 w-full rounded-lg border border-black/8 bg-white px-3 py-2 text-sm text-highlighted outline-none transition focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
+                          class="min-h-10"
                           placeholder="Explain what the winner receives."
                         />
                       </label>

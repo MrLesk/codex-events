@@ -105,7 +105,7 @@ const actionableAssignments = computed(() =>
 
         <div
           v-else
-          class="grid gap-4"
+          class="grid grid-cols-1 gap-4"
         >
           <article
             v-for="assignment in actionableAssignments"
@@ -162,9 +162,8 @@ const actionableAssignments = computed(() =>
                 <div class="grid gap-4 lg:grid-cols-[0.45fr_0.55fr]">
                   <label class="grid gap-2">
                     <span class="text-sm font-medium text-toned">Preferred replacement judge</span>
-                    <select
+                    <AppSelect
                       v-model="getDraft(assignment).judgeUserId"
-                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                       :data-testid="`admin-competition-reassign-select-${assignment.submissionId}`"
                     >
                       <option value="">
@@ -177,17 +176,16 @@ const actionableAssignments = computed(() =>
                       >
                         {{ choice.label }}
                       </option>
-                    </select>
+                    </AppSelect>
                   </label>
 
                   <label class="grid gap-2">
                     <span class="text-sm font-medium text-toned">Operational note</span>
-                    <input
+                    <AppInput
                       v-model="getDraft(assignment).reassignReason"
                       type="text"
-                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                       placeholder="Reassignment note"
-                    >
+                    />
                   </label>
                 </div>
 
@@ -221,12 +219,11 @@ const actionableAssignments = computed(() =>
 
                 <label class="grid gap-2">
                   <span class="text-sm font-medium text-toned">Operational note</span>
-                  <input
+                  <AppInput
                     v-model="getDraft(assignment).forceSkipReason"
                     type="text"
-                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                     placeholder="Force-skip note"
-                  >
+                  />
                 </label>
 
                 <AppButton

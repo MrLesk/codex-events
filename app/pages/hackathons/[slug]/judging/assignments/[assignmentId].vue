@@ -493,11 +493,11 @@ useSeoMeta({
                   </p>
                 </div>
 
-                <textarea
+                <AppTextarea
                   v-model="skipReason"
                   rows="3"
                   data-testid="judge-skip-reason"
-                  class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm leading-7 text-toned outline-none transition focus:border-primary"
+                  class="leading-6"
                 />
 
                 <AppButton
@@ -525,11 +525,11 @@ useSeoMeta({
                   </p>
                 </div>
 
-                <textarea
+                <AppTextarea
                   v-model="ineligibleReason"
                   rows="3"
                   data-testid="judge-ineligibility-reason"
-                  class="w-full rounded-2xl border border-default bg-elevated px-4 py-3 text-sm leading-7 text-toned outline-none transition focus:border-primary"
+                  class="leading-6"
                 />
 
                 <AppButton

@@ -497,7 +497,7 @@ async function withdrawSubmission() {
             </AppBadge>
           </div>
 
-          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+          <div class="space-y-1">
             <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
               {{ teamPanelSummary }}
             </p>

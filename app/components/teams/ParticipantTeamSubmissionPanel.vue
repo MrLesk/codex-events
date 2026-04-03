@@ -112,7 +112,7 @@ const submitSubmissionForm = handleSubmit(() => {
 <template>
   <AppCard
     data-testid="participant-submission-panel"
-    class="rounded-xl hackathon-workspace-detail-panel p-6"
+    class="rounded-xl hackathon-workspace-detail-panel"
   >
     <template #header>
       <div class="space-y-1">
@@ -153,7 +153,7 @@ const submitSubmissionForm = handleSubmit(() => {
       />
 
       <template v-else>
-        <div class="app-inset-card-tight px-4 py-4">
+        <div class="app-inset-card px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Submission summary
           </p>
@@ -163,7 +163,7 @@ const submitSubmissionForm = handleSubmit(() => {
         </div>
 
         <div class="grid gap-4 md:grid-cols-3">
-          <div class="app-inset-card-tight px-4 py-4">
+          <div class="app-inset-card px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Current status
             </p>
@@ -175,7 +175,7 @@ const submitSubmissionForm = handleSubmit(() => {
             </p>
           </div>
 
-          <div class="app-inset-card-tight px-4 py-4">
+          <div class="app-inset-card px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Submitted at
             </p>
@@ -184,7 +184,7 @@ const submitSubmissionForm = handleSubmit(() => {
             </p>
           </div>
 
-          <div class="app-inset-card-tight px-4 py-4">
+          <div class="app-inset-card px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Last updated
             </p>
@@ -222,7 +222,7 @@ const submitSubmissionForm = handleSubmit(() => {
         </div>
 
         <div class="app-inset-card px-5 py-5">
-          <div class="space-y-1">
+          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
             <h3 class="text-lg font-semibold text-highlighted dark:text-white">
               {{ submission ? 'Submission details' : 'Start the first draft' }}
             </h3>
@@ -256,27 +256,25 @@ const submitSubmissionForm = handleSubmit(() => {
             class="mt-5 space-y-4"
             @submit.prevent="submitSubmissionForm"
           >
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Project name</span>
-              <input
+            <AppFormField label="Project name">
+              <AppInput
                 v-model="form.projectName"
-                type="text"
-                class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                size="xl"
+                class="w-full"
                 :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
-              >
+              />
               <p
                 v-if="submitCount > 0 && errors.projectName"
                 class="text-xs text-error"
               >
                 {{ errors.projectName }}
               </p>
-            </label>
+            </AppFormField>
 
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Summary</span>
-              <textarea
+            <AppFormField label="Summary">
+              <AppTextarea
                 v-model="form.summary"
-                class="min-h-32 rounded-2xl border border-default bg-elevated px-4 py-3 text-sm leading-7 text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
+                rows="5"
                 :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
               />
               <p
@@ -285,44 +283,42 @@ const submitSubmissionForm = handleSubmit(() => {
               >
                 {{ errors.summary }}
               </p>
-            </label>
+            </AppFormField>
 
             <div class="grid gap-4 lg:grid-cols-2">
-              <label class="grid gap-2">
-                <span class="text-sm font-medium text-toned">Repository URL</span>
-                <input
+              <AppFormField label="Repository URL">
+                <AppInput
                   v-model="form.repositoryUrl"
                   type="text"
-                  inputmode="url"
-                  class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-                  :class="submitCount > 0 && errors.repositoryUrl ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+                  size="xl"
+                  class="w-full"
+                  :class="submitCount > 0 && errors.repositoryUrl ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
                   :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
-                >
+                />
                 <p
                   v-if="submitCount > 0 && errors.repositoryUrl"
                   class="text-xs text-error"
                 >
                   {{ errors.repositoryUrl }}
                 </p>
-              </label>
+              </AppFormField>
 
-              <label class="grid gap-2">
-                <span class="text-sm font-medium text-toned">Demo URL</span>
-                <input
+              <AppFormField label="Demo URL">
+                <AppInput
                   v-model="form.demoUrl"
                   type="text"
-                  inputmode="url"
-                  class="rounded-2xl border border-default bg-elevated px-4 py-3 text-sm text-highlighted outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:opacity-60"
-                  :class="submitCount > 0 && errors.demoUrl ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+                  size="xl"
+                  class="w-full"
+                  :class="submitCount > 0 && errors.demoUrl ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
                   :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
-                >
+                />
                 <p
                   v-if="submitCount > 0 && errors.demoUrl"
                   class="text-xs text-error"
                 >
                   {{ errors.demoUrl }}
                 </p>
-              </label>
+              </AppFormField>
             </div>
 
             <div class="flex flex-wrap gap-3">

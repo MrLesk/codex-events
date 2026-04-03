@@ -323,7 +323,7 @@ async function addPlatformAdmin(user: HackathonRoleUserSummary) {
           </p>
         </div>
 
-        <input
+        <AppInput
           v-model="candidateSearchInput"
           type="search"
           name="platform-admin-candidate-search"
@@ -334,9 +334,8 @@ async function addPlatformAdmin(user: HackathonRoleUserSummary) {
           data-1p-ignore="true"
           data-lpignore="true"
           data-bwignore="true"
-          class="w-full rounded-lg border border-black/8 bg-white/90 px-4 py-3 text-sm text-highlighted outline-none focus:border-black/25 dark:border-white/[0.08] dark:bg-[#111111] dark:focus:border-white/[0.25]"
           placeholder="Search users by name, email, or user ID"
-        >
+        />
 
         <AppAlert
           v-if="candidateUsersStatus === 'error'"

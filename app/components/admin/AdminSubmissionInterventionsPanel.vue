@@ -97,7 +97,7 @@ const disqualifiableTeams = computed(() =>
 
           <div
             v-if="withdrawableTeams.length > 0"
-            class="grid gap-4"
+            class="grid grid-cols-1 gap-4"
           >
             <article
               v-for="team in withdrawableTeams"
@@ -118,9 +118,8 @@ const disqualifiableTeams = computed(() =>
                 <div class="grid gap-4 lg:grid-cols-[0.45fr_0.55fr]">
                   <label class="grid gap-2">
                     <span class="text-sm font-medium text-toned">Requested by team admin</span>
-                    <select
+                    <AppSelect
                       v-model="getDraft(team).requestedByUserId"
-                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                     >
                       <option
                         v-for="choice in team.activeAdminChoices"
@@ -129,17 +128,16 @@ const disqualifiableTeams = computed(() =>
                       >
                         {{ choice.label }}
                       </option>
-                    </select>
+                    </AppSelect>
                   </label>
 
                   <label class="grid gap-2">
                     <span class="text-sm font-medium text-toned">Operational note</span>
-                    <input
+                    <AppInput
                       v-model="getDraft(team).adminWithdrawReason"
                       type="text"
-                      class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                       placeholder="Requested by team due to..."
-                    >
+                    />
                   </label>
                 </div>
 
@@ -189,7 +187,7 @@ const disqualifiableTeams = computed(() =>
 
           <div
             v-if="disqualifiableTeams.length > 0"
-            class="grid gap-4"
+            class="grid grid-cols-1 gap-4"
           >
             <article
               v-for="team in disqualifiableTeams"
@@ -209,12 +207,11 @@ const disqualifiableTeams = computed(() =>
 
                 <label class="grid gap-2">
                   <span class="text-sm font-medium text-toned">Operational note</span>
-                  <input
+                  <AppInput
                     v-model="getDraft(team).disqualifyReason"
                     type="text"
-                    class="w-full rounded-lg border border-black/8 bg-white dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] px-4 py-3 text-sm text-highlighted outline-none"
                     placeholder="Competition removal reason"
-                  >
+                  />
                 </label>
 
                 <AppButton

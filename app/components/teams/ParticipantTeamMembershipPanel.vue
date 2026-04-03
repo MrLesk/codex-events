@@ -22,7 +22,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <AppCard class="rounded-xl hackathon-workspace-detail-panel p-6">
+  <AppCard class="rounded-xl hackathon-workspace-detail-panel">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-xl font-semibold text-highlighted dark:text-white">

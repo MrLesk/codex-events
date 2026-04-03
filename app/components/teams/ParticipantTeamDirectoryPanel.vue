@@ -78,7 +78,7 @@ function submitCreateForm() {
   <div class="space-y-6">
     <AppCard
       v-if="currentTeam"
-      class="rounded-xl hackathon-workspace-detail-panel p-6"
+      class="rounded-xl hackathon-workspace-detail-panel"
     >
       <template #header>
         <div class="space-y-1">
@@ -154,15 +154,15 @@ function submitCreateForm() {
               name="participant-team-name"
               label="Team name"
             >
-              <input
+              <AppInput
                 id="participant-team-name"
                 v-model="form.name"
-                type="text"
                 placeholder="North Star Builders"
-                class="w-full rounded-lg border border-default bg-elevated px-3 py-2.5 text-sm text-toned outline-none transition"
-                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+                size="xl"
+                class="w-full"
+                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
                 :disabled="isCreatingTeam || !canCreateTeam.isAllowed"
-              >
+              />
               <p
                 v-if="submitCount > 0 && errors.name"
                 class="text-xs text-error"
