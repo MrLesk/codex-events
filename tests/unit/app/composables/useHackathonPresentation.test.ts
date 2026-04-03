@@ -5,6 +5,7 @@ import {
   describeHackathonWindowStatus,
   formatHackathonLocation,
   formatHackathonDateWithWeekday,
+  formatPrizeReward,
   getPublicHackathonStatePresentation,
   getHackathonDateTimePresentation,
   getHackathonWindowProgress,
@@ -205,5 +206,40 @@ describe('public hackathon agenda presentation helpers', () => {
       label: 'Registration open',
       color: 'info'
     })
+  })
+
+  test('formats currency-backed prize rewards with Intl currency formatting', () => {
+    expect(formatPrizeReward({
+      rewardValue: '1200',
+      rewardCurrency: 'USD'
+    })).toBe(new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: 'USD'
+    }).format(1200))
+  })
+
+  test('formats numeric prize rewards without a currency code using Intl number formatting', () => {
+    expect(formatPrizeReward({
+      rewardValue: '5000',
+      rewardCurrency: null
+    })).toBe(new Intl.NumberFormat(undefined, {
+      maximumFractionDigits: 20
+    }).format(5000))
+  })
+
+  test('keeps free-form prize reward labels unchanged', () => {
+    expect(formatPrizeReward({
+      rewardValue: 'Mentorship',
+      rewardCurrency: null
+    })).toBe('Mentorship')
+  })
+
+  test('falls back to grouped numeric output plus currency code when the currency code is not Intl-compatible', () => {
+    expect(formatPrizeReward({
+      rewardValue: '1200',
+      rewardCurrency: 'USDT'
+    })).toBe(`${new Intl.NumberFormat(undefined, {
+      maximumFractionDigits: 20
+    }).format(1200)} USDT`)
   })
 })
