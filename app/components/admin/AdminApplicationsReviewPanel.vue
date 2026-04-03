@@ -14,7 +14,10 @@ import {
 import { parseProofOfExecutionLinks } from '~/utils/participant-application'
 import { buildProfileIconHref } from '~/utils/profile-icon'
 import {
-  getApplicationStatusColor
+  formatApplicationLumaSyncStatus,
+  getApplicationLumaSyncStatusColor,
+  getApplicationStatusColor,
+  shouldShowApplicationLumaSyncStatus
 } from '~/utils/admin-workspace'
 
 const props = withDefaults(defineProps<{
@@ -197,10 +200,6 @@ function getVisibleProofOfExecutionLinks(applicant: AdminApplicationReviewGroup[
   }
 
   return proofLinks.slice(0, proofLinksPreviewCount)
-}
-
-function hasFailedLumaSync(application: AdminApplicationRecord) {
-  return application.lumaSyncStatus === 'approve_failed' || application.lumaSyncStatus === 'reject_failed'
 }
 
 function getApplicantIdentityLabel(application: AdminApplicationRecord) {
@@ -445,11 +444,11 @@ const emptyState = computed(() => {
                         Rejected
                       </AppBadge>
                       <AppBadge
-                        v-if="hasFailedLumaSync(applicant.application)"
-                        color="warning"
+                        v-if="shouldShowApplicationLumaSyncStatus(applicant.application)"
+                        :color="getApplicationLumaSyncStatusColor(applicant.application.lumaSyncStatus)"
                         variant="soft"
                       >
-                        Luma sync failed
+                        {{ formatApplicationLumaSyncStatus(applicant.application.lumaSyncStatus) }}
                       </AppBadge>
                       <AppBadge
                         v-if="applicant.hasFuzzyMatch"

@@ -17,6 +17,7 @@ import {
   canMutateRoleAssignments,
   createHackathonFormState,
   createHackathonSlug,
+  formatApplicationLumaSyncStatus,
   formatApplicationStatus,
   formatAdminJudgeAssignmentStatus,
   formatSubmissionStatus,
@@ -29,6 +30,7 @@ import {
   hasHackathonParticipantVisibilityAccess,
   getNextAgendaItemDefaultTimes,
   getAdminSubmissionInterventionPolicy,
+  getApplicationLumaSyncStatusColor,
   getApplicationStatusColor,
   getCurrentLifecycleControl,
   getJudgeAssignmentStatusColor,
@@ -37,6 +39,7 @@ import {
   hasHackathonAdminAccess,
   normalizeApiError,
   getSubmissionStatusColor,
+  shouldShowApplicationLumaSyncStatus,
   toDateTimeLocalValue
 } from '../../../../app/utils/admin-workspace'
 
@@ -591,10 +594,38 @@ describe('admin-workspace operational helpers', () => {
   test('formats operational statuses into badge labels and colors', () => {
     expect(formatApplicationStatus('submitted')).toBe('Submitted')
     expect(getApplicationStatusColor('approved')).toBe('success')
+    expect(formatApplicationLumaSyncStatus('not_synced')).toBe('Luma sync pending')
+    expect(formatApplicationLumaSyncStatus('approve_synced')).toBe('Luma approved')
+    expect(formatApplicationLumaSyncStatus('reject_synced')).toBe('Luma rejected')
+    expect(getApplicationLumaSyncStatusColor('approve_failed')).toBe('warning')
+    expect(getApplicationLumaSyncStatusColor('reject_synced')).toBe('neutral')
     expect(formatAdminJudgeAssignmentStatus('judge_started')).toBe('Judge Started')
     expect(getJudgeAssignmentStatusColor('judge_completed')).toBe('success')
     expect(formatSubmissionStatus('none')).toBe('No Submission')
     expect(getSubmissionStatusColor('disqualified')).toBe('error')
+  })
+
+  test('shows Luma sync status only for decided applications with a stored sync state', () => {
+    expect(shouldShowApplicationLumaSyncStatus(
+      createApplication({
+        status: 'approved',
+        lumaSyncStatus: 'not_synced'
+      })
+    )).toBe(true)
+
+    expect(shouldShowApplicationLumaSyncStatus(
+      createApplication({
+        status: 'submitted',
+        lumaSyncStatus: 'not_synced'
+      })
+    )).toBe(false)
+
+    expect(shouldShowApplicationLumaSyncStatus(
+      createApplication({
+        status: 'rejected',
+        lumaSyncStatus: null
+      })
+    )).toBe(false)
   })
 
   test('summarizes participant limit fill including staged approvals', () => {

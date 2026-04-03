@@ -618,6 +618,43 @@ export function getApplicationStatusColor(status: AdminApplicationRecord['status
   }
 }
 
+export function shouldShowApplicationLumaSyncStatus(
+  application: Pick<AdminApplicationRecord, 'status' | 'lumaSyncStatus'>
+) {
+  return application.status !== 'submitted' && Boolean(application.lumaSyncStatus)
+}
+
+export function formatApplicationLumaSyncStatus(status: AdminApplicationRecord['lumaSyncStatus']) {
+  switch (status) {
+    case 'not_synced':
+      return 'Luma sync pending'
+    case 'approve_synced':
+      return 'Luma approved'
+    case 'reject_synced':
+      return 'Luma rejected'
+    case 'approve_failed':
+      return 'Luma approval failed'
+    case 'reject_failed':
+      return 'Luma rejection failed'
+    default:
+      return ''
+  }
+}
+
+export function getApplicationLumaSyncStatusColor(status: AdminApplicationRecord['lumaSyncStatus']) {
+  switch (status) {
+    case 'not_synced':
+    case 'approve_failed':
+    case 'reject_failed':
+      return 'warning'
+    case 'approve_synced':
+    case 'reject_synced':
+      return 'neutral'
+    default:
+      return 'neutral'
+  }
+}
+
 function formatRemainingSpots(count: number) {
   return `${count} ${count === 1 ? 'spot' : 'spots'}`
 }
