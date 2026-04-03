@@ -273,10 +273,29 @@ const tabAccess = computed(() =>
   })
 )
 const availableTabs = computed(() => tabAccess.value.availableTabs)
+function buildWorkspaceSectionLocation(nextSection: AccountHackathonWorkspaceTab) {
+  const nextQuery = {
+    ...route.query
+  }
+
+  if (nextSection === 'overview') {
+    delete nextQuery.tab
+  } else {
+    nextQuery.tab = nextSection
+  }
+
+  return {
+    path: route.path,
+    query: nextQuery,
+    hash: route.hash
+  }
+}
+
 const visibleTabs = computed(() =>
   availableTabs.value.map(tab => ({
     id: tab,
-    label: workspaceTabLabels[tab]
+    label: workspaceTabLabels[tab],
+    to: buildWorkspaceSectionLocation(tab)
   }))
 )
 const activeSection = computed<AccountHackathonWorkspaceTab>(() =>
@@ -292,28 +311,6 @@ onUnmounted(() => {
   accountHackathonNavigationMode.value = 'participant'
 })
 
-async function selectWorkspaceSection(nextSection: AccountHackathonWorkspaceTab) {
-  if (normalizeTabQueryValue(route.query.tab) === nextSection) {
-    return
-  }
-
-  const nextQuery = {
-    ...route.query
-  }
-
-  if (nextSection === 'overview') {
-    delete nextQuery.tab
-  } else {
-    nextQuery.tab = nextSection
-  }
-
-  await navigateTo({
-    path: route.path,
-    query: nextQuery,
-    hash: route.hash
-  })
-}
-
 watchEffect(() => {
   const normalizedTab = normalizeTabQueryValue(route.query.tab)
   const resolvedTab = resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
@@ -326,21 +323,7 @@ watchEffect(() => {
     return
   }
 
-  const nextQuery = {
-    ...route.query
-  }
-
-  if (resolvedTab === 'overview') {
-    delete nextQuery.tab
-  } else {
-    nextQuery.tab = resolvedTab
-  }
-
-  void navigateTo({
-    path: route.path,
-    query: nextQuery,
-    hash: route.hash
-  }, { replace: true })
+  void navigateTo(buildWorkspaceSectionLocation(resolvedTab), { replace: true })
 })
 
 onMounted(() => {
@@ -650,20 +633,19 @@ useSeoMeta({
             role="tablist"
             class="flex items-center gap-5 overflow-x-auto"
           >
-            <button
+            <NuxtLink
               v-for="tab in visibleTabs"
               :id="`account-tab-${tab.id}`"
               :key="tab.id"
-              type="button"
+              :to="tab.to"
               role="tab"
               :aria-selected="activeSection === tab.id"
               :aria-controls="`account-tab-panel-${tab.id}`"
               class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
               :class="activeSection === tab.id ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
-              @click="void selectWorkspaceSection(tab.id)"
             >
               {{ tab.label }}
-            </button>
+            </NuxtLink>
           </nav>
         </div>
       </AppContainer>
