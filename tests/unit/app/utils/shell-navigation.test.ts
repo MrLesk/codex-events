@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
-import { isShellNavigationLinkActive } from '../../../../app/utils/shell-navigation'
+import {
+  isShellNavigationLinkActive,
+  resolveShellAccountHackathonNavigationMode
+} from '../../../../app/utils/shell-navigation'
 
 describe('isShellNavigationLinkActive', () => {
   test('marks the account root active only for my hackathons routes', () => {
@@ -68,5 +71,51 @@ describe('isShellNavigationLinkActive', () => {
     expect(isShellNavigationLinkActive('/account/admin', undefined, '/account/admin')).toBe(true)
     expect(isShellNavigationLinkActive('/account/platform-admins', undefined, '/account/admin')).toBe(true)
     expect(isShellNavigationLinkActive('/account/settings', undefined, '/account/settings')).toBe(true)
+  })
+
+  test('resolves account hackathon navigation mode from the current route and actor access', () => {
+    expect(resolveShellAccountHackathonNavigationMode({
+      actor: {
+        kind: 'platform_user',
+        isPlatformAdmin: true,
+        hackathonRoles: []
+      } as never,
+      currentHackathonId: null,
+      currentPath: '/account/hackathons/berlin'
+    })).toBe('admin')
+
+    expect(resolveShellAccountHackathonNavigationMode({
+      actor: {
+        kind: 'platform_user',
+        isPlatformAdmin: false,
+        hackathonRoles: [{
+          hackathonId: 'hackathon-1',
+          role: 'hackathon_admin'
+        }]
+      } as never,
+      currentHackathonId: 'hackathon-1',
+      currentPath: '/account/hackathons/berlin'
+    })).toBe('admin')
+
+    expect(resolveShellAccountHackathonNavigationMode({
+      actor: {
+        kind: 'platform_user',
+        isPlatformAdmin: false,
+        hackathonRoles: [{
+          hackathonId: 'hackathon-2',
+          role: 'hackathon_admin'
+        }]
+      } as never,
+      currentHackathonId: 'hackathon-1',
+      currentPath: '/account/hackathons/berlin'
+    })).toBe('participant')
+
+    expect(resolveShellAccountHackathonNavigationMode({
+      actor: {
+        kind: 'anonymous'
+      } as never,
+      currentHackathonId: 'hackathon-1',
+      currentPath: '/account/hackathons/berlin'
+    })).toBe('participant')
   })
 })

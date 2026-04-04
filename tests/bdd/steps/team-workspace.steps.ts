@@ -112,6 +112,13 @@ When('I open the participant Team tab for hackathon slug {string} with the saved
   await waitForParticipantTeamTabToSettle(page)
 })
 
+When('I open the participant Team tab for hackathon slug {string} and selected team slug {string} with the saved {string} session', async ({ page }, slug: string, selectedTeamSlug: string, personaKey: string) => {
+  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await page.goto(`/account/hackathons/${slug}?tab=team&team=${encodeURIComponent(selectedTeamSlug)}`)
+  await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
+  await waitForParticipantTeamTabToSettle(page)
+})
+
 Then('I should see the participant team card {string}', async ({ page }, teamName: string) => {
   await expect(page.getByTestId('participant-team-directory-panel').getByText(teamName)).toBeVisible()
 })
@@ -215,6 +222,17 @@ Then('I should see the participant current team {string}', async ({ page }, team
     timeout: 15_000
   })
   await expect(page.getByTestId('participant-team-workspace-panel')).toBeVisible()
+})
+
+Then('I should see the participant navigation link {string}', async ({ page }, label: string) => {
+  await expect(page.getByRole('link', {
+    name: label,
+    exact: true
+  })).toBeVisible()
+})
+
+Then('the participant team directory should not be visible', async ({ page }) => {
+  await expect(page.getByTestId('participant-team-directory-panel')).toHaveCount(0)
 })
 
 Then('the participant team action {string} should be disabled', async ({ page }, actionName: string) => {

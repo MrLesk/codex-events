@@ -11,6 +11,7 @@ import type { ShellNavigationGroup } from '~/composables/useShellNavigation'
 
 const props = defineProps<{
   groups: ShellNavigationGroup[]
+  accountHackathonNavigationMode?: 'participant' | 'admin'
 }>()
 
 const isSidebarCollapsed = useState<boolean>(appShellSidebarCollapsedStateKey, () => false)
@@ -49,6 +50,7 @@ watch(isSidebarCollapsed, (nextValue) => {
         <AppShellNavigation
           :groups="props.groups"
           :collapsed="isSidebarCollapsed"
+          :account-hackathon-navigation-mode="props.accountHackathonNavigationMode"
         />
       </div>
 

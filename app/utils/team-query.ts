@@ -42,3 +42,19 @@ export function buildAbsoluteAccountHackathonTeamTabHref(
 ) {
   return new URL(buildAccountHackathonTeamTabHref(hackathonSlug, teamSlug), origin).toString()
 }
+
+export function isSharedTeamTabSelection(input: {
+  selectedTeamSlug?: string | null
+  currentTeamId?: string | null
+  currentTeamSlug?: string | null
+  ownTeamId?: string | null
+}) {
+  const normalizedSelectedTeamSlug = normalizeTeamSlugQueryValue(input.selectedTeamSlug)
+  const normalizedCurrentTeamSlug = normalizeTeamSlugQueryValue(input.currentTeamSlug)
+
+  if (!normalizedSelectedTeamSlug || normalizedCurrentTeamSlug !== normalizedSelectedTeamSlug) {
+    return false
+  }
+
+  return input.currentTeamId !== null && input.currentTeamId !== input.ownTeamId
+}

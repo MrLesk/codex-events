@@ -1,4 +1,5 @@
 import type { LocationQueryValue } from 'vue-router'
+import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 
 import { normalizeTabQueryValue } from './tab-query'
 
@@ -8,8 +9,34 @@ export interface ShellNavigationMatchOptions {
 
 const accountHackathonAdminTabs = ['participants', 'submissions', 'operations', 'settings'] as const
 
-function isAccountHackathonDetailPath(path: string) {
+export function isAccountHackathonDetailPath(path: string) {
   return path.startsWith('/account/hackathons/')
+}
+
+export function resolveShellAccountHackathonNavigationMode(options: {
+  actor: ResolvedSessionActor
+  currentHackathonId?: string | null
+  currentPath: string
+}): 'participant' | 'admin' {
+  if (!isAccountHackathonDetailPath(options.currentPath) || options.actor.kind !== 'platform_user') {
+    return 'participant'
+  }
+
+  if (options.actor.isPlatformAdmin) {
+    return 'admin'
+  }
+
+  const currentHackathonId = options.currentHackathonId?.trim() ?? ''
+
+  if (!currentHackathonId) {
+    return 'participant'
+  }
+
+  return options.actor.hackathonRoles.some(role =>
+    role.role === 'hackathon_admin' && role.hackathonId === currentHackathonId
+  )
+    ? 'admin'
+    : 'participant'
 }
 
 export function isShellNavigationLinkActive(

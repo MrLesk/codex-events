@@ -243,7 +243,7 @@ export function getJoinTeamAvailability(
     }
   }
 
-  if (options.activeMemberCount >= hackathon.maxTeamMembers) {
+  if (hasTeamReachedMemberLimit(hackathon.maxTeamMembers, options.activeMemberCount)) {
     return {
       isAllowed: false,
       reason: 'This team has reached the hackathon member limit.'
@@ -253,6 +253,10 @@ export function getJoinTeamAvailability(
   return {
     isAllowed: true
   }
+}
+
+export function hasTeamReachedMemberLimit(maxTeamMembers: number, activeMemberCount: number) {
+  return activeMemberCount >= maxTeamMembers
 }
 
 export function getLeaveTeamAvailability(

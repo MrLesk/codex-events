@@ -16,6 +16,26 @@ Feature: Participant team workspace in the account hackathon page
     Then I should be in the participant team workspace for the created team
     And I should see the participant team text "We build reliable hackathon tooling together."
 
+  Scenario: Regular user sees other teams while on their own team page
+    Given the saved "regular_user" Auth0 session state exists
+    When I open the participant Team tab for hackathon slug "operations-fixture-hackathon" with the saved "regular_user" session
+    Then I should see the participant current team "Alpha Operations Team"
+    And I should see the participant team card "Beta Operations Team"
+
+  Scenario: Regular user does not see the team directory while viewing another team
+    Given the saved "regular_user" Auth0 session state exists
+    When I open the participant Team tab for hackathon slug "operations-fixture-hackathon" and selected team slug "beta-operations-team" with the saved "regular_user" session
+    Then I should see the participant current team "Beta Operations Team"
+    And I should see the participant navigation link "Back to my team"
+    And the participant team directory should not be visible
+
+  Scenario: Regular user does not see the team directory while viewing another team before joining any team
+    Given the saved "regular_user" Auth0 session state exists
+    When I open the participant Team tab for hackathon slug "participant-team-join-fixture-hackathon" and selected team slug "judge-review-team" with the saved "regular_user" session
+    Then I should see the participant current team "Judge Review Team"
+    And I should see the participant navigation link "Back to my team"
+    And the participant team directory should not be visible
+
   Scenario: Regular user does not see the solo-admin leave block in the participant Team tab
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant Team tab for hackathon slug "participant-team-solo-fixture-hackathon" with the saved "regular_user" session

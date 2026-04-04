@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   buildAbsoluteAccountHackathonTeamTabHref,
   buildAccountHackathonTeamTabHref,
+  isSharedTeamTabSelection,
   normalizeTeamSlugQueryValue
 } from '../../../../app/utils/team-query'
 
@@ -30,5 +31,28 @@ describe('team query helpers', () => {
       'codex-vienna-2026-04-18',
       'Alpha-Team'
     )).toBe('http://localhost:3000/account/hackathons/codex-vienna-2026-04-18?tab=team&team=alpha-team')
+  })
+
+  test('treats a selected external team as a shared-team view even without an own team', () => {
+    expect(isSharedTeamTabSelection({
+      selectedTeamSlug: 'the-good-gang',
+      currentTeamId: 'team_1',
+      currentTeamSlug: 'the-good-gang',
+      ownTeamId: null
+    })).toBe(true)
+
+    expect(isSharedTeamTabSelection({
+      selectedTeamSlug: 'alpha-operations-team',
+      currentTeamId: 'team_1',
+      currentTeamSlug: 'alpha-operations-team',
+      ownTeamId: 'team_1'
+    })).toBe(false)
+
+    expect(isSharedTeamTabSelection({
+      selectedTeamSlug: 'missing-team',
+      currentTeamId: 'team_1',
+      currentTeamSlug: 'alpha-operations-team',
+      ownTeamId: null
+    })).toBe(false)
   })
 })

@@ -9,6 +9,7 @@ import {
   getMemberRemovalAvailability,
   getTeamFormationAvailability,
   getTeamJoinRequestStatusColor,
+  hasTeamReachedMemberLimit,
   type TeamDetailRecord
 } from '../../../../app/utils/team-workspace'
 
@@ -190,5 +191,11 @@ describe('team workspace helpers', () => {
     expect(formatTeamMemberRole('admin')).toBe('Admin')
     expect(formatTeamJoinRequestStatus('pending')).toBe('Pending')
     expect(getTeamJoinRequestStatusColor('approved')).toBe('success')
+  })
+
+  test('detects when a team has reached the hackathon member limit', () => {
+    expect(hasTeamReachedMemberLimit(4, 4)).toBe(true)
+    expect(hasTeamReachedMemberLimit(4, 5)).toBe(true)
+    expect(hasTeamReachedMemberLimit(4, 3)).toBe(false)
   })
 })

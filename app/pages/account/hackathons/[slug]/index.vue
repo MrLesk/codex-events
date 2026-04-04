@@ -122,10 +122,6 @@ const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
 
 const route = useRoute()
 const slug = computed(() => String(route.params.slug ?? '').trim())
-const accountHackathonNavigationMode = useState<'participant' | 'admin'>(
-  'account-hackathon-navigation-mode',
-  () => 'participant'
-)
 const { actor } = useAccountLifecycleActor()
 
 if (!slug.value) {
@@ -303,14 +299,6 @@ const activeSection = computed<AccountHackathonWorkspaceTab>(() =>
 )
 const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
 const activeSectionSeo = computed(() => getAccountHackathonSeoContent(activeSection.value, hackathon.value.name))
-
-watchEffect(() => {
-  accountHackathonNavigationMode.value = canAdmin.value ? 'admin' : 'participant'
-})
-
-onUnmounted(() => {
-  accountHackathonNavigationMode.value = 'participant'
-})
 
 watchEffect(() => {
   const normalizedTab = normalizeTabQueryValue(route.query.tab)

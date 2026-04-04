@@ -11,7 +11,8 @@ import { formatTimestamp } from '~/utils/date-formatting'
 import {
   formatTeamJoinRequestStatus,
   formatTeamMemberRole,
-  getTeamJoinRequestStatusColor
+  getTeamJoinRequestStatusColor,
+  hasTeamReachedMemberLimit
 } from '~/utils/team-workspace'
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import { teamProfileFormSchema } from '~/utils/form-schemas'
@@ -124,6 +125,23 @@ const isPersisted = computed(() => props.team.isPersisted !== false)
 const showMembershipActions = computed(() => props.showMembershipActions ?? true)
 const joinPolicySwitchId = computed(() => `team-join-policy-${props.team.id}`)
 const activeMemberCount = computed(() => props.team.activeMemberCount ?? props.team.members.length)
+const isJoinCapacityReached = computed(() =>
+  !props.membership && hasTeamReachedMemberLimit(props.maxTeamMembers, activeMemberCount.value)
+)
+const participantTeamStatusLabel = computed(() =>
+  isJoinCapacityReached.value
+    ? 'Member limit reached'
+    : props.team.isOpenToJoinRequests
+      ? 'Open to join requests'
+      : 'Closed to join requests'
+)
+const participantTeamStatusColor = computed(() =>
+  isJoinCapacityReached.value
+    ? 'warning'
+    : props.team.isOpenToJoinRequests
+      ? 'success'
+      : 'neutral'
+)
 
 function validateTeamProfile() {
   errors.name = ''
@@ -345,10 +363,10 @@ function cancelEditingProfile() {
 
               <AppBadge
                 v-if="!canManageTeam"
-                :color="team.isOpenToJoinRequests ? 'success' : 'neutral'"
+                :color="participantTeamStatusColor"
                 variant="soft"
               >
-                {{ team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+                {{ participantTeamStatusLabel }}
               </AppBadge>
             </div>
 

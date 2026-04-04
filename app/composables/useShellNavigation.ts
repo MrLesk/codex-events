@@ -1,10 +1,15 @@
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
+import type { PublicApiDataResponse } from '~/composables/useHackathonPresentation'
 
 import { accountDashboardHref, buildAuthLoginHref } from '~/utils/auth-navigation'
 import {
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled
 } from '~/utils/admin-workspace'
+import {
+  isAccountHackathonDetailPath,
+  resolveShellAccountHackathonNavigationMode
+} from '~/utils/shell-navigation'
 
 interface ShellPrizeRedemptionsResponse {
   data: Array<{
@@ -37,6 +42,29 @@ export function useShellNavigation() {
   const returnTo = computed(() => route.fullPath || accountDashboardHref)
   const authEntryHref = computed(() => buildAuthLoginHref(returnTo.value))
   const { actor, status, refresh } = useSessionActor()
+  const currentAccountHackathonSlug = computed(() =>
+    isAccountHackathonDetailPath(route.path) ? String(route.params.slug ?? '').trim() : ''
+  )
+  const {
+    data: currentAccountHackathon
+  } = useAsyncData<{ id: string } | null>(
+    () => `shell-account-hackathon:${currentAccountHackathonSlug.value || 'none'}`,
+    async () => {
+      if (!currentAccountHackathonSlug.value) {
+        return null
+      }
+
+      const response = await apiFetch<PublicApiDataResponse<{ id: string }>>(
+        `/api/hackathons/slug/${currentAccountHackathonSlug.value}`
+      )
+
+      return response.data
+    },
+    {
+      default: () => null,
+      watch: [currentAccountHackathonSlug]
+    }
+  )
 
   const {
     data: pendingPrizeRedemptions,
@@ -87,6 +115,13 @@ export function useShellNavigation() {
     && (actor.value.isPlatformAdmin || actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin')))
   const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
     && actor.value.hackathonRoles.some(role => isHackathonRoleJudgingEnabled(role)))
+  const accountHackathonNavigationMode = computed(() =>
+    resolveShellAccountHackathonNavigationMode({
+      actor: actor.value,
+      currentHackathonId: currentAccountHackathon.value?.id ?? null,
+      currentPath: route.path
+    })
+  )
   const hasPrizeRecipientAccess = computed(() => pendingPrizeRedemptions.value.length > 0)
   const prizeRedemptionsErrorMessage = computed(() => {
     if (actor.value.kind !== 'platform_user' || !pendingPrizeRedemptionsError.value) {
@@ -181,6 +216,7 @@ export function useShellNavigation() {
     hasPrizeRecipientAccess,
     isResolvingActor,
     authEntryHref,
+    accountHackathonNavigationMode,
     prizeRedemptionsErrorMessage,
     refresh,
     roleChips,

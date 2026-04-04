@@ -10,10 +10,12 @@ import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSu
 import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWorkspacePanel.vue'
 import {
   buildAbsoluteAccountHackathonTeamTabHref,
-  buildAccountHackathonTeamTabHref
+  buildAccountHackathonTeamTabHref,
+  isSharedTeamTabSelection
 } from '~/utils/team-query'
 import {
   getCreateTeamAvailability,
+  hasTeamReachedMemberLimit,
   getJoinTeamAvailability,
   getLeaveTeamAvailability,
   getMemberRemovalAvailability,
@@ -290,14 +292,15 @@ const isWorkspaceLoading = computed(() => {
     || workspace.ownApplicationStatus.value === 'pending'
 })
 const isViewingSharedTeam = computed(() =>
-  Boolean(
-    workspace.ownTeam.value
-    && workspace.currentTeam.value
-    && workspace.ownTeam.value.id !== workspace.currentTeam.value.id
-  )
+  isSharedTeamTabSelection({
+    selectedTeamSlug: props.selectedTeamSlug,
+    currentTeamId: workspace.currentTeam.value?.id ?? null,
+    currentTeamSlug: workspace.currentTeam.value?.slug ?? null,
+    ownTeamId: workspace.ownTeam.value?.id ?? null
+  })
 )
 const backToOwnTeamHref = computed(() =>
-  workspace.ownTeam.value ? buildTeamTabHref(workspace.ownTeam.value.slug) : null
+  buildTeamTabHref(workspace.ownTeam.value?.slug ?? null)
 )
 const createTeamAvailability = computed(() =>
   getCreateTeamAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
@@ -390,9 +393,17 @@ const currentPendingJoinRequestId = computed(() =>
       ? workspace.getRememberedPendingJoinRequestId(displayedTeam.value.id)
       : null
 )
+const isDisplayedTeamFull = computed(() =>
+  displayedTeam.value
+    ? hasTeamReachedMemberLimit(
+        props.hackathon.maxTeamMembers,
+        displayedTeam.value.activeMemberCount ?? displayedTeam.value.members.length
+      )
+    : false
+)
 const showMembershipActions = computed(() => {
   if (!displayedTeamMembership.value) {
-    return true
+    return !isDisplayedTeamFull.value
   }
 
   if (displayedTeam.value?.isPersisted === false) {
@@ -688,20 +699,6 @@ async function withdrawSubmission() {
     data-testid="account-hackathon-team-panel"
     class="space-y-6"
   >
-    <div
-      v-if="isViewingSharedTeam && backToOwnTeamHref"
-      class="flex"
-    >
-      <AppButton
-        :to="backToOwnTeamHref"
-        color="neutral"
-        variant="outline"
-        icon="i-lucide-arrow-left"
-      >
-        Back to my team
-      </AppButton>
-    </div>
-
     <AppAlert
       v-if="isWorkspaceLoading"
       color="neutral"
@@ -778,6 +775,22 @@ async function withdrawSubmission() {
 
         <template v-if="displayedTeam">
           <div class="grid gap-6">
+            <div
+              v-if="isViewingSharedTeam"
+              class="flex"
+            >
+              <NuxtLink
+                :to="backToOwnTeamHref"
+                class="inline-flex items-center gap-2 text-[13px] font-medium text-neutral-600 transition-colors hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white"
+              >
+                <AppIcon
+                  name="i-lucide-arrow-left"
+                  class="size-4"
+                />
+                Back to my team
+              </NuxtLink>
+            </div>
+
             <ParticipantTeamWorkspacePanel
               v-model:settings="teamSettings"
               :team="displayedTeam"
@@ -844,7 +857,7 @@ async function withdrawSubmission() {
         />
 
         <ParticipantTeamDirectoryPanel
-          v-if="!workspace.currentTeamMembership.value"
+          v-if="!isViewingSharedTeam"
           :teams="directoryEntries"
           :total-teams="workspace.visibleTeamsTotal.value"
           :is-loading-teams="workspace.visibleTeamsStatus.value === 'pending'"
