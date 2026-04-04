@@ -637,7 +637,7 @@ useSeoMeta({
           <nav
             aria-label="Account hackathon sections"
             role="tablist"
-            class="flex items-center gap-5 overflow-x-auto"
+            class="account-hackathon-tab-list flex items-center gap-5 overflow-x-auto"
           >
             <NuxtLink
               v-for="tab in visibleTabs"

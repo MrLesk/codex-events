@@ -325,6 +325,33 @@
     scrollbar-gutter: stable;
   }
 
+  .account-hackathon-tab-list {
+    scrollbar-color: rgba(64, 64, 64, 0.45) transparent;
+    scrollbar-width: thin;
+  }
+
+  .account-hackathon-tab-list::-webkit-scrollbar {
+    height: 0.5rem;
+    background: transparent;
+  }
+
+  .account-hackathon-tab-list::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .account-hackathon-tab-list::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: rgba(64, 64, 64, 0.45);
+  }
+
+  .dark .account-hackathon-tab-list {
+    scrollbar-color: rgba(212, 212, 212, 0.38) transparent;
+  }
+
+  .dark .account-hackathon-tab-list::-webkit-scrollbar-thumb {
+    background-color: rgba(212, 212, 212, 0.38);
+  }
+
   .hackathon-detail-background-media {
     @apply absolute inset-0 scale-110 bg-cover bg-center bg-no-repeat opacity-55 blur-md saturate-125 contrast-105;
   }
