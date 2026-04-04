@@ -47,7 +47,7 @@ const emit = defineEmits<{
         color="neutral"
         variant="soft"
         title="Loading join requests"
-        description="Pending and reviewed join requests are still loading for this team."
+        description="Pending join requests are still loading for this team."
       />
 
       <div
@@ -76,7 +76,7 @@ const emit = defineEmits<{
               </div>
 
               <p class="text-sm text-toned">
-                {{ request.user?.email ?? request.userId }} • Requested {{ formatTimestamp(request.requestedAt) }}
+                {{ request.user?.email ?? request.userId }}
               </p>
 
               <p

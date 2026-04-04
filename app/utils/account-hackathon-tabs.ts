@@ -16,7 +16,7 @@ export const accountHackathonWorkspaceTabs = [
 export type AccountHackathonWorkspaceTab = (typeof accountHackathonWorkspaceTabs)[number]
 
 export interface AccountHackathonTabAccessOptions {
-  hasParticipantAccessRecord: boolean
+  hasApprovedParticipantAccess: boolean
   hasPublishedPrizes: boolean
   canJudge: boolean
   canManage: boolean
@@ -53,7 +53,7 @@ export function getAccountHackathonTabAccess(
   options: AccountHackathonTabAccessOptions
 ): AccountHackathonTabAccess {
   const {
-    hasParticipantAccessRecord,
+    hasApprovedParticipantAccess,
     hasPublishedPrizes,
     canJudge,
     canManage,
@@ -61,7 +61,7 @@ export function getAccountHackathonTabAccess(
   } = options
   const availableTabs: AccountHackathonWorkspaceTab[] = ['overview']
 
-  if (hasParticipantAccessRecord) {
+  if (hasApprovedParticipantAccess) {
     availableTabs.push('team')
   }
 

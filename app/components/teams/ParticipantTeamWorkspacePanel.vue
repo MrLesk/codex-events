@@ -2,13 +2,20 @@
 import type {
   TeamActionAvailability,
   TeamDetailRecord,
-  TeamMemberRecord
+  TeamJoinRequestRecord,
+  TeamMemberRecord,
+  TeamUserSummary
 } from '~/utils/team-workspace'
 
 import { formatTimestamp } from '~/utils/date-formatting'
+import {
+  formatTeamJoinRequestStatus,
+  formatTeamMemberRole,
+  getTeamJoinRequestStatusColor
+} from '~/utils/team-workspace'
+import { Switch as UiSwitch } from '~/components/ui/switch'
 import { teamProfileFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
-import { buildAbsoluteAccountHackathonTeamTabHref } from '~/utils/team-query'
 
 const settings = defineModel<{
   name: string
@@ -18,17 +25,20 @@ const settings = defineModel<{
 })
 
 const props = defineProps<{
-  hackathonSlug: string
   team: TeamDetailRecord
+  maxTeamMembers: number
   membership?: TeamMemberRecord | null
   canManageTeam?: boolean
   joinAvailability: TeamActionAvailability
   leaveAvailability: TeamActionAvailability
   pendingJoinRequestId?: string | null
   pendingActionKey?: string | null
+  removalAvailabilityByUserId?: Record<string, TeamActionAvailability>
+  joinRequests?: TeamJoinRequestRecord[]
+  joinRequestsStatus?: 'idle' | 'pending' | 'success' | 'error'
+  joinRequestsErrorMessage?: string
+  showMembershipActions?: boolean
 }>()
-
-const toast = useToast()
 
 const emit = defineEmits<{
   submitProfile: []
@@ -39,16 +49,79 @@ const emit = defineEmits<{
     requestId: string | null
   }]
   leaveTeam: []
+  copyTeamLink: []
+  removeMember: [userId: string]
+  approveRequest: [requestId: string]
+  rejectRequest: [requestId: string]
 }>()
 
 function isActionPending(actionKey: string) {
   return props.pendingActionKey === actionKey
 }
 
+function getDecisionButtonClass(tone: 'approve' | 'reject', isActive: boolean) {
+  const baseClass = 'inline-flex w-full items-center justify-between rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45'
+
+  if (isActive) {
+    switch (tone) {
+      case 'approve':
+        return `${baseClass} border-success/30 bg-success/12 text-success hover:bg-success/16`
+      case 'reject':
+        return `${baseClass} border-error/30 bg-error/12 text-error hover:bg-error/16`
+    }
+  }
+
+  return `${baseClass} border-black/8 bg-transparent text-toned hover:border-black/20 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.18] dark:hover:text-white`
+}
+
+function getUserProfileLinks(user?: TeamUserSummary | null) {
+  const links: Array<{
+    key: 'github' | 'linkedin' | 'x'
+    label: 'GitHub' | 'LinkedIn' | 'X'
+    href: string
+  }> = []
+
+  const githubProfileUrl = user?.githubProfileUrl?.trim()
+  const linkedinProfileUrl = user?.linkedinProfileUrl?.trim()
+  const xProfileUrl = user?.xProfileUrl?.trim()
+
+  if (githubProfileUrl) {
+    links.push({
+      key: 'github',
+      label: 'GitHub',
+      href: githubProfileUrl
+    })
+  }
+
+  if (linkedinProfileUrl) {
+    links.push({
+      key: 'linkedin',
+      label: 'LinkedIn',
+      href: linkedinProfileUrl
+    })
+  }
+
+  if (xProfileUrl) {
+    links.push({
+      key: 'x',
+      label: 'X',
+      href: xProfileUrl
+    })
+  }
+
+  return links
+}
+
 const errors = reactive({
   name: ''
 })
 const submitCount = ref(0)
+const isEditingName = ref(false)
+
+const isPersisted = computed(() => props.team.isPersisted !== false)
+const showMembershipActions = computed(() => props.showMembershipActions ?? true)
+const joinPolicySwitchId = computed(() => `team-join-policy-${props.team.id}`)
+const activeMemberCount = computed(() => props.team.activeMemberCount ?? props.team.members.length)
 
 function validateTeamProfile() {
   errors.name = ''
@@ -71,38 +144,22 @@ function submitProfileForm() {
     return
   }
 
+  isEditingName.value = false
   emit('submitProfile')
 }
 
-async function copyTeamLink() {
-  if (!import.meta.client || !window.isSecureContext || !navigator.clipboard) {
-    toast.add({
-      title: 'Copy unavailable',
-      description: 'This browser could not copy the team link right now.',
-      color: 'error'
-    })
-    return
-  }
+function startEditingName() {
+  settings.value.name = props.team.name
+  errors.name = ''
+  submitCount.value = 0
+  isEditingName.value = true
+}
 
-  try {
-    await navigator.clipboard.writeText(buildAbsoluteAccountHackathonTeamTabHref(
-      window.location.origin,
-      props.hackathonSlug,
-      props.team.slug
-    ))
-
-    toast.add({
-      title: 'Team link copied',
-      description: 'The direct team link was copied to your clipboard.',
-      color: 'success'
-    })
-  } catch {
-    toast.add({
-      title: 'Copy failed',
-      description: 'The team link could not be copied right now.',
-      color: 'error'
-    })
-  }
+function cancelEditingName() {
+  settings.value.name = props.team.name
+  errors.name = ''
+  submitCount.value = 0
+  isEditingName.value = false
 }
 </script>
 
@@ -112,19 +169,71 @@ async function copyTeamLink() {
     class="rounded-xl hackathon-workspace-detail-panel"
   >
     <template #header>
-      <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div class="space-y-1">
-          <div class="flex flex-wrap items-center gap-3">
-            <h2 class="text-2xl font-semibold text-highlighted dark:text-white">
-              {{ team.name }}
-            </h2>
-
-            <AppBadge
-              :color="team.isOpenToJoinRequests ? 'success' : 'neutral'"
-              variant="soft"
+      <div class="space-y-3">
+        <div
+          v-if="canManageTeam && isEditingName"
+          class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+        >
+          <form
+            class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+            @submit.prevent="submitProfileForm"
+          >
+            <AppButton
+              color="neutral"
+              variant="outline"
+              size="sm"
+              icon="i-lucide-copy"
+              class="h-8 w-8 shrink-0 gap-0 px-0"
+              aria-label="Copy team link"
+              @click="emit('copyTeamLink')"
             >
-              {{ team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
-            </AppBadge>
+              <span class="sr-only">Copy team link</span>
+            </AppButton>
+
+            <div class="min-w-0 flex-1 space-y-2">
+              <label
+                :for="`team-name-inline-${team.id}`"
+                class="sr-only"
+              >
+                Team name
+              </label>
+              <AppInput
+                :id="`team-name-inline-${team.id}`"
+                v-model="settings.name"
+                size="xl"
+                class="w-full"
+                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
+                :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
+              />
+              <p
+                v-if="submitCount > 0 && errors.name"
+                class="text-xs text-error"
+              >
+                {{ errors.name }}
+              </p>
+            </div>
+
+            <AppButton
+              type="submit"
+              color="primary"
+              class="shrink-0"
+              :loading="isPersisted && isActionPending(`update-team:${team.id}`)"
+              :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
+              data-testid="participant-team-update-profile"
+            >
+              Save
+            </AppButton>
+
+            <AppButton
+              type="button"
+              color="neutral"
+              variant="outline"
+              class="shrink-0"
+              :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
+              @click="cancelEditingName"
+            >
+              Cancel
+            </AppButton>
 
             <AppBadge
               v-if="membership"
@@ -133,130 +242,110 @@ async function copyTeamLink() {
             >
               {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
             </AppBadge>
-          </div>
 
-          <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-            Share this team with a direct link or continue managing collaboration from this tab.
-          </p>
+            <AppBadge
+              v-if="!canManageTeam"
+              :color="team.isOpenToJoinRequests ? 'success' : 'neutral'"
+              variant="soft"
+            >
+              {{ team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+            </AppBadge>
+          </form>
+
+          <div class="flex items-center gap-3 shrink-0 md:justify-end">
+            <UiSwitch
+              :id="joinPolicySwitchId"
+              :model-value="settings.isOpenToJoinRequests"
+              :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
+              @update:model-value="emit('toggleJoinPolicy', $event)"
+            />
+            <label
+              :for="joinPolicySwitchId"
+              class="text-sm font-medium text-toned"
+            >
+              {{ settings.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+            </label>
+          </div>
         </div>
 
-        <AppButton
-          color="neutral"
-          variant="outline"
-          icon="i-lucide-copy"
-          @click="copyTeamLink"
+        <div
+          v-else
+          class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
         >
-          Copy team link
-        </AppButton>
+          <div class="flex min-w-0 flex-wrap items-center gap-3">
+            <AppButton
+              color="neutral"
+              variant="outline"
+              size="sm"
+              icon="i-lucide-copy"
+              class="h-8 w-8 shrink-0 gap-0 px-0"
+              aria-label="Copy team link"
+              @click="emit('copyTeamLink')"
+            >
+              <span class="sr-only">Copy team link</span>
+            </AppButton>
+
+            <h2 class="text-2xl font-semibold text-highlighted dark:text-white">
+              {{ team.name }}
+            </h2>
+
+            <AppButton
+              v-if="canManageTeam"
+              variant="outline"
+              color="neutral"
+              size="sm"
+              icon="i-lucide-pencil"
+              class="h-8 w-8 shrink-0 gap-0 px-0"
+              aria-label="Edit team name"
+              data-testid="participant-team-edit-name"
+              @click="startEditingName"
+            >
+              <span class="sr-only">Edit team name</span>
+            </AppButton>
+
+            <AppBadge
+              v-if="membership"
+              color="primary"
+              variant="soft"
+            >
+              {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
+            </AppBadge>
+
+            <AppBadge
+              v-if="!canManageTeam"
+              :color="team.isOpenToJoinRequests ? 'success' : 'neutral'"
+              variant="soft"
+            >
+              {{ team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+            </AppBadge>
+          </div>
+
+          <div
+            v-if="canManageTeam"
+            class="flex items-center gap-3 shrink-0 md:justify-end"
+          >
+            <UiSwitch
+              :id="joinPolicySwitchId"
+              :model-value="settings.isOpenToJoinRequests"
+              :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
+              @update:model-value="emit('toggleJoinPolicy', $event)"
+            />
+            <label
+              :for="joinPolicySwitchId"
+              class="text-sm font-medium text-toned"
+            >
+              {{ settings.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+            </label>
+          </div>
+        </div>
       </div>
     </template>
 
     <div class="space-y-6">
-      <div class="grid gap-4 md:grid-cols-3">
-        <div class="app-inset-card px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Team name
-          </p>
-          <p class="mt-2 text-lg font-semibold text-highlighted">
-            {{ team.name }}
-          </p>
-        </div>
-
-        <div class="app-inset-card px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Active members
-          </p>
-          <p class="mt-2 text-2xl font-semibold text-highlighted">
-            {{ team.activeMemberCount ?? team.members.length }}
-          </p>
-        </div>
-
-        <div class="app-inset-card px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Created
-          </p>
-          <p class="mt-2 text-sm font-medium text-highlighted">
-            {{ formatTimestamp(team.createdAt) }}
-          </p>
-        </div>
-
-        <div class="app-inset-card px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Join policy
-          </p>
-          <p class="mt-2 text-sm font-medium text-highlighted">
-            {{ team.isOpenToJoinRequests ? 'Open to new requests' : 'Closed to new requests' }}
-          </p>
-        </div>
-      </div>
-
       <section
-        v-if="canManageTeam"
-        class="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]"
+        v-if="showMembershipActions"
+        class="app-inset-card px-5 py-5"
       >
-        <div class="space-y-4 app-inset-card px-5 py-5">
-          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-            <h3 class="text-lg font-semibold text-highlighted dark:text-white">
-              Team profile
-            </h3>
-            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-              Team admins can rename the team while team formation remains open. The team slug updates automatically.
-            </p>
-          </div>
-
-          <form
-            class="space-y-4"
-            @submit.prevent="submitProfileForm"
-          >
-            <AppFormField label="Team name">
-              <AppInput
-                v-model="settings.name"
-                size="xl"
-                class="w-full"
-                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
-                :disabled="isActionPending(`update-team:${team.id}`)"
-              />
-              <p
-                v-if="submitCount > 0 && errors.name"
-                class="text-xs text-error"
-              >
-                {{ errors.name }}
-              </p>
-            </AppFormField>
-
-            <AppButton
-              type="submit"
-              color="primary"
-              :loading="isActionPending(`update-team:${team.id}`)"
-              :disabled="isActionPending(`update-team:${team.id}`)"
-              data-testid="participant-team-update-profile"
-            >
-              Save team profile
-            </AppButton>
-          </form>
-        </div>
-
-        <div class="space-y-4 app-inset-card px-5 py-5">
-          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-            <h3 class="text-lg font-semibold text-highlighted dark:text-white">
-              Join policy
-            </h3>
-            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-              Team admins control whether approved participants can submit new join requests.
-            </p>
-          </div>
-
-          <AppCheckbox
-            :model-value="settings.isOpenToJoinRequests"
-            :disabled="isActionPending(`update-team-join-policy:${team.id}`)"
-            label="Open this team to join requests"
-            class="text-sm text-toned"
-            @update:model-value="emit('toggleJoinPolicy', $event)"
-          />
-        </div>
-      </section>
-
-      <section class="app-inset-card px-5 py-5">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div class="space-y-2">
             <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
@@ -280,7 +369,7 @@ async function copyTeamLink() {
               v-else
               class="text-sm text-muted"
             >
-              {{ membership ? 'Leave this team if your membership no longer fits the active collaboration.' : 'Request to join this team if the join policy remains open and capacity allows it.' }}
+              {{ membership ? 'Leave this team if your collaboration changes.' : 'Request to join this team if collaboration is still open.' }}
             </p>
           </div>
 
@@ -322,6 +411,254 @@ async function copyTeamLink() {
               Request to join
             </AppButton>
           </div>
+        </div>
+      </section>
+
+      <section :class="canManageTeam ? 'grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]' : 'grid gap-6'">
+        <div class="space-y-4 app-inset-card px-5 py-5">
+          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+            <div class="flex flex-wrap items-center gap-3">
+              <h3 class="text-lg font-semibold text-highlighted dark:text-white">
+                Team members
+              </h3>
+
+              <AppBadge
+                color="neutral"
+                variant="soft"
+              >
+                {{ activeMemberCount }} / {{ maxTeamMembers }}
+              </AppBadge>
+            </div>
+            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+              Everyone on the team appears here.
+            </p>
+          </div>
+
+          <div class="grid gap-4">
+            <article
+              v-for="member in team.members"
+              :key="member.id"
+              :data-testid="`participant-team-member-${member.userId}`"
+              class="rounded-2xl border border-black/8 bg-white/80 px-4 py-4 dark:border-white/[0.08] dark:bg-white/[0.03]"
+            >
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="space-y-2">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <h4 class="text-base font-semibold text-highlighted dark:text-white">
+                      {{ member.user?.displayName ?? member.userId }}
+                    </h4>
+
+                    <AppBadge
+                      :color="member.role === 'admin' ? 'primary' : 'neutral'"
+                      variant="soft"
+                    >
+                      {{ formatTeamMemberRole(member.role) }}
+                    </AppBadge>
+
+                    <AppBadge
+                      v-if="membership?.id === member.id"
+                      color="success"
+                      variant="soft"
+                    >
+                      You
+                    </AppBadge>
+                  </div>
+
+                  <p class="text-sm text-toned">
+                    <template v-if="member.user?.email">
+                      {{ member.user.email }}<span v-if="isPersisted"> • Joined {{ formatTimestamp(member.joinedAt) }}</span>
+                    </template>
+                    <template v-else-if="isPersisted">
+                      Joined {{ formatTimestamp(member.joinedAt) }}
+                    </template>
+                  </p>
+
+                  <p
+                    v-if="canManageTeam && membership?.id !== member.id && removalAvailabilityByUserId?.[member.userId] && !removalAvailabilityByUserId?.[member.userId]?.isAllowed"
+                    class="text-sm text-muted"
+                  >
+                    {{ removalAvailabilityByUserId?.[member.userId]?.reason }}
+                  </p>
+
+                  <div
+                    v-if="getUserProfileLinks(member.user).length > 0"
+                    class="flex flex-wrap gap-2"
+                  >
+                    <a
+                      v-for="link in getUserProfileLinks(member.user)"
+                      :key="link.key"
+                      :href="link.href"
+                      target="_blank"
+                      rel="noreferrer"
+                      class="inline-flex items-center gap-0.5 rounded-full border border-black/10 px-2 py-0.5 text-xs font-medium text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
+                    >
+                      {{ link.label }}
+                      <AppIcon
+                        name="i-lucide-external-link"
+                        class="size-2.5"
+                      />
+                    </a>
+                  </div>
+                </div>
+
+                <AppButton
+                  v-if="canManageTeam && membership?.id !== member.id"
+                  color="warning"
+                  variant="soft"
+                  :loading="pendingActionKey === `remove-team-member:${team.id}:${member.userId}`"
+                  :disabled="!removalAvailabilityByUserId?.[member.userId]?.isAllowed || pendingActionKey === `remove-team-member:${team.id}:${member.userId}`"
+                  :data-testid="`participant-team-remove-${member.userId}`"
+                  @click="emit('removeMember', member.userId)"
+                >
+                  Remove member
+                </AppButton>
+              </div>
+            </article>
+          </div>
+        </div>
+
+        <div
+          v-if="canManageTeam"
+          class="space-y-4 app-inset-card px-5 py-5"
+        >
+          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+            <h3 class="text-lg font-semibold text-highlighted dark:text-white">
+              Join requests
+            </h3>
+            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+              Team admins review pending requests here.
+            </p>
+          </div>
+
+          <AppAlert
+            v-if="joinRequestsErrorMessage"
+            color="error"
+            variant="soft"
+            title="Join requests unavailable"
+            :description="joinRequestsErrorMessage"
+          />
+
+          <AppAlert
+            v-else-if="joinRequestsStatus === 'pending'"
+            color="neutral"
+            variant="soft"
+            title="Loading join requests"
+            description="Pending join requests are still loading for this team."
+          />
+
+          <AppAlert
+            v-else-if="!isPersisted"
+            color="neutral"
+            variant="soft"
+            title="No join requests yet"
+            description="Join requests will appear here after you save or share this team."
+          />
+
+          <div
+            v-else-if="(joinRequests?.length ?? 0) > 0"
+            class="grid gap-4"
+          >
+            <article
+              v-for="request in joinRequests"
+              :key="request.id"
+              :data-testid="`participant-team-join-request-${request.id}`"
+              class="rounded-2xl border border-black/8 bg-white/80 px-4 py-4 dark:border-white/[0.08] dark:bg-white/[0.03]"
+            >
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div class="space-y-2">
+                  <div class="flex flex-wrap items-center gap-3">
+                    <h4 class="text-base font-semibold text-highlighted dark:text-white">
+                      {{ request.user?.displayName ?? request.userId }}
+                    </h4>
+
+                    <AppBadge
+                      :color="getTeamJoinRequestStatusColor(request.status)"
+                      variant="soft"
+                    >
+                      {{ formatTeamJoinRequestStatus(request.status) }}
+                    </AppBadge>
+                  </div>
+
+                  <p class="text-sm text-toned">
+                    {{ request.user?.email ?? request.userId }}
+                  </p>
+
+                  <div
+                    v-if="getUserProfileLinks(request.user).length > 0"
+                    class="flex flex-wrap gap-2"
+                  >
+                    <a
+                      v-for="link in getUserProfileLinks(request.user)"
+                      :key="link.key"
+                      :href="link.href"
+                      target="_blank"
+                      rel="noreferrer"
+                      class="inline-flex items-center gap-0.5 rounded-full border border-black/10 px-2 py-0.5 text-xs font-medium text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
+                    >
+                      {{ link.label }}
+                      <AppIcon
+                        name="i-lucide-external-link"
+                        class="size-2.5"
+                      />
+                    </a>
+                  </div>
+                </div>
+
+                <div
+                  v-if="request.status === 'pending'"
+                  class="grid gap-2 shrink-0 self-center sm:min-w-44"
+                >
+                  <button
+                    type="button"
+                    :class="getDecisionButtonClass('approve', pendingActionKey === `approve-join-request:${request.id}`)"
+                    :disabled="pendingActionKey !== null && pendingActionKey !== `approve-join-request:${request.id}`"
+                    :data-testid="`participant-team-approve-request-${request.id}`"
+                    @click="emit('approveRequest', request.id)"
+                  >
+                    <span>Approve</span>
+                    <AppIcon
+                      v-if="pendingActionKey === `approve-join-request:${request.id}`"
+                      name="i-lucide-loader-circle"
+                      class="size-4 animate-spin"
+                    />
+                    <AppIcon
+                      v-else
+                      name="i-lucide-thumbs-up"
+                      class="size-4"
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    :class="getDecisionButtonClass('reject', pendingActionKey === `reject-join-request:${request.id}`)"
+                    :disabled="pendingActionKey !== null && pendingActionKey !== `reject-join-request:${request.id}`"
+                    :data-testid="`participant-team-reject-request-${request.id}`"
+                    @click="emit('rejectRequest', request.id)"
+                  >
+                    <span>Reject</span>
+                    <AppIcon
+                      v-if="pendingActionKey === `reject-join-request:${request.id}`"
+                      name="i-lucide-loader-circle"
+                      class="size-4 animate-spin"
+                    />
+                    <AppIcon
+                      v-else
+                      name="i-lucide-thumbs-down"
+                      class="size-4"
+                    />
+                  </button>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <AppAlert
+            v-else
+            color="neutral"
+            variant="soft"
+            title="No join requests yet"
+            description="Join requests will appear here once another approved participant asks to join this team."
+          />
         </div>
       </section>
     </div>

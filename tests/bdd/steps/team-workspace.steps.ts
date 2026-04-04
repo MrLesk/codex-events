@@ -47,17 +47,10 @@ function getScenarioState(page: Page) {
 async function waitForParticipantTeamTabToSettle(page: Page) {
   const workspacePanel = page.getByTestId('participant-team-workspace-panel')
   const directoryPanel = page.getByTestId('participant-team-directory-panel')
-  const createButton = page.getByTestId('participant-team-create-submit')
 
   await expect.poll(async () => {
     if (await workspacePanel.isVisible().catch(() => false)) {
       return 'workspace'
-    }
-
-    const isCreateButtonVisible = await createButton.isVisible().catch(() => false)
-
-    if (isCreateButtonVisible && await createButton.isEnabled().catch(() => false)) {
-      return 'create-ready'
     }
 
     if (await directoryPanel.isVisible().catch(() => false)) {
@@ -127,15 +120,15 @@ When('I create a participant team named {string}', async ({ page }, baseName: st
   const uniqueTeamName = `${baseName} ${Date.now()}`
   getScenarioState(page).createdTeamName = uniqueTeamName
 
-  await expect(page.getByTestId('participant-team-create-submit')).toBeEnabled({
+  const workspacePanel = page.getByTestId('participant-team-workspace-panel')
+  await workspacePanel.getByTestId('participant-team-edit-name').click()
+
+  const teamNameInput = workspacePanel.getByLabel('Team name')
+  const saveButton = page.getByTestId('participant-team-update-profile')
+
+  await expect(saveButton).toBeEnabled({
     timeout: 15_000
   })
-  await page.waitForTimeout(1_000)
-
-  const createForm = page.locator('form').filter({
-    has: page.getByTestId('participant-team-create-submit')
-  })
-  const teamNameInput = createForm.getByLabel('Team name')
 
   await expect.poll(async () => {
     await teamNameInput.fill(uniqueTeamName)
@@ -144,8 +137,7 @@ When('I create a participant team named {string}', async ({ page }, baseName: st
     timeout: 5_000
   }).toBe(uniqueTeamName)
 
-  await page.waitForTimeout(1_000)
-  await page.getByTestId('participant-team-create-submit').click()
+  await saveButton.click()
 
   await expect(page.getByTestId('participant-team-workspace-panel').getByRole('heading', {
     name: uniqueTeamName,
@@ -190,4 +182,10 @@ Then('the participant team action {string} should be disabled', async ({ page },
   await expect(page.getByRole('button', {
     name: actionName
   })).toBeDisabled()
+})
+
+Then('the participant team action {string} should not be visible', async ({ page }, actionName: string) => {
+  await expect(page.getByRole('button', {
+    name: actionName
+  })).toHaveCount(0)
 })

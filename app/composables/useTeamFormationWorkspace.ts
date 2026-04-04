@@ -157,7 +157,14 @@ export function useTeamFormationWorkspace(
     teamJoinRequestsErrorMessage.value = ''
   }
 
-  async function fetchVisibleTeamPage(page: number, pageSize: number = visibleTeamsPageSize) {
+  async function fetchTeamPage(
+    page: number,
+    pageSize: number = visibleTeamsPageSize,
+    options?: {
+      openToJoin?: boolean
+      hasCapacity?: boolean
+    }
+  ) {
     if (!visibleHackathonId.value) {
       throw new Error('The current hackathon team route could not be resolved.')
     }
@@ -167,7 +174,17 @@ export function useTeamFormationWorkspace(
       {
         query: {
           page,
-          page_size: pageSize
+          page_size: pageSize,
+          ...(options?.openToJoin
+            ? {
+                open_to_join: true
+              }
+            : {}),
+          ...(options?.hasCapacity
+            ? {
+                has_capacity: true
+              }
+            : {})
         }
       }
     )
@@ -229,7 +246,13 @@ export function useTeamFormationWorkspace(
 
     try {
       const responses = await Promise.all(
-        Array.from({ length: pageCount }, async (_, index) => await fetchVisibleTeamPage(index + 1))
+        Array.from(
+          { length: pageCount },
+          async (_, index) => await fetchTeamPage(index + 1, visibleTeamsPageSize, {
+            openToJoin: true,
+            hasCapacity: true
+          })
+        )
       )
       const nextTeams = responses.flatMap(response => response.data)
       const uniqueTeams = nextTeams.filter((team, index, items) =>
@@ -287,7 +310,7 @@ export function useTeamFormationWorkspace(
       let page = 1
 
       while (true) {
-        const response = await fetchVisibleTeamPage(page, ownTeamLookupPageSize)
+        const response = await fetchTeamPage(page, ownTeamLookupPageSize)
 
         if (response.data.length === 0) {
           ownTeam.value = null
@@ -385,7 +408,7 @@ export function useTeamFormationWorkspace(
         `/api/hackathons/${visibleHackathonId.value}/teams/${currentTeam.value.id}/join-requests`
       )
 
-      teamJoinRequests.value = response.data
+      teamJoinRequests.value = response.data.filter(request => request.status === 'pending')
       teamJoinRequestsStatus.value = 'success'
     } catch (error) {
       teamJoinRequests.value = []
@@ -524,7 +547,7 @@ export function useTeamFormationWorkspace(
         ownTeam.value = response.data
         ownTeamStatus.value = 'success'
       }
-      await loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
+      void loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
       return response.data
     })
 
@@ -553,7 +576,7 @@ export function useTeamFormationWorkspace(
         ownTeam.value = response.data
         ownTeamStatus.value = 'success'
       }
-      await loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
+      void loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
       return response.data
     })
 
@@ -576,9 +599,9 @@ export function useTeamFormationWorkspace(
 
       await Promise.all([
         loadCurrentTeam(),
-        loadCurrentTeamJoinRequests(),
-        loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
+        loadCurrentTeamJoinRequests()
       ])
+      void loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
       return response.data
     })
 

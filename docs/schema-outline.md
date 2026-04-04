@@ -314,6 +314,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - A solo participant is still represented by a `Team`.
 - Team formation is allowed during `registration_open` and `submission_open`.
+- Team slug is generated from the initial team name plus a random 4-digit suffix and remains stable after creation.
 
 ## TeamMember
 

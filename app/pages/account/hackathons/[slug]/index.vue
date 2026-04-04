@@ -265,7 +265,7 @@ const hasParticipantContext = computed(() =>
 
 const tabAccess = computed(() =>
   getAccountHackathonTabAccess({
-    hasParticipantAccessRecord: Boolean(accessRecord.value),
+    hasApprovedParticipantAccess: applicationStatus.value === 'approved',
     hasPublishedPrizes: hasPublishedPrizes.value,
     canJudge: canJudge.value,
     canManage: canAdmin.value,
@@ -415,16 +415,16 @@ const withdrawApplicationAvailability = computed(() =>
 const withdrawalDescription = 'If you withdraw, you will no longer be eligible to participate or attend in person through this application.'
 
 const approvedOverviewTeamActionTitle = computed(() =>
-  participationRecord.value?.activeTeam ? 'Continue with your team' : 'Explore team options'
+  participationRecord.value?.activeTeam ? 'Continue with your team' : 'Open your team workspace'
 )
 const approvedOverviewTeamActionDescription = computed(() => {
   const activeTeam = participationRecord.value?.activeTeam
 
   if (activeTeam) {
-    return `You're already on ${activeTeam.name}. Use the Team tab to manage members and keep your team details up to date before submissions open.`
+    return `You're already on ${activeTeam.name}. Use the Team tab to manage collaborators, team details, and submission work from one place.`
   }
 
-  return 'If you want to work with other participants, you can create a team or request to join one from the Team tab before submissions open.'
+  return 'Everyone participates through a team. The Team tab starts you with your own team workspace and also lets you request to join another team.'
 })
 const approvedOverviewDetailsActionDescription = 'Check the schedule, location, and full address before the hackathon starts.'
 const showTeamAndSubmissionCards = computed(() => hasHackathonEnteredSubmissionPhase(hackathon.value))
@@ -729,7 +729,7 @@ useSeoMeta({
                         variant="solid"
                         trailing-icon="i-lucide-arrow-up-right"
                       >
-                        Go to Team
+                        Open team workspace
                       </AppButton>
                     </div>
                   </div>

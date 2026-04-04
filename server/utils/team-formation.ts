@@ -37,7 +37,9 @@ export const listTeamsQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   page_size: z.coerce.number().int().min(1).max(100).default(20),
   slug: z.string().trim().min(1).optional(),
-  search: z.string().trim().min(1).optional()
+  search: z.string().trim().min(1).optional(),
+  open_to_join: z.coerce.boolean().optional(),
+  has_capacity: z.coerce.boolean().optional()
 })
 
 export const createTeamBodySchema = z.object({
@@ -75,14 +77,13 @@ export function createTeamSlug(name: string) {
     .replace(/-{2,}/g, '-')
 }
 
-export async function resolveAvailableTeamSlug(
-  database: AppDatabase,
-  hackathonId: string,
-  name: string,
-  options?: {
-    excludeTeamId?: string
-  }
-) {
+function createTeamSlugSuffix() {
+  const randomBytes = new Uint16Array(1)
+  crypto.getRandomValues(randomBytes)
+  return ((randomBytes[0] ?? 0) % 10_000).toString().padStart(4, '0')
+}
+
+export async function resolveAvailableTeamSlug(database: AppDatabase, hackathonId: string, name: string) {
   const baseSlug = createTeamSlug(name)
 
   assertGuard(baseSlug.length > 0, {
@@ -95,10 +96,8 @@ export async function resolveAvailableTeamSlug(
     statusCode: 400
   })
 
-  let suffix = 1
-
   while (true) {
-    const candidateSlug = suffix === 1 ? baseSlug : `${baseSlug}-${suffix}`
+    const candidateSlug = `${baseSlug}-${createTeamSlugSuffix()}`
     const existingTeam = await database.query.teams.findFirst({
       where: and(
         eq(teams.hackathonId, hackathonId),
@@ -106,11 +105,9 @@ export async function resolveAvailableTeamSlug(
       )
     })
 
-    if (!existingTeam || existingTeam.id === options?.excludeTeamId) {
+    if (!existingTeam) {
       return candidateSlug
     }
-
-    suffix += 1
   }
 }
 
@@ -365,6 +362,7 @@ export async function getOwnApplicationStatus(
 
 export async function listVisibleTeams(
   database: AppDatabase,
+  hackathon: HackathonRecord,
   hackathonId: string,
   query: z.infer<typeof listTeamsQuerySchema>
 ) {
@@ -379,6 +377,10 @@ export async function listVisibleTeams(
       like(teams.name, `%${query.search}%`),
       like(teams.slug, `%${query.search}%`)
     )!)
+  }
+
+  if (query.open_to_join) {
+    filters.push(eq(teams.isOpenToJoinRequests, true))
   }
 
   const allTeams = await database.query.teams.findMany({
@@ -401,14 +403,18 @@ export async function listVisibleTeams(
     counts.set(member.teamId, (counts.get(member.teamId) ?? 0) + 1)
   }
 
+  const filteredTeams = query.has_capacity
+    ? allTeams.filter(team => (counts.get(team.id) ?? 0) < hackathon.maxTeamMembers)
+    : allTeams
+
   const start = (query.page - 1) * query.page_size
-  const pagedTeams = allTeams.slice(start, start + query.page_size)
+  const pagedTeams = filteredTeams.slice(start, start + query.page_size)
 
   return {
     data: pagedTeams.map(team => serializeTeam(team, {
       activeMemberCount: counts.get(team.id) ?? 0
     })),
-    total: allTeams.length
+    total: filteredTeams.length
   }
 }
 

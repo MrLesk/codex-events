@@ -50,7 +50,7 @@ describe('team workspace helpers', () => {
       state: 'registration_open'
     }, 'approved', false)).toEqual({
       isOpen: true,
-      summary: 'You can create a team or request to join an open team right now.'
+      summary: 'You can set up your team or request to join an open team right now.'
     })
 
     expect(getTeamFormationAvailability({

@@ -34,7 +34,13 @@ export function useTeamSubmissionWorkspace(
     return typeof hackathonId === 'string' && hackathonId.trim().length > 0 ? hackathonId : null
   })
   const resolvedTeam = computed(() => toValue(options.team) ?? null)
-  const resolvedTeamId = computed(() => resolvedTeam.value?.id ?? null)
+  const resolvedTeamId = computed(() => {
+    if (!resolvedTeam.value || resolvedTeam.value.isPersisted === false) {
+      return null
+    }
+
+    return resolvedTeam.value.id
+  })
   const canViewSubmission = computed(() => Boolean(toValue(options.canViewSubmission)))
   const canManageSubmission = computed(() => Boolean(toValue(options.canManageSubmission)))
 

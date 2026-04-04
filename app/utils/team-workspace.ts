@@ -38,6 +38,7 @@ export interface TeamSummaryRecord {
   createdAt: string
   updatedAt: string
   activeMemberCount?: number
+  isPersisted?: boolean
 }
 
 export interface TeamMemberRecord {
@@ -115,7 +116,7 @@ export function getTeamFormationAvailability(
   if (isTeamMember) {
     return {
       isOpen: true,
-      summary: 'You already belong to a team in this hackathon.'
+      summary: 'You already have a team workspace in this hackathon.'
     }
   }
 
@@ -135,7 +136,7 @@ export function getTeamFormationAvailability(
   if (hackathon.state === 'registration_open' || hackathon.state === 'submission_open') {
     return {
       isOpen: true,
-      summary: 'You can create a team or request to join an open team right now.'
+      summary: 'You can set up your team or request to join an open team right now.'
     }
   }
 

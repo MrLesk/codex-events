@@ -81,6 +81,7 @@ async function seedTeamFormationContext(
   options?: {
     state?: 'registration_open' | 'submission_open' | 'judging_preparation'
     teamOpen?: boolean
+    secondTeamAtCapacity?: boolean
   }
 ) {
   await harness.database.insert(users).values([
@@ -136,7 +137,29 @@ async function seedTeamFormationContext(
       email: 'second-admin@example.com',
       displayName: 'Second Team Admin',
       githubProfileUrl: 'https://github.com/second-admin'
-    }
+    },
+    ...(options?.secondTeamAtCapacity
+      ? [
+          {
+            id: 'beta_member_one',
+            auth0Subject: 'auth0|beta_member_one',
+            email: 'beta-member-one@example.com',
+            displayName: 'Beta Member One'
+          },
+          {
+            id: 'beta_member_two',
+            auth0Subject: 'auth0|beta_member_two',
+            email: 'beta-member-two@example.com',
+            displayName: 'Beta Member Two'
+          },
+          {
+            id: 'beta_member_three',
+            auth0Subject: 'auth0|beta_member_three',
+            email: 'beta-member-three@example.com',
+            displayName: 'Beta Member Three'
+          }
+        ]
+      : [])
   ])
 
   await harness.database.insert(hackathons).values({
@@ -234,7 +257,35 @@ async function seedTeamFormationContext(
       role: 'admin',
       joinedAt: '2026-03-22T12:00:00.000Z',
       createdAt: '2026-03-22T12:00:00.000Z'
-    }
+    },
+    ...(options?.secondTeamAtCapacity
+      ? [
+          {
+            id: 'membership_beta_one',
+            teamId: 'team_2',
+            userId: 'beta_member_one',
+            role: 'member' as const,
+            joinedAt: '2026-03-22T12:00:00.000Z',
+            createdAt: '2026-03-22T12:00:00.000Z'
+          },
+          {
+            id: 'membership_beta_two',
+            teamId: 'team_2',
+            userId: 'beta_member_two',
+            role: 'member' as const,
+            joinedAt: '2026-03-22T12:00:00.000Z',
+            createdAt: '2026-03-22T12:00:00.000Z'
+          },
+          {
+            id: 'membership_beta_three',
+            teamId: 'team_2',
+            userId: 'beta_member_three',
+            role: 'member' as const,
+            joinedAt: '2026-03-22T12:00:00.000Z',
+            createdAt: '2026-03-22T12:00:00.000Z'
+          }
+        ]
+      : [])
   ])
 }
 
@@ -299,10 +350,10 @@ describe('TASK-3.6 team formation routes', () => {
     })
 
     expect(createResponse.status).toBe(200)
-    expect(await createResponse.json()).toMatchObject({
+    const createBody = await createResponse.json()
+    expect(createBody).toMatchObject({
       data: {
         name: 'Requester Team',
-        slug: 'requester-team',
         isOpenToJoinRequests: false,
         members: [
           expect.objectContaining({
@@ -312,11 +363,12 @@ describe('TASK-3.6 team formation routes', () => {
         ]
       }
     })
+    expect(createBody.data.slug).toMatch(/^requester-team-\d{4}$/)
 
     const createdTeam = await harness.database.query.teams.findFirst({
       where: and(
         eq(teams.hackathonId, 'hackathon_1'),
-        eq(teams.slug, 'requester-team')
+        eq(teams.slug, createBody.data.slug)
       )
     })
     expect(createdTeam).toBeTruthy()
@@ -350,6 +402,67 @@ describe('TASK-3.6 team formation routes', () => {
     })
   })
 
+  test('team list can filter to teams that are open to join requests', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|requester',
+        email: 'requester@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedTeamFormationContext(harness, {
+      teamOpen: false
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=10&open_to_join=true')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      meta: {
+        total: 1
+      },
+      data: [
+        expect.objectContaining({
+          id: 'team_2',
+          slug: 'beta-team',
+          isOpenToJoinRequests: true
+        })
+      ]
+    })
+  })
+
+  test('team list can filter to teams that still have capacity', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|requester',
+        email: 'requester@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedTeamFormationContext(harness, {
+      secondTeamAtCapacity: true
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=10&open_to_join=true&has_capacity=true')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      meta: {
+        total: 1
+      },
+      data: [
+        expect.objectContaining({
+          id: 'team_1',
+          slug: 'alpha-team',
+          activeMemberCount: 2,
+          isOpenToJoinRequests: true
+        })
+      ]
+    })
+  })
+
   test('create team derives a unique slug from the submitted team name', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
@@ -370,18 +483,20 @@ describe('TASK-3.6 team formation routes', () => {
     })
 
     expect(createResponse.status).toBe(200)
-    expect(await createResponse.json()).toMatchObject({
+    const createBody = await createResponse.json()
+    expect(createBody).toMatchObject({
       data: {
         name: 'Alpha Team',
-        slug: 'alpha-team-2',
         isOpenToJoinRequests: true
       }
     })
+    expect(createBody.data.slug).toMatch(/^alpha-team-\d{4}$/)
+    expect(createBody.data.slug).not.toBe('alpha-team')
 
     const createdTeam = await harness.database.query.teams.findFirst({
       where: and(
         eq(teams.hackathonId, 'hackathon_1'),
-        eq(teams.slug, 'alpha-team-2')
+        eq(teams.slug, createBody.data.slug)
       )
     })
     expect(createdTeam).toBeTruthy()
@@ -410,7 +525,7 @@ describe('TASK-3.6 team formation routes', () => {
       data: {
         id: 'team_1',
         name: 'Beta Team',
-        slug: 'beta-team-2'
+        slug: 'alpha-team'
       }
     })
 

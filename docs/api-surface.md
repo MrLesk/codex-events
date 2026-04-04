@@ -324,8 +324,8 @@ Operations:
 | --- | --- | --- | --- |
 | List teams | `GET /api/hackathons/:hackathonId/teams` | approved user, team member, team admin, staff, hackathon admin, or platform admin | Search and filter support applies only while team discovery is allowed to the actor. Staff access is read-only and is not limited to the participant team-formation window. |
 | Get team detail | `GET /api/hackathons/:hackathonId/teams/:teamId` | approved user, team member, team admin, staff, hackathon admin, or platform admin | Returns team fields, active members, and join openness according to visibility rules. Staff access is read-only. |
-| Create team | `POST /api/hackathons/:hackathonId/teams` | approved user | Allowed only in `registration_open` or `submission_open`. Creator becomes an admin member automatically. |
-| Rename team | `PATCH /api/hackathons/:hackathonId/teams/:teamId` | team admin | Updates team name and slug-oriented identity fields. |
+| Create team | `POST /api/hackathons/:hackathonId/teams` | approved user | Allowed only in `registration_open` or `submission_open`. Creator becomes an admin member automatically. The participant UI can stage a default solo team and call this route only when the first persistence-requiring action happens. Initial slug is derived from the submitted team name plus a random 4-digit suffix. |
+| Rename team | `PATCH /api/hackathons/:hackathonId/teams/:teamId` | team admin | Updates team name only. Team slug remains stable after creation. |
 | Update join openness | `PATCH /api/hackathons/:hackathonId/teams/:teamId/join-policy` | team admin | Controls `is_open_to_join_requests`. |
 | Leave team | `POST /api/hackathons/:hackathonId/teams/:teamId/actions/leave` | team member or team admin | Allowed only if at least one active admin remains. After submission closes, at least one active team member must remain. |
 | Remove member | `POST /api/hackathons/:hackathonId/teams/:teamId/members/:userId/actions/remove` | team admin | Allowed only if at least one active admin remains after removal. |

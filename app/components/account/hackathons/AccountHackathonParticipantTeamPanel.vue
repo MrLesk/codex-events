@@ -6,11 +6,12 @@ import type {
 } from '~/utils/team-workspace'
 
 import ParticipantTeamDirectoryPanel from '~/components/teams/ParticipantTeamDirectoryPanel.vue'
-import ParticipantTeamJoinRequestsPanel from '~/components/teams/ParticipantTeamJoinRequestsPanel.vue'
-import ParticipantTeamMembershipPanel from '~/components/teams/ParticipantTeamMembershipPanel.vue'
 import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSubmissionPanel.vue'
 import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWorkspacePanel.vue'
-import { buildAccountHackathonTeamTabHref } from '~/utils/team-query'
+import {
+  buildAbsoluteAccountHackathonTeamTabHref,
+  buildAccountHackathonTeamTabHref
+} from '~/utils/team-query'
 import {
   getCreateTeamAvailability,
   getJoinTeamAvailability,
@@ -45,14 +46,13 @@ const workspace = useTeamFormationWorkspace(
   }
 )
 
-const createForm = reactive({
-  name: '',
-  isOpenToJoinRequests: true
-})
 const teamSettings = reactive({
   name: '',
   isOpenToJoinRequests: false
 })
+const provisionalTeamCreatedAt = ref(new Date().toISOString())
+const hasSeededProvisionalTeamSettings = ref(false)
+const lastSeededProvisionalTeamName = ref('')
 const submissionForm = reactive({
   projectName: '',
   summary: '',
@@ -134,28 +134,128 @@ watch([
   immediate: true
 })
 
-watch(() => workspace.currentTeam.value?.id ?? null, () => {
-  if (!workspace.currentTeam.value) {
-    teamSettings.name = ''
-    teamSettings.isOpenToJoinRequests = false
+const actor = computed(() => workspace.actor.value)
+const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
+const teamFormationAvailability = computed(() =>
+  getTeamFormationAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
+)
+const defaultSoloTeamName = computed(() => {
+  if (actor.value?.kind !== 'platform_user') {
+    return 'My Team'
+  }
+
+  const fullName = `${actor.value.platformUser.firstName} ${actor.value.platformUser.familyName}`.trim()
+  const preferredName = fullName
+    || actor.value.platformUser.displayName.trim()
+    || actor.value.sessionUser.name?.trim()
+    || actor.value.sessionUser.nickname?.trim()
+    || 'My Team'
+
+  return `Team ${preferredName}`.trim()
+})
+const provisionalCurrentTeam = computed(() => {
+  if (actor.value?.kind !== 'platform_user') {
+    return null
+  }
+
+  if (
+    ownApplicationStatus.value !== 'approved'
+    || !teamFormationAvailability.value.isOpen
+    || workspace.ownTeam.value
+    || workspace.currentTeam.value
+  ) {
+    return null
+  }
+
+  const provisionalTeamId = `provisional-team:${props.hackathon.id}:${actor.value.platformUser.id}`
+  return {
+    id: provisionalTeamId,
+    hackathonId: props.hackathon.id,
+    name: teamSettings.name.trim() || defaultSoloTeamName.value,
+    slug: '',
+    isOpenToJoinRequests: teamSettings.isOpenToJoinRequests,
+    createdByUserId: actor.value.platformUser.id,
+    createdAt: provisionalTeamCreatedAt.value,
+    updatedAt: provisionalTeamCreatedAt.value,
+    activeMemberCount: 1,
+    isPersisted: false,
+    members: [
+      {
+        id: `provisional-member:${props.hackathon.id}:${actor.value.platformUser.id}`,
+        teamId: provisionalTeamId,
+        userId: actor.value.platformUser.id,
+        role: 'admin' as const,
+        joinedAt: provisionalTeamCreatedAt.value,
+        leftAt: null,
+        createdAt: provisionalTeamCreatedAt.value,
+        user: {
+          id: actor.value.platformUser.id,
+          displayName: actor.value.platformUser.displayName,
+          email: actor.value.platformUser.email,
+          xProfileUrl: actor.value.platformUser.xProfileUrl,
+          linkedinProfileUrl: actor.value.platformUser.linkedinProfileUrl,
+          githubProfileUrl: actor.value.platformUser.githubProfileUrl,
+          chatgptEmail: actor.value.platformUser.chatgptEmail,
+          openaiOrgId: actor.value.platformUser.openaiOrgId,
+          lumaUsername: actor.value.platformUser.lumaUsername
+        }
+      }
+    ]
+  }
+})
+
+watch([
+  () => workspace.currentTeam.value,
+  provisionalCurrentTeam,
+  defaultSoloTeamName
+], ([currentTeam, nextProvisionalTeam, nextDefaultSoloTeamName]) => {
+  if (currentTeam) {
+    teamSettings.name = currentTeam.name
+    teamSettings.isOpenToJoinRequests = currentTeam.isOpenToJoinRequests
+    hasSeededProvisionalTeamSettings.value = false
+    lastSeededProvisionalTeamName.value = ''
     return
   }
 
-  teamSettings.name = workspace.currentTeam.value.name
-  teamSettings.isOpenToJoinRequests = workspace.currentTeam.value.isOpenToJoinRequests
+  if (!nextProvisionalTeam) {
+    teamSettings.name = ''
+    teamSettings.isOpenToJoinRequests = false
+    hasSeededProvisionalTeamSettings.value = false
+    lastSeededProvisionalTeamName.value = ''
+    return
+  }
+
+  if (!hasSeededProvisionalTeamSettings.value) {
+    teamSettings.name = nextDefaultSoloTeamName
+    teamSettings.isOpenToJoinRequests = false
+    hasSeededProvisionalTeamSettings.value = true
+    lastSeededProvisionalTeamName.value = nextDefaultSoloTeamName
+    return
+  }
+
+  if (teamSettings.name === lastSeededProvisionalTeamName.value) {
+    teamSettings.name = nextDefaultSoloTeamName
+    lastSeededProvisionalTeamName.value = nextDefaultSoloTeamName
+  }
 }, {
   immediate: true
 })
 
-const canManageTeam = computed(() => workspace.isCurrentTeamAdmin.value)
+const displayedTeam = computed(() => workspace.currentTeam.value ?? provisionalCurrentTeam.value)
+const displayedTeamMembership = computed(() =>
+  workspace.currentTeamMembership.value ?? provisionalCurrentTeam.value?.members[0] ?? null
+)
+const canManageTeam = computed(() =>
+  workspace.isCurrentTeamAdmin.value || Boolean(provisionalCurrentTeam.value)
+)
 const canViewSubmission = computed(() =>
-  shouldShowParticipantSubmissionWorkspace(props.hackathon, Boolean(workspace.currentTeamMembership.value))
+  shouldShowParticipantSubmissionWorkspace(props.hackathon, Boolean(displayedTeamMembership.value))
 )
 const submissionWorkspace = useTeamSubmissionWorkspace(
   computed(() => props.hackathon),
   {
     visibleHackathonId: workspace.visibleHackathonId,
-    team: workspace.currentTeam,
+    team: displayedTeam,
     canViewSubmission,
     canManageSubmission: canManageTeam
   }
@@ -170,8 +270,6 @@ watch(() => submissionWorkspace.currentSubmission.value, (submission) => {
   immediate: true
 })
 
-const actor = computed(() => workspace.actor.value)
-const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
 const isWorkspaceLoading = computed(() => {
   if (workspace.actorStatus.value === 'idle' || workspace.actorStatus.value === 'pending') {
     return true
@@ -186,12 +284,6 @@ const isWorkspaceLoading = computed(() => {
     || workspace.ownApplicationStatus.value === 'idle'
     || workspace.ownApplicationStatus.value === 'pending'
 })
-const teamFormationAvailability = computed(() =>
-  getTeamFormationAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
-)
-const isViewingExternalTeam = computed(() =>
-  Boolean(workspace.currentTeam.value && !workspace.currentTeamMembership.value)
-)
 const isViewingSharedTeam = computed(() =>
   Boolean(
     workspace.ownTeam.value
@@ -202,91 +294,6 @@ const isViewingSharedTeam = computed(() =>
 const backToOwnTeamHref = computed(() =>
   workspace.ownTeam.value ? buildTeamTabHref(workspace.ownTeam.value.slug) : null
 )
-const teamPanelTitle = computed(() => {
-  if (isViewingExternalTeam.value && workspace.currentTeam.value) {
-    return `Viewing ${workspace.currentTeam.value.name}`
-  }
-
-  if (workspace.ownTeam.value) {
-    return 'Continue with your team'
-  }
-
-  switch (ownApplicationStatus.value) {
-    case 'approved':
-      return teamFormationAvailability.value.isOpen ? 'Explore team options' : 'Team formation is closed'
-    case 'submitted':
-      return 'Approval is still pending'
-    case 'rejected':
-      return 'You were not approved'
-    case 'withdrawn':
-      return 'Participation withdrawn'
-    default:
-      return 'Team formation'
-  }
-})
-const teamPanelStatusLabel = computed(() => {
-  if (isViewingExternalTeam.value) {
-    return 'Shared team'
-  }
-
-  if (workspace.ownTeam.value) {
-    return 'On a team'
-  }
-
-  switch (ownApplicationStatus.value) {
-    case 'approved':
-      return teamFormationAvailability.value.isOpen ? 'Ready now' : 'Closed'
-    case 'submitted':
-      return 'Pending'
-    case 'rejected':
-      return 'Not approved'
-    case 'withdrawn':
-      return 'Withdrawn'
-    default:
-      return 'Locked'
-  }
-})
-const teamPanelStatusColor = computed(() => {
-  if (isViewingExternalTeam.value) {
-    return 'neutral'
-  }
-
-  if (workspace.ownTeam.value || (ownApplicationStatus.value === 'approved' && teamFormationAvailability.value.isOpen)) {
-    return 'success'
-  }
-
-  if (ownApplicationStatus.value === 'submitted') {
-    return 'warning'
-  }
-
-  if (ownApplicationStatus.value === 'rejected' || ownApplicationStatus.value === 'withdrawn') {
-    return 'error'
-  }
-
-  return 'neutral'
-})
-const teamPanelSummary = computed(() => {
-  const ownTeam = workspace.ownTeam.value
-  const currentTeam = workspace.currentTeam.value
-
-  if (isViewingSharedTeam.value && ownTeam && currentTeam) {
-    return `You are on ${ownTeam.name}. This page is showing ${currentTeam.name} from a direct team link. Use Back to my team to return to your own workspace.`
-  }
-
-  if (isViewingExternalTeam.value && currentTeam) {
-    return `You are viewing ${currentTeam.name}. Request to join if the team is open and you are still eligible to switch teams.`
-  }
-
-  if (ownTeam) {
-    return `You're already on ${ownTeam.name}. Use this page to manage members, review join requests, and keep your team details up to date.`
-  }
-
-  if (ownApplicationStatus.value === 'approved' && teamFormationAvailability.value.isOpen) {
-    return 'If you want to work with other participants, you can create a team or request to join one of the listed teams below.'
-  }
-
-  return teamFormationAvailability.value.summary
-})
 const createTeamAvailability = computed(() =>
   getCreateTeamAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
 )
@@ -328,23 +335,25 @@ const withdrawSubmissionAvailability = computed(() =>
   getWithdrawSubmissionAvailability(props.hackathon, submissionWorkspace.currentSubmission.value, canManageTeam.value)
 )
 const joinAvailability = computed(() => {
-  if (!workspace.currentTeam.value) {
+  if (!displayedTeam.value) {
     return {
       isAllowed: false,
       reason: 'The current team could not be loaded.'
     } satisfies TeamActionAvailability
   }
 
-  return getJoinTeamAvailability(props.hackathon, workspace.currentTeam.value, {
+  return getJoinTeamAvailability(props.hackathon, displayedTeam.value, {
     applicationStatus: ownApplicationStatus.value,
     hasTeamMembership: Boolean(workspace.ownTeam.value),
-    activeMemberCount: workspace.currentTeam.value.activeMemberCount ?? workspace.currentTeam.value.members.length,
-    hasPendingJoinRequest: Boolean(workspace.getRememberedPendingJoinRequestId(workspace.currentTeam.value.id)),
-    isOwnTeam: workspace.ownTeam.value?.id === workspace.currentTeam.value.id
+    activeMemberCount: displayedTeam.value.activeMemberCount ?? displayedTeam.value.members.length,
+    hasPendingJoinRequest: Boolean(displayedTeam.value.isPersisted === false
+      ? null
+      : workspace.getRememberedPendingJoinRequestId(displayedTeam.value.id)),
+    isOwnTeam: displayedTeam.value.isPersisted === false || workspace.ownTeam.value?.id === displayedTeam.value.id
   })
 })
 const leaveAvailability = computed(() => {
-  if (!workspace.currentTeam.value) {
+  if (!displayedTeam.value || displayedTeam.value.isPersisted === false) {
     return {
       isAllowed: false,
       reason: 'The current team could not be loaded.'
@@ -353,30 +362,40 @@ const leaveAvailability = computed(() => {
 
   return getLeaveTeamAvailability(
     props.hackathon,
-    workspace.currentTeam.value,
-    workspace.currentTeamMembership.value
+    displayedTeam.value,
+    displayedTeamMembership.value
   )
 })
 const removalAvailabilityByUserId = computed<Record<string, TeamActionAvailability>>(() => {
-  if (!workspace.currentTeam.value) {
+  if (!displayedTeam.value) {
     return {}
   }
 
   return Object.fromEntries(
-    workspace.currentTeam.value.members.map(member => [
+    displayedTeam.value.members.map(member => [
       member.userId,
-      getMemberRemovalAvailability(props.hackathon, workspace.currentTeam.value!, member)
+      getMemberRemovalAvailability(props.hackathon, displayedTeam.value!, member)
     ])
   )
 })
 const currentPendingJoinRequestId = computed(() =>
-  workspace.currentTeam.value ? workspace.getRememberedPendingJoinRequestId(workspace.currentTeam.value.id) : null
+  displayedTeam.value?.isPersisted === false
+    ? null
+    : displayedTeam.value
+      ? workspace.getRememberedPendingJoinRequestId(displayedTeam.value.id)
+      : null
 )
+const showMembershipActions = computed(() => {
+  if (!displayedTeamMembership.value) {
+    return true
+  }
 
-function resetCreateForm() {
-  createForm.name = ''
-  createForm.isOpenToJoinRequests = true
-}
+  if (displayedTeam.value?.isPersisted === false) {
+    return false
+  }
+
+  return leaveAvailability.value.isAllowed
+})
 
 function buildSubmissionInput() {
   return {
@@ -387,10 +406,29 @@ function buildSubmissionInput() {
   }
 }
 
-async function submitCreateTeam() {
+async function ensureOwnTeam() {
+  if (workspace.ownTeam.value) {
+    return workspace.ownTeam.value
+  }
+
+  if (!provisionalCurrentTeam.value || !createTeamAvailability.value.isAllowed) {
+    return null
+  }
+
+  const name = teamSettings.name.trim()
+
+  if (!name) {
+    toast.add({
+      title: 'Team name required',
+      description: 'Enter a team name before continuing.',
+      color: 'error'
+    })
+    return null
+  }
+
   const createdTeam = await workspace.createTeam({
-    name: createForm.name,
-    isOpenToJoinRequests: createForm.isOpenToJoinRequests
+    name,
+    isOpenToJoinRequests: teamSettings.isOpenToJoinRequests
   })
 
   if (!createdTeam) {
@@ -398,12 +436,42 @@ async function submitCreateTeam() {
   }
 
   selectedTeamId.value = createdTeam.id
-  resetCreateForm()
-  toast.add({
-    title: 'Team created',
-    description: 'Your team is ready. You can now manage members and join requests here.',
-    color: 'success'
-  })
+  return createdTeam
+}
+
+async function copyCurrentTeamLink() {
+  const targetTeam = displayedTeam.value?.isPersisted === false
+    ? await ensureOwnTeam()
+    : displayedTeam.value
+
+  if (!targetTeam || !import.meta.client || !window.isSecureContext || !navigator.clipboard) {
+    toast.add({
+      title: 'Copy unavailable',
+      description: 'This browser could not copy the team link right now.',
+      color: 'error'
+    })
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(buildAbsoluteAccountHackathonTeamTabHref(
+      window.location.origin,
+      props.hackathon.slug,
+      targetTeam.slug
+    ))
+
+    toast.add({
+      title: 'Team link copied',
+      description: 'The direct team link was copied to your clipboard.',
+      color: 'success'
+    })
+  } catch {
+    toast.add({
+      title: 'Copy failed',
+      description: 'The team link could not be copied right now.',
+      color: 'error'
+    })
+  }
 }
 
 async function requestToJoinTeam(teamId: string) {
@@ -438,22 +506,32 @@ async function cancelJoinRequest(payload: {
 }
 
 async function submitTeamProfile() {
-  const updatedTeam = await workspace.updateCurrentTeamProfile({
-    name: teamSettings.name
-  })
+  const wasProvisionalTeam = displayedTeam.value?.isPersisted === false
+  const updatedTeam = wasProvisionalTeam
+    ? await ensureOwnTeam()
+    : await workspace.updateCurrentTeamProfile({
+        name: teamSettings.name
+      })
 
   if (!updatedTeam) {
     return
   }
 
   toast.add({
-    title: 'Team profile updated',
-    description: 'The team name was updated.',
+    title: wasProvisionalTeam ? 'Team saved' : 'Team profile updated',
+    description: wasProvisionalTeam
+      ? 'Your team is ready. You can now share the link and accept collaborators.'
+      : 'The team name was updated.',
     color: 'success'
   })
 }
 
 async function toggleJoinPolicy(nextValue: boolean) {
+  if (displayedTeam.value?.isPersisted === false) {
+    teamSettings.isOpenToJoinRequests = nextValue
+    return
+  }
+
   const updatedTeam = await workspace.updateCurrentTeamJoinPolicy(nextValue)
 
   if (!updatedTeam) {
@@ -502,6 +580,13 @@ async function approveJoinRequest(requestId: string) {
   const request = await workspace.approveJoinRequest(requestId)
 
   if (!request) {
+    if (workspace.mutationError.value) {
+      toast.add({
+        title: 'Unable to approve join request',
+        description: workspace.mutationError.value,
+        color: 'error'
+      })
+    }
     return
   }
 
@@ -527,6 +612,14 @@ async function rejectJoinRequest(requestId: string) {
 }
 
 async function createSubmissionDraft() {
+  if (displayedTeam.value?.isPersisted === false) {
+    const createdTeam = await ensureOwnTeam()
+
+    if (!createdTeam) {
+      return
+    }
+  }
+
   const submission = await submissionWorkspace.createSubmissionDraft(buildSubmissionInput())
 
   if (!submission) {
@@ -602,64 +695,6 @@ async function withdrawSubmission() {
       </AppButton>
     </div>
 
-    <section class="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-      <AppCard
-        class="rounded-xl hackathon-workspace-detail-panel"
-        :ui="{ body: 'p-5' }"
-      >
-        <div class="space-y-4">
-          <div class="flex flex-wrap items-center gap-3">
-            <h2 class="text-[20px] font-medium text-highlighted dark:text-white">
-              {{ teamPanelTitle }}
-            </h2>
-
-            <AppBadge
-              :color="teamPanelStatusColor"
-              variant="soft"
-              class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
-            >
-              {{ teamPanelStatusLabel }}
-            </AppBadge>
-          </div>
-
-          <div class="space-y-1">
-            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-              {{ teamPanelSummary }}
-            </p>
-          </div>
-        </div>
-      </AppCard>
-
-      <div class="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Your team
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted dark:text-white">
-            {{ workspace.ownTeam.value ? workspace.ownTeam.value.name : 'None yet' }}
-          </p>
-        </div>
-
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Teams listed
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted dark:text-white">
-            {{ workspace.visibleTeamsStatus.value === 'pending' ? 'Loading...' : workspace.visibleTeamsTotal.value || workspace.visibleTeams.value.length }}
-          </p>
-        </div>
-
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Team size limit
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted dark:text-white">
-            {{ props.hackathon.maxTeamMembers }}
-          </p>
-        </div>
-      </div>
-    </section>
-
     <AppAlert
       v-if="isWorkspaceLoading"
       color="neutral"
@@ -734,29 +769,38 @@ async function withdrawSubmission() {
           :description="selectedTeamErrorMessage"
         />
 
-        <template v-if="workspace.currentTeam.value">
+        <template v-if="displayedTeam">
           <div class="grid gap-6">
             <ParticipantTeamWorkspacePanel
               v-model:settings="teamSettings"
-              :hackathon-slug="props.hackathon.slug"
-              :team="workspace.currentTeam.value"
-              :membership="workspace.currentTeamMembership.value"
+              :team="displayedTeam"
+              :max-team-members="props.hackathon.maxTeamMembers"
+              :membership="displayedTeamMembership"
               :can-manage-team="canManageTeam"
               :join-availability="joinAvailability"
               :leave-availability="leaveAvailability"
               :pending-join-request-id="currentPendingJoinRequestId"
               :pending-action-key="workspace.pendingActionKey.value"
+              :removal-availability-by-user-id="removalAvailabilityByUserId"
+              :join-requests="workspace.teamJoinRequests.value"
+              :join-requests-status="workspace.teamJoinRequestsStatus.value"
+              :join-requests-error-message="workspace.teamJoinRequestsErrorMessage.value"
+              :show-membership-actions="showMembershipActions"
+              @copy-team-link="copyCurrentTeamLink"
               @submit-profile="submitTeamProfile"
               @toggle-join-policy="toggleJoinPolicy"
               @request-join="requestToJoinTeam"
               @cancel-join-request="cancelJoinRequest"
               @leave-team="leaveCurrentTeam"
+              @remove-member="removeMember"
+              @approve-request="approveJoinRequest"
+              @reject-request="rejectJoinRequest"
             />
 
             <ParticipantTeamSubmissionPanel
               v-if="canViewSubmission"
               v-model:form="submissionForm"
-              :team-id="workspace.currentTeam.value.id"
+              :team-id="displayedTeam.id"
               :hackathon-state="props.hackathon.state"
               :submission="submissionWorkspace.currentSubmission.value"
               :status="submissionWorkspace.currentSubmissionStatus.value"
@@ -772,26 +816,6 @@ async function withdrawSubmission() {
               @save-changes="saveSubmissionChanges"
               @submit-project="submitProject"
               @withdraw-submission="withdrawSubmission"
-            />
-
-            <ParticipantTeamMembershipPanel
-              v-if="workspace.currentTeamMembership.value"
-              :team="workspace.currentTeam.value"
-              :membership="workspace.currentTeamMembership.value"
-              :can-manage-team="canManageTeam"
-              :removal-availability-by-user-id="removalAvailabilityByUserId"
-              :pending-action-key="workspace.pendingActionKey.value"
-              @remove-member="removeMember"
-            />
-
-            <ParticipantTeamJoinRequestsPanel
-              v-if="canManageTeam"
-              :requests="workspace.teamJoinRequests.value"
-              :status="workspace.teamJoinRequestsStatus.value"
-              :error-message="workspace.teamJoinRequestsErrorMessage.value"
-              :pending-action-key="workspace.pendingActionKey.value"
-              @approve-request="approveJoinRequest"
-              @reject-request="rejectJoinRequest"
             />
           </div>
         </template>
@@ -814,20 +838,14 @@ async function withdrawSubmission() {
 
         <ParticipantTeamDirectoryPanel
           v-if="!workspace.currentTeamMembership.value"
-          v-model:form="createForm"
-          :current-team="null"
-          :current-team-href="null"
           :teams="directoryEntries"
           :total-teams="workspace.visibleTeamsTotal.value"
-          :can-create-team="createTeamAvailability"
-          :is-creating-team="workspace.pendingActionKey.value === 'create-team'"
           :is-loading-teams="workspace.visibleTeamsStatus.value === 'pending'"
           :team-error-message="workspace.visibleTeamsErrorMessage.value"
           :has-more-teams="workspace.hasMoreVisibleTeams.value"
           :is-loading-more-teams="workspace.isLoadingMoreVisibleTeams.value"
           :load-more-teams-error-message="workspace.loadMoreVisibleTeamsErrorMessage.value"
           :pending-action-key="workspace.pendingActionKey.value"
-          @submit-create="submitCreateTeam"
           @join-team="requestToJoinTeam"
           @cancel-join-request="cancelJoinRequest"
           @load-more-teams="workspace.loadMoreVisibleTeams"
