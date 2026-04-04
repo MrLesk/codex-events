@@ -3,6 +3,8 @@ import 'dotenv/config'
 import { defineConfig, devices } from '@playwright/test'
 import { defineBddConfig } from 'playwright-bdd'
 
+import { getBaseUrl } from './tests/bdd/support/personas'
+
 const publicBddTestDir = defineBddConfig({
   features: 'tests/bdd/features/public/**/*.feature',
   steps: 'tests/bdd/steps/**/*.ts',
@@ -21,13 +23,16 @@ const destructiveAuthenticatedBddTestDir = defineBddConfig({
   outputDir: '.features-gen/authenticated-destructive'
 })
 const localBddD1StateRootShellExpression = '${LOCAL_BDD_D1_STATE_ROOT:-.wrangler/state-bdd}'
+const bddBaseUrl = getBaseUrl(process.env)
+const bddBaseUrlObject = new URL(bddBaseUrl)
+const bddBaseUrlPort = bddBaseUrlObject.port || (bddBaseUrlObject.protocol === 'https:' ? '443' : '80')
 
 export default defineConfig({
   testDir: '.',
   fullyParallel: true,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: bddBaseUrl,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure'
@@ -60,8 +65,8 @@ export default defineConfig({
     }
   ],
   webServer: {
-    command: `LOCAL_BDD_D1_STATE_ROOT=${localBddD1StateRootShellExpression} LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} bun run db:local:guard && LOCAL_BDD_D1_STATE_ROOT=${localBddD1StateRootShellExpression} LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} nuxt dev --host 0.0.0.0 --port 3000`,
-    url: 'http://localhost:3000',
+    command: `LOCAL_BDD_D1_STATE_ROOT=${localBddD1StateRootShellExpression} LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} bun run db:local:guard && LOCAL_BDD_D1_STATE_ROOT=${localBddD1StateRootShellExpression} LOCAL_D1_STATE_ROOT=${localBddD1StateRootShellExpression} NUXT_AUTH0_APP_BASE_URL=${bddBaseUrl} nuxt dev --host 0.0.0.0 --port ${bddBaseUrlPort}`,
+    url: bddBaseUrl,
     reuseExistingServer: false,
     timeout: 120000
   }

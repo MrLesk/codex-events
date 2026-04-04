@@ -20,6 +20,7 @@ NUXT_AUTH0_CLIENT_ID=your-auth0-client-id
 NUXT_AUTH0_CLIENT_SECRET=your-auth0-client-secret
 NUXT_AUTH0_SESSION_SECRET=$(openssl rand -hex 64)
 NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
+NUXT_AUTH0_BDD_APP_BASE_URL=http://localhost:3100
 NUXT_AUTH0_AUDIENCE=
 NUXT_AUTH0_MANAGEMENT_DOMAIN=your-tenant.auth0.com
 NUXT_AUTH0_MANAGEMENT_CLIENT_ID=your-management-client-id
@@ -44,8 +45,8 @@ NUXT_LUMA_RETRY_DELAY_SECONDS=120
 
 Local Auth0 dashboard settings:
 
-- Allowed Callback URLs: `http://localhost:3000/auth/callback, http://localhost:3000/auth/link/callback`
-- Allowed Logout URLs: `http://localhost:3000`
+- Allowed Callback URLs: `http://localhost:3000/auth/callback, http://localhost:3000/auth/link/callback, http://localhost:3000/auth/bdd-callback, http://localhost:3100/auth/callback, http://localhost:3100/auth/link/callback, http://localhost:3100/auth/bdd-callback`
+- Allowed Logout URLs: `http://localhost:3000, http://localhost:3100`
 - If you enable GitHub social login, create an Auth0 GitHub social connection for the same application and configure the GitHub OAuth app callback URL as `https://<your-auth0-domain>/login/callback`.
 - `NUXT_AUTH0_GITHUB_CONNECTION_NAME` must match the Auth0 GitHub connection name when you rename it from the default `github`.
 
@@ -53,6 +54,7 @@ Local Auth0 runtime notes:
 
 - `NUXT_AUTH0_DOMAIN` is the Auth0 issuer host, not the app host. For the shared dev tenant split, use `auth.dev.codex-hackathons.com` or the underlying Auth0 tenant domain, not `dev.codex-hackathons.com`.
 - When `NUXT_AUTH0_APP_BASE_URL=http://localhost:3000`, the app intentionally uses a non-secure Auth0 session cookie for local development so Safari can persist the login callback session on `localhost`. HTTPS environments continue to use secure cookies.
+- The Auth0-backed BDD suite uses `NUXT_AUTH0_BDD_APP_BASE_URL` when set and otherwise defaults to `http://localhost:3100`, so that `bun run test:bdd` does not have to take over the normal local dev server on port 3000.
 
 Auth0 bootstrap automation:
 
@@ -341,10 +343,13 @@ BDD source files live under `tests/bdd/`: feature files in `tests/bdd/features`,
 
 By default, local app development uses `.wrangler/state` and authenticated BDD uses `.wrangler/state-bdd`. You can override them independently with `LOCAL_DEV_D1_STATE_ROOT` and `LOCAL_BDD_D1_STATE_ROOT`. BDD does not honor a generic `LOCAL_D1_STATE_ROOT` override that points anywhere else, and it fails fast if the BDD root matches the normal local app root.
 
+By default, the Auth0-backed BDD suite runs the local app on `http://localhost:3100`. Override that origin with `NUXT_AUTH0_BDD_APP_BASE_URL` when you need a different dedicated test port. Make sure Auth0 allows callbacks and logouts for whichever BDD origin you choose.
+
 Examples:
 
 ```bash
 LOCAL_BDD_D1_STATE_ROOT=.wrangler/state-bdd-alt bun run test:bdd
+NUXT_AUTH0_BDD_APP_BASE_URL=http://localhost:3200 bun run test:bdd
 LOCAL_DEV_D1_STATE_ROOT=.wrangler/state-dev-alt bun run dev
 LOCAL_BDD_D1_STATE_ROOT=.wrangler/state-bdd-alt bun tests/bdd/bootstrap.ts
 ```

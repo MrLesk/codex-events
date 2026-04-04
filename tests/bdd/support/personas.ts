@@ -4,6 +4,8 @@ import { join } from 'node:path'
 
 import { z } from 'zod'
 
+export const defaultLocalBddBaseUrl = 'http://localhost:3100'
+
 export const stablePersonaKeys = [
   'platform_admin',
   'hackathon_admin',
@@ -25,8 +27,12 @@ export interface ProvisionedStablePersona extends StablePersona {
   auth0Subject: string
 }
 
-const stablePersonaEnvironmentSchema = z.object({
-  NUXT_AUTH0_APP_BASE_URL: z.string().url(),
+const bddBaseUrlEnvironmentSchema = z.object({
+  NUXT_AUTH0_APP_BASE_URL: z.string().url().optional(),
+  NUXT_AUTH0_BDD_APP_BASE_URL: z.string().url().optional()
+})
+
+const stablePersonaEnvironmentSchema = bddBaseUrlEnvironmentSchema.extend({
   E2E_PLATFORM_ADMIN_EMAIL: z.string().email(),
   E2E_PLATFORM_ADMIN_PASSWORD: z.string().min(1),
   E2E_HACKATHON_ADMIN_EMAIL: z.string().email(),
@@ -48,6 +54,10 @@ const provisioningEnvironmentSchema = stablePersonaEnvironmentSchema.extend({
 
 export type StablePersonaEnvironment = z.infer<typeof stablePersonaEnvironmentSchema>
 export type ProvisioningEnvironment = z.infer<typeof provisioningEnvironmentSchema>
+
+export function loadBddBaseUrlEnvironment(environment: NodeJS.ProcessEnv = process.env) {
+  return bddBaseUrlEnvironmentSchema.parse(environment)
+}
 
 export function loadStablePersonaEnvironment(environment: NodeJS.ProcessEnv = process.env) {
   return stablePersonaEnvironmentSchema.parse(environment)
@@ -93,7 +103,8 @@ export function getStablePersonas(environment: NodeJS.ProcessEnv = process.env):
 }
 
 export function getBaseUrl(environment: NodeJS.ProcessEnv = process.env) {
-  return loadStablePersonaEnvironment(environment).NUXT_AUTH0_APP_BASE_URL
+  const config = loadBddBaseUrlEnvironment(environment)
+  return config.NUXT_AUTH0_BDD_APP_BASE_URL ?? defaultLocalBddBaseUrl
 }
 
 export function getAuth0TestConnectionName(environment: NodeJS.ProcessEnv = process.env) {

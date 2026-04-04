@@ -118,7 +118,10 @@ async function ensureLocalServer(baseUrl: string) {
   console.log(`Starting local Nuxt dev server at ${baseUrl}.`)
   const child = spawn(join(process.cwd(), 'node_modules/.bin/nuxt'), ['dev', '--host', hostname, '--port', port || '3000'], {
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: process.env
+    env: {
+      ...process.env,
+      NUXT_AUTH0_APP_BASE_URL: baseUrl
+    }
   })
   const readCapturedOutput = captureServerOutput(child)
 

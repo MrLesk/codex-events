@@ -1,9 +1,12 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  defaultLocalBddBaseUrl,
   getAuth0ClientId,
   getAuth0TestConnectionName,
+  getBaseUrl,
   getStablePersonas,
+  loadBddBaseUrlEnvironment,
   loadProvisioningEnvironment,
   loadStablePersonaEnvironment,
   resetAuthArtifactDirectory,
@@ -23,6 +26,27 @@ const baseEnvironment = {
 }
 
 describe('stable Auth0 personas', () => {
+  test('resolves the BDD base url from the BDD-specific override first', () => {
+    expect(getBaseUrl({
+      NUXT_AUTH0_APP_BASE_URL: 'http://localhost:3000',
+      NUXT_AUTH0_BDD_APP_BASE_URL: 'http://localhost:3100'
+    })).toBe('http://localhost:3100')
+  })
+
+  test('still parses the normal app base url without using it as the BDD default', () => {
+    expect(loadBddBaseUrlEnvironment({
+      NUXT_AUTH0_APP_BASE_URL: 'http://localhost:3000'
+    }).NUXT_AUTH0_APP_BASE_URL).toBe('http://localhost:3000')
+
+    expect(getBaseUrl({
+      NUXT_AUTH0_APP_BASE_URL: 'http://localhost:3000'
+    })).toBe(defaultLocalBddBaseUrl)
+  })
+
+  test('defaults the BDD base url to the dedicated local test port', () => {
+    expect(getBaseUrl({})).toBe(defaultLocalBddBaseUrl)
+  })
+
   test('loads the stable persona environment and derives the documented personas', () => {
     const environment = loadStablePersonaEnvironment(baseEnvironment)
     const personas = getStablePersonas(baseEnvironment)
