@@ -605,7 +605,7 @@ useSeoMeta({
                     {{ hackathon.name }}
                   </h1>
                   <span
-                    class="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider"
+                    class="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
                     :class="headerStateClass"
                   >
                     {{ headerStateLabel }}
