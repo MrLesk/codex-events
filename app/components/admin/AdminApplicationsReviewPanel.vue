@@ -443,7 +443,7 @@ const emptyState = computed(() => {
                         Rejected
                       </AppBadge>
                       <AppBadge
-                        v-if="shouldShowApplicationLumaSyncStatus(applicant.application)"
+                        v-if="shouldShowApplicationLumaSyncStatus(applicant.application, readOnly)"
                         :color="getApplicationLumaSyncStatusColor(applicant.application.lumaSyncStatus)"
                         variant="soft"
                       >
