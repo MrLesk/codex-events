@@ -147,6 +147,45 @@ When('I create a participant team named {string}', async ({ page }, baseName: st
   })
 })
 
+When('I create a participant team named {string} with bio {string}', async ({ page }, baseName: string, teamBio: string) => {
+  const uniqueTeamName = `${baseName} ${Date.now()}`
+  getScenarioState(page).createdTeamName = uniqueTeamName
+
+  const workspacePanel = page.getByTestId('participant-team-workspace-panel')
+  await workspacePanel.getByTestId('participant-team-edit-name').click()
+
+  const teamNameInput = workspacePanel.getByLabel('Team name')
+  const teamBioInput = workspacePanel.getByLabel('Team bio')
+  const saveButton = page.getByTestId('participant-team-update-profile')
+
+  await expect(saveButton).toBeEnabled({
+    timeout: 15_000
+  })
+
+  await expect.poll(async () => {
+    await teamNameInput.fill(uniqueTeamName)
+    return await teamNameInput.inputValue()
+  }, {
+    timeout: 5_000
+  }).toBe(uniqueTeamName)
+
+  await expect.poll(async () => {
+    await teamBioInput.fill(teamBio)
+    return await teamBioInput.inputValue()
+  }, {
+    timeout: 5_000
+  }).toBe(teamBio)
+
+  await saveButton.click()
+
+  await expect(page.getByTestId('participant-team-workspace-panel').getByRole('heading', {
+    name: uniqueTeamName,
+    exact: true
+  })).toBeVisible({
+    timeout: 15_000
+  })
+})
+
 Then('I should be in the participant team workspace for the created team', async ({ page }) => {
   const createdTeamName = getScenarioState(page).createdTeamName
 

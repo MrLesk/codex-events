@@ -151,6 +151,12 @@ function formatMemberLabel(team: AdminTeamDetailRecord) {
                 {{ getActiveMembers(team).length }} active member{{ getActiveMembers(team).length === 1 ? '' : 's' }} •
                 {{ team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
               </p>
+              <p
+                v-if="team.bio"
+                class="max-w-3xl whitespace-pre-line text-sm text-muted"
+              >
+                {{ team.bio }}
+              </p>
               <p class="text-sm text-muted">
                 Team admins: {{ formatMemberLabel(team) }}
               </p>

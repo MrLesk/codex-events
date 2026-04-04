@@ -96,6 +96,13 @@ function isActionPending(actionKey: string) {
               </p>
 
               <p
+                v-if="entry.team.bio"
+                class="max-w-3xl whitespace-pre-line text-sm text-muted"
+              >
+                {{ entry.team.bio }}
+              </p>
+
+              <p
                 v-if="!entry.joinAvailability.isAllowed && entry.joinAvailability.reason"
                 class="text-sm text-muted"
               >

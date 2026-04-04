@@ -134,6 +134,7 @@ function createTeamSummary(overrides: Partial<TeamSummary> = {}): TeamSummary {
     id: 'team-1',
     hackathonId: 'hackathon-1',
     name: 'Alpha Team',
+    bio: 'A focused admin-visible team.',
     slug: 'alpha-team',
     isOpenToJoinRequests: true,
     createdByUserId: 'user-admin',

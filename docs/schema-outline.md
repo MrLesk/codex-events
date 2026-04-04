@@ -300,6 +300,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `id`
 - `hackathon_id`
 - `name`
+- `bio`
 - `slug`
 - `is_open_to_join_requests`
 - `created_by_user_id`
@@ -313,6 +314,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - A solo participant is still represented by a `Team`.
+- `bio` stores an optional multiline introduction for the team.
 - Team formation is allowed during `registration_open` and `submission_open`.
 - Team slug is generated from the initial team name plus a random 4-digit suffix and remains stable after creation.
 

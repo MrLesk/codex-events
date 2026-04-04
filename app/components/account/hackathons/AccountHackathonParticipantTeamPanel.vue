@@ -48,6 +48,7 @@ const workspace = useTeamFormationWorkspace(
 
 const teamSettings = reactive({
   name: '',
+  bio: '',
   isOpenToJoinRequests: false
 })
 const provisionalTeamCreatedAt = ref(new Date().toISOString())
@@ -172,6 +173,7 @@ const provisionalCurrentTeam = computed(() => {
     id: provisionalTeamId,
     hackathonId: props.hackathon.id,
     name: teamSettings.name.trim() || defaultSoloTeamName.value,
+    bio: teamSettings.bio.trim() || null,
     slug: '',
     isOpenToJoinRequests: teamSettings.isOpenToJoinRequests,
     createdByUserId: actor.value.platformUser.id,
@@ -211,6 +213,7 @@ watch([
 ], ([currentTeam, nextProvisionalTeam, nextDefaultSoloTeamName]) => {
   if (currentTeam) {
     teamSettings.name = currentTeam.name
+    teamSettings.bio = currentTeam.bio ?? ''
     teamSettings.isOpenToJoinRequests = currentTeam.isOpenToJoinRequests
     hasSeededProvisionalTeamSettings.value = false
     lastSeededProvisionalTeamName.value = ''
@@ -219,6 +222,7 @@ watch([
 
   if (!nextProvisionalTeam) {
     teamSettings.name = ''
+    teamSettings.bio = ''
     teamSettings.isOpenToJoinRequests = false
     hasSeededProvisionalTeamSettings.value = false
     lastSeededProvisionalTeamName.value = ''
@@ -227,6 +231,7 @@ watch([
 
   if (!hasSeededProvisionalTeamSettings.value) {
     teamSettings.name = nextDefaultSoloTeamName
+    teamSettings.bio = ''
     teamSettings.isOpenToJoinRequests = false
     hasSeededProvisionalTeamSettings.value = true
     lastSeededProvisionalTeamName.value = nextDefaultSoloTeamName
@@ -428,6 +433,7 @@ async function ensureOwnTeam() {
 
   const createdTeam = await workspace.createTeam({
     name,
+    bio: teamSettings.bio,
     isOpenToJoinRequests: teamSettings.isOpenToJoinRequests
   })
 
@@ -510,7 +516,8 @@ async function submitTeamProfile() {
   const updatedTeam = wasProvisionalTeam
     ? await ensureOwnTeam()
     : await workspace.updateCurrentTeamProfile({
-        name: teamSettings.name
+        name: teamSettings.name,
+        bio: teamSettings.bio
       })
 
   if (!updatedTeam) {
@@ -521,7 +528,7 @@ async function submitTeamProfile() {
     title: wasProvisionalTeam ? 'Team saved' : 'Team profile updated',
     description: wasProvisionalTeam
       ? 'Your team is ready. You can now share the link and accept collaborators.'
-      : 'The team name was updated.',
+      : 'The team profile was updated.',
     color: 'success'
   })
 }

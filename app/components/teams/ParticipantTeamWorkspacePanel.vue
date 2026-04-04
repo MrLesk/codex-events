@@ -19,6 +19,7 @@ import { cloneFormValues } from '~/utils/form-values'
 
 const settings = defineModel<{
   name: string
+  bio: string
   isOpenToJoinRequests: boolean
 }>('settings', {
   required: true
@@ -113,10 +114,11 @@ function getUserProfileLinks(user?: TeamUserSummary | null) {
 }
 
 const errors = reactive({
-  name: ''
+  name: '',
+  bio: ''
 })
 const submitCount = ref(0)
-const isEditingName = ref(false)
+const isEditingProfile = ref(false)
 
 const isPersisted = computed(() => props.team.isPersisted !== false)
 const showMembershipActions = computed(() => props.showMembershipActions ?? true)
@@ -125,6 +127,7 @@ const activeMemberCount = computed(() => props.team.activeMemberCount ?? props.t
 
 function validateTeamProfile() {
   errors.name = ''
+  errors.bio = ''
 
   const result = teamProfileFormSchema.safeParse(cloneFormValues(settings.value))
 
@@ -134,6 +137,7 @@ function validateTeamProfile() {
 
   const fieldErrors = result.error.flatten().fieldErrors
   errors.name = fieldErrors.name?.[0] ?? ''
+  errors.bio = fieldErrors.bio?.[0] ?? ''
   return false
 }
 
@@ -144,22 +148,26 @@ function submitProfileForm() {
     return
   }
 
-  isEditingName.value = false
+  isEditingProfile.value = false
   emit('submitProfile')
 }
 
-function startEditingName() {
+function startEditingProfile() {
   settings.value.name = props.team.name
+  settings.value.bio = props.team.bio ?? ''
   errors.name = ''
+  errors.bio = ''
   submitCount.value = 0
-  isEditingName.value = true
+  isEditingProfile.value = true
 }
 
-function cancelEditingName() {
+function cancelEditingProfile() {
   settings.value.name = props.team.name
+  settings.value.bio = props.team.bio ?? ''
   errors.name = ''
+  errors.bio = ''
   submitCount.value = 0
-  isEditingName.value = false
+  isEditingProfile.value = false
 }
 </script>
 
@@ -171,153 +179,185 @@ function cancelEditingName() {
     <template #header>
       <div class="space-y-3">
         <div
-          v-if="canManageTeam && isEditingName"
-          class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+          v-if="canManageTeam && isEditingProfile"
+          class="flex flex-col gap-4"
         >
           <form
-            class="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+            class="flex min-w-0 flex-1 flex-col gap-4"
             @submit.prevent="submitProfileForm"
           >
-            <AppButton
-              color="neutral"
-              variant="outline"
-              size="sm"
-              icon="i-lucide-copy"
-              class="h-8 w-8 shrink-0 gap-0 px-0"
-              aria-label="Copy team link"
-              @click="emit('copyTeamLink')"
-            >
-              <span class="sr-only">Copy team link</span>
-            </AppButton>
+            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div class="flex min-w-0 flex-1 flex-col gap-3">
+                <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                  <AppButton
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                    icon="i-lucide-copy"
+                    class="h-8 w-8 shrink-0 gap-0 px-0"
+                    aria-label="Copy team link"
+                    @click="emit('copyTeamLink')"
+                  >
+                    <span class="sr-only">Copy team link</span>
+                  </AppButton>
 
-            <div class="min-w-0 flex-1 space-y-2">
-              <label
-                :for="`team-name-inline-${team.id}`"
-                class="sr-only"
-              >
-                Team name
-              </label>
-              <AppInput
-                :id="`team-name-inline-${team.id}`"
-                v-model="settings.name"
-                size="xl"
-                class="w-full"
-                :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
-                :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
-              />
-              <p
-                v-if="submitCount > 0 && errors.name"
-                class="text-xs text-error"
-              >
-                {{ errors.name }}
-              </p>
+                  <div class="min-w-0 flex-1 space-y-2">
+                    <label
+                      :for="`team-name-inline-${team.id}`"
+                      class="sr-only"
+                    >
+                      Team name
+                    </label>
+                    <AppInput
+                      :id="`team-name-inline-${team.id}`"
+                      v-model="settings.name"
+                      size="xl"
+                      class="w-full"
+                      :class="submitCount > 0 && errors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
+                      :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
+                    />
+                    <p
+                      v-if="submitCount > 0 && errors.name"
+                      class="text-xs text-error"
+                    >
+                      {{ errors.name }}
+                    </p>
+                  </div>
+
+                  <AppButton
+                    type="submit"
+                    color="primary"
+                    class="shrink-0"
+                    :loading="isPersisted && isActionPending(`update-team:${team.id}`)"
+                    :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
+                    data-testid="participant-team-update-profile"
+                  >
+                    Save
+                  </AppButton>
+
+                  <AppButton
+                    type="button"
+                    color="neutral"
+                    variant="outline"
+                    class="shrink-0"
+                    :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
+                    @click="cancelEditingProfile"
+                  >
+                    Cancel
+                  </AppButton>
+                </div>
+
+                <div class="space-y-2">
+                  <label
+                    :for="`team-bio-inline-${team.id}`"
+                    class="text-sm font-medium text-highlighted"
+                  >
+                    Team bio
+                  </label>
+                  <AppTextarea
+                    :id="`team-bio-inline-${team.id}`"
+                    v-model="settings.bio"
+                    rows="4"
+                    placeholder="Share a short introduction about your team, what you are building, or how you work together."
+                    :class="submitCount > 0 && errors.bio ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+                    :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
+                  />
+                  <p
+                    v-if="submitCount > 0 && errors.bio"
+                    class="text-xs text-error"
+                  >
+                    {{ errors.bio }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="flex shrink-0 flex-col items-start gap-3 md:items-end">
+                <AppBadge
+                  v-if="membership"
+                  color="primary"
+                  variant="soft"
+                >
+                  {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
+                </AppBadge>
+
+                <div class="flex items-center gap-3">
+                  <UiSwitch
+                    :id="joinPolicySwitchId"
+                    :model-value="settings.isOpenToJoinRequests"
+                    :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
+                    @update:model-value="emit('toggleJoinPolicy', $event)"
+                  />
+                  <label
+                    :for="joinPolicySwitchId"
+                    class="text-sm font-medium text-toned"
+                  >
+                    {{ settings.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+                  </label>
+                </div>
+              </div>
             </div>
-
-            <AppButton
-              type="submit"
-              color="primary"
-              class="shrink-0"
-              :loading="isPersisted && isActionPending(`update-team:${team.id}`)"
-              :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
-              data-testid="participant-team-update-profile"
-            >
-              Save
-            </AppButton>
-
-            <AppButton
-              type="button"
-              color="neutral"
-              variant="outline"
-              class="shrink-0"
-              :disabled="isPersisted && isActionPending(`update-team:${team.id}`)"
-              @click="cancelEditingName"
-            >
-              Cancel
-            </AppButton>
-
-            <AppBadge
-              v-if="membership"
-              color="primary"
-              variant="soft"
-            >
-              {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
-            </AppBadge>
-
-            <AppBadge
-              v-if="!canManageTeam"
-              :color="team.isOpenToJoinRequests ? 'success' : 'neutral'"
-              variant="soft"
-            >
-              {{ team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
-            </AppBadge>
           </form>
-
-          <div class="flex items-center gap-3 shrink-0 md:justify-end">
-            <UiSwitch
-              :id="joinPolicySwitchId"
-              :model-value="settings.isOpenToJoinRequests"
-              :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
-              @update:model-value="emit('toggleJoinPolicy', $event)"
-            />
-            <label
-              :for="joinPolicySwitchId"
-              class="text-sm font-medium text-toned"
-            >
-              {{ settings.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
-            </label>
-          </div>
         </div>
 
         <div
           v-else
-          class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"
+          class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"
         >
-          <div class="flex min-w-0 flex-wrap items-center gap-3">
-            <AppButton
-              color="neutral"
-              variant="outline"
-              size="sm"
-              icon="i-lucide-copy"
-              class="h-8 w-8 shrink-0 gap-0 px-0"
-              aria-label="Copy team link"
-              @click="emit('copyTeamLink')"
-            >
-              <span class="sr-only">Copy team link</span>
-            </AppButton>
+          <div class="min-w-0 space-y-3">
+            <div class="flex min-w-0 flex-wrap items-center gap-3">
+              <AppButton
+                color="neutral"
+                variant="outline"
+                size="sm"
+                icon="i-lucide-copy"
+                class="h-8 w-8 shrink-0 gap-0 px-0"
+                aria-label="Copy team link"
+                @click="emit('copyTeamLink')"
+              >
+                <span class="sr-only">Copy team link</span>
+              </AppButton>
 
-            <h2 class="text-2xl font-semibold text-highlighted dark:text-white">
-              {{ team.name }}
-            </h2>
+              <h2 class="text-2xl font-semibold text-highlighted dark:text-white">
+                {{ team.name }}
+              </h2>
 
-            <AppButton
-              v-if="canManageTeam"
-              variant="outline"
-              color="neutral"
-              size="sm"
-              icon="i-lucide-pencil"
-              class="h-8 w-8 shrink-0 gap-0 px-0"
-              aria-label="Edit team name"
-              data-testid="participant-team-edit-name"
-              @click="startEditingName"
-            >
-              <span class="sr-only">Edit team name</span>
-            </AppButton>
+              <AppButton
+                v-if="canManageTeam"
+                variant="outline"
+                color="neutral"
+                size="sm"
+                icon="i-lucide-pencil"
+                class="h-8 w-8 shrink-0 gap-0 px-0"
+                aria-label="Edit team profile"
+                data-testid="participant-team-edit-name"
+                @click="startEditingProfile"
+              >
+                <span class="sr-only">Edit team profile</span>
+              </AppButton>
 
-            <AppBadge
-              v-if="membership"
-              color="primary"
-              variant="soft"
-            >
-              {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
-            </AppBadge>
+              <AppBadge
+                v-if="membership"
+                color="primary"
+                variant="soft"
+              >
+                {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
+              </AppBadge>
 
-            <AppBadge
-              v-if="!canManageTeam"
-              :color="team.isOpenToJoinRequests ? 'success' : 'neutral'"
-              variant="soft"
+              <AppBadge
+                v-if="!canManageTeam"
+                :color="team.isOpenToJoinRequests ? 'success' : 'neutral'"
+                variant="soft"
+              >
+                {{ team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+              </AppBadge>
+            </div>
+
+            <p
+              v-if="team.bio"
+              class="max-w-3xl whitespace-pre-line text-sm text-toned"
             >
-              {{ team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
-            </AppBadge>
+              {{ team.bio }}
+            </p>
           </div>
 
           <div

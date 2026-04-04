@@ -178,6 +178,7 @@ Key characteristics:
 
 - A team belongs to exactly one hackathon.
 - A team can be created after approval.
+- A team can optionally publish a short bio about the team.
 - A team can be open to join requests.
 - A team can have one or more admins.
 - Approved participants without an active persisted team are still shown a default solo-team workspace in the participant UI.
@@ -192,7 +193,7 @@ Rules:
 - Every active team must always have at least one active team admin.
 - A team cannot exceed the maximum team member limit defined by its hackathon.
 - A team with pending join requests can approve them only while the team remains open to join requests.
-- Team admins can rename the team, review join requests, approve members, and remove members.
+- Team admins can update the team profile, review join requests, approve members, and remove members.
 - Users can search for teams and request to join open teams.
 - Team rename does not change the team slug after creation.
 

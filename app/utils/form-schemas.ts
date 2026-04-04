@@ -106,7 +106,8 @@ export const teamDirectoryCreateFormSchema = z.object({
 })
 
 export const teamProfileFormSchema = z.object({
-  name: requiredTextSchema
+  name: requiredTextSchema,
+  bio: z.string().trim().max(4000)
 })
 
 export const teamSubmissionFormSchema = z.object({

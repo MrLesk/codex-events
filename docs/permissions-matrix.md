@@ -94,7 +94,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | View team detail | No | Yes, during `registration_open` or `submission_open` | Yes | Yes | Yes | Yes | Yes |
 | Request to join open team | No | Yes, during `registration_open` or `submission_open` | No | No | No | No | No |
 | Cancel own pending join request | No | Yes | No | No | No | No | No |
-| Rename team | No | No | No | Yes | No | No | No |
+| Update team profile | No | No | No | Yes | No | No | No |
 | Approve join request | No | No | No | Yes, only while team remains open and capacity is available | No | No | No |
 | Reject join request | No | No | No | Yes | No | No | No |
 | Remove team member | No | No | No | Yes, only if at least one active team admin remains | No | No | No |

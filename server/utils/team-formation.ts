@@ -20,6 +20,7 @@ import { assertAllowedState, assertGuard } from './lifecycle-guard'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from './hackathon-management'
 
 const teamNameSchema = z.string().trim().min(1)
+const teamBioSchema = z.string().trim().max(4000)
 
 export const teamParamsSchema = routeIdParamsSchema.extend({
   teamId: z.string().trim().min(1)
@@ -44,11 +45,13 @@ export const listTeamsQuerySchema = z.object({
 
 export const createTeamBodySchema = z.object({
   name: teamNameSchema,
+  bio: teamBioSchema.optional(),
   isOpenToJoinRequests: z.coerce.boolean().default(true)
 })
 
 export const updateTeamBodySchema = z.object({
-  name: teamNameSchema.optional()
+  name: teamNameSchema.optional(),
+  bio: teamBioSchema.optional()
 }).refine(
   input => Object.keys(input).length > 0,
   'At least one team field must be provided.'
@@ -176,6 +179,7 @@ export function serializeTeam(
     id: team.id,
     hackathonId: team.hackathonId,
     name: team.name,
+    bio: team.bio,
     slug: team.slug,
     isOpenToJoinRequests: team.isOpenToJoinRequests,
     createdByUserId: team.createdByUserId,

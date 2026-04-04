@@ -215,6 +215,7 @@ async function seedTeamFormationContext(
       id: 'team_1',
       hackathonId: 'hackathon_1',
       name: 'Alpha Team',
+      bio: 'We build developer workflows together.',
       slug: 'alpha-team',
       isOpenToJoinRequests: options?.teamOpen ?? true,
       createdByUserId: 'team_admin',
@@ -336,6 +337,7 @@ describe('TASK-3.6 team formation routes', () => {
       data: expect.arrayContaining([
         expect.objectContaining({
           id: 'team_1',
+          bio: 'We build developer workflows together.',
           activeMemberCount: 2
         })
       ])
@@ -345,6 +347,7 @@ describe('TASK-3.6 team formation routes', () => {
       method: 'POST',
       body: JSON.stringify({
         name: 'Requester Team',
+        bio: 'Shipping fast integrations together.',
         isOpenToJoinRequests: false
       })
     })
@@ -354,6 +357,7 @@ describe('TASK-3.6 team formation routes', () => {
     expect(createBody).toMatchObject({
       data: {
         name: 'Requester Team',
+        bio: 'Shipping fast integrations together.',
         isOpenToJoinRequests: false,
         members: [
           expect.objectContaining({
@@ -502,7 +506,7 @@ describe('TASK-3.6 team formation routes', () => {
     expect(createdTeam).toBeTruthy()
   })
 
-  test('team admins can rename teams and update join openness', async () => {
+  test('team admins can update team profiles and join openness', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
@@ -516,7 +520,8 @@ describe('TASK-3.6 team formation routes', () => {
     const renameResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1', {
       method: 'PATCH',
       body: JSON.stringify({
-        name: 'Beta Team'
+        name: 'Beta Team',
+        bio: 'We prototype fast and keep the team collaborative.'
       })
     })
 
@@ -525,6 +530,7 @@ describe('TASK-3.6 team formation routes', () => {
       data: {
         id: 'team_1',
         name: 'Beta Team',
+        bio: 'We prototype fast and keep the team collaborative.',
         slug: 'alpha-team'
       }
     })
@@ -559,6 +565,7 @@ describe('TASK-3.6 team formation routes', () => {
     const outsiderResponse = await outsiderHarness.request('/api/hackathons/hackathon_1/teams/team_1')
     expect(outsiderResponse.status).toBe(200)
     const outsiderBody = await outsiderResponse.json()
+    expect(outsiderBody.data.bio).toBe('We build developer workflows together.')
     const outsiderAdminMember = outsiderBody.data.members.find((member: { userId: string }) => member.userId === 'team_admin')
     expect(outsiderAdminMember).toMatchObject({
       userId: 'team_admin',

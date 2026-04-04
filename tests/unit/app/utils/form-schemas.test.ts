@@ -5,7 +5,8 @@ import {
   accountSettingsProfileFormSchema,
   buildParticipantRegistrationFormSchema,
   hackathonConfigFormSchema,
-  imprintContactFormSchema
+  imprintContactFormSchema,
+  teamProfileFormSchema
 } from '../../../../app/utils/form-schemas'
 
 function createValidHackathonFormState() {
@@ -106,6 +107,24 @@ describe('form schemas', () => {
     }
 
     expect(result.error.flatten().fieldErrors.message).toEqual(['Enter a message.'])
+  })
+
+  test('validates and trims team profile bio fields', () => {
+    const result = teamProfileFormSchema.safeParse({
+      name: '  North Star Team  ',
+      bio: '  Building a focused collaboration workspace.\nAcross the full hackathon weekend.  '
+    })
+
+    expect(result.success).toBe(true)
+
+    if (!result.success) {
+      return
+    }
+
+    expect(result.data).toEqual({
+      name: 'North Star Team',
+      bio: 'Building a focused collaboration workspace.\nAcross the full hackathon weekend.'
+    })
   })
 })
 

@@ -16,6 +16,7 @@ const baseTeam: TeamDetailRecord = {
   id: 'team_fixture',
   hackathonId: 'hackathon_fixture',
   name: 'Fixture Team',
+  bio: 'A focused fixture team.',
   slug: 'fixture-team',
   isOpenToJoinRequests: true,
   createdByUserId: 'user_admin',

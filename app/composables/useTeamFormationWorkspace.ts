@@ -439,6 +439,7 @@ export function useTeamFormationWorkspace(
 
   async function createTeam(input: {
     name: string
+    bio: string
     isOpenToJoinRequests: boolean
   }) {
     if (!visibleHackathonId.value) {
@@ -527,6 +528,7 @@ export function useTeamFormationWorkspace(
 
   async function updateCurrentTeamProfile(input: {
     name?: string
+    bio?: string
   }) {
     if (!visibleHackathonId.value || !currentTeam.value) {
       mutationError.value = 'The team workspace is unavailable for profile updates.'

@@ -9,6 +9,13 @@ Feature: Participant team workspace in the account hackathon page
     And I create a participant team named "North Star Team"
     Then I should be in the participant team workspace for the created team
 
+  Scenario: Regular user saves a team bio from the participant Team tab
+    Given the saved "regular_user" Auth0 session state exists
+    When I open the participant Team tab for hackathon slug "participant-team-create-fixture-hackathon" with the saved "regular_user" session
+    And I create a participant team named "North Star Team" with bio "We build reliable hackathon tooling together."
+    Then I should be in the participant team workspace for the created team
+    And I should see the participant team text "We build reliable hackathon tooling together."
+
   Scenario: Regular user does not see the solo-admin leave block in the participant Team tab
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant Team tab for hackathon slug "participant-team-solo-fixture-hackathon" with the saved "regular_user" session

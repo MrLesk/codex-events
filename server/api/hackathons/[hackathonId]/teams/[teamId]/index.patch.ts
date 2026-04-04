@@ -26,7 +26,16 @@ export default defineApiHandler(async (event) => {
   await database
     .update(teams)
     .set({
-      ...body,
+      ...(body.name !== undefined
+        ? {
+            name: body.name
+          }
+        : {}),
+      ...(body.bio !== undefined
+        ? {
+            bio: body.bio || null
+          }
+        : {}),
       updatedAt
     })
     .where(eq(teams.id, team.id))

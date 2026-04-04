@@ -284,6 +284,7 @@ export const teams = sqliteTable(
       .notNull()
       .references(() => hackathons.id),
     name: text('name').notNull(),
+    bio: text('bio'),
     slug: text('slug').notNull(),
     isOpenToJoinRequests: integer('is_open_to_join_requests', { mode: 'boolean' }).notNull().default(true),
     createdByUserId: text('created_by_user_id')

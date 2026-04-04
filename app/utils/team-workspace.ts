@@ -32,6 +32,7 @@ export interface TeamSummaryRecord {
   id: string
   hackathonId: string
   name: string
+  bio: string | null
   slug: string
   isOpenToJoinRequests: boolean
   createdByUserId: string
