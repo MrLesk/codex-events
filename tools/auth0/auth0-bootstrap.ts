@@ -10,6 +10,7 @@ interface TenantConfig {
   appClientId: string
   appDisplayName: string
   appBaseUrl: string
+  bddAppBaseUrl: string
   loginUri: string
   customDomain: string
   termsUrl: string
@@ -96,6 +97,7 @@ const defaultAuth0AppDisplayName = 'Codex Hackathons'
 const defaultBrandingPrimaryColor = '#030213'
 const defaultBrandingPageBackgroundColor = '#f3f3f5'
 const defaultBrandingWordmarkPath = '/auth0/codex-hackathons-wordmark.svg'
+const defaultLocalBddAppBaseUrl = 'http://localhost:3100'
 const termsConsentCheckboxId = 'ulp-terms-of-service'
 const privacyConsentCheckboxId = 'ulp-privacy-policy'
 const loginPromptKey = 'login' as const
@@ -196,6 +198,7 @@ Environment variables:
 - AUTH0_APP_CLIENT_ID (fallback: NUXT_AUTH0_CLIENT_ID)
 - AUTH0_APP_DISPLAY_NAME (default: ${defaultAuth0AppDisplayName})
 - AUTH0_APP_BASE_URL (fallback: NUXT_AUTH0_APP_BASE_URL)
+- AUTH0_BDD_APP_BASE_URL (fallback: NUXT_AUTH0_BDD_APP_BASE_URL; defaults to ${defaultLocalBddAppBaseUrl} for localhost app configs)
 - AUTH0_LOGIN_URI (required when AUTH0_APP_BASE_URL is not https; must be https)
 - AUTH0_CUSTOM_DOMAIN (fallback: NUXT_AUTH0_DOMAIN)
 - AUTH0_TERMS_URL (default: <AUTH0_APP_BASE_URL>/terms-and-conditions)
@@ -370,6 +373,20 @@ function buildPublicAssetUrl(appBaseUrl: string, path: string) {
   return normalizeUrlString(new URL(path, `${appBaseUrl}/`).toString())
 }
 
+function resolveBddAppBaseUrl(environment: NodeJS.ProcessEnv, appBaseUrl: string) {
+  const explicitBddAppBaseUrl = firstDefinedValue(environment.AUTH0_BDD_APP_BASE_URL, environment.NUXT_AUTH0_BDD_APP_BASE_URL)
+
+  if (explicitBddAppBaseUrl) {
+    return normalizeUrlString(explicitBddAppBaseUrl)
+  }
+
+  if (appBaseUrl.startsWith('http://localhost:')) {
+    return defaultLocalBddAppBaseUrl
+  }
+
+  return ''
+}
+
 export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
   const tenantDomain = requireConfigField(
     firstDefinedValue(environment.AUTH0_DOMAIN, environment.AUTH0_TEST_DOMAIN),
@@ -381,6 +398,7 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
   )
 
   const normalizedAppBaseUrl = normalizeUrlString(appBaseUrl)
+  const normalizedBddAppBaseUrl = resolveBddAppBaseUrl(environment, normalizedAppBaseUrl)
   const inferredLoginUri = normalizedAppBaseUrl.startsWith('https://')
     ? `${normalizedAppBaseUrl}/auth/login`
     : ''
@@ -413,6 +431,7 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     ),
     appDisplayName: firstDefinedValue(environment.AUTH0_APP_DISPLAY_NAME, defaultAuth0AppDisplayName),
     appBaseUrl: normalizedAppBaseUrl,
+    bddAppBaseUrl: normalizedBddAppBaseUrl,
     loginUri: normalizeHttpsUrlString(
       requireConfigField(
         firstDefinedValue(environment.AUTH0_LOGIN_URI, inferredLoginUri),
@@ -689,14 +708,42 @@ function hasAll(set: Set<string>, required: string[]) {
   return required.every(value => set.has(value))
 }
 
+export function buildRequiredClientUrls(config: Pick<TenantConfig, 'appBaseUrl' | 'bddAppBaseUrl'>) {
+  const callbackUrls = new Set<string>()
+  const logoutUrls = new Set<string>()
+  const origins = new Set<string>()
+
+  for (const baseUrl of [config.appBaseUrl, config.bddAppBaseUrl]) {
+    const normalizedBaseUrl = baseUrl.trim()
+
+    if (!normalizedBaseUrl) {
+      continue
+    }
+
+    const origin = new URL(normalizedBaseUrl).origin
+    origins.add(origin)
+    logoutUrls.add(normalizedBaseUrl)
+    callbackUrls.add(new URL('/auth/callback', `${normalizedBaseUrl}/`).toString())
+    callbackUrls.add(new URL('/auth/link/callback', `${normalizedBaseUrl}/`).toString())
+
+    if (normalizedBaseUrl.startsWith('http://localhost:')) {
+      callbackUrls.add(new URL('/auth/bdd-callback', `${normalizedBaseUrl}/`).toString())
+    }
+  }
+
+  return {
+    callbacks: [...callbackUrls].sort(),
+    logoutUrls: [...logoutUrls].sort(),
+    origins: [...origins].sort()
+  }
+}
+
 async function ensureClientUrls(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
   const client = await getClient(config, token)
-  const callbackUrl = new URL('/auth/callback', `${config.appBaseUrl}/`).toString()
-  const linkCallbackUrl = new URL('/auth/link/callback', `${config.appBaseUrl}/`).toString()
-  const baseOrigin = new URL(config.appBaseUrl).origin
-  const requiredCallbacks = [callbackUrl, linkCallbackUrl]
-  const requiredLogoutUrls = [config.appBaseUrl]
-  const requiredOrigins = [baseOrigin]
+  const requiredClientUrls = buildRequiredClientUrls(config)
+  const requiredCallbacks = requiredClientUrls.callbacks
+  const requiredLogoutUrls = requiredClientUrls.logoutUrls
+  const requiredOrigins = requiredClientUrls.origins
   const expectedLoginUri = config.loginUri
   const expectedDisplayName = config.appDisplayName
 
@@ -744,15 +791,15 @@ async function ensureClientUrls(config: TenantConfig, token: string, mode: Comma
   }
 
   if (!hasAll(verifiedAllowedLogoutUrls, requiredLogoutUrls)) {
-    failures.push(`Auth0 client ${config.appClientId} is missing required logout URL ${config.appBaseUrl}.`)
+    failures.push(`Auth0 client ${config.appClientId} is missing required logout URLs ${requiredLogoutUrls.join(', ')}.`)
   }
 
   if (!hasAll(verifiedWebOrigins, requiredOrigins)) {
-    failures.push(`Auth0 client ${config.appClientId} is missing required web origin ${baseOrigin}.`)
+    failures.push(`Auth0 client ${config.appClientId} is missing required web origins ${requiredOrigins.join(', ')}.`)
   }
 
   if (!hasAll(verifiedAllowedOrigins, requiredOrigins)) {
-    failures.push(`Auth0 client ${config.appClientId} is missing required allowed origin ${baseOrigin}.`)
+    failures.push(`Auth0 client ${config.appClientId} is missing required allowed origins ${requiredOrigins.join(', ')}.`)
   }
 
   if (verifiedLoginUri !== expectedLoginUri) {

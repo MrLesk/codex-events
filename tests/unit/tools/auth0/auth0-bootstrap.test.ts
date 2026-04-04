@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import {
   assertManagementAccessTokenScopes,
+  buildRequiredClientUrls,
   buildClearedSignupPartials,
   buildExpectedLoginCustomText,
   buildUniversalLoginPageTemplate,
@@ -18,6 +19,21 @@ function createFixtureJwt(payload: Record<string, unknown>) {
 }
 
 describe('auth0 bootstrap config', () => {
+  test('infers the dedicated local BDD app base url for localhost development', () => {
+    const config = resolveConfig({
+      AUTH0_DOMAIN: 'codex-hackathons-dev.eu.auth0.com',
+      AUTH0_MGMT_CLIENT_ID: 'management-client-id',
+      AUTH0_MGMT_CLIENT_SECRET: 'management-client-secret',
+      AUTH0_APP_CLIENT_ID: 'app-client-id',
+      AUTH0_APP_BASE_URL: 'http://localhost:3000',
+      AUTH0_LOGIN_URI: 'https://dev.codex-hackathons.com/auth/login',
+      AUTH0_CUSTOM_DOMAIN: 'auth.dev.codex-hackathons.com'
+    })
+
+    expect(config.appBaseUrl).toBe('http://localhost:3000')
+    expect(config.bddAppBaseUrl).toBe('http://localhost:3100')
+  })
+
   test('infers the canonical branding defaults from an https app base url', () => {
     const config = resolveConfig({
       AUTH0_DOMAIN: 'codex-hackathons-dev.eu.auth0.com',
@@ -29,6 +45,7 @@ describe('auth0 bootstrap config', () => {
     })
 
     expect(config.appDisplayName).toBe('Codex Hackathons')
+    expect(config.bddAppBaseUrl).toBe('')
     expect(config.loginUri).toBe('https://dev.codex-hackathons.com/auth/login')
     expect(config.brandingPrimaryColor).toBe('#030213')
     expect(config.brandingPageBackgroundColor).toBe('#f3f3f5')
@@ -58,6 +75,32 @@ describe('auth0 bootstrap config', () => {
     expect(config.brandingPageBackgroundColor).toBe('#fafafa')
     expect(config.brandingLogoUrl).toBe('https://cdn.example.com/codex.svg')
     expect(config.brandingFaviconUrl).toBe('https://cdn.example.com/favicon.ico')
+  })
+
+  test('builds the required callback, logout, and origin URLs for local app and BDD origins', () => {
+    const urls = buildRequiredClientUrls({
+      appBaseUrl: 'http://localhost:3000',
+      bddAppBaseUrl: 'http://localhost:3100'
+    })
+
+    expect(urls).toEqual({
+      callbacks: [
+        'http://localhost:3000/auth/bdd-callback',
+        'http://localhost:3000/auth/callback',
+        'http://localhost:3000/auth/link/callback',
+        'http://localhost:3100/auth/bdd-callback',
+        'http://localhost:3100/auth/callback',
+        'http://localhost:3100/auth/link/callback'
+      ],
+      logoutUrls: [
+        'http://localhost:3000',
+        'http://localhost:3100'
+      ],
+      origins: [
+        'http://localhost:3000',
+        'http://localhost:3100'
+      ]
+    })
   })
 
   test('builds canonical login prompt subtitle copy from config', () => {
