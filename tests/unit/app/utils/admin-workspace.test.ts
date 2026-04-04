@@ -632,9 +632,8 @@ describe('admin-workspace operational helpers', () => {
       createApplication({
         status: 'approved',
         lumaSyncStatus: 'approve_synced'
-      }),
-      true
-    )).toBe(false)
+      })
+    )).toBe(true)
   })
 
   test('summarizes participant limit fill including staged approvals', () => {

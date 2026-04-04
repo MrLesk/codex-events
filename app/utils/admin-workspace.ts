@@ -622,10 +622,9 @@ export function getApplicationStatusColor(status: AdminApplicationRecord['status
 }
 
 export function shouldShowApplicationLumaSyncStatus(
-  application: Pick<AdminApplicationRecord, 'status' | 'lumaSyncStatus'>,
-  readOnly: boolean = false
+  application: Pick<AdminApplicationRecord, 'status' | 'lumaSyncStatus'>
 ) {
-  return !readOnly && application.status !== 'submitted' && Boolean(application.lumaSyncStatus)
+  return application.status !== 'submitted' && Boolean(application.lumaSyncStatus)
 }
 
 export function formatApplicationLumaSyncStatus(status: AdminApplicationRecord['lumaSyncStatus']) {
