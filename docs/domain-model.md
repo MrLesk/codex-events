@@ -195,7 +195,7 @@ Rules:
 - A team with pending join requests can approve them only while the team remains open to join requests.
 - Team admins can update the team profile, review join requests, approve members, and remove members.
 - Users can search for teams and request to join open teams.
-- Team rename does not change the team slug after creation.
+- Team rename updates the team slug to a new unique slug derived from the current team name.
 
 ### TeamMember
 

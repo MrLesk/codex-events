@@ -506,7 +506,7 @@ describe('TASK-3.6 team formation routes', () => {
     expect(createdTeam).toBeTruthy()
   })
 
-  test('team admins can update team profiles and join openness', async () => {
+  test('team admins can update team profiles, regenerate slugs on rename, and update join openness', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
@@ -526,14 +526,22 @@ describe('TASK-3.6 team formation routes', () => {
     })
 
     expect(renameResponse.status).toBe(200)
-    expect(await renameResponse.json()).toMatchObject({
+    const renameBody = await renameResponse.json()
+    expect(renameBody).toMatchObject({
       data: {
         id: 'team_1',
         name: 'Beta Team',
         bio: 'We prototype fast and keep the team collaborative.',
-        slug: 'alpha-team'
+        isOpenToJoinRequests: true
       }
     })
+    expect(renameBody.data.slug).toMatch(/^beta-team-\d{4}$/)
+    expect(renameBody.data.slug).not.toBe('beta-team')
+
+    const renamedTeam = await harness.database.query.teams.findFirst({
+      where: eq(teams.id, 'team_1')
+    })
+    expect(renamedTeam?.slug).toBe(renameBody.data.slug)
 
     const policyResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/join-policy', {
       method: 'PATCH',

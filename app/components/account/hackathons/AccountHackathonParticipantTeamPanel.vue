@@ -11,7 +11,8 @@ import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWor
 import {
   buildAbsoluteAccountHackathonTeamTabHref,
   buildAccountHackathonTeamTabHref,
-  isSharedTeamTabSelection
+  isSharedTeamTabSelection,
+  shouldSyncSelectedTeamSlug
 } from '~/utils/team-query'
 import {
   getCreateTeamAvailability,
@@ -36,6 +37,8 @@ const props = defineProps<{
   selectedTeamSlug?: string | null
 }>()
 
+const route = useRoute()
+const router = useRouter()
 const toast = useToast()
 const selectedTeamId = ref<string | null>(null)
 const selectedTeamStatus = ref<'idle' | 'pending' | 'success' | 'error'>('idle')
@@ -69,6 +72,25 @@ const visibleTeamSlugs = computed(() =>
 
 function buildTeamTabHref(teamSlug?: string | null) {
   return buildAccountHackathonTeamTabHref(props.hackathon.slug, teamSlug)
+}
+
+async function syncSelectedTeamSlugQuery(previousTeamSlug?: string | null, nextTeamSlug?: string | null) {
+  if (!shouldSyncSelectedTeamSlug({
+    selectedTeamSlug: props.selectedTeamSlug,
+    previousTeamSlug,
+    nextTeamSlug
+  })) {
+    return
+  }
+
+  await router.replace({
+    path: route.path,
+    query: {
+      ...route.query,
+      team: nextTeamSlug ?? undefined
+    },
+    hash: route.hash
+  })
 }
 
 async function syncSelectedTeamId() {
@@ -524,6 +546,7 @@ async function cancelJoinRequest(payload: {
 
 async function submitTeamProfile() {
   const wasProvisionalTeam = displayedTeam.value?.isPersisted === false
+  const previousTeamSlug = displayedTeam.value?.slug ?? null
   const updatedTeam = wasProvisionalTeam
     ? await ensureOwnTeam()
     : await workspace.updateCurrentTeamProfile({
@@ -534,6 +557,8 @@ async function submitTeamProfile() {
   if (!updatedTeam) {
     return
   }
+
+  await syncSelectedTeamSlugQuery(previousTeamSlug, updatedTeam.slug)
 
   toast.add({
     title: wasProvisionalTeam ? 'Team saved' : 'Team profile updated',
@@ -546,7 +571,23 @@ async function submitTeamProfile() {
 
 async function toggleJoinPolicy(nextValue: boolean) {
   if (displayedTeam.value?.isPersisted === false) {
+    const previousValue = teamSettings.isOpenToJoinRequests
     teamSettings.isOpenToJoinRequests = nextValue
+    const createdTeam = await ensureOwnTeam()
+
+    if (!createdTeam) {
+      teamSettings.isOpenToJoinRequests = previousValue
+      return
+    }
+
+    teamSettings.isOpenToJoinRequests = createdTeam.isOpenToJoinRequests
+    toast.add({
+      title: 'Team saved',
+      description: createdTeam.isOpenToJoinRequests
+        ? 'Your team is ready and now accepts join requests.'
+        : 'Your team is ready and remains closed to join requests.',
+      color: 'success'
+    })
     return
   }
 

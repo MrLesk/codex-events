@@ -58,3 +58,20 @@ export function isSharedTeamTabSelection(input: {
 
   return input.currentTeamId !== null && input.currentTeamId !== input.ownTeamId
 }
+
+export function shouldSyncSelectedTeamSlug(input: {
+  selectedTeamSlug?: string | null
+  previousTeamSlug?: string | null
+  nextTeamSlug?: string | null
+}) {
+  const normalizedSelectedTeamSlug = normalizeTeamSlugQueryValue(input.selectedTeamSlug)
+  const normalizedPreviousTeamSlug = normalizeTeamSlugQueryValue(input.previousTeamSlug)
+  const normalizedNextTeamSlug = normalizeTeamSlugQueryValue(input.nextTeamSlug)
+
+  if (!normalizedSelectedTeamSlug || !normalizedPreviousTeamSlug || !normalizedNextTeamSlug) {
+    return false
+  }
+
+  return normalizedSelectedTeamSlug === normalizedPreviousTeamSlug
+    && normalizedSelectedTeamSlug !== normalizedNextTeamSlug
+}

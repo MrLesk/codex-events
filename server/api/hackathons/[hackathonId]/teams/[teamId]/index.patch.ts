@@ -8,6 +8,7 @@ import {
   assertHackathonAllowsTeamFormation,
   getTeamWithMembersOrThrow,
   requireTeamAdminContext,
+  resolveAvailableTeamSlug,
   serializeTeam,
   teamParamsSchema,
   updateTeamBodySchema
@@ -22,6 +23,9 @@ export default defineApiHandler(async (event) => {
 
   assertHackathonAllowsTeamFormation(hackathon)
   const updatedAt = new Date().toISOString()
+  const nextSlug = body.name !== undefined && body.name !== team.name
+    ? await resolveAvailableTeamSlug(database, hackathonId, body.name)
+    : undefined
 
   await database
     .update(teams)
@@ -29,6 +33,11 @@ export default defineApiHandler(async (event) => {
       ...(body.name !== undefined
         ? {
             name: body.name
+          }
+        : {}),
+      ...(nextSlug !== undefined
+        ? {
+            slug: nextSlug
           }
         : {}),
       ...(body.bio !== undefined

@@ -193,6 +193,22 @@ When('I create a participant team named {string} with bio {string}', async ({ pa
   })
 })
 
+When('I enable join requests for the participant team', async ({ page }) => {
+  const workspacePanel = page.getByTestId('participant-team-workspace-panel')
+  await workspacePanel.getByRole('switch').click()
+  await expect(workspacePanel.getByText('Open to join requests', {
+    exact: true
+  }).first()).toBeVisible({
+    timeout: 15_000
+  })
+})
+
+When('I reload the participant Team tab page', async ({ page }) => {
+  await page.reload()
+  await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
+  await waitForParticipantTeamTabToSettle(page)
+})
+
 Then('I should be in the participant team workspace for the created team', async ({ page }) => {
   const createdTeamName = getScenarioState(page).createdTeamName
 

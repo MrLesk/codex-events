@@ -16,6 +16,14 @@ Feature: Participant team workspace in the account hackathon page
     Then I should be in the participant team workspace for the created team
     And I should see the participant team text "We build reliable hackathon tooling together."
 
+  Scenario: Regular user can open join requests from the provisional solo team workspace
+    Given the saved "regular_user" Auth0 session state exists
+    When I open the participant Team tab for hackathon slug "participant-team-create-fixture-hackathon" with the saved "regular_user" session
+    And I enable join requests for the participant team
+    And I reload the participant Team tab page
+    Then I should see the participant current team "Team Regular User"
+    And I should see the participant team text "Open to join requests"
+
   Scenario: Regular user sees other teams while on their own team page
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant Team tab for hackathon slug "operations-fixture-hackathon" with the saved "regular_user" session

@@ -4,7 +4,8 @@ import {
   buildAbsoluteAccountHackathonTeamTabHref,
   buildAccountHackathonTeamTabHref,
   isSharedTeamTabSelection,
-  normalizeTeamSlugQueryValue
+  normalizeTeamSlugQueryValue,
+  shouldSyncSelectedTeamSlug
 } from '../../../../app/utils/team-query'
 
 describe('team query helpers', () => {
@@ -53,6 +54,32 @@ describe('team query helpers', () => {
       currentTeamId: 'team_1',
       currentTeamSlug: 'alpha-operations-team',
       ownTeamId: null
+    })).toBe(false)
+  })
+
+  test('detects when the selected team slug query should follow a renamed team', () => {
+    expect(shouldSyncSelectedTeamSlug({
+      selectedTeamSlug: 'alpha-team',
+      previousTeamSlug: 'alpha-team',
+      nextTeamSlug: 'beta-team-1234'
+    })).toBe(true)
+
+    expect(shouldSyncSelectedTeamSlug({
+      selectedTeamSlug: 'other-team',
+      previousTeamSlug: 'alpha-team',
+      nextTeamSlug: 'beta-team-1234'
+    })).toBe(false)
+
+    expect(shouldSyncSelectedTeamSlug({
+      selectedTeamSlug: null,
+      previousTeamSlug: 'alpha-team',
+      nextTeamSlug: 'beta-team-1234'
+    })).toBe(false)
+
+    expect(shouldSyncSelectedTeamSlug({
+      selectedTeamSlug: 'beta-team-1234',
+      previousTeamSlug: 'alpha-team',
+      nextTeamSlug: 'beta-team-1234'
     })).toBe(false)
   })
 })
