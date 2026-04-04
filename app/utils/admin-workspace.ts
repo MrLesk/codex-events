@@ -651,8 +651,9 @@ export function getApplicationLumaSyncStatusColor(status: AdminApplicationRecord
     case 'reject_failed':
       return 'warning'
     case 'approve_synced':
+      return 'success'
     case 'reject_synced':
-      return 'neutral'
+      return 'error'
     default:
       return 'neutral'
   }
