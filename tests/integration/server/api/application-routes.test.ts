@@ -1176,6 +1176,74 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
+  test('GET /api/hackathons/:hackathonId/applications batches user lookups for large participant sets', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/applications', handler: applicationsListHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    const participantCount = 120
+    const participantUsers = Array.from({ length: participantCount }, (_, index) => ({
+      id: `participant_${index + 1}`,
+      auth0Subject: `auth0|participant_${index + 1}`,
+      email: `participant_${index + 1}@example.com`,
+      displayName: `Participant ${index + 1}`
+    }))
+    const participantApplications = Array.from({ length: participantCount }, (_, index) => ({
+      id: `application_${index + 1}`,
+      hackathonId: 'hackathon_1',
+      userId: `participant_${index + 1}`,
+      status: 'submitted' as const,
+      submittedAt: `2026-03-${String(28 - Math.floor(index / 10)).padStart(2, '0')}T12:${String(index % 60).padStart(2, '0')}:00.000Z`,
+      applicationTermsDocumentId: 'terms_app_2',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: `2026-03-22T12:${String(index % 60).padStart(2, '0')}:00.000Z`,
+      updatedAt: `2026-03-22T12:${String(index % 60).padStart(2, '0')}:00.000Z`
+    }))
+
+    for (let index = 0; index < participantUsers.length; index += 40) {
+      await harness.database.insert(users).values(participantUsers.slice(index, index + 40))
+    }
+
+    for (let index = 0; index < participantApplications.length; index += 40) {
+      await harness.database.insert(userApplications).values(participantApplications.slice(index, index + 40))
+    }
+
+    const usersFindManySpy = vi.spyOn(harness.database.query.users, 'findMany')
+    const response = await harness.request('/api/hackathons/hackathon_1/applications')
+
+    expect(response.status).toBe(200)
+    expect(usersFindManySpy).toHaveBeenCalledTimes(2)
+    expect(await response.json()).toMatchObject({
+      data: expect.arrayContaining([
+        expect.objectContaining({
+          id: 'application_1',
+          user: expect.objectContaining({
+            id: 'participant_1',
+            email: 'participant_1@example.com'
+          })
+        }),
+        expect.objectContaining({
+          id: 'application_120',
+          user: expect.objectContaining({
+            id: 'participant_120',
+            email: 'participant_120@example.com'
+          })
+        })
+      ]),
+      meta: {
+        total: participantCount
+      }
+    })
+  })
+
   test('staging approval toggles off when the same submitted application is approved again', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

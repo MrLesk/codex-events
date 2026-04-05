@@ -485,15 +485,20 @@ export async function listHackathonApplications(database: AppDatabase, hackathon
   const usersById = new Map<string, UserRecord>()
 
   if (applications.length > 0) {
-    const relatedUsers = await database.query.users.findMany({
-      where: and(
-        inArray(users.id, applications.map(application => application.userId)),
-        isNull(users.deletedAt)
-      )
-    })
+    const relatedUserIds = [...new Set(applications.map(application => application.userId))]
+    const relatedUserLookupBatchSize = 75
 
-    for (const user of relatedUsers) {
-      usersById.set(user.id, user)
+    for (let index = 0; index < relatedUserIds.length; index += relatedUserLookupBatchSize) {
+      const relatedUsers = await database.query.users.findMany({
+        where: and(
+          inArray(users.id, relatedUserIds.slice(index, index + relatedUserLookupBatchSize)),
+          isNull(users.deletedAt)
+        )
+      })
+
+      for (const user of relatedUsers) {
+        usersById.set(user.id, user)
+      }
     }
   }
 
