@@ -340,7 +340,8 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - Only one active team membership per user in the same hackathon.
 - Only one active membership per `(team_id, user_id)`.
-- Every active team must always have at least one active admin membership.
+- Every team that still has active members must have at least one active admin membership.
+- A team can have zero active members only when it is dissolved during `registration_open` or `submission_open` after its last active member leaves without an active draft, submitted, or locked submission.
 
 ## TeamJoinRequest
 

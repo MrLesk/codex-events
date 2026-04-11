@@ -128,7 +128,7 @@ describe('team workspace helpers', () => {
     })
   })
 
-  test('blocks leaving or removing the final required admin or member', () => {
+  test('handles last-member leave rules during team formation and after submission closes', () => {
     const multiAdminTeam: TeamDetailRecord = {
       ...baseTeam,
       activeMemberCount: 3,
@@ -159,6 +159,31 @@ describe('team workspace helpers', () => {
       ...baseTeam,
       activeMemberCount: 1,
       members: [baseTeam.members[0]]
+    }, baseTeam.members[0], {
+      hasActiveSubmission: false
+    })).toEqual({
+      isAllowed: true
+    })
+
+    expect(getLeaveTeamAvailability({
+      state: 'registration_open'
+    }, {
+      ...baseTeam,
+      activeMemberCount: 1,
+      members: [baseTeam.members[0]]
+    }, baseTeam.members[0], {
+      hasActiveSubmission: true
+    })).toEqual({
+      isAllowed: false,
+      reason: 'You cannot leave the last active member of a team that still has an active submission.'
+    })
+
+    expect(getLeaveTeamAvailability({
+      state: 'registration_open'
+    }, {
+      ...baseTeam,
+      activeMemberCount: 2,
+      members: [baseTeam.members[0], baseTeam.members[1]]
     }, baseTeam.members[0])).toEqual({
       isAllowed: false,
       reason: 'Teams must retain at least one active team admin.'
@@ -178,12 +203,9 @@ describe('team workspace helpers', () => {
     expect(getMemberRemovalAvailability({
       state: 'registration_open'
     }, {
-      ...baseTeam,
-      activeMemberCount: 1,
-      members: [baseTeam.members[0]]
-    }, baseTeam.members[0])).toEqual({
-      isAllowed: false,
-      reason: 'Teams must retain at least one active team admin.'
+      ...baseTeam
+    }, baseTeam.members[1])).toEqual({
+      isAllowed: true
     })
   })
 

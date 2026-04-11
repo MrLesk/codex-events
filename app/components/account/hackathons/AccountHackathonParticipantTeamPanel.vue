@@ -364,6 +364,10 @@ const submitSubmissionAvailability = computed(() =>
 const withdrawSubmissionAvailability = computed(() =>
   getWithdrawSubmissionAvailability(props.hackathon, submissionWorkspace.currentSubmission.value, canManageTeam.value)
 )
+const hasActiveTeamSubmission = computed(() => {
+  const status = submissionWorkspace.currentSubmission.value?.status
+  return status === 'draft' || status === 'submitted'
+})
 const joinAvailability = computed(() => {
   if (!displayedTeam.value) {
     return {
@@ -393,7 +397,10 @@ const leaveAvailability = computed(() => {
   return getLeaveTeamAvailability(
     props.hackathon,
     displayedTeam.value,
-    displayedTeamMembership.value
+    displayedTeamMembership.value,
+    {
+      hasActiveSubmission: hasActiveTeamSubmission.value
+    }
   )
 })
 const removalAvailabilityByUserId = computed<Record<string, TeamActionAvailability>>(() => {
@@ -608,10 +615,15 @@ async function toggleJoinPolicy(nextValue: boolean) {
 }
 
 async function leaveCurrentTeam() {
+  const previousTeamSlug = displayedTeam.value?.slug ?? null
   const result = await workspace.leaveCurrentTeam()
 
   if (!result) {
     return
+  }
+
+  if (result.teamDissolved) {
+    await syncSelectedTeamSlugQuery(previousTeamSlug, null)
   }
 
   toast.add({

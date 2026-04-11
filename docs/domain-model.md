@@ -191,6 +191,7 @@ Rules:
 - The participant UI can stage a default solo-team name before the first team row is persisted.
 - The first participant action that requires a persisted team creates that team and its initial admin membership.
 - Every active team must always have at least one active team admin.
+- A team with no active members is dissolved. Dissolved teams are retained for auditability and historical references but are no longer available in team-formation workflows.
 - A team cannot exceed the maximum team member limit defined by its hackathon.
 - A team with pending join requests can approve them only while the team remains open to join requests.
 - Team admins can update the team profile, review join requests, approve members, and remove members.
@@ -368,7 +369,9 @@ Scope:
 - After the submission window opens, users can still leave a team, join another existing team, or create a new team.
 - After the submission window closes, no new teams can be created, including solo teams.
 - A team creator becomes a team admin when the team is created.
-- A team member cannot leave or be removed if that action would leave the team without an active team admin.
+- During `registration_open` or `submission_open`, a team member can leave a team if another active team admin remains or if that member is the last active member of a team with no active draft, submitted, or locked submission.
+- Leaving the last active member dissolves the team and closes any outstanding join requests for that team.
+- A team member cannot leave or be removed if that action would leave remaining active members without an active team admin.
 - After the submission window closes, a user can still leave their current team only if at least one active team member remains on the team.
 
 ### Judging

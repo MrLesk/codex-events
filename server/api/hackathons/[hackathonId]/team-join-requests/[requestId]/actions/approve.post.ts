@@ -10,6 +10,7 @@ import {
   assertJoinRequestPending,
   assertNoActiveTeamMembershipForHackathon,
   assertRequestingUserApprovedForHackathon,
+  assertTeamActiveForFormation,
   assertTeamHasCapacity,
   assertTeamOpenToJoinRequests,
   getJoinRequestOrThrow,
@@ -32,6 +33,7 @@ export default defineApiHandler(async (event) => {
   assertJoinRequestPending(request)
 
   const liveTeam = await getTeamOrThrow(database, hackathonId, team.id)
+  await assertTeamActiveForFormation(database, liveTeam.id)
   assertTeamOpenToJoinRequests(liveTeam)
   await assertRequestingUserApprovedForHackathon(database, hackathonId, request.userId)
   await assertNoActiveTeamMembershipForHackathon(database, hackathonId, request.userId)

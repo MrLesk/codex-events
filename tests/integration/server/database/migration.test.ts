@@ -208,7 +208,30 @@ describe('shared database migration', () => {
     `).run('terms_win_1')).rejects.toThrow(/hackathon_current_winner_terms_document_invalid/)
   })
 
-  test('prevents removing the last active admin from a team', async () => {
+  test('prevents removing the last active admin while other active members remain on the team', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'user_1', now)
+    await seedUser(database, 'user_2', now)
+    await seedHackathon(database, 'hackathon_1', 'registration_open', now, 'user_1')
+    await seedTeam(database, 'team_1', 'hackathon_1', 'user_1', now)
+
+    await database.prepare(`
+      insert into team_members (id, team_id, user_id, role, joined_at, left_at, created_at)
+      values (?, ?, ?, ?, ?, ?, ?)
+    `).run('member_1', 'team_1', 'user_1', 'admin', now, null, now)
+    await database.prepare(`
+      insert into team_members (id, team_id, user_id, role, joined_at, left_at, created_at)
+      values (?, ?, ?, ?, ?, ?, ?)
+    `).run('member_2', 'team_1', 'user_2', 'member', now, null, now)
+
+    await expect(database.prepare(`
+      update team_members
+      set left_at = ?
+      where id = ?
+    `).run(isoTimestamp(1), 'member_1')).rejects.toThrow()
+  })
+
+  test('allows dissolving a team by removing its last active admin during team formation when no active submission exists', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'user_1', now)
     await seedHackathon(database, 'hackathon_1', 'registration_open', now, 'user_1')
@@ -218,6 +241,25 @@ describe('shared database migration', () => {
       insert into team_members (id, team_id, user_id, role, joined_at, left_at, created_at)
       values (?, ?, ?, ?, ?, ?, ?)
     `).run('member_1', 'team_1', 'user_1', 'admin', now, null, now)
+
+    await expect(database.prepare(`
+      update team_members
+      set left_at = ?
+      where id = ?
+    `).run(isoTimestamp(1), 'member_1')).resolves.toBeDefined()
+  })
+
+  test('prevents dissolving a team when the last active admin still has an active submission', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'user_1', now)
+    await seedHackathon(database, 'hackathon_1', 'registration_open', now, 'user_1')
+    await seedTeam(database, 'team_1', 'hackathon_1', 'user_1', now)
+
+    await database.prepare(`
+      insert into team_members (id, team_id, user_id, role, joined_at, left_at, created_at)
+      values (?, ?, ?, ?, ?, ?, ?)
+    `).run('member_1', 'team_1', 'user_1', 'admin', now, null, now)
+    await seedSubmission(database, 'submission_1', 'team_1', 'draft', now)
 
     await expect(database.prepare(`
       update team_members
@@ -315,6 +357,36 @@ async function seedHackathonTermsDocument(
     'Doc content',
     options.now,
     options.now
+  )
+}
+
+async function seedSubmission(
+  database: TestD1Database,
+  submissionId: string,
+  teamId: string,
+  status: 'draft' | 'submitted' | 'locked',
+  now: string
+) {
+  await database.prepare(`
+    insert into submissions (
+      id, team_id, status, project_name, summary, repository_url, demo_url,
+      submitted_at, locked_at, withdrawn_at, disqualified_at, created_at, updated_at
+    )
+    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    submissionId,
+    teamId,
+    status,
+    null,
+    null,
+    null,
+    null,
+    status === 'submitted' ? now : null,
+    status === 'locked' ? now : null,
+    null,
+    null,
+    now,
+    now
   )
 }
 

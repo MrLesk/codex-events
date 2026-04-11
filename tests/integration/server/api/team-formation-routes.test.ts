@@ -19,6 +19,7 @@ import {
   hackathonRoleAssignments,
   hackathonTermsDocuments,
   hackathons,
+  submissions,
   teamJoinRequests,
   teamMembers,
   teams,
@@ -82,6 +83,8 @@ async function seedTeamFormationContext(
     state?: 'registration_open' | 'submission_open' | 'judging_preparation'
     teamOpen?: boolean
     secondTeamAtCapacity?: boolean
+    teamOneSolo?: boolean
+    teamOneActiveSubmissionStatus?: 'draft' | 'submitted'
   }
 ) {
   await harness.database.insert(users).values([
@@ -243,14 +246,18 @@ async function seedTeamFormationContext(
       joinedAt: '2026-03-22T12:00:00.000Z',
       createdAt: '2026-03-22T12:00:00.000Z'
     },
-    {
-      id: 'membership_member',
-      teamId: 'team_1',
-      userId: 'team_member',
-      role: 'member',
-      joinedAt: '2026-03-22T12:00:00.000Z',
-      createdAt: '2026-03-22T12:00:00.000Z'
-    },
+    ...(options?.teamOneSolo
+      ? []
+      : [
+          {
+            id: 'membership_member',
+            teamId: 'team_1',
+            userId: 'team_member',
+            role: 'member' as const,
+            joinedAt: '2026-03-22T12:00:00.000Z',
+            createdAt: '2026-03-22T12:00:00.000Z'
+          }
+        ]),
     {
       id: 'membership_second_admin',
       teamId: 'team_2',
@@ -288,6 +295,16 @@ async function seedTeamFormationContext(
         ]
       : [])
   ])
+
+  if (options?.teamOneActiveSubmissionStatus) {
+    await harness.database.insert(submissions).values({
+      id: 'submission_team_1',
+      teamId: 'team_1',
+      status: options.teamOneActiveSubmissionStatus,
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:00:00.000Z'
+    })
+  }
 }
 
 function approvedApplication(id: string, userId: string) {
@@ -707,6 +724,135 @@ describe('TASK-3.6 team formation routes', () => {
     expect(await response.json()).toMatchObject({
       error: {
         code: 'team_admin_required'
+      }
+    })
+  })
+
+  test('a solo-team admin can leave during team formation when the team has no active submission and then request to join another team', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedTeamFormationContext(harness, {
+      teamOneSolo: true
+    })
+    await harness.database.insert(teamJoinRequests).values({
+      id: 'request_team_1',
+      teamId: 'team_1',
+      userId: 'requester',
+      status: 'pending',
+      requestedAt: '2026-03-22T12:30:00.000Z',
+      createdAt: '2026-03-22T12:30:00.000Z'
+    })
+
+    const leaveResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/actions/leave', {
+      method: 'POST'
+    })
+
+    expect(leaveResponse.status).toBe(200)
+    expect(await leaveResponse.json()).toMatchObject({
+      data: {
+        teamId: 'team_1',
+        userId: 'team_admin',
+        teamDissolved: true
+      }
+    })
+
+    const dissolvedMembership = await harness.database.query.teamMembers.findFirst({
+      where: eq(teamMembers.id, 'membership_admin')
+    })
+    expect(dissolvedMembership?.leftAt).toBeTruthy()
+
+    const closedJoinRequest = await harness.database.query.teamJoinRequests.findFirst({
+      where: eq(teamJoinRequests.id, 'request_team_1')
+    })
+    expect(closedJoinRequest).toMatchObject({
+      status: 'rejected',
+      reviewedByUserId: 'team_admin'
+    })
+    expect(closedJoinRequest?.reviewedAt).toBeTruthy()
+
+    const listResponse = await harness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=10')
+    expect(listResponse.status).toBe(200)
+    expect(await listResponse.json()).toMatchObject({
+      meta: {
+        total: 1
+      },
+      data: [
+        expect.objectContaining({
+          id: 'team_2'
+        })
+      ]
+    })
+
+    const joinResponse = await harness.request('/api/hackathons/hackathon_1/team-join-requests', {
+      method: 'POST',
+      body: JSON.stringify({
+        teamId: 'team_2'
+      })
+    })
+
+    expect(joinResponse.status).toBe(200)
+    expect(await joinResponse.json()).toMatchObject({
+      data: {
+        teamId: 'team_2',
+        userId: 'team_admin',
+        status: 'pending'
+      }
+    })
+  })
+
+  test('team admins must use leave for their own membership removals', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedTeamFormationContext(harness)
+
+    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/members/team_admin/actions/remove', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'team_member_self_removal_forbidden',
+        message: 'Use the leave-team action to remove your own team membership.'
+      }
+    })
+  })
+
+  test('a solo-team admin cannot leave during team formation when the team has an active submission', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedTeamFormationContext(harness, {
+      teamOneSolo: true,
+      teamOneActiveSubmissionStatus: 'draft'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/actions/leave', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'team_submission_active',
+        message: 'You cannot leave the last active member of a team that still has an active submission.'
       }
     })
   })

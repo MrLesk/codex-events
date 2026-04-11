@@ -262,7 +262,10 @@ export function hasTeamReachedMemberLimit(maxTeamMembers: number, activeMemberCo
 export function getLeaveTeamAvailability(
   hackathon: Pick<PublicHackathon, 'state'>,
   team: TeamDetailRecord,
-  membership: TeamMemberRecord | null | undefined
+  membership: TeamMemberRecord | null | undefined,
+  options?: {
+    hasActiveSubmission?: boolean
+  }
 ): TeamActionAvailability {
   if (!membership) {
     return {
@@ -271,11 +274,34 @@ export function getLeaveTeamAvailability(
     }
   }
 
+  const remainingActiveMembers = team.members.filter(member =>
+    member.id !== membership.id
+    && member.leftAt === null
+  )
+
+  if (remainingActiveMembers.length === 0) {
+    if (hackathon.state !== 'registration_open' && hackathon.state !== 'submission_open') {
+      return {
+        isAllowed: false,
+        reason: 'After submission closes, a team must retain at least one active member.'
+      }
+    }
+
+    if (options?.hasActiveSubmission) {
+      return {
+        isAllowed: false,
+        reason: 'You cannot leave the last active member of a team that still has an active submission.'
+      }
+    }
+
+    return {
+      isAllowed: true
+    }
+  }
+
   if (membership.role === 'admin') {
-    const otherActiveAdmins = team.members.filter(member =>
-      member.id !== membership.id
-      && member.role === 'admin'
-      && member.leftAt === null
+    const otherActiveAdmins = remainingActiveMembers.filter(member =>
+      member.role === 'admin'
     )
 
     if (otherActiveAdmins.length === 0) {
@@ -287,16 +313,8 @@ export function getLeaveTeamAvailability(
   }
 
   if (hackathon.state !== 'registration_open' && hackathon.state !== 'submission_open') {
-    const otherActiveMembers = team.members.filter(member =>
-      member.id !== membership.id
-      && member.leftAt === null
-    )
-
-    if (otherActiveMembers.length === 0) {
-      return {
-        isAllowed: false,
-        reason: 'After submission closes, a team must retain at least one active member.'
-      }
+    return {
+      isAllowed: true
     }
   }
 

@@ -5,6 +5,7 @@ import { writeAuditLog } from '../../../../../../../../database/audit-log'
 import { teamMembers } from '../../../../../../../../database/schema'
 import { defineApiHandler } from '../../../../../../../../utils/api-handler'
 import { apiData } from '../../../../../../../../utils/api-response'
+import { ApiError } from '../../../../../../../../utils/api-error'
 import {
   assertLeaveOrRemovalAllowed,
   getActiveTeamMemberOrThrow,
@@ -18,10 +19,24 @@ export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
   const { hackathonId, teamId, userId } = parseValidatedParams(event, teamMemberParamsSchema)
   const { database, hackathon } = await requireTeamAdminContext(event, hackathonId, teamId)
+
+  if (userId === actor.platformUser.id) {
+    throw new ApiError({
+      statusCode: 403,
+      code: 'team_member_self_removal_forbidden',
+      message: 'Use the leave-team action to remove your own team membership.',
+      details: {
+        hackathonId,
+        teamId,
+        userId
+      }
+    })
+  }
+
   const targetMember = await getActiveTeamMemberOrThrow(database, teamId, userId)
   const members = await getActiveTeamMembers(database, teamId)
 
-  assertLeaveOrRemovalAllowed(hackathon, members, targetMember)
+  await assertLeaveOrRemovalAllowed(database, hackathon, members, targetMember)
 
   const leftAt = new Date().toISOString()
 

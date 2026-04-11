@@ -5,6 +5,7 @@ import { apiData } from '../../../../utils/api-response'
 import {
   assertNoActiveTeamMembershipForHackathon,
   assertPendingJoinRequestAllowed,
+  assertTeamActiveForFormation,
   assertTeamHasCapacity,
   assertTeamOpenToJoinRequests,
   createJoinRequestBodySchema,
@@ -24,6 +25,7 @@ export default defineApiHandler(async (event) => {
   const team = await getTeamOrThrow(database, hackathonId, body.teamId)
 
   await assertNoActiveTeamMembershipForHackathon(database, hackathonId, actor.platformUser.id)
+  await assertTeamActiveForFormation(database, team.id)
   assertTeamOpenToJoinRequests(team)
   await assertTeamHasCapacity(database, hackathon, team.id)
 

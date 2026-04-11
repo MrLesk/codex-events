@@ -643,6 +643,7 @@ export function useTeamFormationWorkspace(
         teamId: string
         userId: string
         leftAt: string
+        teamDissolved: boolean
       }>>(
         `/api/hackathons/${visibleHackathonId.value}/teams/${currentTeam.value!.id}/actions/leave`,
         {

@@ -11,8 +11,10 @@ import { routeIdParamsSchema } from '../../../../utils/hackathon-management'
 export default defineApiHandler(async (event) => {
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)
   const query = parseValidatedQuery(event, listTeamsQuerySchema)
-  const { database, hackathon } = await requireTeamVisibilityContext(event, hackathonId)
-  const result = await listVisibleTeams(database, hackathon, hackathonId, query)
+  const { database, hackathon, hackathonAuthorization } = await requireTeamVisibilityContext(event, hackathonId)
+  const result = await listVisibleTeams(database, hackathon, hackathonId, query, {
+    includeInactiveTeams: hackathonAuthorization.canViewParticipantsAndTeams
+  })
 
   return apiList(result.data, {
     page: query.page,

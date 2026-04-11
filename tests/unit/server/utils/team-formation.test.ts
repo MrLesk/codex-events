@@ -1,6 +1,13 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test } from 'vitest'
 
 import { ApiError } from '../../../../server/utils/api-error'
+import {
+  hackathons,
+  submissions,
+  teamMembers,
+  teams,
+  users
+} from '../../../../server/database/schema'
 import {
   assertHackathonAllowsTeamFormation,
   assertJoinRequestPending,
@@ -9,6 +16,7 @@ import {
   createTeamSlug,
   serializeTeamMember
 } from '../../../../server/utils/team-formation'
+import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 function createHackathon(state: 'registration_open' | 'submission_open' | 'judging_preparation') {
   return {
@@ -39,6 +47,14 @@ function createHackathon(state: 'registration_open' | 'submission_open' | 'judgi
 }
 
 describe('team formation utilities', () => {
+  const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
+
+  afterEach(async () => {
+    while (harnesses.length > 0) {
+      await harnesses.pop()?.d1Database.close()
+    }
+  })
+
   test('creates team slug bases from team names', () => {
     expect(createTeamSlug(' North Star Builders ')).toBe('north-star-builders')
     expect(createTeamSlug('Team!!!')).toBe('team')
@@ -70,56 +86,116 @@ describe('team formation utilities', () => {
     })).not.toThrow()
   })
 
-  test('leave and removal rules preserve an active admin', () => {
-    expect(() => assertLeaveOrRemovalAllowed(
+  test('last-member leave is allowed during team formation when no active submission exists', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: []
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'user_admin',
+      auth0Subject: 'auth0|user_admin',
+      email: 'user-admin@example.com',
+      displayName: 'User Admin'
+    })
+
+    await harness.database.insert(hackathons).values({
+      ...createHackathon('registration_open'),
+      id: 'hackathon_1',
+      createdByUserId: 'user_admin'
+    })
+
+    await harness.database.insert(teams).values({
+      id: 'team_1',
+      hackathonId: 'hackathon_1',
+      name: 'Fixture Team',
+      slug: 'fixture-team',
+      isOpenToJoinRequests: true,
+      createdByUserId: 'user_admin'
+    })
+
+    const member = {
+      id: 'member_admin',
+      teamId: 'team_1',
+      userId: 'user_admin',
+      role: 'admin' as const,
+      joinedAt: '2026-03-22T12:00:00.000Z',
+      leftAt: null,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    }
+
+    await harness.database.insert(teamMembers).values(member)
+
+    await expect(assertLeaveOrRemovalAllowed(
+      harness.database,
       createHackathon('registration_open'),
-      [
-        {
-          id: 'member_admin',
-          teamId: 'team_1',
-          userId: 'user_admin',
-          role: 'admin',
-          joinedAt: '2026-03-22T12:00:00.000Z',
-          leftAt: null,
-          createdAt: '2026-03-22T12:00:00.000Z'
-        }
-      ],
-      {
-        id: 'member_admin',
-        teamId: 'team_1',
-        userId: 'user_admin',
-        role: 'admin',
-        joinedAt: '2026-03-22T12:00:00.000Z',
-        leftAt: null,
-        createdAt: '2026-03-22T12:00:00.000Z'
-      }
-    )).toThrowError(ApiError)
+      [member],
+      member
+    )).resolves.toEqual({
+      teamDissolved: true
+    })
   })
 
-  test('leave and removal rules preserve one active member after submission closes', () => {
-    expect(() => assertLeaveOrRemovalAllowed(
+  test('last-member leave is blocked when an active submission exists or after submission closes', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: []
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'user_1',
+      auth0Subject: 'auth0|user_1',
+      email: 'user-1@example.com',
+      displayName: 'User One'
+    })
+
+    await harness.database.insert(hackathons).values({
+      ...createHackathon('registration_open'),
+      id: 'hackathon_1',
+      createdByUserId: 'user_1'
+    })
+
+    await harness.database.insert(teams).values({
+      id: 'team_1',
+      hackathonId: 'hackathon_1',
+      name: 'Fixture Team',
+      slug: 'fixture-team',
+      isOpenToJoinRequests: true,
+      createdByUserId: 'user_1'
+    })
+
+    const member = {
+      id: 'member_1',
+      teamId: 'team_1',
+      userId: 'user_1',
+      role: 'admin' as const,
+      joinedAt: '2026-03-22T12:00:00.000Z',
+      leftAt: null,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    }
+
+    await harness.database.insert(teamMembers).values(member)
+    await harness.database.insert(submissions).values({
+      id: 'submission_1',
+      teamId: 'team_1',
+      status: 'draft'
+    })
+
+    await expect(assertLeaveOrRemovalAllowed(
+      harness.database,
+      createHackathon('registration_open'),
+      [member],
+      member
+    )).rejects.toThrowError(ApiError)
+
+    await harness.database.delete(submissions)
+
+    await expect(assertLeaveOrRemovalAllowed(
+      harness.database,
       createHackathon('judging_preparation'),
-      [
-        {
-          id: 'member_1',
-          teamId: 'team_1',
-          userId: 'user_1',
-          role: 'member',
-          joinedAt: '2026-03-22T12:00:00.000Z',
-          leftAt: null,
-          createdAt: '2026-03-22T12:00:00.000Z'
-        }
-      ],
-      {
-        id: 'member_1',
-        teamId: 'team_1',
-        userId: 'user_1',
-        role: 'member',
-        joinedAt: '2026-03-22T12:00:00.000Z',
-        leftAt: null,
-        createdAt: '2026-03-22T12:00:00.000Z'
-      }
-    )).toThrowError(ApiError)
+      [member],
+      member
+    )).rejects.toThrowError(ApiError)
   })
 
   test('only pending join requests can be changed', () => {

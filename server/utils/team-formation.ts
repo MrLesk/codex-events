@@ -7,6 +7,7 @@ import { requirePlatformActor } from '../auth/actor'
 import { assertTeamAdminAccess, resolveHackathonAuthorization, resolveTeamAuthorization } from '../auth/authorization'
 import { getDatabase, type AppDatabase } from '../database/client'
 import {
+  submissions,
   teamJoinRequests,
   teamMembers,
   teams,
@@ -279,6 +280,34 @@ export async function getActiveTeamMembers(database: AppDatabase, teamId: string
   })
 }
 
+export function isTeamDissolved(members: TeamMemberRecord[] | Array<{ leftAt: string | null }>) {
+  return members.every(member => member.leftAt !== null) || members.length === 0
+}
+
+export async function getActiveSubmissionForTeam(database: AppDatabase, teamId: string) {
+  return await database.query.submissions.findFirst({
+    where: and(
+      eq(submissions.teamId, teamId),
+      inArray(submissions.status, ['draft', 'submitted', 'locked'])
+    )
+  })
+}
+
+export async function assertTeamActiveForFormation(database: AppDatabase, teamId: string) {
+  const members = await getActiveTeamMembers(database, teamId)
+
+  assertGuard(!isTeamDissolved(members), {
+    code: 'team_inactive',
+    message: 'This team is no longer active.',
+    details: {
+      teamId
+    },
+    statusCode: 409
+  })
+
+  return members
+}
+
 export async function getActiveTeamMemberOrThrow(database: AppDatabase, teamId: string, userId: string) {
   const member = await database.query.teamMembers.findFirst({
     where: and(
@@ -368,7 +397,10 @@ export async function listVisibleTeams(
   database: AppDatabase,
   hackathon: HackathonRecord,
   hackathonId: string,
-  query: z.infer<typeof listTeamsQuerySchema>
+  query: z.infer<typeof listTeamsQuerySchema>,
+  options?: {
+    includeInactiveTeams?: boolean
+  }
 ) {
   const filters = [eq(teams.hackathonId, hackathonId)]
 
@@ -407,9 +439,13 @@ export async function listVisibleTeams(
     counts.set(member.teamId, (counts.get(member.teamId) ?? 0) + 1)
   }
 
+  const includeInactiveTeams = options?.includeInactiveTeams ?? false
+  const activeTeams = includeInactiveTeams
+    ? allTeams
+    : allTeams.filter(team => (counts.get(team.id) ?? 0) > 0)
   const filteredTeams = query.has_capacity
-    ? allTeams.filter(team => (counts.get(team.id) ?? 0) < hackathon.maxTeamMembers)
-    : allTeams
+    ? activeTeams.filter(team => (counts.get(team.id) ?? 0) < hackathon.maxTeamMembers)
+    : activeTeams
 
   const start = (query.page - 1) * query.page_size
   const pagedTeams = filteredTeams.slice(start, start + query.page_size)
@@ -428,10 +464,24 @@ export async function getTeamWithMembersOrThrow(
   teamId: string,
   options?: {
     includeSensitiveUserFields?: boolean
+    allowInactiveTeam?: boolean
   }
 ) {
   const team = await getTeamOrThrow(database, hackathonId, teamId)
   const members = await getActiveTeamMembers(database, team.id)
+
+  if (!options?.allowInactiveTeam && isTeamDissolved(members)) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'team_not_found',
+      message: 'The requested team was not found.',
+      details: {
+        hackathonId,
+        teamId
+      }
+    })
+  }
+
   const usersById = await getUsersByIds(database, members.map(member => member.userId))
 
   return {
@@ -596,16 +646,48 @@ export async function assertRequestingUserApprovedForHackathon(
   })
 }
 
-export function assertLeaveOrRemovalAllowed(
+export async function assertLeaveOrRemovalAllowed(
+  database: AppDatabase,
   hackathon: HackathonRecord,
   members: TeamMemberRecord[],
   targetMember: TeamMemberRecord
 ) {
+  const remainingActiveMembers = members.filter(member =>
+    member.id !== targetMember.id
+    && member.leftAt === null
+  )
+
+  if (remainingActiveMembers.length === 0) {
+    assertGuard(['registration_open', 'submission_open'].includes(hackathon.state), {
+      code: 'team_member_required',
+      message: 'Teams must retain at least one active member after submission closes.',
+      details: {
+        teamId: targetMember.teamId,
+        hackathonId: hackathon.id
+      }
+    })
+
+    const activeSubmission = await getActiveSubmissionForTeam(database, targetMember.teamId)
+
+    assertGuard(!activeSubmission, {
+      code: 'team_submission_active',
+      message: 'You cannot leave the last active member of a team that still has an active submission.',
+      details: {
+        teamId: targetMember.teamId,
+        hackathonId: hackathon.id,
+        submissionId: activeSubmission?.id ?? null,
+        submissionStatus: activeSubmission?.status ?? null
+      }
+    })
+
+    return {
+      teamDissolved: true
+    }
+  }
+
   if (targetMember.role === 'admin') {
-    const otherActiveAdmins = members.filter(member =>
-      member.id !== targetMember.id
-      && member.role === 'admin'
-      && member.leftAt === null
+    const otherActiveAdmins = remainingActiveMembers.filter(member =>
+      member.role === 'admin'
     )
 
     assertGuard(otherActiveAdmins.length > 0, {
@@ -617,20 +699,8 @@ export function assertLeaveOrRemovalAllowed(
     })
   }
 
-  if (!['registration_open', 'submission_open'].includes(hackathon.state)) {
-    const otherActiveMembers = members.filter(member =>
-      member.id !== targetMember.id
-      && member.leftAt === null
-    )
-
-    assertGuard(otherActiveMembers.length > 0, {
-      code: 'team_member_required',
-      message: 'Teams must retain at least one active member after submission closes.',
-      details: {
-        teamId: targetMember.teamId,
-        hackathonId: hackathon.id
-      }
-    })
+  return {
+    teamDissolved: false
   }
 }
 
@@ -640,7 +710,7 @@ export async function requireTeamVisibilityContext(event: H3Event, hackathonId: 
   const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
   const hackathonAuthorization = await resolveHackathonAuthorization(event, hackathonId)
 
-  if (hackathonAuthorization.isHackathonAdmin) {
+  if (hackathonAuthorization.canViewParticipantsAndTeams) {
     return { actor, database, hackathon, hackathonAuthorization }
   }
 

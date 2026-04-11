@@ -1,8 +1,8 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '../../../../../../auth/actor'
 import { writeAuditLog } from '../../../../../../database/audit-log'
-import { teamMembers } from '../../../../../../database/schema'
+import { teamJoinRequests, teamMembers, teams } from '../../../../../../database/schema'
 import { defineApiHandler } from '../../../../../../utils/api-handler'
 import { apiData } from '../../../../../../utils/api-response'
 import { ApiError } from '../../../../../../utils/api-error'
@@ -37,16 +37,41 @@ export default defineApiHandler(async (event) => {
   }
 
   const members = await getActiveTeamMembers(database, teamId)
-  assertLeaveOrRemovalAllowed(hackathon, members, ownMembership)
+  const leaveDecision = await assertLeaveOrRemovalAllowed(database, hackathon, members, ownMembership)
 
   const leftAt = new Date().toISOString()
+  const reviewedAt = leftAt
 
-  await database
-    .update(teamMembers)
-    .set({
-      leftAt
-    })
-    .where(eq(teamMembers.id, ownMembership.id))
+  await database.batch([
+    database
+      .update(teamMembers)
+      .set({
+        leftAt
+      })
+      .where(eq(teamMembers.id, ownMembership.id)),
+    ...(leaveDecision.teamDissolved
+      ? [
+          database
+            .update(teams)
+            .set({
+              isOpenToJoinRequests: false,
+              updatedAt: leftAt
+            })
+            .where(eq(teams.id, teamId)),
+          database
+            .update(teamJoinRequests)
+            .set({
+              status: 'rejected',
+              reviewedAt,
+              reviewedByUserId: actor.platformUser.id
+            })
+            .where(and(
+              eq(teamJoinRequests.teamId, teamId),
+              eq(teamJoinRequests.status, 'pending')
+            ))
+        ]
+      : [])
+  ])
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,
@@ -56,7 +81,8 @@ export default defineApiHandler(async (event) => {
     metadata: {
       hackathonId,
       teamId,
-      userId: actor.platformUser.id
+      userId: actor.platformUser.id,
+      teamDissolved: leaveDecision.teamDissolved
     }
   })
 
@@ -64,6 +90,7 @@ export default defineApiHandler(async (event) => {
     id: ownMembership.id,
     teamId,
     userId: actor.platformUser.id,
-    leftAt
+    leftAt,
+    teamDissolved: leaveDecision.teamDissolved
   })
 })

@@ -12,7 +12,8 @@ export default defineApiHandler(async (event) => {
   const { hackathonId, teamId } = parseValidatedParams(event, teamParamsSchema)
   const { database, hackathonAuthorization, membership } = await requireTeamVisibilityContext(event, hackathonId)
   const { team, members } = await getTeamWithMembersOrThrow(database, hackathonId, teamId, {
-    includeSensitiveUserFields: hackathonAuthorization.isHackathonAdmin || membership?.teamId === teamId
+    includeSensitiveUserFields: hackathonAuthorization.isHackathonAdmin || membership?.teamId === teamId,
+    allowInactiveTeam: hackathonAuthorization.canViewParticipantsAndTeams
   })
 
   return apiData(serializeTeam(team, {
