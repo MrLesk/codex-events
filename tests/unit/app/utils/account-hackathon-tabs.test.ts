@@ -29,7 +29,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'team', 'prizes', 'details', 'judges', 'staff'],
+      availableTabs: ['overview', 'team', 'submission', 'prizes', 'details', 'judges', 'staff'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
@@ -57,7 +57,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'team', 'details', 'judges', 'staff', 'participants', 'teams'],
+      availableTabs: ['overview', 'team', 'submission', 'details', 'judges', 'staff', 'participants', 'teams'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
@@ -71,7 +71,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'team', 'prizes', 'details', 'judges', 'staff', 'participants', 'submissions', 'judging', 'operations', 'settings'],
+      availableTabs: ['overview', 'team', 'submission', 'prizes', 'details', 'judges', 'staff', 'participants', 'submissions', 'judging', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
@@ -116,6 +116,20 @@ describe('getAccountHackathonTabAccess', () => {
       canViewParticipantsAndTeams: false
     })).toEqual({
       availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff'],
+      showPrizeConfiguration: false,
+      showAgendaConfigurationInDetails: false
+    })
+  })
+
+  test('keeps the participant submission tab hidden when the actor is not approved', () => {
+    expect(getAccountHackathonTabAccess({
+      hasApprovedParticipantAccess: false,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: true
+    })).toEqual({
+      availableTabs: ['overview', 'details', 'judges', 'staff', 'participants', 'teams'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })

@@ -622,8 +622,8 @@ function cancelEditingProfile() {
               :data-testid="`participant-team-join-request-${request.id}`"
               class="rounded-2xl border border-black/8 bg-white/80 px-4 py-4 dark:border-white/[0.08] dark:bg-white/[0.03]"
             >
-              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div class="space-y-2">
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="min-w-0 flex-1 space-y-2">
                   <div class="flex flex-wrap items-center gap-3">
                     <h4 class="text-base font-semibold text-highlighted dark:text-white">
                       {{ request.user?.displayName ?? request.userId }}
@@ -664,7 +664,7 @@ function cancelEditingProfile() {
 
                 <div
                   v-if="request.status === 'pending'"
-                  class="grid gap-2 shrink-0 self-center sm:min-w-44"
+                  class="grid gap-2 shrink-0 sm:min-w-44"
                 >
                   <button
                     type="button"

@@ -13,14 +13,14 @@ import { assertAllowedState, assertGuard } from './lifecycle-guard'
 import { getVisibleHackathonOrThrow, requireHackathonAdmin, routeIdParamsSchema } from './hackathon-management'
 import { getActiveTeamMembers, getTeamOrThrow, getUsersByIds, serializeTeam, serializeTeamMember } from './team-formation'
 
-const nullableStringSchema = z.string().trim().min(1).nullable().optional()
-const nullableUrlSchema = z.string().trim().url().nullable().optional()
+const requiredStringSchema = z.string().trim().min(1)
+const requiredUrlSchema = z.string().trim().url()
 
 const submissionBodyShape = {
-  projectName: nullableStringSchema,
-  summary: nullableStringSchema,
-  repositoryUrl: nullableUrlSchema,
-  demoUrl: nullableUrlSchema
+  projectName: requiredStringSchema,
+  summary: requiredStringSchema,
+  repositoryUrl: requiredUrlSchema,
+  demoUrl: requiredUrlSchema
 } satisfies Record<string, z.ZodTypeAny>
 
 type HackathonRecord = typeof hackathons.$inferSelect
@@ -33,10 +33,7 @@ export const submissionParamsSchema = routeIdParamsSchema.extend({
 
 export const createSubmissionBodySchema = z.object(submissionBodyShape)
 
-export const updateSubmissionBodySchema = z.object(submissionBodyShape).refine(
-  input => Object.keys(input).length > 0,
-  'At least one submission field must be provided.'
-)
+export const updateSubmissionBodySchema = z.object(submissionBodyShape)
 
 export const adminWithdrawSubmissionBodySchema = z.object({
   requestedByUserId: z.string().trim().min(1),
@@ -129,6 +126,22 @@ export function assertSubmissionSubmittable(submission: SubmissionRecord) {
       submissionId: submission.id
     }
   })
+
+  const requiredFieldResult = createSubmissionBodySchema.safeParse({
+    projectName: submission.projectName,
+    summary: submission.summary,
+    repositoryUrl: submission.repositoryUrl,
+    demoUrl: submission.demoUrl
+  })
+
+  assertGuard(requiredFieldResult.success, {
+    code: 'submission_fields_incomplete',
+    message: 'Complete the project name, summary, repository URL, and demo URL before submitting.',
+    details: {
+      submissionId: submission.id
+    },
+    statusCode: 400
+  })
 }
 
 export function assertSubmissionWithdrawable(
@@ -182,19 +195,19 @@ export function buildSubmissionWritePayload(
   }
 
   if ('projectName' in input) {
-    payload.projectName = input.projectName ?? null
+    payload.projectName = input.projectName
   }
 
   if ('summary' in input) {
-    payload.summary = input.summary ?? null
+    payload.summary = input.summary
   }
 
   if ('repositoryUrl' in input) {
-    payload.repositoryUrl = input.repositoryUrl ?? null
+    payload.repositoryUrl = input.repositoryUrl
   }
 
   if ('demoUrl' in input) {
-    payload.demoUrl = input.demoUrl ?? null
+    payload.demoUrl = input.demoUrl
   }
 
   return payload

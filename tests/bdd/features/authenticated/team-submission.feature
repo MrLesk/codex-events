@@ -1,10 +1,15 @@
 Feature: Participant team submission workspace
-  Authenticated team members can monitor the canonical submission state, while team admins manage the draft, submit, and withdraw actions during the allowed lifecycle window.
+  Approved participants use the account hackathon Submission tab to monitor the canonical submission state, while team admins manage the draft, submit, and withdraw actions during the allowed lifecycle window.
+
+  Scenario: Approved user sees the submission window notice during registration_open
+    Given the saved "regular_user" Auth0 session state exists
+    When I open the participant Submission tab for hackathon slug "participant-approved-fixture-hackathon" with the saved "regular_user" session
+    Then I should see the participant submission text "Submission window not open yet"
+    And I should see the participant submission text "Submission opens at"
 
   Scenario: Regular user creates, edits, submits, and withdraws a team submission during submission_open
     Given the saved "regular_user" Auth0 session state exists
-    When I open the participant Team tab for hackathon slug "participant-submission-create-fixture-hackathon" with the saved "regular_user" session
-    Then I should see the participant current team "Submission Launch Team"
+    When I open the participant Submission tab for hackathon slug "participant-submission-create-fixture-hackathon" with the saved "regular_user" session
     Then I should see the participant submission status "No submission"
     When I fill the participant submission form with project name "Launch Console", summary "Initial draft for the launch console.", repository URL "https://github.com/example/launch-console", and demo URL "https://example.com/launch-console"
     And I create the participant submission draft
@@ -20,8 +25,7 @@ Feature: Participant team submission workspace
 
   Scenario: Regular user sees a locked team submission as read-only
     Given the saved "regular_user" Auth0 session state exists
-    When I open the participant Team tab for hackathon slug "participant-submission-locked-fixture-hackathon" with the saved "regular_user" session
-    Then I should see the participant current team "Locked Review Team"
+    When I open the participant Submission tab for hackathon slug "participant-submission-locked-fixture-hackathon" with the saved "regular_user" session
     Then I should see the participant submission status "Locked"
     Then I should see the participant submission text "This project is locked for judging and can no longer be edited or withdrawn."
     And the participant submission action "Save changes" should be disabled

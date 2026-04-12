@@ -23,7 +23,6 @@ function isHttpUrl(value: string) {
 }
 
 const requiredTextSchema = z.string().trim().min(1)
-const optionalTextSchema = z.string().trim()
 const optionalEmailSchema = z.string().trim().refine(
   value => value.length === 0 || z.string().email().safeParse(value).success,
   'Enter a valid email address.'
@@ -39,6 +38,12 @@ function createOptionalHttpUrlSchema(message: string) {
     value => value.length === 0 || isHttpUrl(value),
     message
   )
+}
+
+function createRequiredHttpUrlSchema(requiredMessage: string, invalidMessage: string) {
+  return z.string().trim()
+    .min(1, requiredMessage)
+    .refine(isHttpUrl, invalidMessage)
 }
 
 function createOptionalLumaEventApiIdSchema(message: string) {
@@ -111,10 +116,16 @@ export const teamProfileFormSchema = z.object({
 })
 
 export const teamSubmissionFormSchema = z.object({
-  projectName: optionalTextSchema,
-  summary: optionalTextSchema,
-  repositoryUrl: createOptionalHttpUrlSchema('Enter a valid repository URL.'),
-  demoUrl: createOptionalHttpUrlSchema('Enter a valid demo URL.')
+  projectName: z.string().trim().min(1, 'Project name is required.'),
+  summary: z.string().trim().min(1, 'Summary is required.'),
+  repositoryUrl: createRequiredHttpUrlSchema(
+    'Repository URL is required.',
+    'Enter a valid repository URL.'
+  ),
+  demoUrl: createRequiredHttpUrlSchema(
+    'Demo URL is required.',
+    'Enter a valid demo URL.'
+  )
 })
 
 const agendaItemSchema = z.object({

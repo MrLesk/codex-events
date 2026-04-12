@@ -101,6 +101,31 @@ async function waitForParticipantTeamTabToSettle(page: Page) {
   }
 }
 
+async function waitForParticipantSubmissionTabToSettle(page: Page) {
+  const submissionRoot = page.getByTestId('account-hackathon-submission-panel')
+
+  await expect(submissionRoot).toBeVisible()
+  await waitForNuxtHydration(page)
+
+  await expect.poll(async () => {
+    if (await page.getByTestId('participant-submission-panel').isVisible().catch(() => false)) {
+      return 'panel'
+    }
+
+    if (await submissionRoot.getByText('Submission window not open yet').count() > 0) {
+      return 'closed'
+    }
+
+    if (await submissionRoot.getByText('Submission unavailable').count() > 0) {
+      return 'unavailable'
+    }
+
+    return 'loading'
+  }, {
+    timeout: 15_000
+  }).not.toBe('loading')
+}
+
 async function resetParticipantCreateFixtureWorkspaceIfNeeded(page: Page, slug: string) {
   if (slug !== 'participant-team-create-fixture-hackathon') {
     return
@@ -200,6 +225,12 @@ When('I open the participant Team tab for hackathon slug {string} and selected t
   await page.goto(`/account/hackathons/${slug}?tab=team&team=${encodeURIComponent(selectedTeamSlug)}`)
   await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
+})
+
+When('I open the participant Submission tab for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
+  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await page.goto(`/account/hackathons/${slug}?tab=submission`)
+  await waitForParticipantSubmissionTabToSettle(page)
 })
 
 Then('I should see the participant team card {string}', async ({ page }, teamName: string) => {

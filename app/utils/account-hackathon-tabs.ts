@@ -1,6 +1,7 @@
 export const accountHackathonWorkspaceTabs = [
   'overview',
   'team',
+  'submission',
   'prizes',
   'details',
   'judges',
@@ -63,6 +64,7 @@ export function getAccountHackathonTabAccess(
 
   if (hasApprovedParticipantAccess) {
     availableTabs.push('team')
+    availableTabs.push('submission')
   }
 
   if (hasPublishedPrizes || canManage) {

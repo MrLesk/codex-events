@@ -17,6 +17,7 @@ import type {
 
 import AccountHackathonAdminOperationsPanel from '~/components/account/hackathons/AccountHackathonAdminOperationsPanel.vue'
 import AccountHackathonPublishedRosterPanel from '~/components/account/hackathons/AccountHackathonPublishedRosterPanel.vue'
+import AccountHackathonParticipantSubmissionPanel from '~/components/account/hackathons/AccountHackathonParticipantSubmissionPanel.vue'
 import AccountHackathonParticipantTeamPanel from '~/components/account/hackathons/AccountHackathonParticipantTeamPanel.vue'
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
 import AccountHackathonCompetitionPanel from '~/components/account/hackathons/AccountHackathonCompetitionPanel.vue'
@@ -108,6 +109,7 @@ type AccountWorkspaceHackathon = PublicHackathon & {
 const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
   overview: 'Overview',
   team: 'Team',
+  submission: 'Submission',
   prizes: 'Prizes',
   details: 'Details',
   judges: 'Judges',
@@ -339,6 +341,7 @@ const teamTabTargetSlug = computed(() =>
   ?? selectedTeamSlug.value
 )
 const teamTabHref = computed(() => buildAccountHackathonTeamTabHref(slug.value, teamTabTargetSlug.value))
+const submissionTabHref = computed(() => `/account/hackathons/${slug.value}?tab=submission`)
 const detailsTabHref = computed(() => `/account/hackathons/${slug.value}?tab=details`)
 const applicationSubmittedNoticeVisible = ref(isParticipantApplicationSubmittedNotice(route.query.notice))
 const applicationStatusLabel = computed(() =>
@@ -409,10 +412,10 @@ const approvedOverviewTeamActionDescription = computed(() => {
   const activeTeam = participationRecord.value?.activeTeam
 
   if (activeTeam) {
-    return `You're already on ${activeTeam.name}. Use the Team tab to manage collaborators, team details, and submission work from one place.`
+    return `You're already on ${activeTeam.name}. Use the Team tab to manage collaborators, team details, and join requests.`
   }
 
-  return 'Everyone participates through a team. The Team tab starts you with your own team workspace and also lets you request to join another team.'
+  return 'Everyone participates through a team. The Team tab starts you with your own team workspace and lets you request to join another team.'
 })
 const approvedOverviewDetailsActionDescription = 'Check the schedule, location, and full address before the hackathon starts.'
 const showTeamAndSubmissionCards = computed(() => hasHackathonEnteredSubmissionPhase(hackathon.value))
@@ -815,13 +818,13 @@ useSeoMeta({
                   </p>
 
                   <AppButton
-                    :to="teamTabHref"
+                    :to="submissionTabHref"
                     color="neutral"
                     variant="solid"
                     trailing-icon="i-lucide-arrow-up-right"
                     class="mt-4"
                   >
-                    Go to Team
+                    Go to Submission
                   </AppButton>
                 </div>
               </section>
@@ -875,6 +878,16 @@ useSeoMeta({
           :hackathon="hackathon"
           :selected-team-slug="selectedTeamSlug"
         />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'submission'"
+        id="account-tab-panel-submission"
+        role="tabpanel"
+        aria-labelledby="account-tab-submission"
+        class="space-y-8"
+      >
+        <AccountHackathonParticipantSubmissionPanel :hackathon="hackathon" />
       </section>
 
       <section

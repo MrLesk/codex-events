@@ -58,6 +58,14 @@ function createSubmission(status: 'draft' | 'submitted' | 'withdrawn' | 'locked'
   }
 }
 
+function createIncompleteSubmission(status: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified') {
+  return {
+    ...createSubmission(status),
+    repositoryUrl: null,
+    demoUrl: null
+  }
+}
+
 describe('TASK-3.7 submission helpers', () => {
   test('submission editing is limited to submission_open', () => {
     expect(() => assertHackathonAllowsSubmissionEditing(createHackathon('submission_open'))).not.toThrow()
@@ -76,6 +84,7 @@ describe('TASK-3.7 submission helpers', () => {
 
     expect(() => assertSubmissionSubmittable(createSubmission('draft'))).not.toThrow()
     expect(() => assertSubmissionSubmittable(createSubmission('submitted'))).toThrowError(ApiError)
+    expect(() => assertSubmissionSubmittable(createIncompleteSubmission('draft'))).toThrowError(ApiError)
   })
 
   test('withdrawal is allowed only before judging preparation and only for draft or submitted submissions', () => {
@@ -100,15 +109,17 @@ describe('TASK-3.7 submission helpers', () => {
     expect(isNoSubmissionStatus('locked')).toBe(false)
   })
 
-  test('submission write payloads preserve explicit nulls for clearable fields', () => {
+  test('submission write payloads persist the canonical required fields', () => {
     expect(buildSubmissionWritePayload({
       projectName: 'Updated Project',
-      summary: null,
-      repositoryUrl: null
+      summary: 'Updated summary',
+      repositoryUrl: 'https://github.com/example/updated-project',
+      demoUrl: 'https://example.com/updated-project'
     }, '2026-03-24T13:00:00.000Z')).toEqual({
       projectName: 'Updated Project',
-      summary: null,
-      repositoryUrl: null,
+      summary: 'Updated summary',
+      repositoryUrl: 'https://github.com/example/updated-project',
+      demoUrl: 'https://example.com/updated-project',
       updatedAt: '2026-03-24T13:00:00.000Z'
     })
   })

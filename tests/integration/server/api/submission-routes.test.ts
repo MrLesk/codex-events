@@ -253,7 +253,10 @@ describe('TASK-3.7 submission routes', () => {
     const createResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
       method: 'POST',
       body: JSON.stringify({
-        projectName: 'Alpha Project'
+        projectName: 'Alpha Project',
+        summary: 'Alpha project summary',
+        repositoryUrl: 'https://github.com/example/alpha-project',
+        demoUrl: 'https://example.com/alpha-project'
       })
     })
 
@@ -262,15 +265,20 @@ describe('TASK-3.7 submission routes', () => {
       data: {
         teamId: 'team_1',
         status: 'draft',
-        projectName: 'Alpha Project'
+        projectName: 'Alpha Project',
+        summary: 'Alpha project summary',
+        repositoryUrl: 'https://github.com/example/alpha-project',
+        demoUrl: 'https://example.com/alpha-project'
       }
     })
 
     const patchResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
       method: 'PATCH',
       body: JSON.stringify({
+        projectName: 'Alpha Project Revised',
         summary: 'Refined summary',
-        repositoryUrl: 'https://github.com/example/alpha'
+        repositoryUrl: 'https://github.com/example/alpha',
+        demoUrl: 'https://example.com/alpha'
       })
     })
 
@@ -278,8 +286,10 @@ describe('TASK-3.7 submission routes', () => {
     expect(await patchResponse.json()).toMatchObject({
       data: {
         status: 'draft',
+        projectName: 'Alpha Project Revised',
         summary: 'Refined summary',
-        repositoryUrl: 'https://github.com/example/alpha'
+        repositoryUrl: 'https://github.com/example/alpha',
+        demoUrl: 'https://example.com/alpha'
       }
     })
 
@@ -288,8 +298,10 @@ describe('TASK-3.7 submission routes', () => {
     expect(await getResponse.json()).toMatchObject({
       data: {
         status: 'draft',
-        projectName: 'Alpha Project',
-        summary: 'Refined summary'
+        projectName: 'Alpha Project Revised',
+        summary: 'Refined summary',
+        repositoryUrl: 'https://github.com/example/alpha',
+        demoUrl: 'https://example.com/alpha'
       }
     })
 
@@ -310,7 +322,98 @@ describe('TASK-3.7 submission routes', () => {
 
     expect(storedSubmission).toMatchObject({
       status: 'submitted',
-      projectName: 'Alpha Project'
+      projectName: 'Alpha Project Revised'
+    })
+  })
+
+  test('submission create and update reject incomplete required fields', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedSubmissionContext(harness)
+
+    const incompleteCreateResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
+      method: 'POST',
+      body: JSON.stringify({
+        projectName: 'Incomplete Project',
+        summary: '',
+        repositoryUrl: '',
+        demoUrl: ''
+      })
+    })
+
+    expect(incompleteCreateResponse.status).toBe(400)
+
+    await harness.database.insert(submissions).values({
+      id: 'submission_1',
+      teamId: 'team_1',
+      status: 'draft',
+      projectName: 'Alpha Project',
+      summary: 'Alpha summary',
+      repositoryUrl: 'https://github.com/example/alpha',
+      demoUrl: 'https://example.com/alpha',
+      submittedAt: null,
+      lockedAt: null,
+      withdrawnAt: null,
+      disqualifiedAt: null,
+      createdAt: '2026-03-24T12:00:00.000Z',
+      updatedAt: '2026-03-24T12:00:00.000Z'
+    })
+
+    const incompletePatchResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        projectName: 'Alpha Project',
+        summary: 'Updated summary',
+        repositoryUrl: '',
+        demoUrl: 'https://example.com/alpha'
+      })
+    })
+
+    expect(incompletePatchResponse.status).toBe(400)
+  })
+
+  test('submit rejects incomplete draft submissions already stored on the team', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedSubmissionContext(harness)
+
+    await harness.database.insert(submissions).values({
+      id: 'submission_1',
+      teamId: 'team_1',
+      status: 'draft',
+      projectName: 'Alpha Project',
+      summary: 'Alpha summary',
+      repositoryUrl: null,
+      demoUrl: null,
+      submittedAt: null,
+      lockedAt: null,
+      withdrawnAt: null,
+      disqualifiedAt: null,
+      createdAt: '2026-03-24T12:00:00.000Z',
+      updatedAt: '2026-03-24T12:00:00.000Z'
+    })
+
+    const submitResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/submit', {
+      method: 'POST'
+    })
+
+    expect(submitResponse.status).toBe(400)
+    expect(await submitResponse.json()).toMatchObject({
+      error: {
+        code: 'submission_fields_incomplete'
+      }
     })
   })
 

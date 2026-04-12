@@ -6,7 +6,6 @@ import type {
 } from '~/utils/team-workspace'
 
 import ParticipantTeamDirectoryPanel from '~/components/teams/ParticipantTeamDirectoryPanel.vue'
-import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSubmissionPanel.vue'
 import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWorkspacePanel.vue'
 import {
   buildAbsoluteAccountHackathonTeamTabHref,
@@ -23,19 +22,17 @@ import {
   getTeamFormationAvailability
 } from '~/utils/team-workspace'
 import {
-  getCreateSubmissionAvailability,
-  getSubmitSubmissionAvailability,
-  shouldShowParticipantSubmissionWorkspace,
-  getUpdateSubmissionAvailability,
-  getWithdrawSubmissionAvailability
+  shouldShowParticipantSubmissionWorkspace
 } from '~/utils/team-submission'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   hackathon: PublicHackathon & {
     id: string
   }
   selectedTeamSlug?: string | null
-}>()
+}>(), {
+  selectedTeamSlug: null
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -59,12 +56,6 @@ const teamSettings = reactive({
 const provisionalTeamCreatedAt = ref(new Date().toISOString())
 const hasSeededProvisionalTeamSettings = ref(false)
 const lastSeededProvisionalTeamName = ref('')
-const submissionForm = reactive({
-  projectName: '',
-  summary: '',
-  repositoryUrl: '',
-  demoUrl: ''
-})
 
 const visibleTeamSlugs = computed(() =>
   workspace.visibleTeams.value.map(team => team.slug).join(':')
@@ -290,15 +281,6 @@ const submissionWorkspace = useTeamSubmissionWorkspace(
   }
 )
 
-watch(() => submissionWorkspace.currentSubmission.value, (submission) => {
-  submissionForm.projectName = submission?.projectName ?? ''
-  submissionForm.summary = submission?.summary ?? ''
-  submissionForm.repositoryUrl = submission?.repositoryUrl ?? ''
-  submissionForm.demoUrl = submission?.demoUrl ?? ''
-}, {
-  immediate: true
-})
-
 const isWorkspaceLoading = computed(() => {
   if (workspace.actorStatus.value === 'idle' || workspace.actorStatus.value === 'pending') {
     return true
@@ -352,18 +334,6 @@ const directoryEntries = computed<TeamDirectoryEntry[]>(() => {
       }
     })
 })
-const createSubmissionAvailability = computed(() =>
-  getCreateSubmissionAvailability(props.hackathon, submissionWorkspace.currentSubmission.value, canManageTeam.value)
-)
-const updateSubmissionAvailability = computed(() =>
-  getUpdateSubmissionAvailability(props.hackathon, submissionWorkspace.currentSubmission.value, canManageTeam.value)
-)
-const submitSubmissionAvailability = computed(() =>
-  getSubmitSubmissionAvailability(props.hackathon, submissionWorkspace.currentSubmission.value, canManageTeam.value)
-)
-const withdrawSubmissionAvailability = computed(() =>
-  getWithdrawSubmissionAvailability(props.hackathon, submissionWorkspace.currentSubmission.value, canManageTeam.value)
-)
 const hasActiveTeamSubmission = computed(() => {
   const status = submissionWorkspace.currentSubmission.value?.status
   return status === 'draft' || status === 'submitted'
@@ -441,15 +411,6 @@ const showMembershipActions = computed(() => {
 
   return leaveAvailability.value.isAllowed
 })
-
-function buildSubmissionInput() {
-  return {
-    projectName: submissionForm.projectName.trim() || null,
-    summary: submissionForm.summary.trim() || null,
-    repositoryUrl: submissionForm.repositoryUrl.trim() || null,
-    demoUrl: submissionForm.demoUrl.trim() || null
-  }
-}
 
 async function ensureOwnTeam() {
   if (workspace.ownTeam.value) {
@@ -681,70 +642,6 @@ async function rejectJoinRequest(requestId: string) {
     color: 'success'
   })
 }
-
-async function createSubmissionDraft() {
-  if (displayedTeam.value?.isPersisted === false) {
-    const createdTeam = await ensureOwnTeam()
-
-    if (!createdTeam) {
-      return
-    }
-  }
-
-  const submission = await submissionWorkspace.createSubmissionDraft(buildSubmissionInput())
-
-  if (!submission) {
-    return
-  }
-
-  toast.add({
-    title: 'Draft created',
-    description: 'Your team can now continue working on the submission here.',
-    color: 'success'
-  })
-}
-
-async function saveSubmissionChanges() {
-  const submission = await submissionWorkspace.updateCurrentSubmission(buildSubmissionInput())
-
-  if (!submission) {
-    return
-  }
-
-  toast.add({
-    title: 'Submission updated',
-    description: 'The latest project details were saved.',
-    color: 'success'
-  })
-}
-
-async function submitProject() {
-  const submission = await submissionWorkspace.submitCurrentSubmission()
-
-  if (!submission) {
-    return
-  }
-
-  toast.add({
-    title: 'Project submitted',
-    description: 'Your team submission is now marked as submitted.',
-    color: 'success'
-  })
-}
-
-async function withdrawSubmission() {
-  const submission = await submissionWorkspace.withdrawCurrentSubmission()
-
-  if (!submission) {
-    return
-  }
-
-  toast.add({
-    title: 'Submission withdrawn',
-    description: 'The project was withdrawn before judging preparation.',
-    color: 'success'
-  })
-}
 </script>
 
 <template>
@@ -868,27 +765,6 @@ async function withdrawSubmission() {
               @remove-member="removeMember"
               @approve-request="approveJoinRequest"
               @reject-request="rejectJoinRequest"
-            />
-
-            <ParticipantTeamSubmissionPanel
-              v-if="canViewSubmission"
-              v-model:form="submissionForm"
-              :team-id="displayedTeam.id"
-              :hackathon-state="props.hackathon.state"
-              :submission="submissionWorkspace.currentSubmission.value"
-              :status="submissionWorkspace.currentSubmissionStatus.value"
-              :error-message="submissionWorkspace.currentSubmissionErrorMessage.value"
-              :mutation-error="submissionWorkspace.mutationError.value"
-              :can-manage-submission="canManageTeam"
-              :create-availability="createSubmissionAvailability"
-              :update-availability="updateSubmissionAvailability"
-              :submit-availability="submitSubmissionAvailability"
-              :withdraw-availability="withdrawSubmissionAvailability"
-              :pending-action-key="submissionWorkspace.pendingActionKey.value"
-              @create-draft="createSubmissionDraft"
-              @save-changes="saveSubmissionChanges"
-              @submit-project="submitProject"
-              @withdraw-submission="withdrawSubmission"
             />
           </div>
         </template>

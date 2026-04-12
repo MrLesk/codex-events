@@ -26,10 +26,10 @@ export interface TeamSubmissionActionAvailability {
 }
 
 export interface TeamSubmissionFormInput {
-  projectName?: string | null
-  summary?: string | null
-  repositoryUrl?: string | null
-  demoUrl?: string | null
+  projectName: string
+  summary: string
+  repositoryUrl: string
+  demoUrl: string
 }
 
 export function normalizeTeamSubmissionApiError(error: unknown) {
@@ -103,9 +103,9 @@ export function getTeamSubmissionStateSummary(
 
   switch (submission.status) {
     case 'draft':
-      return 'This draft is still private to the team and can be edited, submitted, or withdrawn while submission remains open.'
+      return 'This draft is private to your team. Team admins can edit it, submit it, or withdraw it while submission remains open.'
     case 'submitted':
-      return 'This project is submitted and can still be revised or withdrawn while the hackathon remains in submission_open.'
+      return 'This project is submitted. Team admins can still revise it or withdraw it while submission remains open.'
     case 'withdrawn':
       return 'This project was withdrawn before judging preparation and is no longer part of the competition.'
     case 'locked':

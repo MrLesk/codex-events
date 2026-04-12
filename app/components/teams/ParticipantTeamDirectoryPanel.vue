@@ -68,8 +68,8 @@ function isActionPending(actionKey: string) {
           :data-testid="`participant-team-card-${entry.team.id}`"
           class="app-inset-card px-5 py-5"
         >
-          <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div class="space-y-2">
+          <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div class="min-w-0 flex-1 space-y-2">
               <div class="flex flex-wrap items-center gap-3">
                 <h3 class="text-lg font-semibold text-highlighted">
                   {{ entry.team.name }}
@@ -110,12 +110,11 @@ function isActionPending(actionKey: string) {
               </p>
             </div>
 
-            <div class="flex flex-wrap gap-3">
+            <div class="grid gap-3 shrink-0 sm:min-w-48">
               <AppButton
                 v-if="entry.detailHref?.trim()"
                 :to="entry.detailHref"
                 color="neutral"
-                variant="outline"
               >
                 View team
               </AppButton>

@@ -9,7 +9,6 @@ import type {
 
 import {
   formatTeamSubmissionStatus,
-  getTeamSubmissionStateSummary,
   getTeamSubmissionStatusColor,
   getTeamSubmissionWorkspaceStatus
 } from '~/utils/team-submission'
@@ -51,9 +50,6 @@ const emit = defineEmits<{
 const submissionStatus = computed(() => getTeamSubmissionWorkspaceStatus(props.submission))
 const submissionStatusLabel = computed(() => formatTeamSubmissionStatus(submissionStatus.value))
 const submissionStatusColor = computed(() => getTeamSubmissionStatusColor(submissionStatus.value))
-const submissionSummary = computed(() => getTeamSubmissionStateSummary({
-  state: props.hackathonState
-}, props.submission))
 const createActionKey = computed(() => `create-submission:${props.teamId}`)
 const updateActionKey = computed(() => props.submission ? `update-submission:${props.submission.id}` : null)
 const submitActionKey = computed(() => props.submission ? `submit-submission:${props.submission.id}` : null)
@@ -70,10 +66,19 @@ const isCreatePending = computed(() => isActionPending(createActionKey.value))
 const isUpdatePending = computed(() => Boolean(updateActionKey.value && isActionPending(updateActionKey.value)))
 const isSubmitPending = computed(() => Boolean(submitActionKey.value && isActionPending(submitActionKey.value)))
 const isWithdrawPending = computed(() => Boolean(withdrawActionKey.value && isActionPending(withdrawActionKey.value)))
+const isDraftMutationDisabled = computed(() =>
+  isFormReadOnly.value
+  || (!props.submission && !props.createAvailability.isAllowed)
+  || Boolean(props.submission && !props.updateAvailability.isAllowed)
+  || isCreatePending.value
+  || isUpdatePending.value
+)
 
 function isActionPending(actionKey: string) {
   return props.pendingActionKey === actionKey
 }
+
+const syncingFromModel = ref(false)
 
 const {
   errors,
@@ -85,15 +90,22 @@ const {
   validationSchema: toTypedSchema(teamSubmissionFormSchema),
   initialValues: cloneFormValues(form.value)
 })
+const submitAttempted = computed(() => submitCount.value > 0)
 
 watch(() => form.value, (nextForm) => {
-  setValues(cloneFormValues(nextForm), false)
+  syncingFromModel.value = true
+  setValues(cloneFormValues(nextForm), submitCount.value > 0)
+  syncingFromModel.value = false
 }, {
   deep: true,
   immediate: true
 })
 
 watch(values, (nextValues) => {
+  if (syncingFromModel.value) {
+    return
+  }
+
   Object.assign(form.value, cloneFormValues(nextValues))
 }, {
   deep: true
@@ -107,6 +119,18 @@ const submitSubmissionForm = handleSubmit(() => {
 
   emit('createDraft')
 })
+
+const submitProjectForm = handleSubmit(() => {
+  emit('submitProject')
+})
+
+function handleSaveAttempt(event?: Event) {
+  submitSubmissionForm(event)
+}
+
+function handleSubmitProjectAttempt(event?: Event) {
+  submitProjectForm(event)
+}
 </script>
 
 <template>
@@ -115,23 +139,18 @@ const submitSubmissionForm = handleSubmit(() => {
     class="rounded-xl hackathon-workspace-detail-panel"
   >
     <template #header>
-      <div class="space-y-1">
-        <div class="flex flex-wrap items-center gap-3">
-          <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-            Project submission
-          </h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+          Project submission
+        </h2>
 
-          <AppBadge
-            :color="submissionStatusColor"
-            variant="soft"
-          >
-            {{ submissionStatusLabel }}
-          </AppBadge>
-        </div>
-
-        <p class="text-sm text-muted">
-          {{ submissionSummary }}
-        </p>
+        <AppBadge
+          data-testid="participant-submission-status"
+          :color="submissionStatusColor"
+          variant="soft"
+        >
+          {{ submissionStatusLabel }}
+        </AppBadge>
       </div>
     </template>
 
@@ -153,28 +172,7 @@ const submitSubmissionForm = handleSubmit(() => {
       />
 
       <template v-else>
-        <div class="app-inset-card px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Submission summary
-          </p>
-          <p class="mt-2 text-sm leading-7 text-toned">
-            {{ submissionSummary }}
-          </p>
-        </div>
-
-        <div class="grid gap-4 md:grid-cols-3">
-          <div class="app-inset-card px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Current status
-            </p>
-            <p
-              data-testid="participant-submission-status"
-              class="mt-2 text-lg font-semibold text-highlighted"
-            >
-              {{ submissionStatusLabel }}
-            </p>
-          </div>
-
+        <div class="grid gap-4 md:grid-cols-2">
           <div class="app-inset-card px-5 py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Submitted at
@@ -191,33 +189,6 @@ const submitSubmissionForm = handleSubmit(() => {
             <p class="mt-2 text-sm font-medium text-highlighted">
               {{ formatTimestamp(submission?.updatedAt, 'No submission record yet') }}
             </p>
-          </div>
-        </div>
-
-        <div
-          v-if="submission"
-          class="app-inset-card px-5 py-5"
-        >
-          <div class="space-y-2">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Current project snapshot
-            </p>
-            <p
-              data-testid="participant-submission-project-name"
-              class="text-xl font-semibold text-highlighted"
-            >
-              {{ submission.projectName ?? 'Untitled project draft' }}
-            </p>
-            <p
-              v-if="submission.summary"
-              class="text-sm leading-7 text-toned whitespace-pre-wrap"
-            >
-              {{ submission.summary }}
-            </p>
-            <div class="flex flex-wrap gap-3 text-sm text-toned">
-              <span>Repository: {{ submission.repositoryUrl ?? 'Not provided' }}</span>
-              <span>Demo: {{ submission.demoUrl ?? 'Not provided' }}</span>
-            </div>
           </div>
         </div>
 
@@ -248,13 +219,13 @@ const submitSubmissionForm = handleSubmit(() => {
               v-else
               class="text-sm text-muted"
             >
-              Team admins manage the canonical project fields here while submission actions remain available.
+              Use this form to manage the current submission details.
             </p>
           </div>
 
           <form
             class="mt-5 space-y-4"
-            @submit.prevent="submitSubmissionForm"
+            @submit.prevent="handleSaveAttempt"
           >
             <AppFormField
               label="Project name"
@@ -266,10 +237,11 @@ const submitSubmissionForm = handleSubmit(() => {
                 name="participant-submission-project-name"
                 size="xl"
                 class="w-full"
-                :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
+                :class="submitAttempted && errors.projectName ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
+                :disabled="isDraftMutationDisabled"
               />
               <p
-                v-if="submitCount > 0 && errors.projectName"
+                v-if="submitAttempted && errors.projectName"
                 class="text-xs text-error"
               >
                 {{ errors.projectName }}
@@ -285,10 +257,11 @@ const submitSubmissionForm = handleSubmit(() => {
                 v-model="form.summary"
                 name="participant-submission-summary"
                 rows="5"
-                :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
+                :class="submitAttempted && errors.summary ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
+                :disabled="isDraftMutationDisabled"
               />
               <p
-                v-if="submitCount > 0 && errors.summary"
+                v-if="submitAttempted && errors.summary"
                 class="text-xs text-error"
               >
                 {{ errors.summary }}
@@ -307,11 +280,11 @@ const submitSubmissionForm = handleSubmit(() => {
                   type="text"
                   size="xl"
                   class="w-full"
-                  :class="submitCount > 0 && errors.repositoryUrl ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
-                  :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
+                  :class="submitAttempted && errors.repositoryUrl ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
+                  :disabled="isDraftMutationDisabled"
                 />
                 <p
-                  v-if="submitCount > 0 && errors.repositoryUrl"
+                  v-if="submitAttempted && errors.repositoryUrl"
                   class="text-xs text-error"
                 >
                   {{ errors.repositoryUrl }}
@@ -329,11 +302,11 @@ const submitSubmissionForm = handleSubmit(() => {
                   type="text"
                   size="xl"
                   class="w-full"
-                  :class="submitCount > 0 && errors.demoUrl ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
-                  :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
+                  :class="submitAttempted && errors.demoUrl ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
+                  :disabled="isDraftMutationDisabled"
                 />
                 <p
-                  v-if="submitCount > 0 && errors.demoUrl"
+                  v-if="submitAttempted && errors.demoUrl"
                   class="text-xs text-error"
                 >
                   {{ errors.demoUrl }}
@@ -371,7 +344,7 @@ const submitSubmissionForm = handleSubmit(() => {
                   :loading="isSubmitPending"
                   :disabled="!submitAvailability.isAllowed || isSubmitPending"
                   data-testid="participant-submission-submit"
-                  @click="emit('submitProject')"
+                  @click="handleSubmitProjectAttempt"
                 >
                   Submit project
                 </AppButton>
