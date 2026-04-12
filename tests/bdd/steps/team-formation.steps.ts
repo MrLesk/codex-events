@@ -294,3 +294,17 @@ Then('the remembered team action should fail with API error code {string}', asyn
 
   expect(payload.error?.code).toBe(expectedCode)
 })
+
+Then('the remembered team leave action should dissolve the solo team', async ({ page }) => {
+  expect(getScenarioState(page).response?.ok()).toBe(true)
+
+  const payload = getScenarioState(page).json as {
+    data?: {
+      teamId?: string
+      teamDissolved?: boolean
+    }
+  }
+
+  expect(payload.data?.teamId).toBe(getScenarioState(page).teamId)
+  expect(payload.data?.teamDissolved).toBe(true)
+})

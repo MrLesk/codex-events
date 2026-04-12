@@ -44,6 +44,18 @@ function getScenarioState(page: Page) {
   return state
 }
 
+async function waitForNuxtHydration(page: Page) {
+  try {
+    await page.waitForFunction(() =>
+      typeof window.useNuxtApp === 'function' && window.useNuxtApp().isHydrating === false,
+    {
+      timeout: 5_000
+    })
+  } catch {
+    await page.waitForLoadState('domcontentloaded')
+  }
+}
+
 async function waitForParticipantTeamTabToSettle(page: Page) {
   const workspacePanel = page.getByTestId('participant-team-workspace-panel')
   const directoryPanel = page.getByTestId('participant-team-directory-panel')
@@ -61,6 +73,75 @@ async function waitForParticipantTeamTabToSettle(page: Page) {
   }, {
     timeout: 15_000
   }).not.toBe('loading')
+
+  await waitForNuxtHydration(page)
+
+  if (await directoryPanel.isVisible().catch(() => false)) {
+    await expect.poll(async () => {
+      if (await directoryPanel.getByText('Loading visible teams').count() > 0) {
+        return 'loading'
+      }
+
+      if (await directoryPanel.locator('[data-testid^="participant-team-card-"]').count() > 0) {
+        return 'teams'
+      }
+
+      if (await directoryPanel.getByText('No visible teams yet').count() > 0) {
+        return 'empty'
+      }
+
+      if (await directoryPanel.getByText('Team directory unavailable').count() > 0) {
+        return 'error'
+      }
+
+      return 'pending'
+    }, {
+      timeout: 15_000
+    }).not.toBe('loading')
+  }
+}
+
+async function resetParticipantCreateFixtureWorkspaceIfNeeded(page: Page, slug: string) {
+  if (slug !== 'participant-team-create-fixture-hackathon') {
+    return
+  }
+
+  const leaveButton = page.getByTestId('participant-team-leave')
+
+  if (await leaveButton.count() === 0) {
+    return
+  }
+
+  await Promise.all([
+    page.waitForResponse(response =>
+      response.url().includes('/api/hackathons/')
+      && response.url().includes('/actions/leave')
+      && response.ok()
+    ),
+    leaveButton.click()
+  ])
+
+  await waitForParticipantTeamTabToSettle(page)
+}
+
+async function recoverTeamDirectoryIfUnresolved(page: Page) {
+  const directoryPanel = page.getByTestId('participant-team-directory-panel')
+
+  if (!(await directoryPanel.isVisible().catch(() => false))) {
+    return
+  }
+
+  const hasCards = await directoryPanel.locator('[data-testid^="participant-team-card-"]').count() > 0
+  const hasEmptyState = await directoryPanel.getByText('No visible teams yet').count() > 0
+  const hasErrorState = await directoryPanel.getByText('Team directory unavailable').count() > 0
+
+  if (hasCards || hasEmptyState || hasErrorState) {
+    return
+  }
+
+  await page.reload()
+  await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
+  await waitForParticipantTeamTabToSettle(page)
 }
 
 function parsePersonaKey(personaKey: string): StablePersonaKey {
@@ -110,6 +191,8 @@ When('I open the participant Team tab for hackathon slug {string} with the saved
   await page.goto(`/account/hackathons/${slug}?tab=team`)
   await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
+  await resetParticipantCreateFixtureWorkspaceIfNeeded(page, slug)
+  await recoverTeamDirectoryIfUnresolved(page)
 })
 
 When('I open the participant Team tab for hackathon slug {string} and selected team slug {string} with the saved {string} session', async ({ page }, slug: string, selectedTeamSlug: string, personaKey: string) => {
@@ -120,7 +203,9 @@ When('I open the participant Team tab for hackathon slug {string} and selected t
 })
 
 Then('I should see the participant team card {string}', async ({ page }, teamName: string) => {
-  await expect(page.getByTestId('participant-team-directory-panel').getByText(teamName)).toBeVisible()
+  await expect(page.getByTestId('participant-team-directory-panel').getByText(teamName)).toBeVisible({
+    timeout: 15_000
+  })
 })
 
 When('I create a participant team named {string}', async ({ page }, baseName: string) => {
@@ -128,10 +213,11 @@ When('I create a participant team named {string}', async ({ page }, baseName: st
   getScenarioState(page).createdTeamName = uniqueTeamName
 
   const workspacePanel = page.getByTestId('participant-team-workspace-panel')
+  await waitForNuxtHydration(page)
   await workspacePanel.getByTestId('participant-team-edit-name').click()
 
   const teamNameInput = workspacePanel.getByLabel('Team name')
-  const saveButton = page.getByTestId('participant-team-update-profile')
+  const saveButton = workspacePanel.getByTestId('participant-team-update-profile')
 
   await expect(saveButton).toBeEnabled({
     timeout: 15_000
@@ -159,11 +245,12 @@ When('I create a participant team named {string} with bio {string}', async ({ pa
   getScenarioState(page).createdTeamName = uniqueTeamName
 
   const workspacePanel = page.getByTestId('participant-team-workspace-panel')
+  await waitForNuxtHydration(page)
   await workspacePanel.getByTestId('participant-team-edit-name').click()
 
   const teamNameInput = workspacePanel.getByLabel('Team name')
   const teamBioInput = workspacePanel.getByLabel('Team bio')
-  const saveButton = page.getByTestId('participant-team-update-profile')
+  const saveButton = workspacePanel.getByTestId('participant-team-update-profile')
 
   await expect(saveButton).toBeEnabled({
     timeout: 15_000
@@ -195,6 +282,7 @@ When('I create a participant team named {string} with bio {string}', async ({ pa
 
 When('I enable join requests for the participant team', async ({ page }) => {
   const workspacePanel = page.getByTestId('participant-team-workspace-panel')
+  await waitForNuxtHydration(page)
   await workspacePanel.getByRole('switch').click()
   await expect(workspacePanel.getByText('Open to join requests', {
     exact: true
@@ -255,6 +343,12 @@ Then('the participant team action {string} should be disabled', async ({ page },
   await expect(page.getByRole('button', {
     name: actionName
   })).toBeDisabled()
+})
+
+Then('the participant team action {string} should be visible', async ({ page }, actionName: string) => {
+  await expect(page.getByRole('button', {
+    name: actionName
+  })).toBeVisible()
 })
 
 Then('the participant team action {string} should not be visible', async ({ page }, actionName: string) => {

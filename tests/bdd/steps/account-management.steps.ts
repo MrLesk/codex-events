@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
+import { createAuthenticatedApiClient } from '../support/api-client'
 import {
   stablePersonaKeys,
   storageStatePathForPersona,
@@ -39,6 +40,18 @@ type StoredState = {
       value: string
     }>
   }>
+}
+
+async function waitForNuxtHydration(page: Page) {
+  try {
+    await page.waitForFunction(() =>
+      typeof window.useNuxtApp === 'function' && window.useNuxtApp().isHydrating === false,
+    {
+      timeout: 5_000
+    })
+  } catch {
+    await page.waitForLoadState('domcontentloaded')
+  }
 }
 
 async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
@@ -76,8 +89,74 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
 }
 
 When('I open the account settings page with the saved {string} session', async ({ page }, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  const parsedPersonaKey = parsePersonaKey(personaKey)
+
+  await applyStoredStateToPage(parsedPersonaKey, page)
   await page.goto('/account/settings')
+  await waitForNuxtHydration(page)
+
+  const accountRegistrationHeading = page.getByRole('heading', { name: 'Finish account registration' })
+
+  if (await accountRegistrationHeading.isVisible().catch(() => false)) {
+    await waitForNuxtHydration(page)
+
+    const privacyCheckbox = page.getByRole('checkbox', { name: 'I accept the current Privacy Policy.' })
+    const termsCheckbox = page.getByRole('checkbox', { name: 'I accept the current Platform Terms.' })
+    const continueButton = page.getByRole('button', { name: 'Continue' })
+
+    await privacyCheckbox.check()
+    await termsCheckbox.check()
+    await expect(privacyCheckbox).toBeChecked()
+    await expect(termsCheckbox).toBeChecked()
+    await expect(continueButton).toBeEnabled()
+
+    await Promise.all([
+      page.waitForResponse(response =>
+        response.url().includes('/api/account/registration')
+        && response.ok()
+      ),
+      continueButton.click()
+    ])
+
+    const apiClient = await createAuthenticatedApiClient(parsedPersonaKey)
+
+    try {
+      await expect.poll(async () => {
+        const response = await apiClient.get('/api/session')
+
+        if (!response.ok()) {
+          return null
+        }
+
+        const payload = await response.json() as {
+          data?: {
+            actor?: {
+              kind?: string
+              hasPlatformAccount?: boolean
+            }
+          }
+        }
+
+        const actor = payload.data?.actor
+
+        if (actor?.kind !== 'platform_user') {
+          return null
+        }
+
+        return actor.hasPlatformAccount === true ? 'ready' : null
+      }, {
+        timeout: 10_000
+      }).toBe('ready')
+    } finally {
+      await apiClient.dispose()
+    }
+
+    if (!page.url().includes('/account/settings')) {
+      await page.goto('/account/settings')
+      await waitForNuxtHydration(page)
+    }
+  }
+
   await expect(page.getByRole('heading', { name: 'Profile settings' })).toBeVisible()
   await page.waitForLoadState('networkidle')
   await page.waitForTimeout(500)

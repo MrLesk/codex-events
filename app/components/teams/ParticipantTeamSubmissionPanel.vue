@@ -256,9 +256,14 @@ const submitSubmissionForm = handleSubmit(() => {
             class="mt-5 space-y-4"
             @submit.prevent="submitSubmissionForm"
           >
-            <AppFormField label="Project name">
+            <AppFormField
+              label="Project name"
+              name="participant-submission-project-name"
+            >
               <AppInput
+                id="participant-submission-project-name"
                 v-model="form.projectName"
+                name="participant-submission-project-name"
                 size="xl"
                 class="w-full"
                 :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
@@ -271,9 +276,14 @@ const submitSubmissionForm = handleSubmit(() => {
               </p>
             </AppFormField>
 
-            <AppFormField label="Summary">
+            <AppFormField
+              label="Summary"
+              name="participant-submission-summary"
+            >
               <AppTextarea
+                id="participant-submission-summary"
                 v-model="form.summary"
+                name="participant-submission-summary"
                 rows="5"
                 :disabled="isFormReadOnly || (!submission && !createAvailability.isAllowed) || isCreatePending || isUpdatePending"
               />
@@ -286,9 +296,14 @@ const submitSubmissionForm = handleSubmit(() => {
             </AppFormField>
 
             <div class="grid gap-4 lg:grid-cols-2">
-              <AppFormField label="Repository URL">
+              <AppFormField
+                label="Repository URL"
+                name="participant-submission-repository-url"
+              >
                 <AppInput
+                  id="participant-submission-repository-url"
                   v-model="form.repositoryUrl"
+                  name="participant-submission-repository-url"
                   type="text"
                   size="xl"
                   class="w-full"
@@ -303,9 +318,14 @@ const submitSubmissionForm = handleSubmit(() => {
                 </p>
               </AppFormField>
 
-              <AppFormField label="Demo URL">
+              <AppFormField
+                label="Demo URL"
+                name="participant-submission-demo-url"
+              >
                 <AppInput
+                  id="participant-submission-demo-url"
                   v-model="form.demoUrl"
+                  name="participant-submission-demo-url"
                   type="text"
                   size="xl"
                   class="w-full"

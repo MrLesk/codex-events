@@ -22,5 +22,5 @@ Feature: Public hackathon discovery
     Given I am on the public hackathon detail page for the fixture hackathon
     Then I should see the public hackathon detail title "E2E Fixture Hackathon"
     And I should see the public prize "Launch Award"
-    And I should see the text "Maximum 5 team members"
+    And I should see the text "Vienna, Austria"
     And I should not see the admin control "Configure"

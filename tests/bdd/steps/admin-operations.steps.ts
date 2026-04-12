@@ -1,8 +1,9 @@
 import { existsSync, readFileSync } from 'node:fs'
 
-import { expect, type Locator, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
+import { createAuthenticatedApiClient } from '../support/api-client'
 import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } from '../support/personas.ts'
 
 const { When, Then } = createBdd()
@@ -35,19 +36,109 @@ function parsePersonaKey(personaKey: string): StablePersonaKey {
   throw new Error(`Unknown stable persona key: ${personaKey}`)
 }
 
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+function formatParticipantViewLabel(status: string) {
+  switch (status) {
+    case 'submitted':
+      return 'Applications'
+    case 'approved':
+      return 'Approved'
+    case 'rejected':
+      return 'Rejected'
+    default:
+      return null
+  }
 }
 
-function getStatusBadge(scope: Locator, status: string) {
-  return scope.locator('[data-slot="base"]').filter({
-    hasText: new RegExp(`^${escapeRegExp(status)}$`, 'i')
-  })
+function decisionButtonActiveClass(decision: 'approve' | 'reject') {
+  return decision === 'approve' ? 'bg-success/12' : 'bg-error/12'
+}
+
+async function isDecisionButtonActive(button: ReturnType<Page['getByTestId']>, decision: 'approve' | 'reject') {
+  const className = await button.getAttribute('class')
+  return className?.includes(decisionButtonActiveClass(decision)) ?? false
 }
 
 function getCurrentHackathonId(page: Page) {
   const segments = new URL(page.url()).pathname.split('/').filter(Boolean)
   return segments[segments.indexOf('hackathons') + 1] ?? ''
+}
+
+function resolveHackathonId(hackathonSlug: string) {
+  switch (hackathonSlug) {
+    case 'e2e-fixture-hackathon':
+      return 'hackathon_e2e_fixture'
+    case 'operations-fixture-hackathon':
+      return 'hackathon_e2e_operations_fixture'
+    default:
+      throw new Error(`No API hackathon id mapping is configured for workspace slug "${hackathonSlug}".`)
+  }
+}
+
+function resolveHackathonSlug(hackathonId: string) {
+  switch (hackathonId) {
+    case 'hackathon_e2e_fixture':
+      return 'e2e-fixture-hackathon'
+    case 'hackathon_e2e_operations_fixture':
+      return 'operations-fixture-hackathon'
+    default:
+      throw new Error(`No account-workspace slug mapping is configured for hackathon "${hackathonId}".`)
+  }
+}
+
+async function waitForStagedApplicationDecision(page: Page, applicationId: string, decision: 'approved' | 'rejected') {
+  const apiClient = await createAuthenticatedApiClient('hackathon_admin')
+  const hackathonId = resolveHackathonId(getCurrentHackathonId(page))
+
+  try {
+    await expect.poll(async () => {
+      const response = await apiClient.get(`/api/hackathons/${hackathonId}/applications`)
+
+      if (!response.ok()) {
+        return null
+      }
+
+      const payload = await response.json() as {
+        data?: Array<{
+          id?: string
+          preApprovalStatus?: 'approved' | 'rejected' | null
+        }>
+      }
+
+      return payload.data?.find(application => application.id === applicationId)?.preApprovalStatus ?? null
+    }, {
+      timeout: 10_000
+    }).toBe(decision)
+  } finally {
+    await apiClient.dispose()
+  }
+}
+
+async function waitForApplicationStatus(page: Page, applicationId: string, status: 'submitted' | 'approved' | 'rejected') {
+  const apiClient = await createAuthenticatedApiClient('hackathon_admin')
+  const hackathonId = resolveHackathonId(getCurrentHackathonId(page))
+
+  try {
+    await expect.poll(async () => {
+      const response = await apiClient.get(`/api/hackathons/${hackathonId}/applications`)
+
+      if (!response.ok()) {
+        return null
+      }
+
+      const payload = await response.json() as {
+        data?: Array<{
+          id?: string
+          status?: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
+        }>
+      }
+
+      return payload.data?.find(application => application.id === applicationId)?.status ?? null
+    }, {
+      timeout: 10_000
+    }).toBe(status)
+  } finally {
+    await apiClient.dispose()
+  }
 }
 
 async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
@@ -86,7 +177,7 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
 
 When('I open the admin operations page for hackathon {string} with the saved {string} session', async ({ page }, hackathonId: string, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto(`/admin/hackathons/${hackathonId}/operations`)
+  await page.goto(`/account/hackathons/${resolveHackathonSlug(hackathonId)}?tab=participants`)
 })
 
 Then('I should see the admin operations text {string}', async ({ page }, text: string) => {
@@ -94,21 +185,44 @@ Then('I should see the admin operations text {string}', async ({ page }, text: s
 })
 
 Then('I should see the admin application {string} with status {string}', async ({ page }, applicationId: string, status: string) => {
+  const participantViewLabel = formatParticipantViewLabel(status)
+
+  if (!participantViewLabel) {
+    throw new Error(`Unsupported admin application status assertion: ${status}`)
+  }
+
+  await page.getByRole('button', {
+    name: participantViewLabel,
+    exact: true
+  }).click()
+
   const application = page.getByTestId(`admin-application-${applicationId}`)
 
+  if (status !== 'submitted') {
+    await waitForApplicationStatus(page, applicationId, status)
+    return
+  }
+
   await expect(application).toBeVisible()
-  await expect(getStatusBadge(application, status)).toBeVisible()
 })
 
 When('I approve the admin application {string}', async ({ page }, applicationId: string) => {
-  await Promise.all([
-    page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/`)
-      && response.url().includes(`/applications/${applicationId}/actions/approve`)
-      && response.ok()
-    ),
-    page.getByTestId(`admin-application-approve-${applicationId}`).click()
-  ])
+  const approveButton = page.getByTestId(`admin-application-approve-${applicationId}`)
+
+  if (!(await isDecisionButtonActive(approveButton, 'approve'))) {
+    await Promise.all([
+      page.waitForResponse(response =>
+        response.url().includes(`/api/hackathons/`)
+        && response.url().includes(`/applications/${applicationId}/actions/approve`)
+        && response.ok()
+      ),
+      approveButton.click()
+    ])
+  }
+
+  await expect.poll(async () => await isDecisionButtonActive(approveButton, 'approve')).toBe(true)
+  await waitForStagedApplicationDecision(page, applicationId, 'approved')
+  await expect(page.getByTestId('admin-application-save-decisions')).toBeEnabled()
 
   await Promise.all([
     page.waitForResponse(response =>
@@ -121,14 +235,22 @@ When('I approve the admin application {string}', async ({ page }, applicationId:
 })
 
 When('I reject the admin application {string}', async ({ page }, applicationId: string) => {
-  await Promise.all([
-    page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/`)
-      && response.url().includes(`/applications/${applicationId}/actions/reject`)
-      && response.ok()
-    ),
-    page.getByTestId(`admin-application-reject-${applicationId}`).click()
-  ])
+  const rejectButton = page.getByTestId(`admin-application-reject-${applicationId}`)
+
+  if (!(await isDecisionButtonActive(rejectButton, 'reject'))) {
+    await Promise.all([
+      page.waitForResponse(response =>
+        response.url().includes(`/api/hackathons/`)
+        && response.url().includes(`/applications/${applicationId}/actions/reject`)
+        && response.ok()
+      ),
+      rejectButton.click()
+    ])
+  }
+
+  await expect.poll(async () => await isDecisionButtonActive(rejectButton, 'reject')).toBe(true)
+  await waitForStagedApplicationDecision(page, applicationId, 'rejected')
+  await expect(page.getByTestId('admin-application-save-decisions')).toBeEnabled()
 
   await Promise.all([
     page.waitForResponse(response =>
@@ -144,7 +266,9 @@ Then('I should see the admin team {string} with submission status {string}', asy
   const team = page.getByTestId(`admin-team-${teamId}`)
 
   await expect(team).toBeVisible()
-  await expect(getStatusBadge(team, status)).toBeVisible()
+  await expect(team.getByText(status, {
+    exact: false
+  }).first()).toBeVisible()
 })
 
 Then('I should not see the admin team {string}', async ({ page }, teamId: string) => {

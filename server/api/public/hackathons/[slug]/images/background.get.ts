@@ -1,18 +1,17 @@
 import { setHeader } from 'h3'
 
-import { getDatabase } from '../../../../../database/client'
 import { defineApiHandler } from '../../../../../utils/api-handler'
 import { ApiError } from '../../../../../utils/api-error'
 import { getHackathonImageObject } from '../../../../../utils/hackathon-images'
 import {
-  getPublicHackathonBySlugOrThrow,
+  getVisibleHackathonBySlugOrThrow,
   routeSlugParamsSchema
 } from '../../../../../utils/hackathon-management'
 import { parseValidatedParams } from '../../../../../utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { slug } = parseValidatedParams(event, routeSlugParamsSchema)
-  const hackathon = await getPublicHackathonBySlugOrThrow(getDatabase(event), slug)
+  const hackathon = await getVisibleHackathonBySlugOrThrow(event, slug)
 
   if (!hackathon.backgroundImageUrl) {
     throw new ApiError({

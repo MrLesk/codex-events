@@ -18,9 +18,9 @@ Feature: TASK-3.6 authenticated application and team formation flows
     When the saved "judge" session loads the remembered team detail
     Then the remembered team should include member "user_regular_user"
 
-  Scenario: Platform admin cannot leave a solo team
+  Scenario: Platform admin can leave a solo team during team formation
     Given the saved "platform_admin" Auth0 session state exists
     When the saved "platform_admin" session creates an open team named "Solo Admin Team"
     Then the remembered team should be created with admin "user_platform_admin"
     When the saved "platform_admin" session leaves the remembered team
-    Then the remembered team action should fail with API error code "team_admin_required"
+    Then the remembered team leave action should dissolve the solo team

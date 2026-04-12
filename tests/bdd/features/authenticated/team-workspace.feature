@@ -1,6 +1,14 @@
 Feature: Participant team workspace in the account hackathon page
   Authenticated approved participants can use the account hackathon Team tab to start from their own team workspace, request to join visible teams, and manage team collaboration.
 
+  Scenario: Regular user can open join requests from the provisional solo team workspace
+    Given the saved "regular_user" Auth0 session state exists
+    When I open the participant Team tab for hackathon slug "participant-team-create-fixture-hackathon" with the saved "regular_user" session
+    And I enable join requests for the participant team
+    And I reload the participant Team tab page
+    Then I should see the participant current team "Team Regular User"
+    And I should see the participant team text "Open to join requests"
+
   Scenario: Regular user starts from the default solo team workspace and saves a custom team name
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant Team tab for hackathon slug "participant-team-create-fixture-hackathon" with the saved "regular_user" session
@@ -16,19 +24,11 @@ Feature: Participant team workspace in the account hackathon page
     Then I should be in the participant team workspace for the created team
     And I should see the participant team text "We build reliable hackathon tooling together."
 
-  Scenario: Regular user can open join requests from the provisional solo team workspace
-    Given the saved "regular_user" Auth0 session state exists
-    When I open the participant Team tab for hackathon slug "participant-team-create-fixture-hackathon" with the saved "regular_user" session
-    And I enable join requests for the participant team
-    And I reload the participant Team tab page
-    Then I should see the participant current team "Team Regular User"
-    And I should see the participant team text "Open to join requests"
-
   Scenario: Regular user sees other teams while on their own team page
     Given the saved "regular_user" Auth0 session state exists
-    When I open the participant Team tab for hackathon slug "operations-fixture-hackathon" with the saved "regular_user" session
-    Then I should see the participant current team "Alpha Operations Team"
-    And I should see the participant team card "Beta Operations Team"
+    When I open the participant Team tab for hackathon slug "participant-team-join-fixture-hackathon" with the saved "regular_user" session
+    Then I should see the participant current team "Team Regular User"
+    And I should see the participant team card "Judge Review Team"
 
   Scenario: Regular user does not see the team directory while viewing another team
     Given the saved "regular_user" Auth0 session state exists
@@ -44,8 +44,8 @@ Feature: Participant team workspace in the account hackathon page
     And I should see the participant navigation link "Back to my team"
     And the participant team directory should not be visible
 
-  Scenario: Regular user does not see the solo-admin leave block in the participant Team tab
+  Scenario: Regular user can leave a solo-admin team during team formation
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant Team tab for hackathon slug "participant-team-solo-fixture-hackathon" with the saved "regular_user" session
     Then I should see the participant current team "Solo Admin Team"
-    And the participant team action "Leave team" should not be visible
+    And the participant team action "Leave team" should be visible

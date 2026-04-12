@@ -12,7 +12,18 @@ function resolveLocalPlatformPersistPath(environment: NodeJS.ProcessEnv) {
   return resolve(resolveLocalBddD1StateRoot(environment), 'v3')
 }
 
-const fixtureTimestamp = '2026-03-22T12:00:00.000Z'
+const fixtureAnchorTimestamp = '2026-03-22T12:00:00.000Z'
+const fixtureTimeShiftMs = Date.now() - Date.parse(fixtureAnchorTimestamp)
+const shiftableFixtureIsoPattern = /\b2026-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.000Z\b/g
+const fixtureTimestamp = shiftFixtureTimestamp(fixtureAnchorTimestamp)
+
+function shiftFixtureTimestamp(isoTimestamp: string) {
+  return new Date(Date.parse(isoTimestamp) + fixtureTimeShiftMs).toISOString()
+}
+
+function shiftFixtureIsoLiterals(sql: string) {
+  return sql.replace(shiftableFixtureIsoPattern, isoTimestamp => shiftFixtureTimestamp(isoTimestamp))
+}
 export const fixtureHackathonId = 'hackathon_e2e_fixture'
 export const fixtureDraftHackathonId = 'hackathon_e2e_draft_fixture'
 const fixtureDraftLumaEventUrl = 'https://luma.com/a4i7qtbo'
@@ -1222,7 +1233,7 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
     `update hackathons
       set current_winner_terms_document_id = ${sqlLiteral(fixtureCompetitionCompleteWinnerTermsId)}
       where id = ${sqlLiteral(fixtureCompetitionCompleteHackathonId)}`
-  ].join(';\n')
+  ].map(shiftFixtureIsoLiterals).join(';\n')
 }
 
 export function buildPlatformFixtureResetSql(personas: ProvisionedStablePersona[]) {

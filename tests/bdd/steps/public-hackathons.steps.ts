@@ -69,6 +69,26 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
   }
 }
 
+async function waitForNuxtHydration(page: Page) {
+  await page.waitForFunction(() =>
+    typeof window.useNuxtApp === 'function' && window.useNuxtApp().isHydrating === false
+  )
+}
+
+async function ensurePublicDetailSection(page: Page, sectionName: 'Prizes' | 'Details') {
+  const tab = page.getByRole('tab', { name: sectionName, exact: true })
+
+  await expect(tab).toBeVisible()
+  await waitForNuxtHydration(page)
+
+  if (await tab.getAttribute('aria-selected') === 'true') {
+    return
+  }
+
+  await tab.click()
+  await expect(tab).toHaveAttribute('aria-selected', 'true')
+}
+
 Given('I am on the public hackathons page', async ({ page }) => {
   await page.goto('/')
 })
@@ -136,10 +156,13 @@ Then('I should see the public evaluation criterion {string}', async ({ page }, c
 })
 
 Then('I should see the public prize {string}', async ({ page }, prizeName: string) => {
+  await ensurePublicDetailSection(page, 'Prizes')
+  await expect(page.getByTestId('public-hackathon-prizes')).toBeVisible()
   await expect(page.getByTestId('public-hackathon-prizes').getByRole('heading', { name: prizeName })).toBeVisible()
 })
 
 Then('I should see the current terms reference {string}', async ({ page }, termsTitle: string) => {
+  await ensurePublicDetailSection(page, 'Details')
   await expect(page.getByTestId('public-hackathon-terms').getByRole('heading', { name: termsTitle })).toBeVisible()
 })
 

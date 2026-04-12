@@ -7,6 +7,7 @@ import { platformFixtureIds } from '../support/platform-fixtures.ts'
 import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } from '../support/personas.ts'
 
 const { When, Then } = createBdd()
+const judgeWorkspaceHackathonSlug = 'e2e-judge-workspace-fixture-hackathon'
 
 type StoredState = {
   cookies?: Array<{
@@ -79,7 +80,7 @@ function getAssignmentCard(page: Page, title: string) {
 
 When('I open the judge workspace with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto('/account/judging')
+  await page.goto(`/account/hackathons/${judgeWorkspaceHackathonSlug}?tab=judging`)
 })
 
 Then('I should see the blind workspace assignment card for {string}', async ({ page }, title: string) => {
@@ -158,8 +159,11 @@ When('I skip the opened blind review with reason {string}', async ({ page }, rea
   ])
 })
 
-Then('I should see the judge workspace queue update notice', async ({ page }) => {
-  await expect(page.getByTestId('judge-workspace-notice')).toContainText(
-    'The assignment was skipped and removed from your active blind-review queue.'
-  )
+Then('I should be returned to the judge dashboard', async ({ page }) => {
+  await expect(page).toHaveURL(/\/account\/judging\?notice=skipped$/)
+  await expect(page.getByRole('heading', { name: 'Judge dashboard', exact: true })).toBeVisible()
+})
+
+When('I reopen the judge workspace for the fixture hackathon', async ({ page }) => {
+  await page.goto(`/account/hackathons/${judgeWorkspaceHackathonSlug}?tab=judging`)
 })
