@@ -1,5 +1,8 @@
 <script setup lang="ts">
-import type { TeamDirectoryEntry } from '~/utils/team-workspace'
+import {
+  formatJoinAvailabilityReason,
+  type TeamDirectoryEntry
+} from '~/utils/team-workspace'
 
 const directoryFilter = defineModel<string>('directoryFilter', {
   required: false,
@@ -121,6 +124,7 @@ function selectDirectoryFilter(nextFilter: string) {
                 </h3>
 
                 <AppBadge
+                  v-if="props.showLockedStatus || entry.team.workspaceMode !== 'solo'"
                   :color="props.showLockedStatus ? 'neutral' : entry.team.isOpenToJoinRequests ? 'success' : 'neutral'"
                   variant="outline"
                   :class="props.showLockedStatus || !entry.team.isOpenToJoinRequests ? 'border-black/16 bg-white/75 text-neutral-700 dark:border-white/[0.18] dark:bg-white/[0.03] dark:text-[#D0D0D0]' : ''"
@@ -168,20 +172,20 @@ function selectDirectoryFilter(nextFilter: string) {
               </p>
 
               <p
-                v-if="!entry.joinAvailability.isAllowed && entry.joinAvailability.reason"
+                v-if="!entry.joinAvailability.isAllowed && formatJoinAvailabilityReason(entry.team, entry.joinAvailability)"
                 class="text-sm text-muted"
               >
-                {{ entry.joinAvailability.reason }}
+                {{ formatJoinAvailabilityReason(entry.team, entry.joinAvailability) }}
               </p>
             </div>
 
-            <div :class="entry.team.workspaceMode === 'solo' ? 'flex shrink-0 flex-col items-start gap-3 sm:min-w-0 sm:items-end' : 'grid gap-3 shrink-0 sm:min-w-48'">
+            <div class="flex shrink-0 flex-col items-start gap-3 sm:items-end">
               <AppButton
                 v-if="entry.detailHref?.trim() && !entry.isOwnTeam"
                 :to="entry.detailHref"
                 color="neutral"
-                :trailing-icon="entry.team.workspaceMode === 'solo' ? 'i-lucide-arrow-up-right' : undefined"
-                :class="entry.team.workspaceMode === 'solo' ? 'bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]' : ''"
+                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:border-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC] dark:hover:text-black"
+                trailing-icon="i-lucide-arrow-up-right"
               >
                 View team
               </AppButton>
@@ -203,7 +207,8 @@ function selectDirectoryFilter(nextFilter: string) {
 
               <AppButton
                 v-else-if="entry.joinAvailability.isAllowed"
-                color="primary"
+                color="success"
+                icon="i-lucide-user-plus"
                 :loading="isActionPending(`join-team:${entry.team.id}`)"
                 :disabled="isActionPending(`join-team:${entry.team.id}`)"
                 :data-testid="`participant-team-join-${entry.team.id}`"

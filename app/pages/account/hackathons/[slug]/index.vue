@@ -713,6 +713,7 @@ useSeoMeta({
                         color="neutral"
                         variant="solid"
                         trailing-icon="i-lucide-arrow-up-right"
+                        class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                       >
                         Open Workspace
                       </AppButton>
@@ -737,6 +738,7 @@ useSeoMeta({
                         color="neutral"
                         variant="solid"
                         trailing-icon="i-lucide-arrow-up-right"
+                        class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                       >
                         Open Details
                       </AppButton>
@@ -767,7 +769,7 @@ useSeoMeta({
                       color="neutral"
                       variant="solid"
                       trailing-icon="i-lucide-arrow-up-right"
-                      class="mt-4"
+                      class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                     >
                       Go to Workspace
                     </AppButton>
@@ -783,7 +785,7 @@ useSeoMeta({
                       color="neutral"
                       variant="solid"
                       trailing-icon="i-lucide-arrow-up-right"
-                      class="mt-4"
+                      class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                     >
                       Go to Workspace
                     </AppButton>
@@ -807,7 +809,7 @@ useSeoMeta({
                     color="neutral"
                     variant="solid"
                     trailing-icon="i-lucide-arrow-up-right"
-                    class="mt-4"
+                    class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                   >
                     Open Teams
                   </AppButton>

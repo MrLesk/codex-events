@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  formatJoinAvailabilityReason,
   formatTeamJoinRequestStatus,
   formatTeamMemberRole,
   getCreateTeamAvailability,
@@ -148,6 +149,28 @@ describe('team workspace helpers', () => {
       isAllowed: false,
       reason: 'This team is not currently open to join requests.'
     })
+  })
+
+  test('formats solo-team join messages separately from the underlying join-availability reason', () => {
+    expect(formatJoinAvailabilityReason({
+      workspaceMode: 'solo'
+    }, {
+      isAllowed: false,
+      reason: 'You can belong to only one active team per hackathon.'
+    })).toBe('Solo teams cannot be joined.')
+
+    expect(formatJoinAvailabilityReason({
+      workspaceMode: 'team'
+    }, {
+      isAllowed: false,
+      reason: 'You can belong to only one active team per hackathon.'
+    })).toBe('You can belong to only one active team per hackathon.')
+
+    expect(formatJoinAvailabilityReason({
+      workspaceMode: 'solo'
+    }, {
+      isAllowed: true
+    })).toBeUndefined()
   })
 
   test('handles last-member leave rules during team formation and after submission closes', () => {

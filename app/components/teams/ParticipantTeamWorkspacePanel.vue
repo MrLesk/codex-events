@@ -9,6 +9,7 @@ import type {
 
 import { formatTimestamp } from '~/utils/date-formatting'
 import {
+  formatJoinAvailabilityReason,
   formatTeamJoinRequestStatus,
   formatTeamMemberRole,
   getTeamJoinRequestStatusColor,
@@ -529,10 +530,10 @@ function cancelEditingProfile() {
               </h3>
             </div>
             <p
-              v-if="!joinAvailability.isAllowed && joinAvailability.reason"
+              v-if="!joinAvailability.isAllowed && formatJoinAvailabilityReason(team, joinAvailability)"
               class="text-sm text-muted"
             >
-              {{ joinAvailability.reason }}
+              {{ formatJoinAvailabilityReason(team, joinAvailability) }}
             </p>
             <p
               v-else
@@ -560,7 +561,8 @@ function cancelEditingProfile() {
 
             <AppButton
               v-else-if="showRequestJoinAction && joinAvailability.isAllowed"
-              color="primary"
+              color="success"
+              icon="i-lucide-user-plus"
               :loading="isActionPending(`join-team:${team.id}`)"
               :disabled="isActionPending(`join-team:${team.id}`)"
               data-testid="participant-team-request-join"

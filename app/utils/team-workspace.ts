@@ -85,6 +85,17 @@ export interface TeamDirectoryEntry {
   joinAvailability: TeamActionAvailability
 }
 
+export function formatJoinAvailabilityReason(
+  team: Pick<TeamSummaryRecord, 'workspaceMode'>,
+  availability: TeamActionAvailability
+) {
+  if (!availability.isAllowed && team.workspaceMode === 'solo') {
+    return 'Solo teams cannot be joined.'
+  }
+
+  return availability.reason
+}
+
 export function createTeamWorkspaceFallbackActor(user: ReturnType<typeof useUser>['value']): TeamWorkspaceActor {
   if (!user?.sub) {
     return buildAnonymousParticipantActor()
