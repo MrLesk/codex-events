@@ -97,12 +97,10 @@ const criteriaMutationError = ref('')
 const imageMutationState = reactive({
   background: {
     pending: false,
-    success: '',
     error: ''
   },
   banner: {
     pending: false,
-    success: '',
     error: ''
   }
 })
@@ -630,7 +628,6 @@ async function uploadHackathonImage(slot: HackathonImageSlot, file: File) {
 
   const state = imageMutationState[slot]
   state.pending = true
-  state.success = ''
   state.error = ''
 
   try {
@@ -643,9 +640,13 @@ async function uploadHackathonImage(slot: HackathonImageSlot, file: File) {
     })
 
     await workspace.refreshWorkspace()
-    state.success = slot === 'background'
-      ? 'Background image uploaded.'
-      : 'Banner image uploaded.'
+    toast.add({
+      title: slot === 'background' ? 'Background image updated' : 'Banner image updated',
+      description: slot === 'background'
+        ? 'The public Details tab now shows the latest background image.'
+        : 'The public Details tab now shows the latest banner image.',
+      color: 'success'
+    })
   } catch (error) {
     state.error = normalizeApiError(error).message
   } finally {
@@ -662,7 +663,6 @@ async function removeHackathonImage(slot: HackathonImageSlot) {
 
   const state = imageMutationState[slot]
   state.pending = true
-  state.success = ''
   state.error = ''
 
   try {
@@ -671,9 +671,13 @@ async function removeHackathonImage(slot: HackathonImageSlot) {
     })
 
     await workspace.refreshWorkspace()
-    state.success = slot === 'background'
-      ? 'Background image removed.'
-      : 'Banner image removed.'
+    toast.add({
+      title: slot === 'background' ? 'Background image removed' : 'Banner image removed',
+      description: slot === 'background'
+        ? 'The public Details tab no longer shows a managed background image.'
+        : 'The public Details tab no longer shows a managed banner image.',
+      color: 'success'
+    })
   } catch (error) {
     state.error = normalizeApiError(error).message
   } finally {
@@ -1115,10 +1119,8 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
           :is-submitting="isSavingConfig"
           :mode="props.programSettingsMode"
           :background-image-upload-pending="imageMutationState.background.pending"
-          :background-image-upload-success="imageMutationState.background.success"
           :background-image-upload-error="imageMutationState.background.error"
           :banner-image-upload-pending="imageMutationState.banner.pending"
-          :banner-image-upload-success="imageMutationState.banner.success"
           :banner-image-upload-error="imageMutationState.banner.error"
           :submit-label="programSettingsCopy.submitLabel"
           :helper-text="programSettingsCopy.helperText"
@@ -1142,7 +1144,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
           </template>
 
           <div class="grid gap-6 xl:grid-cols-2">
-            <section class="space-y-4">
+            <section class="min-w-0 space-y-4">
               <div class="flex items-center justify-between gap-3">
                 <h3 class="text-base font-semibold text-highlighted">
                   Application terms
@@ -1177,7 +1179,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
               </div>
             </section>
 
-            <section class="space-y-4 border-t border-black/8 pt-6 dark:border-white/[0.08] xl:border-t-0 xl:border-l xl:pt-0 xl:pl-6">
+            <section class="min-w-0 space-y-4 border-t border-black/8 pt-6 dark:border-white/[0.08] xl:border-t-0 xl:border-l xl:pt-0 xl:pl-6">
               <div class="flex items-center justify-between gap-3">
                 <h3 class="text-base font-semibold text-highlighted">
                   Winner terms

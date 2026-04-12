@@ -31,10 +31,8 @@ const props = defineProps<{
   isSubmitting?: boolean
   canUploadManagedImages?: boolean
   backgroundImageUploadPending?: boolean
-  backgroundImageUploadSuccess?: string
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
-  bannerImageUploadSuccess?: string
   bannerImageUploadError?: string
 }>()
 
@@ -77,10 +75,8 @@ function submitForm() {
       :auto-generate-slug="autoGenerateSlug"
       :can-upload-managed-images="canUploadManagedImages"
       :background-image-upload-pending="backgroundImageUploadPending"
-      :background-image-upload-success="backgroundImageUploadSuccess"
       :background-image-upload-error="backgroundImageUploadError"
       :banner-image-upload-pending="bannerImageUploadPending"
-      :banner-image-upload-success="bannerImageUploadSuccess"
       :banner-image-upload-error="bannerImageUploadError"
       @submit="submitForm"
       @upload-background-image="emit('uploadBackgroundImage', $event)"

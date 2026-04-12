@@ -56,7 +56,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="hackathon-markdown-editor">
+  <div class="hackathon-markdown-editor min-w-0 overflow-hidden">
     <MdEditor
       :id="props.editorId"
       v-model="model"
@@ -75,7 +75,13 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.hackathon-markdown-editor {
+  min-width: 0;
+}
+
 .hackathon-markdown-editor :deep(.md-editor) {
+  width: 100%;
+  max-width: 100%;
   border-radius: 0.875rem;
   --md-color: var(--text-highlighted);
   --md-hover-color: var(--text-highlighted);

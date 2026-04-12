@@ -41,10 +41,8 @@ const props = defineProps<{
   autoGenerateSlug?: boolean
   canUploadManagedImages?: boolean
   backgroundImageUploadPending?: boolean
-  backgroundImageUploadSuccess?: string
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
-  bannerImageUploadSuccess?: string
   bannerImageUploadError?: string
 }>()
 
@@ -882,12 +880,6 @@ const submitConfigForm = handleSubmit(() => {
             </p>
 
             <p
-              v-if="props.backgroundImageUploadSuccess"
-              class="text-xs text-success"
-            >
-              {{ props.backgroundImageUploadSuccess }}
-            </p>
-            <p
               v-if="props.backgroundImageUploadError"
               class="text-xs text-error"
             >
@@ -964,12 +956,6 @@ const submitConfigForm = handleSubmit(() => {
               Save the draft first to enable managed banner uploads.
             </p>
 
-            <p
-              v-if="props.bannerImageUploadSuccess"
-              class="text-xs text-success"
-            >
-              {{ props.bannerImageUploadSuccess }}
-            </p>
             <p
               v-if="props.bannerImageUploadError"
               class="text-xs text-error"
