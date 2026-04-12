@@ -126,6 +126,12 @@ const showMembershipActions = computed(() => props.showMembershipActions ?? true
 const showHeaderLeaveAction = computed(() =>
   Boolean(props.membership) && showMembershipActions.value
 )
+const hasPendingJoinRequests = computed(() =>
+  (props.joinRequests ?? []).some(request => request.status === 'pending')
+)
+const showJoinRequestsPanel = computed(() =>
+  Boolean(props.canManageTeam) && (settings.value.isOpenToJoinRequests || hasPendingJoinRequests.value)
+)
 const joinPolicySwitchId = computed(() => `team-join-policy-${props.team.id}`)
 const activeMemberCount = computed(() => props.team.activeMemberCount ?? props.team.members.length)
 const isJoinCapacityReached = computed(() =>
@@ -579,7 +585,8 @@ function cancelEditingProfile() {
         </div>
 
         <div
-          v-if="canManageTeam"
+          v-if="showJoinRequestsPanel"
+          data-testid="participant-team-join-requests-panel"
           class="space-y-4 app-inset-card px-5 py-5"
         >
           <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">

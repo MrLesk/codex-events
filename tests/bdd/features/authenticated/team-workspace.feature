@@ -14,6 +14,7 @@ Feature: Participant team workspace in the account hackathon page
     When I open the participant Team tab for hackathon slug "participant-team-create-fixture-hackathon" with the saved "regular_user" session
     Then I should see the participant current team "Team Regular User"
     And I should see the participant team text "Closed to join requests"
+    And the participant join requests panel should not be visible
     And I create a participant team named "North Star Team"
     Then I should be in the participant team workspace for the created team
 

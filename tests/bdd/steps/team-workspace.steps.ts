@@ -370,6 +370,10 @@ Then('the participant team directory should not be visible', async ({ page }) =>
   await expect(page.getByTestId('participant-team-directory-panel')).toHaveCount(0)
 })
 
+Then('the participant join requests panel should not be visible', async ({ page }) => {
+  await expect(page.getByTestId('participant-team-join-requests-panel')).toHaveCount(0)
+})
+
 Then('the participant team action {string} should be disabled', async ({ page }, actionName: string) => {
   await expect(page.getByRole('button', {
     name: actionName
