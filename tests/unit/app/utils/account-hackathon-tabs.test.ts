@@ -71,7 +71,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'team', 'prizes', 'details', 'judges', 'staff', 'judging', 'participants', 'submissions', 'operations', 'settings'],
+      availableTabs: ['overview', 'team', 'prizes', 'details', 'judges', 'staff', 'participants', 'submissions', 'judging', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
