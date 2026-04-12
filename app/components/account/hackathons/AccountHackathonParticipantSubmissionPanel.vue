@@ -399,30 +399,20 @@ async function withdrawSubmission() {
           :description="workspace.ownTeamErrorMessage.value"
         />
 
-        <AppCard
+        <AppCountdownCard
           v-if="showClosedSubmissionCard"
-          class="rounded-xl hackathon-workspace-detail-panel"
-        >
-          <template #header>
-            <div class="space-y-1">
-              <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                Submission window not open yet
-              </h2>
-              <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                You can prepare your team during registration. Submission details open once the hackathon enters the submission phase.
-              </p>
-            </div>
-          </template>
-
-          <div class="app-inset-card px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Submission opens at
-            </p>
-            <p class="mt-2 text-lg font-semibold text-highlighted dark:text-white">
-              {{ formatTimestamp(props.hackathon.submissionOpensAt, 'Not scheduled') }}
-            </p>
-          </div>
-        </AppCard>
+          title="Submission window not open yet"
+          description="You can prepare your team during registration. Submission details open once the hackathon enters the submission phase."
+          :target-at="props.hackathon.submissionOpensAt"
+          target-label="Submission opens at"
+          countdown-label="Submission opens in"
+          waiting-title="Scheduled opening time reached"
+          waiting-description="The scheduled opening time has passed. Submission actions appear once organizers open the submission phase."
+          post-target-state="waiting"
+          tone="info"
+          :show-seconds="true"
+          class="rounded-xl"
+        />
 
         <ParticipantTeamSubmissionPanel
           v-else-if="displayedTeam && canViewSubmission"
