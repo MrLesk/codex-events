@@ -1,13 +1,12 @@
 export const accountHackathonWorkspaceTabs = [
   'overview',
-  'team',
-  'submission',
   'prizes',
   'details',
   'judges',
   'staff',
-  'participants',
+  'workspace',
   'teams',
+  'participants',
   'submissions',
   'judging',
   'operations',
@@ -62,16 +61,15 @@ export function getAccountHackathonTabAccess(
   } = options
   const availableTabs: AccountHackathonWorkspaceTab[] = ['overview']
 
-  if (hasApprovedParticipantAccess) {
-    availableTabs.push('team')
-    availableTabs.push('submission')
-  }
-
   if (hasPublishedPrizes || canManage) {
     availableTabs.push('prizes')
   }
 
   availableTabs.push('details', 'judges', 'staff')
+
+  if (hasApprovedParticipantAccess) {
+    availableTabs.push('workspace', 'teams')
+  }
 
   if (canViewParticipantsAndTeams) {
     availableTabs.push('participants')
@@ -90,7 +88,9 @@ export function getAccountHackathonTabAccess(
       availableTabs.push('judging')
     }
 
-    availableTabs.push('teams')
+    if (!hasApprovedParticipantAccess) {
+      availableTabs.push('teams')
+    }
   } else if (canJudge) {
     availableTabs.push('judging')
   }

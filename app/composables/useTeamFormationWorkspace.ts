@@ -7,7 +7,8 @@ import type {
   TeamJoinRequestRecord,
   TeamSummaryRecord,
   TeamWorkspaceActor,
-  TeamWorkspaceApiDataResponse
+  TeamWorkspaceApiDataResponse,
+  TeamWorkspaceApiListResponse
 } from '~/utils/team-workspace'
 
 import {
@@ -16,6 +17,20 @@ import {
 } from '~/utils/team-workspace'
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
+type VisibleTeamsFilter = {
+  openToJoin?: boolean
+  hasCapacity?: boolean
+  workspaceMode?: 'solo' | 'team'
+  memberCount?: 'multi_person' | 'full'
+}
+type VisibleTeamsDirectoryFilter = 'all' | 'open_to_join' | 'solo' | 'multi_person' | 'full'
+type VisibleTeamsFilterCounts = Record<VisibleTeamsDirectoryFilter, number>
+
+interface TeamSummaryListResponse extends TeamWorkspaceApiListResponse<TeamSummaryRecord> {
+  meta?: NonNullable<TeamWorkspaceApiListResponse<TeamSummaryRecord>['meta']> & {
+    filterCounts?: Partial<VisibleTeamsFilterCounts>
+  }
+}
 
 const visibleTeamsPageSize = 6
 const ownTeamLookupPageSize = 100
@@ -23,6 +38,23 @@ const ownTeamLookupPageSize = 100
 function toSectionErrorMessage(error: unknown, fallback: string) {
   const message = normalizeTeamWorkspaceApiError(error).message
   return message && message.length > 0 ? message : fallback
+}
+
+function createEmptyVisibleTeamsFilterCounts(): VisibleTeamsFilterCounts {
+  return {
+    all: 0,
+    open_to_join: 0,
+    solo: 0,
+    multi_person: 0,
+    full: 0
+  }
+}
+
+function normalizeVisibleTeamsFilterCounts(filterCounts?: Partial<VisibleTeamsFilterCounts>): VisibleTeamsFilterCounts {
+  return {
+    ...createEmptyVisibleTeamsFilterCounts(),
+    ...filterCounts
+  }
 }
 
 export function useTeamFormationWorkspace(
@@ -85,9 +117,11 @@ export function useTeamFormationWorkspace(
   const visibleTeamsStatus = ref<LoadStatus>('idle')
   const visibleTeamsErrorMessage = ref('')
   const visibleTeamsTotal = ref(0)
+  const visibleTeamsFilterCounts = ref<VisibleTeamsFilterCounts>(createEmptyVisibleTeamsFilterCounts())
   const currentVisibleTeamsPage = ref(0)
   const isLoadingMoreVisibleTeams = ref(false)
   const loadMoreVisibleTeamsErrorMessage = ref('')
+  const activeVisibleTeamsFilter = ref<VisibleTeamsFilter>({})
 
   const ownTeam = ref<TeamDetailRecord | null>(null)
   const ownTeamStatus = ref<LoadStatus>('idle')
@@ -137,9 +171,11 @@ export function useTeamFormationWorkspace(
     visibleTeamsStatus.value = 'idle'
     visibleTeamsErrorMessage.value = ''
     visibleTeamsTotal.value = 0
+    visibleTeamsFilterCounts.value = createEmptyVisibleTeamsFilterCounts()
     currentVisibleTeamsPage.value = 0
     isLoadingMoreVisibleTeams.value = false
     loadMoreVisibleTeamsErrorMessage.value = ''
+    activeVisibleTeamsFilter.value = {}
   }
 
   function resetOwnTeamState() {
@@ -160,29 +196,36 @@ export function useTeamFormationWorkspace(
   async function fetchTeamPage(
     page: number,
     pageSize: number = visibleTeamsPageSize,
-    options?: {
-      openToJoin?: boolean
-      hasCapacity?: boolean
-    }
+    options?: VisibleTeamsFilter
   ) {
     if (!visibleHackathonId.value) {
       throw new Error('The current hackathon team route could not be resolved.')
     }
 
-    return await apiFetch<TeamWorkspaceApiListResponse<TeamSummaryRecord>>(
+    return await apiFetch<TeamSummaryListResponse>(
       `/api/hackathons/${visibleHackathonId.value}/teams`,
       {
         query: {
           page,
           page_size: pageSize,
-          ...(options?.openToJoin
+          ...(typeof options?.openToJoin === 'boolean'
             ? {
-                open_to_join: true
+                open_to_join: options.openToJoin
               }
             : {}),
-          ...(options?.hasCapacity
+          ...(typeof options?.hasCapacity === 'boolean'
             ? {
-                has_capacity: true
+                has_capacity: options.hasCapacity
+              }
+            : {}),
+          ...(options?.workspaceMode
+            ? {
+                workspace_mode: options.workspaceMode
+              }
+            : {}),
+          ...(options?.memberCount
+            ? {
+                member_count: options.memberCount
               }
             : {})
         }
@@ -201,7 +244,7 @@ export function useTeamFormationWorkspace(
       return null
     }
 
-    const response = await apiFetch<TeamWorkspaceApiListResponse<TeamSummaryRecord>>(
+    const response = await apiFetch<TeamSummaryListResponse>(
       `/api/hackathons/${visibleHackathonId.value}/teams`,
       {
         query: {
@@ -227,13 +270,23 @@ export function useTeamFormationWorkspace(
     return response.data
   }
 
-  async function loadVisibleTeams(pageCount: number = 1, options?: { loadMore?: boolean }) {
+  async function loadVisibleTeams(pageCount: number = 1, options?: {
+    loadMore?: boolean
+    filter?: VisibleTeamsFilter
+  }) {
     if (!visibleHackathonId.value || typedActor.value?.kind !== 'platform_user') {
       resetVisibleTeamsState()
       return
     }
 
     const isLoadMore = options?.loadMore ?? false
+    const nextFilter = options?.filter ?? activeVisibleTeamsFilter.value
+
+    if (!isLoadMore) {
+      activeVisibleTeamsFilter.value = {
+        ...nextFilter
+      }
+    }
 
     if (isLoadMore) {
       isLoadingMoreVisibleTeams.value = true
@@ -248,10 +301,7 @@ export function useTeamFormationWorkspace(
       const responses = await Promise.all(
         Array.from(
           { length: pageCount },
-          async (_, index) => await fetchTeamPage(index + 1, visibleTeamsPageSize, {
-            openToJoin: true,
-            hasCapacity: true
-          })
+          async (_, index) => await fetchTeamPage(index + 1, visibleTeamsPageSize, nextFilter)
         )
       )
       const nextTeams = responses.flatMap(response => response.data)
@@ -261,6 +311,7 @@ export function useTeamFormationWorkspace(
 
       visibleTeams.value = uniqueTeams
       visibleTeamsTotal.value = responses.at(-1)?.meta?.total ?? uniqueTeams.length
+      visibleTeamsFilterCounts.value = normalizeVisibleTeamsFilterCounts(responses.at(-1)?.meta?.filterCounts)
       currentVisibleTeamsPage.value = pageCount
       visibleTeamsStatus.value = 'success'
     } catch (error) {
@@ -274,6 +325,7 @@ export function useTeamFormationWorkspace(
 
       visibleTeams.value = []
       visibleTeamsTotal.value = 0
+      visibleTeamsFilterCounts.value = createEmptyVisibleTeamsFilterCounts()
       currentVisibleTeamsPage.value = 0
       visibleTeamsStatus.value = 'error'
       visibleTeamsErrorMessage.value = toSectionErrorMessage(
@@ -293,7 +345,8 @@ export function useTeamFormationWorkspace(
     }
 
     await loadVisibleTeams(currentVisibleTeamsPage.value + 1, {
-      loadMore: true
+      loadMore: true,
+      filter: activeVisibleTeamsFilter.value
     })
   }
 
@@ -441,6 +494,8 @@ export function useTeamFormationWorkspace(
     name: string
     bio: string
     isOpenToJoinRequests: boolean
+    workspaceMode: 'solo' | 'team'
+    replaceOwnSoloTeam?: boolean
   }) {
     if (!visibleHackathonId.value) {
       mutationError.value = 'The current hackathon team route could not be resolved.'
@@ -793,6 +848,7 @@ export function useTeamFormationWorkspace(
     }),
     visibleTeams,
     visibleTeamsErrorMessage,
+    visibleTeamsFilterCounts,
     visibleTeamsStatus,
     visibleTeamsTotal
   }

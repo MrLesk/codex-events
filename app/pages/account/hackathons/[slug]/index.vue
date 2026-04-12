@@ -17,7 +17,7 @@ import type {
 
 import AccountHackathonAdminOperationsPanel from '~/components/account/hackathons/AccountHackathonAdminOperationsPanel.vue'
 import AccountHackathonPublishedRosterPanel from '~/components/account/hackathons/AccountHackathonPublishedRosterPanel.vue'
-import AccountHackathonParticipantSubmissionPanel from '~/components/account/hackathons/AccountHackathonParticipantSubmissionPanel.vue'
+import AccountHackathonParticipantWorkspacePanel from '~/components/account/hackathons/AccountHackathonParticipantWorkspacePanel.vue'
 import AccountHackathonParticipantTeamPanel from '~/components/account/hackathons/AccountHackathonParticipantTeamPanel.vue'
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
 import AccountHackathonCompetitionPanel from '~/components/account/hackathons/AccountHackathonCompetitionPanel.vue'
@@ -56,13 +56,10 @@ import {
   summarizeParticipantApplicationStatus
 } from '~/utils/participant-application'
 import {
-  formatTeamSubmissionStatus,
-  getTeamSubmissionStateSummary,
-  getTeamSubmissionWorkspaceStatus,
   hasHackathonEnteredSubmissionPhase
 } from '~/utils/team-submission'
 import { normalizeJudgeAssignmentIdQueryValue } from '~/utils/judging-query'
-import { buildAccountHackathonTeamTabHref, normalizeTeamSlugQueryValue } from '~/utils/team-query'
+import { buildAccountHackathonTeamsTabHref, normalizeTeamSlugQueryValue } from '~/utils/team-query'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
 definePageMeta({
@@ -109,8 +106,7 @@ type AccountWorkspaceHackathon = PublicHackathon & {
 
 const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
   overview: 'Overview',
-  team: 'Team',
-  submission: 'Submission',
+  workspace: 'Workspace',
   prizes: 'Prizes',
   details: 'Details',
   judges: 'Judges',
@@ -277,6 +273,10 @@ function buildWorkspaceSectionLocation(nextSection: AccountHackathonWorkspaceTab
     ...route.query
   }
 
+  if (nextSection !== 'teams') {
+    delete nextQuery.team
+  }
+
   if (nextSection !== 'judging') {
     delete nextQuery.assignment
   }
@@ -346,29 +346,8 @@ const teamTabTargetSlug = computed(() =>
   ?? accessRecord.value?.team?.slug
   ?? selectedTeamSlug.value
 )
-const submissionTeam = computed(() => {
-  if (participationRecord.value?.activeTeam) {
-    return {
-      id: participationRecord.value.activeTeam.id,
-      name: participationRecord.value.activeTeam.name,
-      slug: participationRecord.value.activeTeam.slug,
-      role: participationRecord.value.activeTeam.membershipRole
-    }
-  }
-
-  if (accessRecord.value?.team) {
-    return {
-      id: accessRecord.value.team.id,
-      name: accessRecord.value.team.name,
-      slug: accessRecord.value.team.slug,
-      role: accessRecord.value.team.role
-    }
-  }
-
-  return null
-})
-const teamTabHref = computed(() => buildAccountHackathonTeamTabHref(slug.value, teamTabTargetSlug.value))
-const submissionTabHref = computed(() => `/account/hackathons/${slug.value}?tab=submission`)
+const workspaceTabHref = computed(() => `/account/hackathons/${slug.value}?tab=workspace`)
+const teamsTabHref = computed(() => buildAccountHackathonTeamsTabHref(slug.value, teamTabTargetSlug.value))
 const detailsTabHref = computed(() => `/account/hackathons/${slug.value}?tab=details`)
 const applicationSubmittedNoticeVisible = ref(isParticipantApplicationSubmittedNotice(route.query.notice))
 const applicationStatusLabel = computed(() =>
@@ -433,37 +412,19 @@ const withdrawApplicationAvailability = computed(() =>
 const withdrawalDescription = 'If you withdraw, you will no longer be eligible to participate or attend in person through this application.'
 
 const approvedOverviewTeamActionTitle = computed(() =>
-  participationRecord.value?.activeTeam ? 'Continue with your team' : 'Open your team workspace'
+  participationRecord.value?.activeTeam ? 'Continue in your workspace' : 'Open your workspace'
 )
 const approvedOverviewTeamActionDescription = computed(() => {
   const activeTeam = participationRecord.value?.activeTeam
 
   if (activeTeam) {
-    return `You're already on ${activeTeam.name}. Use the Team tab to manage collaborators, team details, and join requests.`
+    return `You're already on ${activeTeam.name}. Use Workspace to manage your team state and submission in one place.`
   }
 
-  return 'Everyone participates through a team. The Team tab starts you with your own team workspace and lets you request to join another team.'
+  return 'Everyone participates through a team. Workspace is where you confirm solo participation or create a team, while Teams is where you browse the wider directory.'
 })
 const approvedOverviewDetailsActionDescription = 'Check the schedule, location, and full address before the hackathon starts.'
 const showTeamAndSubmissionCards = computed(() => hasHackathonEnteredSubmissionPhase(hackathon.value))
-const submissionStatus = computed(() =>
-  getTeamSubmissionWorkspaceStatus(participationRecord.value?.latestSubmission ?? null)
-)
-const submissionStatusLabel = computed(() => formatTeamSubmissionStatus(submissionStatus.value))
-const submissionSummary = computed(() =>
-  getTeamSubmissionStateSummary(hackathon.value, participationRecord.value?.latestSubmission ?? null)
-)
-const submissionRoleSummary = computed(() => {
-  if (!participationRecord.value?.activeTeam) {
-    return 'Join or create a team before working on a project submission.'
-  }
-
-  if (participationRecord.value.activeTeam.membershipRole === 'admin') {
-    return 'You are a team admin and can manage submission actions when they are available.'
-  }
-
-  return 'You can review the submission here. Team admins handle submission actions.'
-})
 
 const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
 const headerStateClass = computed(() => {
@@ -742,12 +703,12 @@ useSeoMeta({
 
                     <div>
                       <AppButton
-                        :to="teamTabHref"
+                        :to="workspaceTabHref"
                         color="neutral"
                         variant="solid"
                         trailing-icon="i-lucide-arrow-up-right"
                       >
-                        Open team workspace
+                        Open Workspace
                       </AppButton>
                     </div>
                   </div>
@@ -784,7 +745,7 @@ useSeoMeta({
               >
                 <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
                   <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                    Team
+                    Workspace
                   </h2>
 
                   <template v-if="participationRecord?.activeTeam">
@@ -796,13 +757,13 @@ useSeoMeta({
                     </p>
 
                     <AppButton
-                      :to="teamTabHref"
+                      :to="workspaceTabHref"
                       color="neutral"
                       variant="solid"
                       trailing-icon="i-lucide-arrow-up-right"
                       class="mt-4"
                     >
-                      Go to Team
+                      Go to Workspace
                     </AppButton>
                   </template>
 
@@ -812,46 +773,37 @@ useSeoMeta({
                     </p>
 
                     <AppButton
-                      :to="teamTabHref"
+                      :to="workspaceTabHref"
                       color="neutral"
                       variant="solid"
                       trailing-icon="i-lucide-arrow-up-right"
                       class="mt-4"
                     >
-                      Go to Team
+                      Go to Workspace
                     </AppButton>
                   </template>
                 </div>
 
                 <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-                  <div class="flex flex-wrap items-center justify-between gap-3">
-                    <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                      Submission
-                    </h2>
-                    <AppBadge
-                      color="neutral"
-                      variant="soft"
-                      class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
-                    >
-                      {{ submissionStatusLabel }}
-                    </AppBadge>
-                  </div>
+                  <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+                    Teams
+                  </h2>
 
                   <p class="mt-3 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    {{ submissionSummary }}
+                    Browse every active team in the hackathon, including solo and multi-person teams.
                   </p>
                   <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    {{ submissionRoleSummary }}
+                    Join actions appear there only when a team is open to new members and team formation is still open.
                   </p>
 
                   <AppButton
-                    :to="submissionTabHref"
+                    :to="teamsTabHref"
                     color="neutral"
                     variant="solid"
                     trailing-icon="i-lucide-arrow-up-right"
                     class="mt-4"
                   >
-                    Go to Submission
+                    Open Teams
                   </AppButton>
                 </div>
               </section>
@@ -895,29 +847,15 @@ useSeoMeta({
       </section>
 
       <section
-        v-else-if="activeSection === 'team'"
-        id="account-tab-panel-team"
+        v-else-if="activeSection === 'workspace'"
+        id="account-tab-panel-workspace"
         role="tabpanel"
-        aria-labelledby="account-tab-team"
+        aria-labelledby="account-tab-workspace"
         class="space-y-8"
       >
-        <AccountHackathonParticipantTeamPanel
-          :hackathon="hackathon"
-          :selected-team-slug="selectedTeamSlug"
-        />
-      </section>
-
-      <section
-        v-else-if="activeSection === 'submission'"
-        id="account-tab-panel-submission"
-        role="tabpanel"
-        aria-labelledby="account-tab-submission"
-        class="space-y-8"
-      >
-        <AccountHackathonParticipantSubmissionPanel
+        <AccountHackathonParticipantWorkspacePanel
           :hackathon="hackathon"
           :application-status="applicationStatus"
-          :team="submissionTeam"
           :initial-submission="participationRecord?.latestSubmission ?? null"
         />
       </section>
@@ -1048,7 +986,16 @@ useSeoMeta({
         aria-labelledby="account-tab-teams"
         class="space-y-8"
       >
-        <AccountHackathonTeamVisibilityPanel :hackathon-id="workspaceHackathonId" />
+        <AccountHackathonParticipantTeamPanel
+          v-if="applicationStatus === 'approved' && !canAdmin"
+          :hackathon="hackathon"
+          :selected-team-slug="selectedTeamSlug"
+        />
+
+        <AccountHackathonTeamVisibilityPanel
+          v-else
+          :hackathon-id="workspaceHackathonId"
+        />
       </section>
 
       <section

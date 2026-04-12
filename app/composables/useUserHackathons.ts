@@ -104,16 +104,16 @@ export function formatUserHackathonRole(role: UserHackathonRole) {
 export function resolveUserHackathonPrimaryAction(entry: UserHackathonEntry): UserHackathonPrimaryAction {
   if (entry.team) {
     return {
-      label: entry.state === 'completed' ? 'Review team workspace' : 'Open team workspace',
-      to: `/account/hackathons/${entry.slug}?tab=team`,
+      label: entry.state === 'completed' ? 'Review workspace' : 'Open workspace',
+      to: `/account/hackathons/${entry.slug}?tab=workspace`,
       icon: 'i-lucide-arrow-up-right'
     }
   }
 
   if (entry.applicationStatus === 'approved') {
     return {
-      label: entry.state === 'completed' ? 'Review teams' : 'Form your team',
-      to: `/account/hackathons/${entry.slug}?tab=team`,
+      label: entry.state === 'completed' ? 'Review workspace' : 'Open workspace',
+      to: `/account/hackathons/${entry.slug}?tab=workspace`,
       icon: 'i-lucide-users'
     }
   }

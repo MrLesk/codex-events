@@ -57,10 +57,15 @@ async function waitForNuxtHydration(page: Page) {
 }
 
 async function waitForParticipantTeamTabToSettle(page: Page) {
+  const accountWorkspacePanel = page.getByTestId('account-hackathon-workspace-panel')
   const workspacePanel = page.getByTestId('participant-team-workspace-panel')
   const directoryPanel = page.getByTestId('participant-team-directory-panel')
 
   await expect.poll(async () => {
+    if (await accountWorkspacePanel.isVisible().catch(() => false)) {
+      return 'account-workspace'
+    }
+
     if (await workspacePanel.isVisible().catch(() => false)) {
       return 'workspace'
     }
@@ -213,8 +218,8 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
 
 When('I open the participant Team tab for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto(`/account/hackathons/${slug}?tab=team`)
-  await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
+  await page.goto(`/account/hackathons/${slug}?tab=workspace`)
+  await expect(page.getByTestId('account-hackathon-workspace-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
   await resetParticipantCreateFixtureWorkspaceIfNeeded(page, slug)
   await recoverTeamDirectoryIfUnresolved(page)
@@ -222,14 +227,14 @@ When('I open the participant Team tab for hackathon slug {string} with the saved
 
 When('I open the participant Team tab for hackathon slug {string} and selected team slug {string} with the saved {string} session', async ({ page }, slug: string, selectedTeamSlug: string, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto(`/account/hackathons/${slug}?tab=team&team=${encodeURIComponent(selectedTeamSlug)}`)
+  await page.goto(`/account/hackathons/${slug}?tab=teams&team=${encodeURIComponent(selectedTeamSlug)}`)
   await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
 })
 
 When('I open the participant Submission tab for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto(`/account/hackathons/${slug}?tab=submission`)
+  await page.goto(`/account/hackathons/${slug}?tab=workspace`)
   await waitForParticipantSubmissionTabToSettle(page)
 })
 
@@ -324,7 +329,7 @@ When('I enable join requests for the participant team', async ({ page }) => {
 
 When('I reload the participant Team tab page', async ({ page }) => {
   await page.reload()
-  await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
+  await expect(page.getByTestId('account-hackathon-workspace-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
 })
 

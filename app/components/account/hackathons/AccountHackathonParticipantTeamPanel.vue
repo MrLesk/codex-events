@@ -8,22 +8,23 @@ import type {
 import ParticipantTeamDirectoryPanel from '~/components/teams/ParticipantTeamDirectoryPanel.vue'
 import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWorkspacePanel.vue'
 import {
-  buildAbsoluteAccountHackathonTeamTabHref,
-  buildAccountHackathonTeamTabHref,
-  isSharedTeamTabSelection,
-  shouldSyncSelectedTeamSlug
+  buildAccountHackathonTeamsTabHref,
+  isSharedTeamSelection
 } from '~/utils/team-query'
 import {
-  getCreateTeamAvailability,
-  hasTeamReachedMemberLimit,
   getJoinTeamAvailability,
-  getLeaveTeamAvailability,
-  getMemberRemovalAvailability,
-  getTeamFormationAvailability
+  hasTeamReachedMemberLimit
 } from '~/utils/team-workspace'
-import {
-  shouldShowParticipantSubmissionWorkspace
-} from '~/utils/team-submission'
+
+const baseDirectoryFilterOptions = [
+  { label: 'All teams', value: 'all' },
+  { label: 'Open to join', value: 'open_to_join' },
+  { label: 'Solo', value: 'solo' },
+  { label: 'Multi-person', value: 'multi_person' },
+  { label: 'Full', value: 'full' }
+] as const
+
+type TeamsDirectoryFilter = (typeof baseDirectoryFilterOptions)[number]['value']
 
 const props = withDefaults(defineProps<{
   hackathon: PublicHackathon & {
@@ -34,13 +35,13 @@ const props = withDefaults(defineProps<{
   selectedTeamSlug: null
 })
 
-const route = useRoute()
-const router = useRouter()
 const toast = useToast()
 const selectedTeamId = ref<string | null>(null)
 const selectedTeamStatus = ref<'idle' | 'pending' | 'success' | 'error'>('idle')
 const selectedTeamErrorMessage = ref('')
+const directoryFilter = ref<TeamsDirectoryFilter>('all')
 let selectedTeamRequestVersion = 0
+
 const workspace = useTeamFormationWorkspace(
   computed(() => props.hackathon),
   {
@@ -48,40 +49,36 @@ const workspace = useTeamFormationWorkspace(
   }
 )
 
-const teamSettings = reactive({
-  name: '',
-  bio: '',
-  isOpenToJoinRequests: false
-})
-const provisionalTeamCreatedAt = ref(new Date().toISOString())
-const hasSeededProvisionalTeamSettings = ref(false)
-const lastSeededProvisionalTeamName = ref('')
-
 const visibleTeamSlugs = computed(() =>
   workspace.visibleTeams.value.map(team => team.slug).join(':')
 )
 
-function buildTeamTabHref(teamSlug?: string | null) {
-  return buildAccountHackathonTeamTabHref(props.hackathon.slug, teamSlug)
+function buildTeamsTabHref(teamSlug?: string | null) {
+  return buildAccountHackathonTeamsTabHref(props.hackathon.slug, teamSlug)
 }
 
-async function syncSelectedTeamSlugQuery(previousTeamSlug?: string | null, nextTeamSlug?: string | null) {
-  if (!shouldSyncSelectedTeamSlug({
-    selectedTeamSlug: props.selectedTeamSlug,
-    previousTeamSlug,
-    nextTeamSlug
-  })) {
-    return
+function mapDirectoryFilter(filter: TeamsDirectoryFilter) {
+  switch (filter) {
+    case 'open_to_join':
+      return {
+        openToJoin: true,
+        hasCapacity: true
+      } as const
+    case 'solo':
+      return {
+        workspaceMode: 'solo'
+      } as const
+    case 'multi_person':
+      return {
+        workspaceMode: 'team'
+      } as const
+    case 'full':
+      return {
+        hasCapacity: false
+      } as const
+    default:
+      return {}
   }
-
-  await router.replace({
-    path: route.path,
-    query: {
-      ...route.query,
-      team: nextTeamSlug ?? undefined
-    },
-    hash: route.hash
-  })
 }
 
 async function syncSelectedTeamId() {
@@ -91,13 +88,7 @@ async function syncSelectedTeamId() {
   selectedTeamErrorMessage.value = ''
 
   if (!requestedTeamSlug) {
-    selectedTeamId.value = workspace.ownTeam.value?.id ?? null
-    selectedTeamStatus.value = 'success'
-    return
-  }
-
-  if (workspace.ownTeam.value?.slug === requestedTeamSlug) {
-    selectedTeamId.value = workspace.ownTeam.value.id
+    selectedTeamId.value = null
     selectedTeamStatus.value = 'success'
     return
   }
@@ -126,7 +117,6 @@ async function syncSelectedTeamId() {
       return
     }
 
-    selectedTeamId.value = workspace.ownTeam.value?.id ?? null
     selectedTeamStatus.value = 'error'
     selectedTeamErrorMessage.value = 'The selected team from this link is not available in this hackathon.'
   } catch {
@@ -134,7 +124,6 @@ async function syncSelectedTeamId() {
       return
     }
 
-    selectedTeamId.value = workspace.ownTeam.value?.id ?? null
     selectedTeamStatus.value = 'error'
     selectedTeamErrorMessage.value = 'The selected team from this link could not be loaded right now.'
   }
@@ -142,7 +131,6 @@ async function syncSelectedTeamId() {
 
 watch([
   () => props.selectedTeamSlug ?? null,
-  () => workspace.ownTeam.value?.id ?? null,
   visibleTeamSlugs
 ], () => {
   void syncSelectedTeamId()
@@ -150,342 +138,131 @@ watch([
   immediate: true
 })
 
-const actor = computed(() => workspace.actor.value)
-const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
-const teamFormationAvailability = computed(() =>
-  getTeamFormationAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
-)
-const defaultSoloTeamName = computed(() => {
-  if (actor.value?.kind !== 'platform_user') {
-    return 'My Team'
-  }
-
-  const fullName = `${actor.value.platformUser.firstName} ${actor.value.platformUser.familyName}`.trim()
-  const preferredName = fullName
-    || actor.value.platformUser.displayName.trim()
-    || actor.value.sessionUser.name?.trim()
-    || actor.value.sessionUser.nickname?.trim()
-    || 'My Team'
-
-  return `Team ${preferredName}`.trim()
-})
-const provisionalCurrentTeam = computed(() => {
-  if (actor.value?.kind !== 'platform_user') {
-    return null
-  }
-
-  if (
-    ownApplicationStatus.value !== 'approved'
-    || !teamFormationAvailability.value.isOpen
-    || workspace.ownTeam.value
-    || workspace.currentTeam.value
-  ) {
-    return null
-  }
-
-  const provisionalTeamId = `provisional-team:${props.hackathon.id}:${actor.value.platformUser.id}`
-  return {
-    id: provisionalTeamId,
-    hackathonId: props.hackathon.id,
-    name: teamSettings.name.trim() || defaultSoloTeamName.value,
-    bio: teamSettings.bio.trim() || null,
-    slug: '',
-    isOpenToJoinRequests: teamSettings.isOpenToJoinRequests,
-    createdByUserId: actor.value.platformUser.id,
-    createdAt: provisionalTeamCreatedAt.value,
-    updatedAt: provisionalTeamCreatedAt.value,
-    activeMemberCount: 1,
-    isPersisted: false,
-    members: [
-      {
-        id: `provisional-member:${props.hackathon.id}:${actor.value.platformUser.id}`,
-        teamId: provisionalTeamId,
-        userId: actor.value.platformUser.id,
-        role: 'admin' as const,
-        joinedAt: provisionalTeamCreatedAt.value,
-        leftAt: null,
-        createdAt: provisionalTeamCreatedAt.value,
-        user: {
-          id: actor.value.platformUser.id,
-          displayName: actor.value.platformUser.displayName,
-          email: actor.value.platformUser.email,
-          xProfileUrl: actor.value.platformUser.xProfileUrl,
-          linkedinProfileUrl: actor.value.platformUser.linkedinProfileUrl,
-          githubProfileUrl: actor.value.platformUser.githubProfileUrl,
-          chatgptEmail: actor.value.platformUser.chatgptEmail,
-          openaiOrgId: actor.value.platformUser.openaiOrgId,
-          lumaUsername: actor.value.platformUser.lumaUsername
-        }
-      }
-    ]
-  }
-})
-
-watch([
-  () => workspace.currentTeam.value,
-  provisionalCurrentTeam,
-  defaultSoloTeamName
-], ([currentTeam, nextProvisionalTeam, nextDefaultSoloTeamName]) => {
-  if (currentTeam) {
-    teamSettings.name = currentTeam.name
-    teamSettings.bio = currentTeam.bio ?? ''
-    teamSettings.isOpenToJoinRequests = currentTeam.isOpenToJoinRequests
-    hasSeededProvisionalTeamSettings.value = false
-    lastSeededProvisionalTeamName.value = ''
-    return
-  }
-
-  if (!nextProvisionalTeam) {
-    teamSettings.name = ''
-    teamSettings.bio = ''
-    teamSettings.isOpenToJoinRequests = false
-    hasSeededProvisionalTeamSettings.value = false
-    lastSeededProvisionalTeamName.value = ''
-    return
-  }
-
-  if (!hasSeededProvisionalTeamSettings.value) {
-    teamSettings.name = nextDefaultSoloTeamName
-    teamSettings.bio = ''
-    teamSettings.isOpenToJoinRequests = false
-    hasSeededProvisionalTeamSettings.value = true
-    lastSeededProvisionalTeamName.value = nextDefaultSoloTeamName
-    return
-  }
-
-  if (teamSettings.name === lastSeededProvisionalTeamName.value) {
-    teamSettings.name = nextDefaultSoloTeamName
-    lastSeededProvisionalTeamName.value = nextDefaultSoloTeamName
-  }
+watch(directoryFilter, async (nextFilter) => {
+  await workspace.loadVisibleTeams(1, {
+    filter: mapDirectoryFilter(nextFilter)
+  })
 }, {
   immediate: true
 })
 
-const displayedTeam = computed(() => workspace.currentTeam.value ?? provisionalCurrentTeam.value)
-const displayedTeamMembership = computed(() =>
-  workspace.currentTeamMembership.value ?? provisionalCurrentTeam.value?.members[0] ?? null
+const actor = computed(() => workspace.actor.value)
+const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
+const canJoinAnyTeam = computed(() =>
+  ownApplicationStatus.value === 'approved'
+  && !workspace.ownTeam.value
+  && (props.hackathon.state === 'registration_open' || props.hackathon.state === 'submission_open')
 )
-const canManageTeam = computed(() =>
-  workspace.isCurrentTeamAdmin.value || Boolean(provisionalCurrentTeam.value)
+const isOpenToJoinDirectoryUnavailable = computed(() =>
+  directoryFilter.value === 'open_to_join' && !canJoinAnyTeam.value
 )
-const canViewSubmission = computed(() =>
-  shouldShowParticipantSubmissionWorkspace(props.hackathon, Boolean(displayedTeamMembership.value))
+const directoryFilterOptions = computed(() =>
+  baseDirectoryFilterOptions.map(option => ({
+    ...option,
+    count: option.value === 'open_to_join' && !canJoinAnyTeam.value
+      ? 0
+      : workspace.visibleTeamsFilterCounts.value[option.value] ?? 0
+  }))
 )
-const submissionWorkspace = useTeamSubmissionWorkspace(
-  computed(() => props.hackathon),
-  {
-    visibleHackathonId: workspace.visibleHackathonId,
-    team: displayedTeam,
-    canViewSubmission,
-    canManageSubmission: canManageTeam
-  }
+const selectedTeam = computed(() => workspace.currentTeam.value)
+const selectedTeamMembership = computed(() => workspace.currentTeamMembership.value)
+const selectedTeamIsOwnTeam = computed(() =>
+  Boolean(selectedTeam.value && selectedTeam.value.id === workspace.ownTeam.value?.id)
 )
-
-const isWorkspaceLoading = computed(() => {
-  if (workspace.actorStatus.value === 'idle' || workspace.actorStatus.value === 'pending') {
-    return true
-  }
-
-  if (!actor.value || actor.value.kind !== 'platform_user') {
-    return false
-  }
-
-  return workspace.visibleHackathonStatus.value === 'idle'
-    || workspace.visibleHackathonStatus.value === 'pending'
-    || workspace.ownApplicationStatus.value === 'idle'
-    || workspace.ownApplicationStatus.value === 'pending'
-})
 const isViewingSharedTeam = computed(() =>
-  isSharedTeamTabSelection({
+  isSharedTeamSelection({
     selectedTeamSlug: props.selectedTeamSlug,
-    currentTeamId: workspace.currentTeam.value?.id ?? null,
-    currentTeamSlug: workspace.currentTeam.value?.slug ?? null,
+    currentTeamId: selectedTeam.value?.id ?? null,
+    currentTeamSlug: selectedTeam.value?.slug ?? null,
     ownTeamId: workspace.ownTeam.value?.id ?? null
   })
 )
-const backToOwnTeamHref = computed(() =>
-  buildTeamTabHref(workspace.ownTeam.value?.slug ?? null)
+const isActorLoading = computed(() =>
+  workspace.actorStatus.value === 'idle' || workspace.actorStatus.value === 'pending'
 )
-const createTeamAvailability = computed(() =>
-  getCreateTeamAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
+const isDirectoryLoading = computed(() =>
+  Boolean(actor.value && actor.value.kind === 'platform_user')
+  && (
+    workspace.ownApplicationStatus.value === 'idle'
+    || workspace.ownApplicationStatus.value === 'pending'
+    || workspace.visibleTeamsStatus.value === 'idle'
+    || workspace.visibleTeamsStatus.value === 'pending'
+  )
 )
-const directoryEntries = computed<TeamDirectoryEntry[]>(() => {
-  const ownTeamId = workspace.ownTeam.value?.id ?? null
-  const selectedExternalTeamId = workspace.currentTeamMembership.value ? null : workspace.currentTeam.value?.id ?? null
-
-  return workspace.visibleTeams.value
-    .filter(team => team.id !== ownTeamId && team.id !== selectedExternalTeamId)
-    .map((team) => {
-      const pendingJoinRequestId = workspace.getRememberedPendingJoinRequestId(team.id)
-
-      return {
-        team,
-        detailHref: buildTeamTabHref(team.slug),
-        isOwnTeam: false,
-        hasPendingJoinRequest: Boolean(pendingJoinRequestId),
-        pendingJoinRequestId,
-        joinAvailability: getJoinTeamAvailability(props.hackathon, team, {
-          applicationStatus: ownApplicationStatus.value,
-          hasTeamMembership: Boolean(workspace.ownTeam.value),
-          activeMemberCount: team.activeMemberCount ?? 0,
-          hasPendingJoinRequest: Boolean(pendingJoinRequestId),
-          isOwnTeam: false
-        })
-      }
-    })
-})
-const hasActiveTeamSubmission = computed(() => {
-  const status = submissionWorkspace.currentSubmission.value?.status
-  return status === 'draft' || status === 'submitted'
-})
-const joinAvailability = computed(() => {
-  if (!displayedTeam.value) {
+const selectedTeamJoinAvailability = computed(() => {
+  if (!selectedTeam.value) {
     return {
       isAllowed: false,
-      reason: 'The current team could not be loaded.'
+      reason: 'The selected team could not be loaded.'
     } satisfies TeamActionAvailability
   }
 
-  return getJoinTeamAvailability(props.hackathon, displayedTeam.value, {
+  const pendingJoinRequestId = workspace.getRememberedPendingJoinRequestId(selectedTeam.value.id)
+
+  return getJoinTeamAvailability(props.hackathon, selectedTeam.value, {
     applicationStatus: ownApplicationStatus.value,
     hasTeamMembership: Boolean(workspace.ownTeam.value),
-    activeMemberCount: displayedTeam.value.activeMemberCount ?? displayedTeam.value.members.length,
-    hasPendingJoinRequest: Boolean(displayedTeam.value.isPersisted === false
-      ? null
-      : workspace.getRememberedPendingJoinRequestId(displayedTeam.value.id)),
-    isOwnTeam: displayedTeam.value.isPersisted === false || workspace.ownTeam.value?.id === displayedTeam.value.id
+    activeMemberCount: selectedTeam.value.activeMemberCount ?? selectedTeam.value.members.length,
+    hasPendingJoinRequest: Boolean(pendingJoinRequestId),
+    isOwnTeam: selectedTeamIsOwnTeam.value
   })
 })
-const leaveAvailability = computed(() => {
-  if (!displayedTeam.value || displayedTeam.value.isPersisted === false) {
+const selectedTeamPendingJoinRequestId = computed(() =>
+  selectedTeam.value
+    ? workspace.getRememberedPendingJoinRequestId(selectedTeam.value.id)
+    : null
+)
+const selectedTeamLeaveAvailability = computed(() => ({
+  isAllowed: false,
+  reason: 'Team management actions live in the Workspace tab.'
+}) satisfies TeamActionAvailability)
+const selectedTeamShowMembershipActions = computed(() =>
+  !selectedTeamIsOwnTeam.value
+)
+const directoryEntries = computed<TeamDirectoryEntry[]>(() =>
+  workspace.visibleTeams.value.map((team) => {
+    const pendingJoinRequestId = workspace.getRememberedPendingJoinRequestId(team.id)
+    const activeMemberCount = team.activeMemberCount ?? 0
+
     return {
-      isAllowed: false,
-      reason: 'The current team could not be loaded.'
-    } satisfies TeamActionAvailability
-  }
-
-  return getLeaveTeamAvailability(
-    props.hackathon,
-    displayedTeam.value,
-    displayedTeamMembership.value,
-    {
-      hasActiveSubmission: hasActiveTeamSubmission.value
+      team,
+      detailHref: buildTeamsTabHref(team.slug),
+      isOwnTeam: team.id === workspace.ownTeam.value?.id,
+      isFull: hasTeamReachedMemberLimit(props.hackathon.maxTeamMembers, activeMemberCount),
+      hasPendingJoinRequest: Boolean(pendingJoinRequestId),
+      pendingJoinRequestId,
+      joinAvailability: getJoinTeamAvailability(props.hackathon, team, {
+        applicationStatus: ownApplicationStatus.value,
+        hasTeamMembership: Boolean(workspace.ownTeam.value),
+        activeMemberCount,
+        hasPendingJoinRequest: Boolean(pendingJoinRequestId),
+        isOwnTeam: team.id === workspace.ownTeam.value?.id
+      })
     }
-  )
-})
-const removalAvailabilityByUserId = computed<Record<string, TeamActionAvailability>>(() => {
-  if (!displayedTeam.value) {
-    return {}
-  }
-
-  return Object.fromEntries(
-    displayedTeam.value.members.map(member => [
-      member.userId,
-      getMemberRemovalAvailability(props.hackathon, displayedTeam.value!, member)
-    ])
-  )
-})
-const currentPendingJoinRequestId = computed(() =>
-  displayedTeam.value?.isPersisted === false
-    ? null
-    : displayedTeam.value
-      ? workspace.getRememberedPendingJoinRequestId(displayedTeam.value.id)
-      : null
-)
-const isDisplayedTeamFull = computed(() =>
-  displayedTeam.value
-    ? hasTeamReachedMemberLimit(
-        props.hackathon.maxTeamMembers,
-        displayedTeam.value.activeMemberCount ?? displayedTeam.value.members.length
-      )
-    : false
-)
-const showMembershipActions = computed(() => {
-  if (!displayedTeamMembership.value) {
-    return !isDisplayedTeamFull.value
-  }
-
-  if (displayedTeam.value?.isPersisted === false) {
-    return false
-  }
-
-  return leaveAvailability.value.isAllowed
-})
-const showTeamDirectory = computed(() =>
-  !isViewingSharedTeam.value
-  && workspace.ownTeamStatus.value === 'success'
-  && !workspace.ownTeam.value
-  && !provisionalCurrentTeam.value
-)
-
-async function ensureOwnTeam() {
-  if (workspace.ownTeam.value) {
-    return workspace.ownTeam.value
-  }
-
-  if (!provisionalCurrentTeam.value || !createTeamAvailability.value.isAllowed) {
-    return null
-  }
-
-  const name = teamSettings.name.trim()
-
-  if (!name) {
-    toast.add({
-      title: 'Team name required',
-      description: 'Enter a team name before continuing.',
-      color: 'error'
-    })
-    return null
-  }
-
-  const createdTeam = await workspace.createTeam({
-    name,
-    bio: teamSettings.bio,
-    isOpenToJoinRequests: teamSettings.isOpenToJoinRequests
   })
+)
+const visibleDirectoryEntries = computed(() =>
+  isOpenToJoinDirectoryUnavailable.value ? [] : directoryEntries.value
+)
+const visibleDirectoryTotal = computed(() =>
+  isOpenToJoinDirectoryUnavailable.value ? 0 : workspace.visibleTeamsTotal.value
+)
+const hasMoreDirectoryTeams = computed(() =>
+  isOpenToJoinDirectoryUnavailable.value ? false : workspace.hasMoreVisibleTeams.value
+)
+const directoryLoadMoreErrorMessage = computed(() =>
+  isOpenToJoinDirectoryUnavailable.value ? '' : workspace.loadMoreVisibleTeamsErrorMessage.value
+)
 
-  if (!createdTeam) {
+watch(canJoinAnyTeam, async (nextCanJoinAnyTeam) => {
+  if (directoryFilter.value !== 'open_to_join' || !nextCanJoinAnyTeam) {
     return
   }
 
-  selectedTeamId.value = createdTeam.id
-  return createdTeam
-}
-
-async function copyCurrentTeamLink() {
-  const targetTeam = displayedTeam.value?.isPersisted === false
-    ? await ensureOwnTeam()
-    : displayedTeam.value
-
-  if (!targetTeam || !import.meta.client || !window.isSecureContext || !navigator.clipboard) {
-    toast.add({
-      title: 'Copy unavailable',
-      description: 'This browser could not copy the team link right now.',
-      color: 'error'
-    })
-    return
-  }
-
-  try {
-    await navigator.clipboard.writeText(buildAbsoluteAccountHackathonTeamTabHref(
-      window.location.origin,
-      props.hackathon.slug,
-      targetTeam.slug
-    ))
-
-    toast.add({
-      title: 'Team link copied',
-      description: 'The direct team link was copied to your clipboard.',
-      color: 'success'
-    })
-  } catch {
-    toast.add({
-      title: 'Copy failed',
-      description: 'The team link could not be copied right now.',
-      color: 'error'
-    })
-  }
-}
+  await workspace.loadVisibleTeams(1, {
+    filter: mapDirectoryFilter('open_to_join')
+  })
+})
 
 async function requestToJoinTeam(teamId: string) {
   const joinRequest = await workspace.requestToJoinTeam(teamId)
@@ -517,137 +294,6 @@ async function cancelJoinRequest(payload: {
     color: 'success'
   })
 }
-
-async function submitTeamProfile() {
-  const wasProvisionalTeam = displayedTeam.value?.isPersisted === false
-  const previousTeamSlug = displayedTeam.value?.slug ?? null
-  const updatedTeam = wasProvisionalTeam
-    ? await ensureOwnTeam()
-    : await workspace.updateCurrentTeamProfile({
-        name: teamSettings.name,
-        bio: teamSettings.bio
-      })
-
-  if (!updatedTeam) {
-    return
-  }
-
-  await syncSelectedTeamSlugQuery(previousTeamSlug, updatedTeam.slug)
-
-  toast.add({
-    title: wasProvisionalTeam ? 'Team saved' : 'Team profile updated',
-    description: wasProvisionalTeam
-      ? 'Your team is ready. You can now share the link and accept collaborators.'
-      : 'The team profile was updated.',
-    color: 'success'
-  })
-}
-
-async function toggleJoinPolicy(nextValue: boolean) {
-  if (displayedTeam.value?.isPersisted === false) {
-    const previousValue = teamSettings.isOpenToJoinRequests
-    teamSettings.isOpenToJoinRequests = nextValue
-    const createdTeam = await ensureOwnTeam()
-
-    if (!createdTeam) {
-      teamSettings.isOpenToJoinRequests = previousValue
-      return
-    }
-
-    teamSettings.isOpenToJoinRequests = createdTeam.isOpenToJoinRequests
-    toast.add({
-      title: 'Team saved',
-      description: createdTeam.isOpenToJoinRequests
-        ? 'Your team is ready and now accepts join requests.'
-        : 'Your team is ready and remains closed to join requests.',
-      color: 'success'
-    })
-    return
-  }
-
-  const updatedTeam = await workspace.updateCurrentTeamJoinPolicy(nextValue)
-
-  if (!updatedTeam) {
-    return
-  }
-
-  teamSettings.isOpenToJoinRequests = updatedTeam.isOpenToJoinRequests
-  toast.add({
-    title: 'Join policy updated',
-    description: updatedTeam.isOpenToJoinRequests
-      ? 'This team now accepts new join requests.'
-      : 'This team is now closed to new join requests.',
-    color: 'success'
-  })
-}
-
-async function leaveCurrentTeam() {
-  const previousTeamSlug = displayedTeam.value?.slug ?? null
-  const result = await workspace.leaveCurrentTeam()
-
-  if (!result) {
-    return
-  }
-
-  if (result.teamDissolved) {
-    await syncSelectedTeamSlugQuery(previousTeamSlug, null)
-  }
-
-  toast.add({
-    title: 'Team membership updated',
-    description: 'You are no longer an active member of this team.',
-    color: 'success'
-  })
-}
-
-async function removeMember(userId: string) {
-  const result = await workspace.removeCurrentTeamMember(userId)
-
-  if (!result) {
-    return
-  }
-
-  toast.add({
-    title: 'Team member removed',
-    description: 'The selected member was removed from the team.',
-    color: 'success'
-  })
-}
-
-async function approveJoinRequest(requestId: string) {
-  const request = await workspace.approveJoinRequest(requestId)
-
-  if (!request) {
-    if (workspace.mutationError.value) {
-      toast.add({
-        title: 'Unable to approve join request',
-        description: workspace.mutationError.value,
-        color: 'error'
-      })
-    }
-    return
-  }
-
-  toast.add({
-    title: 'Join request approved',
-    description: 'The participant is now an active member of your team.',
-    color: 'success'
-  })
-}
-
-async function rejectJoinRequest(requestId: string) {
-  const request = await workspace.rejectJoinRequest(requestId)
-
-  if (!request) {
-    return
-  }
-
-  toast.add({
-    title: 'Join request rejected',
-    description: 'The pending request was rejected.',
-    color: 'success'
-  })
-}
 </script>
 
 <template>
@@ -656,11 +302,11 @@ async function rejectJoinRequest(requestId: string) {
     class="space-y-6"
   >
     <AppAlert
-      v-if="isWorkspaceLoading"
+      v-if="isActorLoading"
       color="neutral"
       variant="soft"
       title="Loading team access"
-      description="Checking what team actions are available to you in this hackathon."
+      description="Resolving your access to this hackathon workspace."
     />
 
     <template v-else-if="actor?.kind === 'platform_user'">
@@ -684,7 +330,7 @@ async function rejectJoinRequest(requestId: string) {
         v-else-if="!workspace.visibleHackathonId.value"
         color="error"
         variant="soft"
-        title="Team access unavailable"
+        title="Teams unavailable"
         description="The current hackathon could not be resolved for team actions."
       />
 
@@ -706,14 +352,6 @@ async function rejectJoinRequest(requestId: string) {
         />
 
         <AppAlert
-          v-if="workspace.ownTeamErrorMessage.value"
-          color="warning"
-          variant="soft"
-          title="Current team membership unresolved"
-          :description="workspace.ownTeamErrorMessage.value"
-        />
-
-        <AppAlert
           v-if="selectedTeamStatus === 'pending'"
           color="neutral"
           variant="soft"
@@ -729,77 +367,43 @@ async function rejectJoinRequest(requestId: string) {
           :description="selectedTeamErrorMessage"
         />
 
-        <template v-if="displayedTeam">
-          <div class="grid gap-6">
-            <div
-              v-if="isViewingSharedTeam"
-              class="flex"
-            >
-              <NuxtLink
-                :to="backToOwnTeamHref"
-                class="inline-flex items-center gap-2 text-[13px] font-medium text-neutral-600 transition-colors hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white"
-              >
-                <AppIcon
-                  name="i-lucide-arrow-left"
-                  class="size-4"
-                />
-                Back to my team
-              </NuxtLink>
-            </div>
-
-            <ParticipantTeamWorkspacePanel
-              v-model:settings="teamSettings"
-              :team="displayedTeam"
-              :max-team-members="props.hackathon.maxTeamMembers"
-              :membership="displayedTeamMembership"
-              :can-manage-team="canManageTeam"
-              :join-availability="joinAvailability"
-              :leave-availability="leaveAvailability"
-              :pending-join-request-id="currentPendingJoinRequestId"
-              :pending-action-key="workspace.pendingActionKey.value"
-              :removal-availability-by-user-id="removalAvailabilityByUserId"
-              :join-requests="workspace.teamJoinRequests.value"
-              :join-requests-status="workspace.teamJoinRequestsStatus.value"
-              :join-requests-error-message="workspace.teamJoinRequestsErrorMessage.value"
-              :show-membership-actions="showMembershipActions"
-              @copy-team-link="copyCurrentTeamLink"
-              @submit-profile="submitTeamProfile"
-              @toggle-join-policy="toggleJoinPolicy"
-              @request-join="requestToJoinTeam"
-              @cancel-join-request="cancelJoinRequest"
-              @leave-team="leaveCurrentTeam"
-              @remove-member="removeMember"
-              @approve-request="approveJoinRequest"
-              @reject-request="rejectJoinRequest"
-            />
-          </div>
-        </template>
-
-        <AppAlert
-          v-else-if="workspace.currentTeamStatus.value === 'pending'"
-          color="neutral"
-          variant="soft"
-          :title="props.selectedTeamSlug ? 'Loading selected team' : 'Loading your team'"
-          :description="props.selectedTeamSlug ? 'Checking the selected team details.' : 'Checking your current team details.'"
-        />
-
-        <AppAlert
-          v-else-if="workspace.currentTeamErrorMessage.value"
-          color="error"
-          variant="soft"
-          title="Team unavailable"
-          :description="workspace.currentTeamErrorMessage.value"
-        />
+        <div
+          v-if="selectedTeam && isViewingSharedTeam"
+          class="space-y-6"
+        >
+          <ParticipantTeamWorkspacePanel
+            :settings="{
+              name: selectedTeam.name,
+              bio: selectedTeam.bio ?? '',
+              isOpenToJoinRequests: selectedTeam.isOpenToJoinRequests
+            }"
+            :team="selectedTeam"
+            :max-team-members="props.hackathon.maxTeamMembers"
+            :membership="selectedTeamMembership"
+            :can-manage-team="false"
+            :is-team-locked="props.hackathon.state !== 'registration_open' && props.hackathon.state !== 'submission_open'"
+            :join-availability="selectedTeamJoinAvailability"
+            :leave-availability="selectedTeamLeaveAvailability"
+            :pending-join-request-id="selectedTeamPendingJoinRequestId"
+            :pending-action-key="workspace.pendingActionKey.value"
+            :show-membership-actions="selectedTeamShowMembershipActions"
+            @request-join="requestToJoinTeam"
+            @cancel-join-request="cancelJoinRequest"
+          />
+        </div>
 
         <ParticipantTeamDirectoryPanel
-          v-if="showTeamDirectory"
-          :teams="directoryEntries"
-          :total-teams="workspace.visibleTeamsTotal.value"
-          :is-loading-teams="workspace.visibleTeamsStatus.value === 'pending'"
+          v-model:directory-filter="directoryFilter"
+          :teams="visibleDirectoryEntries"
+          :max-team-members="props.hackathon.maxTeamMembers"
+          :total-teams="visibleDirectoryTotal"
+          :show-locked-status="!canJoinAnyTeam"
+          :filter-options="directoryFilterOptions"
+          :is-loading-teams="!isOpenToJoinDirectoryUnavailable && isDirectoryLoading"
           :team-error-message="workspace.visibleTeamsErrorMessage.value"
-          :has-more-teams="workspace.hasMoreVisibleTeams.value"
+          :has-more-teams="hasMoreDirectoryTeams"
           :is-loading-more-teams="workspace.isLoadingMoreVisibleTeams.value"
-          :load-more-teams-error-message="workspace.loadMoreVisibleTeamsErrorMessage.value"
+          :load-more-teams-error-message="directoryLoadMoreErrorMessage"
           :pending-action-key="workspace.pendingActionKey.value"
           @join-team="requestToJoinTeam"
           @cancel-join-request="cancelJoinRequest"
@@ -812,7 +416,7 @@ async function rejectJoinRequest(requestId: string) {
       v-else
       color="error"
       variant="soft"
-      title="Team access unavailable"
+      title="Teams unavailable"
       description="Participant team actions require a platform user session."
     />
   </div>

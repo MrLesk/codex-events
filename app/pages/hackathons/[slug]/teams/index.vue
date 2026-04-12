@@ -13,7 +13,7 @@ if (!slug.value) {
   })
 }
 
-await navigateTo(`/account/hackathons/${slug.value}?tab=team`, {
+await navigateTo(`/account/hackathons/${slug.value}?tab=teams`, {
   redirectCode: 302,
   replace: true
 })

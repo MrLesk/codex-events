@@ -31,7 +31,9 @@ const props = defineProps<{
   maxTeamMembers: number
   membership?: TeamMemberRecord | null
   canManageTeam?: boolean
+  isTeamLocked?: boolean
   joinAvailability: TeamActionAvailability
+  joinPolicyAvailability?: TeamActionAvailability
   leaveAvailability: TeamActionAvailability
   pendingJoinRequestId?: string | null
   pendingActionKey?: string | null
@@ -132,8 +134,22 @@ const hasPendingJoinRequests = computed(() =>
 const showJoinRequestsPanel = computed(() =>
   Boolean(props.canManageTeam) && (settings.value.isOpenToJoinRequests || hasPendingJoinRequests.value)
 )
+const isSoloWorkspace = computed(() => props.team.workspaceMode === 'solo')
 const joinPolicySwitchId = computed(() => `team-join-policy-${props.team.id}`)
 const activeMemberCount = computed(() => props.team.activeMemberCount ?? props.team.members.length)
+const showRequestJoinAction = computed(() =>
+  Boolean(props.pendingJoinRequestId) || props.team.isOpenToJoinRequests
+)
+const canManageTeamSettings = computed(() =>
+  Boolean(props.canManageTeam) && (props.joinPolicyAvailability?.isAllowed ?? true)
+)
+const showLockedBadge = computed(() =>
+  Boolean(props.membership) && Boolean(props.isTeamLocked)
+)
+const showJoinPolicyToggle = computed(() => canManageTeamSettings.value)
+const joinPolicyStatusText = computed(() =>
+  settings.value.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests'
+)
 const isJoinCapacityReached = computed(() =>
   !props.membership && hasTeamReachedMemberLimit(props.maxTeamMembers, activeMemberCount.value)
 )
@@ -206,7 +222,7 @@ function cancelEditingProfile() {
     <template #header>
       <div class="space-y-3">
         <div
-          v-if="canManageTeam && isEditingProfile"
+          v-if="canManageTeamSettings && isEditingProfile"
           class="flex flex-col gap-4"
         >
           <form
@@ -307,7 +323,19 @@ function cancelEditingProfile() {
                   {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
                 </AppBadge>
 
-                <div class="flex items-center gap-3">
+                <AppBadge
+                  v-if="showLockedBadge"
+                  color="neutral"
+                  variant="outline"
+                  class="border-black/16 bg-white/75 text-neutral-700 dark:border-white/[0.18] dark:bg-white/[0.03] dark:text-[#D0D0D0]"
+                >
+                  Locked
+                </AppBadge>
+
+                <div
+                  v-if="showJoinPolicyToggle"
+                  class="flex items-center gap-3"
+                >
                   <UiSwitch
                     :id="joinPolicySwitchId"
                     :model-value="settings.isOpenToJoinRequests"
@@ -318,9 +346,16 @@ function cancelEditingProfile() {
                     :for="joinPolicySwitchId"
                     class="text-sm font-medium text-toned"
                   >
-                    {{ settings.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+                    {{ joinPolicyStatusText }}
                   </label>
                 </div>
+
+                <p
+                  v-else
+                  class="text-sm font-medium text-toned"
+                >
+                  {{ joinPolicyStatusText }}
+                </p>
               </div>
             </div>
           </form>
@@ -349,7 +384,7 @@ function cancelEditingProfile() {
               </h2>
 
               <AppButton
-                v-if="canManageTeam"
+                v-if="canManageTeamSettings"
                 variant="outline"
                 color="neutral"
                 size="sm"
@@ -371,20 +406,55 @@ function cancelEditingProfile() {
               </AppBadge>
 
               <AppBadge
+                v-if="showLockedBadge"
+                color="neutral"
+                variant="outline"
+                class="border-black/16 bg-white/75 text-neutral-700 dark:border-white/[0.18] dark:bg-white/[0.03] dark:text-[#D0D0D0]"
+              >
+                Locked
+              </AppBadge>
+
+              <AppBadge
+                v-if="!isSoloWorkspace"
+                color="neutral"
+                variant="soft"
+              >
+                Members {{ activeMemberCount }}/{{ maxTeamMembers }}
+              </AppBadge>
+
+              <AppBadge
+                v-if="isSoloWorkspace"
+                color="warning"
+                variant="soft"
+              >
+                Solo
+              </AppBadge>
+
+              <AppBadge
                 v-if="!canManageTeam"
                 :color="participantTeamStatusColor"
                 variant="outline"
+                :class="team.isOpenToJoinRequests ? '' : 'border-black/16 bg-white/75 text-neutral-700 dark:border-white/[0.18] dark:bg-white/[0.03] dark:text-[#D0D0D0]'"
               >
                 {{ participantTeamStatusLabel }}
               </AppBadge>
             </div>
 
-            <p
-              v-if="team.bio"
-              class="max-w-3xl whitespace-pre-line text-sm text-toned"
-            >
-              {{ team.bio }}
-            </p>
+            <div class="space-y-1">
+              <p
+                v-if="!isSoloWorkspace"
+                class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
+              >
+                Everyone on the team appears here.
+              </p>
+
+              <p
+                v-if="team.bio"
+                class="max-w-3xl whitespace-pre-line text-sm text-toned"
+              >
+                {{ team.bio }}
+              </p>
+            </div>
           </div>
 
           <div
@@ -395,18 +465,27 @@ function cancelEditingProfile() {
               v-if="canManageTeam"
               class="flex items-center gap-3"
             >
-              <UiSwitch
-                :id="joinPolicySwitchId"
-                :model-value="settings.isOpenToJoinRequests"
-                :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
-                @update:model-value="emit('toggleJoinPolicy', $event)"
-              />
-              <label
-                :for="joinPolicySwitchId"
+              <template v-if="showJoinPolicyToggle">
+                <UiSwitch
+                  :id="joinPolicySwitchId"
+                  :model-value="settings.isOpenToJoinRequests"
+                  :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
+                  @update:model-value="emit('toggleJoinPolicy', $event)"
+                />
+                <label
+                  :for="joinPolicySwitchId"
+                  class="text-sm font-medium text-toned"
+                >
+                  {{ joinPolicyStatusText }}
+                </label>
+              </template>
+
+              <p
+                v-else
                 class="text-sm font-medium text-toned"
               >
-                {{ settings.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
-              </label>
+                {{ joinPolicyStatusText }}
+              </p>
             </div>
 
             <AppButton
@@ -468,10 +547,10 @@ function cancelEditingProfile() {
             </AppButton>
 
             <AppButton
-              v-else
+              v-else-if="showRequestJoinAction && joinAvailability.isAllowed"
               color="primary"
               :loading="isActionPending(`join-team:${team.id}`)"
-              :disabled="!joinAvailability.isAllowed || isActionPending(`join-team:${team.id}`)"
+              :disabled="isActionPending(`join-team:${team.id}`)"
               data-testid="participant-team-request-join"
               @click="emit('requestJoin', team.id)"
             >
@@ -481,12 +560,15 @@ function cancelEditingProfile() {
         </div>
       </section>
 
-      <section :class="canManageTeam ? 'grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]' : 'grid gap-6'">
-        <div class="space-y-4 app-inset-card px-5 py-5">
+      <section :class="canManageTeam && !isSoloWorkspace ? 'grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]' : 'grid gap-6'">
+        <div
+          v-if="isSoloWorkspace"
+          class="space-y-4 app-inset-card px-5 py-5"
+        >
           <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
             <div class="flex flex-wrap items-center gap-3">
               <h3 class="text-lg font-semibold text-highlighted dark:text-white">
-                Team members
+                Solo participation
               </h3>
 
               <AppBadge
@@ -497,91 +579,98 @@ function cancelEditingProfile() {
               </AppBadge>
             </div>
             <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-              Everyone on the team appears here.
+              This workspace stays compact while you are participating solo. It becomes a regular team workspace once another active member joins.
             </p>
           </div>
 
-          <div class="grid gap-4">
-            <article
-              v-for="member in team.members"
-              :key="member.id"
-              :data-testid="`participant-team-member-${member.userId}`"
-              class="rounded-2xl border border-black/8 bg-white/80 px-4 py-4 dark:border-white/[0.08] dark:bg-white/[0.03]"
-            >
-              <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div class="space-y-2">
-                  <div class="flex flex-wrap items-center gap-3">
-                    <h4 class="text-base font-semibold text-highlighted dark:text-white">
-                      {{ member.user?.displayName ?? member.userId }}
-                    </h4>
+          <p class="text-sm text-toned">
+            {{ participantTeamStatusLabel }}
+          </p>
+        </div>
 
-                    <AppBadge
-                      :color="member.role === 'admin' ? 'primary' : 'neutral'"
-                      variant="soft"
-                    >
-                      {{ formatTeamMemberRole(member.role) }}
-                    </AppBadge>
+        <div
+          v-if="!isSoloWorkspace"
+          class="grid gap-4"
+        >
+          <article
+            v-for="member in team.members"
+            :key="member.id"
+            :data-testid="`participant-team-member-${member.userId}`"
+            class="rounded-2xl border border-black/8 bg-white/80 px-4 py-4 dark:border-white/[0.08] dark:bg-white/[0.03]"
+          >
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div class="space-y-2">
+                <div class="flex flex-wrap items-center gap-3">
+                  <h4 class="text-base font-semibold text-highlighted dark:text-white">
+                    {{ member.user?.displayName ?? member.userId }}
+                  </h4>
 
-                    <AppBadge
-                      v-if="membership?.id === member.id"
-                      color="info"
-                      variant="soft"
-                    >
-                      You
-                    </AppBadge>
-                  </div>
-
-                  <p class="text-sm text-toned">
-                    <template v-if="member.user?.email">
-                      {{ member.user.email }}<span v-if="isPersisted"> • Joined {{ formatTimestamp(member.joinedAt) }}</span>
-                    </template>
-                    <template v-else-if="isPersisted">
-                      Joined {{ formatTimestamp(member.joinedAt) }}
-                    </template>
-                  </p>
-
-                  <p
-                    v-if="canManageTeam && membership?.id !== member.id && removalAvailabilityByUserId?.[member.userId] && !removalAvailabilityByUserId?.[member.userId]?.isAllowed"
-                    class="text-sm text-muted"
+                  <AppBadge
+                    :color="member.role === 'admin' ? 'primary' : 'neutral'"
+                    variant="soft"
                   >
-                    {{ removalAvailabilityByUserId?.[member.userId]?.reason }}
-                  </p>
+                    {{ formatTeamMemberRole(member.role) }}
+                  </AppBadge>
 
-                  <div
-                    v-if="getUserProfileLinks(member.user).length > 0"
-                    class="flex flex-wrap gap-2"
+                  <AppBadge
+                    v-if="membership?.id === member.id"
+                    color="info"
+                    variant="soft"
                   >
-                    <a
-                      v-for="link in getUserProfileLinks(member.user)"
-                      :key="link.key"
-                      :href="link.href"
-                      target="_blank"
-                      rel="noreferrer"
-                      class="inline-flex items-center gap-0.5 rounded-full border border-black/10 px-2 py-0.5 text-xs font-medium text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
-                    >
-                      {{ link.label }}
-                      <AppIcon
-                        name="i-lucide-external-link"
-                        class="size-2.5"
-                      />
-                    </a>
-                  </div>
+                    You
+                  </AppBadge>
                 </div>
 
-                <AppButton
-                  v-if="canManageTeam && membership?.id !== member.id"
-                  color="warning"
-                  variant="soft"
-                  :loading="pendingActionKey === `remove-team-member:${team.id}:${member.userId}`"
-                  :disabled="!removalAvailabilityByUserId?.[member.userId]?.isAllowed || pendingActionKey === `remove-team-member:${team.id}:${member.userId}`"
-                  :data-testid="`participant-team-remove-${member.userId}`"
-                  @click="emit('removeMember', member.userId)"
+                <p class="text-sm text-toned">
+                  <template v-if="member.user?.email">
+                    {{ member.user.email }}<span v-if="isPersisted"> • Joined {{ formatTimestamp(member.joinedAt) }}</span>
+                  </template>
+                  <template v-else-if="isPersisted">
+                    Joined {{ formatTimestamp(member.joinedAt) }}
+                  </template>
+                </p>
+
+                <p
+                  v-if="canManageTeam && membership?.id !== member.id && removalAvailabilityByUserId?.[member.userId] && !removalAvailabilityByUserId?.[member.userId]?.isAllowed"
+                  class="text-sm text-muted"
                 >
-                  Remove member
-                </AppButton>
+                  {{ removalAvailabilityByUserId?.[member.userId]?.reason }}
+                </p>
+
+                <div
+                  v-if="getUserProfileLinks(member.user).length > 0"
+                  class="flex flex-wrap gap-2"
+                >
+                  <a
+                    v-for="link in getUserProfileLinks(member.user)"
+                    :key="link.key"
+                    :href="link.href"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="inline-flex items-center gap-0.5 rounded-full border border-black/10 px-2 py-0.5 text-xs font-medium text-sky-700 transition hover:border-black/20 hover:text-sky-800 dark:border-white/[0.12] dark:text-sky-300 dark:hover:border-white/[0.22] dark:hover:text-sky-200"
+                  >
+                    {{ link.label }}
+                    <AppIcon
+                      name="i-lucide-external-link"
+                      class="size-2.5"
+                    />
+                  </a>
+                </div>
               </div>
-            </article>
-          </div>
+
+              <AppButton
+                v-if="canManageTeam && membership?.id !== member.id"
+                color="warning"
+                variant="soft"
+                :loading="pendingActionKey === `remove-team-member:${team.id}:${member.userId}`"
+                :disabled="!removalAvailabilityByUserId?.[member.userId]?.isAllowed || pendingActionKey === `remove-team-member:${team.id}:${member.userId}`"
+                :data-testid="`participant-team-remove-${member.userId}`"
+                @click="emit('removeMember', member.userId)"
+              >
+                Remove member
+              </AppButton>
+            </div>
+          </article>
         </div>
 
         <div

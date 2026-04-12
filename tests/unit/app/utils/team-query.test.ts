@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
 import {
-  buildAbsoluteAccountHackathonTeamTabHref,
-  buildAccountHackathonTeamTabHref,
-  isSharedTeamTabSelection,
+  buildAbsoluteAccountHackathonTeamsTabHref,
+  buildAccountHackathonTeamsTabHref,
+  isSharedTeamSelection,
   normalizeTeamSlugQueryValue,
   shouldSyncSelectedTeamSlug
 } from '../../../../app/utils/team-query'
@@ -17,39 +17,39 @@ describe('team query helpers', () => {
   })
 
   test('builds shareable account team tab hrefs with an optional team slug', () => {
-    expect(buildAccountHackathonTeamTabHref('codex-vienna-2026-04-18')).toBe(
-      '/account/hackathons/codex-vienna-2026-04-18?tab=team'
+    expect(buildAccountHackathonTeamsTabHref('codex-vienna-2026-04-18')).toBe(
+      '/account/hackathons/codex-vienna-2026-04-18?tab=teams'
     )
 
-    expect(buildAccountHackathonTeamTabHref('codex-vienna-2026-04-18', 'Alpha-Team')).toBe(
-      '/account/hackathons/codex-vienna-2026-04-18?tab=team&team=alpha-team'
+    expect(buildAccountHackathonTeamsTabHref('codex-vienna-2026-04-18', 'Alpha-Team')).toBe(
+      '/account/hackathons/codex-vienna-2026-04-18?tab=teams&team=alpha-team'
     )
   })
 
   test('builds an absolute shareable account team tab href from the current origin', () => {
-    expect(buildAbsoluteAccountHackathonTeamTabHref(
+    expect(buildAbsoluteAccountHackathonTeamsTabHref(
       'http://localhost:3000',
       'codex-vienna-2026-04-18',
       'Alpha-Team'
-    )).toBe('http://localhost:3000/account/hackathons/codex-vienna-2026-04-18?tab=team&team=alpha-team')
+    )).toBe('http://localhost:3000/account/hackathons/codex-vienna-2026-04-18?tab=teams&team=alpha-team')
   })
 
   test('treats a selected external team as a shared-team view even without an own team', () => {
-    expect(isSharedTeamTabSelection({
+    expect(isSharedTeamSelection({
       selectedTeamSlug: 'the-good-gang',
       currentTeamId: 'team_1',
       currentTeamSlug: 'the-good-gang',
       ownTeamId: null
     })).toBe(true)
 
-    expect(isSharedTeamTabSelection({
+    expect(isSharedTeamSelection({
       selectedTeamSlug: 'alpha-operations-team',
       currentTeamId: 'team_1',
       currentTeamSlug: 'alpha-operations-team',
       ownTeamId: 'team_1'
     })).toBe(false)
 
-    expect(isSharedTeamTabSelection({
+    expect(isSharedTeamSelection({
       selectedTeamSlug: 'missing-team',
       currentTeamId: 'team_1',
       currentTeamSlug: 'alpha-operations-team',

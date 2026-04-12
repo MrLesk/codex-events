@@ -7,8 +7,10 @@ import {
   getJoinTeamAvailability,
   getLeaveTeamAvailability,
   getMemberRemovalAvailability,
+  getReplaceSoloTeamAvailability,
   getTeamFormationAvailability,
   getTeamJoinRequestStatusColor,
+  getUpdateJoinPolicyAvailability,
   hasTeamReachedMemberLimit,
   type TeamDetailRecord
 } from '../../../../app/utils/team-workspace'
@@ -19,6 +21,7 @@ const baseTeam: TeamDetailRecord = {
   name: 'Fixture Team',
   bio: 'A focused fixture team.',
   slug: 'fixture-team',
+  workspaceMode: 'team',
   isOpenToJoinRequests: true,
   createdByUserId: 'user_admin',
   createdAt: '2026-03-22T12:00:00.000Z',
@@ -52,7 +55,7 @@ describe('team workspace helpers', () => {
       state: 'registration_open'
     }, 'approved', false)).toEqual({
       isOpen: true,
-      summary: 'You can set up your team or request to join an open team right now.'
+      summary: 'You can participate as solo, create a team, or browse teams right now.'
     })
 
     expect(getTeamFormationAvailability({
@@ -73,6 +76,25 @@ describe('team workspace helpers', () => {
     }, 'approved', true)).toEqual({
       isAllowed: false,
       reason: 'You already belong to a team in this hackathon.'
+    })
+
+    expect(getReplaceSoloTeamAvailability({
+      state: 'submission_open'
+    }, 'approved', true)).toEqual({
+      isAllowed: true
+    })
+
+    expect(getUpdateJoinPolicyAvailability({
+      state: 'submission_open'
+    }, true)).toEqual({
+      isAllowed: true
+    })
+
+    expect(getUpdateJoinPolicyAvailability({
+      state: 'judge_review'
+    }, true)).toEqual({
+      isAllowed: false,
+      reason: 'Join-request settings can be updated only while registration or submission is open.'
     })
   })
 

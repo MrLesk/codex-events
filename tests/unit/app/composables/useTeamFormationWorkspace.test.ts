@@ -128,7 +128,14 @@ describe('useTeamFormationWorkspace', () => {
             }
           ],
           meta: {
-            total: 1
+            total: 1,
+            filterCounts: {
+              all: 1,
+              open_to_join: 1,
+              solo: 0,
+              multi_person: 0,
+              full: 0
+            }
           }
         }
       }
@@ -199,6 +206,14 @@ describe('useTeamFormationWorkspace', () => {
       && workspace.teamJoinRequests.value.length === 1
       && workspace.teamJoinRequests.value[0]?.status === 'pending'
     )
+
+    expect(workspace.visibleTeamsFilterCounts.value).toEqual({
+      all: 1,
+      open_to_join: 1,
+      solo: 0,
+      multi_person: 0,
+      full: 0
+    })
 
     await workspace.approveJoinRequest('request_1')
 

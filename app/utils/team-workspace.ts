@@ -34,6 +34,7 @@ export interface TeamSummaryRecord {
   name: string
   bio: string | null
   slug: string
+  workspaceMode: 'solo' | 'team'
   isOpenToJoinRequests: boolean
   createdByUserId: string
   createdAt: string
@@ -78,6 +79,7 @@ export interface TeamDirectoryEntry {
   team: TeamSummaryRecord
   detailHref: string | null
   isOwnTeam: boolean
+  isFull?: boolean
   hasPendingJoinRequest: boolean
   pendingJoinRequestId: string | null
   joinAvailability: TeamActionAvailability
@@ -137,7 +139,7 @@ export function getTeamFormationAvailability(
   if (hackathon.state === 'registration_open' || hackathon.state === 'submission_open') {
     return {
       isOpen: true,
-      summary: 'You can set up your team or request to join an open team right now.'
+      summary: 'You can participate as solo, create a team, or browse teams right now.'
     }
   }
 
@@ -176,6 +178,66 @@ export function getCreateTeamAvailability(
     return {
       isAllowed: false,
       reason: 'Teams can be created only while registration or submission is open.'
+    }
+  }
+
+  return {
+    isAllowed: true
+  }
+}
+
+export function getReplaceSoloTeamAvailability(
+  hackathon: Pick<PublicHackathon, 'state'>,
+  applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null,
+  hasSoloTeamMembership: boolean
+): TeamActionAvailability {
+  if (!hasSoloTeamMembership) {
+    return {
+      isAllowed: false,
+      reason: 'Only a solo workspace can be replaced with a regular team.'
+    }
+  }
+
+  if (applicationStatus !== 'approved') {
+    return {
+      isAllowed: false,
+      reason: applicationStatus === 'submitted'
+        ? 'Only approved applicants can create teams.'
+        : applicationStatus === 'rejected'
+          ? 'Rejected applicants cannot create teams.'
+          : applicationStatus === 'withdrawn'
+            ? 'Withdrawn participants cannot create teams.'
+            : 'Create-team access requires an approved application.'
+    }
+  }
+
+  if (hackathon.state !== 'registration_open' && hackathon.state !== 'submission_open') {
+    return {
+      isAllowed: false,
+      reason: 'Teams can be created only while registration or submission is open.'
+    }
+  }
+
+  return {
+    isAllowed: true
+  }
+}
+
+export function getUpdateJoinPolicyAvailability(
+  hackathon: Pick<PublicHackathon, 'state'>,
+  canManageTeam: boolean
+): TeamActionAvailability {
+  if (!canManageTeam) {
+    return {
+      isAllowed: false,
+      reason: 'Only team admins can update join requests.'
+    }
+  }
+
+  if (hackathon.state !== 'registration_open' && hackathon.state !== 'submission_open') {
+    return {
+      isAllowed: false,
+      reason: 'Join-request settings can be updated only while registration or submission is open.'
     }
   }
 

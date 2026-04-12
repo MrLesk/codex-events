@@ -29,7 +29,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'team', 'submission', 'prizes', 'details', 'judges', 'staff'],
+      availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
@@ -57,7 +57,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'team', 'submission', 'details', 'judges', 'staff', 'participants', 'teams'],
+      availableTabs: ['overview', 'details', 'judges', 'staff', 'workspace', 'teams', 'participants'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
@@ -71,7 +71,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'team', 'submission', 'prizes', 'details', 'judges', 'staff', 'participants', 'submissions', 'judging', 'operations', 'settings'],
+      availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
@@ -93,7 +93,7 @@ describe('getAccountHackathonTabAccess', () => {
     })).toBe('hackathon_draft_internal')
   })
 
-  test('keeps participant team tab hidden when the actor has no participant access record', () => {
+  test('keeps participant workspace and teams tabs hidden when the actor has no participant access record', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: false,
       hasPublishedPrizes: true,
@@ -107,7 +107,7 @@ describe('getAccountHackathonTabAccess', () => {
     })
   })
 
-  test('keeps the team tab hidden when the actor is not approved even if a participant access record exists', () => {
+  test('keeps participant workspace hidden when the actor is not approved even if a participant access record exists', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: false,
       hasPublishedPrizes: true,
@@ -121,7 +121,7 @@ describe('getAccountHackathonTabAccess', () => {
     })
   })
 
-  test('keeps the participant submission tab hidden when the actor is not approved', () => {
+  test('keeps the participant workspace hidden when the actor is not approved', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: false,
       hasPublishedPrizes: false,

@@ -181,21 +181,25 @@ Key characteristics:
 - A team can optionally publish a short bio about the team.
 - A team can be open to join requests.
 - A team can have one or more admins.
-- Approved participants without an active persisted team are still shown a default solo-team workspace in the participant UI.
+- The participant workspace distinguishes solo participation from a regular team workspace even though both use the same team and team-membership model.
 
 Rules:
 
 - Team membership is hackathon-scoped.
 - A user can belong to at most one team per hackathon.
 - The user who creates a team becomes a team admin automatically.
-- The participant UI can stage a default solo-team name before the first team row is persisted.
-- The first participant action that requires a persisted team creates that team and its initial admin membership.
+- An approved participant without an active team uses a no-team workspace that offers explicit actions to participate as solo or create a team.
+- Participating as solo creates a persisted one-member team in solo workspace mode using the default solo team name for that participant.
+- Creating a regular team from a solo workspace replaces the previous solo team membership with a new team-admin membership on the newly created regular team.
+- A team in solo workspace mode remains a normal team for invariants, submissions, and join requests.
+- A solo workspace becomes a regular team workspace once the team gains another active member.
 - Every active team must always have at least one active team admin.
 - A team with no active members is dissolved. Dissolved teams are retained for auditability and historical references but are no longer available in team-formation workflows.
 - A team cannot exceed the maximum team member limit defined by its hackathon.
 - A team with pending join requests can approve them only while the team remains open to join requests.
 - Team admins can update the team profile, review join requests, approve members, and remove members.
-- Users can search for teams and request to join open teams.
+- Workspace users can browse active teams throughout the hackathon workspace.
+- Users can request to join open teams only while the hackathon allows team formation.
 - Team rename updates the team slug to a new unique slug derived from the current team name.
 
 ### TeamMember

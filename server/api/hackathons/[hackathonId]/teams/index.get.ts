@@ -19,6 +19,7 @@ export default defineApiHandler(async (event) => {
   return apiList(result.data, {
     page: query.page,
     pageSize: query.page_size,
-    total: result.total
+    total: result.total,
+    filterCounts: result.filterCounts
   })
 })

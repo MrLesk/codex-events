@@ -10,6 +10,7 @@ import {
   submissions,
   teamJoinRequests,
   teamMembers,
+  teamWorkspaceModes,
   teams,
   userApplications,
   users
@@ -41,13 +42,17 @@ export const listTeamsQuerySchema = z.object({
   slug: z.string().trim().min(1).optional(),
   search: z.string().trim().min(1).optional(),
   open_to_join: z.coerce.boolean().optional(),
-  has_capacity: z.coerce.boolean().optional()
+  has_capacity: z.coerce.boolean().optional(),
+  workspace_mode: z.enum(teamWorkspaceModes).optional(),
+  member_count: z.enum(['multi_person', 'full']).optional()
 })
 
 export const createTeamBodySchema = z.object({
   name: teamNameSchema,
   bio: teamBioSchema.optional(),
-  isOpenToJoinRequests: z.coerce.boolean().default(true)
+  workspaceMode: z.enum(teamWorkspaceModes).default('team'),
+  isOpenToJoinRequests: z.coerce.boolean().default(true),
+  replaceOwnSoloTeam: z.coerce.boolean().default(false)
 })
 
 export const updateTeamBodySchema = z.object({
@@ -65,6 +70,11 @@ export const updateJoinPolicyBodySchema = z.object({
 export const createJoinRequestBodySchema = z.object({
   teamId: z.string().trim().min(1)
 })
+
+export const visibleTeamDirectoryFilterValues = ['all', 'open_to_join', 'solo', 'multi_person', 'full'] as const
+
+export type VisibleTeamDirectoryFilter = typeof visibleTeamDirectoryFilterValues[number]
+export type VisibleTeamDirectoryFilterCounts = Record<VisibleTeamDirectoryFilter, number>
 
 type HackathonRecord = typeof hackathons.$inferSelect
 type TeamRecord = typeof teams.$inferSelect
@@ -182,6 +192,7 @@ export function serializeTeam(
     name: team.name,
     bio: team.bio,
     slug: team.slug,
+    workspaceMode: team.workspaceMode,
     isOpenToJoinRequests: team.isOpenToJoinRequests,
     createdByUserId: team.createdByUserId,
     createdAt: team.createdAt,
@@ -415,10 +426,6 @@ export async function listVisibleTeams(
     )!)
   }
 
-  if (query.open_to_join) {
-    filters.push(eq(teams.isOpenToJoinRequests, true))
-  }
-
   const allTeams = await database.query.teams.findMany({
     where: and(...filters),
     orderBy: [asc(teams.name), asc(teams.createdAt)]
@@ -443,9 +450,39 @@ export async function listVisibleTeams(
   const activeTeams = includeInactiveTeams
     ? allTeams
     : allTeams.filter(team => (counts.get(team.id) ?? 0) > 0)
-  const filteredTeams = query.has_capacity
-    ? activeTeams.filter(team => (counts.get(team.id) ?? 0) < hackathon.maxTeamMembers)
-    : activeTeams
+  const filterCounts: VisibleTeamDirectoryFilterCounts = {
+    all: activeTeams.length,
+    open_to_join: activeTeams.filter(team =>
+      team.isOpenToJoinRequests && (counts.get(team.id) ?? 0) < hackathon.maxTeamMembers
+    ).length,
+    solo: activeTeams.filter(team => team.workspaceMode === 'solo').length,
+    multi_person: activeTeams.filter(team => team.workspaceMode === 'team').length,
+    full: activeTeams.filter(team => (counts.get(team.id) ?? 0) >= hackathon.maxTeamMembers).length
+  }
+  let filteredTeams = activeTeams
+
+  if (query.workspace_mode) {
+    filteredTeams = filteredTeams.filter(team => team.workspaceMode === query.workspace_mode)
+  }
+
+  if (typeof query.open_to_join === 'boolean') {
+    filteredTeams = filteredTeams.filter(team => team.isOpenToJoinRequests === query.open_to_join)
+  }
+
+  if (typeof query.has_capacity === 'boolean') {
+    filteredTeams = filteredTeams.filter((team) => {
+      const hasCapacity = (counts.get(team.id) ?? 0) < hackathon.maxTeamMembers
+      return query.has_capacity ? hasCapacity : !hasCapacity
+    })
+  }
+
+  if (query.member_count === 'multi_person') {
+    filteredTeams = filteredTeams.filter(team => (counts.get(team.id) ?? 0) > 1)
+  }
+
+  if (query.member_count === 'full') {
+    filteredTeams = filteredTeams.filter(team => (counts.get(team.id) ?? 0) >= hackathon.maxTeamMembers)
+  }
 
   const start = (query.page - 1) * query.page_size
   const pagedTeams = filteredTeams.slice(start, start + query.page_size)
@@ -454,7 +491,8 @@ export async function listVisibleTeams(
     data: pagedTeams.map(team => serializeTeam(team, {
       activeMemberCount: counts.get(team.id) ?? 0
     })),
-    total: filteredTeams.length
+    total: filteredTeams.length,
+    filterCounts
   }
 }
 
@@ -602,7 +640,7 @@ export function assertTeamDiscoveryAllowed(
   }
 
   assertGuard(
-    options.applicationStatus === 'approved' && isTeamFormationState(hackathon.state),
+    options.applicationStatus === 'approved',
     {
       code: 'team_visibility_forbidden',
       message: 'This operation requires approved participation or team membership in the hackathon.',

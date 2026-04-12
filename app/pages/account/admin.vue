@@ -200,11 +200,11 @@ useSeoMeta({
 
       <template v-else>
         <section class="app-surface-panel flex flex-col gap-4 rounded-xl p-2">
-          <div class="grid w-full min-w-0 grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-2">
+          <div class="flex min-w-0 flex-wrap items-center gap-2">
             <button
               v-for="tab in filterTabs"
               :key="tab.id"
-              class="inline-flex w-full items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:w-auto sm:justify-start"
+              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
               :class="activeTab === tab.id ? 'bg-black font-medium text-white dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
               @click="void selectAdminOverviewTab(tab.id)"
             >

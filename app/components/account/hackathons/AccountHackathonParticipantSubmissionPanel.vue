@@ -275,7 +275,8 @@ async function ensureOwnTeam() {
   const createdTeam = await workspace.createTeam({
     name,
     bio: teamSettings.bio,
-    isOpenToJoinRequests: teamSettings.isOpenToJoinRequests
+    isOpenToJoinRequests: teamSettings.isOpenToJoinRequests,
+    workspaceMode: 'team'
   })
 
   if (!createdTeam) {

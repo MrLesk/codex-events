@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '../../../../../../auth/actor'
 import { writeAuditLog } from '../../../../../../database/audit-log'
-import { teamJoinRequests, teamMembers } from '../../../../../../database/schema'
+import { teamJoinRequests, teamMembers, teams } from '../../../../../../database/schema'
 import { defineApiHandler } from '../../../../../../utils/api-handler'
 import { apiData } from '../../../../../../utils/api-response'
 import {
@@ -58,7 +58,18 @@ export default defineApiHandler(async (event) => {
       role: 'member',
       joinedAt: reviewedAt,
       createdAt: reviewedAt
-    })
+    }),
+    ...(liveTeam.workspaceMode === 'solo'
+      ? [
+          database
+            .update(teams)
+            .set({
+              workspaceMode: 'team',
+              updatedAt: reviewedAt
+            })
+            .where(eq(teams.id, liveTeam.id))
+        ]
+      : [])
   ])
 
   await writeAuditLog(database, {

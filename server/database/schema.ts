@@ -38,6 +38,7 @@ export const userApplicationLumaSyncStatuses = [
   'approve_failed',
   'reject_failed'
 ] as const
+export const teamWorkspaceModes = ['solo', 'team'] as const
 export const teamMemberRoles = ['member', 'admin'] as const
 export const teamJoinRequestStatuses = ['pending', 'approved', 'rejected', 'canceled'] as const
 export const submissionStatuses = ['draft', 'submitted', 'withdrawn', 'locked', 'disqualified'] as const
@@ -286,6 +287,7 @@ export const teams = sqliteTable(
     name: text('name').notNull(),
     bio: text('bio'),
     slug: text('slug').notNull(),
+    workspaceMode: text('workspace_mode', { enum: teamWorkspaceModes }).notNull().default('team'),
     isOpenToJoinRequests: integer('is_open_to_join_requests', { mode: 'boolean' }).notNull().default(true),
     createdByUserId: text('created_by_user_id')
       .notNull()

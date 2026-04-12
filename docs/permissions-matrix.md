@@ -90,8 +90,8 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Action | User | Approved User | Team Member | Team Admin | Staff | Hackathon Admin | Platform Admin |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Create team | No | Yes, during `registration_open` or `submission_open` | No | No | No | No | No |
-| Search teams | No | Yes, during `registration_open` or `submission_open` | Yes | Yes | Yes | Yes | Yes |
-| View team detail | No | Yes, during `registration_open` or `submission_open` | Yes | Yes | Yes | Yes | Yes |
+| Search teams | No | Yes | Yes | Yes | Yes | Yes | Yes |
+| View team detail | No | Yes | Yes | Yes | Yes | Yes | Yes |
 | Request to join open team | No | Yes, during `registration_open` or `submission_open` | No | No | No | No | No |
 | Cancel own pending join request | No | Yes | No | No | No | No | No |
 | Update team profile | No | No | No | Yes | No | No | No |
@@ -162,6 +162,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 - Team admins can view team join requests and manage team membership.
 - Judges see only the blind judging view for assigned submissions.
 - Hackathon admins and platform admins can view hackathon-wide operational data.
+- The participant-facing teams directory remains visible to workspace users after team formation closes, but join actions remain state-gated.
 
 ## Operational Notes
 

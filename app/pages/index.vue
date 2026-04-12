@@ -164,7 +164,7 @@ useSeoMeta({
       >
         <div class="flex min-w-0 flex-wrap items-center gap-2">
           <button
-            class="inline-flex items-center gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors"
+            class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
             :class="activeTab === 'active' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
             @click="void selectHomepageTab('active')"
           >
@@ -177,7 +177,7 @@ useSeoMeta({
             </span>
           </button>
           <button
-            class="inline-flex items-center gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors"
+            class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
             :class="activeTab === 'past' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
             @click="void selectHomepageTab('past')"
           >

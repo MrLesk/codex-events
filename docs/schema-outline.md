@@ -302,10 +302,17 @@ It describes the intended persistent model at the level of entities, key fields,
 - `name`
 - `bio`
 - `slug`
+- `workspace_mode`
 - `is_open_to_join_requests`
 - `created_by_user_id`
 - `created_at`
 - `updated_at`
+
+### Enums
+
+- `workspace_mode`
+  - `solo`
+  - `team`
 
 ### Constraints
 
@@ -314,6 +321,9 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - A solo participant is still represented by a `Team`.
+- `workspace_mode` controls whether a one-member team renders as a compact solo workspace or a regular team workspace.
+- A team in `solo` workspace mode still uses the normal team, membership, join-request, and submission model.
+- A team in `solo` workspace mode becomes a regular team workspace when it gains another active member.
 - `bio` stores an optional multiline introduction for the team.
 - Team formation is allowed during `registration_open` and `submission_open`.
 - Team slug is generated from the current team name plus a random 4-digit suffix. Renaming a team regenerates the slug.
