@@ -146,7 +146,7 @@ const canManageTeamSettings = computed(() =>
 const showLockedBadge = computed(() =>
   Boolean(props.membership) && Boolean(props.isTeamLocked)
 )
-const showJoinPolicyToggle = computed(() => canManageTeamSettings.value)
+const showJoinPolicyToggle = computed(() => !isSoloWorkspace.value && canManageTeamSettings.value)
 const joinPolicyStatusText = computed(() =>
   settings.value.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests'
 )
@@ -166,6 +166,9 @@ const participantTeamStatusColor = computed(() =>
     : props.team.isOpenToJoinRequests
       ? 'success'
       : 'neutral'
+)
+const showSoloWorkspaceHint = computed(() =>
+  isSoloWorkspace.value && Boolean(props.membership)
 )
 
 function validateTeamProfile() {
@@ -317,8 +320,8 @@ function cancelEditingProfile() {
               <div class="flex shrink-0 flex-col items-start gap-3 md:items-end">
                 <AppBadge
                   v-if="membership"
-                  color="primary"
-                  variant="soft"
+                  :color="membership.role === 'admin' ? 'primary' : 'neutral'"
+                  :variant="membership.role === 'admin' ? 'soft' : 'outline'"
                 >
                   {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
                 </AppBadge>
@@ -332,30 +335,32 @@ function cancelEditingProfile() {
                   Locked
                 </AppBadge>
 
-                <div
-                  v-if="showJoinPolicyToggle"
-                  class="flex items-center gap-3"
-                >
-                  <UiSwitch
-                    :id="joinPolicySwitchId"
-                    :model-value="settings.isOpenToJoinRequests"
-                    :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
-                    @update:model-value="emit('toggleJoinPolicy', $event)"
-                  />
-                  <label
-                    :for="joinPolicySwitchId"
+                <template v-if="!isSoloWorkspace">
+                  <div
+                    v-if="showJoinPolicyToggle"
+                    class="flex items-center gap-3"
+                  >
+                    <UiSwitch
+                      :id="joinPolicySwitchId"
+                      :model-value="settings.isOpenToJoinRequests"
+                      :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
+                      @update:model-value="emit('toggleJoinPolicy', $event)"
+                    />
+                    <label
+                      :for="joinPolicySwitchId"
+                      class="text-sm font-medium text-toned"
+                    >
+                      {{ joinPolicyStatusText }}
+                    </label>
+                  </div>
+
+                  <p
+                    v-else
                     class="text-sm font-medium text-toned"
                   >
                     {{ joinPolicyStatusText }}
-                  </label>
-                </div>
-
-                <p
-                  v-else
-                  class="text-sm font-medium text-toned"
-                >
-                  {{ joinPolicyStatusText }}
-                </p>
+                  </p>
+                </template>
               </div>
             </div>
           </form>
@@ -363,7 +368,7 @@ function cancelEditingProfile() {
 
         <div
           v-else
-          class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between"
+          class="flex flex-col gap-3 sm:flex-row sm:items-start"
         >
           <div class="min-w-0 space-y-3">
             <div class="flex min-w-0 flex-wrap items-center gap-3">
@@ -400,7 +405,7 @@ function cancelEditingProfile() {
               <AppBadge
                 v-if="membership"
                 :color="membership.role === 'admin' ? 'primary' : 'neutral'"
-                variant="solid"
+                :variant="membership.role === 'admin' ? 'solid' : 'outline'"
               >
                 {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
               </AppBadge>
@@ -427,11 +432,11 @@ function cancelEditingProfile() {
                 color="warning"
                 variant="soft"
               >
-                Solo
+                Solo Team
               </AppBadge>
 
               <AppBadge
-                v-if="!canManageTeam"
+                v-if="!canManageTeam && !isSoloWorkspace"
                 :color="participantTeamStatusColor"
                 variant="outline"
                 :class="team.isOpenToJoinRequests ? '' : 'border-black/16 bg-white/75 text-neutral-700 dark:border-white/[0.18] dark:bg-white/[0.03] dark:text-[#D0D0D0]'"
@@ -459,10 +464,10 @@ function cancelEditingProfile() {
 
           <div
             v-if="canManageTeam || showHeaderLeaveAction"
-            class="flex shrink-0 flex-wrap items-center gap-3 md:justify-end"
+            class="flex shrink-0 flex-wrap items-center justify-end gap-3 self-end sm:ml-auto sm:self-start"
           >
             <div
-              v-if="canManageTeam"
+              v-if="canManageTeam && !isSoloWorkspace"
               class="flex items-center gap-3"
             >
               <template v-if="showJoinPolicyToggle">
@@ -505,6 +510,13 @@ function cancelEditingProfile() {
     </template>
 
     <div class="space-y-6">
+      <p
+        v-if="showSoloWorkspaceHint"
+        class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
+      >
+        You are participating as solo. Leave the team to join other teams.
+      </p>
+
       <section
         v-if="showMembershipActions && !membership"
         class="app-inset-card px-5 py-5"
@@ -561,33 +573,6 @@ function cancelEditingProfile() {
       </section>
 
       <section :class="canManageTeam && !isSoloWorkspace ? 'grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]' : 'grid gap-6'">
-        <div
-          v-if="isSoloWorkspace"
-          class="space-y-4 app-inset-card px-5 py-5"
-        >
-          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-            <div class="flex flex-wrap items-center gap-3">
-              <h3 class="text-lg font-semibold text-highlighted dark:text-white">
-                Solo participation
-              </h3>
-
-              <AppBadge
-                color="neutral"
-                variant="soft"
-              >
-                {{ activeMemberCount }} / {{ maxTeamMembers }}
-              </AppBadge>
-            </div>
-            <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-              This workspace stays compact while you are participating solo. It becomes a regular team workspace once another active member joins.
-            </p>
-          </div>
-
-          <p class="text-sm text-toned">
-            {{ participantTeamStatusLabel }}
-          </p>
-        </div>
-
         <div
           v-if="!isSoloWorkspace"
           class="grid gap-4"

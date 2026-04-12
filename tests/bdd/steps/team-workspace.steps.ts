@@ -107,14 +107,23 @@ async function waitForParticipantTeamTabToSettle(page: Page) {
 }
 
 async function waitForParticipantSubmissionTabToSettle(page: Page) {
+  const workspaceRoot = page.getByTestId('account-hackathon-workspace-panel')
   const submissionRoot = page.getByTestId('account-hackathon-submission-panel')
 
-  await expect(submissionRoot).toBeVisible()
+  await expect(workspaceRoot).toBeVisible()
   await waitForNuxtHydration(page)
 
   await expect.poll(async () => {
+    if (await workspaceRoot.getByText('Loading workspace').count() > 0) {
+      return 'loading'
+    }
+
     if (await page.getByTestId('participant-submission-panel').isVisible().catch(() => false)) {
       return 'panel'
+    }
+
+    if (await submissionRoot.count() === 0) {
+      return 'hidden'
     }
 
     if (await submissionRoot.getByText('Submission window not open yet').count() > 0) {
@@ -244,6 +253,10 @@ Then('I should see the participant team card {string}', async ({ page }, teamNam
   })
 })
 
+Then('the participant submission surface should not be visible', async ({ page }) => {
+  await expect(page.getByTestId('account-hackathon-submission-panel')).toHaveCount(0)
+})
+
 When('I create a participant team named {string}', async ({ page }, baseName: string) => {
   const uniqueTeamName = `${baseName} ${Date.now()}`
   getScenarioState(page).createdTeamName = uniqueTeamName
@@ -352,6 +365,12 @@ Then('I should see the participant team text {string}', async ({ page }, text: s
   await expect(page.getByText(text, {
     exact: false
   }).first()).toBeVisible()
+})
+
+Then('I should not see the participant workspace text {string}', async ({ page }, text: string) => {
+  await expect(page.getByTestId('participant-team-workspace-panel').getByText(text, {
+    exact: false
+  })).toHaveCount(0)
 })
 
 Then('I should see the participant current team {string}', async ({ page }, teamName: string) => {

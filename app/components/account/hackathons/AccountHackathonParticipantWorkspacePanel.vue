@@ -6,7 +6,6 @@ import type { TeamActionAvailability } from '~/utils/team-workspace'
 import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSubmissionPanel.vue'
 import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWorkspacePanel.vue'
 import { Switch as UiSwitch } from '~/components/ui/switch'
-import { formatTimestamp } from '~/utils/date-formatting'
 import { cloneFormValues } from '~/utils/form-values'
 import { teamProfileFormSchema } from '~/utils/form-schemas'
 import {
@@ -25,7 +24,10 @@ import {
   getWithdrawSubmissionAvailability,
   shouldShowParticipantSubmissionWorkspace
 } from '~/utils/team-submission'
-import { buildAbsoluteAccountHackathonTeamsTabHref } from '~/utils/team-query'
+import {
+  buildAbsoluteAccountHackathonTeamsTabHref,
+  buildAccountHackathonTeamsTabHref
+} from '~/utils/team-query'
 
 const props = defineProps<{
   hackathon: PublicHackathon & {
@@ -109,6 +111,11 @@ const joinAvailability = computed<TeamActionAvailability>(() => ({
   isAllowed: false,
   reason: 'Join actions are available from the Teams tab.'
 }))
+const teamsTabHref = computed(() => buildAccountHackathonTeamsTabHref(props.hackathon.slug))
+const showSubmissionSection = computed(() => Boolean(displayedTeam.value))
+const showClosedSubmissionCountdown = computed(() =>
+  showSubmissionSection.value && props.hackathon.state === 'registration_open'
+)
 const canViewSubmission = computed(() =>
   shouldShowParticipantSubmissionWorkspace(props.hackathon, Boolean(displayedTeam.value))
 )
@@ -194,14 +201,6 @@ const withdrawSubmissionAvailability = computed(() =>
   getWithdrawSubmissionAvailability(props.hackathon, submissionWorkspace.currentSubmission.value, canManageTeam.value)
 )
 const submissionUnavailableDescription = computed(() => {
-  if (props.hackathon.state === 'registration_open') {
-    return `Project submissions open on ${formatTimestamp(props.hackathon.submissionOpensAt, 'the scheduled submission date')}.`
-  }
-
-  if (!displayedTeam.value) {
-    return 'Create or join a team to manage a submission in this workspace.'
-  }
-
   return 'The current submission surface could not be resolved right now.'
 })
 const isWorkspaceLoading = computed(() => {
@@ -674,37 +673,66 @@ async function withdrawSubmission() {
           v-else
           class="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
         >
-          <AppCard
-            class="rounded-xl hackathon-workspace-detail-panel"
-            :ui="{ body: 'p-5' }"
-          >
-            <div class="space-y-4">
-              <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-                <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                  Participate as solo
-                </h2>
-                <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                  Confirm solo participation now and keep the compact solo workspace until you decide to create or join a larger team.
+          <div class="space-y-6">
+            <AppCard
+              class="rounded-xl hackathon-workspace-detail-panel"
+              :ui="{ body: 'p-5' }"
+            >
+              <div class="space-y-4">
+                <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+                  <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+                    Participate as solo
+                  </h2>
+                  <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                    Confirm solo participation now and keep the compact solo workspace until you decide to create or join a larger team.
+                  </p>
+                </div>
+
+                <p class="text-sm text-toned">
+                  {{ teamFormationAvailability.summary }}
                 </p>
+
+                <div>
+                  <AppButton
+                    color="neutral"
+                    variant="solid"
+                    class="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                    :loading="workspace.pendingActionKey.value === 'create-team'"
+                    :disabled="!createTeamAvailability.isAllowed || workspace.pendingActionKey.value === 'create-team'"
+                    @click="participateAsSolo"
+                  >
+                    Participate as solo
+                  </AppButton>
+                </div>
               </div>
+            </AppCard>
 
-              <p class="text-sm text-toned">
-                {{ teamFormationAvailability.summary }}
-              </p>
+            <AppCard
+              class="rounded-xl hackathon-workspace-detail-panel"
+              :ui="{ body: 'p-5' }"
+            >
+              <div class="space-y-4">
+                <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+                  <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+                    Join a Team
+                  </h2>
+                  <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                    Browse available teams and send a join request from the Teams tab.
+                  </p>
+                </div>
 
-              <div>
                 <AppButton
+                  :to="teamsTabHref"
                   color="neutral"
                   variant="solid"
-                  :loading="workspace.pendingActionKey.value === 'create-team'"
-                  :disabled="!createTeamAvailability.isAllowed || workspace.pendingActionKey.value === 'create-team'"
-                  @click="participateAsSolo"
+                  trailing-icon="i-lucide-arrow-up-right"
+                  class="bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                 >
-                  Participate as solo
+                  Open Teams
                 </AppButton>
               </div>
-            </div>
-          </AppCard>
+            </AppCard>
+          </div>
 
           <AppCard
             class="rounded-xl hackathon-workspace-detail-panel"
@@ -801,11 +829,48 @@ async function withdrawSubmission() {
         </section>
 
         <section
+          v-if="showSubmissionSection"
           data-testid="account-hackathon-submission-panel"
           class="space-y-6"
         >
+          <AppCountdownCard
+            v-if="showClosedSubmissionCountdown"
+            title="Submission window not open yet"
+            description="You can prepare your team during registration. Submission details open once the hackathon enters the submission phase."
+            :target-at="props.hackathon.submissionOpensAt"
+            target-label="Submission opens at"
+            countdown-label="Submission opens in"
+            waiting-title="Scheduled opening time reached"
+            waiting-description="The scheduled opening time has passed. Submission actions appear once organizers open the submission phase."
+            post-target-state="waiting"
+            tone="info"
+            :show-seconds="true"
+            class="rounded-xl"
+          />
+
+          <ParticipantTeamSubmissionPanel
+            v-else-if="canViewSubmission && displayedTeam"
+            v-model:form="submissionForm"
+            :team-id="displayedTeam.id"
+            :hackathon-state="props.hackathon.state"
+            :submission="submissionWorkspace.currentSubmission.value"
+            :status="submissionWorkspace.currentSubmissionStatus.value"
+            :error-message="submissionWorkspace.currentSubmissionErrorMessage.value"
+            :mutation-error="submissionWorkspace.mutationError.value"
+            :can-manage-submission="canManageTeam"
+            :create-availability="createSubmissionAvailability"
+            :update-availability="updateSubmissionAvailability"
+            :submit-availability="submitSubmissionAvailability"
+            :withdraw-availability="withdrawSubmissionAvailability"
+            :pending-action-key="submissionWorkspace.pendingActionKey.value"
+            @create-draft="createSubmissionDraft"
+            @save-changes="saveSubmissionChanges"
+            @submit-project="submitProject"
+            @withdraw-submission="withdrawSubmission"
+          />
+
           <AppCard
-            v-if="!displayedTeam"
+            v-else
             class="rounded-xl hackathon-workspace-detail-panel"
           >
             <template #header>
@@ -813,9 +878,6 @@ async function withdrawSubmission() {
                 <h2 class="text-xl font-semibold text-highlighted dark:text-white">
                   Project submission
                 </h2>
-                <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                  Submission stays in this workspace underneath your team state.
-                </p>
               </div>
             </template>
 
@@ -823,46 +885,6 @@ async function withdrawSubmission() {
               {{ submissionUnavailableDescription }}
             </div>
           </AppCard>
-
-          <template v-else>
-            <ParticipantTeamSubmissionPanel
-              v-if="canViewSubmission"
-              v-model:form="submissionForm"
-              :team-id="displayedTeam.id"
-              :hackathon-state="props.hackathon.state"
-              :submission="submissionWorkspace.currentSubmission.value"
-              :status="submissionWorkspace.currentSubmissionStatus.value"
-              :error-message="submissionWorkspace.currentSubmissionErrorMessage.value"
-              :mutation-error="submissionWorkspace.mutationError.value"
-              :can-manage-submission="canManageTeam"
-              :create-availability="createSubmissionAvailability"
-              :update-availability="updateSubmissionAvailability"
-              :submit-availability="submitSubmissionAvailability"
-              :withdraw-availability="withdrawSubmissionAvailability"
-              :pending-action-key="submissionWorkspace.pendingActionKey.value"
-              @create-draft="createSubmissionDraft"
-              @save-changes="saveSubmissionChanges"
-              @submit-project="submitProject"
-              @withdraw-submission="withdrawSubmission"
-            />
-
-            <AppCard
-              v-else
-              class="rounded-xl hackathon-workspace-detail-panel"
-            >
-              <template #header>
-                <div class="space-y-1">
-                  <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                    Project submission
-                  </h2>
-                </div>
-              </template>
-
-              <div class="p-5 pt-0 text-sm text-toned">
-                {{ submissionUnavailableDescription }}
-              </div>
-            </AppCard>
-          </template>
         </section>
       </template>
     </template>

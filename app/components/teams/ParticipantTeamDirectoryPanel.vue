@@ -133,13 +133,13 @@ function selectDirectoryFilter(nextFilter: string) {
                   color="warning"
                   variant="soft"
                 >
-                  Solo
+                  Solo Team
                 </AppBadge>
 
                 <AppBadge
                   v-if="entry.isOwnTeam"
                   color="primary"
-                  variant="soft"
+                  :variant="entry.team.workspaceMode === 'solo' ? 'outline' : 'soft'"
                 >
                   Your team
                 </AppBadge>
@@ -153,7 +153,10 @@ function selectDirectoryFilter(nextFilter: string) {
                 </AppBadge>
               </div>
 
-              <p class="text-sm text-toned">
+              <p
+                v-if="entry.team.workspaceMode !== 'solo'"
+                class="text-sm text-toned"
+              >
                 {{ entry.team.activeMemberCount ?? 0 }}/{{ props.maxTeamMembers }} members
               </p>
 
@@ -172,11 +175,13 @@ function selectDirectoryFilter(nextFilter: string) {
               </p>
             </div>
 
-            <div class="grid gap-3 shrink-0 sm:min-w-48">
+            <div :class="entry.team.workspaceMode === 'solo' ? 'flex shrink-0 flex-col items-start gap-3 sm:min-w-0 sm:items-end' : 'grid gap-3 shrink-0 sm:min-w-48'">
               <AppButton
-                v-if="entry.detailHref?.trim()"
+                v-if="entry.detailHref?.trim() && !entry.isOwnTeam"
                 :to="entry.detailHref"
                 color="neutral"
+                :trailing-icon="entry.team.workspaceMode === 'solo' ? 'i-lucide-arrow-up-right' : undefined"
+                :class="entry.team.workspaceMode === 'solo' ? 'bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]' : ''"
               >
                 View team
               </AppButton>

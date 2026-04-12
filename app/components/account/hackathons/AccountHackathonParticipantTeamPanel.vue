@@ -153,6 +153,9 @@ const canJoinAnyTeam = computed(() =>
   && !workspace.ownTeam.value
   && (props.hackathon.state === 'registration_open' || props.hackathon.state === 'submission_open')
 )
+const showLockedTeamDirectoryStatus = computed(() =>
+  props.hackathon.state !== 'registration_open' && props.hackathon.state !== 'submission_open'
+)
 const isOpenToJoinDirectoryUnavailable = computed(() =>
   directoryFilter.value === 'open_to_join' && !canJoinAnyTeam.value
 )
@@ -397,7 +400,7 @@ async function cancelJoinRequest(payload: {
           :teams="visibleDirectoryEntries"
           :max-team-members="props.hackathon.maxTeamMembers"
           :total-teams="visibleDirectoryTotal"
-          :show-locked-status="!canJoinAnyTeam"
+          :show-locked-status="showLockedTeamDirectoryStatus"
           :filter-options="directoryFilterOptions"
           :is-loading-teams="!isOpenToJoinDirectoryUnavailable && isDirectoryLoading"
           :team-error-message="workspace.visibleTeamsErrorMessage.value"
