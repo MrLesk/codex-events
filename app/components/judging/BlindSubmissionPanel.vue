@@ -13,10 +13,7 @@ defineProps<{
 </script>
 
 <template>
-  <AppCard
-    variant="subtle"
-    :ui="{ root: 'rounded-[2rem] border border-default/80 bg-elevated/88 shadow-[0_28px_72px_-52px_rgba(17,24,39,0.48)]' }"
-  >
+  <AppCard class="rounded-xl hackathon-workspace-detail-panel p-6">
     <div
       data-testid="judge-blind-submission"
       class="space-y-6"
@@ -34,13 +31,13 @@ defineProps<{
         </div>
 
         <div class="space-y-2">
-          <h1
+          <h2
             data-testid="judge-assignment-project-name"
-            class="text-3xl font-semibold tracking-[-0.05em] text-highlighted sm:text-4xl"
+            class="text-[28px] font-semibold tracking-[-0.03em] text-highlighted dark:text-white sm:text-[32px]"
           >
             {{ assignment.blindSubmission.projectName ?? 'Untitled blind submission' }}
-          </h1>
-          <p class="max-w-3xl text-sm leading-8 text-toned sm:text-base">
+          </h2>
+          <p class="max-w-3xl text-[15px] leading-7 text-neutral-600 dark:text-[#A3A3A3]">
             {{ assignment.blindSubmission.summary || 'No blind summary is available for this assignment yet.' }}
           </p>
         </div>
@@ -85,7 +82,7 @@ defineProps<{
           variant="soft"
           icon="i-lucide-github"
           trailing-icon="i-lucide-external-link"
-          class="rounded-full"
+          class="rounded-lg"
         >
           Repository
         </AppButton>
@@ -99,7 +96,7 @@ defineProps<{
           variant="outline"
           icon="i-lucide-monitor-play"
           trailing-icon="i-lucide-external-link"
-          class="rounded-full"
+          class="rounded-lg"
         >
           Demo
         </AppButton>

@@ -29,10 +29,7 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
 </script>
 
 <template>
-  <AppCard
-    variant="subtle"
-    :ui="{ root: 'rounded-[2rem] border border-default/80 bg-elevated/88 shadow-[0_28px_72px_-52px_rgba(17,24,39,0.48)]' }"
-  >
+  <AppCard class="rounded-xl hackathon-workspace-detail-panel p-6">
     <div class="space-y-5">
       <div class="space-y-2">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">

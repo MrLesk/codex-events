@@ -2,10 +2,15 @@
 import type { ApiDataResponse, HackathonRecord } from '~/utils/admin-workspace'
 import type { JudgeAssignmentDetail } from '~/utils/judging-workspace'
 
+import {
+  formatHackathonLocation,
+  formatHackathonStateLabel,
+  formatHackathonWindow,
+  formatMaxTeamMembers
+} from '~/composables/useHackathonPresentation'
 import BlindSubmissionPanel from '~/components/judging/BlindSubmissionPanel.vue'
 import JudgeAssignmentStatusBadge from '~/components/judging/JudgeAssignmentStatusBadge.vue'
 import JudgeReviewRubric from '~/components/judging/JudgeReviewRubric.vue'
-import { formatHackathonState, getHackathonStateColor } from '~/utils/admin-workspace'
 import {
   buildCompletionCriterionScoresPayload,
   canCompleteJudgeAssignment,
@@ -58,6 +63,7 @@ if (!hackathonResponse.value?.data) {
 }
 
 const hackathonId = computed(() => hackathonResponse.value!.data.id)
+const pageHackathon = computed(() => hackathonResponse.value!.data)
 const workspace = useJudgeAssignmentWorkspace(hackathonId, assignmentId)
 
 const hackathon = computed(() => workspace.hackathon.value)
@@ -90,6 +96,39 @@ watch(criteria, (nextCriteria) => {
 
 const hasIncompleteScores = computed(() => hasIncompleteCriterionScores(scoreDrafts.value))
 const rubricReadonly = computed(() => !assignment.value || assignment.value.status !== 'judge_started')
+const isWorkspaceLoading = computed(() =>
+  workspace.status.value === 'pending'
+  || (!workspace.error.value && (!workspace.hackathon.value || !workspace.assignment.value))
+)
+const judgingWorkspaceLocation = computed(() => ({
+  path: `/account/hackathons/${encodeURIComponent(slug.value)}`,
+  query: {
+    tab: 'judging'
+  }
+}))
+const detailSummary = computed(() => [
+  formatHackathonWindow(pageHackathon.value.registrationOpensAt, pageHackathon.value.submissionClosesAt),
+  formatHackathonLocation(pageHackathon.value),
+  formatMaxTeamMembers(pageHackathon.value.maxTeamMembers)
+].join(' • '))
+const headerStateLabel = computed(() =>
+  formatHackathonStateLabel(pageHackathon.value.state).toUpperCase()
+)
+const headerStateClass = computed(() => {
+  if (pageHackathon.value.state === 'submission_open') {
+    return 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+  }
+
+  if (pageHackathon.value.state === 'registration_open') {
+    return 'border border-sky-600/35 bg-sky-500/16 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/14 dark:text-sky-300'
+  }
+
+  if (pageHackathon.value.state === 'winners_announced') {
+    return 'bg-green-500/10 text-green-400 border border-green-500/20'
+  }
+
+  return 'bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]'
+})
 const timelineRows = computed(() => [
   {
     label: 'Assigned',
@@ -195,12 +234,7 @@ async function skipReview() {
       }
     )
 
-    await navigateTo({
-      path: '/account/judging',
-      query: {
-        notice: 'skipped'
-      }
-    })
+    await navigateTo(judgingWorkspaceLocation.value)
   })
 }
 
@@ -238,110 +272,68 @@ useSeoMeta({
 </script>
 
 <template>
-  <div class="pb-24">
-    <section class="relative isolate overflow-hidden border-b border-default/80 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.12),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(56,189,248,0.14),transparent_24%),linear-gradient(180deg,rgba(249,251,255,0.98),rgba(241,246,252,0.96))]">
-      <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/55 to-transparent" />
-
-      <AppContainer class="py-10 sm:py-14">
+  <div class="relative isolate pb-16">
+    <section class="relative z-10 border-b border-black/8 bg-white/42 backdrop-blur-lg dark:border-white/[0.08] dark:bg-black/48">
+      <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
         <NuxtLink
-          to="/account/judging"
-          class="inline-flex items-center gap-2 rounded-full border border-default/80 bg-elevated/82 px-4 py-2 text-sm font-medium text-highlighted shadow-[0_18px_40px_-28px_rgba(17,24,39,0.35)] transition hover:border-primary/45"
+          :to="judgingWorkspaceLocation"
+          class="inline-flex items-center gap-2 text-[13px] font-medium text-neutral-600 transition-colors hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white"
         >
           <AppIcon
             name="i-lucide-arrow-left"
             class="size-4"
           />
-          Back to inbox
+          Back to Judging
         </NuxtLink>
 
-        <div
-          v-if="workspace.status.value === 'pending'"
-          class="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_20rem]"
-        >
-          <div class="h-48 rounded-[2rem] border border-default/80 bg-elevated/78" />
-          <div class="h-48 rounded-[2rem] border border-default/80 bg-elevated/78" />
-        </div>
-
-        <AppAlert
-          v-else-if="workspace.error.value"
-          class="mt-8"
-          color="warning"
-          variant="soft"
-          title="Blind review unavailable"
-          :description="workspace.error.value.message"
-        />
-
-        <AppAlert
-          v-else-if="!assignment || !hackathon"
-          class="mt-8"
-          color="warning"
-          variant="soft"
-          title="Judge assignment unavailable"
-          description="The requested blind review could not be loaded for this session."
-        />
-
-        <div
-          v-else
-          class="mt-8 grid gap-8 xl:grid-cols-[minmax(0,1.1fr)_20rem] xl:items-start"
-        >
-          <div class="space-y-5">
-            <div class="flex flex-wrap items-center gap-2">
-              <AppBadge
-                :color="getHackathonStateColor(hackathon.state)"
-                variant="soft"
-                class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
-              >
-                {{ formatHackathonState(hackathon.state) }}
-              </AppBadge>
-              <span class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                {{ hackathon.name }}
-              </span>
-            </div>
-
-            <div class="space-y-4">
-              <h1 class="max-w-4xl text-4xl font-semibold tracking-[-0.05em] text-highlighted sm:text-5xl">
-                Blind review for {{ assignment.blindSubmission.projectName ?? 'untitled submission' }}
-              </h1>
-              <p class="max-w-3xl text-base leading-8 text-toned">
-                Score the rubric against the anonymized record below. Team identity remains hidden even if this session also has admin access elsewhere.
-              </p>
-            </div>
-          </div>
-
-          <AppCard
-            variant="subtle"
-            :ui="{ root: 'rounded-[1.9rem] border border-default/80 bg-elevated/84 shadow-[0_28px_72px_-52px_rgba(17,24,39,0.42)]' }"
-          >
-            <div class="space-y-4">
-              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                Assignment status
-              </p>
-
-              <div
-                data-testid="judge-assignment-status"
-                class="flex flex-wrap items-center gap-2"
-              >
-                <JudgeAssignmentStatusBadge :status="assignment.status" />
-                <AppBadge
-                  data-testid="judge-assignment-ineligibility"
-                  :color="resolveJudgeIneligibilityColor(assignment.ineligibilityStatus)"
-                  variant="soft"
-                  class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
-                >
-                  {{ formatJudgeIneligibilityStatus(assignment.ineligibilityStatus) }}
-                </AppBadge>
+        <div class="mt-3 border-b border-black/8 pb-0 dark:border-white/[0.08]">
+          <div class="space-y-2 pb-4">
+            <div class="space-y-2">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0 flex flex-wrap items-center gap-3">
+                  <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
+                    {{ pageHackathon.name }}
+                  </h1>
+                  <span
+                    class="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                    :class="headerStateClass"
+                  >
+                    {{ headerStateLabel }}
+                  </span>
+                </div>
               </div>
 
-              <p class="text-sm leading-7 text-toned">
-                {{ describeJudgeAssignmentStatus(assignment.status) }}
+              <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
+                {{ detailSummary }}
               </p>
             </div>
-          </AppCard>
+
+            <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
+              Review the assigned submission in the blind workspace. Team identity remains hidden throughout scoring.
+            </p>
+          </div>
+
+          <nav
+            aria-label="Judging workspace sections"
+            role="tablist"
+            class="account-hackathon-tab-list flex items-center gap-5 overflow-x-auto"
+          >
+            <NuxtLink
+              id="judge-assignment-tab"
+              :to="judgingWorkspaceLocation"
+              role="tab"
+              aria-selected="true"
+              aria-controls="judge-assignment-panel"
+              class="border-b-2 border-black pb-3 text-[14px] font-medium text-highlighted dark:border-white dark:text-white"
+            >
+              Judging
+            </NuxtLink>
+          </nav>
         </div>
       </AppContainer>
     </section>
 
-    <AppContainer class="space-y-6 pt-10">
+    <AppContainer class="relative z-10 max-w-[68rem] space-y-6 pt-6">
       <AppAlert
         v-if="actionState.success"
         color="success"
@@ -361,15 +353,34 @@ useSeoMeta({
       />
 
       <div
-        v-if="workspace.status.value === 'pending'"
+        v-if="isWorkspaceLoading"
         class="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]"
       >
-        <div class="h-96 rounded-[2rem] border border-default/80 bg-elevated/78" />
-        <div class="h-96 rounded-[2rem] border border-default/80 bg-elevated/78" />
+        <div class="h-96 rounded-xl hackathon-workspace-detail-panel" />
+        <div class="h-96 rounded-xl hackathon-workspace-detail-panel" />
       </div>
+
+      <AppAlert
+        v-else-if="workspace.error.value"
+        color="warning"
+        variant="soft"
+        title="Blind review unavailable"
+        :description="workspace.error.value.message"
+      />
+
+      <AppAlert
+        v-else-if="!assignment || !hackathon"
+        color="warning"
+        variant="soft"
+        title="Judge assignment unavailable"
+        description="The requested blind review could not be loaded for this session."
+      />
 
       <div
         v-else-if="assignment && hackathon"
+        id="judge-assignment-panel"
+        role="tabpanel"
+        aria-labelledby="judge-assignment-tab"
         class="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]"
       >
         <div class="space-y-6">
@@ -392,11 +403,31 @@ useSeoMeta({
         </div>
 
         <div class="space-y-6">
-          <AppCard
-            variant="subtle"
-            :ui="{ root: 'rounded-[2rem] border border-default/80 bg-elevated/88 shadow-[0_28px_72px_-52px_rgba(17,24,39,0.42)]' }"
-          >
+          <AppCard class="rounded-xl hackathon-workspace-detail-panel p-6">
             <div class="space-y-4">
+              <div class="space-y-2">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                  Assignment status
+                </p>
+                <div
+                  data-testid="judge-assignment-status"
+                  class="flex flex-wrap items-center gap-2"
+                >
+                  <JudgeAssignmentStatusBadge :status="assignment.status" />
+                  <AppBadge
+                    data-testid="judge-assignment-ineligibility"
+                    :color="resolveJudgeIneligibilityColor(assignment.ineligibilityStatus)"
+                    variant="soft"
+                    class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+                  >
+                    {{ formatJudgeIneligibilityStatus(assignment.ineligibilityStatus) }}
+                  </AppBadge>
+                </div>
+                <p class="text-sm leading-7 text-toned">
+                  {{ describeJudgeAssignmentStatus(assignment.status) }}
+                </p>
+              </div>
+
               <div class="space-y-2">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                   Timeline
@@ -423,10 +454,7 @@ useSeoMeta({
             </div>
           </AppCard>
 
-          <AppCard
-            variant="subtle"
-            :ui="{ root: 'rounded-[2rem] border border-default/80 bg-elevated/88 shadow-[0_28px_72px_-52px_rgba(17,24,39,0.42)]' }"
-          >
+          <AppCard class="rounded-xl hackathon-workspace-detail-panel p-6">
             <div class="space-y-5">
               <div class="space-y-2">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
@@ -444,7 +472,7 @@ useSeoMeta({
                   color="primary"
                   size="lg"
                   icon="i-lucide-play"
-                  class="w-full justify-center rounded-full"
+                  class="w-full justify-center rounded-lg"
                   :loading="actionState.pendingAction === 'start'"
                   @click="startReview"
                 >
@@ -457,7 +485,7 @@ useSeoMeta({
                   color="success"
                   size="lg"
                   icon="i-lucide-check"
-                  class="w-full justify-center rounded-full"
+                  class="w-full justify-center rounded-lg"
                   :disabled="hasIncompleteScores || criteria.length === 0"
                   :loading="actionState.pendingAction === 'complete'"
                   @click="completeReview"
@@ -504,7 +532,7 @@ useSeoMeta({
                   data-testid="judge-skip-review"
                   color="neutral"
                   variant="outline"
-                  class="w-full justify-center rounded-full"
+                  class="w-full justify-center rounded-lg"
                   :loading="actionState.pendingAction === 'skip'"
                   @click="skipReview"
                 >
@@ -536,7 +564,7 @@ useSeoMeta({
                   data-testid="judge-mark-ineligible"
                   color="error"
                   variant="soft"
-                  class="w-full justify-center rounded-full"
+                  class="w-full justify-center rounded-lg"
                   :loading="actionState.pendingAction === 'ineligible'"
                   @click="markIneligible"
                 >
