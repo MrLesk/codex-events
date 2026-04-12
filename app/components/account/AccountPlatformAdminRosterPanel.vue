@@ -231,17 +231,19 @@ async function addPlatformAdmin(user: HackathonRoleUserSummary) {
 </script>
 
 <template>
-  <AppCard class="hackathon-workspace-detail-panel p-6">
-    <div class="space-y-4">
+  <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+    <template #header>
       <div class="space-y-1">
-        <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+        <h2 class="text-lg font-semibold text-highlighted dark:text-white">
           Platform admins
         </h2>
         <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
           Review the current platform admins and grant platform-wide admin access to other active users.
         </p>
       </div>
+    </template>
 
+    <div class="space-y-6">
       <AppAlert
         v-if="mutationError"
         color="error"
@@ -250,7 +252,7 @@ async function addPlatformAdmin(user: HackathonRoleUserSummary) {
         :description="mutationError"
       />
 
-      <div class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+      <div class="space-y-4">
         <div class="flex items-center justify-between gap-3">
           <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
             Current platform admins
@@ -313,7 +315,7 @@ async function addPlatformAdmin(user: HackathonRoleUserSummary) {
         </p>
       </div>
 
-      <div class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+      <div class="space-y-4 border-t border-black/8 pt-6 dark:border-white/[0.08]">
         <div class="space-y-1">
           <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
             Add platform admins
