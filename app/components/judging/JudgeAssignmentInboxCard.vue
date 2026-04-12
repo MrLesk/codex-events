@@ -3,6 +3,7 @@ import type { JudgeAssignmentDetail } from '~/utils/judging-workspace'
 
 import JudgeAssignmentStatusBadge from './JudgeAssignmentStatusBadge.vue'
 
+import { buildAccountHackathonJudgingTabHref } from '~/utils/judging-query'
 import {
   describeJudgeAssignmentStatus,
   formatBlindApplicationCount,
@@ -17,7 +18,7 @@ const props = defineProps<{
 }>()
 
 const assignmentHref = computed(() =>
-  `/hackathons/${props.hackathonSlug}/judging/assignments/${props.assignment.id}`
+  buildAccountHackathonJudgingTabHref(props.hackathonSlug, props.assignment.id)
 )
 </script>
 

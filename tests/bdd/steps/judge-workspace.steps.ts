@@ -100,6 +100,7 @@ When('I open the blind workspace assignment for {string}', async ({ page }, titl
 
   await expect(card).toBeVisible()
   await card.click()
+  await expect(page).toHaveURL(new RegExp(`/account/hackathons/${judgeWorkspaceHackathonSlug}\\?tab=judging&assignment=`))
   await expect(page.getByTestId('judge-assignment-project-name')).toHaveText(title)
 })
 
@@ -154,14 +155,14 @@ When('I skip the opened blind review with reason {string}', async ({ page }, rea
   await page.getByTestId('judge-skip-reason').fill(reason)
 
   await Promise.all([
-    page.waitForURL('**/account/judging?notice=skipped'),
+    page.waitForURL(`**/account/hackathons/${judgeWorkspaceHackathonSlug}?tab=judging`),
     page.getByTestId('judge-skip-review').click()
   ])
 })
 
-Then('I should be returned to the judge dashboard', async ({ page }) => {
-  await expect(page).toHaveURL(/\/account\/judging\?notice=skipped$/)
-  await expect(page.getByRole('heading', { name: 'Judge dashboard', exact: true })).toBeVisible()
+Then('I should be returned to the hackathon judging tab', async ({ page }) => {
+  await expect(page).toHaveURL(new RegExp(`/account/hackathons/${judgeWorkspaceHackathonSlug}\\?tab=judging$`))
+  await expect(page.getByRole('tab', { name: 'Judging', exact: true })).toHaveAttribute('aria-selected', 'true')
 })
 
 When('I reopen the judge workspace for the fixture hackathon', async ({ page }) => {

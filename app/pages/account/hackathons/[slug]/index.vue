@@ -61,6 +61,7 @@ import {
   getTeamSubmissionWorkspaceStatus,
   hasHackathonEnteredSubmissionPhase
 } from '~/utils/team-submission'
+import { normalizeJudgeAssignmentIdQueryValue } from '~/utils/judging-query'
 import { buildAccountHackathonTeamTabHref, normalizeTeamSlugQueryValue } from '~/utils/team-query'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
@@ -276,6 +277,10 @@ function buildWorkspaceSectionLocation(nextSection: AccountHackathonWorkspaceTab
     ...route.query
   }
 
+  if (nextSection !== 'judging') {
+    delete nextQuery.assignment
+  }
+
   if (nextSection === 'overview') {
     delete nextQuery.tab
   } else {
@@ -300,6 +305,7 @@ const activeSection = computed<AccountHackathonWorkspaceTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
 const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
+const selectedJudgeAssignmentId = computed(() => normalizeJudgeAssignmentIdQueryValue(route.query.assignment))
 const activeSectionSeo = computed(() => getAccountHackathonSeoContent(activeSection.value, hackathon.value.name))
 
 watchEffect(() => {
@@ -1009,7 +1015,11 @@ useSeoMeta({
         role="tabpanel"
         aria-labelledby="account-tab-judging"
       >
-        <AccountHackathonJudgePanel :slug="slug" />
+        <AccountHackathonJudgePanel
+          :hackathon-id="workspaceHackathonId"
+          :slug="slug"
+          :selected-assignment-id="selectedJudgeAssignmentId"
+        />
       </section>
 
       <section
