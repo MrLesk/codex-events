@@ -12,7 +12,6 @@ import {
   getTeamSubmissionStatusColor,
   getTeamSubmissionWorkspaceStatus
 } from '~/utils/team-submission'
-import { formatTimestamp } from '~/utils/date-formatting'
 import { teamSubmissionFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
 
@@ -134,97 +133,80 @@ function handleSubmitProjectAttempt(event?: Event) {
 </script>
 
 <template>
-  <AppCard
+  <div
     data-testid="participant-submission-panel"
-    class="rounded-xl hackathon-workspace-detail-panel"
+    class="space-y-6"
   >
-    <template #header>
-      <div class="flex flex-wrap items-center gap-3">
-        <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-          Project submission
-        </h2>
+    <AppAlert
+      v-if="status === 'pending'"
+      color="neutral"
+      variant="soft"
+      title="Loading submission"
+      description="Resolving the current submission record for this team."
+    />
 
-        <AppBadge
-          data-testid="participant-submission-status"
-          :color="submissionStatusColor"
-          variant="soft"
-        >
-          {{ submissionStatusLabel }}
-        </AppBadge>
-      </div>
-    </template>
+    <AppAlert
+      v-else-if="status === 'error' && errorMessage"
+      color="error"
+      variant="soft"
+      title="Submission unavailable"
+      :description="errorMessage"
+    />
 
-    <div class="space-y-6">
-      <AppAlert
-        v-if="status === 'pending'"
-        color="neutral"
-        variant="soft"
-        title="Loading submission"
-        description="Resolving the current submission record for this team."
-      />
+    <template v-else>
+      <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+        <template #header>
+          <div class="space-y-3">
+            <div class="flex flex-wrap items-center gap-3">
+              <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+                Project submission
+              </h2>
 
-      <AppAlert
-        v-else-if="status === 'error' && errorMessage"
-        color="error"
-        variant="soft"
-        title="Submission unavailable"
-        :description="errorMessage"
-      />
+              <AppBadge
+                data-testid="participant-submission-status"
+                :color="submissionStatusColor"
+                variant="soft"
+              >
+                {{ submissionStatusLabel }}
+              </AppBadge>
+            </div>
 
-      <template v-else>
-        <div class="grid gap-4 md:grid-cols-2">
-          <div class="app-inset-card px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Submitted at
-            </p>
-            <p class="mt-2 text-sm font-medium text-highlighted">
-              {{ formatTimestamp(submission?.submittedAt, 'Not submitted yet') }}
-            </p>
+            <div
+              v-if="!canManageSubmission"
+              data-testid="participant-submission-admin-warning"
+              class="flex items-center gap-2 text-sm text-warning"
+            >
+              <AppIcon
+                name="i-lucide-triangle-alert"
+                class="size-4 shrink-0"
+              />
+              <p>Only team admins can manage the project submission.</p>
+            </div>
           </div>
+        </template>
 
-          <div class="app-inset-card px-5 py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Last updated
-            </p>
-            <p class="mt-2 text-sm font-medium text-highlighted">
-              {{ formatTimestamp(submission?.updatedAt, 'No submission record yet') }}
-            </p>
-          </div>
-        </div>
-
-        <div class="app-inset-card px-5 py-5">
-          <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-            <h3 class="text-lg font-semibold text-highlighted dark:text-white">
-              {{ submission ? 'Submission details' : 'Start the first draft' }}
-            </h3>
-            <p
-              v-if="mutationError"
-              class="text-sm text-error"
-            >
-              {{ mutationError }}
-            </p>
-            <p
-              v-else-if="!submission && !createAvailability.isAllowed && createAvailability.reason"
-              class="text-sm text-muted"
-            >
-              {{ createAvailability.reason }}
-            </p>
-            <p
-              v-else-if="submission && !updateAvailability.isAllowed && updateAvailability.reason"
-              class="text-sm text-muted"
-            >
-              {{ updateAvailability.reason }}
-            </p>
-            <p
-              v-else
-              class="text-sm text-muted"
-            >
-              Use this form to manage the current submission details.
-            </p>
-          </div>
+        <div class="space-y-4">
+          <p
+            v-if="mutationError"
+            class="text-sm text-error"
+          >
+            {{ mutationError }}
+          </p>
+          <p
+            v-else-if="canManageSubmission && !submission && !createAvailability.isAllowed && createAvailability.reason"
+            class="text-sm text-muted"
+          >
+            {{ createAvailability.reason }}
+          </p>
+          <p
+            v-else-if="canManageSubmission && submission && !updateAvailability.isAllowed && updateAvailability.reason"
+            class="text-sm text-muted"
+          >
+            {{ updateAvailability.reason }}
+          </p>
 
           <form
-            class="mt-5 space-y-4"
+            class="space-y-4"
             @submit.prevent="handleSaveAttempt"
           >
             <AppFormField
@@ -364,7 +346,7 @@ function handleSubmitProjectAttempt(event?: Event) {
             </div>
           </form>
         </div>
-      </template>
-    </div>
-  </AppCard>
+      </AppCard>
+    </template>
+  </div>
 </template>
