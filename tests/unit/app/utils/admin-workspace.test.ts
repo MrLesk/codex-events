@@ -11,6 +11,7 @@ import type {
 } from '../../../../app/utils/admin-workspace'
 
 import {
+  buildAdminJudgeAssignmentOversightGroups,
   buildAdminOperationalTeams,
   listAllPaginatedItems,
   buildAdminWorkspaceCacheKey,
@@ -202,6 +203,40 @@ function createSubmission(overrides: Partial<SubmissionRecord> = {}): Submission
     disqualifiedAt: null,
     createdAt: '2026-03-24T12:00:00.000Z',
     updatedAt: '2026-03-24T12:00:00.000Z',
+    ...overrides
+  }
+}
+
+function createJudgeAssignment(overrides: Partial<import('../../../../app/utils/admin-workspace').JudgeAssignmentSummary> = {}) {
+  return {
+    id: 'assignment-1',
+    hackathonId: 'hackathon-1',
+    submissionId: 'submission-1',
+    judgeUserId: 'judge-1',
+    status: 'assigned',
+    assignedAt: '2026-03-24T14:00:00.000Z',
+    startedAt: null,
+    completedAt: null,
+    skippedAt: null,
+    skippedByUserId: null,
+    skipReason: null,
+    ineligibilityStatus: 'eligible',
+    ineligibilityReason: null,
+    ineligibilityMarkedAt: null,
+    ineligibilityMarkedByUserId: null,
+    createdAt: '2026-03-24T14:00:00.000Z',
+    blindSubmission: {
+      id: 'blind-submission-1',
+      projectName: 'Alpha Project',
+      summary: 'Canonical blind submission summary.',
+      repositoryUrl: null,
+      demoUrl: null,
+      status: 'locked',
+      submittedAt: '2026-03-24T13:00:00.000Z',
+      lockedAt: '2026-03-24T13:10:00.000Z',
+      applications: []
+    },
+    criterionScores: [],
     ...overrides
   }
 }
@@ -707,6 +742,68 @@ describe('admin-workspace operational helpers', () => {
       reassignReason: 'Assignment reassignment is only available during judging preparation or judge review.',
       canForceSkip: false,
       forceSkipReason: 'Force-skip is available only once judge review has started.'
+    })
+  })
+
+  test('groups active judging assignments by judge and sorts unstarted work first within each judge', () => {
+    const groups = buildAdminJudgeAssignmentOversightGroups([
+      createJudgeAssignment({
+        id: 'assignment-3',
+        judgeUserId: 'judge-2',
+        blindSubmission: {
+          id: 'blind-submission-3',
+          projectName: 'Gamma Project',
+          summary: 'Summary',
+          repositoryUrl: null,
+          demoUrl: null,
+          status: 'locked',
+          submittedAt: '2026-03-24T13:00:00.000Z',
+          lockedAt: '2026-03-24T13:10:00.000Z',
+          applications: []
+        }
+      }),
+      createJudgeAssignment({
+        id: 'assignment-2',
+        judgeUserId: 'judge-1',
+        status: 'judge_started',
+        blindSubmission: {
+          id: 'blind-submission-2',
+          projectName: 'Beta Project',
+          summary: 'Summary',
+          repositoryUrl: null,
+          demoUrl: null,
+          status: 'locked',
+          submittedAt: '2026-03-24T13:00:00.000Z',
+          lockedAt: '2026-03-24T13:10:00.000Z',
+          applications: []
+        }
+      }),
+      createJudgeAssignment()
+    ], {
+      judgeLabelsByUserId: {
+        'judge-1': 'Ada Lovelace',
+        'judge-2': 'Grace Hopper'
+      }
+    })
+
+    expect(groups).toHaveLength(2)
+    expect(groups[0]).toMatchObject({
+      judgeUserId: 'judge-1',
+      judgeLabel: 'Ada Lovelace',
+      activeAssignmentCount: 2,
+      assignedCount: 1,
+      startedCount: 1
+    })
+    expect(groups[0]?.assignments.map(assignment => assignment.id)).toEqual([
+      'assignment-1',
+      'assignment-2'
+    ])
+    expect(groups[1]).toMatchObject({
+      judgeUserId: 'judge-2',
+      judgeLabel: 'Grace Hopper',
+      activeAssignmentCount: 1,
+      assignedCount: 1,
+      startedCount: 0
     })
   })
 

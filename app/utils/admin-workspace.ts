@@ -412,6 +412,15 @@ export interface JudgeAssignmentSummary {
   }>
 }
 
+export interface AdminJudgeAssignmentOversightGroup {
+  judgeUserId: string
+  judgeLabel: string
+  activeAssignmentCount: number
+  assignedCount: number
+  startedCount: number
+  assignments: JudgeAssignmentSummary[]
+}
+
 export interface LeaderboardEntry {
   teamId: string
   teamName: string
@@ -985,6 +994,94 @@ export function getAdminJudgeAssignmentInterventionPolicy(
     canForceSkip,
     forceSkipReason
   }
+}
+
+function getAdminJudgeAssignmentOversightStatusSortOrder(status: JudgeAssignmentSummary['status']) {
+  switch (status) {
+    case 'assigned':
+      return 0
+    case 'judge_started':
+      return 1
+    case 'judge_completed':
+      return 2
+    case 'skipped':
+      return 3
+  }
+}
+
+function getAdminJudgeAssignmentOversightProjectLabel(assignment: JudgeAssignmentSummary) {
+  const projectName = assignment.blindSubmission?.projectName?.trim()
+  return projectName && projectName.length > 0 ? projectName : assignment.submissionId
+}
+
+export function buildAdminJudgeAssignmentOversightGroups(
+  assignments: JudgeAssignmentSummary[],
+  options?: {
+    judgeLabelsByUserId?: Record<string, string>
+  }
+): AdminJudgeAssignmentOversightGroup[] {
+  const judgeLabelsByUserId = options?.judgeLabelsByUserId ?? {}
+  const groupedAssignments = new Map<string, AdminJudgeAssignmentOversightGroup>()
+  const sortedAssignments = [...assignments].sort((left, right) => {
+    const leftJudgeLabel = judgeLabelsByUserId[left.judgeUserId] ?? left.judgeUserId
+    const rightJudgeLabel = judgeLabelsByUserId[right.judgeUserId] ?? right.judgeUserId
+    const judgeLabelComparison = leftJudgeLabel.localeCompare(rightJudgeLabel, undefined, {
+      sensitivity: 'base'
+    })
+
+    if (judgeLabelComparison !== 0) {
+      return judgeLabelComparison
+    }
+
+    const statusComparison = getAdminJudgeAssignmentOversightStatusSortOrder(left.status)
+      - getAdminJudgeAssignmentOversightStatusSortOrder(right.status)
+
+    if (statusComparison !== 0) {
+      return statusComparison
+    }
+
+    const projectLabelComparison = getAdminJudgeAssignmentOversightProjectLabel(left).localeCompare(
+      getAdminJudgeAssignmentOversightProjectLabel(right),
+      undefined,
+      {
+        sensitivity: 'base'
+      }
+    )
+
+    if (projectLabelComparison !== 0) {
+      return projectLabelComparison
+    }
+
+    return left.id.localeCompare(right.id)
+  })
+
+  for (const assignment of sortedAssignments) {
+    const existingGroup = groupedAssignments.get(assignment.judgeUserId)
+
+    if (existingGroup) {
+      existingGroup.assignments.push(assignment)
+      existingGroup.activeAssignmentCount += 1
+
+      if (assignment.status === 'assigned') {
+        existingGroup.assignedCount += 1
+      } else if (assignment.status === 'judge_started') {
+        existingGroup.startedCount += 1
+      }
+
+      continue
+    }
+
+    groupedAssignments.set(assignment.judgeUserId, {
+      judgeUserId: assignment.judgeUserId,
+      judgeLabel: judgeLabelsByUserId[assignment.judgeUserId] ?? assignment.judgeUserId,
+      activeAssignmentCount: 1,
+      assignedCount: assignment.status === 'assigned' ? 1 : 0,
+      startedCount: assignment.status === 'judge_started' ? 1 : 0,
+      assignments: [assignment]
+    })
+  }
+
+  return [...groupedAssignments.values()]
 }
 
 function formatOperationalUserLabel(user: OperationalUserSummary | undefined, userId: string) {

@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import type {
+  AdminJudgeAssignmentOversightGroup,
   JudgeAssignmentSummary,
   HackathonState
 } from '~/utils/admin-workspace'
 
 import {
+  buildAdminJudgeAssignmentOversightGroups,
   formatAdminJudgeAssignmentStatus,
   getAdminJudgeAssignmentInterventionPolicy,
   getJudgeAssignmentStatusColor
 } from '~/utils/admin-workspace'
+import { formatTimestamp } from '~/utils/date-formatting'
 
 type JudgeChoice = {
   value: string
@@ -34,6 +37,7 @@ const drafts = reactive<Record<string, {
   reassignReason: string
   forceSkipReason: string
 }>>({})
+const activeReassignAssignmentId = ref<string | null>(null)
 
 function getDraft(assignment: JudgeAssignmentSummary) {
   const existing = drafts[assignment.id]
@@ -56,12 +60,104 @@ function getReplacementChoices(assignment: JudgeAssignmentSummary) {
   return props.judgeChoices.filter(choice => choice.value !== assignment.judgeUserId)
 }
 
+function getAssignmentProjectLabel(assignment: JudgeAssignmentSummary) {
+  return assignment.blindSubmission?.projectName ?? assignment.submissionId
+}
+
+function getAssignmentSummary(assignment: JudgeAssignmentSummary) {
+  return assignment.blindSubmission?.summary || 'No blind summary is available for this assignment yet.'
+}
+
+function getJudgeSectionSummary(group: AdminJudgeAssignmentOversightGroup) {
+  const parts: string[] = []
+
+  if (group.assignedCount > 0) {
+    parts.push(`${group.assignedCount} unstarted`)
+  }
+
+  if (group.startedCount > 0) {
+    parts.push(`${group.startedCount} started`)
+  }
+
+  if (parts.length === 0) {
+    return 'No active assignments.'
+  }
+
+  return parts.join(' • ')
+}
+
+function getAssignmentLifecycleLabel(assignment: JudgeAssignmentSummary) {
+  if (assignment.status === 'judge_started') {
+    return assignment.startedAt
+      ? `Started ${formatTimestamp(assignment.startedAt, 'start time unavailable')}`
+      : 'Started'
+  }
+
+  return `Assigned ${formatTimestamp(assignment.assignedAt, 'assignment time unavailable')}`
+}
+
+function openReassignDialog(assignment: JudgeAssignmentSummary) {
+  activeReassignAssignmentId.value = assignment.id
+}
+
+function closeReassignDialog() {
+  activeReassignAssignmentId.value = null
+}
+
+const judgeLabelsByUserId = computed<Record<string, string>>(() =>
+  Object.fromEntries(props.judgeChoices.map(choice => [choice.value, choice.label]))
+)
+
 const actionableAssignments = computed(() =>
   props.assignments.filter((assignment) => {
     const policy = getAdminJudgeAssignmentInterventionPolicy(props.hackathonState, assignment.status)
     return policy.canReassign || policy.canForceSkip
   })
 )
+
+const oversightGroups = computed(() =>
+  buildAdminJudgeAssignmentOversightGroups(actionableAssignments.value, {
+    judgeLabelsByUserId: judgeLabelsByUserId.value
+  })
+)
+
+const activeReassignAssignment = computed(() => {
+  if (!activeReassignAssignmentId.value) {
+    return null
+  }
+
+  const assignment = actionableAssignments.value.find(entry => entry.id === activeReassignAssignmentId.value) ?? null
+
+  if (!assignment) {
+    return null
+  }
+
+  return getAdminJudgeAssignmentInterventionPolicy(props.hackathonState, assignment.status).canReassign
+    ? assignment
+    : null
+})
+
+watch(activeReassignAssignment, (assignment) => {
+  if (!assignment && activeReassignAssignmentId.value) {
+    activeReassignAssignmentId.value = null
+  }
+})
+
+function submitReassignment() {
+  if (!activeReassignAssignment.value) {
+    return
+  }
+
+  const draft = getDraft(activeReassignAssignment.value)
+
+  emit('reassign', {
+    assignmentId: activeReassignAssignment.value.id,
+    judgeUserId: draft.judgeUserId || undefined,
+    reason: draft.reassignReason.trim() || undefined
+  })
+
+  closeReassignDialog()
+}
 </script>
 
 <template>
@@ -72,7 +168,7 @@ const actionableAssignments = computed(() =>
           Judging Oversight
         </h2>
         <p class="text-sm text-muted">
-          Admin interventions stay limited to active assignments and follow the documented lifecycle guards.
+          Review the current assignment load by judge and intervene only where the lifecycle rules allow it.
         </p>
       </div>
     </template>
@@ -96,7 +192,7 @@ const actionableAssignments = computed(() =>
 
       <template v-else>
         <AppAlert
-          v-if="actionableAssignments.length === 0"
+          v-if="oversightGroups.length === 0"
           color="neutral"
           variant="soft"
           title="No active admin interventions"
@@ -105,145 +201,207 @@ const actionableAssignments = computed(() =>
 
         <div
           v-else
-          class="grid grid-cols-1 gap-4"
+          class="divide-y divide-black/8 dark:divide-white/[0.08]"
         >
-          <article
-            v-for="assignment in actionableAssignments"
-            :key="assignment.id"
-            :data-testid="`admin-competition-assignment-${assignment.submissionId}`"
-            class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
+          <section
+            v-for="group in oversightGroups"
+            :key="group.judgeUserId"
+            class="py-6 first:pt-0 last:pb-0"
           >
-            <div class="space-y-5">
-              <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div class="space-y-2">
-                  <div class="space-y-1">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                      Blind submission
-                    </p>
-                    <h3 class="text-lg font-semibold text-highlighted">
-                      {{ assignment.blindSubmission?.projectName ?? assignment.submissionId }}
-                    </h3>
-                  </div>
-
-                  <div class="grid gap-2 text-sm text-toned md:grid-cols-2">
-                    <p>
-                      <span class="font-medium text-highlighted">Current judge:</span>
-                      <span :data-testid="`admin-competition-assignment-judge-${assignment.submissionId}`">{{ assignment.judgeUserId }}</span>
-                    </p>
-                    <p>
-                      <span class="font-medium text-highlighted">Assignment ID:</span>
-                      {{ assignment.id }}
-                    </p>
-                  </div>
-                </div>
-
-                <AppBadge
-                  :color="getJudgeAssignmentStatusColor(assignment.status)"
-                  variant="soft"
-                  class="self-start"
-                >
-                  {{ formatAdminJudgeAssignmentStatus(assignment.status) }}
-                </AppBadge>
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div class="space-y-1">
+                <h3 class="text-base font-semibold text-highlighted">
+                  {{ group.judgeLabel }}
+                </h3>
+                <p class="text-sm text-toned">
+                  {{ getJudgeSectionSummary(group) }}
+                </p>
               </div>
 
-              <div
-                v-if="getAdminJudgeAssignmentInterventionPolicy(hackathonState, assignment.status).canReassign"
-                class="grid gap-4 rounded-lg border border-black/8 px-4 py-4 dark:border-white/[0.08]"
+              <AppBadge
+                color="neutral"
+                variant="soft"
+                class="self-start"
               >
-                <div class="space-y-1">
-                  <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-                    Reassign
-                  </h4>
-                  <p class="text-sm text-toned">
-                    Reassignment is available only while review has not started for this assignment.
-                  </p>
-                </div>
-
-                <div class="grid gap-4 lg:grid-cols-[0.45fr_0.55fr]">
-                  <label class="grid gap-2">
-                    <span class="text-sm font-medium text-toned">Preferred replacement judge</span>
-                    <AppSelect
-                      v-model="getDraft(assignment).judgeUserId"
-                      :data-testid="`admin-competition-reassign-select-${assignment.submissionId}`"
-                    >
-                      <option value="">
-                        Auto-balance lowest-load judge
-                      </option>
-                      <option
-                        v-for="choice in getReplacementChoices(assignment)"
-                        :key="choice.value"
-                        :value="choice.value"
-                      >
-                        {{ choice.label }}
-                      </option>
-                    </AppSelect>
-                  </label>
-
-                  <label class="grid gap-2">
-                    <span class="text-sm font-medium text-toned">Operational note</span>
-                    <AppInput
-                      v-model="getDraft(assignment).reassignReason"
-                      type="text"
-                      placeholder="Reassignment note"
-                    />
-                  </label>
-                </div>
-
-                <AppButton
-                  color="warning"
-                  :data-testid="`admin-competition-reassign-submit-${assignment.submissionId}`"
-                  :loading="pendingActionKey === `reassign:${assignment.id}`"
-                  :disabled="pendingActionKey !== null && pendingActionKey !== `reassign:${assignment.id}`"
-                  @click="emit('reassign', {
-                    assignmentId: assignment.id,
-                    judgeUserId: getDraft(assignment).judgeUserId || undefined,
-                    reason: getDraft(assignment).reassignReason.trim() || undefined
-                  })"
-                >
-                  Reassign assignment
-                </AppButton>
-              </div>
-
-              <div
-                v-if="getAdminJudgeAssignmentInterventionPolicy(hackathonState, assignment.status).canForceSkip"
-                class="grid gap-4 rounded-lg border border-black/8 px-4 py-4 dark:border-white/[0.08]"
-              >
-                <div class="space-y-1">
-                  <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-                    Force-skip
-                  </h4>
-                  <p class="text-sm text-toned">
-                    Use this only when the assigned judge cannot finish an active review and the submission must be redistributed.
-                  </p>
-                </div>
-
-                <label class="grid gap-2">
-                  <span class="text-sm font-medium text-toned">Operational note</span>
-                  <AppInput
-                    v-model="getDraft(assignment).forceSkipReason"
-                    type="text"
-                    placeholder="Force-skip note"
-                  />
-                </label>
-
-                <AppButton
-                  color="error"
-                  variant="soft"
-                  :data-testid="`admin-competition-force-skip-submit-${assignment.submissionId}`"
-                  :loading="pendingActionKey === `force-skip:${assignment.id}`"
-                  :disabled="pendingActionKey !== null && pendingActionKey !== `force-skip:${assignment.id}`"
-                  @click="emit('forceSkip', {
-                    assignmentId: assignment.id,
-                    reason: getDraft(assignment).forceSkipReason.trim() || undefined
-                  })"
-                >
-                  Force-skip assignment
-                </AppButton>
-              </div>
+                {{ group.activeAssignmentCount }} active
+              </AppBadge>
             </div>
-          </article>
+
+            <div class="mt-5 grid gap-4">
+              <article
+                v-for="assignment in group.assignments"
+                :key="assignment.id"
+                :data-testid="`admin-competition-assignment-${assignment.submissionId}`"
+                class="app-inset-card px-5 py-5"
+              >
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div class="min-w-0 space-y-2">
+                    <div class="flex flex-wrap items-center gap-3">
+                      <h4 class="text-base font-semibold text-highlighted">
+                        {{ getAssignmentProjectLabel(assignment) }}
+                      </h4>
+
+                      <AppBadge
+                        :color="getJudgeAssignmentStatusColor(assignment.status)"
+                        variant="soft"
+                      >
+                        {{ formatAdminJudgeAssignmentStatus(assignment.status) }}
+                      </AppBadge>
+                    </div>
+
+                    <p class="text-sm text-toned">
+                      {{ getAssignmentSummary(assignment) }}
+                    </p>
+
+                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-sm text-toned">
+                      <p>{{ getAssignmentLifecycleLabel(assignment) }}</p>
+                      <p>Assignment ID: {{ assignment.id }}</p>
+                    </div>
+                  </div>
+
+                  <div class="flex w-full flex-col gap-3 lg:w-auto lg:min-w-44 lg:self-center">
+                    <AppButton
+                      v-if="getAdminJudgeAssignmentInterventionPolicy(hackathonState, assignment.status).canReassign"
+                      color="warning"
+                      variant="soft"
+                      :data-testid="`admin-competition-reassign-open-${assignment.submissionId}`"
+                      :disabled="pendingActionKey !== null"
+                      class="justify-center"
+                      @click="openReassignDialog(assignment)"
+                    >
+                      Reassign
+                    </AppButton>
+
+                    <div
+                      v-if="getAdminJudgeAssignmentInterventionPolicy(hackathonState, assignment.status).canForceSkip"
+                      class="grid gap-3 lg:min-w-72"
+                    >
+                      <label class="grid gap-2">
+                        <span class="text-sm font-medium text-toned">Operational note</span>
+                        <AppInput
+                          v-model="getDraft(assignment).forceSkipReason"
+                          type="text"
+                          placeholder="Force-skip note"
+                        />
+                      </label>
+
+                      <AppButton
+                        color="error"
+                        variant="soft"
+                        :data-testid="`admin-competition-force-skip-submit-${assignment.submissionId}`"
+                        :loading="pendingActionKey === `force-skip:${assignment.id}`"
+                        :disabled="pendingActionKey !== null && pendingActionKey !== `force-skip:${assignment.id}`"
+                        class="justify-center"
+                        @click="emit('forceSkip', {
+                          assignmentId: assignment.id,
+                          reason: getDraft(assignment).forceSkipReason.trim() || undefined
+                        })"
+                      >
+                        Force-skip assignment
+                      </AppButton>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
         </div>
       </template>
     </div>
   </AppCard>
+
+  <Teleport to="body">
+    <div
+      v-if="activeReassignAssignment"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
+      @click.self="closeReassignDialog"
+    >
+      <AppCard class="w-full max-w-xl rounded-xl hackathon-workspace-detail-panel shadow-2xl">
+        <template #header>
+          <div class="flex items-start justify-between gap-4">
+            <div class="space-y-1">
+              <h3 class="text-lg font-semibold text-highlighted">
+                Reassign Submission
+              </h3>
+              <p class="text-sm text-muted">
+                {{ getAssignmentProjectLabel(activeReassignAssignment) }}
+              </p>
+            </div>
+
+            <AppButton
+              color="neutral"
+              variant="soft"
+              size="sm"
+              icon="i-lucide-x"
+              aria-label="Close reassignment popup"
+              @click="closeReassignDialog"
+            />
+          </div>
+        </template>
+
+        <div
+          role="dialog"
+          aria-modal="true"
+          class="space-y-5"
+        >
+          <div class="space-y-1">
+            <p class="text-sm text-toned">
+              Current judge: {{ judgeLabelsByUserId[activeReassignAssignment.judgeUserId] ?? activeReassignAssignment.judgeUserId }}
+            </p>
+            <p class="text-sm text-toned">
+              Reassignment is available only while review has not started for this assignment.
+            </p>
+          </div>
+
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-toned">Replacement judge</span>
+            <AppSelect
+              v-model="getDraft(activeReassignAssignment).judgeUserId"
+              :data-testid="`admin-competition-reassign-select-${activeReassignAssignment.submissionId}`"
+            >
+              <option value="">
+                Auto-balance lowest-load judge
+              </option>
+              <option
+                v-for="choice in getReplacementChoices(activeReassignAssignment)"
+                :key="choice.value"
+                :value="choice.value"
+              >
+                {{ choice.label }}
+              </option>
+            </AppSelect>
+          </label>
+
+          <label class="grid gap-2">
+            <span class="text-sm font-medium text-toned">Operational note</span>
+            <AppInput
+              v-model="getDraft(activeReassignAssignment).reassignReason"
+              type="text"
+              placeholder="Reassignment note"
+            />
+          </label>
+
+          <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <AppButton
+              color="neutral"
+              variant="soft"
+              @click="closeReassignDialog"
+            >
+              Cancel
+            </AppButton>
+
+            <AppButton
+              color="warning"
+              :data-testid="`admin-competition-reassign-submit-${activeReassignAssignment.submissionId}`"
+              :loading="pendingActionKey === `reassign:${activeReassignAssignment.id}`"
+              :disabled="pendingActionKey !== null && pendingActionKey !== `reassign:${activeReassignAssignment.id}`"
+              @click="submitReassignment"
+            >
+              Confirm reassignment
+            </AppButton>
+          </div>
+        </div>
+      </AppCard>
+    </div>
+  </Teleport>
 </template>
