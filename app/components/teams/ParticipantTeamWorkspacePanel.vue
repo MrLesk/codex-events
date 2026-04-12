@@ -123,6 +123,9 @@ const isEditingProfile = ref(false)
 
 const isPersisted = computed(() => props.team.isPersisted !== false)
 const showMembershipActions = computed(() => props.showMembershipActions ?? true)
+const showHeaderLeaveAction = computed(() =>
+  Boolean(props.membership) && showMembershipActions.value
+)
 const joinPolicySwitchId = computed(() => `team-join-policy-${props.team.id}`)
 const activeMemberCount = computed(() => props.team.activeMemberCount ?? props.team.members.length)
 const isJoinCapacityReached = computed(() =>
@@ -355,8 +358,8 @@ function cancelEditingProfile() {
 
               <AppBadge
                 v-if="membership"
-                color="primary"
-                variant="soft"
+                :color="membership.role === 'admin' ? 'primary' : 'neutral'"
+                variant="solid"
               >
                 {{ membership.role === 'admin' ? 'Team admin' : 'Team member' }}
               </AppBadge>
@@ -364,7 +367,7 @@ function cancelEditingProfile() {
               <AppBadge
                 v-if="!canManageTeam"
                 :color="participantTeamStatusColor"
-                variant="soft"
+                variant="outline"
               >
                 {{ participantTeamStatusLabel }}
               </AppBadge>
@@ -379,21 +382,38 @@ function cancelEditingProfile() {
           </div>
 
           <div
-            v-if="canManageTeam"
-            class="flex items-center gap-3 shrink-0 md:justify-end"
+            v-if="canManageTeam || showHeaderLeaveAction"
+            class="flex shrink-0 flex-wrap items-center gap-3 md:justify-end"
           >
-            <UiSwitch
-              :id="joinPolicySwitchId"
-              :model-value="settings.isOpenToJoinRequests"
-              :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
-              @update:model-value="emit('toggleJoinPolicy', $event)"
-            />
-            <label
-              :for="joinPolicySwitchId"
-              class="text-sm font-medium text-toned"
+            <div
+              v-if="canManageTeam"
+              class="flex items-center gap-3"
             >
-              {{ settings.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
-            </label>
+              <UiSwitch
+                :id="joinPolicySwitchId"
+                :model-value="settings.isOpenToJoinRequests"
+                :disabled="isPersisted && isActionPending(`update-team-join-policy:${team.id}`)"
+                @update:model-value="emit('toggleJoinPolicy', $event)"
+              />
+              <label
+                :for="joinPolicySwitchId"
+                class="text-sm font-medium text-toned"
+              >
+                {{ settings.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+              </label>
+            </div>
+
+            <AppButton
+              v-if="showHeaderLeaveAction"
+              color="error"
+              size="sm"
+              :loading="isActionPending(`leave-team:${team.id}`)"
+              :disabled="!leaveAvailability.isAllowed || isActionPending(`leave-team:${team.id}`)"
+              data-testid="participant-team-leave"
+              @click="emit('leaveTeam')"
+            >
+              Leave team
+            </AppButton>
           </div>
         </div>
       </div>
@@ -401,7 +421,7 @@ function cancelEditingProfile() {
 
     <div class="space-y-6">
       <section
-        v-if="showMembershipActions"
+        v-if="showMembershipActions && !membership"
         class="app-inset-card px-5 py-5"
       >
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -412,13 +432,7 @@ function cancelEditingProfile() {
               </h3>
             </div>
             <p
-              v-if="membership && !leaveAvailability.isAllowed && leaveAvailability.reason"
-              class="text-sm text-muted"
-            >
-              {{ leaveAvailability.reason }}
-            </p>
-            <p
-              v-else-if="!membership && !joinAvailability.isAllowed && joinAvailability.reason"
+              v-if="!joinAvailability.isAllowed && joinAvailability.reason"
               class="text-sm text-muted"
             >
               {{ joinAvailability.reason }}
@@ -427,24 +441,13 @@ function cancelEditingProfile() {
               v-else
               class="text-sm text-muted"
             >
-              {{ membership ? 'Leave this team if your collaboration changes.' : 'Request to join this team if collaboration is still open.' }}
+              Request to join this team if collaboration is still open.
             </p>
           </div>
 
           <div class="flex flex-wrap gap-3">
             <AppButton
-              v-if="membership"
-              color="warning"
-              :loading="isActionPending(`leave-team:${team.id}`)"
-              :disabled="!leaveAvailability.isAllowed || isActionPending(`leave-team:${team.id}`)"
-              data-testid="participant-team-leave"
-              @click="emit('leaveTeam')"
-            >
-              Leave team
-            </AppButton>
-
-            <AppButton
-              v-else-if="pendingJoinRequestId"
+              v-if="pendingJoinRequestId"
               color="warning"
               variant="soft"
               :loading="isActionPending(`cancel-join-request:${pendingJoinRequestId}`)"

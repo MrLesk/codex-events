@@ -24,11 +24,11 @@ Feature: Participant team workspace in the account hackathon page
     Then I should be in the participant team workspace for the created team
     And I should see the participant team text "We build reliable hackathon tooling together."
 
-  Scenario: Regular user sees other teams while on their own team page
+  Scenario: Regular user does not see the team directory while on their own team page
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant Team tab for hackathon slug "participant-team-join-fixture-hackathon" with the saved "regular_user" session
     Then I should see the participant current team "Team Regular User"
-    And I should see the participant team card "Judge Review Team"
+    And the participant team directory should not be visible
 
   Scenario: Regular user does not see the team directory while viewing another team
     Given the saved "regular_user" Auth0 session state exists

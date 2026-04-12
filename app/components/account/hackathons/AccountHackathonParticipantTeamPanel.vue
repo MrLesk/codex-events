@@ -411,6 +411,12 @@ const showMembershipActions = computed(() => {
 
   return leaveAvailability.value.isAllowed
 })
+const showTeamDirectory = computed(() =>
+  !isViewingSharedTeam.value
+  && workspace.ownTeamStatus.value === 'success'
+  && !workspace.ownTeam.value
+  && !provisionalCurrentTeam.value
+)
 
 async function ensureOwnTeam() {
   if (workspace.ownTeam.value) {
@@ -786,7 +792,7 @@ async function rejectJoinRequest(requestId: string) {
         />
 
         <ParticipantTeamDirectoryPanel
-          v-if="!isViewingSharedTeam"
+          v-if="showTeamDirectory"
           :teams="directoryEntries"
           :total-teams="workspace.visibleTeamsTotal.value"
           :is-loading-teams="workspace.visibleTeamsStatus.value === 'pending'"
