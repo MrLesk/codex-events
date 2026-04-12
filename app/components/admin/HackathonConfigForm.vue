@@ -500,18 +500,18 @@ const submitConfigForm = handleSubmit(() => {
                     <div class="grid gap-3 pb-2 md:grid-cols-2">
                       <label class="grid gap-2">
                         <span class="text-xs font-medium text-toned">Starts at</span>
-                        <AppInput
+                        <AppDateTimeInput
                           v-model="item.startsAt"
-                          type="datetime-local"
+                          picker-aria-label="Choose agenda start date and time"
                           required
                         />
                       </label>
 
                       <label class="grid gap-2">
                         <span class="text-xs font-medium text-toned">Ends at</span>
-                        <AppInput
+                        <AppDateTimeInput
                           v-model="item.endsAt"
-                          type="datetime-local"
+                          picker-aria-label="Choose agenda end date and time"
                         />
                       </label>
                     </div>
@@ -834,36 +834,36 @@ const submitConfigForm = handleSubmit(() => {
         <div class="grid gap-5 md:grid-cols-2">
           <label class="grid gap-2">
             <span class="text-sm font-medium text-toned">Registration opens</span>
-            <AppInput
+            <AppDateTimeInput
               v-model="form.registrationOpensAt"
-              type="datetime-local"
+              picker-aria-label="Choose registration open date and time"
               required
             />
           </label>
 
           <label class="grid gap-2">
             <span class="text-sm font-medium text-toned">Registration closes</span>
-            <AppInput
+            <AppDateTimeInput
               v-model="form.registrationClosesAt"
-              type="datetime-local"
+              picker-aria-label="Choose registration close date and time"
               required
             />
           </label>
 
           <label class="grid gap-2">
             <span class="text-sm font-medium text-toned">Submission opens</span>
-            <AppInput
+            <AppDateTimeInput
               v-model="form.submissionOpensAt"
-              type="datetime-local"
+              picker-aria-label="Choose submission open date and time"
               required
             />
           </label>
 
           <label class="grid gap-2">
             <span class="text-sm font-medium text-toned">Submission closes</span>
-            <AppInput
+            <AppDateTimeInput
               v-model="form.submissionClosesAt"
-              type="datetime-local"
+              picker-aria-label="Choose submission close date and time"
               required
             />
           </label>
