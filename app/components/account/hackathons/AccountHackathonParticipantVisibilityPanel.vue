@@ -46,29 +46,6 @@ const approvedCount = computed(() =>
 const rejectedCount = computed(() =>
   formatMetricValue(applications.value.filter(application => application.status === 'rejected').length)
 )
-const filteredCountLabel = computed(() => {
-  if (status.value === 'idle' || status.value === 'pending') {
-    return 'Loading...'
-  }
-
-  if (status.value === 'error') {
-    return 'Unavailable'
-  }
-
-  if (participantView.value === 'approved') {
-    const count = applications.value.filter(application => application.status === 'approved').length
-    return `${count} approved participants`
-  }
-
-  if (participantView.value === 'rejected') {
-    const count = applications.value.filter(application => application.status === 'rejected').length
-    return `${count} rejected participants`
-  }
-
-  const count = applications.value.filter(application => application.status === 'submitted').length
-  return `${count} applications`
-})
-
 function selectParticipantView(nextView: ParticipantView) {
   participantView.value = nextView
 }
@@ -76,8 +53,8 @@ function selectParticipantView(nextView: ParticipantView) {
 
 <template>
   <div class="space-y-6">
-    <section class="grid gap-4 md:grid-cols-3">
-      <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+    <section class="grid grid-cols-3 gap-3 sm:gap-4">
+      <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Awaiting review
         </p>
@@ -86,7 +63,7 @@ function selectParticipantView(nextView: ParticipantView) {
         </p>
       </div>
 
-      <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+      <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Approved
         </p>
@@ -95,7 +72,7 @@ function selectParticipantView(nextView: ParticipantView) {
         </p>
       </div>
 
-      <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+      <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Rejected
         </p>
@@ -106,31 +83,46 @@ function selectParticipantView(nextView: ParticipantView) {
     </section>
 
     <div class="hackathon-workspace-detail-inset flex flex-col gap-4 rounded-xl p-2">
-      <div class="flex min-w-0 flex-wrap items-center gap-1">
+      <div class="grid w-full min-w-0 grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-2">
         <button
-          class="rounded-lg px-4 py-1.5 text-[13px] transition-colors"
-          :class="participantView === 'applications' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+          class="inline-flex w-full items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:w-auto sm:justify-start"
+          :class="participantView === 'applications' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
           @click="selectParticipantView('applications')"
         >
-          Applications
+          <span>Applications</span>
+          <span
+            class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+            :class="participantView === 'applications' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+          >
+            {{ submittedCount }}
+          </span>
         </button>
         <button
-          class="rounded-lg px-4 py-1.5 text-[13px] transition-colors"
-          :class="participantView === 'approved' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+          class="inline-flex w-full items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:w-auto sm:justify-start"
+          :class="participantView === 'approved' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
           @click="selectParticipantView('approved')"
         >
-          Approved
+          <span>Approved</span>
+          <span
+            class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+            :class="participantView === 'approved' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+          >
+            {{ approvedCount }}
+          </span>
         </button>
         <button
-          class="rounded-lg px-4 py-1.5 text-[13px] transition-colors"
-          :class="participantView === 'rejected' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+          class="inline-flex w-full items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:w-auto sm:justify-start"
+          :class="participantView === 'rejected' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
           @click="selectParticipantView('rejected')"
         >
-          Rejected
+          <span>Rejected</span>
+          <span
+            class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+            :class="participantView === 'rejected' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+          >
+            {{ rejectedCount }}
+          </span>
         </button>
-        <span class="ml-4 border-l border-black/8 pl-4 text-[13px] text-neutral-700 dark:border-white/[0.08] dark:text-[#8C8C8C]">
-          {{ filteredCountLabel }}
-        </span>
       </div>
     </div>
 

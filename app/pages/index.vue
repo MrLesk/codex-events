@@ -79,6 +79,10 @@ const currentFilterTotal = computed(() => {
 
   return homepageHackathonView.value.activeHackathonCount
 })
+const homepageFilterCounts = computed(() => ({
+  active: homepageHackathonView.value.activeHackathonCount,
+  past: pastTotal.value
+}))
 const canLoadMoreForCurrentFilter = computed(() => {
   if (!hasMoreHackathons.value) {
     return false
@@ -158,24 +162,33 @@ useSeoMeta({
         v-if="homepageHackathonView.showFilters"
         class="app-surface-panel flex flex-col gap-4 rounded-xl p-2"
       >
-        <div class="flex min-w-0 flex-wrap items-center gap-1">
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
           <button
-            class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
-            :class="activeTab === 'active' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+            class="inline-flex items-center gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors"
+            :class="activeTab === 'active' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
             @click="void selectHomepageTab('active')"
           >
-            Active
+            <span>Active</span>
+            <span
+              class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+              :class="activeTab === 'active' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+            >
+              {{ homepageFilterCounts.active }}
+            </span>
           </button>
           <button
-            class="px-4 py-1.5 text-[13px] rounded-lg transition-colors"
-            :class="activeTab === 'past' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+            class="inline-flex items-center gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors"
+            :class="activeTab === 'past' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
             @click="void selectHomepageTab('past')"
           >
-            Past
+            <span>Past</span>
+            <span
+              class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+              :class="activeTab === 'past' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+            >
+              {{ homepageFilterCounts.past }}
+            </span>
           </button>
-          <span class="ml-4 border-l border-black/8 pl-4 text-[13px] text-neutral-700 dark:border-white/[0.08] dark:text-[#8C8C8C]">
-            {{ currentFilterTotal }} hackathons
-          </span>
         </div>
       </div>
 

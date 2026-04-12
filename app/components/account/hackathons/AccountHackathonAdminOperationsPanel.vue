@@ -372,38 +372,6 @@ const participantsLimitSummary = computed(() =>
   )
 )
 
-const filteredParticipantCount = computed(() => {
-  if (participantView.value === 'approved') {
-    return applications.value.filter(application => application.status === 'approved').length
-  }
-
-  if (participantView.value === 'rejected') {
-    return applications.value.filter(application => application.status === 'rejected').length
-  }
-
-  return applications.value.filter(application => application.status === 'submitted').length
-})
-
-const participantFilterTotalLabel = computed(() => {
-  if (applicationsStatus.value === 'idle' || applicationsStatus.value === 'pending') {
-    return 'Loading...'
-  }
-
-  if (applicationsStatus.value === 'error') {
-    return 'Unavailable'
-  }
-
-  if (participantView.value === 'approved') {
-    return `${filteredParticipantCount.value} approved participants`
-  }
-
-  if (participantView.value === 'rejected') {
-    return `${filteredParticipantCount.value} rejected participants`
-  }
-
-  return `${filteredParticipantCount.value} applications`
-})
-
 const teamSummaryValue = computed(() => {
   if (teamsStatus.value === 'pending' || operationalTeamsStatus.value === 'pending') {
     return 'Loading...'
@@ -813,10 +781,10 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
         class="space-y-4"
       >
         <div
-          class="grid gap-4 md:grid-cols-2"
-          :class="participantsLimitSummary ? 'xl:grid-cols-4' : 'xl:grid-cols-3'"
+          class="grid grid-cols-3 gap-3 sm:gap-4"
+          :class="participantsLimitSummary ? 'sm:grid-cols-4' : ''"
         >
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Awaiting review
             </p>
@@ -825,7 +793,7 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
             </p>
           </div>
 
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Approved
             </p>
@@ -834,7 +802,7 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
             </p>
           </div>
 
-          <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Rejected
             </p>
@@ -845,7 +813,7 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
 
           <div
             v-if="participantsLimitSummary"
-            class="rounded-xl hackathon-workspace-detail-inset px-5 py-5"
+            class="col-span-3 rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:col-span-1 sm:px-5 sm:py-5"
           >
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Participants limit
@@ -857,31 +825,46 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
         </div>
 
         <div class="hackathon-workspace-detail-inset flex flex-col gap-4 rounded-xl p-2">
-          <div class="flex min-w-0 flex-wrap items-center gap-1">
+          <div class="grid w-full min-w-0 grid-cols-3 gap-2 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-2">
             <button
-              class="rounded-lg px-4 py-1.5 text-[13px] transition-colors"
-              :class="participantView === 'applications' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+              class="inline-flex w-full items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:w-auto sm:justify-start"
+              :class="participantView === 'applications' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
               @click="selectParticipantView('applications')"
             >
-              Applications
+              <span>Applications</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+                :class="participantView === 'applications' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+              >
+                {{ submittedParticipantSummaryValue }}
+              </span>
             </button>
             <button
-              class="rounded-lg px-4 py-1.5 text-[13px] transition-colors"
-              :class="participantView === 'approved' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+              class="inline-flex w-full items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:w-auto sm:justify-start"
+              :class="participantView === 'approved' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
               @click="selectParticipantView('approved')"
             >
-              Approved
+              <span>Approved</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+                :class="participantView === 'approved' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+              >
+                {{ approvedParticipantSummaryValue }}
+              </span>
             </button>
             <button
-              class="rounded-lg px-4 py-1.5 text-[13px] transition-colors"
-              :class="participantView === 'rejected' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'text-neutral-700 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+              class="inline-flex w-full items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:w-auto sm:justify-start"
+              :class="participantView === 'rejected' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
               @click="selectParticipantView('rejected')"
             >
-              Rejected
+              <span>Rejected</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+                :class="participantView === 'rejected' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+              >
+                {{ rejectedParticipantSummaryValue }}
+              </span>
             </button>
-            <span class="ml-4 border-l border-black/8 pl-4 text-[13px] text-neutral-700 dark:border-white/[0.08] dark:text-[#8C8C8C]">
-              {{ participantFilterTotalLabel }}
-            </span>
           </div>
         </div>
 
