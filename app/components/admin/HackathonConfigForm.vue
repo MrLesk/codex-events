@@ -55,6 +55,7 @@ const showAgendaItemsSection = computed(() => formModeView.value.showAgendaItems
 const showProgramIdentitySection = computed(() => formModeView.value.showProgramIdentitySection)
 const showProgramSettingsSections = computed(() => formModeView.value.showProgramSettingsSections)
 const showInlineDetailsActions = computed(() => formMode.value === 'details')
+const isSettingsMode = computed(() => formMode.value === 'settings')
 const basicsHeading = computed(() => formModeView.value.basicsHeading)
 const basicsDescription = computed(() => formModeView.value.basicsDescription)
 const programIdentityDescription = computed(() => formModeView.value.programIdentityDescription)
@@ -325,7 +326,7 @@ const submitConfigForm = handleSubmit(() => {
 
 <template>
   <form
-    class="space-y-10"
+    class="space-y-6"
     @submit.prevent="submitConfigForm"
   >
     <section
@@ -357,7 +358,7 @@ const submitConfigForm = handleSubmit(() => {
             </label>
 
             <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Slug (the path in the URL, for example: codex-hackathons.com/hackathons/codex-spring-builders-2026)</span>
+              <span class="text-sm font-medium text-toned">Slug</span>
               <AppInput
                 v-model="form.slug"
                 type="text"
@@ -373,7 +374,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="url"
                 placeholder="https://lu.ma/your-event"
               />
-              <span class="text-xs text-muted">Optional public Luma event link for this hackathon. Leave blank if you are not using Luma.</span>
+              <span class="text-xs text-muted">Optional public Luma link.</span>
             </label>
 
             <label class="grid gap-2">
@@ -383,7 +384,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="text"
                 placeholder="evt-FSlTqAmG9QanU4s"
               />
-              <span class="text-xs text-muted">Required for Luma approval and rejection sync. This uses the Luma event API id, not the public URL.</span>
+              <span class="text-xs text-muted">Use the Luma API ID, not the public URL.</span>
             </label>
 
             <AdminMarkdownEditorField
@@ -391,7 +392,7 @@ const submitConfigForm = handleSubmit(() => {
               name="hackathon-description-editor"
               editor-id="hackathon-description-editor"
               label="Description"
-              description="Write the public overview shown to participants. Markdown headings, lists, links, and emphasis are supported."
+              description="Shown on the public hackathon page."
               placeholder="Describe the event, focus areas, and expectations for participants."
               required
             />
@@ -547,6 +548,204 @@ const submitConfigForm = handleSubmit(() => {
               </AppButton>
             </div>
           </div>
+
+          <template v-if="showProgramSettingsSections && isSettingsMode">
+            <section class="border-t border-black/8 pt-6 dark:border-white/[0.08]">
+              <div class="space-y-1">
+                <h3 class="text-lg font-semibold text-highlighted">
+                  Timeline
+                </h3>
+                <p class="text-sm text-muted">
+                  Set the registration and submission window.
+                </p>
+              </div>
+
+              <div class="mt-5 grid gap-5 md:grid-cols-2">
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-toned">Registration opens</span>
+                  <AppDateTimeInput
+                    v-model="form.registrationOpensAt"
+                    picker-aria-label="Choose registration open date and time"
+                    required
+                  />
+                </label>
+
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-toned">Registration closes</span>
+                  <AppDateTimeInput
+                    v-model="form.registrationClosesAt"
+                    picker-aria-label="Choose registration close date and time"
+                    required
+                  />
+                </label>
+
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-toned">Submission opens</span>
+                  <AppDateTimeInput
+                    v-model="form.submissionOpensAt"
+                    picker-aria-label="Choose submission open date and time"
+                    required
+                  />
+                </label>
+
+                <label class="grid gap-2">
+                  <span class="text-sm font-medium text-toned">Submission closes</span>
+                  <AppDateTimeInput
+                    v-model="form.submissionClosesAt"
+                    picker-aria-label="Choose submission close date and time"
+                    required
+                  />
+                </label>
+              </div>
+            </section>
+
+            <section class="border-t border-black/8 pt-6 dark:border-white/[0.08]">
+              <div class="space-y-1">
+                <h3 class="text-lg font-semibold text-highlighted">
+                  Participation Rules
+                </h3>
+                <p class="text-sm text-muted">
+                  Set team limits and application requirements.
+                </p>
+              </div>
+
+              <div class="mt-5 grid grid-cols-1 gap-5">
+                <div class="grid gap-5 md:grid-cols-2 md:items-start">
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-toned">Maximum team members</span>
+                    <AppInput
+                      v-model.number="form.maxTeamMembers"
+                      type="number"
+                      min="1"
+                      required
+                    />
+                  </label>
+
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-toned">Participants limit</span>
+                    <AppInput
+                      v-model="participantsLimitInput"
+                      type="number"
+                      min="1"
+                      placeholder="Leave empty for no limit"
+                    />
+                  </label>
+                </div>
+
+                <div class="grid grid-cols-1 gap-3">
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.inPersonEvent"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    In-person event
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.requireChatgptEmail"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Require ChatGPT email
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.requireOpenaiOrgId"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Require OpenAI org ID
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.requireLumaEmail"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Require Luma email
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.requireWhyThisHackathon"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Require "Why this hackathon" answer
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.requireProofOfExecution"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Require proof-of-execution links
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.requireLinkedinProfile"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Require LinkedIn profile
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.requireGithubProfile"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Require GitHub profile
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.requireXProfile"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Require X profile
+                  </label>
+                </div>
+              </div>
+            </section>
+
+            <div class="border-t border-black/8 pt-6 dark:border-white/[0.08]">
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="max-w-3xl space-y-3">
+                  <p class="text-sm text-muted">
+                    {{ helperText ?? 'Save your changes to update this hackathon.' }}
+                  </p>
+
+                  <AppAlert
+                    v-if="validationErrorMessages.length > 0"
+                    color="error"
+                    variant="soft"
+                    title="Form validation failed"
+                    :description="validationErrorMessages[0]"
+                  />
+                </div>
+
+                <AppButton
+                  type="submit"
+                  :loading="isSubmitting"
+                  :disabled="isSubmitting"
+                  color="primary"
+                  size="lg"
+                  class="justify-center"
+                >
+                  {{ submitLabel }}
+                </AppButton>
+              </div>
+            </div>
+          </template>
         </div>
       </AppCard>
 
@@ -813,7 +1012,7 @@ const submitConfigForm = handleSubmit(() => {
     </section>
 
     <section
-      v-if="showProgramSettingsSections"
+      v-if="showProgramSettingsSections && !isSettingsMode"
       class="space-y-6"
     >
       <AppCard
@@ -826,7 +1025,7 @@ const submitConfigForm = handleSubmit(() => {
               Timeline
             </h2>
             <p class="text-sm text-muted">
-              Registration must close before submission opens, and submission must close before judging preparation can begin.
+              Set the registration and submission window.
             </p>
           </div>
         </template>
@@ -880,32 +1079,33 @@ const submitConfigForm = handleSubmit(() => {
               Participation Rules
             </h2>
             <p class="text-sm text-muted">
-              Choose team limits and required profile fields for applicants.
+              Set team limits and application requirements.
             </p>
           </div>
         </template>
 
         <div class="grid grid-cols-1 gap-5">
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Maximum team members</span>
-            <AppInput
-              v-model.number="form.maxTeamMembers"
-              type="number"
-              min="1"
-              required
-            />
-          </label>
+          <div class="grid gap-5 md:grid-cols-2 md:items-start">
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Maximum team members</span>
+              <AppInput
+                v-model.number="form.maxTeamMembers"
+                type="number"
+                min="1"
+                required
+              />
+            </label>
 
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Participants limit</span>
-            <AppInput
-              v-model="participantsLimitInput"
-              type="number"
-              min="1"
-              placeholder="Leave empty for no limit"
-            />
-            <span class="text-xs text-muted">Maximum approved participants for the hackathon. Leave blank for no cap.</span>
-          </label>
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Participants limit</span>
+              <AppInput
+                v-model="participantsLimitInput"
+                type="number"
+                min="1"
+                placeholder="Leave empty for no limit"
+              />
+            </label>
+          </div>
 
           <div class="grid grid-cols-1 gap-3">
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
@@ -914,7 +1114,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
-              In-person event (require in-person attendance commitment at registration)
+              In-person event
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
@@ -923,7 +1123,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
-              Require ChatGPT email for applications
+              Require ChatGPT email
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
@@ -932,7 +1132,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
-              Require OpenAI org ID for applications
+              Require OpenAI org ID
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
@@ -941,7 +1141,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
-              Require Luma email for applications
+              Require Luma email
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
@@ -950,7 +1150,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
-              Require "Why this hackathon" in applications
+              Require "Why this hackathon" answer
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
@@ -959,7 +1159,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
-              Require proof-of-execution links in applications
+              Require proof-of-execution links
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
@@ -968,7 +1168,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
-              Require LinkedIn profile for applications
+              Require LinkedIn profile
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
@@ -977,7 +1177,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
-              Require GitHub profile for applications
+              Require GitHub profile
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
@@ -986,7 +1186,7 @@ const submitConfigForm = handleSubmit(() => {
                 type="checkbox"
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
-              Require X profile for applications
+              Require X profile
             </label>
           </div>
         </div>
@@ -994,7 +1194,7 @@ const submitConfigForm = handleSubmit(() => {
     </section>
 
     <div
-      v-if="!showInlineDetailsActions"
+      v-if="!showInlineDetailsActions && !isSettingsMode"
       class="hackathon-workspace-detail-inset flex flex-col gap-4 rounded-xl px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
     >
       <p class="max-w-3xl text-sm text-muted">

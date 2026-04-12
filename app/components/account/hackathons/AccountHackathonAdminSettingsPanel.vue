@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Sortable from 'sortablejs'
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
+import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
 
 import type {
   ApiDataResponse,
@@ -14,10 +15,10 @@ import type { HackathonProgramSettingsMode } from '~/utils/hackathon-program-set
 import { moveListItemByIndex } from '~/utils/reorder-list'
 
 import {
-  formatHackathonState,
   fromDateTimeLocalValue,
-  getHackathonStateColor,
   getTermsVersionPublishErrorMessage,
+  isHackathonRoleJudgingEnabled,
+  isHackathonRoleStaffEnabled,
   normalizeApiError,
   toHackathonAgendaPayload
 } from '~/utils/admin-workspace'
@@ -39,6 +40,9 @@ const props = withDefaults(defineProps<{
 })
 
 type CriterionEditState = Pick<EvaluationCriterion, 'name' | 'description' | 'weight' | 'displayOrder'>
+type EditableCriterionRow = EvaluationCriterion & {
+  isLocalDraft?: boolean
+}
 type PrizeEditState = Pick<PrizeDefinition, 'name' | 'description' | 'rewardType' | 'rewardValue' | 'awardScope' | 'rankStart' | 'rankEnd' | 'displayOrder'> & {
   rewardCurrency: string
 }
@@ -81,10 +85,10 @@ const hackathonId = computed(() => hackathonResponse.value!.data.id)
 const workspace = useAdminHackathonWorkspace(hackathonId)
 
 const isSavingConfig = ref(false)
-const isSavingCriterionOrder = ref(false)
+const isSavingCriteria = ref(false)
 const isSavingPrizes = ref(false)
+const savingTermsDocumentType = ref<TermsDocument['documentType'] | null>(null)
 const mutationError = ref('')
-const hasAttemptedTermsVersionPublish = ref(false)
 const imageMutationState = reactive({
   background: {
     pending: false,
@@ -97,39 +101,33 @@ const imageMutationState = reactive({
     error: ''
   }
 })
-const criteriaDraft = reactive({
-  name: '',
-  description: '',
-  weight: 10,
-  displayOrder: 1
-})
-const termsDraft = reactive({
-  documentType: 'application_terms',
-  title: '',
-  content: ''
-})
 const criterionEdits = reactive<Record<string, CriterionEditState>>({})
 const prizeEdits = reactive<Record<string, PrizeEditState>>({})
+const criteriaRows = ref<EditableCriterionRow[]>([])
 const prizeRows = ref<EditablePrizeRow[]>([])
-const draggedCriterionId = ref<string | null>(null)
+const activeCriterionDragId = ref<string | null>(null)
 const criterionDropTargetId = ref<string | null>(null)
+const criteriaListElement = ref<HTMLElement | null>(null)
 const activePrizeDragId = ref<string | null>(null)
 const prizeDropTargetId = ref<string | null>(null)
 const prizeListElement = ref<HTMLElement | null>(null)
+const applicationTermsDraft = ref('')
+const winnerTermsDraft = ref('')
+const lastSyncedApplicationTermsContent = ref('')
+const lastSyncedWinnerTermsContent = ref('')
+let criteriaSortable: Sortable | null = null
 let prizeSortable: Sortable | null = null
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const actor = computed(() => workspace.actor.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
 const programSettingsCopy = computed(() => getHackathonProgramSettingsCopy(props.programSettingsMode))
-const showProgramSnapshot = computed(() => props.programSettingsMode === 'settings')
+const showSettingsOverview = computed(() => props.showProgramSettings && props.programSettingsMode === 'settings')
 const criteria = computed(() => workspace.criteria.data.value?.data ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
-const termsVersionPublishErrorMessage = computed(() =>
-  getTermsVersionPublishErrorMessage(termsDraft.title, termsDraft.content)
-)
+const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
 const orderedCriteria = computed(() =>
-  [...criteria.value].sort((left, right) => {
+  [...criteriaRows.value].sort((left, right) => {
     const leftOrder = getCriterionEdit(left).displayOrder
     const rightOrder = getCriterionEdit(right).displayOrder
     return leftOrder - rightOrder || left.createdAt.localeCompare(right.createdAt)
@@ -147,9 +145,30 @@ const orderedPrizes = computed(() =>
     return left.rankEnd - right.rankEnd || right.rankStart - left.rankStart || left.createdAt.localeCompare(right.createdAt)
   })
 )
-const hasCriterionOrderChanges = computed(() =>
-  criteria.value.some(criterion => getCriterionEdit(criterion).displayOrder !== criterion.displayOrder)
-)
+const hasCriteriaChanges = computed(() => {
+  if (criteriaRows.value.length !== criteria.value.length) {
+    return true
+  }
+
+  const visibleCriterionIds = new Set(criteriaRows.value.map(criterion => criterion.id))
+
+  if (criteriaRows.value.some(criterion => !criteria.value.some(existingCriterion => existingCriterion.id === criterion.id))) {
+    return true
+  }
+
+  if (criteria.value.some(criterion => !visibleCriterionIds.has(criterion.id))) {
+    return true
+  }
+
+  return criteria.value.some((criterion) => {
+    const edit = getCriterionEdit(criterion)
+
+    return edit.name !== criterion.name
+      || edit.description !== criterion.description
+      || edit.weight !== criterion.weight
+      || edit.displayOrder !== criterion.displayOrder
+  })
+})
 const hasPrizeChanges = computed(() => {
   if (prizeRows.value.length !== prizes.value.length) {
     return true
@@ -181,8 +200,41 @@ const hasPrizeChanges = computed(() => {
 })
 const applicationTerms = computed(() => workspace.applicationTermsVersions.data.value?.data ?? [])
 const winnerTerms = computed(() => workspace.winnerTermsVersions.data.value?.data ?? [])
+const currentApplicationTerms = computed(() =>
+  applicationTerms.value.find(document => document.id === currentHackathon.value?.currentApplicationTermsDocumentId) ?? null
+)
+const currentWinnerTerms = computed(() =>
+  winnerTerms.value.find(document => document.id === currentHackathon.value?.currentWinnerTermsDocumentId) ?? null
+)
+const creatorAssignment = computed(() =>
+  roleAssignments.value.find(assignment => assignment.userId === currentHackathon.value?.createdByUserId) ?? null
+)
+const creatorLabel = computed(() => {
+  const creator = creatorAssignment.value?.user
+  const actorUser = actor.value?.platformUser ?? null
 
-function nextDisplayOrder(items: Array<EvaluationCriterion>) {
+  if (creator) {
+    return creator.displayName || creator.email
+  }
+
+  if (actorUser && actorUser.id === currentHackathon.value?.createdByUserId) {
+    return actorUser.displayName || actorUser.email
+  }
+
+  return currentHackathon.value?.createdByUserId ?? 'Unknown'
+})
+const creatorMeta = computed(() => creatorAssignment.value?.user?.email ?? 'Platform admin')
+const adminCount = computed(() =>
+  roleAssignments.value.filter(assignment => assignment.role === 'hackathon_admin').length
+)
+const staffCount = computed(() =>
+  roleAssignments.value.filter(assignment => isHackathonRoleStaffEnabled(assignment)).length
+)
+const judgeCount = computed(() =>
+  roleAssignments.value.filter(assignment => isHackathonRoleJudgingEnabled(assignment)).length
+)
+
+function nextCriterionDisplayOrder(items: Array<EditableCriterionRow>) {
   return items.reduce((highest, item) => Math.max(highest, item.displayOrder), 0) + 1
 }
 
@@ -200,7 +252,7 @@ function replaceReactiveMap<T>(target: Record<string, T>, source: Record<string,
   Object.assign(target, source)
 }
 
-function createCriterionEditState(criterion: EvaluationCriterion): CriterionEditState {
+function createCriterionEditState(criterion: EditableCriterionRow): CriterionEditState {
   return {
     name: criterion.name,
     description: criterion.description,
@@ -223,7 +275,7 @@ function createPrizeEditState(prize: PrizeDefinition): PrizeEditState {
   }
 }
 
-function getCriterionEdit(criterion: EvaluationCriterion) {
+function getCriterionEdit(criterion: EditableCriterionRow) {
   const existing = criterionEdits[criterion.id]
 
   if (existing) {
@@ -245,29 +297,6 @@ function getPrizeEdit(prize: PrizeDefinition) {
   const next = createPrizeEditState(prize)
   prizeEdits[prize.id] = next
   return next
-}
-
-function moveItemWithinList<T extends { id: string }>(items: T[], sourceId: string, targetId: string) {
-  if (!sourceId || sourceId === targetId) {
-    return items
-  }
-
-  const sourceIndex = items.findIndex(item => item.id === sourceId)
-  const targetIndex = items.findIndex(item => item.id === targetId)
-
-  if (sourceIndex < 0 || targetIndex < 0) {
-    return items
-  }
-
-  const reordered = [...items]
-  const [movedItem] = reordered.splice(sourceIndex, 1)
-
-  if (!movedItem) {
-    return items
-  }
-
-  reordered.splice(targetIndex, 0, movedItem)
-  return reordered
 }
 
 function moveItemByDirection<T extends { id: string }>(items: T[], itemId: string, direction: -1 | 1) {
@@ -294,74 +323,71 @@ function moveItemByDirection<T extends { id: string }>(items: T[], itemId: strin
   return reordered
 }
 
-function applyCriterionOrderFromList(items: EvaluationCriterion[]) {
-  items.forEach((criterion, index) => {
-    getCriterionEdit(criterion).displayOrder = index + 1
-  })
-}
-
 function applyPrizeOrderFromList(items: PrizeDefinition[]) {
   items.forEach((prize, index) => {
     getPrizeEdit(prize).displayOrder = index + 1
   })
 }
 
-function reorderCriteria(sourceId: string, targetId: string) {
-  applyCriterionOrderFromList(moveItemWithinList(orderedCriteria.value, sourceId, targetId))
+function applyCriterionOrderFromList(items: EditableCriterionRow[]) {
+  items.forEach((criterion, index) => {
+    getCriterionEdit(criterion).displayOrder = index + 1
+  })
+  criteriaRows.value = [...items]
 }
 
 function moveCriterion(criterionId: string, direction: -1 | 1) {
   applyCriterionOrderFromList(moveItemByDirection(orderedCriteria.value, criterionId, direction))
 }
 
-function onCriterionDragStart(criterionId: string, event: DragEvent) {
-  draggedCriterionId.value = criterionId
-  criterionDropTargetId.value = null
-
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', criterionId)
-  }
-}
-
-function onCriterionDragOver(criterionId: string) {
-  if (!draggedCriterionId.value || draggedCriterionId.value === criterionId) {
-    criterionDropTargetId.value = null
-    return
-  }
-
-  criterionDropTargetId.value = criterionId
-}
-
-function onCriterionDragLeave(criterionId: string) {
-  if (criterionDropTargetId.value === criterionId) {
-    criterionDropTargetId.value = null
-  }
-}
-
-function onCriterionDrop(targetId: string, event: DragEvent) {
-  event.preventDefault()
-
-  const sourceFromEvent = event.dataTransfer?.getData('text/plain')?.trim() ?? ''
-  const sourceId = draggedCriterionId.value ?? sourceFromEvent
-
-  draggedCriterionId.value = null
-  criterionDropTargetId.value = null
-
-  if (!sourceId) {
-    return
-  }
-
-  reorderCriteria(sourceId, targetId)
-}
-
-function onCriterionDragEnd() {
-  draggedCriterionId.value = null
+function destroyCriteriaSortable() {
+  criteriaSortable?.destroy()
+  criteriaSortable = null
+  activeCriterionDragId.value = null
   criterionDropTargetId.value = null
 }
 
 function movePrize(prizeId: string, direction: -1 | 1) {
   applyPrizeOrderFromList(moveItemByDirection(orderedPrizes.value, prizeId, direction))
+}
+
+function initializeCriteriaSortable() {
+  if (!import.meta.client || !props.showCriteriaConfiguration || !criteriaListElement.value) {
+    destroyCriteriaSortable()
+    return
+  }
+
+  destroyCriteriaSortable()
+
+  criteriaSortable = Sortable.create(criteriaListElement.value, {
+    animation: 180,
+    handle: '[data-criterion-sort-handle]',
+    draggable: '[data-criterion-row]',
+    dataIdAttr: 'data-criterion-id',
+    ghostClass: 'opacity-45',
+    chosenClass: 'cursor-grabbing',
+    dragClass: 'cursor-grabbing',
+    onChoose(event) {
+      activeCriterionDragId.value = event.item.dataset.criterionId ?? null
+      criterionDropTargetId.value = null
+    },
+    onMove(event) {
+      const relatedId = event.related?.dataset.criterionId ?? null
+      criterionDropTargetId.value = relatedId !== activeCriterionDragId.value ? relatedId : null
+      return true
+    },
+    onEnd(event) {
+      const oldIndex = event.oldDraggableIndex ?? event.oldIndex
+      const newIndex = event.newDraggableIndex ?? event.newIndex
+
+      if (oldIndex !== undefined && newIndex !== undefined) {
+        applyCriterionOrderFromList(moveListItemByIndex(orderedCriteria.value, oldIndex, newIndex))
+      }
+
+      activeCriterionDragId.value = null
+      criterionDropTargetId.value = null
+    }
+  })
 }
 
 function destroyPrizeSortable() {
@@ -411,7 +437,7 @@ function initializePrizeSortable() {
 }
 
 watch(criteria, (items) => {
-  criteriaDraft.displayOrder = nextDisplayOrder(items)
+  criteriaRows.value = items.map(criterion => ({ ...criterion }))
   replaceReactiveMap(
     criterionEdits,
     Object.fromEntries(items.map(criterion => [criterion.id, createCriterionEditState(criterion)]))
@@ -430,6 +456,14 @@ watch(prizes, (items) => {
   immediate: true
 })
 
+watch([orderedCriteria, () => props.showCriteriaConfiguration], async () => {
+  await nextTick()
+  initializeCriteriaSortable()
+}, {
+  immediate: true,
+  flush: 'post'
+})
+
 watch([orderedPrizes, () => props.showPrizeConfiguration], async () => {
   await nextTick()
   initializePrizeSortable()
@@ -438,25 +472,34 @@ watch([orderedPrizes, () => props.showPrizeConfiguration], async () => {
   flush: 'post'
 })
 
-onBeforeUnmount(() => {
-  destroyPrizeSortable()
+watch(currentApplicationTerms, (document) => {
+  const nextContent = document?.content ?? ''
+
+  if (applicationTermsDraft.value === lastSyncedApplicationTermsContent.value) {
+    applicationTermsDraft.value = nextContent
+  }
+
+  lastSyncedApplicationTermsContent.value = nextContent
+}, {
+  immediate: true
 })
 
-async function runMutation(action: () => Promise<void>, successTitle: string, successDescription: string) {
-  mutationError.value = ''
+watch(currentWinnerTerms, (document) => {
+  const nextContent = document?.content ?? ''
 
-  try {
-    await action()
-    toast.add({
-      title: successTitle,
-      description: successDescription,
-      color: 'success'
-    })
-    await workspace.refreshWorkspace()
-  } catch (error) {
-    mutationError.value = normalizeApiError(error).message
+  if (winnerTermsDraft.value === lastSyncedWinnerTermsContent.value) {
+    winnerTermsDraft.value = nextContent
   }
-}
+
+  lastSyncedWinnerTermsContent.value = nextContent
+}, {
+  immediate: true
+})
+
+onBeforeUnmount(() => {
+  destroyCriteriaSortable()
+  destroyPrizeSortable()
+})
 
 async function saveConfiguration(configForm: HackathonFormState) {
   if (!currentHackathon.value) {
@@ -621,43 +664,59 @@ async function removeBannerImage() {
   await removeHackathonImage('banner')
 }
 
-async function createCriterion() {
+function addCriterion() {
   const hackathon = currentHackathon.value
 
   if (!hackathon) {
     return
   }
 
-  await runMutation(async () => {
-    await $fetch(`/api/hackathons/${hackathon.id}/evaluation-criteria`, {
-      method: 'POST',
-      body: { ...criteriaDraft }
-    })
-    criteriaDraft.name = ''
-    criteriaDraft.description = ''
-    criteriaDraft.weight = 10
-  }, 'Criterion added', 'The evaluation criteria list has been updated.')
-}
-
-async function updateCriterion(criterionId: string) {
-  const hackathon = currentHackathon.value
-  const edit = criterionEdits[criterionId]
-
-  if (!hackathon || !edit) {
-    return
+  const draftCriterion: EditableCriterionRow = {
+    id: `draft-criterion-${crypto.randomUUID()}`,
+    hackathonId: hackathon.id,
+    name: '',
+    description: '',
+    weight: 10,
+    displayOrder: nextCriterionDisplayOrder(criteriaRows.value),
+    createdAt: new Date().toISOString(),
+    isLocalDraft: true
   }
 
-  await runMutation(async () => {
-    await $fetch(`/api/hackathons/${hackathon.id}/evaluation-criteria/${criterionId}`, {
-      method: 'PATCH',
-      body: {
-        name: edit.name,
-        description: edit.description,
-        weight: edit.weight,
-        displayOrder: edit.displayOrder
-      }
-    })
-  }, 'Criterion updated', 'The evaluation criterion has been updated.')
+  criteriaRows.value = [...orderedCriteria.value, draftCriterion]
+  criterionEdits[draftCriterion.id] = createCriterionEditState(draftCriterion)
+  applyCriterionOrderFromList(criteriaRows.value)
+}
+
+function removeCriterion(criterionId: string) {
+  criteriaRows.value = orderedCriteria.value.filter(criterion => criterion.id !== criterionId)
+  Reflect.deleteProperty(criterionEdits, criterionId)
+  applyCriterionOrderFromList(criteriaRows.value)
+}
+
+function buildCriterionMutationBody(criterion: EditableCriterionRow) {
+  const edit = getCriterionEdit(criterion)
+
+  return {
+    name: edit.name,
+    description: edit.description,
+    weight: edit.weight,
+    displayOrder: edit.displayOrder
+  }
+}
+
+function criterionMatchesPersistedState(criterion: EditableCriterionRow) {
+  const persistedCriterion = criteria.value.find(existingCriterion => existingCriterion.id === criterion.id)
+
+  if (!persistedCriterion) {
+    return false
+  }
+
+  const edit = getCriterionEdit(criterion)
+
+  return edit.name === persistedCriterion.name
+    && edit.description === persistedCriterion.description
+    && edit.weight === persistedCriterion.weight
+    && edit.displayOrder === persistedCriterion.displayOrder
 }
 
 function addPrize() {
@@ -730,32 +789,38 @@ function prizeMatchesPersistedState(prize: EditablePrizeRow) {
     && edit.displayOrder === persistedPrize.displayOrder
 }
 
-async function saveCriterionOrder() {
+async function saveCriteria() {
   const hackathon = currentHackathon.value
 
-  if (!hackathon || !hasCriterionOrderChanges.value) {
+  if (!hackathon || !hasCriteriaChanges.value) {
     return
   }
 
-  const changedCriteria = orderedCriteria.value.filter(
-    criterion => getCriterionEdit(criterion).displayOrder !== criterion.displayOrder
+  const visibleCriterionIds = new Set(orderedCriteria.value.map(criterion => criterion.id))
+  const removedPersistedCriteria = criteria.value.filter(criterion => !visibleCriterionIds.has(criterion.id))
+  const updatedPersistedCriteria = orderedCriteria.value.filter(
+    criterion => !criterion.isLocalDraft && !criterionMatchesPersistedState(criterion)
   )
-
-  if (changedCriteria.length === 0) {
-    return
-  }
-
+  const reorderedPersistedCriteria = updatedPersistedCriteria.filter(
+    criterion => getCriterionEdit(criterion).displayOrder !== criteria.value.find(existing => existing.id === criterion.id)?.displayOrder
+  )
   const maxDisplayOrder = Math.max(
     0,
     ...criteria.value.map(criterion => criterion.displayOrder),
     ...orderedCriteria.value.map(criterion => getCriterionEdit(criterion).displayOrder)
   )
 
-  isSavingCriterionOrder.value = true
+  isSavingCriteria.value = true
   mutationError.value = ''
 
   try {
-    for (const [index, criterion] of changedCriteria.entries()) {
+    for (const criterion of removedPersistedCriteria) {
+      await $fetch(`/api/hackathons/${hackathon.id}/evaluation-criteria/${criterion.id}`, {
+        method: 'DELETE'
+      })
+    }
+
+    for (const [index, criterion] of reorderedPersistedCriteria.entries()) {
       await $fetch(`/api/hackathons/${hackathon.id}/evaluation-criteria/${criterion.id}`, {
         method: 'PATCH',
         body: {
@@ -764,25 +829,34 @@ async function saveCriterionOrder() {
       })
     }
 
-    for (const criterion of changedCriteria) {
+    for (const criterion of updatedPersistedCriteria) {
       await $fetch(`/api/hackathons/${hackathon.id}/evaluation-criteria/${criterion.id}`, {
         method: 'PATCH',
-        body: {
-          displayOrder: getCriterionEdit(criterion).displayOrder
-        }
+        body: buildCriterionMutationBody(criterion)
+      })
+    }
+
+    for (const criterion of orderedCriteria.value) {
+      if (!criterion.isLocalDraft) {
+        continue
+      }
+
+      await $fetch(`/api/hackathons/${hackathon.id}/evaluation-criteria`, {
+        method: 'POST',
+        body: buildCriterionMutationBody(criterion)
       })
     }
 
     toast.add({
-      title: 'Criterion order updated',
-      description: 'Evaluation criteria now follow the updated order.',
+      title: 'Criteria updated',
+      description: 'Judging criteria now match the latest configuration.',
       color: 'success'
     })
     await workspace.refreshWorkspace()
   } catch (error) {
     mutationError.value = normalizeApiError(error).message
   } finally {
-    isSavingCriterionOrder.value = false
+    isSavingCriteria.value = false
   }
 }
 
@@ -843,60 +917,81 @@ async function savePrizes() {
   }
 }
 
-async function createTermsVersion() {
+function getNextTermsVersion(documents: TermsDocument[]) {
+  return documents.reduce((highest, document) => Math.max(highest, document.version), 0) + 1
+}
+
+function formatTermsTitle(documentType: TermsDocument['documentType'], version: number) {
+  const label = documentType === 'application_terms' ? 'Application Terms' : 'Winner Terms'
+  const date = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'UTC',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(new Date())
+
+  return `${label} v${version} (${date})`
+}
+
+function getTermsDraft(documentType: TermsDocument['documentType']) {
+  return documentType === 'application_terms' ? applicationTermsDraft.value : winnerTermsDraft.value
+}
+
+async function saveTerms(documentType: TermsDocument['documentType']) {
   const hackathon = currentHackathon.value
 
   if (!hackathon) {
     return
   }
 
-  hasAttemptedTermsVersionPublish.value = true
   mutationError.value = ''
+  savingTermsDocumentType.value = documentType
 
-  if (termsVersionPublishErrorMessage.value) {
+  const content = getTermsDraft(documentType).trim()
+  const version = getNextTermsVersion(documentType === 'application_terms' ? applicationTerms.value : winnerTerms.value)
+  const title = formatTermsTitle(documentType, version)
+  const validationError = getTermsVersionPublishErrorMessage(title, content)
+
+  if (validationError) {
+    mutationError.value = validationError
+    savingTermsDocumentType.value = null
     return
   }
 
-  const title = termsDraft.title.trim()
-  const content = termsDraft.content.trim()
-  const successDescription = termsDraft.documentType === 'application_terms'
-    ? 'A new application terms version is now available. Set it as current to use it in registration.'
-    : 'A new winner terms version is now available. Set it as current to use it in prize redemption.'
-
-  await runMutation(async () => {
-    await $fetch(`/api/hackathons/${hackathon.id}/terms/${termsDraft.documentType}/versions`, {
+  try {
+    const createdDocument = await $fetch<ApiDataResponse<TermsDocument>>(`/api/hackathons/${hackathon.id}/terms/${documentType}/versions`, {
       method: 'POST',
       body: {
         title,
         content
       }
     })
-    hasAttemptedTermsVersionPublish.value = false
-    termsDraft.title = ''
-    termsDraft.content = ''
-  }, 'Terms version published', successDescription)
-}
 
-async function setCurrentTerms(document: TermsDocument) {
-  const hackathon = currentHackathon.value
-
-  if (!hackathon) {
-    return
-  }
-
-  await runMutation(async () => {
-    await $fetch(`/api/hackathons/${hackathon.id}/terms/${document.documentType}/actions/set-current`, {
+    await $fetch(`/api/hackathons/${hackathon.id}/terms/${documentType}/actions/set-current`, {
       method: 'POST',
       body: {
-        hackathonTermsDocumentId: document.id
+        hackathonTermsDocumentId: createdDocument.data.id
       }
     })
-  }, 'Current terms updated', 'The hackathon now references the selected terms version.')
+
+    toast.add({
+      title: documentType === 'application_terms' ? 'Application terms updated' : 'Winner terms updated',
+      description: documentType === 'application_terms'
+        ? 'A new application terms version is now current for registration.'
+        : 'A new winner terms version is now current for prize redemption.',
+      color: 'success'
+    })
+    await workspace.refreshWorkspace()
+  } catch (error) {
+    mutationError.value = normalizeApiError(error).message
+  } finally {
+    savingTermsDocumentType.value = null
+  }
 }
 </script>
 
 <template>
-  <div class="space-y-10">
+  <div class="space-y-6">
     <AppAlert
       v-if="mutationError"
       color="error"
@@ -923,6 +1018,50 @@ async function setCurrentTerms(document: TermsDocument) {
 
     <template v-else-if="currentHackathon">
       <section
+        v-if="showSettingsOverview"
+        class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+      >
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Created by
+          </p>
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ creatorLabel }}
+          </p>
+          <p class="mt-1 text-sm text-muted">
+            {{ creatorMeta }}
+          </p>
+        </div>
+
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Admins
+          </p>
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ adminCount }}
+          </p>
+        </div>
+
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Staff
+          </p>
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ staffCount }}
+          </p>
+        </div>
+
+        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+            Judges
+          </p>
+          <p class="mt-2 text-xl font-semibold text-highlighted">
+            {{ judgeCount }}
+          </p>
+        </div>
+      </section>
+
+      <section
         v-if="props.showProgramSettings"
         class="space-y-6"
       >
@@ -945,60 +1084,7 @@ async function setCurrentTerms(document: TermsDocument) {
           @upload-banner-image="uploadBannerImage"
           @remove-banner-image="removeBannerImage"
         />
-
-        <AppCard
-          v-if="showProgramSnapshot"
-          class="rounded-xl hackathon-workspace-detail-panel"
-        >
-          <template #header>
-            <div class="flex flex-wrap items-center gap-3">
-              <h2 class="text-lg font-semibold text-highlighted">
-                Program Snapshot
-              </h2>
-              <AppBadge
-                :color="getHackathonStateColor(currentHackathon.state)"
-                variant="soft"
-              >
-                {{ formatHackathonState(currentHackathon.state) }}
-              </AppBadge>
-            </div>
-          </template>
-
-          <div class="grid gap-5 text-sm">
-            <div class="grid gap-1">
-              <span class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Actor</span>
-              <span class="text-base font-semibold text-highlighted">
-                {{ actor?.platformUser?.displayName ?? actor?.sessionUser?.email }}
-              </span>
-              <span class="text-muted">
-                {{ actor?.isPlatformAdmin ? 'Platform admin authority' : 'Hackathon-admin authority' }}
-              </span>
-            </div>
-
-            <div class="grid gap-1 border-t border-black/8 pt-4 dark:border-white/[0.08]">
-              <span class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">Current terms</span>
-              <span class="text-highlighted">
-                Application: {{ currentHackathon.currentTerms?.applicationTerms?.title ?? 'None selected' }}
-              </span>
-              <span class="text-highlighted">
-                Winner: {{ currentHackathon.currentTerms?.winnerTerms?.title ?? 'None selected' }}
-              </span>
-            </div>
-          </div>
-        </AppCard>
       </section>
-
-      <div
-        v-if="props.showTermsManagement || props.showCriteriaConfiguration"
-        class="space-y-1"
-      >
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-          Program Rules
-        </p>
-        <h2 class="text-xl font-semibold text-highlighted">
-          Terms and Scoring
-        </h2>
-      </div>
 
       <section class="space-y-6">
         <AppCard
@@ -1006,127 +1092,81 @@ async function setCurrentTerms(document: TermsDocument) {
           class="rounded-xl hackathon-workspace-detail-panel"
         >
           <template #header>
-            <div class="space-y-1">
-              <h2 class="text-lg font-semibold text-highlighted">
-                Terms Management
-              </h2>
-              <p class="text-sm text-muted">
-                Publishing creates a version. Use Set current to make application terms active in registration or winner terms active in prize redemption.
-              </p>
-            </div>
+            <h2 class="text-lg font-semibold text-highlighted">
+              Terms
+            </h2>
           </template>
 
-          <div class="space-y-6">
-            <div class="grid gap-4 md:grid-cols-[0.4fr_0.6fr]">
-              <label class="grid gap-2">
-                <span class="text-sm font-medium text-toned">Document type</span>
-                <AppSelect
-                  v-model="termsDraft.documentType"
-                >
-                  <option value="application_terms">
-                    Application terms
-                  </option>
-                  <option value="winner_terms">
-                    Winner terms
-                  </option>
-                </AppSelect>
-              </label>
-
-              <label class="grid gap-2">
-                <span class="text-sm font-medium text-toned">Title</span>
-                <AppInput
-                  v-model="termsDraft.title"
-                  type="text"
-                  required
-                  placeholder="Spring 2026 Application Terms v2"
-                />
-              </label>
-            </div>
-
-            <label class="grid gap-2">
-              <span class="text-sm font-medium text-toned">Content</span>
-              <AppTextarea
-                v-model="termsDraft.content"
-                rows="5"
-                required
-                placeholder="Enter the canonical terms content."
-              />
-            </label>
-
-            <p
-              v-if="hasAttemptedTermsVersionPublish && termsVersionPublishErrorMessage"
-              class="text-sm text-error"
-            >
-              {{ termsVersionPublishErrorMessage }}
-            </p>
-
-            <AppButton
-              color="primary"
-              label="Publish Terms Version"
-              @click="createTermsVersion"
-            />
-
-            <div class="grid gap-4 lg:grid-cols-2">
-              <div class="space-y-3">
-                <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+          <div class="grid gap-6 xl:grid-cols-2">
+            <section class="space-y-4">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="text-base font-semibold text-highlighted">
                   Application terms
                 </h3>
-                <div
-                  v-for="document in applicationTerms"
-                  :key="document.id"
-                  class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
-                >
-                  <div class="flex items-start justify-between gap-4">
-                    <div class="space-y-1">
-                      <p class="font-semibold text-highlighted">
-                        {{ document.title }}
-                      </p>
-                      <p class="text-sm text-muted">
-                        Version {{ document.version }}
-                      </p>
-                    </div>
-                    <AppButton
-                      size="sm"
-                      variant="soft"
-                      :disabled="currentHackathon.currentApplicationTermsDocumentId === document.id"
-                      @click="setCurrentTerms(document)"
-                    >
-                      {{ currentHackathon.currentApplicationTermsDocumentId === document.id ? 'Current' : 'Set current' }}
-                    </AppButton>
-                  </div>
-                </div>
+                <p class="text-xs text-muted">
+                  {{ currentApplicationTerms ? `Current v${currentApplicationTerms.version}` : 'No published version' }}
+                </p>
               </div>
 
-              <div class="space-y-3">
-                <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-                  Winner terms
-                </h3>
-                <div
-                  v-for="document in winnerTerms"
-                  :key="document.id"
-                  class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 dark:border-white/[0.08] dark:bg-[#111111]"
-                >
-                  <div class="flex items-start justify-between gap-4">
-                    <div class="space-y-1">
-                      <p class="font-semibold text-highlighted">
-                        {{ document.title }}
-                      </p>
-                      <p class="text-sm text-muted">
-                        Version {{ document.version }}
-                      </p>
-                    </div>
-                    <AppButton
-                      size="sm"
-                      variant="soft"
-                      :disabled="currentHackathon.currentWinnerTermsDocumentId === document.id"
-                      @click="setCurrentTerms(document)"
-                    >
-                      {{ currentHackathon.currentWinnerTermsDocumentId === document.id ? 'Current' : 'Set current' }}
-                    </AppButton>
-                  </div>
+              <div class="space-y-4">
+                <AdminMarkdownEditorField
+                  v-model="applicationTermsDraft"
+                  name="application-terms-editor"
+                  editor-id="application-terms-editor"
+                  label="Content"
+                  placeholder="Enter the application terms."
+                  required
+                />
+
+                <div class="flex justify-end">
+                  <AppButton
+                    type="button"
+                    color="primary"
+                    size="md"
+                    :loading="savingTermsDocumentType === 'application_terms'"
+                    :disabled="savingTermsDocumentType !== null"
+                    @click="saveTerms('application_terms')"
+                  >
+                    Save application terms
+                  </AppButton>
                 </div>
               </div>
-            </div>
+            </section>
+
+            <section class="space-y-4 border-t border-black/8 pt-6 dark:border-white/[0.08] xl:border-t-0 xl:border-l xl:pt-0 xl:pl-6">
+              <div class="flex items-center justify-between gap-3">
+                <h3 class="text-base font-semibold text-highlighted">
+                  Winner terms
+                </h3>
+                <p class="text-xs text-muted">
+                  {{ currentWinnerTerms ? `Current v${currentWinnerTerms.version}` : 'No published version' }}
+                </p>
+              </div>
+
+              <div class="space-y-4">
+                <AdminMarkdownEditorField
+                  v-model="winnerTermsDraft"
+                  name="winner-terms-editor"
+                  editor-id="winner-terms-editor"
+                  label="Content"
+                  placeholder="Enter the winner terms."
+                  required
+                />
+
+                <div class="flex justify-end">
+                  <AppButton
+                    type="button"
+                    color="primary"
+                    size="md"
+                    :loading="savingTermsDocumentType === 'winner_terms'"
+                    :disabled="savingTermsDocumentType !== null"
+                    @click="saveTerms('winner_terms')"
+                  >
+                    Save winner terms
+                  </AppButton>
+                </div>
+              </div>
+            </section>
           </div>
         </AppCard>
 
@@ -1140,128 +1180,159 @@ async function setCurrentTerms(document: TermsDocument) {
                 Judging Criteria
               </h2>
               <p class="text-sm text-muted">
-                Configure the canonical scoring dimensions that later judging and leaderboard workflows rely on.
+                Set how judges score submissions.
               </p>
             </div>
           </template>
 
           <div class="grid grid-cols-1 gap-4">
-            <div class="grid gap-4 md:grid-cols-2">
-              <AppInput
-                v-model="criteriaDraft.name"
-                type="text"
-                placeholder="Criterion name"
-              />
-              <AppInput
-                v-model.number="criteriaDraft.weight"
-                type="number"
-                min="0"
-                placeholder="Weight"
-              />
-            </div>
-            <AppTextarea
-              v-model="criteriaDraft.description"
-              rows="3"
-              placeholder="Criterion description"
-            />
-            <AppButton
-              color="primary"
-              label="Add Criterion"
-              @click="createCriterion"
-            />
             <div class="space-y-3">
-              <div class="flex flex-wrap items-center justify-between gap-3">
-                <p class="text-xs text-muted">
-                  Drag to reorder criteria.
-                </p>
-                <AppButton
-                  size="sm"
-                  variant="soft"
-                  :disabled="!hasCriterionOrderChanges || isSavingCriterionOrder || isSavingPrizes"
-                  :loading="isSavingCriterionOrder"
-                  @click="saveCriterionOrder"
-                >
-                  Save criterion order
-                </AppButton>
+              <div
+                v-if="orderedCriteria.length === 0"
+                class="grid gap-3 rounded-xl border border-dashed border-black/10 px-4 py-4 text-sm text-muted dark:border-white/[0.08]"
+              >
+                <p>No judging criteria configured yet.</p>
               </div>
 
-              <div class="grid grid-cols-1 gap-3">
+              <div
+                v-else
+                ref="criteriaListElement"
+                class="grid grid-cols-1 gap-3"
+              >
                 <div
                   v-for="(criterion, index) in orderedCriteria"
                   :key="criterion.id"
-                  class="rounded-lg border border-black/8 bg-white/85 px-4 py-4 transition-colors dark:border-white/[0.08] dark:bg-[#111111]"
-                  :class="criterionDropTargetId === criterion.id ? 'border-black/25 dark:border-white/[0.25]' : ''"
-                  @dragover.prevent="onCriterionDragOver(criterion.id)"
-                  @dragleave="onCriterionDragLeave(criterion.id)"
-                  @drop="onCriterionDrop(criterion.id, $event)"
+                  :data-criterion-id="criterion.id"
+                  data-criterion-row
+                  class="rounded-xl border bg-white/88 p-3 transition-all dark:bg-[#111111]"
+                  :class="[
+                    criterionDropTargetId === criterion.id
+                      ? 'border-dashed border-black/30 ring-2 ring-black/6 dark:border-white/[0.32] dark:ring-white/[0.08]'
+                      : 'border-black/8 dark:border-white/[0.08]',
+                    activeCriterionDragId === criterion.id
+                      ? 'shadow-[0_16px_40px_-34px_rgba(15,23,42,0.55)]'
+                      : ''
+                  ]"
                 >
-                  <div class="grid grid-cols-1 gap-4">
-                    <div class="flex flex-wrap items-center justify-between gap-3">
-                      <div class="flex items-center gap-2">
-                        <button
-                          type="button"
-                          class="rounded-md border border-black/8 bg-white px-2 py-1 text-xs font-medium text-toned transition hover:border-black/25 hover:text-highlighted dark:border-white/[0.08] dark:bg-[#111111] dark:hover:border-white/[0.25]"
-                          draggable="true"
-                          @dragstart="onCriterionDragStart(criterion.id, $event)"
-                          @dragend="onCriterionDragEnd"
-                        >
-                          Drag
-                        </button>
-                        <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
-                          Criterion {{ index + 1 }}
-                        </p>
-                      </div>
-
-                      <div class="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
-                        <AppButton
-                          size="sm"
-                          variant="ghost"
-                          color="neutral"
-                          :disabled="index === 0"
-                          @click="moveCriterion(criterion.id, -1)"
-                        >
-                          Move up
-                        </AppButton>
-                        <AppButton
-                          size="sm"
-                          variant="ghost"
-                          color="neutral"
-                          :disabled="index === orderedCriteria.length - 1"
-                          @click="moveCriterion(criterion.id, 1)"
-                        >
-                          Move down
-                        </AppButton>
-                        <AppButton
-                          size="sm"
-                          variant="soft"
-                          @click="updateCriterion(criterion.id)"
-                        >
-                          Save updates
-                        </AppButton>
-                      </div>
-                    </div>
-
-                    <div class="grid gap-4 md:grid-cols-[1fr_140px]">
-                      <AppInput
-                        v-model="getCriterionEdit(criterion).name"
-                        type="text"
-                        placeholder="Criterion name"
-                      />
-                      <AppInput
-                        v-model.number="getCriterionEdit(criterion).weight"
-                        type="number"
-                        min="0"
-                        placeholder="Weight"
-                      />
-                    </div>
-
-                    <AppTextarea
-                      v-model="getCriterionEdit(criterion).description"
-                      rows="3"
-                      placeholder="Criterion description"
-                    />
+                  <div
+                    v-if="criterionDropTargetId === criterion.id"
+                    class="mb-3 rounded-lg border border-dashed border-black/18 bg-black/[0.03] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted dark:border-white/[0.14] dark:bg-white/[0.03]"
+                  >
+                    Drop criterion here
                   </div>
+
+                  <AdminEditorRowShell>
+                    <template #controls>
+                      <button
+                        type="button"
+                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                        :aria-label="`Move ${getCriterionEdit(criterion).name || `criterion ${index + 1}`} up`"
+                        :disabled="index === 0"
+                        @click="moveCriterion(criterion.id, -1)"
+                      >
+                        <AppIcon
+                          name="i-lucide-arrow-up"
+                          class="size-4"
+                        />
+                      </button>
+
+                      <button
+                        type="button"
+                        data-criterion-sort-handle
+                        class="group inline-flex h-11 w-11 cursor-grab items-center justify-center rounded-xl border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted active:cursor-grabbing dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                        :aria-label="`Drag to reorder ${getCriterionEdit(criterion).name || `criterion ${index + 1}`}`"
+                      >
+                        <AppIcon
+                          name="i-lucide-grip-vertical"
+                          class="size-4.5 transition group-hover:scale-105"
+                        />
+                      </button>
+
+                      <button
+                        type="button"
+                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                        :aria-label="`Move ${getCriterionEdit(criterion).name || `criterion ${index + 1}`} down`"
+                        :disabled="index === orderedCriteria.length - 1"
+                        @click="moveCriterion(criterion.id, 1)"
+                      >
+                        <AppIcon
+                          name="i-lucide-arrow-down"
+                          class="size-4"
+                        />
+                      </button>
+                    </template>
+
+                    <div class="grid grid-cols-1 gap-2.5">
+                      <div class="grid gap-2.5 md:grid-cols-[minmax(0,1fr)_140px]">
+                        <label class="grid gap-1">
+                          <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Criterion name</span>
+                          <AppInput
+                            v-model="getCriterionEdit(criterion).name"
+                            type="text"
+                            placeholder="Impact"
+                          />
+                        </label>
+                        <label class="grid gap-1">
+                          <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Weight</span>
+                          <AppInput
+                            v-model.number="getCriterionEdit(criterion).weight"
+                            type="number"
+                            min="0"
+                            placeholder="10"
+                          />
+                        </label>
+                      </div>
+
+                      <label class="grid gap-1">
+                        <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Description</span>
+                        <AppTextarea
+                          v-model="getCriterionEdit(criterion).description"
+                          rows="1"
+                          class="min-h-10"
+                          placeholder="Explain what judges should evaluate here."
+                        />
+                      </label>
+                    </div>
+
+                    <template #actions>
+                      <button
+                        type="button"
+                        class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
+                        :aria-label="`Delete ${getCriterionEdit(criterion).name || `criterion ${index + 1}`}`"
+                        @click="removeCriterion(criterion.id)"
+                      >
+                        <AppIcon
+                          name="i-lucide-trash-2"
+                          class="size-4"
+                        />
+                      </button>
+                    </template>
+                  </AdminEditorRowShell>
                 </div>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                <AppButton
+                  type="button"
+                  color="neutral"
+                  variant="soft"
+                  size="sm"
+                  class="w-fit"
+                  @click="addCriterion"
+                >
+                  {{ orderedCriteria.length === 0 ? 'Add first criterion' : 'Add criterion' }}
+                </AppButton>
+
+                <AppButton
+                  type="button"
+                  color="primary"
+                  size="md"
+                  :disabled="!hasCriteriaChanges || isSavingCriteria || isSavingPrizes"
+                  :loading="isSavingCriteria"
+                  @click="saveCriteria"
+                >
+                  Save criteria
+                </AppButton>
               </div>
             </div>
           </div>
@@ -1277,7 +1348,7 @@ async function setCurrentTerms(document: TermsDocument) {
                 Prize Configuration
               </h2>
               <p class="text-sm text-muted">
-                Configure prize definitions and ordering for the outcomes and redemption flows.
+                Set prizes and placement ranges.
               </p>
             </div>
           </template>
@@ -1483,8 +1554,9 @@ async function setCurrentTerms(document: TermsDocument) {
 
                 <AppButton
                   type="button"
-                  size="sm"
-                  :disabled="!hasPrizeChanges || isSavingPrizes || isSavingCriterionOrder"
+                  color="primary"
+                  size="md"
+                  :disabled="!hasPrizeChanges || isSavingPrizes || isSavingCriteria"
                   :loading="isSavingPrizes"
                   @click="savePrizes"
                 >

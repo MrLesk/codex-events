@@ -25,7 +25,7 @@ describe('hackathon program settings mode view', () => {
       showProgramIdentitySection: false,
       showProgramSettingsSections: true,
       basicsHeading: 'Basic Information',
-      basicsDescription: 'Set the public basics for this hackathon: name, slug, and description.',
+      basicsDescription: 'Edit name, slug, and description.',
       programIdentityDescription: ''
     })
   })
@@ -44,7 +44,7 @@ describe('hackathon program settings copy', () => {
   test('keeps settings copy focused on non-details configuration', () => {
     expect(getHackathonProgramSettingsCopy('settings')).toEqual({
       submitLabel: 'Save Configuration',
-      helperText: 'Use Settings for the hackathon setup, timeline, and participation rules. Edit the public Details tab content from the Details tab.',
+      helperText: 'Save changes.',
       successTitle: 'Configuration saved',
       successDescription: 'Hackathon settings now match the latest admin updates.'
     })

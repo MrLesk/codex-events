@@ -45,7 +45,7 @@ export function getHackathonConfigFormModeView(
       showProgramIdentitySection: false,
       showProgramSettingsSections: true,
       basicsHeading: 'Basic Information',
-      basicsDescription: 'Set the public basics for this hackathon: name, slug, and description.',
+      basicsDescription: 'Edit name, slug, and description.',
       programIdentityDescription: ''
     }
   }
@@ -75,7 +75,7 @@ export function getHackathonProgramSettingsCopy(
 
   return {
     submitLabel: 'Save Configuration',
-    helperText: 'Use Settings for the hackathon setup, timeline, and participation rules. Edit the public Details tab content from the Details tab.',
+    helperText: 'Save changes.',
     successTitle: 'Configuration saved',
     successDescription: 'Hackathon settings now match the latest admin updates.'
   }

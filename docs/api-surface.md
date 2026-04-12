@@ -227,6 +227,7 @@ Operations:
 | List caller-visible evaluation criteria | `GET /api/hackathons/:hackathonId/evaluation-criteria` | public or authenticated user | Returns configured criteria and display order for a hackathon visible to the caller. |
 | Create evaluation criterion | `POST /api/hackathons/:hackathonId/evaluation-criteria` | hackathon admin or platform admin | Adds a criterion for the hackathon. |
 | Update evaluation criterion | `PATCH /api/hackathons/:hackathonId/evaluation-criteria/:criterionId` | hackathon admin or platform admin | Updates criterion fields and ordering. |
+| Delete evaluation criterion | `DELETE /api/hackathons/:hackathonId/evaluation-criteria/:criterionId` | hackathon admin or platform admin | Deletes a criterion when no saved judge scores reference it. |
 | List caller-visible prizes | `GET /api/hackathons/:hackathonId/prizes` | public or authenticated user | Returns configured prize definitions for a hackathon visible to the caller. |
 | Create prize | `POST /api/hackathons/:hackathonId/prizes` | hackathon admin or platform admin | Adds a prize definition for the hackathon. |
 | Update prize | `PATCH /api/hackathons/:hackathonId/prizes/:prizeId` | hackathon admin or platform admin | Updates prize configuration. |

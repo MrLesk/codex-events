@@ -13,7 +13,12 @@ export function getAccountHackathonSeoContent(
     case 'team':
       return {
         title: `Team | ${hackathonName} | Codex Hackathons`,
-        description: `Create a team, manage membership, and continue your project work for ${hackathonName}.`
+        description: `Create a team, manage membership, and coordinate collaborators for ${hackathonName}.`
+      }
+    case 'submission':
+      return {
+        title: `Submission | ${hackathonName} | Codex Hackathons`,
+        description: `Manage your project submission for ${hackathonName}.`
       }
     case 'prizes':
       return {
@@ -63,7 +68,7 @@ export function getAccountHackathonSeoContent(
     case 'settings':
       return {
         title: `Settings | ${hackathonName} | Codex Hackathons`,
-        description: `Update the schedule, requirements, prizes, and other settings for ${hackathonName}.`
+        description: `Update the configuration, terms, and judging criteria for ${hackathonName}.`
       }
   }
 }

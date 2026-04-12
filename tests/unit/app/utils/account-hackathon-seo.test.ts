@@ -13,7 +13,14 @@ describe('account hackathon seo helpers', () => {
   test('returns participant-facing metadata for the team tab', () => {
     expect(getAccountHackathonSeoContent('team', 'Buildathon')).toEqual({
       title: 'Team | Buildathon | Codex Hackathons',
-      description: 'Create a team, manage membership, and continue your project work for Buildathon.'
+      description: 'Create a team, manage membership, and coordinate collaborators for Buildathon.'
+    })
+  })
+
+  test('returns participant-facing metadata for the submission tab', () => {
+    expect(getAccountHackathonSeoContent('submission', 'Buildathon')).toEqual({
+      title: 'Submission | Buildathon | Codex Hackathons',
+      description: 'Manage your project submission for Buildathon.'
     })
   })
 
@@ -28,6 +35,13 @@ describe('account hackathon seo helpers', () => {
     expect(getAccountHackathonSeoContent('judging', 'Buildathon')).toEqual({
       title: 'Judging | Buildathon | Codex Hackathons',
       description: 'Review your judging queue and progress for Buildathon.'
+    })
+  })
+
+  test('returns admin-facing metadata for the settings tab', () => {
+    expect(getAccountHackathonSeoContent('settings', 'Buildathon')).toEqual({
+      title: 'Settings | Buildathon | Codex Hackathons',
+      description: 'Update the configuration, terms, and judging criteria for Buildathon.'
     })
   })
 })

@@ -13,6 +13,7 @@ import setCurrentTermsHandler from '../../../../server/api/hackathons/[hackathon
 import criteriaListHandler from '../../../../server/api/hackathons/[hackathonId]/evaluation-criteria/index.get'
 import criteriaPostHandler from '../../../../server/api/hackathons/[hackathonId]/evaluation-criteria/index.post'
 import criteriaPatchHandler from '../../../../server/api/hackathons/[hackathonId]/evaluation-criteria/[criterionId].patch'
+import criteriaDeleteHandler from '../../../../server/api/hackathons/[hackathonId]/evaluation-criteria/[criterionId].delete'
 import prizesListHandler from '../../../../server/api/hackathons/[hackathonId]/prizes/index.get'
 import prizesPostHandler from '../../../../server/api/hackathons/[hackathonId]/prizes/index.post'
 import prizesPatchHandler from '../../../../server/api/hackathons/[hackathonId]/prizes/[prizeId].patch'
@@ -589,7 +590,7 @@ describe('TASK-3.5 hackathon admin route groups', () => {
     })
   })
 
-  test('evaluation criteria routes support public reads and admin create/update', async () => {
+  test('evaluation criteria routes support public reads and admin create/update/delete', async () => {
     const publicHarness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/hackathons/:hackathonId/evaluation-criteria', handler: criteriaListHandler }
@@ -622,7 +623,8 @@ describe('TASK-3.5 hackathon admin route groups', () => {
     const adminHarness = createApiRouteTestHarness({
       routes: [
         { method: 'post', path: '/api/hackathons/:hackathonId/evaluation-criteria', handler: criteriaPostHandler },
-        { method: 'patch', path: '/api/hackathons/:hackathonId/evaluation-criteria/:criterionId', handler: criteriaPatchHandler }
+        { method: 'patch', path: '/api/hackathons/:hackathonId/evaluation-criteria/:criterionId', handler: criteriaPatchHandler },
+        { method: 'delete', path: '/api/hackathons/:hackathonId/evaluation-criteria/:criterionId', handler: criteriaDeleteHandler }
       ],
       sessionUser: {
         sub: 'auth0|platform_admin',
@@ -655,6 +657,16 @@ describe('TASK-3.5 hackathon admin route groups', () => {
       data: {
         id: createPayload.data.id,
         weight: 35
+      }
+    })
+
+    const deleteResponse = await adminHarness.request(`/api/hackathons/hackathon_1/evaluation-criteria/${createPayload.data.id}`, {
+      method: 'DELETE'
+    })
+    expect(deleteResponse.status).toBe(200)
+    expect(await deleteResponse.json()).toMatchObject({
+      data: {
+        id: createPayload.data.id
       }
     })
   })
