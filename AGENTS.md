@@ -125,6 +125,9 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 - Avoid overly technical explanations of what happens after an action unless that detail changes the user's decision.
 - If a screen or flow is actor-specific, optimize the copy and information hierarchy for that actor rather than for a generic platform operator.
 - When uncertain between internal precision and user clarity, prefer user clarity and keep internal precision in code, schema, and admin-only operational docs.
+- For dashboard and admin UI, default to one visual container depth per section. Do not place bordered cards, inset panels, or similar surfaces inside another card unless the nested surface is a truly separate workflow or tool.
+- Inside an existing card, create hierarchy with spacing, columns, headings, and dividers before introducing another bordered box.
+- If nested surfaces appear necessary, pause and justify that choice explicitly instead of making it the default.
 - For any meaningful UX or copy change, explicitly validate:
   - Who is the actor?
   - What is their goal?

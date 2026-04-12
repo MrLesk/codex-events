@@ -2,7 +2,6 @@
 import type {
   ApiDataResponse,
   ApiListResponse,
-  EvaluationCriterion,
   HackathonRecord,
   HackathonRoleAssignment,
   JudgeAssignmentSummary,
@@ -13,10 +12,6 @@ import type {
 import type { PrizeRedemptionAdminView, PrizeRedemptionRecord } from '~/utils/prize-redemptions'
 
 import {
-  canMutateRoleAssignments,
-  formatHackathonState,
-  getCurrentLifecycleControl,
-  getHackathonStateColor,
   normalizeApiError
 } from '~/utils/admin-workspace'
 
@@ -30,8 +25,6 @@ type JudgeChoice = {
   value: string
   label: string
 }
-
-type CriterionEditState = Pick<EvaluationCriterion, 'name' | 'description' | 'weight' | 'displayOrder'>
 
 const toast = useToast()
 const slug = computed(() => props.slug.trim())
@@ -90,20 +83,9 @@ const winnersErrorMessage = ref('')
 const redemptions = ref<PrizeRedemptionRecord[]>([])
 const redemptionsStatus = ref<LoadStatus>('idle')
 const redemptionsErrorMessage = ref('')
-const criteriaDraft = reactive({
-  name: '',
-  description: '',
-  weight: 10,
-  displayOrder: 1
-})
-const criterionEdits = reactive<Record<string, CriterionEditState>>({})
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
-const actor = computed(() => workspace.actor.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
-const canMutateRoles = computed(() => canMutateRoleAssignments(actor.value))
-const criteria = computed(() => workspace.criteria.data.value?.data ?? [])
-const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
 
 const canLoadShortlist = computed(() =>
@@ -125,131 +107,28 @@ const judgeChoices = computed<JudgeChoice[]>(() =>
     }))
 )
 
-const rankedLeaderboardEntries = computed(() =>
-  leaderboardEntries.value.filter(entry => entry.rank !== null)
+const showAssignmentsPanel = computed(() =>
+  Boolean(currentHackathon.value && ['judging_preparation', 'judge_review'].includes(currentHackathon.value.state))
 )
 
-const outcomeControl = computed(() => {
-  if (!currentHackathon.value || !['shortlist', 'winners_announced'].includes(currentHackathon.value.state)) {
-    return null
-  }
+const showShortlistPanel = computed(() =>
+  Boolean(currentHackathon.value && ['judge_review', 'shortlist', 'winners_announced', 'completed'].includes(currentHackathon.value.state))
+)
 
-  const lockedEntries = leaderboardEntries.value.filter(entry => entry.submissionStatus === 'locked')
+const showOutcomePanel = computed(() =>
+  Boolean(currentHackathon.value && ['shortlist', 'winners_announced', 'completed'].includes(currentHackathon.value.state))
+)
 
-  return getCurrentLifecycleControl(currentHackathon.value, {
-    submittedSubmissionCount: 0,
-    judgePoolCount: judgeChoices.value.length,
-    lockedSubmissionCount: lockedEntries.length,
-    activeAssignmentCount: assignments.value.filter(assignment =>
-      assignment.status === 'assigned' || assignment.status === 'judge_started'
-    ).length,
-    lockedLeaderboardEntryCount: lockedEntries.length,
-    completedReviewCount: lockedEntries.filter(entry => entry.reviewStatus === 'judge_completed').length,
-    prizeCount: prizes.value.length,
-    hasCurrentWinnerTerms: Boolean(currentHackathon.value.currentTerms?.winnerTerms)
-  })
-})
+const showPrizeRedemptionsPanel = computed(() =>
+  Boolean(currentHackathon.value && ['winners_announced', 'completed'].includes(currentHackathon.value.state))
+)
 
-const assignmentSummaryValue = computed(() => {
-  if (assignmentsStatus.value === 'pending') {
-    return 'Loading...'
-  }
-
-  if (assignmentsStatus.value === 'error') {
-    return 'Unavailable'
-  }
-
-  return `${assignments.value.length}`
-})
-
-const leaderboardSummaryValue = computed(() => {
-  if (leaderboardStatus.value === 'pending') {
-    return 'Loading...'
-  }
-
-  if (leaderboardStatus.value === 'error') {
-    return 'Unavailable'
-  }
-
-  return `${rankedLeaderboardEntries.value.length}`
-})
-
-const shortlistSummaryValue = computed(() => {
-  if (!canLoadShortlist.value) {
-    return 'Unavailable'
-  }
-
-  if (shortlistStatus.value === 'pending') {
-    return 'Loading...'
-  }
-
-  if (shortlistStatus.value === 'error') {
-    return 'Unavailable'
-  }
-
-  return `${shortlistEntries.value.length}`
-})
-
-const winnerSummaryValue = computed(() => {
-  if (!canLoadWinners.value) {
-    return 'Pending announcement'
-  }
-
-  if (winnersStatus.value === 'pending') {
-    return 'Loading...'
-  }
-
-  if (winnersStatus.value === 'error') {
-    return 'Unavailable'
-  }
-
-  return `${winners.value.length}`
-})
-
-function nextDisplayOrder(items: Array<EvaluationCriterion>) {
-  return items.reduce((highest, item) => Math.max(highest, item.displayOrder), 0) + 1
-}
-
-function replaceReactiveMap<T>(target: Record<string, T>, source: Record<string, T>) {
-  for (const key of Object.keys(target)) {
-    if (!(key in source)) {
-      Reflect.deleteProperty(target, key)
-    }
-  }
-
-  Object.assign(target, source)
-}
-
-function createCriterionEditState(criterion: EvaluationCriterion): CriterionEditState {
-  return {
-    name: criterion.name,
-    description: criterion.description,
-    weight: criterion.weight,
-    displayOrder: criterion.displayOrder
-  }
-}
-
-function getCriterionEdit(criterion: EvaluationCriterion) {
-  const existing = criterionEdits[criterion.id]
-
-  if (existing) {
-    return existing
-  }
-
-  const next = createCriterionEditState(criterion)
-  criterionEdits[criterion.id] = next
-  return next
-}
-
-watch(criteria, (items) => {
-  criteriaDraft.displayOrder = nextDisplayOrder(items)
-  replaceReactiveMap(
-    criterionEdits,
-    Object.fromEntries(items.map(criterion => [criterion.id, createCriterionEditState(criterion)]))
-  )
-}, {
-  immediate: true
-})
+const showCompetitionSections = computed(() =>
+  showAssignmentsPanel.value
+  || showShortlistPanel.value
+  || showOutcomePanel.value
+  || showPrizeRedemptionsPanel.value
+)
 
 function toSectionErrorMessage(error: unknown, fallback: string) {
   const message = normalizeApiError(error).message
@@ -405,10 +284,7 @@ watch([() => currentHackathon.value?.id, canManage], async ([id, allowed]) => {
 async function refreshCompetition() {
   await Promise.all([
     workspace.hackathon.refresh(),
-    workspace.criteria.refresh(),
-    workspace.prizes.refresh(),
-    workspace.roleAssignments.refresh(),
-    workspace.winnerTermsVersions.refresh()
+    workspace.roleAssignments.refresh()
   ])
   await loadCompetitionData()
 }
@@ -430,48 +306,6 @@ async function runMutation(actionKey: string, action: () => Promise<void>, succe
   } finally {
     pendingActionKey.value = null
   }
-}
-
-async function createCriterion() {
-  await runMutation(
-    'criterion:create',
-    async () => {
-      await $fetch(`/api/hackathons/${hackathonId.value}/evaluation-criteria`, {
-        method: 'POST',
-        body: { ...criteriaDraft }
-      })
-      criteriaDraft.name = ''
-      criteriaDraft.description = ''
-      criteriaDraft.weight = 10
-    },
-    'Criterion added',
-    'The judging rubric has been updated.'
-  )
-}
-
-async function updateCriterion(criterionId: string) {
-  const edit = criterionEdits[criterionId]
-
-  if (!edit) {
-    return
-  }
-
-  await runMutation(
-    `criterion:update:${criterionId}`,
-    async () => {
-      await $fetch(`/api/hackathons/${hackathonId.value}/evaluation-criteria/${criterionId}`, {
-        method: 'PATCH',
-        body: {
-          name: edit.name,
-          description: edit.description,
-          weight: edit.weight,
-          displayOrder: edit.displayOrder
-        }
-      })
-    },
-    'Criterion updated',
-    'The judging rubric entry was updated.'
-  )
 }
 
 async function reassignAssignment(payload: { assignmentId: string, judgeUserId?: string, reason?: string }) {
@@ -525,32 +359,6 @@ async function reorderShortlist(orderedSubmissionIds: string[]) {
     'The final ranking order has been updated without changing judge scores.'
   )
 }
-
-async function announceWinners() {
-  await runMutation(
-    'announce-winners',
-    async () => {
-      await $fetch(`/api/hackathons/${hackathonId.value}/actions/announce-winners`, {
-        method: 'POST'
-      })
-    },
-    'Winners announced',
-    'The final competition outcome is now published.'
-  )
-}
-
-async function completeHackathon() {
-  await runMutation(
-    'complete-hackathon',
-    async () => {
-      await $fetch(`/api/hackathons/${hackathonId.value}/actions/complete`, {
-        method: 'POST'
-      })
-    },
-    'Hackathon completed',
-    'The competition outcome is now final.'
-  )
-}
 </script>
 
 <template>
@@ -572,14 +380,6 @@ async function completeHackathon() {
     />
 
     <AppAlert
-      v-else-if="workspace.hackathon.status.value === 'pending'"
-      color="neutral"
-      variant="soft"
-      title="Loading judging workspace"
-      description="Resolving the hackathon, role assignments, and judging surfaces for this admin session."
-    />
-
-    <AppAlert
       v-else-if="currentHackathon && !canManage"
       color="warning"
       variant="soft"
@@ -588,208 +388,56 @@ async function completeHackathon() {
     />
 
     <template v-else-if="currentHackathon">
-      <section class="grid gap-4 lg:grid-cols-4">
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Hackathon state
-          </p>
-          <div class="mt-2 flex items-center gap-3">
-            <AppBadge
-              data-testid="admin-competition-hackathon-state"
-              :color="getHackathonStateColor(currentHackathon.state)"
-              variant="soft"
-            >
-              {{ formatHackathonState(currentHackathon.state) }}
-            </AppBadge>
-          </div>
-        </div>
-
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Assignment oversight
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
-            {{ assignmentSummaryValue }}
-          </p>
-        </div>
-
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Ranked submissions
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
-            {{ leaderboardSummaryValue }}
-          </p>
-        </div>
-
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Finalized winners
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
-            {{ winnerSummaryValue }}
-          </p>
-        </div>
-      </section>
-
-      <section>
-        <AppCard class="rounded-xl hackathon-workspace-detail-panel">
-          <template #header>
-            <div class="space-y-1">
-              <h2 class="text-lg font-semibold text-highlighted">
-                Judging Criteria
-              </h2>
-              <p class="text-sm text-muted">
-                Define and maintain the weighted rubric used for judge reviews and leaderboard scoring.
-              </p>
-            </div>
-          </template>
-
-          <div class="space-y-4">
-            <div class="grid gap-4 md:grid-cols-2">
-              <AppInput
-                v-model="criteriaDraft.name"
-                type="text"
-                placeholder="Criterion name"
-              />
-              <AppInput
-                v-model.number="criteriaDraft.weight"
-                type="number"
-                min="0"
-                placeholder="Weight"
-              />
-            </div>
-            <AppTextarea
-              v-model="criteriaDraft.description"
-              rows="3"
-              placeholder="Criterion description"
-            />
-            <AppButton
-              v-if="canMutateRoles"
-              color="primary"
-              label="Add Criterion"
-              @click="createCriterion"
-            />
-
-            <div class="grid grid-cols-1 gap-3">
-              <div
-                v-for="criterion in criteria"
-                :key="criterion.id"
-                class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-4 py-4"
-              >
-                <div class="grid grid-cols-1 gap-4">
-                  <div class="grid gap-4 md:grid-cols-[1fr_120px_120px]">
-                    <AppInput
-                      v-model="getCriterionEdit(criterion).name"
-                      type="text"
-                      placeholder="Criterion name"
-                    />
-                    <AppInput
-                      v-model.number="getCriterionEdit(criterion).weight"
-                      type="number"
-                      min="0"
-                      placeholder="Weight"
-                    />
-                    <AppInput
-                      v-model.number="getCriterionEdit(criterion).displayOrder"
-                      type="number"
-                      min="1"
-                      placeholder="Order"
-                    />
-                  </div>
-                  <AppTextarea
-                    v-model="getCriterionEdit(criterion).description"
-                    rows="3"
-                    placeholder="Criterion description"
-                  />
-                  <div class="flex flex-wrap items-center justify-between gap-3">
-                    <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted">
-                      Existing criterion
-                    </p>
-                    <AppButton
-                      v-if="canMutateRoles"
-                      size="sm"
-                      variant="soft"
-                      @click="updateCriterion(criterion.id)"
-                    >
-                      Save updates
-                    </AppButton>
-                  </div>
-                </div>
-              </div>
-              <p
-                v-if="criteria.length === 0"
-                class="text-sm text-muted"
-              >
-                No judging criteria have been configured yet.
-              </p>
-            </div>
-          </div>
-        </AppCard>
-      </section>
-
-      <AdminCompetitionAssignmentsPanel
-        :hackathon-state="currentHackathon.state"
-        :assignments="assignments"
-        :judge-choices="judgeChoices"
-        :is-loading="assignmentsStatus === 'pending'"
-        :error-message="assignmentsStatus === 'error' ? assignmentsErrorMessage : ''"
-        :pending-action-key="pendingActionKey"
-        @reassign="reassignAssignment"
-        @force-skip="forceSkipAssignment"
-      />
-
-      <section class="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <AdminCompetitionShortlistPanel
+      <template v-if="showCompetitionSections">
+        <AdminCompetitionAssignmentsPanel
+          v-if="showAssignmentsPanel"
           :hackathon-state="currentHackathon.state"
-          :leaderboard="leaderboardEntries"
-          :shortlist="shortlistEntries"
-          :is-leaderboard-loading="leaderboardStatus === 'pending'"
-          :leaderboard-error-message="leaderboardStatus === 'error' ? leaderboardErrorMessage : ''"
-          :is-shortlist-loading="shortlistStatus === 'pending'"
-          :shortlist-error-message="shortlistStatus === 'error' ? shortlistErrorMessage : ''"
+          :assignments="assignments"
+          :judge-choices="judgeChoices"
+          :is-loading="assignmentsStatus === 'pending'"
+          :error-message="assignmentsStatus === 'error' ? assignmentsErrorMessage : ''"
           :pending-action-key="pendingActionKey"
-          @reorder="reorderShortlist"
+          @reassign="reassignAssignment"
+          @force-skip="forceSkipAssignment"
         />
 
-        <AdminCompetitionOutcomePanel
+        <section
+          v-if="showShortlistPanel || showOutcomePanel"
+          class="grid gap-6"
+          :class="showShortlistPanel && showOutcomePanel ? 'xl:grid-cols-[1.15fr_0.85fr]' : ''"
+        >
+          <AdminCompetitionShortlistPanel
+            v-if="showShortlistPanel"
+            :hackathon-state="currentHackathon.state"
+            :leaderboard="leaderboardEntries"
+            :shortlist="shortlistEntries"
+            :is-leaderboard-loading="leaderboardStatus === 'pending'"
+            :leaderboard-error-message="leaderboardStatus === 'error' ? leaderboardErrorMessage : ''"
+            :is-shortlist-loading="shortlistStatus === 'pending'"
+            :shortlist-error-message="shortlistStatus === 'error' ? shortlistErrorMessage : ''"
+            :pending-action-key="pendingActionKey"
+            @reorder="reorderShortlist"
+          />
+
+          <AdminCompetitionOutcomePanel
+            v-if="showOutcomePanel"
+            :hackathon-state="currentHackathon.state"
+            :winners="winners"
+            :winner-terms-title="currentHackathon.currentTerms?.winnerTerms?.title ?? null"
+            :is-loading="winnersStatus === 'pending'"
+            :error-message="winnersStatus === 'error' ? winnersErrorMessage : ''"
+          />
+        </section>
+
+        <AdminCompetitionPrizeRedemptionsPanel
+          v-if="showPrizeRedemptionsPanel"
           :hackathon-state="currentHackathon.state"
           :winners="winners"
-          :winner-terms-title="currentHackathon.currentTerms?.winnerTerms?.title ?? null"
-          :outcome-control="outcomeControl"
-          :is-loading="winnersStatus === 'pending'"
-          :error-message="winnersStatus === 'error' ? winnersErrorMessage : ''"
-          :pending-action-key="pendingActionKey"
-          @announce-winners="announceWinners"
-          @complete-hackathon="completeHackathon"
+          :redemptions="redemptions"
+          :is-loading="redemptionsStatus === 'pending'"
+          :error-message="redemptionsStatus === 'error' ? redemptionsErrorMessage : ''"
         />
-      </section>
-
-      <AdminCompetitionPrizeRedemptionsPanel
-        :hackathon-state="currentHackathon.state"
-        :winners="winners"
-        :redemptions="redemptions"
-        :is-loading="redemptionsStatus === 'pending'"
-        :error-message="redemptionsStatus === 'error' ? redemptionsErrorMessage : ''"
-      />
-
-      <AppAlert
-        v-if="!['judging_preparation', 'judge_review', 'shortlist', 'winners_announced', 'completed'].includes(currentHackathon.state)"
-        color="neutral"
-        variant="soft"
-        title="Judging workflow is staged"
-        description="Assignment operations become fully active once submissions close and judging preparation begins."
-      />
-
-      <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-          Shortlist status
-        </p>
-        <p class="mt-2 text-sm text-toned">
-          Shortlist entries: {{ shortlistSummaryValue }}.
-          Current winner terms: {{ currentHackathon.currentTerms?.winnerTerms?.title ?? 'None selected' }}.
-        </p>
-      </div>
+      </template>
     </template>
   </div>
 </template>

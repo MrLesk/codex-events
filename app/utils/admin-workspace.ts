@@ -344,6 +344,27 @@ export interface AdminOperationalTeam {
   noSubmissionReason: AdminSubmissionStatus
 }
 
+export type AdminSubmissionDashboardBucket = 'late' | 'ready' | 'out'
+export type AdminSubmissionDashboardFilter = 'all'
+  | 'late'
+  | 'ready'
+  | 'out'
+  | 'none'
+  | 'draft'
+  | 'submitted'
+  | 'locked'
+  | 'withdrawn'
+  | 'disqualified'
+
+export interface AdminSubmissionDashboardMetrics {
+  totalTeams: number
+  readyTeams: number
+  draftTeams: number
+  noSubmissionTeams: number
+  lateTeams: number
+  outTeams: number
+}
+
 export interface JudgeAssignmentSummary {
   id: string
   hackathonId: string
@@ -604,6 +625,26 @@ export function getHackathonDashboardStateBadgePresentation(state: HackathonStat
   }
 }
 
+export type HackathonOperationsPhase = 'registration_open' | 'submission_open' | 'judging' | 'completed'
+
+export function getHackathonOperationsPhase(state: HackathonState): HackathonOperationsPhase | null {
+  switch (state) {
+    case 'registration_open':
+      return 'registration_open'
+    case 'submission_open':
+      return 'submission_open'
+    case 'judging_preparation':
+    case 'judge_review':
+    case 'shortlist':
+    case 'winners_announced':
+      return 'judging'
+    case 'completed':
+      return 'completed'
+    case 'draft':
+      return null
+  }
+}
+
 export function formatApplicationStatus(status: AdminApplicationRecord['status']) {
   return startCase(status)
 }
@@ -716,6 +757,143 @@ export function getSubmissionStatusColor(status: AdminSubmissionStatus) {
     case 'disqualified':
       return 'error'
   }
+}
+
+function normalizeAdminSearchValue(value: string | null | undefined) {
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9@._-]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ')
+}
+
+function getAdminOperationalTeamSearchValues(team: AdminOperationalTeam) {
+  const activeMembers = (team.detail?.members ?? []).filter(member => member.leftAt === null)
+
+  return [
+    team.team.name,
+    team.team.slug,
+    team.submission?.projectName,
+    ...activeMembers.flatMap(member => [
+      member.user?.displayName,
+      member.user?.email,
+      member.userId
+    ])
+  ]
+    .map(normalizeAdminSearchValue)
+    .filter(value => value.length > 0)
+}
+
+function getAdminOperationalTeamSortPriority(status: AdminSubmissionStatus) {
+  switch (status) {
+    case 'none':
+      return 0
+    case 'draft':
+      return 1
+    case 'submitted':
+      return 2
+    case 'locked':
+      return 3
+    case 'withdrawn':
+      return 4
+    case 'disqualified':
+      return 5
+  }
+}
+
+function getAdminOperationalTeamLastActivityTimestamp(team: AdminOperationalTeam) {
+  return team.submission?.submittedAt
+    ?? team.submission?.updatedAt
+    ?? team.team.updatedAt
+}
+
+export function getAdminSubmissionDashboardBucket(status: AdminSubmissionStatus): AdminSubmissionDashboardBucket {
+  switch (status) {
+    case 'submitted':
+    case 'locked':
+      return 'ready'
+    case 'withdrawn':
+    case 'disqualified':
+      return 'out'
+    case 'none':
+    case 'draft':
+      return 'late'
+  }
+}
+
+export function getAdminSubmissionDashboardMetrics(teams: AdminOperationalTeam[]): AdminSubmissionDashboardMetrics {
+  const noSubmissionTeams = teams.filter(team => team.submissionStatus === 'none').length
+  const draftTeams = teams.filter(team => team.submissionStatus === 'draft').length
+  const readyTeams = teams.filter(team =>
+    team.submissionStatus === 'submitted' || team.submissionStatus === 'locked'
+  ).length
+  const outTeams = teams.filter(team =>
+    team.submissionStatus === 'withdrawn' || team.submissionStatus === 'disqualified'
+  ).length
+
+  return {
+    totalTeams: teams.length,
+    readyTeams,
+    draftTeams,
+    noSubmissionTeams,
+    lateTeams: noSubmissionTeams + draftTeams,
+    outTeams
+  }
+}
+
+export function sortAdminOperationalTeamsForSubmissionDashboard(teams: AdminOperationalTeam[]) {
+  return [...teams].sort((left, right) => {
+    const priorityDifference = getAdminOperationalTeamSortPriority(left.submissionStatus)
+      - getAdminOperationalTeamSortPriority(right.submissionStatus)
+
+    if (priorityDifference !== 0) {
+      return priorityDifference
+    }
+
+    const leftTimestamp = Date.parse(getAdminOperationalTeamLastActivityTimestamp(left))
+    const rightTimestamp = Date.parse(getAdminOperationalTeamLastActivityTimestamp(right))
+
+    if (!Number.isNaN(leftTimestamp) && !Number.isNaN(rightTimestamp) && leftTimestamp !== rightTimestamp) {
+      return rightTimestamp - leftTimestamp
+    }
+
+    return left.team.name.localeCompare(right.team.name)
+  })
+}
+
+export function filterAdminOperationalTeams(
+  teams: AdminOperationalTeam[],
+  options?: {
+    filter?: AdminSubmissionDashboardFilter
+    search?: string | null
+  }
+) {
+  const filter = options?.filter ?? 'all'
+  const normalizedSearch = normalizeAdminSearchValue(options?.search)
+
+  return teams.filter((team) => {
+    if (filter !== 'all') {
+      if (filter === 'late' || filter === 'ready' || filter === 'out') {
+        if (getAdminSubmissionDashboardBucket(team.submissionStatus) !== filter) {
+          return false
+        }
+      } else if (team.submissionStatus !== filter) {
+        return false
+      }
+    }
+
+    if (normalizedSearch.length === 0) {
+      return true
+    }
+
+    return getAdminOperationalTeamSearchValues(team).some(value => value.includes(normalizedSearch))
+  })
 }
 
 export function formatAdminJudgeAssignmentStatus(status: JudgeAssignmentSummary['status']) {
@@ -837,14 +1015,15 @@ export function buildAdminOperationalTeams(
     const detail = options?.teamDetails?.[index] ?? null
     const noSubmissionEntry = noSubmissionByTeamId.get(team.id)
     const submission = options?.submissions?.[index] ?? noSubmissionEntry?.submission ?? null
-    const activeAdmins = (detail?.members ?? []).filter(member => member.leftAt === null && member.role === 'admin')
+    const activeMembers = (detail?.members ?? []).filter(member => member.leftAt === null)
+    const activeAdmins = activeMembers.filter(member => member.role === 'admin')
 
     return {
       team,
       detail,
       submission,
       submissionStatus: submission?.status ?? 'none',
-      activeMemberCount: detail?.members.length ?? team.activeMemberCount ?? 0,
+      activeMemberCount: activeMembers.length || team.activeMemberCount || 0,
       activeAdminChoices: activeAdmins.map(member => ({
         userId: member.userId,
         label: formatOperationalUserLabel(member.user, member.userId)

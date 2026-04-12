@@ -3,25 +3,46 @@ import type {
   AdminApplicationRecord,
   AdminOperationalTeam,
   AdminTeamDetailRecord,
+  AdminSubmissionDashboardFilter,
   ApiDataResponse,
   ApiListResponse,
   HackathonRecord,
-  NoSubmissionEntry,
-  SubmissionRecord,
-  TeamSummary
+  SubmissionRecord
 } from '~/utils/admin-workspace'
 
 import {
   buildAdminOperationalTeams,
-  formatHackathonState,
-  getAdminSubmissionInterventionPolicy,
+  filterAdminOperationalTeams,
   getCurrentLifecycleControl,
+  getAdminSubmissionDashboardBucket,
+  getAdminSubmissionDashboardMetrics,
+  getHackathonOperationsPhase,
+  formatHackathonState,
+  getHackathonStateColor,
   getParticipantsLimitSummary,
+  sortAdminOperationalTeamsForSubmissionDashboard,
   normalizeApiError
 } from '~/utils/admin-workspace'
+import { formatTimestamp } from '~/utils/date-formatting'
 
 type AccountHackathonAdminOperationsSection = 'participants' | 'submissions' | 'operations'
 type AccountHackathonParticipantView = 'applications' | 'approved' | 'rejected'
+type LifecycleMetricCard = {
+  key: string
+  label: string
+  value?: string
+  description?: string
+  breakdown?: Array<{
+    label: string
+    value: string
+  }>
+}
+
+type LifecycleSummaryItem = {
+  label: string
+  value: string
+  description: string
+}
 
 const props = defineProps<{
   slug: string
@@ -62,7 +83,7 @@ if (!hackathonResponse.value?.data) {
 
 const hackathonId = computed(() => hackathonResponse.value!.data.id)
 const workspace = useAdminHackathonWorkspace(hackathonId)
-const adminOperationalTeamsPageSize = 3
+const apiFetch = import.meta.server ? useRequestFetch() : $fetch
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type ApplyStagedApplicationDecisionsResponse = ApiDataResponse<{
   appliedCount: number
@@ -70,10 +91,17 @@ type ApplyStagedApplicationDecisionsResponse = ApiDataResponse<{
   rejectedCount: number
 }>
 type StageApplicationResponse = ApiDataResponse<AdminApplicationRecord>
+type SubmissionMonitorData = {
+  teamDetails: AdminTeamDetailRecord[]
+  teamSubmissions: Array<SubmissionRecord | null>
+}
 
 const mutationError = ref('')
 const pendingActionKey = ref<string | null>(null)
 const participantView = ref<AccountHackathonParticipantView>('applications')
+const showParticipantsSection = computed(() => section.value === 'participants')
+const showSubmissionsSection = computed(() => section.value === 'submissions')
+const showLifecycleSection = computed(() => section.value === 'operations')
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
@@ -81,43 +109,82 @@ const roleAssignments = computed(() => workspace.roleAssignments.data.value?.dat
 const assignments = computed(() => workspace.assignments.data.value?.data ?? [])
 const leaderboard = computed(() => workspace.leaderboard.data.value?.data ?? [])
 const allTeams = computed(() => workspace.teams.data.value ?? [])
-const noSubmissionTeams = computed(() => workspace.noSubmissionTeams.data.value?.data ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
 const applications = ref<AdminApplicationRecord[]>([])
 const applicationsStatus = ref<LoadStatus>('idle')
 const applicationsErrorMessage = ref('')
-
-const paginatedTeams = ref<TeamSummary[]>([])
-const totalTeams = ref(0)
-const currentTeamPage = ref(1)
-const teamsStatus = ref<LoadStatus>('idle')
-const teamsErrorMessage = ref('')
-const isLoadingMoreTeams = ref(false)
-const loadMoreTeamsErrorMessage = ref('')
-
-const noSubmissionEntries = ref<NoSubmissionEntry[]>([])
-const noSubmissionStatus = ref<LoadStatus>('idle')
-const noSubmissionErrorMessage = ref('')
-
-const operationalTeams = ref<AdminOperationalTeam[]>([])
-const operationalTeamsStatus = ref<LoadStatus>('idle')
-const operationalTeamsErrorMessage = ref('')
-const loadedTeamDetails = ref<Array<AdminTeamDetailRecord | null>>([])
-const loadedTeamSubmissions = ref<Array<SubmissionRecord | null>>([])
+const submissionSearchInput = ref('')
+const submissionStatusFilter = ref<AdminSubmissionDashboardFilter>('all')
 const initializedHackathonId = ref<string | null>(null)
-const hasMoreTeams = computed(() => paginatedTeams.value.length < totalTeams.value)
+const noSubmissionTeams = computed(() => workspace.noSubmissionTeams.data.value?.data ?? [])
+const noSubmissionStatus = computed<LoadStatus>(() => normalizeAsyncStatus(workspace.noSubmissionTeams.status.value))
+const noSubmissionErrorMessage = computed(() =>
+  workspace.noSubmissionTeams.error.value?.message ?? ''
+)
+const teamIdsKey = computed(() => allTeams.value.map(team => team.id).join(':'))
+const submissionMonitorEnabled = computed(() =>
+  showSubmissionsSection.value && canManage.value
+)
+const {
+  data: submissionMonitorData,
+  status: submissionMonitorStatus,
+  error: submissionMonitorError,
+  refresh: refreshSubmissionMonitor
+} = useAsyncData<SubmissionMonitorData>(
+  () => [
+    'admin-hackathon-submission-monitor',
+    hackathonId.value,
+    teamIdsKey.value
+  ].join(':'),
+  async () => {
+    if (!submissionMonitorEnabled.value) {
+      return {
+        teamDetails: [],
+        teamSubmissions: []
+      }
+    }
+
+    if (allTeams.value.length === 0) {
+      return {
+        teamDetails: [],
+        teamSubmissions: []
+      }
+    }
+
+    const [teamDetails, teamSubmissions] = await Promise.all([
+      Promise.all(allTeams.value.map(async (team) => {
+        const response = await apiFetch<ApiDataResponse<AdminTeamDetailRecord>>(
+          `/api/hackathons/${hackathonId.value}/teams/${team.id}`
+        )
+
+        return response.data
+      })),
+      Promise.all(allTeams.value.map(async (team) => {
+        const response = await apiFetch<ApiDataResponse<SubmissionRecord | null>>(
+          `/api/hackathons/${hackathonId.value}/teams/${team.id}/submission`
+        )
+
+        return response.data
+      }))
+    ])
+
+    return {
+      teamDetails,
+      teamSubmissions
+    }
+  },
+  {
+    watch: [hackathonId, teamIdsKey, submissionMonitorEnabled],
+    default: () => ({
+      teamDetails: [],
+      teamSubmissions: []
+    })
+  }
+)
 
 function toSectionErrorMessage(error: unknown, fallback: string) {
   const message = normalizeApiError(error).message
   return message && message.length > 0 ? message : fallback
-}
-
-function rebuildOperationalTeams() {
-  operationalTeams.value = buildAdminOperationalTeams(paginatedTeams.value, {
-    teamDetails: loadedTeamDetails.value,
-    submissions: loadedTeamSubmissions.value,
-    noSubmissionEntries: noSubmissionStatus.value === 'success' ? noSubmissionEntries.value : []
-  })
 }
 
 async function loadApplications() {
@@ -140,157 +207,6 @@ async function loadApplications() {
   }
 }
 
-async function loadNoSubmissionEntries() {
-  noSubmissionStatus.value = 'pending'
-  noSubmissionErrorMessage.value = ''
-
-  try {
-    const response = await $fetch<ApiDataResponse<NoSubmissionEntry[]>>(
-      `/api/hackathons/${hackathonId.value}/no-submission-teams`
-    )
-    noSubmissionEntries.value = response.data
-    noSubmissionStatus.value = 'success'
-  } catch (error) {
-    noSubmissionEntries.value = []
-    noSubmissionStatus.value = 'error'
-    noSubmissionErrorMessage.value = toSectionErrorMessage(
-      error,
-      'The computed no-submission section could not be loaded right now.'
-    )
-  } finally {
-    rebuildOperationalTeams()
-  }
-}
-
-async function fetchTeamPage(page: number) {
-  return await $fetch<ApiListResponse<TeamSummary>>(`/api/hackathons/${hackathonId.value}/teams`, {
-    query: {
-      page,
-      page_size: adminOperationalTeamsPageSize
-    }
-  })
-}
-
-async function loadOperationalTeamDetails() {
-  if (paginatedTeams.value.length === 0) {
-    loadedTeamDetails.value = []
-    loadedTeamSubmissions.value = []
-    operationalTeamsStatus.value = 'success'
-    operationalTeamsErrorMessage.value = ''
-    rebuildOperationalTeams()
-    return
-  }
-
-  operationalTeamsStatus.value = 'pending'
-  operationalTeamsErrorMessage.value = ''
-
-  try {
-    const [teamDetails, teamSubmissions] = await Promise.all([
-      Promise.all(paginatedTeams.value.map(async (team) => {
-        const response = await $fetch<ApiDataResponse<AdminTeamDetailRecord>>(
-          `/api/hackathons/${hackathonId.value}/teams/${team.id}`
-        )
-
-        return response.data
-      })),
-      Promise.all(paginatedTeams.value.map(async (team) => {
-        const response = await $fetch<ApiDataResponse<SubmissionRecord | null>>(
-          `/api/hackathons/${hackathonId.value}/teams/${team.id}/submission`
-        )
-
-        return response.data
-      }))
-    ])
-
-    loadedTeamDetails.value = teamDetails
-    loadedTeamSubmissions.value = teamSubmissions
-    operationalTeamsStatus.value = 'success'
-    rebuildOperationalTeams()
-  } catch (error) {
-    loadedTeamDetails.value = []
-    loadedTeamSubmissions.value = []
-    operationalTeams.value = []
-    operationalTeamsStatus.value = 'error'
-    operationalTeamsErrorMessage.value = toSectionErrorMessage(
-      error,
-      'Detailed team and submission records could not be loaded right now.'
-    )
-  }
-}
-
-async function loadTeamPages(pageCount: number, options?: { loadMore?: boolean }) {
-  const isLoadMore = options?.loadMore ?? false
-
-  if (isLoadMore) {
-    isLoadingMoreTeams.value = true
-    loadMoreTeamsErrorMessage.value = ''
-  } else {
-    teamsStatus.value = 'pending'
-    teamsErrorMessage.value = ''
-    loadMoreTeamsErrorMessage.value = ''
-  }
-
-  try {
-    const responses = await Promise.all(
-      Array.from({ length: pageCount }, async (_, index) => await fetchTeamPage(index + 1))
-    )
-    const nextTeams = responses.flatMap(response => response.data)
-    const uniqueTeams = nextTeams.filter((team, index, items) =>
-      items.findIndex(candidate => candidate.id === team.id) === index
-    )
-
-    paginatedTeams.value = uniqueTeams
-    totalTeams.value = responses.at(-1)?.meta?.total ?? uniqueTeams.length
-    currentTeamPage.value = pageCount
-    teamsStatus.value = 'success'
-    await loadOperationalTeamDetails()
-  } catch (error) {
-    if (isLoadMore) {
-      loadMoreTeamsErrorMessage.value = toSectionErrorMessage(
-        error,
-        'More teams could not be loaded right now.'
-      )
-      return
-    }
-
-    paginatedTeams.value = []
-    totalTeams.value = 0
-    currentTeamPage.value = 1
-    teamsStatus.value = 'error'
-    teamsErrorMessage.value = toSectionErrorMessage(
-      error,
-      'Team records could not be loaded right now.'
-    )
-    loadedTeamDetails.value = []
-    loadedTeamSubmissions.value = []
-    operationalTeams.value = []
-    operationalTeamsStatus.value = 'idle'
-    operationalTeamsErrorMessage.value = ''
-  } finally {
-    if (isLoadMore) {
-      isLoadingMoreTeams.value = false
-    }
-  }
-}
-
-async function loadMoreTeams() {
-  if (isLoadingMoreTeams.value || !hasMoreTeams.value) {
-    return
-  }
-
-  await loadTeamPages(currentTeamPage.value + 1, {
-    loadMore: true
-  })
-}
-
-async function loadOperationsData(pageCount: number = 1) {
-  await Promise.all([
-    loadApplications(),
-    loadNoSubmissionEntries(),
-    loadTeamPages(pageCount)
-  ])
-}
-
 watch([() => currentHackathon.value?.id, canManage], async ([id, allowed]) => {
   if (!id || !allowed) {
     return
@@ -301,38 +217,9 @@ watch([() => currentHackathon.value?.id, canManage], async ([id, allowed]) => {
   }
 
   initializedHackathonId.value = id
-  await loadOperationsData(1)
+  await loadApplications()
 }, {
   immediate: true
-})
-
-const actionableTeamCount = computed(() => {
-  const hackathonState = currentHackathon.value?.state
-
-  if (!hackathonState || operationalTeamsStatus.value !== 'success') {
-    return 0
-  }
-
-  return operationalTeams.value.filter((team) => {
-    const policy = getAdminSubmissionInterventionPolicy(hackathonState, team.submissionStatus)
-    return policy.canAdminWithdraw || policy.canDisqualify
-  }).length
-})
-
-const showParticipantsSection = computed(() => section.value === 'participants')
-const showSubmissionsSection = computed(() => section.value === 'submissions')
-const showLifecycleSection = computed(() => section.value === 'operations')
-
-const applicationSummaryValue = computed(() => {
-  if (applicationsStatus.value === 'idle' || applicationsStatus.value === 'pending') {
-    return 'Loading...'
-  }
-
-  if (applicationsStatus.value === 'error') {
-    return 'Unavailable'
-  }
-
-  return `${applications.value.length}`
 })
 
 function formatParticipantMetricValue(value: number) {
@@ -372,30 +259,6 @@ const participantsLimitSummary = computed(() =>
   )
 )
 
-const teamSummaryValue = computed(() => {
-  if (teamsStatus.value === 'pending' || operationalTeamsStatus.value === 'pending') {
-    return 'Loading...'
-  }
-
-  if (teamsStatus.value === 'error' || operationalTeamsStatus.value === 'error') {
-    return 'Unavailable'
-  }
-
-  return `${operationalTeams.value.length}`
-})
-
-const actionableSummaryValue = computed(() => {
-  if (operationalTeamsStatus.value === 'pending') {
-    return 'Loading...'
-  }
-
-  if (operationalTeamsStatus.value === 'error' || teamsStatus.value === 'error') {
-    return 'Unavailable'
-  }
-
-  return `${actionableTeamCount.value}`
-})
-
 const lifecycleMetrics = computed(() => {
   const lockedEntries = leaderboard.value.filter(entry => entry.submissionStatus === 'locked')
 
@@ -419,9 +282,482 @@ const lifecycleControl = computed(() => {
   return getCurrentLifecycleControl(currentHackathon.value, lifecycleMetrics.value)
 })
 
+function normalizeAsyncStatus(status: string | undefined): LoadStatus {
+  switch (status) {
+    case 'idle':
+    case 'pending':
+    case 'error':
+      return status
+    default:
+      return 'success'
+  }
+}
+
+function combineLoadStatuses(statuses: LoadStatus[]): LoadStatus {
+  if (statuses.some(status => status === 'error')) {
+    return 'error'
+  }
+
+  if (statuses.some(status => status === 'idle' || status === 'pending')) {
+    return 'pending'
+  }
+
+  return 'success'
+}
+
+function formatLoadMetricValue(status: LoadStatus, value: string) {
+  if (status === 'idle' || status === 'pending') {
+    return 'Loading...'
+  }
+
+  if (status === 'error') {
+    return 'Unavailable'
+  }
+
+  return value
+}
+
+function formatLifecycleTimeframe(start: string, end: string) {
+  return `${formatTimestamp(start, 'Not scheduled')} - ${formatTimestamp(end, 'Not scheduled')}`
+}
+
+const teamDataStatus = computed(() => normalizeAsyncStatus(workspace.teams.status.value))
+const submissionMonitorLoadStatus = computed<LoadStatus>(() => normalizeAsyncStatus(submissionMonitorStatus.value))
+const leaderboardDataStatus = computed(() => normalizeAsyncStatus(workspace.leaderboard.status.value))
+const roleAssignmentsDataStatus = computed(() => normalizeAsyncStatus(workspace.roleAssignments.status.value))
+const submissionOperationalTeams = computed<AdminOperationalTeam[]>(() =>
+  buildAdminOperationalTeams(allTeams.value, {
+    teamDetails: submissionMonitorData.value.teamDetails,
+    submissions: submissionMonitorData.value.teamSubmissions,
+    noSubmissionEntries: noSubmissionTeams.value
+  })
+)
+const sortedSubmissionTeams = computed(() =>
+  sortAdminOperationalTeamsForSubmissionDashboard(submissionOperationalTeams.value)
+)
+const filteredSubmissionTeams = computed(() =>
+  filterAdminOperationalTeams(sortedSubmissionTeams.value, {
+    filter: submissionStatusFilter.value,
+    search: submissionSearchInput.value
+  })
+)
+const lateSubmissionTeams = computed(() =>
+  sortedSubmissionTeams.value.filter(team => getAdminSubmissionDashboardBucket(team.submissionStatus) === 'late')
+)
+const submissionDashboardMetrics = computed(() =>
+  getAdminSubmissionDashboardMetrics(submissionOperationalTeams.value)
+)
+const submissionPanelStatus = computed(() =>
+  combineLoadStatuses([teamDataStatus.value, noSubmissionStatus.value, submissionMonitorLoadStatus.value])
+)
+const submissionMonitorErrorMessage = computed(() => {
+  if (!submissionMonitorError.value) {
+    return ''
+  }
+
+  return toSectionErrorMessage(
+    submissionMonitorError.value,
+    'Detailed submission records could not be loaded right now.'
+  )
+})
+const submissionPanelErrorMessage = computed(() =>
+  workspace.teams.error.value?.message
+  || noSubmissionErrorMessage.value
+  || submissionMonitorErrorMessage.value
+)
+const operationsPhase = computed(() =>
+  currentHackathon.value ? getHackathonOperationsPhase(currentHackathon.value.state) : null
+)
+
+const lifecycleHeroClassByColor = {
+  primary: '!border-primary/24 !bg-primary/[0.06] dark:!border-primary/34 dark:!bg-primary/[0.08]',
+  secondary: '!border-secondary/24 !bg-secondary/[0.08] dark:!border-secondary/34 dark:!bg-secondary/[0.12]',
+  neutral: '!border-black/10 !bg-white/72 dark:!border-white/[0.10] dark:!bg-[#101010]/60',
+  success: '!border-success/24 !bg-success/[0.06] dark:!border-success/34 dark:!bg-success/[0.08]',
+  warning: '!border-warning/24 !bg-warning/[0.06] dark:!border-warning/34 dark:!bg-warning/[0.08]',
+  error: '!border-error/24 !bg-error/[0.06] dark:!border-error/34 dark:!bg-error/[0.08]',
+  info: '!border-info/24 !bg-info/[0.06] dark:!border-info/34 dark:!bg-info/[0.08]'
+} as const
+
+const lifecycleStateColor = computed(() =>
+  currentHackathon.value ? getHackathonStateColor(currentHackathon.value.state) : 'neutral'
+)
+
+const lifecycleHeroClass = computed(() =>
+  lifecycleHeroClassByColor[lifecycleStateColor.value]
+)
+
+const approvedApplicationCount = computed(() =>
+  applications.value.filter(application => application.status === 'approved').length
+)
+
+const rejectedApplicationCount = computed(() =>
+  applications.value.filter(application => application.status === 'rejected').length
+)
+
+const totalApplicationValue = computed(() =>
+  formatLoadMetricValue(applicationsStatus.value, `${applications.value.length}`)
+)
+
+const approvedApplicationValue = computed(() =>
+  formatLoadMetricValue(applicationsStatus.value, `${approvedApplicationCount.value}`)
+)
+
+const rejectedApplicationValue = computed(() =>
+  formatLoadMetricValue(applicationsStatus.value, `${rejectedApplicationCount.value}`)
+)
+
+const soloTeamCount = computed(() =>
+  allTeams.value.filter(team => (team.activeMemberCount ?? 0) <= 1).length
+)
+
+const multiPersonTeamCount = computed(() =>
+  allTeams.value.filter(team => (team.activeMemberCount ?? 0) > 1).length
+)
+
+const soloTeamValue = computed(() =>
+  formatLoadMetricValue(teamDataStatus.value, `${soloTeamCount.value}`)
+)
+
+const multiPersonTeamValue = computed(() =>
+  formatLoadMetricValue(teamDataStatus.value, `${multiPersonTeamCount.value}`)
+)
+
+const submittedSubmissionCount = computed(() =>
+  Math.max(allTeams.value.length - noSubmissionTeams.value.length, 0)
+)
+
+const draftSubmissionCount = computed(() =>
+  noSubmissionTeams.value.filter(entry => entry.submission?.status === 'draft').length
+)
+
+const draftSubmissionValue = computed(() =>
+  formatLoadMetricValue(noSubmissionStatus.value, `${draftSubmissionCount.value}`)
+)
+
+const submittedSubmissionValue = computed(() =>
+  formatLoadMetricValue(
+    combineLoadStatuses([teamDataStatus.value, noSubmissionStatus.value]),
+    `${submittedSubmissionCount.value} / ${allTeams.value.length}`
+  )
+)
+
+const lockedSubmissionCount = computed(() =>
+  leaderboard.value.filter(entry => entry.submissionStatus === 'locked').length
+)
+
+const completedReviewCount = computed(() =>
+  leaderboard.value.filter(entry =>
+    entry.submissionStatus === 'locked' && entry.reviewStatus === 'judge_completed'
+  ).length
+)
+
+const submissionsLeftToJudgeCount = computed(() =>
+  Math.max(lockedSubmissionCount.value - completedReviewCount.value, 0)
+)
+
+const judgingProgressValue = computed(() =>
+  formatLoadMetricValue(
+    leaderboardDataStatus.value,
+    `${completedReviewCount.value} / ${submissionsLeftToJudgeCount.value}`
+  )
+)
+
+const judgePoolCount = computed(() =>
+  roleAssignments.value.filter(assignment => assignment.isInJudgePool).length
+)
+
+const averageSubmissionsPerJudgeValue = computed(() => {
+  const status = combineLoadStatuses([leaderboardDataStatus.value, roleAssignmentsDataStatus.value])
+
+  if (status !== 'success') {
+    return formatLoadMetricValue(status, '')
+  }
+
+  if (judgePoolCount.value === 0) {
+    return 'Unavailable'
+  }
+
+  return (lockedSubmissionCount.value / judgePoolCount.value).toFixed(1)
+})
+
+const averageSubmissionsPerJudgeDescription = computed(() => {
+  if (roleAssignmentsDataStatus.value === 'idle' || roleAssignmentsDataStatus.value === 'pending') {
+    return 'Judge pool is loading.'
+  }
+
+  if (roleAssignmentsDataStatus.value === 'error') {
+    return 'Judge pool is unavailable right now.'
+  }
+
+  return judgePoolCount.value === 1
+    ? '1 judge currently in the pool.'
+    : `${judgePoolCount.value} judges currently in the pool.`
+})
+
+const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
+  if (!currentHackathon.value) {
+    return []
+  }
+
+  const hackathon = currentHackathon.value
+
+  switch (operationsPhase.value) {
+    case 'registration_open':
+      return [
+        {
+          label: 'Current status',
+          value: formatHackathonState(hackathon.state),
+          description: 'Applications are open and teams can start forming.'
+        },
+        {
+          label: 'Time frame',
+          value: formatLifecycleTimeframe(hackathon.registrationOpensAt, hackathon.registrationClosesAt),
+          description: 'Configured registration window.'
+        }
+      ]
+    case 'submission_open':
+      return [
+        {
+          label: 'Current status',
+          value: formatHackathonState(hackathon.state),
+          description: 'Teams can still edit drafts and send final submissions.'
+        },
+        {
+          label: 'Time frame',
+          value: formatLifecycleTimeframe(hackathon.submissionOpensAt, hackathon.submissionClosesAt),
+          description: 'Configured submission window.'
+        }
+      ]
+    case 'judging':
+      return [
+        {
+          label: 'Current status',
+          value: formatHackathonState(hackathon.state),
+          description: 'Reviews and competition outcomes are now in progress.'
+        },
+        {
+          label: 'Time frame',
+          value: `After ${formatTimestamp(hackathon.submissionClosesAt, 'submission close')}`,
+          description: 'Judging starts once the submission window has closed and continues until lifecycle completion.'
+        }
+      ]
+    case 'completed':
+      return [
+        {
+          label: 'Current status',
+          value: formatHackathonState(hackathon.state),
+          description: 'The lifecycle has finished and no further transitions are available.'
+        },
+        {
+          label: 'Time frame',
+          value: formatLifecycleTimeframe(hackathon.registrationOpensAt, hackathon.submissionClosesAt),
+          description: 'Lifecycle window from registration opening through the submission deadline.'
+        }
+      ]
+    default:
+      return [
+        {
+          label: 'Current status',
+          value: formatHackathonState(hackathon.state),
+          description: 'Lifecycle controls remain available from this tab.'
+        },
+        {
+          label: 'Time frame',
+          value: formatLifecycleTimeframe(hackathon.registrationOpensAt, hackathon.submissionClosesAt),
+          description: 'Configured registration and submission window.'
+        }
+      ]
+  }
+})
+
+const lifecycleActionAvailability = computed(() => {
+  const hackathon = currentHackathon.value
+  const control = lifecycleControl.value
+
+  if (!hackathon || !control) {
+    return {
+      label: 'Lifecycle status',
+      message: 'No further lifecycle action is available from Operations.',
+      className: 'text-toned'
+    }
+  }
+
+  if (control.isEnabled) {
+    return {
+      label: 'Available now',
+      message: 'This lifecycle action can be run now.',
+      className: 'text-success'
+    }
+  }
+
+  switch (control.key) {
+    case 'open_registration':
+      if (control.code === 'registration_window_not_open_yet') {
+        return {
+          label: 'Available when',
+          message: `The registration window starts on ${formatTimestamp(hackathon.registrationOpensAt, 'the scheduled opening time')}.`,
+          className: 'text-warning'
+        }
+      }
+
+      return {
+        label: 'Unavailable',
+        message: `The registration window closed on ${formatTimestamp(hackathon.registrationClosesAt, 'the scheduled closing time')}.`,
+        className: 'text-warning'
+      }
+    case 'open_submission':
+      if (control.code === 'registration_window_still_open') {
+        return {
+          label: 'Available when',
+          message: `Registration closes on ${formatTimestamp(hackathon.registrationClosesAt, 'the registration closing time')}. Submission can open after that, while the submission window is active.`,
+          className: 'text-warning'
+        }
+      }
+
+      return {
+        label: 'Available when',
+        message: `The submission window is active from ${formatTimestamp(hackathon.submissionOpensAt, 'the scheduled opening time')} to ${formatTimestamp(hackathon.submissionClosesAt, 'the scheduled closing time')}.`,
+        className: 'text-warning'
+      }
+    case 'start_judging_preparation':
+      if (control.code === 'submission_window_still_open') {
+        return {
+          label: 'Available when',
+          message: `The submission window closes on ${formatTimestamp(hackathon.submissionClosesAt, 'the submission deadline')}. Judging preparation becomes available after that.`,
+          className: 'text-warning'
+        }
+      }
+
+      if (control.code === 'submitted_submissions_required') {
+        return {
+          label: 'Available when',
+          message: 'At least one team needs to send a submission before judging preparation can start.',
+          className: 'text-warning'
+        }
+      }
+
+      if (control.code === 'judge_pool_required') {
+        return {
+          label: 'Available when',
+          message: 'At least one judge must be added to the judge pool before judging preparation can start.',
+          className: 'text-warning'
+        }
+      }
+
+      return {
+        label: 'Available when',
+        message: control.reason ?? 'This lifecycle action is not available yet.',
+        className: 'text-warning'
+      }
+    default:
+      return {
+        label: 'Available when',
+        message: control.reason ?? 'This lifecycle action is not available yet.',
+        className: 'text-warning'
+      }
+  }
+})
+
+const lifecycleMetricCards = computed<LifecycleMetricCard[]>(() => {
+  switch (operationsPhase.value) {
+    case 'registration_open':
+      return [
+        {
+          key: 'applications',
+          label: 'Applications',
+          breakdown: [
+            {
+              label: 'Approved',
+              value: approvedApplicationValue.value
+            },
+            {
+              label: 'Rejected',
+              value: rejectedApplicationValue.value
+            }
+          ]
+        },
+        {
+          key: 'teams',
+          label: 'Teams',
+          breakdown: [
+            {
+              label: 'Solo',
+              value: soloTeamValue.value
+            },
+            {
+              label: 'Multiple people',
+              value: multiPersonTeamValue.value
+            }
+          ]
+        }
+      ]
+    case 'submission_open':
+      return [
+        {
+          key: 'drafts',
+          label: 'Drafts Created',
+          value: draftSubmissionValue.value,
+          description: 'Teams that started a submission but have not sent it yet.'
+        },
+        {
+          key: 'submissions',
+          label: 'Submissions Sent',
+          value: submittedSubmissionValue.value,
+          description: 'Submitted projects relative to the total team count.'
+        }
+      ]
+    case 'judging':
+      return [
+        {
+          key: 'judging-progress',
+          label: 'Judging Progress',
+          value: judgingProgressValue.value,
+          description: 'Judged submissions relative to the submissions still left to judge.'
+        },
+        {
+          key: 'judge-load',
+          label: 'Average Per Judge',
+          value: averageSubmissionsPerJudgeValue.value,
+          description: averageSubmissionsPerJudgeDescription.value
+        }
+      ]
+    case 'completed':
+      return [
+        {
+          key: 'applications',
+          label: 'Applications',
+          value: totalApplicationValue.value,
+          description: 'Final application totals for the completed hackathon.',
+          breakdown: [
+            {
+              label: 'Approved',
+              value: approvedApplicationValue.value
+            },
+            {
+              label: 'Rejected',
+              value: rejectedApplicationValue.value
+            }
+          ]
+        },
+        {
+          key: 'submissions',
+          label: 'Submitted Projects',
+          value: submittedSubmissionValue.value,
+          description: 'Submitted projects relative to the total team count.'
+        }
+      ]
+    default:
+      return []
+  }
+})
+
 async function refreshOperations() {
   await workspace.refreshWorkspace()
-  await loadOperationsData(currentTeamPage.value)
+  await Promise.all([
+    loadApplications(),
+    refreshSubmissionMonitor()
+  ])
 }
 
 function replaceApplicationsLocally(updatedApplications: AdminApplicationRecord[]) {
@@ -689,92 +1025,118 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
     <template v-else-if="currentHackathon">
       <section
         v-if="showLifecycleSection"
-        class="grid gap-4 lg:grid-cols-4"
+        class="space-y-4"
       >
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Hackathon state
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
-            {{ formatHackathonState(currentHackathon.state) }}
-          </p>
-        </div>
-
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Applications
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
-            {{ applicationSummaryValue }}
-          </p>
-        </div>
-
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Teams
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
-            {{ teamSummaryValue }}
-          </p>
-        </div>
-
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-            Actionable interventions
-          </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
-            {{ actionableSummaryValue }}
-          </p>
-        </div>
-      </section>
-
-      <AppCard
-        v-if="showLifecycleSection && lifecycleControl"
-        class="rounded-xl hackathon-workspace-detail-panel"
-      >
-        <template #header>
-          <div class="space-y-1">
-            <h2 class="text-lg font-semibold text-highlighted">
-              Next Lifecycle Action
-            </h2>
-            <p class="text-sm text-muted">
-              Execute state transitions from operations once readiness criteria are met.
-            </p>
-          </div>
-        </template>
-
-        <div class="grid gap-4">
-          <div class="space-y-1">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Action
-            </p>
-            <h3 class="text-base font-semibold text-highlighted">
-              {{ lifecycleControl.label }}
-            </h3>
-            <p class="text-sm text-toned">
-              {{ lifecycleControl.description }}
-            </p>
-          </div>
-
-          <AppAlert
-            v-if="lifecycleControl.reason"
-            color="warning"
-            variant="soft"
-            title="Not ready yet"
-            :description="lifecycleControl.reason"
-          />
-
-          <AppButton
-            :disabled="!lifecycleControl.isEnabled"
-            color="primary"
-            size="lg"
-            class="justify-center sm:justify-start"
-            @click="runLifecycleAction"
+        <div
+          v-if="lifecycleMetricCards.length > 0"
+          class="grid gap-4 md:grid-cols-2"
+        >
+          <div
+            v-for="card in lifecycleMetricCards"
+            :key="card.key"
+            class="hackathon-workspace-detail-inset flex h-full flex-col gap-4 rounded-xl px-5 py-5"
           >
-            {{ lifecycleControl.label }}
-          </AppButton>
+            <div class="space-y-2">
+              <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                {{ card.label }}
+              </p>
+              <p
+                v-if="card.value"
+                class="text-3xl font-semibold text-highlighted"
+              >
+                {{ card.value }}
+              </p>
+              <p
+                v-if="card.description"
+                class="text-sm text-toned"
+              >
+                {{ card.description }}
+              </p>
+            </div>
+
+            <div
+              v-if="card.breakdown?.length"
+              class="grid gap-3 sm:grid-cols-2"
+            >
+              <div
+                v-for="row in card.breakdown"
+                :key="`${card.key}-${row.label}`"
+                class="rounded-lg border border-black/8 bg-white/62 px-4 py-3 dark:border-white/[0.08] dark:bg-black/10"
+              >
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                  {{ row.label }}
+                </p>
+                <p class="mt-1 text-lg font-semibold text-highlighted">
+                  {{ row.value }}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </AppCard>
+
+        <AppCard
+          :class="['rounded-xl hackathon-workspace-detail-panel', lifecycleHeroClass]"
+        >
+          <div class="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+            <div class="lg:pr-6">
+              <div class="grid gap-5 sm:grid-cols-2">
+                <div
+                  v-for="item in lifecycleSummaryItems"
+                  :key="item.label"
+                  class="space-y-2"
+                >
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                    {{ item.label }}
+                  </p>
+                  <p class="text-base font-semibold text-highlighted">
+                    {{ item.value }}
+                  </p>
+                  <p class="text-sm text-toned">
+                    {{ item.description }}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08] lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
+              <div class="space-y-1">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                  {{ lifecycleControl ? 'Next lifecycle action' : 'Lifecycle status' }}
+                </p>
+                <h3 class="text-base font-semibold text-highlighted">
+                  {{ lifecycleControl?.label ?? 'No further lifecycle actions' }}
+                </h3>
+                <p class="text-sm text-toned">
+                  {{ lifecycleControl?.description ?? 'The hackathon has reached a stable state with no additional lifecycle transition available from this view.' }}
+                </p>
+              </div>
+
+              <div class="space-y-1">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                  {{ lifecycleActionAvailability.label }}
+                </p>
+                <p
+                  class="text-sm"
+                  :class="lifecycleActionAvailability.className"
+                >
+                  {{ lifecycleActionAvailability.message }}
+                </p>
+              </div>
+
+              <AppButton
+                v-if="lifecycleControl"
+                :disabled="!lifecycleControl.isEnabled"
+                color="primary"
+                size="md"
+                class="justify-center sm:justify-start"
+                @click="runLifecycleAction"
+              >
+                {{ lifecycleControl.label }}
+              </AppButton>
+            </div>
+          </div>
+        </AppCard>
+      </section>
 
       <section
         v-if="showParticipantsSection"
@@ -888,23 +1250,20 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
         class="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]"
       >
         <AdminTeamsOperationsPanel
-          :teams="operationalTeams"
-          :total-teams="totalTeams"
-          :is-loading-teams="teamsStatus === 'pending' || operationalTeamsStatus === 'pending'"
-          :team-error-message="teamsStatus === 'error' ? teamsErrorMessage : operationalTeamsStatus === 'error' ? operationalTeamsErrorMessage : ''"
-          :is-loading-no-submission="noSubmissionStatus === 'pending'"
-          :no-submission-error-message="noSubmissionStatus === 'error' ? noSubmissionErrorMessage : ''"
-          :has-more-teams="hasMoreTeams"
-          :is-loading-more-teams="isLoadingMoreTeams"
-          :load-more-teams-error-message="loadMoreTeamsErrorMessage"
-          @load-more-teams="loadMoreTeams"
+          v-model:search="submissionSearchInput"
+          v-model:filter="submissionStatusFilter"
+          :teams="filteredSubmissionTeams"
+          :late-teams="lateSubmissionTeams"
+          :metrics="submissionDashboardMetrics"
+          :is-loading="submissionPanelStatus === 'pending'"
+          :error-message="submissionPanelStatus === 'error' ? submissionPanelErrorMessage : ''"
         />
 
         <AdminSubmissionInterventionsPanel
           :hackathon-state="currentHackathon.state"
-          :teams="operationalTeams"
-          :is-loading="teamsStatus === 'pending' || operationalTeamsStatus === 'pending'"
-          :error-message="teamsStatus === 'error' ? teamsErrorMessage : operationalTeamsStatus === 'error' ? operationalTeamsErrorMessage : ''"
+          :teams="sortedSubmissionTeams"
+          :is-loading="submissionPanelStatus === 'pending'"
+          :error-message="submissionPanelStatus === 'error' ? submissionPanelErrorMessage : ''"
           :pending-action-key="pendingActionKey"
           @admin-withdraw="adminWithdrawSubmission"
           @disqualify="disqualifySubmission"

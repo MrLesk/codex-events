@@ -21,9 +21,13 @@ import {
   formatApplicationStatus,
   formatAdminJudgeAssignmentStatus,
   formatSubmissionStatus,
+  filterAdminOperationalTeams,
   filterManageableHackathons,
   fromDateTimeLocalValue,
   getAdminJudgeAssignmentInterventionPolicy,
+  getAdminSubmissionDashboardBucket,
+  getAdminSubmissionDashboardMetrics,
+  getHackathonOperationsPhase,
   getAdminWorkspaceSubjectKey,
   getHackathonDashboardStateBadgePresentation,
   hasHackathonJudgingAccess,
@@ -39,6 +43,7 @@ import {
   hasHackathonAdminAccess,
   normalizeApiError,
   getSubmissionStatusColor,
+  sortAdminOperationalTeamsForSubmissionDashboard,
   shouldShowApplicationLumaSyncStatus,
   toDateTimeLocalValue
 } from '../../../../app/utils/admin-workspace'
@@ -222,6 +227,17 @@ describe('admin-workspace access helpers', () => {
       variant: 'soft',
       className: ''
     })
+  })
+
+  test('groups hackathon states into the supported operations dashboard phases', () => {
+    expect(getHackathonOperationsPhase('draft')).toBeNull()
+    expect(getHackathonOperationsPhase('registration_open')).toBe('registration_open')
+    expect(getHackathonOperationsPhase('submission_open')).toBe('submission_open')
+    expect(getHackathonOperationsPhase('judging_preparation')).toBe('judging')
+    expect(getHackathonOperationsPhase('judge_review')).toBe('judging')
+    expect(getHackathonOperationsPhase('shortlist')).toBe('judging')
+    expect(getHackathonOperationsPhase('winners_announced')).toBe('judging')
+    expect(getHackathonOperationsPhase('completed')).toBe('completed')
   })
 
   test('filters hackathons by explicit hackathon-admin access for non-platform admins', () => {
@@ -765,6 +781,305 @@ describe('admin-workspace operational helpers', () => {
         label: 'Beta Admin (beta@example.com)'
       }]
     })
+  })
+
+  test('derives compact submission dashboard metrics and lifecycle buckets', () => {
+    const operationalTeams = buildAdminOperationalTeams(
+      [
+        createTeamSummary({
+          id: 'team-none',
+          name: 'No Record Team',
+          slug: 'no-record-team',
+          createdByUserId: 'user-none'
+        }),
+        createTeamSummary({
+          id: 'team-draft',
+          name: 'Draft Team',
+          slug: 'draft-team',
+          createdByUserId: 'user-draft'
+        }),
+        createTeamSummary({
+          id: 'team-ready',
+          name: 'Ready Team',
+          slug: 'ready-team',
+          createdByUserId: 'user-ready'
+        }),
+        createTeamSummary({
+          id: 'team-out',
+          name: 'Out Team',
+          slug: 'out-team',
+          createdByUserId: 'user-out'
+        })
+      ],
+      {
+        teamDetails: [
+          createTeamDetail({
+            id: 'team-none',
+            name: 'No Record Team',
+            slug: 'no-record-team',
+            createdByUserId: 'user-none'
+          }),
+          createTeamDetail({
+            id: 'team-draft',
+            name: 'Draft Team',
+            slug: 'draft-team',
+            createdByUserId: 'user-draft'
+          }),
+          createTeamDetail({
+            id: 'team-ready',
+            name: 'Ready Team',
+            slug: 'ready-team',
+            createdByUserId: 'user-ready'
+          }),
+          createTeamDetail({
+            id: 'team-out',
+            name: 'Out Team',
+            slug: 'out-team',
+            createdByUserId: 'user-out'
+          })
+        ],
+        submissions: [
+          null,
+          createSubmission({
+            id: 'submission-draft',
+            teamId: 'team-draft',
+            status: 'draft',
+            projectName: 'Draft Console'
+          }),
+          createSubmission({
+            id: 'submission-ready',
+            teamId: 'team-ready',
+            status: 'submitted',
+            projectName: 'Ready Console'
+          }),
+          createSubmission({
+            id: 'submission-out',
+            teamId: 'team-out',
+            status: 'withdrawn',
+            projectName: 'Withdrawn Console'
+          })
+        ],
+        noSubmissionEntries: [
+          createNoSubmissionEntry({
+            team: createTeamSummary({
+              id: 'team-none',
+              name: 'No Record Team',
+              slug: 'no-record-team',
+              createdByUserId: 'user-none'
+            })
+          }),
+          createNoSubmissionEntry({
+            team: createTeamSummary({
+              id: 'team-draft',
+              name: 'Draft Team',
+              slug: 'draft-team',
+              createdByUserId: 'user-draft'
+            }),
+            submission: createSubmission({
+              id: 'submission-draft',
+              teamId: 'team-draft',
+              status: 'draft',
+              projectName: 'Draft Console'
+            })
+          })
+        ]
+      }
+    )
+
+    expect(getAdminSubmissionDashboardBucket('none')).toBe('late')
+    expect(getAdminSubmissionDashboardBucket('draft')).toBe('late')
+    expect(getAdminSubmissionDashboardBucket('submitted')).toBe('ready')
+    expect(getAdminSubmissionDashboardBucket('locked')).toBe('ready')
+    expect(getAdminSubmissionDashboardBucket('withdrawn')).toBe('out')
+    expect(getAdminSubmissionDashboardBucket('disqualified')).toBe('out')
+
+    expect(getAdminSubmissionDashboardMetrics(operationalTeams)).toEqual({
+      totalTeams: 4,
+      readyTeams: 1,
+      draftTeams: 1,
+      noSubmissionTeams: 1,
+      lateTeams: 2,
+      outTeams: 1
+    })
+  })
+
+  test('sorts and filters submission monitor rows by metadata only', () => {
+    const operationalTeams = buildAdminOperationalTeams(
+      [
+        createTeamSummary({
+          id: 'team-ready',
+          name: 'Ready Team',
+          slug: 'ready-team',
+          createdByUserId: 'user-ready',
+          updatedAt: '2026-03-24T15:00:00.000Z'
+        }),
+        createTeamSummary({
+          id: 'team-draft',
+          name: 'Draft Team',
+          slug: 'draft-team',
+          createdByUserId: 'user-draft',
+          updatedAt: '2026-03-24T14:00:00.000Z'
+        }),
+        createTeamSummary({
+          id: 'team-none',
+          name: 'No Record Team',
+          slug: 'no-record-team',
+          createdByUserId: 'user-none',
+          updatedAt: '2026-03-24T13:00:00.000Z'
+        })
+      ],
+      {
+        teamDetails: [
+          createTeamDetail({
+            id: 'team-ready',
+            name: 'Ready Team',
+            slug: 'ready-team',
+            createdByUserId: 'user-ready',
+            members: [{
+              id: 'membership-ready-admin',
+              teamId: 'team-ready',
+              userId: 'user-ready',
+              role: 'admin',
+              joinedAt: '2026-03-22T12:00:00.000Z',
+              leftAt: null,
+              createdAt: '2026-03-22T12:00:00.000Z',
+              user: {
+                id: 'user-ready',
+                email: 'ready-admin@example.com',
+                displayName: 'Ready Admin'
+              }
+            }]
+          }),
+          createTeamDetail({
+            id: 'team-draft',
+            name: 'Draft Team',
+            slug: 'draft-team',
+            createdByUserId: 'user-draft',
+            members: [{
+              id: 'membership-draft-admin',
+              teamId: 'team-draft',
+              userId: 'user-draft',
+              role: 'admin',
+              joinedAt: '2026-03-22T12:00:00.000Z',
+              leftAt: null,
+              createdAt: '2026-03-22T12:00:00.000Z',
+              user: {
+                id: 'user-draft',
+                email: 'draft-admin@example.com',
+                displayName: 'Draft Admin'
+              }
+            }]
+          }),
+          createTeamDetail({
+            id: 'team-none',
+            name: 'No Record Team',
+            slug: 'no-record-team',
+            createdByUserId: 'user-none',
+            members: [{
+              id: 'membership-none-admin',
+              teamId: 'team-none',
+              userId: 'user-none',
+              role: 'admin',
+              joinedAt: '2026-03-22T12:00:00.000Z',
+              leftAt: null,
+              createdAt: '2026-03-22T12:00:00.000Z',
+              user: {
+                id: 'user-none',
+                email: 'none-admin@example.com',
+                displayName: 'None Admin'
+              }
+            }]
+          })
+        ],
+        submissions: [
+          createSubmission({
+            id: 'submission-ready',
+            teamId: 'team-ready',
+            status: 'submitted',
+            projectName: 'Launch Console',
+            summary: 'Hidden summary terms',
+            submittedAt: '2026-03-24T15:00:00.000Z',
+            updatedAt: '2026-03-24T15:00:00.000Z'
+          }),
+          createSubmission({
+            id: 'submission-draft',
+            teamId: 'team-draft',
+            status: 'draft',
+            projectName: 'Draft Console',
+            summary: 'Internal-only draft summary',
+            submittedAt: null,
+            updatedAt: '2026-03-24T14:00:00.000Z'
+          }),
+          null
+        ],
+        noSubmissionEntries: [
+          createNoSubmissionEntry({
+            team: createTeamSummary({
+              id: 'team-none',
+              name: 'No Record Team',
+              slug: 'no-record-team',
+              createdByUserId: 'user-none'
+            })
+          }),
+          createNoSubmissionEntry({
+            team: createTeamSummary({
+              id: 'team-draft',
+              name: 'Draft Team',
+              slug: 'draft-team',
+              createdByUserId: 'user-draft'
+            }),
+            submission: createSubmission({
+              id: 'submission-draft',
+              teamId: 'team-draft',
+              status: 'draft',
+              projectName: 'Draft Console'
+            })
+          })
+        ]
+      }
+    )
+    const sortedTeams = sortAdminOperationalTeamsForSubmissionDashboard(operationalTeams)
+
+    expect(sortedTeams.map(team => team.team.id)).toEqual([
+      'team-none',
+      'team-draft',
+      'team-ready'
+    ])
+
+    expect(filterAdminOperationalTeams(sortedTeams, {
+      filter: 'late'
+    }).map(team => team.team.id)).toEqual([
+      'team-none',
+      'team-draft'
+    ])
+
+    expect(filterAdminOperationalTeams(sortedTeams, {
+      filter: 'ready'
+    }).map(team => team.team.id)).toEqual([
+      'team-ready'
+    ])
+
+    expect(filterAdminOperationalTeams(sortedTeams, {
+      search: 'draft-admin@example.com'
+    }).map(team => team.team.id)).toEqual([
+      'team-draft'
+    ])
+
+    expect(filterAdminOperationalTeams(sortedTeams, {
+      search: 'user-none'
+    }).map(team => team.team.id)).toEqual([
+      'team-none'
+    ])
+
+    expect(filterAdminOperationalTeams(sortedTeams, {
+      search: 'launch console'
+    }).map(team => team.team.id)).toEqual([
+      'team-ready'
+    ])
+
+    expect(filterAdminOperationalTeams(sortedTeams, {
+      search: 'internal-only draft summary'
+    })).toEqual([])
   })
 
   test('limits admin interventions to the canonical lifecycle and submission states', () => {
