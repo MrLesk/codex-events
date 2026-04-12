@@ -123,8 +123,8 @@ Then('the opened blind assignment should show status {string}', async ({ page },
 })
 
 When('I complete the opened blind review with workspace fixture scores', async ({ page }) => {
-  await page.getByTestId(`judge-criterion-score-${platformFixtureIds.judgeWorkspaceCriterionOneId}`).fill('8')
-  await page.getByTestId(`judge-criterion-score-${platformFixtureIds.judgeWorkspaceCriterionTwoId}`).fill('9')
+  await page.getByTestId(`judge-criterion-score-option-${platformFixtureIds.judgeWorkspaceCriterionOneId}-8`).click()
+  await page.getByTestId(`judge-criterion-score-option-${platformFixtureIds.judgeWorkspaceCriterionTwoId}-9`).click()
 
   await Promise.all([
     page.waitForResponse(response =>
@@ -152,6 +152,12 @@ Then('the opened blind assignment should show ineligibility {string}', async ({ 
 })
 
 When('I skip the opened blind review with reason {string}', async ({ page }, reason: string) => {
+  const showSkipButton = page.getByTestId('judge-show-skip-review')
+
+  if (await showSkipButton.isVisible().catch(() => false)) {
+    await showSkipButton.click()
+  }
+
   await page.getByTestId('judge-skip-reason').fill(reason)
 
   await Promise.all([

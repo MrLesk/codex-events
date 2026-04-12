@@ -30,6 +30,17 @@ const inReviewCount = computed(() =>
 const readyCount = computed(() =>
   assignments.value.filter(assignment => assignment.status === 'assigned').length
 )
+const nextQueuedAssignment = computed(() =>
+  assignments.value.find(assignment =>
+    assignment.status === 'assigned'
+    && assignment.id !== selectedAssignmentId.value
+  ) ?? null
+)
+const nextQueuedReviewHref = computed(() =>
+  currentHackathon.value && nextQueuedAssignment.value
+    ? buildAccountHackathonJudgingTabHref(currentHackathon.value.slug, nextQueuedAssignment.value.id)
+    : null
+)
 
 const nextAction = computed(() => {
   const inProgress = assignments.value.find(assignment => assignment.status === 'judge_started')
@@ -90,6 +101,7 @@ async function refreshWorkspace() {
         :hackathon-id="currentHackathon.id"
         :hackathon-slug="currentHackathon.slug"
         :assignment-id="selectedAssignmentId"
+        :next-review-href="nextQueuedReviewHref"
         @updated="refreshWorkspace"
       />
 

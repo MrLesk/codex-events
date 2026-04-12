@@ -3,8 +3,8 @@ import type { JudgeAssignmentDetail } from '~/utils/judging-workspace'
 
 import JudgeAssignmentStatusBadge from '~/components/judging/JudgeAssignmentStatusBadge.vue'
 import {
-  formatBlindApplicationCount,
-  formatJudgeTimestamp
+  formatJudgeIneligibilityStatus,
+  resolveJudgeIneligibilityColor
 } from '~/utils/judging-workspace'
 
 defineProps<{
@@ -13,81 +13,63 @@ defineProps<{
 </script>
 
 <template>
-  <AppCard class="rounded-xl hackathon-workspace-detail-panel p-6">
+  <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+    <template #header>
+      <div class="space-y-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <h2
+            data-testid="judge-assignment-project-name"
+            class="text-xl font-semibold text-highlighted dark:text-white"
+          >
+            {{ assignment.blindSubmission.projectName ?? 'Untitled blind submission' }}
+          </h2>
+
+          <div
+            data-testid="judge-assignment-status"
+            class="flex items-center"
+          >
+            <JudgeAssignmentStatusBadge :status="assignment.status" />
+          </div>
+
+          <AppBadge
+            data-testid="judge-assignment-ineligibility"
+            :color="resolveJudgeIneligibilityColor(assignment.ineligibilityStatus)"
+            variant="soft"
+            class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
+          >
+            {{ formatJudgeIneligibilityStatus(assignment.ineligibilityStatus) }}
+          </AppBadge>
+        </div>
+      </div>
+    </template>
+
     <div
       data-testid="judge-blind-submission"
       class="space-y-6"
     >
-      <div class="space-y-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <AppBadge
-            color="neutral"
-            variant="outline"
-            class="rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]"
-          >
-            Blind submission
-          </AppBadge>
-          <JudgeAssignmentStatusBadge :status="assignment.status" />
-        </div>
+      <p class="text-sm leading-7 text-toned">
+        {{ assignment.blindSubmission.summary || 'No project summary is available for this submission yet.' }}
+      </p>
 
-        <div class="space-y-2">
-          <h2
-            data-testid="judge-assignment-project-name"
-            class="text-[28px] font-semibold tracking-[-0.03em] text-highlighted dark:text-white sm:text-[32px]"
-          >
-            {{ assignment.blindSubmission.projectName ?? 'Untitled blind submission' }}
-          </h2>
-          <p class="max-w-3xl text-[15px] leading-7 text-neutral-600 dark:text-[#A3A3A3]">
-            {{ assignment.blindSubmission.summary || 'No blind summary is available for this assignment yet.' }}
-          </p>
-
-          <div
-            v-if="assignment.blindSubmission.track"
-            class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]"
-          >
-            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-              Track
-            </p>
-            <p class="mt-1 text-[15px] font-semibold text-highlighted dark:text-white">
-              {{ assignment.blindSubmission.track.name }}
-            </p>
-            <p class="mt-1 text-sm text-toned">
-              {{ assignment.blindSubmission.track.description }}
-            </p>
-          </div>
-        </div>
+      <div
+        v-if="assignment.blindSubmission.track"
+        class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]"
+      >
+        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+          Track
+        </p>
+        <p class="mt-1 text-[15px] font-semibold text-highlighted dark:text-white">
+          {{ assignment.blindSubmission.track.name }}
+        </p>
+        <p class="mt-1 text-sm text-toned">
+          {{ assignment.blindSubmission.track.description }}
+        </p>
       </div>
 
-      <div class="grid gap-4 md:grid-cols-3">
-        <div class="app-inset-card-tight px-4 py-4">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-            Submission status
-          </p>
-          <p class="mt-2 text-base font-semibold text-highlighted">
-            {{ assignment.blindSubmission.status }}
-          </p>
-        </div>
-
-        <div class="app-inset-card-tight px-4 py-4">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-            Locked
-          </p>
-          <p class="mt-2 text-base font-semibold text-highlighted">
-            {{ formatJudgeTimestamp(assignment.blindSubmission.lockedAt) }}
-          </p>
-        </div>
-
-        <div class="app-inset-card-tight px-4 py-4">
-          <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-            Application context
-          </p>
-          <p class="mt-2 text-base font-semibold text-highlighted">
-            {{ formatBlindApplicationCount(assignment.blindSubmission.applications.length) }}
-          </p>
-        </div>
-      </div>
-
-      <div class="flex flex-wrap gap-3">
+      <div
+        v-if="assignment.blindSubmission.repositoryUrl || assignment.blindSubmission.demoUrl"
+        class="flex flex-wrap gap-3"
+      >
         <AppButton
           v-if="assignment.blindSubmission.repositoryUrl"
           :to="assignment.blindSubmission.repositoryUrl"
@@ -115,47 +97,6 @@ defineProps<{
         >
           Demo
         </AppButton>
-      </div>
-
-      <div class="space-y-4">
-        <div class="flex items-center justify-between gap-3">
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Anonymized application context
-            </p>
-            <p class="mt-2 text-sm leading-7 text-toned">
-              Team identity is intentionally withheld. Use only the application timestamps below as review context.
-            </p>
-          </div>
-        </div>
-
-        <div class="grid gap-3">
-          <div
-            v-for="application in assignment.blindSubmission.applications"
-            :key="application.id"
-            class="app-inset-card-tight px-4 py-4"
-          >
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p class="text-sm font-semibold text-highlighted">
-                  Blind application {{ application.id.slice(-4).toUpperCase() }}
-                </p>
-                <p class="mt-1 text-xs uppercase tracking-[0.18em] text-muted">
-                  {{ application.status }}
-                </p>
-              </div>
-
-              <div class="grid gap-2 sm:text-right">
-                <p class="text-sm text-toned">
-                  Submitted {{ formatJudgeTimestamp(application.submittedAt) }}
-                </p>
-                <p class="text-sm text-toned">
-                  Reviewed {{ formatJudgeTimestamp(application.reviewedAt) }}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </AppCard>
