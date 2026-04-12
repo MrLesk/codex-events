@@ -1,11 +1,11 @@
 ---
 id: TASK-105
 title: Refresh Auth0 Universal Login copy and theme styling
-status: In Progress
+status: Done
 assignee:
   - codex
 created_date: '2026-03-29 20:01'
-updated_date: '2026-03-29 20:50'
+updated_date: '2026-04-12 14:08'
 labels: []
 dependencies: []
 priority: high
@@ -20,7 +20,7 @@ Update the hosted Auth0 Universal Login experience so it matches the Codex Hacka
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 The hosted Auth0 login prompt shows updated subtitle copy that is more meaningful for Codex Hackathons users.
-- [ ] #2 The visible Codex Hackathons wordmark on Universal Login is centered within the authentication card.
+- [x] #2 The visible Codex Hackathons wordmark on Universal Login is centered within the authentication card.
 - [x] #3 The Reset password and Sign up links use the Codex Hackathons theme color instead of the default Auth0 blue.
 - [x] #4 Auth0 bootstrap automation applies and verifies the canonical login copy and styling so the tenant remains reproducible.
 - [x] #5 Unit coverage or equivalent validation covers the new bootstrap expectations and asset behavior.
@@ -54,14 +54,24 @@ The retried `v0.1.0` production release run on commit `cc1bf72` cleared the orig
 Removed the dead local variable, re-ran `bun run lint` successfully with the existing `vue/no-v-html` warnings only, and re-ran `bun run test:unit` successfully (52 files, 245 tests).
 <!-- SECTION:NOTES:END -->
 
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Refreshed the hosted Auth0 Universal Login experience to match the Codex Hackathons brand more closely. The canonical subtitle copy is now applied, the visible wordmark is centered within the login card, and reset-password/sign-up links use the platform theme color instead of the default Auth0 blue.
+
+The bootstrap automation remains the source of truth for these tenant changes. It now handles the hosted-signup partial cleanup correctly by removing the `form-content-end` key instead of sending an empty string and treating a `404` partials read as already cleared, which keeps the tenant reproducible from code.
+
+Validation included a successful bootstrap apply/check against the dev tenant plus `bunx vitest run tests/unit/tools/auth0/auth0-bootstrap.test.ts`, `bun run lint`, and `bun run test:unit`. Risk/follow-up: manual app deploy from this shell remained blocked by the available Cloudflare API token permissions, so deploy verification depends on the normal release path.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->

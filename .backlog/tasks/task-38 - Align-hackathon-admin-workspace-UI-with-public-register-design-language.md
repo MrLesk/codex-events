@@ -1,11 +1,11 @@
 ---
 id: TASK-38
 title: Align hackathon admin workspace UI with public/register design language
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-03-27 17:45'
-updated_date: '2026-03-30 22:05'
+updated_date: '2026-04-12 14:08'
 labels: []
 dependencies: []
 priority: high

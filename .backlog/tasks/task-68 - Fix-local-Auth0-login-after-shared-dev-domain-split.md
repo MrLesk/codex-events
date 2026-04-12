@@ -1,11 +1,11 @@
 ---
 id: TASK-68
 title: Fix local Auth0 login after shared dev domain split
-status: In Progress
+status: Done
 assignee:
   - '@codex'
 created_date: '2026-03-28 23:46'
-updated_date: '2026-03-31 17:03'
+updated_date: '2026-04-12 14:08'
 labels: []
 dependencies: []
 references:
@@ -29,7 +29,7 @@ Local development login currently fails with a 500 from `/auth/login` because th
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 Local login works again with `NUXT_AUTH0_APP_BASE_URL=http://localhost:3000` while the shared dev deployment continues using `https://dev.codex-hackathons.com` and `https://auth.dev.codex-hackathons.com`
-- [ ] #2 Runtime Auth0 configuration no longer silently points local OIDC discovery at the application hostname when fallback Auth0 tenant or custom-domain configuration is already available
+- [x] #2 Runtime Auth0 configuration no longer silently points local OIDC discovery at the application hostname when fallback Auth0 tenant or custom-domain configuration is already available
 - [x] #3 Auth0 bootstrap or developer docs no longer imply that the runtime login domain and the application hostname are interchangeable
 - [x] #4 Unit coverage exercises the local-domain resolution or guard behavior for this regression
 <!-- AC:END -->
@@ -68,14 +68,24 @@ Temporary AUTH0_DEBUG_LOCAL instrumentation was added for diagnosis, confirmed t
 Post-cleanup validation: bun run lint, bun run typecheck, and bun run test:unit all completed successfully. Lint still reports the existing repository vue/no-v-html warnings in page components outside this task.
 <!-- SECTION:NOTES:END -->
 
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Fixed the local Auth0 login regression introduced by the shared dev domain split. Request-scoped Auth0 runtime configuration is now normalized so local development no longer falls back to the app hostname for OIDC discovery, and localhost sessions use the correct non-secure cookie behavior while HTTPS environments keep secure cookies.
+
+The fix was reinforced with focused unit coverage in `tests/unit/server/middleware/auth0-context.test.ts` and with documentation updates clarifying that `NUXT_AUTH0_DOMAIN` must point at the Auth0 issuer host, not the app host. Temporary local diagnostics were used to confirm the callback/session behavior and then removed.
+
+Validation passed with `bun run lint`, `bun run typecheck`, and `bun run test:unit` (with the existing unrelated `vue/no-v-html` warnings still present during lint). Risk/follow-up: none recorded beyond normal live-environment monitoring for Auth0 config changes.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
