@@ -5,8 +5,11 @@ import { hackathons } from '../../../database/schema'
 import { defineApiHandler } from '../../../utils/api-handler'
 import { apiData } from '../../../utils/api-response'
 import {
+  assertHackathonTrackReplacementAllowed,
   assertHackathonSlugAvailable,
   buildHackathonUpdatePayload,
+  listHackathonTracks,
+  replaceHackathonTracks,
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathon,
@@ -26,12 +29,20 @@ export default defineApiHandler(async (event) => {
     await assertHackathonSlugAvailable(database, body.slug, hackathon.id)
   }
 
+  if (body.tracks) {
+    await assertHackathonTrackReplacementAllowed(database, hackathonId, body.tracks)
+  }
+
   const patch = buildHackathonUpdatePayload(hackathon, body)
 
   await database
     .update(hackathons)
     .set(patch)
     .where(eq(hackathons.id, hackathonId))
+
+  if (body.tracks) {
+    await replaceHackathonTracks(database, hackathonId, body.tracks)
+  }
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,
@@ -46,6 +57,7 @@ export default defineApiHandler(async (event) => {
   const updatedHackathon = await database.query.hackathons.findFirst({
     where: eq(hackathons.id, hackathonId)
   })
+  const updatedTracks = await listHackathonTracks(database, hackathonId)
 
-  return apiData(serializeHackathon(updatedHackathon!))
+  return apiData(serializeHackathon(updatedHackathon!, undefined, updatedTracks))
 })

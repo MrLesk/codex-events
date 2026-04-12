@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { PublicHackathon } from '~/composables/useHackathonPresentation'
-import type { TeamSubmissionRecord } from '~/utils/team-submission'
+import type {
+  SubmissionTrackOption,
+  TeamSubmissionRecord
+} from '~/utils/team-submission'
 import type { TeamActionAvailability } from '~/utils/team-workspace'
 
 import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSubmissionPanel.vue'
@@ -32,6 +35,7 @@ import {
 const props = defineProps<{
   hackathon: PublicHackathon & {
     id: string
+    tracks?: SubmissionTrackOption[]
   }
   applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
   initialSubmission: TeamSubmissionRecord | null
@@ -56,7 +60,8 @@ const submissionForm = reactive({
   projectName: '',
   summary: '',
   repositoryUrl: '',
-  demoUrl: ''
+  demoUrl: '',
+  trackId: null as string | null
 })
 const createTeamErrors = reactive({
   name: '',
@@ -184,6 +189,7 @@ watch(() => submissionWorkspace.currentSubmission.value, (submission) => {
   submissionForm.summary = submission?.summary ?? ''
   submissionForm.repositoryUrl = submission?.repositoryUrl ?? ''
   submissionForm.demoUrl = submission?.demoUrl ?? ''
+  submissionForm.trackId = submission?.trackId ?? null
 }, {
   immediate: true
 })
@@ -223,7 +229,8 @@ function buildSubmissionInput() {
     projectName: submissionForm.projectName.trim(),
     summary: submissionForm.summary.trim(),
     repositoryUrl: submissionForm.repositoryUrl.trim(),
-    demoUrl: submissionForm.demoUrl.trim()
+    demoUrl: submissionForm.demoUrl.trim(),
+    trackId: submissionForm.trackId?.trim() || null
   }
 }
 
@@ -853,6 +860,7 @@ async function withdrawSubmission() {
             v-model:form="submissionForm"
             :team-id="displayedTeam.id"
             :hackathon-state="props.hackathon.state"
+            :tracks="props.hackathon.tracks ?? []"
             :submission="submissionWorkspace.currentSubmission.value"
             :status="submissionWorkspace.currentSubmissionStatus.value"
             :error-message="submissionWorkspace.currentSubmissionErrorMessage.value"

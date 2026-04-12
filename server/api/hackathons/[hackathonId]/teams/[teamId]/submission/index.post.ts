@@ -10,6 +10,7 @@ import {
   buildSubmissionWritePayload,
   createSubmissionBodySchema,
   getSubmissionForTeam,
+  resolveValidatedSubmissionTrackId,
   serializeSubmission,
   submissionParamsSchema
 } from '../../../../../../utils/submissions'
@@ -23,6 +24,7 @@ export default defineApiHandler(async (event) => {
   assertHackathonAllowsSubmissionEditing(hackathon)
   const existingSubmission = await getSubmissionForTeam(database, teamId)
   assertNoSubmissionExists(existingSubmission, teamId)
+  const trackId = await resolveValidatedSubmissionTrackId(database, hackathonId, body.trackId)
 
   const now = new Date().toISOString()
   const submissionId = crypto.randomUUID()
@@ -30,6 +32,7 @@ export default defineApiHandler(async (event) => {
   await database.insert(submissions).values({
     id: submissionId,
     teamId,
+    trackId: null,
     status: 'draft',
     projectName: null,
     summary: null,
@@ -46,6 +49,7 @@ export default defineApiHandler(async (event) => {
   return apiData(serializeSubmission({
     id: submissionId,
     teamId,
+    trackId,
     status: 'draft',
     projectName: body.projectName ?? null,
     summary: body.summary ?? null,

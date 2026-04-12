@@ -3,6 +3,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
 import type {
+  SubmissionTrackOption,
   TeamSubmissionActionAvailability,
   TeamSubmissionRecord
 } from '~/utils/team-submission'
@@ -12,7 +13,7 @@ import {
   getTeamSubmissionStatusColor,
   getTeamSubmissionWorkspaceStatus
 } from '~/utils/team-submission'
-import { teamSubmissionFormSchema } from '~/utils/form-schemas'
+import { createTeamSubmissionFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
 
 const form = defineModel<{
@@ -20,6 +21,7 @@ const form = defineModel<{
   summary: string
   repositoryUrl: string
   demoUrl: string
+  trackId: string | null
 }>('form', {
   required: true
 })
@@ -32,6 +34,7 @@ const props = defineProps<{
   errorMessage?: string
   mutationError?: string
   canManageSubmission?: boolean
+  tracks?: SubmissionTrackOption[]
   createAvailability: TeamSubmissionActionAvailability
   updateAvailability: TeamSubmissionActionAvailability
   submitAvailability: TeamSubmissionActionAvailability
@@ -56,6 +59,16 @@ const withdrawActionKey = computed(() => props.submission ? `withdraw-submission
 const hasMutableSubmission = computed(() =>
   Boolean(props.submission && (props.submission.status === 'draft' || props.submission.status === 'submitted'))
 )
+const sortedTracks = computed(() =>
+  [...(props.tracks ?? [])].sort((left, right) => left.displayOrder - right.displayOrder || left.name.localeCompare(right.name))
+)
+const requiresTrackSelection = computed(() => sortedTracks.value.length > 0)
+const trackSelectionInput = computed({
+  get: () => form.value.trackId ?? '',
+  set: (value: string) => {
+    form.value.trackId = value.trim() || null
+  }
+})
 const isFormReadOnly = computed(() =>
   props.submission
     ? !props.canManageSubmission || !hasMutableSubmission.value
@@ -78,6 +91,9 @@ function isActionPending(actionKey: string) {
 }
 
 const syncingFromModel = ref(false)
+const validationSchema = computed(() =>
+  toTypedSchema(createTeamSubmissionFormSchema(requiresTrackSelection.value))
+)
 
 const {
   errors,
@@ -86,7 +102,7 @@ const {
   setValues,
   handleSubmit
 } = useForm({
-  validationSchema: toTypedSchema(teamSubmissionFormSchema),
+  validationSchema,
   initialValues: cloneFormValues(form.value)
 })
 const submitAttempted = computed(() => submitCount.value > 0)
@@ -247,6 +263,43 @@ function handleSubmitProjectAttempt(event?: Event) {
                 class="text-xs text-error"
               >
                 {{ errors.summary }}
+              </p>
+            </AppFormField>
+
+            <AppFormField
+              v-if="requiresTrackSelection"
+              label="Track"
+              name="participant-submission-track"
+            >
+              <AppSelect
+                id="participant-submission-track"
+                v-model="trackSelectionInput"
+                name="participant-submission-track"
+                :disabled="isDraftMutationDisabled"
+                :class="submitAttempted && errors.trackId ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
+              >
+                <option value="">
+                  Select a track
+                </option>
+                <option
+                  v-for="track in sortedTracks"
+                  :key="track.id"
+                  :value="track.id"
+                >
+                  {{ track.name }}
+                </option>
+              </AppSelect>
+              <p
+                v-if="submitAttempted && errors.trackId"
+                class="text-xs text-error"
+              >
+                {{ errors.trackId }}
+              </p>
+              <p
+                v-else-if="form.trackId"
+                class="text-xs text-muted"
+              >
+                {{ sortedTracks.find(track => track.id === form.trackId)?.description }}
               </p>
             </AppFormField>
 

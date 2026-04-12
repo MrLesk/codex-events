@@ -14,6 +14,7 @@ import {
 import { getDatabase, type AppDatabase } from '../database/client'
 import {
   evaluationCriteria,
+  hackathonTracks,
   hackathonRoleAssignments,
   judgeAssignments,
   judgeCriterionScores,
@@ -113,7 +114,8 @@ function serializeBlindApplication(application: typeof userApplications.$inferSe
 
 export function serializeBlindSubmission(
   submission: SubmissionRecord,
-  applications: Array<typeof userApplications.$inferSelect>
+  applications: Array<typeof userApplications.$inferSelect>,
+  track: typeof hackathonTracks.$inferSelect | null
 ) {
   return {
     id: submission.id,
@@ -121,6 +123,13 @@ export function serializeBlindSubmission(
     summary: submission.summary,
     repositoryUrl: submission.repositoryUrl,
     demoUrl: submission.demoUrl,
+    track: track
+      ? {
+          id: track.id,
+          name: track.name,
+          description: track.description
+        }
+      : null,
     status: submission.status,
     submittedAt: submission.submittedAt,
     lockedAt: submission.lockedAt,
@@ -401,8 +410,9 @@ export async function getBlindAssignmentDetails(
   })
   const submissionsById = new Map(submissionRows.map(submission => [submission.id, submission]))
   const teamIds = [...new Set(submissionRows.map(submission => submission.teamId))]
+  const trackIds = [...new Set(submissionRows.map(submission => submission.trackId).filter((trackId): trackId is string => Boolean(trackId)))]
 
-  const [activeMembers, criteria, criterionScores] = await Promise.all([
+  const [activeMembers, criteria, criterionScores, tracks] = await Promise.all([
     teamIds.length === 0
       ? Promise.resolve([])
       : database.query.teamMembers.findMany({
@@ -422,7 +432,12 @@ export async function getBlindAssignmentDetails(
         assignments.map(assignment => assignment.id)
       ),
       orderBy: [asc(judgeCriterionScores.createdAt)]
-    })
+    }),
+    trackIds.length === 0
+      ? Promise.resolve([])
+      : database.query.hackathonTracks.findMany({
+          where: inArray(hackathonTracks.id, trackIds)
+        })
   ])
 
   const activeMembersByTeamId = new Map<string, Array<(typeof activeMembers)[number]>>()
@@ -434,6 +449,7 @@ export async function getBlindAssignmentDetails(
   }
 
   const criteriaById = new Map(criteria.map(criterion => [criterion.id, criterion]))
+  const tracksById = new Map(tracks.map(track => [track.id, track]))
 
   const criterionScoresByAssignmentId = new Map<string, Array<(typeof criterionScores)[number]>>()
 
@@ -482,7 +498,11 @@ export async function getBlindAssignmentDetails(
 
     return {
       ...serializeJudgeAssignment(assignment),
-      blindSubmission: serializeBlindSubmission(submission, applications),
+      blindSubmission: serializeBlindSubmission(
+        submission,
+        applications,
+        submission.trackId ? tracksById.get(submission.trackId) ?? null : null
+      ),
       criterionScores: assignmentScores.map(score =>
         serializeJudgeCriterionScore(score, criteriaById.get(score.evaluationCriterionId) ?? null)
       )

@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { requirePlatformActor } from '../auth/actor'
 import { resolveHackathonAuthorization, resolveTeamAuthorization } from '../auth/authorization'
 import { getDatabase, type AppDatabase } from '../database/client'
-import { submissions, teams, teamMembers } from '../database/schema'
+import { hackathonTracks, submissions, teams, teamMembers } from '../database/schema'
 import type { hackathons } from '../database/schema'
 import { ApiError } from './api-error'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
@@ -20,7 +20,8 @@ const submissionBodyShape = {
   projectName: requiredStringSchema,
   summary: requiredStringSchema,
   repositoryUrl: requiredUrlSchema,
-  demoUrl: requiredUrlSchema
+  demoUrl: requiredUrlSchema,
+  trackId: z.string().trim().min(1).nullable().optional()
 } satisfies Record<string, z.ZodTypeAny>
 
 type HackathonRecord = typeof hackathons.$inferSelect
@@ -48,6 +49,7 @@ export function serializeSubmission(submission: SubmissionRecord) {
   return {
     id: submission.id,
     teamId: submission.teamId,
+    trackId: submission.trackId,
     status: submission.status,
     projectName: submission.projectName,
     summary: submission.summary,
@@ -118,7 +120,67 @@ export function assertSubmissionMutable(submission: SubmissionRecord) {
   })
 }
 
-export function assertSubmissionSubmittable(submission: SubmissionRecord) {
+async function listSubmissionTracksForHackathon(database: AppDatabase, hackathonId: string) {
+  return await database.query.hackathonTracks.findMany({
+    columns: {
+      id: true
+    },
+    where: eq(hackathonTracks.hackathonId, hackathonId)
+  })
+}
+
+export async function resolveValidatedSubmissionTrackId(
+  database: AppDatabase,
+  hackathonId: string,
+  trackId: string | null | undefined
+) {
+  const availableTracks = await listSubmissionTracksForHackathon(database, hackathonId)
+  const normalizedTrackId = trackId?.trim() || null
+
+  if (availableTracks.length === 0) {
+    assertGuard(!normalizedTrackId, {
+      code: 'submission_track_invalid',
+      message: 'The selected submission track is not valid for this hackathon.',
+      details: {
+        hackathonId,
+        trackId: normalizedTrackId
+      },
+      statusCode: 400
+    })
+
+    return null
+  }
+
+  assertGuard(Boolean(normalizedTrackId), {
+    code: 'submission_track_required',
+    message: 'Select a track before saving this submission.',
+    details: {
+      hackathonId
+    },
+    statusCode: 400
+  })
+
+  assertGuard(
+    availableTracks.some(track => track.id === normalizedTrackId),
+    {
+      code: 'submission_track_invalid',
+      message: 'The selected submission track is not valid for this hackathon.',
+      details: {
+        hackathonId,
+        trackId: normalizedTrackId
+      },
+      statusCode: 400
+    }
+  )
+
+  return normalizedTrackId
+}
+
+export async function assertSubmissionSubmittable(
+  database: AppDatabase,
+  hackathon: HackathonRecord,
+  submission: SubmissionRecord
+) {
   assertAllowedState(submission.status, ['draft'], {
     code: 'submission_state_invalid',
     message: 'Only draft submissions can be submitted.',
@@ -142,6 +204,8 @@ export function assertSubmissionSubmittable(submission: SubmissionRecord) {
     },
     statusCode: 400
   })
+
+  await resolveValidatedSubmissionTrackId(database, hackathon.id, submission.trackId)
 }
 
 export function assertSubmissionWithdrawable(
@@ -208,6 +272,10 @@ export function buildSubmissionWritePayload(
 
   if ('demoUrl' in input) {
     payload.demoUrl = input.demoUrl
+  }
+
+  if ('trackId' in input) {
+    payload.trackId = input.trackId?.trim() || null
   }
 
   return payload

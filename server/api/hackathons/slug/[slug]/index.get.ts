@@ -4,6 +4,7 @@ import { apiData } from '../../../../utils/api-response'
 import {
   getCurrentHackathonTerms,
   getVisibleHackathonBySlugOrThrow,
+  listHackathonTracks,
   routeSlugParamsSchema,
   serializeHackathon
 } from '../../../../utils/hackathon-management'
@@ -12,9 +13,11 @@ import { parseValidatedParams } from '../../../../utils/validation'
 export default defineApiHandler(async (event) => {
   const { slug } = parseValidatedParams(event, routeSlugParamsSchema)
   const hackathon = await getVisibleHackathonBySlugOrThrow(event, slug)
-  const currentTerms = await getCurrentHackathonTerms(getDatabase(event), hackathon)
+  const database = getDatabase(event)
+  const currentTerms = await getCurrentHackathonTerms(database, hackathon)
+  const tracks = await listHackathonTracks(database, hackathon.id)
 
   return apiData({
-    ...serializeHackathon(hackathon, currentTerms)
+    ...serializeHackathon(hackathon, currentTerms, tracks)
   })
 })

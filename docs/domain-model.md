@@ -60,6 +60,7 @@ Key characteristics:
 - Multiple hackathons can exist in parallel.
 - Each hackathon can define a background image and a banner image.
 - Each hackathon can define structured agenda items for public schedule display and admin editing.
+- Each hackathon can define ordered submission tracks with a name and description.
 - Each hackathon can be marked as an in-person event.
 - Each hackathon can optionally reference a public Luma event URL.
 - Each hackathon can optionally store a Luma event API ID used for operational sync.
@@ -74,6 +75,19 @@ Key characteristics:
 - Each hackathon can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma email, for registration.
 - Each hackathon can require a `why this hackathon` response and proof-of-execution links in applications.
 - Each hackathon references its own application terms and winner terms.
+
+### HackathonTrack
+
+An ordered submission category belonging to one hackathon.
+
+Rules:
+
+- Each track belongs to exactly one hackathon.
+- A track has a name and a description.
+- Tracks are ordered for admin editing and public display.
+- Tracks are visible on the public and account-scoped hackathon detail pages when configured.
+- Tracks do not change judging assignment, scoring criteria, or blind-review behavior in this version.
+- A track cannot be deleted once one or more submissions reference it.
 
 ### PlatformDocument
 
@@ -239,17 +253,20 @@ Key characteristics:
 
 - Every submission belongs to a team.
 - Solo participants still submit as a team.
+- A submission can reference one track from its hackathon.
 - Team admins create and manage the submission on behalf of the team.
 - Team admins can edit their submission only during the submission window.
 
 Rules:
 
 - Submission ownership is team-based, not user-based.
+- When a hackathon has one or more configured tracks, every submission must select exactly one track from that hackathon.
 - When the judging preparation step begins, submissions are locked.
 - Once locked, submissions can no longer be edited.
 - A submission can be marked with workflow outcomes such as withdrawn or disqualified.
 - A team with no submission is not eligible for judging, but this is represented by the absence of a submission rather than by a submission outcome.
 - A draft submission that is never submitted is treated as no submission for judging and dashboard purposes.
+- Blind judging includes the selected track because track membership is part of the submission itself and does not reveal team identity.
 
 ### EvaluationCriterion
 
@@ -345,11 +362,13 @@ Scope:
 
 - A `User` can have many `UserApplication` records over time.
 - A `Hackathon` can have many `UserApplication` records.
+- A `Hackathon` can have many `HackathonTrack` records.
 - A `Hackathon` can have many `Team` records.
 - A `Team` can have many `TeamMember` records.
 - A `Team` can have many `TeamJoinRequest` records.
 - A `Team` can have zero or one active `Submission`.
 - A `Submission` can have many `JudgeAssignment` records.
+- A `Submission` can reference zero or one `HackathonTrack`.
 - A `Hackathon` can have many `EvaluationCriterion` records.
 - A `Hackathon` can have many `Prize` records.
 - A `Hackathon` can have many `PrizeEligibilitySnapshot` records.
@@ -381,7 +400,7 @@ Scope:
 ### Judging
 
 - Judging is blind with respect to team identity.
-- Any actor reviewing through a judge assignment sees anonymized application information but not team identity.
+- Any actor reviewing through a judge assignment sees anonymized application information and the selected submission track, but not team identity.
 - Hackathon admins and platform admins retain their normal admin visibility outside the judge review flow.
 - Judging does not begin automatically when the submission window closes.
 - A manual admin action starts judging preparation and locks submissions.

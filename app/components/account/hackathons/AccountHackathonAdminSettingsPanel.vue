@@ -21,7 +21,8 @@ import {
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled,
   normalizeApiError,
-  toHackathonAgendaPayload
+  toHackathonAgendaPayload,
+  toHackathonTracksPayload
 } from '~/utils/admin-workspace'
 import { getHackathonProgramSettingsCopy } from '~/utils/hackathon-program-settings'
 
@@ -559,6 +560,7 @@ async function saveConfiguration(configForm: HackathonFormState) {
       lumaEventApiId: configForm.lumaEventApiId.trim() || null,
       description: configForm.description,
       agendaItems: toHackathonAgendaPayload(configForm.agendaItems),
+      tracks: toHackathonTracksPayload(configForm.tracks),
       city: configForm.city,
       country: configForm.country,
       address: configForm.address,

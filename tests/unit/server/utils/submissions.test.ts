@@ -9,7 +9,8 @@ import {
   assertSubmissionSubmittable,
   assertSubmissionWithdrawable,
   buildSubmissionWritePayload,
-  isNoSubmissionStatus
+  isNoSubmissionStatus,
+  resolveValidatedSubmissionTrackId
 } from '../../../../server/utils/submissions'
 
 function createHackathon(
@@ -44,6 +45,7 @@ function createSubmission(status: 'draft' | 'submitted' | 'withdrawn' | 'locked'
   return {
     id: 'submission_1',
     teamId: 'team_1',
+    trackId: null,
     status,
     projectName: 'Project',
     summary: 'Summary',
@@ -66,6 +68,16 @@ function createIncompleteSubmission(status: 'draft' | 'submitted' | 'withdrawn' 
   }
 }
 
+function createDatabase(trackIds: string[] = []) {
+  return {
+    query: {
+      hackathonTracks: {
+        findMany: async () => trackIds.map(id => ({ id }))
+      }
+    }
+  } as never
+}
+
 describe('TASK-3.7 submission helpers', () => {
   test('submission editing is limited to submission_open', () => {
     expect(() => assertHackathonAllowsSubmissionEditing(createHackathon('submission_open'))).not.toThrow()
@@ -77,14 +89,58 @@ describe('TASK-3.7 submission helpers', () => {
     expect(() => assertNoSubmissionExists(createSubmission('withdrawn'), 'team_1')).toThrowError(ApiError)
   })
 
-  test('submission mutation and submit guards follow the documented state machine', () => {
+  test('submission mutation and submit guards follow the documented state machine', async () => {
     expect(() => assertSubmissionMutable(createSubmission('draft'))).not.toThrow()
     expect(() => assertSubmissionMutable(createSubmission('submitted'))).not.toThrow()
     expect(() => assertSubmissionMutable(createSubmission('locked'))).toThrowError(ApiError)
 
-    expect(() => assertSubmissionSubmittable(createSubmission('draft'))).not.toThrow()
-    expect(() => assertSubmissionSubmittable(createSubmission('submitted'))).toThrowError(ApiError)
-    expect(() => assertSubmissionSubmittable(createIncompleteSubmission('draft'))).toThrowError(ApiError)
+    await expect(assertSubmissionSubmittable(
+      createDatabase(),
+      createHackathon('submission_open'),
+      createSubmission('draft')
+    )).resolves.toBeUndefined()
+    await expect(assertSubmissionSubmittable(
+      createDatabase(),
+      createHackathon('submission_open'),
+      createSubmission('submitted')
+    )).rejects.toThrowError(ApiError)
+    await expect(assertSubmissionSubmittable(
+      createDatabase(),
+      createHackathon('submission_open'),
+      createIncompleteSubmission('draft')
+    )).rejects.toThrowError(ApiError)
+  })
+
+  test('submission track validation follows the configured hackathon tracks', async () => {
+    await expect(resolveValidatedSubmissionTrackId(
+      createDatabase(),
+      'hackathon_1',
+      null
+    )).resolves.toBeNull()
+
+    await expect(resolveValidatedSubmissionTrackId(
+      createDatabase(),
+      'hackathon_1',
+      'track_1'
+    )).rejects.toThrowError(ApiError)
+
+    await expect(resolveValidatedSubmissionTrackId(
+      createDatabase(['track_1']),
+      'hackathon_1',
+      null
+    )).rejects.toThrowError(ApiError)
+
+    await expect(resolveValidatedSubmissionTrackId(
+      createDatabase(['track_1']),
+      'hackathon_1',
+      'track_2'
+    )).rejects.toThrowError(ApiError)
+
+    await expect(resolveValidatedSubmissionTrackId(
+      createDatabase(['track_1']),
+      'hackathon_1',
+      'track_1'
+    )).resolves.toBe('track_1')
   })
 
   test('withdrawal is allowed only before judging preparation and only for draft or submitted submissions', () => {
@@ -114,12 +170,14 @@ describe('TASK-3.7 submission helpers', () => {
       projectName: 'Updated Project',
       summary: 'Updated summary',
       repositoryUrl: 'https://github.com/example/updated-project',
-      demoUrl: 'https://example.com/updated-project'
+      demoUrl: 'https://example.com/updated-project',
+      trackId: 'track_1'
     }, '2026-03-24T13:00:00.000Z')).toEqual({
       projectName: 'Updated Project',
       summary: 'Updated summary',
       repositoryUrl: 'https://github.com/example/updated-project',
       demoUrl: 'https://example.com/updated-project',
+      trackId: 'track_1',
       updatedAt: '2026-03-24T13:00:00.000Z'
     })
   })

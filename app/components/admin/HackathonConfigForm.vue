@@ -32,6 +32,7 @@ const emit = defineEmits<{
 }>()
 
 type AgendaFormItem = HackathonFormState['agendaItems'][number]
+type TrackFormItem = HackathonFormState['tracks'][number]
 
 const props = defineProps<{
   isSubmitting?: boolean
@@ -52,6 +53,7 @@ const showBasicInformationFields = computed(() => formModeView.value.showBasicIn
 const showAgendaItemsSection = computed(() => formModeView.value.showAgendaItemsSection)
 const showProgramIdentitySection = computed(() => formModeView.value.showProgramIdentitySection)
 const showProgramSettingsSections = computed(() => formModeView.value.showProgramSettingsSections)
+const showTracksSection = computed(() => formMode.value !== 'details')
 const showInlineDetailsActions = computed(() => formMode.value === 'details')
 const isSettingsMode = computed(() => formMode.value === 'settings')
 const basicsHeading = computed(() => formModeView.value.basicsHeading)
@@ -137,12 +139,31 @@ function createAgendaItemId() {
   return `agenda-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
 }
 
+function createTrackId() {
+  if (typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
+  }
+
+  return `track-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`
+}
+
 function nextAgendaDisplayOrder() {
   return form.value.agendaItems.length + 1
 }
 
+function nextTrackDisplayOrder() {
+  return form.value.tracks.length + 1
+}
+
 function applyAgendaOrderFromList(items: AgendaFormItem[]) {
   form.value.agendaItems = items.map((item, index) => ({
+    ...item,
+    displayOrder: index + 1
+  }))
+}
+
+function applyTrackOrderFromList(items: TrackFormItem[]) {
+  form.value.tracks = items.map((item, index) => ({
     ...item,
     displayOrder: index + 1
   }))
@@ -162,8 +183,21 @@ function addAgendaItem() {
   })
 }
 
+function addTrack() {
+  form.value.tracks.push({
+    id: createTrackId(),
+    name: '',
+    description: '',
+    displayOrder: nextTrackDisplayOrder()
+  })
+}
+
 function removeAgendaItem(itemId: string) {
   applyAgendaOrderFromList(form.value.agendaItems.filter(item => item.id !== itemId))
+}
+
+function removeTrack(trackId: string) {
+  applyTrackOrderFromList(form.value.tracks.filter(track => track.id !== trackId))
 }
 
 function moveAgendaItem(itemId: string, direction: -1 | 1) {
@@ -180,6 +214,22 @@ function moveAgendaItem(itemId: string, direction: -1 | 1) {
   }
 
   applyAgendaOrderFromList(moveListItemByIndex(form.value.agendaItems, currentIndex, nextIndex))
+}
+
+function moveTrack(trackId: string, direction: -1 | 1) {
+  const currentIndex = form.value.tracks.findIndex(track => track.id === trackId)
+
+  if (currentIndex < 0) {
+    return
+  }
+
+  const nextIndex = currentIndex + direction
+
+  if (nextIndex < 0 || nextIndex >= form.value.tracks.length) {
+    return
+  }
+
+  applyTrackOrderFromList(moveListItemByIndex(form.value.tracks, currentIndex, nextIndex))
 }
 
 function destroyAgendaSortable() {
@@ -395,6 +445,117 @@ const submitConfigForm = handleSubmit(() => {
               required
             />
           </template>
+
+          <section
+            v-if="showTracksSection"
+            class="grid grid-cols-1 gap-3 border-t border-black/8 pt-5 dark:border-white/[0.08]"
+          >
+            <div class="space-y-1">
+              <h3 class="text-base font-semibold text-highlighted">
+                Tracks
+              </h3>
+              <p class="text-sm text-muted">
+                Add the submission tracks participants can choose from. Judges will also see the selected track in blind review.
+              </p>
+            </div>
+
+            <div
+              v-if="form.tracks.length === 0"
+              class="grid gap-3 rounded-xl border border-dashed border-black/10 px-4 py-4 text-sm text-muted dark:border-white/[0.08]"
+            >
+              <p>No tracks yet.</p>
+            </div>
+
+            <div
+              v-else
+              class="grid grid-cols-1 gap-3"
+            >
+              <article
+                v-for="(track, index) in form.tracks"
+                :key="track.id"
+                class="rounded-xl border border-black/8 bg-white/88 p-3 dark:border-white/[0.08] dark:bg-[#111111]"
+              >
+                <AdminEditorRowShell>
+                  <template #controls>
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      :aria-label="`Move ${track.name || `track ${index + 1}`} up`"
+                      :disabled="index === 0"
+                      @click="moveTrack(track.id, -1)"
+                    >
+                      <AppIcon
+                        name="i-lucide-arrow-up"
+                        class="size-4"
+                      />
+                    </button>
+
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      :aria-label="`Move ${track.name || `track ${index + 1}`} down`"
+                      :disabled="index === form.tracks.length - 1"
+                      @click="moveTrack(track.id, 1)"
+                    >
+                      <AppIcon
+                        name="i-lucide-arrow-down"
+                        class="size-4"
+                      />
+                    </button>
+                  </template>
+
+                  <div class="grid grid-cols-1 gap-3">
+                    <label class="grid gap-2">
+                      <span class="text-xs font-medium text-toned">Track name</span>
+                      <AppInput
+                        v-model="track.name"
+                        type="text"
+                        placeholder="Best AI Agent"
+                        required
+                      />
+                    </label>
+
+                    <label class="grid gap-2">
+                      <span class="text-xs font-medium text-toned">Description</span>
+                      <AppTextarea
+                        v-model="track.description"
+                        rows="2"
+                        class="min-h-16"
+                        placeholder="Describe what kinds of submissions belong in this track."
+                      />
+                    </label>
+                  </div>
+
+                  <template #actions>
+                    <button
+                      type="button"
+                      class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-red-400/50 hover:text-red-600 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-red-400/40 dark:hover:text-red-300"
+                      :aria-label="`Delete ${track.name || `track ${index + 1}`}`"
+                      @click="removeTrack(track.id)"
+                    >
+                      <AppIcon
+                        name="i-lucide-trash-2"
+                        class="size-4"
+                      />
+                    </button>
+                  </template>
+                </AdminEditorRowShell>
+              </article>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <AppButton
+                type="button"
+                color="neutral"
+                variant="soft"
+                size="sm"
+                class="w-fit"
+                @click="addTrack"
+              >
+                {{ form.tracks.length === 0 ? 'Add first track' : 'Add track' }}
+              </AppButton>
+            </div>
+          </section>
 
           <div
             v-if="showAgendaItemsSection"

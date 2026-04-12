@@ -193,6 +193,7 @@ function createSubmission(overrides: Partial<SubmissionRecord> = {}): Submission
   return {
     id: 'submission-1',
     teamId: 'team-1',
+    trackId: null,
     status: 'submitted',
     projectName: 'Alpha Project',
     summary: 'Canonical summary',
@@ -232,6 +233,7 @@ function createJudgeAssignment(overrides: Partial<import('../../../../app/utils/
       summary: 'Canonical blind submission summary.',
       repositoryUrl: null,
       demoUrl: null,
+      track: null,
       status: 'locked',
       submittedAt: '2026-03-24T13:00:00.000Z',
       lockedAt: '2026-03-24T13:10:00.000Z',
@@ -411,6 +413,7 @@ describe('admin-workspace form helpers', () => {
     })
 
     expect(formState.agendaItems).toHaveLength(1)
+    expect(formState.tracks).toEqual([])
     expect(formState.agendaItems[0]).toMatchObject({
       id: 'agenda-item-1',
       title: 'Opening',
@@ -823,6 +826,7 @@ describe('admin-workspace operational helpers', () => {
           summary: 'Summary',
           repositoryUrl: null,
           demoUrl: null,
+          track: null,
           status: 'locked',
           submittedAt: '2026-03-24T13:00:00.000Z',
           lockedAt: '2026-03-24T13:10:00.000Z',
@@ -839,6 +843,7 @@ describe('admin-workspace operational helpers', () => {
           summary: 'Summary',
           repositoryUrl: null,
           demoUrl: null,
+          track: null,
           status: 'locked',
           submittedAt: '2026-03-24T13:00:00.000Z',
           lockedAt: '2026-03-24T13:10:00.000Z',

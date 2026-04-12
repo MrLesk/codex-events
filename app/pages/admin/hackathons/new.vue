@@ -8,7 +8,8 @@ import type {
 import {
   fromDateTimeLocalValue,
   normalizeApiError,
-  toHackathonAgendaPayload
+  toHackathonAgendaPayload,
+  toHackathonTracksPayload
 } from '~/utils/admin-workspace'
 
 definePageMeta({
@@ -36,6 +37,7 @@ async function createHackathon(form: HackathonFormState) {
         lumaEventApiId: form.lumaEventApiId.trim() || null,
         description: form.description,
         agendaItems: toHackathonAgendaPayload(form.agendaItems),
+        tracks: toHackathonTracksPayload(form.tracks),
         city: form.city,
         country: form.country,
         address: form.address,

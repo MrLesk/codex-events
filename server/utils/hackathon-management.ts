@@ -11,6 +11,7 @@ import {
 import { getDatabase, type AppDatabase } from '../database/client'
 import {
   evaluationCriteria,
+  hackathonTracks,
   hackathonRoleAssignments,
   hackathonRoleTypes,
   hackathonStates,
@@ -21,6 +22,7 @@ import {
   prizeAwardScopes,
   prizeRewardTypes,
   prizes,
+  submissions,
   teamMembers,
   teams,
   userApplications,
@@ -127,11 +129,48 @@ const agendaItemsSchema = z.array(agendaItemSchema)
   })
   .default([])
 
+const trackSchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+  displayOrder: z.coerce.number().int().min(0)
+})
+
+const tracksSchema = z.array(trackSchema)
+  .superRefine((tracks, ctx) => {
+    const ids = new Set<string>()
+    const displayOrders = new Set<number>()
+
+    tracks.forEach((track, index) => {
+      if (ids.has(track.id)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Track IDs must be unique.',
+          path: [index, 'id']
+        })
+      } else {
+        ids.add(track.id)
+      }
+
+      if (displayOrders.has(track.displayOrder)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Track display order values must be unique.',
+          path: [index, 'displayOrder']
+        })
+      } else {
+        displayOrders.add(track.displayOrder)
+      }
+    })
+  })
+  .default([])
+
 const hackathonConfigShape = {
   name: z.string().trim().min(1),
   slug: slugSchema,
   description: z.string().trim().min(1),
   agendaItems: agendaItemsSchema,
+  tracks: tracksSchema,
   backgroundImageUrl: nullableUrlSchema,
   bannerImageUrl: nullableUrlSchema,
   lumaEventUrl: nullableHttpUrlSchema,
@@ -162,6 +201,7 @@ export const updateHackathonBodySchema = z.object({
   slug: hackathonConfigShape.slug.optional(),
   description: hackathonConfigShape.description.optional(),
   agendaItems: agendaItemsSchema.optional(),
+  tracks: tracksSchema.optional(),
   backgroundImageUrl: hackathonConfigShape.backgroundImageUrl.optional(),
   bannerImageUrl: hackathonConfigShape.bannerImageUrl.optional(),
   lumaEventUrl: hackathonConfigShape.lumaEventUrl.optional(),
@@ -277,12 +317,14 @@ export const updatePrizeBodySchema = z.object({
 )
 
 type HackathonRecord = typeof hackathons.$inferSelect
+type HackathonTrackRecord = typeof hackathonTracks.$inferSelect
 type HackathonRoleAssignmentRecord = typeof hackathonRoleAssignments.$inferSelect
 type HackathonTermsDocumentRecord = typeof hackathonTermsDocuments.$inferSelect
 type EvaluationCriterionRecord = typeof evaluationCriteria.$inferSelect
 type PrizeRecord = typeof prizes.$inferSelect
 type UserRecord = typeof users.$inferSelect
 export type HackathonAgendaItem = z.infer<typeof agendaItemSchema>
+export type HackathonTrackInput = z.infer<typeof trackSchema>
 
 const publicHackathonStates = [
   'registration_open',
@@ -345,6 +387,161 @@ export function parseHackathonAgendaItems(value: string | null | undefined) {
   } catch {
     return []
   }
+}
+
+function compareHackathonTracks(
+  left: Pick<HackathonTrackRecord, 'displayOrder' | 'createdAt' | 'id'>,
+  right: Pick<HackathonTrackRecord, 'displayOrder' | 'createdAt' | 'id'>
+) {
+  return left.displayOrder - right.displayOrder
+    || left.createdAt.localeCompare(right.createdAt)
+    || left.id.localeCompare(right.id)
+}
+
+export async function listHackathonTracks(database: AppDatabase, hackathonId: string) {
+  const tracks = await database.query.hackathonTracks.findMany({
+    where: eq(hackathonTracks.hackathonId, hackathonId),
+    orderBy: [asc(hackathonTracks.displayOrder), asc(hackathonTracks.createdAt), asc(hackathonTracks.id)]
+  })
+
+  return tracks.sort(compareHackathonTracks)
+}
+
+export function serializeHackathonTrack(track: HackathonTrackRecord) {
+  return {
+    id: track.id,
+    hackathonId: track.hackathonId,
+    name: track.name,
+    description: track.description,
+    displayOrder: track.displayOrder,
+    createdAt: track.createdAt
+  }
+}
+
+export function serializePublicHackathonTrack(track: HackathonTrackRecord) {
+  return {
+    name: track.name,
+    description: track.description,
+    displayOrder: track.displayOrder
+  }
+}
+
+export async function createHackathonTracks(
+  database: AppDatabase,
+  hackathonId: string,
+  tracks: HackathonTrackInput[]
+) {
+  if (tracks.length === 0) {
+    return
+  }
+
+  const createdAt = new Date().toISOString()
+
+  await database.insert(hackathonTracks).values(
+    [...tracks]
+      .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id))
+      .map(track => ({
+        id: track.id,
+        hackathonId,
+        name: track.name,
+        description: track.description,
+        displayOrder: track.displayOrder,
+        createdAt
+      }))
+  )
+}
+
+export async function assertRemovedHackathonTracksAreUnreferenced(
+  database: AppDatabase,
+  trackIds: string[]
+) {
+  if (trackIds.length === 0) {
+    return
+  }
+
+  const referencedSubmission = await database.query.submissions.findFirst({
+    where: inArray(submissions.trackId, trackIds)
+  })
+
+  if (!referencedSubmission) {
+    return
+  }
+
+  throw new ApiError({
+    statusCode: 409,
+    code: 'hackathon_track_has_submissions',
+    message: 'This track cannot be removed because existing submissions still reference it.',
+    details: {
+      trackIds
+    }
+  })
+}
+
+export async function replaceHackathonTracks(
+  database: AppDatabase,
+  hackathonId: string,
+  nextTracks: HackathonTrackInput[]
+) {
+  const existingTracks = await listHackathonTracks(database, hackathonId)
+  const existingTrackIds = new Set(existingTracks.map(track => track.id))
+  const nextTrackIds = new Set(nextTracks.map(track => track.id))
+  const removedTrackIds = existingTracks
+    .filter(track => !nextTrackIds.has(track.id))
+    .map(track => track.id)
+  const persistedTracks = existingTracks.filter(track => nextTrackIds.has(track.id))
+
+  for (const [index, track] of persistedTracks.entries()) {
+    await database
+      .update(hackathonTracks)
+      .set({
+        displayOrder: -1 - index
+      })
+      .where(eq(hackathonTracks.id, track.id))
+  }
+
+  const normalizedTracks = [...nextTracks]
+    .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id))
+
+  if (removedTrackIds.length > 0) {
+    await database.delete(hackathonTracks).where(inArray(hackathonTracks.id, removedTrackIds))
+  }
+
+  for (const track of normalizedTracks) {
+    if (existingTrackIds.has(track.id)) {
+      await database
+        .update(hackathonTracks)
+        .set({
+          name: track.name,
+          description: track.description,
+          displayOrder: track.displayOrder
+        })
+        .where(eq(hackathonTracks.id, track.id))
+      continue
+    }
+
+    await database.insert(hackathonTracks).values({
+      id: track.id,
+      hackathonId,
+      name: track.name,
+      description: track.description,
+      displayOrder: track.displayOrder,
+      createdAt: new Date().toISOString()
+    })
+  }
+}
+
+export async function assertHackathonTrackReplacementAllowed(
+  database: AppDatabase,
+  hackathonId: string,
+  nextTracks: HackathonTrackInput[]
+) {
+  const existingTracks = await listHackathonTracks(database, hackathonId)
+  const nextTrackIds = new Set(nextTracks.map(track => track.id))
+  const removedTrackIds = existingTracks
+    .filter(track => !nextTrackIds.has(track.id))
+    .map(track => track.id)
+
+  await assertRemovedHackathonTracksAreUnreferenced(database, removedTrackIds)
 }
 
 function buildHackathonListFilters(input: z.infer<typeof hackathonListQuerySchema>) {
@@ -456,6 +653,10 @@ export function buildHackathonUpdatePayload(
   if (normalizedPatch.agendaItems !== undefined) {
     normalizedPatch.agendaItemsJson = serializeHackathonAgendaItems(normalizedPatch.agendaItems)
     Reflect.deleteProperty(normalizedPatch, 'agendaItems')
+  }
+
+  if (normalizedPatch.tracks !== undefined) {
+    Reflect.deleteProperty(normalizedPatch, 'tracks')
   }
 
   const nextSlug = patch.slug?.trim()
@@ -917,7 +1118,8 @@ export function serializeHackathon(
   currentTerms?: {
     applicationTerms: HackathonTermsDocumentRecord | null
     winnerTerms: HackathonTermsDocumentRecord | null
-  }
+  },
+  tracks?: HackathonTrackRecord[]
 ) {
   return {
     id: hackathon.id,
@@ -953,6 +1155,11 @@ export function serializeHackathon(
     createdByUserId: hackathon.createdByUserId,
     createdAt: hackathon.createdAt,
     updatedAt: hackathon.updatedAt,
+    ...(tracks
+      ? {
+          tracks: tracks.map(serializeHackathonTrack)
+        }
+      : {}),
     ...(currentTerms
       ? {
           currentTerms: {
@@ -978,7 +1185,8 @@ export function serializePublicHackathon(
   currentTerms?: {
     applicationTerms: HackathonTermsDocumentRecord | null
     winnerTerms: HackathonTermsDocumentRecord | null
-  }
+  },
+  tracks?: HackathonTrackRecord[]
 ) {
   return {
     name: hackathon.name,
@@ -1007,6 +1215,11 @@ export function serializePublicHackathon(
     requireLumaEmail: hackathon.requireLumaEmail,
     requireWhyThisHackathon: hackathon.requireWhyThisHackathon,
     requireProofOfExecution: hackathon.requireProofOfExecution,
+    ...(tracks
+      ? {
+          tracks: tracks.map(serializePublicHackathonTrack)
+        }
+      : {}),
     ...(currentTerms
       ? {
           currentTerms: {

@@ -21,7 +21,7 @@ export default defineApiHandler(async (event) => {
   const submission = await getSubmissionForTeamOrThrow(database, teamId)
 
   assertHackathonAllowsSubmissionEditing(hackathon)
-  assertSubmissionSubmittable(submission)
+  await assertSubmissionSubmittable(database, hackathon, submission)
 
   const submittedAt = new Date().toISOString()
 

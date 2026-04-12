@@ -46,6 +46,12 @@ const assignmentHref = computed(() =>
             <h3 class="text-[20px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
               {{ assignment.blindSubmission.projectName ?? 'Untitled blind submission' }}
             </h3>
+            <p
+              v-if="assignment.blindSubmission.track"
+              class="text-[12px] font-semibold uppercase tracking-[0.16em] text-muted"
+            >
+              {{ assignment.blindSubmission.track.name }}
+            </p>
             <p class="max-w-2xl text-[14px] text-neutral-600 dark:text-[#B0B0B0]">
               {{ assignment.blindSubmission.summary || describeJudgeAssignmentStatus(assignment.status) }}
             </p>

@@ -115,18 +115,35 @@ export const teamProfileFormSchema = z.object({
   bio: z.string().trim().max(4000)
 })
 
-export const teamSubmissionFormSchema = z.object({
-  projectName: z.string().trim().min(1, 'Project name is required.'),
-  summary: z.string().trim().min(1, 'Summary is required.'),
-  repositoryUrl: createRequiredHttpUrlSchema(
-    'Repository URL is required.',
-    'Enter a valid repository URL.'
-  ),
-  demoUrl: createRequiredHttpUrlSchema(
-    'Demo URL is required.',
-    'Enter a valid demo URL.'
-  )
-})
+export function createTeamSubmissionFormSchema(trackRequired: boolean) {
+  return z.object({
+    projectName: z.string().trim().min(1, 'Project name is required.'),
+    summary: z.string().trim().min(1, 'Summary is required.'),
+    repositoryUrl: createRequiredHttpUrlSchema(
+      'Repository URL is required.',
+      'Enter a valid repository URL.'
+    ),
+    demoUrl: createRequiredHttpUrlSchema(
+      'Demo URL is required.',
+      'Enter a valid demo URL.'
+    ),
+    trackId: z.string().trim().nullable()
+  }).superRefine((input, context) => {
+    if (!trackRequired) {
+      return
+    }
+
+    if (input.trackId?.trim()) {
+      return
+    }
+
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['trackId'],
+      message: 'Select a track.'
+    })
+  })
+}
 
 const agendaItemSchema = z.object({
   id: z.string().trim().min(1),
@@ -165,6 +182,13 @@ const agendaItemSchema = z.object({
   }
 })
 
+const trackSchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().trim().min(1, 'Enter a track name.'),
+  description: z.string().trim().min(1, 'Enter a track description.'),
+  displayOrder: z.number().int().min(0)
+})
+
 export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object({
   name: requiredTextSchema,
   slug: slugSchema,
@@ -184,6 +208,22 @@ export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object
         code: z.ZodIssueCode.custom,
         path: [index, 'id'],
         message: 'Agenda item IDs must be unique.'
+      })
+    })
+  }),
+  tracks: z.array(trackSchema).superRefine((tracks, context) => {
+    const ids = new Set<string>()
+
+    tracks.forEach((track, index) => {
+      if (!ids.has(track.id)) {
+        ids.add(track.id)
+        return
+      }
+
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index, 'id'],
+        message: 'Track IDs must be unique.'
       })
     })
   }),

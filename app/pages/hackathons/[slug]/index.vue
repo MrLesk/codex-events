@@ -323,6 +323,8 @@ useSeoMeta({
           :criteria-count="criteriaCount"
         />
 
+        <HackathonTracksPanel :tracks="hackathon.tracks ?? []" />
+
         <HackathonAgendaPanel :agenda-items="hackathon.agendaItems" />
       </section>
     </AppContainer>

@@ -100,8 +100,14 @@ interface AccountHackathonsResponse {
   }
 }
 
-type AccountWorkspaceHackathon = PublicHackathon & {
+type AccountWorkspaceHackathon = Omit<PublicHackathon, 'tracks'> & {
   id: string
+  tracks?: Array<{
+    id: string
+    name: string
+    description: string
+    displayOrder: number
+  }>
 }
 
 const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
@@ -891,6 +897,8 @@ useSeoMeta({
           :criteria-count="criteriaCount"
           :show-address="applicationStatus === 'approved'"
         />
+
+        <HackathonTracksPanel :tracks="hackathon.tracks ?? []" />
 
         <HackathonAgendaPanel :agenda-items="hackathon.agendaItems" />
 

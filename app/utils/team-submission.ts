@@ -5,6 +5,7 @@ import { normalizeParticipantApiError } from './participant-application'
 export interface TeamSubmissionRecord {
   id: string
   teamId: string
+  trackId: string | null
   status: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified'
   projectName: string | null
   summary: string | null
@@ -30,6 +31,14 @@ export interface TeamSubmissionFormInput {
   summary: string
   repositoryUrl: string
   demoUrl: string
+  trackId: string | null
+}
+
+export interface SubmissionTrackOption {
+  id: string
+  name: string
+  description: string
+  displayOrder: number
 }
 
 export function normalizeTeamSubmissionApiError(error: unknown) {

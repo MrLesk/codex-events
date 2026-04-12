@@ -13,6 +13,7 @@ function buildSubmission(
   return {
     id: 'submission_1',
     teamId: 'team_1',
+    trackId: null,
     status: 'draft',
     projectName: 'North Star',
     summary: 'SSR submission test payload.',

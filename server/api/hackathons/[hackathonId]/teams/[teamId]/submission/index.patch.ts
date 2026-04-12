@@ -11,6 +11,7 @@ import {
   assertSubmissionMutable,
   buildSubmissionWritePayload,
   getSubmissionForTeamOrThrow,
+  resolveValidatedSubmissionTrackId,
   serializeSubmission,
   submissionParamsSchema,
   updateSubmissionBodySchema
@@ -25,17 +26,22 @@ export default defineApiHandler(async (event) => {
 
   assertHackathonAllowsSubmissionEditing(hackathon)
   assertSubmissionMutable(submission)
+  const trackId = await resolveValidatedSubmissionTrackId(database, hackathonId, body.trackId)
 
   const updatedAt = new Date().toISOString()
+  const patch = {
+    ...buildSubmissionWritePayload(body, updatedAt),
+    trackId
+  }
 
   await database
     .update(submissions)
-    .set(buildSubmissionWritePayload(body, updatedAt))
+    .set(patch)
     .where(eq(submissions.id, submission.id))
 
   return apiData(serializeSubmission({
     ...submission,
-    ...buildSubmissionWritePayload(body, updatedAt),
+    ...patch,
     updatedAt
   }))
 })

@@ -24,6 +24,11 @@ export interface BlindSubmissionSummary {
   summary: string | null
   repositoryUrl: string | null
   demoUrl: string | null
+  track: {
+    id: string
+    name: string
+    description: string
+  } | null
   status: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified'
   submittedAt: string | null
   lockedAt: string | null

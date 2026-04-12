@@ -153,6 +153,24 @@ export const hackathons = sqliteTable(
   ]
 )
 
+export const hackathonTracks = sqliteTable(
+  'hackathon_tracks',
+  {
+    id: idColumn(),
+    hackathonId: text('hackathon_id')
+      .notNull()
+      .references(() => hackathons.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    displayOrder: integer('display_order').notNull(),
+    createdAt: createdAtColumn()
+  },
+  table => [
+    uniqueIndex('hackathon_tracks_hackathon_display_order_idx').on(table.hackathonId, table.displayOrder),
+    index('hackathon_tracks_hackathon_idx').on(table.hackathonId)
+  ]
+)
+
 export const hackathonRoleAssignments = sqliteTable(
   'hackathon_role_assignments',
   {
@@ -360,6 +378,7 @@ export const submissions = sqliteTable(
     teamId: text('team_id')
       .notNull()
       .references(() => teams.id),
+    trackId: text('track_id').references(() => hackathonTracks.id),
     status: text('status', { enum: submissionStatuses }).notNull().default('draft'),
     projectName: text('project_name'),
     summary: text('summary'),
@@ -376,7 +395,8 @@ export const submissions = sqliteTable(
     uniqueIndex('submissions_active_team_idx')
       .on(table.teamId)
       .where(sql`${table.status} in ('draft', 'submitted', 'locked')`),
-    index('submissions_team_updated_idx').on(table.teamId, table.updatedAt)
+    index('submissions_team_updated_idx').on(table.teamId, table.updatedAt),
+    index('submissions_track_idx').on(table.trackId)
   ]
 )
 
@@ -549,6 +569,7 @@ export const schema = {
   users,
   userAuthIdentities,
   hackathons,
+  hackathonTracks,
   hackathonRoleAssignments,
   platformDocuments,
   userPlatformDocumentAcceptances,

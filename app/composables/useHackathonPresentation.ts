@@ -24,6 +24,12 @@ export interface PublicHackathonAgendaItem {
   displayOrder: number
 }
 
+export interface PublicHackathonTrack {
+  name: string
+  description: string
+  displayOrder: number
+}
+
 export interface PublicAgendaItemPresentation {
   dayLabel: string | null
   dateLabel: string | null
@@ -50,6 +56,7 @@ export interface PublicHackathon {
   slug: string
   description: string
   agendaItems: PublicHackathonAgendaItem[]
+  tracks?: PublicHackathonTrack[]
   backgroundImageUrl: string | null
   bannerImageUrl: string | null
   lumaEventUrl?: string | null

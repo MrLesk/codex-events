@@ -10,7 +10,9 @@ import { apiData } from '../../utils/api-response'
 import {
   assertHackathonSchedule,
   assertHackathonSlugAvailable,
+  createHackathonTracks,
   createHackathonBodySchema,
+  listHackathonTracks,
   serializeHackathonAgendaItems,
   serializeHackathon
 } from '../../utils/hackathon-management'
@@ -63,6 +65,8 @@ export default defineApiHandler(async (event) => {
     updatedAt: createdAt
   })
 
+  await createHackathonTracks(database, hackathonId, body.tracks)
+
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,
     entityType: 'hackathon',
@@ -76,6 +80,7 @@ export default defineApiHandler(async (event) => {
   const createdHackathon = await database.query.hackathons.findFirst({
     where: eq(hackathons.id, hackathonId)
   })
+  const createdTracks = await listHackathonTracks(database, hackathonId)
 
-  return apiData(serializeHackathon(createdHackathon!))
+  return apiData(serializeHackathon(createdHackathon!, undefined, createdTracks))
 })

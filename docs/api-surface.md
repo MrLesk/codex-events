@@ -203,15 +203,15 @@ Operations:
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | List public hackathons | `GET /api/public/hackathons` | public or authenticated user | Returns the canonical public-visible hackathon set regardless of caller privileges, with pagination and discovery filters. |
-| Get public hackathon detail | `GET /api/public/hackathons/:slug` | public or authenticated user | Resolves by exact hackathon slug and returns canonical public-safe hackathon fields, including structured `agendaItems`, plus current terms references. |
+| Get public hackathon detail | `GET /api/public/hackathons/:slug` | public or authenticated user | Resolves by exact hackathon slug and returns canonical public-safe hackathon fields, including structured `agendaItems`, configured `tracks`, plus current terms references. |
 | List public evaluation criteria | `GET /api/public/hackathons/:slug/evaluation-criteria` | public or authenticated user | Returns the public evaluation criteria for the exact public hackathon slug. |
 | List public prizes | `GET /api/public/hackathons/:slug/prizes` | public or authenticated user | Returns the public prize definitions for the exact public hackathon slug. |
 | Get public background image | `GET /api/public/hackathons/:slug/images/background` | public or authenticated user | Returns the uploaded hackathon background image bytes for the exact public hackathon slug when configured. |
 | Get public banner image | `GET /api/public/hackathons/:slug/images/banner` | public or authenticated user | Returns the uploaded hackathon banner image bytes for the exact public hackathon slug when configured. |
 | List caller-visible hackathons | `GET /api/hackathons` | public or authenticated user | Returns hackathons visible to the caller. Authenticated admins can see draft hackathons they are allowed to manage here, and staff-visible internal hackathons are included when the caller has staff access to them. |
-| Get caller-visible hackathon detail | `GET /api/hackathons/:hackathonId` | public or authenticated user | Returns canonical hackathon fields, including structured `agendaItems`, and current terms references for a hackathon visible to the caller. Staff-visible internal hackathons are included when the caller has staff access to that hackathon. |
-| Create hackathon | `POST /api/hackathons` | platform admin | Creates a `draft` hackathon with canonical configuration, including structured `agendaItems`, location fields (`city`, `country`, and `address`), team size and participant limits, `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. |
-| Update hackathon configuration | `PATCH /api/hackathons/:hackathonId` | hackathon admin or platform admin | Updates canonical configuration fields, including schedule, structured `agendaItems`, images, location fields (`city`, `country`, and `address`), team size and participant limits, required profile flags, `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. |
+| Get caller-visible hackathon detail | `GET /api/hackathons/:hackathonId` | public or authenticated user | Returns canonical hackathon fields, including structured `agendaItems`, configured `tracks`, and current terms references for a hackathon visible to the caller. Staff-visible internal hackathons are included when the caller has staff access to that hackathon. |
+| Create hackathon | `POST /api/hackathons` | platform admin | Creates a `draft` hackathon with canonical configuration, including structured `agendaItems`, optional ordered `tracks`, location fields (`city`, `country`, and `address`), team size and participant limits, `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. |
+| Update hackathon configuration | `PATCH /api/hackathons/:hackathonId` | hackathon admin or platform admin | Updates canonical configuration fields, including schedule, structured `agendaItems`, optional ordered `tracks`, images, location fields (`city`, `country`, and `address`), team size and participant limits, required profile flags, `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. Track removals are rejected when existing submissions still reference the removed track. |
 | Open registration manually | `POST /api/hackathons/:hackathonId/actions/open-registration` | hackathon admin or platform admin | Allowed only from `draft` while the configured registration window is open. |
 | Backfill Luma emails for legacy applicants | `POST /api/admin/hackathons/:hackathonId/actions/backfill-luma-emails` | platform admin | Resolves stored legacy Luma usernames against the configured Luma event API id and writes canonical `lumaEmail` values for users in that hackathon who still need them. |
 | Upload hackathon background image | `POST /api/hackathons/:hackathonId/images/background` | hackathon admin or platform admin | Accepts multipart upload for the background image and updates `backgroundImageUrl` to the platform-managed public image endpoint. |
@@ -234,6 +234,7 @@ Operations:
 
 Notes:
 - `participantsLimit` is an indicative planning target surfaced in admin approval workflows and does not reject staged or applied approval decisions by itself.
+- Track configuration is managed as part of hackathon create and update operations rather than through a separate admin domain in this version.
 - Public hackathon discovery and detail responses expose only public-safe fields. They do not expose internal record identifiers, creator identifiers, or audit timestamps.
 - Public current-terms references expose document type, version, title, and published time only.
 
@@ -365,10 +366,10 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Get team submission | `GET /api/hackathons/:hackathonId/teams/:teamId/submission` | team member, team admin, hackathon admin, or platform admin | Returns the current submission if present. |
-| Create submission draft | `POST /api/hackathons/:hackathonId/teams/:teamId/submission` | team admin | Allowed only in `submission_open`. |
-| Update submission | `PATCH /api/hackathons/:hackathonId/teams/:teamId/submission` | team admin | Allowed only in `submission_open`. |
-| Submit project | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/submit` | team admin | Allowed only in `submission_open`. |
+| Get team submission | `GET /api/hackathons/:hackathonId/teams/:teamId/submission` | team member, team admin, hackathon admin, or platform admin | Returns the current submission if present, including the selected track when one exists. |
+| Create submission draft | `POST /api/hackathons/:hackathonId/teams/:teamId/submission` | team admin | Allowed only in `submission_open`. When the hackathon has configured tracks, the body must select exactly one valid track for that hackathon. |
+| Update submission | `PATCH /api/hackathons/:hackathonId/teams/:teamId/submission` | team admin | Allowed only in `submission_open`. When the hackathon has configured tracks, the body must keep a valid selected track. |
+| Submit project | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/submit` | team admin | Allowed only in `submission_open`. When the hackathon has configured tracks, the submission must already reference exactly one valid track. |
 | Withdraw submission | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/withdraw` | team admin | Allowed only before `judging_preparation`. |
 | Withdraw submission on team request | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/admin-withdraw` | hackathon admin or platform admin | Allowed only before `judging_preparation`. The body must include `requestedByUserId`, and that user must be an active team admin of the submission's team. |
 | Disqualify submission | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/disqualify` | hackathon admin or platform admin | Used instead of withdrawal once review-phase removal rules apply. |
@@ -389,7 +390,7 @@ Operations:
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | List active judge assignments | `GET /api/hackathons/:hackathonId/judging/assignments` | assigned judge, hackathon admin, or platform admin | Judges see only their assignments in blind view. Admins can access operational assignment views. |
-| Get blind assignment detail | `GET /api/hackathons/:hackathonId/judging/assignments/:assignmentId` | assigned judge, hackathon admin, or platform admin acting through assignment review | The response excludes team identity and includes anonymized application information. |
+| Get blind assignment detail | `GET /api/hackathons/:hackathonId/judging/assignments/:assignmentId` | assigned judge, hackathon admin, or platform admin acting through assignment review | The response excludes team identity and includes anonymized application information plus the selected submission track. |
 | Start assigned review | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/start` | assigned judge, hackathon admin, or platform admin acting through assignment review | Transitions `assigned` to `judge_started`. |
 | Complete assigned review | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/complete` | assigned judge, hackathon admin, or platform admin acting through assignment review | Records criterion scores, comments, and final assignment outcome. |
 | Skip assigned review | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/skip` | assigned judge, hackathon admin, or platform admin acting through assignment review | Creates a new active assignment for another eligible judge with the lowest assigned load. |

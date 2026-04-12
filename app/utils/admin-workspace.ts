@@ -139,6 +139,15 @@ export interface HackathonAgendaItem {
   displayOrder: number
 }
 
+export interface HackathonTrack {
+  id: string
+  hackathonId: string
+  name: string
+  description: string
+  displayOrder: number
+  createdAt: string
+}
+
 export interface AdminApplicationRecord {
   id: string
   hackathonId: string
@@ -164,6 +173,7 @@ export interface HackathonRecord {
   slug: string
   description: string
   agendaItems: HackathonAgendaItem[]
+  tracks?: HackathonTrack[]
   backgroundImageUrl: string | null
   bannerImageUrl: string | null
   lumaEventUrl: string | null
@@ -205,6 +215,7 @@ export interface HackathonFormState {
   lumaEventApiId: string
   description: string
   agendaItems: HackathonFormAgendaItem[]
+  tracks: HackathonFormTrack[]
   backgroundImageUrl: string
   bannerImageUrl: string
   city: string
@@ -233,6 +244,13 @@ export interface HackathonFormAgendaItem {
   endsAt: string
   title: string
   details: string
+  displayOrder: number
+}
+
+export interface HackathonFormTrack {
+  id: string
+  name: string
+  description: string
   displayOrder: number
 }
 
@@ -310,6 +328,7 @@ export interface AdminTeamDetailRecord extends TeamSummary {
 export interface SubmissionRecord {
   id: string
   teamId: string
+  trackId: string | null
   status: 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified'
   projectName: string | null
   summary: string | null
@@ -388,6 +407,11 @@ export interface JudgeAssignmentSummary {
     summary: string | null
     repositoryUrl: string | null
     demoUrl: string | null
+    track: {
+      id: string
+      name: string
+      description: string
+    } | null
     status: SubmissionRecord['status']
     submittedAt: string | null
     lockedAt: string | null
@@ -1232,6 +1256,7 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     lumaEventApiId: '',
     description: '',
     agendaItems: [],
+    tracks: [],
     backgroundImageUrl: '',
     bannerImageUrl: '',
     city: '',
@@ -1288,6 +1313,14 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
         details: item.details ?? '',
         displayOrder: item.displayOrder
       })),
+    tracks: [...(hackathon.tracks ?? [])]
+      .sort((left, right) => left.displayOrder - right.displayOrder || left.createdAt.localeCompare(right.createdAt))
+      .map(track => ({
+        id: track.id,
+        name: track.name,
+        description: track.description,
+        displayOrder: track.displayOrder
+      })),
     backgroundImageUrl: hackathon.backgroundImageUrl ?? '',
     bannerImageUrl: hackathon.bannerImageUrl ?? '',
     city: hackathon.city,
@@ -1322,6 +1355,17 @@ export function toHackathonAgendaPayload(items: HackathonFormAgendaItem[]): Hack
       displayOrder: item.displayOrder
     }))
     .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
+}
+
+export function toHackathonTracksPayload(items: HackathonFormTrack[]) {
+  return items
+    .map(track => ({
+      id: track.id,
+      name: track.name.trim(),
+      description: track.description.trim(),
+      displayOrder: track.displayOrder
+    }))
+    .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id))
 }
 
 export function toDateTimeLocalValue(value: string | null | undefined) {

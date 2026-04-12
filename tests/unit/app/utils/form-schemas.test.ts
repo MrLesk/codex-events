@@ -4,6 +4,7 @@ import { createEmptyHackathonFormState } from '../../../../app/utils/admin-works
 import {
   accountSettingsProfileFormSchema,
   buildParticipantRegistrationFormSchema,
+  createTeamSubmissionFormSchema,
   hackathonConfigFormSchema,
   imprintContactFormSchema,
   teamProfileFormSchema
@@ -168,6 +169,42 @@ describe('hackathon config form schema', () => {
 
     expect(result.success).toBe(false)
     expect(result.error?.issues[0]?.message).toBe('Enter a valid Luma event API ID like evt-123.')
+  })
+
+  test('accepts configured submission tracks with name and description', () => {
+    const result = hackathonConfigFormSchema.safeParse({
+      ...createValidHackathonFormState(),
+      tracks: [
+        {
+          id: 'track-1',
+          name: 'Best AI Agent',
+          description: 'Projects focused on autonomous workflows.',
+          displayOrder: 1
+        }
+      ]
+    })
+
+    expect(result.success).toBe(true)
+  })
+})
+
+describe('team submission form schema', () => {
+  test('requires a selected track only when the hackathon has tracks', () => {
+    expect(createTeamSubmissionFormSchema(false).safeParse({
+      projectName: 'North Star',
+      summary: 'A submission summary.',
+      repositoryUrl: 'https://github.com/example/north-star',
+      demoUrl: 'https://example.com/north-star',
+      trackId: null
+    }).success).toBe(true)
+
+    expect(createTeamSubmissionFormSchema(true).safeParse({
+      projectName: 'North Star',
+      summary: 'A submission summary.',
+      repositoryUrl: 'https://github.com/example/north-star',
+      demoUrl: 'https://example.com/north-star',
+      trackId: null
+    }).success).toBe(false)
   })
 })
 

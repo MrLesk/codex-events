@@ -144,6 +144,29 @@ It describes the intended persistent model at the level of entities, key fields,
 - `luma_event_api_id` is optional because not every hackathon has a Luma event configured for approval and rejection sync.
 - `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`).
 
+## HackathonTrack
+
+### Key Fields
+
+- `id`
+- `hackathon_id`
+- `name`
+- `description`
+- `display_order`
+- `created_at`
+
+### Constraints
+
+- `unique (hackathon_id, display_order)`
+
+### Notes
+
+- Each track belongs to one hackathon.
+- Tracks are ordered for admin editing and public display.
+- A track stores a participant-facing name and description.
+- Tracks do not control judge assignment in this version.
+- Track deletion is blocked once submissions reference it.
+
 ## HackathonRoleAssignment
 
 ### Key Fields
@@ -394,6 +417,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `summary`
 - `repository_url`
 - `demo_url`
+- `track_id`
 - `submitted_at`
 - `locked_at`
 - `withdrawn_at`
@@ -417,6 +441,8 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - A team can also have no submission.
+- `track_id` references a `HackathonTrack` belonging to the same hackathon as the submission's team when a track is selected.
+- When a hackathon has one or more configured tracks, submissions must store exactly one valid `track_id`.
 - A draft that is never submitted is treated as no submission for judging and dashboard purposes.
 - Submission content is managed by team admins.
 
@@ -595,6 +621,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `Hackathon` belongs to `User` through `created_by_user_id`
 - `HackathonRoleAssignment` belongs to `Hackathon` and `User`
+- `HackathonTrack` belongs to `Hackathon`
 - `PlatformDocument` stands alone as a platform-wide document
 - `UserPlatformDocumentAcceptance` belongs to `User` and `PlatformDocument`
 - `HackathonTermsDocument` belongs to `Hackathon`
@@ -603,6 +630,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `TeamMember` belongs to `Team` and `User`
 - `TeamJoinRequest` belongs to `Team` and `User`
 - `Submission` belongs to `Team`
+- `Submission` may reference `HackathonTrack`
 - `EvaluationCriterion` belongs to `Hackathon`
 - `JudgeAssignment` belongs to `Hackathon`, `Submission`, and `User`
 - `JudgeCriterionScore` belongs to `JudgeAssignment` and `EvaluationCriterion`

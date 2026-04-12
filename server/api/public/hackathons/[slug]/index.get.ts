@@ -3,6 +3,7 @@ import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
 import {
   getCurrentHackathonTerms,
+  listHackathonTracks,
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema,
   serializePublicHackathon
@@ -14,8 +15,9 @@ export default defineApiHandler(async (event) => {
   const database = getDatabase(event)
   const hackathon = await getPublicHackathonBySlugOrThrow(database, slug)
   const currentTerms = await getCurrentHackathonTerms(database, hackathon)
+  const tracks = await listHackathonTracks(database, hackathon.id)
 
   return apiData({
-    ...serializePublicHackathon(hackathon, currentTerms)
+    ...serializePublicHackathon(hackathon, currentTerms, tracks)
   })
 })

@@ -40,6 +40,21 @@ defineProps<{
           <p class="max-w-3xl text-[15px] leading-7 text-neutral-600 dark:text-[#A3A3A3]">
             {{ assignment.blindSubmission.summary || 'No blind summary is available for this assignment yet.' }}
           </p>
+
+          <div
+            v-if="assignment.blindSubmission.track"
+            class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]"
+          >
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+              Track
+            </p>
+            <p class="mt-1 text-[15px] font-semibold text-highlighted dark:text-white">
+              {{ assignment.blindSubmission.track.name }}
+            </p>
+            <p class="mt-1 text-sm text-toned">
+              {{ assignment.blindSubmission.track.description }}
+            </p>
+          </div>
         </div>
       </div>
 

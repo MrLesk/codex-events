@@ -115,6 +115,7 @@ function createAssignment(overrides: Partial<JudgeAssignmentDetail> = {}): Judge
       summary: 'Anonymous summary',
       repositoryUrl: 'https://example.com/repo',
       demoUrl: 'https://example.com/demo',
+      track: null,
       status: 'locked',
       submittedAt: '2026-03-23T10:00:00.000Z',
       lockedAt: '2026-03-24T10:00:00.000Z',
