@@ -562,7 +562,8 @@ function cancelEditingProfile() {
             <AppButton
               v-else-if="showRequestJoinAction && joinAvailability.isAllowed"
               color="success"
-              icon="i-lucide-user-plus"
+              trailing-icon="i-lucide-user-plus"
+              class="rounded-lg dark:text-black dark:hover:text-black"
               :loading="isActionPending(`join-team:${team.id}`)"
               :disabled="isActionPending(`join-team:${team.id}`)"
               data-testid="participant-team-request-join"

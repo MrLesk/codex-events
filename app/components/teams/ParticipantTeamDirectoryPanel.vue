@@ -208,7 +208,8 @@ function selectDirectoryFilter(nextFilter: string) {
               <AppButton
                 v-else-if="entry.joinAvailability.isAllowed"
                 color="success"
-                icon="i-lucide-user-plus"
+                trailing-icon="i-lucide-user-plus"
+                class="rounded-lg dark:text-black dark:hover:text-black"
                 :loading="isActionPending(`join-team:${entry.team.id}`)"
                 :disabled="isActionPending(`join-team:${entry.team.id}`)"
                 :data-testid="`participant-team-join-${entry.team.id}`"
