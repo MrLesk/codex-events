@@ -43,6 +43,7 @@ const props = defineProps<{
 
 const toast = useToast()
 const authenticatedUser = useUser()
+const { actor } = useSessionActor()
 const roleCandidatePageSize = 20
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
@@ -136,6 +137,9 @@ const roleBadgeLabels: Record<HackathonRoleRosterBadge, string> = {
   judge: 'Judge',
   platform_admin: 'Platform admin'
 }
+const currentPlatformUserId = computed(() =>
+  actor.value.kind === 'platform_user' ? actor.value.platformUser.id : null
+)
 
 function getMemberProfileIconHref(member: PublishedHackathonRosterMember) {
   return buildProfileIconHref(
@@ -163,6 +167,10 @@ function findAssignedRosterRow(userId: string) {
 
 function getRoleBadges(row: HackathonRoleRosterRow) {
   return listHackathonRoleRosterBadges(row)
+}
+
+function isCurrentPlatformUser(userId: string) {
+  return currentPlatformUserId.value === userId
 }
 
 function isPendingAction(
@@ -721,9 +729,18 @@ async function removePublishedRosterMember(userId: string) {
             <div class="min-w-0 flex-1">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 space-y-1">
-                  <h3 class="text-base font-semibold text-highlighted dark:text-white">
-                    {{ member.fullName }}
-                  </h3>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="text-base font-semibold text-highlighted dark:text-white">
+                      {{ member.fullName }}
+                    </h3>
+                    <AppBadge
+                      v-if="isCurrentPlatformUser(member.id)"
+                      color="info"
+                      variant="soft"
+                    >
+                      You
+                    </AppBadge>
+                  </div>
 
                   <p
                     v-if="member.company"
@@ -866,6 +883,13 @@ async function removePublishedRosterMember(userId: string) {
                       class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
                     >
                       {{ roleBadgeLabels[badge] }}
+                    </AppBadge>
+                    <AppBadge
+                      v-if="isCurrentPlatformUser(row.id)"
+                      color="info"
+                      variant="soft"
+                    >
+                      You
                     </AppBadge>
                   </div>
                   <p class="text-sm text-muted">

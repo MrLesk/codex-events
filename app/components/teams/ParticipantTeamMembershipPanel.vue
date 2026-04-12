@@ -57,7 +57,7 @@ const emit = defineEmits<{
 
               <AppBadge
                 v-if="membership?.id === member.id"
-                color="success"
+                color="info"
                 variant="soft"
               >
                 You

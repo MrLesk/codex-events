@@ -28,6 +28,7 @@ const props = defineProps<{
 }>()
 
 const toast = useToast()
+const { actor } = useSessionActor()
 const workspace = useHackathonRoleRosterWorkspace(toRef(props, 'hackathonId'))
 const roleCandidatePageSize = 20
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
@@ -120,6 +121,9 @@ const roleBadgeLabels: Record<HackathonRoleRosterBadge, string> = {
   judge: 'Judge',
   platform_admin: 'Platform admin'
 }
+const currentPlatformUserId = computed(() =>
+  actor.value.kind === 'platform_user' ? actor.value.platformUser.id : null
+)
 
 function getAssignmentActionKey(prefix: 'assign' | 'remove' | 'toggle', userId: string) {
   return `${props.role}:${prefix}:${userId}`
@@ -227,6 +231,10 @@ function getAssignedActionLabel(row: HackathonRoleRosterRow) {
 
 function getRoleBadges(row: HackathonRoleRosterRow) {
   return listHackathonRoleRosterBadges(row)
+}
+
+function isCurrentPlatformUser(userId: string) {
+  return currentPlatformUserId.value === userId
 }
 
 function isPendingAction(
@@ -738,6 +746,13 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
                   >
                     {{ roleBadgeLabels[badge] }}
                   </AppBadge>
+                  <AppBadge
+                    v-if="isCurrentPlatformUser(row.id)"
+                    color="info"
+                    variant="soft"
+                  >
+                    You
+                  </AppBadge>
                 </div>
                 <p class="text-sm text-muted">
                   {{ row.email }}
@@ -789,6 +804,13 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
                   >
                     {{ roleBadgeLabels[badge] }}
                   </AppBadge>
+                  <AppBadge
+                    v-if="isCurrentPlatformUser(row.id)"
+                    color="info"
+                    variant="soft"
+                  >
+                    You
+                  </AppBadge>
                 </div>
                 <p class="text-sm text-muted">
                   {{ row.email }}
@@ -831,6 +853,13 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
                   class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
                 >
                   {{ roleBadgeLabels[badge] }}
+                </AppBadge>
+                <AppBadge
+                  v-if="isCurrentPlatformUser(row.id)"
+                  color="info"
+                  variant="soft"
+                >
+                  You
                 </AppBadge>
               </div>
               <p class="text-sm text-muted">
@@ -933,6 +962,13 @@ async function removeRoleAssignment(assignment: HackathonRoleAssignment) {
                     class="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]"
                   >
                     {{ roleBadgeLabels[badge] }}
+                  </AppBadge>
+                  <AppBadge
+                    v-if="isCurrentPlatformUser(row.id)"
+                    color="info"
+                    variant="soft"
+                  >
+                    You
                   </AppBadge>
                 </div>
                 <p class="text-sm text-muted">
