@@ -16,6 +16,7 @@ import { moveListItemByIndex } from '~/utils/reorder-list'
 
 import {
   fromDateTimeLocalValue,
+  getCriteriaConfigurationValidationIssues,
   getTermsVersionPublishErrorMessage,
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled,
@@ -43,6 +44,8 @@ type CriterionEditState = Pick<EvaluationCriterion, 'name' | 'description' | 'we
 type EditableCriterionRow = EvaluationCriterion & {
   isLocalDraft?: boolean
 }
+type CriterionValidationField = 'name' | 'description' | 'weight'
+type CriterionValidationErrors = Partial<Record<CriterionValidationField, string>>
 type PrizeEditState = Pick<PrizeDefinition, 'name' | 'description' | 'rewardType' | 'rewardValue' | 'awardScope' | 'rankStart' | 'rankEnd' | 'displayOrder'> & {
   rewardCurrency: string
 }
@@ -88,7 +91,9 @@ const isSavingConfig = ref(false)
 const isSavingCriteria = ref(false)
 const isSavingPrizes = ref(false)
 const savingTermsDocumentType = ref<TermsDocument['documentType'] | null>(null)
+const hasAttemptedCriteriaSave = ref(false)
 const mutationError = ref('')
+const criteriaMutationError = ref('')
 const imageMutationState = reactive({
   background: {
     pending: false,
@@ -227,6 +232,34 @@ const creatorMeta = computed(() => creatorAssignment.value?.user?.email ?? 'Plat
 const adminCount = computed(() =>
   roleAssignments.value.filter(assignment => assignment.role === 'hackathon_admin').length
 )
+const criteriaValidationIssues = computed(() =>
+  getCriteriaConfigurationValidationIssues(
+    orderedCriteria.value.map((criterion) => {
+      const edit = getCriterionEdit(criterion)
+
+      return {
+        id: criterion.id,
+        name: edit.name,
+        description: edit.description,
+        weight: edit.weight
+      }
+    })
+  )
+)
+const visibleCriteriaValidationIssues = computed(() =>
+  hasAttemptedCriteriaSave.value ? criteriaValidationIssues.value : []
+)
+const criteriaValidationErrorsByCriterion = computed<Record<string, CriterionValidationErrors>>(() => {
+  const errors: Record<string, CriterionValidationErrors> = {}
+
+  visibleCriteriaValidationIssues.value.forEach((issue) => {
+    const existing = errors[issue.criterionId] ?? {}
+    existing[issue.field] = issue.message
+    errors[issue.criterionId] = existing
+  })
+
+  return errors
+})
 const staffCount = computed(() =>
   roleAssignments.value.filter(assignment => isHackathonRoleStaffEnabled(assignment)).length
 )
@@ -693,6 +726,10 @@ function removeCriterion(criterionId: string) {
   applyCriterionOrderFromList(criteriaRows.value)
 }
 
+function getCriterionValidationError(criterionId: string, field: CriterionValidationField) {
+  return criteriaValidationErrorsByCriterion.value[criterionId]?.[field] ?? ''
+}
+
 function buildCriterionMutationBody(criterion: EditableCriterionRow) {
   const edit = getCriterionEdit(criterion)
 
@@ -810,8 +847,14 @@ async function saveCriteria() {
     ...orderedCriteria.value.map(criterion => getCriterionEdit(criterion).displayOrder)
   )
 
+  hasAttemptedCriteriaSave.value = true
+  criteriaMutationError.value = ''
+
+  if (criteriaValidationIssues.value.length > 0) {
+    return
+  }
+
   isSavingCriteria.value = true
-  mutationError.value = ''
 
   try {
     for (const criterion of removedPersistedCriteria) {
@@ -852,9 +895,10 @@ async function saveCriteria() {
       description: 'Judging criteria now match the latest configuration.',
       color: 'success'
     })
+    hasAttemptedCriteriaSave.value = false
     await workspace.refreshWorkspace()
   } catch (error) {
-    mutationError.value = normalizeApiError(error).message
+    criteriaMutationError.value = normalizeApiError(error).message
   } finally {
     isSavingCriteria.value = false
   }
@@ -1270,7 +1314,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                             v-model="getCriterionEdit(criterion).name"
                             type="text"
                             placeholder="Impact"
+                            required
+                            :class="getCriterionValidationError(criterion.id, 'name') ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
                           />
+                          <p
+                            v-if="getCriterionValidationError(criterion.id, 'name')"
+                            class="text-xs text-error"
+                          >
+                            {{ getCriterionValidationError(criterion.id, 'name') }}
+                          </p>
                         </label>
                         <label class="grid gap-1">
                           <span class="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">Weight</span>
@@ -1279,7 +1331,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                             type="number"
                             min="0"
                             placeholder="10"
+                            required
+                            :class="getCriterionValidationError(criterion.id, 'weight') ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
                           />
+                          <p
+                            v-if="getCriterionValidationError(criterion.id, 'weight')"
+                            class="text-xs text-error"
+                          >
+                            {{ getCriterionValidationError(criterion.id, 'weight') }}
+                          </p>
                         </label>
                       </div>
 
@@ -1290,7 +1350,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                           rows="1"
                           class="min-h-10"
                           placeholder="Explain what judges should evaluate here."
+                          required
+                          :class="getCriterionValidationError(criterion.id, 'description') ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
                         />
+                        <p
+                          v-if="getCriterionValidationError(criterion.id, 'description')"
+                          class="text-xs text-error"
+                        >
+                          {{ getCriterionValidationError(criterion.id, 'description') }}
+                        </p>
                       </label>
                     </div>
 
@@ -1310,6 +1378,15 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
                   </AdminEditorRowShell>
                 </div>
               </div>
+
+              <AppAlert
+                v-if="criteriaMutationError"
+                data-testid="criteria-save-error"
+                color="error"
+                variant="soft"
+                title="Criteria not saved"
+                :description="criteriaMutationError"
+              />
 
               <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
                 <AppButton

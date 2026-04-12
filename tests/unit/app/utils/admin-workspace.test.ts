@@ -28,6 +28,7 @@ import {
   getAdminJudgeAssignmentInterventionPolicy,
   getAdminSubmissionDashboardBucket,
   getAdminSubmissionDashboardMetrics,
+  getCriteriaConfigurationValidationIssues,
   getHackathonOperationsPhase,
   getAdminWorkspaceSubjectKey,
   getHackathonDashboardStateBadgePresentation,
@@ -481,6 +482,72 @@ describe('admin-workspace form helpers', () => {
 
   test('allows publishing a terms version when title and content are present', () => {
     expect(getTermsVersionPublishErrorMessage(' Application Terms v2 ', ' Canonical application terms ')).toBe('')
+  })
+
+  test('requires a description before saving criteria configuration', () => {
+    expect(getCriteriaConfigurationValidationIssues([
+      {
+        id: 'criterion-1',
+        name: 'Impact',
+        description: '   ',
+        weight: 30
+      }
+    ])).toEqual([
+      {
+        criterionId: 'criterion-1',
+        field: 'description',
+        message: 'Enter a description so judges know what to evaluate.',
+        summaryMessage: '"Impact" needs a description. Add a short description so judges know what to evaluate.'
+      }
+    ])
+  })
+
+  test('uses positional labels when a criterion is missing its name', () => {
+    expect(getCriteriaConfigurationValidationIssues([
+      {
+        id: 'criterion-1',
+        name: '   ',
+        description: 'Judges should assess novelty.',
+        weight: 30
+      }
+    ])).toEqual([
+      {
+        criterionId: 'criterion-1',
+        field: 'name',
+        message: 'Enter a criterion name.',
+        summaryMessage: 'Criterion 1 is missing a name. Enter a short criterion name before saving.'
+      }
+    ])
+  })
+
+  test('requires a whole-number non-negative criterion weight', () => {
+    expect(getCriteriaConfigurationValidationIssues([
+      {
+        id: 'criterion-1',
+        name: 'Execution',
+        description: 'Judges should assess execution quality.',
+        weight: -1
+      },
+      {
+        id: 'criterion-2',
+        name: 'Impact',
+        description: 'Judges should assess user impact.',
+        weight: 12.5
+      }
+    ])).toEqual([
+      {
+        criterionId: 'criterion-1',
+        field: 'weight',
+        message: 'Enter a whole-number weight of 0 or more.',
+        summaryMessage: '"Execution" has an invalid weight. Use a whole number of 0 or more.'
+      },
+      {
+        criterionId: 'criterion-2',
+        field: 'weight',
+        message: 'Enter a whole-number weight of 0 or more.',
+        summaryMessage: '"Impact" has an invalid weight. Use a whole number of 0 or more.'
+      }
+    ])
   })
 })
 
