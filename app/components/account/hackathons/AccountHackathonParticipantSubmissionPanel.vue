@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PublicHackathon } from '~/composables/useHackathonPresentation'
+import type { TeamSubmissionRecord } from '~/utils/team-submission'
 
 import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSubmissionPanel.vue'
 import { formatTimestamp } from '~/utils/date-formatting'
@@ -15,10 +16,20 @@ import {
   shouldShowParticipantSubmissionWorkspace
 } from '~/utils/team-submission'
 
+interface AccountHackathonSubmissionTeam {
+  id: string
+  name: string
+  slug: string
+  role: 'member' | 'admin'
+}
+
 const props = defineProps<{
   hackathon: PublicHackathon & {
     id: string
   }
+  applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
+  team: AccountHackathonSubmissionTeam | null
+  initialSubmission: TeamSubmissionRecord | null
 }>()
 
 const toast = useToast()
@@ -42,9 +53,18 @@ const submissionForm = reactive({
 })
 
 const actor = computed(() => workspace.actor.value)
-const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
+const ownApplicationStatus = computed(() => props.applicationStatus)
+const providedTeam = computed(() => props.team
+  ? {
+      ...props.team,
+      isPersisted: true as const
+    }
+  : null)
+const hasPersistedTeam = computed(() =>
+  Boolean(workspace.currentTeam.value || workspace.ownTeam.value || providedTeam.value)
+)
 const teamFormationAvailability = computed(() =>
-  getTeamFormationAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
+  getTeamFormationAvailability(props.hackathon, ownApplicationStatus.value, hasPersistedTeam.value)
 )
 const defaultSoloTeamName = computed(() => {
   if (actor.value?.kind !== 'platform_user') {
@@ -68,8 +88,7 @@ const provisionalCurrentTeam = computed(() => {
   if (
     ownApplicationStatus.value !== 'approved'
     || !teamFormationAvailability.value.isOpen
-    || workspace.ownTeam.value
-    || workspace.currentTeam.value
+    || hasPersistedTeam.value
   ) {
     return null
   }
@@ -152,23 +171,29 @@ watch([
   immediate: true
 })
 
-const displayedTeam = computed(() => workspace.currentTeam.value ?? provisionalCurrentTeam.value)
-const displayedTeamMembership = computed(() =>
-  workspace.currentTeamMembership.value ?? provisionalCurrentTeam.value?.members[0] ?? null
+const displayedTeam = computed(() =>
+  workspace.currentTeam.value
+  ?? workspace.ownTeam.value
+  ?? providedTeam.value
+  ?? provisionalCurrentTeam.value
 )
 const canManageTeam = computed(() =>
-  workspace.isCurrentTeamAdmin.value || Boolean(provisionalCurrentTeam.value)
+  workspace.isCurrentTeamAdmin.value
+  || providedTeam.value?.role === 'admin'
+  || Boolean(provisionalCurrentTeam.value)
 )
 const canViewSubmission = computed(() =>
-  shouldShowParticipantSubmissionWorkspace(props.hackathon, Boolean(displayedTeamMembership.value))
+  shouldShowParticipantSubmissionWorkspace(props.hackathon, Boolean(displayedTeam.value))
 )
 const submissionWorkspace = useTeamSubmissionWorkspace(
   computed(() => props.hackathon),
   {
-    visibleHackathonId: workspace.visibleHackathonId,
+    visibleHackathonId: computed(() => props.hackathon.id),
     team: displayedTeam,
     canViewSubmission,
-    canManageSubmission: canManageTeam
+    canManageSubmission: canManageTeam,
+    initialSubmission: computed(() => props.initialSubmission),
+    hasInitialSubmissionState: computed(() => Boolean(providedTeam.value))
   }
 )
 
@@ -186,14 +211,7 @@ const isWorkspaceLoading = computed(() => {
     return true
   }
 
-  if (!actor.value || actor.value.kind !== 'platform_user') {
-    return false
-  }
-
-  return workspace.visibleHackathonStatus.value === 'idle'
-    || workspace.visibleHackathonStatus.value === 'pending'
-    || workspace.ownApplicationStatus.value === 'idle'
-    || workspace.ownApplicationStatus.value === 'pending'
+  return false
 })
 const showClosedSubmissionCard = computed(() =>
   props.hackathon.state === 'registration_open'
@@ -207,14 +225,10 @@ const submissionUnavailableDescription = computed(() => {
     return 'There is no active team submission available for your account in this hackathon.'
   }
 
-  if (!displayedTeamMembership.value) {
-    return 'Submission access requires an active membership on the current team.'
-  }
-
   return 'The current submission surface could not be resolved right now.'
 })
 const createTeamAvailability = computed(() =>
-  getCreateTeamAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
+  getCreateTeamAvailability(props.hackathon, ownApplicationStatus.value, hasPersistedTeam.value)
 )
 const createSubmissionAvailability = computed(() =>
   getCreateSubmissionAvailability(props.hackathon, submissionWorkspace.currentSubmission.value, canManageTeam.value)
@@ -358,30 +372,6 @@ async function withdrawSubmission() {
         :description="workspace.actorErrorMessage.value"
       />
 
-      <AppAlert
-        v-else-if="workspace.visibleHackathonErrorMessage.value"
-        color="error"
-        variant="soft"
-        title="Unable to resolve hackathon access"
-        :description="workspace.visibleHackathonErrorMessage.value"
-      />
-
-      <AppAlert
-        v-else-if="!workspace.visibleHackathonId.value"
-        color="error"
-        variant="soft"
-        title="Submission access unavailable"
-        description="The current hackathon could not be resolved for submission actions."
-      />
-
-      <AppAlert
-        v-else-if="workspace.ownApplicationErrorMessage.value"
-        color="error"
-        variant="soft"
-        title="Unable to resolve your application status"
-        :description="workspace.ownApplicationErrorMessage.value"
-      />
-
       <template v-else>
         <AppAlert
           v-if="workspace.mutationError.value"
@@ -392,7 +382,7 @@ async function withdrawSubmission() {
         />
 
         <AppAlert
-          v-if="workspace.ownTeamErrorMessage.value"
+          v-if="!providedTeam && workspace.ownTeamErrorMessage.value"
           color="warning"
           variant="soft"
           title="Current team membership unresolved"
@@ -433,22 +423,6 @@ async function withdrawSubmission() {
           @save-changes="saveSubmissionChanges"
           @submit-project="submitProject"
           @withdraw-submission="withdrawSubmission"
-        />
-
-        <AppAlert
-          v-else-if="workspace.currentTeamStatus.value === 'pending'"
-          color="neutral"
-          variant="soft"
-          title="Loading your submission"
-          description="Checking the team context for your submission."
-        />
-
-        <AppAlert
-          v-else-if="workspace.currentTeamErrorMessage.value"
-          color="error"
-          variant="soft"
-          title="Submission unavailable"
-          :description="workspace.currentTeamErrorMessage.value"
         />
 
         <AppAlert

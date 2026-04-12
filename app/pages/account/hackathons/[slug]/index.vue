@@ -340,6 +340,27 @@ const teamTabTargetSlug = computed(() =>
   ?? accessRecord.value?.team?.slug
   ?? selectedTeamSlug.value
 )
+const submissionTeam = computed(() => {
+  if (participationRecord.value?.activeTeam) {
+    return {
+      id: participationRecord.value.activeTeam.id,
+      name: participationRecord.value.activeTeam.name,
+      slug: participationRecord.value.activeTeam.slug,
+      role: participationRecord.value.activeTeam.membershipRole
+    }
+  }
+
+  if (accessRecord.value?.team) {
+    return {
+      id: accessRecord.value.team.id,
+      name: accessRecord.value.team.name,
+      slug: accessRecord.value.team.slug,
+      role: accessRecord.value.team.role
+    }
+  }
+
+  return null
+})
 const teamTabHref = computed(() => buildAccountHackathonTeamTabHref(slug.value, teamTabTargetSlug.value))
 const submissionTabHref = computed(() => `/account/hackathons/${slug.value}?tab=submission`)
 const detailsTabHref = computed(() => `/account/hackathons/${slug.value}?tab=details`)
@@ -887,7 +908,12 @@ useSeoMeta({
         aria-labelledby="account-tab-submission"
         class="space-y-8"
       >
-        <AccountHackathonParticipantSubmissionPanel :hackathon="hackathon" />
+        <AccountHackathonParticipantSubmissionPanel
+          :hackathon="hackathon"
+          :application-status="applicationStatus"
+          :team="submissionTeam"
+          :initial-submission="participationRecord?.latestSubmission ?? null"
+        />
       </section>
 
       <section

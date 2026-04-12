@@ -3,7 +3,6 @@ import type {
   TeamSubmissionFormInput,
   TeamSubmissionRecord
 } from '~/utils/team-submission'
-import type { TeamDetailRecord } from '~/utils/team-workspace'
 
 import { normalizeTeamSubmissionApiError } from '~/utils/team-submission'
 
@@ -11,6 +10,11 @@ type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
 type TeamSubmissionApiDataResponse<T> = {
   data: T
+}
+
+type TeamSubmissionWorkspaceTeam = {
+  id: string
+  isPersisted?: boolean
 }
 
 function toSectionErrorMessage(error: unknown, fallback: string) {
@@ -22,9 +26,11 @@ export function useTeamSubmissionWorkspace(
   hackathon: MaybeRefOrGetter<Pick<PublicHackathon, 'state'>>,
   options: {
     visibleHackathonId: MaybeRefOrGetter<string | null | undefined>
-    team: MaybeRefOrGetter<TeamDetailRecord | null | undefined>
+    team: MaybeRefOrGetter<TeamSubmissionWorkspaceTeam | null | undefined>
     canViewSubmission: MaybeRefOrGetter<boolean>
     canManageSubmission: MaybeRefOrGetter<boolean>
+    initialSubmission?: MaybeRefOrGetter<TeamSubmissionRecord | null | undefined>
+    hasInitialSubmissionState?: MaybeRefOrGetter<boolean>
   }
 ) {
   const apiFetch = $fetch
@@ -43,9 +49,19 @@ export function useTeamSubmissionWorkspace(
   })
   const canViewSubmission = computed(() => Boolean(toValue(options.canViewSubmission)))
   const canManageSubmission = computed(() => Boolean(toValue(options.canManageSubmission)))
+  const initialSubmission = computed(() => toValue(options.initialSubmission ?? null) ?? null)
+  const hasInitialSubmissionState = computed(() => Boolean(toValue(options.hasInitialSubmissionState ?? false)))
+  const initialSubmissionStateKey = computed(() => {
+    if (!hasInitialSubmissionState.value || !resolvedHackathonId.value || !resolvedTeamId.value || !canViewSubmission.value) {
+      return null
+    }
 
-  const currentSubmission = ref<TeamSubmissionRecord | null>(null)
-  const currentSubmissionStatus = ref<LoadStatus>('idle')
+    return `${resolvedHackathonId.value}:${resolvedTeamId.value}`
+  })
+  const appliedInitialSubmissionStateKey = ref<string | null>(null)
+
+  const currentSubmission = ref<TeamSubmissionRecord | null>(initialSubmissionStateKey.value ? initialSubmission.value : null)
+  const currentSubmissionStatus = ref<LoadStatus>(initialSubmissionStateKey.value ? 'success' : 'idle')
   const currentSubmissionErrorMessage = ref('')
 
   const pendingActionKey = ref<string | null>(null)
@@ -55,6 +71,20 @@ export function useTeamSubmissionWorkspace(
     currentSubmission.value = null
     currentSubmissionStatus.value = 'idle'
     currentSubmissionErrorMessage.value = ''
+    appliedInitialSubmissionStateKey.value = null
+  }
+
+  function applyInitialSubmissionState() {
+    if (!initialSubmissionStateKey.value) {
+      appliedInitialSubmissionStateKey.value = null
+      return false
+    }
+
+    currentSubmission.value = initialSubmission.value
+    currentSubmissionStatus.value = 'success'
+    currentSubmissionErrorMessage.value = ''
+    appliedInitialSubmissionStateKey.value = initialSubmissionStateKey.value
+    return true
   }
 
   async function fetchCurrentSubmission(teamId: string) {
@@ -90,6 +120,19 @@ export function useTeamSubmissionWorkspace(
       )
     }
   }
+
+  watch([initialSubmissionStateKey, initialSubmission], () => {
+    if (!initialSubmissionStateKey.value) {
+      if (!hasInitialSubmissionState.value) {
+        appliedInitialSubmissionStateKey.value = null
+      }
+      return
+    }
+
+    applyInitialSubmissionState()
+  }, {
+    immediate: true
+  })
 
   async function runMutation<T>(
     actionKey: string,
@@ -201,6 +244,13 @@ export function useTeamSubmissionWorkspace(
   watch([resolvedHackathonId, resolvedTeamId, canViewSubmission], async ([hackathonId, teamId, canView]) => {
     if (!hackathonId || !teamId || !canView) {
       resetSubmissionState()
+      return
+    }
+
+    if (
+      initialSubmissionStateKey.value
+      && appliedInitialSubmissionStateKey.value === initialSubmissionStateKey.value
+    ) {
       return
     }
 
