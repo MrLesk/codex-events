@@ -9,14 +9,18 @@ import type {
 import {
   buildAdminApplicationReviewGroups,
   filterAdminApplicationReviewGroups,
+  filterAdminApplicationReviewGroupsByApplicant,
   searchAdminApplicationReviewGroups
 } from '~/utils/admin-application-review'
 import { parseProofOfExecutionLinks } from '~/utils/participant-application'
 import { buildProfileIconHref } from '~/utils/profile-icon'
 import {
+  formatApplicationAttendanceStatus,
   formatApplicationLumaSyncStatus,
+  getApplicationAttendanceStatusColor,
   getApplicationLumaSyncStatusColor,
   getApplicationStatusColor,
+  isApplicationCheckedIn,
   shouldShowApplicationLumaSyncStatus
 } from '~/utils/admin-workspace'
 import { formatTimestamp } from '~/utils/date-formatting'
@@ -30,12 +34,14 @@ const props = withDefaults(defineProps<{
   pendingActionKey?: string | null
   readOnly?: boolean
   searchEnabled?: boolean
+  showAttendance?: boolean
 }>(), {
   isLoading: false,
   errorMessage: '',
   pendingActionKey: null,
   readOnly: false,
-  searchEnabled: false
+  searchEnabled: false,
+  showAttendance: false
 })
 
 const emit = defineEmits<{
@@ -53,13 +59,32 @@ const whyThisHackathonPreviewCharacterLimit = 280
 const proofLinksPreviewCount = 2
 const expandedApplicationSectionKeys = ref(new Set<string>())
 const searchQuery = ref('')
+const checkedInOnly = ref(false)
+const showApprovedAttendance = computed(() =>
+  props.showAttendance && props.view === 'approved'
+)
+const hasSearchQuery = computed(() =>
+  props.searchEnabled && searchQuery.value.trim().length > 0
+)
+const filteredReviewGroups = computed(() => {
+  let groups = filterAdminApplicationReviewGroups(
+    buildAdminApplicationReviewGroups(props.applications),
+    props.view
+  )
+
+  if (showApprovedAttendance.value && checkedInOnly.value) {
+    groups = filterAdminApplicationReviewGroupsByApplicant(
+      groups,
+      applicant => isApplicationCheckedIn(applicant.application)
+    )
+  }
+
+  return groups
+})
 const applicationReviewGroups = computed(() =>
   searchAdminApplicationReviewGroups(
-    filterAdminApplicationReviewGroups(
-      buildAdminApplicationReviewGroups(props.applications),
-      props.view
-    ),
-    props.searchEnabled ? searchQuery.value : ''
+    filteredReviewGroups.value,
+    hasSearchQuery.value ? searchQuery.value : ''
   )
 )
 const failedLumaSyncApplications = computed(() => {
@@ -280,13 +305,19 @@ function formatWithdrawalTimestamp(application: AdminApplicationRecord) {
     : null
 }
 
+function formatCheckedInTimestamp(application: AdminApplicationRecord) {
+  return application.checkedInAt
+    ? `Checked in ${formatTimestamp(application.checkedInAt, 'recently')}`
+    : null
+}
+
 const reviewContent = computed(() => {
   if (props.view === 'approved') {
     return {
       title: 'Approved Participants',
       description: props.readOnly
         ? 'Browse approved participants and inferred teammate groupings.'
-        : 'Browse approved participants and inferred teammate groupings.'
+        : 'Browse approved participants, filter to checked-in attendees, and review inferred teammate groupings.'
     }
   }
 
@@ -324,7 +355,14 @@ const emptyState = computed(() => {
     }
   }
 
-  if (props.searchEnabled && searchQuery.value.trim().length > 0) {
+  if (showApprovedAttendance.value && checkedInOnly.value && hasSearchQuery.value) {
+    return {
+      title: 'No checked-in approved participants match this search',
+      description: 'Try a different name, email, or teammate hint, or clear the checked-in filter.'
+    }
+  }
+
+  if (hasSearchQuery.value) {
     if (props.view === 'approved') {
       return {
         title: 'No approved participants match this search',
@@ -349,6 +387,13 @@ const emptyState = computed(() => {
     return {
       title: 'No applications match this search',
       description: 'Try a different name, email, user ID, or teammate hint.'
+    }
+  }
+
+  if (showApprovedAttendance.value && checkedInOnly.value) {
+    return {
+      title: 'No checked-in approved participants yet',
+      description: 'Approved participants will appear here after a Luma check-in is recorded.'
     }
   }
 
@@ -421,20 +466,39 @@ const emptyState = computed(() => {
           :description="failedLumaSyncAlert.description"
         />
 
-        <AppInput
-          v-if="searchEnabled"
-          v-model="searchQuery"
-          type="search"
-          name="participant-review-search"
-          autocomplete="off"
-          autocapitalize="none"
-          autocorrect="off"
-          spellcheck="false"
-          data-1p-ignore="true"
-          data-lpignore="true"
-          data-bwignore="true"
-          placeholder="Search participants by name, email, user ID, or teammate hint"
-        />
+        <div
+          v-if="searchEnabled || showApprovedAttendance"
+          class="flex flex-col gap-3 md:flex-row md:items-center"
+        >
+          <AppInput
+            v-if="searchEnabled"
+            v-model="searchQuery"
+            type="search"
+            name="participant-review-search"
+            autocomplete="off"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
+            data-1p-ignore="true"
+            data-lpignore="true"
+            data-bwignore="true"
+            placeholder="Search participants by name, email, user ID, or teammate hint"
+            class="min-w-0 flex-1"
+          />
+
+          <button
+            v-if="showApprovedAttendance"
+            type="button"
+            data-testid="admin-approved-checked-in-filter"
+            class="inline-flex min-w-max items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition"
+            :class="checkedInOnly
+              ? 'border-success/30 bg-success/12 text-success hover:bg-success/16'
+              : 'border-black/8 bg-transparent text-toned hover:border-black/20 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.18] dark:hover:text-white'"
+            @click="checkedInOnly = !checkedInOnly"
+          >
+            Checked in only
+          </button>
+        </div>
 
         <div
           v-if="view === 'applications' && !readOnly"
@@ -500,6 +564,14 @@ const emptyState = computed(() => {
                         Approved
                       </AppBadge>
                       <AppBadge
+                        v-if="showApprovedAttendance && applicant.application.status === 'approved'"
+                        :data-testid="`admin-application-attendance-badge-${applicant.application.id}`"
+                        :color="getApplicationAttendanceStatusColor(applicant.application)"
+                        variant="soft"
+                      >
+                        {{ formatApplicationAttendanceStatus(applicant.application) }}
+                      </AppBadge>
+                      <AppBadge
                         v-if="applicant.application.status === 'rejected'"
                         :color="getApplicationStatusColor(applicant.application.status)"
                         variant="soft"
@@ -525,6 +597,13 @@ const emptyState = computed(() => {
                         class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
                       >
                         {{ formatWithdrawalTimestamp(applicant.application) }}
+                      </span>
+                      <span
+                        v-if="showApprovedAttendance && applicant.application.status === 'approved' && formatCheckedInTimestamp(applicant.application)"
+                        :data-testid="`admin-application-checked-in-at-${applicant.application.id}`"
+                        class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
+                      >
+                        {{ formatCheckedInTimestamp(applicant.application) }}
                       </span>
                       <AppBadge
                         v-if="applicant.hasFuzzyMatch"

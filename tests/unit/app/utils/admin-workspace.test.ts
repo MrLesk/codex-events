@@ -19,6 +19,7 @@ import {
   createEmptyHackathonFormState,
   createHackathonFormState,
   createHackathonSlug,
+  formatApplicationAttendanceStatus,
   formatApplicationLumaSyncStatus,
   formatApplicationStatus,
   formatAdminJudgeAssignmentStatus,
@@ -29,9 +30,11 @@ import {
   getAdminJudgeAssignmentInterventionPolicy,
   getAdminSubmissionDashboardBucket,
   getAdminSubmissionDashboardMetrics,
+  getApplicationAttendanceStatusColor,
   getCriteriaConfigurationValidationIssues,
   getHackathonOperationsPhase,
   getAdminWorkspaceSubjectKey,
+  getApprovedParticipantAttendanceSummary,
   getHackathonDashboardStateBadgePresentation,
   hasHackathonJudgingAccess,
   hasHackathonParticipantVisibilityAccess,
@@ -46,6 +49,7 @@ import {
   hasHackathonAdminAccess,
   normalizeApiError,
   getSubmissionStatusColor,
+  isApplicationCheckedIn,
   sortAdminOperationalTeamsForSubmissionDashboard,
   shouldShowApplicationLumaSyncStatus,
   toDateTimeLocalValue
@@ -130,6 +134,7 @@ function createApplication(overrides: Partial<AdminApplicationRecord> = {}): Adm
     userId: 'user-1',
     status: 'submitted',
     preApprovalStatus: null,
+    checkedInAt: null,
     submittedAt: '2026-03-22T12:00:00.000Z',
     withdrawnAt: null,
     reviewedAt: null,
@@ -795,6 +800,14 @@ describe('admin-workspace operational helpers', () => {
   test('formats operational statuses into badge labels and colors', () => {
     expect(formatApplicationStatus('submitted')).toBe('Submitted')
     expect(getApplicationStatusColor('approved')).toBe('success')
+    expect(formatApplicationAttendanceStatus(createApplication({
+      checkedInAt: '2026-03-22T14:30:00.000Z'
+    }))).toBe('Checked in')
+    expect(formatApplicationAttendanceStatus(createApplication())).toBe('Not checked in')
+    expect(getApplicationAttendanceStatusColor(createApplication({
+      checkedInAt: '2026-03-22T14:30:00.000Z'
+    }))).toBe('success')
+    expect(getApplicationAttendanceStatusColor(createApplication())).toBe('neutral')
     expect(formatApplicationLumaSyncStatus('not_synced')).toBe('Luma sync pending')
     expect(formatApplicationLumaSyncStatus('approve_synced')).toBe('Luma approved')
     expect(formatApplicationLumaSyncStatus('reject_synced')).toBe('Luma rejected')
@@ -837,6 +850,40 @@ describe('admin-workspace operational helpers', () => {
         lumaSyncStatus: 'approve_synced'
       })
     )).toBe(true)
+  })
+
+  test('detects approved participant attendance from checkedInAt', () => {
+    expect(isApplicationCheckedIn(createApplication({
+      checkedInAt: '2026-03-22T14:30:00.000Z'
+    }))).toBe(true)
+
+    expect(isApplicationCheckedIn(createApplication({
+      checkedInAt: null
+    }))).toBe(false)
+  })
+
+  test('summarizes checked-in attendance relative to approved participants', () => {
+    expect(getApprovedParticipantAttendanceSummary([
+      createApplication({
+        id: 'application-approved-checked-in',
+        status: 'approved',
+        checkedInAt: '2026-03-22T14:30:00.000Z'
+      }),
+      createApplication({
+        id: 'application-approved-not-checked-in',
+        status: 'approved',
+        checkedInAt: null
+      }),
+      createApplication({
+        id: 'application-submitted',
+        status: 'submitted',
+        checkedInAt: '2026-03-22T15:00:00.000Z'
+      })
+    ])).toEqual({
+      approvedCount: 2,
+      checkedInCount: 1,
+      value: '1 / 2'
+    })
   })
 
   test('summarizes participant limit fill including staged approvals', () => {

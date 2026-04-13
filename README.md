@@ -96,7 +96,7 @@ Application review APIs enqueue email delivery work to a Cloudflare Queue. Ensur
 
 ### Luma Sync Runtime
 
-These values configure the optional Luma approval and rejection sync used by hackathons that require a Luma email and define a Luma event URL:
+These values configure the optional Luma integration used for application decision sync and attendance webhook verification:
 
 - `NUXT_LUMA_API_KEY`
 - `NUXT_LUMA_API_BASE_URL`
@@ -104,9 +104,18 @@ These values configure the optional Luma approval and rejection sync used by hac
 - `NUXT_LUMA_QUEUE_BINDING`
 - `NUXT_LUMA_QUEUE_NAME`
 - `NUXT_LUMA_RETRY_DELAY_SECONDS`
+- `NUXT_LUMA_WEBHOOK_SECRET`
 
 Set `NUXT_LUMA_API_KEY` as a secret in deployed environments. The default runtime uses Luma's public API base URL, and the public profile host remains configurable for the one-time legacy username-to-email backfill route. The queue binding and name must match the Cloudflare Queue producer and consumer configuration exposed to the Worker.
-The checked-in GitHub Actions deploy workflows create or reuse the configured Cloudflare Queues automatically before deployment. If you deploy outside those workflows, create the queues declared in `wrangler.jsonc` first.
+
+The checked-in shared dev and production deploy workflows now also reconcile a repository-managed Luma `guest.updated` webhook for the environment webhook endpoint and upload the resulting `NUXT_LUMA_WEBHOOK_SECRET` to the Worker automatically. Operators do not need to store `NUXT_LUMA_WEBHOOK_SECRET` in GitHub environment secrets.
+
+For manual reconciliation or recovery outside GitHub Actions, run:
+
+- `LUMA_WEBHOOK_URL=https://your-platform.example/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts check`
+- `LUMA_WEBHOOK_URL=https://your-platform.example/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json`
+
+The `apply` command writes a `wrangler secret bulk`-compatible JSON object containing `NUXT_LUMA_WEBHOOK_SECRET`. Upload that secret to the target Worker before deployment, or rerun the environment deploy workflow to reconcile and republish it automatically. The checked-in GitHub Actions deploy workflows still create or reuse the configured Cloudflare Queues automatically before deployment. If you deploy outside those workflows, create the queues declared in `wrangler.jsonc` first.
 
 ### Auth0 Bootstrap Configuration Drift Control
 

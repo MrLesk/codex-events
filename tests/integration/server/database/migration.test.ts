@@ -52,6 +52,25 @@ describe('shared database migration', () => {
     await insertUser.run('user_3', 'auth0|shared-subject', 'deleted@example.com', 'Deleted User', 0, now, now, now)
   })
 
+  test('enforces a unique non-null Luma event API id across hackathons', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'creator_1', now)
+    await seedHackathon(database, 'hackathon_1', 'draft', now, 'creator_1')
+    await seedHackathon(database, 'hackathon_2', 'draft', now, 'creator_1')
+
+    await database.prepare(`
+      update hackathons
+      set luma_event_api_id = ?
+      where id = ?
+    `).run('evt-unique123', 'hackathon_1')
+
+    await expect(database.prepare(`
+      update hackathons
+      set luma_event_api_id = ?
+      where id = ?
+    `).run('evt-unique123', 'hackathon_2')).rejects.toThrow()
+  })
+
   test('creates and removes primary linked-auth-identity rows with user inserts and soft deletion', async () => {
     const now = isoTimestamp(0)
 

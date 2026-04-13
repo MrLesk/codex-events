@@ -64,6 +64,7 @@ Key characteristics:
 - Each hackathon can be marked as an in-person event.
 - Each hackathon can optionally reference a public Luma event URL.
 - Each hackathon can optionally store a Luma event API ID used for operational sync.
+- A configured Luma event API ID maps to at most one hackathon.
 - Each hackathon has a city, country, and address.
 - Each hackathon has its own registration window.
 - Each hackathon has a registration flow that can be activated manually within its configured registration window.
@@ -193,6 +194,8 @@ Rules:
 - If the hackathon requires proof of execution, at least one proof-of-execution link must be non-empty and every provided link must use `http` or `https`.
 - A `UserApplication` can persist a Luma sync outcome of `not_synced`, `approve_synced`, `reject_synced`, `approve_failed`, or `reject_failed`.
 - `not_synced` is used only for hackathons where Luma sync is enabled.
+- A `UserApplication` can record `checkedInAt` when a valid signed Luma guest check-in update confirms the approved participant attended the hackathon.
+- Luma attendance sync is sticky in this version. Once `checkedInAt` is recorded, later Luma uncheck changes do not clear it.
 
 ### Team
 

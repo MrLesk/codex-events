@@ -6,6 +6,7 @@ import {
   assertInPersonAttendanceCommitment,
   assertApplicationReviewable,
   assertHackathonAllowsApplications,
+  isHackathonLumaAttendanceSyncEnabled,
   assertUserMeetsHackathonProfileRequirements,
   serializeUserApplication,
   serializeRegistrationDetailsJson
@@ -22,6 +23,7 @@ describe('application utilities', () => {
       lumaSyncStatus: null,
       submittedAt: '2026-03-22T12:10:00.000Z',
       withdrawnAt: null,
+      checkedInAt: '2026-03-28T09:00:00.000Z',
       reviewedAt: null,
       reviewedByUserId: null,
       applicationTermsDocumentId: 'terms_app_2',
@@ -53,11 +55,26 @@ describe('application utilities', () => {
         deletedAt: null
       }
     })).toMatchObject({
+      checkedInAt: '2026-03-28T09:00:00.000Z',
       user: {
         id: 'user_1',
         profileIconUpdatedAt: '2026-03-28T12:34:56.000Z'
       }
     })
+  })
+
+  test('attendance sync only depends on whether the hackathon stores a Luma event API id', () => {
+    expect(isHackathonLumaAttendanceSyncEnabled({
+      lumaEventApiId: 'evt-123'
+    })).toBe(true)
+
+    expect(isHackathonLumaAttendanceSyncEnabled({
+      lumaEventApiId: '   '
+    })).toBe(false)
+
+    expect(isHackathonLumaAttendanceSyncEnabled({
+      lumaEventApiId: null
+    })).toBe(false)
   })
 
   test('applications can only be submitted while registration is open', () => {

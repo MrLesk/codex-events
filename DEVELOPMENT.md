@@ -41,6 +41,7 @@ NUXT_LUMA_PROFILE_BASE_URL=https://luma.com
 NUXT_LUMA_QUEUE_BINDING=APPLICATION_LUMA_SYNC_QUEUE
 NUXT_LUMA_QUEUE_NAME=codex-hackathons-application-luma-sync
 NUXT_LUMA_RETRY_DELAY_SECONDS=120
+NUXT_LUMA_WEBHOOK_SECRET=
 ```
 
 Local Auth0 dashboard settings:
@@ -82,6 +83,13 @@ When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the b
 
 If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUTH0_*`, rename them to the `NUXT_AUTH0_*` keys above.
 
+Luma webhook bootstrap automation:
+
+- `LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts check`
+- `LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json`
+
+These commands reconcile the repository-managed `guest.updated` webhook for an environment and, in `apply` mode, write a `wrangler secret bulk`-compatible JSON file containing `NUXT_LUMA_WEBHOOK_SECRET`. The script reads `LUMA_API_KEY` or falls back to `NUXT_LUMA_API_KEY`, falls back to `NUXT_LUMA_API_BASE_URL` for the API host, and can derive the webhook URL from an https `NUXT_AUTH0_APP_BASE_URL` when you do not pass `LUMA_WEBHOOK_URL` explicitly.
+
 Local first-platform-admin bootstrap command:
 
 - `bun tools/platform-admin/bootstrap.ts check --email your-admin@example.com`
@@ -109,6 +117,7 @@ Application decision emails and optional Luma guest-status sync both use Cloudfl
 - `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING` and `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for participant decision emails.
 - `NUXT_LUMA_QUEUE_BINDING` and `NUXT_LUMA_QUEUE_NAME` should match the producer and consumer queue configuration for Luma sync jobs.
 - `NUXT_LUMA_API_KEY` is only required when you operate hackathons that use Luma sync.
+- `NUXT_LUMA_WEBHOOK_SECRET` is the runtime signing secret for inbound Luma webhook verification and is uploaded automatically by the checked-in deploy workflows after Luma webhook reconciliation.
 
 ## Local Development
 
@@ -172,16 +181,22 @@ The GitHub `dev` environment must provide these secrets:
 - `E2E_REGULAR_USER_EMAIL`
 - `E2E_REGULAR_USER_PASSWORD`
 
-The deploy workflow creates or reuses the Cloudflare Queues declared for the `dev` environment in `wrangler.jsonc`, uploads the shared dev Worker secrets from the GitHub `dev` environment, applies the remote dev D1 migrations, and then deploys the Worker. The checked-in dev `wrangler.jsonc` supplies the shared dev Auth0 management domain, management audience, and password connection name as plaintext vars.
+The deploy workflow creates or reuses the Cloudflare Queues declared for the `dev` environment in `wrangler.jsonc`, reconciles the managed shared-dev Luma webhook when `NUXT_LUMA_API_KEY` is present, uploads the shared dev Worker secrets from the GitHub `dev` environment plus the generated `NUXT_LUMA_WEBHOOK_SECRET`, applies the remote dev D1 migrations, and then deploys the Worker. The checked-in dev `wrangler.jsonc` supplies the shared dev Auth0 management domain, management audience, and password connection name as plaintext vars.
+
+The GitHub `dev` environment does not need a stored `NUXT_LUMA_WEBHOOK_SECRET`; the workflow derives it from Luma on each deploy.
 
 The shared dev `CLOUDFLARE_API_TOKEN` must be able to run `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, and `wrangler deploy`.
 
 For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run:
 
 ```bash
+LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks \
+bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-dev-luma-webhook-secret.json
 bun run db:migrate:dev
 bun run deploy:dev
 ```
+
+If you use the manual path, upload the generated `.wrangler-dev-luma-webhook-secret.json` contents with `wrangler secret bulk` before `bun run deploy:dev`, or rerun the checked-in workflow to republish the secret automatically.
 
 Pull requests and non-`main` pushes do not publish the shared dev environment. The Auth0-backed BDD workflow also reads its CI secrets from the GitHub `dev` environment.
 
@@ -255,7 +270,18 @@ The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CL
 
 The `read:users` and `update:users` scopes are required by the runtime account-linking flow. The app reads linked Auth0 identities to reconcile cross-device sessions and posts to Auth0's user identities endpoint when a verified social login must be connected to an existing password-backed platform account.
 
-`AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. `NUXT_RESEND_API_KEY` should be a send-capable Resend API key for the sender identity configured by `NUXT_RESEND_FROM_EMAIL`; the checked-in production workflow does not currently require any additional repository-specific Resend scopes. The release workflow creates or reuses the Cloudflare Queues declared for the `production` environment in `wrangler.jsonc` before it uploads Worker secrets, applies migrations, and deploys the Worker.
+`AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. `NUXT_RESEND_API_KEY` should be a send-capable Resend API key for the sender identity configured by `NUXT_RESEND_FROM_EMAIL`; the checked-in production workflow does not currently require any additional repository-specific Resend scopes. The release workflow creates or reuses the Cloudflare Queues declared for the `production` environment in `wrangler.jsonc`, reconciles the managed production Luma webhook when `NUXT_LUMA_API_KEY` is present, uploads Worker secrets plus the generated `NUXT_LUMA_WEBHOOK_SECRET`, applies migrations, and deploys the Worker.
+
+The GitHub `production` environment does not need a stored `NUXT_LUMA_WEBHOOK_SECRET`; the workflow derives it from Luma on each release.
+
+For manual production recovery, reconcile the production webhook first, upload the generated secret with `wrangler secret bulk`, and then deploy:
+
+```bash
+LUMA_WEBHOOK_URL=https://codex-hackathons.com/api/public/luma/webhooks \
+bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-production-luma-webhook-secret.json
+bun run db:migrate:production
+bun run deploy:production
+```
 
 The workflow uses these production hostnames:
 

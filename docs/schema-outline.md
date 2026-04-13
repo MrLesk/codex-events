@@ -136,6 +136,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Constraints
 
 - `slug` is unique.
+- `luma_event_api_id` is unique when present.
 - `blind_review_count` is `0`, `1`, or `2`.
 - `blind_score_weight_percent` is null or between `0` and `100`.
 - `pitch_score_weight_percent` is null or between `0` and `100`.
@@ -291,6 +292,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `status`
 - `submitted_at`
 - `withdrawn_at`
+- `checked_in_at`
 - `reviewed_at`
 - `reviewed_by_user_id`
 - `pre_approval_status`
@@ -331,8 +333,10 @@ It describes the intended persistent model at the level of entities, key fields,
   - `whyThisHackathon`: trimmed free-form motivation text
   - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence
 - `withdrawn_at` records when the participant withdrew from the hackathon.
+- `checked_in_at` records when a valid signed Luma guest check-in update first marked the approved participant as attended.
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
 - `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for hackathons that require a Luma email and define a `luma_event_api_id`.
+- `checked_in_at` is sticky in this version and is not cleared by later Luma uncheck updates.
 - Withdrawal retains the application record rather than deleting it so participation history, terms acceptance, and audit context remain available.
 
 ## Team

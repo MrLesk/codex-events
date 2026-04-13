@@ -94,6 +94,12 @@ jobs:
             fi
           done < <(jq -r '.env.production.queues.producers[].queue' wrangler.jsonc)
 
+      - name: Reconcile production Luma webhook
+        if: ${{ env.NUXT_LUMA_API_KEY != '' }}
+        env:
+          LUMA_WEBHOOK_URL: https://codex-hackathons.com/api/public/luma/webhooks
+        run: bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-production-luma-webhook-secret.json
+
       - name: Upload production Worker secrets
         run: |
           jq -n \
@@ -123,8 +129,14 @@ jobs:
               NUXT_RESEND_REPLY_TO: $resendReplyTo,
               NUXT_LUMA_API_KEY: $lumaApiKey
             }' > .wrangler-production-secrets.json
+          if [ -f .wrangler-production-luma-webhook-secret.json ]; then
+            jq -s '.[0] * .[1]' \
+              .wrangler-production-secrets.json \
+              .wrangler-production-luma-webhook-secret.json > .wrangler-production-secrets.merged.json
+            mv .wrangler-production-secrets.merged.json .wrangler-production-secrets.json
+          fi
           bunx wrangler secret bulk .wrangler-production-secrets.json --env production --config wrangler.jsonc
-          rm .wrangler-production-secrets.json
+          rm -f .wrangler-production-secrets.json .wrangler-production-luma-webhook-secret.json
 
       - name: Apply production Auth0 configuration
         env:

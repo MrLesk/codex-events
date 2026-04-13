@@ -85,6 +85,7 @@ The canonical backend domains are:
 
 - `session`
 - `legal`
+- `luma-webhooks`
 - `platform-documents`
 - `account`
 - `platform-admins`
@@ -116,6 +117,21 @@ Operations:
 Testing:
 - Unit: contact-form validation and delivery-result handling.
 - Integration: public request handling and provider-configuration failure behavior.
+
+## Luma Webhooks
+
+Purpose:
+- Accept signed Luma guest updates used for hackathon attendance sync.
+
+Operations:
+
+| Operation | Method And Path | Actor | Guards And Notes |
+| --- | --- | --- | --- |
+| Receive Luma guest updates | `POST /api/public/luma/webhooks` | public integration | Verifies the signed Luma webhook request against the configured webhook secret. Processes `guest.updated` check-in updates only. Resolves the target hackathon by `lumaEventApiId` and the participant by `lumaEmail`. Marks attendance on the approved participant application exactly once. Valid signed deliveries for unknown hackathons, unknown participants, non-approved applications, duplicate check-ins, and non-check-in guest updates return HTTP `200` with no mutation. Invalid signatures are rejected. |
+
+Testing:
+- Unit: signature verification, replay-window enforcement, and payload extraction.
+- Integration: valid signed attendance sync, duplicate delivery idempotency, invalid signatures, unknown events, unmatched participants, and sticky attendance behavior.
 
 ## Session
 
@@ -317,6 +333,7 @@ Operational notes:
 - Queue-consumer delivery outcomes are retried under queue retry policy and provider-aware retry guards.
 - Queue enqueue outcomes are recorded in audit metadata for operational visibility.
 - Luma-enabled hackathons persist per-application Luma sync state so admins can identify manual Luma follow-up after asynchronous sync failures.
+- Application reads can also expose `checkedInAt` when inbound Luma attendance sync has confirmed the approved participant checked in.
 - Withdrawn applications remain in the account-scoped hackathon workspace as retained records rather than disappearing from history.
 - Public registration entry is available only while the hackathon is in `registration_open`.
 - The public registration route `/hackathons/:slug/register` is a narrow application-entry flow rather than a participant workspace. Anonymous visitors are sent to Auth0 login, authenticated users without a platform account are sent to account completion, existing applicants are sent to `/account/hackathons/:slug`, and users without an application are sent back to the public hackathon detail page when registration is no longer open.

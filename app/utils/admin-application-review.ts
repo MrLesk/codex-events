@@ -569,19 +569,26 @@ export function filterAdminApplicationReviewGroups(
   groups: AdminApplicationReviewGroup[],
   view: AdminApplicationReviewView
 ): AdminApplicationReviewGroup[] {
+  return filterAdminApplicationReviewGroupsByApplicant(groups, (applicant) => {
+    switch (view) {
+      case 'applications':
+        return applicant.application.status === 'submitted'
+      case 'approved':
+        return applicant.application.status === 'approved'
+      case 'rejected':
+        return applicant.application.status === 'rejected'
+      case 'withdrawn':
+        return applicant.application.status === 'withdrawn'
+    }
+  })
+}
+
+export function filterAdminApplicationReviewGroupsByApplicant(
+  groups: AdminApplicationReviewGroup[],
+  predicate: (applicant: AdminApplicationReviewApplicant) => boolean
+): AdminApplicationReviewGroup[] {
   return groups.flatMap((group) => {
-    const applicants = group.applicants.filter((applicant) => {
-      switch (view) {
-        case 'applications':
-          return applicant.application.status === 'submitted'
-        case 'approved':
-          return applicant.application.status === 'approved'
-        case 'rejected':
-          return applicant.application.status === 'rejected'
-        case 'withdrawn':
-          return applicant.application.status === 'withdrawn'
-      }
-    })
+    const applicants = group.applicants.filter(predicate)
 
     if (applicants.length === 0) {
       return []

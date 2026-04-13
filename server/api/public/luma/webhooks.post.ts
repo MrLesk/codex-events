@@ -1,0 +1,117 @@
+import { and, eq, isNull, sql } from 'drizzle-orm'
+import { readRawBody } from 'h3'
+
+import { writeAuditLog } from '../../../database/audit-log'
+import { getD1Binding, getDatabase } from '../../../database/client'
+import {
+  hackathons,
+  userApplications,
+  users
+} from '../../../database/schema'
+import { defineApiHandler } from '../../../utils/api-handler'
+import { apiData } from '../../../utils/api-response'
+import { isHackathonLumaAttendanceSyncEnabled } from '../../../utils/applications'
+import {
+  extractLumaAttendanceCheckInEvent,
+  resolveLumaAttendanceGuestEmail,
+  verifyLumaWebhookRequest
+} from '../../../utils/luma-webhooks'
+
+export default defineApiHandler(async (event) => {
+  const rawBody = await readRawBody(event, 'utf8') ?? ''
+
+  const { webhookId } = await verifyLumaWebhookRequest(event, rawBody)
+  const { envelope, attendanceEvent } = extractLumaAttendanceCheckInEvent(rawBody)
+
+  if (envelope.type !== 'guest.updated' || !attendanceEvent?.checkedInAt || !attendanceEvent.eventApiId) {
+    return apiData({
+      status: 'acknowledged'
+    })
+  }
+
+  const database = getDatabase(event)
+  const hackathon = await database.query.hackathons.findFirst({
+    where: eq(hackathons.lumaEventApiId, attendanceEvent.eventApiId)
+  })
+
+  if (!hackathon || !isHackathonLumaAttendanceSyncEnabled(hackathon)) {
+    return apiData({
+      status: 'acknowledged'
+    })
+  }
+
+  const guestEmail = await resolveLumaAttendanceGuestEmail(event, attendanceEvent)
+
+  if (!guestEmail) {
+    return apiData({
+      status: 'acknowledged'
+    })
+  }
+
+  const matchingApplications = await database
+    .select({
+      applicationId: userApplications.id,
+      userId: userApplications.userId,
+      status: userApplications.status,
+      checkedInAt: userApplications.checkedInAt
+    })
+    .from(userApplications)
+    .innerJoin(users, eq(users.id, userApplications.userId))
+    .where(and(
+      eq(userApplications.hackathonId, hackathon.id),
+      isNull(users.deletedAt),
+      sql`lower(${users.lumaEmail}) = lower(${guestEmail})`
+    ))
+
+  if (matchingApplications.length !== 1) {
+    return apiData({
+      status: 'acknowledged'
+    })
+  }
+
+  const [matchingApplication] = matchingApplications
+
+  if (!matchingApplication || matchingApplication.status !== 'approved' || matchingApplication.checkedInAt) {
+    return apiData({
+      status: 'acknowledged'
+    })
+  }
+
+  const updatedAt = new Date().toISOString()
+  const updateResult = await getD1Binding(event).prepare(`
+    update user_applications
+    set checked_in_at = ?, updated_at = ?
+    where id = ?
+      and status = 'approved'
+      and checked_in_at is null
+  `).bind(
+    attendanceEvent.checkedInAt,
+    updatedAt,
+    matchingApplication.applicationId
+  ).run()
+
+  if ((updateResult.meta.changes ?? 0) === 0) {
+    return apiData({
+      status: 'acknowledged'
+    })
+  }
+
+  await writeAuditLog(database, {
+    entityType: 'user_application',
+    entityId: matchingApplication.applicationId,
+    action: 'user_application.luma_check_in_recorded',
+    metadata: {
+      hackathonId: hackathon.id,
+      eventApiId: attendanceEvent.eventApiId,
+      guestId: attendanceEvent.guestId,
+      guestEmail,
+      checkedInAt: attendanceEvent.checkedInAt,
+      ...(webhookId ? { webhookId } : {})
+    },
+    createdAt: updatedAt
+  })
+
+  return apiData({
+    status: 'acknowledged'
+  })
+})

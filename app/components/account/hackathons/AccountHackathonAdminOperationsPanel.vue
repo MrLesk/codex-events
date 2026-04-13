@@ -13,6 +13,7 @@ import type {
 import {
   buildAdminOperationalTeams,
   filterAdminOperationalTeams,
+  getApprovedParticipantAttendanceSummary,
   getCurrentLifecycleControl,
   getAdminSubmissionDashboardBucket,
   getAdminSubmissionDashboardMetrics,
@@ -245,6 +246,18 @@ const approvedParticipantSummaryValue = computed(() =>
     applications.value.filter(application => application.status === 'approved').length
   )
 )
+
+const checkedInParticipantSummaryValue = computed(() => {
+  if (applicationsStatus.value === 'idle' || applicationsStatus.value === 'pending') {
+    return 'Loading...'
+  }
+
+  if (applicationsStatus.value === 'error') {
+    return 'Unavailable'
+  }
+
+  return getApprovedParticipantAttendanceSummary(applications.value).value
+})
 
 const rejectedParticipantSummaryValue = computed(() =>
   formatParticipantMetricValue(
@@ -1383,8 +1396,8 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
         class="space-y-4"
       >
         <div
-          class="grid grid-cols-3 gap-3 sm:gap-4"
-          :class="participantsLimitSummary ? 'sm:grid-cols-4' : ''"
+          class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4"
+          :class="participantsLimitSummary ? 'xl:grid-cols-5' : ''"
         >
           <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
@@ -1406,6 +1419,18 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
 
           <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              Checked in
+            </p>
+            <p class="mt-2 text-xl font-semibold text-highlighted">
+              {{ checkedInParticipantSummaryValue }}
+            </p>
+            <p class="mt-1 text-xs text-muted">
+              Of approved participants
+            </p>
+          </div>
+
+          <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Rejected
             </p>
             <p class="mt-2 text-xl font-semibold text-highlighted">
@@ -1415,7 +1440,7 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
 
           <div
             v-if="participantsLimitSummary"
-            class="col-span-3 rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:col-span-1 sm:px-5 sm:py-5"
+            class="col-span-2 rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:col-span-4 sm:px-5 sm:py-5 xl:col-span-1"
           >
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Participants limit
@@ -1491,6 +1516,7 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
           :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
           :pending-action-key="pendingActionKey"
           search-enabled
+          show-attendance
           @approve="approveApplication"
           @approve-team="approveApplicationGroup"
           @reject="rejectApplication"

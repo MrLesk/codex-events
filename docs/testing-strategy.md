@@ -22,6 +22,8 @@ The repository uses two automated validation surfaces: a fast CI gate for every 
 
 The fast CI gate is the default validation surface for `push` and `pull_request` runs in GitHub Actions.
 
+Public signed integration webhook behavior, including inbound Luma attendance sync, is covered in the same fast CI gate through repository unit and integration tests rather than a separate test surface.
+
 The required validation surface is:
 
 - `bun run lint`

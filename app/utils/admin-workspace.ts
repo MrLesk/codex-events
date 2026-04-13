@@ -157,6 +157,7 @@ export interface AdminApplicationRecord {
   status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
   preApprovalStatus?: 'approved' | 'rejected' | null
   lumaSyncStatus?: 'not_synced' | 'approve_synced' | 'reject_synced' | 'approve_failed' | 'reject_failed' | null
+  checkedInAt?: string | null
   submittedAt: string
   withdrawnAt: string | null
   reviewedAt: string | null
@@ -777,6 +778,24 @@ export function getApplicationStatusColor(status: AdminApplicationRecord['status
   }
 }
 
+export function isApplicationCheckedIn(
+  application: Pick<AdminApplicationRecord, 'checkedInAt'>
+) {
+  return Boolean(application.checkedInAt)
+}
+
+export function formatApplicationAttendanceStatus(
+  application: Pick<AdminApplicationRecord, 'checkedInAt'>
+) {
+  return isApplicationCheckedIn(application) ? 'Checked in' : 'Not checked in'
+}
+
+export function getApplicationAttendanceStatusColor(
+  application: Pick<AdminApplicationRecord, 'checkedInAt'>
+) {
+  return isApplicationCheckedIn(application) ? 'success' : 'neutral'
+}
+
 export function shouldShowApplicationLumaSyncStatus(
   application: Pick<AdminApplicationRecord, 'status' | 'lumaSyncStatus'>
 ) {
@@ -850,6 +869,19 @@ export function getParticipantsLimitSummary(
     stagedApprovedCount,
     projectedApprovedCount,
     description: `Current fill: ${approvedCount}/${participantsLimit} approved against the planning target. If you save the current staged decisions, projected fill becomes ${projectedApprovedCount}/${participantsLimit}, ${projectedOutcome}`
+  }
+}
+
+export function getApprovedParticipantAttendanceSummary(
+  applications: AdminApplicationRecord[]
+) {
+  const approvedApplications = applications.filter(application => application.status === 'approved')
+  const checkedInCount = approvedApplications.filter(application => isApplicationCheckedIn(application)).length
+
+  return {
+    approvedCount: approvedApplications.length,
+    checkedInCount,
+    value: `${checkedInCount} / ${approvedApplications.length}`
   }
 }
 

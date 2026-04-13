@@ -69,6 +69,7 @@ export default defineApiHandler(async (event) => {
     lumaSyncStatus,
     submittedAt,
     withdrawnAt: null,
+    checkedInAt: null,
     reviewedAt: null,
     reviewedByUserId: null,
     applicationTermsDocumentId: currentTermsDocument.id,

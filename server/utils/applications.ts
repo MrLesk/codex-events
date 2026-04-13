@@ -356,10 +356,16 @@ export function isHackathonLumaEmailRequired(
   return hackathon.requireLumaEmail
 }
 
+export function isHackathonLumaAttendanceSyncEnabled(
+  hackathon: Pick<HackathonRecord, 'lumaEventApiId'>
+) {
+  return Boolean(hackathon.lumaEventApiId?.trim())
+}
+
 export function isHackathonLumaSyncEnabled(
   hackathon: Pick<HackathonRecord, 'requireLumaEmail' | 'lumaEventApiId'>
 ) {
-  return isHackathonLumaEmailRequired(hackathon) && Boolean(hackathon.lumaEventApiId?.trim())
+  return isHackathonLumaEmailRequired(hackathon) && isHackathonLumaAttendanceSyncEnabled(hackathon)
 }
 
 export function getInitialApplicationLumaSyncStatus(
@@ -462,6 +468,7 @@ export function serializeUserApplication(
     lumaSyncStatus: application.lumaSyncStatus,
     submittedAt: application.submittedAt,
     withdrawnAt: application.withdrawnAt,
+    checkedInAt: application.checkedInAt,
     reviewedAt: application.reviewedAt,
     reviewedByUserId: application.reviewedByUserId,
     applicationTermsDocumentId: application.applicationTermsDocumentId,

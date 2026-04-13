@@ -109,6 +109,12 @@ jobs:
             fi
           done < <(jq -r '.env.dev.queues.producers[].queue' wrangler.jsonc)
 
+      - name: Reconcile shared dev Luma webhook
+        if: ${{ env.NUXT_LUMA_API_KEY != '' }}
+        env:
+          LUMA_WEBHOOK_URL: https://dev.codex-hackathons.com/api/public/luma/webhooks
+        run: bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-dev-luma-webhook-secret.json
+
       - name: Upload shared dev Worker secrets
         run: |
           jq -n \
@@ -138,8 +144,14 @@ jobs:
               NUXT_RESEND_REPLY_TO: $resendReplyTo,
               NUXT_LUMA_API_KEY: $lumaApiKey
             }' > .wrangler-dev-secrets.json
+          if [ -f .wrangler-dev-luma-webhook-secret.json ]; then
+            jq -s '.[0] * .[1]' \
+              .wrangler-dev-secrets.json \
+              .wrangler-dev-luma-webhook-secret.json > .wrangler-dev-secrets.merged.json
+            mv .wrangler-dev-secrets.merged.json .wrangler-dev-secrets.json
+          fi
           bunx wrangler secret bulk .wrangler-dev-secrets.json --env dev --config wrangler.jsonc
-          rm .wrangler-dev-secrets.json
+          rm -f .wrangler-dev-secrets.json .wrangler-dev-luma-webhook-secret.json
 
       - name: Apply shared dev D1 migrations
         run: bun run db:migrate:dev

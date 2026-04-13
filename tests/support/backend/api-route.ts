@@ -52,6 +52,7 @@ export function createApiRouteTestHarness(options: {
       apiKey?: string
       apiBaseUrl?: string
       profileBaseUrl?: string
+      webhookSecret?: string
       queueBinding?: string
       queueName?: string
       retryDelaySeconds?: number
@@ -80,6 +81,7 @@ export function createApiRouteTestHarness(options: {
     const lumaApiKey = options.runtimeConfig?.luma?.apiKey ?? ''
     const lumaApiBaseUrl = options.runtimeConfig?.luma?.apiBaseUrl ?? 'https://public-api.luma.com'
     const lumaProfileBaseUrl = options.runtimeConfig?.luma?.profileBaseUrl ?? 'https://luma.com'
+    const lumaWebhookSecret = options.runtimeConfig?.luma?.webhookSecret ?? ''
     const lumaQueueBinding = options.runtimeConfig?.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
     const lumaQueueName = options.runtimeConfig?.luma?.queueName ?? 'codex-hackathons-application-luma-sync'
     const lumaRetryDelaySeconds = options.runtimeConfig?.luma?.retryDelaySeconds ?? 120
@@ -118,6 +120,7 @@ export function createApiRouteTestHarness(options: {
         apiKey: lumaApiKey,
         apiBaseUrl: lumaApiBaseUrl,
         profileBaseUrl: lumaProfileBaseUrl,
+        webhookSecret: lumaWebhookSecret,
         queueBinding: lumaQueueBinding,
         queueName: lumaQueueName,
         retryDelaySeconds: lumaRetryDelaySeconds

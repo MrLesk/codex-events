@@ -48,6 +48,7 @@ export default defineNuxtConfig({
       apiKey: '',
       apiBaseUrl: 'https://public-api.luma.com',
       profileBaseUrl: 'https://luma.com',
+      webhookSecret: '',
       queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
       queueName: 'codex-hackathons-application-luma-sync',
       retryDelaySeconds: 120

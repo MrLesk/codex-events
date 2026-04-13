@@ -147,6 +147,7 @@ export const hackathons = sqliteTable(
   },
   table => [
     uniqueIndex('hackathons_slug_idx').on(table.slug),
+    uniqueIndex('hackathons_luma_event_api_id_idx').on(table.lumaEventApiId),
     check(
       'hackathons_blind_review_count_check',
       sql`${table.blindReviewCount} >= 0 and ${table.blindReviewCount} <= 2`
@@ -306,6 +307,7 @@ export const userApplications = sqliteTable(
     lumaSyncStatus: text('luma_sync_status', { enum: userApplicationLumaSyncStatuses }),
     submittedAt: text('submitted_at').notNull().default(currentTimestamp),
     withdrawnAt: text('withdrawn_at'),
+    checkedInAt: text('checked_in_at'),
     reviewedAt: text('reviewed_at'),
     reviewedByUserId: text('reviewed_by_user_id').references(() => users.id),
     applicationTermsDocumentId: text('application_terms_document_id')
