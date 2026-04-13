@@ -234,6 +234,14 @@ When('I open the participant Team tab for hackathon slug {string} with the saved
   await recoverTeamDirectoryIfUnresolved(page)
 })
 
+When('I open the participant Teams tab for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
+  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  await page.goto(`/account/hackathons/${slug}?tab=teams`)
+  await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
+  await waitForParticipantTeamTabToSettle(page)
+  await recoverTeamDirectoryIfUnresolved(page)
+})
+
 When('I open the participant Team tab for hackathon slug {string} and selected team slug {string} with the saved {string} session', async ({ page }, slug: string, selectedTeamSlug: string, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
   await page.goto(`/account/hackathons/${slug}?tab=teams&team=${encodeURIComponent(selectedTeamSlug)}`)
@@ -406,6 +414,12 @@ Then('the participant team action {string} should be disabled', async ({ page },
 
 Then('the participant team action {string} should be visible', async ({ page }, actionName: string) => {
   await expect(page.getByRole('button', {
+    name: actionName
+  })).toBeVisible()
+})
+
+Then('the selected participant team action {string} should be visible', async ({ page }, actionName: string) => {
+  await expect(page.getByTestId('participant-team-workspace-panel').getByRole('button', {
     name: actionName
   })).toBeVisible()
 })

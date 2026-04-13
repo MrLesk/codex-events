@@ -71,11 +71,15 @@ export function getAccountHackathonTabAccess(
     availableTabs.push('workspace', 'teams')
   }
 
-  if (canViewParticipantsAndTeams) {
+  if (canManage || canViewParticipantsAndTeams) {
     availableTabs.push('participants')
   }
 
   if (canManage) {
+    if (!hasApprovedParticipantAccess) {
+      availableTabs.push('teams')
+    }
+
     availableTabs.push('submissions')
 
     if (canJudge) {

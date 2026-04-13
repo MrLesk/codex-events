@@ -997,7 +997,7 @@ useSeoMeta({
         class="space-y-8"
       >
         <AccountHackathonParticipantTeamPanel
-          v-if="applicationStatus === 'approved' && !canAdmin"
+          v-if="applicationStatus === 'approved' || canViewParticipantsAndTeams || canAdmin"
           :hackathon="hackathon"
           :selected-team-slug="selectedTeamSlug"
         />

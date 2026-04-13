@@ -31,6 +31,18 @@ Feature: Participant team workspace in the account hackathon page
     Then I should see the participant current team "Team Regular User"
     And the participant team directory should not be visible
 
+  Scenario: Hackathon admin can browse the Teams tab without participant join actions
+    Given the saved "hackathon_admin" Auth0 session state exists
+    When I open the participant Teams tab for hackathon slug "operations-fixture-hackathon" with the saved "hackathon_admin" session
+    Then I should see the participant team card "Alpha Operations Team"
+    And the participant team action "Request to join" should not be visible
+
+  Scenario: Platform admin with participant access can still request to join from the Teams tab
+    Given the saved "platform_admin" Auth0 session state exists
+    When I open the participant Team tab for hackathon slug "participant-team-join-fixture-hackathon" and selected team slug "judge-review-team" with the saved "platform_admin" session
+    Then I should see the participant current team "Judge Review Team"
+    And the selected participant team action "Request to join" should be visible
+
   Scenario: Regular user does not see the team directory while viewing another team
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant Team tab for hackathon slug "operations-fixture-hackathon" and selected team slug "beta-operations-team" with the saved "regular_user" session

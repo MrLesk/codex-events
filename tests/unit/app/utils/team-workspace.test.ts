@@ -123,6 +123,23 @@ describe('team workspace helpers', () => {
       id: 'team_fixture',
       isOpenToJoinRequests: true
     }, {
+      applicationStatus: null,
+      hasTeamMembership: false,
+      activeMemberCount: 2,
+      hasPendingJoinRequest: false,
+      isOwnTeam: false
+    })).toEqual({
+      isAllowed: false,
+      reason: 'Join requests require an approved application.'
+    })
+
+    expect(getJoinTeamAvailability({
+      state: 'registration_open',
+      maxTeamMembers: 4
+    }, {
+      id: 'team_fixture',
+      isOpenToJoinRequests: true
+    }, {
       applicationStatus: 'approved',
       hasTeamMembership: false,
       activeMemberCount: 2,
