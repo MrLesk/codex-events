@@ -6,7 +6,7 @@ Simple working note for improving multi-agent execution in this repo.
 
 - Main supervisor: Codex
 - Subagent model: `gpt-5.4`
-- Preferred subagent reasoning effort: `high`
+- Preferred subagent reasoning effort: `xhigh`
 - Typical subagent type used: `worker`
 
 ## Instructions To Try Next
