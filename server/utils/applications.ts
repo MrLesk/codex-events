@@ -14,6 +14,7 @@ import {
 } from '../auth/authorization'
 import { getDatabase, type AppDatabase } from '../database/client'
 import {
+  submissions,
   teamMembers,
   teams,
   userApplications,
@@ -58,7 +59,27 @@ type UserApplicationRecord = typeof userApplications.$inferSelect
 type UserRecord = typeof users.$inferSelect
 type HackathonRecord = typeof hackathons.$inferSelect
 type HackathonTermsDocumentRecord = typeof hackathonTermsDocuments.$inferSelect
+type TeamRecord = typeof teams.$inferSelect
+type TeamMemberRecord = typeof teamMembers.$inferSelect
+type SubmissionRecord = typeof submissions.$inferSelect
 type SubmitApplicationBody = z.infer<typeof submitApplicationBodySchema>
+
+export type AdminApplicationWithdrawalTeamAction = 'none' | 'remove_member' | 'dissolve_team'
+
+export interface AdminApplicationWithdrawalAvailability {
+  isAllowed: boolean
+  reason: string | null
+  warning: string | null
+  activeTeamId: string | null
+  teamAction: AdminApplicationWithdrawalTeamAction
+}
+
+interface AdminApplicationWithdrawalPlan extends AdminApplicationWithdrawalAvailability {
+  activeTeam: TeamRecord | null
+  targetMembership: TeamMemberRecord | null
+  activeMembers: TeamMemberRecord[]
+  activeSubmission: SubmissionRecord | null
+}
 
 function normalizeTeamMemberHintValue(value: string | null | undefined) {
   if (typeof value !== 'string') {
@@ -90,6 +111,243 @@ function normalizeProofOfExecutionUrl(value: string | null | undefined) {
   })
 
   return normalized
+}
+
+function getAdminApplicationWithdrawalAvailabilityFromPlan(
+  application: UserApplicationRecord,
+  plan: Pick<AdminApplicationWithdrawalPlan, 'activeTeam' | 'targetMembership' | 'activeMembers' | 'activeSubmission'>
+): AdminApplicationWithdrawalAvailability {
+  if (application.status === 'withdrawn') {
+    return {
+      isAllowed: false,
+      reason: 'This application is already withdrawn.',
+      warning: null,
+      activeTeamId: null,
+      teamAction: 'none'
+    }
+  }
+
+  if (application.status === 'rejected') {
+    return {
+      isAllowed: false,
+      reason: 'Rejected applications cannot be withdrawn.',
+      warning: null,
+      activeTeamId: null,
+      teamAction: 'none'
+    }
+  }
+
+  if (application.status !== 'submitted' && application.status !== 'approved') {
+    return {
+      isAllowed: false,
+      reason: 'Only submitted or approved applications can be withdrawn.',
+      warning: null,
+      activeTeamId: null,
+      teamAction: 'none'
+    }
+  }
+
+  if (!plan.targetMembership || !plan.activeTeam) {
+    return {
+      isAllowed: true,
+      reason: null,
+      warning: null,
+      activeTeamId: null,
+      teamAction: 'none'
+    }
+  }
+
+  const remainingActiveMembers = plan.activeMembers.filter(member =>
+    member.id !== plan.targetMembership?.id
+  )
+  const teamName = plan.activeTeam.name || 'This team'
+
+  if (remainingActiveMembers.length === 0) {
+    return plan.activeSubmission
+      ? {
+          isAllowed: false,
+          reason: `${teamName} cannot be dismantled because it still has an active submission.`,
+          warning: null,
+          activeTeamId: plan.activeTeam.id,
+          teamAction: 'dissolve_team'
+        }
+      : {
+          isAllowed: true,
+          reason: null,
+          warning: `This withdrawal will dismantle ${teamName} because this participant is the last active team member.`,
+          activeTeamId: plan.activeTeam.id,
+          teamAction: 'dissolve_team'
+        }
+  }
+
+  if (plan.targetMembership.role === 'admin') {
+    const otherActiveAdmins = remainingActiveMembers.filter(member => member.role === 'admin')
+
+    if (otherActiveAdmins.length === 0) {
+      return plan.activeSubmission
+        ? {
+            isAllowed: false,
+            reason: `${teamName} cannot be dismantled because this participant is the last active admin and the team still has an active submission.`,
+            warning: null,
+            activeTeamId: plan.activeTeam.id,
+            teamAction: 'dissolve_team'
+          }
+        : {
+            isAllowed: true,
+            reason: null,
+            warning: `This withdrawal will dismantle ${teamName} and remove its remaining active members because this participant is the last active admin.`,
+            activeTeamId: plan.activeTeam.id,
+            teamAction: 'dissolve_team'
+          }
+    }
+  }
+
+  return {
+    isAllowed: true,
+    reason: null,
+    warning: null,
+    activeTeamId: plan.activeTeam.id,
+    teamAction: 'remove_member'
+  }
+}
+
+export async function getAdminApplicationWithdrawalPlan(
+  database: AppDatabase,
+  hackathonId: string,
+  application: UserApplicationRecord
+): Promise<AdminApplicationWithdrawalPlan> {
+  const activeMemberships = await database.query.teamMembers.findMany({
+    where: and(
+      eq(teamMembers.userId, application.userId),
+      isNull(teamMembers.leftAt)
+    )
+  })
+
+  const relatedTeams = activeMemberships.length > 0
+    ? await database.query.teams.findMany({
+        where: inArray(teams.id, activeMemberships.map(membership => membership.teamId))
+      })
+    : []
+  const activeTeam = relatedTeams.find(team => team.hackathonId === hackathonId) ?? null
+  const targetMembership = activeTeam
+    ? activeMemberships.find(membership => membership.teamId === activeTeam.id) ?? null
+    : null
+  const activeMembers = activeTeam
+    ? await database.query.teamMembers.findMany({
+        where: and(
+          eq(teamMembers.teamId, activeTeam.id),
+          isNull(teamMembers.leftAt)
+        ),
+        orderBy: [asc(teamMembers.createdAt)]
+      })
+    : []
+  const activeSubmission = activeTeam
+    ? (await database.query.submissions.findFirst({
+        where: and(
+          eq(submissions.teamId, activeTeam.id),
+          inArray(submissions.status, ['draft', 'submitted', 'locked'])
+        )
+      })) ?? null
+    : null
+  const availability = getAdminApplicationWithdrawalAvailabilityFromPlan(application, {
+    activeTeam,
+    targetMembership,
+    activeMembers,
+    activeSubmission
+  })
+
+  return {
+    ...availability,
+    activeTeam,
+    targetMembership,
+    activeMembers,
+    activeSubmission
+  }
+}
+
+async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
+  database: AppDatabase,
+  hackathonId: string,
+  applications: UserApplicationRecord[]
+) {
+  if (applications.length === 0) {
+    return new Map<string, AdminApplicationWithdrawalAvailability>()
+  }
+
+  const userIds = [...new Set(applications.map(application => application.userId))]
+  const activeMemberships = await database.query.teamMembers.findMany({
+    where: and(
+      inArray(teamMembers.userId, userIds),
+      isNull(teamMembers.leftAt)
+    ),
+    orderBy: [asc(teamMembers.createdAt)]
+  })
+  const relatedTeams = activeMemberships.length > 0
+    ? await database.query.teams.findMany({
+        where: inArray(teams.id, activeMemberships.map(membership => membership.teamId))
+      })
+    : []
+  const teamsById = new Map(
+    relatedTeams
+      .filter(team => team.hackathonId === hackathonId)
+      .map(team => [team.id, team] as const)
+  )
+  const activeMembershipByUserId = new Map<string, TeamMemberRecord>()
+
+  for (const membership of activeMemberships) {
+    if (!teamsById.has(membership.teamId) || activeMembershipByUserId.has(membership.userId)) {
+      continue
+    }
+
+    activeMembershipByUserId.set(membership.userId, membership)
+  }
+
+  const activeTeamIds = [...new Set([...activeMembershipByUserId.values()].map(membership => membership.teamId))]
+  const [teamActiveMembers, activeSubmissions] = activeTeamIds.length > 0
+    ? await Promise.all([
+        database.query.teamMembers.findMany({
+          where: and(
+            inArray(teamMembers.teamId, activeTeamIds),
+            isNull(teamMembers.leftAt)
+          ),
+          orderBy: [asc(teamMembers.createdAt)]
+        }),
+        database.query.submissions.findMany({
+          where: and(
+            inArray(submissions.teamId, activeTeamIds),
+            inArray(submissions.status, ['draft', 'submitted', 'locked'])
+          ),
+          orderBy: [desc(submissions.createdAt)]
+        })
+      ])
+    : [[], []]
+  const activeMembersByTeamId = new Map<string, TeamMemberRecord[]>()
+  const activeSubmissionByTeamId = new Map<string, SubmissionRecord>()
+
+  for (const member of teamActiveMembers) {
+    const members = activeMembersByTeamId.get(member.teamId) ?? []
+    members.push(member)
+    activeMembersByTeamId.set(member.teamId, members)
+  }
+
+  for (const submission of activeSubmissions) {
+    if (!activeSubmissionByTeamId.has(submission.teamId)) {
+      activeSubmissionByTeamId.set(submission.teamId, submission)
+    }
+  }
+
+  return new Map(applications.map((application) => {
+    const targetMembership = activeMembershipByUserId.get(application.userId) ?? null
+    const activeTeam = targetMembership ? teamsById.get(targetMembership.teamId) ?? null : null
+    const availability = getAdminApplicationWithdrawalAvailabilityFromPlan(application, {
+      activeTeam,
+      targetMembership,
+      activeMembers: activeTeam ? activeMembersByTeamId.get(activeTeam.id) ?? [] : [],
+      activeSubmission: activeTeam ? activeSubmissionByTeamId.get(activeTeam.id) ?? null : null
+    })
+
+    return [application.id, availability] as const
+  }))
 }
 
 export function isHackathonLumaEmailRequired(
@@ -192,6 +450,7 @@ export function serializeUserApplication(
   options?: {
     user?: UserRecord | null
     applicationTermsDocument?: HackathonTermsDocumentRecord | null
+    adminWithdrawal?: AdminApplicationWithdrawalAvailability
   }
 ) {
   return {
@@ -230,6 +489,11 @@ export function serializeUserApplication(
     ...(options?.applicationTermsDocument
       ? {
           applicationTermsDocument: serializeHackathonTermsDocument(options.applicationTermsDocument)
+        }
+      : {}),
+    ...(options?.adminWithdrawal
+      ? {
+          adminWithdrawal: options.adminWithdrawal
         }
       : {})
   }
@@ -502,9 +766,16 @@ export async function listHackathonApplications(database: AppDatabase, hackathon
     }
   }
 
+  const adminWithdrawalByApplicationId = await listAdminApplicationWithdrawalAvailabilityByApplicationId(
+    database,
+    hackathonId,
+    applications
+  )
+
   return applications.map(application =>
     serializeUserApplication(application, {
-      user: usersById.get(application.userId) ?? null
+      user: usersById.get(application.userId) ?? null,
+      adminWithdrawal: adminWithdrawalByApplicationId.get(application.id)
     })
   )
 }

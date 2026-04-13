@@ -19,6 +19,7 @@ import {
   getApplicationStatusColor,
   shouldShowApplicationLumaSyncStatus
 } from '~/utils/admin-workspace'
+import { formatTimestamp } from '~/utils/date-formatting'
 
 const props = withDefaults(defineProps<{
   hackathonId: string
@@ -41,6 +42,7 @@ const emit = defineEmits<{
   approve: [application: AdminApplicationRecord]
   approveTeam: [applications: AdminApplicationRecord[]]
   reject: [application: AdminApplicationRecord]
+  withdraw: [application: AdminApplicationRecord]
   saveDecisions: []
 }>()
 
@@ -73,6 +75,12 @@ const failedLumaSyncApplications = computed(() => {
     )
   }
 
+  if (props.view === 'withdrawn') {
+    return props.applications.filter(application =>
+      application.status === 'withdrawn' && application.lumaSyncStatus === 'reject_failed'
+    )
+  }
+
   return []
 })
 const failedLumaSyncAlert = computed(() => {
@@ -91,6 +99,13 @@ const failedLumaSyncAlert = computed(() => {
     return {
       title: 'Some rejections did not sync to Luma',
       description: `${failedLumaSyncApplications.value.length} rejected participant${failedLumaSyncApplications.value.length === 1 ? '' : 's'} still need manual rejection in Luma.`
+    }
+  }
+
+  if (props.view === 'withdrawn') {
+    return {
+      title: 'Some withdrawals did not sync to Luma',
+      description: `${failedLumaSyncApplications.value.length} withdrawn participant${failedLumaSyncApplications.value.length === 1 ? '' : 's'} still need manual rejection in Luma.`
     }
   }
 
@@ -222,7 +237,7 @@ function getApplicantProfileIconHref(application: AdminApplicationRecord) {
   )
 }
 
-function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject', isActive: boolean) {
+function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject' | 'withdraw', isActive: boolean) {
   const baseClass = 'inline-flex w-full items-center justify-between rounded-xl border px-3 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-45'
 
   if (isActive) {
@@ -233,10 +248,36 @@ function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject', isA
         return `${baseClass} border-success/35 bg-success/16 text-success hover:bg-success/20`
       case 'reject':
         return `${baseClass} border-error/30 bg-error/12 text-error hover:bg-error/16`
+      case 'withdraw':
+        return `${baseClass} border-warning/30 bg-warning/12 text-warning hover:bg-warning/16`
     }
   }
 
+  if (tone === 'withdraw') {
+    return `${baseClass} border-warning/20 bg-transparent text-warning hover:border-warning/40 hover:bg-warning/8 dark:border-warning/25 dark:hover:border-warning/50`
+  }
+
   return `${baseClass} border-black/8 bg-transparent text-toned hover:border-black/20 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.18] dark:hover:text-white`
+}
+
+function getAdminWithdrawalAvailability(application: AdminApplicationRecord) {
+  return application.adminWithdrawal ?? {
+    isAllowed: false,
+    reason: 'Withdrawal status is unavailable right now.',
+    warning: null,
+    activeTeamId: null,
+    teamAction: 'none' as const
+  }
+}
+
+function shouldShowWithdrawAction(application: AdminApplicationRecord) {
+  return application.status === 'submitted' || application.status === 'approved'
+}
+
+function formatWithdrawalTimestamp(application: AdminApplicationRecord) {
+  return application.withdrawnAt
+    ? `Withdrawn ${formatTimestamp(application.withdrawnAt, 'recently')}`
+    : null
 }
 
 const reviewContent = computed(() => {
@@ -255,6 +296,15 @@ const reviewContent = computed(() => {
       description: props.readOnly
         ? 'Browse rejected participant records and inferred teammate groupings.'
         : 'Browse rejected participant records and inferred teammate groupings.'
+    }
+  }
+
+  if (props.view === 'withdrawn') {
+    return {
+      title: 'Withdrawn Participants',
+      description: props.readOnly
+        ? 'Browse withdrawn participant records and inferred teammate groupings.'
+        : 'Browse withdrawn participant records and any withdrawal-side effects already applied.'
     }
   }
 
@@ -289,6 +339,13 @@ const emptyState = computed(() => {
       }
     }
 
+    if (props.view === 'withdrawn') {
+      return {
+        title: 'No withdrawn participants match this search',
+        description: 'Try a different name, email, user ID, or teammate hint.'
+      }
+    }
+
     return {
       title: 'No applications match this search',
       description: 'Try a different name, email, user ID, or teammate hint.'
@@ -306,6 +363,13 @@ const emptyState = computed(() => {
     return {
       title: 'No rejected participants yet',
       description: 'Rejected participants will appear here after staged decisions are saved.'
+    }
+  }
+
+  if (props.view === 'withdrawn') {
+    return {
+      title: 'No withdrawn participants yet',
+      description: 'Withdrawn participants will appear here after a participant or admin withdrawal is recorded.'
     }
   }
 
@@ -443,12 +507,25 @@ const emptyState = computed(() => {
                         Rejected
                       </AppBadge>
                       <AppBadge
+                        v-if="applicant.application.status === 'withdrawn'"
+                        :color="getApplicationStatusColor(applicant.application.status)"
+                        variant="soft"
+                      >
+                        Withdrawn
+                      </AppBadge>
+                      <AppBadge
                         v-if="shouldShowApplicationLumaSyncStatus(applicant.application)"
                         :color="getApplicationLumaSyncStatusColor(applicant.application.lumaSyncStatus)"
                         variant="soft"
                       >
                         {{ formatApplicationLumaSyncStatus(applicant.application.lumaSyncStatus) }}
                       </AppBadge>
+                      <span
+                        v-if="applicant.application.status === 'withdrawn' && formatWithdrawalTimestamp(applicant.application)"
+                        class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
+                      >
+                        {{ formatWithdrawalTimestamp(applicant.application) }}
+                      </span>
                       <AppBadge
                         v-if="applicant.hasFuzzyMatch"
                         color="warning"
@@ -583,10 +660,25 @@ const emptyState = computed(() => {
                 </div>
 
                 <div
-                  v-if="!readOnly && view === 'applications' && applicant.application.status === 'submitted'"
+                  v-if="!readOnly && shouldShowWithdrawAction(applicant.application)"
                   class="grid gap-2 self-center xl:pl-2"
                 >
+                  <AppAlert
+                    v-if="getAdminWithdrawalAvailability(applicant.application).warning"
+                    color="warning"
+                    variant="soft"
+                    title="This withdrawal will dismantle the team"
+                    :description="getAdminWithdrawalAvailability(applicant.application).warning ?? ''"
+                  />
+                  <p
+                    v-else-if="getAdminWithdrawalAvailability(applicant.application).reason"
+                    class="text-xs leading-5 text-muted"
+                  >
+                    {{ getAdminWithdrawalAvailability(applicant.application).reason }}
+                  </p>
+
                   <button
+                    v-if="view === 'applications' && applicant.application.status === 'submitted'"
                     type="button"
                     :data-testid="`admin-application-approve-${applicant.application.id}`"
                     :class="getDecisionButtonClass('approve', hasApplicantApprovalSelected(applicant, group))"
@@ -607,7 +699,7 @@ const emptyState = computed(() => {
                   </button>
 
                   <button
-                    v-if="canApproveTeam(group)"
+                    v-if="view === 'applications' && applicant.application.status === 'submitted' && canApproveTeam(group)"
                     type="button"
                     :data-testid="`admin-application-approve-team-${applicant.application.id}`"
                     :class="getDecisionButtonClass('approve_team', hasGroupApprovalSelected(group))"
@@ -640,6 +732,7 @@ const emptyState = computed(() => {
                   </button>
 
                   <button
+                    v-if="view === 'applications' && applicant.application.status === 'submitted'"
                     type="button"
                     :data-testid="`admin-application-reject-${applicant.application.id}`"
                     :class="getDecisionButtonClass('reject', hasApplicantRejectionSelected(applicant))"
@@ -655,6 +748,26 @@ const emptyState = computed(() => {
                     <AppIcon
                       v-else
                       name="i-lucide-thumbs-down"
+                      class="size-4"
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+                    :data-testid="`admin-application-withdraw-${applicant.application.id}`"
+                    :class="getDecisionButtonClass('withdraw', false)"
+                    :disabled="!getAdminWithdrawalAvailability(applicant.application).isAllowed || (pendingActionKey !== null && pendingActionKey !== `withdraw:${applicant.application.id}`)"
+                    @click="emit('withdraw', applicant.application)"
+                  >
+                    <span>Withdraw</span>
+                    <AppIcon
+                      v-if="pendingActionKey === `withdraw:${applicant.application.id}`"
+                      name="i-lucide-loader-circle"
+                      class="size-4 animate-spin"
+                    />
+                    <AppIcon
+                      v-else
+                      name="i-lucide-undo-2"
                       class="size-4"
                     />
                   </button>

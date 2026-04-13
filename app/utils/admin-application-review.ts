@@ -9,7 +9,7 @@ export const adminApplicationFuzzyNameThreshold = 0.92
 const adminApplicationFuzzyNameUniquenessMargin = 0.03
 
 export type AdminApplicationReviewMatchKind = 'exact_email' | 'fuzzy_name'
-export type AdminApplicationReviewView = 'applications' | 'approved' | 'rejected'
+export type AdminApplicationReviewView = 'applications' | 'approved' | 'rejected' | 'withdrawn'
 
 export interface AdminApplicationReviewApplicant {
   application: AdminApplicationRecord
@@ -578,6 +578,8 @@ export function filterAdminApplicationReviewGroups(
           return applicant.application.status === 'approved'
         case 'rejected':
           return applicant.application.status === 'rejected'
+        case 'withdrawn':
+          return applicant.application.status === 'withdrawn'
       }
     })
 

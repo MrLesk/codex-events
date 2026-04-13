@@ -11,7 +11,7 @@ function createApplication(options: {
   id: string
   displayName: string
   email: string
-  status?: 'submitted' | 'approved' | 'rejected'
+  status?: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
   submittedAt?: string
   teamIntent?: 'solo' | 'team' | 'unknown'
   teamMembers?: Array<{ fullName?: string, email?: string }>
@@ -23,6 +23,7 @@ function createApplication(options: {
     status: options.status ?? 'submitted',
     preApprovalStatus: null,
     submittedAt: options.submittedAt ?? '2026-03-29T10:00:00.000Z',
+    withdrawnAt: options.status === 'withdrawn' ? '2026-03-30T10:00:00.000Z' : null,
     reviewedAt: null,
     reviewedByUserId: null,
     applicationTermsDocumentId: 'terms-1',
@@ -346,6 +347,55 @@ describe('buildAdminApplicationReviewGroups', () => {
     const groups = buildAdminApplicationReviewGroups(applications)
 
     expect(filterAdminApplicationReviewGroups(groups, 'rejected')).toEqual([expect.objectContaining({
+      applicants: [expect.objectContaining({
+        application: applications[0]
+      })],
+      pendingTeammates: [{
+        id: 'email:carol@example.com',
+        fullName: 'Carol Example',
+        email: 'carol@example.com',
+        mentionedByApplicationIds: ['application-1']
+      }]
+    })])
+  })
+
+  test('filters withdrawn participant records without surfacing teammate hints from hidden applicants', () => {
+    const applications = [
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com',
+        status: 'withdrawn',
+        submittedAt: '2026-03-29T12:00:00.000Z',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Bob Example',
+          email: 'bob@example.com'
+        }, {
+          fullName: 'Carol Example',
+          email: 'carol@example.com'
+        }]
+      }),
+      createApplication({
+        id: 'application-2',
+        displayName: 'Bob Example',
+        email: 'bob@example.com',
+        status: 'approved',
+        submittedAt: '2026-03-29T11:00:00.000Z',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Alice Example',
+          email: 'alice@example.com'
+        }, {
+          fullName: 'Dave Example',
+          email: 'dave@example.com'
+        }]
+      })
+    ]
+
+    const groups = buildAdminApplicationReviewGroups(applications)
+
+    expect(filterAdminApplicationReviewGroups(groups, 'withdrawn')).toEqual([expect.objectContaining({
       applicants: [expect.objectContaining({
         application: applications[0]
       })],
