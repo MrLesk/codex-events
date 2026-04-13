@@ -32,6 +32,14 @@ Feature: Participant team workspace in the account hackathon page
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant Teams tab for hackathon slug "participant-team-join-fixture-hackathon" with the saved "regular_user" session
     Then I should see the participant team card "Judge Review Team"
+    And I should see the participant navigation link "Create Team"
+
+  Scenario: Regular user can jump from the Teams tab to the Workspace team-creation flow
+    Given the saved "regular_user" Auth0 session state exists
+    When I open the participant Teams tab for hackathon slug "participant-team-join-fixture-hackathon" with the saved "regular_user" session
+    And I click the participant navigation link "Create Team"
+    Then I should be on the participant workspace tab for hackathon slug "participant-team-join-fixture-hackathon"
+    And I should see the participant team text "Create a team"
 
   Scenario: Hackathon admin can browse the Teams tab without participant join actions
     Given the saved "hackathon_admin" Auth0 session state exists

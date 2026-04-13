@@ -465,6 +465,18 @@ Then('I should see the participant navigation link {string}', async ({ page }, l
   })).toBeVisible()
 })
 
+When('I click the participant navigation link {string}', async ({ page }, label: string) => {
+  await page.getByRole('link', {
+    name: label,
+    exact: true
+  }).click()
+})
+
+Then('I should be on the participant workspace tab for hackathon slug {string}', async ({ page }, slug: string) => {
+  await expect(page).toHaveURL(new RegExp(`/account/hackathons/${slug}\\?tab=workspace$`))
+  await expect(page.getByTestId('account-hackathon-workspace-panel')).toBeVisible()
+})
+
 Then('the participant team directory should not be visible', async ({ page }) => {
   await expect(page.getByTestId('participant-team-directory-panel')).toHaveCount(0)
 })

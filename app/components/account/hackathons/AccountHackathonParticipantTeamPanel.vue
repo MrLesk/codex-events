@@ -12,6 +12,7 @@ import {
   isSharedTeamSelection
 } from '~/utils/team-query'
 import {
+  getCreateTeamAvailability,
   getJoinTeamAvailability,
   hasTeamReachedMemberLimit
 } from '~/utils/team-workspace'
@@ -148,6 +149,23 @@ watch(directoryFilter, async (nextFilter) => {
 
 const actor = computed(() => workspace.actor.value)
 const ownApplicationStatus = computed(() => workspace.ownApplication.value?.status ?? null)
+const createTeamWorkspaceHref = computed(() => {
+  if (workspace.ownTeamStatus.value !== 'success') {
+    return null
+  }
+
+  const createTeamAvailability = getCreateTeamAvailability(
+    props.hackathon,
+    ownApplicationStatus.value,
+    Boolean(workspace.ownTeam.value)
+  )
+
+  if (!createTeamAvailability.isAllowed) {
+    return null
+  }
+
+  return `/account/hackathons/${encodeURIComponent(props.hackathon.slug.trim())}?tab=workspace`
+})
 const canJoinAnyTeam = computed(() =>
   ownApplicationStatus.value === 'approved'
   && !workspace.ownTeam.value
@@ -399,6 +417,7 @@ async function cancelJoinRequest(payload: {
           v-model:directory-filter="directoryFilter"
           :teams="visibleDirectoryEntries"
           :max-team-members="props.hackathon.maxTeamMembers"
+          :create-team-href="createTeamWorkspaceHref"
           :total-teams="visibleDirectoryTotal"
           :show-locked-status="showLockedTeamDirectoryStatus"
           :filter-options="directoryFilterOptions"

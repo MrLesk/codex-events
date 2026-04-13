@@ -12,6 +12,7 @@ const directoryFilter = defineModel<string>('directoryFilter', {
 const props = defineProps<{
   teams: TeamDirectoryEntry[]
   maxTeamMembers: number
+  createTeamHref?: string | null
   totalTeams?: number
   showLockedStatus?: boolean
   filterOptions?: ReadonlyArray<{
@@ -56,13 +57,27 @@ function selectDirectoryFilter(nextFilter: string) {
     :ui="{ body: 'p-5' }"
   >
     <div class="space-y-4">
-      <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-        <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-          Teams
-        </h2>
-        <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-          Browse the active teams in this hackathon and filter the directory by team shape or joinability.
-        </p>
+      <div class="flex flex-col gap-3 border-b border-black/8 pb-3 dark:border-white/[0.08] sm:flex-row sm:items-start sm:justify-between">
+        <div class="space-y-1">
+          <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+            Teams
+          </h2>
+          <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+            Browse the active teams in this hackathon and filter the directory by team shape or joinability.
+          </p>
+        </div>
+
+        <AppButton
+          v-if="props.createTeamHref"
+          :to="props.createTeamHref"
+          color="neutral"
+          variant="solid"
+          trailing-icon="i-lucide-arrow-up-right"
+          data-testid="participant-team-directory-create-team"
+          class="self-start bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+        >
+          Create Team
+        </AppButton>
       </div>
 
       <div
