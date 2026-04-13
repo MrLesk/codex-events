@@ -792,8 +792,22 @@ const submitConfigForm = handleSubmit(() => {
                       required
                     />
                   </label>
+                </div>
 
-                  <label class="grid gap-2">
+                <div class="grid gap-5 md:grid-cols-2 md:items-start">
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.pitchReviewEnabled"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Enable pitch review
+                  </label>
+
+                  <label
+                    v-if="form.pitchReviewEnabled"
+                    class="grid gap-2"
+                  >
                     <span class="text-sm font-medium text-toned">Pitch score weight (%)</span>
                     <AppInput
                       v-model.number="form.pitchScoreWeightPercent"
@@ -802,17 +816,6 @@ const submitConfigForm = handleSubmit(() => {
                       max="100"
                       required
                     />
-                  </label>
-                </div>
-
-                <div class="grid grid-cols-1 gap-3">
-                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                    <input
-                      v-model="form.pitchReviewEnabled"
-                      type="checkbox"
-                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-                    >
-                    Enable pitch review
                   </label>
                 </div>
 
@@ -1319,8 +1322,22 @@ const submitConfigForm = handleSubmit(() => {
                 required
               />
             </label>
+          </div>
 
-            <label class="grid gap-2">
+          <div class="grid gap-5 md:grid-cols-2 md:items-start">
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="form.pitchReviewEnabled"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              Enable pitch review
+            </label>
+
+            <label
+              v-if="form.pitchReviewEnabled"
+              class="grid gap-2"
+            >
               <span class="text-sm font-medium text-toned">Pitch score weight (%)</span>
               <AppInput
                 v-model.number="form.pitchScoreWeightPercent"
@@ -1329,17 +1346,6 @@ const submitConfigForm = handleSubmit(() => {
                 max="100"
                 required
               />
-            </label>
-          </div>
-
-          <div class="grid grid-cols-1 gap-3">
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.pitchReviewEnabled"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Enable pitch review
             </label>
           </div>
 
