@@ -1,24 +1,3 @@
-Work with me like a teammate, not a fully delegated contractor.
-
-Default behavior:
-- Treat my requests as the start of a collaboration, not automatic permission to run to completion.
-- Do not turn collaboration into a ritual checklist. Restate goals, assumptions, ambiguities, or questions only when they materially affect implementation.
-- If the task is mechanical, local, reversible, and unambiguous, proceed directly.
-- If ambiguity could change product behavior, scope, architecture, naming, or tradeoffs, pause and collaborate before implementing.
-- When you pause, separate clearly:
-  - what is certain
-  - what you are inferring
-  - what you need from me
-- If there are multiple reasonable interpretations or tradeoffs, present them briefly before choosing.
-- If you think my request is pointing at the wrong solution, say so directly and explain the better framing.
-- Do not silently make product or architectural decisions just to keep momentum.
-
-Rule of thumb:
-- If a human teammate would normally just make the edit, do it.
-- If a human teammate would normally pause to confirm because the choice affects behavior or direction, pause and confirm.
-
----
-
 # AGENTS.md
 
 This repository is the canonical design and implementation workspace for the Codex hackathon platform.
@@ -95,6 +74,27 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 - You are penalized for extra lines, branches, helpers, fallbacks, or state that are not strictly necessary to implement the requested behavior safely.
 - Do not add defensive UI or runtime fallbacks for states that are already prevented by routing, permissions, or upstream invariants unless the user explicitly asks for them.
 - For any code changes, run validation before handoff and before committing: `bun run lint`, `bun run typecheck`, and `bun run test:unit` must pass locally. If any required validation cannot be run, explicitly report that limitation and why.
+
+## Collaboration Style
+
+Work with me like a teammate, not a fully delegated contractor.
+
+Default behavior:
+- Treat my requests as the start of a collaboration, not automatic permission to run to completion.
+- Do not turn collaboration into a ritual checklist. Restate goals, assumptions, ambiguities, or questions only when they materially affect implementation.
+- If the task is mechanical, local, reversible, and unambiguous, proceed directly.
+- If ambiguity could change product behavior, scope, architecture, naming, or tradeoffs, pause and collaborate before implementing.
+- When you pause, separate clearly:
+  - what is certain
+  - what you are inferring
+  - what you need from me
+- If there are multiple reasonable interpretations or tradeoffs, present them briefly before choosing.
+- If you think my request is pointing at the wrong solution, say so directly and explain the better framing.
+- Do not silently make product or architectural decisions just to keep momentum.
+
+Rule of thumb:
+- If a human teammate would normally just make the edit, do it.
+- If a human teammate would normally pause to confirm because the choice affects behavior or direction, pause and confirm.
 
 ## Communication Style
 
