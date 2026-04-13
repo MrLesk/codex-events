@@ -68,7 +68,11 @@ const bannerImageInput = ref<HTMLInputElement | null>(null)
 const activeAgendaDragId = ref<string | null>(null)
 const agendaDropTargetId = ref<string | null>(null)
 const agendaListElement = ref<HTMLElement | null>(null)
+const activeTrackDragId = ref<string | null>(null)
+const trackDropTargetId = ref<string | null>(null)
+const trackListElement = ref<HTMLElement | null>(null)
 let agendaSortable: Sortable | null = null
+let trackSortable: Sortable | null = null
 
 const managedBackgroundImageUrl = computed(() => form.value.backgroundImageUrl.trim())
 const managedBannerImageUrl = computed(() => form.value.bannerImageUrl.trim())
@@ -239,6 +243,13 @@ function destroyAgendaSortable() {
   agendaDropTargetId.value = null
 }
 
+function destroyTrackSortable() {
+  trackSortable?.destroy()
+  trackSortable = null
+  activeTrackDragId.value = null
+  trackDropTargetId.value = null
+}
+
 function initializeAgendaSortable() {
   if (!import.meta.client || !showAgendaItemsSection.value || !agendaListElement.value || form.value.agendaItems.length === 0) {
     destroyAgendaSortable()
@@ -274,6 +285,45 @@ function initializeAgendaSortable() {
 
       activeAgendaDragId.value = null
       agendaDropTargetId.value = null
+    }
+  })
+}
+
+function initializeTrackSortable() {
+  if (!import.meta.client || !showTracksSection.value || !trackListElement.value || form.value.tracks.length === 0) {
+    destroyTrackSortable()
+    return
+  }
+
+  destroyTrackSortable()
+
+  trackSortable = Sortable.create(trackListElement.value, {
+    animation: 180,
+    handle: '[data-track-sort-handle]',
+    draggable: '[data-track-row]',
+    dataIdAttr: 'data-track-id',
+    ghostClass: 'opacity-45',
+    chosenClass: 'cursor-grabbing',
+    dragClass: 'cursor-grabbing',
+    onChoose(event) {
+      activeTrackDragId.value = event.item.dataset.trackId ?? null
+      trackDropTargetId.value = null
+    },
+    onMove(event) {
+      const relatedId = event.related?.dataset.trackId ?? null
+      trackDropTargetId.value = relatedId !== activeTrackDragId.value ? relatedId : null
+      return true
+    },
+    onEnd(event) {
+      const oldIndex = event.oldDraggableIndex ?? event.oldIndex
+      const newIndex = event.newDraggableIndex ?? event.newIndex
+
+      if (oldIndex !== undefined && newIndex !== undefined) {
+        applyTrackOrderFromList(moveListItemByIndex(form.value.tracks, oldIndex, newIndex))
+      }
+
+      activeTrackDragId.value = null
+      trackDropTargetId.value = null
     }
   })
 }
@@ -354,6 +404,7 @@ const validationErrorMessages = computed(() => {
 })
 
 const agendaItemsOrderKey = computed(() => form.value.agendaItems.map(item => item.id).join('|'))
+const tracksOrderKey = computed(() => form.value.tracks.map(track => track.id).join('|'))
 
 watch([agendaItemsOrderKey, showAgendaItemsSection], async () => {
   await nextTick()
@@ -363,8 +414,17 @@ watch([agendaItemsOrderKey, showAgendaItemsSection], async () => {
   flush: 'post'
 })
 
+watch([tracksOrderKey, showTracksSection], async () => {
+  await nextTick()
+  initializeTrackSortable()
+}, {
+  immediate: true,
+  flush: 'post'
+})
+
 onBeforeUnmount(() => {
   destroyAgendaSortable()
+  destroyTrackSortable()
 })
 
 const submitConfigForm = handleSubmit(() => {
@@ -468,11 +528,14 @@ const submitConfigForm = handleSubmit(() => {
 
             <div
               v-else
+              ref="trackListElement"
               class="grid grid-cols-1 gap-3"
             >
               <article
                 v-for="(track, index) in form.tracks"
                 :key="track.id"
+                :data-track-id="track.id"
+                data-track-row
                 class="rounded-xl border border-black/8 bg-white/88 p-3 dark:border-white/[0.08] dark:bg-[#111111]"
               >
                 <AdminEditorRowShell>
@@ -487,6 +550,18 @@ const submitConfigForm = handleSubmit(() => {
                       <AppIcon
                         name="i-lucide-arrow-up"
                         class="size-4"
+                      />
+                    </button>
+
+                    <button
+                      type="button"
+                      data-track-sort-handle
+                      class="group inline-flex h-11 w-11 cursor-grab items-center justify-center rounded-xl border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted active:cursor-grabbing dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
+                      :aria-label="`Drag to reorder ${track.name || `track ${index + 1}`}`"
+                    >
+                      <AppIcon
+                        name="i-lucide-grip-vertical"
+                        class="size-4.5 transition group-hover:scale-105"
                       />
                     </button>
 
@@ -519,8 +594,7 @@ const submitConfigForm = handleSubmit(() => {
                       <span class="text-xs font-medium text-toned">Description</span>
                       <AppTextarea
                         v-model="track.description"
-                        rows="2"
-                        class="min-h-16"
+                        rows="1"
                         placeholder="Describe what kinds of submissions belong in this track."
                       />
                     </label>
@@ -795,14 +869,18 @@ const submitConfigForm = handleSubmit(() => {
                 </div>
 
                 <div class="grid gap-5 md:grid-cols-2 md:items-start">
-                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                    <input
-                      v-model="form.pitchReviewEnabled"
-                      type="checkbox"
-                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-                    >
-                    Enable pitch review
-                  </label>
+                  <div class="grid gap-2">
+                    <span class="text-sm font-medium text-toned">Pitch review</span>
+
+                    <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                      <input
+                        v-model="form.pitchReviewEnabled"
+                        type="checkbox"
+                        class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                      >
+                      Enable pitch review
+                    </label>
+                  </div>
 
                   <label
                     v-if="form.pitchReviewEnabled"
@@ -1325,14 +1403,18 @@ const submitConfigForm = handleSubmit(() => {
           </div>
 
           <div class="grid gap-5 md:grid-cols-2 md:items-start">
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.pitchReviewEnabled"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Enable pitch review
-            </label>
+            <div class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Pitch review</span>
+
+              <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                <input
+                  v-model="form.pitchReviewEnabled"
+                  type="checkbox"
+                  class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                >
+                Enable pitch review
+              </label>
+            </div>
 
             <label
               v-if="form.pitchReviewEnabled"

@@ -26,6 +26,14 @@ const sizeClasses = computed(() => {
   return sizes[props.size]
 })
 
+const minHeightClass = computed(() => {
+  const normalizedRows = typeof props.rows === 'string'
+    ? Number.parseInt(props.rows, 10)
+    : props.rows
+
+  return normalizedRows <= 1 ? 'min-h-10' : 'min-h-32'
+})
+
 const normalizedValue = computed({
   get() {
     return modelValue.value ?? ''
@@ -42,6 +50,6 @@ const normalizedValue = computed({
     :rows="props.rows"
     :disabled="props.disabled"
     :placeholder="props.placeholder"
-    :class="cn('min-h-32 w-full resize-y rounded-lg border border-black/8 bg-white text-highlighted outline-none transition disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25]', sizeClasses)"
+    :class="cn('w-full resize-y rounded-lg border border-black/8 bg-white text-highlighted outline-none transition disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25]', minHeightClass, sizeClasses)"
   />
 </template>
