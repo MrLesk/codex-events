@@ -9,6 +9,7 @@ import type {
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOverviewPanel.vue'
 import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
+import HackathonTracksPanel from '~/components/public/hackathons/HackathonTracksPanel.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
 import { resolvePublicHackathonPrimaryAction } from '~/utils/participant-application'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
