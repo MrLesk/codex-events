@@ -16,7 +16,11 @@ Simple working note for improving multi-agent execution in this repo.
 - Read the other tasks under the current parent task for context, but stay focused on the assigned task only.
 - Give each agent exactly one task.
 - Keep write ownership explicit.
-- Tell agents not to commit and not to mark the task done.
+- Workers should not commit.
+- By default, delegate task finalization to the worker that owns the task so the worker is responsible for closing it out.
+- Keep task finalization for yourself only when the task depends on cross-task integration, shared validation, or expected supervisor follow-up before closeout.
+- If you keep task finalization for yourself, workers should not mark the task `Done`.
+- After review and integrated validation, you must ensure the task is marked `Done` before the work is considered complete.
 - Require a short status format:
   - files changed
   - validation run
