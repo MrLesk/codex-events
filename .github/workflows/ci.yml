@@ -61,6 +61,7 @@ jobs:
       url: https://dev.codex-hackathons.com
     env:
       CI: true
+      NODE_OPTIONS: --max-old-space-size=4096
       NUXT_AUTH0_CLIENT_ID: ${{ secrets.NUXT_AUTH0_CLIENT_ID }}
       NUXT_AUTH0_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_CLIENT_SECRET }}
       NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}

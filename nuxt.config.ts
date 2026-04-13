@@ -67,6 +67,11 @@ export default defineNuxtConfig({
     '#platform-legal': fileURLToPath(new URL('./shared/platform-legal.ts', import.meta.url))
   },
 
+  sourcemap: {
+    client: process.env.NODE_ENV !== 'production',
+    server: process.env.NODE_ENV !== 'production'
+  },
+
   compatibilityDate: '2025-01-15',
 
   vite: {
