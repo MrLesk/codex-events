@@ -5,9 +5,9 @@ import { judgeAssignments } from '../../../../../../../database/schema'
 import { defineApiHandler } from '../../../../../../../utils/api-handler'
 import { apiData } from '../../../../../../../utils/api-response'
 import {
+  assertAssignmentReviewStageIsActive,
   assertJudgeAssignmentStatus,
-  assertJudgeReviewLifecycleState,
-  getBlindAssignmentDetail,
+  getJudgeAssignmentDetail,
   judgingAssignmentParamsSchema,
   requireJudgeAssignmentContext
 } from '../../../../../../../utils/judging'
@@ -17,7 +17,7 @@ export default defineApiHandler(async (event) => {
   const { hackathonId, assignmentId } = parseValidatedParams(event, judgingAssignmentParamsSchema)
   const { actor, database, hackathon, assignment } = await requireJudgeAssignmentContext(event, hackathonId, assignmentId)
 
-  assertJudgeReviewLifecycleState(hackathon, ['judge_review'])
+  assertAssignmentReviewStageIsActive(hackathon, assignment)
   assertJudgeAssignmentStatus(
     assignment,
     ['assigned'],
@@ -43,11 +43,12 @@ export default defineApiHandler(async (event) => {
       hackathonId,
       submissionId: assignment.submissionId,
       previousStatus: assignment.status,
-      nextStatus: 'judge_started'
+      nextStatus: 'judge_started',
+      reviewStage: assignment.reviewStage
     }
   })
 
-  return apiData(await getBlindAssignmentDetail(database, {
+  return apiData(await getJudgeAssignmentDetail(database, {
     ...assignment,
     status: 'judge_started',
     startedAt

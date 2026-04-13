@@ -138,7 +138,7 @@ When('I save the competition shortlist order', async ({ page }) => {
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/${hackathonId}/shortlist/actions/reorder`)
+      response.url().includes(`/api/hackathons/${hackathonId}/shortlist/actions/select-finalists`)
       && response.ok()
     ),
     page.getByTestId('admin-competition-shortlist-save').click()

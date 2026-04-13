@@ -40,11 +40,14 @@ describe('TASK-3.7 judging assignment routes', () => {
   async function seedBaseJudgingRecords(
     harness: ReturnType<typeof createApiRouteTestHarness>,
     options?: {
-      state?: 'judging_preparation' | 'judge_review'
+      state?: 'judging_preparation' | 'blind_review' | 'pitch_review' | 'final_deliberation'
       includeCriteria?: boolean
+      blindReviewCount?: 0 | 1 | 2
+      pitchReviewEnabled?: boolean
+      pitchFinalistSubmissionIdsJson?: string
     }
   ) {
-    const state = options?.state ?? 'judge_review'
+    const state = options?.state ?? 'blind_review'
 
     await harness.database.insert(users).values([
       {
@@ -111,6 +114,9 @@ describe('TASK-3.7 judging assignment routes', () => {
       submissionOpensAt: '2026-03-19T12:00:00.000Z',
       submissionClosesAt: '2026-03-21T12:00:00.000Z',
       state,
+      blindReviewCount: options?.blindReviewCount ?? 1,
+      pitchReviewEnabled: options?.pitchReviewEnabled ?? false,
+      pitchFinalistSubmissionIdsJson: options?.pitchFinalistSubmissionIdsJson ?? '[]',
       maxTeamMembers: 5,
       createdByUserId: 'platform_admin'
     })
@@ -427,6 +433,77 @@ describe('TASK-3.7 judging assignment routes', () => {
     })
   })
 
+  test('judges list only their active pitch assignments in the open pitch view', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/judging/assignments', handler: listJudgeAssignmentsHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|judge_a',
+        email: 'judge-a@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedBaseJudgingRecords(harness, {
+      state: 'pitch_review',
+      pitchReviewEnabled: true
+    })
+    await harness.database.insert(judgeAssignments).values([
+      {
+        id: 'assignment_pitch_1',
+        hackathonId: 'hackathon_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        reviewStage: 'pitch_review',
+        blindReviewSlot: null,
+        status: 'assigned',
+        assignedAt: '2026-03-26T12:10:00.000Z',
+        createdAt: '2026-03-26T12:10:00.000Z'
+      },
+      {
+        id: 'assignment_pitch_2',
+        hackathonId: 'hackathon_1',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_b',
+        reviewStage: 'pitch_review',
+        blindReviewSlot: null,
+        status: 'judge_started',
+        assignedAt: '2026-03-26T12:11:00.000Z',
+        startedAt: '2026-03-26T12:12:00.000Z',
+        createdAt: '2026-03-26T12:11:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments')
+
+    expect(response.status).toBe(200)
+    const payload = await response.json() as {
+      data: Array<Record<string, unknown>>
+      meta: {
+        total: number
+      }
+    }
+
+    expect(payload).toMatchObject({
+      data: [
+        {
+          id: 'assignment_pitch_1',
+          reviewStage: 'pitch_review',
+          pitchSubmission: {
+            id: 'submission_1',
+            projectName: 'Project One',
+            teamName: 'Alpha Team'
+          }
+        }
+      ],
+      meta: {
+        total: 1
+      }
+    })
+    expect(payload.data[0]).not.toHaveProperty('blindSubmission')
+  })
+
   test('assigned judges can start and complete a review with criterion scores', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -520,6 +597,96 @@ describe('TASK-3.7 judging assignment routes', () => {
     ]))
   })
 
+  test('assigned judges can start and complete a pitch review with an open score', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/start',
+          handler: startJudgeAssignmentHandler
+        },
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/complete',
+          handler: completeJudgeAssignmentHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|judge_a',
+        email: 'judge-a@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedBaseJudgingRecords(harness, {
+      state: 'pitch_review',
+      pitchReviewEnabled: true
+    })
+    await harness.database.insert(judgeAssignments).values({
+      id: 'assignment_pitch_1',
+      hackathonId: 'hackathon_1',
+      submissionId: 'submission_1',
+      judgeUserId: 'judge_a',
+      reviewStage: 'pitch_review',
+      blindReviewSlot: null,
+      status: 'assigned',
+      assignedAt: '2026-03-26T12:10:00.000Z',
+      createdAt: '2026-03-26T12:10:00.000Z'
+    })
+
+    const startResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_pitch_1/actions/start', {
+      method: 'POST'
+    })
+
+    expect(startResponse.status).toBe(200)
+    expect(await startResponse.json()).toMatchObject({
+      data: {
+        id: 'assignment_pitch_1',
+        reviewStage: 'pitch_review',
+        status: 'judge_started',
+        pitchSubmission: {
+          teamName: 'Alpha Team'
+        }
+      }
+    })
+
+    const completeResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_pitch_1/actions/complete', {
+      method: 'POST',
+      body: JSON.stringify({
+        pitchScore: 9,
+        pitchComment: 'Clear and confident demo.'
+      })
+    })
+
+    expect(completeResponse.status).toBe(200)
+    expect(await completeResponse.json()).toMatchObject({
+      data: {
+        id: 'assignment_pitch_1',
+        reviewStage: 'pitch_review',
+        status: 'judge_completed',
+        pitchScore: 9,
+        pitchComment: 'Clear and confident demo.'
+      }
+    })
+
+    const updatedAssignment = await harness.database.query.judgeAssignments.findFirst({
+      where: eq(judgeAssignments.id, 'assignment_pitch_1')
+    })
+    const storedScores = await harness.database.select().from(judgeCriterionScores)
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(updatedAssignment).toMatchObject({
+      status: 'judge_completed',
+      pitchScore: 9,
+      pitchComment: 'Clear and confident demo.'
+    })
+    expect(storedScores).toHaveLength(0)
+    expect(auditEntries).toEqual(expect.arrayContaining([
+      expect.objectContaining({ action: 'judge_assignment.review_started' }),
+      expect.objectContaining({ action: 'judge_assignment.review_completed' })
+    ]))
+  })
+
   test('skipping an assignment reassigns it to the lowest-load eligible judge', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -589,6 +756,124 @@ describe('TASK-3.7 judging assignment routes', () => {
     })
   })
 
+  test('skipping a blind assignment fails when the only remaining judge already owns the other blind-review slot', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/skip',
+          handler: skipJudgeAssignmentHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|judge_a',
+        email: 'judge-a@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedBaseJudgingRecords(harness, {
+      blindReviewCount: 2
+    })
+    await harness.database.delete(hackathonRoleAssignments).where(eq(hackathonRoleAssignments.id, 'role_judge_c'))
+    await harness.database.insert(judgeAssignments).values([
+      {
+        id: 'assignment_1',
+        hackathonId: 'hackathon_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        blindReviewSlot: 1,
+        status: 'assigned',
+        assignedAt: '2026-03-25T12:10:00.000Z',
+        createdAt: '2026-03-25T12:10:00.000Z'
+      },
+      {
+        id: 'assignment_2',
+        hackathonId: 'hackathon_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_b',
+        blindReviewSlot: 2,
+        status: 'assigned',
+        assignedAt: '2026-03-25T12:11:00.000Z',
+        createdAt: '2026-03-25T12:11:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/skip', {
+      method: 'POST',
+      body: JSON.stringify({
+        reason: 'Conflict'
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'eligible_replacement_judge_required'
+      }
+    })
+  })
+
+  test('skipping a pitch assignment records a skipped vote without creating a replacement', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/skip',
+          handler: skipJudgeAssignmentHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|judge_a',
+        email: 'judge-a@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedBaseJudgingRecords(harness, {
+      state: 'pitch_review',
+      pitchReviewEnabled: true
+    })
+    await harness.database.insert(judgeAssignments).values({
+      id: 'assignment_pitch_1',
+      hackathonId: 'hackathon_1',
+      submissionId: 'submission_1',
+      judgeUserId: 'judge_a',
+      reviewStage: 'pitch_review',
+      blindReviewSlot: null,
+      status: 'assigned',
+      assignedAt: '2026-03-26T12:10:00.000Z',
+      createdAt: '2026-03-26T12:10:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_pitch_1/actions/skip', {
+      method: 'POST',
+      body: JSON.stringify({
+        reason: 'Missed the live presentation'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'assignment_pitch_1',
+        reviewStage: 'pitch_review',
+        status: 'skipped',
+        skipReason: 'Missed the live presentation'
+      }
+    })
+
+    const assignmentRows = await harness.database.select().from(judgeAssignments)
+
+    expect(assignmentRows).toHaveLength(1)
+    expect(assignmentRows[0]).toMatchObject({
+      id: 'assignment_pitch_1',
+      status: 'skipped',
+      skippedByUserId: 'judge_a',
+      skipReason: 'Missed the live presentation'
+    })
+  })
+
   test('hackathon admins can reassign unstarted assignments before review starts', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -640,6 +925,65 @@ describe('TASK-3.7 judging assignment routes', () => {
         action: 'judge_assignment.reassigned'
       })
     ])
+  })
+
+  test('hackathon admins cannot auto-reassign a blind assignment onto the judge already assigned to the other slot', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/reassign',
+          handler: reassignJudgeAssignmentHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedBaseJudgingRecords(harness, {
+      state: 'judging_preparation',
+      blindReviewCount: 2
+    })
+    await harness.database.delete(hackathonRoleAssignments).where(eq(hackathonRoleAssignments.id, 'role_judge_c'))
+    await harness.database.insert(judgeAssignments).values([
+      {
+        id: 'assignment_1',
+        hackathonId: 'hackathon_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        blindReviewSlot: 1,
+        status: 'assigned',
+        assignedAt: '2026-03-25T12:10:00.000Z',
+        createdAt: '2026-03-25T12:10:00.000Z'
+      },
+      {
+        id: 'assignment_2',
+        hackathonId: 'hackathon_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_b',
+        blindReviewSlot: 2,
+        status: 'assigned',
+        assignedAt: '2026-03-25T12:11:00.000Z',
+        createdAt: '2026-03-25T12:11:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/reassign', {
+      method: 'POST',
+      body: JSON.stringify({
+        reason: 'Availability'
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'eligible_replacement_judge_required'
+      }
+    })
   })
 
   test('platform admins can force-skip started assignments and reopen them for another judge', async () => {
@@ -694,6 +1038,67 @@ describe('TASK-3.7 judging assignment routes', () => {
       })
     ]))
     expect(assignmentRows.find(row => row.id !== 'assignment_1' && row.submissionId === 'submission_1')?.judgeUserId).toBe('judge_b')
+  })
+
+  test('platform admins can force-skip started pitch assignments without creating a replacement', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/force-skip',
+          handler: forceSkipJudgeAssignmentHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedBaseJudgingRecords(harness, {
+      state: 'pitch_review',
+      pitchReviewEnabled: true
+    })
+    await harness.database.insert(judgeAssignments).values({
+      id: 'assignment_pitch_1',
+      hackathonId: 'hackathon_1',
+      submissionId: 'submission_1',
+      judgeUserId: 'judge_a',
+      reviewStage: 'pitch_review',
+      blindReviewSlot: null,
+      status: 'judge_started',
+      assignedAt: '2026-03-26T12:10:00.000Z',
+      startedAt: '2026-03-26T12:12:00.000Z',
+      createdAt: '2026-03-26T12:10:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_pitch_1/actions/force-skip', {
+      method: 'POST',
+      body: JSON.stringify({
+        reason: 'Judge left the panel'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'assignment_pitch_1',
+        reviewStage: 'pitch_review',
+        status: 'skipped',
+        skipReason: 'Judge left the panel'
+      }
+    })
+
+    const assignmentRows = await harness.database.select().from(judgeAssignments)
+
+    expect(assignmentRows).toHaveLength(1)
+    expect(assignmentRows[0]).toMatchObject({
+      id: 'assignment_pitch_1',
+      status: 'skipped',
+      skippedByUserId: 'platform_admin',
+      skipReason: 'Judge left the panel'
+    })
   })
 
   test('admins can mark an assignment ineligible when assigned and later revert that decision', async () => {
@@ -751,6 +1156,55 @@ describe('TASK-3.7 judging assignment routes', () => {
 
     expect(revertResponse.status).toBe(200)
     expect(await revertResponse.json()).toMatchObject({
+      data: {
+        id: 'assignment_1',
+        ineligibilityStatus: 'eligible',
+        ineligibilityReason: null
+      }
+    })
+  })
+
+  test('admins can revert ineligibility during final deliberation', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/revert-ineligibility',
+          handler: revertAssignmentIneligibilityHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedBaseJudgingRecords(harness, {
+      state: 'final_deliberation',
+      pitchReviewEnabled: true
+    })
+    await harness.database.insert(judgeAssignments).values({
+      id: 'assignment_1',
+      hackathonId: 'hackathon_1',
+      submissionId: 'submission_1',
+      judgeUserId: 'platform_admin',
+      status: 'judge_started',
+      ineligibilityStatus: 'ineligible',
+      ineligibilityReason: 'Rule violation',
+      ineligibilityMarkedAt: '2026-03-25T12:13:00.000Z',
+      ineligibilityMarkedByUserId: 'platform_admin',
+      assignedAt: '2026-03-25T12:10:00.000Z',
+      startedAt: '2026-03-25T12:12:00.000Z',
+      createdAt: '2026-03-25T12:10:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/revert-ineligibility', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
       data: {
         id: 'assignment_1',
         ineligibilityStatus: 'eligible',

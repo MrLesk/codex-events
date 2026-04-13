@@ -26,7 +26,7 @@ import {
 import { formatTimestamp } from '~/utils/date-formatting'
 
 type AccountHackathonAdminOperationsSection = 'participants' | 'submissions' | 'operations'
-type AccountHackathonParticipantView = 'applications' | 'approved' | 'rejected'
+type AccountHackathonParticipantView = 'applications' | 'approved' | 'rejected' | 'withdrawn'
 type LifecycleMetricCard = {
   key: string
   label: string
@@ -252,6 +252,12 @@ const rejectedParticipantSummaryValue = computed(() =>
   )
 )
 
+const withdrawnParticipantSummaryValue = computed(() =>
+  formatParticipantMetricValue(
+    applications.value.filter(application => application.status === 'withdrawn').length
+  )
+)
+
 const participantsLimitSummary = computed(() =>
   getParticipantsLimitSummary(
     applications.value,
@@ -452,14 +458,10 @@ const completedReviewCount = computed(() =>
   ).length
 )
 
-const submissionsLeftToJudgeCount = computed(() =>
-  Math.max(lockedSubmissionCount.value - completedReviewCount.value, 0)
-)
-
 const judgingProgressValue = computed(() =>
   formatLoadMetricValue(
     leaderboardDataStatus.value,
-    `${completedReviewCount.value} / ${submissionsLeftToJudgeCount.value}`
+    `${completedReviewCount.value} / ${lockedSubmissionCount.value}`
   )
 )
 
@@ -530,6 +532,106 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
         }
       ]
     case 'judging':
+      if (hackathon.state === 'judging_preparation') {
+        return [
+          {
+            label: 'Current status',
+            value: formatHackathonState(hackathon.state),
+            description: 'Submitted projects are locked and the next judging stage is being prepared.'
+          },
+          {
+            label: 'Judging path',
+            value: hackathon.blindReviewCount > 0
+              ? `${hackathon.blindReviewCount} blind review${hackathon.blindReviewCount === 1 ? '' : 's'} per submission`
+              : 'Pitch review only',
+            description: hackathon.pitchReviewEnabled
+              ? 'Pitch review is enabled for this hackathon.'
+              : 'Final ranking will be based on blind review only.'
+          }
+        ]
+      }
+
+      if (hackathon.state === 'blind_review') {
+        return [
+          {
+            label: 'Current status',
+            value: formatHackathonState(hackathon.state),
+            description: 'Blind judging is in progress and reviewer identity remains hidden from submissions.'
+          },
+          {
+            label: 'Next stage',
+            value: hackathon.pitchReviewEnabled ? 'Shortlist' : 'Final Deliberation',
+            description: hackathon.pitchReviewEnabled
+              ? 'Admins will choose pitch finalists once blind reviews are complete.'
+              : 'Blind scoring will feed directly into final ranking review.'
+          }
+        ]
+      }
+
+      if (hackathon.state === 'shortlist') {
+        return [
+          {
+            label: 'Current status',
+            value: formatHackathonState(hackathon.state),
+            description: 'Blind scores are frozen and admins are choosing which submissions advance to pitch review.'
+          },
+          {
+            label: 'Next stage',
+            value: 'Pitch Review',
+            description: 'Continue from the Competition tab once the finalist set and finalist order are saved.'
+          }
+        ]
+      }
+
+      if (hackathon.state === 'pitch_review') {
+        return [
+          {
+            label: 'Current status',
+            value: formatHackathonState(hackathon.state),
+            description: 'Pitch judges can now see project and team details and submit live pitch scores.'
+          },
+          {
+            label: 'Next stage',
+            value: 'Final Deliberation',
+            description: 'Final ranking review can start once you are ready to close pitch review.'
+          }
+        ]
+      }
+
+      if (hackathon.state === 'final_deliberation') {
+        return [
+          {
+            label: 'Current status',
+            value: formatHackathonState(hackathon.state),
+            description: 'Combined scores are available and admins can finalize ranking without changing judge votes.'
+          },
+          {
+            label: 'Score model',
+            value: hackathon.blindReviewCount > 0 && hackathon.pitchReviewEnabled
+              ? `${hackathon.blindScoreWeightPercent}% blind / ${hackathon.pitchScoreWeightPercent}% pitch`
+              : hackathon.pitchReviewEnabled
+                ? 'Pitch only'
+                : 'Blind review only',
+            description: 'The final ranking reflects the configured judging stages for this hackathon.'
+          }
+        ]
+      }
+
+      if (hackathon.state === 'winners_announced') {
+        return [
+          {
+            label: 'Current status',
+            value: formatHackathonState(hackathon.state),
+            description: 'Winners are public and prize redemption can proceed.'
+          },
+          {
+            label: 'Time frame',
+            value: `After ${formatTimestamp(hackathon.submissionClosesAt, 'submission close')}`,
+            description: 'Outcome and prize workflows stay available until the hackathon is completed.'
+          }
+        ]
+      }
+
       return [
         {
           label: 'Current status',
@@ -575,7 +677,23 @@ const lifecycleActionAvailability = computed(() => {
   const hackathon = currentHackathon.value
   const control = lifecycleControl.value
 
-  if (!hackathon || !control) {
+  if (!hackathon) {
+    return {
+      label: 'Lifecycle status',
+      message: 'No further lifecycle action is available from Operations.',
+      className: 'text-toned'
+    }
+  }
+
+  if (!control) {
+    if (hackathon.state === 'shortlist') {
+      return {
+        label: 'Continue from',
+        message: 'Use the Competition tab to save the finalist set and start pitch review.',
+        className: 'text-warning'
+      }
+    }
+
     return {
       label: 'Lifecycle status',
       message: 'No further lifecycle action is available from Operations.',
@@ -659,6 +777,36 @@ const lifecycleActionAvailability = computed(() => {
   }
 })
 
+const lifecycleActionHeading = computed(() =>
+  lifecycleControl.value || currentHackathon.value?.state !== 'shortlist'
+    ? (lifecycleControl.value ? 'Next lifecycle action' : 'Lifecycle status')
+    : 'Next lifecycle step'
+)
+
+const lifecycleActionLabel = computed(() => {
+  if (lifecycleControl.value) {
+    return lifecycleControl.value.label
+  }
+
+  if (currentHackathon.value?.state === 'shortlist') {
+    return 'Continue From Competition'
+  }
+
+  return 'No further lifecycle actions'
+})
+
+const lifecycleActionDescription = computed(() => {
+  if (lifecycleControl.value) {
+    return lifecycleControl.value.description
+  }
+
+  if (currentHackathon.value?.state === 'shortlist') {
+    return 'Pitch finalists are managed from the Competition tab because the next transition depends on the saved finalist selection.'
+  }
+
+  return 'The hackathon has reached a stable state with no additional lifecycle transition available from this view.'
+})
+
 const lifecycleMetricCards = computed<LifecycleMetricCard[]>(() => {
   switch (operationsPhase.value) {
     case 'registration_open':
@@ -708,17 +856,68 @@ const lifecycleMetricCards = computed<LifecycleMetricCard[]>(() => {
         }
       ]
     case 'judging':
+      if (currentHackathon.value?.state === 'judging_preparation' || currentHackathon.value?.state === 'blind_review') {
+        return [
+          {
+            key: 'judging-progress',
+            label: 'Blind Reviews Complete',
+            value: judgingProgressValue.value,
+            description: 'Locked submissions with a completed blind-review outcome.'
+          },
+          {
+            key: 'judge-load',
+            label: 'Average Per Judge',
+            value: averageSubmissionsPerJudgeValue.value,
+            description: averageSubmissionsPerJudgeDescription.value
+          }
+        ]
+      }
+
+      if (currentHackathon.value?.state === 'shortlist') {
+        return [
+          {
+            key: 'locked-submissions',
+            label: 'Blind-Ranked Submissions',
+            value: formatLoadMetricValue(leaderboardDataStatus.value, `${lockedSubmissionCount.value}`),
+            description: 'Ranked blind-review submissions available for finalist selection.'
+          },
+          {
+            key: 'judge-load',
+            label: 'Judge Pool',
+            value: formatLoadMetricValue(roleAssignmentsDataStatus.value, `${judgePoolCount.value}`),
+            description: averageSubmissionsPerJudgeDescription.value
+          }
+        ]
+      }
+
+      if (currentHackathon.value?.state === 'pitch_review' || currentHackathon.value?.state === 'final_deliberation' || currentHackathon.value?.state === 'winners_announced') {
+        return [
+          {
+            key: 'locked-submissions',
+            label: 'Submitted Projects',
+            value: formatLoadMetricValue(leaderboardDataStatus.value, `${lockedSubmissionCount.value}`),
+            description: 'Projects that remain in competition after submissions were locked.'
+          },
+          {
+            key: 'judge-pool',
+            label: 'Judge Panel',
+            value: formatLoadMetricValue(roleAssignmentsDataStatus.value, `${judgePoolCount.value}`),
+            description: averageSubmissionsPerJudgeDescription.value
+          }
+        ]
+      }
+
       return [
         {
-          key: 'judging-progress',
-          label: 'Judging Progress',
-          value: judgingProgressValue.value,
-          description: 'Judged submissions relative to the submissions still left to judge.'
+          key: 'locked-submissions',
+          label: 'Submitted Projects',
+          value: formatLoadMetricValue(leaderboardDataStatus.value, `${lockedSubmissionCount.value}`),
+          description: 'Projects that remain in competition after submissions were locked.'
         },
         {
-          key: 'judge-load',
-          label: 'Average Per Judge',
-          value: averageSubmissionsPerJudgeValue.value,
+          key: 'judge-pool',
+          label: 'Judge Pool',
+          value: formatLoadMetricValue(roleAssignmentsDataStatus.value, `${judgePoolCount.value}`),
           description: averageSubmissionsPerJudgeDescription.value
         }
       ]
@@ -869,6 +1068,47 @@ async function rejectApplication(application: AdminApplicationRecord) {
     {
       skipRefresh: true,
       onSuccess: response => replaceApplicationsLocally([response.data])
+    }
+  )
+}
+
+async function withdrawApplication(application: AdminApplicationRecord) {
+  const availability = application.adminWithdrawal
+
+  if (!import.meta.client || !availability?.isAllowed) {
+    return
+  }
+
+  const participantLabel = application.user?.displayName ?? application.user?.email ?? application.userId
+  const warningLines = [
+    `Withdraw ${participantLabel} from this hackathon?`
+  ]
+
+  if (availability.teamAction === 'remove_member') {
+    warningLines.push('This will also remove the participant from their active team.')
+  }
+
+  if (availability.warning) {
+    warningLines.push(availability.warning)
+  }
+
+  const confirmed = window.confirm(warningLines.join('\n\n'))
+
+  if (!confirmed) {
+    return
+  }
+
+  await runMutation(
+    `withdraw:${application.id}`,
+    async () => await $fetch<StageApplicationResponse>(
+      `/api/hackathons/${application.hackathonId}/applications/${application.id}/actions/withdraw`,
+      {
+        method: 'POST'
+      }
+    ),
+    {
+      title: 'Participant withdrawn',
+      description: 'The participant application was withdrawn and any related side effects were applied.'
     }
   )
 }
@@ -1101,13 +1341,13 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
             <div class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08] lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">
               <div class="space-y-1">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  {{ lifecycleControl ? 'Next lifecycle action' : 'Lifecycle status' }}
+                  {{ lifecycleActionHeading }}
                 </p>
                 <h3 class="text-base font-semibold text-highlighted">
-                  {{ lifecycleControl?.label ?? 'No further lifecycle actions' }}
+                  {{ lifecycleActionLabel }}
                 </h3>
                 <p class="text-sm text-toned">
-                  {{ lifecycleControl?.description ?? 'The hackathon has reached a stable state with no additional lifecycle transition available from this view.' }}
+                  {{ lifecycleActionDescription }}
                 </p>
               </div>
 
@@ -1227,6 +1467,19 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
                 {{ rejectedParticipantSummaryValue }}
               </span>
             </button>
+            <button
+              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
+              :class="participantView === 'withdrawn' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+              @click="selectParticipantView('withdrawn')"
+            >
+              <span>Withdrawn</span>
+              <span
+                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
+                :class="participantView === 'withdrawn' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+              >
+                {{ withdrawnParticipantSummaryValue }}
+              </span>
+            </button>
           </div>
         </div>
 
@@ -1241,6 +1494,7 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
           @approve="approveApplication"
           @approve-team="approveApplicationGroup"
           @reject="rejectApplication"
+          @withdraw="withdrawApplication"
           @save-decisions="applyStagedApplicationDecisions"
         />
       </section>

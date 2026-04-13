@@ -3,8 +3,10 @@ export type PublicHackathonState
     | 'registration_open'
     | 'submission_open'
     | 'judging_preparation'
-    | 'judge_review'
+    | 'blind_review'
     | 'shortlist'
+    | 'pitch_review'
+    | 'final_deliberation'
     | 'winners_announced'
     | 'completed'
 
@@ -121,8 +123,10 @@ const stateLabels: Record<PublicHackathonState, string> = {
   registration_open: 'Registration open',
   submission_open: 'Submission open',
   judging_preparation: 'Judging preparation',
-  judge_review: 'Judge review',
+  blind_review: 'Blind review',
   shortlist: 'Shortlist',
+  pitch_review: 'Pitch review',
+  final_deliberation: 'Final deliberation',
   winners_announced: 'Winners announced',
   completed: 'Completed'
 }
@@ -132,8 +136,10 @@ const stateColors: Record<PublicHackathonState, 'neutral' | 'info' | 'warning' |
   registration_open: 'info',
   submission_open: 'primary',
   judging_preparation: 'warning',
-  judge_review: 'warning',
+  blind_review: 'warning',
   shortlist: 'primary',
+  pitch_review: 'primary',
+  final_deliberation: 'primary',
   winners_announced: 'success',
   completed: 'neutral'
 }
@@ -151,8 +157,10 @@ const stateSummaries: Record<PublicHackathonState, string> = {
   registration_open: 'Applications are open. Team formation is available after approval.',
   submission_open: 'Approved participants can form teams and work on submissions.',
   judging_preparation: 'Submissions are locked while judging assignments are prepared.',
-  judge_review: 'Judges are actively reviewing locked submissions in the blind workspace.',
-  shortlist: 'Scores are computed and finalists are under final review before announcement.',
+  blind_review: 'Judges are actively reviewing locked submissions in the blind workspace.',
+  shortlist: 'Blind-review scores are locked in and finalists are being selected for the pitch stage.',
+  pitch_review: 'Finalists are presenting live and judges can review full submission details.',
+  final_deliberation: 'Final combined scores are under review before winners are announced.',
   winners_announced: 'Final rankings are published and prize redemption can proceed.',
   completed: 'The program outcome is final and remains available for reference.'
 }

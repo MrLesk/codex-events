@@ -16,6 +16,7 @@ import {
   listAllPaginatedItems,
   buildAdminWorkspaceCacheKey,
   canMutateRoleAssignments,
+  createEmptyHackathonFormState,
   createHackathonFormState,
   createHackathonSlug,
   formatApplicationLumaSyncStatus,
@@ -70,6 +71,10 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     submissionClosesAt: '2026-03-24T10:00:00.000Z',
     state: 'registration_open',
     maxTeamMembers: 5,
+    blindReviewCount: 1,
+    pitchReviewEnabled: false,
+    blindScoreWeightPercent: 70,
+    pitchScoreWeightPercent: 30,
     inPersonEvent: false,
     requireXProfile: false,
     requireLinkedinProfile: true,
@@ -126,6 +131,7 @@ function createApplication(overrides: Partial<AdminApplicationRecord> = {}): Adm
     status: 'submitted',
     preApprovalStatus: null,
     submittedAt: '2026-03-22T12:00:00.000Z',
+    withdrawnAt: null,
     reviewedAt: null,
     reviewedByUserId: null,
     applicationTermsDocumentId: 'terms-1',
@@ -272,8 +278,10 @@ describe('admin-workspace access helpers', () => {
     expect(getHackathonOperationsPhase('registration_open')).toBe('registration_open')
     expect(getHackathonOperationsPhase('submission_open')).toBe('submission_open')
     expect(getHackathonOperationsPhase('judging_preparation')).toBe('judging')
-    expect(getHackathonOperationsPhase('judge_review')).toBe('judging')
+    expect(getHackathonOperationsPhase('blind_review')).toBe('judging')
     expect(getHackathonOperationsPhase('shortlist')).toBe('judging')
+    expect(getHackathonOperationsPhase('pitch_review')).toBe('judging')
+    expect(getHackathonOperationsPhase('final_deliberation')).toBe('judging')
     expect(getHackathonOperationsPhase('winners_announced')).toBe('judging')
     expect(getHackathonOperationsPhase('completed')).toBe('completed')
   })
@@ -373,6 +381,15 @@ describe('admin-workspace form helpers', () => {
     expect(fromDateTimeLocalValue(localValue)).toBe(isoTimestamp)
   })
 
+  test('uses canonical defaults for new hackathon form scoring fields', () => {
+    expect(createEmptyHackathonFormState()).toMatchObject({
+      blindReviewCount: 1,
+      pitchReviewEnabled: false,
+      blindScoreWeightPercent: 70,
+      pitchScoreWeightPercent: 30
+    })
+  })
+
   test('maps hackathon records into editable form state', () => {
     const hackathon = createHackathon({
       description: '# Overview\n\n- Build something ambitious\n- Share what you learned',
@@ -380,6 +397,10 @@ describe('admin-workspace form helpers', () => {
       bannerImageUrl: 'https://example.com/banner.jpg',
       lumaEventUrl: 'https://lu.ma/codex-builders',
       lumaEventApiId: 'evt-123',
+      blindReviewCount: 3,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 60,
+      pitchScoreWeightPercent: 40,
       agendaItems: [
         {
           id: 'agenda-item-1',
@@ -407,6 +428,10 @@ describe('admin-workspace form helpers', () => {
       lumaEventApiId: 'evt-123',
       maxTeamMembers: 5,
       participantsLimit: null,
+      blindReviewCount: 3,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 60,
+      pitchScoreWeightPercent: 40,
       inPersonEvent: false,
       requireLinkedinProfile: true,
       requireGithubProfile: true
@@ -605,9 +630,12 @@ describe('admin-workspace lifecycle controls', () => {
     })
   })
 
-  test('enables shortlist transition only when every locked submission is fully reviewed', () => {
+  test('enables blind-review to shortlist transition only when pitch review is enabled', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({ state: 'judge_review' }),
+      createHackathon({
+        state: 'blind_review',
+        pitchReviewEnabled: true
+      }),
       {
         submittedSubmissionCount: 3,
         judgePoolCount: 2,
@@ -626,9 +654,60 @@ describe('admin-workspace lifecycle controls', () => {
     })
   })
 
+  test('routes pitch-only hackathons directly into pitch review from judging preparation', () => {
+    const control = getCurrentLifecycleControl(
+      createHackathon({
+        state: 'judging_preparation',
+        blindReviewCount: 0,
+        pitchReviewEnabled: true,
+        blindScoreWeightPercent: 0,
+        pitchScoreWeightPercent: 100
+      }),
+      {
+        submittedSubmissionCount: 3,
+        judgePoolCount: 2,
+        lockedSubmissionCount: 3,
+        activeAssignmentCount: 0,
+        lockedLeaderboardEntryCount: 3,
+        completedReviewCount: 0,
+        prizeCount: 0,
+        hasCurrentWinnerTerms: true
+      }
+    )
+
+    expect(control).toMatchObject({
+      key: 'start_pitch_review',
+      isEnabled: true
+    })
+  })
+
+  test('routes blind-only hackathons into final deliberation once blind review is complete', () => {
+    const control = getCurrentLifecycleControl(
+      createHackathon({
+        state: 'blind_review',
+        pitchReviewEnabled: false
+      }),
+      {
+        submittedSubmissionCount: 3,
+        judgePoolCount: 2,
+        lockedSubmissionCount: 3,
+        activeAssignmentCount: 3,
+        lockedLeaderboardEntryCount: 3,
+        completedReviewCount: 3,
+        prizeCount: 1,
+        hasCurrentWinnerTerms: true
+      }
+    )
+
+    expect(control).toMatchObject({
+      key: 'start_final_deliberation',
+      isEnabled: true
+    })
+  })
+
   test('blocks winner announcement when prizes exist without current winner terms', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({ state: 'shortlist' }),
+      createHackathon({ state: 'final_deliberation' }),
       {
         submittedSubmissionCount: 3,
         judgePoolCount: 2,
@@ -795,23 +874,23 @@ describe('admin-workspace operational helpers', () => {
   })
 
   test('allows only the documented admin judging interventions for each assignment state', () => {
-    expect(getAdminJudgeAssignmentInterventionPolicy('judge_review', 'assigned')).toMatchObject({
+    expect(getAdminJudgeAssignmentInterventionPolicy('blind_review', 'assigned')).toMatchObject({
       canReassign: true,
       canForceSkip: false,
       forceSkipReason: 'Only started assignments can be force-skipped.'
     })
 
-    expect(getAdminJudgeAssignmentInterventionPolicy('judge_review', 'judge_started')).toMatchObject({
+    expect(getAdminJudgeAssignmentInterventionPolicy('blind_review', 'judge_started')).toMatchObject({
       canReassign: false,
       reassignReason: 'Only unstarted assignments can be reassigned.',
       canForceSkip: true
     })
 
-    expect(getAdminJudgeAssignmentInterventionPolicy('shortlist', 'assigned')).toMatchObject({
+    expect(getAdminJudgeAssignmentInterventionPolicy('pitch_review', 'assigned')).toMatchObject({
       canReassign: false,
-      reassignReason: 'Assignment reassignment is only available during judging preparation or judge review.',
+      reassignReason: 'Assignment reassignment is only available during judging preparation or blind review.',
       canForceSkip: false,
-      forceSkipReason: 'Force-skip is available only once judge review has started.'
+      forceSkipReason: 'Force-skip is available only once blind review has started.'
     })
   })
 
@@ -1257,7 +1336,7 @@ describe('admin-workspace operational helpers', () => {
       canDisqualify: false
     })
 
-    expect(getAdminSubmissionInterventionPolicy('judge_review', 'locked')).toMatchObject({
+    expect(getAdminSubmissionInterventionPolicy('blind_review', 'locked')).toMatchObject({
       canAdminWithdraw: false,
       canDisqualify: true
     })

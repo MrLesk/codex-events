@@ -1,3 +1,4 @@
+import { readBody } from 'h3'
 import { eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '../../../../../../../database/audit-log'
@@ -5,51 +6,91 @@ import { judgeAssignments, judgeCriterionScores } from '../../../../../../../dat
 import { defineApiHandler } from '../../../../../../../utils/api-handler'
 import { apiData } from '../../../../../../../utils/api-response'
 import {
+  assertAssignmentReviewStageIsActive,
   assertJudgeAssignmentStatus,
-  assertJudgeReviewLifecycleState,
   completeJudgeAssignmentBodySchema,
-  getBlindAssignmentDetail,
+  completePitchReviewBodySchema,
+  getJudgeAssignmentDetail,
   judgingAssignmentParamsSchema,
   normalizeCompletionCriterionScores,
+  normalizePitchReviewCompletion,
   requireJudgeAssignmentContext
 } from '../../../../../../../utils/judging'
-import { parseValidatedBody, parseValidatedParams } from '../../../../../../../utils/validation'
+import { parseValidatedParams, validateWithSchema } from '../../../../../../../utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, assignmentId } = parseValidatedParams(event, judgingAssignmentParamsSchema)
-  const body = await parseValidatedBody(event, completeJudgeAssignmentBodySchema)
   const { actor, database, hackathon, assignment } = await requireJudgeAssignmentContext(event, hackathonId, assignmentId)
+  const body = await readBody(event)
 
-  assertJudgeReviewLifecycleState(hackathon, ['judge_review'])
+  assertAssignmentReviewStageIsActive(hackathon, assignment)
   assertJudgeAssignmentStatus(
     assignment,
     ['judge_started'],
     'Only started judge assignments can be completed.'
   )
 
-  const normalizedScores = await normalizeCompletionCriterionScores(database, hackathonId, body)
   const completedAt = new Date().toISOString()
+  let completionMetadata: Record<string, unknown>
+  let updatedAssignmentPatch: Record<string, unknown> = {
+    completedAt
+  }
 
-  await database.batch([
-    database
+  if (assignment.reviewStage === 'pitch_review') {
+    const normalizedPitchReview = normalizePitchReviewCompletion(
+      validateWithSchema(completePitchReviewBodySchema, body, 'body')
+    )
+
+    await database
       .update(judgeAssignments)
       .set({
         status: 'judge_completed',
+        pitchScore: normalizedPitchReview.pitchScore,
+        pitchComment: normalizedPitchReview.pitchComment,
         completedAt
       })
-      .where(eq(judgeAssignments.id, assignment.id)),
-    database.insert(judgeCriterionScores).values(
-      normalizedScores.map(score => ({
-        id: crypto.randomUUID(),
-        judgeAssignmentId: assignment.id,
-        evaluationCriterionId: score.evaluationCriterionId,
-        score: score.score,
-        comment: score.comment ?? null,
-        createdAt: completedAt,
-        updatedAt: completedAt
-      }))
+      .where(eq(judgeAssignments.id, assignment.id))
+
+    completionMetadata = {
+      pitchScore: normalizedPitchReview.pitchScore
+    }
+    updatedAssignmentPatch = {
+      ...updatedAssignmentPatch,
+      pitchScore: normalizedPitchReview.pitchScore,
+      pitchComment: normalizedPitchReview.pitchComment
+    }
+  } else {
+    const normalizedScores = await normalizeCompletionCriterionScores(
+      database,
+      hackathonId,
+      validateWithSchema(completeJudgeAssignmentBodySchema, body, 'body')
     )
-  ])
+
+    await database.batch([
+      database
+        .update(judgeAssignments)
+        .set({
+          status: 'judge_completed',
+          completedAt
+        })
+        .where(eq(judgeAssignments.id, assignment.id)),
+      database.insert(judgeCriterionScores).values(
+        normalizedScores.map(score => ({
+          id: crypto.randomUUID(),
+          judgeAssignmentId: assignment.id,
+          evaluationCriterionId: score.evaluationCriterionId,
+          score: score.score,
+          comment: score.comment ?? null,
+          createdAt: completedAt,
+          updatedAt: completedAt
+        }))
+      )
+    ])
+
+    completionMetadata = {
+      criterionScoreCount: normalizedScores.length
+    }
+  }
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,
@@ -61,13 +102,14 @@ export default defineApiHandler(async (event) => {
       submissionId: assignment.submissionId,
       previousStatus: assignment.status,
       nextStatus: 'judge_completed',
-      criterionScoreCount: normalizedScores.length
+      reviewStage: assignment.reviewStage,
+      ...completionMetadata
     }
   })
 
-  return apiData(await getBlindAssignmentDetail(database, {
+  return apiData(await getJudgeAssignmentDetail(database, {
     ...assignment,
     status: 'judge_completed',
-    completedAt
+    ...updatedAssignmentPatch
   }))
 })

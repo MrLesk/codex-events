@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import AccountHackathonDashboardList from '~/components/account/AccountHackathonDashboardList.vue'
-import { filterExplicitJudgeHackathons } from '~/utils/judging-workspace'
+import type { JudgeDashboardAssignmentSummary } from '~/utils/judging-workspace'
+
+import {
+  filterExplicitJudgeHackathons,
+  getJudgeHackathonDashboardCopy
+} from '~/utils/judging-workspace'
 
 definePageMeta({
   layout: 'profile',
@@ -13,19 +18,16 @@ const explicitJudgeHackathons = computed(() =>
   filterExplicitJudgeHackathons(workspace.hackathons.data.value ?? [], workspace.actor.value)
 )
 const assignmentSummaryByHackathonId = computed(() => {
-  const summaryByHackathonId = new Map<string, {
-    total: number
-    inReview: number
-    ready: number
-    ineligible: number
-  }>()
+  const summaryByHackathonId = new Map<string, JudgeDashboardAssignmentSummary>()
 
   for (const group of workspace.inboxGroups.value) {
     summaryByHackathonId.set(group.hackathon.id, {
       total: group.assignments.length,
       inReview: group.assignments.filter(assignment => assignment.status === 'judge_started').length,
       ready: group.assignments.filter(assignment => assignment.status === 'assigned').length,
-      ineligible: group.assignments.filter(assignment => assignment.ineligibilityStatus === 'ineligible').length
+      ineligible: group.assignments.filter(assignment => assignment.ineligibilityStatus === 'ineligible').length,
+      blind: group.assignments.filter(assignment => assignment.reviewStage === 'blind_review').length,
+      pitch: group.assignments.filter(assignment => assignment.reviewStage === 'pitch_review').length
     })
   }
 
@@ -44,26 +46,20 @@ const inProgressCount = computed(() =>
 const listItems = computed(() =>
   explicitJudgeHackathons.value.map((hackathon) => {
     const summary = assignmentSummaryByHackathonId.value.get(hackathon.id)
-    const totalAssignments = summary?.total ?? 0
-    const inReviewAssignments = summary?.inReview ?? 0
-    const readyAssignments = summary?.ready ?? 0
+    const dashboardCopy = getJudgeHackathonDashboardCopy(hackathon, summary)
 
     return {
       id: hackathon.id,
       name: hackathon.name,
-      description: totalAssignments > 0
-        ? `${totalAssignments} active assignment${totalAssignments === 1 ? '' : 's'} in your blind-review queue${inReviewAssignments > 0 ? `, including ${inReviewAssignments} currently in review` : ''}.`
-        : 'You are assigned as a judge for this hackathon. New blind reviews will appear here when judging begins.',
+      description: dashboardCopy.description,
       state: hackathon.state,
       to: `/account/hackathons/${hackathon.slug}?tab=judging`,
-      actionLabel: totalAssignments > 0 ? 'Open judging' : 'Open hackathon',
-      overline: totalAssignments > 0
-        ? `${totalAssignments} active assignment${totalAssignments === 1 ? '' : 's'}`
-        : 'Judge assigned',
+      actionLabel: dashboardCopy.actionLabel,
+      overline: dashboardCopy.overline,
       meta: [
         formatHackathonLocation(hackathon),
         `${hackathon.maxTeamMembers} max/team`,
-        readyAssignments > 0 ? `${readyAssignments} ready to start` : 'No active queue yet'
+        dashboardCopy.queueMeta
       ]
     }
   })
@@ -86,7 +82,7 @@ useSeoMeta({
                 Judge dashboard
               </h1>
               <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-                Open the hackathons where you are assigned as a judge and step directly into blind review.
+                Open the hackathons where you judge, move through anonymous blind review, and return later for finalist pitch voting when that stage is active.
               </p>
             </div>
           </div>
@@ -143,7 +139,7 @@ useSeoMeta({
 
         <AccountHackathonDashboardList
           title="Hackathons you judge"
-          description="Each hackathon opens into the same detail surface, with the Judging tab preselected for your review work."
+          description="Each hackathon opens into the Judging tab, where blind assignments stay anonymous and pitch finalists reveal full project and team identity."
           :items="listItems"
           empty-title="No judge assignments yet"
           empty-description="When you are explicitly assigned as a judge on a hackathon, it will appear here."

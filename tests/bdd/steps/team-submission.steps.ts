@@ -64,6 +64,14 @@ Then('I should see the participant submission text {string}', async ({ page }, t
   }).first()).toBeVisible()
 })
 
+Then('the participant submission field {string} should have value {string}', async ({ page }, label: string, value: string) => {
+  await expect(page.getByTestId('participant-submission-panel').getByLabel(label)).toHaveValue(value)
+})
+
+Then('the participant submission field {string} should be disabled', async ({ page }, label: string) => {
+  await expect(page.getByTestId('participant-submission-panel').getByLabel(label)).toBeDisabled()
+})
+
 Then('the participant submission action {string} should be disabled', async ({ page }, actionName: string) => {
   await expect(page.getByRole('button', {
     name: actionName

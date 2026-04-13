@@ -71,7 +71,15 @@ function createRoutes() {
 async function seedSubmissionContext(
   harness: ReturnType<typeof createApiRouteTestHarness>,
   options?: {
-    state?: 'submission_open' | 'judging_preparation' | 'judge_review'
+    state?:
+      | 'submission_open'
+      | 'judging_preparation'
+      | 'blind_review'
+      | 'shortlist'
+      | 'pitch_review'
+      | 'final_deliberation'
+      | 'winners_announced'
+      | 'completed'
   }
 ) {
   await harness.database.insert(users).values([
@@ -599,7 +607,7 @@ describe('TASK-3.7 submission routes', () => {
     ]))
   })
 
-  test('hackathon admins can disqualify locked submissions during judge review', async () => {
+  test('hackathon admins can disqualify locked submissions during shortlist review', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
@@ -609,7 +617,7 @@ describe('TASK-3.7 submission routes', () => {
     })
     harnesses.push(harness)
     await seedSubmissionContext(harness, {
-      state: 'judge_review'
+      state: 'shortlist'
     })
 
     await harness.database.insert(submissions).values({
@@ -649,7 +657,7 @@ describe('TASK-3.7 submission routes', () => {
     expect(storedSubmission?.status).toBe('disqualified')
   })
 
-  test('draft submissions cannot be disqualified and remain part of the no-submission model', async () => {
+  test('draft submissions cannot be disqualified during shortlist review and remain part of the no-submission model', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
@@ -659,7 +667,7 @@ describe('TASK-3.7 submission routes', () => {
     })
     harnesses.push(harness)
     await seedSubmissionContext(harness, {
-      state: 'judge_review'
+      state: 'shortlist'
     })
 
     await harness.database.insert(submissions).values({

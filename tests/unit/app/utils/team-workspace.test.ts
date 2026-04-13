@@ -92,7 +92,7 @@ describe('team workspace helpers', () => {
     })
 
     expect(getUpdateJoinPolicyAvailability({
-      state: 'judge_review'
+      state: 'blind_review'
     }, true)).toEqual({
       isAllowed: false,
       reason: 'Join-request settings can be updated only while registration or submission is open.'
@@ -252,7 +252,7 @@ describe('team workspace helpers', () => {
     })
 
     expect(getLeaveTeamAvailability({
-      state: 'judge_review'
+      state: 'blind_review'
     }, {
       ...baseTeam,
       activeMemberCount: 1,

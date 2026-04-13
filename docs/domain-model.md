@@ -70,6 +70,10 @@ Key characteristics:
 - Each hackathon has its own submission window.
 - Each hackathon has a submission flow that can be activated manually within its configured submission window.
 - Each hackathon has a judging flow that is activated manually.
+- Each hackathon must enable at least one judging stage.
+- Each hackathon can require `0`, `1`, or `2` blind reviews per submitted project.
+- Each hackathon can optionally enable a pitch review stage after blind review or as the only judging stage.
+- Each hackathon can configure blind-score and pitch-score weights. When both stages are enabled, the default weighting is `70%` blind score and `30%` pitch score.
 - Each hackathon can define a maximum team member limit.
 - Each hackathon can optionally define a participant approval limit used as an indicative planning target during admin review.
 - Each hackathon can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma email, for registration.
@@ -138,7 +142,7 @@ Rules:
 - A user has at most one explicit hackathon role per hackathon.
 - Staff can see participant and team data for the hackathon but cannot perform admin operations.
 - Every platform admin also has a `HackathonRoleAssignment` row with role `hackathon_admin` for every hackathon.
-- `HackathonRoleAssignment` includes `is_in_judge_pool` to control automatic judge distribution and `is_staff` to record staff designation.
+- `HackathonRoleAssignment` includes `is_in_judge_pool` to control automatic blind-review distribution and pitch-panel membership and `is_staff` to record staff designation.
 - A user with role `judge` must be in the automatic judge distribution pool and must not be marked as staff.
 - A user with role `staff` must be marked as staff and must not be in the automatic judge distribution pool.
 - A user with role `hackathon_admin` can be in or out of the automatic judge distribution pool and can be in or out of staff designation.
@@ -148,8 +152,10 @@ Rules:
 - The published staff roster includes explicit `staff` assignments plus `hackathon_admin` assignments with `is_staff = true`.
 - Published judge and staff rosters are visible to any platform user who can access that hackathon in the account-scoped workspace.
 - Published roster cards expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
-- Any actor performing a judge review sees the blind judging view rather than the admin view.
+- Any actor performing a blind judge review sees the blind judging view rather than the admin view.
 - The blind judging view includes anonymized application information and excludes team identity.
+- Any actor performing a pitch review sees the open pitch judging view rather than the blind judging view.
+- The open pitch judging view includes project name, team name, and full submission detail.
 
 ### UserApplication
 
@@ -163,14 +169,18 @@ Rules:
 - The public registration route is an application-entry flow only. Once a user has an application for a hackathon, ongoing status and participation workflow continue in the account-scoped hackathon workspace rather than in the public registration route.
 - Application approval is handled by hackathon admins.
 - A participant can withdraw their own application while they do not have an active team membership in that hackathon.
+- A hackathon admin or platform admin can manually withdraw a submitted or approved application on behalf of the participant.
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
 - If the hackathon requires a Luma email and has a Luma event API ID, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
-- If the hackathon requires a Luma email and has a Luma event API ID, participant withdrawal also enqueues the canonical Luma rejection sync so the user is removed from the event guest list.
+- If the hackathon requires a Luma email and has a Luma event API ID, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
 - Platform admins can run a hackathon-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - A user must be approved before creating or joining a team in that hackathon.
 - Withdrawal ends participation eligibility for the hackathon, including in-person attendance eligibility when applicable.
 - Withdrawal retains the application record for auditability, exact-version terms acceptance, and operational history. It does not hard-delete the application.
+- Admin-managed withdrawal removes the participant from any active team in that hackathon when the team can remain valid.
+- If admin-managed withdrawal targets the last active member of a team, or the last active admin of a team, the withdrawal dismantles that team.
+- Admin-managed withdrawal is blocked if dismantling the participant's team would affect an active draft, submitted, or locked submission.
 - Blind judging uses application information without exposing team identity.
 - User application acceptance references the exact application terms version accepted for that hackathon.
 - A user can submit a `UserApplication` only if the user profile satisfies that hackathon's required profile rules.
@@ -209,6 +219,8 @@ Rules:
 - A solo workspace becomes a regular team workspace once the team gains another active member.
 - Every active team must always have at least one active team admin.
 - A team with no active members is dissolved. Dissolved teams are retained for auditability and historical references but are no longer available in team-formation workflows.
+- A team is also dissolved when an admin-managed application withdrawal removes the last active member, or removes the last active admin and therefore leaves no valid active-admin configuration.
+- Admin-managed application withdrawal cannot dissolve a team while the team still has an active draft, submitted, or locked submission.
 - A team cannot exceed the maximum team member limit defined by its hackathon.
 - A team with pending join requests can approve them only while the team remains open to join requests.
 - Team admins can update the team profile, review join requests, approve members, and remove members.
@@ -267,6 +279,7 @@ Rules:
 - A team with no submission is not eligible for judging, but this is represented by the absence of a submission rather than by a submission outcome.
 - A draft submission that is never submitted is treated as no submission for judging and dashboard purposes.
 - Blind judging includes the selected track because track membership is part of the submission itself and does not reveal team identity.
+- Pitch judging exposes the project and team identity because finalists present live.
 
 ### EvaluationCriterion
 
@@ -275,37 +288,46 @@ A scoring dimension configured per hackathon.
 Rules:
 
 - Each criterion belongs to one hackathon.
+- Criteria are used for blind review only.
 - Each criterion can have a weight.
-- Final scores are derived from criterion scores and criterion weights.
+- Each criterion score uses the shared `0..10` score scale.
+- Blind assignment scores are derived from criterion scores and criterion weights and are normalized to the shared `0..10` score scale.
 
 ### JudgeAssignment
 
-An assignment of one submission to one judge within a hackathon.
+A review assignment connecting one submission to one judge within a hackathon.
 
 Relationship rules:
 
-- A submission has one active judge assignment during the normal judging flow.
+- A submission can have `0`, `1`, or `2` blind review assignments depending on its hackathon configuration.
+- A shortlisted submission in a pitch-enabled hackathon can have one pitch review assignment for every judge in the frozen pitch panel.
 - Each judge assignment belongs to exactly one submission.
 - Each judge assignment belongs to exactly one user acting as judge.
+- Each judge assignment belongs to one review stage: `blind_review` or `pitch_review`.
 
 Operational rules:
 
-- When judging preparation begins, submissions are distributed between users in the automatic judge distribution pool as evenly as possible.
-- Hackathon admins can reassign a submission only before its assigned judge has started review.
-- Scoring data lives on `JudgeAssignment`.
+- When judging preparation begins and blind review is enabled, submissions are distributed between users in the automatic judge distribution pool as evenly as possible until every locked submission has the configured number of blind review assignments.
+- Blind review assignments for the same submission must belong to different judges.
+- When pitch review begins, one pitch review assignment is created for every shortlisted submission and every judge in the frozen pitch panel.
+- The pitch panel is frozen from the active judge roster when pitch review begins.
+- Hackathon admins can reassign a blind review assignment only before its assigned judge has started review.
+- Blind scoring data lives on `JudgeAssignment` through criterion scores.
+- Pitch scoring data lives on `JudgeAssignment` as a pitch score and optional pitch comment.
 - Judge-level ineligibility decisions also live on `JudgeAssignment`.
 - A judge can mark a submission assignment as ineligible and provide a reason.
 - A judge assignment records review progress such as `judge_started`, `judge_completed`, and `skipped`.
 - A judge can skip an assignment if they do not want to review that submission.
 - A hackathon admin or platform admin can force an in-progress assignment to `skipped` if the assigned judge cannot complete the review.
-- When an assignment is skipped, the submission is reassigned to another judge with the lowest number of assigned submissions.
+- When a blind review assignment is skipped, the submission is reassigned to another judge with the lowest number of blind review assignments.
+- When a pitch review assignment is skipped or left incomplete at pitch-review close, that assignment is excluded from pitch-score averaging.
 - Hackathon admins and platform admins can revert a judge's ineligibility decision.
 - Disqualification is an admin action.
 - Withdrawal is a team-driven action before judging preparation begins.
 - A hackathon admin or platform admin can mark a submission as withdrawn on behalf of the team when acting on a team request.
 - The admin-withdraw request identifies the requesting user through `requestedByUserId`, and that user must be an active team admin of the submission's team.
 - Once judging preparation begins, teams can no longer withdraw a submission.
-- Once judge review begins, removal from competition is handled as disqualification rather than withdrawal.
+- Once blind review or pitch review begins, removal from competition is handled as disqualification rather than withdrawal.
 
 ### Prize
 
@@ -399,15 +421,25 @@ Scope:
 
 ### Judging
 
-- Judging is blind with respect to team identity.
-- Any actor reviewing through a judge assignment sees anonymized application information and the selected submission track, but not team identity.
+- Blind review is blind with respect to team identity.
+- Any actor reviewing through a blind judge assignment sees anonymized application information and the selected submission track, but not team identity.
+- Any actor reviewing through a pitch judge assignment sees project name, team name, full submission detail, and any other finalist-visible context exposed for the pitch stage.
 - Hackathon admins and platform admins retain their normal admin visibility outside the judge review flow.
 - Judging does not begin automatically when the submission window closes.
 - A manual admin action starts judging preparation and locks submissions.
-- A later manual admin action starts active judge review.
-- Shortlist mode presents the current leaderboard before final adjustments.
-- Shortlist data is computed ordered data, not a separate persisted shortlist structure.
-- Hackathon admins can manually reorder the final ranking during shortlist mode without changing the underlying judge scores.
+- A later manual admin action starts blind review when blind review is enabled.
+- `shortlist` exists only when blind review and pitch review are both enabled.
+- `shortlist` presents the blind-review leaderboard plus the persisted ordered finalist set selected by admins for pitch review.
+- Pitch-only hackathons skip `shortlist` and send all eligible locked submissions directly to pitch review.
+- A later manual admin action starts pitch review when pitch review is enabled.
+- `final_deliberation` is the universal ranking-review stage after all enabled scoring stages are complete.
+- Hackathon admins can manually reorder the final ranking during `final_deliberation` without changing the underlying judge scores.
+- Final score is computed from the enabled judging stages only.
+- Blind score is the average of completed blind review assignments after criterion-weight normalization to `0..10`.
+- Pitch score is the average of submitted pitch-review votes on the same `0..10` scale.
+- When blind review and pitch review are both enabled, final score uses configurable blind and pitch weights that default to `70%` blind and `30%` pitch.
+- When only one judging stage is enabled, final score comes entirely from that stage.
+- Pitch review can be closed by admins with missing votes, and the pitch average uses only submitted pitch-review votes.
 - Approved teams with no submission appear in a separate no-submission section in the hackathon dashboard.
 - Prize-eligible team membership is frozen when judging preparation begins.
 

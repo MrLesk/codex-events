@@ -25,7 +25,7 @@ const winnersVisible = computed(() =>
           Winners And Completion
         </h2>
         <p class="text-sm text-muted">
-          Review current winner terms and final outcome records once the shortlist is finalized.
+          Review current winner terms and the published winner records after final deliberation is complete.
         </p>
       </div>
     </template>
@@ -45,7 +45,7 @@ const winnersVisible = computed(() =>
         color="neutral"
         variant="soft"
         title="Winners are not public yet"
-        description="The winners list becomes available only after the shortlist is announced."
+        description="The winners list becomes available only after winners are announced."
       />
 
       <template v-else>
@@ -109,7 +109,7 @@ const winnersVisible = computed(() =>
           color="neutral"
           variant="soft"
           title="No winners currently assigned"
-          description="No shortlist entries currently map to configured prizes."
+          description="No final-ranked entries currently map to configured prizes."
         />
       </template>
     </div>

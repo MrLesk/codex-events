@@ -21,10 +21,10 @@ Feature: Participant team submission workspace
     When I fill the participant submission form with project name "Launch Console", summary "Initial draft for the launch console.", repository URL "https://github.com/example/launch-console", and demo URL "https://example.com/launch-console"
     And I create the participant submission draft
     Then I should see the participant submission status "Draft"
-    And I should see the participant submission text "Launch Console"
+    And the participant submission field "Project name" should have value "Launch Console"
     When I fill the participant submission form with project name "Launch Console Revised", summary "Updated draft for the launch console.", repository URL "https://github.com/example/launch-console-revised", and demo URL "https://example.com/launch-console-revised"
     And I save the participant submission draft
-    Then I should see the participant submission text "Launch Console Revised"
+    Then the participant submission field "Project name" should have value "Launch Console Revised"
     When I submit the participant submission
     Then I should see the participant submission status "Submitted"
     When I withdraw the participant submission
@@ -34,6 +34,7 @@ Feature: Participant team submission workspace
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant Submission tab for hackathon slug "participant-submission-locked-fixture-hackathon" with the saved "regular_user" session
     Then I should see the participant submission status "Locked"
-    Then I should see the participant submission text "This project is locked for judging and can no longer be edited or withdrawn."
+    And the participant submission field "Project name" should have value "Locked Review Project"
+    And the participant submission field "Project name" should be disabled
     And the participant submission action "Save changes" should be disabled
     And the participant submission action "Withdraw submission" should be disabled

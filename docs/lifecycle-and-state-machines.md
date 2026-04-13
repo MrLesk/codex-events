@@ -10,8 +10,10 @@ This document defines the canonical lifecycle states and transitions for the mai
 - `registration_open`
 - `submission_open`
 - `judging_preparation`
-- `judge_review`
+- `blind_review`
 - `shortlist`
+- `pitch_review`
+- `final_deliberation`
 - `winners_announced`
 - `completed`
 
@@ -63,29 +65,53 @@ Behavior:
 - New teams cannot be created.
 - Judges do not review submissions yet.
 - Prize eligibility snapshots are created for teams with submitted submissions.
-- Submissions are distributed between users in the automatic judge distribution pool as evenly as possible.
-- Hackathon admins can reassign submissions only while the active assignment has not been started.
+- When blind review is enabled, submissions are distributed between users in the automatic judge distribution pool as evenly as possible until each locked submission has the configured number of blind review assignments.
+- When pitch review is the first judging stage, the eligible pitch submissions and pitch panel are prepared for the next state.
+- Hackathon admins can reassign blind-review submissions only while the active blind assignment has not been started.
 
-#### `judge_review`
+#### `blind_review`
 
-Judges actively review assigned submissions.
+Judges actively review assigned submissions in blind review.
 
 Behavior:
 
 - Judges can start, complete, or skip their active assignments.
-- Skipped assignments are redistributed to the judge with the lowest assigned load.
+- Each locked submission has the configured number of blind review assignments.
+- Skipped assignments are redistributed to the judge with the lowest blind-review load.
 - Hackathon admins can no longer withdraw submissions.
 - If a submission must be removed from competition during or after review, the admin action is `disqualified`.
 
 #### `shortlist`
 
-The hackathon leaderboard is reviewed before winners are announced.
+The blind-review leaderboard is reviewed and finalists are selected for pitch review.
 
 Behavior:
 
-- Judges can review final scores.
-- Hackathon admins can manually reorder the final ranking without changing the underlying judge scores.
-- Shortlist order is computed hackathon data, not a separate persisted shortlist object.
+- Judges can review blind-review scores.
+- Hackathon admins manually choose and order the finalist submissions that advance to pitch review.
+- Team identity remains hidden during shortlist.
+
+#### `pitch_review`
+
+Finalists present their projects and judges score the live pitch.
+
+Behavior:
+
+- Judges can see project name, team name, and full submission detail.
+- Every finalist submission is assigned to every judge in the frozen pitch panel.
+- Judges can start, complete, or skip their pitch assignments.
+- Hackathon admins can close pitch review even when some pitch assignments remain incomplete.
+- Pitch averages are calculated from submitted pitch-review votes only.
+
+#### `final_deliberation`
+
+The final weighted score and ranking are reviewed before winners are announced.
+
+Behavior:
+
+- Judges can review final combined scores.
+- Hackathon admins can manually reorder the final ranking without changing the underlying blind or pitch scores.
+- Final order is computed hackathon data with any explicit admin ranking override applied.
 
 #### `winners_announced`
 
@@ -115,11 +141,19 @@ Behavior:
   Guard: registration is closed, the submission window is open, and an admin starts submission manually.
 - `submission_open -> judging_preparation`
   Guard: submission editing is closed and a hackathon admin starts judging preparation manually.
-- `judging_preparation -> judge_review`
-  Guard: judge assignments are ready and a hackathon admin starts judge review manually.
-- `judge_review -> shortlist`
-  Guard: all active submissions have a completed review outcome or have been removed from competition.
-- `shortlist -> winners_announced`
+- `judging_preparation -> blind_review`
+  Guard: blind review is enabled, blind review assignments are ready, and a hackathon admin starts blind review manually.
+- `judging_preparation -> pitch_review`
+  Guard: blind review is disabled, pitch review is enabled, and a hackathon admin starts pitch review manually.
+- `blind_review -> shortlist`
+  Guard: pitch review is enabled and all active submissions have the configured number of completed blind review outcomes or have been removed from competition.
+- `blind_review -> final_deliberation`
+  Guard: pitch review is disabled and all active submissions have the configured number of completed blind review outcomes or have been removed from competition.
+- `shortlist -> pitch_review`
+  Guard: hackathon admins finalize the ordered finalist set and start pitch review manually.
+- `pitch_review -> final_deliberation`
+  Guard: pitch review is closed by hackathon admins after submitted pitch votes are accepted for scoring.
+- `final_deliberation -> winners_announced`
   Guard: hackathon admins finalize the ranking and announce winners.
 - `winners_announced -> completed`
   Guard: hackathon admins close the hackathon.
@@ -173,6 +207,8 @@ Behavior:
 - The user is no longer eligible to participate in the hackathon.
 - The user is no longer eligible to attend the hackathon in person through this application when the event is in person.
 - When Luma sync is enabled for the hackathon, withdrawal also triggers Luma guest removal for this participant.
+- Admin-managed withdrawal can also remove the participant from an active team, or dismantle the participant's team, when team invariants require that outcome.
+- Admin-managed withdrawal is blocked when dismantling the participant's team would affect an active draft, submitted, or locked submission.
 - The user cannot create a team.
 - The user cannot join a team.
 - The application record remains stored for auditability and exact-version terms acceptance history.
@@ -184,11 +220,13 @@ Behavior:
 - `submitted -> rejected`
   Actor: hackathon admin or platform admin applying staged decisions.
 - `submitted -> withdrawn`
-  Actor: applicant.
-  Guard: the user has no active team membership in the hackathon.
+  Actor: applicant, hackathon admin, or platform admin.
+  Guard: applicant self-withdraw requires no active team membership in the hackathon.
+  Guard: admin-managed withdrawal can remove an active team membership or dismantle the team when doing so does not affect an active draft, submitted, or locked submission.
 - `approved -> withdrawn`
-  Actor: participant.
-  Guard: the user has no active team membership in the hackathon.
+  Actor: participant, hackathon admin, or platform admin.
+  Guard: participant self-withdraw requires no active team membership in the hackathon.
+  Guard: admin-managed withdrawal can remove an active team membership or dismantle the team when doing so does not affect an active draft, submitted, or locked submission.
 
 ## Team Join Request
 
@@ -332,7 +370,7 @@ The submission is assigned to a judge and waiting for review.
 
 Behavior:
 
-- Hackathon admins can replace the assignment with another unstarted assignment.
+- Hackathon admins can replace an unstarted blind-review assignment with another blind-review assignment.
 
 #### `judge_started`
 
@@ -349,7 +387,7 @@ The judge finished the review.
 
 Behavior:
 
-- Criterion scores, comments, and eligibility decisions are final unless an admin explicitly reverts an eligibility decision.
+- Blind-review criterion scores or pitch-review score data are final unless an admin explicitly reverts an eligibility decision.
 
 #### `skipped`
 
@@ -358,7 +396,8 @@ The judge declined to review the submission.
 Behavior:
 
 - The assignment is closed.
-- A new active assignment is created for another judge with the lowest assigned load.
+- A skipped blind-review assignment creates a new active assignment for another judge with the lowest blind-review load.
+- A skipped pitch-review assignment is excluded from pitch-score averaging.
 
 ### Transitions
 
@@ -373,5 +412,5 @@ Behavior:
 
 ### Notes
 
-- Each submission has one active judge assignment during normal judge review.
-- A skipped assignment remains part of the audit trail even after a new assignment is created.
+- Blind review assignments belong to the `blind_review` stage and pitch assignments belong to the `pitch_review` stage.
+- A skipped assignment remains part of the audit trail even after a new blind-review replacement assignment is created.

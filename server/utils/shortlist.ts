@@ -1,50 +1,261 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm'
+import { asc, desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { AppDatabase } from '../database/client'
 import {
-  auditLogs,
   evaluationCriteria,
+  hackathons,
   judgeAssignments,
   judgeCriterionScores,
   prizes,
   submissions,
-  teams,
-  type hackathons
+  teams
 } from '../database/schema'
-import { serializePrize } from './hackathon-management'
 import { ApiError } from './api-error'
+import { serializePrize } from './hackathon-management'
+import {
+  calculateAveragePitchScore,
+  parseStoredPitchFinalistSubmissionIds
+} from './judging'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
 
 type HackathonRecord = typeof hackathons.$inferSelect
 type TeamRecord = typeof teams.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
 type JudgeAssignmentRecord = typeof judgeAssignments.$inferSelect
+type JudgeCriterionScoreRecord = typeof judgeCriterionScores.$inferSelect
 type PrizeRecord = typeof prizes.$inferSelect
+
+type LeaderboardCriterionScore = {
+  evaluationCriterionId: string
+  criterionName: string | null
+  criterionWeight: number | null
+  score: number
+  comment: string | null
+}
 
 type LeaderboardBaseEntry = {
   team: TeamRecord
   submission: SubmissionRecord
-  assignment: JudgeAssignmentRecord | null
-  weightedScore: number | null
-  criterionScores: Array<{
-    evaluationCriterionId: string
-    criterionName: string | null
-    criterionWeight: number | null
-    score: number
-    comment: string | null
-  }>
+  reviewStatus: JudgeAssignmentRecord['status'] | null
+  ineligibilityStatus: JudgeAssignmentRecord['ineligibilityStatus'] | null
+  scoreTotal: number | null
+  criterionScores: LeaderboardCriterionScore[]
   baseRank: number | null
   isRanked: boolean
 }
 
-type ShortlistOrderMetadata = {
-  orderedSubmissionIds?: unknown
+type CompetitionEntry = {
+  team: TeamRecord
+  submission: SubmissionRecord
+  blindReviewStatus: JudgeAssignmentRecord['status'] | null
+  pitchReviewStatus: JudgeAssignmentRecord['status'] | null
+  ineligibilityStatus: JudgeAssignmentRecord['ineligibilityStatus'] | null
+  blindScore: number | null
+  pitchScore: number | null
+  scoreTotal: number | null
+  criterionScores: LeaderboardCriterionScore[]
+  blindRank: number | null
+  finalScoreRank: number | null
+  isBlindRanked: boolean
+  isFinalRanked: boolean
 }
 
-export const reorderShortlistBodySchema = z.object({
+export const selectFinalistsBodySchema = z.object({
   orderedSubmissionIds: z.array(z.string().trim().min(1)).min(1)
 })
+
+export const reorderFinalDeliberationBodySchema = z.object({
+  orderedSubmissionIds: z.array(z.string().trim().min(1)).min(1)
+})
+
+function mapCriterionScores(
+  scoreRows: JudgeCriterionScoreRecord[],
+  criteriaById: Map<string, typeof evaluationCriteria.$inferSelect>
+): LeaderboardCriterionScore[] {
+  return scoreRows.map(scoreRow => ({
+    evaluationCriterionId: scoreRow.evaluationCriterionId,
+    criterionName: criteriaById.get(scoreRow.evaluationCriterionId)?.name ?? null,
+    criterionWeight: criteriaById.get(scoreRow.evaluationCriterionId)?.weight ?? null,
+    score: scoreRow.score,
+    comment: scoreRow.comment
+  }))
+}
+
+function normalizeBlindAssignmentScore(criterionScores: LeaderboardCriterionScore[]) {
+  const totalWeight = criterionScores.reduce(
+    (total, scoreRow) => total + (scoreRow.criterionWeight ?? 0),
+    0
+  )
+
+  if (criterionScores.length === 0 || totalWeight <= 0) {
+    return null
+  }
+
+  const weightedTotal = criterionScores.reduce(
+    (total, scoreRow) => total + (scoreRow.score * (scoreRow.criterionWeight ?? 0)),
+    0
+  )
+
+  return weightedTotal / totalWeight
+}
+
+function averageNumbers(values: number[]) {
+  if (values.length === 0) {
+    return null
+  }
+
+  return values.reduce((total, value) => total + value, 0) / values.length
+}
+
+function parseStoredFinalRankingSubmissionIds(hackathon: HackathonRecord) {
+  let parsedValue: unknown
+
+  try {
+    parsedValue = JSON.parse(hackathon.finalRankingSubmissionIdsJson)
+  } catch {
+    throw new ApiError({
+      statusCode: 500,
+      code: 'final_ranking_invalid',
+      message: 'The stored final ranking override is invalid.',
+      details: {
+        hackathonId: hackathon.id
+      }
+    })
+  }
+
+  const result = z.array(z.string().trim().min(1)).safeParse(parsedValue)
+
+  if (!result.success) {
+    throw new ApiError({
+      statusCode: 500,
+      code: 'final_ranking_invalid',
+      message: 'The stored final ranking override is invalid.',
+      details: {
+        hackathonId: hackathon.id
+      }
+    })
+  }
+
+  return result.data
+}
+
+function compareEntriesByScore(
+  left: Pick<CompetitionEntry, 'team' | 'submission'>,
+  right: Pick<CompetitionEntry, 'team' | 'submission'>,
+  leftScore: number | null,
+  rightScore: number | null
+) {
+  if ((rightScore ?? -1) !== (leftScore ?? -1)) {
+    return (rightScore ?? -1) - (leftScore ?? -1)
+  }
+
+  const leftSubmittedAt = left.submission.submittedAt ?? left.submission.createdAt
+  const rightSubmittedAt = right.submission.submittedAt ?? right.submission.createdAt
+
+  if (leftSubmittedAt !== rightSubmittedAt) {
+    return leftSubmittedAt.localeCompare(rightSubmittedAt)
+  }
+
+  return left.team.id.localeCompare(right.team.id)
+}
+
+function assignRanks(
+  entries: CompetitionEntry[],
+  options: {
+    isRanked: (entry: CompetitionEntry) => boolean
+    getScore: (entry: CompetitionEntry) => number | null
+    setRank: (entry: CompetitionEntry, rank: number) => CompetitionEntry
+  }
+) {
+  const rankedEntries = [...entries]
+    .filter(options.isRanked)
+    .sort((left, right) =>
+      compareEntriesByScore(left, right, options.getScore(left), options.getScore(right))
+    )
+    .map((entry, index) => options.setRank(entry, index + 1))
+
+  const rankedBySubmissionId = new Map(
+    rankedEntries.map(entry => [entry.submission.id, entry] as const)
+  )
+  const unrankedEntries = entries
+    .filter(entry => !options.isRanked(entry))
+    .sort((left, right) => left.team.name.localeCompare(right.team.name))
+
+  return [...rankedEntries, ...unrankedEntries].map(
+    entry => rankedBySubmissionId.get(entry.submission.id) ?? entry
+  )
+}
+
+export function calculateFinalScore(
+  hackathon: Pick<
+    HackathonRecord,
+    'blindReviewCount' | 'pitchReviewEnabled' | 'blindScoreWeightPercent' | 'pitchScoreWeightPercent'
+  >,
+  scores: {
+    blindScore: number | null
+    pitchScore: number | null
+  }
+) {
+  if (hackathon.blindReviewCount > 0 && !hackathon.pitchReviewEnabled) {
+    return scores.blindScore
+  }
+
+  if (hackathon.blindReviewCount === 0 && hackathon.pitchReviewEnabled) {
+    return scores.pitchScore
+  }
+
+  if (!hackathon.pitchReviewEnabled) {
+    return null
+  }
+
+  if (scores.blindScore === null || scores.pitchScore === null) {
+    return null
+  }
+
+  return (scores.blindScore * hackathon.blindScoreWeightPercent / 100)
+    + (scores.pitchScore * hackathon.pitchScoreWeightPercent / 100)
+}
+
+function shouldUseFinalScoreLeaderboard(hackathon: HackathonRecord) {
+  return hackathon.pitchReviewEnabled && [
+    'pitch_review',
+    'final_deliberation',
+    'winners_announced',
+    'completed'
+  ].includes(hackathon.state)
+}
+
+function toBlindLeaderboardEntries(entries: CompetitionEntry[]): LeaderboardBaseEntry[] {
+  return entries.map(entry => ({
+    team: entry.team,
+    submission: entry.submission,
+    reviewStatus: entry.blindReviewStatus,
+    ineligibilityStatus: entry.ineligibilityStatus,
+    scoreTotal: entry.blindScore,
+    criterionScores: entry.criterionScores,
+    baseRank: entry.blindRank,
+    isRanked: entry.isBlindRanked
+  }))
+}
+
+function toFinalLeaderboardEntries(
+  entries: CompetitionEntry[],
+  hackathon: HackathonRecord
+): LeaderboardBaseEntry[] {
+  return entries.map(entry => ({
+    team: entry.team,
+    submission: entry.submission,
+    reviewStatus: hackathon.pitchReviewEnabled
+      ? entry.pitchReviewStatus
+      : entry.blindReviewStatus,
+    ineligibilityStatus: entry.ineligibilityStatus,
+    scoreTotal: entry.scoreTotal,
+    criterionScores: entry.criterionScores,
+    baseRank: entry.finalScoreRank,
+    isRanked: entry.isFinalRanked
+  }))
+}
 
 export function serializeLeaderboardEntry(entry: LeaderboardBaseEntry) {
   return {
@@ -53,9 +264,9 @@ export function serializeLeaderboardEntry(entry: LeaderboardBaseEntry) {
     submissionId: entry.submission.id,
     projectName: entry.submission.projectName,
     submissionStatus: entry.submission.status,
-    reviewStatus: entry.assignment?.status ?? null,
-    ineligibilityStatus: entry.assignment?.ineligibilityStatus ?? null,
-    scoreTotal: entry.weightedScore,
+    reviewStatus: entry.reviewStatus,
+    ineligibilityStatus: entry.ineligibilityStatus,
+    scoreTotal: entry.scoreTotal,
     rank: entry.baseRank,
     criterionScores: entry.criterionScores
   }
@@ -63,22 +274,99 @@ export function serializeLeaderboardEntry(entry: LeaderboardBaseEntry) {
 
 export function serializeShortlistEntry(
   entry: LeaderboardBaseEntry,
+  pitchFinalistRank: number | null
+) {
+  return {
+    submissionId: entry.submission.id,
+    projectName: entry.submission.projectName,
+    submissionStatus: entry.submission.status,
+    reviewStatus: entry.reviewStatus,
+    ineligibilityStatus: entry.ineligibilityStatus,
+    scoreTotal: entry.scoreTotal,
+    rank: entry.baseRank,
+    criterionScores: entry.criterionScores,
+    isPitchFinalist: pitchFinalistRank !== null,
+    pitchFinalistRank
+  }
+}
+
+function serializeFinalDeliberationEntry(
+  entry: CompetitionEntry,
+  hackathon: HackathonRecord,
+  finalRank: number | null
+) {
+  return {
+    teamId: entry.team.id,
+    teamName: entry.team.name,
+    submissionId: entry.submission.id,
+    projectName: entry.submission.projectName,
+    submissionStatus: entry.submission.status,
+    reviewStatus: hackathon.pitchReviewEnabled
+      ? entry.pitchReviewStatus
+      : entry.blindReviewStatus,
+    ineligibilityStatus: entry.ineligibilityStatus,
+    scoreTotal: entry.scoreTotal,
+    scoreRank: entry.finalScoreRank,
+    finalRank,
+    ...(hackathon.blindReviewCount > 0
+      ? { blindScore: entry.blindScore }
+      : {}),
+    ...(hackathon.pitchReviewEnabled
+      ? { pitchScore: entry.pitchScore }
+      : {})
+  }
+}
+
+function serializeWinnerEntry(
+  entry: CompetitionEntry,
+  hackathon: HackathonRecord,
   finalRank: number
 ) {
   return {
-    ...serializeLeaderboardEntry(entry),
+    teamId: entry.team.id,
+    teamName: entry.team.name,
+    submissionId: entry.submission.id,
+    projectName: entry.submission.projectName,
+    submissionStatus: entry.submission.status,
+    reviewStatus: hackathon.pitchReviewEnabled
+      ? entry.pitchReviewStatus
+      : entry.blindReviewStatus,
+    ineligibilityStatus: entry.ineligibilityStatus,
+    scoreTotal: entry.scoreTotal,
+    rank: finalRank,
+    criterionScores: entry.criterionScores,
     finalRank
   }
 }
 
-export async function listLeaderboardEntries(database: AppDatabase, hackathonId: string) {
+async function loadCompetitionEntries(
+  database: AppDatabase,
+  hackathonId: string
+): Promise<{
+  hackathon: HackathonRecord | null
+  entries: CompetitionEntry[]
+}> {
+  const hackathon = await database.query.hackathons.findFirst({
+    where: eq(hackathons.id, hackathonId)
+  })
+
+  if (!hackathon) {
+    return {
+      hackathon: null,
+      entries: []
+    }
+  }
+
   const hackathonTeams = await database.query.teams.findMany({
     where: eq(teams.hackathonId, hackathonId),
     orderBy: [asc(teams.createdAt), asc(teams.name)]
   })
 
   if (hackathonTeams.length === 0) {
-    return []
+    return {
+      hackathon,
+      entries: []
+    }
   }
 
   const teamIds = hackathonTeams.map(team => team.id)
@@ -86,7 +374,6 @@ export async function listLeaderboardEntries(database: AppDatabase, hackathonId:
     where: inArray(submissions.teamId, teamIds),
     orderBy: [desc(submissions.createdAt)]
   })
-
   const latestSubmissionByTeamId = new Map<string, SubmissionRecord>()
 
   for (const submission of submissionsForHackathon) {
@@ -106,7 +393,10 @@ export async function listLeaderboardEntries(database: AppDatabase, hackathonId:
     )
 
   if (trackedSubmissions.length === 0) {
-    return []
+    return {
+      hackathon,
+      entries: []
+    }
   }
 
   const assignmentRows = await database.query.judgeAssignments.findMany({
@@ -116,16 +406,12 @@ export async function listLeaderboardEntries(database: AppDatabase, hackathonId:
     ),
     orderBy: [desc(judgeAssignments.createdAt)]
   })
-  const latestNonSkippedAssignmentBySubmissionId = new Map<string, JudgeAssignmentRecord>()
+  const assignmentsBySubmissionId = new Map<string, JudgeAssignmentRecord[]>()
 
   for (const assignment of assignmentRows) {
-    if (assignment.status === 'skipped') {
-      continue
-    }
-
-    if (!latestNonSkippedAssignmentBySubmissionId.has(assignment.submissionId)) {
-      latestNonSkippedAssignmentBySubmissionId.set(assignment.submissionId, assignment)
-    }
+    const assignments = assignmentsBySubmissionId.get(assignment.submissionId) ?? []
+    assignments.push(assignment)
+    assignmentsBySubmissionId.set(assignment.submissionId, assignments)
   }
 
   const criteria = await database.query.evaluationCriteria.findMany({
@@ -133,14 +419,13 @@ export async function listLeaderboardEntries(database: AppDatabase, hackathonId:
     orderBy: [asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)]
   })
   const criteriaById = new Map(criteria.map(criterion => [criterion.id, criterion]))
-  const assignmentIds = [...latestNonSkippedAssignmentBySubmissionId.values()].map(assignment => assignment.id)
+  const assignmentIds = assignmentRows.map(assignment => assignment.id)
   const scoreRows = assignmentIds.length === 0
     ? []
     : await database.query.judgeCriterionScores.findMany({
         where: inArray(judgeCriterionScores.judgeAssignmentId, assignmentIds),
         orderBy: [asc(judgeCriterionScores.createdAt)]
       })
-
   const scoresByAssignmentId = new Map<string, Array<typeof scoreRows[number]>>()
 
   for (const scoreRow of scoreRows) {
@@ -150,122 +435,250 @@ export async function listLeaderboardEntries(database: AppDatabase, hackathonId:
   }
 
   const entries = trackedSubmissions.map(({ team, submission }) => {
-    const assignment = latestNonSkippedAssignmentBySubmissionId.get(submission.id) ?? null
-    const criterionScores = assignment
-      ? (scoresByAssignmentId.get(assignment.id) ?? []).map(scoreRow => ({
-          evaluationCriterionId: scoreRow.evaluationCriterionId,
-          criterionName: criteriaById.get(scoreRow.evaluationCriterionId)?.name ?? null,
-          criterionWeight: criteriaById.get(scoreRow.evaluationCriterionId)?.weight ?? null,
-          score: scoreRow.score,
-          comment: scoreRow.comment
-        }))
-      : []
+    const nonSkippedAssignments = (assignmentsBySubmissionId.get(submission.id) ?? [])
+      .filter(assignment => assignment.status !== 'skipped')
+    const blindAssignments = nonSkippedAssignments
+      .filter(assignment => assignment.reviewStage === 'blind_review')
+    const pitchAssignments = nonSkippedAssignments
+      .filter(assignment => assignment.reviewStage === 'pitch_review')
+    const activeBlindAssignment = blindAssignments.find(
+      assignment => ['assigned', 'judge_started'].includes(assignment.status)
+    ) ?? null
+    const completedBlindAssignments = blindAssignments
+      .filter(assignment => assignment.status === 'judge_completed')
+    const activePitchAssignment = pitchAssignments.find(
+      assignment => ['assigned', 'judge_started'].includes(assignment.status)
+    ) ?? null
+    const completedPitchAssignments = pitchAssignments
+      .filter(assignment => assignment.status === 'judge_completed')
 
-    const weightedScore = assignment?.status === 'judge_completed'
-      ? criterionScores.reduce((total, scoreRow) => total + (scoreRow.score * (scoreRow.criterionWeight ?? 0)), 0)
-      : null
-    const isRanked = submission.status === 'locked'
-      && assignment?.status === 'judge_completed'
-      && assignment.ineligibilityStatus === 'eligible'
+    const completedBlindAssignmentDetails = completedBlindAssignments.map((assignment) => {
+      const criterionScores = mapCriterionScores(
+        scoresByAssignmentId.get(assignment.id) ?? [],
+        criteriaById
+      )
+
+      return {
+        criterionScores,
+        normalizedScore: normalizeBlindAssignmentScore(criterionScores)
+      }
+    })
+    const aggregatedCriterionScores = criteria
+      .map<LeaderboardCriterionScore | null>((criterion) => {
+        const criterionScores = completedBlindAssignmentDetails
+          .map(({ criterionScores }) =>
+            criterionScores.find(scoreRow => scoreRow.evaluationCriterionId === criterion.id) ?? null
+          )
+          .filter((scoreRow): scoreRow is LeaderboardCriterionScore => scoreRow !== null)
+
+        if (criterionScores.length === 0) {
+          return null
+        }
+
+        return {
+          evaluationCriterionId: criterion.id,
+          criterionName: criterion.name,
+          criterionWeight: criterion.weight,
+          score: averageNumbers(criterionScores.map(scoreRow => scoreRow.score)) ?? 0,
+          comment: criterionScores.find(scoreRow => scoreRow.comment)?.comment ?? null
+        }
+      })
+      .filter((scoreRow): scoreRow is LeaderboardCriterionScore => scoreRow !== null)
+
+    const blindScore = averageNumbers(
+      completedBlindAssignmentDetails
+        .map(detail => detail.normalizedScore)
+        .filter((score): score is number => score !== null)
+    )
+    const pitchScore = calculateAveragePitchScore(completedPitchAssignments)
+    const blindReviewComplete = hackathon.blindReviewCount > 0
+      && completedBlindAssignments.length >= hackathon.blindReviewCount
+    const blindReviewStatus = activeBlindAssignment?.status
+      ?? (blindReviewComplete
+        ? 'judge_completed'
+        : completedBlindAssignments.length > 0
+          ? 'judge_started'
+          : null)
+    const pitchReviewStatus = activePitchAssignment?.status
+      ?? (completedPitchAssignments.length > 0 ? 'judge_completed' : null)
+    const ineligibilityStatus = nonSkippedAssignments.some(
+      assignment => assignment.ineligibilityStatus === 'ineligible'
+    )
+      ? 'ineligible'
+      : nonSkippedAssignments[0]?.ineligibilityStatus ?? null
+    const scoreTotal = calculateFinalScore(hackathon, {
+      blindScore,
+      pitchScore
+    })
+    const isBlindRanked = submission.status === 'locked'
+      && blindReviewStatus === 'judge_completed'
+      && ineligibilityStatus === 'eligible'
+      && blindScore !== null
+    const isFinalRanked = submission.status === 'locked'
+      && ineligibilityStatus === 'eligible'
+      && scoreTotal !== null
 
     return {
       team,
       submission,
-      assignment,
-      weightedScore,
-      criterionScores,
-      baseRank: null,
-      isRanked
-    } satisfies LeaderboardBaseEntry
+      blindReviewStatus,
+      pitchReviewStatus,
+      ineligibilityStatus,
+      blindScore,
+      pitchScore,
+      scoreTotal,
+      criterionScores: aggregatedCriterionScores,
+      blindRank: null,
+      finalScoreRank: null,
+      isBlindRanked,
+      isFinalRanked
+    } satisfies CompetitionEntry
   })
 
-  const rankedEntries = [...entries]
-    .filter(entry => entry.isRanked)
-    .sort((left, right) => {
-      if ((right.weightedScore ?? -1) !== (left.weightedScore ?? -1)) {
-        return (right.weightedScore ?? -1) - (left.weightedScore ?? -1)
-      }
-
-      if ((left.submission.submittedAt ?? left.submission.createdAt) !== (right.submission.submittedAt ?? right.submission.createdAt)) {
-        return (left.submission.submittedAt ?? left.submission.createdAt).localeCompare(
-          right.submission.submittedAt ?? right.submission.createdAt
-        )
-      }
-
-      return left.team.id.localeCompare(right.team.id)
-    })
-    .map((entry, index) => ({
+  const entriesWithBlindRanks = assignRanks(entries, {
+    isRanked: entry => entry.isBlindRanked,
+    getScore: entry => entry.blindScore,
+    setRank: (entry, rank) => ({
       ...entry,
-      baseRank: index + 1
-    }))
+      blindRank: rank
+    })
+  })
+  const entriesWithFinalRanks = assignRanks(entriesWithBlindRanks, {
+    isRanked: entry => entry.isFinalRanked,
+    getScore: entry => entry.scoreTotal,
+    setRank: (entry, rank) => ({
+      ...entry,
+      finalScoreRank: rank
+    })
+  })
 
-  const rankedBySubmissionId = new Map(rankedEntries.map(entry => [entry.submission.id, entry]))
-  const unrankedEntries = entries
-    .filter(entry => !entry.isRanked)
-    .sort((left, right) => left.team.name.localeCompare(right.team.name))
+  return {
+    hackathon,
+    entries: entriesWithFinalRanks
+  }
+}
 
-  return [
-    ...rankedEntries,
-    ...unrankedEntries
-  ].map(entry => rankedBySubmissionId.get(entry.submission.id) ?? entry)
+async function listBlindLeaderboardEntries(database: AppDatabase, hackathonId: string) {
+  const { hackathon, entries } = await loadCompetitionEntries(database, hackathonId)
+
+  return {
+    hackathon,
+    entries: toBlindLeaderboardEntries(entries)
+  }
+}
+
+export async function listLeaderboardEntries(database: AppDatabase, hackathonId: string) {
+  const { hackathon, entries } = await loadCompetitionEntries(database, hackathonId)
+
+  if (!hackathon) {
+    return []
+  }
+
+  return shouldUseFinalScoreLeaderboard(hackathon)
+    ? toFinalLeaderboardEntries(entries, hackathon)
+    : toBlindLeaderboardEntries(entries)
 }
 
 export async function listShortlistEntries(database: AppDatabase, hackathonId: string) {
-  const rankedEntries = (await listLeaderboardEntries(database, hackathonId))
-    .filter(entry => entry.isRanked)
+  const { hackathon, entries } = await listBlindLeaderboardEntries(database, hackathonId)
 
-  const overrideSubmissionIds = await getLatestShortlistOrderOverride(database, hackathonId)
-
-  if (!overrideSubmissionIds) {
-    return rankedEntries.map((entry, index) => serializeShortlistEntry(entry, index + 1))
+  if (!hackathon) {
+    return []
   }
 
-  const orderBySubmissionId = new Map(overrideSubmissionIds.map((submissionId, index) => [submissionId, index]))
+  const rankedEntries = entries.filter(entry => entry.isRanked)
+  const orderedFinalistSubmissionIds = parseStoredPitchFinalistSubmissionIds(hackathon)
 
-  return [...rankedEntries]
-    .sort((left, right) => {
-      const leftOrder = orderBySubmissionId.get(left.submission.id)
-      const rightOrder = orderBySubmissionId.get(right.submission.id)
+  assertStoredPitchFinalistsMatchEntries(
+    orderedFinalistSubmissionIds,
+    rankedEntries,
+    hackathon.id
+  )
 
-      if (leftOrder !== undefined && rightOrder !== undefined) {
-        return leftOrder - rightOrder
-      }
+  const pitchFinalistRanksBySubmissionId = new Map(
+    orderedFinalistSubmissionIds.map((submissionId, index) => [submissionId, index + 1] as const)
+  )
 
-      if (leftOrder !== undefined) {
-        return -1
-      }
+  return rankedEntries.map(entry =>
+    serializeShortlistEntry(
+      entry,
+      pitchFinalistRanksBySubmissionId.get(entry.submission.id) ?? null
+    )
+  )
+}
 
-      if (rightOrder !== undefined) {
-        return 1
-      }
+export async function getFinalDeliberationView(
+  database: AppDatabase,
+  hackathonId: string
+) {
+  const { hackathon, entries } = await loadCompetitionEntries(database, hackathonId)
 
-      return (left.baseRank ?? Number.MAX_SAFE_INTEGER) - (right.baseRank ?? Number.MAX_SAFE_INTEGER)
-    })
-    .map((entry, index) => serializeShortlistEntry(entry, index + 1))
+  if (!hackathon) {
+    return {
+      entries: [],
+      finalRankingSubmissionIds: []
+    }
+  }
+
+  const {
+    finalRankingSubmissionIds,
+    orderedRankedEntries,
+    finalRanksBySubmissionId,
+    unrankedEntries
+  } = deriveFinalDeliberationOrdering(hackathon, entries)
+
+  return {
+    entries: [
+      ...orderedRankedEntries.map(entry =>
+        serializeFinalDeliberationEntry(
+          entry,
+          hackathon,
+          finalRanksBySubmissionId.get(entry.submission.id) ?? null
+        )
+      ),
+      ...unrankedEntries.map(entry =>
+        serializeFinalDeliberationEntry(entry, hackathon, null)
+      )
+    ],
+    finalRankingSubmissionIds
+  }
 }
 
 export async function getWinnersView(database: AppDatabase, hackathonId: string) {
-  const [shortlistEntries, prizeList] = await Promise.all([
-    listShortlistEntries(database, hackathonId),
+  const [{ hackathon, entries }, prizeList] = await Promise.all([
+    loadCompetitionEntries(database, hackathonId),
     database.query.prizes.findMany({
       where: eq(prizes.hackathonId, hackathonId),
       orderBy: [asc(prizes.displayOrder), asc(prizes.rankEnd), desc(prizes.rankStart), asc(prizes.createdAt)]
     })
   ])
 
+  if (!hackathon) {
+    return []
+  }
+
+  const { orderedRankedEntries, finalRanksBySubmissionId } = deriveFinalDeliberationOrdering(hackathon, entries)
+  const winnerEntries = orderedRankedEntries.map(entry =>
+    serializeWinnerEntry(
+      entry,
+      hackathon,
+      finalRanksBySubmissionId.get(entry.submission.id)!
+    )
+  )
+
   const awardsBySubmissionId = new Map<string, Array<PrizeRecord>>()
 
   for (const prize of prizeList) {
-    for (const shortlistEntry of shortlistEntries) {
-      if (shortlistEntry.finalRank >= prize.rankStart && shortlistEntry.finalRank <= prize.rankEnd) {
-        const awardedPrizes = awardsBySubmissionId.get(shortlistEntry.submissionId) ?? []
+    for (const winnerEntry of winnerEntries) {
+      if (winnerEntry.finalRank >= prize.rankStart && winnerEntry.finalRank <= prize.rankEnd) {
+        const awardedPrizes = awardsBySubmissionId.get(winnerEntry.submissionId) ?? []
         awardedPrizes.push(prize)
-        awardsBySubmissionId.set(shortlistEntry.submissionId, awardedPrizes)
+        awardsBySubmissionId.set(winnerEntry.submissionId, awardedPrizes)
       }
     }
   }
 
-  return shortlistEntries
+  return winnerEntries
     .filter(entry => (awardsBySubmissionId.get(entry.submissionId) ?? []).length > 0)
     .map(entry => ({
       ...entry,
@@ -273,41 +686,134 @@ export async function getWinnersView(database: AppDatabase, hackathonId: string)
     }))
 }
 
-export async function getLatestShortlistOrderOverride(database: AppDatabase, hackathonId: string) {
-  const reorderAudit = await database.query.auditLogs.findFirst({
-    where: and(
-      eq(auditLogs.entityType, 'hackathon'),
-      eq(auditLogs.entityId, hackathonId),
-      eq(auditLogs.action, 'hackathon.shortlist_reordered')
-    ),
-    orderBy: [desc(auditLogs.createdAt)]
+function assertStoredPitchFinalistsMatchEntries(
+  orderedSubmissionIds: string[],
+  rankedEntries: LeaderboardBaseEntry[],
+  hackathonId: string
+) {
+  const rankedSubmissionIds = new Set(rankedEntries.map(entry => entry.submission.id))
+
+  assertGuard(new Set(orderedSubmissionIds).size === orderedSubmissionIds.length, {
+    statusCode: 500,
+    code: 'pitch_finalists_invalid',
+    message: 'The stored pitch finalists are invalid.',
+    details: { hackathonId }
   })
 
-  if (!reorderAudit) {
-    return null
-  }
-
-  const orderedSubmissionIds = (reorderAudit.metadata as ShortlistOrderMetadata | null)?.orderedSubmissionIds
-
-  if (!Array.isArray(orderedSubmissionIds) || !orderedSubmissionIds.every(value => typeof value === 'string')) {
-    throw new ApiError({
+  assertGuard(
+    orderedSubmissionIds.every(submissionId => rankedSubmissionIds.has(submissionId)),
+    {
       statusCode: 500,
-      code: 'shortlist_order_invalid',
-      message: 'The stored shortlist ordering is invalid.',
+      code: 'pitch_finalists_invalid',
+      message: 'The stored pitch finalists are invalid.',
       details: { hackathonId }
-    })
+    }
+  )
+}
+
+function deriveFinalDeliberationOrdering(
+  hackathon: HackathonRecord,
+  entries: CompetitionEntry[]
+) {
+  const rankedEntries = entries.filter(entry => entry.isFinalRanked)
+  const finalRankingSubmissionIds = parseStoredFinalRankingSubmissionIds(hackathon)
+
+  assertStoredFinalRankingMatchesEntries(
+    finalRankingSubmissionIds,
+    rankedEntries.map(entry => ({ submissionId: entry.submission.id })),
+    hackathon.id
+  )
+
+  const rankedEntriesBySubmissionId = new Map(
+    rankedEntries.map(entry => [entry.submission.id, entry] as const)
+  )
+  const orderedRankedEntries = finalRankingSubmissionIds.length > 0
+    ? finalRankingSubmissionIds.map(submissionId => rankedEntriesBySubmissionId.get(submissionId)!)
+    : rankedEntries
+  const finalRanksBySubmissionId = new Map(
+    orderedRankedEntries.map((entry, index) => [entry.submission.id, index + 1] as const)
+  )
+  const unrankedEntries = entries
+    .filter(entry => !entry.isFinalRanked)
+    .sort((left, right) => left.team.name.localeCompare(right.team.name))
+
+  return {
+    finalRankingSubmissionIds,
+    orderedRankedEntries,
+    finalRanksBySubmissionId,
+    unrankedEntries
+  }
+}
+
+function assertStoredFinalRankingMatchesEntries(
+  orderedSubmissionIds: string[],
+  rankedEntries: Array<{ submissionId: string }>,
+  hackathonId: string
+) {
+  if (orderedSubmissionIds.length === 0) {
+    return
   }
 
-  return orderedSubmissionIds
+  const rankedSubmissionIds = rankedEntries.map(entry => entry.submissionId)
+  const expectedIds = new Set(rankedSubmissionIds)
+  const actualIds = new Set(orderedSubmissionIds)
+
+  assertGuard(actualIds.size === orderedSubmissionIds.length, {
+    statusCode: 500,
+    code: 'final_ranking_invalid',
+    message: 'The stored final ranking override is invalid.',
+    details: {
+      hackathonId,
+      rankedSubmissionIds,
+      orderedSubmissionIds
+    }
+  })
+
+  assertGuard(expectedIds.size === actualIds.size, {
+    statusCode: 500,
+    code: 'final_ranking_invalid',
+    message: 'The stored final ranking override is invalid.',
+    details: {
+      hackathonId,
+      rankedSubmissionIds,
+      orderedSubmissionIds
+    }
+  })
+
+  assertGuard(
+    orderedSubmissionIds.every(submissionId => expectedIds.has(submissionId)),
+    {
+      statusCode: 500,
+      code: 'final_ranking_invalid',
+      message: 'The stored final ranking override is invalid.',
+      details: {
+        hackathonId,
+        rankedSubmissionIds,
+        orderedSubmissionIds
+      }
+    }
+  )
 }
 
 export function assertStartShortlistAllowed(
   hackathon: HackathonRecord,
   entries: LeaderboardBaseEntry[]
 ) {
-  assertAllowedState(hackathon.state, ['judge_review'], {
+  assertGuard(hackathon.blindReviewCount > 0, {
+    code: 'blind_review_not_enabled',
+    message: 'Shortlist can only start when blind review is enabled.',
+    details: { hackathonId: hackathon.id }
+  })
+
+  assertGuard(hackathon.pitchReviewEnabled, {
+    code: 'pitch_review_not_enabled',
+    message: 'Shortlist can only start when pitch review is enabled.',
+    details: { hackathonId: hackathon.id }
+  })
+
+  assertAllowedState(hackathon.state, ['blind_review'], {
     code: 'hackathon_state_invalid',
-    message: 'Shortlist can only start while the hackathon is in judge_review.',
+    message: 'Shortlist can only start while the hackathon is in blind_review.',
     details: { hackathonId: hackathon.id }
   })
 
@@ -320,7 +826,7 @@ export function assertStartShortlistAllowed(
   })
 
   assertGuard(
-    lockedEntries.every(entry => entry.assignment?.status === 'judge_completed'),
+    lockedEntries.every(entry => entry.reviewStatus === 'judge_completed'),
     {
       code: 'completed_reviews_required',
       message: 'Shortlist requires every active locked submission to have a completed review outcome.',
@@ -329,26 +835,90 @@ export function assertStartShortlistAllowed(
   )
 }
 
-export function assertShortlistViewAllowed(hackathon: HackathonRecord) {
-  assertAllowedState(hackathon.state, ['shortlist', 'winners_announced', 'completed'], {
+export function assertStartFinalDeliberationAllowed(
+  hackathon: HackathonRecord,
+  entries: LeaderboardBaseEntry[]
+) {
+  if (hackathon.state === 'blind_review') {
+    assertGuard(!hackathon.pitchReviewEnabled, {
+      code: 'pitch_review_enabled',
+      message: 'Final deliberation can only start from blind_review when pitch review is disabled.',
+      details: { hackathonId: hackathon.id }
+    })
+
+    const lockedEntries = entries.filter(entry => entry.submission.status === 'locked')
+
+    assertGuard(lockedEntries.length > 0, {
+      code: 'locked_submissions_required',
+      message: 'Final deliberation requires at least one locked submission.',
+      details: { hackathonId: hackathon.id }
+    })
+
+    assertGuard(
+      lockedEntries.every(entry => entry.reviewStatus === 'judge_completed'),
+      {
+        code: 'completed_reviews_required',
+        message: 'Final deliberation requires every active locked submission to have a completed review outcome.',
+        details: { hackathonId: hackathon.id }
+      }
+    )
+
+    return
+  }
+
+  if (hackathon.state === 'pitch_review') {
+    assertGuard(hackathon.pitchReviewEnabled, {
+      code: 'pitch_review_not_enabled',
+      message: 'Final deliberation can only start from pitch_review when pitch review is enabled.',
+      details: { hackathonId: hackathon.id }
+    })
+
+    return
+  }
+
+  assertAllowedState(hackathon.state, ['blind_review', 'pitch_review'], {
     code: 'hackathon_state_invalid',
-    message: 'Shortlist data is only available once the hackathon has entered shortlist mode.',
+    message: 'Final deliberation can only start from blind_review or pitch_review.',
     details: { hackathonId: hackathon.id }
   })
 }
 
-export function assertShortlistReorderAllowed(hackathon: HackathonRecord) {
+export function assertShortlistViewAllowed(hackathon: HackathonRecord) {
   assertAllowedState(hackathon.state, ['shortlist'], {
     code: 'hackathon_state_invalid',
-    message: 'Shortlist ranking can only be reordered while the hackathon is in shortlist.',
+    message: 'Shortlist data is only available while the hackathon is in shortlist.',
+    details: { hackathonId: hackathon.id }
+  })
+}
+
+export function assertFinalDeliberationViewAllowed(hackathon: HackathonRecord) {
+  assertAllowedState(hackathon.state, ['final_deliberation'], {
+    code: 'hackathon_state_invalid',
+    message: 'Final deliberation data is only available while the hackathon is in final_deliberation.',
+    details: { hackathonId: hackathon.id }
+  })
+}
+
+export function assertSelectFinalistsAllowed(hackathon: HackathonRecord) {
+  assertAllowedState(hackathon.state, ['shortlist'], {
+    code: 'hackathon_state_invalid',
+    message: 'Pitch finalists can only be selected while the hackathon is in shortlist.',
+    details: { hackathonId: hackathon.id }
+  })
+}
+
+export function assertFinalDeliberationReorderAllowed(hackathon: HackathonRecord) {
+  assertAllowedState(hackathon.state, ['final_deliberation'], {
+    code: 'hackathon_state_invalid',
+    message: 'Final ranking can only be reordered while the hackathon is in final_deliberation.',
     details: { hackathonId: hackathon.id }
   })
 }
 
 export function assertWinnersAnnouncementAllowed(hackathon: HackathonRecord) {
-  assertAllowedState(hackathon.state, ['shortlist'], {
+  assertAllowedState(hackathon.state, ['final_deliberation'], {
     code: 'hackathon_state_invalid',
-    message: 'Winners can only be announced from shortlist.',
+    message: 'Winners can only be announced from final_deliberation.',
     details: { hackathonId: hackathon.id }
   })
 }
@@ -369,20 +939,20 @@ export function assertHackathonCompletionAllowed(hackathon: HackathonRecord) {
   })
 }
 
-export function assertShortlistReorderMatchesEntries(
+export function assertSelectedFinalistsMatchEntries(
   orderedSubmissionIds: string[],
-  shortlistEntries: Array<{ submissionId: string }>
+  rankedEntries: Array<{ submissionId: string }>
 ) {
-  const shortlistSubmissionIds = shortlistEntries.map(entry => entry.submissionId)
-  const expectedIds = new Set(shortlistSubmissionIds)
+  const rankedSubmissionIds = rankedEntries.map(entry => entry.submissionId)
+  const expectedIds = new Set(rankedSubmissionIds)
   const actualIds = new Set(orderedSubmissionIds)
 
-  assertGuard(expectedIds.size === actualIds.size, {
+  assertGuard(actualIds.size === orderedSubmissionIds.length, {
     statusCode: 400,
-    code: 'shortlist_reorder_invalid',
-    message: 'Shortlist reorder must include every ranked submission exactly once.',
+    code: 'shortlist_finalists_invalid',
+    message: 'Finalist selection must not contain duplicate submissions.',
     details: {
-      expectedSubmissionIds: shortlistSubmissionIds,
+      rankedSubmissionIds,
       orderedSubmissionIds
     }
   })
@@ -391,10 +961,52 @@ export function assertShortlistReorderMatchesEntries(
     orderedSubmissionIds.every(submissionId => expectedIds.has(submissionId)),
     {
       statusCode: 400,
-      code: 'shortlist_reorder_invalid',
-      message: 'Shortlist reorder must reference only ranked submissions.',
+      code: 'shortlist_finalists_invalid',
+      message: 'Finalist selection must reference only ranked shortlist submissions.',
       details: {
-        expectedSubmissionIds: shortlistSubmissionIds,
+        rankedSubmissionIds,
+        orderedSubmissionIds
+      }
+    }
+  )
+}
+
+export function assertFinalDeliberationReorderMatchesEntries(
+  orderedSubmissionIds: string[],
+  rankedEntries: Array<{ submissionId: string }>
+) {
+  const rankedSubmissionIds = rankedEntries.map(entry => entry.submissionId)
+  const expectedIds = new Set(rankedSubmissionIds)
+  const actualIds = new Set(orderedSubmissionIds)
+
+  assertGuard(actualIds.size === orderedSubmissionIds.length, {
+    statusCode: 400,
+    code: 'final_ranking_invalid',
+    message: 'Final ranking reorder must not contain duplicate submissions.',
+    details: {
+      rankedSubmissionIds,
+      orderedSubmissionIds
+    }
+  })
+
+  assertGuard(expectedIds.size === actualIds.size, {
+    statusCode: 400,
+    code: 'final_ranking_invalid',
+    message: 'Final ranking reorder must include every ranked submission exactly once.',
+    details: {
+      rankedSubmissionIds,
+      orderedSubmissionIds
+    }
+  })
+
+  assertGuard(
+    orderedSubmissionIds.every(submissionId => expectedIds.has(submissionId)),
+    {
+      statusCode: 400,
+      code: 'final_ranking_invalid',
+      message: 'Final ranking reorder must reference only ranked submissions.',
+      details: {
+        rankedSubmissionIds,
         orderedSubmissionIds
       }
     }

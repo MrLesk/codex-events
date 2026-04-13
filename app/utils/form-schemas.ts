@@ -238,6 +238,10 @@ export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object
   submissionClosesAt: z.string().trim().min(1),
   maxTeamMembers: z.number().int().min(1),
   participantsLimit: z.number().int().min(1).nullable(),
+  blindReviewCount: z.number().int().min(0).max(2),
+  pitchReviewEnabled: z.boolean(),
+  blindScoreWeightPercent: z.number().int().min(0).max(100),
+  pitchScoreWeightPercent: z.number().int().min(0).max(100),
   inPersonEvent: z.boolean(),
   requireXProfile: z.boolean(),
   requireLinkedinProfile: z.boolean(),
@@ -286,18 +290,48 @@ export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object
   }
 
   if (
-    registrationOpensAt < registrationClosesAt
-    && registrationClosesAt <= submissionOpensAt
-    && submissionOpensAt < submissionClosesAt
+    !(
+      registrationOpensAt < registrationClosesAt
+      && registrationClosesAt <= submissionOpensAt
+      && submissionOpensAt < submissionClosesAt
+    )
   ) {
-    return
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['submissionClosesAt'],
+      message: 'Schedule must satisfy registration open < registration close <= submission open < submission close.'
+    })
   }
 
-  context.addIssue({
-    code: z.ZodIssueCode.custom,
-    path: ['submissionClosesAt'],
-    message: 'Schedule must satisfy registration open < registration close <= submission open < submission close.'
-  })
+  if (input.blindReviewCount === 0 && !input.pitchReviewEnabled) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['blindReviewCount'],
+      message: 'Enable at least one judging stage.'
+    })
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['pitchReviewEnabled'],
+      message: 'Enable at least one judging stage.'
+    })
+  }
+
+  if (
+    input.blindReviewCount > 0
+    && input.pitchReviewEnabled
+    && input.blindScoreWeightPercent + input.pitchScoreWeightPercent !== 100
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['blindScoreWeightPercent'],
+      message: 'Blind and pitch score weights must add up to 100.'
+    })
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['pitchScoreWeightPercent'],
+      message: 'Blind and pitch score weights must add up to 100.'
+    })
+  }
 })
 
 export function buildParticipantRegistrationFormSchema(options: {

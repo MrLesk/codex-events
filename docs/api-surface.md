@@ -10,7 +10,7 @@ It translates the canonical product model into stable backend domains, operation
 - The API surface is organized by stable backend domains rather than by UI screens.
 - Auth0 provides identity.
 - Platform authorization is resolved from application data.
-- Derived views such as the leaderboard, shortlist ordering, and the no-submission team section remain computed from persisted data.
+- Derived views such as the leaderboard, final score breakdown, and the no-submission team section remain computed from persisted data.
 
 ## Shared Conventions
 
@@ -97,6 +97,7 @@ The canonical backend domains are:
 - `submissions`
 - `judging`
 - `shortlist`
+- `final-deliberation`
 - `winners`
 - `prize-redemption`
 - `audit`
@@ -210,8 +211,8 @@ Operations:
 | Get public banner image | `GET /api/public/hackathons/:slug/images/banner` | public or authenticated user | Returns the uploaded hackathon banner image bytes for the exact public hackathon slug when configured. |
 | List caller-visible hackathons | `GET /api/hackathons` | public or authenticated user | Returns hackathons visible to the caller. Authenticated admins can see draft hackathons they are allowed to manage here, and staff-visible internal hackathons are included when the caller has staff access to them. |
 | Get caller-visible hackathon detail | `GET /api/hackathons/:hackathonId` | public or authenticated user | Returns canonical hackathon fields, including structured `agendaItems`, configured `tracks`, and current terms references for a hackathon visible to the caller. Staff-visible internal hackathons are included when the caller has staff access to that hackathon. |
-| Create hackathon | `POST /api/hackathons` | platform admin | Creates a `draft` hackathon with canonical configuration, including structured `agendaItems`, optional ordered `tracks`, location fields (`city`, `country`, and `address`), team size and participant limits, `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. |
-| Update hackathon configuration | `PATCH /api/hackathons/:hackathonId` | hackathon admin or platform admin | Updates canonical configuration fields, including schedule, structured `agendaItems`, optional ordered `tracks`, images, location fields (`city`, `country`, and `address`), team size and participant limits, required profile flags, `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. Track removals are rejected when existing submissions still reference the removed track. |
+| Create hackathon | `POST /api/hackathons` | platform admin | Creates a `draft` hackathon with canonical configuration, including structured `agendaItems`, optional ordered `tracks`, location fields (`city`, `country`, and `address`), team size and participant limits, judging configuration (`blindReviewCount`, `pitchReviewEnabled`, `blindScoreWeightPercent`, and `pitchScoreWeightPercent`), `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. |
+| Update hackathon configuration | `PATCH /api/hackathons/:hackathonId` | hackathon admin or platform admin | Updates canonical configuration fields, including schedule, structured `agendaItems`, optional ordered `tracks`, images, location fields (`city`, `country`, and `address`), team size and participant limits, judging configuration (`blindReviewCount`, `pitchReviewEnabled`, `blindScoreWeightPercent`, and `pitchScoreWeightPercent`), required profile flags, `inPersonEvent`, and application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`. Track removals are rejected when existing submissions still reference the removed track. |
 | Open registration manually | `POST /api/hackathons/:hackathonId/actions/open-registration` | hackathon admin or platform admin | Allowed only from `draft` while the configured registration window is open. |
 | Backfill Luma emails for legacy applicants | `POST /api/admin/hackathons/:hackathonId/actions/backfill-luma-emails` | platform admin | Resolves stored legacy Luma usernames against the configured Luma event API id and writes canonical `lumaEmail` values for users in that hackathon who still need them. |
 | Upload hackathon background image | `POST /api/hackathons/:hackathonId/images/background` | hackathon admin or platform admin | Accepts multipart upload for the background image and updates `backgroundImageUrl` to the platform-managed public image endpoint. |
@@ -219,10 +220,12 @@ Operations:
 | Upload hackathon banner image | `POST /api/hackathons/:hackathonId/images/banner` | hackathon admin or platform admin | Accepts multipart upload for the banner image and updates `bannerImageUrl` to the platform-managed public image endpoint. |
 | Remove hackathon banner image | `DELETE /api/hackathons/:hackathonId/images/banner` | hackathon admin or platform admin | Deletes the uploaded banner image object and clears `bannerImageUrl`. |
 | Open submission manually | `POST /api/hackathons/:hackathonId/actions/open-submission` | hackathon admin or platform admin | Allowed only when registration is closed and the configured submission window is open. |
-| Start judging preparation | `POST /api/hackathons/:hackathonId/actions/start-judging-preparation` | hackathon admin or platform admin | Locks submissions, freezes prize eligibility, and creates initial judge assignments. |
-| Start judge review | `POST /api/hackathons/:hackathonId/actions/start-judge-review` | hackathon admin or platform admin | Allowed only after judging preparation is complete. |
-| Start shortlist | `POST /api/hackathons/:hackathonId/actions/start-shortlist` | hackathon admin or platform admin | Allowed only from `judge_review` after every locked submission has a completed review outcome or has been removed from competition. |
-| Announce winners | `POST /api/hackathons/:hackathonId/actions/announce-winners` | hackathon admin or platform admin | Allowed only from `shortlist`. |
+| Start judging preparation | `POST /api/hackathons/:hackathonId/actions/start-judging-preparation` | hackathon admin or platform admin | Locks submissions, freezes prize eligibility, creates blind-review assignments when blind review is enabled, and prepares the next configured judging stage. |
+| Start blind review | `POST /api/hackathons/:hackathonId/actions/start-blind-review` | hackathon admin or platform admin | Allowed only after judging preparation is complete and `blindReviewCount > 0`. |
+| Start shortlist | `POST /api/hackathons/:hackathonId/actions/start-shortlist` | hackathon admin or platform admin | Allowed only from `blind_review` when `pitchReviewEnabled = true` and every active submission has the configured number of completed blind-review outcomes or has been removed from competition. |
+| Start pitch review | `POST /api/hackathons/:hackathonId/actions/start-pitch-review` | hackathon admin or platform admin | Allowed from `judging_preparation` for pitch-only hackathons or from `shortlist` after admins select the ordered finalist set. Creates one pitch assignment per finalist submission per judge in the frozen pitch panel. |
+| Start final deliberation | `POST /api/hackathons/:hackathonId/actions/start-final-deliberation` | hackathon admin or platform admin | Allowed from `blind_review` when pitch review is disabled after blind scoring is complete, or from `pitch_review` after admins close pitch review. |
+| Announce winners | `POST /api/hackathons/:hackathonId/actions/announce-winners` | hackathon admin or platform admin | Allowed only from `final_deliberation`. |
 | Complete hackathon | `POST /api/hackathons/:hackathonId/actions/complete` | hackathon admin or platform admin | Allowed only after winners are announced. |
 | List caller-visible evaluation criteria | `GET /api/hackathons/:hackathonId/evaluation-criteria` | public or authenticated user | Returns configured criteria and display order for a hackathon visible to the caller. |
 | Create evaluation criterion | `POST /api/hackathons/:hackathonId/evaluation-criteria` | hackathon admin or platform admin | Adds a criterion for the hackathon. |
@@ -234,6 +237,9 @@ Operations:
 
 Notes:
 - `participantsLimit` is an indicative planning target surfaced in admin approval workflows and does not reject staged or applied approval decisions by itself.
+- `blindReviewCount` accepts `0`, `1`, or `2`.
+- `pitchReviewEnabled` can be true with or without blind review.
+- When blind review and pitch review are both enabled, `blindScoreWeightPercent` and `pitchScoreWeightPercent` default to `70` and `30` and must sum to `100`.
 - Track configuration is managed as part of hackathon create and update operations rather than through a separate admin domain in this version.
 - Public hackathon discovery and detail responses expose only public-safe fields. They do not expose internal record identifiers, creator identifiers, or audit timestamps.
 - Public current-terms references expose document type, version, title, and published time only.
@@ -296,6 +302,7 @@ Operations:
 | Get own application | `GET /api/hackathons/:hackathonId/applications/me` | authenticated user | Returns the caller's application for the hackathon, if present. |
 | Withdraw own application | `POST /api/hackathons/:hackathonId/applications/me/actions/withdraw` | authenticated user | Allowed only when the caller's application is `submitted` or `approved` and the caller has no active team membership in the hackathon. Transitions the application to `withdrawn`, records `withdrawnAt`, writes an audit record, and enqueues Luma guest rejection when the hackathon requires a Luma email and defines a Luma event API ID. This operation does not delete the application record. |
 | List hackathon applications | `GET /api/hackathons/:hackathonId/applications` | staff, hackathon admin, or platform admin | Returns application records for participant-visibility and review workflows. Staff access is read-only. |
+| Withdraw application | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw` | hackathon admin or platform admin | Allowed only when the target application is `submitted` or `approved`. Transitions the application to `withdrawn`, records `withdrawnAt`, writes an audit record, and enqueues Luma guest rejection when the hackathon requires a Luma email and defines a Luma event API ID. If the participant still has an active team, the operation removes that membership when the team can remain valid. If the participant is the last active member or last active admin, the operation dissolves the team, closes pending join requests, and is blocked when doing so would affect an active draft, submitted, or locked submission. |
 | Stage application approval | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/approve` | hackathon admin or platform admin | Persists `pre_approval_status = approved` for a `submitted` application without changing canonical status. |
 | Stage application rejection | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/reject` | hackathon admin or platform admin | Persists `pre_approval_status = rejected` for a `submitted` application without changing canonical status. |
 | Apply staged application decisions | `POST /api/hackathons/:hackathonId/applications/actions/apply-staged-decisions` | hackathon admin or platform admin | Applies all staged decisions for `submitted` applications, transitions canonical status, records reviewer metadata, enqueues participant-facing decision emails, and enqueues Luma guest-status sync when the hackathon requires a Luma email and defines a Luma event API ID. |
@@ -383,49 +390,66 @@ Testing:
 ## Judging
 
 Purpose:
-- Support blind judging, assignment operations, and review outcomes.
+- Support blind judging, pitch judging, assignment operations, and review outcomes.
 
 Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| List active judge assignments | `GET /api/hackathons/:hackathonId/judging/assignments` | assigned judge, hackathon admin, or platform admin | Judges see only their assignments in blind view. Admins can access operational assignment views. |
-| Get blind assignment detail | `GET /api/hackathons/:hackathonId/judging/assignments/:assignmentId` | assigned judge, hackathon admin, or platform admin acting through assignment review | The response excludes team identity and includes anonymized application information plus the selected submission track. |
+| List active judge assignments | `GET /api/hackathons/:hackathonId/judging/assignments` | assigned judge, hackathon admin, or platform admin | Judges see only their assignments for the current judging stage. Blind assignments render in blind view. Pitch assignments render in the open pitch view. Admins can access operational assignment views. |
+| Get assignment detail | `GET /api/hackathons/:hackathonId/judging/assignments/:assignmentId` | assigned judge, hackathon admin, or platform admin acting through assignment review | Blind-review responses exclude team identity and include anonymized application information plus the selected submission track. Pitch-review responses expose project name, team name, and full finalist submission detail. |
 | Start assigned review | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/start` | assigned judge, hackathon admin, or platform admin acting through assignment review | Transitions `assigned` to `judge_started`. |
-| Complete assigned review | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/complete` | assigned judge, hackathon admin, or platform admin acting through assignment review | Records criterion scores, comments, and final assignment outcome. |
-| Skip assigned review | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/skip` | assigned judge, hackathon admin, or platform admin acting through assignment review | Creates a new active assignment for another eligible judge with the lowest assigned load. |
+| Complete assigned review | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/complete` | assigned judge, hackathon admin, or platform admin acting through assignment review | Records blind-review criterion scores for `blind_review` assignments or a `pitchScore` plus optional comment for `pitch_review` assignments. |
+| Skip assigned review | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/skip` | assigned judge, hackathon admin, or platform admin acting through assignment review | Blind-review assignments create a new active assignment for another eligible judge with the lowest blind-review load. Pitch-review assignments are marked skipped and excluded from the pitch average. |
 | Mark assignment ineligible | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/mark-ineligible` | assigned judge, hackathon admin, or platform admin acting through assignment review | Records ineligibility at the assignment level. |
-| Reassign unstarted assignment | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/reassign` | hackathon admin or platform admin | Allowed only before review has started. |
-| Force assignment to skipped | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/force-skip` | hackathon admin or platform admin | Used when the assigned judge cannot complete review. |
-| Revert ineligibility decision | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/revert-ineligibility` | hackathon admin or platform admin | Reopens the assignment's eligibility status without changing blind-view rules. |
+| Reassign unstarted assignment | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/reassign` | hackathon admin or platform admin | Allowed only for `blind_review` assignments before review has started. |
+| Force assignment to skipped | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/force-skip` | hackathon admin or platform admin | Used when the assigned judge cannot complete review. Blind-review force-skip triggers replacement assignment creation. Pitch-review force-skip excludes that vote from the pitch average. |
+| Revert ineligibility decision | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/revert-ineligibility` | hackathon admin or platform admin | Reopens the assignment's eligibility status without changing the assignment's stage-specific visibility rules. |
 
 Testing:
-- Unit: blind-view, reassignment, and review-state rules.
-- Integration: assignment state transitions and low-load reassignment behavior.
-- End-to-end: judge persona review flows and admin intervention flows.
+- Unit: blind-view, pitch-view, reassignment, score-normalization, and review-state rules.
+- Integration: assignment state transitions, blind-load balancing, pitch-panel assignment creation, and missing-vote behavior.
+- End-to-end: judge persona blind-review flows, pitch-review flows, and admin intervention flows.
 
 ## Shortlist
 
 Purpose:
-- Expose the computed shortlist and final ranking review process.
+- Expose blind-review ordering and manual finalist selection for pitch-enabled hackathons.
 
 Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Get leaderboard | `GET /api/hackathons/:hackathonId/leaderboard` | judge, hackathon admin, or platform admin | Returns the computed scored ordering. |
-| Get shortlist view | `GET /api/hackathons/:hackathonId/shortlist` | judge, hackathon admin, or platform admin | Returns the computed shortlist ordering visible during `shortlist`. |
-| Reorder shortlist ranking | `POST /api/hackathons/:hackathonId/shortlist/actions/reorder` | hackathon admin or platform admin | Adjusts final ranking order without mutating underlying judge scores. |
+| Get leaderboard | `GET /api/hackathons/:hackathonId/leaderboard` | judge, hackathon admin, or platform admin | Returns the computed scored ordering for the enabled scoring stages completed so far. During blind review and shortlist, this is the blind-review leaderboard. During or after pitch review, this is the weighted final scoreboard. |
+| Get shortlist view | `GET /api/hackathons/:hackathonId/shortlist` | judge, hackathon admin, or platform admin | Returns the blind-review ordering visible during `shortlist` plus any current ordered finalist selection. The shortlist view remains blind with respect to team identity. |
+| Select pitch finalists | `POST /api/hackathons/:hackathonId/shortlist/actions/select-finalists` | hackathon admin or platform admin | Persists the ordered finalist submission IDs that advance to pitch review. Allowed only during `shortlist`. |
 
 Testing:
-- Unit: shortlist guard and computed-order rules.
+- Unit: shortlist guard, blind-ordering, and finalist-selection rules.
 - Integration: leaderboard and shortlist response behavior.
-- End-to-end: judge review visibility and admin reorder flows.
+- End-to-end: blind-review visibility and admin finalist-selection flows.
+
+## Final Deliberation
+
+Purpose:
+- Expose the final weighted score review and ranking-adjustment process before winner announcement.
+
+Operations:
+
+| Operation | Method And Path | Actor | Guards And Notes |
+| --- | --- | --- | --- |
+| Get final deliberation view | `GET /api/hackathons/:hackathonId/final-deliberation` | judge, hackathon admin, or platform admin | Returns the final weighted scoreboard, score breakdown by enabled stage, and any current final ranking override visible during `final_deliberation`. |
+| Reorder final ranking | `POST /api/hackathons/:hackathonId/final-deliberation/actions/reorder` | hackathon admin or platform admin | Adjusts final ranking order without mutating underlying blind or pitch scores. |
+
+Testing:
+- Unit: final-deliberation guard, score-breakdown, and ranking-override rules.
+- Integration: final-deliberation response behavior and ranking override persistence.
+- End-to-end: final ranking review and admin reorder flows.
 
 ## Winners
 
 Purpose:
-- Expose final winner state after shortlist review.
+- Expose final winner state after final deliberation.
 
 Operations:
 
@@ -478,15 +502,26 @@ Testing:
 - A user can have at most one `UserApplication` per hackathon.
 - A user can have at most one active team membership per hackathon.
 - Non-admin `staff` and `judge` assignments remain distinct.
+- A hackathon must enable at least one judging stage: blind review, pitch review, or both.
+- `blindReviewCount` can be `0`, `1`, or `2`.
 - Team formation is available only during `registration_open` and `submission_open`.
 - Submission creation and editing are available only during `submission_open`.
 - A draft submission that is never submitted is treated as no submission for judging and dashboard purposes.
 - In-person application commitment is required only when the hackathon is configured with `inPersonEvent = true`.
 - Withdrawal ends when `judging_preparation` begins.
-- Removal from competition during or after judge review uses `disqualified`.
+- Removal from competition during or after judging uses `disqualified`.
 - Prize-eligible team membership freezes when the hackathon enters `judging_preparation`.
 - Blind judging excludes team identity even when the reviewing actor is also an admin.
-- Shortlist ordering and leaderboard data remain computed views rather than separate canonical entities.
+- Pitch judging exposes project and team identity to the pitch panel.
+- Blind assignment scores are normalized to the shared `0..10` scale by dividing weighted criterion totals by total criterion weight.
+- Pitch scores use the shared `0..10` scale.
+- Blind score is the average of completed blind-review assignments for the submission.
+- Pitch score is the average of submitted pitch-review votes for the submission.
+- When blind review and pitch review are both enabled, final score uses configurable blind and pitch weights that default to `70` and `30`.
+- When only one judging stage is enabled, final score comes entirely from that stage.
+- `shortlist` exists only for hackathons that use both blind review and pitch review.
+- Pitch-only hackathons send all eligible locked submissions directly to pitch review.
+- Shortlist finalist selection, leaderboard data, and final ranking data remain computed views with explicit admin-selected ordering persisted only where the workflow requires it.
 - Granting platform-admin access also normalizes explicit `hackathon_admin` assignment coverage across existing hackathons.
 
 ## Test Coverage Matrix

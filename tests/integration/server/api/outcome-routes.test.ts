@@ -5,11 +5,16 @@ import { eq } from 'drizzle-orm'
 import listPlatformAuditHandler from '../../../../server/api/audit/index.get'
 import announceWinnersHandler from '../../../../server/api/hackathons/[hackathonId]/actions/announce-winners.post'
 import completeHackathonHandler from '../../../../server/api/hackathons/[hackathonId]/actions/complete.post'
+import startFinalDeliberationHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-final-deliberation.post'
+import startPitchReviewHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-pitch-review.post'
 import startShortlistHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-shortlist.post'
 import listHackathonAuditHandler from '../../../../server/api/hackathons/[hackathonId]/audit/index.get'
+import listFinalDeliberationHandler from '../../../../server/api/hackathons/[hackathonId]/final-deliberation/index.get'
 import listLeaderboardHandler from '../../../../server/api/hackathons/[hackathonId]/leaderboard/index.get'
-import reorderShortlistHandler from '../../../../server/api/hackathons/[hackathonId]/shortlist/actions/reorder.post'
+import reorderFinalDeliberationHandler from '../../../../server/api/hackathons/[hackathonId]/final-deliberation/actions/reorder.post'
+import selectFinalistsHandler from '../../../../server/api/hackathons/[hackathonId]/shortlist/actions/select-finalists.post'
 import listShortlistHandler from '../../../../server/api/hackathons/[hackathonId]/shortlist/index.get'
+import disqualifySubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/actions/disqualify.post'
 import listWinnersHandler from '../../../../server/api/hackathons/[hackathonId]/winners/index.get'
 import redeemPrizeRedemptionHandler from '../../../../server/api/prize-redemptions/[redemptionId]/actions/redeem.post'
 import listOwnPrizeRedemptionsHandler from '../../../../server/api/prize-redemptions/me.get'
@@ -45,11 +50,23 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
   async function seedOutcomeHackathon(
     harness: ReturnType<typeof createApiRouteTestHarness>,
     options?: {
-      state?: 'judge_review' | 'shortlist' | 'winners_announced'
+      state?: 'blind_review' | 'shortlist' | 'pitch_review' | 'final_deliberation' | 'winners_announced'
       withPrizes?: boolean
+      blindReviewCount?: 0 | 1 | 2
+      pitchReviewEnabled?: boolean
+      blindScoreWeightPercent?: number
+      pitchScoreWeightPercent?: number
+      pitchFinalistSubmissionIdsJson?: string
+      finalRankingSubmissionIdsJson?: string
     }
   ) {
-    const state = options?.state ?? 'judge_review'
+    const state = options?.state ?? 'blind_review'
+    const blindReviewCount = options?.blindReviewCount ?? 2
+    const pitchReviewEnabled = options?.pitchReviewEnabled ?? true
+    const blindScoreWeightPercent = options?.blindScoreWeightPercent ?? (blindReviewCount === 0 ? 0 : 70)
+    const pitchScoreWeightPercent = options?.pitchScoreWeightPercent ?? (pitchReviewEnabled
+      ? (blindReviewCount === 0 ? 100 : 30)
+      : 0)
 
     await harness.database.insert(users).values([
       {
@@ -70,6 +87,12 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         auth0Subject: 'auth0|judge_a',
         email: 'judge-a@example.com',
         displayName: 'Judge A'
+      },
+      {
+        id: 'judge_b',
+        auth0Subject: 'auth0|judge_b',
+        email: 'judge-b@example.com',
+        displayName: 'Judge B'
       },
       {
         id: 'team_admin_one',
@@ -98,6 +121,12 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       submissionOpensAt: '2026-03-12T12:00:00.000Z',
       submissionClosesAt: '2026-03-14T12:00:00.000Z',
       state,
+      blindReviewCount,
+      pitchReviewEnabled,
+      blindScoreWeightPercent,
+      pitchScoreWeightPercent,
+      pitchFinalistSubmissionIdsJson: options?.pitchFinalistSubmissionIdsJson ?? '[]',
+      finalRankingSubmissionIdsJson: options?.finalRankingSubmissionIdsJson ?? '[]',
       maxTeamMembers: 5,
       createdByUserId: 'platform_admin'
     })
@@ -136,6 +165,14 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         role: 'judge',
         isInJudgePool: true,
         createdAt: '2026-03-15T12:05:00.000Z'
+      },
+      {
+        id: 'role_judge_b',
+        hackathonId: 'hackathon_1',
+        userId: 'judge_b',
+        role: 'judge',
+        isInJudgePool: true,
+        createdAt: '2026-03-15T12:06:00.000Z'
       }
     ])
 
@@ -210,92 +247,154 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    await harness.database.insert(evaluationCriteria).values([
-      {
-        id: 'criterion_1',
-        hackathonId: 'hackathon_1',
-        name: 'Novelty',
-        description: 'Novelty',
-        weight: 50,
-        displayOrder: 1,
-        createdAt: '2026-03-15T12:00:00.000Z'
-      },
-      {
-        id: 'criterion_2',
-        hackathonId: 'hackathon_1',
-        name: 'Execution',
-        description: 'Execution',
-        weight: 50,
-        displayOrder: 2,
-        createdAt: '2026-03-15T12:01:00.000Z'
-      }
-    ])
+    if (blindReviewCount > 0) {
+      await harness.database.insert(evaluationCriteria).values([
+        {
+          id: 'criterion_1',
+          hackathonId: 'hackathon_1',
+          name: 'Novelty',
+          description: 'Novelty',
+          weight: 50,
+          displayOrder: 1,
+          createdAt: '2026-03-15T12:00:00.000Z'
+        },
+        {
+          id: 'criterion_2',
+          hackathonId: 'hackathon_1',
+          name: 'Execution',
+          description: 'Execution',
+          weight: 50,
+          displayOrder: 2,
+          createdAt: '2026-03-15T12:01:00.000Z'
+        }
+      ])
 
-    await harness.database.insert(judgeAssignments).values([
-      {
-        id: 'assignment_1',
-        hackathonId: 'hackathon_1',
-        submissionId: 'submission_1',
-        judgeUserId: 'judge_a',
-        status: 'judge_completed',
-        assignedAt: '2026-03-17T12:05:00.000Z',
-        startedAt: '2026-03-17T12:06:00.000Z',
-        completedAt: '2026-03-17T12:07:00.000Z',
-        ineligibilityStatus: 'eligible',
-        createdAt: '2026-03-17T12:05:00.000Z'
-      },
-      {
-        id: 'assignment_2',
-        hackathonId: 'hackathon_1',
-        submissionId: 'submission_2',
-        judgeUserId: 'judge_a',
-        status: 'judge_completed',
-        assignedAt: '2026-03-17T12:08:00.000Z',
-        startedAt: '2026-03-17T12:09:00.000Z',
-        completedAt: '2026-03-17T12:10:00.000Z',
-        ineligibilityStatus: 'eligible',
-        createdAt: '2026-03-17T12:08:00.000Z'
-      }
-    ])
+      await harness.database.insert(judgeAssignments).values([
+        {
+          id: 'assignment_1',
+          hackathonId: 'hackathon_1',
+          submissionId: 'submission_1',
+          judgeUserId: 'judge_a',
+          status: 'judge_completed',
+          assignedAt: '2026-03-17T12:05:00.000Z',
+          startedAt: '2026-03-17T12:06:00.000Z',
+          completedAt: '2026-03-17T12:07:00.000Z',
+          ineligibilityStatus: 'eligible',
+          createdAt: '2026-03-17T12:05:00.000Z'
+        },
+        {
+          id: 'assignment_2',
+          hackathonId: 'hackathon_1',
+          submissionId: 'submission_2',
+          judgeUserId: 'judge_a',
+          status: 'judge_completed',
+          assignedAt: '2026-03-17T12:08:00.000Z',
+          startedAt: '2026-03-17T12:09:00.000Z',
+          completedAt: '2026-03-17T12:10:00.000Z',
+          ineligibilityStatus: 'eligible',
+          createdAt: '2026-03-17T12:08:00.000Z'
+        },
+        {
+          id: 'assignment_3',
+          hackathonId: 'hackathon_1',
+          submissionId: 'submission_1',
+          judgeUserId: 'judge_b',
+          status: 'judge_completed',
+          assignedAt: '2026-03-17T12:11:00.000Z',
+          startedAt: '2026-03-17T12:12:00.000Z',
+          completedAt: '2026-03-17T12:13:00.000Z',
+          ineligibilityStatus: 'eligible',
+          createdAt: '2026-03-17T12:11:00.000Z'
+        },
+        {
+          id: 'assignment_4',
+          hackathonId: 'hackathon_1',
+          submissionId: 'submission_2',
+          judgeUserId: 'judge_b',
+          status: 'judge_completed',
+          assignedAt: '2026-03-17T12:14:00.000Z',
+          startedAt: '2026-03-17T12:15:00.000Z',
+          completedAt: '2026-03-17T12:16:00.000Z',
+          ineligibilityStatus: 'eligible',
+          createdAt: '2026-03-17T12:14:00.000Z'
+        }
+      ])
 
-    await harness.database.insert(judgeCriterionScores).values([
-      {
-        id: 'score_1',
-        judgeAssignmentId: 'assignment_1',
-        evaluationCriterionId: 'criterion_1',
-        score: 9,
-        comment: 'Strong novelty',
-        createdAt: '2026-03-17T12:07:00.000Z',
-        updatedAt: '2026-03-17T12:07:00.000Z'
-      },
-      {
-        id: 'score_2',
-        judgeAssignmentId: 'assignment_1',
-        evaluationCriterionId: 'criterion_2',
-        score: 8,
-        comment: 'Strong execution',
-        createdAt: '2026-03-17T12:07:00.000Z',
-        updatedAt: '2026-03-17T12:07:00.000Z'
-      },
-      {
-        id: 'score_3',
-        judgeAssignmentId: 'assignment_2',
-        evaluationCriterionId: 'criterion_1',
-        score: 7,
-        comment: 'Good novelty',
-        createdAt: '2026-03-17T12:10:00.000Z',
-        updatedAt: '2026-03-17T12:10:00.000Z'
-      },
-      {
-        id: 'score_4',
-        judgeAssignmentId: 'assignment_2',
-        evaluationCriterionId: 'criterion_2',
-        score: 6,
-        comment: 'Good execution',
-        createdAt: '2026-03-17T12:10:00.000Z',
-        updatedAt: '2026-03-17T12:10:00.000Z'
-      }
-    ])
+      await harness.database.insert(judgeCriterionScores).values([
+        {
+          id: 'score_1',
+          judgeAssignmentId: 'assignment_1',
+          evaluationCriterionId: 'criterion_1',
+          score: 9,
+          comment: 'Strong novelty',
+          createdAt: '2026-03-17T12:07:00.000Z',
+          updatedAt: '2026-03-17T12:07:00.000Z'
+        },
+        {
+          id: 'score_2',
+          judgeAssignmentId: 'assignment_1',
+          evaluationCriterionId: 'criterion_2',
+          score: 8,
+          comment: 'Strong execution',
+          createdAt: '2026-03-17T12:07:00.000Z',
+          updatedAt: '2026-03-17T12:07:00.000Z'
+        },
+        {
+          id: 'score_3',
+          judgeAssignmentId: 'assignment_2',
+          evaluationCriterionId: 'criterion_1',
+          score: 7,
+          comment: 'Good novelty',
+          createdAt: '2026-03-17T12:10:00.000Z',
+          updatedAt: '2026-03-17T12:10:00.000Z'
+        },
+        {
+          id: 'score_4',
+          judgeAssignmentId: 'assignment_2',
+          evaluationCriterionId: 'criterion_2',
+          score: 6,
+          comment: 'Good execution',
+          createdAt: '2026-03-17T12:10:00.000Z',
+          updatedAt: '2026-03-17T12:10:00.000Z'
+        },
+        {
+          id: 'score_5',
+          judgeAssignmentId: 'assignment_3',
+          evaluationCriterionId: 'criterion_1',
+          score: 7,
+          comment: 'Clear novelty',
+          createdAt: '2026-03-17T12:13:00.000Z',
+          updatedAt: '2026-03-17T12:13:00.000Z'
+        },
+        {
+          id: 'score_6',
+          judgeAssignmentId: 'assignment_3',
+          evaluationCriterionId: 'criterion_2',
+          score: 6,
+          comment: 'Clear execution',
+          createdAt: '2026-03-17T12:13:00.000Z',
+          updatedAt: '2026-03-17T12:13:00.000Z'
+        },
+        {
+          id: 'score_7',
+          judgeAssignmentId: 'assignment_4',
+          evaluationCriterionId: 'criterion_1',
+          score: 7,
+          comment: 'Steady novelty',
+          createdAt: '2026-03-17T12:16:00.000Z',
+          updatedAt: '2026-03-17T12:16:00.000Z'
+        },
+        {
+          id: 'score_8',
+          judgeAssignmentId: 'assignment_4',
+          evaluationCriterionId: 'criterion_2',
+          score: 6,
+          comment: 'Steady execution',
+          createdAt: '2026-03-17T12:16:00.000Z',
+          updatedAt: '2026-03-17T12:16:00.000Z'
+        }
+      ])
+    }
 
     await harness.database.insert(prizeEligibilitySnapshots).values([
       {
@@ -348,6 +447,38 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     }
   }
 
+  async function seedPitchAssignments(
+    harness: ReturnType<typeof createApiRouteTestHarness>,
+    assignments: Array<{
+      id: string
+      submissionId: string
+      judgeUserId: string
+      status: 'assigned' | 'judge_started' | 'judge_completed'
+      pitchScore: number | null
+      assignedAt: string
+      startedAt?: string
+      completedAt?: string
+    }>
+  ) {
+    await harness.database.insert(judgeAssignments).values(
+      assignments.map(assignment => ({
+        id: assignment.id,
+        hackathonId: 'hackathon_1',
+        submissionId: assignment.submissionId,
+        judgeUserId: assignment.judgeUserId,
+        reviewStage: 'pitch_review',
+        blindReviewSlot: null,
+        status: assignment.status,
+        pitchScore: assignment.pitchScore,
+        assignedAt: assignment.assignedAt,
+        startedAt: assignment.startedAt ?? null,
+        completedAt: assignment.completedAt ?? null,
+        ineligibilityStatus: 'eligible',
+        createdAt: assignment.assignedAt
+      }))
+    )
+  }
+
   test('admins can move a hackathon to shortlist and judges can read the computed leaderboard', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -369,7 +500,13 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, { state: 'judge_review' })
+    await seedOutcomeHackathon(harness, { state: 'blind_review' })
+    await harness.database
+      .update(hackathons)
+      .set({
+        pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_2'])
+      })
+      .where(eq(hackathons.id, 'hackathon_1'))
 
     const moveResponse = await harness.request('/api/hackathons/hackathon_1/actions/start-shortlist', {
       method: 'POST'
@@ -382,6 +519,10 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         state: 'shortlist'
       }
     })
+    const updatedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_1')
+    })
+    expect(updatedHackathon?.pitchFinalistSubmissionIdsJson).toBe('[]')
 
     const leaderboardResponse = await harness.request('/api/hackathons/hackathon_1/leaderboard')
 
@@ -391,12 +532,12 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         expect.objectContaining({
           submissionId: 'submission_1',
           rank: 1,
-          scoreTotal: 850
+          scoreTotal: 7.5
         }),
         expect.objectContaining({
           submissionId: 'submission_2',
           rank: 2,
-          scoreTotal: 650
+          scoreTotal: 6.5
         })
       ]
     })
@@ -409,13 +550,13 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     ]))
   })
 
-  test('shortlist reorder changes final order without mutating the underlying leaderboard scores', async () => {
+  test('shortlist finalist selection persists ordered finalists while shortlist stays blind-ranked', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/shortlist/actions/reorder',
-          handler: reorderShortlistHandler
+          path: '/api/hackathons/:hackathonId/shortlist/actions/select-finalists',
+          handler: selectFinalistsHandler
         },
         {
           method: 'get',
@@ -437,26 +578,69 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
 
     await seedOutcomeHackathon(harness, { state: 'shortlist' })
 
-    const reorderResponse = await harness.request('/api/hackathons/hackathon_1/shortlist/actions/reorder', {
+    const selectResponse = await harness.request('/api/hackathons/hackathon_1/shortlist/actions/select-finalists', {
       method: 'POST',
       body: JSON.stringify({
         orderedSubmissionIds: ['submission_2', 'submission_1']
       })
     })
 
-    expect(reorderResponse.status).toBe(200)
-    expect(await reorderResponse.json()).toMatchObject({
+    expect(selectResponse.status).toBe(200)
+    expect(await selectResponse.json()).toMatchObject({
       data: [
         expect.objectContaining({
-          submissionId: 'submission_2',
-          finalRank: 1
+          submissionId: 'submission_1',
+          rank: 1,
+          isPitchFinalist: true,
+          pitchFinalistRank: 2
         }),
         expect.objectContaining({
-          submissionId: 'submission_1',
-          finalRank: 2
+          submissionId: 'submission_2',
+          rank: 2,
+          isPitchFinalist: true,
+          pitchFinalistRank: 1
         })
       ]
     })
+    const persistedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_1')
+    })
+    expect(persistedHackathon?.pitchFinalistSubmissionIdsJson).toBe(JSON.stringify(['submission_2', 'submission_1']))
+    const auditEntries = await harness.database.select().from(auditLogs)
+    expect(auditEntries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        action: 'hackathon.pitch_finalists_selected',
+        metadata: expect.objectContaining({
+          orderedSubmissionIds: ['submission_2', 'submission_1'],
+          finalistSubmissionCount: 2
+        })
+      })
+    ]))
+
+    const shortlistResponse = await harness.request('/api/hackathons/hackathon_1/shortlist')
+
+    expect(shortlistResponse.status).toBe(200)
+    const shortlistPayload = await shortlistResponse.json() as {
+      data: Array<Record<string, unknown>>
+    }
+    expect(shortlistPayload).toMatchObject({
+      data: [
+        expect.objectContaining({
+          submissionId: 'submission_1',
+          rank: 1,
+          isPitchFinalist: true,
+          pitchFinalistRank: 2
+        }),
+        expect.objectContaining({
+          submissionId: 'submission_2',
+          rank: 2,
+          isPitchFinalist: true,
+          pitchFinalistRank: 1
+        })
+      ]
+    })
+    expect(shortlistPayload.data[0]).not.toHaveProperty('teamId')
+    expect(shortlistPayload.data[0]).not.toHaveProperty('teamName')
 
     const leaderboardResponse = await harness.request('/api/hackathons/hackathon_1/leaderboard')
 
@@ -466,14 +650,571 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         expect.objectContaining({
           submissionId: 'submission_1',
           rank: 1,
-          scoreTotal: 850
+          scoreTotal: 7.5
         }),
         expect.objectContaining({
           submissionId: 'submission_2',
           rank: 2,
-          scoreTotal: 650
+          scoreTotal: 6.5
         })
       ]
+    })
+  })
+
+  test('disqualifying a persisted shortlist finalist prunes stored finalists and still allows pitch review to start', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/teams/:teamId/submission/actions/disqualify',
+          handler: disqualifySubmissionHandler
+        },
+        {
+          method: 'get',
+          path: '/api/hackathons/:hackathonId/shortlist',
+          handler: listShortlistHandler
+        },
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/start-pitch-review',
+          handler: startPitchReviewHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'shortlist',
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
+    })
+
+    const disqualifyResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/disqualify', {
+      method: 'POST',
+      body: JSON.stringify({
+        reason: 'Rule violation'
+      })
+    })
+
+    expect(disqualifyResponse.status).toBe(200)
+
+    const storedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_1')
+    })
+    expect(storedHackathon?.pitchFinalistSubmissionIdsJson).toBe(JSON.stringify(['submission_2']))
+
+    const shortlistResponse = await harness.request('/api/hackathons/hackathon_1/shortlist')
+
+    expect(shortlistResponse.status).toBe(200)
+    expect(await shortlistResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          submissionId: 'submission_2',
+          rank: 1,
+          isPitchFinalist: true,
+          pitchFinalistRank: 1
+        })
+      ]
+    })
+
+    const startPitchResponse = await harness.request('/api/hackathons/hackathon_1/actions/start-pitch-review', {
+      method: 'POST'
+    })
+
+    expect(startPitchResponse.status).toBe(200)
+    const pitchAssignments = await harness.database.select().from(judgeAssignments)
+    expect(
+      pitchAssignments
+        .filter(assignment => assignment.reviewStage === 'pitch_review')
+        .map(assignment => assignment.submissionId)
+        .sort()
+    ).toEqual(['submission_2', 'submission_2'])
+  })
+
+  test('blind-only hackathons can start final deliberation and expose blind-score breakdowns', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/start-final-deliberation',
+          handler: startFinalDeliberationHandler
+        },
+        {
+          method: 'get',
+          path: '/api/hackathons/:hackathonId/final-deliberation',
+          handler: listFinalDeliberationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'blind_review',
+      blindReviewCount: 2,
+      pitchReviewEnabled: false,
+      blindScoreWeightPercent: 100,
+      pitchScoreWeightPercent: 0
+    })
+
+    const startResponse = await harness.request('/api/hackathons/hackathon_1/actions/start-final-deliberation', {
+      method: 'POST'
+    })
+
+    expect(startResponse.status).toBe(200)
+    expect(await startResponse.json()).toMatchObject({
+      data: {
+        id: 'hackathon_1',
+        state: 'final_deliberation'
+      }
+    })
+
+    const updatedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_1')
+    })
+
+    expect(updatedHackathon?.finalRankingSubmissionIdsJson).toBe('[]')
+
+    const finalDeliberationResponse = await harness.request('/api/hackathons/hackathon_1/final-deliberation')
+
+    expect(finalDeliberationResponse.status).toBe(200)
+    const finalDeliberationPayload = await finalDeliberationResponse.json() as {
+      data: {
+        entries: Array<Record<string, unknown>>
+        finalRankingSubmissionIds: string[]
+      }
+    }
+    expect(finalDeliberationPayload).toMatchObject({
+      data: {
+        finalRankingSubmissionIds: [],
+        entries: [
+          expect.objectContaining({
+            submissionId: 'submission_1',
+            blindScore: 7.5,
+            scoreTotal: 7.5,
+            scoreRank: 1,
+            finalRank: 1
+          }),
+          expect.objectContaining({
+            submissionId: 'submission_2',
+            blindScore: 6.5,
+            scoreTotal: 6.5,
+            scoreRank: 2,
+            finalRank: 2
+          })
+        ]
+      }
+    })
+    expect(finalDeliberationPayload.data.entries[0]).not.toHaveProperty('pitchScore')
+
+    const auditEntries = await harness.database.select().from(auditLogs)
+    expect(auditEntries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        action: 'hackathon.start_final_deliberation'
+      })
+    ]))
+  })
+
+  test('leaderboard switches to weighted final scoring during pitch review and leaves missing pitch votes unranked', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/hackathons/:hackathonId/leaderboard',
+          handler: listLeaderboardHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'pitch_review',
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
+    })
+    await seedPitchAssignments(harness, [
+      {
+        id: 'pitch_assignment_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        status: 'assigned',
+        pitchScore: null,
+        assignedAt: '2026-03-18T12:00:00.000Z'
+      },
+      {
+        id: 'pitch_assignment_2',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 10,
+        assignedAt: '2026-03-18T12:01:00.000Z',
+        startedAt: '2026-03-18T12:02:00.000Z',
+        completedAt: '2026-03-18T12:03:00.000Z'
+      },
+      {
+        id: 'pitch_assignment_3',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_b',
+        status: 'judge_completed',
+        pitchScore: 8,
+        assignedAt: '2026-03-18T12:04:00.000Z',
+        startedAt: '2026-03-18T12:05:00.000Z',
+        completedAt: '2026-03-18T12:06:00.000Z'
+      }
+    ])
+
+    const leaderboardResponse = await harness.request('/api/hackathons/hackathon_1/leaderboard')
+
+    expect(leaderboardResponse.status).toBe(200)
+    expect(await leaderboardResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          submissionId: 'submission_2',
+          rank: 1,
+          scoreTotal: 7.25
+        }),
+        expect.objectContaining({
+          submissionId: 'submission_1',
+          rank: null,
+          scoreTotal: null
+        })
+      ]
+    })
+  })
+
+  test('pitch-only hackathons rank leaderboard entries by pitch score', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/hackathons/:hackathonId/leaderboard',
+          handler: listLeaderboardHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'pitch_review',
+      blindReviewCount: 0,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 0,
+      pitchScoreWeightPercent: 100
+    })
+    await seedPitchAssignments(harness, [
+      {
+        id: 'pitch_only_assignment_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 9,
+        assignedAt: '2026-03-18T13:00:00.000Z',
+        startedAt: '2026-03-18T13:01:00.000Z',
+        completedAt: '2026-03-18T13:02:00.000Z'
+      },
+      {
+        id: 'pitch_only_assignment_2',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_b',
+        status: 'judge_completed',
+        pitchScore: 7,
+        assignedAt: '2026-03-18T13:03:00.000Z',
+        startedAt: '2026-03-18T13:04:00.000Z',
+        completedAt: '2026-03-18T13:05:00.000Z'
+      },
+      {
+        id: 'pitch_only_assignment_3',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 6,
+        assignedAt: '2026-03-18T13:06:00.000Z',
+        startedAt: '2026-03-18T13:07:00.000Z',
+        completedAt: '2026-03-18T13:08:00.000Z'
+      },
+      {
+        id: 'pitch_only_assignment_4',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_b',
+        status: 'judge_completed',
+        pitchScore: 6,
+        assignedAt: '2026-03-18T13:09:00.000Z',
+        startedAt: '2026-03-18T13:10:00.000Z',
+        completedAt: '2026-03-18T13:11:00.000Z'
+      }
+    ])
+
+    const leaderboardResponse = await harness.request('/api/hackathons/hackathon_1/leaderboard')
+
+    expect(leaderboardResponse.status).toBe(200)
+    expect(await leaderboardResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          submissionId: 'submission_1',
+          rank: 1,
+          scoreTotal: 8
+        }),
+        expect.objectContaining({
+          submissionId: 'submission_2',
+          rank: 2,
+          scoreTotal: 6
+        })
+      ]
+    })
+  })
+
+  test('final deliberation reads weighted breakdowns and persists ranking overrides', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/hackathons/:hackathonId/final-deliberation',
+          handler: listFinalDeliberationHandler
+        },
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/final-deliberation/actions/reorder',
+          handler: reorderFinalDeliberationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'final_deliberation',
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
+    })
+    await seedPitchAssignments(harness, [
+      {
+        id: 'final_pitch_assignment_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 5,
+        assignedAt: '2026-03-18T14:00:00.000Z',
+        startedAt: '2026-03-18T14:01:00.000Z',
+        completedAt: '2026-03-18T14:02:00.000Z'
+      },
+      {
+        id: 'final_pitch_assignment_2',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_b',
+        status: 'judge_completed',
+        pitchScore: 5,
+        assignedAt: '2026-03-18T14:03:00.000Z',
+        startedAt: '2026-03-18T14:04:00.000Z',
+        completedAt: '2026-03-18T14:05:00.000Z'
+      },
+      {
+        id: 'final_pitch_assignment_3',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 10,
+        assignedAt: '2026-03-18T14:06:00.000Z',
+        startedAt: '2026-03-18T14:07:00.000Z',
+        completedAt: '2026-03-18T14:08:00.000Z'
+      },
+      {
+        id: 'final_pitch_assignment_4',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_b',
+        status: 'judge_completed',
+        pitchScore: 8,
+        assignedAt: '2026-03-18T14:09:00.000Z',
+        startedAt: '2026-03-18T14:10:00.000Z',
+        completedAt: '2026-03-18T14:11:00.000Z'
+      }
+    ])
+
+    const viewResponse = await harness.request('/api/hackathons/hackathon_1/final-deliberation')
+
+    expect(viewResponse.status).toBe(200)
+    expect(await viewResponse.json()).toMatchObject({
+      data: {
+        finalRankingSubmissionIds: [],
+        entries: [
+          expect.objectContaining({
+            submissionId: 'submission_2',
+            blindScore: 6.5,
+            pitchScore: 9,
+            scoreTotal: 7.25,
+            scoreRank: 1,
+            finalRank: 1
+          }),
+          expect.objectContaining({
+            submissionId: 'submission_1',
+            blindScore: 7.5,
+            pitchScore: 5,
+            scoreTotal: 6.75,
+            scoreRank: 2,
+            finalRank: 2
+          })
+        ]
+      }
+    })
+
+    const reorderResponse = await harness.request('/api/hackathons/hackathon_1/final-deliberation/actions/reorder', {
+      method: 'POST',
+      body: JSON.stringify({
+        orderedSubmissionIds: ['submission_1', 'submission_2']
+      })
+    })
+
+    expect(reorderResponse.status).toBe(200)
+    expect(await reorderResponse.json()).toMatchObject({
+      data: {
+        finalRankingSubmissionIds: ['submission_1', 'submission_2'],
+        entries: [
+          expect.objectContaining({
+            submissionId: 'submission_1',
+            scoreRank: 2,
+            finalRank: 1
+          }),
+          expect.objectContaining({
+            submissionId: 'submission_2',
+            scoreRank: 1,
+            finalRank: 2
+          })
+        ]
+      }
+    })
+
+    const persistedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_1')
+    })
+    expect(persistedHackathon?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_1', 'submission_2']))
+
+    const auditEntries = await harness.database.select().from(auditLogs)
+    expect(auditEntries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        action: 'hackathon.final_ranking_reordered',
+        metadata: expect.objectContaining({
+          orderedSubmissionIds: ['submission_1', 'submission_2'],
+          rankedSubmissionCount: 2
+        })
+      })
+    ]))
+  })
+
+  test('disqualifying a ranked submission prunes the stored final ranking and keeps final deliberation readable', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/teams/:teamId/submission/actions/disqualify',
+          handler: disqualifySubmissionHandler
+        },
+        {
+          method: 'get',
+          path: '/api/hackathons/:hackathonId/final-deliberation',
+          handler: listFinalDeliberationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'final_deliberation',
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
+      finalRankingSubmissionIdsJson: JSON.stringify(['submission_2', 'submission_1'])
+    })
+    await seedPitchAssignments(harness, [
+      {
+        id: 'final_rank_assignment_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 5,
+        assignedAt: '2026-03-18T16:00:00.000Z',
+        startedAt: '2026-03-18T16:01:00.000Z',
+        completedAt: '2026-03-18T16:02:00.000Z'
+      },
+      {
+        id: 'final_rank_assignment_2',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_b',
+        status: 'judge_completed',
+        pitchScore: 5,
+        assignedAt: '2026-03-18T16:03:00.000Z',
+        startedAt: '2026-03-18T16:04:00.000Z',
+        completedAt: '2026-03-18T16:05:00.000Z'
+      },
+      {
+        id: 'final_rank_assignment_3',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 10,
+        assignedAt: '2026-03-18T16:06:00.000Z',
+        startedAt: '2026-03-18T16:07:00.000Z',
+        completedAt: '2026-03-18T16:08:00.000Z'
+      },
+      {
+        id: 'final_rank_assignment_4',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_b',
+        status: 'judge_completed',
+        pitchScore: 8,
+        assignedAt: '2026-03-18T16:09:00.000Z',
+        startedAt: '2026-03-18T16:10:00.000Z',
+        completedAt: '2026-03-18T16:11:00.000Z'
+      }
+    ])
+
+    const disqualifyResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_2/submission/actions/disqualify', {
+      method: 'POST',
+      body: JSON.stringify({
+        reason: 'Rule violation'
+      })
+    })
+
+    expect(disqualifyResponse.status).toBe(200)
+
+    const storedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_1')
+    })
+    expect(storedHackathon?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_1']))
+
+    const viewResponse = await harness.request('/api/hackathons/hackathon_1/final-deliberation')
+
+    expect(viewResponse.status).toBe(200)
+    expect(await viewResponse.json()).toMatchObject({
+      data: {
+        finalRankingSubmissionIds: ['submission_1'],
+        entries: [
+          expect.objectContaining({
+            submissionId: 'submission_1',
+            finalRank: 1
+          }),
+          expect.objectContaining({
+            submissionId: 'submission_2',
+            submissionStatus: 'disqualified',
+            finalRank: null
+          })
+        ]
+      }
     })
   })
 
@@ -499,6 +1240,72 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       method: 'POST'
     })
 
+    expect(announceResponse.status).toBe(409)
+    expect(await announceResponse.json()).toMatchObject({
+      error: {
+        code: 'hackathon_state_invalid',
+        details: expect.objectContaining({
+          currentState: 'shortlist',
+          allowedStates: ['final_deliberation']
+        })
+      }
+    })
+  })
+
+  test('announcing winners from final deliberation uses final ranking data for prize redemptions', async () => {
+    const adminHarness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/announce-winners',
+          handler: announceWinnersHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(adminHarness)
+
+    await seedOutcomeHackathon(adminHarness, { state: 'final_deliberation' })
+    await seedPitchAssignments(adminHarness, [
+      {
+        id: 'pitch_assignment_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 4,
+        assignedAt: '2026-03-18T12:00:00.000Z',
+        startedAt: '2026-03-18T12:01:00.000Z',
+        completedAt: '2026-03-18T12:02:00.000Z'
+      },
+      {
+        id: 'pitch_assignment_2',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 10,
+        assignedAt: '2026-03-18T12:03:00.000Z',
+        startedAt: '2026-03-18T12:04:00.000Z',
+        completedAt: '2026-03-18T12:05:00.000Z'
+      },
+      {
+        id: 'pitch_assignment_3',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_b',
+        status: 'judge_completed',
+        pitchScore: 8,
+        assignedAt: '2026-03-18T12:06:00.000Z',
+        startedAt: '2026-03-18T12:07:00.000Z',
+        completedAt: '2026-03-18T12:08:00.000Z'
+      }
+    ])
+
+    const announceResponse = await adminHarness.request('/api/hackathons/hackathon_1/actions/announce-winners', {
+      method: 'POST'
+    })
+
     expect(announceResponse.status).toBe(200)
     expect(await announceResponse.json()).toMatchObject({
       data: {
@@ -512,7 +1319,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     expect(redemptionRows).toEqual(expect.arrayContaining([
       expect.objectContaining({
         prizeId: 'prize_team_rank_1',
-        teamId: 'team_1',
+        teamId: 'team_2',
         userId: null,
         status: 'pending'
       }),
@@ -529,7 +1336,9 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         status: 'pending'
       })
     ]))
+  })
 
+  test('public winners apply the persisted final ranking override after announcement', async () => {
     const publicHarness = createApiRouteTestHarness({
       routes: [
         {
@@ -540,7 +1349,43 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       ]
     })
     harnesses.push(publicHarness)
-    await seedOutcomeHackathon(publicHarness, { state: 'winners_announced' })
+
+    await seedOutcomeHackathon(publicHarness, {
+      state: 'winners_announced',
+      finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
+    })
+    await seedPitchAssignments(publicHarness, [
+      {
+        id: 'pitch_assignment_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 4,
+        assignedAt: '2026-03-18T12:00:00.000Z',
+        startedAt: '2026-03-18T12:01:00.000Z',
+        completedAt: '2026-03-18T12:02:00.000Z'
+      },
+      {
+        id: 'pitch_assignment_2',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 10,
+        assignedAt: '2026-03-18T12:03:00.000Z',
+        startedAt: '2026-03-18T12:04:00.000Z',
+        completedAt: '2026-03-18T12:05:00.000Z'
+      },
+      {
+        id: 'pitch_assignment_3',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_b',
+        status: 'judge_completed',
+        pitchScore: 8,
+        assignedAt: '2026-03-18T12:06:00.000Z',
+        startedAt: '2026-03-18T12:07:00.000Z',
+        completedAt: '2026-03-18T12:08:00.000Z'
+      }
+    ])
 
     const winnersResponse = await publicHarness.request('/api/hackathons/hackathon_1/winners')
 
@@ -550,6 +1395,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         expect.objectContaining({
           teamId: 'team_1',
           finalRank: 1,
+          rank: 1,
           prizes: expect.arrayContaining([
             expect.objectContaining({ id: 'prize_team_rank_1' }),
             expect.objectContaining({ id: 'prize_member_top_2' })
@@ -558,6 +1404,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         expect.objectContaining({
           teamId: 'team_2',
           finalRank: 2,
+          rank: 2,
           prizes: expect.arrayContaining([
             expect.objectContaining({ id: 'prize_member_top_2' })
           ])

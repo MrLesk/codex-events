@@ -20,8 +20,10 @@ export const hackathonStates = [
   'registration_open',
   'submission_open',
   'judging_preparation',
-  'judge_review',
+  'blind_review',
   'shortlist',
+  'pitch_review',
+  'final_deliberation',
   'winners_announced',
   'completed'
 ] as const
@@ -118,6 +120,12 @@ export const hackathons = sqliteTable(
     submissionOpensAt: text('submission_opens_at').notNull(),
     submissionClosesAt: text('submission_closes_at').notNull(),
     state: text('state', { enum: hackathonStates }).notNull().default('draft'),
+    blindReviewCount: integer('blind_review_count').notNull().default(1),
+    pitchReviewEnabled: integer('pitch_review_enabled', { mode: 'boolean' }).notNull().default(false),
+    blindScoreWeightPercent: integer('blind_score_weight_percent').notNull().default(70),
+    pitchScoreWeightPercent: integer('pitch_score_weight_percent').notNull().default(30),
+    pitchFinalistSubmissionIdsJson: text('pitch_finalist_submission_ids_json').notNull().default('[]'),
+    finalRankingSubmissionIdsJson: text('final_ranking_submission_ids_json').notNull().default('[]'),
     maxTeamMembers: integer('max_team_members').notNull(),
     participantsLimit: integer('participants_limit'),
     inPersonEvent: integer('in_person_event', { mode: 'boolean' }).notNull().default(false),
@@ -139,6 +147,28 @@ export const hackathons = sqliteTable(
   },
   table => [
     uniqueIndex('hackathons_slug_idx').on(table.slug),
+    check(
+      'hackathons_blind_review_count_check',
+      sql`${table.blindReviewCount} >= 0 and ${table.blindReviewCount} <= 2`
+    ),
+    check(
+      'hackathons_blind_score_weight_percent_check',
+      sql`${table.blindScoreWeightPercent} >= 0 and ${table.blindScoreWeightPercent} <= 100`
+    ),
+    check(
+      'hackathons_pitch_score_weight_percent_check',
+      sql`${table.pitchScoreWeightPercent} >= 0 and ${table.pitchScoreWeightPercent} <= 100`
+    ),
+    check(
+      'hackathons_judging_stage_enabled_check',
+      sql`${table.blindReviewCount} > 0 or ${table.pitchReviewEnabled} = 1`
+    ),
+    check(
+      'hackathons_combined_score_weight_percent_check',
+      sql`${table.blindReviewCount} = 0
+        or ${table.pitchReviewEnabled} = 0
+        or ${table.blindScoreWeightPercent} + ${table.pitchScoreWeightPercent} = 100`
+    ),
     check('hackathons_max_team_members_check', sql`${table.maxTeamMembers} >= 1`),
     check(
       'hackathons_participants_limit_check',
@@ -432,7 +462,11 @@ export const judgeAssignments = sqliteTable(
     judgeUserId: text('judge_user_id')
       .notNull()
       .references(() => users.id),
+    reviewStage: text('review_stage', { enum: ['blind_review', 'pitch_review'] }).notNull().default('blind_review'),
+    blindReviewSlot: integer('blind_review_slot').default(1),
     status: text('status', { enum: judgeAssignmentStatuses }).notNull().default('assigned'),
+    pitchScore: integer('pitch_score'),
+    pitchComment: text('pitch_comment'),
     assignedAt: text('assigned_at').notNull().default(currentTimestamp),
     startedAt: text('started_at'),
     completedAt: text('completed_at'),
@@ -446,11 +480,32 @@ export const judgeAssignments = sqliteTable(
     createdAt: createdAtColumn()
   },
   table => [
-    uniqueIndex('judge_assignments_active_submission_idx')
-      .on(table.submissionId)
-      .where(sql`${table.status} in ('assigned', 'judge_started')`),
+    uniqueIndex('judge_assignments_active_blind_submission_slot_idx')
+      .on(table.submissionId, table.blindReviewSlot)
+      .where(sql`${table.reviewStage} = 'blind_review' and ${table.status} in ('assigned', 'judge_started')`),
+    uniqueIndex('judge_assignments_pitch_submission_judge_idx')
+      .on(table.submissionId, table.judgeUserId)
+      .where(sql`${table.reviewStage} = 'pitch_review'`),
     index('judge_assignments_judge_idx').on(table.judgeUserId),
-    index('judge_assignments_hackathon_status_judge_idx').on(table.hackathonId, table.status, table.judgeUserId)
+    index('judge_assignments_hackathon_stage_status_judge_idx').on(
+      table.hackathonId,
+      table.reviewStage,
+      table.status,
+      table.judgeUserId
+    ),
+    check(
+      'judge_assignments_stage_shape_check',
+      sql`(${table.reviewStage} = 'blind_review'
+          and ${table.blindReviewSlot} in (1, 2)
+          and ${table.pitchScore} is null
+          and ${table.pitchComment} is null)
+        or (${table.reviewStage} = 'pitch_review'
+          and ${table.blindReviewSlot} is null)`
+    ),
+    check(
+      'judge_assignments_pitch_score_range_check',
+      sql`${table.pitchScore} is null or (${table.pitchScore} >= 0 and ${table.pitchScore} <= 10)`
+    )
   ]
 )
 

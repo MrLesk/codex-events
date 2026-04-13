@@ -2,6 +2,7 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
+import type { PublicHackathonState } from '~/composables/useHackathonPresentation'
 import type {
   SubmissionTrackOption,
   TeamSubmissionActionAvailability,
@@ -28,7 +29,7 @@ const form = defineModel<{
 
 const props = defineProps<{
   teamId: string
-  hackathonState: 'draft' | 'registration_open' | 'submission_open' | 'judging_preparation' | 'judge_review' | 'shortlist' | 'winners_announced' | 'completed'
+  hackathonState: PublicHackathonState
   submission: TeamSubmissionRecord | null
   status: 'idle' | 'pending' | 'success' | 'error'
   errorMessage?: string

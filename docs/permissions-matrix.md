@@ -26,8 +26,9 @@ This document defines the canonical permissions for the Codex hackathon platform
 - A `judge` role must be in the automatic judge distribution pool and must not be marked as staff.
 - A `staff` role must be marked as staff and must not be in the automatic judge distribution pool.
 - A `hackathon_admin` assignment can independently opt into judging participation and staff designation.
-- A user acting through a `JudgeAssignment` uses the blind judging view even if that user is also an admin.
-- Admin visibility outside the judge review flow is not restricted by the blind judging view.
+- A user acting through a blind `JudgeAssignment` uses the blind judging view even if that user is also an admin.
+- A user acting through a pitch `JudgeAssignment` uses the open pitch judging view even if that user is also an admin.
+- Admin visibility outside a judging assignment flow is not restricted by the assignment view.
 
 ## Global Platform Actions
 
@@ -45,11 +46,13 @@ This document defines the canonical permissions for the Codex hackathon platform
 
 | Action | Approved User | Staff | Judge | Hackathon Admin | Platform Admin | System |
 | --- | --- | --- | --- | --- | --- | --- |
-| Open registration | No | No | No | No | No | Yes |
+| Open registration | No | No | No | Yes | Yes | No |
 | Open submission | No | No | No | Yes | Yes | No |
 | Start judging preparation | No | No | No | Yes | Yes | No |
-| Start judge review | No | No | No | Yes | Yes | No |
+| Start blind review | No | No | No | Yes | Yes | No |
 | Move to shortlist | No | No | No | Yes | Yes | No |
+| Start pitch review | No | No | No | Yes | Yes | No |
+| Move to final deliberation | No | No | No | Yes | Yes | No |
 | Announce winners | No | No | No | Yes | Yes | No |
 | Complete hackathon | No | No | No | Yes | Yes | No |
 
@@ -82,6 +85,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | View own application | Yes | Yes | No | No | No |
 | Withdraw own application | Yes, if the application is still `submitted` and the user has no active team membership in the hackathon | Yes, if the application is `approved` and the user has no active team membership in the hackathon | No | No | No |
 | View hackathon application records | No | No | Yes | Yes | Yes |
+| Withdraw application | No | No | No | Yes, if the application is `submitted` or `approved`; if the participant has an active team, the withdrawal can remove that membership or dissolve the team, but it cannot dissolve a team with an active draft, submitted, or locked submission | Yes, if the application is `submitted` or `approved`; if the participant has an active team, the withdrawal can remove that membership or dissolve the team, but it cannot dissolve a team with an active draft, submitted, or locked submission |
 | Approve application | No | No | No | Yes | Yes |
 | Reject application | No | No | No | Yes | Yes |
 
@@ -128,21 +132,26 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Action | Judge | Hackathon Admin | Platform Admin |
 | --- | --- | --- | --- |
 | View assigned submission in blind judging view | Yes | Yes, when acting through a `JudgeAssignment` | Yes, when acting through a `JudgeAssignment` |
+| View assigned finalist submission in pitch judging view | Yes | Yes, when acting through a `JudgeAssignment` | Yes, when acting through a `JudgeAssignment` |
 | Start assigned review | Yes | Yes, when acting through a `JudgeAssignment` | Yes, when acting through a `JudgeAssignment` |
-| Complete assigned review | Yes | Yes, when acting through a `JudgeAssignment` | Yes, when acting through a `JudgeAssignment` |
+| Complete assigned blind review | Yes | Yes, when acting through a `JudgeAssignment` | Yes, when acting through a `JudgeAssignment` |
+| Complete assigned pitch review | Yes | Yes, when acting through a `JudgeAssignment` | Yes, when acting through a `JudgeAssignment` |
 | Skip assigned review | Yes | Yes, when acting through a `JudgeAssignment` | Yes, when acting through a `JudgeAssignment` |
 | Mark assignment ineligible and provide reason | Yes | Yes, when acting through a `JudgeAssignment` | Yes, when acting through a `JudgeAssignment` |
-| Reassign an unstarted assignment | No | Yes | Yes |
+| Reassign an unstarted blind assignment | No | Yes | Yes |
 | Force an in-progress assignment to `skipped` | No | Yes | Yes |
 | Revert an ineligibility decision | No | Yes | Yes |
 
-## Shortlist And Winners
+## Shortlist, Pitch Review, And Winners
 
 | Action | Judge | Hackathon Admin | Platform Admin |
 | --- | --- | --- | --- |
-| Review final scores in shortlist | Yes | Yes | Yes |
-| Reorder final ranking in shortlist | No | Yes | Yes |
-| Change underlying judge scores in shortlist | No | No | No |
+| Review blind-review scores in shortlist | Yes | Yes | Yes |
+| Select and order pitch finalists in shortlist | No | Yes | Yes |
+| Close pitch review with submitted votes only | No | Yes | Yes |
+| Review final scores in `final_deliberation` | Yes | Yes | Yes |
+| Reorder final ranking in `final_deliberation` | No | Yes | Yes |
+| Change underlying judge scores in `final_deliberation` | No | No | No |
 | Announce winners | No | Yes | Yes |
 
 ## Prize Redemption
@@ -160,7 +169,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Team members can view their own team membership and submission data.
 - Team admins can view team join requests and manage team membership.
-- Judges see only the blind judging view for assigned submissions.
+- Judges see the blind judging view for blind assignments and the open pitch judging view for pitch assignments.
 - Hackathon admins and platform admins can view hackathon-wide operational data.
 - The participant-facing teams directory remains visible to workspace users after team formation closes, but join actions remain state-gated.
 
@@ -168,4 +177,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 
 - Team formation is allowed during `registration_open` and `submission_open`.
 - Submission creation and editing are allowed only during `submission_open`.
-- When a judge assignment is skipped, the system creates a new active assignment for the judge with the lowest assigned load.
+- Blind review can require `0`, `1`, or `2` blind assignments per submission depending on hackathon configuration.
+- Pitch review can be enabled independently from blind review.
+- When a blind assignment is skipped, the system creates a new active assignment for the judge with the lowest blind-review load.
+- When pitch review closes with missing votes, only submitted pitch votes are averaged into the pitch score.

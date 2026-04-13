@@ -106,6 +106,22 @@ describe('shared database migration', () => {
     `).run('member_2', 'team_2', 'user_1', 'member', now, null, now)).rejects.toThrow()
   })
 
+  test('stores the final ranking override column on hackathons with an empty default', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'creator_1', now)
+    await seedHackathon(database, 'hackathon_1', 'draft', now, 'creator_1')
+
+    const hackathonRow = await database.prepare(`
+      select final_ranking_submission_ids_json
+      from hackathons
+      where id = ?
+    `).all<{ final_ranking_submission_ids_json: string }>('hackathon_1')
+
+    expect(hackathonRow.results).toEqual([{
+      final_ranking_submission_ids_json: '[]'
+    }])
+  })
+
   test('prevents duplicate pending join requests for the same user and team', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)

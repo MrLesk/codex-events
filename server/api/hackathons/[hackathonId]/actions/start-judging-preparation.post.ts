@@ -39,7 +39,13 @@ export default defineApiHandler(async (event) => {
   })
 
   const transitionedAt = new Date().toISOString()
-  const assignmentRows = buildInitialJudgeAssignments(hackathonId, submittedSubmissions, judgePool, transitionedAt)
+  const assignmentRows = buildInitialJudgeAssignments(
+    hackathonId,
+    submittedSubmissions,
+    judgePool,
+    hackathon.blindReviewCount,
+    transitionedAt
+  )
   const snapshotRows = await buildPrizeEligibilitySnapshots(
     database,
     hackathonId,

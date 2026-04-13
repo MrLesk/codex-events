@@ -8,7 +8,7 @@ import {
 
 function createHackathon(overrides: Partial<{
   agendaItems: Array<{ startsAt: string }>
-  state: 'draft' | 'registration_open' | 'submission_open' | 'judging_preparation' | 'judge_review' | 'shortlist' | 'winners_announced' | 'completed'
+  state: 'draft' | 'registration_open' | 'submission_open' | 'judging_preparation' | 'blind_review' | 'shortlist' | 'pitch_review' | 'final_deliberation' | 'winners_announced' | 'completed'
   submissionOpensAt: string
 }> = {}) {
   return {
@@ -63,7 +63,7 @@ describe('admin overview hackathon helpers', () => {
         submissionOpensAt: '2026-02-10T10:00:00.000Z'
       }),
       createHackathon({
-        state: 'judge_review',
+        state: 'blind_review',
         submissionOpensAt: '2026-06-01T10:00:00.000Z'
       }),
       createHackathon({

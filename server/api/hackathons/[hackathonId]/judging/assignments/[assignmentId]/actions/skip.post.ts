@@ -5,10 +5,10 @@ import { judgeAssignments } from '../../../../../../../database/schema'
 import { defineApiHandler } from '../../../../../../../utils/api-handler'
 import { apiData } from '../../../../../../../utils/api-response'
 import {
+  assertAssignmentReviewStageIsActive,
   assertJudgeAssignmentStatus,
-  assertJudgeReviewLifecycleState,
   buildReplacementAssignment,
-  getBlindAssignmentDetail,
+  getJudgeAssignmentDetail,
   getJudgeAssignmentOrThrow,
   judgingAssignmentParamsSchema,
   pickReplacementJudgeUserId,
@@ -22,7 +22,7 @@ export default defineApiHandler(async (event) => {
   const body = await parseValidatedBody(event, skipJudgeAssignmentBodySchema)
   const { actor, database, hackathon, assignment } = await requireJudgeAssignmentContext(event, hackathonId, assignmentId)
 
-  assertJudgeReviewLifecycleState(hackathon, ['judge_review'])
+  assertAssignmentReviewStageIsActive(hackathon, assignment)
   assertJudgeAssignmentStatus(
     assignment,
     ['assigned', 'judge_started'],
@@ -30,13 +30,42 @@ export default defineApiHandler(async (event) => {
   )
 
   const skippedAt = new Date().toISOString()
-  const replacementJudgeUserId = await pickReplacementJudgeUserId(database, hackathonId, {
-    excludeJudgeUserIds: [assignment.judgeUserId]
-  })
-  const replacementAssignment = buildReplacementAssignment(assignment, replacementJudgeUserId, skippedAt)
+  let replacementAssignmentId: string | null = null
+  let replacementJudgeUserId: string | null = null
+  let responseAssignment: typeof assignment = {
+    ...assignment,
+    status: 'skipped',
+    skippedAt,
+    skippedByUserId: actor.platformUser.id,
+    skipReason: body.reason ?? null
+  }
 
-  await database.batch([
-    database
+  if (assignment.reviewStage === 'blind_review') {
+    replacementJudgeUserId = await pickReplacementJudgeUserId(database, hackathonId, {
+      excludeJudgeUserIds: [assignment.judgeUserId],
+      reviewStage: 'blind_review',
+      submissionId: assignment.submissionId,
+      excludeAssignmentId: assignment.id
+    })
+    const replacementAssignment = buildReplacementAssignment(assignment, replacementJudgeUserId, skippedAt)
+    replacementAssignmentId = replacementAssignment.id
+
+    await database.batch([
+      database
+        .update(judgeAssignments)
+        .set({
+          status: 'skipped',
+          skippedAt,
+          skippedByUserId: actor.platformUser.id,
+          skipReason: body.reason ?? null
+        })
+        .where(eq(judgeAssignments.id, assignment.id)),
+      database.insert(judgeAssignments).values(replacementAssignment)
+    ])
+
+    responseAssignment = await getJudgeAssignmentOrThrow(database, replacementAssignment.id)
+  } else {
+    await database
       .update(judgeAssignments)
       .set({
         status: 'skipped',
@@ -44,9 +73,8 @@ export default defineApiHandler(async (event) => {
         skippedByUserId: actor.platformUser.id,
         skipReason: body.reason ?? null
       })
-      .where(eq(judgeAssignments.id, assignment.id)),
-    database.insert(judgeAssignments).values(replacementAssignment)
-  ])
+      .where(eq(judgeAssignments.id, assignment.id))
+  }
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,
@@ -58,12 +86,11 @@ export default defineApiHandler(async (event) => {
       submissionId: assignment.submissionId,
       previousStatus: assignment.status,
       nextStatus: 'skipped',
-      replacementAssignmentId: replacementAssignment.id,
+      reviewStage: assignment.reviewStage,
+      replacementAssignmentId,
       replacementJudgeUserId
     }
   })
 
-  const persistedReplacementAssignment = await getJudgeAssignmentOrThrow(database, replacementAssignment.id)
-
-  return apiData(await getBlindAssignmentDetail(database, persistedReplacementAssignment))
+  return apiData(await getJudgeAssignmentDetail(database, responseAssignment))
 })

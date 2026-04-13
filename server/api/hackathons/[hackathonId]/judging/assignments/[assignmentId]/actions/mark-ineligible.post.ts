@@ -19,7 +19,7 @@ export default defineApiHandler(async (event) => {
   const body = await parseValidatedBody(event, markAssignmentIneligibleBodySchema)
   const { actor, database, hackathon, assignment } = await requireJudgeAssignmentContext(event, hackathonId, assignmentId)
 
-  assertJudgeReviewLifecycleState(hackathon, ['judge_review'])
+  assertJudgeReviewLifecycleState(hackathon, ['blind_review'])
   assertJudgeAssignmentStatus(
     assignment,
     ['judge_started', 'judge_completed'],

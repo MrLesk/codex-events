@@ -761,6 +761,70 @@ const submitConfigForm = handleSubmit(() => {
             <section class="border-t border-black/8 pt-6 dark:border-white/[0.08]">
               <div class="space-y-1">
                 <h3 class="text-lg font-semibold text-highlighted">
+                  Judging
+                </h3>
+                <p class="text-sm text-muted">
+                  Set blind reviews per submission, pitch review, and score weighting.
+                </p>
+              </div>
+
+              <div class="mt-5 grid grid-cols-1 gap-5">
+                <div class="grid gap-5 md:grid-cols-2 md:items-start">
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-toned">Blind reviews per submission</span>
+                    <AppInput
+                      v-model.number="form.blindReviewCount"
+                      type="number"
+                      min="0"
+                      max="2"
+                      required
+                    />
+                    <span class="text-xs text-muted">Use 0 to disable blind review.</span>
+                  </label>
+
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-toned">Blind score weight (%)</span>
+                    <AppInput
+                      v-model.number="form.blindScoreWeightPercent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      required
+                    />
+                  </label>
+
+                  <label class="grid gap-2">
+                    <span class="text-sm font-medium text-toned">Pitch score weight (%)</span>
+                    <AppInput
+                      v-model.number="form.pitchScoreWeightPercent"
+                      type="number"
+                      min="0"
+                      max="100"
+                      required
+                    />
+                  </label>
+                </div>
+
+                <div class="grid grid-cols-1 gap-3">
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.pitchReviewEnabled"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Enable pitch review
+                  </label>
+                </div>
+
+                <p class="text-xs text-muted">
+                  Enable blind review, pitch review, or both. If both are enabled, the score weights must add up to 100.
+                </p>
+              </div>
+            </section>
+
+            <section class="border-t border-black/8 pt-6 dark:border-white/[0.08]">
+              <div class="space-y-1">
+                <h3 class="text-lg font-semibold text-highlighted">
                   Participation Rules
                 </h3>
                 <p class="text-sm text-muted">
@@ -1213,6 +1277,75 @@ const submitConfigForm = handleSubmit(() => {
               required
             />
           </label>
+        </div>
+      </AppCard>
+
+      <AppCard
+        id="admin-config-judging"
+        class="scroll-mt-28 rounded-xl hackathon-workspace-detail-panel"
+      >
+        <template #header>
+          <div class="space-y-1">
+            <h2 class="text-lg font-semibold text-highlighted">
+              Judging
+            </h2>
+            <p class="text-sm text-muted">
+              Set blind reviews per submission, pitch review, and score weighting.
+            </p>
+          </div>
+        </template>
+
+        <div class="grid grid-cols-1 gap-5">
+          <div class="grid gap-5 md:grid-cols-2 md:items-start">
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Blind reviews per submission</span>
+              <AppInput
+                v-model.number="form.blindReviewCount"
+                type="number"
+                min="0"
+                max="2"
+                required
+              />
+              <span class="text-xs text-muted">Use 0 to disable blind review.</span>
+            </label>
+
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Blind score weight (%)</span>
+              <AppInput
+                v-model.number="form.blindScoreWeightPercent"
+                type="number"
+                min="0"
+                max="100"
+                required
+              />
+            </label>
+
+            <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Pitch score weight (%)</span>
+              <AppInput
+                v-model.number="form.pitchScoreWeightPercent"
+                type="number"
+                min="0"
+                max="100"
+                required
+              />
+            </label>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3">
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="form.pitchReviewEnabled"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              Enable pitch review
+            </label>
+          </div>
+
+          <p class="text-xs text-muted">
+            Enable blind review, pitch review, or both. If both are enabled, the score weights must add up to 100.
+          </p>
         </div>
       </AppCard>
 

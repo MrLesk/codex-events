@@ -42,7 +42,7 @@ describe('team submission helpers', () => {
     })).toBe(true)
 
     expect(hasHackathonEnteredSubmissionPhase({
-      state: 'judge_review'
+      state: 'blind_review'
     })).toBe(true)
   })
 
@@ -56,7 +56,7 @@ describe('team submission helpers', () => {
     }, true)).toBe(true)
 
     expect(shouldShowParticipantSubmissionWorkspace({
-      state: 'judge_review'
+      state: 'pitch_review'
     }, false)).toBe(false)
   })
 
@@ -122,7 +122,7 @@ describe('team submission helpers', () => {
     })
 
     expect(getWithdrawSubmissionAvailability({
-      state: 'judge_review'
+      state: 'blind_review'
     }, createSubmission('locked'), true)).toEqual({
       isAllowed: false,
       reason: 'Submissions can be withdrawn only before judging preparation begins.'

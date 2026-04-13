@@ -4,15 +4,27 @@ import { expect } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import { createAuthenticatedApiClient } from '../support/api-client'
-import { platformFixtureIds } from '../support/platform-fixtures.ts'
+import {
+  platformFixtureIds,
+  resetOutcomesFixtureScenarioState
+} from '../support/platform-fixtures.ts'
 import { stablePersonaKeys, type StablePersonaKey } from '../support/personas'
 
 const { When, Then } = createBdd()
+
+type ActivePitchAssignment = {
+  id: string
+  submissionId: string
+  judgeUserId: string
+  reviewStage: 'blind_review' | 'pitch_review'
+  status: 'assigned' | 'judge_started' | 'judge_completed' | 'skipped'
+}
 
 type ScenarioState = {
   response?: APIResponse
   json?: unknown
   redemptionId?: string
+  pitchAssignments?: ActivePitchAssignment[]
 }
 
 const scenarioState = new WeakMap<Page, ScenarioState>()
@@ -36,12 +48,20 @@ function parsePersonaKey(personaKey: string): StablePersonaKey {
   throw new Error(`Unknown stable persona key: ${personaKey}`)
 }
 
-When('the saved {string} session reorders the outcomes fixture shortlist to prefer submission two', async ({ page }, personaKey: string) => {
+function parseAuditActions(actions: string) {
+  return actions
+    .split(',')
+    .map(action => action.trim())
+    .filter(Boolean)
+}
+
+When('the saved {string} session selects outcomes finalists to prefer submission two', async ({ page }, personaKey: string) => {
+  await resetOutcomesFixtureScenarioState()
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
     const response = await apiClient.post(
-      `/api/hackathons/${platformFixtureIds.outcomesHackathonId}/shortlist/actions/reorder`,
+      `/api/hackathons/${platformFixtureIds.outcomesHackathonId}/shortlist/actions/select-finalists`,
       {
         data: {
           orderedSubmissionIds: [
@@ -59,27 +79,41 @@ When('the saved {string} session reorders the outcomes fixture shortlist to pref
   }
 })
 
-Then('the outcomes fixture shortlist should rank submission two first and submission one second', async ({ page }) => {
+Then('the outcomes shortlist should save submission two as finalist one and submission one as finalist two', async ({ page }) => {
   expect(getScenarioState(page).response?.ok()).toBe(true)
   expect(getScenarioState(page).json).toMatchObject({
     data: [
       {
-        submissionId: platformFixtureIds.outcomesSubmissionTwoId,
-        finalRank: 1
+        submissionId: platformFixtureIds.outcomesSubmissionOneId,
+        rank: 1,
+        isPitchFinalist: true,
+        pitchFinalistRank: 2
       },
       {
-        submissionId: platformFixtureIds.outcomesSubmissionOneId,
-        finalRank: 2
+        submissionId: platformFixtureIds.outcomesSubmissionTwoId,
+        rank: 2,
+        isPitchFinalist: true,
+        pitchFinalistRank: 1
       }
     ]
   })
 })
 
-When('the saved {string} session announces winners for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+Then('the outcomes shortlist should remain blind to team identity', async ({ page }) => {
+  const payload = getScenarioState(page).json as {
+    data?: Array<Record<string, unknown>>
+  }
+
+  expect(getScenarioState(page).response?.ok()).toBe(true)
+  expect(payload.data?.[0]).not.toHaveProperty('teamId')
+  expect(payload.data?.[0]).not.toHaveProperty('teamName')
+})
+
+When('the saved {string} session starts pitch review for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/actions/announce-winners`)
+    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/actions/start-pitch-review`)
     const state = getScenarioState(page)
     state.response = response
     state.json = await response.json()
@@ -98,6 +132,211 @@ Then('the outcomes fixture hackathon state should be {string}', async ({ page },
   })
 })
 
+When('the saved {string} session loads the active pitch assignments for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.get(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/judging/assignments`)
+    const json = await response.json() as {
+      data?: ActivePitchAssignment[]
+    }
+    const state = getScenarioState(page)
+    state.response = response
+    state.json = json
+    state.pitchAssignments = (json.data ?? []).filter(assignment => assignment.reviewStage === 'pitch_review')
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the outcomes fixture should expose two active pitch assignments for the saved judge session', async ({ page }) => {
+  const state = getScenarioState(page)
+
+  expect(state.response?.ok()).toBe(true)
+  expect(state.pitchAssignments).toHaveLength(2)
+  expect(state.pitchAssignments?.every(assignment =>
+    assignment.reviewStage === 'pitch_review'
+    && assignment.status === 'assigned'
+    && assignment.judgeUserId === 'user_judge'
+  )).toBe(true)
+})
+
+When('the saved {string} session completes the remembered outcomes pitch assignments with fixture scores', async ({ page }, personaKey: string) => {
+  const state = getScenarioState(page)
+  const assignments = state.pitchAssignments ?? []
+
+  if (assignments.length !== 2) {
+    throw new Error(`Expected two remembered pitch assignments, received ${assignments.length}.`)
+  }
+
+  const pitchScoresBySubmissionId: Record<string, { score: number, comment: string }> = {
+    [platformFixtureIds.outcomesSubmissionOneId]: {
+      score: 4,
+      comment: 'Pitch needed a clearer close.'
+    },
+    [platformFixtureIds.outcomesSubmissionTwoId]: {
+      score: 9,
+      comment: 'Pitch landed with a clear live demo.'
+    }
+  }
+
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    for (const assignment of assignments) {
+      const pitchReview = pitchScoresBySubmissionId[assignment.submissionId]
+
+      if (!pitchReview) {
+        throw new Error(`Missing fixture pitch score for submission ${assignment.submissionId}.`)
+      }
+
+      await apiClient.post(
+        `/api/hackathons/${platformFixtureIds.outcomesHackathonId}/judging/assignments/${assignment.id}/actions/start`
+      )
+
+      const response = await apiClient.post(
+        `/api/hackathons/${platformFixtureIds.outcomesHackathonId}/judging/assignments/${assignment.id}/actions/complete`,
+        {
+          data: {
+            pitchScore: pitchReview.score,
+            pitchComment: pitchReview.comment
+          }
+        }
+      )
+
+      state.response = response
+      state.json = await response.json()
+    }
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the outcomes fixture should expose two remaining active pitch assignments', async ({ page }) => {
+  const state = getScenarioState(page)
+
+  expect(state.response?.ok()).toBe(true)
+  expect(state.pitchAssignments).toHaveLength(2)
+  expect(state.pitchAssignments?.every(assignment =>
+    assignment.reviewStage === 'pitch_review'
+    && assignment.status === 'assigned'
+    && assignment.judgeUserId === 'user_backup_judge'
+  )).toBe(true)
+})
+
+When('the saved {string} session starts final deliberation for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/actions/start-final-deliberation`)
+    const state = getScenarioState(page)
+    state.response = response
+    state.json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+When('the saved {string} session lists final deliberation for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.get(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/final-deliberation`)
+    const state = getScenarioState(page)
+    state.response = response
+    state.json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the outcomes final deliberation should rank submission two first and submission one second by score', async ({ page }) => {
+  expect(getScenarioState(page).response?.ok()).toBe(true)
+  expect(getScenarioState(page).json).toMatchObject({
+    data: {
+      finalRankingSubmissionIds: [],
+      entries: [
+        {
+          submissionId: platformFixtureIds.outcomesSubmissionTwoId,
+          blindScore: 6.5,
+          pitchScore: 9,
+          scoreTotal: 7.25,
+          scoreRank: 1,
+          finalRank: 1
+        },
+        {
+          submissionId: platformFixtureIds.outcomesSubmissionOneId,
+          blindScore: 8.5,
+          pitchScore: 4,
+          scoreTotal: 7.15,
+          scoreRank: 2,
+          finalRank: 2
+        }
+      ]
+    }
+  })
+})
+
+When('the saved {string} session reorders the outcomes final ranking to prefer submission one', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.post(
+      `/api/hackathons/${platformFixtureIds.outcomesHackathonId}/final-deliberation/actions/reorder`,
+      {
+        data: {
+          orderedSubmissionIds: [
+            platformFixtureIds.outcomesSubmissionOneId,
+            platformFixtureIds.outcomesSubmissionTwoId
+          ]
+        }
+      }
+    )
+    const state = getScenarioState(page)
+    state.response = response
+    state.json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
+Then('the outcomes final deliberation should rank submission one first and submission two second by final order', async ({ page }) => {
+  expect(getScenarioState(page).response?.ok()).toBe(true)
+  expect(getScenarioState(page).json).toMatchObject({
+    data: {
+      finalRankingSubmissionIds: [
+        platformFixtureIds.outcomesSubmissionOneId,
+        platformFixtureIds.outcomesSubmissionTwoId
+      ],
+      entries: [
+        {
+          submissionId: platformFixtureIds.outcomesSubmissionOneId,
+          scoreRank: 2,
+          finalRank: 1
+        },
+        {
+          submissionId: platformFixtureIds.outcomesSubmissionTwoId,
+          scoreRank: 1,
+          finalRank: 2
+        }
+      ]
+    }
+  })
+})
+
+When('the saved {string} session announces winners for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/actions/announce-winners`)
+    const state = getScenarioState(page)
+    state.response = response
+    state.json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
 When('the saved {string} session lists winners for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
@@ -111,16 +350,16 @@ When('the saved {string} session lists winners for the outcomes fixture hackatho
   }
 })
 
-Then('the outcomes fixture winners should rank team two first and team one second', async ({ page }) => {
+Then('the outcomes fixture winners should rank team one first and team two second', async ({ page }) => {
   expect(getScenarioState(page).response?.ok()).toBe(true)
   expect(getScenarioState(page).json).toMatchObject({
     data: [
       {
-        teamId: 'team_outcomes_fixture_two',
+        teamId: 'team_outcomes_fixture_one',
         finalRank: 1
       },
       {
-        teamId: 'team_outcomes_fixture_one',
+        teamId: 'team_outcomes_fixture_two',
         finalRank: 2
       }
     ]
@@ -149,7 +388,7 @@ When('the saved {string} session lists pending prize redemptions for the outcome
     state.json = json
     state.redemptionId = json.data?.find(redemption =>
       redemption.hackathon?.id === platformFixtureIds.outcomesHackathonId
-      && redemption.teamId === 'team_outcomes_fixture_two'
+      && redemption.teamId === 'team_outcomes_fixture_one'
       && redemption.prize?.id === platformFixtureIds.outcomesTeamRedemptionPrizeId
     )?.id
   } finally {
@@ -247,7 +486,7 @@ When('the saved {string} session lists audit logs for the outcomes fixture hacka
   }
 })
 
-Then('the outcomes fixture hackathon audit should include actions {string}, {string}, and {string}', async ({ page }, firstAction: string, secondAction: string, thirdAction: string) => {
+Then('the outcomes fixture hackathon audit should include actions {string}', async ({ page }, actions: string) => {
   const payload = getScenarioState(page).json as {
     data?: Array<{
       action?: string
@@ -255,11 +494,9 @@ Then('the outcomes fixture hackathon audit should include actions {string}, {str
   }
 
   expect(getScenarioState(page).response?.ok()).toBe(true)
-  expect(payload.data).toEqual(expect.arrayContaining([
-    expect.objectContaining({ action: firstAction }),
-    expect.objectContaining({ action: secondAction }),
-    expect.objectContaining({ action: thirdAction })
-  ]))
+  expect(payload.data).toEqual(expect.arrayContaining(
+    parseAuditActions(actions).map(action => expect.objectContaining({ action }))
+  ))
 })
 
 When('the saved {string} session lists platform audit logs', async ({ page }, personaKey: string) => {
@@ -275,7 +512,7 @@ When('the saved {string} session lists platform audit logs', async ({ page }, pe
   }
 })
 
-Then('the platform audit should include actions {string}, {string}, and {string}', async ({ page }, firstAction: string, secondAction: string, thirdAction: string) => {
+Then('the platform audit should include actions {string}', async ({ page }, actions: string) => {
   const payload = getScenarioState(page).json as {
     data?: Array<{
       action?: string
@@ -283,9 +520,7 @@ Then('the platform audit should include actions {string}, {string}, and {string}
   }
 
   expect(getScenarioState(page).response?.ok()).toBe(true)
-  expect(payload.data).toEqual(expect.arrayContaining([
-    expect.objectContaining({ action: firstAction }),
-    expect.objectContaining({ action: secondAction }),
-    expect.objectContaining({ action: thirdAction })
-  ]))
+  expect(payload.data).toEqual(expect.arrayContaining(
+    parseAuditActions(actions).map(action => expect.objectContaining({ action }))
+  ))
 })

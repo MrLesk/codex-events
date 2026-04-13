@@ -233,9 +233,16 @@ export function assertSubmissionDisqualifiable(
   hackathon: HackathonRecord,
   submission: SubmissionRecord
 ) {
-  assertAllowedState(hackathon.state, ['judge_review', 'shortlist', 'winners_announced', 'completed'], {
+  assertAllowedState(hackathon.state, [
+    'blind_review',
+    'shortlist',
+    'pitch_review',
+    'final_deliberation',
+    'winners_announced',
+    'completed'
+  ], {
     code: 'hackathon_state_invalid',
-    message: 'Submissions can only be disqualified during or after judge review.',
+    message: 'Submissions can only be disqualified during or after blind review.',
     details: {
       hackathonId: hackathon.id
     }

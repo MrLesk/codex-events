@@ -186,6 +186,54 @@ describe('hackathon config form schema', () => {
 
     expect(result.success).toBe(true)
   })
+
+  test('requires at least one judging stage', () => {
+    const result = hackathonConfigFormSchema.safeParse({
+      ...createValidHackathonFormState(),
+      blindReviewCount: 0,
+      pitchReviewEnabled: false
+    })
+
+    expect(result.success).toBe(false)
+
+    if (result.success) {
+      return
+    }
+
+    expect(result.error.flatten().fieldErrors.blindReviewCount).toEqual(['Enable at least one judging stage.'])
+    expect(result.error.flatten().fieldErrors.pitchReviewEnabled).toEqual(['Enable at least one judging stage.'])
+  })
+
+  test('requires score weights to add up to 100 when both judging stages are enabled', () => {
+    const result = hackathonConfigFormSchema.safeParse({
+      ...createValidHackathonFormState(),
+      blindReviewCount: 2,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 60,
+      pitchScoreWeightPercent: 30
+    })
+
+    expect(result.success).toBe(false)
+
+    if (result.success) {
+      return
+    }
+
+    expect(result.error.flatten().fieldErrors.blindScoreWeightPercent).toEqual(['Blind and pitch score weights must add up to 100.'])
+    expect(result.error.flatten().fieldErrors.pitchScoreWeightPercent).toEqual(['Blind and pitch score weights must add up to 100.'])
+  })
+
+  test('accepts pitch review without blind review', () => {
+    const result = hackathonConfigFormSchema.safeParse({
+      ...createValidHackathonFormState(),
+      blindReviewCount: 0,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 0,
+      pitchScoreWeightPercent: 100
+    })
+
+    expect(result.success).toBe(true)
+  })
 })
 
 describe('team submission form schema', () => {

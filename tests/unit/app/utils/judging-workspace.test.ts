@@ -5,23 +5,33 @@ import type {
   HackathonRecord,
   SessionActor
 } from '../../../../app/utils/admin-workspace'
-import type { JudgeAssignmentDetail } from '../../../../app/utils/judging-workspace'
+import type {
+  JudgeAssignmentApiDetail,
+  BlindJudgeAssignmentDetail,
+  PitchJudgeAssignmentDetail
+} from '../../../../app/utils/judging-workspace'
 
 import {
   buildCompletionCriterionScoresPayload,
   buildJudgeWorkspaceCacheKey,
+  buildPitchReviewCompletionPayload,
   canCompleteJudgeAssignment,
   canMarkJudgeAssignmentIneligible,
   canSkipJudgeAssignment,
   canStartJudgeAssignment,
   createCriterionScoreDrafts,
-  filterExplicitJudgeHackathons,
+  createPitchScoreDraft,
   filterAssignmentsForActor,
+  filterExplicitJudgeHackathons,
   filterReviewableHackathons,
   formatJudgeTimestamp,
+  getJudgeAssignmentInboxCardCopy,
+  getJudgeHackathonDashboardCopy,
   getJudgeWorkspaceSubjectKey,
   hasIncompleteCriterionScores,
+  hasIncompletePitchScore,
   listAllVisibleHackathons,
+  normalizeJudgeAssignmentDetail,
   sortJudgeAssignments
 } from '../../../../app/utils/judging-workspace'
 
@@ -41,8 +51,12 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     registrationClosesAt: '2026-03-22T10:00:00.000Z',
     submissionOpensAt: '2026-03-22T10:00:00.000Z',
     submissionClosesAt: '2026-03-24T10:00:00.000Z',
-    state: 'judge_review',
+    state: 'blind_review',
     maxTeamMembers: 5,
+    blindReviewCount: 1,
+    pitchReviewEnabled: false,
+    blindScoreWeightPercent: 70,
+    pitchScoreWeightPercent: 30,
     inPersonEvent: false,
     requireXProfile: false,
     requireLinkedinProfile: false,
@@ -91,12 +105,16 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
   }
 }
 
-function createAssignment(overrides: Partial<JudgeAssignmentDetail> = {}): JudgeAssignmentDetail {
+function createBlindAssignment(
+  overrides: Partial<BlindJudgeAssignmentDetail> = {}
+): BlindJudgeAssignmentDetail {
   return {
-    id: 'assignment-1',
+    id: 'assignment-blind-1',
     hackathonId: 'hackathon-1',
     submissionId: 'submission-1',
     judgeUserId: 'judge-1',
+    reviewStage: 'blind_review',
+    blindReviewSlot: 1,
     status: 'assigned',
     assignedAt: '2026-03-24T10:00:00.000Z',
     startedAt: null,
@@ -132,6 +150,45 @@ function createAssignment(overrides: Partial<JudgeAssignmentDetail> = {}): Judge
   }
 }
 
+function createPitchAssignment(
+  overrides: Partial<PitchJudgeAssignmentDetail> = {}
+): PitchJudgeAssignmentDetail {
+  return {
+    id: 'assignment-pitch-1',
+    hackathonId: 'hackathon-1',
+    submissionId: 'submission-1',
+    judgeUserId: 'judge-1',
+    reviewStage: 'pitch_review',
+    status: 'assigned',
+    pitchScore: null,
+    pitchComment: null,
+    assignedAt: '2026-03-26T12:10:00.000Z',
+    startedAt: null,
+    completedAt: null,
+    skippedAt: null,
+    skippedByUserId: null,
+    skipReason: null,
+    ineligibilityStatus: 'eligible',
+    ineligibilityReason: null,
+    ineligibilityMarkedAt: null,
+    ineligibilityMarkedByUserId: null,
+    createdAt: '2026-03-26T12:10:00.000Z',
+    pitchSubmission: {
+      id: 'submission-1',
+      projectName: 'Project One',
+      teamName: 'Alpha Team',
+      summary: 'Pitch summary',
+      repositoryUrl: 'https://example.com/repo',
+      demoUrl: 'https://example.com/demo',
+      track: null,
+      status: 'locked',
+      submittedAt: '2026-03-23T10:00:00.000Z',
+      lockedAt: '2026-03-24T10:00:00.000Z'
+    },
+    ...overrides
+  }
+}
+
 function createCriterion(overrides: Partial<EvaluationCriterion> = {}): EvaluationCriterion {
   return {
     id: 'criterion-1',
@@ -146,6 +203,38 @@ function createCriterion(overrides: Partial<EvaluationCriterion> = {}): Evaluati
 }
 
 describe('judging-workspace filters', () => {
+  test('normalizes blind and pitch assignments into stage-specific detail variants', () => {
+    const normalizedBlindAssignment = normalizeJudgeAssignmentDetail({
+      ...createBlindAssignment(),
+      pitchScore: null,
+      pitchComment: null
+    } satisfies JudgeAssignmentApiDetail)
+    const normalizedPitchAssignment = normalizeJudgeAssignmentDetail({
+      ...createPitchAssignment(),
+      blindReviewSlot: null
+    } satisfies JudgeAssignmentApiDetail)
+
+    expect(normalizedBlindAssignment).toMatchObject({
+      reviewStage: 'blind_review',
+      blindReviewSlot: 1,
+      blindSubmission: expect.objectContaining({
+        id: 'submission-1'
+      })
+    })
+    expect(normalizedBlindAssignment).not.toHaveProperty('pitchScore')
+    expect(normalizedBlindAssignment).not.toHaveProperty('pitchComment')
+
+    expect(normalizedPitchAssignment).toMatchObject({
+      reviewStage: 'pitch_review',
+      pitchScore: null,
+      pitchComment: null,
+      pitchSubmission: expect.objectContaining({
+        teamName: 'Alpha Team'
+      })
+    })
+    expect(normalizedPitchAssignment).not.toHaveProperty('blindReviewSlot')
+  })
+
   test('formats judge timestamps with the shared operational timestamp style', () => {
     const value = '2026-03-24T10:00:00.000Z'
 
@@ -224,8 +313,8 @@ describe('judging-workspace filters', () => {
   test('filters assignment lists to the current actor even when other assignments are visible upstream', () => {
     const actor = createActor()
     const assignments = [
-      createAssignment({ id: 'assignment-1', judgeUserId: 'judge-1' }),
-      createAssignment({ id: 'assignment-2', judgeUserId: 'judge-2' })
+      createBlindAssignment({ id: 'assignment-1', judgeUserId: 'judge-1' }),
+      createPitchAssignment({ id: 'assignment-2', judgeUserId: 'judge-2' })
     ]
 
     expect(filterAssignmentsForActor(assignments, actor).map(assignment => assignment.id)).toEqual(['assignment-1'])
@@ -267,36 +356,111 @@ describe('judging-workspace filters', () => {
   })
 })
 
-describe('judging-workspace actions', () => {
-  test('matches canonical judge action guards', () => {
-    const assigned = createAssignment({ status: 'assigned' })
-    const started = createAssignment({ status: 'judge_started', startedAt: '2026-03-24T10:10:00.000Z' })
-    const completed = createAssignment({ status: 'judge_completed', completedAt: '2026-03-24T10:20:00.000Z' })
+describe('judging-workspace copy', () => {
+  test('keeps blind inbox card copy anonymized', () => {
+    const copy = getJudgeAssignmentInboxCardCopy(createBlindAssignment())
 
-    expect(canStartJudgeAssignment(assigned)).toBe(true)
-    expect(canCompleteJudgeAssignment(assigned)).toBe(false)
-    expect(canSkipJudgeAssignment(assigned)).toBe(true)
-    expect(canMarkJudgeAssignmentIneligible(assigned)).toBe(false)
-
-    expect(canStartJudgeAssignment(started)).toBe(false)
-    expect(canCompleteJudgeAssignment(started)).toBe(true)
-    expect(canSkipJudgeAssignment(started)).toBe(true)
-    expect(canMarkJudgeAssignmentIneligible(started)).toBe(true)
-
-    expect(canCompleteJudgeAssignment(completed)).toBe(false)
-    expect(canSkipJudgeAssignment(completed)).toBe(false)
-    expect(canMarkJudgeAssignmentIneligible(completed)).toBe(true)
-    expect(canMarkJudgeAssignmentIneligible({
-      ...completed,
-      ineligibilityStatus: 'ineligible'
-    })).toBe(false)
+    expect(copy).toMatchObject({
+      title: 'Blind submission',
+      subtitle: null,
+      summary: 'Anonymous summary',
+      contextLabel: 'Blind context',
+      contextValue: '1 anonymized application',
+      reviewSignal: 'Ready to start',
+      openLabel: 'Open blind review'
+    })
+    expect(JSON.stringify(copy)).not.toContain('Blind Build')
   })
 
-  test('sorts in-progress reviews ahead of newly assigned work', () => {
+  test('reveals project and team identity in pitch inbox card copy', () => {
+    const copy = getJudgeAssignmentInboxCardCopy(createPitchAssignment())
+
+    expect(copy).toMatchObject({
+      title: 'Project One',
+      subtitle: 'Alpha Team',
+      summary: 'Pitch summary',
+      contextLabel: 'Team',
+      contextValue: 'Alpha Team',
+      reviewSignal: 'Ready to vote',
+      openLabel: 'Open pitch review'
+    })
+  })
+
+  test('describes active blind queues without using idle queue copy', () => {
+    const copy = getJudgeHackathonDashboardCopy(createHackathon(), {
+      total: 2,
+      inReview: 2,
+      ready: 0,
+      ineligible: 0,
+      blind: 2,
+      pitch: 0
+    })
+
+    expect(copy).toMatchObject({
+      description: '2 blind assignments are active in your blind-review queue, including 2 currently in progress.',
+      actionLabel: 'Open blind review',
+      overline: '2 active blind assignments',
+      queueMeta: 'All active blind reviews are in progress'
+    })
+  })
+
+  test('uses finalist-facing dashboard copy when pitch review is the next judge stage', () => {
+    const copy = getJudgeHackathonDashboardCopy(createHackathon({
+      state: 'shortlist',
+      pitchReviewEnabled: true
+    }))
+
+    expect(copy).toMatchObject({
+      description: 'You are assigned as a judge for this hackathon. Finalist pitch votes will appear here when pitch review is active.',
+      actionLabel: 'Open hackathon',
+      overline: 'Judge assigned',
+      queueMeta: 'No active pitch queue yet'
+    })
+  })
+})
+
+describe('judging-workspace actions', () => {
+  test('matches canonical judge action guards by stage', () => {
+    const blindAssigned = createBlindAssignment({ status: 'assigned' })
+    const blindStarted = createBlindAssignment({
+      status: 'judge_started',
+      startedAt: '2026-03-24T10:10:00.000Z'
+    })
+    const blindCompleted = createBlindAssignment({
+      status: 'judge_completed',
+      completedAt: '2026-03-24T10:20:00.000Z'
+    })
+    const pitchCompleted = createPitchAssignment({
+      status: 'judge_completed',
+      completedAt: '2026-03-26T12:20:00.000Z',
+      pitchScore: 9
+    })
+
+    expect(canStartJudgeAssignment(blindAssigned)).toBe(true)
+    expect(canCompleteJudgeAssignment(blindAssigned)).toBe(false)
+    expect(canSkipJudgeAssignment(blindAssigned)).toBe(true)
+    expect(canMarkJudgeAssignmentIneligible(blindAssigned)).toBe(false)
+
+    expect(canStartJudgeAssignment(blindStarted)).toBe(false)
+    expect(canCompleteJudgeAssignment(blindStarted)).toBe(true)
+    expect(canSkipJudgeAssignment(blindStarted)).toBe(true)
+    expect(canMarkJudgeAssignmentIneligible(blindStarted)).toBe(true)
+
+    expect(canCompleteJudgeAssignment(blindCompleted)).toBe(false)
+    expect(canSkipJudgeAssignment(blindCompleted)).toBe(false)
+    expect(canMarkJudgeAssignmentIneligible(blindCompleted)).toBe(true)
+    expect(canMarkJudgeAssignmentIneligible({
+      ...blindCompleted,
+      ineligibilityStatus: 'ineligible'
+    })).toBe(false)
+    expect(canMarkJudgeAssignmentIneligible(pitchCompleted)).toBe(false)
+  })
+
+  test('sorts in-progress reviews ahead of newly assigned work across stages', () => {
     const assignments = [
-      createAssignment({ id: 'assignment-2', status: 'assigned', assignedAt: '2026-03-24T11:00:00.000Z' }),
-      createAssignment({ id: 'assignment-1', status: 'judge_started', startedAt: '2026-03-24T10:30:00.000Z' }),
-      createAssignment({ id: 'assignment-3', status: 'assigned', assignedAt: '2026-03-24T09:00:00.000Z' })
+      createBlindAssignment({ id: 'assignment-2', status: 'assigned', assignedAt: '2026-03-24T11:00:00.000Z' }),
+      createPitchAssignment({ id: 'assignment-1', status: 'judge_started', startedAt: '2026-03-24T10:30:00.000Z' }),
+      createBlindAssignment({ id: 'assignment-3', status: 'assigned', assignedAt: '2026-03-24T09:00:00.000Z' })
     ]
 
     expect(sortJudgeAssignments(assignments).map(assignment => assignment.id)).toEqual([
@@ -308,12 +472,12 @@ describe('judging-workspace actions', () => {
 })
 
 describe('judging-workspace scoring drafts', () => {
-  test('creates score drafts from criteria and existing saved scores', () => {
+  test('creates blind score drafts from criteria and existing saved scores', () => {
     const criteria = [
       createCriterion({ id: 'criterion-1', name: 'Novelty', weight: 5 }),
       createCriterion({ id: 'criterion-2', name: 'Execution', weight: 3, displayOrder: 2 })
     ]
-    const assignment = createAssignment({
+    const assignment = createBlindAssignment({
       criterionScores: [{
         id: 'score-1',
         evaluationCriterionId: 'criterion-2',
@@ -341,7 +505,21 @@ describe('judging-workspace scoring drafts', () => {
     ])
   })
 
-  test('detects incomplete scores and builds the completion payload', () => {
+  test('ignores pitch assignments when building blind rubric drafts', () => {
+    const criteria = [
+      createCriterion({ id: 'criterion-1' })
+    ]
+
+    expect(createCriterionScoreDrafts(criteria, createPitchAssignment())).toEqual([
+      expect.objectContaining({
+        evaluationCriterionId: 'criterion-1',
+        score: '',
+        comment: ''
+      })
+    ])
+  })
+
+  test('detects incomplete blind scores on the shared 0-10 scale and builds the completion payload', () => {
     const drafts = [
       {
         evaluationCriterionId: 'criterion-1',
@@ -356,7 +534,7 @@ describe('judging-workspace scoring drafts', () => {
         criterionName: 'Execution',
         criterionDescription: 'How well the project is executed.',
         criterionWeight: 3,
-        score: ' ',
+        score: '11',
         comment: ''
       }
     ]
@@ -391,6 +569,34 @@ describe('judging-workspace scoring drafts', () => {
         comment: undefined
       }
     ])
+  })
+
+  test('creates pitch drafts and pitch completion payloads on the shared 0-10 scale', () => {
+    expect(createPitchScoreDraft(createPitchAssignment({
+      pitchScore: 9,
+      pitchComment: 'Strong pitch'
+    }))).toEqual({
+      score: '9',
+      comment: 'Strong pitch'
+    })
+
+    expect(hasIncompletePitchScore({
+      score: '11',
+      comment: ''
+    })).toBe(true)
+
+    expect(hasIncompletePitchScore({
+      score: '6',
+      comment: 'Clear delivery'
+    })).toBe(false)
+
+    expect(buildPitchReviewCompletionPayload({
+      score: '6',
+      comment: '  Clear delivery  '
+    })).toEqual({
+      pitchScore: 6,
+      pitchComment: 'Clear delivery'
+    })
   })
 })
 

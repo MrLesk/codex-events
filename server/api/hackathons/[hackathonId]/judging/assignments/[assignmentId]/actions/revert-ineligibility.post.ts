@@ -17,7 +17,14 @@ export default defineApiHandler(async (event) => {
   const { hackathonId, assignmentId } = parseValidatedParams(event, judgingAssignmentParamsSchema)
   const { actor, database, hackathon, assignment } = await requireAdminAssignmentContext(event, hackathonId, assignmentId)
 
-  assertJudgeReviewLifecycleState(hackathon, ['judge_review', 'shortlist', 'winners_announced', 'completed'])
+  assertJudgeReviewLifecycleState(hackathon, [
+    'blind_review',
+    'shortlist',
+    'pitch_review',
+    'final_deliberation',
+    'winners_announced',
+    'completed'
+  ])
   assertGuard(assignment.ineligibilityStatus === 'ineligible', {
     code: 'judge_assignment_not_ineligible',
     message: 'Only ineligible judge assignments can have ineligibility reverted.',

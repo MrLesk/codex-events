@@ -35,7 +35,7 @@ export interface JudgeAssignmentAuthorization {
   assignedJudgeUserId: string
   actingRole: 'assigned_judge' | null
   canAccess: boolean
-  visibility: 'blind' | 'forbidden'
+  visibility: 'blind' | 'pitch' | 'forbidden'
 }
 
 function requireResolvedPlatformActor(actor: Awaited<ReturnType<typeof getRequestActor>>): PlatformActor {
@@ -227,12 +227,32 @@ export async function resolveJudgeAssignmentAuthorization(
         assignedJudgeUserId: assignment.judgeUserId,
         actingRole: isAssignedJudge ? 'assigned_judge' : null,
         canAccess: isAssignedJudge,
-        visibility: isAssignedJudge ? 'blind' : 'forbidden'
+        visibility: isAssignedJudge
+          ? assignment.reviewStage === 'pitch_review'
+            ? 'pitch'
+            : 'blind'
+          : 'forbidden'
       } satisfies JudgeAssignmentAuthorization
     })())
   }
 
   return await cache.get(assignmentId)!
+}
+
+export function assertJudgeAssignmentAccess(authorization: JudgeAssignmentAuthorization) {
+  if (authorization.canAccess && authorization.visibility !== 'forbidden') {
+    return
+  }
+
+  throw new ApiError({
+    statusCode: 403,
+    code: 'judge_assignment_access_denied',
+    message: 'This operation requires review access to the judge assignment.',
+    details: {
+      assignmentId: authorization.assignmentId,
+      visibility: authorization.visibility
+    }
+  })
 }
 
 export function assertBlindJudgeAssignmentAccess(authorization: JudgeAssignmentAuthorization) {

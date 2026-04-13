@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../../../../server/utils/api-error'
 import {
   assertBlindJudgeAssignmentAccess,
+  assertJudgeAssignmentAccess,
   assertHackathonAdminAccess,
   assertHackathonParticipantVisibilityAccess,
   assertTeamAdminAccess,
@@ -291,7 +292,8 @@ describe('judge assignment authorization', () => {
       judgeAssignment: {
         id: 'assignment_1',
         hackathonId: 'hackathon_1',
-        judgeUserId: 'user_judge'
+        judgeUserId: 'user_judge',
+        reviewStage: 'blind_review'
       }
     }))
 
@@ -320,7 +322,8 @@ describe('judge assignment authorization', () => {
       judgeAssignment: {
         id: 'assignment_1',
         hackathonId: 'hackathon_1',
-        judgeUserId: 'user_admin'
+        judgeUserId: 'user_admin',
+        reviewStage: 'blind_review'
       }
     }))
 
@@ -349,7 +352,8 @@ describe('judge assignment authorization', () => {
       judgeAssignment: {
         id: 'assignment_1',
         hackathonId: 'hackathon_1',
-        judgeUserId: 'user_judge'
+        judgeUserId: 'user_judge',
+        reviewStage: 'blind_review'
       }
     }))
 
@@ -360,6 +364,35 @@ describe('judge assignment authorization', () => {
       canAccess: false,
       visibility: 'forbidden'
     })
+    expect(() => assertBlindJudgeAssignmentAccess(authorization)).toThrow(ApiError)
+  })
+
+  test('returns pitch visibility for assigned pitch reviewers', async () => {
+    const event = createEvent({ sub: 'auth0|judge' })
+    setDatabase(event, createDatabaseMock({
+      user: {
+        id: 'user_judge',
+        auth0Subject: 'auth0|judge',
+        email: 'judge@example.com',
+        displayName: 'Judge',
+        isPlatformAdmin: false
+      },
+      judgeAssignment: {
+        id: 'assignment_pitch_1',
+        hackathonId: 'hackathon_1',
+        judgeUserId: 'user_judge',
+        reviewStage: 'pitch_review'
+      }
+    }))
+
+    const authorization = await resolveJudgeAssignmentAuthorization(event, 'assignment_pitch_1')
+
+    expect(authorization).toMatchObject({
+      actingRole: 'assigned_judge',
+      canAccess: true,
+      visibility: 'pitch'
+    })
+    expect(() => assertJudgeAssignmentAccess(authorization)).not.toThrow()
     expect(() => assertBlindJudgeAssignmentAccess(authorization)).toThrow(ApiError)
   })
 })

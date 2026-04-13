@@ -7,15 +7,14 @@ import { hackathons } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
 import {
-  assertStartJudgeReviewAllowed,
-  listActiveAssignmentsForSubmissions,
-  listLockedSubmissionsForHackathon
-} from '../../../../utils/judging'
-import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathon
 } from '../../../../utils/hackathon-management'
+import {
+  assertStartFinalDeliberationAllowed,
+  listLeaderboardEntries
+} from '../../../../utils/shortlist'
 import { parseValidatedParams } from '../../../../utils/validation'
 
 export default defineApiHandler(async (event) => {
@@ -23,23 +22,17 @@ export default defineApiHandler(async (event) => {
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)
   const database = getDatabase(event)
   const { hackathon } = await requireHackathonAdmin(event, hackathonId)
-  const lockedSubmissions = await listLockedSubmissionsForHackathon(database, hackathonId)
-  const activeAssignments = await listActiveAssignmentsForSubmissions(
-    database,
-    lockedSubmissions.map(submission => submission.id)
-  )
+  const leaderboardEntries = await listLeaderboardEntries(database, hackathonId)
 
-  assertStartJudgeReviewAllowed(hackathon, {
-    lockedSubmissionCount: lockedSubmissions.length,
-    activeAssignmentCount: activeAssignments.length
-  })
+  assertStartFinalDeliberationAllowed(hackathon, leaderboardEntries)
 
   const transitionedAt = new Date().toISOString()
 
   await database
     .update(hackathons)
     .set({
-      state: 'judge_review',
+      state: 'final_deliberation',
+      finalRankingSubmissionIdsJson: '[]',
       updatedAt: transitionedAt
     })
     .where(eq(hackathons.id, hackathonId))
@@ -48,12 +41,11 @@ export default defineApiHandler(async (event) => {
     actorUserId: actor.platformUser.id,
     entityType: 'hackathon',
     entityId: hackathonId,
-    action: 'hackathon.start_judge_review',
+    action: 'hackathon.start_final_deliberation',
     metadata: {
       previousState: hackathon.state,
-      nextState: 'judge_review',
-      lockedSubmissionCount: lockedSubmissions.length,
-      activeAssignmentCount: activeAssignments.length
+      nextState: 'final_deliberation',
+      rankedSubmissionCount: leaderboardEntries.filter(entry => entry.isRanked).length
     }
   })
 

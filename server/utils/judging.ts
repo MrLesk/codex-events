@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 import { requirePlatformActor } from '../auth/actor'
 import {
-  assertBlindJudgeAssignmentAccess,
+  assertJudgeAssignmentAccess,
   assertHackathonAdminAccess,
   resolveHackathonAuthorization,
   resolveJudgeAssignmentAuthorization,
@@ -51,6 +51,11 @@ export const completeJudgeAssignmentBodySchema = z.object({
   criterionScores: z.array(criterionScoreInputSchema).min(1)
 })
 
+export const completePitchReviewBodySchema = z.object({
+  pitchScore: z.coerce.number().int().min(0).max(10),
+  pitchComment: z.string().trim().min(1).optional()
+})
+
 export const skipJudgeAssignmentBodySchema = z.object({
   reason: z.string().trim().min(1).optional()
 })
@@ -70,7 +75,11 @@ export function serializeJudgeAssignment(assignment: JudgeAssignmentRecord) {
     hackathonId: assignment.hackathonId,
     submissionId: assignment.submissionId,
     judgeUserId: assignment.judgeUserId,
+    reviewStage: assignment.reviewStage,
+    blindReviewSlot: assignment.blindReviewSlot,
     status: assignment.status,
+    pitchScore: assignment.pitchScore,
+    pitchComment: assignment.pitchComment,
     assignedAt: assignment.assignedAt,
     startedAt: assignment.startedAt,
     completedAt: assignment.completedAt,
@@ -137,6 +146,31 @@ export function serializeBlindSubmission(
   }
 }
 
+export function serializePitchSubmission(
+  submission: SubmissionRecord,
+  team: typeof teams.$inferSelect,
+  track: typeof hackathonTracks.$inferSelect | null
+) {
+  return {
+    id: submission.id,
+    projectName: submission.projectName,
+    teamName: team.name,
+    summary: submission.summary,
+    repositoryUrl: submission.repositoryUrl,
+    demoUrl: submission.demoUrl,
+    track: track
+      ? {
+          id: track.id,
+          name: track.name,
+          description: track.description
+        }
+      : null,
+    status: submission.status,
+    submittedAt: submission.submittedAt,
+    lockedAt: submission.lockedAt
+  }
+}
+
 export function assertStartJudgingPreparationAllowed(
   hackathon: HackathonRecord,
   metrics: {
@@ -170,13 +204,26 @@ export function assertStartJudgingPreparationAllowed(
     }
   })
 
-  assertGuard(metrics.judgePoolCount > 0, {
-    code: 'judge_pool_required',
-    message: 'Judging preparation requires at least one judge in the automatic judge pool.',
-    details: {
-      hackathonId: hackathon.id
-    }
-  })
+  if (hackathon.blindReviewCount > 0) {
+    assertGuard(metrics.judgePoolCount > 0, {
+      code: 'judge_pool_required',
+      message: 'Judging preparation requires at least one judge in the automatic judge pool.',
+      details: {
+        hackathonId: hackathon.id
+      }
+    })
+
+    assertGuard(metrics.judgePoolCount >= hackathon.blindReviewCount, {
+      statusCode: 409,
+      code: 'distinct_blind_review_judges_required',
+      message: 'The automatic judge pool must include enough distinct judges for the configured blind review count.',
+      details: {
+        hackathonId: hackathon.id,
+        blindReviewCount: hackathon.blindReviewCount,
+        judgePoolCount: metrics.judgePoolCount
+      }
+    })
+  }
 }
 
 export function assertStartJudgeReviewAllowed(
@@ -194,6 +241,14 @@ export function assertStartJudgeReviewAllowed(
     }
   })
 
+  assertGuard(hackathon.blindReviewCount > 0, {
+    code: 'blind_review_not_enabled',
+    message: 'Blind review can only start when blind review is enabled.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
   assertGuard(metrics.lockedSubmissionCount > 0, {
     code: 'locked_submissions_required',
     message: 'Judge review requires at least one locked submission.',
@@ -202,15 +257,69 @@ export function assertStartJudgeReviewAllowed(
     }
   })
 
-  assertGuard(metrics.activeAssignmentCount === metrics.lockedSubmissionCount, {
+  const expectedActiveAssignmentCount = metrics.lockedSubmissionCount * hackathon.blindReviewCount
+
+  assertGuard(metrics.activeAssignmentCount === expectedActiveAssignmentCount, {
     code: 'active_assignments_required',
-    message: 'Judge review requires one active assignment for every locked submission.',
+    message: 'Judge review requires the configured number of active assignments for every locked submission.',
     details: {
       hackathonId: hackathon.id,
+      blindReviewCount: hackathon.blindReviewCount,
       lockedSubmissionCount: metrics.lockedSubmissionCount,
+      expectedActiveAssignmentCount,
       activeAssignmentCount: metrics.activeAssignmentCount
     }
   })
+}
+
+export function assertStartPitchReviewAllowed(
+  hackathon: HackathonRecord,
+  metrics: {
+    lockedSubmissionCount: number
+    finalistSubmissionCount: number
+    judgePanelCount: number
+  }
+) {
+  assertGuard(hackathon.pitchReviewEnabled, {
+    code: 'pitch_review_not_enabled',
+    message: 'Pitch review can only start when pitch review is enabled.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  const requiresShortlist = hackathon.blindReviewCount > 0
+
+  assertAllowedState(hackathon.state, requiresShortlist ? ['shortlist'] : ['judging_preparation'], {
+    code: 'hackathon_state_invalid',
+    message: requiresShortlist
+      ? 'Pitch review can only start from shortlist after finalists are selected.'
+      : 'Pitch review can only start while the hackathon is in judging_preparation.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  assertGuard(metrics.judgePanelCount > 0, {
+    code: 'judge_pool_required',
+    message: 'Pitch review requires at least one judge in the automatic judge pool.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  assertGuard(
+    requiresShortlist ? metrics.finalistSubmissionCount > 0 : metrics.lockedSubmissionCount > 0,
+    {
+      code: 'pitch_finalists_required',
+      message: requiresShortlist
+        ? 'Pitch review requires at least one persisted finalist submission.'
+        : 'Pitch review requires at least one locked submission.',
+      details: {
+        hackathonId: hackathon.id
+      }
+    }
+  )
 }
 
 export async function listSubmittedSubmissionsForHackathon(database: AppDatabase, hackathonId: string) {
@@ -255,7 +364,11 @@ export async function listLockedSubmissionsForHackathon(database: AppDatabase, h
   })
 }
 
-export async function listActiveAssignmentsForSubmissions(database: AppDatabase, submissionIds: string[]) {
+export async function listActiveAssignmentsForSubmissions(
+  database: AppDatabase,
+  submissionIds: string[],
+  reviewStage?: JudgeAssignmentRecord['reviewStage']
+) {
   if (submissionIds.length === 0) {
     return []
   }
@@ -263,7 +376,8 @@ export async function listActiveAssignmentsForSubmissions(database: AppDatabase,
   return await database.query.judgeAssignments.findMany({
     where: and(
       inArray(judgeAssignments.submissionId, submissionIds),
-      inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses])
+      inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses]),
+      ...(reviewStage ? [eq(judgeAssignments.reviewStage, reviewStage)] : [])
     ),
     orderBy: [asc(judgeAssignments.assignedAt), asc(judgeAssignments.createdAt)]
   })
@@ -283,51 +397,177 @@ export function buildInitialJudgeAssignments(
   hackathonId: string,
   submittedSubmissions: SubmissionRecord[],
   judgePool: Array<typeof hackathonRoleAssignments.$inferSelect>,
+  blindReviewCount: number,
   assignedAt: string
 ) {
+  if (blindReviewCount === 0 || submittedSubmissions.length === 0) {
+    return []
+  }
+
   const loadByJudge = new Map<string, number>()
 
   for (const judge of judgePool) {
     loadByJudge.set(judge.userId, 0)
   }
 
-  return submittedSubmissions.map((submission) => {
-    const selectedJudge = [...judgePool]
-      .sort((left, right) => {
-        const leftLoad = loadByJudge.get(left.userId) ?? 0
-        const rightLoad = loadByJudge.get(right.userId) ?? 0
+  const compareJudgeLoad = (
+    left: (typeof hackathonRoleAssignments.$inferSelect),
+    right: (typeof hackathonRoleAssignments.$inferSelect)
+  ) => {
+    const leftLoad = loadByJudge.get(left.userId) ?? 0
+    const rightLoad = loadByJudge.get(right.userId) ?? 0
 
-        if (leftLoad !== rightLoad) {
-          return leftLoad - rightLoad
-        }
-
-        if (left.createdAt !== right.createdAt) {
-          return left.createdAt.localeCompare(right.createdAt)
-        }
-
-        return left.userId.localeCompare(right.userId)
-      })[0]
-
-    if (!selectedJudge) {
-      throw new ApiError({
-        statusCode: 409,
-        code: 'judge_pool_required',
-        message: 'Judging preparation requires at least one judge in the automatic judge pool.',
-        details: { hackathonId }
-      })
+    if (leftLoad !== rightLoad) {
+      return leftLoad - rightLoad
     }
 
-    loadByJudge.set(selectedJudge.userId, (loadByJudge.get(selectedJudge.userId) ?? 0) + 1)
+    if (left.createdAt !== right.createdAt) {
+      return left.createdAt.localeCompare(right.createdAt)
+    }
 
-    return {
+    return left.userId.localeCompare(right.userId)
+  }
+
+  return submittedSubmissions.flatMap((submission) => {
+    const assignedJudgeIds = new Set<string>()
+
+    return Array.from({ length: blindReviewCount }, (_, index) => {
+      const availableJudges = judgePool.filter(judge => !assignedJudgeIds.has(judge.userId))
+      assertGuard(availableJudges.length > 0, {
+        statusCode: 409,
+        code: 'distinct_blind_review_judges_required',
+        message: 'The automatic judge pool must include enough distinct judges for the configured blind review count.',
+        details: {
+          hackathonId,
+          submissionId: submission.id,
+          blindReviewCount,
+          judgePoolCount: judgePool.length
+        }
+      })
+      const selectedJudge = [...availableJudges].sort(compareJudgeLoad)[0]
+
+      if (!selectedJudge) {
+        throw new ApiError({
+          statusCode: 409,
+          code: 'judge_pool_required',
+          message: 'Judging preparation requires at least one judge in the automatic judge pool.',
+          details: { hackathonId }
+        })
+      }
+
+      assignedJudgeIds.add(selectedJudge.userId)
+      loadByJudge.set(selectedJudge.userId, (loadByJudge.get(selectedJudge.userId) ?? 0) + 1)
+
+      return {
+        id: crypto.randomUUID(),
+        hackathonId,
+        submissionId: submission.id,
+        judgeUserId: selectedJudge.userId,
+        reviewStage: 'blind_review',
+        blindReviewSlot: index + 1,
+        status: 'assigned',
+        assignedAt,
+        createdAt: assignedAt
+      } satisfies JudgeAssignmentInsert
+    })
+  })
+}
+
+export function buildPitchReviewAssignments(
+  hackathonId: string,
+  finalistSubmissions: SubmissionRecord[],
+  judgePanel: Array<typeof hackathonRoleAssignments.$inferSelect>,
+  assignedAt: string
+) {
+  if (finalistSubmissions.length === 0 || judgePanel.length === 0) {
+    return []
+  }
+
+  return finalistSubmissions.flatMap(submission =>
+    judgePanel.map(judge => ({
       id: crypto.randomUUID(),
       hackathonId,
       submissionId: submission.id,
-      judgeUserId: selectedJudge.userId,
+      judgeUserId: judge.userId,
+      reviewStage: 'pitch_review',
+      blindReviewSlot: null,
       status: 'assigned',
+      pitchScore: null,
+      pitchComment: null,
       assignedAt,
       createdAt: assignedAt
-    } satisfies JudgeAssignmentInsert
+    } satisfies JudgeAssignmentInsert))
+  )
+}
+
+export function parseStoredPitchFinalistSubmissionIds(hackathon: HackathonRecord) {
+  let parsedValue: unknown
+
+  try {
+    parsedValue = JSON.parse(hackathon.pitchFinalistSubmissionIdsJson)
+  } catch {
+    throw new ApiError({
+      statusCode: 500,
+      code: 'pitch_finalists_invalid',
+      message: 'The stored pitch finalists are invalid.',
+      details: {
+        hackathonId: hackathon.id
+      }
+    })
+  }
+
+  const result = z.array(z.string().trim().min(1)).safeParse(parsedValue)
+
+  if (!result.success) {
+    throw new ApiError({
+      statusCode: 500,
+      code: 'pitch_finalists_invalid',
+      message: 'The stored pitch finalists are invalid.',
+      details: {
+        hackathonId: hackathon.id
+      }
+    })
+  }
+
+  return result.data
+}
+
+export function selectPitchReviewSubmissions(
+  hackathon: HackathonRecord,
+  lockedSubmissions: SubmissionRecord[]
+) {
+  if (hackathon.blindReviewCount === 0) {
+    return lockedSubmissions
+  }
+
+  const finalistSubmissionIds = parseStoredPitchFinalistSubmissionIds(hackathon)
+  const uniqueFinalistSubmissionIds = new Set(finalistSubmissionIds)
+
+  assertGuard(uniqueFinalistSubmissionIds.size === finalistSubmissionIds.length, {
+    statusCode: 500,
+    code: 'pitch_finalists_invalid',
+    message: 'The stored pitch finalists are invalid.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  const lockedSubmissionById = new Map(lockedSubmissions.map(submission => [submission.id, submission]))
+
+  return finalistSubmissionIds.map((submissionId) => {
+    const submission = lockedSubmissionById.get(submissionId)
+
+    assertGuard(Boolean(submission), {
+      statusCode: 500,
+      code: 'pitch_finalists_invalid',
+      message: 'The stored pitch finalists are invalid.',
+      details: {
+        hackathonId: hackathon.id,
+        submissionId
+      }
+    })
+
+    return submission!
   })
 }
 
@@ -374,24 +614,6 @@ export async function getJudgeAssignmentOrThrow(database: AppDatabase, assignmen
   }
 
   return assignment
-}
-
-export async function getBlindAssignmentDetail(
-  database: AppDatabase,
-  assignment: JudgeAssignmentRecord
-) {
-  const [detail] = await getBlindAssignmentDetails(database, [assignment])
-
-  if (!detail) {
-    throw new ApiError({
-      statusCode: 404,
-      code: 'judge_assignment_not_found',
-      message: 'The requested judge assignment was not found.',
-      details: { assignmentId: assignment.id }
-    })
-  }
-
-  return detail
 }
 
 export async function getBlindAssignmentDetails(
@@ -510,6 +732,154 @@ export async function getBlindAssignmentDetails(
   })
 }
 
+export async function getBlindAssignmentDetail(
+  database: AppDatabase,
+  assignment: JudgeAssignmentRecord
+) {
+  const [detail] = await getBlindAssignmentDetails(database, [assignment])
+
+  if (!detail) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'judge_assignment_not_found',
+      message: 'The requested judge assignment was not found.',
+      details: { assignmentId: assignment.id }
+    })
+  }
+
+  return detail
+}
+
+export async function getPitchAssignmentDetails(
+  database: AppDatabase,
+  assignments: JudgeAssignmentRecord[]
+) {
+  if (assignments.length === 0) {
+    return []
+  }
+
+  const submissionIds = [...new Set(assignments.map(assignment => assignment.submissionId))]
+  const submissionRows = await database.query.submissions.findMany({
+    where: inArray(submissions.id, submissionIds)
+  })
+  const submissionsById = new Map(submissionRows.map(submission => [submission.id, submission]))
+  const teamIds = [...new Set(submissionRows.map(submission => submission.teamId))]
+  const trackIds = [
+    ...new Set(
+      submissionRows
+        .map(submission => submission.trackId)
+        .filter((trackId): trackId is string => Boolean(trackId))
+    )
+  ]
+
+  const [teamRows, trackRows] = await Promise.all([
+    teamIds.length === 0
+      ? Promise.resolve([])
+      : database.query.teams.findMany({
+          where: inArray(teams.id, teamIds)
+        }),
+    trackIds.length === 0
+      ? Promise.resolve([])
+      : database.query.hackathonTracks.findMany({
+          where: inArray(hackathonTracks.id, trackIds)
+        })
+  ])
+  const teamsById = new Map(teamRows.map(team => [team.id, team]))
+  const tracksById = new Map(trackRows.map(track => [track.id, track]))
+
+  return assignments.map((assignment) => {
+    const submission = submissionsById.get(assignment.submissionId)
+
+    if (!submission) {
+      throw new ApiError({
+        statusCode: 404,
+        code: 'submission_not_found',
+        message: 'The requested submission was not found for this judge assignment.',
+        details: {
+          assignmentId: assignment.id,
+          submissionId: assignment.submissionId
+        }
+      })
+    }
+
+    const team = teamsById.get(submission.teamId)
+
+    if (!team) {
+      throw new ApiError({
+        statusCode: 404,
+        code: 'team_not_found',
+        message: 'The requested team was not found for this judge assignment.',
+        details: {
+          assignmentId: assignment.id,
+          submissionId: assignment.submissionId,
+          teamId: submission.teamId
+        }
+      })
+    }
+
+    return {
+      ...serializeJudgeAssignment(assignment),
+      pitchSubmission: serializePitchSubmission(
+        submission,
+        team,
+        submission.trackId ? tracksById.get(submission.trackId) ?? null : null
+      )
+    }
+  })
+}
+
+export async function getJudgeAssignmentDetails(
+  database: AppDatabase,
+  assignments: JudgeAssignmentRecord[]
+) {
+  if (assignments.length === 0) {
+    return []
+  }
+
+  const blindAssignments = assignments.filter(assignment => assignment.reviewStage === 'blind_review')
+  const pitchAssignments = assignments.filter(assignment => assignment.reviewStage === 'pitch_review')
+  const [blindDetails, pitchDetails] = await Promise.all([
+    getBlindAssignmentDetails(database, blindAssignments),
+    getPitchAssignmentDetails(database, pitchAssignments)
+  ])
+  const detailsByAssignmentId = new Map(
+    [...blindDetails, ...pitchDetails].map(detail => [detail.id, detail])
+  )
+
+  return assignments.map((assignment) => {
+    const detail = detailsByAssignmentId.get(assignment.id)
+
+    if (!detail) {
+      throw new ApiError({
+        statusCode: 404,
+        code: 'judge_assignment_not_found',
+        message: 'The requested judge assignment was not found.',
+        details: { assignmentId: assignment.id }
+      })
+    }
+
+    return detail
+  })
+}
+
+export async function getJudgeAssignmentDetail(
+  database: AppDatabase,
+  assignment: JudgeAssignmentRecord
+) {
+  const [detail] = await getJudgeAssignmentDetails(database, [assignment])
+
+  if (!detail) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'judge_assignment_not_found',
+      message: 'The requested judge assignment was not found.',
+      details: { assignmentId: assignment.id }
+    })
+  }
+
+  return detail
+}
+
 async function getJudgeAssignmentRequestContext(
   event: H3Event,
   hackathonId: string,
@@ -549,7 +919,7 @@ export async function requireJudgeAssignmentContext(
   assignmentId: string
 ) {
   const context = await getJudgeAssignmentRequestContext(event, hackathonId, assignmentId)
-  assertBlindJudgeAssignmentAccess(context.assignmentAuthorization)
+  assertJudgeAssignmentAccess(context.assignmentAuthorization)
   return context
 }
 
@@ -580,12 +950,28 @@ export function assertJudgeAssignmentStatus(
   })
 }
 
+export function getHackathonStateForAssignmentReviewStage(
+  reviewStage: JudgeAssignmentRecord['reviewStage']
+): HackathonRecord['state'] {
+  return reviewStage === 'pitch_review' ? 'pitch_review' : 'blind_review'
+}
+
+export function assertAssignmentReviewStageIsActive(
+  hackathon: HackathonRecord,
+  assignment: JudgeAssignmentRecord
+) {
+  assertJudgeReviewLifecycleState(hackathon, [getHackathonStateForAssignmentReviewStage(assignment.reviewStage)])
+}
+
 export async function pickReplacementJudgeUserId(
   database: AppDatabase,
   hackathonId: string,
   options?: {
     excludeJudgeUserIds?: string[]
     preferredJudgeUserId?: string
+    reviewStage?: JudgeAssignmentRecord['reviewStage']
+    submissionId?: string
+    excludeAssignmentId?: string
   }
 ) {
   const judgePool = await listAutomaticJudgePoolForHackathon(database, hackathonId)
@@ -604,6 +990,47 @@ export async function pickReplacementJudgeUserId(
     })
   }
 
+  const activeAssignments = await database.query.judgeAssignments.findMany({
+    where: and(
+      eq(judgeAssignments.hackathonId, hackathonId),
+      eq(judgeAssignments.reviewStage, options?.reviewStage ?? 'blind_review'),
+      inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses]),
+      inArray(judgeAssignments.judgeUserId, eligibleJudges.map(judge => judge.userId))
+    )
+  })
+  const activeSubmissionJudgeUserIds = options?.submissionId
+    ? new Set(
+        activeAssignments
+          .filter(assignment =>
+            assignment.submissionId === options.submissionId
+            && assignment.id !== options.excludeAssignmentId
+          )
+          .map(assignment => assignment.judgeUserId)
+      )
+    : new Set<string>()
+  const distinctSubmissionEligibleJudges = eligibleJudges.filter(
+    judge => !activeSubmissionJudgeUserIds.has(judge.userId)
+  )
+  const requiresDistinctBlindJudge = options?.reviewStage !== 'pitch_review'
+    && Boolean(options?.submissionId)
+
+  if (requiresDistinctBlindJudge) {
+    assertGuard(distinctSubmissionEligibleJudges.length > 0, {
+      statusCode: 409,
+      code: 'eligible_replacement_judge_required',
+      message: 'No eligible replacement judge is available without duplicating the blind-review judge for this submission.',
+      details: {
+        hackathonId,
+        submissionId: options?.submissionId,
+        excludedJudgeUserIds: [...excluded]
+      }
+    })
+  }
+
+  const judgesToSelectFrom = requiresDistinctBlindJudge
+    ? distinctSubmissionEligibleJudges
+    : eligibleJudges
+
   if (options?.preferredJudgeUserId) {
     const preferred = eligibleJudges.find(judge => judge.userId === options.preferredJudgeUserId)
 
@@ -616,16 +1043,18 @@ export async function pickReplacementJudgeUserId(
       }
     })
 
+    assertGuard(!activeSubmissionJudgeUserIds.has(options.preferredJudgeUserId), {
+      code: 'replacement_judge_invalid',
+      message: 'The requested replacement judge already has another blind-review assignment for this submission.',
+      details: {
+        hackathonId,
+        judgeUserId: options.preferredJudgeUserId,
+        submissionId: options.submissionId
+      }
+    })
+
     return options.preferredJudgeUserId
   }
-
-  const activeAssignments = await database.query.judgeAssignments.findMany({
-    where: and(
-      eq(judgeAssignments.hackathonId, hackathonId),
-      inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses]),
-      inArray(judgeAssignments.judgeUserId, eligibleJudges.map(judge => judge.userId))
-    )
-  })
 
   const loadByJudge = new Map<string, number>()
 
@@ -637,7 +1066,7 @@ export async function pickReplacementJudgeUserId(
     loadByJudge.set(assignment.judgeUserId, (loadByJudge.get(assignment.judgeUserId) ?? 0) + 1)
   }
 
-  return [...eligibleJudges]
+  return [...judgesToSelectFrom]
     .sort((left, right) => {
       const leftLoad = loadByJudge.get(left.userId) ?? 0
       const rightLoad = loadByJudge.get(right.userId) ?? 0
@@ -664,10 +1093,31 @@ export function buildReplacementAssignment(
     hackathonId: assignment.hackathonId,
     submissionId: assignment.submissionId,
     judgeUserId,
+    reviewStage: assignment.reviewStage,
+    blindReviewSlot: assignment.blindReviewSlot,
     status: 'assigned',
+    pitchScore: null,
+    pitchComment: null,
     assignedAt,
     createdAt: assignedAt
   } satisfies JudgeAssignmentInsert
+}
+
+export function calculateAveragePitchScore(assignments: JudgeAssignmentRecord[]) {
+  const completedPitchScores = assignments
+    .filter(assignment =>
+      assignment.reviewStage === 'pitch_review'
+      && assignment.status === 'judge_completed'
+      && assignment.pitchScore !== null
+    )
+    .map(assignment => assignment.pitchScore)
+    .filter((score): score is number => score !== null)
+
+  if (completedPitchScores.length === 0) {
+    return null
+  }
+
+  return completedPitchScores.reduce((total, score) => total + score, 0) / completedPitchScores.length
 }
 
 export async function normalizeCompletionCriterionScores(
@@ -726,6 +1176,15 @@ export async function normalizeCompletionCriterionScores(
   return body.criterionScores
 }
 
+export function normalizePitchReviewCompletion(
+  body: z.infer<typeof completePitchReviewBodySchema>
+) {
+  return {
+    pitchScore: body.pitchScore,
+    pitchComment: body.pitchComment ?? null
+  }
+}
+
 export async function requireAdminAssignmentContext(
   event: H3Event,
   hackathonId: string,
@@ -745,7 +1204,7 @@ export function assertAssignmentReviewActor(
     {
       statusCode: 403,
       code: 'judge_assignment_access_denied',
-      message: 'This operation requires blind-review access to the judge assignment.',
+      message: 'This operation requires review access to the judge assignment.',
       details: {
         assignmentId: authorization.assignmentId
       }

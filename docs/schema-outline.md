@@ -96,6 +96,12 @@ It describes the intended persistent model at the level of entities, key fields,
 - `submission_opens_at`
 - `submission_closes_at`
 - `state`
+- `blind_review_count`
+- `pitch_review_enabled`
+- `blind_score_weight_percent`
+- `pitch_score_weight_percent`
+- `pitch_finalist_submission_ids_json`
+- `final_ranking_submission_ids_json`
 - `max_team_members`
 - `participants_limit`
 - `in_person_event`
@@ -120,14 +126,21 @@ It describes the intended persistent model at the level of entities, key fields,
   - `registration_open`
   - `submission_open`
   - `judging_preparation`
-  - `judge_review`
+  - `blind_review`
   - `shortlist`
+  - `pitch_review`
+  - `final_deliberation`
   - `winners_announced`
   - `completed`
 
 ### Constraints
 
 - `slug` is unique.
+- `blind_review_count` is `0`, `1`, or `2`.
+- `blind_score_weight_percent` is null or between `0` and `100`.
+- `pitch_score_weight_percent` is null or between `0` and `100`.
+- At least one judging stage is enabled: `blind_review_count > 0` or `pitch_review_enabled = true`.
+- When blind review and pitch review are both enabled, `blind_score_weight_percent + pitch_score_weight_percent = 100`.
 - `max_team_members` is greater than or equal to 1.
 - `participants_limit` is null or greater than or equal to 1.
 - `registration_opens_at < registration_closes_at <= submission_opens_at < submission_closes_at`
@@ -136,6 +149,12 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `registration_open` is manually activated by an admin while the configured registration window is open.
 - `submission_open` is manually activated by an admin within the configured submission window.
+- `blind_review_count` controls how many blind review assignments each locked submission receives.
+- `pitch_review_enabled` controls whether the hackathon uses the optional pitch-review stage.
+- `blind_score_weight_percent` and `pitch_score_weight_percent` default to `70` and `30` when both blind review and pitch review are enabled.
+- When only one judging stage is enabled, final score is derived entirely from that stage.
+- `pitch_finalist_submission_ids_json` stores the ordered finalist submission IDs selected during `shortlist` when blind review and pitch review are both enabled.
+- `final_ranking_submission_ids_json` stores the optional ordered final ranking override recorded during `final_deliberation`.
 - `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce approval writes by itself.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - `require_why_this_hackathon` controls whether applications must include a non-empty `whyThisHackathon` response.
@@ -195,7 +214,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - Every platform admin also has a `hackathon_admin` assignment row for each hackathon.
-- `is_in_judge_pool` controls automatic judge distribution.
+- `is_in_judge_pool` controls automatic blind-review distribution and pitch-panel membership.
 - `is_staff` records staff designation for the assignment.
 - `hackathon_admin` can set `is_in_judge_pool` and `is_staff` independently.
 - Non-admin `staff` and `judge` assignments remain distinct.
@@ -463,6 +482,11 @@ It describes the intended persistent model at the level of entities, key fields,
 - `weight` is non-negative.
 - `display_order` is unique within a hackathon.
 
+### Notes
+
+- Criteria apply to blind review only.
+- Blind assignment totals are normalized to the shared `0..10` score scale by dividing the weighted score sum by the total criterion weight.
+
 ## JudgeAssignment
 
 ### Key Fields
@@ -471,7 +495,11 @@ It describes the intended persistent model at the level of entities, key fields,
 - `hackathon_id`
 - `submission_id`
 - `judge_user_id`
+- `review_stage`
+- `blind_review_slot`
 - `status`
+- `pitch_score`
+- `pitch_comment`
 - `assigned_at`
 - `started_at`
 - `completed_at`
@@ -486,6 +514,9 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Enums
 
+- `review_stage`
+  - `blind_review`
+  - `pitch_review`
 - `status`
   - `assigned`
   - `judge_started`
@@ -497,12 +528,19 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Constraints
 
-- Exactly one active judge assignment per submission during normal judge review.
+- `blind_review_slot` is `1` or `2` for `blind_review` assignments and null for `pitch_review` assignments.
+- At most one active blind-review assignment exists for a given `(submission_id, blind_review_slot)`.
+- At most one pitch-review assignment exists for a given `(submission_id, judge_user_id)`.
 
 ### Notes
 
 - A skipped assignment remains part of the audit trail.
-- When an assignment is skipped, a new active assignment is created for another judge.
+- Blind-review assignments store criterion scores through `JudgeCriterionScore`.
+- Pitch-review assignments store `pitch_score` and `pitch_comment` directly on the assignment.
+- A completed pitch-review assignment uses the shared `0..10` score scale.
+- A submission's blind score is the average of its completed blind-review assignments after score normalization.
+- A submission's pitch score is the average of submitted completed pitch-review assignments.
+- When a blind-review assignment is skipped, a new active assignment is created for another judge.
 - Admins can force an in-progress assignment to `skipped`.
 
 ## JudgeCriterionScore
@@ -520,10 +558,12 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Constraints
 
 - `unique (judge_assignment_id, evaluation_criterion_id)`
+- `score` is an integer between `0` and `10`
 
 ### Notes
 
 - Criterion scores live under `JudgeAssignment`, not on `Submission`.
+- Criterion scores are recorded only for `blind_review` assignments.
 
 ## Prize
 
@@ -644,8 +684,9 @@ It describes the intended persistent model at the level of entities, key fields,
 These are computed from persisted data and do not require separate canonical entities:
 
 - blind judging submission view
-- shortlist ordering
+- pitch judging submission view
 - leaderboard
+- final score breakdown
 - no-submission team section
 - published judge roster
 - published staff roster

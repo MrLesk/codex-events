@@ -39,11 +39,13 @@ function parsePersonaKey(personaKey: string): StablePersonaKey {
 function formatParticipantViewLabel(status: string) {
   switch (status) {
     case 'submitted':
-      return 'Applications'
+      return 'New'
     case 'approved':
       return 'Approved'
     case 'rejected':
       return 'Rejected'
+    case 'withdrawn':
+      return 'Withdrawn'
     default:
       return null
   }
@@ -113,7 +115,7 @@ async function waitForStagedApplicationDecision(page: Page, applicationId: strin
   }
 }
 
-async function waitForApplicationStatus(page: Page, applicationId: string, status: 'submitted' | 'approved' | 'rejected') {
+async function waitForApplicationStatus(page: Page, applicationId: string, status: 'submitted' | 'approved' | 'rejected' | 'withdrawn') {
   const apiClient = await createAuthenticatedApiClient('hackathon_admin')
   const hackathonId = resolveHackathonId(getCurrentHackathonId(page))
 
@@ -193,7 +195,7 @@ Then('I should see the admin application {string} with status {string}', async (
 
   await page.getByRole('button', {
     name: participantViewLabel,
-    exact: true
+    exact: false
   }).click()
 
   const application = page.getByTestId(`admin-application-${applicationId}`)

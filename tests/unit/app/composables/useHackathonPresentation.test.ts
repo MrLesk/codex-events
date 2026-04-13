@@ -4,9 +4,12 @@ import {
   describeHackathonWindowNote,
   describeHackathonWindowStatus,
   formatHackathonLocation,
+  formatHackathonStateLabel,
   formatHackathonDateWithWeekday,
   formatPrizeReward,
   getPublicHackathonStatePresentation,
+  summarizeHackathonState,
+  resolveHackathonStateColor,
   getHackathonDateTimePresentation,
   getHackathonWindowProgress,
   getHackathonEarliestStartAt,
@@ -206,6 +209,13 @@ describe('public hackathon agenda presentation helpers', () => {
       label: 'Registration open',
       color: 'info'
     })
+  })
+
+  test('formats canonical judging lifecycle labels, colors, and summaries', () => {
+    expect(formatHackathonStateLabel('blind_review')).toBe('Blind review')
+    expect(resolveHackathonStateColor('pitch_review')).toBe('primary')
+    expect(summarizeHackathonState('shortlist')).toBe('Blind-review scores are locked in and finalists are being selected for the pitch stage.')
+    expect(summarizeHackathonState('final_deliberation')).toBe('Final combined scores are under review before winners are announced.')
   })
 
   test('formats currency-backed prize rewards with Intl currency formatting', () => {

@@ -2,8 +2,9 @@ import { eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '../../../../../../../auth/actor'
 import { writeAuditLog } from '../../../../../../../database/audit-log'
-import { submissions } from '../../../../../../../database/schema'
+import { hackathons, submissions } from '../../../../../../../database/schema'
 import { defineApiHandler } from '../../../../../../../utils/api-handler'
+import { ApiError } from '../../../../../../../utils/api-error'
 import { apiData } from '../../../../../../../utils/api-response'
 import { parseValidatedBody, parseValidatedParams } from '../../../../../../../utils/validation'
 import {
@@ -15,6 +16,50 @@ import {
   submissionParamsSchema
 } from '../../../../../../../utils/submissions'
 
+function pruneStoredSubmissionIdsJson(
+  storedSubmissionIdsJson: string,
+  submissionId: string,
+  error: {
+    code: string
+    message: string
+    hackathonId: string
+  }
+) {
+  let parsedValue: unknown
+
+  try {
+    parsedValue = JSON.parse(storedSubmissionIdsJson)
+  } catch {
+    throw new ApiError({
+      statusCode: 500,
+      code: error.code,
+      message: error.message,
+      details: {
+        hackathonId: error.hackathonId
+      }
+    })
+  }
+
+  const parsedSubmissionIds = Array.isArray(parsedValue)
+    ? parsedValue
+    : null
+  const isValidStoredSubmissionIds = parsedSubmissionIds !== null
+    && parsedSubmissionIds.every((value): value is string => typeof value === 'string' && value.trim().length > 0)
+
+  if (!isValidStoredSubmissionIds) {
+    throw new ApiError({
+      statusCode: 500,
+      code: error.code,
+      message: error.message,
+      details: {
+        hackathonId: error.hackathonId
+      }
+    })
+  }
+
+  return JSON.stringify(parsedSubmissionIds.filter(value => value !== submissionId))
+}
+
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
   const { hackathonId, teamId } = parseValidatedParams(event, submissionParamsSchema)
@@ -25,15 +70,43 @@ export default defineApiHandler(async (event) => {
   assertSubmissionDisqualifiable(hackathon, submission)
 
   const disqualifiedAt = new Date().toISOString()
+  const pitchFinalistSubmissionIdsJson = pruneStoredSubmissionIdsJson(
+    hackathon.pitchFinalistSubmissionIdsJson,
+    submission.id,
+    {
+      code: 'pitch_finalists_invalid',
+      message: 'The stored pitch finalists are invalid.',
+      hackathonId
+    }
+  )
+  const finalRankingSubmissionIdsJson = pruneStoredSubmissionIdsJson(
+    hackathon.finalRankingSubmissionIdsJson,
+    submission.id,
+    {
+      code: 'final_ranking_invalid',
+      message: 'The stored final ranking override is invalid.',
+      hackathonId
+    }
+  )
 
-  await database
-    .update(submissions)
-    .set({
-      status: 'disqualified',
-      disqualifiedAt,
-      updatedAt: disqualifiedAt
-    })
-    .where(eq(submissions.id, submission.id))
+  await database.batch([
+    database
+      .update(submissions)
+      .set({
+        status: 'disqualified',
+        disqualifiedAt,
+        updatedAt: disqualifiedAt
+      })
+      .where(eq(submissions.id, submission.id)),
+    database
+      .update(hackathons)
+      .set({
+        pitchFinalistSubmissionIdsJson,
+        finalRankingSubmissionIdsJson,
+        updatedAt: disqualifiedAt
+      })
+      .where(eq(hackathons.id, hackathonId))
+  ])
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

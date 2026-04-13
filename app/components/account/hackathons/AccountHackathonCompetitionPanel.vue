@@ -2,6 +2,7 @@
 import type {
   ApiDataResponse,
   ApiListResponse,
+  FinalDeliberationView,
   HackathonRecord,
   HackathonRoleAssignment,
   JudgeAssignmentSummary,
@@ -76,6 +77,10 @@ const shortlistEntries = ref<ShortlistEntry[]>([])
 const shortlistStatus = ref<LoadStatus>('idle')
 const shortlistErrorMessage = ref('')
 
+const finalDeliberation = ref<FinalDeliberationView | null>(null)
+const finalDeliberationStatus = ref<LoadStatus>('idle')
+const finalDeliberationErrorMessage = ref('')
+
 const winners = ref<WinnerEntry[]>([])
 const winnersStatus = ref<LoadStatus>('idle')
 const winnersErrorMessage = ref('')
@@ -89,7 +94,11 @@ const canManage = computed(() => workspace.canManageCurrentHackathon.value)
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
 
 const canLoadShortlist = computed(() =>
-  Boolean(currentHackathon.value && ['shortlist', 'winners_announced', 'completed'].includes(currentHackathon.value.state))
+  Boolean(currentHackathon.value && currentHackathon.value.state === 'shortlist')
+)
+
+const canLoadFinalDeliberation = computed(() =>
+  Boolean(currentHackathon.value && currentHackathon.value.state === 'final_deliberation')
 )
 
 const canLoadWinners = computed(() =>
@@ -108,15 +117,28 @@ const judgeChoices = computed<JudgeChoice[]>(() =>
 )
 
 const showAssignmentsPanel = computed(() =>
-  Boolean(currentHackathon.value && ['judging_preparation', 'judge_review'].includes(currentHackathon.value.state))
+  Boolean(currentHackathon.value && ['judging_preparation', 'blind_review'].includes(currentHackathon.value.state))
 )
 
 const showShortlistPanel = computed(() =>
-  Boolean(currentHackathon.value && ['judge_review', 'shortlist', 'winners_announced', 'completed'].includes(currentHackathon.value.state))
+  Boolean(
+    currentHackathon.value
+    && currentHackathon.value.blindReviewCount > 0
+    && currentHackathon.value.pitchReviewEnabled
+    && currentHackathon.value.state === 'shortlist'
+  )
+)
+
+const showPitchReviewPanel = computed(() =>
+  Boolean(currentHackathon.value && currentHackathon.value.state === 'pitch_review')
+)
+
+const showFinalDeliberationPanel = computed(() =>
+  Boolean(currentHackathon.value && currentHackathon.value.state === 'final_deliberation')
 )
 
 const showOutcomePanel = computed(() =>
-  Boolean(currentHackathon.value && ['shortlist', 'winners_announced', 'completed'].includes(currentHackathon.value.state))
+  Boolean(currentHackathon.value && ['winners_announced', 'completed'].includes(currentHackathon.value.state))
 )
 
 const showPrizeRedemptionsPanel = computed(() =>
@@ -126,6 +148,8 @@ const showPrizeRedemptionsPanel = computed(() =>
 const showCompetitionSections = computed(() =>
   showAssignmentsPanel.value
   || showShortlistPanel.value
+  || showPitchReviewPanel.value
+  || showFinalDeliberationPanel.value
   || showOutcomePanel.value
   || showPrizeRedemptionsPanel.value
 )
@@ -229,6 +253,33 @@ async function loadWinners() {
   }
 }
 
+async function loadFinalDeliberation() {
+  if (!canLoadFinalDeliberation.value) {
+    finalDeliberation.value = null
+    finalDeliberationStatus.value = 'idle'
+    finalDeliberationErrorMessage.value = ''
+    return
+  }
+
+  finalDeliberationStatus.value = 'pending'
+  finalDeliberationErrorMessage.value = ''
+
+  try {
+    const response = await $fetch<ApiDataResponse<FinalDeliberationView>>(
+      `/api/hackathons/${hackathonId.value}/final-deliberation`
+    )
+    finalDeliberation.value = response.data
+    finalDeliberationStatus.value = 'success'
+  } catch (error) {
+    finalDeliberation.value = null
+    finalDeliberationStatus.value = 'error'
+    finalDeliberationErrorMessage.value = toSectionErrorMessage(
+      error,
+      'Final deliberation data could not be loaded right now.'
+    )
+  }
+}
+
 async function loadPrizeRedemptions() {
   if (!canLoadWinners.value) {
     redemptions.value = []
@@ -261,6 +312,7 @@ async function loadCompetitionData() {
     loadAssignments(),
     loadLeaderboard(),
     loadShortlist(),
+    loadFinalDeliberation(),
     loadWinners(),
     loadPrizeRedemptions()
   ])
@@ -344,19 +396,61 @@ async function forceSkipAssignment(payload: { assignmentId: string, reason?: str
   )
 }
 
-async function reorderShortlist(orderedSubmissionIds: string[]) {
+async function selectFinalists(orderedSubmissionIds: string[]) {
   await runMutation(
-    'shortlist-reorder',
+    'shortlist-select',
     async () => {
-      await $fetch(`/api/hackathons/${hackathonId.value}/shortlist/actions/reorder`, {
+      await $fetch(`/api/hackathons/${hackathonId.value}/shortlist/actions/select-finalists`, {
         method: 'POST',
         body: {
           orderedSubmissionIds
         }
       })
     },
-    'Shortlist updated',
-    'The final ranking order has been updated without changing judge scores.'
+    'Pitch finalists updated',
+    'The saved finalist set and finalist order have been updated for pitch review.'
+  )
+}
+
+async function startPitchReview() {
+  await runMutation(
+    'start-pitch-review',
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/actions/start-pitch-review`, {
+        method: 'POST'
+      })
+    },
+    'Pitch review started',
+    'The finalist pitch panel is now open for full-visibility judging.'
+  )
+}
+
+async function startFinalDeliberation() {
+  await runMutation(
+    'start-final-deliberation',
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/actions/start-final-deliberation`, {
+        method: 'POST'
+      })
+    },
+    'Final deliberation started',
+    'The final weighted ranking is now ready for admin review.'
+  )
+}
+
+async function reorderFinalDeliberation(orderedSubmissionIds: string[]) {
+  await runMutation(
+    'final-deliberation-reorder',
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/final-deliberation/actions/reorder`, {
+        method: 'POST',
+        body: {
+          orderedSubmissionIds
+        }
+      })
+    },
+    'Final order updated',
+    'The final ranking order has been updated without changing any judge scores.'
   )
 }
 </script>
@@ -402,9 +496,9 @@ async function reorderShortlist(orderedSubmissionIds: string[]) {
         />
 
         <section
-          v-if="showShortlistPanel || showOutcomePanel"
+          v-if="showShortlistPanel || showFinalDeliberationPanel || showOutcomePanel"
           class="grid gap-6"
-          :class="showShortlistPanel && showOutcomePanel ? 'xl:grid-cols-[1.15fr_0.85fr]' : ''"
+          :class="(showShortlistPanel || showFinalDeliberationPanel) && showOutcomePanel ? 'xl:grid-cols-[1.15fr_0.85fr]' : ''"
         >
           <AdminCompetitionShortlistPanel
             v-if="showShortlistPanel"
@@ -416,7 +510,19 @@ async function reorderShortlist(orderedSubmissionIds: string[]) {
             :is-shortlist-loading="shortlistStatus === 'pending'"
             :shortlist-error-message="shortlistStatus === 'error' ? shortlistErrorMessage : ''"
             :pending-action-key="pendingActionKey"
-            @reorder="reorderShortlist"
+            @select-finalists="selectFinalists"
+            @start-pitch-review="startPitchReview"
+          />
+
+          <AdminCompetitionFinalDeliberationPanel
+            v-if="showFinalDeliberationPanel"
+            :hackathon="currentHackathon"
+            :entries="finalDeliberation?.entries ?? []"
+            :final-ranking-submission-ids="finalDeliberation?.finalRankingSubmissionIds ?? []"
+            :is-loading="finalDeliberationStatus === 'pending'"
+            :error-message="finalDeliberationStatus === 'error' ? finalDeliberationErrorMessage : ''"
+            :pending-action-key="pendingActionKey"
+            @reorder="reorderFinalDeliberation"
           />
 
           <AdminCompetitionOutcomePanel
@@ -428,6 +534,42 @@ async function reorderShortlist(orderedSubmissionIds: string[]) {
             :error-message="winnersStatus === 'error' ? winnersErrorMessage : ''"
           />
         </section>
+
+        <AppCard
+          v-if="showPitchReviewPanel"
+          class="rounded-xl hackathon-workspace-detail-panel"
+        >
+          <template #header>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold text-highlighted">
+                Pitch Review
+              </h2>
+              <p class="text-sm text-muted">
+                Judges now see full submission details and submit pitch scores on the shared `0-10` scale. When you move on, the platform averages the submitted pitch votes only.
+              </p>
+            </div>
+          </template>
+
+          <div class="space-y-4">
+            <AppAlert
+              color="neutral"
+              variant="soft"
+              title="Pitch review is live"
+              description="Close pitch review once the submitted votes you want to count are in. Missing pitch votes are excluded from the average."
+            />
+
+            <div class="flex flex-wrap gap-3">
+              <AppButton
+                color="primary"
+                :loading="pendingActionKey === 'start-final-deliberation'"
+                :disabled="pendingActionKey !== null && pendingActionKey !== 'start-final-deliberation'"
+                @click="startFinalDeliberation"
+              >
+                Move to final deliberation
+              </AppButton>
+            </div>
+          </div>
+        </AppCard>
 
         <AdminCompetitionPrizeRedemptionsPanel
           v-if="showPrizeRedemptionsPanel"

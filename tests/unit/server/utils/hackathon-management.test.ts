@@ -7,9 +7,86 @@ import {
   assertOpenRegistrationAllowed,
   assertOpenSubmissionAllowed,
   assertRoleCapabilityInvariant,
+  createHackathonBodySchema,
+  getPublicHackathonBySlugOrThrow,
   isHackathonRolePublishedInRoster,
-  serializePublishedHackathonRosterMember
+  serializeHackathon,
+  serializePublishedHackathonRosterMember,
+  updateHackathonBodySchema
 } from '../../../../server/utils/hackathon-management'
+
+function buildHackathonRecord(
+  overrides: Partial<Parameters<typeof serializeHackathon>[0]> = {}
+): Parameters<typeof serializeHackathon>[0] {
+  return {
+    id: 'hackathon_1',
+    name: 'Fixture Hackathon',
+    slug: 'fixture-hackathon',
+    description: 'Fixture hackathon',
+    agendaItemsJson: '[]',
+    backgroundImageUrl: null,
+    bannerImageUrl: null,
+    lumaEventUrl: null,
+    lumaEventApiId: null,
+    city: 'Vienna',
+    country: 'Austria',
+    address: 'Fixture Address',
+    registrationOpensAt: '2026-03-20T12:00:00.000Z',
+    registrationClosesAt: '2026-03-23T12:00:00.000Z',
+    submissionOpensAt: '2026-03-23T12:00:00.000Z',
+    submissionClosesAt: '2026-03-25T12:00:00.000Z',
+    state: 'draft',
+    blindReviewCount: 1,
+    pitchReviewEnabled: false,
+    blindScoreWeightPercent: 70,
+    pitchScoreWeightPercent: 30,
+    maxTeamMembers: 5,
+    participantsLimit: null,
+    inPersonEvent: false,
+    requireXProfile: false,
+    requireLinkedinProfile: false,
+    requireGithubProfile: false,
+    requireChatgptEmail: false,
+    requireOpenaiOrgId: false,
+    requireLumaEmail: false,
+    requireWhyThisHackathon: false,
+    requireProofOfExecution: false,
+    currentApplicationTermsDocumentId: null,
+    currentWinnerTermsDocumentId: null,
+    createdByUserId: 'creator_1',
+    createdAt: '2026-03-20T10:00:00.000Z',
+    updatedAt: '2026-03-20T10:00:00.000Z',
+    ...overrides
+  }
+}
+
+function collectDrizzleParamValues(node: unknown, values: string[] = []) {
+  if (!node || typeof node !== 'object') {
+    return values
+  }
+
+  if (Array.isArray(node)) {
+    node.forEach(item => collectDrizzleParamValues(item, values))
+    return values
+  }
+
+  const sqlNode = node as {
+    constructor?: { name?: string }
+    queryChunks?: unknown[]
+    value?: unknown
+  }
+
+  if (sqlNode.constructor?.name === 'Param' && typeof sqlNode.value === 'string') {
+    values.push(sqlNode.value)
+    return values
+  }
+
+  if (Array.isArray(sqlNode.queryChunks)) {
+    collectDrizzleParamValues(sqlNode.queryChunks, values)
+  }
+
+  return values
+}
 
 describe('hackathon management utilities', () => {
   test('enforces canonical role capability combinations', () => {
@@ -268,6 +345,89 @@ describe('hackathon management utilities', () => {
     expect(patch).not.toHaveProperty('agendaItems')
     expect(patch).not.toHaveProperty('name')
     expect(typeof patch.updatedAt).toBe('string')
+  })
+
+  test('parses configurable judging fields in create and update request schemas', () => {
+    expect(createHackathonBodySchema.parse({
+      name: 'Fixture Hackathon',
+      slug: 'fixture-hackathon',
+      description: 'Fixture hackathon',
+      agendaItems: [],
+      tracks: [],
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      blindReviewCount: '2',
+      pitchReviewEnabled: 'true',
+      blindScoreWeightPercent: '60',
+      pitchScoreWeightPercent: '40'
+    })).toMatchObject({
+      blindReviewCount: 2,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 60,
+      pitchScoreWeightPercent: 40
+    })
+
+    expect(updateHackathonBodySchema.parse({
+      blindReviewCount: '0',
+      pitchReviewEnabled: false,
+      blindScoreWeightPercent: '100',
+      pitchScoreWeightPercent: '0'
+    })).toMatchObject({
+      blindReviewCount: 0,
+      pitchReviewEnabled: false,
+      blindScoreWeightPercent: 100,
+      pitchScoreWeightPercent: 0
+    })
+  })
+
+  test('serializes configurable judging fields for internal hackathon responses', () => {
+    expect(serializeHackathon(buildHackathonRecord({
+      state: 'blind_review',
+      blindReviewCount: 2,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 60,
+      pitchScoreWeightPercent: 40
+    }))).toMatchObject({
+      state: 'blind_review',
+      blindReviewCount: 2,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 60,
+      pitchScoreWeightPercent: 40
+    })
+  })
+
+  test('includes canonical judging review states in public hackathon visibility queries', async () => {
+    let capturedWhere: unknown
+
+    const database = {
+      query: {
+        hackathons: {
+          findFirst: async ({ where }: { where: unknown }) => {
+            capturedWhere = where
+            return buildHackathonRecord({
+              state: 'blind_review'
+            })
+          }
+        }
+      }
+    } as Parameters<typeof getPublicHackathonBySlugOrThrow>[0]
+
+    await expect(getPublicHackathonBySlugOrThrow(database, 'fixture-hackathon')).resolves.toMatchObject({
+      slug: 'fixture-hackathon',
+      state: 'blind_review'
+    })
+
+    const visibilityValues = collectDrizzleParamValues(capturedWhere)
+
+    expect(visibilityValues).toContain('blind_review')
+    expect(visibilityValues).toContain('pitch_review')
+    expect(visibilityValues).toContain('final_deliberation')
+    expect(visibilityValues).not.toContain('judge_review')
   })
 
   test('derives published judge and staff rosters from canonical role assignments', () => {

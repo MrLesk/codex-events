@@ -3,8 +3,10 @@ export const hackathonStateOrder = [
   'registration_open',
   'submission_open',
   'judging_preparation',
-  'judge_review',
+  'blind_review',
   'shortlist',
+  'pitch_review',
+  'final_deliberation',
   'winners_announced',
   'completed'
 ] as const
@@ -156,6 +158,7 @@ export interface AdminApplicationRecord {
   preApprovalStatus?: 'approved' | 'rejected' | null
   lumaSyncStatus?: 'not_synced' | 'approve_synced' | 'reject_synced' | 'approve_failed' | 'reject_failed' | null
   submittedAt: string
+  withdrawnAt: string | null
   reviewedAt: string | null
   reviewedByUserId: string | null
   applicationTermsDocumentId: string
@@ -165,6 +168,13 @@ export interface AdminApplicationRecord {
   updatedAt: string
   user?: OperationalUserSummary
   applicationTermsDocument?: TermsDocument
+  adminWithdrawal?: {
+    isAllowed: boolean
+    reason: string | null
+    warning: string | null
+    activeTeamId: string | null
+    teamAction: 'none' | 'remove_member' | 'dissolve_team'
+  }
 }
 
 export interface HackathonRecord {
@@ -188,6 +198,10 @@ export interface HackathonRecord {
   state: HackathonState
   maxTeamMembers: number
   participantsLimit?: number | null
+  blindReviewCount: number
+  pitchReviewEnabled: boolean
+  blindScoreWeightPercent: number
+  pitchScoreWeightPercent: number
   inPersonEvent: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
@@ -227,6 +241,10 @@ export interface HackathonFormState {
   submissionClosesAt: string
   maxTeamMembers: number
   participantsLimit: number | null
+  blindReviewCount: number
+  pitchReviewEnabled: boolean
+  blindScoreWeightPercent: number
+  pitchScoreWeightPercent: number
   inPersonEvent: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
@@ -464,12 +482,64 @@ export interface LeaderboardEntry {
   }>
 }
 
-export interface ShortlistEntry extends LeaderboardEntry {
-  finalRank: number
+export interface ShortlistEntry {
+  submissionId: string
+  projectName: string | null
+  submissionStatus: SubmissionRecord['status']
+  reviewStatus: JudgeAssignmentSummary['status'] | null
+  ineligibilityStatus: JudgeAssignmentSummary['ineligibilityStatus'] | null
+  scoreTotal: number | null
+  rank: number | null
+  criterionScores: Array<{
+    evaluationCriterionId: string
+    criterionName: string | null
+    criterionWeight: number | null
+    score: number
+    comment: string | null
+  }>
+  isPitchFinalist: boolean
+  pitchFinalistRank: number | null
 }
 
-export interface WinnerEntry extends ShortlistEntry {
+export interface WinnerEntry {
+  teamId: string
+  teamName: string
+  submissionId: string
+  projectName: string | null
+  submissionStatus: SubmissionRecord['status']
+  reviewStatus: JudgeAssignmentSummary['status'] | null
+  ineligibilityStatus: JudgeAssignmentSummary['ineligibilityStatus'] | null
+  scoreTotal: number | null
+  rank: number | null
+  criterionScores: Array<{
+    evaluationCriterionId: string
+    criterionName: string | null
+    criterionWeight: number | null
+    score: number
+    comment: string | null
+  }>
+  finalRank: number
   prizes: PrizeDefinition[]
+}
+
+export interface FinalDeliberationEntry {
+  teamId: string
+  teamName: string
+  submissionId: string
+  projectName: string | null
+  submissionStatus: SubmissionRecord['status']
+  reviewStatus: JudgeAssignmentSummary['status'] | null
+  ineligibilityStatus: JudgeAssignmentSummary['ineligibilityStatus'] | null
+  scoreTotal: number | null
+  scoreRank: number | null
+  finalRank: number | null
+  blindScore?: number | null
+  pitchScore?: number | null
+}
+
+export interface FinalDeliberationView {
+  entries: FinalDeliberationEntry[]
+  finalRankingSubmissionIds: string[]
 }
 
 export interface LifecycleMetrics {
@@ -484,7 +554,15 @@ export interface LifecycleMetrics {
 }
 
 export interface LifecycleControl {
-  key: 'open_registration' | 'open_submission' | 'start_judging_preparation' | 'start_judge_review' | 'start_shortlist' | 'announce_winners' | 'complete'
+  key: 'open_registration'
+    | 'open_submission'
+    | 'start_judging_preparation'
+    | 'start_blind_review'
+    | 'start_pitch_review'
+    | 'start_shortlist'
+    | 'start_final_deliberation'
+    | 'announce_winners'
+    | 'complete'
   label: string
   description: string
   endpoint: string
@@ -627,9 +705,11 @@ export function getHackathonStateColor(state: HackathonState) {
       return 'primary'
     case 'judging_preparation':
       return 'warning'
-    case 'judge_review':
+    case 'blind_review':
+    case 'pitch_review':
       return 'warning'
     case 'shortlist':
+    case 'final_deliberation':
       return 'secondary'
     case 'winners_announced':
       return 'success'
@@ -667,8 +747,10 @@ export function getHackathonOperationsPhase(state: HackathonState): HackathonOpe
     case 'submission_open':
       return 'submission_open'
     case 'judging_preparation':
-    case 'judge_review':
+    case 'blind_review':
     case 'shortlist':
+    case 'pitch_review':
+    case 'final_deliberation':
     case 'winners_announced':
       return 'judging'
     case 'completed':
@@ -952,7 +1034,7 @@ export function getAdminSubmissionInterventionPolicy(
 ): AdminSubmissionInterventionPolicy {
   const canAdminWithdraw = hackathonState === 'submission_open'
     && (submissionStatus === 'draft' || submissionStatus === 'submitted')
-  const canDisqualify = ['judge_review', 'shortlist', 'winners_announced', 'completed'].includes(hackathonState)
+  const canDisqualify = ['blind_review', 'shortlist', 'pitch_review', 'final_deliberation', 'winners_announced', 'completed'].includes(hackathonState)
     && submissionStatus === 'locked'
 
   let adminWithdrawReason: string | undefined
@@ -968,8 +1050,8 @@ export function getAdminSubmissionInterventionPolicy(
   let disqualifyReason: string | undefined
 
   if (!canDisqualify) {
-    if (!['judge_review', 'shortlist', 'winners_announced', 'completed'].includes(hackathonState)) {
-      disqualifyReason = 'Disqualification begins only once judge review starts.'
+    if (!['blind_review', 'shortlist', 'pitch_review', 'final_deliberation', 'winners_announced', 'completed'].includes(hackathonState)) {
+      disqualifyReason = 'Disqualification begins only once judging begins.'
     } else {
       disqualifyReason = 'Only locked submissions can be disqualified.'
     }
@@ -987,16 +1069,16 @@ export function getAdminJudgeAssignmentInterventionPolicy(
   hackathonState: HackathonState,
   assignmentStatus: JudgeAssignmentSummary['status']
 ): AdminJudgeAssignmentInterventionPolicy {
-  const canReassign = ['judging_preparation', 'judge_review'].includes(hackathonState)
+  const canReassign = ['judging_preparation', 'blind_review'].includes(hackathonState)
     && assignmentStatus === 'assigned'
-  const canForceSkip = hackathonState === 'judge_review'
+  const canForceSkip = hackathonState === 'blind_review'
     && assignmentStatus === 'judge_started'
 
   let reassignReason: string | undefined
 
   if (!canReassign) {
-    if (!['judging_preparation', 'judge_review'].includes(hackathonState)) {
-      reassignReason = 'Assignment reassignment is only available during judging preparation or judge review.'
+    if (!['judging_preparation', 'blind_review'].includes(hackathonState)) {
+      reassignReason = 'Assignment reassignment is only available during judging preparation or blind review.'
     } else {
       reassignReason = 'Only unstarted assignments can be reassigned.'
     }
@@ -1005,8 +1087,8 @@ export function getAdminJudgeAssignmentInterventionPolicy(
   let forceSkipReason: string | undefined
 
   if (!canForceSkip) {
-    if (hackathonState !== 'judge_review') {
-      forceSkipReason = 'Force-skip is available only once judge review has started.'
+    if (hackathonState !== 'blind_review') {
+      forceSkipReason = 'Force-skip is available only once blind review has started.'
     } else {
       forceSkipReason = 'Only started assignments can be force-skipped.'
     }
@@ -1268,6 +1350,10 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     submissionClosesAt: '',
     maxTeamMembers: 4,
     participantsLimit: null,
+    blindReviewCount: 1,
+    pitchReviewEnabled: false,
+    blindScoreWeightPercent: 70,
+    pitchScoreWeightPercent: 30,
     inPersonEvent: false,
     requireXProfile: false,
     requireLinkedinProfile: false,
@@ -1332,6 +1418,10 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
     submissionClosesAt: toDateTimeLocalValue(hackathon.submissionClosesAt),
     maxTeamMembers: hackathon.maxTeamMembers,
     participantsLimit: hackathon.participantsLimit ?? null,
+    blindReviewCount: hackathon.blindReviewCount,
+    pitchReviewEnabled: hackathon.pitchReviewEnabled,
+    blindScoreWeightPercent: hackathon.blindScoreWeightPercent,
+    pitchScoreWeightPercent: hackathon.pitchScoreWeightPercent,
     inPersonEvent: hackathon.inPersonEvent,
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,
@@ -1525,56 +1615,106 @@ export function getCurrentLifecycleControl(
       }
     }
     case 'judging_preparation': {
+      if (hackathon.blindReviewCount === 0) {
+        let reason: string | undefined
+        let code: string | undefined
+
+        if (metrics.lockedSubmissionCount === 0) {
+          reason = 'Pitch review requires at least one locked submission.'
+          code = 'locked_submissions_required'
+        } else if (metrics.judgePoolCount === 0) {
+          reason = 'Pitch review requires at least one judge in the automatic judge pool.'
+          code = 'judge_pool_required'
+        }
+
+        return {
+          key: 'start_pitch_review',
+          label: 'Start Pitch Review',
+          description: 'Open the full-visibility judging workspace for live pitch scoring.',
+          endpoint: `/api/hackathons/${hackathon.id}/actions/start-pitch-review`,
+          isEnabled: !reason,
+          reason,
+          code
+        }
+      }
+
       let reason: string | undefined
       let code: string | undefined
+      const expectedActiveAssignmentCount = metrics.lockedSubmissionCount * hackathon.blindReviewCount
 
       if (metrics.lockedSubmissionCount === 0) {
-        reason = 'Judge review requires at least one locked submission.'
+        reason = 'Blind review requires at least one locked submission.'
         code = 'locked_submissions_required'
-      } else if (metrics.activeAssignmentCount !== metrics.lockedSubmissionCount) {
-        reason = 'Every locked submission needs one active assignment before judge review can start.'
+      } else if (metrics.activeAssignmentCount !== expectedActiveAssignmentCount) {
+        reason = 'Every locked submission needs the configured number of active blind-review assignments before blind review can start.'
         code = 'active_assignments_required'
       }
 
       return {
-        key: 'start_judge_review',
-        label: 'Start Judge Review',
-        description: 'Open the blind judging workspace once every locked submission has an active assignment.',
-        endpoint: `/api/hackathons/${hackathon.id}/actions/start-judge-review`,
+        key: 'start_blind_review',
+        label: 'Start Blind Review',
+        description: 'Open the blind judging workspace once every locked submission has the configured blind-review coverage.',
+        endpoint: `/api/hackathons/${hackathon.id}/actions/start-blind-review`,
         isEnabled: !reason,
         reason,
         code
       }
     }
-    case 'judge_review': {
+    case 'blind_review': {
       let reason: string | undefined
       let code: string | undefined
 
       if (metrics.lockedLeaderboardEntryCount === 0) {
-        reason = 'Shortlist requires at least one locked submission.'
+        reason = hackathon.pitchReviewEnabled
+          ? 'Shortlist requires at least one locked submission.'
+          : 'Final deliberation requires at least one locked submission.'
         code = 'locked_submissions_required'
       } else if (metrics.completedReviewCount !== metrics.lockedLeaderboardEntryCount) {
-        reason = 'Every locked submission must have a completed review outcome before shortlist can start.'
+        reason = hackathon.pitchReviewEnabled
+          ? 'Every locked submission must have a completed blind-review outcome before shortlist can start.'
+          : 'Every locked submission must have a completed blind-review outcome before final deliberation can start.'
         code = 'completed_reviews_required'
       }
 
+      if (hackathon.pitchReviewEnabled) {
+        return {
+          key: 'start_shortlist',
+          label: 'Start Shortlist',
+          description: 'Move the hackathon into blind finalist selection before pitch review begins.',
+          endpoint: `/api/hackathons/${hackathon.id}/actions/start-shortlist`,
+          isEnabled: !reason,
+          reason,
+          code
+        }
+      }
+
       return {
-        key: 'start_shortlist',
-        label: 'Start Shortlist',
-        description: 'Move the hackathon into final ranking review once all locked submissions are fully reviewed.',
-        endpoint: `/api/hackathons/${hackathon.id}/actions/start-shortlist`,
+        key: 'start_final_deliberation',
+        label: 'Start Final Deliberation',
+        description: 'Move the hackathon into final score review once blind judging is complete.',
+        endpoint: `/api/hackathons/${hackathon.id}/actions/start-final-deliberation`,
         isEnabled: !reason,
         reason,
         code
       }
     }
-    case 'shortlist': {
+    case 'shortlist':
+      return null
+    case 'pitch_review':
+      return {
+        key: 'start_final_deliberation',
+        label: 'Move To Final Deliberation',
+        description: 'Close pitch review and open the final weighted ranking workspace using submitted pitch votes only.',
+        endpoint: `/api/hackathons/${hackathon.id}/actions/start-final-deliberation`,
+        isEnabled: true
+      }
+    case 'final_deliberation': {
       const needsWinnerTerms = metrics.prizeCount > 0 && !metrics.hasCurrentWinnerTerms
 
       return {
         key: 'announce_winners',
         label: 'Announce Winners',
-        description: 'Publish the current shortlist outcome and initialize prize redemption when prizes are configured.',
+        description: 'Publish the final ranking and initialize prize redemption when prizes are configured.',
         endpoint: `/api/hackathons/${hackathon.id}/actions/announce-winners`,
         isEnabled: !needsWinnerTerms,
         reason: needsWinnerTerms

@@ -3,7 +3,10 @@ import { existsSync, readFileSync } from 'node:fs'
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
-import { platformFixtureIds } from '../support/platform-fixtures.ts'
+import {
+  platformFixtureIds,
+  resetJudgeWorkspaceFixtureScenarioState
+} from '../support/platform-fixtures.ts'
 import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } from '../support/personas.ts'
 
 const { When, Then } = createBdd()
@@ -71,40 +74,70 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
   }
 }
 
-function getAssignmentCard(page: Page, title: string) {
-  return page
-    .locator('[data-testid^="judge-assignment-card-"]')
-    .filter({ has: page.getByRole('heading', { name: title }) })
-    .first()
+async function waitForJudgeWorkspaceInbox(page: Page) {
+  await expect(page.getByText('Active assignments', { exact: true })).toBeVisible({ timeout: 15_000 })
+}
+
+function getAssignmentCard(page: Page, assignmentId: string) {
+  return page.getByTestId(`judge-assignment-card-${assignmentId}`)
 }
 
 When('I open the judge workspace with the saved {string} session', async ({ page }, personaKey: string) => {
+  await resetJudgeWorkspaceFixtureScenarioState()
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
   await page.goto(`/account/hackathons/${judgeWorkspaceHackathonSlug}?tab=judging`)
+  await waitForJudgeWorkspaceInbox(page)
 })
 
-Then('I should see the blind workspace assignment card for {string}', async ({ page }, title: string) => {
-  await expect(getAssignmentCard(page, title)).toBeVisible()
+Then('I should see the fixture blind workspace assignment card', async ({ page }) => {
+  await expect(getAssignmentCard(page, platformFixtureIds.judgeWorkspaceAssignmentId)).toBeVisible()
 })
 
-Then('I should not see the blind workspace assignment card for {string}', async ({ page }, title: string) => {
-  await expect(getAssignmentCard(page, title)).toHaveCount(0)
+Then('the fixture blind workspace assignment card should show title {string}', async ({ page }, title: string) => {
+  await expect(
+    getAssignmentCard(page, platformFixtureIds.judgeWorkspaceAssignmentId).getByRole('heading', { name: title })
+  ).toBeVisible()
 })
 
-Then('I should not see the text {string}', async ({ page }, text: string) => {
+Then('the fixture blind workspace assignment card should show context label {string}', async ({ page }, label: string) => {
+  await expect(
+    getAssignmentCard(page, platformFixtureIds.judgeWorkspaceAssignmentId).getByText(label, { exact: true })
+  ).toBeVisible()
+})
+
+Then('I should not see the fixture blind workspace assignment card', async ({ page }) => {
+  await expect(getAssignmentCard(page, platformFixtureIds.judgeWorkspaceAssignmentId)).toHaveCount(0)
+})
+
+Then('I should see the in-progress blind workspace assignment card', async ({ page }) => {
+  await expect(getAssignmentCard(page, platformFixtureIds.judgeWorkspaceStartedAssignmentId)).toBeVisible()
+})
+
+Then('I should not see the in-progress blind workspace assignment card', async ({ page }) => {
+  await expect(getAssignmentCard(page, platformFixtureIds.judgeWorkspaceStartedAssignmentId)).toHaveCount(0)
+})
+
+Then('I should not see the judge workspace text {string}', async ({ page }, text: string) => {
   await expect(page.getByText(text)).toHaveCount(0)
 })
 
-When('I open the blind workspace assignment for {string}', async ({ page }, title: string) => {
-  const card = getAssignmentCard(page, title)
+When('I open the fixture blind workspace assignment', async ({ page }) => {
+  const card = getAssignmentCard(page, platformFixtureIds.judgeWorkspaceAssignmentId)
 
   await expect(card).toBeVisible()
   await card.click()
   await expect(page).toHaveURL(new RegExp(`/account/hackathons/${judgeWorkspaceHackathonSlug}\\?tab=judging&assignment=`))
-  await expect(page.getByTestId('judge-assignment-project-name')).toHaveText(title)
 })
 
-Then('I should see the blind assignment project name {string}', async ({ page }, title: string) => {
+When('I open the in-progress blind workspace assignment', async ({ page }) => {
+  const card = getAssignmentCard(page, platformFixtureIds.judgeWorkspaceStartedAssignmentId)
+
+  await expect(card).toBeVisible()
+  await card.click()
+  await expect(page).toHaveURL(new RegExp(`/account/hackathons/${judgeWorkspaceHackathonSlug}\\?tab=judging&assignment=`))
+})
+
+Then('I should see the blind assignment title {string}', async ({ page }, title: string) => {
   await expect(page.getByTestId('judge-assignment-project-name')).toHaveText(title)
 })
 
@@ -173,4 +206,5 @@ Then('I should be returned to the hackathon judging tab', async ({ page }) => {
 
 When('I reopen the judge workspace for the fixture hackathon', async ({ page }) => {
   await page.goto(`/account/hackathons/${judgeWorkspaceHackathonSlug}?tab=judging`)
+  await waitForJudgeWorkspaceInbox(page)
 })

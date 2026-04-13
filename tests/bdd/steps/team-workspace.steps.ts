@@ -3,6 +3,12 @@ import { existsSync, readFileSync } from 'node:fs'
 import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
+import {
+  resetParticipantSubmissionCreateFixtureScenarioState,
+  resetParticipantTeamCreateFixtureScenarioState,
+  resetParticipantTeamJoinFixtureScenarioState,
+  resetRegularUserParticipantAccessScenarioState
+} from '../support/platform-fixtures.ts'
 import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } from '../support/personas.ts'
 
 const { When, Then } = createBdd()
@@ -140,27 +146,20 @@ async function waitForParticipantSubmissionTabToSettle(page: Page) {
   }).not.toBe('loading')
 }
 
-async function resetParticipantCreateFixtureWorkspaceIfNeeded(page: Page, slug: string) {
-  if (slug !== 'participant-team-create-fixture-hackathon') {
-    return
+async function resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug: string) {
+  switch (slug) {
+    case 'participant-team-create-fixture-hackathon':
+      await resetParticipantTeamCreateFixtureScenarioState()
+      return
+    case 'participant-team-join-fixture-hackathon':
+      await resetParticipantTeamJoinFixtureScenarioState()
+      return
+    case 'participant-submission-create-fixture-hackathon':
+      await resetParticipantSubmissionCreateFixtureScenarioState()
+      return
+    default:
+      return
   }
-
-  const leaveButton = page.getByTestId('participant-team-leave')
-
-  if (await leaveButton.count() === 0) {
-    return
-  }
-
-  await Promise.all([
-    page.waitForResponse(response =>
-      response.url().includes('/api/hackathons/')
-      && response.url().includes('/actions/leave')
-      && response.ok()
-    ),
-    leaveButton.click()
-  ])
-
-  await waitForParticipantTeamTabToSettle(page)
 }
 
 async function recoverTeamDirectoryIfUnresolved(page: Page) {
@@ -226,16 +225,25 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
 }
 
 When('I open the participant Team tab for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  const parsedPersonaKey = parsePersonaKey(personaKey)
+  if (parsedPersonaKey === 'regular_user') {
+    await resetRegularUserParticipantAccessScenarioState()
+  }
+  await resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug)
+  await applyStoredStateToPage(parsedPersonaKey, page)
   await page.goto(`/account/hackathons/${slug}?tab=workspace`)
   await expect(page.getByTestId('account-hackathon-workspace-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
-  await resetParticipantCreateFixtureWorkspaceIfNeeded(page, slug)
   await recoverTeamDirectoryIfUnresolved(page)
 })
 
 When('I open the participant Teams tab for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  const parsedPersonaKey = parsePersonaKey(personaKey)
+  if (parsedPersonaKey === 'regular_user') {
+    await resetRegularUserParticipantAccessScenarioState()
+  }
+  await resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug)
+  await applyStoredStateToPage(parsedPersonaKey, page)
   await page.goto(`/account/hackathons/${slug}?tab=teams`)
   await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
@@ -243,14 +251,24 @@ When('I open the participant Teams tab for hackathon slug {string} with the save
 })
 
 When('I open the participant Team tab for hackathon slug {string} and selected team slug {string} with the saved {string} session', async ({ page }, slug: string, selectedTeamSlug: string, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  const parsedPersonaKey = parsePersonaKey(personaKey)
+  if (parsedPersonaKey === 'regular_user') {
+    await resetRegularUserParticipantAccessScenarioState()
+  }
+  await resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug)
+  await applyStoredStateToPage(parsedPersonaKey, page)
   await page.goto(`/account/hackathons/${slug}?tab=teams&team=${encodeURIComponent(selectedTeamSlug)}`)
   await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
 })
 
 When('I open the participant Submission tab for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
-  await applyStoredStateToPage(parsePersonaKey(personaKey), page)
+  const parsedPersonaKey = parsePersonaKey(personaKey)
+  if (parsedPersonaKey === 'regular_user') {
+    await resetRegularUserParticipantAccessScenarioState()
+  }
+  await resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug)
+  await applyStoredStateToPage(parsedPersonaKey, page)
   await page.goto(`/account/hackathons/${slug}?tab=workspace`)
   await waitForParticipantSubmissionTabToSettle(page)
 })
@@ -265,20 +283,66 @@ Then('the participant submission surface should not be visible', async ({ page }
   await expect(page.getByTestId('account-hackathon-submission-panel')).toHaveCount(0)
 })
 
-When('I create a participant team named {string}', async ({ page }, baseName: string) => {
-  const uniqueTeamName = `${baseName} ${Date.now()}`
-  getScenarioState(page).createdTeamName = uniqueTeamName
+When('I participate as solo from the participant workspace', async ({ page }) => {
+  const workspaceRoot = page.getByTestId('account-hackathon-workspace-panel')
 
-  const workspacePanel = page.getByTestId('participant-team-workspace-panel')
-  await waitForNuxtHydration(page)
-  await workspacePanel.getByTestId('participant-team-edit-name').click()
+  await Promise.all([
+    page.waitForResponse(response =>
+      response.url().includes('/api/hackathons/')
+      && response.url().includes('/teams')
+      && response.request().method() === 'POST'
+      && response.ok()
+    ),
+    workspaceRoot.getByRole('button', {
+      name: 'Participate as solo',
+      exact: true
+    }).click()
+  ])
 
-  const teamNameInput = workspacePanel.getByLabel('Team name')
-  const saveButton = workspacePanel.getByTestId('participant-team-update-profile')
-
-  await expect(saveButton).toBeEnabled({
+  await expect(page.getByTestId('participant-team-workspace-panel')).toBeVisible({
     timeout: 15_000
   })
+})
+
+async function createParticipantTeamFromCurrentSurface(page: Page, uniqueTeamName: string, teamBio?: string) {
+  const teamWorkspacePanel = page.getByTestId('participant-team-workspace-panel')
+
+  await waitForNuxtHydration(page)
+
+  if (await teamWorkspacePanel.isVisible().catch(() => false)) {
+    await teamWorkspacePanel.getByTestId('participant-team-edit-name').click()
+
+    const teamNameInput = teamWorkspacePanel.getByLabel('Team name')
+    const saveButton = teamWorkspacePanel.getByTestId('participant-team-update-profile')
+
+    await expect(saveButton).toBeEnabled({
+      timeout: 15_000
+    })
+
+    await expect.poll(async () => {
+      await teamNameInput.fill(uniqueTeamName)
+      return await teamNameInput.inputValue()
+    }, {
+      timeout: 5_000
+    }).toBe(uniqueTeamName)
+
+    if (typeof teamBio === 'string') {
+      const teamBioInput = teamWorkspacePanel.getByLabel('Team bio')
+
+      await expect.poll(async () => {
+        await teamBioInput.fill(teamBio)
+        return await teamBioInput.inputValue()
+      }, {
+        timeout: 5_000
+      }).toBe(teamBio)
+    }
+
+    await saveButton.click()
+    return
+  }
+
+  const workspaceRoot = page.getByTestId('account-hackathon-workspace-panel')
+  const teamNameInput = workspaceRoot.getByLabel('Team name')
 
   await expect.poll(async () => {
     await teamNameInput.fill(uniqueTeamName)
@@ -287,7 +351,36 @@ When('I create a participant team named {string}', async ({ page }, baseName: st
     timeout: 5_000
   }).toBe(uniqueTeamName)
 
-  await saveButton.click()
+  if (typeof teamBio === 'string') {
+    const teamBioInput = workspaceRoot.getByLabel('Team bio')
+
+    await expect.poll(async () => {
+      await teamBioInput.fill(teamBio)
+      return await teamBioInput.inputValue()
+    }, {
+      timeout: 5_000
+    }).toBe(teamBio)
+  }
+
+  await Promise.all([
+    page.waitForResponse(response =>
+      response.url().includes('/api/hackathons/')
+      && response.url().includes('/teams')
+      && response.request().method() === 'POST'
+      && response.ok()
+    ),
+    workspaceRoot.getByRole('button', {
+      name: 'Create team',
+      exact: true
+    }).click()
+  ])
+}
+
+When('I create a participant team named {string}', async ({ page }, baseName: string) => {
+  const uniqueTeamName = `${baseName} ${Date.now()}`
+  getScenarioState(page).createdTeamName = uniqueTeamName
+
+  await createParticipantTeamFromCurrentSurface(page, uniqueTeamName)
 
   await expect(page.getByTestId('participant-team-workspace-panel').getByRole('heading', {
     name: uniqueTeamName,
@@ -301,33 +394,7 @@ When('I create a participant team named {string} with bio {string}', async ({ pa
   const uniqueTeamName = `${baseName} ${Date.now()}`
   getScenarioState(page).createdTeamName = uniqueTeamName
 
-  const workspacePanel = page.getByTestId('participant-team-workspace-panel')
-  await waitForNuxtHydration(page)
-  await workspacePanel.getByTestId('participant-team-edit-name').click()
-
-  const teamNameInput = workspacePanel.getByLabel('Team name')
-  const teamBioInput = workspacePanel.getByLabel('Team bio')
-  const saveButton = workspacePanel.getByTestId('participant-team-update-profile')
-
-  await expect(saveButton).toBeEnabled({
-    timeout: 15_000
-  })
-
-  await expect.poll(async () => {
-    await teamNameInput.fill(uniqueTeamName)
-    return await teamNameInput.inputValue()
-  }, {
-    timeout: 5_000
-  }).toBe(uniqueTeamName)
-
-  await expect.poll(async () => {
-    await teamBioInput.fill(teamBio)
-    return await teamBioInput.inputValue()
-  }, {
-    timeout: 5_000
-  }).toBe(teamBio)
-
-  await saveButton.click()
+  await createParticipantTeamFromCurrentSurface(page, uniqueTeamName, teamBio)
 
   await expect(page.getByTestId('participant-team-workspace-panel').getByRole('heading', {
     name: uniqueTeamName,

@@ -14,7 +14,16 @@ import {
 } from '../../../../server/utils/submissions'
 
 function createHackathon(
-  state: 'registration_open' | 'submission_open' | 'judging_preparation' | 'judge_review' | 'shortlist' | 'winners_announced' | 'completed'
+  state:
+    | 'registration_open'
+    | 'submission_open'
+    | 'judging_preparation'
+    | 'blind_review'
+    | 'shortlist'
+    | 'pitch_review'
+    | 'final_deliberation'
+    | 'winners_announced'
+    | 'completed'
 ) {
   return {
     id: 'hackathon_1',
@@ -150,13 +159,17 @@ describe('TASK-3.7 submission helpers', () => {
     expect(() => assertSubmissionWithdrawable(createHackathon('submission_open'), createSubmission('locked'))).toThrowError(ApiError)
   })
 
-  test('disqualification applies only to locked submissions during or after judge review', () => {
-    expect(() => assertSubmissionDisqualifiable(createHackathon('judge_review'), createSubmission('locked'))).not.toThrow()
+  test('disqualification applies only to locked submissions during the judging and outcomes lifecycle', () => {
+    expect(() => assertSubmissionDisqualifiable(createHackathon('blind_review'), createSubmission('locked'))).not.toThrow()
     expect(() => assertSubmissionDisqualifiable(createHackathon('shortlist'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createHackathon('pitch_review'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createHackathon('final_deliberation'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createHackathon('winners_announced'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createHackathon('completed'), createSubmission('locked'))).not.toThrow()
     expect(() => assertSubmissionDisqualifiable(createHackathon('submission_open'), createSubmission('locked'))).toThrowError(ApiError)
-    expect(() => assertSubmissionDisqualifiable(createHackathon('judge_review'), createSubmission('draft'))).toThrowError(ApiError)
-    expect(() => assertSubmissionDisqualifiable(createHackathon('judge_review'), createSubmission('submitted'))).toThrowError(ApiError)
-    expect(() => assertSubmissionDisqualifiable(createHackathon('judge_review'), createSubmission('withdrawn'))).toThrowError(ApiError)
+    expect(() => assertSubmissionDisqualifiable(createHackathon('shortlist'), createSubmission('draft'))).toThrowError(ApiError)
+    expect(() => assertSubmissionDisqualifiable(createHackathon('shortlist'), createSubmission('submitted'))).toThrowError(ApiError)
+    expect(() => assertSubmissionDisqualifiable(createHackathon('shortlist'), createSubmission('withdrawn'))).toThrowError(ApiError)
 
     expect(isNoSubmissionStatus('draft')).toBe(true)
     expect(isNoSubmissionStatus('withdrawn')).toBe(true)
