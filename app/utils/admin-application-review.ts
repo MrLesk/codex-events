@@ -34,6 +34,23 @@ export interface AdminApplicationReviewGroup {
   latestSubmittedAt: string
 }
 
+export function canApproveAdminApplicationReviewGroup(group: AdminApplicationReviewGroup) {
+  return group.applicants.length > 1 || group.pendingTeammates.length > 0
+}
+
+export function hasAdminApplicationReviewGroupApprovalSelected(group: AdminApplicationReviewGroup) {
+  return group.applicants.length > 1
+    && group.applicants.every(applicant => applicant.application.preApprovalStatus === 'approved')
+}
+
+export function hasAdminApplicationReviewApplicantApprovalSelected(
+  applicant: AdminApplicationReviewGroup['applicants'][number],
+  group: AdminApplicationReviewGroup
+) {
+  return applicant.application.preApprovalStatus === 'approved'
+    && !hasAdminApplicationReviewGroupApprovalSelected(group)
+}
+
 const adminApplicationReviewSearchKeys: Array<{ name: string, weight: number }> = [
   {
     name: 'applicants.application.user.displayName',

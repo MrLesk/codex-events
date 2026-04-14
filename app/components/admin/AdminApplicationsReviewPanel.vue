@@ -8,8 +8,11 @@ import type {
 
 import {
   buildAdminApplicationReviewGroups,
+  canApproveAdminApplicationReviewGroup,
   filterAdminApplicationReviewGroups,
   filterAdminApplicationReviewGroupsByApplicant,
+  hasAdminApplicationReviewApplicantApprovalSelected,
+  hasAdminApplicationReviewGroupApprovalSelected,
   searchAdminApplicationReviewGroups
 } from '~/utils/admin-application-review'
 import { parseProofOfExecutionLinks } from '~/utils/participant-application'
@@ -171,19 +174,6 @@ function stageGroupApprovalActionKey(group: AdminApplicationReviewGroup) {
 
 function formatPendingTeammateLabel(pendingTeammate: AdminApplicationReviewPendingTeammate) {
   return pendingTeammate.fullName ?? pendingTeammate.email ?? 'Unnamed teammate hint'
-}
-
-function canApproveTeam(group: AdminApplicationReviewGroup) {
-  return group.applicants.length > 1 || group.pendingTeammates.length > 0
-}
-
-function hasGroupApprovalSelected(group: AdminApplicationReviewGroup) {
-  return canApproveTeam(group)
-    && group.applicants.every(applicant => applicant.application.preApprovalStatus === 'approved')
-}
-
-function hasApplicantApprovalSelected(applicant: AdminApplicationReviewGroup['applicants'][number], group: AdminApplicationReviewGroup) {
-  return applicant.application.preApprovalStatus === 'approved' && !hasGroupApprovalSelected(group)
 }
 
 function hasApplicantRejectionSelected(applicant: AdminApplicationReviewGroup['applicants'][number]) {
@@ -760,7 +750,7 @@ const emptyState = computed(() => {
                     v-if="view === 'applications' && applicant.application.status === 'submitted'"
                     type="button"
                     :data-testid="`admin-application-approve-${applicant.application.id}`"
-                    :class="getDecisionButtonClass('approve', hasApplicantApprovalSelected(applicant, group))"
+                    :class="getDecisionButtonClass('approve', hasAdminApplicationReviewApplicantApprovalSelected(applicant, group))"
                     :disabled="pendingActionKey !== null && pendingActionKey !== stageDecisionActionKey(applicant.application.id, 'approved')"
                     @click="emit('approve', applicant.application)"
                   >
@@ -778,10 +768,10 @@ const emptyState = computed(() => {
                   </button>
 
                   <button
-                    v-if="view === 'applications' && applicant.application.status === 'submitted' && canApproveTeam(group)"
+                    v-if="view === 'applications' && applicant.application.status === 'submitted' && canApproveAdminApplicationReviewGroup(group)"
                     type="button"
                     :data-testid="`admin-application-approve-team-${applicant.application.id}`"
-                    :class="getDecisionButtonClass('approve_team', hasGroupApprovalSelected(group))"
+                    :class="getDecisionButtonClass('approve_team', hasAdminApplicationReviewGroupApprovalSelected(group))"
                     :disabled="pendingActionKey !== null && pendingActionKey !== stageGroupApprovalActionKey(group)"
                     @click="emit('approveTeam', group.applicants.map(groupApplicant => groupApplicant.application))"
                   >

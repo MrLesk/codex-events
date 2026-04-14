@@ -2,8 +2,11 @@ import { describe, expect, test } from 'vitest'
 
 import {
   buildAdminApplicationReviewGroups,
+  canApproveAdminApplicationReviewGroup,
   filterAdminApplicationReviewGroups,
   filterAdminApplicationReviewGroupsByApplicant,
+  hasAdminApplicationReviewApplicantApprovalSelected,
+  hasAdminApplicationReviewGroupApprovalSelected,
   searchAdminApplicationReviewGroups
 } from '../../../../app/utils/admin-application-review'
 import type { AdminApplicationRecord } from '../../../../app/utils/admin-workspace'
@@ -13,6 +16,7 @@ function createApplication(options: {
   displayName: string
   email: string
   status?: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
+  preApprovalStatus?: 'approved' | 'rejected' | null
   checkedInAt?: string | null
   submittedAt?: string
   teamIntent?: 'solo' | 'team' | 'unknown'
@@ -23,7 +27,7 @@ function createApplication(options: {
     hackathonId: 'hackathon-1',
     userId: `user-${options.id}`,
     status: options.status ?? 'submitted',
-    preApprovalStatus: null,
+    preApprovalStatus: options.preApprovalStatus ?? null,
     checkedInAt: options.checkedInAt ?? null,
     submittedAt: options.submittedAt ?? '2026-03-29T10:00:00.000Z',
     withdrawnAt: options.status === 'withdrawn' ? '2026-03-30T10:00:00.000Z' : null,
@@ -460,6 +464,59 @@ describe('buildAdminApplicationReviewGroups', () => {
         mentionedByApplicationIds: ['application-1']
       }]
     })])
+  })
+})
+
+describe('admin application approval selection helpers', () => {
+  test('keeps the single-applicant approve state selected when teammate hints stay unmatched', () => {
+    const groups = buildAdminApplicationReviewGroups([
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com',
+        preApprovalStatus: 'approved',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Carol Example',
+          email: 'carol@example.com'
+        }]
+      })
+    ])
+
+    expect(canApproveAdminApplicationReviewGroup(groups[0]!)).toBe(true)
+    expect(hasAdminApplicationReviewGroupApprovalSelected(groups[0]!)).toBe(false)
+    expect(hasAdminApplicationReviewApplicantApprovalSelected(groups[0]!.applicants[0]!, groups[0]!)).toBe(true)
+  })
+
+  test('shows the team approval state when all matched applicants in a group are staged approved', () => {
+    const groups = buildAdminApplicationReviewGroups([
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com',
+        preApprovalStatus: 'approved',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Bob Example',
+          email: 'bob@example.com'
+        }]
+      }),
+      createApplication({
+        id: 'application-2',
+        displayName: 'Bob Example',
+        email: 'bob@example.com',
+        preApprovalStatus: 'approved',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Alice Example',
+          email: 'alice@example.com'
+        }]
+      })
+    ])
+
+    expect(canApproveAdminApplicationReviewGroup(groups[0]!)).toBe(true)
+    expect(hasAdminApplicationReviewGroupApprovalSelected(groups[0]!)).toBe(true)
+    expect(hasAdminApplicationReviewApplicantApprovalSelected(groups[0]!.applicants[0]!, groups[0]!)).toBe(false)
   })
 })
 
