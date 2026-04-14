@@ -66,6 +66,7 @@ Key characteristics:
 - Each hackathon can optionally store a Luma event API ID used for operational sync.
 - A configured Luma event API ID maps to at most one hackathon.
 - Each hackathon has a city, country, and address.
+- A hackathon street address is visible only in account-scoped hackathon workspace views for approved participants, judges, staff, hackathon admins, and platform admins.
 - Each hackathon has its own registration window.
 - Each hackathon has a registration flow that can be activated manually within its configured registration window.
 - Each hackathon has its own submission window.

@@ -433,6 +433,11 @@ const approvedOverviewTeamActionDescription = computed(() => {
 })
 const approvedOverviewDetailsActionDescription = 'Check the schedule, location, and full address before the hackathon starts.'
 const showTeamAndSubmissionCards = computed(() => hasHackathonEnteredSubmissionPhase(hackathon.value))
+const canViewRestrictedHackathonDetails = computed(() =>
+  applicationStatus.value === 'approved'
+  || canJudge.value
+  || canViewParticipantsAndTeams.value
+)
 
 const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
 const headerStateClass = computed(() => {
@@ -900,7 +905,7 @@ useSeoMeta({
           :hackathon="hackathon"
           :discord-server-url="hackathon.discordServerUrl ?? null"
           :criteria-count="criteriaCount"
-          :show-address="applicationStatus === 'approved'"
+          :show-address="canViewRestrictedHackathonDetails"
         />
 
         <HackathonTracksPanel :tracks="hackathon.tracks ?? []" />

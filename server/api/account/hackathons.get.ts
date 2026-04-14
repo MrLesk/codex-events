@@ -39,13 +39,22 @@ function isActiveSubmission(record: SubmissionRecord) {
   return record.status === 'draft' || record.status === 'submitted' || record.status === 'locked'
 }
 
+function canViewRestrictedHackathonDetails(
+  application: UserApplicationRecord | null,
+  roles: HackathonRoleAssignmentRecord[],
+  isPlatformAdmin: boolean
+) {
+  return isPlatformAdmin || roles.length > 0 || application?.status === 'approved'
+}
+
 function serializeHackathonParticipation(
   hackathon: HackathonRecord,
   application: UserApplicationRecord | null,
   team: TeamRecord | null,
   membership: TeamMembershipRecord | null,
   submission: SubmissionRecord | null,
-  roles: HackathonRoleAssignmentRecord[]
+  roles: HackathonRoleAssignmentRecord[],
+  showRestrictedDetails: boolean
 ) {
   return {
     id: hackathon.id,
@@ -55,7 +64,7 @@ function serializeHackathonParticipation(
     state: hackathon.state,
     city: hackathon.city,
     country: hackathon.country,
-    address: hackathon.address,
+    address: showRestrictedDetails ? hackathon.address : '',
     bannerImageUrl: hackathon.bannerImageUrl,
     backgroundImageUrl: hackathon.backgroundImageUrl,
     registrationOpensAt: hackathon.registrationOpensAt,
@@ -162,6 +171,11 @@ export default defineApiHandler(async (event) => {
     const membership = team ? membershipByTeamId.get(team.id) ?? null : null
     const submission = team ? submissionByTeamId.get(team.id) ?? null : null
     const relevantRoles = rolesByHackathonId.get(hackathon.id) ?? []
+    const showRestrictedDetails = canViewRestrictedHackathonDetails(
+      application,
+      relevantRoles,
+      actor.platformUser.isPlatformAdmin
+    )
 
     return serializeHackathonParticipation(
       hackathon,
@@ -169,7 +183,8 @@ export default defineApiHandler(async (event) => {
       team,
       membership,
       submission,
-      relevantRoles
+      relevantRoles,
+      showRestrictedDetails
     )
   })
 

@@ -389,6 +389,155 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
+  test('GET /api/account/hackathons hides street address for non-approved participants without staff access', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/account/hackathons', handler: accountHackathonsGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant',
+        email: 'participant@example.com',
+        name: 'Participant'
+      }
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'participant_1',
+        auth0Subject: 'auth0|participant',
+        email: 'participant@example.com',
+        displayName: 'Participant'
+      }
+    ])
+
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+    await harness.database.insert(userPlatformDocumentAcceptances).values([
+      {
+        id: 'acceptance_privacy_1',
+        userId: 'participant_1',
+        platformDocumentId: 'privacy_v1',
+        acceptedAt: '2026-03-03T00:00:00.000Z'
+      },
+      {
+        id: 'acceptance_terms_1',
+        userId: 'participant_1',
+        platformDocumentId: 'terms_v1',
+        acceptedAt: '2026-03-03T00:00:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(hackathons).values([
+      {
+        id: 'hackathon_submitted',
+        name: 'Submitted Hackathon',
+        slug: 'submitted-hackathon',
+        description: 'Submitted program',
+        city: 'Vienna',
+        country: 'Austria',
+        address: 'Submitted Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'registration_open',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1'
+      },
+      {
+        id: 'hackathon_staff',
+        name: 'Staff Hackathon',
+        slug: 'staff-hackathon',
+        description: 'Staff program',
+        city: 'Berlin',
+        country: 'Germany',
+        address: 'Staff Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-26T12:00:00.000Z',
+        state: 'registration_open',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1'
+      }
+    ])
+
+    await harness.database.insert(hackathonTermsDocuments).values({
+      id: 'hackathon_submitted_terms_v1',
+      hackathonId: 'hackathon_submitted',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Submitted application terms',
+      content: 'Submitted application terms',
+      publishedAt: '2026-03-18T00:00:00.000Z'
+    })
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_submitted',
+      hackathonId: 'hackathon_submitted',
+      userId: 'participant_1',
+      status: 'submitted',
+      submittedAt: '2026-03-20T13:00:00.000Z',
+      applicationTermsDocumentId: 'hackathon_submitted_terms_v1',
+      applicationTermsAcceptedAt: '2026-03-20T13:00:00.000Z'
+    })
+
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_staff',
+      hackathonId: 'hackathon_staff',
+      userId: 'participant_1',
+      role: 'staff',
+      isStaff: true,
+      createdAt: '2026-03-20T17:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/account/hackathons')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        current: expect.arrayContaining([
+          expect.objectContaining({
+            slug: 'submitted-hackathon',
+            applicationStatus: 'submitted',
+            address: '',
+            roles: []
+          }),
+          expect.objectContaining({
+            slug: 'staff-hackathon',
+            applicationStatus: null,
+            address: 'Staff Address',
+            roles: ['staff']
+          })
+        ]),
+        past: []
+      }
+    })
+  })
+
   test('GET /api/session keeps a missing platform account as an authenticated identity even when legacy signup consent claims are present', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

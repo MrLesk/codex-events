@@ -12,17 +12,6 @@ function formatAttendanceLabel(hackathon: Pick<PublicHackathon, 'inPersonEvent'>
   return hackathon.inPersonEvent ? 'In person' : 'No in-person attendance required'
 }
 
-function formatLocationLabel(hackathon: Pick<PublicHackathon, 'city' | 'address'>) {
-  const city = hackathon.city.trim()
-  const address = hackathon.address.trim()
-
-  if (!address) {
-    return city
-  }
-
-  return city ? `${city} · ${address}` : address
-}
-
 const eventDetailRows = computed(() => {
   const rows: Array<{
     label: string
@@ -42,9 +31,7 @@ const eventDetailRows = computed(() => {
   if (props.hackathon.inPersonEvent) {
     rows.push({
       label: 'Location',
-      value: props.showAddress
-        ? formatHackathonLocation(props.hackathon)
-        : formatLocationLabel(props.hackathon)
+      value: formatHackathonLocation(props.hackathon)
     })
   }
 

@@ -161,7 +161,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - `require_why_this_hackathon` controls whether applications must include a non-empty `whyThisHackathon` response.
 - `require_proof_of_execution` controls whether applications must include at least one proof link in `proofOfExecutionUrl`.
-- `discord_server_url` is optional because not every hackathon has a dedicated Discord server, and when present it is returned only in account-scoped detail reads for approved participants and hackathon staff roles.
+- `address` is always stored for the hackathon, but public serializers suppress it and account-scoped detail reads return it only to approved participants plus judges, staff, hackathon admins, and platform admins.
+- `discord_server_url` is optional because not every hackathon has a dedicated Discord server, and when present it is returned only in account-scoped detail reads for approved participants plus judges, staff, hackathon admins, and platform admins.
 - `luma_event_url` is optional because not every hackathon has a public Luma event page to link.
 - `luma_event_api_id` is optional because not every hackathon has a Luma event configured for approval and rejection sync.
 - `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`).

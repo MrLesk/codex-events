@@ -918,30 +918,21 @@ export async function requireHackathonWorkspaceAccess(event: H3Event, hackathonI
   }
 }
 
-export async function resolveVisibleHackathonDiscordServerUrl(
-  event: H3Event,
-  hackathon: Pick<HackathonRecord, 'id' | 'discordServerUrl'>
-) {
-  const configuredDiscordServerUrl = hackathon.discordServerUrl?.trim()
-
-  if (!configuredDiscordServerUrl) {
-    return null
-  }
-
+async function canViewRestrictedHackathonDetails(event: H3Event, hackathonId: string) {
   const actor = await getRequestActor(event)
 
   if (actor.kind !== 'platform_user') {
-    return null
+    return false
   }
 
   if (actor.platformUser.isPlatformAdmin) {
-    return configuredDiscordServerUrl
+    return true
   }
 
-  const authorization = await resolveHackathonAuthorization(event, hackathon.id)
+  const authorization = await resolveHackathonAuthorization(event, hackathonId)
 
   if (authorization.explicitRole !== null) {
-    return configuredDiscordServerUrl
+    return true
   }
 
   const approvedApplication = await getDatabase(event).query.userApplications.findFirst({
@@ -949,13 +940,26 @@ export async function resolveVisibleHackathonDiscordServerUrl(
       id: true
     },
     where: and(
-      eq(userApplications.hackathonId, hackathon.id),
+      eq(userApplications.hackathonId, hackathonId),
       eq(userApplications.userId, actor.platformUser.id),
       eq(userApplications.status, 'approved')
     )
   })
 
-  return approvedApplication ? configuredDiscordServerUrl : null
+  return Boolean(approvedApplication)
+}
+
+export async function resolveVisibleHackathonRestrictedFields(
+  event: H3Event,
+  hackathon: Pick<HackathonRecord, 'id' | 'address' | 'discordServerUrl'>
+) {
+  const canViewDetails = await canViewRestrictedHackathonDetails(event, hackathon.id)
+  const configuredDiscordServerUrl = hackathon.discordServerUrl?.trim()
+
+  return {
+    address: canViewDetails ? hackathon.address : '',
+    discordServerUrl: canViewDetails && configuredDiscordServerUrl ? configuredDiscordServerUrl : null
+  }
 }
 
 export async function listPublicHackathons(
@@ -1254,7 +1258,7 @@ export function serializePublicHackathon(
     lumaEventUrl: hackathon.lumaEventUrl,
     city: hackathon.city,
     country: hackathon.country,
-    address: hackathon.address,
+    address: '',
     registrationOpensAt: hackathon.registrationOpensAt,
     registrationClosesAt: hackathon.registrationClosesAt,
     submissionOpensAt: hackathon.submissionOpensAt,

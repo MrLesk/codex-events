@@ -11,6 +11,7 @@ import {
   getPublicHackathonBySlugOrThrow,
   isHackathonRolePublishedInRoster,
   serializeHackathon,
+  serializePublicHackathon,
   serializePublishedHackathonRosterMember,
   updateHackathonBodySchema
 } from '../../../../server/utils/hackathon-management'
@@ -408,6 +409,16 @@ describe('hackathon management utilities', () => {
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
       pitchScoreWeightPercent: 40
+    })
+  })
+
+  test('hides street address in public hackathon responses', () => {
+    expect(serializePublicHackathon(buildHackathonRecord({
+      address: 'Fixture Address'
+    }))).toMatchObject({
+      city: 'Vienna',
+      country: 'Austria',
+      address: ''
     })
   })
 

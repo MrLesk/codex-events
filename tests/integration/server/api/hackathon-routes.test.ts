@@ -1113,6 +1113,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(payload.data).not.toHaveProperty('createdByUserId')
     expect(payload.data).not.toHaveProperty('createdAt')
     expect(payload.data).not.toHaveProperty('updatedAt')
+    expect(payload.data.address).toBe('')
     expect(payload.data).not.toHaveProperty('discordServerUrl')
     expect(payload.data.currentTerms.applicationTerms).not.toHaveProperty('id')
     expect(payload.data.currentTerms.winnerTerms).not.toHaveProperty('id')
@@ -1363,6 +1364,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       data: {
         id: 'hackathon_public',
         slug: 'public-hackathon',
+        address: '',
         state: 'registration_open',
         discordServerUrl: null,
         blindReviewCount: 2,
@@ -1456,6 +1458,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(approvedResponse.status).toBe(200)
     expect(await approvedResponse.json()).toMatchObject({
       data: {
+        address: 'Address',
         discordServerUrl: 'https://discord.gg/private-codex'
       }
     })
@@ -1532,6 +1535,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(submittedResponse.status).toBe(200)
     expect(await submittedResponse.json()).toMatchObject({
       data: {
+        address: '',
         discordServerUrl: null
       }
     })
@@ -1595,6 +1599,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: {
+        address: 'Address',
         discordServerUrl: 'https://discord.gg/private-codex'
       }
     })
