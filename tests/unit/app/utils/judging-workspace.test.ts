@@ -25,6 +25,8 @@ import {
   filterExplicitJudgeHackathons,
   filterReviewableHackathons,
   formatJudgeTimestamp,
+  getJudgeActionErrorMessage,
+  getJudgeAssignmentActionDisabledReason,
   getJudgeAssignmentInboxCardCopy,
   getJudgeHackathonDashboardCopy,
   getJudgeWorkspaceSubjectKey,
@@ -455,6 +457,35 @@ describe('judging-workspace actions', () => {
       ineligibilityStatus: 'ineligible'
     })).toBe(false)
     expect(canMarkJudgeAssignmentIneligible(pitchCompleted)).toBe(false)
+  })
+
+  test('disables blind review start and skip actions until blind review begins', () => {
+    expect(getJudgeAssignmentActionDisabledReason(
+      createBlindAssignment(),
+      'judging_preparation'
+    )).toBe('Start and skip actions are available only during blind review. Current state: Judging Preparation.')
+    expect(getJudgeAssignmentActionDisabledReason(
+      createBlindAssignment(),
+      'blind_review'
+    )).toBeNull()
+    expect(getJudgeAssignmentActionDisabledReason(
+      createPitchAssignment(),
+      'judging_preparation'
+    )).toBeNull()
+  })
+
+  test('uses canonical API messages for judge action failures', () => {
+    expect(getJudgeActionErrorMessage({
+      response: {
+        _data: {
+          error: {
+            code: 'hackathon_state_invalid',
+            message: 'This judging operation is not allowed in the current hackathon state.'
+          }
+        }
+      }
+    })).toBe('This judging operation is not allowed in the current hackathon state.')
+    expect(getJudgeActionErrorMessage(null)).toBe('The judge action could not be completed.')
   })
 
   test('sorts in-progress reviews ahead of newly assigned work across stages', () => {

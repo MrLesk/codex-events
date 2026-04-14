@@ -1,11 +1,16 @@
 import type {
   ApiListResponse,
   EvaluationCriterion,
+  HackathonState,
   HackathonRecord,
   SessionActor
 } from './admin-workspace'
 
-import { isHackathonRoleJudgingEnabled } from './admin-workspace'
+import {
+  formatHackathonState,
+  isHackathonRoleJudgingEnabled,
+  normalizeApiError
+} from './admin-workspace'
 import { formatTimestamp } from './date-formatting'
 
 export type JudgeAssignmentStatus = 'assigned' | 'judge_started' | 'judge_completed' | 'skipped'
@@ -542,6 +547,30 @@ export function canCompleteJudgeAssignment(assignment: Pick<JudgeAssignmentDetai
 
 export function canSkipJudgeAssignment(assignment: Pick<JudgeAssignmentDetail, 'status'>) {
   return assignment.status === 'assigned' || assignment.status === 'judge_started'
+}
+
+export function getJudgeAssignmentActionDisabledReason(
+  assignment: Pick<JudgeAssignmentDetail, 'reviewStage'> | null | undefined,
+  hackathonState: HackathonState | null | undefined
+) {
+  if (assignment?.reviewStage !== 'blind_review' || !hackathonState || hackathonState === 'blind_review') {
+    return null
+  }
+
+  return `Start and skip actions are available only during blind review. Current state: ${formatHackathonState(hackathonState)}.`
+}
+
+export function getJudgeActionErrorMessage(
+  error: unknown,
+  fallback: string = 'The judge action could not be completed.'
+) {
+  const apiError = normalizeApiError(error)
+
+  if (apiError.code === 'request_failed' && apiError.message === 'The request failed unexpectedly.') {
+    return fallback
+  }
+
+  return apiError.message.length > 0 ? apiError.message : fallback
 }
 
 export function canMarkJudgeAssignmentIneligible(
