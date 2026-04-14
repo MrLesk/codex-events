@@ -16,6 +16,7 @@ describe('isShellNavigationLinkActive', () => {
   test('maps account hackathon detail tabs to the correct sidebar entry', () => {
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', undefined, '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'overview', '/account')).toBe(true)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'credits', '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'workspace', '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'teams', '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'prizes', '/account')).toBe(true)

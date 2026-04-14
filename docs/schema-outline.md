@@ -605,6 +605,48 @@ It describes the intended persistent model at the level of entities, key fields,
 - Different hackathons can configure different prize structures.
 - Member-scoped prize eligibility is determined from the frozen prize eligibility snapshot created at `judging_preparation`.
 
+## HackathonCreditOffer
+
+### Key Fields
+
+- `id`
+- `hackathon_id`
+- `name`
+- `description`
+- `display_order`
+- `created_at`
+- `updated_at`
+
+### Notes
+
+- A credit offer belongs to one hackathon.
+- A credit offer is separate from winner prizes.
+- A hackathon can define multiple credit offers.
+- A credit offer stores participant-facing copy and ordering only. Uploaded redeemable values live on `HackathonCreditCode`.
+
+## HackathonCreditCode
+
+### Key Fields
+
+- `id`
+- `credit_offer_id`
+- `value`
+- `claimed_by_user_id`
+- `claimed_at`
+- `created_at`
+
+### Constraints
+
+- `claimed_by_user_id` is null or references one `User`.
+- At most one row per `(credit_offer_id, claimed_by_user_id)` when `claimed_by_user_id` is not null.
+
+### Notes
+
+- Each row stores one uploaded redeemable value, which can be a code or a URL.
+- Unclaimed rows are available inventory for the credit offer.
+- Claiming permanently assigns one uploaded value to one participant.
+- Only approved participants can claim from a credit offer.
+
 ## PrizeEligibilitySnapshot
 
 ### Key Fields
@@ -681,6 +723,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `EvaluationCriterion` belongs to `Hackathon`
 - `JudgeAssignment` belongs to `Hackathon`, `Submission`, and `User`
 - `JudgeCriterionScore` belongs to `JudgeAssignment` and `EvaluationCriterion`
+- `HackathonCreditOffer` belongs to `Hackathon`
+- `HackathonCreditCode` belongs to `HackathonCreditOffer` and may reference the claiming `User`
 - `Prize` belongs to `Hackathon`
 - `PrizeEligibilitySnapshot` belongs to `Hackathon`, `Team`, and `User`
 - `PrizeRedemption` belongs to `Prize` and may reference `User` and `Team`

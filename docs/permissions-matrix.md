@@ -161,6 +161,17 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Submit legal name and accept winner terms | Yes | No | No |
 | View prize redemption records | No | Yes | Yes |
 
+## Hackathon Credits
+
+| Action | Approved User | Hackathon Admin | Platform Admin |
+| --- | --- | --- | --- |
+| View hackathon credits in the account hackathon workspace | Yes | Yes | Yes |
+| Claim an available credit from an offer | Yes | No | No |
+| View own claimed credit values | Yes | No | No |
+| View credit inventory and claim records | No | Yes | Yes |
+| Create or update credit offers | No | Yes | Yes |
+| Upload additional credit inventory to an offer | No | Yes | Yes |
+
 ## Visibility Rules
 
 - Users can view only their own application records.
@@ -172,6 +183,8 @@ This document defines the canonical permissions for the Codex hackathon platform
 - Judges see the blind judging view for blind assignments and the open pitch judging view for pitch assignments.
 - Hackathon admins and platform admins can view hackathon-wide operational data.
 - The participant-facing teams directory remains visible to workspace users after team formation closes, but join actions remain state-gated.
+- Approved participants can view only their own claimed credit values.
+- Hackathon admins and platform admins can view credit inventory and claim records for their hackathons.
 
 ## Operational Notes
 

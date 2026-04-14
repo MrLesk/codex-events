@@ -17,6 +17,13 @@ describe('account hackathon seo helpers', () => {
     })
   })
 
+  test('returns participant-facing metadata for the credits tab', () => {
+    expect(getAccountHackathonSeoContent('credits', 'Buildathon')).toEqual({
+      title: 'Credits | Buildathon | Codex Hackathons',
+      description: 'Claim or manage hackathon credits for Buildathon.'
+    })
+  })
+
   test('returns admin-facing metadata for the operations tab', () => {
     expect(getAccountHackathonSeoContent('operations', 'Buildathon')).toEqual({
       title: 'Manage Buildathon | Codex Hackathons',

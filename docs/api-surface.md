@@ -497,6 +497,27 @@ Testing:
 - Integration: redemption writes and restricted operational reads.
 - End-to-end: prize-recipient redemption flows and admin visibility.
 
+## Hackathon Credits
+
+Purpose:
+- Support admin-managed hackathon credit inventory and approved-participant credit claims.
+
+Operations:
+
+| Operation | Method And Path | Actor | Guards And Notes |
+| --- | --- | --- | --- |
+| List participant-visible credits for a hackathon | `GET /api/hackathons/:hackathonId/credits` | approved participant, hackathon admin, or platform admin | Returns credit offers with the caller's own claim state for that hackathon. |
+| List admin credit inventory for a hackathon | `GET /api/hackathons/:hackathonId/admin/credits` | hackathon admin or platform admin | Returns credit offers, inventory counts, and claim records for the hackathon. |
+| Create credit offer | `POST /api/hackathons/:hackathonId/credits` | hackathon admin or platform admin | Creates one hackathon credit offer. |
+| Update credit offer | `PATCH /api/hackathons/:hackathonId/credits/:creditId` | hackathon admin or platform admin | Updates participant-facing credit-offer metadata. |
+| Import credit inventory into an offer | `POST /api/hackathons/:hackathonId/credits/:creditId/import` | hackathon admin or platform admin | Accepts a single-column CSV upload and appends one redeemable value per non-empty row. |
+| Claim one credit from an offer | `POST /api/hackathons/:hackathonId/credits/:creditId/actions/claim` | approved participant | Returns the caller's existing assigned value for that offer when already claimed; otherwise atomically assigns one unclaimed uploaded value. |
+
+Testing:
+- Unit: participant eligibility, URL-versus-code presentation helpers, and single-claim guards.
+- Integration: admin inventory writes, CSV import behavior, sold-out responses, and atomic claim writes.
+- End-to-end: account hackathon Credits tab admin and participant flows.
+
 ## Audit
 
 Purpose:
@@ -527,6 +548,8 @@ Testing:
 - In-person application commitment is required only when the hackathon is configured with `inPersonEvent = true`.
 - Withdrawal ends when `judging_preparation` begins.
 - Removal from competition during or after judging uses `disqualified`.
+- Hackathon credits are separate from prizes and do not depend on winner announcement.
+- Approved participants can claim at most one uploaded value from each hackathon credit offer.
 - Prize-eligible team membership freezes when the hackathon enters `judging_preparation`.
 - Blind judging excludes team identity even when the reviewing actor is also an admin.
 - Pitch judging exposes project and team identity to the pitch panel.

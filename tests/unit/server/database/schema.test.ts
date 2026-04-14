@@ -4,6 +4,8 @@ import { getTableConfig } from 'drizzle-orm/sqlite-core'
 
 import {
   auditLogs,
+  hackathonCreditCodes,
+  hackathonCreditOffers,
   hackathonRoleAssignments,
   hackathonTracks,
   hackathons,
@@ -40,6 +42,8 @@ describe('shared schema foundation', () => {
     const trackIndexes = getTableConfig(hackathonTracks).indexes.map(index => index.config.name)
     const submissionIndexes = getTableConfig(submissions).indexes.map(index => index.config.name)
     const assignmentIndexes = getTableConfig(judgeAssignments).indexes.map(index => index.config.name)
+    const creditOfferIndexes = getTableConfig(hackathonCreditOffers).indexes.map(index => index.config.name)
+    const creditCodeIndexes = getTableConfig(hackathonCreditCodes).indexes.map(index => index.config.name)
 
     expect(userIndexes).toContain('users_auth0_subject_active_idx')
     expect(userIndexes).toContain('users_email_active_idx')
@@ -52,10 +56,15 @@ describe('shared schema foundation', () => {
     expect(assignmentIndexes).toContain('judge_assignments_active_blind_submission_slot_idx')
     expect(assignmentIndexes).toContain('judge_assignments_pitch_submission_judge_idx')
     expect(assignmentIndexes).toContain('judge_assignments_hackathon_stage_status_judge_idx')
+    expect(creditOfferIndexes).toContain('hackathon_credit_offers_hackathon_display_order_idx')
+    expect(creditCodeIndexes).toContain('hackathon_credit_codes_offer_claim_state_idx')
+    expect(creditCodeIndexes).toContain('hackathon_credit_codes_offer_claimed_user_idx')
   })
 
   it('defines schedule and entity checks on shared tables', () => {
     const hackathonColumns = getTableColumns(hackathons)
+    const creditOfferColumns = getTableColumns(hackathonCreditOffers)
+    const creditCodeColumns = getTableColumns(hackathonCreditCodes)
     const trackColumns = getTableColumns(hackathonTracks)
     const roleAssignmentColumns = getTableColumns(hackathonRoleAssignments)
     const applicationColumns = getTableColumns(userApplications)
@@ -84,6 +93,10 @@ describe('shared schema foundation', () => {
     expect(applicationColumns.preApprovalStatus.name).toBe('pre_approval_status')
     expect(applicationColumns.lumaSyncStatus.name).toBe('luma_sync_status')
     expect(applicationColumns.checkedInAt.name).toBe('checked_in_at')
+    expect(creditOfferColumns.hackathonId.name).toBe('hackathon_id')
+    expect(creditOfferColumns.displayOrder.name).toBe('display_order')
+    expect(creditCodeColumns.creditOfferId.name).toBe('credit_offer_id')
+    expect(creditCodeColumns.claimedByUserId.name).toBe('claimed_by_user_id')
     expect(prizeColumns.displayOrder.name).toBe('display_order')
     expect(submissionColumns.trackId.name).toBe('track_id')
     expect(getTableColumns(judgeAssignments).reviewStage.name).toBe('review_stage')

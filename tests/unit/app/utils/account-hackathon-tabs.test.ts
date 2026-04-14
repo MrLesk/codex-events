@@ -29,7 +29,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
@@ -43,7 +43,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff', 'participants', 'teams', 'submissions', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'judges', 'staff', 'participants', 'teams', 'submissions', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
@@ -57,7 +57,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'details', 'judges', 'staff', 'workspace', 'teams', 'participants'],
+      availableTabs: ['overview', 'credits', 'details', 'judges', 'staff', 'workspace', 'teams', 'participants'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
@@ -71,7 +71,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })

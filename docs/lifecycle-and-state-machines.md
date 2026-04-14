@@ -414,3 +414,10 @@ Behavior:
 
 - Blind review assignments belong to the `blind_review` stage and pitch assignments belong to the `pitch_review` stage.
 - A skipped assignment remains part of the audit trail even after a new blind-review replacement assignment is created.
+
+## Hackathon Credits
+
+### Lifecycle Notes
+
+- Hackathon credits are independent from winner prizes and do not require `winners_announced`.
+- Approved participants can claim at most one uploaded value from each hackathon credit offer while inventory remains available.

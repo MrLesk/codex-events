@@ -15,6 +15,11 @@ export function getAccountHackathonSeoContent(
         title: `Workspace | ${hackathonName} | Codex Hackathons`,
         description: `Manage your participation, team workspace, and submission for ${hackathonName}.`
       }
+    case 'credits':
+      return {
+        title: `Credits | ${hackathonName} | Codex Hackathons`,
+        description: `Claim or manage hackathon credits for ${hackathonName}.`
+      }
     case 'prizes':
       return {
         title: `Prizes | ${hackathonName} | Codex Hackathons`,

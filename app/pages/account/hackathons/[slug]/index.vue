@@ -21,6 +21,7 @@ import AccountHackathonParticipantWorkspacePanel from '~/components/account/hack
 import AccountHackathonParticipantTeamPanel from '~/components/account/hackathons/AccountHackathonParticipantTeamPanel.vue'
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
 import AccountHackathonCompetitionPanel from '~/components/account/hackathons/AccountHackathonCompetitionPanel.vue'
+import AccountHackathonCreditsPanel from '~/components/account/hackathons/AccountHackathonCreditsPanel.vue'
 import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
 import AccountHackathonParticipantVisibilityPanel from '~/components/account/hackathons/AccountHackathonParticipantVisibilityPanel.vue'
 import AccountHackathonRoleRosterPanel from '~/components/account/hackathons/AccountHackathonRoleRosterPanel.vue'
@@ -114,6 +115,7 @@ type AccountWorkspaceHackathon = Omit<PublicHackathon, 'tracks'> & {
 
 const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
   overview: 'Overview',
+  credits: 'Credits',
   workspace: 'Workspace',
   prizes: 'Prizes',
   details: 'Details',
@@ -262,6 +264,7 @@ const workspaceBackLink = computed(() => canAdmin.value
 const applicationStatus = computed(() =>
   participationRecord.value?.application?.status ?? accessRecord.value?.applicationStatus ?? null
 )
+const canClaimCredits = computed(() => applicationStatus.value === 'approved')
 const hasParticipantContext = computed(() =>
   Boolean(applicationStatus.value || participationRecord.value?.activeTeam || participationRecord.value?.latestTeam)
 )
@@ -859,6 +862,20 @@ useSeoMeta({
         </AppCard>
 
         <HackathonOverviewPanel :description="hackathon.description" />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'credits'"
+        id="account-tab-panel-credits"
+        role="tabpanel"
+        aria-labelledby="account-tab-credits"
+        class="space-y-8"
+      >
+        <AccountHackathonCreditsPanel
+          :hackathon-id="hackathon.id"
+          :can-manage="canAdmin"
+          :can-claim="canClaimCredits"
+        />
       </section>
 
       <section

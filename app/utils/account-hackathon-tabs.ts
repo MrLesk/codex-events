@@ -1,5 +1,6 @@
 export const accountHackathonWorkspaceTabs = [
   'overview',
+  'credits',
   'prizes',
   'details',
   'judges',
@@ -60,6 +61,10 @@ export function getAccountHackathonTabAccess(
     canViewParticipantsAndTeams
   } = options
   const availableTabs: AccountHackathonWorkspaceTab[] = ['overview']
+
+  if (hasApprovedParticipantAccess || canManage) {
+    availableTabs.push('credits')
+  }
 
   if (hasPublishedPrizes || canManage) {
     availableTabs.push('prizes')

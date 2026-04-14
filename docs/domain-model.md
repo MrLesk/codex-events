@@ -335,6 +335,38 @@ Operational rules:
 - Once judging preparation begins, teams can no longer withdraw a submission.
 - Once blind review or pitch review begins, removal from competition is handled as disqualification rather than withdrawal.
 
+### HackathonCreditOffer
+
+A hackathon-scoped credit offer that approved participants can claim.
+
+Examples:
+
+- OpenAI credits
+- Sentry credits
+- A second or third uploaded batch of the same provider under a distinct offer name
+
+Rules:
+
+- Hackathon credits are separate from prizes and are not part of winner selection.
+- Each credit offer belongs to exactly one hackathon.
+- A credit offer has a participant-facing name and description.
+- A hackathon can define multiple credit offers.
+- Hackathon admins and platform admins can append inventory to an existing credit offer over time.
+- A credit offer can remain available as long as it has unclaimed inventory.
+
+### HackathonCreditCode
+
+An uploaded redeemable value belonging to one hackathon credit offer.
+
+Rules:
+
+- Each credit code belongs to exactly one credit offer.
+- A credit code stores one redeemable value, which can be a code or a URL.
+- A credit code is either unclaimed or permanently assigned to one participant.
+- Only approved participants can claim hackathon credits.
+- A participant can claim at most one credit code from a given credit offer.
+- Claiming a credit code permanently reveals that assigned value to the participant on later visits.
+
 ### Prize
 
 A prize configuration defined per hackathon.
@@ -398,6 +430,8 @@ Scope:
 - A `Submission` can have many `JudgeAssignment` records.
 - A `Submission` can reference zero or one `HackathonTrack`.
 - A `Hackathon` can have many `EvaluationCriterion` records.
+- A `Hackathon` can have many `HackathonCreditOffer` records.
+- A `HackathonCreditOffer` can have many `HackathonCreditCode` records.
 - A `Hackathon` can have many `Prize` records.
 - A `Hackathon` can have many `PrizeEligibilitySnapshot` records.
 - A `Prize` can have many `PrizeRedemption` records.
@@ -448,6 +482,13 @@ Scope:
 - Pitch review can be closed by admins with missing votes, and the pitch average uses only submitted pitch-review votes.
 - Approved teams with no submission appear in a separate no-submission section in the hackathon dashboard.
 - Prize-eligible team membership is frozen when judging preparation begins.
+
+### Hackathon Credits
+
+- Hackathon credits are participant benefits, not winner prizes.
+- Hackathon credits do not depend on winner announcement or prize-redemption workflow.
+- Only approved participants can claim hackathon credits.
+- A participant can claim at most one uploaded value from each credit offer.
 
 ## Compliance
 

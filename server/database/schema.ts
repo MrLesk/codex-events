@@ -559,6 +559,48 @@ export const prizes = sqliteTable(
   ]
 )
 
+export const hackathonCreditOffers = sqliteTable(
+  'hackathon_credit_offers',
+  {
+    id: idColumn(),
+    hackathonId: text('hackathon_id')
+      .notNull()
+      .references(() => hackathons.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    displayOrder: integer('display_order').notNull().default(0),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn()
+  },
+  table => [
+    index('hackathon_credit_offers_hackathon_display_order_idx').on(table.hackathonId, table.displayOrder)
+  ]
+)
+
+export const hackathonCreditCodes = sqliteTable(
+  'hackathon_credit_codes',
+  {
+    id: idColumn(),
+    creditOfferId: text('credit_offer_id')
+      .notNull()
+      .references(() => hackathonCreditOffers.id, { onDelete: 'cascade' }),
+    value: text('value').notNull(),
+    claimedByUserId: text('claimed_by_user_id').references(() => users.id),
+    claimedAt: text('claimed_at'),
+    createdAt: createdAtColumn()
+  },
+  table => [
+    index('hackathon_credit_codes_offer_claim_state_idx').on(
+      table.creditOfferId,
+      table.claimedByUserId,
+      table.createdAt
+    ),
+    uniqueIndex('hackathon_credit_codes_offer_claimed_user_idx')
+      .on(table.creditOfferId, table.claimedByUserId)
+      .where(sql`${table.claimedByUserId} is not null`)
+  ]
+)
+
 export const prizeEligibilitySnapshots = sqliteTable(
   'prize_eligibility_snapshots',
   {
@@ -640,6 +682,8 @@ export const schema = {
   evaluationCriteria,
   judgeAssignments,
   judgeCriterionScores,
+  hackathonCreditOffers,
+  hackathonCreditCodes,
   prizes,
   prizeEligibilitySnapshots,
   prizeRedemptions,
