@@ -129,6 +129,10 @@ const showShortlistPanel = computed(() =>
   )
 )
 
+const showPitchStagePanel = computed(() =>
+  Boolean(currentHackathon.value && currentHackathon.value.state === 'pitch')
+)
+
 const showPitchReviewPanel = computed(() =>
   Boolean(currentHackathon.value && currentHackathon.value.state === 'pitch_review')
 )
@@ -148,6 +152,7 @@ const showPrizeRedemptionsPanel = computed(() =>
 const showCompetitionSections = computed(() =>
   showAssignmentsPanel.value
   || showShortlistPanel.value
+  || showPitchStagePanel.value
   || showPitchReviewPanel.value
   || showFinalDeliberationPanel.value
   || showOutcomePanel.value
@@ -412,16 +417,16 @@ async function selectFinalists(orderedSubmissionIds: string[]) {
   )
 }
 
-async function startPitchReview() {
+async function startPitch() {
   await runMutation(
-    'start-pitch-review',
+    'start-pitch',
     async () => {
-      await $fetch(`/api/hackathons/${hackathonId.value}/actions/start-pitch-review`, {
+      await $fetch(`/api/hackathons/${hackathonId.value}/actions/start-pitch`, {
         method: 'POST'
       })
     },
-    'Pitch review started',
-    'The finalist pitch panel is now open for full-visibility judging.'
+    'Pitch started',
+    'The live finalist pitch stage is now open. Judges will receive post-pitch review assignments after this stage ends.'
   )
 }
 
@@ -511,7 +516,7 @@ async function reorderFinalDeliberation(orderedSubmissionIds: string[]) {
             :shortlist-error-message="shortlistStatus === 'error' ? shortlistErrorMessage : ''"
             :pending-action-key="pendingActionKey"
             @select-finalists="selectFinalists"
-            @start-pitch-review="startPitchReview"
+            @start-pitch="startPitch"
           />
 
           <AdminCompetitionFinalDeliberationPanel
@@ -536,6 +541,31 @@ async function reorderFinalDeliberation(orderedSubmissionIds: string[]) {
         </section>
 
         <AppCard
+          v-if="showPitchStagePanel"
+          class="rounded-xl hackathon-workspace-detail-panel"
+        >
+          <template #header>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold text-highlighted">
+                Pitch
+              </h2>
+              <p class="text-sm text-muted">
+                Finalist teams are presenting live. Judge assignments for post-pitch scoring are created only when you start pitch review after this stage ends.
+              </p>
+            </div>
+          </template>
+
+          <div class="space-y-4">
+            <AppAlert
+              color="neutral"
+              variant="soft"
+              title="Live pitch stage is active"
+              description="Use the Operations tab to end the live pitch stage and start pitch review when you are ready for judges to score finalists."
+            />
+          </div>
+        </AppCard>
+
+        <AppCard
           v-if="showPitchReviewPanel"
           class="rounded-xl hackathon-workspace-detail-panel"
         >
@@ -545,7 +575,7 @@ async function reorderFinalDeliberation(orderedSubmissionIds: string[]) {
                 Pitch Review
               </h2>
               <p class="text-sm text-muted">
-                Judges now see full submission details and submit pitch scores on the shared `0-10` scale. When you move on, the platform averages the submitted pitch votes only.
+                Judges now see full submission details and submit post-pitch scores on the shared `0-10` scale. When you move on, the platform averages the submitted pitch votes only.
               </p>
             </div>
           </template>

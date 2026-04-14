@@ -129,6 +129,7 @@ It describes the intended persistent model at the level of entities, key fields,
   - `judging_preparation`
   - `blind_review`
   - `shortlist`
+  - `pitch`
   - `pitch_review`
   - `final_deliberation`
   - `winners_announced`
@@ -152,7 +153,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `registration_open` is manually activated by an admin while the configured registration window is open.
 - `submission_open` is manually activated by an admin within the configured submission window.
 - `blind_review_count` controls how many blind review assignments each locked submission receives.
-- `pitch_review_enabled` controls whether the hackathon uses the optional pitch-review stage.
+- `pitch_review_enabled` controls whether the hackathon uses the optional live pitch stage plus the post-pitch review stage.
 - `blind_score_weight_percent` and `pitch_score_weight_percent` default to `70` and `30` when both blind review and pitch review are enabled.
 - When only one judging stage is enabled, final score is derived entirely from that stage.
 - `pitch_finalist_submission_ids_json` stores the ordered finalist submission IDs selected during `shortlist` when blind review and pitch review are both enabled.

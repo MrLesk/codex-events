@@ -122,6 +122,19 @@ When('the saved {string} session starts pitch review for the outcomes fixture ha
   }
 })
 
+When('the saved {string} session starts pitch for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/actions/start-pitch`)
+    const state = getScenarioState(page)
+    state.response = response
+    state.json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
 Then('the outcomes fixture hackathon state should be {string}', async ({ page }, expectedState: string) => {
   expect(getScenarioState(page).response?.ok()).toBe(true)
   expect(getScenarioState(page).json).toMatchObject({

@@ -446,6 +446,7 @@ describe('hackathon management utilities', () => {
     const visibilityValues = collectDrizzleParamValues(capturedWhere)
 
     expect(visibilityValues).toContain('blind_review')
+    expect(visibilityValues).toContain('pitch')
     expect(visibilityValues).toContain('pitch_review')
     expect(visibilityValues).toContain('final_deliberation')
     expect(visibilityValues).not.toContain('judge_review')

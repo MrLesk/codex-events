@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import { ApiError } from '../../../../server/utils/api-error'
 import {
+  assertStartPitchAllowed,
   assertStartPitchReviewAllowed,
   assertStartJudgeReviewAllowed,
   assertStartJudgingPreparationAllowed,
@@ -11,7 +12,7 @@ import {
 } from '../../../../server/utils/judging'
 
 function createHackathon(
-  state: 'submission_open' | 'judging_preparation' | 'blind_review' | 'shortlist' | 'pitch_review',
+  state: 'submission_open' | 'judging_preparation' | 'blind_review' | 'shortlist' | 'pitch' | 'pitch_review',
   blindReviewCount: 0 | 1 | 2 = 1,
   pitchReviewEnabled: boolean = blindReviewCount === 0
 ) {
@@ -120,38 +121,53 @@ describe('judging utilities', () => {
     })).toThrowError(ApiError)
   })
 
-  test('pitch review readiness supports pitch-only and shortlist-driven startups', () => {
-    expect(() => assertStartPitchReviewAllowed(createHackathon('judging_preparation', 0, true), {
+  test('pitch readiness supports pitch-only and shortlist-driven startups', () => {
+    expect(() => assertStartPitchAllowed(createHackathon('judging_preparation', 0, true), {
+      lockedSubmissionCount: 2,
+      finalistSubmissionCount: 2
+    })).not.toThrow()
+
+    expect(() => assertStartPitchAllowed(createHackathon('shortlist', 1, true), {
+      lockedSubmissionCount: 3,
+      finalistSubmissionCount: 2
+    })).not.toThrow()
+
+    expect(() => assertStartPitchAllowed(createHackathon('judging_preparation', 1, true), {
+      lockedSubmissionCount: 3,
+      finalistSubmissionCount: 2
+    })).toThrowError(ApiError)
+
+    expect(() => assertStartPitchAllowed(createHackathon('shortlist', 1, false), {
+      lockedSubmissionCount: 3,
+      finalistSubmissionCount: 2
+    })).toThrowError(ApiError)
+
+    expect(() => assertStartPitchAllowed(createHackathon('shortlist', 1, true), {
+      lockedSubmissionCount: 3,
+      finalistSubmissionCount: 0
+    })).toThrowError(ApiError)
+  })
+
+  test('pitch review readiness requires the live pitch stage and an active judge panel', () => {
+    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 0, true), {
       lockedSubmissionCount: 2,
       finalistSubmissionCount: 2,
       judgePanelCount: 2
     })).not.toThrow()
 
-    expect(() => assertStartPitchReviewAllowed(createHackathon('shortlist', 1, true), {
+    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 1, true), {
       lockedSubmissionCount: 3,
       finalistSubmissionCount: 2,
       judgePanelCount: 2
     })).not.toThrow()
 
-    expect(() => assertStartPitchReviewAllowed(createHackathon('judging_preparation', 1, true), {
-      lockedSubmissionCount: 3,
-      finalistSubmissionCount: 2,
-      judgePanelCount: 2
-    })).toThrowError(ApiError)
-
-    expect(() => assertStartPitchReviewAllowed(createHackathon('shortlist', 1, false), {
-      lockedSubmissionCount: 3,
-      finalistSubmissionCount: 2,
-      judgePanelCount: 2
-    })).toThrowError(ApiError)
-
     expect(() => assertStartPitchReviewAllowed(createHackathon('shortlist', 1, true), {
       lockedSubmissionCount: 3,
-      finalistSubmissionCount: 0,
+      finalistSubmissionCount: 2,
       judgePanelCount: 2
     })).toThrowError(ApiError)
 
-    expect(() => assertStartPitchReviewAllowed(createHackathon('judging_preparation', 0, true), {
+    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 0, true), {
       lockedSubmissionCount: 2,
       finalistSubmissionCount: 2,
       judgePanelCount: 0

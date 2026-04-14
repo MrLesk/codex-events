@@ -20,6 +20,7 @@ export default defineApiHandler(async (event) => {
   assertJudgeReviewLifecycleState(hackathon, [
     'blind_review',
     'shortlist',
+    'pitch',
     'pitch_review',
     'final_deliberation',
     'winners_announced',

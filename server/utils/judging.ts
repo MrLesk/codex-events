@@ -272,6 +272,47 @@ export function assertStartJudgeReviewAllowed(
   })
 }
 
+export function assertStartPitchAllowed(
+  hackathon: HackathonRecord,
+  metrics: {
+    lockedSubmissionCount: number
+    finalistSubmissionCount: number
+  }
+) {
+  assertGuard(hackathon.pitchReviewEnabled, {
+    code: 'pitch_review_not_enabled',
+    message: 'Pitch can only start when pitch review is enabled.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  const requiresShortlist = hackathon.blindReviewCount > 0
+
+  assertAllowedState(hackathon.state, requiresShortlist ? ['shortlist'] : ['judging_preparation'], {
+    code: 'hackathon_state_invalid',
+    message: requiresShortlist
+      ? 'Pitch can only start from shortlist after finalists are selected.'
+      : 'Pitch can only start while the hackathon is in judging_preparation.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  assertGuard(
+    requiresShortlist ? metrics.finalistSubmissionCount > 0 : metrics.lockedSubmissionCount > 0,
+    {
+      code: 'pitch_finalists_required',
+      message: requiresShortlist
+        ? 'Pitch requires at least one persisted finalist submission.'
+        : 'Pitch requires at least one locked submission.',
+      details: {
+        hackathonId: hackathon.id
+      }
+    }
+  )
+}
+
 export function assertStartPitchReviewAllowed(
   hackathon: HackathonRecord,
   metrics: {
@@ -288,13 +329,9 @@ export function assertStartPitchReviewAllowed(
     }
   })
 
-  const requiresShortlist = hackathon.blindReviewCount > 0
-
-  assertAllowedState(hackathon.state, requiresShortlist ? ['shortlist'] : ['judging_preparation'], {
+  assertAllowedState(hackathon.state, ['pitch'], {
     code: 'hackathon_state_invalid',
-    message: requiresShortlist
-      ? 'Pitch review can only start from shortlist after finalists are selected.'
-      : 'Pitch review can only start while the hackathon is in judging_preparation.',
+    message: 'Pitch review can only start after the live pitch stage is active.',
     details: {
       hackathonId: hackathon.id
     }
@@ -309,10 +346,10 @@ export function assertStartPitchReviewAllowed(
   })
 
   assertGuard(
-    requiresShortlist ? metrics.finalistSubmissionCount > 0 : metrics.lockedSubmissionCount > 0,
+    hackathon.blindReviewCount > 0 ? metrics.finalistSubmissionCount > 0 : metrics.lockedSubmissionCount > 0,
     {
       code: 'pitch_finalists_required',
-      message: requiresShortlist
+      message: hackathon.blindReviewCount > 0
         ? 'Pitch review requires at least one persisted finalist submission.'
         : 'Pitch review requires at least one locked submission.',
       details: {

@@ -556,9 +556,9 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
             label: 'Judging path',
             value: hackathon.blindReviewCount > 0
               ? `${hackathon.blindReviewCount} blind review${hackathon.blindReviewCount === 1 ? '' : 's'} per submission`
-              : 'Pitch review only',
+              : 'Pitch only',
             description: hackathon.pitchReviewEnabled
-              ? 'Pitch review is enabled for this hackathon.'
+              ? 'The live pitch stage and post-pitch review stage are enabled for this hackathon.'
               : 'Final ranking will be based on blind review only.'
           }
         ]
@@ -586,12 +586,27 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
           {
             label: 'Current status',
             value: formatHackathonState(hackathon.state),
-            description: 'Blind scores are frozen and admins are choosing which submissions advance to pitch review.'
+            description: 'Blind scores are frozen and admins are choosing which submissions advance to the live pitch stage.'
+          },
+          {
+            label: 'Next stage',
+            value: 'Pitch',
+            description: 'Continue from the Competition tab once the finalist set and finalist order are saved.'
+          }
+        ]
+      }
+
+      if (hackathon.state === 'pitch') {
+        return [
+          {
+            label: 'Current status',
+            value: formatHackathonState(hackathon.state),
+            description: 'Finalist teams are presenting live. Judges do not have post-pitch review assignments yet.'
           },
           {
             label: 'Next stage',
             value: 'Pitch Review',
-            description: 'Continue from the Competition tab once the finalist set and finalist order are saved.'
+            description: 'Start pitch review after the live pitch stage ends and you are ready to open judge scoring.'
           }
         ]
       }
@@ -601,7 +616,7 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
           {
             label: 'Current status',
             value: formatHackathonState(hackathon.state),
-            description: 'Pitch judges can now see project and team details and submit live pitch scores.'
+            description: 'Pitch judges can now see project and team details and submit post-pitch review scores.'
           },
           {
             label: 'Next stage',
@@ -702,7 +717,7 @@ const lifecycleActionAvailability = computed(() => {
     if (hackathon.state === 'shortlist') {
       return {
         label: 'Continue from',
-        message: 'Use the Competition tab to save the finalist set and start pitch review.',
+        message: 'Use the Competition tab to save the finalist set and start pitch.',
         className: 'text-warning'
       }
     }
@@ -903,7 +918,7 @@ const lifecycleMetricCards = computed<LifecycleMetricCard[]>(() => {
         ]
       }
 
-      if (currentHackathon.value?.state === 'pitch_review' || currentHackathon.value?.state === 'final_deliberation' || currentHackathon.value?.state === 'winners_announced') {
+      if (currentHackathon.value?.state === 'pitch' || currentHackathon.value?.state === 'pitch_review' || currentHackathon.value?.state === 'final_deliberation' || currentHackathon.value?.state === 'winners_announced') {
         return [
           {
             key: 'locked-submissions',

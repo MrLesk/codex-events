@@ -5,6 +5,7 @@ export type PublicHackathonState
     | 'judging_preparation'
     | 'blind_review'
     | 'shortlist'
+    | 'pitch'
     | 'pitch_review'
     | 'final_deliberation'
     | 'winners_announced'
@@ -125,6 +126,7 @@ const stateLabels: Record<PublicHackathonState, string> = {
   judging_preparation: 'Judging preparation',
   blind_review: 'Blind review',
   shortlist: 'Shortlist',
+  pitch: 'Pitch',
   pitch_review: 'Pitch review',
   final_deliberation: 'Final deliberation',
   winners_announced: 'Winners announced',
@@ -138,6 +140,7 @@ const stateColors: Record<PublicHackathonState, 'neutral' | 'info' | 'warning' |
   judging_preparation: 'warning',
   blind_review: 'warning',
   shortlist: 'primary',
+  pitch: 'primary',
   pitch_review: 'primary',
   final_deliberation: 'primary',
   winners_announced: 'success',
@@ -159,7 +162,8 @@ const stateSummaries: Record<PublicHackathonState, string> = {
   judging_preparation: 'Submissions are locked while judging assignments are prepared.',
   blind_review: 'Judges are actively reviewing locked submissions in the blind workspace.',
   shortlist: 'Blind-review scores are locked in and finalists are being selected for the pitch stage.',
-  pitch_review: 'Finalists are presenting live and judges can review full submission details.',
+  pitch: 'Finalists are presenting live. Post-pitch judge review opens after admins end the pitch stage.',
+  pitch_review: 'Pitch presentations are over and judges can review full finalist details.',
   final_deliberation: 'Final combined scores are under review before winners are announced.',
   winners_announced: 'Final rankings are published and prize redemption can proceed.',
   completed: 'The program outcome is final and remains available for reference.'

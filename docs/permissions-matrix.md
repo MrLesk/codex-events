@@ -51,6 +51,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Start judging preparation | No | No | No | Yes | Yes | No |
 | Start blind review | No | No | No | Yes | Yes | No |
 | Move to shortlist | No | No | No | Yes | Yes | No |
+| Start pitch | No | No | No | Yes | Yes | No |
 | Start pitch review | No | No | No | Yes | Yes | No |
 | Move to final deliberation | No | No | No | Yes | Yes | No |
 | Announce winners | No | No | No | Yes | Yes | No |
@@ -192,5 +193,6 @@ This document defines the canonical permissions for the Codex hackathon platform
 - Submission creation and editing are allowed only during `submission_open`.
 - Blind review can require `0`, `1`, or `2` blind assignments per submission depending on hackathon configuration.
 - Pitch review can be enabled independently from blind review.
+- When pitch review is enabled, admins manually start the live `pitch` stage before they manually start `pitch_review`.
 - When a blind assignment is skipped, the system creates a new active assignment for the judge with the lowest blind-review load.
 - When pitch review closes with missing votes, only submitted pitch votes are averaged into the pitch score.

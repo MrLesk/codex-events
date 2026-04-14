@@ -20,6 +20,7 @@ function createHackathon(
     | 'judging_preparation'
     | 'blind_review'
     | 'shortlist'
+    | 'pitch'
     | 'pitch_review'
     | 'final_deliberation'
     | 'winners_announced'
@@ -163,6 +164,7 @@ describe('TASK-3.7 submission helpers', () => {
   test('disqualification applies only to locked submissions during the judging and outcomes lifecycle', () => {
     expect(() => assertSubmissionDisqualifiable(createHackathon('blind_review'), createSubmission('locked'))).not.toThrow()
     expect(() => assertSubmissionDisqualifiable(createHackathon('shortlist'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createHackathon('pitch'), createSubmission('locked'))).not.toThrow()
     expect(() => assertSubmissionDisqualifiable(createHackathon('pitch_review'), createSubmission('locked'))).not.toThrow()
     expect(() => assertSubmissionDisqualifiable(createHackathon('final_deliberation'), createSubmission('locked'))).not.toThrow()
     expect(() => assertSubmissionDisqualifiable(createHackathon('winners_announced'), createSubmission('locked'))).not.toThrow()

@@ -239,7 +239,8 @@ Operations:
 | Start judging preparation | `POST /api/hackathons/:hackathonId/actions/start-judging-preparation` | hackathon admin or platform admin | Locks submissions, freezes prize eligibility, creates blind-review assignments when blind review is enabled, and prepares the next configured judging stage. |
 | Start blind review | `POST /api/hackathons/:hackathonId/actions/start-blind-review` | hackathon admin or platform admin | Allowed only after judging preparation is complete and `blindReviewCount > 0`. |
 | Start shortlist | `POST /api/hackathons/:hackathonId/actions/start-shortlist` | hackathon admin or platform admin | Allowed only from `blind_review` when `pitchReviewEnabled = true` and every active submission has the configured number of completed blind-review outcomes or has been removed from competition. |
-| Start pitch review | `POST /api/hackathons/:hackathonId/actions/start-pitch-review` | hackathon admin or platform admin | Allowed from `judging_preparation` for pitch-only hackathons or from `shortlist` after admins select the ordered finalist set. Creates one pitch assignment per finalist submission per judge in the frozen pitch panel. |
+| Start pitch | `POST /api/hackathons/:hackathonId/actions/start-pitch` | hackathon admin or platform admin | Allowed from `judging_preparation` for pitch-only hackathons or from `shortlist` after admins select the ordered finalist set. Opens the live pitch stage without creating judge assignments. |
+| Start pitch review | `POST /api/hackathons/:hackathonId/actions/start-pitch-review` | hackathon admin or platform admin | Allowed only from `pitch` after admins end the live pitch stage. Creates one pitch assignment per finalist submission per judge in the frozen pitch panel. |
 | Start final deliberation | `POST /api/hackathons/:hackathonId/actions/start-final-deliberation` | hackathon admin or platform admin | Allowed from `blind_review` when pitch review is disabled after blind scoring is complete, or from `pitch_review` after admins close pitch review. |
 | Announce winners | `POST /api/hackathons/:hackathonId/actions/announce-winners` | hackathon admin or platform admin | Allowed only from `final_deliberation`. |
 | Complete hackathon | `POST /api/hackathons/:hackathonId/actions/complete` | hackathon admin or platform admin | Allowed only after winners are announced. |
@@ -437,9 +438,9 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Get leaderboard | `GET /api/hackathons/:hackathonId/leaderboard` | judge, hackathon admin, or platform admin | Returns the computed scored ordering for the enabled scoring stages completed so far. During blind review and shortlist, this is the blind-review leaderboard. During or after pitch review, this is the weighted final scoreboard. |
+| Get leaderboard | `GET /api/hackathons/:hackathonId/leaderboard` | judge, hackathon admin, or platform admin | Returns the computed scored ordering for the enabled scoring stages completed so far. During blind review, shortlist, and `pitch`, this is the blind-review leaderboard. During or after pitch review, this is the weighted final scoreboard. |
 | Get shortlist view | `GET /api/hackathons/:hackathonId/shortlist` | judge, hackathon admin, or platform admin | Returns the blind-review ordering visible during `shortlist` plus any current ordered finalist selection. The shortlist view remains blind with respect to team identity. |
-| Select pitch finalists | `POST /api/hackathons/:hackathonId/shortlist/actions/select-finalists` | hackathon admin or platform admin | Persists the ordered finalist submission IDs that advance to pitch review. Allowed only during `shortlist`. |
+| Select pitch finalists | `POST /api/hackathons/:hackathonId/shortlist/actions/select-finalists` | hackathon admin or platform admin | Persists the ordered finalist submission IDs that advance to the live `pitch` stage. Allowed only during `shortlist`. |
 
 Testing:
 - Unit: shortlist guard, blind-ordering, and finalist-selection rules.
@@ -560,7 +561,8 @@ Testing:
 - When blind review and pitch review are both enabled, final score uses configurable blind and pitch weights that default to `70` and `30`.
 - When only one judging stage is enabled, final score comes entirely from that stage.
 - `shortlist` exists only for hackathons that use both blind review and pitch review.
-- Pitch-only hackathons send all eligible locked submissions directly to pitch review.
+- `pitch` is the live finalist presentation stage that happens before post-pitch judge assignments are created.
+- Pitch-only hackathons send all eligible locked submissions directly to `pitch`.
 - Shortlist finalist selection, leaderboard data, and final ranking data remain computed views with explicit admin-selected ordering persisted only where the workflow requires it.
 - Granting platform-admin access also normalizes explicit `hackathon_admin` assignment coverage across existing hackathons.
 

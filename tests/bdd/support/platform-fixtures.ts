@@ -1583,6 +1583,7 @@ export async function resetOutcomesFixtureScenarioState(
       where entity_id = ${sqlLiteral(fixtureOutcomesHackathonId)}
         and action in (
           'hackathon.pitch_finalists_selected',
+          'hackathon.start_pitch',
           'hackathon.start_pitch_review',
           'hackathon.start_final_deliberation',
           'hackathon.final_ranking_reordered',

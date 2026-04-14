@@ -9,6 +9,8 @@ Feature: TASK-3.8 authenticated outcome flows
     When the saved "hackathon_admin" session selects outcomes finalists to prefer submission two
     Then the outcomes shortlist should save submission two as finalist one and submission one as finalist two
     And the outcomes shortlist should remain blind to team identity
+    When the saved "hackathon_admin" session starts pitch for the outcomes fixture hackathon
+    Then the outcomes fixture hackathon state should be "pitch"
     When the saved "hackathon_admin" session starts pitch review for the outcomes fixture hackathon
     Then the outcomes fixture hackathon state should be "pitch_review"
     When the saved "judge" session loads the active pitch assignments for the outcomes fixture hackathon
@@ -32,6 +34,6 @@ Feature: TASK-3.8 authenticated outcome flows
     Then the remembered outcomes prize redemption should be redeemed by "user_regular_user"
     And the redeemed outcomes prize redemption should accept the current outcomes winner terms document
     When the saved "hackathon_admin" session lists audit logs for the outcomes fixture hackathon
-    Then the outcomes fixture hackathon audit should include actions "hackathon.pitch_finalists_selected, hackathon.start_pitch_review, hackathon.start_final_deliberation, hackathon.final_ranking_reordered, hackathon.announce_winners, prize_redemption.redeemed"
+    Then the outcomes fixture hackathon audit should include actions "hackathon.pitch_finalists_selected, hackathon.start_pitch, hackathon.start_pitch_review, hackathon.start_final_deliberation, hackathon.final_ranking_reordered, hackathon.announce_winners, prize_redemption.redeemed"
     When the saved "platform_admin" session lists platform audit logs
-    Then the platform audit should include actions "hackathon.pitch_finalists_selected, hackathon.start_pitch_review, hackathon.start_final_deliberation, hackathon.final_ranking_reordered, hackathon.announce_winners, prize_redemption.redeemed"
+    Then the platform audit should include actions "hackathon.pitch_finalists_selected, hackathon.start_pitch, hackathon.start_pitch_review, hackathon.start_final_deliberation, hackathon.final_ranking_reordered, hackathon.announce_winners, prize_redemption.redeemed"

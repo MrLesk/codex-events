@@ -19,6 +19,7 @@ function createHackathon(
   state:
     | 'blind_review'
     | 'shortlist'
+    | 'pitch'
     | 'pitch_review'
     | 'final_deliberation'
     | 'winners_announced'

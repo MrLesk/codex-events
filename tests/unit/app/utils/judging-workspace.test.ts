@@ -421,6 +421,21 @@ describe('judging-workspace copy', () => {
       queueMeta: 'No active pitch queue yet'
     })
   })
+
+  test('explains that judges are waiting for post-pitch review assignments during the live pitch stage', () => {
+    const copy = getJudgeHackathonDashboardCopy(createHackathon({
+      state: 'pitch',
+      blindReviewCount: 0,
+      pitchReviewEnabled: true
+    }))
+
+    expect(copy).toMatchObject({
+      description: 'Finalist teams are pitching live. Post-pitch review assignments will appear here after admins start pitch review.',
+      actionLabel: 'Open hackathon',
+      overline: 'Judge assigned',
+      queueMeta: 'No active pitch queue yet'
+    })
+  })
 })
 
 describe('judging-workspace actions', () => {

@@ -26,6 +26,7 @@ import hackathonBannerImagePostHandler from '../../../../server/api/hackathons/[
 import openSubmissionPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/open-submission.post'
 import startJudgingPreparationPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-judging-preparation.post'
 import startBlindReviewPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-blind-review.post'
+import startPitchPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-pitch.post'
 import startPitchReviewPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-pitch-review.post'
 import {
   auditLogs,
@@ -2850,13 +2851,13 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     ])
   })
 
-  test('POST /api/hackathons/:hackathonId/actions/start-pitch-review creates pitch-panel assignments for every locked submission in pitch-only hackathons', async () => {
+  test('POST /api/hackathons/:hackathonId/actions/start-pitch opens the live pitch stage without creating judge assignments in pitch-only hackathons', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/start-pitch-review',
-          handler: startPitchReviewPostHandler
+          path: '/api/hackathons/:hackathonId/actions/start-pitch',
+          handler: startPitchPostHandler
         }
       ],
       sessionUser: {
@@ -2986,6 +2987,172 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       }
     ])
 
+    const response = await harness.request('/api/hackathons/hackathon_pitch_only/actions/start-pitch', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'hackathon_pitch_only',
+        state: 'pitch'
+      }
+    })
+
+    const updatedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_pitch_only')
+    })
+    const assignmentRows = await harness.database.select().from(judgeAssignments)
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(updatedHackathon?.state).toBe('pitch')
+    expect(assignmentRows).toHaveLength(0)
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'hackathon',
+        entityId: 'hackathon_pitch_only',
+        action: 'hackathon.start_pitch'
+      })
+    ])
+  })
+
+  test('POST /api/hackathons/:hackathonId/actions/start-pitch-review creates pitch-panel assignments for every locked submission in pitch-only hackathons after pitch starts', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/start-pitch-review',
+          handler: startPitchReviewPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'platform_admin',
+        auth0Subject: 'auth0|platform_admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        isPlatformAdmin: true
+      },
+      {
+        id: 'judge_a',
+        auth0Subject: 'auth0|judge_a',
+        email: 'judge-a@example.com',
+        displayName: 'Judge A'
+      },
+      {
+        id: 'judge_b',
+        auth0Subject: 'auth0|judge_b',
+        email: 'judge-b@example.com',
+        displayName: 'Judge B'
+      },
+      {
+        id: 'team_admin_one',
+        auth0Subject: 'auth0|team_admin_one',
+        email: 'team-admin-one@example.com',
+        displayName: 'Team Admin One'
+      },
+      {
+        id: 'team_admin_two',
+        auth0Subject: 'auth0|team_admin_two',
+        email: 'team-admin-two@example.com',
+        displayName: 'Team Admin Two'
+      }
+    ])
+
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_pitch_only',
+      name: 'Pitch Only Hackathon',
+      slug: 'pitch-only-hackathon',
+      description: 'Pitch only',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'pitch',
+      blindReviewCount: 0,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 0,
+      pitchScoreWeightPercent: 100,
+      maxTeamMembers: 5,
+      createdByUserId: 'platform_admin'
+    })
+
+    await harness.database.insert(hackathonRoleAssignments).values([
+      {
+        id: 'role_judge_a',
+        hackathonId: 'hackathon_pitch_only',
+        userId: 'judge_a',
+        role: 'judge',
+        isInJudgePool: true,
+        createdAt: '2026-03-22T12:00:00.000Z'
+      },
+      {
+        id: 'role_judge_b',
+        hackathonId: 'hackathon_pitch_only',
+        userId: 'judge_b',
+        role: 'judge',
+        isInJudgePool: true,
+        createdAt: '2026-03-22T12:01:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(teams).values([
+      {
+        id: 'team_pitch_1',
+        hackathonId: 'hackathon_pitch_only',
+        name: 'Alpha Team',
+        slug: 'alpha-team',
+        isOpenToJoinRequests: false,
+        createdByUserId: 'team_admin_one',
+        createdAt: '2026-03-22T12:00:00.000Z',
+        updatedAt: '2026-03-22T12:00:00.000Z'
+      },
+      {
+        id: 'team_pitch_2',
+        hackathonId: 'hackathon_pitch_only',
+        name: 'Beta Team',
+        slug: 'beta-team',
+        isOpenToJoinRequests: false,
+        createdByUserId: 'team_admin_two',
+        createdAt: '2026-03-22T12:01:00.000Z',
+        updatedAt: '2026-03-22T12:01:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(submissions).values([
+      {
+        id: 'submission_pitch_1',
+        teamId: 'team_pitch_1',
+        status: 'locked',
+        projectName: 'Project One',
+        submittedAt: '2026-03-24T12:00:00.000Z',
+        lockedAt: '2026-03-25T12:30:00.000Z',
+        createdAt: '2026-03-24T12:00:00.000Z',
+        updatedAt: '2026-03-25T12:30:00.000Z'
+      },
+      {
+        id: 'submission_pitch_2',
+        teamId: 'team_pitch_2',
+        status: 'locked',
+        projectName: 'Project Two',
+        submittedAt: '2026-03-24T12:05:00.000Z',
+        lockedAt: '2026-03-25T12:30:00.000Z',
+        createdAt: '2026-03-24T12:05:00.000Z',
+        updatedAt: '2026-03-25T12:30:00.000Z'
+      }
+    ])
+
     const response = await harness.request('/api/hackathons/hackathon_pitch_only/actions/start-pitch-review', {
       method: 'POST'
     })
@@ -3020,7 +3187,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     ])
   })
 
-  test('POST /api/hackathons/:hackathonId/actions/start-pitch-review uses the persisted shortlist finalists for blind-plus-pitch hackathons', async () => {
+  test('POST /api/hackathons/:hackathonId/actions/start-pitch-review uses the persisted shortlist finalists for blind-plus-pitch hackathons after pitch starts', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
@@ -3088,7 +3255,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       submissionOpensAt: '2026-03-23T12:00:00.000Z',
       submissionClosesAt: '2026-03-25T12:00:00.000Z',
-      state: 'shortlist',
+      state: 'pitch',
       blindReviewCount: 1,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 70,

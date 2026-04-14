@@ -40,7 +40,7 @@ describe('TASK-3.7 judging assignment routes', () => {
   async function seedBaseJudgingRecords(
     harness: ReturnType<typeof createApiRouteTestHarness>,
     options?: {
-      state?: 'judging_preparation' | 'blind_review' | 'pitch_review' | 'final_deliberation'
+      state?: 'judging_preparation' | 'blind_review' | 'pitch' | 'pitch_review' | 'final_deliberation'
       includeCriteria?: boolean
       blindReviewCount?: 0 | 1 | 2
       pitchReviewEnabled?: boolean

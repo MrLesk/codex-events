@@ -456,6 +456,7 @@ function resolveJudgeDashboardStage(
   }
 
   return hackathon.state === 'pitch_review'
+    || hackathon.state === 'pitch'
     || hackathon.state === 'shortlist'
     || (hackathon.state === 'judging_preparation' && hackathon.blindReviewCount === 0)
     ? 'pitch_review'
@@ -524,6 +525,15 @@ export function getJudgeHackathonDashboardCopy(
       actionLabel: stage === 'blind_review' ? 'Open blind review' : 'Open pitch review',
       overline: formatActiveStageAssignmentCount(stage, normalizedSummary.total),
       queueMeta: formatJudgeQueueMeta(stage, normalizedSummary)
+    }
+  }
+
+  if (hackathon.state === 'pitch') {
+    return {
+      description: 'Finalist teams are pitching live. Post-pitch review assignments will appear here after admins start pitch review.',
+      actionLabel: 'Open hackathon',
+      overline: 'Judge assigned',
+      queueMeta: formatJudgeQueueMeta('pitch_review', normalizedSummary)
     }
   }
 

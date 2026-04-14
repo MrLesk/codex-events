@@ -8,7 +8,7 @@ import {
 
 function createHackathon(overrides: Partial<{
   agendaItems: Array<{ startsAt: string }>
-  state: 'draft' | 'registration_open' | 'submission_open' | 'judging_preparation' | 'blind_review' | 'shortlist' | 'pitch_review' | 'final_deliberation' | 'winners_announced' | 'completed'
+  state: 'draft' | 'registration_open' | 'submission_open' | 'judging_preparation' | 'blind_review' | 'shortlist' | 'pitch' | 'pitch_review' | 'final_deliberation' | 'winners_announced' | 'completed'
   submissionOpensAt: string
 }> = {}) {
   return {

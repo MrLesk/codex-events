@@ -18,7 +18,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   selectFinalists: [orderedSubmissionIds: string[]]
-  startPitchReview: []
+  startPitch: []
 }>()
 
 const draftFinalistSubmissionIds = ref<string[]>([])
@@ -67,11 +67,11 @@ const hasDraftChanges = computed(() => {
   return draftFinalistSubmissionIds.value.some((submissionId, index) => submissionId !== currentFinalistSubmissionIds.value[index])
 })
 
-const canStartPitchReview = computed(() =>
+const canStartPitch = computed(() =>
   canManageShortlist.value
   && selectedFinalists.value.length > 0
   && !hasDraftChanges.value
-  && (props.pendingActionKey === null || props.pendingActionKey === 'start-pitch-review')
+  && (props.pendingActionKey === null || props.pendingActionKey === 'start-pitch')
 )
 
 function formatScore(scoreTotal: number | null) {
@@ -205,7 +205,7 @@ function resetDraft() {
           Shortlist
         </h2>
         <p class="text-sm text-muted">
-          Keep this stage blind. Review the blind leaderboard, choose which submissions advance to pitch review, and order only the finalists.
+          Keep this stage blind. Review the blind leaderboard, choose which submissions advance to the live pitch stage, and order only the finalists.
         </p>
       </div>
     </template>
@@ -315,7 +315,7 @@ function resetDraft() {
             Pitch Finalists
           </h3>
           <p class="text-sm text-toned">
-            Only the ordered finalists saved here advance to pitch review.
+            Only the ordered finalists saved here advance to the live pitch stage.
           </p>
         </div>
 
@@ -444,11 +444,11 @@ function resetDraft() {
 
             <AppButton
               color="secondary"
-              :loading="pendingActionKey === 'start-pitch-review'"
-              :disabled="!canStartPitchReview"
-              @click="emit('startPitchReview')"
+              :loading="pendingActionKey === 'start-pitch'"
+              :disabled="!canStartPitch"
+              @click="emit('startPitch')"
             >
-              Start pitch review
+              Start pitch
             </AppButton>
           </div>
         </div>
@@ -458,7 +458,7 @@ function resetDraft() {
           color="neutral"
           variant="soft"
           title="No finalists selected yet"
-          description="Choose one or more blind submissions from the leaderboard before pitch review can start."
+          description="Choose one or more blind submissions from the leaderboard before the live pitch stage can start."
         />
       </section>
     </div>

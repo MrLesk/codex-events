@@ -213,8 +213,11 @@ describe('public hackathon agenda presentation helpers', () => {
 
   test('formats canonical judging lifecycle labels, colors, and summaries', () => {
     expect(formatHackathonStateLabel('blind_review')).toBe('Blind review')
+    expect(formatHackathonStateLabel('pitch')).toBe('Pitch')
+    expect(resolveHackathonStateColor('pitch')).toBe('primary')
     expect(resolveHackathonStateColor('pitch_review')).toBe('primary')
     expect(summarizeHackathonState('shortlist')).toBe('Blind-review scores are locked in and finalists are being selected for the pitch stage.')
+    expect(summarizeHackathonState('pitch')).toBe('Finalists are presenting live. Post-pitch judge review opens after admins end the pitch stage.')
     expect(summarizeHackathonState('final_deliberation')).toBe('Final combined scores are under review before winners are announced.')
   })
 

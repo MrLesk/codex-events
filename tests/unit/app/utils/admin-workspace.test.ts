@@ -288,6 +288,7 @@ describe('admin-workspace access helpers', () => {
     expect(getHackathonOperationsPhase('judging_preparation')).toBe('judging')
     expect(getHackathonOperationsPhase('blind_review')).toBe('judging')
     expect(getHackathonOperationsPhase('shortlist')).toBe('judging')
+    expect(getHackathonOperationsPhase('pitch')).toBe('judging')
     expect(getHackathonOperationsPhase('pitch_review')).toBe('judging')
     expect(getHackathonOperationsPhase('final_deliberation')).toBe('judging')
     expect(getHackathonOperationsPhase('winners_announced')).toBe('judging')
@@ -664,10 +665,37 @@ describe('admin-workspace lifecycle controls', () => {
     })
   })
 
-  test('routes pitch-only hackathons directly into pitch review from judging preparation', () => {
+  test('routes pitch-only hackathons into the live pitch stage from judging preparation', () => {
     const control = getCurrentLifecycleControl(
       createHackathon({
         state: 'judging_preparation',
+        blindReviewCount: 0,
+        pitchReviewEnabled: true,
+        blindScoreWeightPercent: 0,
+        pitchScoreWeightPercent: 100
+      }),
+      {
+        submittedSubmissionCount: 3,
+        judgePoolCount: 2,
+        lockedSubmissionCount: 3,
+        activeAssignmentCount: 0,
+        lockedLeaderboardEntryCount: 3,
+        completedReviewCount: 0,
+        prizeCount: 0,
+        hasCurrentWinnerTerms: true
+      }
+    )
+
+    expect(control).toMatchObject({
+      key: 'start_pitch',
+      isEnabled: true
+    })
+  })
+
+  test('routes the live pitch stage into pitch review once admins are ready to assign judges', () => {
+    const control = getCurrentLifecycleControl(
+      createHackathon({
+        state: 'pitch',
         blindReviewCount: 0,
         pitchReviewEnabled: true,
         blindScoreWeightPercent: 0,

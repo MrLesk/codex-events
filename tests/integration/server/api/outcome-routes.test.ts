@@ -6,6 +6,7 @@ import listPlatformAuditHandler from '../../../../server/api/audit/index.get'
 import announceWinnersHandler from '../../../../server/api/hackathons/[hackathonId]/actions/announce-winners.post'
 import completeHackathonHandler from '../../../../server/api/hackathons/[hackathonId]/actions/complete.post'
 import startFinalDeliberationHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-final-deliberation.post'
+import startPitchHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-pitch.post'
 import startPitchReviewHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-pitch-review.post'
 import startShortlistHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-shortlist.post'
 import listHackathonAuditHandler from '../../../../server/api/hackathons/[hackathonId]/audit/index.get'
@@ -50,7 +51,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
   async function seedOutcomeHackathon(
     harness: ReturnType<typeof createApiRouteTestHarness>,
     options?: {
-      state?: 'blind_review' | 'shortlist' | 'pitch_review' | 'final_deliberation' | 'winners_announced'
+      state?: 'blind_review' | 'shortlist' | 'pitch' | 'pitch_review' | 'final_deliberation' | 'winners_announced'
       withPrizes?: boolean
       blindReviewCount?: 0 | 1 | 2
       pitchReviewEnabled?: boolean
@@ -676,6 +677,11 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         },
         {
           method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/start-pitch',
+          handler: startPitchHandler
+        },
+        {
+          method: 'post',
           path: '/api/hackathons/:hackathonId/actions/start-pitch-review',
           handler: startPitchReviewHandler
         }
@@ -720,11 +726,17 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       ]
     })
 
-    const startPitchResponse = await harness.request('/api/hackathons/hackathon_1/actions/start-pitch-review', {
+    const startPitchResponse = await harness.request('/api/hackathons/hackathon_1/actions/start-pitch', {
       method: 'POST'
     })
 
     expect(startPitchResponse.status).toBe(200)
+
+    const startPitchReviewResponse = await harness.request('/api/hackathons/hackathon_1/actions/start-pitch-review', {
+      method: 'POST'
+    })
+
+    expect(startPitchReviewResponse.status).toBe(200)
     const pitchAssignments = await harness.database.select().from(judgeAssignments)
     expect(
       pitchAssignments

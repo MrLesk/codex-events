@@ -74,7 +74,7 @@ Key characteristics:
 - Each hackathon has a judging flow that is activated manually.
 - Each hackathon must enable at least one judging stage.
 - Each hackathon can require `0`, `1`, or `2` blind reviews per submitted project.
-- Each hackathon can optionally enable a pitch review stage after blind review or as the only judging stage.
+- Each hackathon can optionally enable a live pitch stage followed by a pitch review stage after blind review or as the only judging path.
 - Each hackathon can configure blind-score and pitch-score weights. When both stages are enabled, the default weighting is `70%` blind score and `30%` pitch score.
 - Each hackathon can define a maximum team member limit.
 - Each hackathon can optionally define a participant approval limit used as an indicative planning target during admin review.
@@ -306,7 +306,7 @@ A review assignment connecting one submission to one judge within a hackathon.
 Relationship rules:
 
 - A submission can have `0`, `1`, or `2` blind review assignments depending on its hackathon configuration.
-- A shortlisted submission in a pitch-enabled hackathon can have one pitch review assignment for every judge in the frozen pitch panel.
+- A submission that advances to pitch review in a pitch-enabled hackathon can have one pitch review assignment for every judge in the frozen pitch panel.
 - Each judge assignment belongs to exactly one submission.
 - Each judge assignment belongs to exactly one user acting as judge.
 - Each judge assignment belongs to one review stage: `blind_review` or `pitch_review`.
@@ -315,7 +315,7 @@ Operational rules:
 
 - When judging preparation begins and blind review is enabled, submissions are distributed between users in the automatic judge distribution pool as evenly as possible until every locked submission has the configured number of blind review assignments.
 - Blind review assignments for the same submission must belong to different judges.
-- When pitch review begins, one pitch review assignment is created for every shortlisted submission and every judge in the frozen pitch panel.
+- When pitch review begins, one pitch review assignment is created for every submission that advanced through the pitch stage and every judge in the frozen pitch panel.
 - The pitch panel is frozen from the active judge roster when pitch review begins.
 - Hackathon admins can reassign a blind review assignment only before its assigned judge has started review.
 - Blind scoring data lives on `JudgeAssignment` through criterion scores.
@@ -333,7 +333,7 @@ Operational rules:
 - A hackathon admin or platform admin can mark a submission as withdrawn on behalf of the team when acting on a team request.
 - The admin-withdraw request identifies the requesting user through `requestedByUserId`, and that user must be an active team admin of the submission's team.
 - Once judging preparation begins, teams can no longer withdraw a submission.
-- Once blind review or pitch review begins, removal from competition is handled as disqualification rather than withdrawal.
+- Once blind review, pitch, or pitch review begins, removal from competition is handled as disqualification rather than withdrawal.
 
 ### HackathonCreditOffer
 
@@ -469,9 +469,10 @@ Scope:
 - A manual admin action starts judging preparation and locks submissions.
 - A later manual admin action starts blind review when blind review is enabled.
 - `shortlist` exists only when blind review and pitch review are both enabled.
-- `shortlist` presents the blind-review leaderboard plus the persisted ordered finalist set selected by admins for pitch review.
-- Pitch-only hackathons skip `shortlist` and send all eligible locked submissions directly to pitch review.
-- A later manual admin action starts pitch review when pitch review is enabled.
+- `shortlist` presents the blind-review leaderboard plus the persisted ordered finalist set selected by admins for the live pitch stage.
+- Pitch-only hackathons skip `shortlist` and send all eligible locked submissions directly to `pitch`.
+- A later manual admin action starts `pitch`, which is the live finalist presentation stage and does not create judge assignments.
+- A later manual admin action starts `pitch_review`, which creates the post-pitch judge assignments for finalists.
 - `final_deliberation` is the universal ranking-review stage after all enabled scoring stages are complete.
 - Hackathon admins can manually reorder the final ranking during `final_deliberation` without changing the underlying judge scores.
 - Final score is computed from the enabled judging stages only.

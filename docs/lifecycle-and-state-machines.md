@@ -12,6 +12,7 @@ This document defines the canonical lifecycle states and transitions for the mai
 - `judging_preparation`
 - `blind_review`
 - `shortlist`
+- `pitch`
 - `pitch_review`
 - `final_deliberation`
 - `winners_announced`
@@ -83,17 +84,27 @@ Behavior:
 
 #### `shortlist`
 
-The blind-review leaderboard is reviewed and finalists are selected for pitch review.
+The blind-review leaderboard is reviewed and finalists are selected for the live pitch stage.
 
 Behavior:
 
 - Judges can review blind-review scores.
-- Hackathon admins manually choose and order the finalist submissions that advance to pitch review.
+- Hackathon admins manually choose and order the finalist submissions that advance to the live pitch stage.
 - Team identity remains hidden during shortlist.
+
+#### `pitch`
+
+Finalist teams are in the live pitch stage before judges receive post-pitch review assignments.
+
+Behavior:
+
+- Teams pitch live during this state.
+- Judges do not receive pitch-review assignments yet.
+- Hackathon admins can manually end the live pitch stage and start `pitch_review`.
 
 #### `pitch_review`
 
-Finalists present their projects and judges score the live pitch.
+Judges score finalists after the live pitch stage ends.
 
 Behavior:
 
@@ -143,14 +154,16 @@ Behavior:
   Guard: submission editing is closed and a hackathon admin starts judging preparation manually.
 - `judging_preparation -> blind_review`
   Guard: blind review is enabled, blind review assignments are ready, and a hackathon admin starts blind review manually.
-- `judging_preparation -> pitch_review`
-  Guard: blind review is disabled, pitch review is enabled, and a hackathon admin starts pitch review manually.
+- `judging_preparation -> pitch`
+  Guard: blind review is disabled, pitch review is enabled, and a hackathon admin starts the live pitch stage manually.
 - `blind_review -> shortlist`
   Guard: pitch review is enabled and all active submissions have the configured number of completed blind review outcomes or have been removed from competition.
 - `blind_review -> final_deliberation`
   Guard: pitch review is disabled and all active submissions have the configured number of completed blind review outcomes or have been removed from competition.
-- `shortlist -> pitch_review`
-  Guard: hackathon admins finalize the ordered finalist set and start pitch review manually.
+- `shortlist -> pitch`
+  Guard: hackathon admins finalize the ordered finalist set and start the live pitch stage manually.
+- `pitch -> pitch_review`
+  Guard: hackathon admins end the live pitch stage and start pitch review manually.
 - `pitch_review -> final_deliberation`
   Guard: pitch review is closed by hackathon admins after submitted pitch votes are accepted for scoring.
 - `final_deliberation -> winners_announced`
