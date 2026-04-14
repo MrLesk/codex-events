@@ -15,6 +15,7 @@ import {
   buildCompletionCriterionScoresPayload,
   buildJudgeWorkspaceCacheKey,
   buildPitchReviewCompletionPayload,
+  canAutoStartBlindReviewFromScoreSelection,
   canCompleteJudgeAssignment,
   canMarkJudgeAssignmentIneligible,
   canSkipJudgeAssignment,
@@ -472,6 +473,25 @@ describe('judging-workspace actions', () => {
       createPitchAssignment(),
       'judging_preparation'
     )).toBeNull()
+  })
+
+  test('allows the first blind-review score to auto-start only in blind review', () => {
+    expect(canAutoStartBlindReviewFromScoreSelection(
+      createBlindAssignment(),
+      'blind_review'
+    )).toBe(true)
+    expect(canAutoStartBlindReviewFromScoreSelection(
+      createBlindAssignment(),
+      'judging_preparation'
+    )).toBe(false)
+    expect(canAutoStartBlindReviewFromScoreSelection(
+      createBlindAssignment({ status: 'judge_started' }),
+      'blind_review'
+    )).toBe(false)
+    expect(canAutoStartBlindReviewFromScoreSelection(
+      createPitchAssignment(),
+      'pitch_review'
+    )).toBe(false)
   })
 
   test('uses canonical API messages for judge action failures', () => {

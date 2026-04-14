@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { ApiDataResponse } from '~/utils/admin-workspace'
-import type { JudgeAssignmentDetail } from '~/utils/judging-workspace'
+import type {
+  CriterionScoreDraft,
+  JudgeAssignmentDetail
+} from '~/utils/judging-workspace'
 
 import BlindSubmissionPanel from '~/components/judging/BlindSubmissionPanel.vue'
 import JudgeReviewRubric from '~/components/judging/JudgeReviewRubric.vue'
@@ -9,6 +12,7 @@ import { buildAccountHackathonJudgingTabHref } from '~/utils/judging-query'
 import {
   buildCompletionCriterionScoresPayload,
   buildPitchReviewCompletionPayload,
+  canAutoStartBlindReviewFromScoreSelection,
   canCompleteJudgeAssignment,
   canMarkJudgeAssignmentIneligible,
   canSkipJudgeAssignment,
@@ -94,6 +98,13 @@ const completedCriteriaCount = computed(() =>
   scoreDrafts.value.filter(draft => draft.score.trim().length > 0).length
 )
 const rubricReadonly = computed(() => !assignment.value || assignment.value.status !== 'judge_started')
+const allowBlindScoreSelectionWhenReadonly = computed(() =>
+  Boolean(
+    canAutoStartBlindReviewFromScoreSelection(assignment.value, hackathon.value?.state)
+    && actionState.pendingAction !== 'start'
+    && actionState.pendingAction !== 'complete'
+  )
+)
 const reviewActionDisabledReason = computed(() => {
   if (!assignment.value || !blindAssignment.value) {
     return null
@@ -140,7 +151,9 @@ const reviewProgressHeading = computed(() => {
   }
 
   if (assignment.value.status === 'assigned') {
-    return pitchAssignment.value ? 'Start pitch review to unlock voting' : 'Start review to unlock scoring'
+    return pitchAssignment.value
+      ? 'Start pitch review to unlock voting'
+      : 'Select the first criterion score to start review'
   }
 
   if (assignment.value.status === 'judge_started') {
@@ -252,9 +265,33 @@ async function startReview() {
     showInlineSkipForm.value = false
     actionState.success = isPitchJudgeAssignment(response.data)
       ? 'Pitch review started. Record your 0-10 vote when you are ready.'
-      : 'Review started. The scoring rubric is now unlocked.'
+      : 'Review started. Continue scoring and submit when you are ready.'
     notifyWorkspaceUpdated()
   })
+}
+
+async function updateBlindScoreDrafts(nextDrafts: CriterionScoreDraft[]) {
+  if (!blindAssignment.value || !assignment.value) {
+    scoreDrafts.value = nextDrafts
+    return
+  }
+
+  if (assignment.value.status !== 'assigned') {
+    scoreDrafts.value = nextDrafts
+    return
+  }
+
+  const scoreChanged = nextDrafts.some((draft, index) => draft.score !== scoreDrafts.value[index]?.score)
+
+  if (!scoreChanged || startReviewDisabled.value) {
+    return
+  }
+
+  await startReview()
+
+  if (assignment.value && canCompleteJudgeAssignment(assignment.value)) {
+    scoreDrafts.value = nextDrafts
+  }
 }
 
 async function completeReview() {
@@ -421,8 +458,7 @@ async function markIneligible() {
       />
 
       <AppCard
-        class="rounded-xl hackathon-workspace-detail-panel"
-        :class="blindAssignment ? 'order-2' : 'order-3'"
+        class="order-3 rounded-xl hackathon-workspace-detail-panel"
       >
         <template #header>
           <div class="space-y-1">
@@ -462,7 +498,7 @@ async function markIneligible() {
               </AppButton>
 
               <AppButton
-                v-if="canStartJudgeAssignment(assignment)"
+                v-if="canStartJudgeAssignment(assignment) && pitchAssignment"
                 data-testid="judge-start-review"
                 color="primary"
                 size="lg"
@@ -623,7 +659,7 @@ async function markIneligible() {
 
       <div
         v-if="blindAssignment"
-        class="order-3 space-y-6"
+        class="order-2 space-y-6"
       >
         <AppAlert
           v-if="criteria.length === 0"
@@ -635,9 +671,11 @@ async function markIneligible() {
 
         <JudgeReviewRubric
           v-else
-          v-model="scoreDrafts"
-          :disabled="actionState.pendingAction === 'complete'"
+          :model-value="scoreDrafts"
+          :disabled="actionState.pendingAction === 'complete' || actionState.pendingAction === 'start'"
           :readonly="rubricReadonly"
+          :allow-score-selection-when-readonly="allowBlindScoreSelectionWhenReadonly"
+          @update:model-value="updateBlindScoreDrafts"
         />
       </div>
 

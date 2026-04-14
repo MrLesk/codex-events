@@ -560,6 +560,15 @@ export function getJudgeAssignmentActionDisabledReason(
   return `Start and skip actions are available only during blind review. Current state: ${formatHackathonState(hackathonState)}.`
 }
 
+export function canAutoStartBlindReviewFromScoreSelection(
+  assignment: Pick<JudgeAssignmentDetail, 'reviewStage' | 'status'> | null | undefined,
+  hackathonState: HackathonState | null | undefined
+) {
+  return assignment?.reviewStage === 'blind_review'
+    && assignment.status === 'assigned'
+    && !getJudgeAssignmentActionDisabledReason(assignment, hackathonState)
+}
+
 export function getJudgeActionErrorMessage(
   error: unknown,
   fallback: string = 'The judge action could not be completed.'

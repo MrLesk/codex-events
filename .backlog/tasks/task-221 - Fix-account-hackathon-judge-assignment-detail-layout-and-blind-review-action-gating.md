@@ -6,7 +6,7 @@ title: >-
 status: Done
 assignee: []
 created_date: '2026-04-14 20:16'
-updated_date: '2026-04-14 20:21'
+updated_date: '2026-04-14 20:28'
 labels:
   - bugfix
   - judging
@@ -18,16 +18,16 @@ priority: medium
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Update the account hackathon judging assignment detail workspace so it keeps the same content width as the judging tab, places blind-review progress actions before the scoring form, and explains when blind-review actions are unavailable because the hackathon is not in the blind-review state. Action failures for start/skip blind review should appear inline near the affected controls and use the canonical API error message returned by the server.
+Update the account hackathon judging assignment detail workspace so it keeps the same content width as the judging tab, keeps blind-review progress and actions inline near the bottom completion controls, and explains when blind-review actions are unavailable because the hackathon is not in the blind-review state. Blind review should start from the judge's first criterion score interaction instead of a separate start button, and action failures should use the canonical API error message returned by the server.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [x] #1 The judging assignment detail view in `/account/hackathons/:slug?tab=judging&assignment=...` keeps the same effective content width as the surrounding judging tab instead of shrinking to a narrower container.
-- [x] #2 For blind-review assignments, the review progress card with start and skip actions appears above the scoring form.
-- [x] #3 When a blind-review assignment is viewed outside the `blind_review` hackathon state, start and skip controls are visibly unavailable and the UI explains that these actions require the hackathon to be in blind review.
-- [x] #4 If the user attempts a blind-review start or skip action and the server returns a canonical API error, the inline action area shows the server message next to the relevant controls instead of relying on a page-level banner.
-- [x] #5 Relevant automated tests cover the new blind-review gating and inline error behavior.
+- [x] #2 For blind-review assignments, the scoring rubric appears before the review progress/actions card so skip and complete actions stay at the bottom of the workflow.
+- [x] #3 Blind-review assignments no longer show a separate start button; the first criterion score interaction starts the review and preserves that first score selection.
+- [x] #4 When a blind-review assignment is viewed outside the `blind_review` hackathon state, blind-review score-start and skip interactions are visibly unavailable and the UI explains why inline.
+- [x] #5 Relevant automated tests are updated for the new blind-review auto-start behavior and gating/error handling.
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -44,14 +44,20 @@ Update the account hackathon judging assignment detail workspace so it keeps the
 Confirmed canonical docs unchanged: lifecycle and permissions already require judges to start and skip blind assignments only during `blind_review`.
 
 Implemented the fix in the judge assignment detail workspace and shared judging utility, then validated with `bun run lint`, `bun run typecheck`, and `bun run test:unit`.
+
+Follow-up adjustment: restore the blind-review progress card to the bottom of the page, remove the explicit blind-review start button, and auto-start the blind review from the first criterion score interaction while keeping skip/complete actions in the bottom card.
+
+Adjusted the same task after review feedback: the blind-review progress/actions card now sits below the rubric again, the explicit blind start button was removed, and the first criterion score now triggers the start endpoint while preserving the chosen score locally.
+
+Updated the authenticated judge-workspace BDD step to start blind review through the first criterion score interaction so the test flow matches the revised UI.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Updated the account hackathon judge assignment detail workspace to keep its full tab width, move the blind-review progress/actions card above the scoring rubric, and keep blind-review start/skip feedback local to that card instead of showing a page-level banner. Added shared judging helpers to disable blind-review actions until the hackathon reaches `blind_review` and to prefer canonical API error messages from the server when an action request fails.
+Updated the account hackathon judge assignment detail workspace to keep its full tab width, restore the blind-review progress/actions card to the bottom of the page, and keep blind-review feedback local to that card instead of showing a page-level banner. Blind-review assignments no longer expose a separate start button; the first criterion score now triggers the start endpoint, keeps that selected score in the local rubric state, and leaves completion at the bottom of the workflow. Pitch-review behavior remains unchanged.
 
-Added unit coverage for the new blind-review action gating and judge-action error normalization in `tests/unit/app/utils/judging-workspace.test.ts`.
+Refined the shared judging utilities and rubric component to support the blind-review auto-start gate and added unit coverage for the new auto-start eligibility helper alongside the existing gating/error normalization checks. Updated the authenticated judge-workspace BDD step so it starts blind review through the first criterion score interaction.
 
 Validation run:
 - `bun run lint`
@@ -60,7 +66,7 @@ Validation run:
 
 Risks/follow-up:
 - No canonical docs changes were required.
-- Pitch-review layout and behavior were left unchanged aside from sharing the updated inline action feedback placement pattern.
+- The first blind-review score is still local until the judge submits the completed review, which matches the existing completion contract.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done

@@ -147,7 +147,7 @@ When('I start the opened blind review', async ({ page }) => {
       response.url().includes(`/api/hackathons/${platformFixtureIds.judgeWorkspaceHackathonId}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}/actions/start`)
       && response.ok()
     ),
-    page.getByTestId('judge-start-review').click()
+    page.getByTestId(`judge-criterion-score-option-${platformFixtureIds.judgeWorkspaceCriterionOneId}-8`).click()
   ])
 })
 

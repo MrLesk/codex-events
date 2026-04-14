@@ -5,9 +5,11 @@ const props = withDefaults(defineProps<{
   modelValue: CriterionScoreDraft[]
   disabled?: boolean
   readonly?: boolean
+  allowScoreSelectionWhenReadonly?: boolean
 }>(), {
   disabled: false,
-  readonly: false
+  readonly: false,
+  allowScoreSelectionWhenReadonly: false
 })
 
 const emit = defineEmits<{
@@ -15,6 +17,9 @@ const emit = defineEmits<{
 }>()
 
 const scoreOptions = Array.from({ length: 11 }, (_, index) => index)
+const scoreSelectionDisabled = computed(() =>
+  props.disabled || (props.readonly && !props.allowScoreSelectionWhenReadonly)
+)
 
 function updateDraft(index: number, key: 'score' | 'comment', value: string) {
   const nextDrafts = props.modelValue.map((draft, candidateIndex) =>
@@ -93,7 +98,7 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
                 type="button"
                 role="radio"
                 :aria-checked="draft.score === String(score)"
-                :disabled="disabled || readonly"
+                :disabled="scoreSelectionDisabled"
                 :data-testid="`judge-criterion-score-option-${draft.evaluationCriterionId}-${score}`"
                 class="rounded-lg border px-0 py-2 text-center text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
                 :class="draft.score === String(score)
