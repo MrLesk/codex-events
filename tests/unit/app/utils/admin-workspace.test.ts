@@ -19,6 +19,7 @@ import {
   createEmptyHackathonFormState,
   createHackathonFormState,
   createHackathonSlug,
+  formatFailedApplicationLumaSyncAlertToggleLabel,
   formatApplicationAttendanceStatus,
   formatApplicationLumaSyncStatus,
   formatApplicationStatus,
@@ -50,6 +51,7 @@ import {
   normalizeApiError,
   getSubmissionStatusColor,
   isApplicationCheckedIn,
+  listFailedApplicationLumaSyncApplications,
   sortAdminOperationalTeamsForSubmissionDashboard,
   shouldShowApplicationLumaSyncStatus,
   toDateTimeLocalValue
@@ -853,6 +855,49 @@ describe('admin-workspace operational helpers', () => {
         lumaSyncStatus: 'approve_synced'
       })
     )).toBe(true)
+  })
+
+  test('lists failed Luma sync applications for the active review view', () => {
+    const applications = [
+      createApplication({
+        id: 'application-approved-failed',
+        status: 'approved',
+        lumaSyncStatus: 'approve_failed'
+      }),
+      createApplication({
+        id: 'application-approved-synced',
+        status: 'approved',
+        lumaSyncStatus: 'approve_synced'
+      }),
+      createApplication({
+        id: 'application-rejected-failed',
+        status: 'rejected',
+        lumaSyncStatus: 'reject_failed'
+      }),
+      createApplication({
+        id: 'application-withdrawn-failed',
+        status: 'withdrawn',
+        lumaSyncStatus: 'reject_failed'
+      })
+    ]
+
+    expect(listFailedApplicationLumaSyncApplications(applications, 'applications')).toEqual([])
+    expect(listFailedApplicationLumaSyncApplications(applications, 'approved').map(application => application.id)).toEqual([
+      'application-approved-failed'
+    ])
+    expect(listFailedApplicationLumaSyncApplications(applications, 'rejected').map(application => application.id)).toEqual([
+      'application-rejected-failed'
+    ])
+    expect(listFailedApplicationLumaSyncApplications(applications, 'withdrawn').map(application => application.id)).toEqual([
+      'application-withdrawn-failed'
+    ])
+  })
+
+  test('formats the failed Luma sync recap toggle label', () => {
+    expect(formatFailedApplicationLumaSyncAlertToggleLabel(0, false)).toBe('')
+    expect(formatFailedApplicationLumaSyncAlertToggleLabel(1, false)).toBe('Show 1 participant')
+    expect(formatFailedApplicationLumaSyncAlertToggleLabel(3, false)).toBe('Show 3 participants')
+    expect(formatFailedApplicationLumaSyncAlertToggleLabel(3, true)).toBe('Hide participant list')
   })
 
   test('detects approved participant attendance from checkedInAt', () => {

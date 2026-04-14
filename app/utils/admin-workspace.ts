@@ -804,6 +804,43 @@ export function shouldShowApplicationLumaSyncStatus(
   return application.status !== 'submitted' && Boolean(application.lumaSyncStatus)
 }
 
+export function listFailedApplicationLumaSyncApplications(
+  applications: AdminApplicationRecord[],
+  view: 'applications' | 'approved' | 'rejected' | 'withdrawn'
+) {
+  if (view === 'approved') {
+    return applications.filter(application =>
+      application.status === 'approved' && application.lumaSyncStatus === 'approve_failed'
+    )
+  }
+
+  if (view === 'rejected') {
+    return applications.filter(application =>
+      application.status === 'rejected' && application.lumaSyncStatus === 'reject_failed'
+    )
+  }
+
+  if (view === 'withdrawn') {
+    return applications.filter(application =>
+      application.status === 'withdrawn' && application.lumaSyncStatus === 'reject_failed'
+    )
+  }
+
+  return []
+}
+
+export function formatFailedApplicationLumaSyncAlertToggleLabel(count: number, expanded: boolean) {
+  if (count <= 0) {
+    return ''
+  }
+
+  if (expanded) {
+    return 'Hide participant list'
+  }
+
+  return `Show ${count} participant${count === 1 ? '' : 's'}`
+}
+
 export function formatApplicationLumaSyncStatus(status: AdminApplicationRecord['lumaSyncStatus']) {
   switch (status) {
     case 'not_synced':

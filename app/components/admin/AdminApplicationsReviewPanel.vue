@@ -18,12 +18,14 @@ import {
 import { parseProofOfExecutionLinks } from '~/utils/participant-application'
 import { buildProfileIconHref } from '~/utils/profile-icon'
 import {
+  formatFailedApplicationLumaSyncAlertToggleLabel,
   formatApplicationAttendanceStatus,
   formatApplicationLumaSyncStatus,
   getApplicationAttendanceStatusColor,
   getApplicationLumaSyncStatusColor,
   getApplicationStatusColor,
   isApplicationCheckedIn,
+  listFailedApplicationLumaSyncApplications,
   shouldShowApplicationLumaSyncStatus
 } from '~/utils/admin-workspace'
 import { formatTimestamp } from '~/utils/date-formatting'
@@ -61,6 +63,7 @@ const stagedCount = computed(() =>
 const whyThisHackathonPreviewCharacterLimit = 280
 const proofLinksPreviewCount = 2
 const expandedApplicationSectionKeys = ref(new Set<string>())
+const isFailedLumaSyncAlertExpanded = ref(false)
 const searchQuery = ref('')
 const checkedInOnly = ref(false)
 const showApprovedAttendance = computed(() =>
@@ -90,27 +93,9 @@ const applicationReviewGroups = computed(() =>
     hasSearchQuery.value ? searchQuery.value : ''
   )
 )
-const failedLumaSyncApplications = computed(() => {
-  if (props.view === 'approved') {
-    return props.applications.filter(application =>
-      application.status === 'approved' && application.lumaSyncStatus === 'approve_failed'
-    )
-  }
-
-  if (props.view === 'rejected') {
-    return props.applications.filter(application =>
-      application.status === 'rejected' && application.lumaSyncStatus === 'reject_failed'
-    )
-  }
-
-  if (props.view === 'withdrawn') {
-    return props.applications.filter(application =>
-      application.status === 'withdrawn' && application.lumaSyncStatus === 'reject_failed'
-    )
-  }
-
-  return []
-})
+const failedLumaSyncApplications = computed(() =>
+  listFailedApplicationLumaSyncApplications(props.applications, props.view)
+)
 const failedLumaSyncAlert = computed(() => {
   if (failedLumaSyncApplications.value.length === 0) {
     return null
@@ -139,6 +124,23 @@ const failedLumaSyncAlert = computed(() => {
 
   return null
 })
+const failedLumaSyncAlertToggleLabel = computed(() =>
+  formatFailedApplicationLumaSyncAlertToggleLabel(
+    failedLumaSyncApplications.value.length,
+    isFailedLumaSyncAlertExpanded.value
+  )
+)
+
+watch(
+  () => [props.view, failedLumaSyncApplications.value.length],
+  () => {
+    isFailedLumaSyncAlertExpanded.value = false
+  }
+)
+
+function toggleFailedLumaSyncAlertExpanded() {
+  isFailedLumaSyncAlertExpanded.value = !isFailedLumaSyncAlertExpanded.value
+}
 
 function getApplicationSectionKey(applicationId: string, section: 'motivation' | 'proof') {
   return `${applicationId}:${section}`
@@ -250,6 +252,18 @@ function getApplicantProfileIconHref(application: AdminApplicationRecord) {
     application.user?.profileIconUpdatedAt,
     props.hackathonId
   )
+}
+
+function getFailedLumaSyncParticipantMeta(application: AdminApplicationRecord) {
+  if (application.user?.lumaEmail) {
+    return `Luma: ${application.user.lumaEmail}`
+  }
+
+  if (application.user?.email && application.user.email !== getApplicantIdentityLabel(application)) {
+    return `Account: ${application.user.email}`
+  }
+
+  return `User ID: ${application.userId}`
 }
 
 function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject' | 'withdraw', isActive: boolean) {
@@ -454,7 +468,44 @@ const emptyState = computed(() => {
           variant="soft"
           :title="failedLumaSyncAlert.title"
           :description="failedLumaSyncAlert.description"
-        />
+        >
+          <div class="mt-3 border-t border-current/15 pt-3">
+            <button
+              type="button"
+              data-testid="failed-luma-sync-alert-toggle"
+              :aria-expanded="isFailedLumaSyncAlertExpanded"
+              aria-controls="failed-luma-sync-alert-list"
+              class="inline-flex items-center gap-2 text-sm font-medium text-current transition-opacity hover:opacity-80"
+              @click="toggleFailedLumaSyncAlertExpanded"
+            >
+              <span>{{ failedLumaSyncAlertToggleLabel }}</span>
+              <AppIcon
+                :name="isFailedLumaSyncAlertExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                class="size-4"
+              />
+            </button>
+
+            <ul
+              v-if="isFailedLumaSyncAlertExpanded"
+              id="failed-luma-sync-alert-list"
+              data-testid="failed-luma-sync-alert-list"
+              class="mt-3 space-y-2"
+            >
+              <li
+                v-for="application in failedLumaSyncApplications"
+                :key="application.id"
+                class="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+              >
+                <span class="font-medium text-current">
+                  {{ getApplicantIdentityLabel(application) }}
+                </span>
+                <span class="text-current/80">
+                  {{ getFailedLumaSyncParticipantMeta(application) }}
+                </span>
+              </li>
+            </ul>
+          </div>
+        </AppAlert>
 
         <div
           v-if="searchEnabled || showApprovedAttendance"
