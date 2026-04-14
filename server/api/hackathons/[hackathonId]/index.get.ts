@@ -1,6 +1,13 @@
 import { defineApiHandler } from '../../../utils/api-handler'
 import { apiData } from '../../../utils/api-response'
-import { getVisibleHackathonOrThrow, getCurrentHackathonTerms, listHackathonTracks, routeIdParamsSchema, serializeHackathon } from '../../../utils/hackathon-management'
+import {
+  getVisibleHackathonOrThrow,
+  getCurrentHackathonTerms,
+  listHackathonTracks,
+  resolveVisibleHackathonDiscordServerUrl,
+  routeIdParamsSchema,
+  serializeHackathon
+} from '../../../utils/hackathon-management'
 import { parseValidatedParams } from '../../../utils/validation'
 import { getDatabase } from '../../../database/client'
 
@@ -20,9 +27,11 @@ export default defineApiHandler(async (event) => {
   const database = getDatabase(event)
   const currentTerms = await getCurrentHackathonTerms(database, hackathon)
   const tracks = await listHackathonTracks(database, hackathonId)
+  const discordServerUrl = await resolveVisibleHackathonDiscordServerUrl(event, hackathon)
 
   return apiData({
     ...serializeHackathon(hackathon, undefined, tracks),
+    discordServerUrl,
     currentTerms: {
       applicationTerms: currentTerms.applicationTerms ? serializeTermsReference(currentTerms.applicationTerms) : null,
       winnerTerms: currentTerms.winnerTerms ? serializeTermsReference(currentTerms.winnerTerms) : null

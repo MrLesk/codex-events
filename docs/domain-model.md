@@ -77,9 +77,11 @@ Key characteristics:
 - Each hackathon can configure blind-score and pitch-score weights. When both stages are enabled, the default weighting is `70%` blind score and `30%` pitch score.
 - Each hackathon can define a maximum team member limit.
 - Each hackathon can optionally define a participant approval limit used as an indicative planning target during admin review.
+- Each hackathon can optionally reference a restricted Discord server URL.
 - Each hackathon can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma email, for registration.
 - Each hackathon can require a `why this hackathon` response and proof-of-execution links in applications.
 - Each hackathon references its own application terms and winner terms.
+- A configured Discord server URL is visible only in the account-scoped hackathon workspace for approved participants, judges, staff, hackathon admins, and platform admins.
 
 ### HackathonTrack
 

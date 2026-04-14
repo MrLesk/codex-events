@@ -141,6 +141,22 @@ describe('shared database migration', () => {
     }])
   })
 
+  test('stores the Discord server URL column on hackathons with a null default', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'creator_1', now)
+    await seedHackathon(database, 'hackathon_1', 'draft', now, 'creator_1')
+
+    const hackathonRow = await database.prepare(`
+      select discord_server_url
+      from hackathons
+      where id = ?
+    `).all<{ discord_server_url: string | null }>('hackathon_1')
+
+    expect(hackathonRow.results).toEqual([{
+      discord_server_url: null
+    }])
+  })
+
   test('prevents duplicate pending join requests for the same user and team', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)

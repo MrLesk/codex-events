@@ -29,6 +29,7 @@ function createHackathon(
     name: 'Outcome Hackathon',
     slug: 'outcome-hackathon',
     description: 'Outcome Hackathon',
+    discordServerUrl: null,
     city: 'Vienna',
     country: 'Austria',
     address: 'Fixture Address',

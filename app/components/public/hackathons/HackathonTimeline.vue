@@ -3,6 +3,7 @@ import type { PublicHackathon } from '~/composables/useHackathonPresentation'
 
 const props = defineProps<{
   hackathon: PublicHackathon
+  discordServerUrl?: string | null
   criteriaCount?: number
   showAddress?: boolean
 }>()
@@ -63,6 +64,16 @@ const eventDetailRows = computed(() => {
       label: 'Luma event',
       value: 'Open event page',
       href: lumaEventUrl
+    })
+  }
+
+  const discordServerUrl = props.discordServerUrl?.trim()
+
+  if (discordServerUrl) {
+    rows.push({
+      label: 'Discord server',
+      value: 'Open server',
+      href: discordServerUrl
     })
   }
 

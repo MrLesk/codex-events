@@ -27,6 +27,7 @@ function createHackathon(state: 'registration_open' | 'submission_open' | 'judgi
     description: 'Fixture hackathon',
     backgroundImageUrl: null,
     bannerImageUrl: null,
+    discordServerUrl: null,
     city: 'Vienna',
     country: 'Austria',
     address: 'Fixture Address',

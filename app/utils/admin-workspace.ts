@@ -187,6 +187,7 @@ export interface HackathonRecord {
   tracks?: HackathonTrack[]
   backgroundImageUrl: string | null
   bannerImageUrl: string | null
+  discordServerUrl?: string | null
   lumaEventUrl: string | null
   lumaEventApiId: string | null
   city: string
@@ -226,6 +227,7 @@ export interface HackathonRecord {
 export interface HackathonFormState {
   name: string
   slug: string
+  discordServerUrl: string
   lumaEventUrl: string
   lumaEventApiId: string
   description: string
@@ -1366,6 +1368,7 @@ export function createEmptyHackathonFormState(): HackathonFormState {
   return {
     name: '',
     slug: '',
+    discordServerUrl: '',
     lumaEventUrl: '',
     lumaEventApiId: '',
     description: '',
@@ -1418,6 +1421,7 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
   return {
     name: hackathon.name,
     slug: hackathon.slug,
+    discordServerUrl: hackathon.discordServerUrl ?? '',
     lumaEventUrl: hackathon.lumaEventUrl ?? '',
     lumaEventApiId: hackathon.lumaEventApiId ?? '',
     description: hackathon.description,

@@ -26,6 +26,7 @@ function buildHackathonRecord(
     agendaItemsJson: '[]',
     backgroundImageUrl: null,
     bannerImageUrl: null,
+    discordServerUrl: null,
     lumaEventUrl: null,
     lumaEventApiId: null,
     city: 'Vienna',
@@ -145,6 +146,7 @@ describe('hackathon management utilities', () => {
       agendaItemsJson: '[]',
       backgroundImageUrl: null,
       bannerImageUrl: null,
+      discordServerUrl: null,
       lumaEventUrl: null,
       lumaEventApiId: null,
       city: 'Vienna',
@@ -179,6 +181,7 @@ describe('hackathon management utilities', () => {
       agendaItemsJson: '[]',
       backgroundImageUrl: null,
       bannerImageUrl: null,
+      discordServerUrl: null,
       lumaEventUrl: null,
       lumaEventApiId: null,
       city: 'Vienna',
@@ -217,6 +220,7 @@ describe('hackathon management utilities', () => {
       agendaItemsJson: '[]',
       backgroundImageUrl: null,
       bannerImageUrl: null,
+      discordServerUrl: null,
       lumaEventUrl: null,
       lumaEventApiId: null,
       city: 'Vienna',
@@ -253,6 +257,7 @@ describe('hackathon management utilities', () => {
       agendaItemsJson: '[]',
       backgroundImageUrl: null,
       bannerImageUrl: null,
+      discordServerUrl: null,
       lumaEventUrl: null,
       lumaEventApiId: null,
       city: 'Vienna',
@@ -291,6 +296,7 @@ describe('hackathon management utilities', () => {
       agendaItemsJson: '[]',
       backgroundImageUrl: null,
       bannerImageUrl: null,
+      discordServerUrl: null,
       lumaEventUrl: null,
       lumaEventApiId: null,
       city: 'Vienna',
@@ -354,6 +360,7 @@ describe('hackathon management utilities', () => {
       description: 'Fixture hackathon',
       agendaItems: [],
       tracks: [],
+      discordServerUrl: 'https://discord.gg/codex',
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address',
@@ -366,6 +373,7 @@ describe('hackathon management utilities', () => {
       blindScoreWeightPercent: '60',
       pitchScoreWeightPercent: '40'
     })).toMatchObject({
+      discordServerUrl: 'https://discord.gg/codex',
       blindReviewCount: 2,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
@@ -373,11 +381,13 @@ describe('hackathon management utilities', () => {
     })
 
     expect(updateHackathonBodySchema.parse({
+      discordServerUrl: 'https://discord.gg/codex',
       blindReviewCount: '0',
       pitchReviewEnabled: false,
       blindScoreWeightPercent: '100',
       pitchScoreWeightPercent: '0'
     })).toMatchObject({
+      discordServerUrl: 'https://discord.gg/codex',
       blindReviewCount: 0,
       pitchReviewEnabled: false,
       blindScoreWeightPercent: 100,

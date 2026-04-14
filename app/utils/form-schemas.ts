@@ -192,6 +192,7 @@ const trackSchema = z.object({
 export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object({
   name: requiredTextSchema,
   slug: slugSchema,
+  discordServerUrl: createOptionalHttpUrlSchema('Enter a valid Discord server URL.'),
   lumaEventUrl: createOptionalHttpUrlSchema('Enter a valid Luma event URL.'),
   lumaEventApiId: createOptionalLumaEventApiIdSchema('Enter a valid Luma event API ID like evt-123.'),
   description: requiredTextSchema,

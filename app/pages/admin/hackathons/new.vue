@@ -33,6 +33,7 @@ async function createHackathon(form: HackathonFormState) {
       body: {
         name: form.name,
         slug: form.slug,
+        discordServerUrl: form.discordServerUrl.trim() || null,
         lumaEventUrl: form.lumaEventUrl.trim() || null,
         lumaEventApiId: form.lumaEventApiId.trim() || null,
         description: form.description,

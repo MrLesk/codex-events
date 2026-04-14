@@ -136,6 +136,16 @@ describe('hackathon config form schema', () => {
     expect(result.success).toBe(true)
   })
 
+  test('rejects non-http Discord server URLs', () => {
+    const result = hackathonConfigFormSchema.safeParse({
+      ...createValidHackathonFormState(),
+      discordServerUrl: 'discord://codex-builders'
+    })
+
+    expect(result.success).toBe(false)
+    expect(result.error?.issues[0]?.message).toBe('Enter a valid Discord server URL.')
+  })
+
   test('accepts markdown-formatted descriptions', () => {
     const result = hackathonConfigFormSchema.safeParse({
       ...createValidHackathonFormState(),

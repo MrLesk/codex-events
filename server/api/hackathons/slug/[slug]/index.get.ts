@@ -5,6 +5,7 @@ import {
   getCurrentHackathonTerms,
   getVisibleHackathonBySlugOrThrow,
   listHackathonTracks,
+  resolveVisibleHackathonDiscordServerUrl,
   routeSlugParamsSchema,
   serializeHackathon
 } from '../../../../utils/hackathon-management'
@@ -16,8 +17,10 @@ export default defineApiHandler(async (event) => {
   const database = getDatabase(event)
   const currentTerms = await getCurrentHackathonTerms(database, hackathon)
   const tracks = await listHackathonTracks(database, hackathon.id)
+  const discordServerUrl = await resolveVisibleHackathonDiscordServerUrl(event, hackathon)
 
   return apiData({
-    ...serializeHackathon(hackathon, currentTerms, tracks)
+    ...serializeHackathon(hackathon, currentTerms, tracks),
+    discordServerUrl
   })
 })

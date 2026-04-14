@@ -103,6 +103,7 @@ interface AccountHackathonsResponse {
 
 type AccountWorkspaceHackathon = Omit<PublicHackathon, 'tracks'> & {
   id: string
+  discordServerUrl?: string | null
   tracks?: Array<{
     id: string
     name: string
@@ -897,6 +898,7 @@ useSeoMeta({
       >
         <HackathonTimeline
           :hackathon="hackathon"
+          :discord-server-url="hackathon.discordServerUrl ?? null"
           :criteria-count="criteriaCount"
           :show-address="applicationStatus === 'approved'"
         />

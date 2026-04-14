@@ -476,6 +476,16 @@ const submitConfigForm = handleSubmit(() => {
             </label>
 
             <label class="grid gap-2">
+              <span class="text-sm font-medium text-toned">Discord server URL</span>
+              <AppInput
+                v-model="form.discordServerUrl"
+                type="url"
+                placeholder="https://discord.gg/your-invite"
+              />
+              <span class="text-xs text-muted">Shown only in the account workspace for approved participants, judges, staff, and admins.</span>
+            </label>
+
+            <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Luma event URL</span>
               <AppInput
                 v-model="form.lumaEventUrl"

@@ -44,6 +44,7 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     agendaItems: [],
     backgroundImageUrl: null,
     bannerImageUrl: null,
+    discordServerUrl: null,
     city: 'Vienna',
     country: 'Austria',
     address: 'Operngasse 20',

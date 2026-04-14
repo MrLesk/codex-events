@@ -173,6 +173,7 @@ const hackathonConfigShape = {
   tracks: tracksSchema,
   backgroundImageUrl: nullableUrlSchema,
   bannerImageUrl: nullableUrlSchema,
+  discordServerUrl: nullableHttpUrlSchema,
   lumaEventUrl: nullableHttpUrlSchema,
   lumaEventApiId: nullableLumaEventApiIdSchema,
   city: z.string().trim().min(1),
@@ -208,6 +209,7 @@ export const updateHackathonBodySchema = z.object({
   tracks: tracksSchema.optional(),
   backgroundImageUrl: hackathonConfigShape.backgroundImageUrl.optional(),
   bannerImageUrl: hackathonConfigShape.bannerImageUrl.optional(),
+  discordServerUrl: hackathonConfigShape.discordServerUrl.optional(),
   lumaEventUrl: hackathonConfigShape.lumaEventUrl.optional(),
   lumaEventApiId: hackathonConfigShape.lumaEventApiId.optional(),
   city: hackathonConfigShape.city.optional(),
@@ -914,6 +916,46 @@ export async function requireHackathonWorkspaceAccess(event: H3Event, hackathonI
     database,
     hackathon
   }
+}
+
+export async function resolveVisibleHackathonDiscordServerUrl(
+  event: H3Event,
+  hackathon: Pick<HackathonRecord, 'id' | 'discordServerUrl'>
+) {
+  const configuredDiscordServerUrl = hackathon.discordServerUrl?.trim()
+
+  if (!configuredDiscordServerUrl) {
+    return null
+  }
+
+  const actor = await getRequestActor(event)
+
+  if (actor.kind !== 'platform_user') {
+    return null
+  }
+
+  if (actor.platformUser.isPlatformAdmin) {
+    return configuredDiscordServerUrl
+  }
+
+  const authorization = await resolveHackathonAuthorization(event, hackathon.id)
+
+  if (authorization.explicitRole !== null) {
+    return configuredDiscordServerUrl
+  }
+
+  const approvedApplication = await getDatabase(event).query.userApplications.findFirst({
+    columns: {
+      id: true
+    },
+    where: and(
+      eq(userApplications.hackathonId, hackathon.id),
+      eq(userApplications.userId, actor.platformUser.id),
+      eq(userApplications.status, 'approved')
+    )
+  })
+
+  return approvedApplication ? configuredDiscordServerUrl : null
 }
 
 export async function listPublicHackathons(

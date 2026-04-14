@@ -556,6 +556,7 @@ async function saveConfiguration(configForm: HackathonFormState) {
     {
       name: configForm.name,
       slug: configForm.slug,
+      discordServerUrl: configForm.discordServerUrl.trim() || null,
       lumaEventUrl: configForm.lumaEventUrl.trim() || null,
       lumaEventApiId: configForm.lumaEventApiId.trim() || null,
       description: configForm.description,

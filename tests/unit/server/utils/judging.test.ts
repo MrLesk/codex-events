@@ -20,6 +20,7 @@ function createHackathon(
     name: 'Judging Hackathon',
     slug: 'judging-hackathon',
     description: 'Judging Hackathon',
+    discordServerUrl: null,
     city: 'Vienna',
     country: 'Austria',
     address: 'Fixture Address',

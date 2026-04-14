@@ -1040,6 +1040,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         name: 'Target Public Hackathon',
         slug: 'public-hackathon',
         description: 'Target public detail',
+        discordServerUrl: 'https://discord.gg/private-codex',
         city: 'Vienna',
         country: 'Austria',
         address: 'Address',
@@ -1112,6 +1113,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(payload.data).not.toHaveProperty('createdByUserId')
     expect(payload.data).not.toHaveProperty('createdAt')
     expect(payload.data).not.toHaveProperty('updatedAt')
+    expect(payload.data).not.toHaveProperty('discordServerUrl')
     expect(payload.data.currentTerms.applicationTerms).not.toHaveProperty('id')
     expect(payload.data.currentTerms.winnerTerms).not.toHaveProperty('id')
   })
@@ -1136,6 +1138,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       name: 'Public Hackathon',
       slug: 'public-hackathon',
       description: 'Public',
+      discordServerUrl: 'https://discord.gg/private-codex',
       city: 'Vienna',
       country: 'Austria',
       address: 'Address',
@@ -1361,6 +1364,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         id: 'hackathon_public',
         slug: 'public-hackathon',
         state: 'registration_open',
+        discordServerUrl: null,
         blindReviewCount: 2,
         pitchReviewEnabled: true,
         blindScoreWeightPercent: 60,
@@ -1375,6 +1379,223 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
             version: 3
           }
         }
+      }
+    })
+  })
+
+  test('GET /api/hackathons/slug/:slug exposes discordServerUrl to approved participants only', async () => {
+    const approvedHarness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/slug/:slug', handler: hackathonBySlugGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|approved_participant',
+        email: 'approved@example.com'
+      }
+    })
+    harnesses.push(approvedHarness)
+
+    await approvedHarness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'approved_participant',
+        auth0Subject: 'auth0|approved_participant',
+        email: 'approved@example.com',
+        displayName: 'Approved Participant'
+      }
+    ])
+    await seedCurrentPlatformConsent(approvedHarness, 'approved_participant')
+    await approvedHarness.database.insert(hackathons).values({
+      id: 'hackathon_private_discord',
+      name: 'Private Discord Hackathon',
+      slug: 'private-discord-hackathon',
+      description: 'Private Discord Hackathon',
+      discordServerUrl: 'https://discord.gg/private-codex',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await approvedHarness.database.insert(hackathonTermsDocuments).values({
+      id: 'terms_1',
+      hackathonId: 'hackathon_private_discord',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Application Terms',
+      content: 'Application terms',
+      publishedAt: '2026-03-20T00:00:00.000Z'
+    })
+    await approvedHarness.database.insert(userApplications).values({
+      id: 'application_approved',
+      hackathonId: 'hackathon_private_discord',
+      userId: 'approved_participant',
+      status: 'approved',
+      submittedAt: '2026-03-21T12:00:00.000Z',
+      withdrawnAt: null,
+      reviewedAt: '2026-03-22T12:00:00.000Z',
+      reviewedByUserId: 'creator_1',
+      applicationTermsDocumentId: 'terms_1',
+      applicationTermsAcceptedAt: '2026-03-21T12:00:00.000Z',
+      registrationDetailsJson: '{}',
+      createdAt: '2026-03-21T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    const approvedResponse = await approvedHarness.request('/api/hackathons/slug/private-discord-hackathon')
+    expect(approvedResponse.status).toBe(200)
+    expect(await approvedResponse.json()).toMatchObject({
+      data: {
+        discordServerUrl: 'https://discord.gg/private-codex'
+      }
+    })
+
+    const submittedHarness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/slug/:slug', handler: hackathonBySlugGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|submitted_participant',
+        email: 'submitted@example.com'
+      }
+    })
+    harnesses.push(submittedHarness)
+
+    await submittedHarness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'submitted_participant',
+        auth0Subject: 'auth0|submitted_participant',
+        email: 'submitted@example.com',
+        displayName: 'Submitted Participant'
+      }
+    ])
+    await seedCurrentPlatformConsent(submittedHarness, 'submitted_participant')
+    await submittedHarness.database.insert(hackathons).values({
+      id: 'hackathon_private_discord',
+      name: 'Private Discord Hackathon',
+      slug: 'private-discord-hackathon',
+      description: 'Private Discord Hackathon',
+      discordServerUrl: 'https://discord.gg/private-codex',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await submittedHarness.database.insert(hackathonTermsDocuments).values({
+      id: 'terms_1',
+      hackathonId: 'hackathon_private_discord',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Application Terms',
+      content: 'Application terms',
+      publishedAt: '2026-03-20T00:00:00.000Z'
+    })
+    await submittedHarness.database.insert(userApplications).values({
+      id: 'application_submitted',
+      hackathonId: 'hackathon_private_discord',
+      userId: 'submitted_participant',
+      status: 'submitted',
+      submittedAt: '2026-03-21T12:00:00.000Z',
+      withdrawnAt: null,
+      reviewedAt: null,
+      reviewedByUserId: null,
+      applicationTermsDocumentId: 'terms_1',
+      applicationTermsAcceptedAt: '2026-03-21T12:00:00.000Z',
+      registrationDetailsJson: '{}',
+      createdAt: '2026-03-21T12:00:00.000Z',
+      updatedAt: '2026-03-21T12:00:00.000Z'
+    })
+
+    const submittedResponse = await submittedHarness.request('/api/hackathons/slug/private-discord-hackathon')
+    expect(submittedResponse.status).toBe(200)
+    expect(await submittedResponse.json()).toMatchObject({
+      data: {
+        discordServerUrl: null
+      }
+    })
+  })
+
+  test('GET /api/hackathons/slug/:slug exposes discordServerUrl to judges', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/slug/:slug', handler: hackathonBySlugGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|judge_user',
+        email: 'judge@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'judge_user',
+        auth0Subject: 'auth0|judge_user',
+        email: 'judge@example.com',
+        displayName: 'Judge User'
+      }
+    ])
+    await seedCurrentPlatformConsent(harness, 'judge_user')
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_private_discord',
+      name: 'Private Discord Hackathon',
+      slug: 'private-discord-hackathon',
+      description: 'Private Discord Hackathon',
+      discordServerUrl: 'https://discord.gg/private-codex',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_judge',
+      hackathonId: 'hackathon_private_discord',
+      userId: 'judge_user',
+      role: 'judge',
+      isInJudgePool: true,
+      isStaff: false,
+      createdAt: '2026-03-21T12:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/slug/private-discord-hackathon')
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        discordServerUrl: 'https://discord.gg/private-codex'
       }
     })
   })
@@ -1404,6 +1625,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       body: JSON.stringify({
         name: 'New Hackathon',
         slug: 'new-hackathon',
+        discordServerUrl: 'https://discord.gg/new-hackathon',
         lumaEventUrl: 'https://lu.ma/new-hackathon',
         lumaEventApiId: 'evt-newhackathon123',
         description: 'New hackathon',
@@ -1475,6 +1697,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     })
 
     expect(createdHackathon).toMatchObject({
+      discordServerUrl: 'https://discord.gg/new-hackathon',
       lumaEventUrl: 'https://lu.ma/new-hackathon',
       lumaEventApiId: 'evt-newhackathon123',
       blindReviewCount: 2,
@@ -1548,6 +1771,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       method: 'PATCH',
       body: JSON.stringify({
         description: 'Updated description',
+        discordServerUrl: 'https://discord.gg/patch-hackathon',
         lumaEventUrl: 'https://lu.ma/patch-hackathon',
         lumaEventApiId: 'evt-patchhackathon123',
         agendaItems: [
@@ -1611,6 +1835,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     })
 
     expect(updatedHackathon).toMatchObject({
+      discordServerUrl: 'https://discord.gg/patch-hackathon',
       lumaEventUrl: 'https://lu.ma/patch-hackathon',
       lumaEventApiId: 'evt-patchhackathon123',
       blindReviewCount: 0,
