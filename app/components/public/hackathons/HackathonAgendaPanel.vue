@@ -95,7 +95,7 @@ const agendaEntries = computed(() =>
 
           <div class="hackathon-workspace-detail-inset group relative overflow-hidden rounded-[1.35rem] p-4 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:border-black/15 active:translate-y-px dark:hover:border-white/[0.16] sm:p-5">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div class="min-w-0">
+              <div class="min-w-0 flex-1">
                 <div
                   v-if="item.presentation.dayLabel"
                   class="mb-3 flex flex-wrap items-center gap-2"
