@@ -6,6 +6,7 @@ import type { PublicHackathonState } from '~/composables/useHackathonPresentatio
 import type {
   SubmissionTrackOption,
   TeamSubmissionActionAvailability,
+  TeamSubmissionRequirementConfig,
   TeamSubmissionRecord
 } from '~/utils/team-submission'
 
@@ -36,6 +37,7 @@ const props = defineProps<{
   mutationError?: string
   canManageSubmission?: boolean
   tracks?: SubmissionTrackOption[]
+  submissionRequirements: TeamSubmissionRequirementConfig
   createAvailability: TeamSubmissionActionAvailability
   updateAvailability: TeamSubmissionActionAvailability
   submitAvailability: TeamSubmissionActionAvailability
@@ -64,6 +66,15 @@ const sortedTracks = computed(() =>
   [...(props.tracks ?? [])].sort((left, right) => left.displayOrder - right.displayOrder || left.name.localeCompare(right.name))
 )
 const requiresTrackSelection = computed(() => sortedTracks.value.length > 0)
+const summaryLabel = computed(() =>
+  props.submissionRequirements.requireSubmissionSummary ? 'Summary (required)' : 'Summary'
+)
+const repositoryUrlLabel = computed(() =>
+  props.submissionRequirements.requireSubmissionRepositoryUrl ? 'Repository URL (required)' : 'Repository URL'
+)
+const demoUrlLabel = computed(() =>
+  props.submissionRequirements.requireSubmissionDemoUrl ? 'Demo URL (required)' : 'Demo URL'
+)
 const trackSelectionInput = computed({
   get: () => form.value.trackId ?? '',
   set: (value: string) => {
@@ -93,7 +104,12 @@ function isActionPending(actionKey: string) {
 
 const syncingFromModel = ref(false)
 const validationSchema = computed(() =>
-  toTypedSchema(createTeamSubmissionFormSchema(requiresTrackSelection.value))
+  toTypedSchema(createTeamSubmissionFormSchema({
+    trackRequired: requiresTrackSelection.value,
+    requireSummary: props.submissionRequirements.requireSubmissionSummary,
+    requireRepositoryUrl: props.submissionRequirements.requireSubmissionRepositoryUrl,
+    requireDemoUrl: props.submissionRequirements.requireSubmissionDemoUrl
+  }))
 )
 
 const {
@@ -248,7 +264,7 @@ function handleSubmitProjectAttempt(event?: Event) {
             </AppFormField>
 
             <AppFormField
-              label="Summary"
+              :label="summaryLabel"
               name="participant-submission-summary"
             >
               <AppTextarea
@@ -306,7 +322,7 @@ function handleSubmitProjectAttempt(event?: Event) {
 
             <div class="grid gap-4 lg:grid-cols-2">
               <AppFormField
-                label="Repository URL"
+                :label="repositoryUrlLabel"
                 name="participant-submission-repository-url"
               >
                 <AppInput
@@ -328,7 +344,7 @@ function handleSubmitProjectAttempt(event?: Event) {
               </AppFormField>
 
               <AppFormField
-                label="Demo URL"
+                :label="demoUrlLabel"
                 name="participant-submission-demo-url"
               >
                 <AppInput

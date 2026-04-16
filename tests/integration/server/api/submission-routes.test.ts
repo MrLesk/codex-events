@@ -81,6 +81,9 @@ async function seedSubmissionContext(
       | 'final_deliberation'
       | 'winners_announced'
       | 'completed'
+    requireSubmissionSummary?: boolean
+    requireSubmissionRepositoryUrl?: boolean
+    requireSubmissionDemoUrl?: boolean
   }
 ) {
   await harness.database.insert(users).values([
@@ -138,6 +141,9 @@ async function seedSubmissionContext(
     state: options?.state ?? 'submission_open',
     maxTeamMembers: 4,
     requireGithubProfile: false,
+    requireSubmissionSummary: options?.requireSubmissionSummary ?? false,
+    requireSubmissionRepositoryUrl: options?.requireSubmissionRepositoryUrl ?? false,
+    requireSubmissionDemoUrl: options?.requireSubmissionDemoUrl ?? false,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
     createdByUserId: 'platform_admin'
@@ -344,7 +350,11 @@ describe('TASK-3.7 submission routes', () => {
       }
     })
     harnesses.push(harness)
-    await seedSubmissionContext(harness)
+    await seedSubmissionContext(harness, {
+      requireSubmissionSummary: true,
+      requireSubmissionRepositoryUrl: true,
+      requireSubmissionDemoUrl: true
+    })
 
     const incompleteCreateResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
       method: 'POST',
@@ -396,7 +406,9 @@ describe('TASK-3.7 submission routes', () => {
       }
     })
     harnesses.push(harness)
-    await seedSubmissionContext(harness)
+    await seedSubmissionContext(harness, {
+      requireSubmissionRepositoryUrl: true
+    })
 
     await harness.database.insert(submissions).values({
       id: 'submission_1',
@@ -423,6 +435,75 @@ describe('TASK-3.7 submission routes', () => {
       error: {
         code: 'submission_fields_incomplete'
       }
+    })
+  })
+
+  test('optional submission fields can be cleared and submitted when the hackathon does not require them', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedSubmissionContext(harness)
+
+    const createResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
+      method: 'POST',
+      body: JSON.stringify({
+        projectName: 'Optional Fields Project',
+        summary: '',
+        repositoryUrl: '',
+        demoUrl: ''
+      })
+    })
+
+    expect(createResponse.status).toBe(200)
+    expect(await createResponse.json()).toMatchObject({
+      data: {
+        projectName: 'Optional Fields Project',
+        summary: null,
+        repositoryUrl: null,
+        demoUrl: null
+      }
+    })
+
+    const patchResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        projectName: 'Optional Fields Project Revised',
+        summary: '',
+        repositoryUrl: '',
+        demoUrl: ''
+      })
+    })
+
+    expect(patchResponse.status).toBe(200)
+    expect(await patchResponse.json()).toMatchObject({
+      data: {
+        projectName: 'Optional Fields Project Revised',
+        summary: null,
+        repositoryUrl: null,
+        demoUrl: null
+      }
+    })
+
+    const submitResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/submit', {
+      method: 'POST'
+    })
+
+    expect(submitResponse.status).toBe(200)
+
+    const storedSubmission = await harness.database.query.submissions.findFirst({
+      where: eq(submissions.teamId, 'team_1')
+    })
+
+    expect(storedSubmission).toMatchObject({
+      status: 'submitted',
+      summary: null,
+      repositoryUrl: null,
+      demoUrl: null
     })
   })
 

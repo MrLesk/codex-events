@@ -34,6 +34,12 @@ export interface TeamSubmissionFormInput {
   trackId: string | null
 }
 
+export interface TeamSubmissionRequirementConfig {
+  requireSubmissionSummary: boolean
+  requireSubmissionRepositoryUrl: boolean
+  requireSubmissionDemoUrl: boolean
+}
+
 export interface SubmissionTrackOption {
   id: string
   name: string

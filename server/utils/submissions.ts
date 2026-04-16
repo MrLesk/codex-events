@@ -14,13 +14,24 @@ import { getVisibleHackathonOrThrow, requireHackathonAdmin, routeIdParamsSchema 
 import { getActiveTeamMembers, getTeamOrThrow, getUsersByIds, serializeTeam, serializeTeamMember } from './team-formation'
 
 const requiredStringSchema = z.string().trim().min(1)
-const requiredUrlSchema = z.string().trim().url()
+
+function createOptionalUrlSchema(message: string) {
+  return z.string().trim().refine(
+    value => value.length === 0 || z.string().url().safeParse(value).success,
+    message
+  )
+}
+
+type SubmissionRequirementConfig = Pick<
+  HackathonRecord,
+  'requireSubmissionSummary' | 'requireSubmissionRepositoryUrl' | 'requireSubmissionDemoUrl'
+>
 
 const submissionBodyShape = {
   projectName: requiredStringSchema,
-  summary: requiredStringSchema,
-  repositoryUrl: requiredUrlSchema,
-  demoUrl: requiredUrlSchema,
+  summary: z.string().trim(),
+  repositoryUrl: createOptionalUrlSchema('Enter a valid repository URL.'),
+  demoUrl: createOptionalUrlSchema('Enter a valid demo URL.'),
   trackId: z.string().trim().min(1).nullable().optional()
 } satisfies Record<string, z.ZodTypeAny>
 
@@ -88,6 +99,55 @@ export async function getSubmissionForTeamOrThrow(database: AppDatabase, teamId:
   }
 
   return submission
+}
+
+function createConfiguredSubmissionValidationSchema(config: SubmissionRequirementConfig) {
+  return z.object(submissionBodyShape).superRefine((input, context) => {
+    if (config.requireSubmissionSummary && input.summary.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['summary'],
+        message: 'Summary is required.'
+      })
+    }
+
+    if (config.requireSubmissionRepositoryUrl && input.repositoryUrl.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['repositoryUrl'],
+        message: 'Repository URL is required.'
+      })
+    }
+
+    if (config.requireSubmissionDemoUrl && input.demoUrl.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['demoUrl'],
+        message: 'Demo URL is required.'
+      })
+    }
+  })
+}
+
+function normalizeOptionalSubmissionValue(value: string | null | undefined) {
+  const normalizedValue = value?.trim() ?? ''
+  return normalizedValue.length > 0 ? normalizedValue : null
+}
+
+export function assertSubmissionBodyMatchesHackathonRequirements(
+  hackathon: SubmissionRequirementConfig,
+  input: z.infer<typeof createSubmissionBodySchema> | z.infer<typeof updateSubmissionBodySchema>
+) {
+  const validationResult = createConfiguredSubmissionValidationSchema(hackathon).safeParse(input)
+
+  assertGuard(validationResult.success, {
+    code: 'submission_fields_invalid',
+    message: 'Complete the required submission fields before saving.',
+    details: {
+      fieldErrors: validationResult.error?.flatten().fieldErrors
+    },
+    statusCode: 400
+  })
 }
 
 export function assertHackathonAllowsSubmissionEditing(hackathon: HackathonRecord) {
@@ -189,18 +249,19 @@ export async function assertSubmissionSubmittable(
     }
   })
 
-  const requiredFieldResult = createSubmissionBodySchema.safeParse({
+  const requiredFieldResult = createConfiguredSubmissionValidationSchema(hackathon).safeParse({
     projectName: submission.projectName,
-    summary: submission.summary,
-    repositoryUrl: submission.repositoryUrl,
-    demoUrl: submission.demoUrl
+    summary: normalizeOptionalSubmissionValue(submission.summary) ?? '',
+    repositoryUrl: normalizeOptionalSubmissionValue(submission.repositoryUrl) ?? '',
+    demoUrl: normalizeOptionalSubmissionValue(submission.demoUrl) ?? ''
   })
 
   assertGuard(requiredFieldResult.success, {
     code: 'submission_fields_incomplete',
-    message: 'Complete the project name, summary, repository URL, and demo URL before submitting.',
+    message: 'Complete the required submission fields before submitting.',
     details: {
-      submissionId: submission.id
+      submissionId: submission.id,
+      fieldErrors: requiredFieldResult.error?.flatten().fieldErrors
     },
     statusCode: 400
   })
@@ -271,15 +332,15 @@ export function buildSubmissionWritePayload(
   }
 
   if ('summary' in input) {
-    payload.summary = input.summary
+    payload.summary = normalizeOptionalSubmissionValue(input.summary)
   }
 
   if ('repositoryUrl' in input) {
-    payload.repositoryUrl = input.repositoryUrl
+    payload.repositoryUrl = normalizeOptionalSubmissionValue(input.repositoryUrl)
   }
 
   if ('demoUrl' in input) {
-    payload.demoUrl = input.demoUrl
+    payload.demoUrl = normalizeOptionalSubmissionValue(input.demoUrl)
   }
 
   if ('trackId' in input) {

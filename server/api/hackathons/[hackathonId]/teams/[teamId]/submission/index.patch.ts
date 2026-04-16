@@ -8,6 +8,7 @@ import { requireTeamAdminContext } from '../../../../../../utils/team-formation'
 import { parseValidatedBody, parseValidatedParams } from '../../../../../../utils/validation'
 import {
   assertHackathonAllowsSubmissionEditing,
+  assertSubmissionBodyMatchesHackathonRequirements,
   assertSubmissionMutable,
   buildSubmissionWritePayload,
   getSubmissionForTeamOrThrow,
@@ -26,6 +27,7 @@ export default defineApiHandler(async (event) => {
 
   assertHackathonAllowsSubmissionEditing(hackathon)
   assertSubmissionMutable(submission)
+  assertSubmissionBodyMatchesHackathonRequirements(hackathon, body)
   const trackId = await resolveValidatedSubmissionTrackId(database, hackathonId, body.trackId)
 
   const updatedAt = new Date().toISOString()

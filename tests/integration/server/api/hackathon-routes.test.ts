@@ -1665,7 +1665,10 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         requireOpenaiOrgId: true,
         requireLumaEmail: true,
         requireWhyThisHackathon: true,
-        requireProofOfExecution: true
+        requireProofOfExecution: true,
+        requireSubmissionSummary: true,
+        requireSubmissionRepositoryUrl: true,
+        requireSubmissionDemoUrl: true
       })
     })
 
@@ -1694,7 +1697,10 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         requireOpenaiOrgId: true,
         requireLumaEmail: true,
         requireWhyThisHackathon: true,
-        requireProofOfExecution: true
+        requireProofOfExecution: true,
+        requireSubmissionSummary: true,
+        requireSubmissionRepositoryUrl: true,
+        requireSubmissionDemoUrl: true
       }
     })
 
@@ -1802,7 +1808,10 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         requireOpenaiOrgId: true,
         requireLumaEmail: true,
         requireWhyThisHackathon: true,
-        requireProofOfExecution: true
+        requireProofOfExecution: true,
+        requireSubmissionSummary: true,
+        requireSubmissionRepositoryUrl: true,
+        requireSubmissionDemoUrl: true
       })
     })
 

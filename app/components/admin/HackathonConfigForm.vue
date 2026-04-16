@@ -919,7 +919,7 @@ const submitConfigForm = handleSubmit(() => {
                   Participation Rules
                 </h3>
                 <p class="text-sm text-muted">
-                  Set team limits and application requirements.
+                  Set team limits plus registration and submission requirements.
                 </p>
               </div>
 
@@ -999,6 +999,33 @@ const submitConfigForm = handleSubmit(() => {
                       class="size-4 rounded border-black/20 dark:border-white/[0.3]"
                     >
                     Require proof-of-execution links
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.requireSubmissionSummary"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Require submission summary
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.requireSubmissionRepositoryUrl"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Require repository URL
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
+                      v-model="form.requireSubmissionDemoUrl"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    Require demo URL
                   </label>
 
                   <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
@@ -1457,7 +1484,7 @@ const submitConfigForm = handleSubmit(() => {
               Participation Rules
             </h2>
             <p class="text-sm text-muted">
-              Set team limits and application requirements.
+              Set team limits plus registration and submission requirements.
             </p>
           </div>
         </template>
@@ -1538,6 +1565,33 @@ const submitConfigForm = handleSubmit(() => {
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
               Require proof-of-execution links
+            </label>
+
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="form.requireSubmissionSummary"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              Require submission summary
+            </label>
+
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="form.requireSubmissionRepositoryUrl"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              Require repository URL
+            </label>
+
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="form.requireSubmissionDemoUrl"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              Require demo URL
             </label>
 
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">

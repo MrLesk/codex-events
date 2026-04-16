@@ -139,6 +139,9 @@ export const hackathons = sqliteTable(
     requireLumaEmail: integer('require_luma_profile', { mode: 'boolean' }).notNull().default(false),
     requireWhyThisHackathon: integer('require_why_this_hackathon', { mode: 'boolean' }).notNull().default(false),
     requireProofOfExecution: integer('require_proof_of_execution', { mode: 'boolean' }).notNull().default(false),
+    requireSubmissionSummary: integer('require_submission_summary', { mode: 'boolean' }).notNull().default(false),
+    requireSubmissionRepositoryUrl: integer('require_submission_repository_url', { mode: 'boolean' }).notNull().default(false),
+    requireSubmissionDemoUrl: integer('require_submission_demo_url', { mode: 'boolean' }).notNull().default(false),
     currentApplicationTermsDocumentId: text('current_application_terms_document_id'),
     currentWinnerTermsDocumentId: text('current_winner_terms_document_id'),
     createdByUserId: text('created_by_user_id')

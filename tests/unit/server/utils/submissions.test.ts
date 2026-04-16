@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import { ApiError } from '../../../../server/utils/api-error'
 import {
+  assertSubmissionBodyMatchesHackathonRequirements,
   assertHackathonAllowsSubmissionEditing,
   assertNoSubmissionExists,
   assertSubmissionDisqualifiable,
@@ -44,6 +45,9 @@ function createHackathon(
     requireXProfile: false,
     requireLinkedinProfile: false,
     requireGithubProfile: false,
+    requireSubmissionSummary: false,
+    requireSubmissionRepositoryUrl: false,
+    requireSubmissionDemoUrl: false,
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
     createdByUserId: 'platform_admin',
@@ -117,9 +121,34 @@ describe('TASK-3.7 submission helpers', () => {
     )).rejects.toThrowError(ApiError)
     await expect(assertSubmissionSubmittable(
       createDatabase(),
-      createHackathon('submission_open'),
+      {
+        ...createHackathon('submission_open'),
+        requireSubmissionRepositoryUrl: true
+      },
       createIncompleteSubmission('draft')
     )).rejects.toThrowError(ApiError)
+  })
+
+  test('submission create and update requirements follow hackathon configuration', () => {
+    expect(() => assertSubmissionBodyMatchesHackathonRequirements(createHackathon('submission_open'), {
+      projectName: 'Project',
+      summary: '',
+      repositoryUrl: '',
+      demoUrl: '',
+      trackId: null
+    })).not.toThrow()
+
+    expect(() => assertSubmissionBodyMatchesHackathonRequirements({
+      ...createHackathon('submission_open'),
+      requireSubmissionSummary: true,
+      requireSubmissionDemoUrl: true
+    }, {
+      projectName: 'Project',
+      summary: '',
+      repositoryUrl: '',
+      demoUrl: '',
+      trackId: null
+    })).toThrowError(ApiError)
   })
 
   test('submission track validation follows the configured hackathon tracks', async () => {
@@ -184,14 +213,14 @@ describe('TASK-3.7 submission helpers', () => {
   test('submission write payloads persist the canonical required fields', () => {
     expect(buildSubmissionWritePayload({
       projectName: 'Updated Project',
-      summary: 'Updated summary',
-      repositoryUrl: 'https://github.com/example/updated-project',
+      summary: '',
+      repositoryUrl: '',
       demoUrl: 'https://example.com/updated-project',
       trackId: 'track_1'
     }, '2026-03-24T13:00:00.000Z')).toEqual({
       projectName: 'Updated Project',
-      summary: 'Updated summary',
-      repositoryUrl: 'https://github.com/example/updated-project',
+      summary: null,
+      repositoryUrl: null,
       demoUrl: 'https://example.com/updated-project',
       trackId: 'track_1',
       updatedAt: '2026-03-24T13:00:00.000Z'

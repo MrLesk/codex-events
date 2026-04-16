@@ -214,6 +214,9 @@ export interface HackathonRecord {
   requireLumaEmail: boolean
   requireWhyThisHackathon: boolean
   requireProofOfExecution: boolean
+  requireSubmissionSummary: boolean
+  requireSubmissionRepositoryUrl: boolean
+  requireSubmissionDemoUrl: boolean
   currentApplicationTermsDocumentId: string | null
   currentWinnerTermsDocumentId: string | null
   createdByUserId: string
@@ -258,6 +261,9 @@ export interface HackathonFormState {
   requireLumaEmail: boolean
   requireWhyThisHackathon: boolean
   requireProofOfExecution: boolean
+  requireSubmissionSummary: boolean
+  requireSubmissionRepositoryUrl: boolean
+  requireSubmissionDemoUrl: boolean
 }
 
 export interface HackathonFormAgendaItem {
@@ -1438,7 +1444,10 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     requireOpenaiOrgId: true,
     requireLumaEmail: true,
     requireWhyThisHackathon: false,
-    requireProofOfExecution: false
+    requireProofOfExecution: false,
+    requireSubmissionSummary: false,
+    requireSubmissionRepositoryUrl: false,
+    requireSubmissionDemoUrl: false
   }
 }
 
@@ -1507,7 +1516,10 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
     requireOpenaiOrgId: hackathon.requireOpenaiOrgId,
     requireLumaEmail: hackathon.requireLumaEmail,
     requireWhyThisHackathon: hackathon.requireWhyThisHackathon,
-    requireProofOfExecution: hackathon.requireProofOfExecution
+    requireProofOfExecution: hackathon.requireProofOfExecution,
+    requireSubmissionSummary: hackathon.requireSubmissionSummary,
+    requireSubmissionRepositoryUrl: hackathon.requireSubmissionRepositoryUrl,
+    requireSubmissionDemoUrl: hackathon.requireSubmissionDemoUrl
   }
 }
 

@@ -114,6 +114,9 @@ It describes the intended persistent model at the level of entities, key fields,
 - `require_luma_profile`
 - `require_why_this_hackathon`
 - `require_proof_of_execution`
+- `require_submission_summary`
+- `require_submission_repository_url`
+- `require_submission_demo_url`
 - `current_application_terms_document_id`
 - `current_winner_terms_document_id`
 - `created_by_user_id`
@@ -162,6 +165,9 @@ It describes the intended persistent model at the level of entities, key fields,
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - `require_why_this_hackathon` controls whether applications must include a non-empty `whyThisHackathon` response.
 - `require_proof_of_execution` controls whether applications must include at least one proof link in `proofOfExecutionUrl`.
+- `require_submission_summary` controls whether team submissions must include a non-empty `summary`.
+- `require_submission_repository_url` controls whether team submissions must include a valid `repository_url`.
+- `require_submission_demo_url` controls whether team submissions must include a valid `demo_url`.
 - `address` is always stored for the hackathon, but public serializers suppress it and account-scoped detail reads return it only to approved participants plus judges, staff, hackathon admins, and platform admins.
 - `discord_server_url` is optional because not every hackathon has a dedicated Discord server, and when present it is returned only in account-scoped detail reads for approved participants plus judges, staff, hackathon admins, and platform admins.
 - `luma_event_url` is optional because not every hackathon has a public Luma event page to link.
@@ -470,6 +476,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - A team can also have no submission.
 - `track_id` references a `HackathonTrack` belonging to the same hackathon as the submission's team when a track is selected.
 - When a hackathon has one or more configured tracks, submissions must store exactly one valid `track_id`.
+- `summary`, `repository_url`, and `demo_url` are optional at rest and are enforced according to the owning hackathon's submission requirement flags.
 - A draft that is never submitted is treated as no submission for judging and dashboard purposes.
 - Submission content is managed by team admins.
 

@@ -197,7 +197,10 @@ const hackathonConfigShape = {
   requireOpenaiOrgId: z.coerce.boolean().default(false),
   requireLumaEmail: z.coerce.boolean().default(false),
   requireWhyThisHackathon: z.coerce.boolean().default(false),
-  requireProofOfExecution: z.coerce.boolean().default(false)
+  requireProofOfExecution: z.coerce.boolean().default(false),
+  requireSubmissionSummary: z.coerce.boolean().default(false),
+  requireSubmissionRepositoryUrl: z.coerce.boolean().default(false),
+  requireSubmissionDemoUrl: z.coerce.boolean().default(false)
 } satisfies Record<string, z.ZodTypeAny>
 
 export const createHackathonBodySchema = z.object(hackathonConfigShape)
@@ -233,7 +236,10 @@ export const updateHackathonBodySchema = z.object({
   requireOpenaiOrgId: hackathonConfigShape.requireOpenaiOrgId.optional(),
   requireLumaEmail: hackathonConfigShape.requireLumaEmail.optional(),
   requireWhyThisHackathon: hackathonConfigShape.requireWhyThisHackathon.optional(),
-  requireProofOfExecution: hackathonConfigShape.requireProofOfExecution.optional()
+  requireProofOfExecution: hackathonConfigShape.requireProofOfExecution.optional(),
+  requireSubmissionSummary: hackathonConfigShape.requireSubmissionSummary.optional(),
+  requireSubmissionRepositoryUrl: hackathonConfigShape.requireSubmissionRepositoryUrl.optional(),
+  requireSubmissionDemoUrl: hackathonConfigShape.requireSubmissionDemoUrl.optional()
 }).refine(
   input => Object.keys(input).length > 0,
   'At least one hackathon configuration field must be provided.'
@@ -1211,6 +1217,9 @@ export function serializeHackathon(
     requireLumaEmail: hackathon.requireLumaEmail,
     requireWhyThisHackathon: hackathon.requireWhyThisHackathon,
     requireProofOfExecution: hackathon.requireProofOfExecution,
+    requireSubmissionSummary: hackathon.requireSubmissionSummary,
+    requireSubmissionRepositoryUrl: hackathon.requireSubmissionRepositoryUrl,
+    requireSubmissionDemoUrl: hackathon.requireSubmissionDemoUrl,
     currentApplicationTermsDocumentId: hackathon.currentApplicationTermsDocumentId,
     currentWinnerTermsDocumentId: hackathon.currentWinnerTermsDocumentId,
     createdByUserId: hackathon.createdByUserId,
@@ -1276,6 +1285,9 @@ export function serializePublicHackathon(
     requireLumaEmail: hackathon.requireLumaEmail,
     requireWhyThisHackathon: hackathon.requireWhyThisHackathon,
     requireProofOfExecution: hackathon.requireProofOfExecution,
+    requireSubmissionSummary: hackathon.requireSubmissionSummary,
+    requireSubmissionRepositoryUrl: hackathon.requireSubmissionRepositoryUrl,
+    requireSubmissionDemoUrl: hackathon.requireSubmissionDemoUrl,
     ...(tracks
       ? {
           tracks: tracks.map(serializePublicHackathonTrack)

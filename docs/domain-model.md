@@ -81,6 +81,7 @@ Key characteristics:
 - Each hackathon can optionally reference a restricted Discord server URL.
 - Each hackathon can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma email, for registration.
 - Each hackathon can require a `why this hackathon` response and proof-of-execution links in applications.
+- Each hackathon can require submission summaries, repository URLs, and demo URLs in team project submissions.
 - Each hackathon references its own application terms and winner terms.
 - A configured Discord server URL is visible only in the account-scoped hackathon workspace for approved participants, judges, staff, hackathon admins, and platform admins.
 
@@ -279,6 +280,9 @@ Rules:
 
 - Submission ownership is team-based, not user-based.
 - When a hackathon has one or more configured tracks, every submission must select exactly one track from that hackathon.
+- A submission must include a non-empty summary only when its hackathon requires submission summaries.
+- A submission must include a valid repository URL only when its hackathon requires repository URLs.
+- A submission must include a valid demo URL only when its hackathon requires demo URLs.
 - When the judging preparation step begins, submissions are locked.
 - Once locked, submissions can no longer be edited.
 - A submission can be marked with workflow outcomes such as withdrawn or disqualified.

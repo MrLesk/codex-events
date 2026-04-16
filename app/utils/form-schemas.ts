@@ -40,12 +40,6 @@ function createOptionalHttpUrlSchema(message: string) {
   )
 }
 
-function createRequiredHttpUrlSchema(requiredMessage: string, invalidMessage: string) {
-  return z.string().trim()
-    .min(1, requiredMessage)
-    .refine(isHttpUrl, invalidMessage)
-}
-
 function createOptionalLumaEventApiIdSchema(message: string) {
   return z.string().trim().refine(
     value => value.length === 0 || /^evt-[A-Za-z0-9]+$/.test(value),
@@ -115,33 +109,54 @@ export const teamProfileFormSchema = z.object({
   bio: z.string().trim().max(4000)
 })
 
-export function createTeamSubmissionFormSchema(trackRequired: boolean) {
+export function createTeamSubmissionFormSchema(options: {
+  trackRequired: boolean
+  requireSummary: boolean
+  requireRepositoryUrl: boolean
+  requireDemoUrl: boolean
+}) {
   return z.object({
     projectName: z.string().trim().min(1, 'Project name is required.'),
-    summary: z.string().trim().min(1, 'Summary is required.'),
-    repositoryUrl: createRequiredHttpUrlSchema(
-      'Repository URL is required.',
-      'Enter a valid repository URL.'
-    ),
-    demoUrl: createRequiredHttpUrlSchema(
-      'Demo URL is required.',
-      'Enter a valid demo URL.'
-    ),
+    summary: z.string().trim(),
+    repositoryUrl: createOptionalHttpUrlSchema('Enter a valid repository URL.'),
+    demoUrl: createOptionalHttpUrlSchema('Enter a valid demo URL.'),
     trackId: z.string().trim().nullable()
   }).superRefine((input, context) => {
-    if (!trackRequired) {
+    if (options.requireSummary && input.summary.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['summary'],
+        message: 'Summary is required.'
+      })
+    }
+
+    if (options.requireRepositoryUrl && input.repositoryUrl.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['repositoryUrl'],
+        message: 'Repository URL is required.'
+      })
+    }
+
+    if (options.requireDemoUrl && input.demoUrl.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['demoUrl'],
+        message: 'Demo URL is required.'
+      })
+    }
+
+    if (!options.trackRequired) {
       return
     }
 
-    if (input.trackId?.trim()) {
-      return
+    if (!input.trackId?.trim()) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['trackId'],
+        message: 'Select a track.'
+      })
     }
-
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['trackId'],
-      message: 'Select a track.'
-    })
   })
 }
 
@@ -251,7 +266,10 @@ export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object
   requireOpenaiOrgId: z.boolean(),
   requireLumaEmail: z.boolean(),
   requireWhyThisHackathon: z.boolean(),
-  requireProofOfExecution: z.boolean()
+  requireProofOfExecution: z.boolean(),
+  requireSubmissionSummary: z.boolean(),
+  requireSubmissionRepositoryUrl: z.boolean(),
+  requireSubmissionDemoUrl: z.boolean()
 }).superRefine((input, context) => {
   const registrationOpensAt = Date.parse(input.registrationOpensAt)
   const registrationClosesAt = Date.parse(input.registrationClosesAt)

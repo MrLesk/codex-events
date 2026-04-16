@@ -6,6 +6,7 @@ import { requireTeamAdminContext } from '../../../../../../utils/team-formation'
 import { parseValidatedBody, parseValidatedParams } from '../../../../../../utils/validation'
 import {
   assertHackathonAllowsSubmissionEditing,
+  assertSubmissionBodyMatchesHackathonRequirements,
   assertNoSubmissionExists,
   buildSubmissionWritePayload,
   createSubmissionBodySchema,
@@ -24,15 +25,19 @@ export default defineApiHandler(async (event) => {
   assertHackathonAllowsSubmissionEditing(hackathon)
   const existingSubmission = await getSubmissionForTeam(database, teamId)
   assertNoSubmissionExists(existingSubmission, teamId)
+  assertSubmissionBodyMatchesHackathonRequirements(hackathon, body)
   const trackId = await resolveValidatedSubmissionTrackId(database, hackathonId, body.trackId)
 
   const now = new Date().toISOString()
   const submissionId = crypto.randomUUID()
+  const patch = {
+    ...buildSubmissionWritePayload(body, now),
+    trackId
+  }
 
   await database.insert(submissions).values({
     id: submissionId,
     teamId,
-    trackId: null,
     status: 'draft',
     projectName: null,
     summary: null,
@@ -43,23 +48,23 @@ export default defineApiHandler(async (event) => {
     withdrawnAt: null,
     disqualifiedAt: null,
     createdAt: now,
-    ...buildSubmissionWritePayload(body, now)
+    ...patch
   })
 
   return apiData(serializeSubmission({
     id: submissionId,
     teamId,
-    trackId,
     status: 'draft',
-    projectName: body.projectName ?? null,
-    summary: body.summary ?? null,
-    repositoryUrl: body.repositoryUrl ?? null,
-    demoUrl: body.demoUrl ?? null,
+    projectName: patch.projectName ?? null,
+    summary: patch.summary ?? null,
+    repositoryUrl: patch.repositoryUrl ?? null,
+    demoUrl: patch.demoUrl ?? null,
     submittedAt: null,
     lockedAt: null,
     withdrawnAt: null,
     disqualifiedAt: null,
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
+    trackId: patch.trackId ?? null
   }))
 })

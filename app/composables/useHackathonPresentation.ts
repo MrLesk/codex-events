@@ -81,6 +81,9 @@ export interface PublicHackathon {
   requireLumaEmail: boolean
   requireWhyThisHackathon: boolean
   requireProofOfExecution: boolean
+  requireSubmissionSummary: boolean
+  requireSubmissionRepositoryUrl: boolean
+  requireSubmissionDemoUrl: boolean
   currentTerms?: {
     applicationTerms: PublicHackathonTermsReference | null
     winnerTerms: PublicHackathonTermsReference | null

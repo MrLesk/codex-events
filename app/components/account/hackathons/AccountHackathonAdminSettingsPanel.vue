@@ -583,7 +583,10 @@ async function saveConfiguration(configForm: HackathonFormState) {
       requireOpenaiOrgId: configForm.requireOpenaiOrgId,
       requireLumaEmail: configForm.requireLumaEmail,
       requireWhyThisHackathon: configForm.requireWhyThisHackathon,
-      requireProofOfExecution: configForm.requireProofOfExecution
+      requireProofOfExecution: configForm.requireProofOfExecution,
+      requireSubmissionSummary: configForm.requireSubmissionSummary,
+      requireSubmissionRepositoryUrl: configForm.requireSubmissionRepositoryUrl,
+      requireSubmissionDemoUrl: configForm.requireSubmissionDemoUrl
     },
     programSettingsCopy.value.successTitle,
     programSettingsCopy.value.successDescription

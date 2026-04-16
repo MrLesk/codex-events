@@ -418,6 +418,11 @@ async function withdrawSubmission() {
           :team-id="displayedTeam.id"
           :hackathon-state="props.hackathon.state"
           :tracks="props.hackathon.tracks ?? []"
+          :submission-requirements="{
+            requireSubmissionSummary: props.hackathon.requireSubmissionSummary,
+            requireSubmissionRepositoryUrl: props.hackathon.requireSubmissionRepositoryUrl,
+            requireSubmissionDemoUrl: props.hackathon.requireSubmissionDemoUrl
+          }"
           :submission="submissionWorkspace.currentSubmission.value"
           :status="submissionWorkspace.currentSubmissionStatus.value"
           :error-message="submissionWorkspace.currentSubmissionErrorMessage.value"
