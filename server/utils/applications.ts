@@ -64,6 +64,8 @@ type TeamMemberRecord = typeof teamMembers.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
 type SubmitApplicationBody = z.infer<typeof submitApplicationBodySchema>
 
+const d1LookupBatchSize = 75
+
 export type AdminApplicationWithdrawalTeamAction = 'none' | 'remove_member' | 'dissolve_team'
 
 export interface AdminApplicationWithdrawalAvailability {
@@ -275,18 +277,27 @@ async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
   }
 
   const userIds = [...new Set(applications.map(application => application.userId))]
-  const activeMemberships = await database.query.teamMembers.findMany({
-    where: and(
-      inArray(teamMembers.userId, userIds),
-      isNull(teamMembers.leftAt)
-    ),
-    orderBy: [asc(teamMembers.createdAt)]
-  })
-  const relatedTeams = activeMemberships.length > 0
-    ? await database.query.teams.findMany({
-        where: inArray(teams.id, activeMemberships.map(membership => membership.teamId))
-      })
-    : []
+  const activeMemberships: TeamMemberRecord[] = []
+
+  for (let index = 0; index < userIds.length; index += d1LookupBatchSize) {
+    activeMemberships.push(...await database.query.teamMembers.findMany({
+      where: and(
+        inArray(teamMembers.userId, userIds.slice(index, index + d1LookupBatchSize)),
+        isNull(teamMembers.leftAt)
+      ),
+      orderBy: [asc(teamMembers.createdAt)]
+    }))
+  }
+
+  const relatedTeamIds = [...new Set(activeMemberships.map(membership => membership.teamId))]
+  const relatedTeams: TeamRecord[] = []
+
+  for (let index = 0; index < relatedTeamIds.length; index += d1LookupBatchSize) {
+    relatedTeams.push(...await database.query.teams.findMany({
+      where: inArray(teams.id, relatedTeamIds.slice(index, index + d1LookupBatchSize))
+    }))
+  }
+
   const teamsById = new Map(
     relatedTeams
       .filter(team => team.hackathonId === hackathonId)
@@ -303,24 +314,32 @@ async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
   }
 
   const activeTeamIds = [...new Set([...activeMembershipByUserId.values()].map(membership => membership.teamId))]
-  const [teamActiveMembers, activeSubmissions] = activeTeamIds.length > 0
-    ? await Promise.all([
-        database.query.teamMembers.findMany({
-          where: and(
-            inArray(teamMembers.teamId, activeTeamIds),
-            isNull(teamMembers.leftAt)
-          ),
-          orderBy: [asc(teamMembers.createdAt)]
-        }),
-        database.query.submissions.findMany({
-          where: and(
-            inArray(submissions.teamId, activeTeamIds),
-            inArray(submissions.status, ['draft', 'submitted', 'locked'])
-          ),
-          orderBy: [desc(submissions.createdAt)]
-        })
-      ])
-    : [[], []]
+  const teamActiveMembers: TeamMemberRecord[] = []
+  const activeSubmissions: SubmissionRecord[] = []
+
+  for (let index = 0; index < activeTeamIds.length; index += d1LookupBatchSize) {
+    const teamIdBatch = activeTeamIds.slice(index, index + d1LookupBatchSize)
+    const [teamActiveMemberBatch, activeSubmissionBatch] = await Promise.all([
+      database.query.teamMembers.findMany({
+        where: and(
+          inArray(teamMembers.teamId, teamIdBatch),
+          isNull(teamMembers.leftAt)
+        ),
+        orderBy: [asc(teamMembers.createdAt)]
+      }),
+      database.query.submissions.findMany({
+        where: and(
+          inArray(submissions.teamId, teamIdBatch),
+          inArray(submissions.status, ['draft', 'submitted', 'locked'])
+        ),
+        orderBy: [desc(submissions.createdAt)]
+      })
+    ])
+
+    teamActiveMembers.push(...teamActiveMemberBatch)
+    activeSubmissions.push(...activeSubmissionBatch)
+  }
+
   const activeMembersByTeamId = new Map<string, TeamMemberRecord[]>()
   const activeSubmissionByTeamId = new Map<string, SubmissionRecord>()
 
@@ -757,12 +776,11 @@ export async function listHackathonApplications(database: AppDatabase, hackathon
 
   if (applications.length > 0) {
     const relatedUserIds = [...new Set(applications.map(application => application.userId))]
-    const relatedUserLookupBatchSize = 75
 
-    for (let index = 0; index < relatedUserIds.length; index += relatedUserLookupBatchSize) {
+    for (let index = 0; index < relatedUserIds.length; index += d1LookupBatchSize) {
       const relatedUsers = await database.query.users.findMany({
         where: and(
-          inArray(users.id, relatedUserIds.slice(index, index + relatedUserLookupBatchSize)),
+          inArray(users.id, relatedUserIds.slice(index, index + d1LookupBatchSize)),
           isNull(users.deletedAt)
         )
       })

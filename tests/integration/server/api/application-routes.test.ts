@@ -1622,7 +1622,7 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('GET /api/hackathons/:hackathonId/applications batches user lookups for large participant sets', async () => {
+  test('GET /api/hackathons/:hackathonId/applications batches D1 lookups for large participant sets', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/hackathons/:hackathonId/applications', handler: applicationsListHandler }
@@ -1653,6 +1653,19 @@ describe('TASK-3.6 application routes', () => {
       createdAt: `2026-03-22T12:${String(index % 60).padStart(2, '0')}:00.000Z`,
       updatedAt: `2026-03-22T12:${String(index % 60).padStart(2, '0')}:00.000Z`
     }))
+    const participantTeams = Array.from({ length: participantCount }, (_, index) => ({
+      id: `team_${index + 1}`,
+      hackathonId: 'hackathon_1',
+      name: `Team ${index + 1}`,
+      slug: `team-${index + 1}`,
+      createdByUserId: `participant_${index + 1}`
+    }))
+    const participantMemberships = Array.from({ length: participantCount }, (_, index) => ({
+      id: `team_member_${index + 1}`,
+      teamId: `team_${index + 1}`,
+      userId: `participant_${index + 1}`,
+      role: 'admin' as const
+    }))
 
     for (let index = 0; index < participantUsers.length; index += 40) {
       await harness.database.insert(users).values(participantUsers.slice(index, index + 40))
@@ -1662,11 +1675,25 @@ describe('TASK-3.6 application routes', () => {
       await harness.database.insert(userApplications).values(participantApplications.slice(index, index + 40))
     }
 
+    for (let index = 0; index < participantTeams.length; index += 40) {
+      await harness.database.insert(teams).values(participantTeams.slice(index, index + 40))
+    }
+
+    for (let index = 0; index < participantMemberships.length; index += 40) {
+      await harness.database.insert(teamMembers).values(participantMemberships.slice(index, index + 40))
+    }
+
     const usersFindManySpy = vi.spyOn(harness.database.query.users, 'findMany')
+    const teamMembersFindManySpy = vi.spyOn(harness.database.query.teamMembers, 'findMany')
+    const teamsFindManySpy = vi.spyOn(harness.database.query.teams, 'findMany')
+    const submissionsFindManySpy = vi.spyOn(harness.database.query.submissions, 'findMany')
     const response = await harness.request('/api/hackathons/hackathon_1/applications')
 
     expect(response.status).toBe(200)
     expect(usersFindManySpy).toHaveBeenCalledTimes(2)
+    expect(teamMembersFindManySpy).toHaveBeenCalledTimes(4)
+    expect(teamsFindManySpy).toHaveBeenCalledTimes(2)
+    expect(submissionsFindManySpy).toHaveBeenCalledTimes(2)
     expect(await response.json()).toMatchObject({
       data: expect.arrayContaining([
         expect.objectContaining({
@@ -1674,6 +1701,11 @@ describe('TASK-3.6 application routes', () => {
           user: expect.objectContaining({
             id: 'participant_1',
             email: 'participant_1@example.com'
+          }),
+          adminWithdrawal: expect.objectContaining({
+            isAllowed: true,
+            activeTeamId: 'team_1',
+            teamAction: 'dissolve_team'
           })
         }),
         expect.objectContaining({
@@ -1681,6 +1713,11 @@ describe('TASK-3.6 application routes', () => {
           user: expect.objectContaining({
             id: 'participant_120',
             email: 'participant_120@example.com'
+          }),
+          adminWithdrawal: expect.objectContaining({
+            isAllowed: true,
+            activeTeamId: 'team_120',
+            teamAction: 'dissolve_team'
           })
         })
       ]),
