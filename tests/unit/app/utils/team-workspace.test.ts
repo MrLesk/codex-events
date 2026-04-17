@@ -11,6 +11,7 @@ import {
   getMemberRemovalAvailability,
   getTeamFormationAvailability,
   getTeamJoinRequestStatusColor,
+  shouldShowParticipantLeaveTeamAction,
   getUpdateJoinPolicyAvailability,
   hasTeamReachedMemberLimit,
   isTeamDissolved,
@@ -183,6 +184,11 @@ describe('team workspace helpers', () => {
     }, {
       isAllowed: true
     })).toBeUndefined()
+  })
+
+  test('keeps the participant leave action visible for active team members', () => {
+    expect(shouldShowParticipantLeaveTeamAction(baseTeam.members[0])).toBe(true)
+    expect(shouldShowParticipantLeaveTeamAction(null)).toBe(false)
   })
 
   test('derives active member count and dissolved status from team records', () => {

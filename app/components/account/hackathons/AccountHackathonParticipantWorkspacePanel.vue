@@ -19,7 +19,7 @@ import {
   getMemberRemovalAvailability,
   getTeamFormationAvailability,
   getUpdateJoinPolicyAvailability,
-  hasTeamReachedMemberLimit
+  shouldShowParticipantLeaveTeamAction
 } from '~/utils/team-workspace'
 import {
   getCreateSubmissionAvailability,
@@ -184,21 +184,9 @@ const removalAvailabilityByUserId = computed<Record<string, TeamActionAvailabili
     ])
   )
 })
-const isDisplayedTeamFull = computed(() =>
-  displayedTeam.value
-    ? hasTeamReachedMemberLimit(
-        props.hackathon.maxTeamMembers,
-        displayedTeam.value.activeMemberCount ?? displayedTeam.value.members.length
-      )
-    : false
+const showMembershipActions = computed(() =>
+  shouldShowParticipantLeaveTeamAction(displayedTeamMembership.value)
 )
-const showMembershipActions = computed(() => {
-  if (!displayedTeamMembership.value) {
-    return !isDisplayedTeamFull.value
-  }
-
-  return leaveAvailability.value.isAllowed
-})
 
 watch(() => submissionWorkspace.currentSubmission.value, (submission) => {
   submissionForm.projectName = submission?.projectName ?? ''

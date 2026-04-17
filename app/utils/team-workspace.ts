@@ -138,6 +138,10 @@ export function getOwnTeamMembership(team: TeamDetailRecord | null | undefined, 
   return team.members.find(member => member.userId === userId && member.leftAt === null) ?? null
 }
 
+export function shouldShowParticipantLeaveTeamAction(membership: TeamMemberRecord | null | undefined) {
+  return Boolean(membership)
+}
+
 export function getTeamFormationAvailability(
   hackathon: Pick<PublicHackathon, 'state'>,
   applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null,

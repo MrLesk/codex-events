@@ -188,6 +188,11 @@ const disabledJoinActionReason = computed(() =>
     ? formatJoinAvailabilityReason(props.team, props.joinAvailability) ?? props.joinAvailability.reason ?? 'Join requests are not available right now.'
     : ''
 )
+const disabledLeaveActionReason = computed(() =>
+  props.membership && !props.leaveAvailability.isAllowed
+    ? props.leaveAvailability.reason ?? 'Leaving the team is not available right now.'
+    : ''
+)
 const joinActionButtonClass = computed(() =>
   disabledJoinActionReason.value
     ? 'rounded-lg cursor-not-allowed bg-emerald-800 text-white shadow-sm ring-1 ring-emerald-950/20 opacity-100 dark:bg-emerald-300 dark:text-black dark:ring-emerald-100/15'
@@ -580,17 +585,23 @@ function handleJoinActionClick() {
               </AppButton>
             </span>
 
-            <AppButton
+            <span
               v-if="showHeaderLeaveAction"
-              color="error"
-              size="sm"
-              :loading="isActionPending(`leave-team:${team.id}`)"
-              :disabled="!leaveAvailability.isAllowed || isActionPending(`leave-team:${team.id}`)"
-              data-testid="participant-team-leave"
-              @click="emit('leaveTeam')"
+              :title="disabledLeaveActionReason || undefined"
+              class="inline-flex"
             >
-              Leave team
-            </AppButton>
+              <AppButton
+                color="error"
+                size="sm"
+                :loading="isActionPending(`leave-team:${team.id}`)"
+                :disabled="!leaveAvailability.isAllowed || isActionPending(`leave-team:${team.id}`)"
+                :title="disabledLeaveActionReason || undefined"
+                data-testid="participant-team-leave"
+                @click="emit('leaveTeam')"
+              >
+                Leave team
+              </AppButton>
+            </span>
           </div>
         </div>
       </div>
