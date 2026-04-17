@@ -1160,9 +1160,16 @@ describe('admin-workspace operational helpers', () => {
       canForceSkip: true
     })
 
+    expect(getAdminJudgeAssignmentInterventionPolicy('judging_preparation', 'assigned')).toMatchObject({
+      canReassign: false,
+      reassignReason: 'Assignment reassignment is only available during blind review.',
+      canForceSkip: false,
+      forceSkipReason: 'Force-skip is available only once blind review has started.'
+    })
+
     expect(getAdminJudgeAssignmentInterventionPolicy('pitch_review', 'assigned')).toMatchObject({
       canReassign: false,
-      reassignReason: 'Assignment reassignment is only available during judging preparation or blind review.',
+      reassignReason: 'Assignment reassignment is only available during blind review.',
       canForceSkip: false,
       forceSkipReason: 'Force-skip is available only once blind review has started.'
     })

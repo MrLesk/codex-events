@@ -383,7 +383,7 @@ const showAssignmentsPanel = computed(() =>
   Boolean(
     showLifecycleSection.value
     && currentHackathon.value
-    && ['judging_preparation', 'blind_review'].includes(currentHackathon.value.state)
+    && currentHackathon.value.state === 'blind_review'
   )
 )
 const showPitchStagePanel = computed(() =>

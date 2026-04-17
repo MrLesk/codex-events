@@ -1160,7 +1160,7 @@ export function getAdminJudgeAssignmentInterventionPolicy(
   hackathonState: HackathonState,
   assignmentStatus: JudgeAssignmentSummary['status']
 ): AdminJudgeAssignmentInterventionPolicy {
-  const canReassign = ['judging_preparation', 'blind_review'].includes(hackathonState)
+  const canReassign = hackathonState === 'blind_review'
     && assignmentStatus === 'assigned'
   const canForceSkip = hackathonState === 'blind_review'
     && assignmentStatus === 'judge_started'
@@ -1168,8 +1168,8 @@ export function getAdminJudgeAssignmentInterventionPolicy(
   let reassignReason: string | undefined
 
   if (!canReassign) {
-    if (!['judging_preparation', 'blind_review'].includes(hackathonState)) {
-      reassignReason = 'Assignment reassignment is only available during judging preparation or blind review.'
+    if (hackathonState !== 'blind_review') {
+      reassignReason = 'Assignment reassignment is only available during blind review.'
     } else {
       reassignReason = 'Only unstarted assignments can be reassigned.'
     }

@@ -874,7 +874,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     })
   })
 
-  test('hackathon admins can reassign unstarted assignments before review starts', async () => {
+  test('hackathon admins can reassign unstarted assignments during blind review', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
@@ -890,7 +890,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     })
     harnesses.push(harness)
 
-    await seedBaseJudgingRecords(harness, { state: 'judging_preparation' })
+    await seedBaseJudgingRecords(harness, { state: 'blind_review' })
     await harness.database.insert(judgeAssignments).values({
       id: 'assignment_1',
       hackathonId: 'hackathon_1',
@@ -927,6 +927,50 @@ describe('TASK-3.7 judging assignment routes', () => {
     ])
   })
 
+  test('hackathon admins cannot reassign unstarted assignments during judging preparation', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/reassign',
+          handler: reassignJudgeAssignmentHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedBaseJudgingRecords(harness, { state: 'judging_preparation' })
+    await harness.database.insert(judgeAssignments).values({
+      id: 'assignment_1',
+      hackathonId: 'hackathon_1',
+      submissionId: 'submission_1',
+      judgeUserId: 'judge_a',
+      status: 'assigned',
+      assignedAt: '2026-03-25T12:10:00.000Z',
+      createdAt: '2026-03-25T12:10:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/reassign', {
+      method: 'POST',
+      body: JSON.stringify({
+        judgeUserId: 'judge_b',
+        reason: 'Availability'
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'hackathon_state_invalid',
+        message: 'This judging operation is not allowed in the current hackathon state.'
+      }
+    })
+  })
+
   test('hackathon admins cannot auto-reassign a blind assignment onto the judge already assigned to the other slot', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -944,7 +988,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     harnesses.push(harness)
 
     await seedBaseJudgingRecords(harness, {
-      state: 'judging_preparation',
+      state: 'blind_review',
       blindReviewCount: 2
     })
     await harness.database.delete(hackathonRoleAssignments).where(eq(hackathonRoleAssignments.id, 'role_judge_c'))
