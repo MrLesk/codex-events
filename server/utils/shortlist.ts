@@ -62,7 +62,8 @@ type CompetitionEntry = {
 }
 
 export const selectFinalistsBodySchema = z.object({
-  orderedSubmissionIds: z.array(z.string().trim().min(1)).min(1)
+  orderedSubmissionIds: z.array(z.string().trim().min(1)).min(1),
+  finalistSubmissionIds: z.array(z.string().trim().min(1))
 })
 
 export const reorderFinalDeliberationBodySchema = z.object({
@@ -117,7 +118,7 @@ function parseStoredFinalRankingSubmissionIds(hackathon: HackathonRecord) {
     throw new ApiError({
       statusCode: 500,
       code: 'final_ranking_invalid',
-      message: 'The stored final ranking override is invalid.',
+      message: 'The stored ranking order is invalid.',
       details: {
         hackathonId: hackathon.id
       }
@@ -130,7 +131,7 @@ function parseStoredFinalRankingSubmissionIds(hackathon: HackathonRecord) {
     throw new ApiError({
       statusCode: 500,
       code: 'final_ranking_invalid',
-      message: 'The stored final ranking override is invalid.',
+      message: 'The stored ranking order is invalid.',
       details: {
         hackathonId: hackathon.id
       }
@@ -587,11 +588,12 @@ export async function listShortlistEntries(database: AppDatabase, hackathonId: s
   }
 
   const rankedEntries = entries.filter(entry => entry.isRanked)
+  const orderedRankedEntries = deriveShortlistOrdering(hackathon, rankedEntries)
   const orderedFinalistSubmissionIds = parseStoredPitchFinalistSubmissionIds(hackathon)
 
   assertStoredPitchFinalistsMatchEntries(
     orderedFinalistSubmissionIds,
-    rankedEntries,
+    orderedRankedEntries,
     hackathon.id
   )
 
@@ -599,7 +601,7 @@ export async function listShortlistEntries(database: AppDatabase, hackathonId: s
     orderedFinalistSubmissionIds.map((submissionId, index) => [submissionId, index + 1] as const)
   )
 
-  return rankedEntries.map(entry =>
+  return orderedRankedEntries.map(entry =>
     serializeShortlistEntry(
       entry,
       pitchFinalistRanksBySubmissionId.get(entry.submission.id) ?? null
@@ -711,6 +713,29 @@ function assertStoredPitchFinalistsMatchEntries(
   )
 }
 
+function deriveShortlistOrdering(
+  hackathon: HackathonRecord,
+  rankedEntries: LeaderboardBaseEntry[]
+) {
+  const storedRankingSubmissionIds = parseStoredFinalRankingSubmissionIds(hackathon)
+
+  if (storedRankingSubmissionIds.length === 0) {
+    return rankedEntries
+  }
+
+  assertStoredShortlistRankingMatchesEntries(
+    storedRankingSubmissionIds,
+    rankedEntries.map(entry => ({ submissionId: entry.submission.id })),
+    hackathon.id
+  )
+
+  const rankedEntriesBySubmissionId = new Map(
+    rankedEntries.map(entry => [entry.submission.id, entry] as const)
+  )
+
+  return storedRankingSubmissionIds.map(submissionId => rankedEntriesBySubmissionId.get(submissionId)!)
+}
+
 function deriveFinalDeliberationOrdering(
   hackathon: HackathonRecord,
   entries: CompetitionEntry[]
@@ -721,14 +746,18 @@ function deriveFinalDeliberationOrdering(
   assertStoredFinalRankingMatchesEntries(
     finalRankingSubmissionIds,
     rankedEntries.map(entry => ({ submissionId: entry.submission.id })),
+    entries.map(entry => ({ submissionId: entry.submission.id })),
     hackathon.id
   )
 
   const rankedEntriesBySubmissionId = new Map(
     rankedEntries.map(entry => [entry.submission.id, entry] as const)
   )
-  const orderedRankedEntries = finalRankingSubmissionIds.length > 0
-    ? finalRankingSubmissionIds.map(submissionId => rankedEntriesBySubmissionId.get(submissionId)!)
+  const filteredFinalRankingSubmissionIds = finalRankingSubmissionIds.length > 0
+    ? finalRankingSubmissionIds.filter(submissionId => rankedEntriesBySubmissionId.has(submissionId))
+    : []
+  const orderedRankedEntries = filteredFinalRankingSubmissionIds.length > 0
+    ? filteredFinalRankingSubmissionIds.map(submissionId => rankedEntriesBySubmissionId.get(submissionId)!)
     : rankedEntries
   const finalRanksBySubmissionId = new Map(
     orderedRankedEntries.map((entry, index) => [entry.submission.id, index + 1] as const)
@@ -738,14 +767,14 @@ function deriveFinalDeliberationOrdering(
     .sort((left, right) => left.team.name.localeCompare(right.team.name))
 
   return {
-    finalRankingSubmissionIds,
+    finalRankingSubmissionIds: filteredFinalRankingSubmissionIds,
     orderedRankedEntries,
     finalRanksBySubmissionId,
     unrankedEntries
   }
 }
 
-function assertStoredFinalRankingMatchesEntries(
+function assertStoredShortlistRankingMatchesEntries(
   orderedSubmissionIds: string[],
   rankedEntries: Array<{ submissionId: string }>,
   hackathonId: string
@@ -761,7 +790,7 @@ function assertStoredFinalRankingMatchesEntries(
   assertGuard(actualIds.size === orderedSubmissionIds.length, {
     statusCode: 500,
     code: 'final_ranking_invalid',
-    message: 'The stored final ranking override is invalid.',
+    message: 'The stored ranking order is invalid.',
     details: {
       hackathonId,
       rankedSubmissionIds,
@@ -772,7 +801,7 @@ function assertStoredFinalRankingMatchesEntries(
   assertGuard(expectedIds.size === actualIds.size, {
     statusCode: 500,
     code: 'final_ranking_invalid',
-    message: 'The stored final ranking override is invalid.',
+    message: 'The stored ranking order is invalid.',
     details: {
       hackathonId,
       rankedSubmissionIds,
@@ -785,7 +814,61 @@ function assertStoredFinalRankingMatchesEntries(
     {
       statusCode: 500,
       code: 'final_ranking_invalid',
-      message: 'The stored final ranking override is invalid.',
+      message: 'The stored ranking order is invalid.',
+      details: {
+        hackathonId,
+        rankedSubmissionIds,
+        orderedSubmissionIds
+      }
+    }
+  )
+}
+
+function assertStoredFinalRankingMatchesEntries(
+  orderedSubmissionIds: string[],
+  rankedEntries: Array<{ submissionId: string }>,
+  allEntries: Array<{ submissionId: string }>,
+  hackathonId: string
+) {
+  if (orderedSubmissionIds.length === 0) {
+    return
+  }
+
+  const rankedSubmissionIds = rankedEntries.map(entry => entry.submissionId)
+  const knownSubmissionIds = new Set(allEntries.map(entry => entry.submissionId))
+  const actualIds = new Set(orderedSubmissionIds)
+
+  assertGuard(actualIds.size === orderedSubmissionIds.length, {
+    statusCode: 500,
+    code: 'final_ranking_invalid',
+    message: 'The stored ranking order is invalid.',
+    details: {
+      hackathonId,
+      rankedSubmissionIds,
+      orderedSubmissionIds
+    }
+  })
+
+  assertGuard(
+    orderedSubmissionIds.every(submissionId => knownSubmissionIds.has(submissionId)),
+    {
+      statusCode: 500,
+      code: 'final_ranking_invalid',
+      message: 'The stored ranking order is invalid.',
+      details: {
+        hackathonId,
+        rankedSubmissionIds,
+        orderedSubmissionIds
+      }
+    }
+  )
+
+  assertGuard(
+    rankedSubmissionIds.every(submissionId => actualIds.has(submissionId)),
+    {
+      statusCode: 500,
+      code: 'final_ranking_invalid',
+      message: 'The stored ranking order is invalid.',
       details: {
         hackathonId,
         rankedSubmissionIds,
@@ -965,6 +1048,66 @@ export function assertSelectedFinalistsMatchEntries(
       message: 'Finalist selection must reference only ranked shortlist submissions.',
       details: {
         rankedSubmissionIds,
+        orderedSubmissionIds
+      }
+    }
+  )
+}
+
+export function assertSelectedShortlistOrderMatchesEntries(
+  orderedSubmissionIds: string[],
+  rankedEntries: Array<{ submissionId: string }>
+) {
+  const rankedSubmissionIds = rankedEntries.map(entry => entry.submissionId)
+  const expectedIds = new Set(rankedSubmissionIds)
+  const actualIds = new Set(orderedSubmissionIds)
+
+  assertGuard(actualIds.size === orderedSubmissionIds.length, {
+    statusCode: 400,
+    code: 'shortlist_order_invalid',
+    message: 'Shortlist order must not contain duplicate submissions.',
+    details: {
+      rankedSubmissionIds,
+      orderedSubmissionIds
+    }
+  })
+
+  assertGuard(expectedIds.size === actualIds.size, {
+    statusCode: 400,
+    code: 'shortlist_order_invalid',
+    message: 'Shortlist order must include every ranked shortlist submission exactly once.',
+    details: {
+      rankedSubmissionIds,
+      orderedSubmissionIds
+    }
+  })
+
+  assertGuard(
+    orderedSubmissionIds.every(submissionId => expectedIds.has(submissionId)),
+    {
+      statusCode: 400,
+      code: 'shortlist_order_invalid',
+      message: 'Shortlist order must reference only ranked shortlist submissions.',
+      details: {
+        rankedSubmissionIds,
+        orderedSubmissionIds
+      }
+    }
+  )
+}
+
+export function assertSelectedFinalistsRespectOrder(
+  finalistSubmissionIds: string[],
+  orderedSubmissionIds: string[]
+) {
+  assertGuard(
+    finalistSubmissionIds.every((submissionId, index) => orderedSubmissionIds[index] === submissionId),
+    {
+      statusCode: 400,
+      code: 'shortlist_finalists_invalid',
+      message: 'Finalists must appear first in the saved shortlist order.',
+      details: {
+        finalistSubmissionIds,
         orderedSubmissionIds
       }
     }

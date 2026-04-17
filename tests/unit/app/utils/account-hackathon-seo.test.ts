@@ -31,6 +31,13 @@ describe('account hackathon seo helpers', () => {
     })
   })
 
+  test('returns admin-facing metadata for the submissions tab', () => {
+    expect(getAccountHackathonSeoContent('submissions', 'Buildathon')).toEqual({
+      title: 'Submissions | Buildathon | Codex Hackathons',
+      description: 'See team submissions and submission status for Buildathon.'
+    })
+  })
+
   test('returns judge-facing metadata for the judging tab', () => {
     expect(getAccountHackathonSeoContent('judging', 'Buildathon')).toEqual({
       title: 'Judging | Buildathon | Codex Hackathons',

@@ -6,9 +6,14 @@ import type {
   AdminSubmissionDashboardFilter,
   ApiDataResponse,
   ApiListResponse,
+  FinalDeliberationView,
   HackathonRecord,
-  SubmissionRecord
+  HackathonRoleAssignment,
+  ShortlistEntry,
+  SubmissionRecord,
+  WinnerEntry
 } from '~/utils/admin-workspace'
+import type { PrizeRedemptionAdminView, PrizeRedemptionRecord } from '~/utils/prize-redemptions'
 
 import {
   buildAdminOperationalTeams,
@@ -96,6 +101,18 @@ type SubmissionMonitorData = {
   teamDetails: AdminTeamDetailRecord[]
   teamSubmissions: Array<SubmissionRecord | null>
 }
+type JudgeChoice = {
+  value: string
+  label: string
+}
+type PitchLineupEntry = {
+  submissionId: string
+  order: number
+  projectName: string | null
+  teamName: string | null
+  rank: number | null
+  status: 'upcoming' | 'live' | 'presented'
+}
 
 const mutationError = ref('')
 const pendingActionKey = ref<string | null>(null)
@@ -114,6 +131,18 @@ const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
 const applications = ref<AdminApplicationRecord[]>([])
 const applicationsStatus = ref<LoadStatus>('idle')
 const applicationsErrorMessage = ref('')
+const shortlistEntries = ref<ShortlistEntry[]>([])
+const shortlistStatus = ref<LoadStatus>('idle')
+const shortlistErrorMessage = ref('')
+const finalDeliberation = ref<FinalDeliberationView | null>(null)
+const finalDeliberationStatus = ref<LoadStatus>('idle')
+const finalDeliberationErrorMessage = ref('')
+const winners = ref<WinnerEntry[]>([])
+const winnersStatus = ref<LoadStatus>('idle')
+const winnersErrorMessage = ref('')
+const redemptions = ref<PrizeRedemptionRecord[]>([])
+const redemptionsStatus = ref<LoadStatus>('idle')
+const redemptionsErrorMessage = ref('')
 const submissionSearchInput = ref('')
 const submissionStatusFilter = ref<AdminSubmissionDashboardFilter>('all')
 const initializedHackathonId = ref<string | null>(null)
@@ -207,21 +236,6 @@ async function loadApplications() {
     )
   }
 }
-
-watch([() => currentHackathon.value?.id, canManage], async ([id, allowed]) => {
-  if (!id || !allowed) {
-    return
-  }
-
-  if (initializedHackathonId.value === id) {
-    return
-  }
-
-  initializedHackathonId.value = id
-  await loadApplications()
-}, {
-  immediate: true
-})
 
 function formatParticipantMetricValue(value: number) {
   if (applicationsStatus.value === 'idle' || applicationsStatus.value === 'pending') {
@@ -387,6 +401,91 @@ const submissionPanelErrorMessage = computed(() =>
 const operationsPhase = computed(() =>
   currentHackathon.value ? getHackathonOperationsPhase(currentHackathon.value.state) : null
 )
+const assignmentsDataStatus = computed(() => normalizeAsyncStatus(workspace.assignments.status.value))
+const assignmentsErrorMessage = computed(() => {
+  if (!workspace.assignments.error.value) {
+    return ''
+  }
+
+  return toSectionErrorMessage(
+    workspace.assignments.error.value,
+    'Assignment oversight data could not be loaded right now.'
+  )
+})
+const canLoadShortlist = computed(() =>
+  Boolean(
+    showLifecycleSection.value
+    && currentHackathon.value
+    && currentHackathon.value.state === 'shortlist'
+  )
+)
+const canLoadFinalDeliberation = computed(() =>
+  Boolean(
+    showLifecycleSection.value
+    && currentHackathon.value
+    && currentHackathon.value.state === 'final_deliberation'
+  )
+)
+const canLoadWinners = computed(() =>
+  Boolean(
+    showLifecycleSection.value
+    && currentHackathon.value
+    && ['winners_announced', 'completed'].includes(currentHackathon.value.state)
+  )
+)
+const showAssignmentsPanel = computed(() =>
+  Boolean(
+    showLifecycleSection.value
+    && currentHackathon.value
+    && ['judging_preparation', 'blind_review'].includes(currentHackathon.value.state)
+  )
+)
+const showPitchStagePanel = computed(() =>
+  Boolean(showLifecycleSection.value && currentHackathon.value?.state === 'pitch')
+)
+const showPitchReviewPanel = computed(() =>
+  Boolean(showLifecycleSection.value && currentHackathon.value?.state === 'pitch_review')
+)
+const showFinalDeliberationPanel = computed(() =>
+  Boolean(showLifecycleSection.value && currentHackathon.value?.state === 'final_deliberation')
+)
+const showOutcomePanel = computed(() =>
+  Boolean(showLifecycleSection.value && currentHackathon.value && ['winners_announced', 'completed'].includes(currentHackathon.value.state))
+)
+const showPrizeRedemptionsPanel = computed(() =>
+  Boolean(showLifecycleSection.value && currentHackathon.value && ['winners_announced', 'completed'].includes(currentHackathon.value.state))
+)
+const judgeChoices = computed<JudgeChoice[]>(() =>
+  roleAssignments.value
+    .filter((assignment): assignment is HackathonRoleAssignment & { user: NonNullable<HackathonRoleAssignment['user']> } =>
+      assignment.isInJudgePool && Boolean(assignment.user)
+    )
+    .map(assignment => ({
+      value: assignment.userId,
+      label: `${assignment.user.displayName} (${assignment.user.email})`
+    }))
+)
+
+watch([() => currentHackathon.value?.id, canManage], async ([id, allowed]) => {
+  if (!id || !allowed) {
+    return
+  }
+
+  if (initializedHackathonId.value === id) {
+    return
+  }
+
+  initializedHackathonId.value = id
+  await Promise.all([
+    loadApplications(),
+    loadShortlist(),
+    loadFinalDeliberation(),
+    loadWinners(),
+    loadPrizeRedemptions()
+  ])
+}, {
+  immediate: true
+})
 
 const lifecycleHeroClassByColor = {
   primary: '!border-primary/24 !bg-primary/[0.06] dark:!border-primary/34 dark:!bg-primary/[0.08]',
@@ -464,6 +563,9 @@ const submittedSubmissionValue = computed(() =>
 const lockedSubmissionCount = computed(() =>
   leaderboard.value.filter(entry => entry.submissionStatus === 'locked').length
 )
+const rankedBlindSubmissionCount = computed(() =>
+  leaderboard.value.filter(entry => entry.rank !== null).length
+)
 
 const completedReviewCount = computed(() =>
   leaderboard.value.filter(entry =>
@@ -492,6 +594,89 @@ const activePitchPresentationIndex = computed(() => {
   )
 
   return index === -1 ? null : index
+})
+const leaderboardEntriesBySubmissionId = computed(() =>
+  new Map(leaderboard.value.map(entry => [entry.submissionId, entry] as const))
+)
+const pitchLineupEntries = computed<PitchLineupEntry[]>(() => {
+  if (!currentHackathon.value) {
+    return []
+  }
+
+  return currentHackathon.value.pitchPresentationSubmissionIds.map((submissionId, index) => {
+    const entry = leaderboardEntriesBySubmissionId.value.get(submissionId)
+    const status = currentHackathon.value?.pitchPresentationsCompletedAt
+      ? 'presented'
+      : activePitchPresentationIndex.value === null
+        ? 'upcoming'
+        : index < activePitchPresentationIndex.value
+          ? 'presented'
+          : index === activePitchPresentationIndex.value
+            ? 'live'
+            : 'upcoming'
+
+    return {
+      submissionId,
+      order: index + 1,
+      projectName: entry?.projectName ?? null,
+      teamName: entry?.teamName ?? null,
+      rank: entry?.rank ?? null,
+      status
+    }
+  })
+})
+const canAdvancePitchPresentation = computed(() =>
+  Boolean(
+    currentHackathon.value
+    && currentHackathon.value.state === 'pitch'
+    && currentHackathon.value.pitchPresentationSubmissionIds.length > 0
+    && currentHackathon.value.pitchPresentationsCompletedAt === null
+    && (pendingActionKey.value === null || pendingActionKey.value === 'advance-pitch-presentation')
+  )
+)
+const advancePitchPresentationLabel = computed(() => {
+  if (!currentHackathon.value) {
+    return 'Enable next presentation'
+  }
+
+  if (currentHackathon.value.pitchPresentationsCompletedAt) {
+    return 'Pitch presentations complete'
+  }
+
+  if (activePitchPresentationIndex.value === null) {
+    return 'Enable first presentation'
+  }
+
+  return activePitchPresentationIndex.value === currentHackathon.value.pitchPresentationSubmissionIds.length - 1
+    ? 'Finish pitch presentations'
+    : 'Enable next presentation'
+})
+const pitchStageAlert = computed(() => {
+  if (!currentHackathon.value) {
+    return {
+      title: 'Live pitch stage is active',
+      description: 'Pitch lineup data is still loading.'
+    }
+  }
+
+  if (currentHackathon.value.pitchPresentationsCompletedAt) {
+    return {
+      title: 'Pitch presentations are complete',
+      description: 'The live lineup is finished. Start pitch review when you are ready to open judge scoring.'
+    }
+  }
+
+  if (activePitchPresentationIndex.value === null) {
+    return {
+      title: 'No presentation enabled yet',
+      description: 'Enable the first finalist from this lineup when the live pitch stage begins.'
+    }
+  }
+
+  return {
+    title: `Presentation ${activePitchPresentationIndex.value + 1} is live`,
+    description: 'Advance the lineup when the current team finishes. Pitch review stays closed until the full lineup is completed.'
+  }
 })
 
 const completedPitchPresentationCount = computed(() => {
@@ -524,7 +709,7 @@ const pitchPresentationProgressDescription = computed(() => {
   }
 
   if (activePitchPresentationIndex.value === null) {
-    return 'No finalist is enabled yet. Start the live lineup from the Competition tab.'
+    return 'No finalist is enabled yet. Start the live lineup from the Operations tab.'
   }
 
   return `Presentation ${activePitchPresentationIndex.value + 1} is currently enabled.`
@@ -639,7 +824,7 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
           {
             label: 'Next stage',
             value: 'Pitch',
-            description: 'Continue from the Competition tab once the shortlist order and finalist boundary are saved.'
+            description: 'Continue from Operations once the shortlist order and finalist boundary are saved.'
           }
         ]
       }
@@ -656,7 +841,7 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
             value: 'Pitch Review',
             description: hackathon.pitchPresentationsCompletedAt
               ? 'The live lineup is complete. Start pitch review when you are ready to open judge scoring.'
-              : 'Finish the live lineup from the Competition tab before pitch review can start.'
+              : 'Finish the live lineup from Operations before pitch review can start.'
           }
         ]
       }
@@ -714,7 +899,7 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
         {
           label: 'Current status',
           value: formatHackathonState(hackathon.state),
-          description: 'Reviews and competition outcomes are now in progress.'
+          description: 'Reviews and outcomes are now in progress.'
         },
         {
           label: 'Time frame',
@@ -767,7 +952,7 @@ const lifecycleActionAvailability = computed(() => {
     if (hackathon.state === 'shortlist') {
       return {
         label: 'Continue from',
-        message: 'Use the Competition tab to save the shortlist order and start pitch.',
+        message: 'Use Operations to save the shortlist order and start pitch.',
         className: 'text-warning'
       }
     }
@@ -867,7 +1052,7 @@ const lifecycleActionLabel = computed(() => {
   }
 
   if (currentHackathon.value?.state === 'shortlist') {
-    return 'Continue From Competition'
+    return 'Continue From Operations'
   }
 
   return 'No further lifecycle actions'
@@ -879,7 +1064,7 @@ const lifecycleActionDescription = computed(() => {
   }
 
   if (currentHackathon.value?.state === 'shortlist') {
-    return 'Shortlist order and finalist selection are managed from the Competition tab because the next transition depends on the saved shortlist.'
+    return 'Shortlist order and finalist selection are managed directly from Operations because the next transition depends on the saved shortlist.'
   }
 
   return 'The hackathon has reached a stable state with no additional lifecycle transition available from this view.'
@@ -956,7 +1141,7 @@ const lifecycleMetricCards = computed<LifecycleMetricCard[]>(() => {
           {
             key: 'locked-submissions',
             label: 'Blind-Ranked Submissions',
-            value: formatLoadMetricValue(leaderboardDataStatus.value, `${lockedSubmissionCount.value}`),
+            value: formatLoadMetricValue(leaderboardDataStatus.value, `${rankedBlindSubmissionCount.value}`),
             description: 'Ranked blind-review submissions available for shortlist ordering and finalist selection.'
           },
           {
@@ -1050,7 +1235,11 @@ async function refreshOperations() {
   await workspace.refreshWorkspace()
   await Promise.all([
     loadApplications(),
-    refreshSubmissionMonitor()
+    refreshSubmissionMonitor(),
+    loadShortlist(),
+    loadFinalDeliberation(),
+    loadWinners(),
+    loadPrizeRedemptions()
   ])
 }
 
@@ -1131,6 +1320,249 @@ async function runMutation<Result>(
       })
     }
   }
+}
+
+async function loadShortlist() {
+  if (!canLoadShortlist.value) {
+    shortlistEntries.value = []
+    shortlistStatus.value = 'idle'
+    shortlistErrorMessage.value = ''
+    return
+  }
+
+  shortlistStatus.value = 'pending'
+  shortlistErrorMessage.value = ''
+
+  try {
+    const response = await $fetch<ApiListResponse<ShortlistEntry>>(
+      `/api/hackathons/${hackathonId.value}/shortlist`
+    )
+    shortlistEntries.value = response.data
+    shortlistStatus.value = 'success'
+  } catch (error) {
+    shortlistEntries.value = []
+    shortlistStatus.value = 'error'
+    shortlistErrorMessage.value = toSectionErrorMessage(
+      error,
+      'Shortlist ranking data could not be loaded right now.'
+    )
+  }
+}
+
+async function selectFinalists(payload: { orderedSubmissionIds: string[], finalistSubmissionIds: string[] }) {
+  await runMutation(
+    'shortlist-select',
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/shortlist/actions/select-finalists`, {
+        method: 'POST',
+        body: payload
+      })
+    },
+    {
+      title: 'Pitch finalists updated',
+      description: 'The saved shortlist order and finalist boundary have been updated for pitch review.'
+    }
+  )
+}
+
+async function startPitch() {
+  await runMutation(
+    'start-pitch',
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/actions/start-pitch`, {
+        method: 'POST'
+      })
+    },
+    {
+      title: 'Pitch started',
+      description: 'The live finalist pitch stage is now open. Enable each presentation from the lineup before opening pitch review.'
+    }
+  )
+}
+
+async function loadFinalDeliberation() {
+  if (!canLoadFinalDeliberation.value) {
+    finalDeliberation.value = null
+    finalDeliberationStatus.value = 'idle'
+    finalDeliberationErrorMessage.value = ''
+    return
+  }
+
+  finalDeliberationStatus.value = 'pending'
+  finalDeliberationErrorMessage.value = ''
+
+  try {
+    const response = await $fetch<ApiDataResponse<FinalDeliberationView>>(
+      `/api/hackathons/${hackathonId.value}/final-deliberation`
+    )
+    finalDeliberation.value = response.data
+    finalDeliberationStatus.value = 'success'
+  } catch (error) {
+    finalDeliberation.value = null
+    finalDeliberationStatus.value = 'error'
+    finalDeliberationErrorMessage.value = toSectionErrorMessage(
+      error,
+      'Final deliberation data could not be loaded right now.'
+    )
+  }
+}
+
+async function loadWinners() {
+  if (!canLoadWinners.value) {
+    winners.value = []
+    winnersStatus.value = 'idle'
+    winnersErrorMessage.value = ''
+    return
+  }
+
+  winnersStatus.value = 'pending'
+  winnersErrorMessage.value = ''
+
+  try {
+    const response = await $fetch<ApiListResponse<WinnerEntry>>(
+      `/api/hackathons/${hackathonId.value}/winners`
+    )
+    winners.value = response.data
+    winnersStatus.value = 'success'
+  } catch (error) {
+    winners.value = []
+    winnersStatus.value = 'error'
+    winnersErrorMessage.value = toSectionErrorMessage(
+      error,
+      'Winner records could not be loaded right now.'
+    )
+  }
+}
+
+async function loadPrizeRedemptions() {
+  if (!canLoadWinners.value) {
+    redemptions.value = []
+    redemptionsStatus.value = 'idle'
+    redemptionsErrorMessage.value = ''
+    return
+  }
+
+  redemptionsStatus.value = 'pending'
+  redemptionsErrorMessage.value = ''
+
+  try {
+    const response = await $fetch<ApiDataResponse<PrizeRedemptionAdminView>>(
+      `/api/hackathons/${hackathonId.value}/prize-redemptions`
+    )
+    redemptions.value = response.data.redemptions
+    redemptionsStatus.value = 'success'
+  } catch (error) {
+    redemptions.value = []
+    redemptionsStatus.value = 'error'
+    redemptionsErrorMessage.value = toSectionErrorMessage(
+      error,
+      'Prize redemption records could not be loaded right now.'
+    )
+  }
+}
+
+async function reassignAssignment(payload: { assignmentId: string, judgeUserId?: string, reason?: string }) {
+  await runMutation(
+    `reassign:${payload.assignmentId}`,
+    async () => {
+      await $fetch(
+        `/api/hackathons/${hackathonId.value}/judging/assignments/${payload.assignmentId}/actions/reassign`,
+        {
+          method: 'POST',
+          body: payload
+        }
+      )
+    },
+    {
+      title: 'Assignment reassigned',
+      description: 'The blind review assignment has been moved to a different judge.'
+    }
+  )
+}
+
+async function forceSkipAssignment(payload: { assignmentId: string, reason?: string }) {
+  await runMutation(
+    `force-skip:${payload.assignmentId}`,
+    async () => {
+      await $fetch(
+        `/api/hackathons/${hackathonId.value}/judging/assignments/${payload.assignmentId}/actions/force-skip`,
+        {
+          method: 'POST',
+          body: {
+            reason: payload.reason
+          }
+        }
+      )
+    },
+    {
+      title: 'Assignment force-skipped',
+      description: 'The active blind review was skipped and redistributed.'
+    }
+  )
+}
+
+async function advancePitchPresentation() {
+  if (!currentHackathon.value) {
+    return
+  }
+
+  const wasNotStarted = activePitchPresentationIndex.value === null
+  const wasLastPresentation = activePitchPresentationIndex.value !== null
+    && activePitchPresentationIndex.value === currentHackathon.value.pitchPresentationSubmissionIds.length - 1
+
+  await runMutation(
+    'advance-pitch-presentation',
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/actions/advance-pitch-presentation`, {
+        method: 'POST'
+      })
+    },
+    {
+      title: wasNotStarted
+        ? 'Pitch presentation enabled'
+        : wasLastPresentation
+          ? 'Pitch presentations completed'
+          : 'Pitch presentation advanced',
+      description: wasNotStarted
+        ? 'The first finalist is now enabled to present.'
+        : wasLastPresentation
+          ? 'The live lineup is complete. Pitch review can now be opened separately.'
+          : 'The next finalist is now enabled to present.'
+    }
+  )
+}
+
+async function startFinalDeliberation() {
+  await runMutation(
+    'start-final-deliberation',
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/actions/start-final-deliberation`, {
+        method: 'POST'
+      })
+    },
+    {
+      title: 'Final deliberation started',
+      description: 'The final weighted ranking is now ready for admin review.'
+    }
+  )
+}
+
+async function reorderFinalDeliberation(orderedSubmissionIds: string[]) {
+  await runMutation(
+    'final-deliberation-reorder',
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/final-deliberation/actions/reorder`, {
+        method: 'POST',
+        body: {
+          orderedSubmissionIds
+        }
+      })
+    },
+    {
+      title: 'Final order updated',
+      description: 'The final ranking order has been updated without changing any judge scores.'
+    }
+  )
 }
 
 async function approveApplication(application: AdminApplicationRecord) {
@@ -1409,7 +1841,19 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
           </div>
         </div>
 
+        <AdminCompetitionShortlistPanel
+          v-if="canLoadShortlist"
+          :hackathon-state="currentHackathon.state"
+          :shortlist="shortlistEntries"
+          :is-shortlist-loading="shortlistStatus === 'pending'"
+          :shortlist-error-message="shortlistStatus === 'error' ? shortlistErrorMessage : ''"
+          :pending-action-key="pendingActionKey"
+          @select-finalists="selectFinalists"
+          @start-pitch="startPitch"
+        />
+
         <AppCard
+          v-if="!canLoadShortlist"
           :class="['rounded-xl hackathon-workspace-detail-panel', lifecycleHeroClass]"
         >
           <div class="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
@@ -1471,6 +1915,186 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
             </div>
           </div>
         </AppCard>
+
+        <AdminCompetitionAssignmentsPanel
+          v-if="showAssignmentsPanel"
+          :hackathon-state="currentHackathon.state"
+          :assignments="assignments"
+          :judge-choices="judgeChoices"
+          :is-loading="assignmentsDataStatus === 'pending'"
+          :error-message="assignmentsDataStatus === 'error' ? assignmentsErrorMessage : ''"
+          :pending-action-key="pendingActionKey"
+          @reassign="reassignAssignment"
+          @force-skip="forceSkipAssignment"
+        />
+
+        <AppCard
+          v-if="showPitchStagePanel"
+          class="rounded-xl hackathon-workspace-detail-panel"
+        >
+          <template #header>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold text-highlighted">
+                Pitch
+              </h2>
+              <p class="text-sm text-muted">
+                Finalist teams present live in the saved lineup order. Judge assignments for post-pitch scoring are created only after the full lineup is completed and you start pitch review separately.
+              </p>
+            </div>
+          </template>
+
+          <div class="space-y-5">
+            <AppAlert
+              color="neutral"
+              variant="soft"
+              :title="pitchStageAlert.title"
+              :description="pitchStageAlert.description"
+            />
+
+            <div
+              v-if="pitchLineupEntries.length > 0"
+              class="grid gap-3"
+            >
+              <article
+                v-for="entry in pitchLineupEntries"
+                :key="entry.submissionId"
+                class="rounded-xl border p-4 transition"
+                :class="entry.status === 'live'
+                  ? 'border-primary/30 bg-primary/[0.06] dark:border-primary/35 dark:bg-primary/[0.08]'
+                  : entry.status === 'presented'
+                    ? 'border-black/8 bg-black/[0.03] dark:border-white/[0.08] dark:bg-white/[0.04]'
+                    : 'border-black/8 bg-white/80 dark:border-white/[0.08] dark:bg-[#111111]'"
+              >
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div class="space-y-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                        Presentation #{{ entry.order }}
+                      </p>
+
+                      <AppBadge
+                        v-if="entry.status === 'live'"
+                        color="primary"
+                        variant="soft"
+                      >
+                        Live now
+                      </AppBadge>
+
+                      <AppBadge
+                        v-else-if="entry.status === 'presented'"
+                        color="success"
+                        variant="soft"
+                      >
+                        Presented
+                      </AppBadge>
+                    </div>
+
+                    <h3 class="text-base font-semibold text-highlighted">
+                      {{ entry.projectName ?? 'Untitled submission' }}
+                    </h3>
+
+                    <p class="text-sm text-toned">
+                      {{ entry.teamName ?? 'Team not available' }}
+                      <span v-if="entry.rank !== null"> • shortlist rank #{{ entry.rank }}</span>
+                    </p>
+                  </div>
+
+                  <p class="text-sm text-muted">
+                    {{ entry.status === 'upcoming'
+                      ? 'Waiting to present'
+                      : entry.status === 'live'
+                        ? 'Currently enabled to present'
+                        : 'Presentation completed' }}
+                  </p>
+                </div>
+              </article>
+            </div>
+
+            <AppAlert
+              v-else
+              color="warning"
+              variant="soft"
+              title="Pitch lineup unavailable"
+              description="No finalist submissions are currently stored for the live pitch lineup."
+            />
+
+            <div class="flex flex-wrap gap-3">
+              <AppButton
+                color="primary"
+                :loading="pendingActionKey === 'advance-pitch-presentation'"
+                :disabled="!canAdvancePitchPresentation"
+                @click="advancePitchPresentation"
+              >
+                {{ advancePitchPresentationLabel }}
+              </AppButton>
+            </div>
+          </div>
+        </AppCard>
+
+        <AppCard
+          v-if="showPitchReviewPanel"
+          class="rounded-xl hackathon-workspace-detail-panel"
+        >
+          <template #header>
+            <div class="space-y-1">
+              <h2 class="text-lg font-semibold text-highlighted">
+                Pitch Review
+              </h2>
+              <p class="text-sm text-muted">
+                Judges now see full submission details and submit post-pitch scores on the shared `0-10` scale. When you move on, the platform averages the submitted pitch votes only.
+              </p>
+            </div>
+          </template>
+
+          <div class="space-y-4">
+            <AppAlert
+              color="neutral"
+              variant="soft"
+              title="Pitch review is live"
+              description="Close pitch review once the submitted votes you want to count are in. Missing pitch votes are excluded from the average."
+            />
+
+            <div class="flex flex-wrap gap-3">
+              <AppButton
+                color="primary"
+                :loading="pendingActionKey === 'start-final-deliberation'"
+                :disabled="pendingActionKey !== null && pendingActionKey !== 'start-final-deliberation'"
+                @click="startFinalDeliberation"
+              >
+                Move to final deliberation
+              </AppButton>
+            </div>
+          </div>
+        </AppCard>
+
+        <AdminCompetitionFinalDeliberationPanel
+          v-if="showFinalDeliberationPanel"
+          :hackathon="currentHackathon"
+          :entries="finalDeliberation?.entries ?? []"
+          :final-ranking-submission-ids="finalDeliberation?.finalRankingSubmissionIds ?? []"
+          :is-loading="finalDeliberationStatus === 'pending'"
+          :error-message="finalDeliberationStatus === 'error' ? finalDeliberationErrorMessage : ''"
+          :pending-action-key="pendingActionKey"
+          @reorder="reorderFinalDeliberation"
+        />
+
+        <AdminCompetitionOutcomePanel
+          v-if="showOutcomePanel"
+          :hackathon-state="currentHackathon.state"
+          :winners="winners"
+          :winner-terms-title="currentHackathon.currentTerms?.winnerTerms?.title ?? null"
+          :is-loading="winnersStatus === 'pending'"
+          :error-message="winnersStatus === 'error' ? winnersErrorMessage : ''"
+        />
+
+        <AdminCompetitionPrizeRedemptionsPanel
+          v-if="showPrizeRedemptionsPanel"
+          :hackathon-state="currentHackathon.state"
+          :winners="winners"
+          :redemptions="redemptions"
+          :is-loading="redemptionsStatus === 'pending'"
+          :error-message="redemptionsStatus === 'error' ? redemptionsErrorMessage : ''"
+        />
       </section>
 
       <section

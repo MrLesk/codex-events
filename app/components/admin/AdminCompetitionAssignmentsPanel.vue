@@ -187,7 +187,7 @@ function submitReassignment() {
         color="neutral"
         variant="soft"
         title="Loading assignment oversight"
-        description="Current judging assignments are still loading for the competition workspace."
+        description="Current judging assignments are still loading for Operations."
       />
 
       <template v-else>

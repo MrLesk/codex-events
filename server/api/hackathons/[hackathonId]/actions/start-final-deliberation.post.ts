@@ -32,7 +32,9 @@ export default defineApiHandler(async (event) => {
     .update(hackathons)
     .set({
       state: 'final_deliberation',
-      finalRankingSubmissionIdsJson: '[]',
+      finalRankingSubmissionIdsJson: hackathon.state === 'blind_review'
+        ? '[]'
+        : hackathon.finalRankingSubmissionIdsJson,
       updatedAt: transitionedAt
     })
     .where(eq(hackathons.id, hackathonId))

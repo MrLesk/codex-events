@@ -1773,8 +1773,8 @@ export function getCurrentLifecycleControl(
         code = 'pitch_finalists_required'
       } else if (hackathon.pitchPresentationsCompletedAt === null) {
         reason = hackathon.activePitchPresentationSubmissionId
-          ? 'Finish the live pitch presentation lineup from the Competition tab before pitch review can start.'
-          : 'Enable the first pitch presentation from the Competition tab before pitch review can start.'
+          ? 'Finish the live pitch presentation lineup from Operations before pitch review can start.'
+          : 'Enable the first pitch presentation from Operations before pitch review can start.'
         code = 'pitch_presentations_incomplete'
       } else if (metrics.judgePoolCount === 0) {
         reason = 'Pitch review requires at least one judge in the automatic judge pool.'

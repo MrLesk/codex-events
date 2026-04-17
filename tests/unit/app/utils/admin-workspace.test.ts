@@ -738,7 +738,8 @@ describe('admin-workspace lifecycle controls', () => {
     expect(control).toMatchObject({
       key: 'start_pitch_review',
       isEnabled: false,
-      code: 'pitch_presentations_incomplete'
+      code: 'pitch_presentations_incomplete',
+      reason: 'Finish the live pitch presentation lineup from Operations before pitch review can start.'
     })
   })
 

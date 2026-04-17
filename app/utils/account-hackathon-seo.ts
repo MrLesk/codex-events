@@ -58,7 +58,7 @@ export function getAccountHackathonSeoContent(
     case 'submissions':
       return {
         title: `Submissions | ${hackathonName} | Codex Hackathons`,
-        description: `See team submissions and competition status for ${hackathonName}.`
+        description: `See team submissions and submission status for ${hackathonName}.`
       }
     case 'operations':
       return {

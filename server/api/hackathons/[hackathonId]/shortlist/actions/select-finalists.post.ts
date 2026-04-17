@@ -12,7 +12,9 @@ import {
 } from '../../../../../utils/hackathon-management'
 import {
   assertSelectFinalistsAllowed,
+  assertSelectedFinalistsRespectOrder,
   assertSelectedFinalistsMatchEntries,
+  assertSelectedShortlistOrderMatchesEntries,
   listLeaderboardEntries,
   listShortlistEntries,
   selectFinalistsBodySchema
@@ -31,17 +33,24 @@ export default defineApiHandler(async (event) => {
   const rankedEntries = (await listLeaderboardEntries(database, hackathonId))
     .filter(entry => entry.isRanked)
 
-  assertSelectedFinalistsMatchEntries(
+  assertSelectedShortlistOrderMatchesEntries(
     body.orderedSubmissionIds,
     rankedEntries.map(entry => ({ submissionId: entry.submission.id }))
   )
+
+  assertSelectedFinalistsMatchEntries(
+    body.finalistSubmissionIds,
+    rankedEntries.map(entry => ({ submissionId: entry.submission.id }))
+  )
+  assertSelectedFinalistsRespectOrder(body.finalistSubmissionIds, body.orderedSubmissionIds)
 
   const selectedAt = new Date().toISOString()
 
   await database
     .update(hackathons)
     .set({
-      pitchFinalistSubmissionIdsJson: JSON.stringify(body.orderedSubmissionIds),
+      pitchFinalistSubmissionIdsJson: JSON.stringify(body.finalistSubmissionIds),
+      finalRankingSubmissionIdsJson: JSON.stringify(body.orderedSubmissionIds),
       updatedAt: selectedAt
     })
     .where(eq(hackathons.id, hackathonId))
@@ -53,7 +62,8 @@ export default defineApiHandler(async (event) => {
     action: 'hackathon.pitch_finalists_selected',
     metadata: {
       orderedSubmissionIds: body.orderedSubmissionIds,
-      finalistSubmissionCount: body.orderedSubmissionIds.length
+      finalistSubmissionIds: body.finalistSubmissionIds,
+      finalistSubmissionCount: body.finalistSubmissionIds.length
     }
   })
 

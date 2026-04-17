@@ -20,7 +20,6 @@ import AccountHackathonPublishedRosterPanel from '~/components/account/hackathon
 import AccountHackathonParticipantWorkspacePanel from '~/components/account/hackathons/AccountHackathonParticipantWorkspacePanel.vue'
 import AccountHackathonParticipantTeamPanel from '~/components/account/hackathons/AccountHackathonParticipantTeamPanel.vue'
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
-import AccountHackathonCompetitionPanel from '~/components/account/hackathons/AccountHackathonCompetitionPanel.vue'
 import AccountHackathonCreditsPanel from '~/components/account/hackathons/AccountHackathonCreditsPanel.vue'
 import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
 import AccountHackathonParticipantVisibilityPanel from '~/components/account/hackathons/AccountHackathonParticipantVisibilityPanel.vue'
@@ -1042,7 +1041,6 @@ useSeoMeta({
           :slug="slug"
           section="operations"
         />
-        <AccountHackathonCompetitionPanel :slug="slug" />
       </section>
 
       <section

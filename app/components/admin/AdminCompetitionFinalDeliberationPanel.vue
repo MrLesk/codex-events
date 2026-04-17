@@ -329,7 +329,7 @@ function resetDraft() {
           color="neutral"
           variant="soft"
           title="No ranked submissions"
-          description="There are no ranked competition entries available for final deliberation yet."
+          description="There are no ranked submissions available for final deliberation yet."
         />
 
         <div

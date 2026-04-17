@@ -34,7 +34,7 @@ const redeemedCount = computed(() => props.redemptions.filter(redemption => rede
           Prize Redemptions
         </h2>
         <p class="text-sm text-muted">
-          Review winner-facing redemption progress without exposing redemption records outside the admin competition surface.
+          Review winner-facing redemption progress directly from Operations without exposing redemption records to non-admin actors.
         </p>
       </div>
     </template>

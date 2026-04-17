@@ -6,7 +6,9 @@ import {
   assertFinalDeliberationReorderMatchesEntries,
   assertFinalDeliberationViewAllowed,
   assertHackathonCompletionAllowed,
+  assertSelectedFinalistsRespectOrder,
   assertSelectedFinalistsMatchEntries,
+  assertSelectedShortlistOrderMatchesEntries,
   assertSelectFinalistsAllowed,
   assertShortlistViewAllowed,
   assertStartFinalDeliberationAllowed,
@@ -43,6 +45,9 @@ function createHackathon(
     pitchReviewEnabled: true,
     blindScoreWeightPercent: 70,
     pitchScoreWeightPercent: 30,
+    pitchFinalistSubmissionIdsJson: '[]',
+    activePitchPresentationSubmissionId: null,
+    pitchPresentationsCompletedAt: null,
     maxTeamMembers: 4,
     finalRankingSubmissionIdsJson: '[]',
     requireXProfile: false,
@@ -133,6 +138,33 @@ describe('shortlist utilities', () => {
     expect(() => assertSelectedFinalistsMatchEntries(
       ['submission_1', 'submission_3'],
       [{ submissionId: 'submission_1' }, { submissionId: 'submission_2' }]
+    )).toThrowError(ApiError)
+  })
+
+  test('shortlist save order must cover every ranked submission exactly once and keep finalists first', () => {
+    expect(() => assertSelectedShortlistOrderMatchesEntries(
+      ['submission_2', 'submission_1'],
+      [{ submissionId: 'submission_1' }, { submissionId: 'submission_2' }]
+    )).not.toThrow()
+
+    expect(() => assertSelectedShortlistOrderMatchesEntries(
+      ['submission_1', 'submission_1'],
+      [{ submissionId: 'submission_1' }, { submissionId: 'submission_2' }]
+    )).toThrowError(ApiError)
+
+    expect(() => assertSelectedShortlistOrderMatchesEntries(
+      ['submission_1'],
+      [{ submissionId: 'submission_1' }, { submissionId: 'submission_2' }]
+    )).toThrowError(ApiError)
+
+    expect(() => assertSelectedFinalistsRespectOrder(
+      ['submission_2'],
+      ['submission_2', 'submission_1']
+    )).not.toThrow()
+
+    expect(() => assertSelectedFinalistsRespectOrder(
+      ['submission_1'],
+      ['submission_2', 'submission_1']
     )).toThrowError(ApiError)
   })
 
