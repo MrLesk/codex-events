@@ -216,6 +216,17 @@ function shouldShowProofOfExecutionLinks(applicant: AdminApplicationReviewGroup[
   return getProofOfExecutionLinks(applicant).length > 0
 }
 
+function shouldShowApplicantMetadata(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return Boolean(
+    applicant.application.user?.lumaEmail
+    || applicant.application.user?.githubProfileUrl
+    || applicant.application.user?.chatgptEmail
+    || applicant.application.user?.openaiOrgId
+    || applicant.application.user?.linkedinProfileUrl
+    || applicant.application.user?.xProfileUrl
+  )
+}
+
 function shouldShowProofOfExecutionToggle(applicant: AdminApplicationReviewGroup['applicants'][number]) {
   return getProofOfExecutionLinks(applicant).length > proofLinksPreviewCount
 }
@@ -322,6 +333,10 @@ function getAdminWithdrawalAvailability(application: AdminApplicationRecord) {
 
 function shouldShowWithdrawAction(application: AdminApplicationRecord) {
   return application.status === 'submitted' || application.status === 'approved'
+}
+
+function shouldShowHeaderWithdrawAction(application: AdminApplicationRecord) {
+  return !props.readOnly && application.status === 'approved'
 }
 
 function formatWithdrawalTimestamp(application: AdminApplicationRecord) {
@@ -643,80 +658,108 @@ const emptyState = computed(() => {
               >
                 <div class="min-w-0 space-y-3">
                   <div class="space-y-3">
-                    <div class="flex items-start gap-3">
-                      <AppAvatar
-                        size="lg"
-                        :src="getApplicantProfileIconHref(applicant.application)"
-                        :alt="getApplicantAvatarAlt(applicant.application)"
-                        class="shrink-0"
-                      />
-                      <div class="min-w-0 space-y-1">
-                        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                          Participant
-                        </p>
-                        <h4 class="text-lg font-semibold text-highlighted">
-                          {{ getApplicantIdentityLabel(applicant.application) }}
-                        </h4>
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                      <div class="flex min-w-0 items-start gap-3">
+                        <AppAvatar
+                          size="lg"
+                          :src="getApplicantProfileIconHref(applicant.application)"
+                          :alt="getApplicantAvatarAlt(applicant.application)"
+                          class="shrink-0"
+                        />
+                        <div class="min-w-0 space-y-1">
+                          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                            Participant
+                          </p>
+                          <div class="flex flex-wrap items-center gap-2">
+                            <h4 class="text-lg font-semibold text-highlighted">
+                              {{ getApplicantIdentityLabel(applicant.application) }}
+                            </h4>
+                            <AppBadge
+                              v-if="applicant.application.status === 'approved'"
+                              :color="getApplicationStatusColor(applicant.application.status)"
+                              variant="soft"
+                            >
+                              Approved
+                            </AppBadge>
+                            <AppBadge
+                              v-if="showApprovedAttendance && applicant.application.status === 'approved'"
+                              :data-testid="`admin-application-attendance-badge-${applicant.application.id}`"
+                              :color="getApplicationAttendanceStatusColor(applicant.application)"
+                              variant="soft"
+                            >
+                              {{ formatApplicationAttendanceStatus(applicant.application) }}
+                            </AppBadge>
+                            <AppBadge
+                              v-if="applicant.application.status === 'rejected'"
+                              :color="getApplicationStatusColor(applicant.application.status)"
+                              variant="soft"
+                            >
+                              Rejected
+                            </AppBadge>
+                            <AppBadge
+                              v-if="applicant.application.status === 'withdrawn'"
+                              :color="getApplicationStatusColor(applicant.application.status)"
+                              variant="soft"
+                            >
+                              Withdrawn
+                            </AppBadge>
+                            <AppBadge
+                              v-if="shouldShowApplicationLumaSyncStatus(applicant.application)"
+                              :color="getApplicationLumaSyncStatusColor(applicant.application.lumaSyncStatus)"
+                              variant="soft"
+                            >
+                              {{ formatApplicationLumaSyncStatus(applicant.application.lumaSyncStatus) }}
+                            </AppBadge>
+                            <span
+                              v-if="applicant.application.status === 'withdrawn' && formatWithdrawalTimestamp(applicant.application)"
+                              class="rounded-full border border-black/10 px-3 py-1 text-xs text-highlighted dark:border-white/[0.12]"
+                            >
+                              {{ formatWithdrawalTimestamp(applicant.application) }}
+                            </span>
+                            <span
+                              v-if="showApprovedAttendance && applicant.application.status === 'approved' && formatCheckedInTimestamp(applicant.application)"
+                              :data-testid="`admin-application-checked-in-at-${applicant.application.id}`"
+                              class="rounded-full border border-black/10 px-3 py-1 text-xs text-highlighted dark:border-white/[0.12]"
+                            >
+                              {{ formatCheckedInTimestamp(applicant.application) }}
+                            </span>
+                            <AppBadge
+                              v-if="applicant.hasFuzzyMatch"
+                              color="warning"
+                              variant="soft"
+                            >
+                              Fuzzy teammate match
+                            </AppBadge>
+                          </div>
+                        </div>
                       </div>
+
+                      <button
+                        v-if="shouldShowHeaderWithdrawAction(applicant.application)"
+                        type="button"
+                        :data-testid="`admin-application-withdraw-${applicant.application.id}`"
+                        :class="`${getDecisionButtonClass('withdraw', false)} shrink-0 sm:min-w-[9rem] sm:w-auto`"
+                        :disabled="!getAdminWithdrawalAvailability(applicant.application).isAllowed || (pendingActionKey !== null && pendingActionKey !== `withdraw:${applicant.application.id}`)"
+                        @click="emit('withdraw', applicant.application)"
+                      >
+                        <span>Withdraw</span>
+                        <AppIcon
+                          v-if="pendingActionKey === `withdraw:${applicant.application.id}`"
+                          name="i-lucide-loader-circle"
+                          class="size-4 animate-spin"
+                        />
+                        <AppIcon
+                          v-else
+                          name="i-lucide-undo-2"
+                          class="size-4"
+                        />
+                      </button>
                     </div>
 
-                    <div class="flex flex-wrap gap-2 text-xs text-muted">
-                      <AppBadge
-                        v-if="applicant.application.status === 'approved'"
-                        :color="getApplicationStatusColor(applicant.application.status)"
-                        variant="soft"
-                      >
-                        Approved
-                      </AppBadge>
-                      <AppBadge
-                        v-if="showApprovedAttendance && applicant.application.status === 'approved'"
-                        :data-testid="`admin-application-attendance-badge-${applicant.application.id}`"
-                        :color="getApplicationAttendanceStatusColor(applicant.application)"
-                        variant="soft"
-                      >
-                        {{ formatApplicationAttendanceStatus(applicant.application) }}
-                      </AppBadge>
-                      <AppBadge
-                        v-if="applicant.application.status === 'rejected'"
-                        :color="getApplicationStatusColor(applicant.application.status)"
-                        variant="soft"
-                      >
-                        Rejected
-                      </AppBadge>
-                      <AppBadge
-                        v-if="applicant.application.status === 'withdrawn'"
-                        :color="getApplicationStatusColor(applicant.application.status)"
-                        variant="soft"
-                      >
-                        Withdrawn
-                      </AppBadge>
-                      <AppBadge
-                        v-if="shouldShowApplicationLumaSyncStatus(applicant.application)"
-                        :color="getApplicationLumaSyncStatusColor(applicant.application.lumaSyncStatus)"
-                        variant="soft"
-                      >
-                        {{ formatApplicationLumaSyncStatus(applicant.application.lumaSyncStatus) }}
-                      </AppBadge>
-                      <span
-                        v-if="applicant.application.status === 'withdrawn' && formatWithdrawalTimestamp(applicant.application)"
-                        class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
-                      >
-                        {{ formatWithdrawalTimestamp(applicant.application) }}
-                      </span>
-                      <span
-                        v-if="showApprovedAttendance && applicant.application.status === 'approved' && formatCheckedInTimestamp(applicant.application)"
-                        :data-testid="`admin-application-checked-in-at-${applicant.application.id}`"
-                        class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
-                      >
-                        {{ formatCheckedInTimestamp(applicant.application) }}
-                      </span>
-                      <AppBadge
-                        v-if="applicant.hasFuzzyMatch"
-                        color="warning"
-                        variant="soft"
-                      >
-                        Fuzzy teammate match
-                      </AppBadge>
+                    <div
+                      v-if="shouldShowApplicantMetadata(applicant)"
+                      class="flex flex-wrap gap-2 text-xs text-muted"
+                    >
                       <span
                         v-if="applicant.application.user?.lumaEmail"
                         class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
@@ -775,6 +818,20 @@ const emptyState = computed(() => {
                         />
                       </a>
                     </div>
+
+                    <AppAlert
+                      v-if="shouldShowHeaderWithdrawAction(applicant.application) && getAdminWithdrawalAvailability(applicant.application).warning"
+                      color="warning"
+                      variant="soft"
+                      title="This withdrawal will dismantle the team"
+                      :description="getAdminWithdrawalAvailability(applicant.application).warning ?? ''"
+                    />
+                    <p
+                      v-else-if="shouldShowHeaderWithdrawAction(applicant.application) && getAdminWithdrawalAvailability(applicant.application).reason"
+                      class="text-xs leading-5 text-muted"
+                    >
+                      {{ getAdminWithdrawalAvailability(applicant.application).reason }}
+                    </p>
                   </div>
 
                   <div
@@ -844,7 +901,7 @@ const emptyState = computed(() => {
                 </div>
 
                 <div
-                  v-if="!readOnly && shouldShowWithdrawAction(applicant.application)"
+                  v-if="!readOnly && shouldShowWithdrawAction(applicant.application) && !shouldShowHeaderWithdrawAction(applicant.application)"
                   class="grid gap-2 self-center xl:pl-2"
                 >
                   <AppAlert
