@@ -495,7 +495,6 @@ export function useTeamFormationWorkspace(
     bio: string
     isOpenToJoinRequests: boolean
     workspaceMode: 'solo' | 'team'
-    replaceOwnSoloTeam?: boolean
   }) {
     if (!visibleHackathonId.value) {
       mutationError.value = 'The current hackathon team route could not be resolved.'

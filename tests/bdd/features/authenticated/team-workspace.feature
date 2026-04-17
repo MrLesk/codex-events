@@ -9,7 +9,7 @@ Feature: Participant team workspace in the account hackathon page
     When I participate as solo from the participant workspace
     Then I should see the participant current team "Team Regular User"
     And I should see the participant team text "Solo Team"
-    And I should see the participant team text "You are participating as solo. Leave the team to join other teams."
+    And I should see the participant team text "You are participating as solo. Leave the team before creating or joining another team."
     And the participant join requests panel should not be visible
 
   Scenario: Regular user starts from the no-team workspace and creates a team
@@ -71,6 +71,7 @@ Feature: Participant team workspace in the account hackathon page
     When I open the participant Team tab for hackathon slug "participant-team-solo-fixture-hackathon" with the saved "regular_user" session
     Then I should see the participant current team "Solo Admin Team"
     And I should see the participant team text "Solo Team"
-    And I should see the participant team text "You are participating as solo. Leave the team to join other teams."
+    And I should see the participant team text "You are participating as solo. Leave the team before creating or joining another team."
+    And I should not see the account workspace heading "Create a team"
     And I should not see the participant workspace text "Closed to join requests"
     And the participant team action "Leave team" should be visible

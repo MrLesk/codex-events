@@ -8,7 +8,6 @@ import {
   getJoinTeamAvailability,
   getLeaveTeamAvailability,
   getMemberRemovalAvailability,
-  getReplaceSoloTeamAvailability,
   getTeamFormationAvailability,
   getTeamJoinRequestStatusColor,
   getUpdateJoinPolicyAvailability,
@@ -77,12 +76,6 @@ describe('team workspace helpers', () => {
     }, 'approved', true)).toEqual({
       isAllowed: false,
       reason: 'You already belong to a team in this hackathon.'
-    })
-
-    expect(getReplaceSoloTeamAvailability({
-      state: 'submission_open'
-    }, 'approved', true)).toEqual({
-      isAllowed: true
     })
 
     expect(getUpdateJoinPolicyAvailability({

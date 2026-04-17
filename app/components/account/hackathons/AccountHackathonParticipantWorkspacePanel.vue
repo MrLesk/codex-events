@@ -15,7 +15,6 @@ import {
   getCreateTeamAvailability,
   getLeaveTeamAvailability,
   getMemberRemovalAvailability,
-  getReplaceSoloTeamAvailability,
   getTeamFormationAvailability,
   getUpdateJoinPolicyAvailability,
   hasTeamReachedMemberLimit
@@ -76,7 +75,6 @@ const displayedTeamMembership = computed(() =>
   workspace.currentTeamMembership.value ?? workspace.ownTeamMembership.value
 )
 const canManageTeam = computed(() => workspace.isCurrentTeamAdmin.value)
-const isSoloWorkspace = computed(() => displayedTeam.value?.workspaceMode === 'solo')
 const defaultSoloTeamName = computed(() => {
   if (actor.value?.kind !== 'platform_user') {
     return 'Team Solo'
@@ -105,9 +103,6 @@ const teamFormationAvailability = computed(() =>
 )
 const createTeamAvailability = computed(() =>
   getCreateTeamAvailability(props.hackathon, ownApplicationStatus.value, Boolean(workspace.ownTeam.value))
-)
-const replaceSoloTeamAvailability = computed(() =>
-  getReplaceSoloTeamAvailability(props.hackathon, ownApplicationStatus.value, isSoloWorkspace.value)
 )
 const joinPolicyAvailability = computed(() =>
   getUpdateJoinPolicyAvailability(props.hackathon, canManageTeam.value)
@@ -284,8 +279,7 @@ async function submitCreateTeamForm() {
     name: createTeamForm.name,
     bio: createTeamForm.bio,
     isOpenToJoinRequests: createTeamForm.isOpenToJoinRequests,
-    workspaceMode: 'team',
-    replaceOwnSoloTeam: isSoloWorkspace.value
+    workspaceMode: 'team'
   })
 
   if (!createdTeam) {
@@ -300,9 +294,7 @@ async function submitCreateTeamForm() {
 
   toast.add({
     title: 'Team created',
-    description: isSoloWorkspace.value
-      ? 'Your solo workspace was replaced with the new team.'
-      : 'Your team workspace is ready.',
+    description: 'Your team workspace is ready.',
     color: 'success'
   })
 }
@@ -580,100 +572,6 @@ async function withdrawSubmission() {
             @approve-request="approveJoinRequest"
             @reject-request="rejectJoinRequest"
           />
-
-          <AppCard
-            v-if="isSoloWorkspace"
-            class="rounded-xl hackathon-workspace-detail-panel"
-            :ui="{ body: 'p-5' }"
-          >
-            <div class="space-y-4">
-              <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-                <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                  Create a team
-                </h2>
-                <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                  Promote your solo workspace into a regular team. This replaces the solo team and keeps you as the new team admin.
-                </p>
-              </div>
-
-              <p
-                v-if="!replaceSoloTeamAvailability.isAllowed && replaceSoloTeamAvailability.reason"
-                class="text-sm text-muted"
-              >
-                {{ replaceSoloTeamAvailability.reason }}
-              </p>
-
-              <form
-                class="grid gap-4"
-                @submit.prevent="submitCreateTeamForm"
-              >
-                <AppFormField
-                  label="Team name"
-                  name="participant-create-team-name"
-                >
-                  <AppInput
-                    id="participant-create-team-name"
-                    v-model="createTeamForm.name"
-                    name="participant-create-team-name"
-                    size="xl"
-                    :class="createTeamSubmitCount > 0 && createTeamErrors.name ? 'border-error/45 focus:border-error dark:border-error/50' : ''"
-                    :disabled="workspace.pendingActionKey.value === 'create-team'"
-                  />
-                  <p
-                    v-if="createTeamSubmitCount > 0 && createTeamErrors.name"
-                    class="text-xs text-error"
-                  >
-                    {{ createTeamErrors.name }}
-                  </p>
-                </AppFormField>
-
-                <AppFormField
-                  label="Team bio"
-                  name="participant-create-team-bio"
-                >
-                  <AppTextarea
-                    id="participant-create-team-bio"
-                    v-model="createTeamForm.bio"
-                    name="participant-create-team-bio"
-                    rows="4"
-                    :class="createTeamSubmitCount > 0 && createTeamErrors.bio ? 'border-error/45 focus:border-error dark:border-error/50' : 'focus:border-primary'"
-                    :disabled="workspace.pendingActionKey.value === 'create-team'"
-                  />
-                  <p
-                    v-if="createTeamSubmitCount > 0 && createTeamErrors.bio"
-                    class="text-xs text-error"
-                  >
-                    {{ createTeamErrors.bio }}
-                  </p>
-                </AppFormField>
-
-                <div class="flex items-center gap-3">
-                  <UiSwitch
-                    id="participant-create-team-open"
-                    v-model="createTeamForm.isOpenToJoinRequests"
-                    :disabled="workspace.pendingActionKey.value === 'create-team'"
-                  />
-                  <label
-                    for="participant-create-team-open"
-                    class="text-sm font-medium text-toned"
-                  >
-                    {{ createTeamForm.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
-                  </label>
-                </div>
-
-                <div>
-                  <AppButton
-                    type="submit"
-                    color="primary"
-                    :loading="workspace.pendingActionKey.value === 'create-team'"
-                    :disabled="!replaceSoloTeamAvailability.isAllowed || workspace.pendingActionKey.value === 'create-team'"
-                  >
-                    Create team
-                  </AppButton>
-                </div>
-              </form>
-            </div>
-          </AppCard>
         </template>
 
         <section

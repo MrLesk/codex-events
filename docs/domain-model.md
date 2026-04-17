@@ -221,7 +221,7 @@ Rules:
 - The user who creates a team becomes a team admin automatically.
 - An approved participant without an active team uses a no-team workspace that offers explicit actions to participate as solo or create a team.
 - Participating as solo creates a persisted one-member team in solo workspace mode using the default solo team name for that participant.
-- Creating a regular team from a solo workspace replaces the previous solo team membership with a new team-admin membership on the newly created regular team.
+- A participant in a solo workspace must leave that solo team before creating or joining another team.
 - A team in solo workspace mode remains a normal team for invariants, submissions, and join requests.
 - A solo workspace becomes a regular team workspace once the team gains another active member.
 - Every active team must always have at least one active team admin.

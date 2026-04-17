@@ -51,8 +51,7 @@ export const createTeamBodySchema = z.object({
   name: teamNameSchema,
   bio: teamBioSchema.optional(),
   workspaceMode: z.enum(teamWorkspaceModes).default('team'),
-  isOpenToJoinRequests: z.coerce.boolean().default(true),
-  replaceOwnSoloTeam: z.coerce.boolean().default(false)
+  isOpenToJoinRequests: z.coerce.boolean().default(true)
 })
 
 export const updateTeamBodySchema = z.object({

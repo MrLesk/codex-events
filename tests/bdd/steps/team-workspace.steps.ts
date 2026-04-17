@@ -503,6 +503,13 @@ Then('the selected participant team action {string} should be visible', async ({
   })).toBeVisible()
 })
 
+Then('I should not see the account workspace heading {string}', async ({ page }, heading: string) => {
+  await expect(page.getByTestId('account-hackathon-workspace-panel').getByRole('heading', {
+    name: heading,
+    exact: true
+  })).toHaveCount(0)
+})
+
 Then('the participant team action {string} should not be visible', async ({ page }, actionName: string) => {
   await expect(page.getByRole('button', {
     name: actionName
