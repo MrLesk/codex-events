@@ -16,6 +16,7 @@ import {
   listAllPaginatedItems,
   buildAdminWorkspaceCacheKey,
   canMutateRoleAssignments,
+  countActiveAdminOperationalTeams,
   createEmptyHackathonFormState,
   createHackathonFormState,
   createHackathonSlug,
@@ -1417,6 +1418,74 @@ describe('admin-workspace operational helpers', () => {
       disqualifiedTeams: 0,
       outTeams: 1
     })
+  })
+
+  test('counts only operational teams with active members for submission progress denominators', () => {
+    const operationalTeams = buildAdminOperationalTeams(
+      [
+        createTeamSummary({
+          id: 'team-active-submitted',
+          name: 'Active Submitted Team',
+          slug: 'active-submitted-team',
+          createdByUserId: 'user-active-submitted',
+          activeMemberCount: 3
+        }),
+        createTeamSummary({
+          id: 'team-active-draft',
+          name: 'Active Draft Team',
+          slug: 'active-draft-team',
+          createdByUserId: 'user-active-draft',
+          activeMemberCount: 2
+        }),
+        createTeamSummary({
+          id: 'team-dissolved-withdrawn',
+          name: 'Dissolved Withdrawn Team',
+          slug: 'dissolved-withdrawn-team',
+          createdByUserId: 'user-dissolved',
+          activeMemberCount: 0
+        })
+      ],
+      {
+        teamDetails: [
+          createTeamDetail({
+            id: 'team-active-submitted',
+            name: 'Active Submitted Team',
+            slug: 'active-submitted-team'
+          }),
+          createTeamDetail({
+            id: 'team-active-draft',
+            name: 'Active Draft Team',
+            slug: 'active-draft-team'
+          }),
+          createTeamDetail({
+            id: 'team-dissolved-withdrawn',
+            name: 'Dissolved Withdrawn Team',
+            slug: 'dissolved-withdrawn-team',
+            activeMemberCount: 0,
+            members: []
+          })
+        ],
+        submissions: [
+          createSubmission({
+            id: 'submission-active-submitted',
+            teamId: 'team-active-submitted',
+            status: 'submitted'
+          }),
+          createSubmission({
+            id: 'submission-active-draft',
+            teamId: 'team-active-draft',
+            status: 'draft'
+          }),
+          createSubmission({
+            id: 'submission-dissolved-withdrawn',
+            teamId: 'team-dissolved-withdrawn',
+            status: 'withdrawn'
+          })
+        ]
+      }
+    )
+
+    expect(countActiveAdminOperationalTeams(operationalTeams)).toBe(2)
   })
 
   test('sorts and filters submission monitor rows by metadata only', () => {

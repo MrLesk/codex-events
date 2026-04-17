@@ -17,6 +17,7 @@ import type { PrizeRedemptionAdminView, PrizeRedemptionRecord } from '~/utils/pr
 
 import {
   buildAdminOperationalTeams,
+  countActiveAdminOperationalTeams,
   filterAdminOperationalTeams,
   getCurrentLifecycleControl,
   getAdminSubmissionDashboardMetrics,
@@ -481,6 +482,9 @@ const soloTeamValue = computed(() =>
 const multiPersonTeamValue = computed(() =>
   formatLoadMetricValue(teamDataStatus.value, `${multiPersonTeamCount.value}`)
 )
+const activeSubmissionTeamCount = computed(() =>
+  countActiveAdminOperationalTeams(submissionOperationalTeams.value)
+)
 
 const submittedSubmissionCount = computed(() =>
   Math.max(allTeams.value.length - noSubmissionTeams.value.length, 0)
@@ -497,7 +501,7 @@ const draftSubmissionValue = computed(() =>
 const submittedSubmissionValue = computed(() =>
   formatLoadMetricValue(
     combineLoadStatuses([teamDataStatus.value, noSubmissionStatus.value]),
-    `${submittedSubmissionCount.value} / ${allTeams.value.length}`
+    `${submittedSubmissionCount.value} / ${activeSubmissionTeamCount.value}`
   )
 )
 
