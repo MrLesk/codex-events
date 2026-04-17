@@ -24,6 +24,7 @@ import {
   formatApplicationLumaSyncStatus,
   formatApplicationStatus,
   formatAdminJudgeAssignmentStatus,
+  formatApprovedParticipantRegistrationSummary,
   formatSubmissionStatus,
   filterAdminOperationalTeams,
   filterManageableHackathons,
@@ -37,6 +38,7 @@ import {
   getApprovedParticipantAttendanceSummary,
   hasHackathonJudgingAccess,
   hasHackathonParticipantVisibilityAccess,
+  getParticipantApplicationStatusSummary,
   getNextAgendaItemDefaultTimes,
   getAdminSubmissionInterventionPolicy,
   getApplicationLumaSyncStatusColor,
@@ -1058,6 +1060,31 @@ describe('admin-workspace operational helpers', () => {
       checkedInCount: 1,
       value: '1 / 2'
     })
+  })
+
+  test('summarizes participant application counts across all visible statuses', () => {
+    expect(getParticipantApplicationStatusSummary([
+      createApplication({ status: 'submitted' }),
+      createApplication({ status: 'approved' }),
+      createApplication({ status: 'approved' }),
+      createApplication({ status: 'rejected' }),
+      createApplication({ status: 'withdrawn' })
+    ])).toEqual({
+      totalCount: 5,
+      submittedCount: 1,
+      approvedCount: 2,
+      rejectedCount: 1,
+      withdrawnCount: 1
+    })
+  })
+
+  test('formats approved participants relative to total registrations', () => {
+    expect(formatApprovedParticipantRegistrationSummary([
+      createApplication({ status: 'submitted' }),
+      createApplication({ status: 'approved' }),
+      createApplication({ status: 'approved' }),
+      createApplication({ status: 'rejected' })
+    ])).toBe('2 / 4')
   })
 
   test('shows attendance summary only when Luma email is required and an event API ID is configured', () => {

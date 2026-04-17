@@ -18,13 +18,11 @@ import type { PrizeRedemptionAdminView, PrizeRedemptionRecord } from '~/utils/pr
 import {
   buildAdminOperationalTeams,
   filterAdminOperationalTeams,
-  getApprovedParticipantAttendanceSummary,
   getCurrentLifecycleControl,
   getAdminSubmissionDashboardMetrics,
   getHackathonOperationsPhase,
   formatHackathonState,
   getHackathonStateColor,
-  getParticipantsLimitSummary,
   shouldShowApprovedParticipantAttendanceSummary,
   sortAdminOperationalTeamsForSubmissionDashboard,
   normalizeApiError
@@ -32,7 +30,6 @@ import {
 import { formatTimestamp } from '~/utils/date-formatting'
 
 type AccountHackathonAdminOperationsSection = 'participants' | 'submissions' | 'operations'
-type AccountHackathonParticipantView = 'applications' | 'approved' | 'rejected' | 'withdrawn'
 type LifecycleMetricCard = {
   key: string
   label: string
@@ -116,7 +113,6 @@ type PitchLineupEntry = {
 
 const mutationError = ref('')
 const pendingActionKey = ref<string | null>(null)
-const participantView = ref<AccountHackathonParticipantView>('applications')
 const showParticipantsSection = computed(() => section.value === 'participants')
 const showSubmissionsSection = computed(() => section.value === 'submissions')
 const showLifecycleSection = computed(() => section.value === 'operations')
@@ -236,63 +232,8 @@ async function loadApplications() {
     )
   }
 }
-
-function formatParticipantMetricValue(value: number) {
-  if (applicationsStatus.value === 'idle' || applicationsStatus.value === 'pending') {
-    return 'Loading...'
-  }
-
-  if (applicationsStatus.value === 'error') {
-    return 'Unavailable'
-  }
-
-  return `${value}`
-}
-
-const submittedParticipantSummaryValue = computed(() =>
-  formatParticipantMetricValue(
-    applications.value.filter(application => application.status === 'submitted').length
-  )
-)
-
-const approvedParticipantSummaryValue = computed(() =>
-  formatParticipantMetricValue(
-    applications.value.filter(application => application.status === 'approved').length
-  )
-)
-
-const checkedInParticipantSummaryValue = computed(() => {
-  if (applicationsStatus.value === 'idle' || applicationsStatus.value === 'pending') {
-    return 'Loading...'
-  }
-
-  if (applicationsStatus.value === 'error') {
-    return 'Unavailable'
-  }
-
-  return getApprovedParticipantAttendanceSummary(applications.value).value
-})
 const showCheckedInParticipantSummary = computed(() =>
   shouldShowApprovedParticipantAttendanceSummary(currentHackathon.value)
-)
-
-const rejectedParticipantSummaryValue = computed(() =>
-  formatParticipantMetricValue(
-    applications.value.filter(application => application.status === 'rejected').length
-  )
-)
-
-const withdrawnParticipantSummaryValue = computed(() =>
-  formatParticipantMetricValue(
-    applications.value.filter(application => application.status === 'withdrawn').length
-  )
-)
-
-const participantsLimitSummary = computed(() =>
-  getParticipantsLimitSummary(
-    applications.value,
-    currentHackathon.value?.participantsLimit ?? null
-  )
 )
 
 const lifecycleMetrics = computed(() => {
@@ -1766,10 +1707,6 @@ async function runLifecycleAction() {
     }
   )
 }
-
-function selectParticipantView(nextView: AccountHackathonParticipantView) {
-  participantView.value = nextView
-}
 </script>
 
 <template>
@@ -2110,131 +2047,14 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
         v-if="showParticipantsSection"
         class="space-y-4"
       >
-        <div
-          class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4"
-          :class="participantsLimitSummary && showCheckedInParticipantSummary ? 'xl:grid-cols-5' : ''"
-        >
-          <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Awaiting review
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ submittedParticipantSummaryValue }}
-            </p>
-          </div>
-
-          <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Approved
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ approvedParticipantSummaryValue }}
-            </p>
-          </div>
-
-          <div
-            v-if="showCheckedInParticipantSummary"
-            class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5"
-          >
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Checked in
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ checkedInParticipantSummaryValue }}
-            </p>
-            <p class="mt-1 text-xs text-muted">
-              Of approved participants
-            </p>
-          </div>
-
-          <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Rejected
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ rejectedParticipantSummaryValue }}
-            </p>
-          </div>
-
-          <div
-            v-if="participantsLimitSummary"
-            class="col-span-2 rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:col-span-4 sm:px-5 sm:py-5 xl:col-span-1"
-          >
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              Participants limit
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ participantsLimitSummary.participantsLimit }}
-            </p>
-          </div>
-        </div>
-
-        <div class="hackathon-workspace-detail-inset flex flex-col gap-4 rounded-xl p-2">
-          <div class="flex min-w-0 flex-wrap items-center gap-2">
-            <button
-              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-              :class="participantView === 'applications' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
-              @click="selectParticipantView('applications')"
-            >
-              <span>New</span>
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-                :class="participantView === 'applications' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-              >
-                {{ submittedParticipantSummaryValue }}
-              </span>
-            </button>
-            <button
-              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-              :class="participantView === 'approved' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
-              @click="selectParticipantView('approved')"
-            >
-              <span>Approved</span>
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-                :class="participantView === 'approved' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-              >
-                {{ approvedParticipantSummaryValue }}
-              </span>
-            </button>
-            <button
-              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-              :class="participantView === 'rejected' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
-              @click="selectParticipantView('rejected')"
-            >
-              <span>Rejected</span>
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-                :class="participantView === 'rejected' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-              >
-                {{ rejectedParticipantSummaryValue }}
-              </span>
-            </button>
-            <button
-              class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-              :class="participantView === 'withdrawn' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
-              @click="selectParticipantView('withdrawn')"
-            >
-              <span>Withdrawn</span>
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-                :class="participantView === 'withdrawn' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
-              >
-                {{ withdrawnParticipantSummaryValue }}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        <AdminApplicationsReviewPanel
+        <AccountHackathonParticipantsPanel
           :hackathon-id="hackathonId"
           :applications="applications"
-          :view="participantView"
           :is-loading="applicationsStatus === 'pending'"
           :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
           :pending-action-key="pendingActionKey"
-          search-enabled
           :show-attendance="showCheckedInParticipantSummary"
+          :participants-limit="currentHackathon.participantsLimit ?? null"
           @approve="approveApplication"
           @approve-team="approveApplicationGroup"
           @reject="rejectApplication"

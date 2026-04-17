@@ -921,6 +921,30 @@ export function getApprovedParticipantAttendanceSummary(
   }
 }
 
+export function getParticipantApplicationStatusSummary(
+  applications: Array<Pick<AdminApplicationRecord, 'status'>>
+) {
+  const submittedCount = applications.filter(application => application.status === 'submitted').length
+  const approvedCount = applications.filter(application => application.status === 'approved').length
+  const rejectedCount = applications.filter(application => application.status === 'rejected').length
+  const withdrawnCount = applications.filter(application => application.status === 'withdrawn').length
+
+  return {
+    totalCount: applications.length,
+    submittedCount,
+    approvedCount,
+    rejectedCount,
+    withdrawnCount
+  }
+}
+
+export function formatApprovedParticipantRegistrationSummary(
+  applications: Array<Pick<AdminApplicationRecord, 'status'>>
+) {
+  const summary = getParticipantApplicationStatusSummary(applications)
+  return `${summary.approvedCount} / ${summary.totalCount}`
+}
+
 export function formatSubmissionStatus(status: AdminSubmissionStatus) {
   return status === 'none' ? 'No record' : startCase(status)
 }
