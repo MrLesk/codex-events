@@ -113,6 +113,8 @@ export function useShellNavigation() {
   const hasPlatformAccount = computed(() => actor.value.kind === 'platform_user')
   const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
     && (actor.value.isPlatformAdmin || actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin')))
+  const hasStaffAccess = computed(() => actor.value.kind === 'platform_user'
+    && actor.value.hackathonRoles.some(role => isHackathonRoleStaffEnabled(role)))
   const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
     && actor.value.hackathonRoles.some(role => isHackathonRoleJudgingEnabled(role)))
   const accountHackathonNavigationMode = computed(() =>
@@ -192,6 +194,16 @@ export function useShellNavigation() {
       })
     }
 
+    if (hasStaffAccess.value) {
+      items.push({
+        id: 'staff-dashboard',
+        label: 'Staff dashboard',
+        description: 'Hackathons where you support staff operations',
+        to: '/account/staff',
+        icon: 'i-lucide-users'
+      })
+    }
+
     if (hasAdminAccess.value) {
       items.push({
         id: 'admin-dashboard',
@@ -212,6 +224,7 @@ export function useShellNavigation() {
     actor,
     hasAdminAccess,
     hasJudgeAccess,
+    hasStaffAccess,
     hasPlatformAccount,
     hasPrizeRecipientAccess,
     isResolvingActor,

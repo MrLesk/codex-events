@@ -32,6 +32,11 @@ export interface AccountHackathonTabAccess {
   showAgendaConfigurationInDetails: boolean
 }
 
+export interface AccountHackathonWorkspaceBackLink {
+  to: string
+  label: string
+}
+
 const defaultAccountHackathonTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
   overview: 'Overview',
   credits: 'Credits',
@@ -79,6 +84,30 @@ export function resolveAccountHackathonScopedId(options: {
 }) {
   const accessRecordId = options.accessRecordId?.trim() ?? ''
   return accessRecordId.length > 0 ? accessRecordId : options.hackathonId.trim()
+}
+
+export function getAccountHackathonWorkspaceBackLink(options: {
+  canManage: boolean
+  canViewParticipantsAndTeams: boolean
+}): AccountHackathonWorkspaceBackLink {
+  if (options.canManage) {
+    return {
+      to: '/account/admin',
+      label: 'Back to Admin dashboard'
+    }
+  }
+
+  if (options.canViewParticipantsAndTeams) {
+    return {
+      to: '/account/staff',
+      label: 'Back to Staff dashboard'
+    }
+  }
+
+  return {
+    to: '/account',
+    label: 'Back to my hackathons'
+  }
 }
 
 export function getAccountHackathonTabAccess(

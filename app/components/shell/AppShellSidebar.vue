@@ -11,7 +11,7 @@ import type { ShellNavigationGroup } from '~/composables/useShellNavigation'
 
 const props = defineProps<{
   groups: ShellNavigationGroup[]
-  accountHackathonNavigationMode?: 'participant' | 'admin'
+  accountHackathonNavigationMode?: 'participant' | 'staff' | 'admin'
 }>()
 
 const isSidebarCollapsed = useState<boolean>(appShellSidebarCollapsedStateKey, () => false)

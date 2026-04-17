@@ -5,7 +5,7 @@ import { isShellNavigationLinkActive } from '~/utils/shell-navigation'
 const props = defineProps<{
   groups: ShellNavigationGroup[]
   collapsed?: boolean
-  accountHackathonNavigationMode?: 'participant' | 'admin'
+  accountHackathonNavigationMode?: 'participant' | 'staff' | 'admin'
 }>()
 
 const route = useRoute()

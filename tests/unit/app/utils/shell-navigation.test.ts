@@ -10,6 +10,7 @@ describe('isShellNavigationLinkActive', () => {
     expect(isShellNavigationLinkActive('/account', undefined, '/account')).toBe(true)
     expect(isShellNavigationLinkActive('/account/settings', undefined, '/account')).toBe(false)
     expect(isShellNavigationLinkActive('/account/admin', undefined, '/account')).toBe(false)
+    expect(isShellNavigationLinkActive('/account/staff', undefined, '/account')).toBe(false)
     expect(isShellNavigationLinkActive('/account/judging', undefined, '/account')).toBe(false)
   })
 
@@ -32,18 +33,21 @@ describe('isShellNavigationLinkActive', () => {
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'operations', '/account/admin')).toBe(true)
   })
 
-  test('keeps participant navigation active for staff-only visibility tabs', () => {
+  test('keeps the staff dashboard active for staff-accessible hackathon detail routes', () => {
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'participants', '/account/staff', {
+      accountHackathonNavigationMode: 'staff'
+    })).toBe(true)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'teams', '/account/staff', {
+      accountHackathonNavigationMode: 'staff'
+    })).toBe(true)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'details', '/account/staff', {
+      accountHackathonNavigationMode: 'staff'
+    })).toBe(true)
+    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'judging', '/account/staff', {
+      accountHackathonNavigationMode: 'staff'
+    })).toBe(false)
     expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'participants', '/account', {
-      accountHackathonNavigationMode: 'participant'
-    })).toBe(true)
-    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'workspace', '/account', {
-      accountHackathonNavigationMode: 'participant'
-    })).toBe(true)
-    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'teams', '/account', {
-      accountHackathonNavigationMode: 'participant'
-    })).toBe(true)
-    expect(isShellNavigationLinkActive('/account/hackathons/berlin', 'participants', '/account/admin', {
-      accountHackathonNavigationMode: 'participant'
+      accountHackathonNavigationMode: 'staff'
     })).toBe(false)
   })
 
@@ -71,6 +75,7 @@ describe('isShellNavigationLinkActive', () => {
   test('keeps exact dashboard roots active for their own pages', () => {
     expect(isShellNavigationLinkActive('/account/judging', undefined, '/account/judging')).toBe(true)
     expect(isShellNavigationLinkActive('/account/admin', undefined, '/account/admin')).toBe(true)
+    expect(isShellNavigationLinkActive('/account/staff', undefined, '/account/staff')).toBe(true)
     expect(isShellNavigationLinkActive('/account/platform-admins', undefined, '/account/admin')).toBe(true)
     expect(isShellNavigationLinkActive('/account/settings', undefined, '/account/settings')).toBe(true)
   })
@@ -93,6 +98,33 @@ describe('isShellNavigationLinkActive', () => {
         hackathonRoles: [{
           hackathonId: 'hackathon-1',
           role: 'hackathon_admin'
+        }]
+      } as never,
+      currentHackathonId: 'hackathon-1',
+      currentPath: '/account/hackathons/berlin'
+    })).toBe('admin')
+
+    expect(resolveShellAccountHackathonNavigationMode({
+      actor: {
+        kind: 'platform_user',
+        isPlatformAdmin: false,
+        hackathonRoles: [{
+          hackathonId: 'hackathon-1',
+          role: 'staff'
+        }]
+      } as never,
+      currentHackathonId: 'hackathon-1',
+      currentPath: '/account/hackathons/berlin'
+    })).toBe('staff')
+
+    expect(resolveShellAccountHackathonNavigationMode({
+      actor: {
+        kind: 'platform_user',
+        isPlatformAdmin: false,
+        hackathonRoles: [{
+          hackathonId: 'hackathon-1',
+          role: 'hackathon_admin',
+          isStaff: true
         }]
       } as never,
       currentHackathonId: 'hackathon-1',

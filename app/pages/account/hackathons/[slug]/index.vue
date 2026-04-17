@@ -38,6 +38,7 @@ import {
 } from '~/utils/admin-workspace'
 import {
   canAccessAccountHackathonWorkspace,
+  getAccountHackathonWorkspaceBackLink,
   getAccountHackathonTabAccess,
   getAccountHackathonTabLabel,
   resolveAccountHackathonScopedId,
@@ -250,15 +251,10 @@ if (!canAccessAccountHackathonWorkspace({
   })
 }
 
-const workspaceBackLink = computed(() => canAdmin.value
-  ? {
-      to: '/account/admin',
-      label: 'Back to Admin dashboard'
-    }
-  : {
-      to: '/account',
-      label: 'Back to my hackathons'
-    })
+const workspaceBackLink = computed(() => getAccountHackathonWorkspaceBackLink({
+  canManage: canAdmin.value,
+  canViewParticipantsAndTeams: canViewParticipantsAndTeams.value
+}))
 const applicationStatus = computed(() =>
   participationRecord.value?.application?.status ?? accessRecord.value?.applicationStatus ?? null
 )

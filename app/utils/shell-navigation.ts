@@ -1,10 +1,11 @@
 import type { LocationQueryValue } from 'vue-router'
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 
+import { isHackathonRoleStaffEnabled } from './admin-workspace'
 import { normalizeTabQueryValue } from './tab-query'
 
 export interface ShellNavigationMatchOptions {
-  accountHackathonNavigationMode?: 'participant' | 'admin'
+  accountHackathonNavigationMode?: 'participant' | 'staff' | 'admin'
 }
 
 const accountHackathonAdminTabs = ['participants', 'submissions', 'operations', 'settings'] as const
@@ -17,7 +18,7 @@ export function resolveShellAccountHackathonNavigationMode(options: {
   actor: ResolvedSessionActor
   currentHackathonId?: string | null
   currentPath: string
-}): 'participant' | 'admin' {
+}): 'participant' | 'staff' | 'admin' {
   if (!isAccountHackathonDetailPath(options.currentPath) || options.actor.kind !== 'platform_user') {
     return 'participant'
   }
@@ -36,7 +37,12 @@ export function resolveShellAccountHackathonNavigationMode(options: {
     role.role === 'hackathon_admin' && role.hackathonId === currentHackathonId
   )
     ? 'admin'
-    : 'participant'
+    : options.actor.hackathonRoles.some(role =>
+      role.hackathonId === currentHackathonId
+      && isHackathonRoleStaffEnabled(role)
+    )
+      ? 'staff'
+      : 'participant'
 }
 
 export function isShellNavigationLinkActive(
@@ -52,6 +58,8 @@ export function isShellNavigationLinkActive(
   const normalizedTab = normalizeTabQueryValue(currentTab)
   const accountHackathonUsesAdminNavigation = isAccountHackathonDetailPath(currentPath)
     && options.accountHackathonNavigationMode === 'admin'
+  const accountHackathonUsesStaffNavigation = isAccountHackathonDetailPath(currentPath)
+    && options.accountHackathonNavigationMode === 'staff'
   const accountHackathonUsesParticipantNavigation = isAccountHackathonDetailPath(currentPath)
     && options.accountHackathonNavigationMode === 'participant'
 
@@ -68,11 +76,23 @@ export function isShellNavigationLinkActive(
       return false
     }
 
+    if (accountHackathonUsesStaffNavigation) {
+      return false
+    }
+
     if (accountHackathonUsesParticipantNavigation) {
       return normalizedTab !== 'judging'
     }
 
     return normalizedTab !== 'judging' && !accountHackathonAdminTabs.includes(normalizedTab as (typeof accountHackathonAdminTabs)[number])
+  }
+
+  if (targetPath === '/account/staff') {
+    return currentPath === '/account/staff'
+      || (isAccountHackathonDetailPath(currentPath)
+        && !accountHackathonUsesAdminNavigation
+        && accountHackathonUsesStaffNavigation
+        && normalizedTab !== 'judging')
   }
 
   if (targetPath === '/account/judging') {

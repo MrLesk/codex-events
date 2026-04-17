@@ -7,7 +7,10 @@ import {
   DropdownMenuTrigger
 } from '~/components/ui/dropdown-menu'
 import { authLogoutHref } from '~/utils/auth-navigation'
-import { isHackathonRoleJudgingEnabled } from '~/utils/admin-workspace'
+import {
+  isHackathonRoleJudgingEnabled,
+  isHackathonRoleStaffEnabled
+} from '~/utils/admin-workspace'
 
 const props = defineProps<{
   name?: string | null
@@ -20,6 +23,8 @@ const { actor } = useSessionActor()
 const displayName = computed(() => props.name?.trim() || 'Developer User')
 const displayEmail = computed(() => props.email?.trim() || 'Signed in')
 const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
+const hasStaffAccess = computed(() => actor.value.kind === 'platform_user'
+  && actor.value.hackathonRoles.some(role => isHackathonRoleStaffEnabled(role)))
 const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
   && actor.value.hackathonRoles.some(role => isHackathonRoleJudgingEnabled(role)))
 const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
@@ -86,6 +91,23 @@ const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
               class="size-4"
             />
             <span>Profile settings</span>
+          </NuxtLink>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          v-if="hasStaffAccess"
+          as-child
+          class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
+        >
+          <NuxtLink
+            to="/account/staff"
+            class="flex w-full items-center gap-2"
+          >
+            <AppIcon
+              name="i-lucide-users"
+              class="size-4"
+            />
+            <span>Staff dashboard</span>
           </NuxtLink>
         </DropdownMenuItem>
 

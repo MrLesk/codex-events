@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 
 import {
   canAccessAccountHackathonWorkspace,
+  getAccountHackathonWorkspaceBackLink,
   getAccountHackathonTabAccess,
   getAccountHackathonTabLabel,
   resolveAccountHackathonScopedId
@@ -134,6 +135,26 @@ describe('getAccountHackathonTabAccess', () => {
       accessRecordId: '',
       hackathonId: 'hackathon_draft_internal'
     })).toBe('hackathon_draft_internal')
+  })
+
+  test('routes non-admin staff back to the staff dashboard from the hackathon workspace', () => {
+    expect(getAccountHackathonWorkspaceBackLink({
+      canManage: false,
+      canViewParticipantsAndTeams: true
+    })).toEqual({
+      to: '/account/staff',
+      label: 'Back to Staff dashboard'
+    })
+  })
+
+  test('keeps the admin dashboard as the primary back-link when admin access is available', () => {
+    expect(getAccountHackathonWorkspaceBackLink({
+      canManage: true,
+      canViewParticipantsAndTeams: true
+    })).toEqual({
+      to: '/account/admin',
+      label: 'Back to Admin dashboard'
+    })
   })
 
   test('keeps participant workspace and teams tabs hidden when the actor has no participant access record', () => {
