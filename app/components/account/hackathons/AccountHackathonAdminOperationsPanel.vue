@@ -2234,7 +2234,7 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
           :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
           :pending-action-key="pendingActionKey"
           search-enabled
-          show-attendance
+          :show-attendance="showCheckedInParticipantSummary"
           @approve="approveApplication"
           @approve-team="approveApplicationGroup"
           @reject="rejectApplication"
