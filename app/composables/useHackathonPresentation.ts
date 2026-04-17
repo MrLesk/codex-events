@@ -223,10 +223,14 @@ function formatAgendaDayContext(value: Date) {
   return `${weekdayFormatter.format(value)}, ${compactDateFormatter.format(value)}`
 }
 
+function hasDistinctAgendaEnd(startsAt: Date, endsAt: Date | null): endsAt is Date {
+  return endsAt !== null && startsAt.getTime() !== endsAt.getTime()
+}
+
 function formatAgendaTimeLabel(startsAt: Date, endsAt: Date | null) {
   const startLabel = timeFormatter.format(startsAt)
 
-  if (!endsAt) {
+  if (!hasDistinctAgendaEnd(startsAt, endsAt)) {
     return startLabel
   }
 
@@ -240,7 +244,7 @@ function formatAgendaTimeLabel(startsAt: Date, endsAt: Date | null) {
 function getAgendaTimeLines(startsAt: Date, endsAt: Date | null) {
   const startLabel = timeFormatter.format(startsAt)
 
-  if (!endsAt) {
+  if (!hasDistinctAgendaEnd(startsAt, endsAt)) {
     return [startLabel]
   }
 

@@ -93,6 +93,20 @@ describe('public hackathon agenda presentation helpers', () => {
     })
   })
 
+  test('collapses equal agenda start and end times to a single label', () => {
+    expect(getAgendaItemPresentation({
+      startsAt: '2026-03-28T09:00:00',
+      endsAt: '2026-03-28T09:00:00'
+    }, false)).toEqual({
+      dayLabel: null,
+      dateLabel: null,
+      timeLabel: '09:00 AM',
+      timeLines: ['09:00 AM'],
+      timeFlowDirection: null,
+      metaLabel: '09:00 AM'
+    })
+  })
+
   test('returns the earliest agenda start when agenda items exist', () => {
     expect(getHackathonEarliestStartAt({
       agendaItems: [

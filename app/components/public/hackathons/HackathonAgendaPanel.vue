@@ -16,6 +16,8 @@ const agendaEntries = computed(() =>
     presentation: getAgendaItemPresentation(item, showAgendaDayContext.value)
   }))
 )
+
+const agendaTimeChipClasses = 'flex min-w-0 items-center justify-center rounded-full border border-black/8 bg-white/80 px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-600 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-[#C9C9C9]'
 </script>
 
 <template>
@@ -120,8 +122,41 @@ const agendaEntries = computed(() =>
               </div>
 
               <div
-                class="inline-flex shrink-0 items-center rounded-full border border-black/8 bg-white/78 px-3 py-1 text-[11px] font-medium text-neutral-600 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-[#C9C9C9]"
-                :class="item.presentation.dayLabel ? '' : 'lg:hidden'"
+                v-if="item.presentation.timeLines[1]"
+                class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 sm:hidden"
+                :title="item.presentation.metaLabel"
+              >
+                <div :class="agendaTimeChipClasses">
+                  <span class="truncate">
+                    {{ item.presentation.timeLines[0] }}
+                  </span>
+                </div>
+
+                <span
+                  class="inline-flex size-7 items-center justify-center rounded-full border border-black/8 bg-white/78 text-neutral-500 dark:border-white/[0.08] dark:bg-white/[0.04] dark:text-[#A3A3A3]"
+                  aria-hidden="true"
+                >
+                  <AppIcon
+                    name="i-lucide-arrow-right"
+                    class="size-3.5"
+                  />
+                </span>
+
+                <div :class="agendaTimeChipClasses">
+                  <span class="truncate">
+                    {{ item.presentation.timeLines[1] }}
+                  </span>
+                </div>
+              </div>
+
+              <div
+                :class="[
+                  agendaTimeChipClasses,
+                  'shrink-0',
+                  item.presentation.timeLines[1]
+                    ? 'hidden sm:inline-flex'
+                    : item.presentation.dayLabel ? 'inline-flex' : 'inline-flex lg:hidden'
+                ]"
                 :title="item.presentation.metaLabel"
               >
                 {{ item.presentation.timeLabel }}
