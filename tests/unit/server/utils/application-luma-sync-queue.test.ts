@@ -14,6 +14,7 @@ import {
 import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
+  lookupLumaEventGuestByEmail,
   processApplicationLumaSyncQueueBatch,
   processApplicationLumaSyncQueueMessage,
   recoverStaleApplicationLumaSyncMessages,
@@ -348,6 +349,84 @@ describe('application luma sync queue utilities', () => {
       guestId: 'gst-123',
       guestEmail: 'legacy-luma@example.com',
       lumaUserApiId: 'usr-123'
+    })
+  })
+
+  test('lookupLumaEventGuestByEmail returns found when the guest exists', async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/v1/event/get-guest') {
+        expect(url.searchParams.get('event_id')).toBe('evt-123')
+        expect(url.searchParams.get('id')).toBe('regular@example.com')
+
+        return createJsonResponse({
+          guest: {
+            id: 'gst-123',
+            user_email: 'regular@example.com'
+          }
+        })
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url.toString()}`)
+    })
+
+    await expect(lookupLumaEventGuestByEmail({
+      lumaEventApiId: 'evt-123',
+      lumaEmail: 'regular@example.com'
+    }, {
+      runtimeConfig: {
+        luma: {
+          apiKey: 'luma_test_key'
+        }
+      },
+      fetchImpl
+    })).resolves.toEqual({
+      status: 'found',
+      guestId: 'gst-123',
+      guestEmail: 'regular@example.com'
+    })
+  })
+
+  test('lookupLumaEventGuestByEmail returns not_found when no matching guest exists', async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/v1/event/get-guest') {
+        return createJsonResponse({
+          guest: null
+        })
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url.toString()}`)
+    })
+
+    await expect(lookupLumaEventGuestByEmail({
+      lumaEventApiId: 'evt-123',
+      lumaEmail: 'missing@example.com'
+    }, {
+      runtimeConfig: {
+        luma: {
+          apiKey: 'luma_test_key'
+        }
+      },
+      fetchImpl
+    })).resolves.toEqual({
+      status: 'not_found'
+    })
+  })
+
+  test('lookupLumaEventGuestByEmail returns lookup_failed when the lookup cannot be completed', async () => {
+    await expect(lookupLumaEventGuestByEmail({
+      lumaEventApiId: 'evt-123',
+      lumaEmail: 'regular@example.com'
+    }, {
+      runtimeConfig: {
+        luma: {}
+      }
+    })).resolves.toEqual({
+      status: 'lookup_failed',
+      reason: 'luma_api_key_missing'
     })
   })
 

@@ -559,6 +559,12 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
                   >
                     {{ profileFieldErrors[field.key] }}
                   </p>
+                  <p
+                    v-if="field.key === 'lumaEmail'"
+                    class="text-[11px] text-neutral-500 dark:text-[#8C8C8C]"
+                  >
+                    Luma registration is mandatory for this hackathon. Enter the email you used on the Luma event.
+                  </p>
                 </label>
               </div>
 

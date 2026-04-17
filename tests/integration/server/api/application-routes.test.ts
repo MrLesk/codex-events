@@ -527,6 +527,71 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
+  test('POST /api/hackathons/:hackathonId/applications rejects Luma emails that are not registered for the event', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      },
+      runtimeConfig: {
+        luma: {
+          apiKey: 'luma_test_key'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaEmail: true,
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
+    })
+
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/v1/event/get-guest') {
+        return new Response(JSON.stringify({
+          guest: null
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url.toString()}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'luma_registration_required',
+        message: 'Luma registration is mandatory for this hackathon, and we could not find any guest with the Luma email you entered.'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+
+    expect(storedApplication).toBeUndefined()
+  })
+
   test('POST /api/hackathons/:hackathonId/applications does not arm Luma sync when no Luma event API id is configured', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -568,6 +633,11 @@ describe('TASK-3.6 application routes', () => {
       sessionUser: {
         sub: 'auth0|regular_user',
         email: 'regular@example.com'
+      },
+      runtimeConfig: {
+        luma: {
+          apiKey: 'luma_test_key'
+        }
       }
     })
     harnesses.push(harness)
@@ -576,6 +646,27 @@ describe('TASK-3.6 application routes', () => {
       lumaEventUrl: 'https://luma.com/codex',
       lumaEventApiId: 'evt-123'
     })
+
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/v1/event/get-guest') {
+        return new Response(JSON.stringify({
+          guest: {
+            id: 'gst-123',
+            user_email: 'regular@luma.example'
+          }
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url.toString()}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
 
     const response = await harness.request('/api/hackathons/hackathon_1/applications', {
       method: 'POST',
@@ -600,6 +691,56 @@ describe('TASK-3.6 application routes', () => {
     })
 
     expect(storedApplication?.lumaSyncStatus).toBe('not_synced')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications allows submission when the Luma lookup temporarily fails', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      },
+      runtimeConfig: {
+        luma: {
+          apiKey: 'luma_test_key'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireLumaEmail: true,
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
+    })
+
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const fetchMock = vi.fn(async () => new Response('rate limit', { status: 429 }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        userId: 'regular_user',
+        lumaSyncStatus: 'not_synced'
+      }
+    })
+
+    expect(consoleError).toHaveBeenCalledWith('Luma registration validation skipped after lookup failure.', {
+      hackathonId: 'hackathon_1',
+      userId: 'regular_user',
+      reason: 'luma_request_retryable_status'
+    })
+    consoleError.mockRestore()
   })
 
   test('POST /api/hackathons/:hackathonId/applications rejects users missing a required ChatGPT email and OpenAI org ID', async () => {

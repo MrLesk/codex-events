@@ -49,6 +49,17 @@ export type ApplicationLumaSyncDecision = ApplicationLumaSyncQueueMessage['decis
 
 export type ApplicationLumaSyncStatus = typeof userApplications.$inferSelect['lumaSyncStatus']
 
+export type LumaEventGuestLookupByEmailResult = {
+  status: 'found'
+  guestId: string
+  guestEmail: string
+} | {
+  status: 'not_found'
+} | {
+  status: 'lookup_failed'
+  reason: string
+}
+
 export type ApplicationLumaSyncEnqueueResult = {
   status: 'enqueued'
 } | {
@@ -596,6 +607,54 @@ export async function resolveLumaEmailFromUsername(
     guestId,
     guestEmail,
     lumaUserApiId
+  }
+}
+
+export async function lookupLumaEventGuestByEmail(
+  input: {
+    lumaEventApiId: string
+    lumaEmail: string
+  },
+  options: {
+    runtimeConfig: unknown
+    fetchImpl?: FetchLike
+  }
+): Promise<LumaEventGuestLookupByEmailResult> {
+  const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig)
+
+  if (!getLumaApiKey(config)) {
+    return {
+      status: 'lookup_failed',
+      reason: 'luma_api_key_missing'
+    }
+  }
+
+  const fetchImpl = resolveFetchImpl(options.fetchImpl)
+
+  try {
+    const { guestId, guestEmail } = await findGuestByEmail(input.lumaEventApiId, input.lumaEmail, {
+      config,
+      fetchImpl
+    })
+
+    return {
+      status: 'found',
+      guestId,
+      guestEmail
+    }
+  } catch (error) {
+    if (error instanceof PermanentLumaSyncError && error.message === 'luma_event_guest_not_found') {
+      return {
+        status: 'not_found'
+      }
+    }
+
+    return {
+      status: 'lookup_failed',
+      reason: error instanceof Error
+        ? error.message
+        : 'luma_lookup_unexpected_error'
+    }
   }
 }
 

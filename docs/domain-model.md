@@ -178,6 +178,7 @@ Rules:
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
 - If the hackathon requires a Luma email and has a Luma event API ID, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
+- If the hackathon requires a Luma email and has a Luma event API ID, application submission verifies that the participant's saved Luma email is registered as a guest on that Luma event.
 - If the hackathon requires a Luma email and has a Luma event API ID, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
 - Platform admins can run a hackathon-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - A user must be approved before creating or joining a team in that hackathon.

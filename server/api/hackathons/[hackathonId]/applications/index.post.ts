@@ -2,7 +2,9 @@ import { requirePlatformActor } from '../../../../auth/actor'
 import { getDatabase } from '../../../../database/client'
 import { userApplications } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
+import { ApiError } from '../../../../utils/api-error'
 import { apiData } from '../../../../utils/api-response'
+import { lookupLumaEventGuestByEmail } from '../../../../utils/application-luma-sync-queue'
 import {
   assertCurrentApplicationTermsAcceptance,
   assertHackathonAllowsApplications,
@@ -10,6 +12,7 @@ import {
   assertNoExistingApplication,
   assertUserMeetsHackathonProfileRequirements,
   getInitialApplicationLumaSyncStatus,
+  isHackathonLumaSyncEnabled,
   serializeRegistrationDetailsJson,
   serializeUserApplication,
   submitApplicationBodySchema
@@ -33,6 +36,36 @@ export default defineApiHandler(async (event) => {
     hackathon,
     body.applicationTermsDocumentId
   )
+  const lumaEmail = actor.platformUser.lumaEmail?.trim() ?? ''
+
+  if (isHackathonLumaSyncEnabled(hackathon) && lumaEmail) {
+    const lumaGuestLookup = await lookupLumaEventGuestByEmail({
+      lumaEventApiId: hackathon.lumaEventApiId!.trim(),
+      lumaEmail
+    }, {
+      runtimeConfig: useRuntimeConfig(event)
+    })
+
+    if (lumaGuestLookup.status === 'not_found') {
+      throw new ApiError({
+        statusCode: 409,
+        code: 'luma_registration_required',
+        message: 'Luma registration is mandatory for this hackathon, and we could not find any guest with the Luma email you entered.',
+        details: {
+          hackathonId
+        }
+      })
+    }
+
+    if (lumaGuestLookup.status === 'lookup_failed') {
+      console.error('Luma registration validation skipped after lookup failure.', {
+        hackathonId,
+        userId: actor.platformUser.id,
+        reason: lumaGuestLookup.reason
+      })
+    }
+  }
+
   const registrationDetailsJson = serializeRegistrationDetailsJson(hackathon, {
     registrationTeamIntent: body.registrationTeamIntent,
     registrationTeamMembers: body.registrationTeamMembers,
