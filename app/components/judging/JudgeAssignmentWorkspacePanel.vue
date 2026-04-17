@@ -41,7 +41,7 @@ const emit = defineEmits<{
   updated: []
 }>()
 
-const scoreOptions = Array.from({ length: 11 }, (_, index) => index)
+const scoreOptions = Array.from({ length: 5 }, (_, index) => index + 1)
 
 const normalizedHackathonId = computed(() => props.hackathonId.trim())
 const normalizedAssignmentId = computed(() => props.assignmentId.trim())
@@ -382,7 +382,7 @@ async function completeReview() {
 
   if (pitchAssignment.value) {
     if (hasIncompletePitchVote.value) {
-      actionState.error = 'A 0-10 pitch score is required before the vote can be submitted.'
+      actionState.error = 'A 1-5 pitch score is required before the vote can be submitted.'
       return
     }
 
@@ -411,7 +411,7 @@ async function completeReview() {
   }
 
   if (hasIncompleteScores.value) {
-    actionState.error = 'Every criterion needs an integer score between 0 and 10 before the review can be completed.'
+    actionState.error = 'Every criterion needs an integer score between 1 and 5 before the review can be completed.'
     return
   }
 
@@ -737,13 +737,13 @@ async function markIneligible() {
                 Pitch score
               </p>
               <p class="text-sm leading-7 text-toned">
-                Record one shared-scale vote from 0 to 10. Comments stay optional.
+                Record one shared-scale vote from 1 to 5. Comments stay optional.
               </p>
             </div>
 
             <div class="space-y-3">
               <div
-                class="grid grid-cols-11 gap-1.5"
+                class="grid grid-cols-5 gap-1.5"
                 role="radiogroup"
                 aria-label="Pitch score"
               >

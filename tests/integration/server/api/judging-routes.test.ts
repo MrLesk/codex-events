@@ -590,12 +590,12 @@ describe('TASK-3.7 judging assignment routes', () => {
         criterionScores: [
           {
             evaluationCriterionId: 'criterion_1',
-            score: 8,
+            score: 4,
             comment: 'Strong novelty'
           },
           {
             evaluationCriterionId: 'criterion_2',
-            score: 9
+            score: 5
           }
         ]
       })
@@ -609,11 +609,11 @@ describe('TASK-3.7 judging assignment routes', () => {
         criterionScores: [
           expect.objectContaining({
             evaluationCriterionId: 'criterion_1',
-            score: 8
+            score: 4
           }),
           expect.objectContaining({
             evaluationCriterionId: 'criterion_2',
-            score: 9
+            score: 5
           })
         ]
       }
@@ -677,7 +677,7 @@ describe('TASK-3.7 judging assignment routes', () => {
         criterionScores: [
           {
             evaluationCriterionId: 'criterion_1',
-            score: 8,
+            score: 4,
             comment: 'Strong novelty'
           }
         ]
@@ -692,7 +692,7 @@ describe('TASK-3.7 judging assignment routes', () => {
         criterionScores: [
           expect.objectContaining({
             evaluationCriterionId: 'criterion_1',
-            score: 8,
+            score: 4,
             comment: 'Strong novelty'
           })
         ]
@@ -705,12 +705,12 @@ describe('TASK-3.7 judging assignment routes', () => {
         criterionScores: [
           {
             evaluationCriterionId: 'criterion_1',
-            score: 9,
+            score: 5,
             comment: 'Updated novelty'
           },
           {
             evaluationCriterionId: 'criterion_2',
-            score: 7
+            score: 4
           }
         ]
       })
@@ -724,12 +724,12 @@ describe('TASK-3.7 judging assignment routes', () => {
         criterionScores: [
           expect.objectContaining({
             evaluationCriterionId: 'criterion_1',
-            score: 9,
+            score: 5,
             comment: 'Updated novelty'
           }),
           expect.objectContaining({
             evaluationCriterionId: 'criterion_2',
-            score: 7
+            score: 4
           })
         ]
       }
@@ -745,13 +745,13 @@ describe('TASK-3.7 judging assignment routes', () => {
       expect.objectContaining({
         judgeAssignmentId: 'assignment_1',
         evaluationCriterionId: 'criterion_1',
-        score: 9,
+        score: 5,
         comment: 'Updated novelty'
       }),
       expect.objectContaining({
         judgeAssignmentId: 'assignment_1',
         evaluationCriterionId: 'criterion_2',
-        score: 7,
+        score: 4,
         comment: null
       })
     ]))
@@ -813,7 +813,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     const completeResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_pitch_1/actions/complete', {
       method: 'POST',
       body: JSON.stringify({
-        pitchScore: 9,
+        pitchScore: 5,
         pitchComment: 'Clear and confident demo.'
       })
     })
@@ -824,7 +824,7 @@ describe('TASK-3.7 judging assignment routes', () => {
         id: 'assignment_pitch_1',
         reviewStage: 'pitch_review',
         status: 'judge_completed',
-        pitchScore: 9,
+        pitchScore: 5,
         pitchComment: 'Clear and confident demo.'
       }
     })
@@ -837,7 +837,7 @@ describe('TASK-3.7 judging assignment routes', () => {
 
     expect(updatedAssignment).toMatchObject({
       status: 'judge_completed',
-      pitchScore: 9,
+      pitchScore: 5,
       pitchComment: 'Clear and confident demo.'
     })
     expect(storedScores).toHaveLength(0)

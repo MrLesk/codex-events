@@ -188,11 +188,11 @@ When('the saved {string} session completes the remembered outcomes pitch assignm
 
   const pitchScoresBySubmissionId: Record<string, { score: number, comment: string }> = {
     [platformFixtureIds.outcomesSubmissionOneId]: {
-      score: 4,
+      score: 2,
       comment: 'Pitch needed a clearer close.'
     },
     [platformFixtureIds.outcomesSubmissionTwoId]: {
-      score: 9,
+      score: 5,
       comment: 'Pitch landed with a clear live demo.'
     }
   }
@@ -275,17 +275,17 @@ Then('the outcomes final deliberation should rank submission two first and submi
       entries: [
         {
           submissionId: platformFixtureIds.outcomesSubmissionTwoId,
-          blindScore: 6.5,
-          pitchScore: 9,
-          scoreTotal: 7.25,
+          blindScore: 3.5,
+          pitchScore: 5,
+          scoreTotal: 3.95,
           scoreRank: 1,
           finalRank: 1
         },
         {
           submissionId: platformFixtureIds.outcomesSubmissionOneId,
-          blindScore: 8.5,
-          pitchScore: 4,
-          scoreTotal: 7.15,
+          blindScore: 4.5,
+          pitchScore: 2,
+          scoreTotal: 3.75,
           scoreRank: 2,
           finalRank: 2
         }

@@ -36,10 +36,12 @@ type EvaluationCriterionRecord = typeof evaluationCriteria.$inferSelect
 type JudgeCriterionScoreRecord = typeof judgeCriterionScores.$inferSelect
 
 const activeJudgeAssignmentStatuses = ['assigned', 'judge_started'] as const
+const minimumJudgeScore = 1
+const maximumJudgeScore = 5
 
 const criterionScoreInputSchema = z.object({
   evaluationCriterionId: z.string().trim().min(1),
-  score: z.coerce.number().int().min(0),
+  score: z.coerce.number().int().min(minimumJudgeScore).max(maximumJudgeScore),
   comment: z.string().trim().min(1).optional()
 })
 
@@ -56,7 +58,7 @@ export const saveJudgeAssignmentBodySchema = z.object({
 })
 
 export const completePitchReviewBodySchema = z.object({
-  pitchScore: z.coerce.number().int().min(0).max(10),
+  pitchScore: z.coerce.number().int().min(minimumJudgeScore).max(maximumJudgeScore),
   pitchComment: z.string().trim().min(1).optional()
 })
 

@@ -156,6 +156,9 @@ export interface PitchScoreDraft {
   comment: string
 }
 
+const minimumJudgeScore = 1
+const maximumJudgeScore = 5
+
 export interface JudgeAssignmentInboxCardCopy {
   title: string
   subtitle: string | null
@@ -482,7 +485,7 @@ export function getJudgeAssignmentInboxCardCopy(
     title: assignment.pitchSubmission.projectName ?? 'Untitled pitch finalist',
     subtitle: assignment.pitchSubmission.teamName,
     summary: assignment.pitchSubmission.summary
-      || 'Every judge on the pitch panel is expected to submit one 0-10 vote.',
+      || 'Every judge on the pitch panel is expected to submit one 1-5 vote.',
     contextLabel: 'Team',
     contextValue: assignment.pitchSubmission.teamName,
     reviewSignal: assignment.startedAt ? `Started ${formatJudgeTimestamp(assignment.startedAt)}` : 'Ready to vote',
@@ -626,7 +629,7 @@ function isValidJudgeScoreValue(value: string) {
 
   const parsedValue = Number.parseInt(normalizedValue, 10)
 
-  return parsedValue >= 0 && parsedValue <= 10
+  return parsedValue >= minimumJudgeScore && parsedValue <= maximumJudgeScore
 }
 
 export function createCriterionScoreDrafts(

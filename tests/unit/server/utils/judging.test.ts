@@ -501,7 +501,7 @@ describe('judging utilities', () => {
         reviewStage: 'pitch_review',
         blindReviewSlot: null,
         status: 'judge_completed',
-        pitchScore: 8,
+        pitchScore: 5,
         pitchComment: 'Strong pitch',
         assignedAt: '2026-03-26T12:00:00.000Z',
         startedAt: '2026-03-26T12:01:00.000Z',
@@ -523,7 +523,7 @@ describe('judging utilities', () => {
         reviewStage: 'pitch_review',
         blindReviewSlot: null,
         status: 'judge_completed',
-        pitchScore: 6,
+        pitchScore: 4,
         pitchComment: null,
         assignedAt: '2026-03-26T12:00:00.000Z',
         startedAt: '2026-03-26T12:02:00.000Z',
@@ -581,7 +581,7 @@ describe('judging utilities', () => {
         ineligibilityMarkedByUserId: null,
         createdAt: '2026-03-26T12:00:00.000Z'
       }
-    ])).toBe(7)
+    ])).toBe(4.5)
 
     expect(calculateAveragePitchScore([
       {

@@ -193,9 +193,9 @@ describe('shortlist utilities', () => {
       blindScoreWeightPercent: 100,
       pitchScoreWeightPercent: 0
     }, {
-      blindScore: 8.5,
+      blindScore: 4.5,
       pitchScore: null
-    })).toBe(8.5)
+    })).toBe(4.5)
 
     expect(calculateFinalScore({
       blindReviewCount: 0,
@@ -204,8 +204,8 @@ describe('shortlist utilities', () => {
       pitchScoreWeightPercent: 100
     }, {
       blindScore: null,
-      pitchScore: 7.25
-    })).toBe(7.25)
+      pitchScore: 4.25
+    })).toBe(4.25)
 
     expect(calculateFinalScore({
       blindReviewCount: 1,
@@ -213,9 +213,9 @@ describe('shortlist utilities', () => {
       blindScoreWeightPercent: 70,
       pitchScoreWeightPercent: 30
     }, {
-      blindScore: 8,
-      pitchScore: 6
-    })).toBeCloseTo(7.4)
+      blindScore: 4,
+      pitchScore: 3
+    })).toBeCloseTo(3.7)
 
     expect(calculateFinalScore({
       blindReviewCount: 1,
@@ -223,7 +223,7 @@ describe('shortlist utilities', () => {
       blindScoreWeightPercent: 70,
       pitchScoreWeightPercent: 30
     }, {
-      blindScore: 8,
+      blindScore: 4,
       pitchScore: null
     })).toBeNull()
   })

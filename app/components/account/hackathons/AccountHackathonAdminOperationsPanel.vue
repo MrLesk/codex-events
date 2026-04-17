@@ -2270,7 +2270,7 @@ async function runLifecycleAction() {
                 Pitch Review
               </h2>
               <p class="text-sm text-muted">
-                Judges now see full submission details and submit post-pitch scores on the shared `0-10` scale. When you move on, the platform averages the submitted pitch votes only.
+                Judges now see full submission details and submit post-pitch scores on the shared `1-5` scale. When you move on, the platform averages the submitted pitch votes only.
               </p>
             </div>
           </template>

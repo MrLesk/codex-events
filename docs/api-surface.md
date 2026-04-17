@@ -560,8 +560,8 @@ Testing:
 - Prize-eligible team membership freezes when submitted work is locked for judging.
 - Blind judging excludes team identity even when the reviewing actor is also an admin.
 - Pitch judging exposes project and team identity to the pitch panel.
-- Blind assignment scores are normalized to the shared `0..10` scale by dividing weighted criterion totals by total criterion weight.
-- Pitch scores use the shared `0..10` scale.
+- Blind assignment scores are normalized to the shared `1..5` scale by dividing weighted criterion totals by total criterion weight.
+- Pitch scores use the shared `1..5` scale.
 - Blind score is the average of completed blind-review assignments for the submission.
 - Pitch score is the average of submitted pitch-review votes for the submission.
 - When blind review and pitch review are both enabled, final score uses configurable blind and pitch weights that default to `70` and `30`.

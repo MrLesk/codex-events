@@ -461,7 +461,7 @@ describe('judging-workspace actions', () => {
     const pitchCompleted = createPitchAssignment({
       status: 'judge_completed',
       completedAt: '2026-03-26T12:20:00.000Z',
-      pitchScore: 9
+      pitchScore: 5
     })
 
     expect(canStartJudgeAssignment(blindAssigned)).toBe(true)
@@ -579,7 +579,7 @@ describe('judging-workspace scoring drafts', () => {
         criterionName: 'Execution',
         criterionDescription: 'How well the team executed.',
         criterionWeight: 3,
-        score: 9,
+        score: 5,
         comment: 'Strong finish',
         createdAt: '2026-03-24T10:20:00.000Z',
         updatedAt: '2026-03-24T10:20:00.000Z'
@@ -594,7 +594,7 @@ describe('judging-workspace scoring drafts', () => {
       }),
       expect.objectContaining({
         evaluationCriterionId: 'criterion-2',
-        score: '9',
+        score: '5',
         comment: 'Strong finish'
       })
     ])
@@ -614,14 +614,14 @@ describe('judging-workspace scoring drafts', () => {
     ])
   })
 
-  test('detects incomplete blind scores on the shared 0-10 scale and builds the completion payload', () => {
+  test('detects incomplete blind scores on the shared 1-5 scale and builds the completion payload', () => {
     const drafts = [
       {
         evaluationCriterionId: 'criterion-1',
         criterionName: 'Novelty',
         criterionDescription: 'How original the project is.',
         criterionWeight: 5,
-        score: '8',
+        score: '4',
         comment: 'Fresh idea'
       },
       {
@@ -629,7 +629,7 @@ describe('judging-workspace scoring drafts', () => {
         criterionName: 'Execution',
         criterionDescription: 'How well the project is executed.',
         criterionWeight: 3,
-        score: '11',
+        score: '6',
         comment: ''
       }
     ]
@@ -641,7 +641,7 @@ describe('judging-workspace scoring drafts', () => {
       },
       {
         ...drafts[1],
-        score: '7'
+        score: '5'
       }
     ])).toBe(false)
     expect(buildCompletionCriterionScoresPayload([
@@ -650,17 +650,17 @@ describe('judging-workspace scoring drafts', () => {
       },
       {
         ...drafts[1],
-        score: '7'
+        score: '5'
       }
     ])).toEqual([
       {
         evaluationCriterionId: 'criterion-1',
-        score: 8,
+        score: 4,
         comment: 'Fresh idea'
       },
       {
         evaluationCriterionId: 'criterion-2',
-        score: 7,
+        score: 5,
         comment: undefined
       }
     ])
@@ -671,7 +671,7 @@ describe('judging-workspace scoring drafts', () => {
       },
       {
         ...drafts[1],
-        score: '7'
+        score: '5'
       },
       {
         evaluationCriterionId: 'criterion-3',
@@ -684,41 +684,41 @@ describe('judging-workspace scoring drafts', () => {
     ])).toEqual([
       {
         evaluationCriterionId: 'criterion-1',
-        score: 8,
+        score: 4,
         comment: 'Fresh idea'
       },
       {
         evaluationCriterionId: 'criterion-2',
-        score: 7,
+        score: 5,
         comment: undefined
       }
     ])
   })
 
-  test('creates pitch drafts and pitch completion payloads on the shared 0-10 scale', () => {
+  test('creates pitch drafts and pitch completion payloads on the shared 1-5 scale', () => {
     expect(createPitchScoreDraft(createPitchAssignment({
-      pitchScore: 9,
+      pitchScore: 5,
       pitchComment: 'Strong pitch'
     }))).toEqual({
-      score: '9',
+      score: '5',
       comment: 'Strong pitch'
     })
 
     expect(hasIncompletePitchScore({
-      score: '11',
+      score: '6',
       comment: ''
     })).toBe(true)
 
     expect(hasIncompletePitchScore({
-      score: '6',
+      score: '4',
       comment: 'Clear delivery'
     })).toBe(false)
 
     expect(buildPitchReviewCompletionPayload({
-      score: '6',
+      score: '4',
       comment: '  Clear delivery  '
     })).toEqual({
-      pitchScore: 6,
+      pitchScore: 4,
       pitchComment: 'Clear delivery'
     })
   })

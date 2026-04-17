@@ -514,7 +514,7 @@ export const judgeAssignments = sqliteTable(
     ),
     check(
       'judge_assignments_pitch_score_range_check',
-      sql`${table.pitchScore} is null or (${table.pitchScore} >= 0 and ${table.pitchScore} <= 10)`
+      sql`${table.pitchScore} is null or (${table.pitchScore} >= 1 and ${table.pitchScore} <= 5)`
     )
   ]
 )
@@ -535,6 +535,7 @@ export const judgeCriterionScores = sqliteTable(
     updatedAt: updatedAtColumn()
   },
   table => [
+    check('judge_criterion_scores_score_range_check', sql`${table.score} >= 1 and ${table.score} <= 5`),
     uniqueIndex('judge_criterion_scores_assignment_criterion_idx').on(
       table.judgeAssignmentId,
       table.evaluationCriterionId

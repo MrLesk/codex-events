@@ -343,7 +343,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
           id: 'score_1',
           judgeAssignmentId: 'assignment_1',
           evaluationCriterionId: 'criterion_1',
-          score: 9,
+          score: 5,
           comment: 'Strong novelty',
           createdAt: '2026-03-17T12:07:00.000Z',
           updatedAt: '2026-03-17T12:07:00.000Z'
@@ -352,7 +352,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
           id: 'score_2',
           judgeAssignmentId: 'assignment_1',
           evaluationCriterionId: 'criterion_2',
-          score: 8,
+          score: 4,
           comment: 'Strong execution',
           createdAt: '2026-03-17T12:07:00.000Z',
           updatedAt: '2026-03-17T12:07:00.000Z'
@@ -361,7 +361,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
           id: 'score_3',
           judgeAssignmentId: 'assignment_2',
           evaluationCriterionId: 'criterion_1',
-          score: 7,
+          score: 4,
           comment: 'Good novelty',
           createdAt: '2026-03-17T12:10:00.000Z',
           updatedAt: '2026-03-17T12:10:00.000Z'
@@ -370,7 +370,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
           id: 'score_4',
           judgeAssignmentId: 'assignment_2',
           evaluationCriterionId: 'criterion_2',
-          score: 6,
+          score: 3,
           comment: 'Good execution',
           createdAt: '2026-03-17T12:10:00.000Z',
           updatedAt: '2026-03-17T12:10:00.000Z'
@@ -379,7 +379,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
           id: 'score_5',
           judgeAssignmentId: 'assignment_3',
           evaluationCriterionId: 'criterion_1',
-          score: 7,
+          score: 4,
           comment: 'Clear novelty',
           createdAt: '2026-03-17T12:13:00.000Z',
           updatedAt: '2026-03-17T12:13:00.000Z'
@@ -388,7 +388,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
           id: 'score_6',
           judgeAssignmentId: 'assignment_3',
           evaluationCriterionId: 'criterion_2',
-          score: 6,
+          score: 3,
           comment: 'Clear execution',
           createdAt: '2026-03-17T12:13:00.000Z',
           updatedAt: '2026-03-17T12:13:00.000Z'
@@ -397,7 +397,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
           id: 'score_7',
           judgeAssignmentId: 'assignment_4',
           evaluationCriterionId: 'criterion_1',
-          score: 7,
+          score: 4,
           comment: 'Steady novelty',
           createdAt: '2026-03-17T12:16:00.000Z',
           updatedAt: '2026-03-17T12:16:00.000Z'
@@ -406,7 +406,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
           id: 'score_8',
           judgeAssignmentId: 'assignment_4',
           evaluationCriterionId: 'criterion_2',
-          score: 6,
+          score: 3,
           comment: 'Steady execution',
           createdAt: '2026-03-17T12:16:00.000Z',
           updatedAt: '2026-03-17T12:16:00.000Z'
@@ -555,12 +555,12 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         expect.objectContaining({
           submissionId: 'submission_1',
           rank: 1,
-          scoreTotal: 7.5
+          scoreTotal: 4
         }),
         expect.objectContaining({
           submissionId: 'submission_2',
           rank: 2,
-          scoreTotal: 6.5
+          scoreTotal: 3.5
         })
       ]
     })
@@ -662,14 +662,14 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         expect.objectContaining({
           submissionId: 'submission_1',
           rank: 1,
-          scoreTotal: 7.5,
+          scoreTotal: 4,
           isPitchFinalist: true,
           pitchFinalistRank: 1
         }),
         expect.objectContaining({
           submissionId: 'submission_2',
           rank: 2,
-          scoreTotal: 6.5,
+          scoreTotal: 3.5,
           isPitchFinalist: false,
           pitchFinalistRank: null
         })
@@ -788,12 +788,12 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         expect.objectContaining({
           submissionId: 'submission_1',
           rank: 1,
-          scoreTotal: 7.5
+          scoreTotal: 4
         }),
         expect.objectContaining({
           submissionId: 'submission_2',
           rank: 2,
-          scoreTotal: 6.5
+          scoreTotal: 3.5
         })
       ]
     })
@@ -1095,15 +1095,15 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         entries: [
           expect.objectContaining({
             submissionId: 'submission_1',
-            blindScore: 7.5,
-            scoreTotal: 7.5,
+            blindScore: 4,
+            scoreTotal: 4,
             scoreRank: 1,
             finalRank: 1
           }),
           expect.objectContaining({
             submissionId: 'submission_2',
-            blindScore: 6.5,
-            scoreTotal: 6.5,
+            blindScore: 3.5,
+            scoreTotal: 3.5,
             scoreRank: 2,
             finalRank: 2
           })
@@ -1154,7 +1154,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 10,
+        pitchScore: 5,
         assignedAt: '2026-03-18T12:01:00.000Z',
         startedAt: '2026-03-18T12:02:00.000Z',
         completedAt: '2026-03-18T12:03:00.000Z'
@@ -1164,7 +1164,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 8,
+        pitchScore: 5,
         assignedAt: '2026-03-18T12:04:00.000Z',
         startedAt: '2026-03-18T12:05:00.000Z',
         completedAt: '2026-03-18T12:06:00.000Z'
@@ -1179,7 +1179,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         expect.objectContaining({
           submissionId: 'submission_2',
           rank: 1,
-          scoreTotal: 7.25
+          scoreTotal: 3.95
         }),
         expect.objectContaining({
           submissionId: 'submission_1',
@@ -1270,7 +1270,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 8,
+        pitchScore: 5,
         assignedAt: '2026-03-18T13:10:00.000Z',
         startedAt: '2026-03-18T13:11:00.000Z',
         completedAt: '2026-03-18T13:12:00.000Z'
@@ -1338,7 +1338,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 5,
+        pitchScore: 3,
         assignedAt: '2026-03-18T13:30:00.000Z',
         startedAt: '2026-03-18T13:31:00.000Z',
         completedAt: '2026-03-18T13:32:00.000Z'
@@ -1348,7 +1348,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 5,
+        pitchScore: 3,
         assignedAt: '2026-03-18T13:33:00.000Z',
         startedAt: '2026-03-18T13:34:00.000Z',
         completedAt: '2026-03-18T13:35:00.000Z'
@@ -1358,7 +1358,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 10,
+        pitchScore: 5,
         assignedAt: '2026-03-18T13:36:00.000Z',
         startedAt: '2026-03-18T13:37:00.000Z',
         completedAt: '2026-03-18T13:38:00.000Z'
@@ -1368,7 +1368,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 8,
+        pitchScore: 5,
         assignedAt: '2026-03-18T13:39:00.000Z',
         startedAt: '2026-03-18T13:40:00.000Z',
         completedAt: '2026-03-18T13:41:00.000Z'
@@ -1437,7 +1437,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 9,
+        pitchScore: 5,
         assignedAt: '2026-03-18T13:00:00.000Z',
         startedAt: '2026-03-18T13:01:00.000Z',
         completedAt: '2026-03-18T13:02:00.000Z'
@@ -1447,7 +1447,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 7,
+        pitchScore: 4,
         assignedAt: '2026-03-18T13:03:00.000Z',
         startedAt: '2026-03-18T13:04:00.000Z',
         completedAt: '2026-03-18T13:05:00.000Z'
@@ -1457,7 +1457,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 6,
+        pitchScore: 4,
         assignedAt: '2026-03-18T13:06:00.000Z',
         startedAt: '2026-03-18T13:07:00.000Z',
         completedAt: '2026-03-18T13:08:00.000Z'
@@ -1467,7 +1467,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 6,
+        pitchScore: 4,
         assignedAt: '2026-03-18T13:09:00.000Z',
         startedAt: '2026-03-18T13:10:00.000Z',
         completedAt: '2026-03-18T13:11:00.000Z'
@@ -1482,12 +1482,12 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         expect.objectContaining({
           submissionId: 'submission_1',
           rank: 1,
-          scoreTotal: 8
+          scoreTotal: 4.5
         }),
         expect.objectContaining({
           submissionId: 'submission_2',
           rank: 2,
-          scoreTotal: 6
+          scoreTotal: 4
         })
       ]
     })
@@ -1524,7 +1524,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 5,
+        pitchScore: 3,
         assignedAt: '2026-03-18T14:00:00.000Z',
         startedAt: '2026-03-18T14:01:00.000Z',
         completedAt: '2026-03-18T14:02:00.000Z'
@@ -1534,7 +1534,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 5,
+        pitchScore: 3,
         assignedAt: '2026-03-18T14:03:00.000Z',
         startedAt: '2026-03-18T14:04:00.000Z',
         completedAt: '2026-03-18T14:05:00.000Z'
@@ -1544,7 +1544,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 10,
+        pitchScore: 5,
         assignedAt: '2026-03-18T14:06:00.000Z',
         startedAt: '2026-03-18T14:07:00.000Z',
         completedAt: '2026-03-18T14:08:00.000Z'
@@ -1554,7 +1554,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 8,
+        pitchScore: 5,
         assignedAt: '2026-03-18T14:09:00.000Z',
         startedAt: '2026-03-18T14:10:00.000Z',
         completedAt: '2026-03-18T14:11:00.000Z'
@@ -1570,17 +1570,17 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         entries: [
           expect.objectContaining({
             submissionId: 'submission_2',
-            blindScore: 6.5,
-            pitchScore: 9,
-            scoreTotal: 7.25,
+            blindScore: 3.5,
+            pitchScore: 5,
+            scoreTotal: 3.95,
             scoreRank: 1,
             finalRank: 1
           }),
           expect.objectContaining({
             submissionId: 'submission_1',
-            blindScore: 7.5,
-            pitchScore: 5,
-            scoreTotal: 6.75,
+            blindScore: 4,
+            pitchScore: 3,
+            scoreTotal: 3.6999999999999997,
             scoreRank: 2,
             finalRank: 2
           })
@@ -1663,7 +1663,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 5,
+        pitchScore: 3,
         assignedAt: '2026-03-18T16:00:00.000Z',
         startedAt: '2026-03-18T16:01:00.000Z',
         completedAt: '2026-03-18T16:02:00.000Z'
@@ -1673,7 +1673,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 5,
+        pitchScore: 3,
         assignedAt: '2026-03-18T16:03:00.000Z',
         startedAt: '2026-03-18T16:04:00.000Z',
         completedAt: '2026-03-18T16:05:00.000Z'
@@ -1683,7 +1683,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 10,
+        pitchScore: 5,
         assignedAt: '2026-03-18T16:06:00.000Z',
         startedAt: '2026-03-18T16:07:00.000Z',
         completedAt: '2026-03-18T16:08:00.000Z'
@@ -1693,7 +1693,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 8,
+        pitchScore: 5,
         assignedAt: '2026-03-18T16:09:00.000Z',
         startedAt: '2026-03-18T16:10:00.000Z',
         completedAt: '2026-03-18T16:11:00.000Z'
@@ -1792,7 +1792,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 4,
+        pitchScore: 3,
         assignedAt: '2026-03-18T12:00:00.000Z',
         startedAt: '2026-03-18T12:01:00.000Z',
         completedAt: '2026-03-18T12:02:00.000Z'
@@ -1802,7 +1802,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 10,
+        pitchScore: 5,
         assignedAt: '2026-03-18T12:03:00.000Z',
         startedAt: '2026-03-18T12:04:00.000Z',
         completedAt: '2026-03-18T12:05:00.000Z'
@@ -1812,7 +1812,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 8,
+        pitchScore: 5,
         assignedAt: '2026-03-18T12:06:00.000Z',
         startedAt: '2026-03-18T12:07:00.000Z',
         completedAt: '2026-03-18T12:08:00.000Z'
@@ -1883,7 +1883,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 4,
+        pitchScore: 3,
         assignedAt: '2026-03-18T12:00:00.000Z',
         startedAt: '2026-03-18T12:01:00.000Z',
         completedAt: '2026-03-18T12:02:00.000Z'
@@ -1893,7 +1893,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 10,
+        pitchScore: 5,
         assignedAt: '2026-03-18T12:03:00.000Z',
         startedAt: '2026-03-18T12:04:00.000Z',
         completedAt: '2026-03-18T12:05:00.000Z'
@@ -1903,7 +1903,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 8,
+        pitchScore: 5,
         assignedAt: '2026-03-18T12:06:00.000Z',
         startedAt: '2026-03-18T12:07:00.000Z',
         completedAt: '2026-03-18T12:08:00.000Z'
@@ -2082,7 +2082,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 4,
+        pitchScore: 3,
         assignedAt: '2026-03-18T12:00:00.000Z',
         startedAt: '2026-03-18T12:01:00.000Z',
         completedAt: '2026-03-18T12:02:00.000Z'
@@ -2092,7 +2092,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_a',
         status: 'judge_completed',
-        pitchScore: 10,
+        pitchScore: 5,
         assignedAt: '2026-03-18T12:03:00.000Z',
         startedAt: '2026-03-18T12:04:00.000Z',
         completedAt: '2026-03-18T12:05:00.000Z'
@@ -2102,7 +2102,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         status: 'judge_completed',
-        pitchScore: 8,
+        pitchScore: 5,
         assignedAt: '2026-03-18T12:06:00.000Z',
         startedAt: '2026-03-18T12:07:00.000Z',
         completedAt: '2026-03-18T12:08:00.000Z'

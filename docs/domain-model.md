@@ -303,8 +303,8 @@ Rules:
 - Each criterion belongs to one hackathon.
 - Criteria are used for blind review only.
 - Each criterion can have a weight.
-- Each criterion score uses the shared `0..10` score scale.
-- Blind assignment scores are derived from criterion scores and criterion weights and are normalized to the shared `0..10` score scale.
+- Each criterion score uses the shared `1..5` score scale.
+- Blind assignment scores are derived from criterion scores and criterion weights and are normalized to the shared `1..5` score scale.
 
 ### JudgeAssignment
 
@@ -494,8 +494,8 @@ Scope:
 - `final_deliberation` is the universal ranking-review stage after all enabled scoring stages are complete.
 - Hackathon admins can manually reorder the final ranking during `final_deliberation` without changing the underlying judge scores.
 - Final score is computed from the enabled judging stages only.
-- Blind score is the average of completed blind review assignments after criterion-weight normalization to `0..10`.
-- Pitch score is the average of submitted pitch-review votes on the same `0..10` scale.
+- Blind score is the average of completed blind review assignments after criterion-weight normalization to `1..5`.
+- Pitch score is the average of submitted pitch-review votes on the same `1..5` scale.
 - When blind review and pitch review are both enabled, final score uses configurable blind and pitch weights that default to `70%` blind and `30%` pitch.
 - When only one judging stage is enabled, final score comes entirely from that stage.
 - Pitch review can be closed by admins with missing votes, and the pitch average uses only submitted pitch-review votes.

@@ -508,7 +508,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - Criteria apply to blind review only.
-- Blind assignment totals are normalized to the shared `0..10` score scale by dividing the weighted score sum by the total criterion weight.
+- Blind assignment totals are normalized to the shared `1..5` score scale by dividing the weighted score sum by the total criterion weight.
 
 ## JudgeAssignment
 
@@ -561,7 +561,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - Blind-review assignments store criterion scores through `JudgeCriterionScore`.
 - Started blind-review assignments can store a partial set of criterion scores before completion.
 - Pitch-review assignments store `pitch_score` and `pitch_comment` directly on the assignment.
-- A completed pitch-review assignment uses the shared `0..10` score scale.
+- A completed pitch-review assignment uses the shared `1..5` score scale.
 - A submission's blind score is the average of its completed blind-review assignments after score normalization.
 - A submission's pitch score is the average of submitted completed pitch-review assignments.
 - When a blind-review assignment is skipped, a new active assignment is created for another judge.

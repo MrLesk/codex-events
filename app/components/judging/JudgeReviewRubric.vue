@@ -16,7 +16,7 @@ const emit = defineEmits<{
   'update:modelValue': [CriterionScoreDraft[]]
 }>()
 
-const scoreOptions = Array.from({ length: 11 }, (_, index) => index)
+const scoreOptions = Array.from({ length: 5 }, (_, index) => index + 1)
 const scoreSelectionDisabled = computed(() =>
   props.disabled || (props.readonly && !props.allowScoreSelectionWhenReadonly)
 )
@@ -76,7 +76,7 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
           <div
             :id="`judge-criterion-score-${draft.evaluationCriterionId}`"
             :data-testid="`judge-criterion-score-${draft.evaluationCriterionId}`"
-            class="grid grid-cols-11 gap-1.5"
+            class="grid grid-cols-5 gap-1.5"
             role="radiogroup"
             :aria-label="`${draft.criterionName} score`"
           >
