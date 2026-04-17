@@ -85,6 +85,22 @@ export interface TeamDirectoryEntry {
   joinAvailability: TeamActionAvailability
 }
 
+type TeamMembershipCountRecord = Pick<TeamSummaryRecord, 'activeMemberCount'> & {
+  members?: Array<Pick<TeamMemberRecord, 'leftAt'>>
+}
+
+export function getActiveTeamMemberCount(team: TeamMembershipCountRecord) {
+  if (typeof team.activeMemberCount === 'number') {
+    return team.activeMemberCount
+  }
+
+  return team.members?.filter(member => member.leftAt === null).length ?? 0
+}
+
+export function isTeamDissolved(team: TeamMembershipCountRecord) {
+  return getActiveTeamMemberCount(team) === 0
+}
+
 export function formatJoinAvailabilityReason(
   team: Pick<TeamSummaryRecord, 'workspaceMode'>,
   availability: TeamActionAvailability

@@ -34,8 +34,10 @@ const props = withDefaults(defineProps<{
     id: string
   }
   selectedTeamSlug?: string | null
+  showOperationalTeamStates?: boolean
 }>(), {
-  selectedTeamSlug: null
+  selectedTeamSlug: null,
+  showOperationalTeamStates: false
 })
 
 const toast = useToast()
@@ -499,6 +501,7 @@ async function copySelectedTeamLink() {
           :own-team-workspace-href="ownTeamWorkspaceHref"
           :total-teams="visibleDirectoryTotal"
           :show-locked-status="showLockedTeamDirectoryStatus"
+          :show-operational-team-states="props.showOperationalTeamStates"
           :filter-options="directoryFilterOptions"
           :is-loading-teams="!isOpenToJoinDirectoryUnavailable && isDirectoryLoading"
           :team-error-message="workspace.visibleTeamsErrorMessage.value"

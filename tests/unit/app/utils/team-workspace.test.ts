@@ -4,6 +4,7 @@ import {
   formatJoinAvailabilityReason,
   formatTeamJoinRequestStatus,
   formatTeamMemberRole,
+  getActiveTeamMemberCount,
   getCreateTeamAvailability,
   getJoinTeamAvailability,
   getLeaveTeamAvailability,
@@ -12,6 +13,7 @@ import {
   getTeamJoinRequestStatusColor,
   getUpdateJoinPolicyAvailability,
   hasTeamReachedMemberLimit,
+  isTeamDissolved,
   type TeamDetailRecord
 } from '../../../../app/utils/team-workspace'
 
@@ -181,6 +183,37 @@ describe('team workspace helpers', () => {
     }, {
       isAllowed: true
     })).toBeUndefined()
+  })
+
+  test('derives active member count and dissolved status from team records', () => {
+    expect(getActiveTeamMemberCount(baseTeam)).toBe(2)
+    expect(isTeamDissolved(baseTeam)).toBe(false)
+
+    expect(getActiveTeamMemberCount({
+      ...baseTeam,
+      activeMemberCount: 0
+    })).toBe(0)
+    expect(isTeamDissolved({
+      ...baseTeam,
+      activeMemberCount: 0
+    })).toBe(true)
+
+    expect(getActiveTeamMemberCount({
+      members: [
+        {
+          ...baseTeam.members[0],
+          leftAt: '2026-03-23T12:00:00.000Z'
+        }
+      ]
+    })).toBe(0)
+    expect(isTeamDissolved({
+      members: [
+        {
+          ...baseTeam.members[0],
+          leftAt: '2026-03-23T12:00:00.000Z'
+        }
+      ]
+    })).toBe(true)
   })
 
   test('handles last-member leave rules during team formation and after submission closes', () => {

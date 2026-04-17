@@ -9,11 +9,13 @@ import type {
 
 import { formatTimestamp } from '~/utils/date-formatting'
 import {
+  getActiveTeamMemberCount,
   formatJoinAvailabilityReason,
   formatTeamJoinRequestStatus,
   formatTeamMemberRole,
   getTeamJoinRequestStatusColor,
-  hasTeamReachedMemberLimit
+  hasTeamReachedMemberLimit,
+  isTeamDissolved
 } from '~/utils/team-workspace'
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import { teamProfileFormSchema } from '~/utils/form-schemas'
@@ -143,7 +145,8 @@ const showJoinRequestsPanel = computed(() =>
 )
 const isSoloWorkspace = computed(() => props.team.workspaceMode === 'solo')
 const joinPolicySwitchId = computed(() => `team-join-policy-${props.team.id}`)
-const activeMemberCount = computed(() => props.team.activeMemberCount ?? props.team.members.length)
+const activeMemberCount = computed(() => getActiveTeamMemberCount(props.team))
+const isDissolvedTeam = computed(() => isTeamDissolved(props.team))
 const showRequestJoinAction = computed(() =>
   Boolean(props.pendingJoinRequestId) || props.team.isOpenToJoinRequests
 )
@@ -152,6 +155,9 @@ const canManageTeamSettings = computed(() =>
 )
 const showLockedBadge = computed(() =>
   Boolean(props.membership) && Boolean(props.isTeamLocked)
+)
+const showParticipantTeamStatusBadge = computed(() =>
+  !props.canManageTeam && !isSoloWorkspace.value && !isDissolvedTeam.value
 )
 const showJoinPolicyToggle = computed(() => !isSoloWorkspace.value && canManageTeamSettings.value)
 const joinPolicyStatusText = computed(() =>
@@ -450,7 +456,15 @@ function handleJoinActionClick() {
               </AppBadge>
 
               <AppBadge
-                v-if="!isSoloWorkspace"
+                v-if="isDissolvedTeam"
+                color="neutral"
+                variant="soft"
+              >
+                Dissolved
+              </AppBadge>
+
+              <AppBadge
+                v-if="!isSoloWorkspace && !isDissolvedTeam"
                 color="neutral"
                 variant="soft"
               >
@@ -466,7 +480,7 @@ function handleJoinActionClick() {
               </AppBadge>
 
               <AppBadge
-                v-if="!canManageTeam && !isSoloWorkspace"
+                v-if="showParticipantTeamStatusBadge"
                 :color="participantTeamStatusColor"
                 variant="outline"
                 :class="team.isOpenToJoinRequests ? '' : 'border-black/16 bg-white/75 text-neutral-700 dark:border-white/[0.18] dark:bg-white/[0.03] dark:text-[#D0D0D0]'"
@@ -477,10 +491,17 @@ function handleJoinActionClick() {
 
             <div class="space-y-1">
               <p
-                v-if="!isSoloWorkspace"
+                v-if="!isSoloWorkspace && !isDissolvedTeam"
                 class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
               >
                 Everyone on the team appears here.
+              </p>
+
+              <p
+                v-else-if="isDissolvedTeam"
+                class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
+              >
+                This team is dissolved and has no active members.
               </p>
 
               <p
@@ -588,6 +609,13 @@ function handleJoinActionClick() {
           v-if="!isSoloWorkspace"
           class="grid gap-4"
         >
+          <p
+            v-if="isDissolvedTeam"
+            class="rounded-2xl border border-black/8 bg-white/80 px-4 py-4 text-sm text-toned dark:border-white/[0.08] dark:bg-white/[0.03]"
+          >
+            No active members remain on this team.
+          </p>
+
           <article
             v-for="member in team.members"
             :key="member.id"

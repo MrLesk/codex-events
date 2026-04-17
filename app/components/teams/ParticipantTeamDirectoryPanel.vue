@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import {
+  getActiveTeamMemberCount,
   formatJoinAvailabilityReason,
+  isTeamDissolved,
   type TeamDirectoryEntry
 } from '~/utils/team-workspace'
 
@@ -16,6 +18,7 @@ const props = defineProps<{
   ownTeamWorkspaceHref?: string | null
   totalTeams?: number
   showLockedStatus?: boolean
+  showOperationalTeamStates?: boolean
   filterOptions?: ReadonlyArray<{
     label: string
     value: string
@@ -42,6 +45,28 @@ function isActionPending(actionKey: string) {
   return props.pendingActionKey === actionKey
 }
 
+function isDissolved(entry: TeamDirectoryEntry) {
+  return isTeamDissolved(entry.team)
+}
+
+function getMemberCountLabel(entry: TeamDirectoryEntry) {
+  const activeMemberCount = getActiveTeamMemberCount(entry.team)
+  return isDissolved(entry) ? `${activeMemberCount} active members` : `${activeMemberCount}/${props.maxTeamMembers} members`
+}
+
+function getUnavailableReason(entry: TeamDirectoryEntry) {
+  if (isDissolved(entry)) {
+    return 'This team is dissolved and has no active members.'
+  }
+
+  return formatJoinAvailabilityReason(entry.team, entry.joinAvailability)
+}
+
+const directoryDescription = computed(() => props.showOperationalTeamStates
+  ? 'Browse teams in this hackathon, including dissolved teams retained for operational context.'
+  : 'Browse the active teams in this hackathon and filter the directory by team shape or joinability.'
+)
+
 function selectDirectoryFilter(nextFilter: string) {
   if (directoryFilter.value === nextFilter) {
     return
@@ -64,7 +89,7 @@ function selectDirectoryFilter(nextFilter: string) {
             Teams
           </h2>
           <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-            Browse the active teams in this hackathon and filter the directory by team shape or joinability.
+            {{ directoryDescription }}
           </p>
         </div>
 
@@ -140,12 +165,29 @@ function selectDirectoryFilter(nextFilter: string) {
                 </h3>
 
                 <AppBadge
-                  v-if="props.showLockedStatus || entry.team.workspaceMode !== 'solo'"
+                  v-if="props.showLockedStatus"
+                  color="neutral"
+                  variant="outline"
+                  class="border-black/16 bg-white/75 text-neutral-700 dark:border-white/[0.18] dark:bg-white/[0.03] dark:text-[#D0D0D0]"
+                >
+                  Locked
+                </AppBadge>
+
+                <AppBadge
+                  v-else-if="isDissolved(entry)"
+                  color="neutral"
+                  variant="soft"
+                >
+                  Dissolved
+                </AppBadge>
+
+                <AppBadge
+                  v-else-if="entry.team.workspaceMode !== 'solo'"
                   :color="props.showLockedStatus ? 'neutral' : entry.team.isOpenToJoinRequests ? 'success' : 'neutral'"
                   variant="outline"
                   :class="props.showLockedStatus || !entry.team.isOpenToJoinRequests ? 'border-black/16 bg-white/75 text-neutral-700 dark:border-white/[0.18] dark:bg-white/[0.03] dark:text-[#D0D0D0]' : ''"
                 >
-                  {{ props.showLockedStatus ? 'Locked' : entry.team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+                  {{ entry.team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
                 </AppBadge>
 
                 <AppBadge
@@ -177,7 +219,7 @@ function selectDirectoryFilter(nextFilter: string) {
                 v-if="entry.team.workspaceMode !== 'solo'"
                 class="text-sm text-toned"
               >
-                {{ entry.team.activeMemberCount ?? 0 }}/{{ props.maxTeamMembers }} members
+                {{ getMemberCountLabel(entry) }}
               </p>
 
               <p
@@ -188,10 +230,10 @@ function selectDirectoryFilter(nextFilter: string) {
               </p>
 
               <p
-                v-if="!entry.joinAvailability.isAllowed && formatJoinAvailabilityReason(entry.team, entry.joinAvailability)"
+                v-if="!entry.joinAvailability.isAllowed && getUnavailableReason(entry)"
                 class="text-sm text-muted"
               >
-                {{ formatJoinAvailabilityReason(entry.team, entry.joinAvailability) }}
+                {{ getUnavailableReason(entry) }}
               </p>
             </div>
 
@@ -253,7 +295,7 @@ function selectDirectoryFilter(nextFilter: string) {
         color="neutral"
         variant="soft"
         title="No visible teams yet"
-        description="No active teams match the current filter yet."
+        :description="props.showOperationalTeamStates ? 'No teams match the current filter yet.' : 'No active teams match the current filter yet.'"
       />
 
       <div

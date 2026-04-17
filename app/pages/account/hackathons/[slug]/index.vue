@@ -1043,6 +1043,7 @@ useSeoMeta({
           v-if="applicationStatus === 'approved' || canViewParticipantsAndTeams || canAdmin"
           :hackathon="hackathon"
           :selected-team-slug="selectedTeamSlug"
+          :show-operational-team-states="canViewParticipantsAndTeams || canAdmin"
         />
 
         <AccountHackathonTeamVisibilityPanel

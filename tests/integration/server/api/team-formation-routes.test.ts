@@ -27,6 +27,7 @@ import {
   users
 } from '../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
+import { stubAuth0Session } from '../../../support/backend/runtime'
 
 function createRoutes() {
   return [
@@ -83,6 +84,7 @@ async function seedTeamFormationContext(
     state?: 'registration_open' | 'submission_open' | 'judging_preparation'
     teamOpen?: boolean
     secondTeamAtCapacity?: boolean
+    includeStaffRole?: boolean
     teamOneSolo?: boolean
     teamOneActiveSubmissionStatus?: 'draft' | 'submitted'
   }
@@ -126,6 +128,13 @@ async function seedTeamFormationContext(
       email: 'requester@example.com',
       displayName: 'Requester',
       githubProfileUrl: 'https://github.com/requester'
+    },
+    {
+      id: 'staff_user',
+      auth0Subject: 'auth0|staff_user',
+      email: 'staff-user@example.com',
+      displayName: 'Staff User',
+      githubProfileUrl: 'https://github.com/staff-user'
     },
     {
       id: 'other_requester',
@@ -185,14 +194,29 @@ async function seedTeamFormationContext(
     createdByUserId: 'platform_admin'
   })
 
-  await harness.database.insert(hackathonRoleAssignments).values({
-    id: 'role_hackathon_admin',
-    hackathonId: 'hackathon_1',
-    userId: 'hackathon_admin',
-    role: 'hackathon_admin',
-    isInJudgePool: false,
-    createdAt: '2026-03-22T12:00:00.000Z'
-  })
+  await harness.database.insert(hackathonRoleAssignments).values([
+    {
+      id: 'role_hackathon_admin',
+      hackathonId: 'hackathon_1',
+      userId: 'hackathon_admin',
+      role: 'hackathon_admin',
+      isInJudgePool: false,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    },
+    ...(options?.includeStaffRole
+      ? [
+          {
+            id: 'role_staff_user',
+            hackathonId: 'hackathon_1',
+            userId: 'staff_user',
+            role: 'staff' as const,
+            isInJudgePool: false,
+            isStaff: true,
+            createdAt: '2026-03-22T12:00:00.000Z'
+          }
+        ]
+      : [])
+  ])
 
   await harness.database.insert(hackathonTermsDocuments).values({
     id: 'terms_app_1',
@@ -802,6 +826,97 @@ describe('TASK-3.6 team formation routes', () => {
         teamId: 'team_2',
         userId: 'team_admin',
         status: 'pending'
+      }
+    })
+  })
+
+  test('approved participants cannot resolve a dissolved team in list or detail reads', async () => {
+    const adminHarness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(adminHarness)
+    await seedTeamFormationContext(adminHarness, {
+      teamOneSolo: true
+    })
+
+    const leaveResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams/team_1/actions/leave', {
+      method: 'POST'
+    })
+    expect(leaveResponse.status).toBe(200)
+
+    stubAuth0Session({
+      sub: 'auth0|requester',
+      email: 'requester@example.com'
+    })
+
+    const listResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=1&slug=alpha-team')
+    expect(listResponse.status).toBe(200)
+    expect(await listResponse.json()).toMatchObject({
+      meta: {
+        total: 0
+      },
+      data: []
+    })
+
+    const detailResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams/team_1')
+    expect(detailResponse.status).toBe(404)
+    expect(await detailResponse.json()).toMatchObject({
+      error: {
+        code: 'team_not_found'
+      }
+    })
+  })
+
+  test('staff can still resolve a dissolved team and see it with zero active members', async () => {
+    const adminHarness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(adminHarness)
+    await seedTeamFormationContext(adminHarness, {
+      includeStaffRole: true,
+      teamOneSolo: true
+    })
+
+    const leaveResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams/team_1/actions/leave', {
+      method: 'POST'
+    })
+    expect(leaveResponse.status).toBe(200)
+
+    stubAuth0Session({
+      sub: 'auth0|staff_user',
+      email: 'staff-user@example.com'
+    })
+
+    const listResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=10&slug=alpha-team')
+    expect(listResponse.status).toBe(200)
+    expect(await listResponse.json()).toMatchObject({
+      meta: {
+        total: 1
+      },
+      data: [
+        expect.objectContaining({
+          id: 'team_1',
+          activeMemberCount: 0,
+          isOpenToJoinRequests: false
+        })
+      ]
+    })
+
+    const detailResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams/team_1')
+    expect(detailResponse.status).toBe(200)
+    expect(await detailResponse.json()).toMatchObject({
+      data: {
+        id: 'team_1',
+        activeMemberCount: 0,
+        members: []
       }
     })
   })
