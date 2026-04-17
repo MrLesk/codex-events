@@ -200,7 +200,7 @@ describe('TASK-220 hackathon credit routes', () => {
       method: 'POST',
       body: JSON.stringify({
         name: 'OpenAI credits',
-        description: 'Redeem at https://redeem.example'
+        description: 'Redeem at [provider](https://redeem.example)\n\n- Open the link\n- Claim the credits'
       })
     })
     expect(createResponse.status).toBe(200)
@@ -239,6 +239,7 @@ describe('TASK-220 hackathon credit routes', () => {
         {
           id: createdOfferPayload.data.id,
           name: 'OpenAI credits batch 1',
+          description: 'Redeem at [provider](https://redeem.example)\n\n- Open the link\n- Claim the credits',
           availableCount: 2,
           claimedCount: 0,
           totalCount: 2,
@@ -278,7 +279,7 @@ describe('TASK-220 hackathon credit routes', () => {
       id: 'credit_offer_1',
       hackathonId: 'hackathon_1',
       name: 'OpenAI credits',
-      description: 'Redeem the code on the provider site.',
+      description: 'Redeem the code on the [provider site](https://redeem.example).',
       displayOrder: 1,
       createdAt: '2026-03-22T12:00:00.000Z',
       updatedAt: '2026-03-22T12:00:00.000Z'
@@ -304,6 +305,7 @@ describe('TASK-220 hackathon credit routes', () => {
       data: [
         {
           id: 'credit_offer_1',
+          description: 'Redeem the code on the [provider site](https://redeem.example).',
           availableCount: 2,
           totalCount: 2,
           claimedCode: null
@@ -368,7 +370,7 @@ describe('TASK-220 hackathon credit routes', () => {
       id: 'credit_offer_1',
       hackathonId: 'hackathon_1',
       name: 'OpenAI credits',
-      description: 'Redeem the code on the provider site.',
+      description: 'Redeem the code on the [provider site](https://redeem.example).',
       displayOrder: 1,
       createdAt: '2026-03-22T12:00:00.000Z',
       updatedAt: '2026-03-22T12:00:00.000Z'
