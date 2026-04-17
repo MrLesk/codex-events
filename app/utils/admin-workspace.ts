@@ -413,8 +413,12 @@ export interface AdminSubmissionDashboardMetrics {
   outTeams: number
 }
 
+export function filterActiveAdminOperationalTeams(teams: AdminOperationalTeam[]) {
+  return teams.filter(team => team.activeMemberCount > 0)
+}
+
 export function countActiveAdminOperationalTeams(teams: AdminOperationalTeam[]) {
-  return teams.filter(team => team.activeMemberCount > 0).length
+  return filterActiveAdminOperationalTeams(teams).length
 }
 
 export interface JudgeAssignmentSummary {

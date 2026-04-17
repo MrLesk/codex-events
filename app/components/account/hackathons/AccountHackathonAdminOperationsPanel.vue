@@ -18,6 +18,7 @@ import type { PrizeRedemptionAdminView, PrizeRedemptionRecord } from '~/utils/pr
 import {
   buildAdminOperationalTeams,
   countActiveAdminOperationalTeams,
+  filterActiveAdminOperationalTeams,
   filterAdminOperationalTeams,
   getCurrentLifecycleControl,
   getAdminSubmissionDashboardMetrics,
@@ -310,8 +311,11 @@ const submissionOperationalTeams = computed<AdminOperationalTeam[]>(() =>
     noSubmissionEntries: noSubmissionTeams.value
   })
 )
+const activeSubmissionOperationalTeams = computed<AdminOperationalTeam[]>(() =>
+  filterActiveAdminOperationalTeams(submissionOperationalTeams.value)
+)
 const sortedSubmissionTeams = computed(() =>
-  sortAdminOperationalTeamsForSubmissionDashboard(submissionOperationalTeams.value)
+  sortAdminOperationalTeamsForSubmissionDashboard(activeSubmissionOperationalTeams.value)
 )
 const filteredSubmissionTeams = computed(() =>
   filterAdminOperationalTeams(sortedSubmissionTeams.value, {
@@ -320,7 +324,7 @@ const filteredSubmissionTeams = computed(() =>
   })
 )
 const submissionDashboardMetrics = computed(() =>
-  getAdminSubmissionDashboardMetrics(submissionOperationalTeams.value)
+  getAdminSubmissionDashboardMetrics(activeSubmissionOperationalTeams.value)
 )
 const submissionPanelStatus = computed(() =>
   combineLoadStatuses([teamDataStatus.value, noSubmissionStatus.value, submissionMonitorLoadStatus.value])

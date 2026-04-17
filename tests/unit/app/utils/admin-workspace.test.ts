@@ -27,6 +27,7 @@ import {
   formatAdminJudgeAssignmentStatus,
   formatApprovedParticipantRegistrationSummary,
   formatSubmissionStatus,
+  filterActiveAdminOperationalTeams,
   filterAdminOperationalTeams,
   filterManageableHackathons,
   fromDateTimeLocalValue,
@@ -1420,7 +1421,7 @@ describe('admin-workspace operational helpers', () => {
     })
   })
 
-  test('counts only operational teams with active members for submission progress denominators', () => {
+  test('filters active operational teams for submission dashboards and progress denominators', () => {
     const operationalTeams = buildAdminOperationalTeams(
       [
         createTeamSummary({
@@ -1485,7 +1486,24 @@ describe('admin-workspace operational helpers', () => {
       }
     )
 
+    const activeOperationalTeams = filterActiveAdminOperationalTeams(operationalTeams)
+
     expect(countActiveAdminOperationalTeams(operationalTeams)).toBe(2)
+    expect(activeOperationalTeams.map(team => team.team.id)).toEqual([
+      'team-active-submitted',
+      'team-active-draft'
+    ])
+    expect(getAdminSubmissionDashboardMetrics(activeOperationalTeams)).toEqual({
+      totalTeams: 2,
+      noRecordTeams: 0,
+      draftTeams: 1,
+      submittedTeams: 1,
+      lockedTeams: 0,
+      submittedOrLaterTeams: 1,
+      withdrawnTeams: 0,
+      disqualifiedTeams: 0,
+      outTeams: 0
+    })
   })
 
   test('sorts and filters submission monitor rows by metadata only', () => {
