@@ -172,20 +172,20 @@ function selectDirectoryFilter(nextFilter: string) {
                 </h3>
 
                 <AppBadge
-                  v-if="props.showLockedStatus"
+                  v-if="isDissolved(entry)"
+                  color="error"
+                  variant="soft"
+                >
+                  Dissolved
+                </AppBadge>
+
+                <AppBadge
+                  v-else-if="props.showLockedStatus"
                   color="neutral"
                   variant="outline"
                   class="border-black/16 bg-white/75 text-neutral-700 dark:border-white/[0.18] dark:bg-white/[0.03] dark:text-[#D0D0D0]"
                 >
                   Locked
-                </AppBadge>
-
-                <AppBadge
-                  v-else-if="isDissolved(entry)"
-                  color="neutral"
-                  variant="soft"
-                >
-                  Dissolved
                 </AppBadge>
 
                 <AppBadge

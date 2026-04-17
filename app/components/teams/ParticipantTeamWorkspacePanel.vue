@@ -155,7 +155,7 @@ const canManageTeamSettings = computed(() =>
   Boolean(props.canManageTeam) && (props.joinPolicyAvailability?.isAllowed ?? true)
 )
 const showLockedBadge = computed(() =>
-  Boolean(props.membership) && Boolean(props.isTeamLocked)
+  Boolean(props.membership) && Boolean(props.isTeamLocked) && !isDissolvedTeam.value
 )
 const showParticipantTeamStatusBadge = computed(() =>
   !props.canManageTeam && !isSoloWorkspace.value && !isDissolvedTeam.value
@@ -377,6 +377,14 @@ function handleJoinActionClick() {
                   Locked
                 </AppBadge>
 
+                <AppBadge
+                  v-if="isDissolvedTeam"
+                  color="error"
+                  variant="soft"
+                >
+                  Dissolved
+                </AppBadge>
+
                 <template v-if="!isSoloWorkspace">
                   <div
                     v-if="showJoinPolicyToggle"
@@ -463,7 +471,7 @@ function handleJoinActionClick() {
 
               <AppBadge
                 v-if="isDissolvedTeam"
-                color="neutral"
+                color="error"
                 variant="soft"
               >
                 Dissolved
