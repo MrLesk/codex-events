@@ -12,6 +12,17 @@ const migrationSql = readdirSync(join(process.cwd(), 'drizzle'))
   .join('\n')
   .replaceAll('--> statement-breakpoint', '\n')
 
+const judgeScaleMigrationFileName = '0040_judge_score_scale_1_to_5.sql'
+const preJudgeScaleMigrationSql = readdirSync(join(process.cwd(), 'drizzle'))
+  .filter(fileName => /^\d+.*\.sql$/.test(fileName) && fileName < judgeScaleMigrationFileName)
+  .sort()
+  .map(fileName => readFileSync(join(process.cwd(), 'drizzle', fileName), 'utf8'))
+  .join('\n')
+  .replaceAll('--> statement-breakpoint', '\n')
+
+const judgeScaleMigrationSql = readFileSync(join(process.cwd(), 'drizzle', judgeScaleMigrationFileName), 'utf8')
+  .replaceAll('--> statement-breakpoint', '\n')
+
 describe('shared database migration', () => {
   let database: TestD1Database
 
@@ -155,6 +166,169 @@ describe('shared database migration', () => {
     expect(hackathonRow.results).toEqual([{
       discord_server_url: null
     }])
+  })
+
+  test('applies the judge score scale migration on populated judge data without breaking foreign keys', async () => {
+    const migrationDatabase = createTestD1Database({
+      applyMigrations: false
+    })
+
+    try {
+      await migrationDatabase.exec(preJudgeScaleMigrationSql)
+
+      const now = isoTimestamp(0)
+      await seedUser(migrationDatabase, 'creator_1', now)
+      await seedUser(migrationDatabase, 'judge_1', now)
+      await seedHackathon(migrationDatabase, 'hackathon_1', 'pitch_review', now, 'creator_1')
+      await seedTeam(migrationDatabase, 'team_1', 'hackathon_1', 'creator_1', now)
+      await seedSubmission(migrationDatabase, 'submission_1', 'team_1', 'locked', now)
+
+      await migrationDatabase.prepare(`
+        insert into evaluation_criteria (
+          id, hackathon_id, name, description, weight, display_order, created_at
+        )
+        values (?, ?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        'criterion_1',
+        'hackathon_1',
+        'Execution',
+        'Execution quality',
+        50,
+        1,
+        now,
+        'criterion_2',
+        'hackathon_1',
+        'Novelty',
+        'Novelty quality',
+        50,
+        2,
+        now
+      )
+
+      await migrationDatabase.prepare(`
+        insert into judge_assignments (
+          id, hackathon_id, submission_id, judge_user_id, review_stage, blind_review_slot, status,
+          pitch_score, pitch_comment, assigned_at, started_at, completed_at, skipped_at,
+          skipped_by_user_id, skip_reason, ineligibility_status, ineligibility_reason,
+          ineligibility_marked_at, ineligibility_marked_by_user_id, created_at
+        )
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        'blind_assignment_1',
+        'hackathon_1',
+        'submission_1',
+        'judge_1',
+        'blind_review',
+        1,
+        'judge_completed',
+        null,
+        null,
+        now,
+        now,
+        now,
+        null,
+        null,
+        null,
+        'eligible',
+        null,
+        null,
+        null,
+        now
+      )
+
+      await migrationDatabase.prepare(`
+        insert into judge_assignments (
+          id, hackathon_id, submission_id, judge_user_id, review_stage, blind_review_slot, status,
+          pitch_score, pitch_comment, assigned_at, started_at, completed_at, skipped_at,
+          skipped_by_user_id, skip_reason, ineligibility_status, ineligibility_reason,
+          ineligibility_marked_at, ineligibility_marked_by_user_id, created_at
+        )
+        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        'pitch_assignment_1',
+        'hackathon_1',
+        'submission_1',
+        'judge_1',
+        'pitch_review',
+        null,
+        'judge_completed',
+        8,
+        'Strong pitch',
+        now,
+        now,
+        now,
+        null,
+        null,
+        null,
+        'eligible',
+        null,
+        null,
+        null,
+        now
+      )
+
+      await migrationDatabase.prepare(`
+        insert into judge_criterion_scores (
+          id, judge_assignment_id, evaluation_criterion_id, score, comment, created_at, updated_at
+        )
+        values (?, ?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        'score_1',
+        'blind_assignment_1',
+        'criterion_1',
+        6,
+        'Solid',
+        now,
+        now,
+        'score_2',
+        'blind_assignment_1',
+        'criterion_2',
+        9,
+        'Excellent',
+        now,
+        now
+      )
+
+      await migrationDatabase.exec(judgeScaleMigrationSql)
+
+      const pitchAssignmentRows = await migrationDatabase.prepare(`
+        select id, pitch_score
+        from judge_assignments
+        where id = ?
+      `).all<{ id: string, pitch_score: number | null }>('pitch_assignment_1')
+
+      expect(pitchAssignmentRows.results).toEqual([{
+        id: 'pitch_assignment_1',
+        pitch_score: 5
+      }])
+
+      const criterionScoreRows = await migrationDatabase.prepare(`
+        select id, score, judge_assignment_id
+        from judge_criterion_scores
+        order by id
+      `).all<{ id: string, score: number, judge_assignment_id: string }>()
+
+      expect(criterionScoreRows.results).toEqual([
+        {
+          id: 'score_1',
+          score: 4,
+          judge_assignment_id: 'blind_assignment_1'
+        },
+        {
+          id: 'score_2',
+          score: 5,
+          judge_assignment_id: 'blind_assignment_1'
+        }
+      ])
+
+      const foreignKeyCheckRows = await migrationDatabase.prepare(`
+        pragma foreign_key_check
+      `).all<Record<string, unknown>>()
+
+      expect(foreignKeyCheckRows.results).toEqual([])
+    } finally {
+      await migrationDatabase.close()
+    }
   })
 
   test('prevents duplicate pending join requests for the same user and team', async () => {

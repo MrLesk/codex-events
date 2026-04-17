@@ -1,3 +1,5 @@
+PRAGMA foreign_keys=OFF;
+--> statement-breakpoint
 CREATE TABLE `__new_judge_assignments` (
 	`id` text PRIMARY KEY NOT NULL,
 	`hackathon_id` text NOT NULL,
@@ -148,3 +150,5 @@ ALTER TABLE `__new_judge_criterion_scores` RENAME TO `judge_criterion_scores`;
 --> statement-breakpoint
 CREATE UNIQUE INDEX `judge_criterion_scores_assignment_criterion_idx`
 ON `judge_criterion_scores` (`judge_assignment_id`,`evaluation_criterion_id`);
+--> statement-breakpoint
+PRAGMA foreign_keys=ON;
