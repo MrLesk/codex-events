@@ -295,7 +295,7 @@ When('I load more admin teams', async ({ page }) => {
 })
 
 When('I admin-withdraw the team submission for {string} with note {string}', async ({ page }, teamId: string, note: string) => {
-  await page.getByTestId(`admin-team-withdraw-toggle-${teamId}`).click()
+  await page.getByTestId(`admin-team-expand-toggle-${teamId}`).click()
 
   const team = page.getByTestId(`admin-withdraw-team-${teamId}`)
 

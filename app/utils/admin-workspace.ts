@@ -846,6 +846,28 @@ export function formatFailedApplicationLumaSyncAlertToggleLabel(count: number, e
   return 'Expand'
 }
 
+export function formatAdminSubmissionRowToggleLabel(expanded: boolean) {
+  return expanded ? 'Collapse' : 'Expand'
+}
+
+export function formatAdminOperationalTeamProjectLabel(
+  submissionStatus: AdminSubmissionStatus,
+  projectName: string | null | undefined,
+  hasEnteredSubmissionPhase: boolean
+) {
+  if (submissionStatus === 'none') {
+    return hasEnteredSubmissionPhase
+      ? 'No submission record yet'
+      : 'Submission window not open yet'
+  }
+
+  if (submissionStatus === 'draft') {
+    return projectName ?? 'Untitled draft'
+  }
+
+  return projectName ?? 'Untitled project'
+}
+
 export function formatApplicationLumaSyncStatus(status: AdminApplicationRecord['lumaSyncStatus']) {
   switch (status) {
     case 'not_synced':
@@ -1293,6 +1315,16 @@ function formatOperationalUserLabel(user: OperationalUserSummary | undefined, us
   return user.displayName || user.email || userId
 }
 
+export function listActiveAdminOperationalTeamMembers(detail: AdminTeamDetailRecord | null) {
+  return (detail?.members ?? [])
+    .filter(member => member.leftAt === null)
+    .map(member => ({
+      userId: member.userId,
+      role: member.role,
+      label: formatOperationalUserLabel(member.user, member.userId)
+    }))
+}
+
 export function buildAdminOperationalTeams(
   teams: TeamSummary[],
   options?: {
@@ -1309,7 +1341,7 @@ export function buildAdminOperationalTeams(
     const detail = options?.teamDetails?.[index] ?? null
     const noSubmissionEntry = noSubmissionByTeamId.get(team.id)
     const submission = options?.submissions?.[index] ?? noSubmissionEntry?.submission ?? null
-    const activeMembers = (detail?.members ?? []).filter(member => member.leftAt === null)
+    const activeMembers = listActiveAdminOperationalTeamMembers(detail)
     const activeAdmins = activeMembers.filter(member => member.role === 'admin')
 
     return {
@@ -1320,7 +1352,7 @@ export function buildAdminOperationalTeams(
       activeMemberCount: activeMembers.length || team.activeMemberCount || 0,
       activeAdminChoices: activeAdmins.map(member => ({
         userId: member.userId,
-        label: formatOperationalUserLabel(member.user, member.userId)
+        label: member.label
       })),
       isInNoSubmissionSection: Boolean(noSubmissionEntry),
       noSubmissionReason: noSubmissionEntry?.submission?.status ?? 'none'

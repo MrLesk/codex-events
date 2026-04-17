@@ -20,6 +20,8 @@ import {
   createEmptyHackathonFormState,
   createHackathonFormState,
   createHackathonSlug,
+  formatAdminOperationalTeamProjectLabel,
+  formatAdminSubmissionRowToggleLabel,
   formatFailedApplicationLumaSyncAlertToggleLabel,
   formatApplicationAttendanceStatus,
   formatApplicationLumaSyncStatus,
@@ -55,6 +57,7 @@ import {
   getSubmissionStatusColor,
   isApplicationCheckedIn,
   listFailedApplicationLumaSyncApplications,
+  listActiveAdminOperationalTeamMembers,
   sortAdminOperationalTeamsForSubmissionDashboard,
   shouldShowApplicationLumaSyncStatus,
   toDateTimeLocalValue
@@ -1028,6 +1031,78 @@ describe('admin-workspace operational helpers', () => {
     expect(formatFailedApplicationLumaSyncAlertToggleLabel(1, false)).toBe('Expand')
     expect(formatFailedApplicationLumaSyncAlertToggleLabel(3, false)).toBe('Expand')
     expect(formatFailedApplicationLumaSyncAlertToggleLabel(3, true)).toBe('Collapse')
+  })
+
+  test('formats the admin submission row toggle label', () => {
+    expect(formatAdminSubmissionRowToggleLabel(false)).toBe('Expand')
+    expect(formatAdminSubmissionRowToggleLabel(true)).toBe('Collapse')
+  })
+
+  test('formats admin submission project labels for row headers', () => {
+    expect(formatAdminOperationalTeamProjectLabel('none', null, false)).toBe('Submission window not open yet')
+    expect(formatAdminOperationalTeamProjectLabel('none', null, true)).toBe('No submission record yet')
+    expect(formatAdminOperationalTeamProjectLabel('draft', null, true)).toBe('Untitled draft')
+    expect(formatAdminOperationalTeamProjectLabel('submitted', null, true)).toBe('Untitled project')
+    expect(formatAdminOperationalTeamProjectLabel('submitted', 'Relay Console', true)).toBe('Relay Console')
+  })
+
+  test('lists active team members for admin submission details', () => {
+    expect(listActiveAdminOperationalTeamMembers(createTeamDetail({
+      members: [
+        {
+          id: 'membership-admin',
+          teamId: 'team-1',
+          userId: 'user-admin',
+          role: 'admin',
+          joinedAt: '2026-03-22T12:00:00.000Z',
+          leftAt: null,
+          createdAt: '2026-03-22T12:00:00.000Z',
+          user: {
+            id: 'user-admin',
+            email: 'admin@example.com',
+            displayName: 'Admin User'
+          }
+        },
+        {
+          id: 'membership-member',
+          teamId: 'team-1',
+          userId: 'user-member',
+          role: 'member',
+          joinedAt: '2026-03-22T12:00:00.000Z',
+          leftAt: null,
+          createdAt: '2026-03-22T12:00:00.000Z',
+          user: {
+            id: 'user-member',
+            email: 'member@example.com'
+          }
+        },
+        {
+          id: 'membership-left',
+          teamId: 'team-1',
+          userId: 'user-left',
+          role: 'member',
+          joinedAt: '2026-03-22T12:00:00.000Z',
+          leftAt: '2026-03-22T13:00:00.000Z',
+          createdAt: '2026-03-22T12:00:00.000Z',
+          user: {
+            id: 'user-left',
+            email: 'left@example.com',
+            displayName: 'Former Member'
+          }
+        }
+      ]
+    }))).toEqual([
+      {
+        userId: 'user-admin',
+        role: 'admin',
+        label: 'Admin User (admin@example.com)'
+      },
+      {
+        userId: 'user-member',
+        role: 'member',
+        label: 'member@example.com'
+      }
+    ])
   })
 
   test('detects approved participant attendance from checkedInAt', () => {

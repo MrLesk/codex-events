@@ -8,10 +8,13 @@ import type {
 
 import { formatTimestamp } from '~/utils/date-formatting'
 import {
+  formatAdminOperationalTeamProjectLabel,
+  formatAdminSubmissionRowToggleLabel,
   getAdminSubmissionInterventionPolicy,
   formatSubmissionStatus,
   getSubmissionStatusColor,
-  isHackathonStateReached
+  isHackathonStateReached,
+  listActiveAdminOperationalTeamMembers
 } from '~/utils/admin-workspace'
 
 const search = defineModel<string>('search', {
@@ -36,7 +39,6 @@ const emit = defineEmits<{
 }>()
 
 const expandedTeamIds = ref(new Set<string>())
-const expandedWithdrawTeamIds = ref(new Set<string>())
 const withdrawDrafts = reactive<Record<string, {
   requestedByUserId: string
   adminWithdrawReason: string
@@ -148,26 +150,6 @@ function toggleExpanded(teamId: string) {
   expandedTeamIds.value = nextExpandedTeamIds
 }
 
-function isWithdrawExpanded(teamId: string) {
-  return expandedWithdrawTeamIds.value.has(teamId)
-}
-
-function toggleWithdrawExpanded(teamId: string) {
-  const nextExpandedWithdrawTeamIds = new Set(expandedWithdrawTeamIds.value)
-
-  if (nextExpandedWithdrawTeamIds.has(teamId)) {
-    nextExpandedWithdrawTeamIds.delete(teamId)
-  } else {
-    nextExpandedWithdrawTeamIds.add(teamId)
-  }
-
-  expandedWithdrawTeamIds.value = nextExpandedWithdrawTeamIds
-}
-
-function hasSubmissionDetails(team: AdminOperationalTeam) {
-  return Boolean(team.submission)
-}
-
 function getWithdrawDraft(team: AdminOperationalTeam) {
   const existing = withdrawDrafts[team.team.id]
 
@@ -192,21 +174,6 @@ function getWithdrawalPolicy(team: AdminOperationalTeam) {
   return getAdminSubmissionInterventionPolicy(props.hackathonState, team.submissionStatus)
 }
 
-function formatAdminNames(team: AdminOperationalTeam) {
-  if (team.activeAdminChoices.length === 0) {
-    return 'No active admin members'
-  }
-
-  return team.activeAdminChoices.map(choice => choice.label).join(', ')
-}
-
-function formatLastActivity(team: AdminOperationalTeam) {
-  return formatTimestamp(
-    team.submission?.submittedAt ?? team.submission?.updatedAt ?? team.team.updatedAt,
-    'No activity yet'
-  )
-}
-
 function formatMetricValue(value: number) {
   if (props.isLoading) {
     return 'Loading...'
@@ -219,22 +186,20 @@ function formatMetricValue(value: number) {
   return `${value}`
 }
 
-function formatProjectLabel(team: AdminOperationalTeam) {
-  if (team.submissionStatus === 'none') {
-    return hasEnteredSubmissionPhase.value
-      ? 'No submission record yet'
-      : 'Submission window not open yet'
-  }
-
-  if (team.submissionStatus === 'draft') {
-    return team.submission?.projectName ?? 'Untitled draft'
-  }
-
-  return team.submission?.projectName ?? 'Untitled project'
+function getProjectLabel(team: AdminOperationalTeam) {
+  return formatAdminOperationalTeamProjectLabel(
+    team.submissionStatus,
+    team.submission?.projectName,
+    hasEnteredSubmissionPhase.value
+  )
 }
 
-function hasExpandedTeamFooter(team: AdminOperationalTeam) {
-  return isWithdrawExpanded(team.team.id) || (Boolean(team.submission) && isExpanded(team.team.id))
+function getActiveMembers(team: AdminOperationalTeam) {
+  return listActiveAdminOperationalTeamMembers(team.detail)
+}
+
+function formatMemberRole(role: 'admin' | 'member') {
+  return role === 'admin' ? 'Admin' : 'Member'
 }
 </script>
 
@@ -358,7 +323,7 @@ function hasExpandedTeamFooter(team: AdminOperationalTeam) {
             :data-testid="`admin-team-${team.team.id}`"
             class="py-5 first:pt-0 last:pb-0"
           >
-            <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div class="flex items-start justify-between gap-4">
               <div class="min-w-0 space-y-2">
                 <div class="flex flex-wrap items-center gap-3">
                   <h4 class="text-lg font-semibold text-highlighted">
@@ -374,93 +339,121 @@ function hasExpandedTeamFooter(team: AdminOperationalTeam) {
                 </div>
 
                 <p class="text-sm text-toned">
-                  {{ formatProjectLabel(team) }}
-                </p>
-
-                <p class="text-sm text-toned">
-                  {{ team.activeMemberCount }} active member{{ team.activeMemberCount === 1 ? '' : 's' }} •
-                  Admins: {{ formatAdminNames(team) }}
+                  {{ getProjectLabel(team) }}
                 </p>
               </div>
 
-              <div class="flex flex-col items-start gap-3 xl:items-end">
-                <div class="text-sm text-toned xl:text-right">
-                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                    Last activity
-                  </p>
-                  <p class="mt-1">
-                    {{ formatLastActivity(team) }}
-                  </p>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2">
-                  <AppButton
-                    v-if="getWithdrawalPolicy(team).canAdminWithdraw"
-                    color="warning"
-                    variant="soft"
-                    size="sm"
-                    :data-testid="`admin-team-withdraw-toggle-${team.team.id}`"
-                    @click="toggleWithdrawExpanded(team.team.id)"
-                  >
-                    {{ isWithdrawExpanded(team.team.id) ? 'Hide withdraw' : 'Withdraw' }}
-                  </AppButton>
-
-                  <AppButton
-                    v-if="hasSubmissionDetails(team)"
-                    color="neutral"
-                    variant="outline"
-                    size="sm"
-                    @click="toggleExpanded(team.team.id)"
-                  >
-                    {{ isExpanded(team.team.id) ? 'Hide details' : 'Details' }}
-                  </AppButton>
-                </div>
-              </div>
+              <button
+                type="button"
+                :data-testid="`admin-team-expand-toggle-${team.team.id}`"
+                :aria-expanded="isExpanded(team.team.id)"
+                :aria-controls="`admin-team-details-${team.team.id}`"
+                class="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 self-center rounded-full border border-black/10 px-3.5 text-sm font-medium text-highlighted transition hover:border-black/20 hover:text-toned dark:border-white/[0.12] dark:text-white dark:hover:border-white/[0.22] dark:hover:text-[#D9D9D9]"
+                @click="toggleExpanded(team.team.id)"
+              >
+                <span>{{ formatAdminSubmissionRowToggleLabel(isExpanded(team.team.id)) }}</span>
+                <AppIcon
+                  :name="isExpanded(team.team.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                  class="size-4"
+                />
+              </button>
             </div>
 
             <div
-              v-if="hasExpandedTeamFooter(team)"
+              v-if="isExpanded(team.team.id)"
+              :id="`admin-team-details-${team.team.id}`"
               class="mt-4 space-y-4 border-t border-black/8 pt-4 dark:border-white/[0.08]"
             >
-              <div
-                v-if="isWithdrawExpanded(team.team.id)"
-                :data-testid="`admin-withdraw-team-${team.team.id}`"
-                class="grid gap-4 rounded-lg border border-warning/20 bg-warning/[0.04] px-4 py-4 dark:border-warning/25 dark:bg-warning/[0.08] lg:grid-cols-[0.45fr_0.55fr]"
-              >
-                <label class="grid gap-2">
-                  <span class="text-sm font-medium text-toned">Requested by team admin</span>
-                  <AppSelect
-                    v-model="getWithdrawDraft(team).requestedByUserId"
+              <section class="space-y-3">
+                <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                  Team members
+                </p>
+
+                <div
+                  v-if="getActiveMembers(team).length > 0"
+                  class="flex flex-wrap gap-2"
+                >
+                  <span
+                    v-for="member in getActiveMembers(team)"
+                    :key="`${team.team.id}:${member.userId}`"
+                    class="inline-flex max-w-full items-center gap-2 rounded-full border border-black/8 bg-white/62 px-3 py-1.5 text-sm text-toned dark:border-white/[0.08] dark:bg-black/10"
                   >
-                    <option
-                      v-for="choice in team.activeAdminChoices"
-                      :key="choice.userId"
-                      :value="choice.userId"
-                    >
-                      {{ choice.label }}
-                    </option>
-                  </AppSelect>
-                </label>
+                    <span class="truncate">{{ member.label }}</span>
+                    <span class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                      {{ formatMemberRole(member.role) }}
+                    </span>
+                  </span>
+                </div>
 
-                <div class="space-y-4">
-                  <label class="grid gap-2">
-                    <span class="text-sm font-medium text-toned">Operational note</span>
-                    <AppInput
-                      v-model="getWithdrawDraft(team).adminWithdrawReason"
-                      type="text"
-                      placeholder="Requested by team due to..."
+                <p
+                  v-else
+                  class="text-sm text-muted"
+                >
+                  No active team members.
+                </p>
+              </section>
+
+              <div
+                class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]"
+              >
+                <div class="space-y-2">
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                    Description
+                  </p>
+                  <p
+                    v-if="team.submission?.summary"
+                    class="whitespace-pre-wrap text-sm leading-6 text-toned"
+                  >
+                    {{ team.submission.summary }}
+                  </p>
+                  <p
+                    v-else
+                    class="text-sm text-muted"
+                  >
+                    {{ team.submission ? 'No description provided.' : 'No submission record yet.' }}
+                  </p>
+                </div>
+
+                <div>
+                  <div
+                    v-if="getWithdrawalPolicy(team).canAdminWithdraw"
+                    :data-testid="`admin-withdraw-team-${team.team.id}`"
+                    class="space-y-4 rounded-lg border border-warning/20 bg-warning/[0.04] px-4 py-4 dark:border-warning/25 dark:bg-warning/[0.08]"
+                  >
+                    <div class="grid gap-4">
+                      <label class="grid gap-2">
+                        <span class="text-sm font-medium text-toned">Requested by team admin</span>
+                        <AppSelect
+                          v-model="getWithdrawDraft(team).requestedByUserId"
+                        >
+                          <option
+                            v-for="choice in team.activeAdminChoices"
+                            :key="choice.userId"
+                            :value="choice.userId"
+                          >
+                            {{ choice.label }}
+                          </option>
+                        </AppSelect>
+                      </label>
+
+                      <label class="grid gap-2">
+                        <span class="text-sm font-medium text-toned">Operational note</span>
+                        <AppInput
+                          v-model="getWithdrawDraft(team).adminWithdrawReason"
+                          type="text"
+                          placeholder="Requested by team due to..."
+                        />
+                      </label>
+                    </div>
+
+                    <AppAlert
+                      v-if="team.activeAdminChoices.length === 0"
+                      color="warning"
+                      variant="soft"
+                      title="Team-admin request required"
+                      description="This action cannot be issued until the team detail exposes at least one active admin requester."
                     />
-                  </label>
 
-                  <AppAlert
-                    v-if="team.activeAdminChoices.length === 0"
-                    color="warning"
-                    variant="soft"
-                    title="Team-admin request required"
-                    description="This action cannot be issued until the team detail exposes at least one active admin requester."
-                  />
-
-                  <div class="flex flex-wrap items-center gap-3">
                     <AppButton
                       color="warning"
                       :data-testid="`admin-withdraw-submit-${team.team.id}`"
@@ -474,97 +467,69 @@ function hasExpandedTeamFooter(team: AdminOperationalTeam) {
                     >
                       Withdraw submission
                     </AppButton>
-
-                    <button
-                      type="button"
-                      class="text-sm font-medium text-toned transition-opacity hover:opacity-80"
-                      @click="toggleWithdrawExpanded(team.team.id)"
-                    >
-                      Cancel
-                    </button>
                   </div>
                 </div>
               </div>
 
-              <div
-                v-if="team.submission && isExpanded(team.team.id)"
-                class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]"
-              >
-                <div class="space-y-2">
-                  <p
-                    v-if="team.submission.summary"
-                    class="whitespace-pre-wrap text-sm leading-6 text-toned"
-                  >
-                    {{ team.submission.summary }}
+              <div class="grid gap-3 text-sm lg:grid-cols-4">
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                    Repository
                   </p>
+                  <a
+                    v-if="team.submission?.repositoryUrl"
+                    :href="team.submission.repositoryUrl"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="mt-1 block break-all text-primary underline-offset-4 hover:underline"
+                  >
+                    {{ team.submission.repositoryUrl }}
+                  </a>
                   <p
                     v-else
-                    class="text-sm text-muted"
+                    class="mt-1 text-muted"
                   >
-                    No summary
+                    {{ team.submission ? 'Not provided' : 'No submission record yet.' }}
                   </p>
                 </div>
 
-                <div class="grid gap-3 text-sm">
-                  <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                      Repository
-                    </p>
-                    <a
-                      v-if="team.submission.repositoryUrl"
-                      :href="team.submission.repositoryUrl"
-                      target="_blank"
-                      rel="noreferrer"
-                      class="mt-1 block break-all text-primary underline-offset-4 hover:underline"
-                    >
-                      {{ team.submission.repositoryUrl }}
-                    </a>
-                    <p
-                      v-else
-                      class="mt-1 text-muted"
-                    >
-                      Not provided
-                    </p>
-                  </div>
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                    Demo
+                  </p>
+                  <a
+                    v-if="team.submission?.demoUrl"
+                    :href="team.submission.demoUrl"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="mt-1 block break-all text-primary underline-offset-4 hover:underline"
+                  >
+                    {{ team.submission.demoUrl }}
+                  </a>
+                  <p
+                    v-else
+                    class="mt-1 text-muted"
+                  >
+                    {{ team.submission ? 'Not provided' : 'No submission record yet.' }}
+                  </p>
+                </div>
 
-                  <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                      Demo
-                    </p>
-                    <a
-                      v-if="team.submission.demoUrl"
-                      :href="team.submission.demoUrl"
-                      target="_blank"
-                      rel="noreferrer"
-                      class="mt-1 block break-all text-primary underline-offset-4 hover:underline"
-                    >
-                      {{ team.submission.demoUrl }}
-                    </a>
-                    <p
-                      v-else
-                      class="mt-1 text-muted"
-                    >
-                      Not provided
-                    </p>
-                  </div>
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                    Updated
+                  </p>
+                  <p class="mt-1 text-toned">
+                    {{ formatTimestamp(team.submission?.updatedAt, team.submission ? 'No activity yet' : 'No submission record') }}
+                  </p>
+                </div>
 
-                  <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                      Updated
-                    </p>
-                    <p class="mt-1 text-toned">
-                      {{ formatTimestamp(team.submission.updatedAt, 'No activity yet') }}
-                    </p>
-                  </div>
-
-                  <div>
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                      Submitted
-                    </p>
-                    <p class="mt-1 text-toned">
-                      {{ formatTimestamp(team.submission.submittedAt, 'Not submitted') }}
-                    </p>
-                  </div>
+                <div>
+                  <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                    Submitted
+                  </p>
+                  <p class="mt-1 text-toned">
+                    {{ formatTimestamp(team.submission?.submittedAt, team.submission ? 'Not submitted' : 'No submission record') }}
+                  </p>
                 </div>
               </div>
             </div>
