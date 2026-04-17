@@ -433,6 +433,27 @@ async function copyCreditValue(value: string) {
 
 <template>
   <div class="space-y-6">
+    <section
+      v-if="props.canManage"
+      class="grid gap-4 md:grid-cols-3"
+    >
+      <div
+        v-for="card in adminSummaryCards"
+        :key="card.label"
+        class="rounded-xl hackathon-workspace-detail-inset px-5 py-5"
+      >
+        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+          {{ card.label }}
+        </p>
+        <p class="mt-2 text-xl font-semibold text-highlighted">
+          {{ card.value }}
+        </p>
+        <p class="mt-1 text-sm text-muted">
+          {{ card.description }}
+        </p>
+      </div>
+    </section>
+
     <AppCard
       v-if="props.canManage"
       class="rounded-xl hackathon-workspace-detail-panel"
@@ -450,25 +471,7 @@ async function copyCreditValue(value: string) {
       </template>
 
       <div class="space-y-6">
-        <section class="grid gap-4 md:grid-cols-3">
-          <div
-            v-for="card in adminSummaryCards"
-            :key="card.label"
-            class="rounded-xl hackathon-workspace-detail-inset px-5 py-5"
-          >
-            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-              {{ card.label }}
-            </p>
-            <p class="mt-2 text-xl font-semibold text-highlighted">
-              {{ card.value }}
-            </p>
-            <p class="mt-1 text-sm text-muted">
-              {{ card.description }}
-            </p>
-          </div>
-        </section>
-
-        <section class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+        <section class="space-y-4">
           <div class="space-y-1">
             <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
               Create offer
@@ -479,99 +482,95 @@ async function copyCreditValue(value: string) {
           </div>
 
           <form
-            class="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
+            class="space-y-4"
             @submit.prevent="createOffer"
           >
-            <div class="min-w-0 space-y-4">
-              <AppFormField
-                label="Offer name"
-                name="credit-offer-name"
+            <AppFormField
+              label="Offer name"
+              name="credit-offer-name"
+            >
+              <AppInput
+                id="credit-offer-name"
+                v-model="createForm.name"
+                :disabled="createPending"
+                placeholder="OpenAI credits"
+              />
+            </AppFormField>
+
+            <AdminMarkdownEditorField
+              v-model="createForm.description"
+              name="credit-offer-details-editor"
+              editor-id="credit-offer-details-editor"
+              label="Details"
+              description="Participants see this markdown-formatted content before they claim a value."
+              placeholder="Use markdown for redemption steps, links, and formatting."
+              height="260px"
+              required
+            />
+
+            <div class="rounded-xl border border-dashed border-black/10 px-4 py-4 dark:border-white/[0.08]">
+              <input
+                ref="createFileInput"
+                type="file"
+                accept=".csv,text/csv"
+                class="sr-only"
+                :disabled="createPending"
+                @change="handleCreateInventoryChange"
               >
-                <AppInput
-                  id="credit-offer-name"
-                  v-model="createForm.name"
-                  :disabled="createPending"
-                  placeholder="OpenAI credits"
-                />
-              </AppFormField>
 
-              <div class="rounded-xl border border-dashed border-black/10 px-4 py-4 dark:border-white/[0.08]">
-                <input
-                  ref="createFileInput"
-                  type="file"
-                  accept=".csv,text/csv"
-                  class="sr-only"
-                  :disabled="createPending"
-                  @change="handleCreateInventoryChange"
-                >
-
-                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div class="space-y-1">
-                    <p class="text-sm font-medium text-highlighted">
-                      Initial inventory upload
-                    </p>
-                    <p class="text-xs text-muted">
-                      {{ createUploadDescription }}
-                    </p>
-                  </div>
-
-                  <div class="flex flex-wrap items-center gap-2">
-                    <AppButton
-                      type="button"
-                      color="neutral"
-                      variant="soft"
-                      size="sm"
-                      icon="i-lucide-upload"
-                      :disabled="createPending"
-                      @click="promptCreateInventoryUpload"
-                    >
-                      {{ createInventoryFile ? 'Change CSV' : 'Select CSV' }}
-                    </AppButton>
-
-                    <AppButton
-                      v-if="createInventoryFile"
-                      type="button"
-                      color="neutral"
-                      variant="ghost"
-                      size="sm"
-                      :disabled="createPending"
-                      @click="clearCreateInventorySelection"
-                    >
-                      Clear
-                    </AppButton>
-                  </div>
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div class="space-y-1">
+                  <p class="text-sm font-medium text-highlighted">
+                    Initial inventory upload
+                  </p>
+                  <p class="text-xs text-muted">
+                    {{ createUploadDescription }}
+                  </p>
                 </div>
 
-                <p
-                  v-if="selectedCreateFileName"
-                  class="mt-3 text-sm text-toned"
-                >
-                  {{ selectedCreateFileName }}
-                </p>
+                <div class="flex flex-wrap items-center gap-2">
+                  <AppButton
+                    type="button"
+                    color="neutral"
+                    variant="soft"
+                    size="sm"
+                    icon="i-lucide-upload"
+                    :disabled="createPending"
+                    @click="promptCreateInventoryUpload"
+                  >
+                    {{ createInventoryFile ? 'Change CSV' : 'Select CSV' }}
+                  </AppButton>
+
+                  <AppButton
+                    v-if="createInventoryFile"
+                    type="button"
+                    color="neutral"
+                    variant="ghost"
+                    size="sm"
+                    :disabled="createPending"
+                    @click="clearCreateInventorySelection"
+                  >
+                    Clear
+                  </AppButton>
+                </div>
               </div>
+
+              <p
+                v-if="selectedCreateFileName"
+                class="mt-3 text-sm text-toned"
+              >
+                {{ selectedCreateFileName }}
+              </p>
             </div>
 
-            <div class="min-w-0 space-y-4">
-              <AdminMarkdownEditorField
-                v-model="createForm.description"
-                name="credit-offer-details-editor"
-                editor-id="credit-offer-details-editor"
-                label="Details"
-                description="Participants see this markdown-formatted content before they claim a value."
-                placeholder="Use markdown for redemption steps, links, and formatting."
-                height="260px"
-                required
-              />
-
-              <div class="flex justify-end">
-                <AppButton
-                  type="submit"
-                  color="primary"
-                  :loading="createPending"
-                >
-                  {{ createActionLabel }}
-                </AppButton>
-              </div>
+            <div class="flex justify-end">
+              <AppButton
+                type="submit"
+                color="primary"
+                :loading="createPending"
+              >
+                {{ createActionLabel }}
+              </AppButton>
             </div>
           </form>
 
@@ -662,42 +661,28 @@ async function copyCreditValue(value: string) {
                   <!-- eslint-enable vue/no-v-html -->
                 </div>
 
-                <div class="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                  <div class="min-w-0">
-                    <AppFormField
-                      label="Offer name"
-                      :name="`credit-offer-name-${offer.id}`"
-                    >
-                      <AppInput
-                        :id="`credit-offer-name-${offer.id}`"
-                        v-model="getEditState(offer).name"
-                        :disabled="savePendingById[offer.id]"
-                      />
-                    </AppFormField>
-                  </div>
-
-                  <div class="min-w-0 space-y-4">
-                    <AdminMarkdownEditorField
-                      v-model="getEditState(offer).description"
-                      :name="`credit-offer-details-${offer.id}`"
-                      :editor-id="`credit-offer-details-${offer.id}`"
-                      label="Details"
-                      description="Participants see this markdown-formatted content before they claim a value."
-                      placeholder="Use markdown for redemption steps, links, and formatting."
-                      height="260px"
-                      required
+                <div class="space-y-4">
+                  <AppFormField
+                    label="Offer name"
+                    :name="`credit-offer-name-${offer.id}`"
+                  >
+                    <AppInput
+                      :id="`credit-offer-name-${offer.id}`"
+                      v-model="getEditState(offer).name"
+                      :disabled="savePendingById[offer.id]"
                     />
+                  </AppFormField>
 
-                    <div class="flex justify-end">
-                      <AppButton
-                        color="primary"
-                        :loading="savePendingById[offer.id]"
-                        @click="saveOffer(offer)"
-                      >
-                        Save offer
-                      </AppButton>
-                    </div>
-                  </div>
+                  <AdminMarkdownEditorField
+                    v-model="getEditState(offer).description"
+                    :name="`credit-offer-details-${offer.id}`"
+                    :editor-id="`credit-offer-details-${offer.id}`"
+                    label="Details"
+                    description="Participants see this markdown-formatted content before they claim a value."
+                    placeholder="Use markdown for redemption steps, links, and formatting."
+                    height="260px"
+                    required
+                  />
                 </div>
 
                 <div class="grid gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08] lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
@@ -732,6 +717,16 @@ async function copyCreditValue(value: string) {
                       Upload CSV
                     </AppButton>
                   </div>
+                </div>
+
+                <div class="flex justify-end">
+                  <AppButton
+                    color="primary"
+                    :loading="savePendingById[offer.id]"
+                    @click="saveOffer(offer)"
+                  >
+                    Save offer
+                  </AppButton>
                 </div>
 
                 <AppAlert
