@@ -57,6 +57,7 @@ const emit = defineEmits<{
   }]
   leaveTeam: []
   copyTeamLink: []
+  makeAdmin: [userId: string]
   removeMember: [userId: string]
   approveRequest: [requestId: string]
   rejectRequest: [requestId: string]
@@ -694,17 +695,33 @@ function handleJoinActionClick() {
                 </div>
               </div>
 
-              <AppButton
+              <div
                 v-if="canManageTeam && membership?.id !== member.id"
-                color="warning"
-                variant="soft"
-                :loading="pendingActionKey === `remove-team-member:${team.id}:${member.userId}`"
-                :disabled="!removalAvailabilityByUserId?.[member.userId]?.isAllowed || pendingActionKey === `remove-team-member:${team.id}:${member.userId}`"
-                :data-testid="`participant-team-remove-${member.userId}`"
-                @click="emit('removeMember', member.userId)"
+                class="flex flex-col items-stretch gap-2 lg:min-w-36"
               >
-                Remove member
-              </AppButton>
+                <AppButton
+                  v-if="member.role !== 'admin'"
+                  color="primary"
+                  variant="soft"
+                  :loading="pendingActionKey === `make-team-admin:${team.id}:${member.userId}`"
+                  :disabled="pendingActionKey === `make-team-admin:${team.id}:${member.userId}` || pendingActionKey === `remove-team-member:${team.id}:${member.userId}`"
+                  :data-testid="`participant-team-make-admin-${member.userId}`"
+                  @click="emit('makeAdmin', member.userId)"
+                >
+                  Make admin
+                </AppButton>
+
+                <AppButton
+                  color="warning"
+                  variant="soft"
+                  :loading="pendingActionKey === `remove-team-member:${team.id}:${member.userId}`"
+                  :disabled="!removalAvailabilityByUserId?.[member.userId]?.isAllowed || pendingActionKey === `remove-team-member:${team.id}:${member.userId}` || pendingActionKey === `make-team-admin:${team.id}:${member.userId}`"
+                  :data-testid="`participant-team-remove-${member.userId}`"
+                  @click="emit('removeMember', member.userId)"
+                >
+                  Remove member
+                </AppButton>
+              </div>
             </div>
           </article>
         </div>

@@ -746,6 +746,36 @@ export function useTeamFormationWorkspace(
     return result
   }
 
+  async function promoteCurrentTeamMember(userId: string) {
+    if (!visibleHackathonId.value || !currentTeam.value) {
+      mutationError.value = 'The team workspace is unavailable for membership changes.'
+      return null
+    }
+
+    const result = await runMutation(`make-team-admin:${currentTeam.value.id}:${userId}`, async () => {
+      const response = await apiFetch<TeamWorkspaceApiDataResponse<{
+        id: string
+        teamId: string
+        userId: string
+        role: 'admin'
+      }>>(
+        `/api/hackathons/${visibleHackathonId.value}/teams/${currentTeam.value!.id}/members/${userId}/actions/make-admin`,
+        {
+          method: 'POST'
+        }
+      )
+
+      await Promise.all([
+        loadCurrentTeam(),
+        loadOwnTeam(),
+        loadVisibleTeams(Math.max(currentVisibleTeamsPage.value, 1))
+      ])
+      return response.data
+    })
+
+    return result
+  }
+
   watch([visibleHackathonId, actorUserId], async ([hackathonId, userId]) => {
     resetVisibleTeamsState()
     resetOwnTeamState()
@@ -827,6 +857,7 @@ export function useTeamFormationWorkspace(
     approveJoinRequest,
     rejectJoinRequest,
     createTeam,
+    promoteCurrentTeamMember,
     removeCurrentTeamMember,
     resolvedHackathon,
     resolvedTeamId,

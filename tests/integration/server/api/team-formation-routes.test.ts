@@ -8,6 +8,7 @@ import getTeamHandler from '../../../../server/api/hackathons/[hackathonId]/team
 import patchTeamHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/index.patch'
 import patchJoinPolicyHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/join-policy.patch'
 import leaveTeamHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/actions/leave.post'
+import makeAdminHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/members/[userId]/actions/make-admin.post'
 import removeMemberHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/members/[userId]/actions/remove.post'
 import createJoinRequestHandler from '../../../../server/api/hackathons/[hackathonId]/team-join-requests/index.post'
 import listJoinRequestsHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/join-requests/index.get'
@@ -44,6 +45,11 @@ function createRoutes() {
       method: 'post' as const,
       path: '/api/hackathons/:hackathonId/teams/:teamId/actions/leave',
       handler: leaveTeamHandler
+    },
+    {
+      method: 'post' as const,
+      path: '/api/hackathons/:hackathonId/teams/:teamId/members/:userId/actions/make-admin',
+      handler: makeAdminHandler
     },
     {
       method: 'post' as const,
@@ -729,6 +735,45 @@ describe('TASK-3.6 team formation routes', () => {
     ]))
   })
 
+  test('team admins can promote members to admin and the change is audited', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedTeamFormationContext(harness)
+
+    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/members/team_member/actions/make-admin', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        teamId: 'team_1',
+        userId: 'team_member',
+        role: 'admin'
+      }
+    })
+
+    const storedMembership = await harness.database.query.teamMembers.findFirst({
+      where: eq(teamMembers.id, 'membership_member')
+    })
+    expect(storedMembership?.role).toBe('admin')
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        entityType: 'team_member',
+        entityId: 'membership_member',
+        action: 'team_member.promoted_to_admin'
+      })
+    ]))
+  })
+
   test('the last active admin cannot leave the team', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
@@ -941,6 +986,48 @@ describe('TASK-3.6 team formation routes', () => {
       error: {
         code: 'team_member_self_removal_forbidden',
         message: 'Use the leave-team action to remove your own team membership.'
+      }
+    })
+  })
+
+  test('team admins cannot use make-admin for their own membership or an existing admin', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedTeamFormationContext(harness)
+
+    const selfPromotionResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/members/team_admin/actions/make-admin', {
+      method: 'POST'
+    })
+
+    expect(selfPromotionResponse.status).toBe(403)
+    expect(await selfPromotionResponse.json()).toMatchObject({
+      error: {
+        code: 'team_member_self_promotion_forbidden',
+        message: 'Team admins cannot use make-admin on their own membership.'
+      }
+    })
+
+    const initialPromotionResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/members/team_member/actions/make-admin', {
+      method: 'POST'
+    })
+
+    expect(initialPromotionResponse.status).toBe(200)
+
+    const existingAdminResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/members/team_member/actions/make-admin', {
+      method: 'POST'
+    })
+
+    expect(existingAdminResponse.status).toBe(409)
+    expect(await existingAdminResponse.json()).toMatchObject({
+      error: {
+        code: 'team_member_already_admin',
+        message: 'The selected team member is already an admin.'
       }
     })
   })

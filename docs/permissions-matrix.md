@@ -103,6 +103,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Update team profile | No | No | No | Yes | No | No | No |
 | Approve join request | No | No | No | Yes, only while team remains open and capacity is available | No | No | No |
 | Reject join request | No | No | No | Yes | No | No | No |
+| Make team member admin | No | No | No | Yes, only for another active non-admin member of the team | No | No | No |
 | Remove team member | No | No | No | Yes, only if at least one active team admin remains | No | No | No |
 | Leave team during `registration_open` or `submission_open` | No | No | Yes, only if at least one active team admin remains or the user is the last active member of a team with no active draft, submitted, or locked submission | Yes, only if at least one active team admin remains or the user is the last active member of a team with no active draft, submitted, or locked submission | No | No | No |
 | Leave team after submission closes | No | No | Yes, only if at least one active team admin remains and at least one active team member remains | Yes, only if at least one active team admin remains and at least one active team member remains | No | No | No |

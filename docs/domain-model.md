@@ -232,7 +232,7 @@ Rules:
 - Admin-managed application withdrawal cannot dissolve a team while the team still has an active draft, submitted, or locked submission.
 - A team cannot exceed the maximum team member limit defined by its hackathon.
 - A team with pending join requests can approve them only while the team remains open to join requests.
-- Team admins can update the team profile, review join requests, approve members, and remove members.
+- Team admins can update the team profile, review join requests, approve members, promote other active members to team admin, and remove members.
 - Workspace users can browse active teams throughout the hackathon workspace.
 - Users can request to join open teams only while the hackathon allows team formation.
 - Team rename updates the team slug to a new unique slug derived from the current team name.

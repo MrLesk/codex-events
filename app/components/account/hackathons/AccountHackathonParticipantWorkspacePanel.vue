@@ -387,7 +387,44 @@ async function leaveCurrentTeam() {
   })
 }
 
+function getDisplayedTeamMemberLabel(userId: string) {
+  const member = displayedTeam.value?.members.find(entry => entry.userId === userId)
+  return member?.user?.displayName ?? member?.user?.email ?? userId
+}
+
+async function makeMemberAdmin(userId: string) {
+  const memberLabel = getDisplayedTeamMemberLabel(userId)
+  const confirmed = window.confirm(
+    `Make ${memberLabel} a team admin?\n\nThey will be able to manage members, join requests, and team settings.`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  const result = await workspace.promoteCurrentTeamMember(userId)
+
+  if (!result) {
+    return
+  }
+
+  toast.add({
+    title: 'Team admin updated',
+    description: `${memberLabel} can now manage this team.`,
+    color: 'success'
+  })
+}
+
 async function removeMember(userId: string) {
+  const memberLabel = getDisplayedTeamMemberLabel(userId)
+  const confirmed = window.confirm(
+    `Remove ${memberLabel} from this team?`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
   const result = await workspace.removeCurrentTeamMember(userId)
 
   if (!result) {
@@ -585,6 +622,7 @@ async function withdrawSubmission() {
             @submit-profile="submitTeamProfile"
             @toggle-join-policy="toggleJoinPolicy"
             @leave-team="leaveCurrentTeam"
+            @make-admin="makeMemberAdmin"
             @remove-member="removeMember"
             @approve-request="approveJoinRequest"
             @reject-request="rejectJoinRequest"

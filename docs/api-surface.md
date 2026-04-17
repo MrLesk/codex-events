@@ -358,6 +358,7 @@ Operations:
 | Update team profile | `PATCH /api/hackathons/:hackathonId/teams/:teamId` | team admin | Updates the team name and optional team bio. When the name changes, the team slug is regenerated as a new unique slug derived from the updated name. |
 | Update join openness | `PATCH /api/hackathons/:hackathonId/teams/:teamId/join-policy` | team admin | Controls `is_open_to_join_requests`. |
 | Leave team | `POST /api/hackathons/:hackathonId/teams/:teamId/actions/leave` | team member or team admin | Allowed when at least one active admin remains after the leave. During `registration_open` or `submission_open`, the last active member can also leave if the team has no active draft, submitted, or locked submission; that leave dissolves the team and closes outstanding join requests. After submission closes, at least one active team member must remain. |
+| Make member admin | `POST /api/hackathons/:hackathonId/teams/:teamId/members/:userId/actions/make-admin` | team admin | Allowed only for another active non-admin member of the team. |
 | Remove member | `POST /api/hackathons/:hackathonId/teams/:teamId/members/:userId/actions/remove` | team admin | Allowed only if at least one active admin remains after removal. |
 
 Testing:
