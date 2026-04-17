@@ -242,6 +242,18 @@ function getApplicantIdentityLabel(application: AdminApplicationRecord) {
   return application.user?.displayName ?? application.user?.email ?? application.userId
 }
 
+function getFailedLumaSyncParticipantPrimaryLabel(application: AdminApplicationRecord) {
+  return application.user?.displayName ?? application.user?.email ?? application.userId
+}
+
+function getFailedLumaSyncParticipantSecondaryLabel(application: AdminApplicationRecord) {
+  if (application.user?.displayName && application.user?.email && application.user.displayName !== application.user.email) {
+    return application.user.email
+  }
+
+  return null
+}
+
 function getApplicantAvatarAlt(application: AdminApplicationRecord) {
   return application.user?.displayName ?? application.user?.email ?? application.userId
 }
@@ -256,14 +268,23 @@ function getApplicantProfileIconHref(application: AdminApplicationRecord) {
 
 function getFailedLumaSyncParticipantMeta(application: AdminApplicationRecord) {
   if (application.user?.lumaEmail) {
-    return `Luma: ${application.user.lumaEmail}`
+    return {
+      label: 'Luma',
+      value: application.user.lumaEmail
+    }
   }
 
-  if (application.user?.email && application.user.email !== getApplicantIdentityLabel(application)) {
-    return `Account: ${application.user.email}`
+  if (application.user?.email) {
+    return {
+      label: 'Account',
+      value: application.user.email
+    }
   }
 
-  return `User ID: ${application.userId}`
+  return {
+    label: 'User ID',
+    value: application.userId
+  }
 }
 
 function getDecisionButtonClass(tone: 'approve' | 'approve_team' | 'reject' | 'withdraw', isActive: boolean) {
@@ -466,16 +487,23 @@ const emptyState = computed(() => {
           v-if="failedLumaSyncAlert"
           color="warning"
           variant="soft"
-          :title="failedLumaSyncAlert.title"
-          :description="failedLumaSyncAlert.description"
         >
-          <div class="mt-3 border-t border-current/15 pt-3">
+          <div class="col-span-full col-start-1 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div class="min-w-0 space-y-1">
+              <p class="font-semibold text-current">
+                {{ failedLumaSyncAlert.title }}
+              </p>
+              <p class="text-current/90">
+                {{ failedLumaSyncAlert.description }}
+              </p>
+            </div>
+
             <button
               type="button"
               data-testid="failed-luma-sync-alert-toggle"
               :aria-expanded="isFailedLumaSyncAlertExpanded"
-              aria-controls="failed-luma-sync-alert-list"
-              class="inline-flex items-center gap-2 text-sm font-medium text-current transition-opacity hover:opacity-80"
+              aria-controls="failed-luma-sync-alert-panel"
+              class="inline-flex shrink-0 items-center gap-2 self-start rounded-full border border-current/20 px-3 py-1.5 text-sm font-medium text-current transition hover:bg-current/10"
               @click="toggleFailedLumaSyncAlertExpanded"
             >
               <span>{{ failedLumaSyncAlertToggleLabel }}</span>
@@ -484,26 +512,62 @@ const emptyState = computed(() => {
                 class="size-4"
               />
             </button>
+          </div>
 
-            <ul
-              v-if="isFailedLumaSyncAlertExpanded"
-              id="failed-luma-sync-alert-list"
-              data-testid="failed-luma-sync-alert-list"
-              class="mt-3 space-y-2"
-            >
-              <li
-                v-for="application in failedLumaSyncApplications"
-                :key="application.id"
-                class="flex flex-col gap-0.5 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+          <div
+            v-if="isFailedLumaSyncAlertExpanded"
+            id="failed-luma-sync-alert-panel"
+            data-testid="failed-luma-sync-alert-panel"
+            class="col-span-full col-start-1 mt-4 border-t border-current/15 pt-4"
+          >
+            <div class="overflow-x-auto">
+              <table
+                data-testid="failed-luma-sync-alert-table"
+                class="min-w-full text-sm"
               >
-                <span class="font-medium text-current">
-                  {{ getApplicantIdentityLabel(application) }}
-                </span>
-                <span class="text-current/80">
-                  {{ getFailedLumaSyncParticipantMeta(application) }}
-                </span>
-              </li>
-            </ul>
+                <thead>
+                  <tr class="text-left text-xs uppercase tracking-[0.14em] text-current/70">
+                    <th class="w-[58%] pr-4 pb-3 font-semibold">
+                      Participant
+                    </th>
+                    <th class="pb-3 font-semibold">
+                      Sync detail
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-current/10">
+                  <tr
+                    v-for="application in failedLumaSyncApplications"
+                    :key="application.id"
+                    class="align-top"
+                  >
+                    <td class="py-3 pr-4">
+                      <div class="space-y-0.5">
+                        <p class="font-medium text-current">
+                          {{ getFailedLumaSyncParticipantPrimaryLabel(application) }}
+                        </p>
+                        <p
+                          v-if="getFailedLumaSyncParticipantSecondaryLabel(application)"
+                          class="break-all text-current/75"
+                        >
+                          {{ getFailedLumaSyncParticipantSecondaryLabel(application) }}
+                        </p>
+                      </div>
+                    </td>
+                    <td class="py-3">
+                      <div class="space-y-0.5">
+                        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-current/70">
+                          {{ getFailedLumaSyncParticipantMeta(application).label }}
+                        </p>
+                        <p class="break-all text-current/90">
+                          {{ getFailedLumaSyncParticipantMeta(application).value }}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </AppAlert>
 

@@ -44,6 +44,7 @@ import {
   getCurrentLifecycleControl,
   getJudgeAssignmentStatusColor,
   getParticipantsLimitSummary,
+  shouldShowApprovedParticipantAttendanceSummary,
   getTermsVersionPublishErrorMessage,
   hasHackathonAdminAccess,
   normalizeApiError,
@@ -982,6 +983,30 @@ describe('admin-workspace operational helpers', () => {
       checkedInCount: 1,
       value: '1 / 2'
     })
+  })
+
+  test('shows attendance summary only when Luma email is required and an event API ID is configured', () => {
+    expect(shouldShowApprovedParticipantAttendanceSummary(createHackathon({
+      requireLumaEmail: true,
+      lumaEventApiId: 'evt-123'
+    }))).toBe(true)
+
+    expect(shouldShowApprovedParticipantAttendanceSummary(createHackathon({
+      requireLumaEmail: false,
+      lumaEventApiId: 'evt-123'
+    }))).toBe(false)
+
+    expect(shouldShowApprovedParticipantAttendanceSummary(createHackathon({
+      requireLumaEmail: true,
+      lumaEventApiId: '   '
+    }))).toBe(false)
+
+    expect(shouldShowApprovedParticipantAttendanceSummary(createHackathon({
+      requireLumaEmail: true,
+      lumaEventApiId: null
+    }))).toBe(false)
+
+    expect(shouldShowApprovedParticipantAttendanceSummary(null)).toBe(false)
   })
 
   test('summarizes participant limit fill including staged approvals', () => {

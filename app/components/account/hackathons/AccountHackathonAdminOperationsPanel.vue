@@ -20,6 +20,7 @@ import {
   formatHackathonState,
   getHackathonStateColor,
   getParticipantsLimitSummary,
+  shouldShowApprovedParticipantAttendanceSummary,
   sortAdminOperationalTeamsForSubmissionDashboard,
   normalizeApiError
 } from '~/utils/admin-workspace'
@@ -257,6 +258,9 @@ const checkedInParticipantSummaryValue = computed(() => {
 
   return getApprovedParticipantAttendanceSummary(applications.value).value
 })
+const showCheckedInParticipantSummary = computed(() =>
+  shouldShowApprovedParticipantAttendanceSummary(currentHackathon.value)
+)
 
 const rejectedParticipantSummaryValue = computed(() =>
   formatParticipantMetricValue(
@@ -1475,7 +1479,7 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
       >
         <div
           class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4"
-          :class="participantsLimitSummary ? 'xl:grid-cols-5' : ''"
+          :class="participantsLimitSummary && showCheckedInParticipantSummary ? 'xl:grid-cols-5' : ''"
         >
           <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
@@ -1495,7 +1499,10 @@ function selectParticipantView(nextView: AccountHackathonParticipantView) {
             </p>
           </div>
 
-          <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
+          <div
+            v-if="showCheckedInParticipantSummary"
+            class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5"
+          >
             <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
               Checked in
             </p>

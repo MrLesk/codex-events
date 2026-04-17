@@ -789,6 +789,12 @@ export function getApplicationAttendanceStatusColor(
   return isApplicationCheckedIn(application) ? 'success' : 'neutral'
 }
 
+export function shouldShowApprovedParticipantAttendanceSummary(
+  hackathon: Pick<HackathonRecord, 'requireLumaEmail' | 'lumaEventApiId'> | null | undefined
+) {
+  return Boolean(hackathon?.requireLumaEmail && hackathon.lumaEventApiId?.trim())
+}
+
 export function shouldShowApplicationLumaSyncStatus(
   application: Pick<AdminApplicationRecord, 'status' | 'lumaSyncStatus'>
 ) {
