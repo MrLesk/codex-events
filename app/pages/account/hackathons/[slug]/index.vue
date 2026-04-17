@@ -25,7 +25,6 @@ import AccountHackathonCreditsPanel from '~/components/account/hackathons/Accoun
 import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
 import AccountHackathonParticipantVisibilityPanel from '~/components/account/hackathons/AccountHackathonParticipantVisibilityPanel.vue'
 import AccountHackathonRoleRosterPanel from '~/components/account/hackathons/AccountHackathonRoleRosterPanel.vue'
-import AccountHackathonTeamVisibilityPanel from '~/components/account/hackathons/AccountHackathonTeamVisibilityPanel.vue'
 import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
 import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOverviewPanel.vue'
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
@@ -1040,15 +1039,9 @@ useSeoMeta({
         class="space-y-8"
       >
         <AccountHackathonParticipantTeamPanel
-          v-if="applicationStatus === 'approved' || canViewParticipantsAndTeams || canAdmin"
           :hackathon="hackathon"
           :selected-team-slug="selectedTeamSlug"
           :show-operational-team-states="canViewParticipantsAndTeams || canAdmin"
-        />
-
-        <AccountHackathonTeamVisibilityPanel
-          v-else
-          :hackathon-id="workspaceHackathonId"
         />
       </section>
 

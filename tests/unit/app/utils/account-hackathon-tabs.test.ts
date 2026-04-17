@@ -64,6 +64,48 @@ describe('getAccountHackathonTabAccess', () => {
     })
   })
 
+  test('only actors who already qualify for the canonical participant team panel can access the teams tab', () => {
+    const scenarios = [
+      {
+        hasApprovedParticipantAccess: true,
+        hasPublishedPrizes: false,
+        canJudge: false,
+        canManage: false,
+        canViewParticipantsAndTeams: false
+      },
+      {
+        hasApprovedParticipantAccess: false,
+        hasPublishedPrizes: false,
+        canJudge: false,
+        canManage: true,
+        canViewParticipantsAndTeams: true
+      },
+      {
+        hasApprovedParticipantAccess: false,
+        hasPublishedPrizes: false,
+        canJudge: false,
+        canManage: false,
+        canViewParticipantsAndTeams: true
+      },
+      {
+        hasApprovedParticipantAccess: false,
+        hasPublishedPrizes: false,
+        canJudge: true,
+        canManage: false,
+        canViewParticipantsAndTeams: false
+      }
+    ] as const
+
+    for (const scenario of scenarios) {
+      const access = getAccountHackathonTabAccess(scenario)
+      const canRenderCanonicalTeamsPanel = scenario.hasApprovedParticipantAccess
+        || scenario.canManage
+        || scenario.canViewParticipantsAndTeams
+
+      expect(access.availableTabs.includes('teams')).toBe(canRenderCanonicalTeamsPanel)
+    }
+  })
+
   test('preserves judge and admin workspace sections alongside the admin prize configuration surface', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: true,
