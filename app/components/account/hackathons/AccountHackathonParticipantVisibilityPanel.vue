@@ -9,6 +9,7 @@ import type {
 import {
   shouldShowApprovedParticipantAttendanceSummary
 } from '~/utils/admin-workspace'
+import AccountHackathonParticipantsPanel from '~/components/account/hackathons/AccountHackathonParticipantsPanel.vue'
 
 const props = defineProps<{
   hackathonId: string

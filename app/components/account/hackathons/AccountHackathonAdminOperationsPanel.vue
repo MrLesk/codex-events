@@ -31,6 +31,7 @@ import {
   sortAdminOperationalTeamsForSubmissionDashboard,
   normalizeApiError
 } from '~/utils/admin-workspace'
+import AccountHackathonParticipantsPanel from '~/components/account/hackathons/AccountHackathonParticipantsPanel.vue'
 import { formatTimestamp } from '~/utils/date-formatting'
 
 type AccountHackathonAdminOperationsSection = 'participants' | 'submissions' | 'operations'
