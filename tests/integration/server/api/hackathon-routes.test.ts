@@ -671,7 +671,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         id: 'score_past_1',
         judgeAssignmentId: 'assignment_past_1',
         evaluationCriterionId: 'criterion_past',
-        score: 6,
+        score: 4,
         comment: 'Solid',
         createdAt: '2026-01-15T09:02:00.000Z',
         updatedAt: '2026-01-15T09:02:00.000Z'
@@ -680,7 +680,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         id: 'score_past_2',
         judgeAssignmentId: 'assignment_past_2',
         evaluationCriterionId: 'criterion_past',
-        score: 9,
+        score: 5,
         comment: 'Excellent',
         createdAt: '2026-01-15T09:05:00.000Z',
         updatedAt: '2026-01-15T09:05:00.000Z'
