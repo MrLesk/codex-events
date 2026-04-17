@@ -455,6 +455,33 @@ const judgeChoices = computed<JudgeChoice[]>(() =>
     }))
 )
 
+const PITCH_REVIEW_AUTO_REFRESH_MS = 5000
+let pitchReviewAutoRefreshTimer: number | null = null
+
+async function refreshLivePitchReviewData() {
+  if (import.meta.server || !showPitchReviewPanel.value || !canManage.value || pendingActionKey.value !== null) {
+    return
+  }
+
+  if (import.meta.client && document.visibilityState !== 'visible') {
+    return
+  }
+
+  await Promise.all([
+    workspace.hackathon.refresh(),
+    workspace.roleAssignments.refresh(),
+    workspace.assignments.refresh(),
+    workspace.leaderboard.refresh()
+  ])
+}
+
+function stopPitchReviewAutoRefresh() {
+  if (pitchReviewAutoRefreshTimer !== null) {
+    window.clearInterval(pitchReviewAutoRefreshTimer)
+    pitchReviewAutoRefreshTimer = null
+  }
+}
+
 watch([() => currentHackathon.value?.id, canManage], async ([id, allowed]) => {
   if (!id || !allowed) {
     return
@@ -474,6 +501,29 @@ watch([() => currentHackathon.value?.id, canManage], async ([id, allowed]) => {
   ])
 }, {
   immediate: true
+})
+
+watch([showPitchReviewPanel, canManage, pendingActionKey], async ([visible, allowed, pendingAction]) => {
+  if (import.meta.server) {
+    return
+  }
+
+  stopPitchReviewAutoRefresh()
+
+  if (!visible || !allowed || pendingAction !== null) {
+    return
+  }
+
+  await refreshLivePitchReviewData()
+  pitchReviewAutoRefreshTimer = window.setInterval(() => {
+    void refreshLivePitchReviewData()
+  }, PITCH_REVIEW_AUTO_REFRESH_MS)
+}, {
+  immediate: true
+})
+
+onBeforeUnmount(() => {
+  stopPitchReviewAutoRefresh()
 })
 
 const lifecycleHeroClassByColor = {

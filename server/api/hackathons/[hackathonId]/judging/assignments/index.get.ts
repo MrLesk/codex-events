@@ -33,10 +33,7 @@ export default defineApiHandler(async (event) => {
 
   const assignments: Array<typeof judgeAssignments.$inferSelect> = await database.query.judgeAssignments.findMany({
     where: authorization.isPlatformAdmin || authorization.isHackathonAdmin
-      ? and(
-          eq(judgeAssignments.hackathonId, hackathonId),
-          inArray(judgeAssignments.status, ['assigned', 'judge_started'])
-        )
+      ? eq(judgeAssignments.hackathonId, hackathonId)
       : and(
           eq(judgeAssignments.hackathonId, hackathonId),
           eq(judgeAssignments.judgeUserId, actor.platformUser.id),

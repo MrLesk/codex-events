@@ -382,7 +382,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     expect(payload.data[0]?.blindSubmission).not.toHaveProperty('teamName')
   })
 
-  test('hackathon admins can list all active assignments without judge participation enabled', async () => {
+  test('hackathon admins can list assignments across all statuses without judge participation enabled', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/hackathons/:hackathonId/judging/assignments', handler: listJudgeAssignmentsHandler }
@@ -414,22 +414,52 @@ describe('TASK-3.7 judging assignment routes', () => {
         assignedAt: '2026-03-25T12:11:00.000Z',
         startedAt: '2026-03-25T12:12:00.000Z',
         createdAt: '2026-03-25T12:11:00.000Z'
+      },
+      {
+        id: 'assignment_3',
+        hackathonId: 'hackathon_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_c',
+        status: 'judge_completed',
+        assignedAt: '2026-03-25T12:13:00.000Z',
+        startedAt: '2026-03-25T12:14:00.000Z',
+        completedAt: '2026-03-25T12:15:00.000Z',
+        createdAt: '2026-03-25T12:13:00.000Z'
+      },
+      {
+        id: 'assignment_4',
+        hackathonId: 'hackathon_1',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_c',
+        status: 'skipped',
+        assignedAt: '2026-03-25T12:16:00.000Z',
+        skippedAt: '2026-03-25T12:17:00.000Z',
+        skippedByUserId: 'platform_admin',
+        createdAt: '2026-03-25T12:16:00.000Z'
       }
     ])
 
     const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments')
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
-      data: [
+      data: expect.arrayContaining([
         expect.objectContaining({
           id: 'assignment_1'
         }),
         expect.objectContaining({
           id: 'assignment_2'
+        }),
+        expect.objectContaining({
+          id: 'assignment_3',
+          status: 'judge_completed'
+        }),
+        expect.objectContaining({
+          id: 'assignment_4',
+          status: 'skipped'
         })
-      ],
+      ]),
       meta: {
-        total: 2
+        total: 4
       }
     })
   })
