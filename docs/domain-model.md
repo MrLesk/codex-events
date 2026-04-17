@@ -353,7 +353,7 @@ Rules:
 
 - Hackathon credits are separate from prizes and are not part of winner selection.
 - Each credit offer belongs to exactly one hackathon.
-- A credit offer has a participant-facing name and description.
+- A credit offer has a participant-facing name and markdown description.
 - A hackathon can define multiple credit offers.
 - Hackathon admins and platform admins can append inventory to an existing credit offer over time.
 - A credit offer can remain available as long as it has unclaimed inventory.

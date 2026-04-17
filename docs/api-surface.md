@@ -509,8 +509,8 @@ Operations:
 | --- | --- | --- | --- |
 | List participant-visible credits for a hackathon | `GET /api/hackathons/:hackathonId/credits` | approved participant, hackathon admin, or platform admin | Returns credit offers with the caller's own claim state for that hackathon. |
 | List admin credit inventory for a hackathon | `GET /api/hackathons/:hackathonId/admin/credits` | hackathon admin or platform admin | Returns credit offers, inventory counts, and claim records for the hackathon. |
-| Create credit offer | `POST /api/hackathons/:hackathonId/credits` | hackathon admin or platform admin | Creates one hackathon credit offer. |
-| Update credit offer | `PATCH /api/hackathons/:hackathonId/credits/:creditId` | hackathon admin or platform admin | Updates participant-facing credit-offer metadata. |
+| Create credit offer | `POST /api/hackathons/:hackathonId/credits` | hackathon admin or platform admin | Creates one hackathon credit offer with participant-facing name and markdown description fields. |
+| Update credit offer | `PATCH /api/hackathons/:hackathonId/credits/:creditId` | hackathon admin or platform admin | Updates participant-facing credit-offer metadata, including the markdown description. |
 | Import credit inventory into an offer | `POST /api/hackathons/:hackathonId/credits/:creditId/import` | hackathon admin or platform admin | Accepts a single-column CSV upload and appends one redeemable value per non-empty row. |
 | Claim one credit from an offer | `POST /api/hackathons/:hackathonId/credits/:creditId/actions/claim` | approved participant | Returns the caller's existing assigned value for that offer when already claimed; otherwise atomically assigns one unclaimed uploaded value. |
 

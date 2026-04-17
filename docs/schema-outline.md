@@ -630,7 +630,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - A credit offer belongs to one hackathon.
 - A credit offer is separate from winner prizes.
 - A hackathon can define multiple credit offers.
-- A credit offer stores participant-facing copy and ordering only. Uploaded redeemable values live on `HackathonCreditCode`.
+- A credit offer stores participant-facing markdown copy and ordering only. Uploaded redeemable values live on `HackathonCreditCode`.
 
 ## HackathonCreditCode
 

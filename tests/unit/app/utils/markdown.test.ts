@@ -7,6 +7,12 @@ describe('markdown utils', () => {
     expect(renderMarkdown('# Title\n\nBody copy')).toContain('<h1>Title</h1>')
   })
 
+  test('renders markdown links using anchor tags', () => {
+    expect(renderMarkdown('Redeem at [provider](https://redeem.example)')).toContain(
+      '<a href="https://redeem.example">provider</a>'
+    )
+  })
+
   test('can strip the leading top-level heading before rendering', () => {
     const html = renderMarkdown('# Title\n\nBody copy', {
       stripLeadingHeading: true

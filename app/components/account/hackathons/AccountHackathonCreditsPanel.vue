@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatHackathonDate } from '~/composables/useHackathonPresentation'
+import { formatHackathonDate, formatHackathonTime } from '~/composables/useHackathonPresentation'
 import type {
   AdminHackathonCreditOffer,
   HackathonCreditApiDataResponse,
@@ -7,9 +7,11 @@ import type {
   ParticipantHackathonCreditOffer
 } from '~/utils/hackathon-credits'
 import {
+  createHackathonCreditOfferWithInventory,
   isHackathonCreditLink,
   normalizeHackathonCreditApiError
 } from '~/utils/hackathon-credits'
+import { renderMarkdown } from '~/utils/markdown'
 
 const props = defineProps<{
   hackathonId: string
@@ -60,6 +62,8 @@ const adminCreditsRequest = useAsyncData<AdminHackathonCreditOffer[]>(
 
 const participantCredits = computed(() => participantCreditsRequest.data.value)
 const adminCredits = computed(() => adminCreditsRequest.data.value)
+const createFileInput = ref<HTMLInputElement | null>(null)
+const createInventoryFile = ref<File | null>(null)
 const createForm = reactive({
   name: '',
   description: ''
@@ -69,13 +73,53 @@ const createError = ref('')
 const createPending = ref(false)
 const claimPendingById = reactive<Record<string, boolean>>({})
 const claimErrorById = reactive<Record<string, string>>({})
+const expandedInventoryOfferIds = ref(new Set<string>())
+const expandedParticipantOfferIds = ref(new Set<string>())
 const savePendingById = reactive<Record<string, boolean>>({})
 const saveErrorById = reactive<Record<string, string>>({})
 const importPendingById = reactive<Record<string, boolean>>({})
 const importErrorById = reactive<Record<string, string>>({})
 
+const selectedCreateFileName = computed(() => createInventoryFile.value?.name ?? '')
+const createActionLabel = computed(() =>
+  createInventoryFile.value ? 'Create offer and upload CSV' : 'Create offer'
+)
+const createUploadDescription = computed(() =>
+  createInventoryFile.value
+    ? `${createInventoryFile.value.name} will be imported immediately after the offer is created.`
+    : 'Optional: add a single-column CSV now, or create the offer first and upload inventory later.'
+)
+const adminSummaryCards = computed(() => {
+  const offerCount = adminCredits.value.length
+  const availableCount = adminCredits.value.reduce((sum, offer) => sum + offer.availableCount, 0)
+  const claimedCount = adminCredits.value.reduce((sum, offer) => sum + offer.claimedCount, 0)
+
+  return [
+    {
+      label: 'Offers',
+      value: offerCount,
+      description: offerCount === 1 ? 'One participant-facing credit offer is live.' : 'Participant-facing credit offers are live.'
+    },
+    {
+      label: 'Available values',
+      value: availableCount,
+      description: 'Unclaimed codes and links that participants can still claim.'
+    },
+    {
+      label: 'Claimed values',
+      value: claimedCount,
+      description: 'Uploaded values already attached to participant accounts.'
+    }
+  ]
+})
+
 watch(adminCredits, (offers) => {
   const nextIds = new Set(offers.map(offer => offer.id))
+  const nextExpandedInventoryOfferIds = new Set(
+    [...expandedInventoryOfferIds.value].filter(offerId => nextIds.has(offerId))
+  )
+
+  expandedInventoryOfferIds.value = nextExpandedInventoryOfferIds
 
   for (const key of Object.keys(editById)) {
     if (!nextIds.has(key)) {
@@ -111,11 +155,68 @@ watch(adminCredits, (offers) => {
   immediate: true
 })
 
+watch(participantCredits, (offers) => {
+  const nextIds = new Set(offers.map(offer => offer.id))
+  const nextExpandedParticipantOfferIds = new Set(
+    [...expandedParticipantOfferIds.value].filter(offerId => nextIds.has(offerId))
+  )
+
+  expandedParticipantOfferIds.value = nextExpandedParticipantOfferIds
+}, {
+  immediate: true
+})
+
 function getEditState(offer: AdminHackathonCreditOffer) {
   return editById[offer.id] ?? {
     name: offer.name,
     description: offer.description
   }
+}
+
+function renderCreditOfferDescription(description: string) {
+  const normalizedDescription = description.trim()
+
+  return normalizedDescription ? renderMarkdown(normalizedDescription) : ''
+}
+
+function formatCreditClaimedAt(value: string | null) {
+  if (!value) {
+    return 'Saved'
+  }
+
+  return `${formatHackathonDate(value)} at ${formatHackathonTime(value)}`
+}
+
+function isInventoryExpanded(offerId: string) {
+  return expandedInventoryOfferIds.value.has(offerId)
+}
+
+function isParticipantOfferExpanded(offerId: string) {
+  return expandedParticipantOfferIds.value.has(offerId)
+}
+
+function toggleInventoryExpanded(offerId: string) {
+  const nextExpandedInventoryOfferIds = new Set(expandedInventoryOfferIds.value)
+
+  if (nextExpandedInventoryOfferIds.has(offerId)) {
+    nextExpandedInventoryOfferIds.delete(offerId)
+  } else {
+    nextExpandedInventoryOfferIds.add(offerId)
+  }
+
+  expandedInventoryOfferIds.value = nextExpandedInventoryOfferIds
+}
+
+function toggleParticipantOfferExpanded(offerId: string) {
+  const nextExpandedParticipantOfferIds = new Set(expandedParticipantOfferIds.value)
+
+  if (nextExpandedParticipantOfferIds.has(offerId)) {
+    nextExpandedParticipantOfferIds.delete(offerId)
+  } else {
+    nextExpandedParticipantOfferIds.add(offerId)
+  }
+
+  expandedParticipantOfferIds.value = nextExpandedParticipantOfferIds
 }
 
 async function refreshCredits() {
@@ -125,6 +226,28 @@ async function refreshCredits() {
   ])
 }
 
+function promptCreateInventoryUpload() {
+  createFileInput.value?.click()
+}
+
+function handleCreateInventoryChange(event: Event) {
+  const input = event.target as HTMLInputElement | null
+  createInventoryFile.value = input?.files?.[0] ?? null
+}
+
+function clearCreateInventorySelection() {
+  createInventoryFile.value = null
+
+  if (createFileInput.value) {
+    createFileInput.value.value = ''
+  }
+}
+
+function promptOfferImportUpload(offerId: string) {
+  const input = document.getElementById(`credit-offer-import-${offerId}`) as HTMLInputElement | null
+  input?.click()
+}
+
 async function createOffer() {
   createError.value = ''
 
@@ -132,30 +255,40 @@ async function createOffer() {
   const description = createForm.description.trim()
 
   if (!name || !description) {
-    createError.value = 'Enter a name and description before creating a credit offer.'
+    createError.value = 'Enter a name and details before creating a credit offer.'
     return
   }
 
   createPending.value = true
 
   try {
-    await apiFetch<HackathonCreditApiDataResponse<AdminHackathonCreditOffer>>(
-      `/api/hackathons/${props.hackathonId}/credits`,
-      {
-        method: 'POST',
-        body: {
-          name,
-          description
-        }
-      }
-    )
+    const result = await createHackathonCreditOfferWithInventory({
+      apiFetch,
+      hackathonId: props.hackathonId,
+      name,
+      description,
+      file: createInventoryFile.value
+    })
 
     createForm.name = ''
     createForm.description = ''
+    clearCreateInventorySelection()
     await refreshCredits()
+
+    if (result.status === 'created_without_inventory') {
+      toast.add({
+        title: 'Offer created without inventory',
+        description: `${result.importError.message} Upload the CSV from the new offer row below.`,
+        color: 'warning'
+      })
+      return
+    }
+
     toast.add({
       title: 'Credit offer created',
-      description: 'The new credit offer is ready for inventory uploads.',
+      description: result.importedCount > 0
+        ? `${result.importedCount} credit value${result.importedCount === 1 ? '' : 's'} imported into the new offer.`
+        : 'The new credit offer is ready for inventory uploads.',
       color: 'success'
     })
   } catch (error) {
@@ -173,7 +306,7 @@ async function saveOffer(offer: AdminHackathonCreditOffer) {
   saveErrorById[offer.id] = ''
 
   if (!name || !description) {
-    saveErrorById[offer.id] = 'Enter a name and description before saving this offer.'
+    saveErrorById[offer.id] = 'Enter a name and details before saving this offer.'
     return
   }
 
@@ -204,14 +337,7 @@ async function saveOffer(offer: AdminHackathonCreditOffer) {
   }
 }
 
-async function importCredits(event: Event, offerId: string) {
-  const input = event.target as HTMLInputElement | null
-  const file = input?.files?.[0]
-
-  if (!file) {
-    return
-  }
-
+async function importCreditsFile(offerId: string, file: File) {
   importErrorById[offerId] = ''
   importPendingById[offerId] = true
 
@@ -237,10 +363,21 @@ async function importCredits(event: Event, offerId: string) {
     importErrorById[offerId] = normalizeHackathonCreditApiError(error).message
   } finally {
     importPendingById[offerId] = false
+  }
+}
 
-    if (input) {
-      input.value = ''
-    }
+async function handleOfferImportChange(event: Event, offerId: string) {
+  const input = event.target as HTMLInputElement | null
+  const file = input?.files?.[0]
+
+  if (!file) {
+    return
+  }
+
+  await importCreditsFile(offerId, file)
+
+  if (input) {
+    input.value = ''
   }
 }
 
@@ -295,397 +432,636 @@ async function copyCreditValue(value: string) {
 </script>
 
 <template>
-  <div class="space-y-8">
-    <section
+  <div class="space-y-6">
+    <AppCard
       v-if="props.canManage"
-      class="space-y-6"
+      class="rounded-xl hackathon-workspace-detail-panel"
+      :ui="{ body: 'p-5' }"
     >
-      <div class="space-y-2">
-        <h2 class="text-xl font-semibold text-highlighted">
-          Manage credits
-        </h2>
-        <p class="text-sm text-toned">
-          Create participant-facing credit offers, then upload a single-column CSV with no header and one code or link per row.
-        </p>
-      </div>
-
-      <article class="rounded-[1.8rem] border border-default/75 bg-elevated/90 px-6 py-6 shadow-[0_28px_68px_-48px_rgba(15,20,34,0.55)]">
-        <div class="grid gap-4 lg:grid-cols-[1fr_1.4fr_auto] lg:items-end">
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Offer name</span>
-            <AppInput
-              v-model="createForm.name"
-              placeholder="OpenAI credits"
-            />
-          </label>
-
-          <label class="grid gap-2">
-            <span class="text-sm font-medium text-toned">Description</span>
-            <AppTextarea
-              v-model="createForm.description"
-              :rows="3"
-              placeholder="To redeem this code, go to https://redeem.com"
-            />
-          </label>
-
-          <AppButton
-            color="neutral"
-            :loading="createPending"
-            @click="createOffer"
-          >
-            Create offer
-          </AppButton>
+      <template #header>
+        <div class="space-y-1">
+          <h2 class="text-xl font-semibold text-highlighted">
+            Credits management
+          </h2>
+          <p class="text-sm text-muted">
+            Create participant-facing offers, append CSV inventory over time, and review which values are already attached to participants.
+          </p>
         </div>
+      </template>
 
-        <AppAlert
-          v-if="createError"
-          class="mt-4"
-          color="error"
-          variant="soft"
-          title="Credit offer could not be created"
-          :description="createError"
-        />
-      </article>
-
-      <AppAlert
-        v-if="adminCreditsRequest.error.value"
-        color="error"
-        variant="soft"
-        title="Credits unavailable"
-        :description="normalizeHackathonCreditApiError(adminCreditsRequest.error.value).message"
-      />
-
-      <AppAlert
-        v-else-if="adminCreditsRequest.status.value === 'idle' || adminCreditsRequest.status.value === 'pending'"
-        color="neutral"
-        variant="soft"
-        title="Loading credit inventory"
-        description="Resolving the current offers, coupon values, and claim records for this hackathon."
-      />
-
-      <AppAlert
-        v-else-if="adminCredits.length === 0"
-        color="neutral"
-        variant="soft"
-        title="No credit offers yet"
-        description="Create a credit offer above, then upload a CSV batch into it."
-      />
-
-      <div
-        v-else
-        class="space-y-6"
-      >
-        <article
-          v-for="offer in adminCredits"
-          :key="offer.id"
-          :data-testid="`admin-credit-offer-${offer.id}`"
-          class="rounded-[1.8rem] border border-default/75 bg-elevated/90 px-6 py-6 shadow-[0_28px_68px_-48px_rgba(15,20,34,0.55)]"
-        >
-          <div class="flex flex-col gap-5">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div class="space-y-3">
-                <div class="flex flex-wrap items-center gap-2">
-                  <h3 class="text-lg font-semibold text-highlighted">
-                    {{ offer.name }}
-                  </h3>
-                  <AppBadge
-                    color="neutral"
-                    variant="soft"
-                  >
-                    {{ offer.availableCount }} available
-                  </AppBadge>
-                  <AppBadge
-                    color="warning"
-                    variant="soft"
-                  >
-                    {{ offer.claimedCount }} claimed
-                  </AppBadge>
-                  <AppBadge
-                    color="neutral"
-                    variant="soft"
-                  >
-                    {{ offer.totalCount }} total
-                  </AppBadge>
-                </div>
-
-                <p class="text-sm text-toned">
-                  {{ offer.description }}
-                </p>
-              </div>
-            </div>
-
-            <div class="grid gap-4 lg:grid-cols-[1fr_1.4fr_auto] lg:items-end">
-              <label class="grid gap-2">
-                <span class="text-sm font-medium text-toned">Offer name</span>
-                <AppInput v-model="getEditState(offer).name" />
-              </label>
-
-              <label class="grid gap-2">
-                <span class="text-sm font-medium text-toned">Description</span>
-                <AppTextarea
-                  v-model="getEditState(offer).description"
-                  :rows="3"
-                />
-              </label>
-
-              <AppButton
-                color="neutral"
-                :loading="savePendingById[offer.id]"
-                @click="saveOffer(offer)"
-              >
-                Save offer
-              </AppButton>
-            </div>
-
-            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div class="space-y-1">
-                <p class="text-sm font-medium text-highlighted">
-                  Refill inventory
-                </p>
-                <p class="text-xs text-muted">
-                  Upload a single-column CSV with no header and one code or link per row.
-                </p>
-              </div>
-
-              <input
-                :disabled="importPendingById[offer.id]"
-                type="file"
-                accept=".csv,text/csv"
-                @change="importCredits($event, offer.id)"
-              >
-            </div>
-
-            <AppAlert
-              v-if="saveErrorById[offer.id]"
-              color="error"
-              variant="soft"
-              title="Credit offer could not be saved"
-              :description="saveErrorById[offer.id]"
-            />
-
-            <AppAlert
-              v-else-if="importErrorById[offer.id]"
-              color="error"
-              variant="soft"
-              title="CSV import failed"
-              :description="importErrorById[offer.id]"
-            />
-
-            <div class="overflow-x-auto">
-              <table class="min-w-full border-separate border-spacing-y-2 text-sm">
-                <thead>
-                  <tr class="text-left text-xs uppercase tracking-[0.14em] text-muted">
-                    <th class="pr-4 pb-2">
-                      Value
-                    </th>
-                    <th class="pr-4 pb-2">
-                      Status
-                    </th>
-                    <th class="pr-4 pb-2">
-                      Claimed by
-                    </th>
-                    <th class="pb-2">
-                      Claimed at
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr
-                    v-for="code in offer.codes"
-                    :key="code.id"
-                    class="align-top"
-                  >
-                    <td class="pr-4 py-2 font-mono text-xs text-toned">
-                      <a
-                        v-if="isHackathonCreditLink(code.value)"
-                        :href="code.value"
-                        target="_blank"
-                        rel="noreferrer"
-                        class="break-all text-primary hover:text-primary/80"
-                      >
-                        {{ code.value }}
-                      </a>
-                      <span
-                        v-else
-                        class="break-all"
-                      >
-                        {{ code.value }}
-                      </span>
-                    </td>
-                    <td class="pr-4 py-2 text-toned">
-                      {{ code.claimedByUser ? 'Claimed' : 'Available' }}
-                    </td>
-                    <td class="pr-4 py-2 text-toned">
-                      {{ code.claimedByUser ? `${code.claimedByUser.displayName} (${code.claimedByUser.email})` : '—' }}
-                    </td>
-                    <td class="py-2 text-toned">
-                      {{ code.claimedAt ? formatHackathonDate(code.claimedAt) : '—' }}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+      <div class="space-y-6">
+        <section class="grid gap-4 md:grid-cols-3">
+          <div
+            v-for="card in adminSummaryCards"
+            :key="card.label"
+            class="rounded-xl hackathon-workspace-detail-inset px-5 py-5"
+          >
+            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+              {{ card.label }}
+            </p>
+            <p class="mt-2 text-xl font-semibold text-highlighted">
+              {{ card.value }}
+            </p>
+            <p class="mt-1 text-sm text-muted">
+              {{ card.description }}
+            </p>
           </div>
-        </article>
-      </div>
-    </section>
+        </section>
 
-    <section
-      v-if="props.canClaim"
-      class="space-y-6"
-    >
-      <div class="space-y-2">
-        <h2 class="text-xl font-semibold text-highlighted">
-          Claim credits
-        </h2>
-        <p class="text-sm text-toned">
-          Claim one value from each available offer. Once claimed, the assigned code or link stays attached to your account for this hackathon.
-        </p>
-      </div>
+        <section class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+          <div class="space-y-1">
+            <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+              Create offer
+            </h3>
+            <p class="text-sm text-muted">
+              Name the participant-facing offer and optionally upload its first CSV batch now.
+            </p>
+          </div>
 
-      <AppAlert
-        v-if="participantCreditsRequest.error.value"
-        color="error"
-        variant="soft"
-        title="Credits unavailable"
-        :description="normalizeHackathonCreditApiError(participantCreditsRequest.error.value).message"
-      />
+          <form
+            class="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
+            @submit.prevent="createOffer"
+          >
+            <div class="min-w-0 space-y-4">
+              <AppFormField
+                label="Offer name"
+                name="credit-offer-name"
+              >
+                <AppInput
+                  id="credit-offer-name"
+                  v-model="createForm.name"
+                  :disabled="createPending"
+                  placeholder="OpenAI credits"
+                />
+              </AppFormField>
 
-      <AppAlert
-        v-else-if="participantCreditsRequest.status.value === 'idle' || participantCreditsRequest.status.value === 'pending'"
-        color="neutral"
-        variant="soft"
-        title="Loading credits"
-        description="Resolving your available and already claimed credit offers."
-      />
-
-      <AppAlert
-        v-else-if="participantCredits.length === 0"
-        color="neutral"
-        variant="soft"
-        title="No credits available yet"
-        description="This tab becomes actionable once this hackathon publishes one or more credit offers."
-      />
-
-      <div
-        v-else
-        class="grid gap-6 xl:grid-cols-2"
-      >
-        <article
-          v-for="offer in participantCredits"
-          :key="offer.id"
-          :data-testid="`participant-credit-offer-${offer.id}`"
-          class="rounded-[1.8rem] border border-default/75 bg-elevated/90 px-6 py-6 shadow-[0_28px_68px_-48px_rgba(15,20,34,0.55)]"
-        >
-          <div class="space-y-5">
-            <div class="space-y-3">
-              <div class="flex flex-wrap items-center gap-2">
-                <h3 class="text-lg font-semibold text-highlighted">
-                  {{ offer.name }}
-                </h3>
-                <AppBadge
-                  v-if="offer.claimedCode"
-                  color="success"
-                  variant="soft"
+              <div class="rounded-xl border border-dashed border-black/10 px-4 py-4 dark:border-white/[0.08]">
+                <input
+                  ref="createFileInput"
+                  type="file"
+                  accept=".csv,text/csv"
+                  class="sr-only"
+                  :disabled="createPending"
+                  @change="handleCreateInventoryChange"
                 >
-                  Claimed
-                </AppBadge>
-                <AppBadge
-                  v-else-if="offer.availableCount > 0"
-                  color="warning"
-                  variant="soft"
-                >
-                  {{ offer.availableCount }} left
-                </AppBadge>
-                <AppBadge
-                  v-else
-                  color="neutral"
-                  variant="soft"
-                >
-                  Sold out
-                </AppBadge>
-              </div>
 
-              <p class="text-sm text-toned">
-                {{ offer.description }}
-              </p>
-            </div>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div class="space-y-1">
+                    <p class="text-sm font-medium text-highlighted">
+                      Initial inventory upload
+                    </p>
+                    <p class="text-xs text-muted">
+                      {{ createUploadDescription }}
+                    </p>
+                  </div>
 
-            <template v-if="offer.claimedCode">
-              <div class="space-y-3">
-                <p class="text-sm font-medium text-highlighted">
-                  Your assigned value
-                </p>
-
-                <AppButton
-                  v-if="isHackathonCreditLink(offer.claimedCode.value)"
-                  :to="offer.claimedCode.value"
-                  color="neutral"
-                  variant="soft"
-                  external
-                  trailing-icon="i-lucide-external-link"
-                >
-                  Open redemption link
-                </AppButton>
-
-                <div
-                  v-else
-                  class="flex flex-col gap-3 rounded-[1.25rem] border border-default/80 bg-default/40 px-4 py-4"
-                >
-                  <code class="break-all font-mono text-sm text-highlighted">
-                    {{ offer.claimedCode.value }}
-                  </code>
-                  <div>
+                  <div class="flex flex-wrap items-center gap-2">
                     <AppButton
+                      type="button"
                       color="neutral"
                       variant="soft"
                       size="sm"
-                      icon="i-lucide-copy"
-                      @click="copyCreditValue(offer.claimedCode.value)"
+                      icon="i-lucide-upload"
+                      :disabled="createPending"
+                      @click="promptCreateInventoryUpload"
                     >
-                      Copy code
+                      {{ createInventoryFile ? 'Change CSV' : 'Select CSV' }}
+                    </AppButton>
+
+                    <AppButton
+                      v-if="createInventoryFile"
+                      type="button"
+                      color="neutral"
+                      variant="ghost"
+                      size="sm"
+                      :disabled="createPending"
+                      @click="clearCreateInventorySelection"
+                    >
+                      Clear
                     </AppButton>
                   </div>
                 </div>
 
                 <p
-                  v-if="offer.claimedCode.claimedAt"
-                  class="text-xs text-muted"
+                  v-if="selectedCreateFileName"
+                  class="mt-3 text-sm text-toned"
                 >
-                  Claimed {{ formatHackathonDate(offer.claimedCode.claimedAt) }}.
+                  {{ selectedCreateFileName }}
                 </p>
               </div>
-            </template>
+            </div>
 
-            <template v-else>
-              <AppAlert
-                v-if="claimErrorById[offer.id]"
-                color="error"
-                variant="soft"
-                title="Credit could not be claimed"
-                :description="claimErrorById[offer.id]"
+            <div class="min-w-0 space-y-4">
+              <AdminMarkdownEditorField
+                v-model="createForm.description"
+                name="credit-offer-details-editor"
+                editor-id="credit-offer-details-editor"
+                label="Details"
+                description="Participants see this markdown-formatted content before they claim a value."
+                placeholder="Use markdown for redemption steps, links, and formatting."
+                height="260px"
+                required
               />
 
-              <AppAlert
-                v-else-if="offer.availableCount === 0"
-                color="warning"
-                variant="soft"
-                title="No credits left"
-                description="All uploaded values for this offer have already been claimed."
-              />
+              <div class="flex justify-end">
+                <AppButton
+                  type="submit"
+                  color="primary"
+                  :loading="createPending"
+                >
+                  {{ createActionLabel }}
+                </AppButton>
+              </div>
+            </div>
+          </form>
 
-              <AppButton
-                v-else
-                color="neutral"
-                :loading="claimPendingById[offer.id]"
-                @click="claimOffer(offer.id)"
-              >
-                Redeem
-              </AppButton>
-            </template>
+          <AppAlert
+            v-if="createError"
+            color="error"
+            variant="soft"
+            title="Credit offer could not be created"
+            :description="createError"
+          />
+        </section>
+
+        <AppAlert
+          v-if="adminCreditsRequest.error.value"
+          color="error"
+          variant="soft"
+          title="Credits unavailable"
+          :description="normalizeHackathonCreditApiError(adminCreditsRequest.error.value).message"
+        />
+
+        <AppAlert
+          v-else-if="adminCreditsRequest.status.value === 'idle' || adminCreditsRequest.status.value === 'pending'"
+          color="neutral"
+          variant="soft"
+          title="Loading credit inventory"
+          description="Resolving the current offers, uploaded values, and claim records for this hackathon."
+        />
+
+        <AppAlert
+          v-else-if="adminCredits.length === 0"
+          color="neutral"
+          variant="soft"
+          title="No credit offers yet"
+          description="Create the first offer above, then upload one or more CSV batches into it."
+        />
+
+        <section
+          v-else
+          class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]"
+        >
+          <div class="space-y-1">
+            <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+              Existing offers
+            </h3>
+            <p class="text-sm text-muted">
+              Update participant-facing copy, append CSV inventory, and review which values have been claimed.
+            </p>
           </div>
-        </article>
+
+          <div class="grid gap-4">
+            <article
+              v-for="offer in adminCredits"
+              :key="offer.id"
+              :data-testid="`admin-credit-offer-${offer.id}`"
+              class="app-inset-card px-5 py-5"
+            >
+              <div class="space-y-5">
+                <div class="space-y-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h3 class="text-lg font-semibold text-highlighted">
+                      {{ offer.name }}
+                    </h3>
+                    <AppBadge
+                      color="success"
+                      variant="soft"
+                    >
+                      {{ offer.availableCount }} available
+                    </AppBadge>
+                    <AppBadge
+                      color="warning"
+                      variant="soft"
+                    >
+                      {{ offer.claimedCount }} claimed
+                    </AppBadge>
+                    <AppBadge
+                      color="neutral"
+                      variant="soft"
+                    >
+                      {{ offer.totalCount }} total
+                    </AppBadge>
+                  </div>
+
+                  <!-- eslint-disable vue/no-v-html -->
+                  <div
+                    class="hackathon-markdown"
+                    v-html="renderCreditOfferDescription(offer.description)"
+                  />
+                  <!-- eslint-enable vue/no-v-html -->
+                </div>
+
+                <div class="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                  <div class="min-w-0">
+                    <AppFormField
+                      label="Offer name"
+                      :name="`credit-offer-name-${offer.id}`"
+                    >
+                      <AppInput
+                        :id="`credit-offer-name-${offer.id}`"
+                        v-model="getEditState(offer).name"
+                        :disabled="savePendingById[offer.id]"
+                      />
+                    </AppFormField>
+                  </div>
+
+                  <div class="min-w-0 space-y-4">
+                    <AdminMarkdownEditorField
+                      v-model="getEditState(offer).description"
+                      :name="`credit-offer-details-${offer.id}`"
+                      :editor-id="`credit-offer-details-${offer.id}`"
+                      label="Details"
+                      description="Participants see this markdown-formatted content before they claim a value."
+                      placeholder="Use markdown for redemption steps, links, and formatting."
+                      height="260px"
+                      required
+                    />
+
+                    <div class="flex justify-end">
+                      <AppButton
+                        color="primary"
+                        :loading="savePendingById[offer.id]"
+                        @click="saveOffer(offer)"
+                      >
+                        Save offer
+                      </AppButton>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="grid gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08] lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                  <div class="space-y-1">
+                    <p class="text-sm font-medium text-highlighted">
+                      Append inventory
+                    </p>
+                    <p class="text-sm text-muted">
+                      Upload a single-column CSV with no header and one code or link per row.
+                    </p>
+                  </div>
+
+                  <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+                    <input
+                      :id="`credit-offer-import-${offer.id}`"
+                      type="file"
+                      accept=".csv,text/csv"
+                      class="sr-only"
+                      :disabled="importPendingById[offer.id]"
+                      @change="handleOfferImportChange($event, offer.id)"
+                    >
+
+                    <AppButton
+                      type="button"
+                      color="neutral"
+                      variant="soft"
+                      size="sm"
+                      icon="i-lucide-upload"
+                      :loading="importPendingById[offer.id]"
+                      @click="promptOfferImportUpload(offer.id)"
+                    >
+                      Upload CSV
+                    </AppButton>
+                  </div>
+                </div>
+
+                <AppAlert
+                  v-if="saveErrorById[offer.id]"
+                  color="error"
+                  variant="soft"
+                  title="Credit offer could not be saved"
+                  :description="saveErrorById[offer.id]"
+                />
+
+                <AppAlert
+                  v-else-if="importErrorById[offer.id]"
+                  color="error"
+                  variant="soft"
+                  title="CSV import failed"
+                  :description="importErrorById[offer.id]"
+                />
+
+                <div class="space-y-3 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+                  <div class="flex items-start justify-between gap-3">
+                    <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+                      Uploaded values
+                    </h4>
+                    <div class="flex items-center gap-3">
+                      <p class="text-xs text-muted">
+                        {{ offer.totalCount }} total rows
+                      </p>
+                      <button
+                        v-if="offer.codes.length > 0"
+                        type="button"
+                        :aria-expanded="isInventoryExpanded(offer.id)"
+                        :aria-controls="`credit-offer-values-${offer.id}`"
+                        class="inline-flex items-center gap-1 text-[12px] font-medium text-highlighted transition-colors hover:text-toned dark:text-white dark:hover:text-[#D9D9D9]"
+                        @click="toggleInventoryExpanded(offer.id)"
+                      >
+                        <span>{{ isInventoryExpanded(offer.id) ? 'Hide values' : `Show all ${offer.codes.length}` }}</span>
+                        <AppIcon
+                          :name="isInventoryExpanded(offer.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                          class="size-3.5"
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="offer.codes.length === 0"
+                    class="rounded-xl border border-dashed border-black/10 px-4 py-4 text-sm text-muted dark:border-white/[0.08]"
+                  >
+                    No inventory uploaded yet.
+                  </div>
+
+                  <div
+                    v-else-if="isInventoryExpanded(offer.id)"
+                    :id="`credit-offer-values-${offer.id}`"
+                    class="overflow-x-auto"
+                  >
+                    <table class="min-w-full border-separate border-spacing-y-2 text-sm">
+                      <thead>
+                        <tr class="text-left text-xs uppercase tracking-[0.14em] text-muted">
+                          <th class="pr-4 pb-2">
+                            Value
+                          </th>
+                          <th class="pr-4 pb-2">
+                            Status
+                          </th>
+                          <th class="pr-4 pb-2">
+                            Claimed by
+                          </th>
+                          <th class="pb-2">
+                            Claimed at
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          v-for="code in offer.codes"
+                          :key="code.id"
+                          class="align-top"
+                        >
+                          <td class="pr-4 py-2 font-mono text-xs text-toned">
+                            <a
+                              v-if="isHackathonCreditLink(code.value)"
+                              :href="code.value"
+                              target="_blank"
+                              rel="noreferrer"
+                              class="break-all text-primary hover:text-primary/80"
+                            >
+                              {{ code.value }}
+                            </a>
+                            <span
+                              v-else
+                              class="break-all"
+                            >
+                              {{ code.value }}
+                            </span>
+                          </td>
+                          <td class="pr-4 py-2 text-toned">
+                            {{ code.claimedByUser ? 'Claimed' : 'Available' }}
+                          </td>
+                          <td class="pr-4 py-2 text-toned">
+                            {{ code.claimedByUser ? `${code.claimedByUser.displayName} (${code.claimedByUser.email})` : '—' }}
+                          </td>
+                          <td class="py-2 text-toned">
+                            {{ code.claimedAt ? formatHackathonDate(code.claimedAt) : '—' }}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p
+                    v-else
+                    class="text-sm text-muted"
+                  >
+                    Expand this section only when you need to inspect the uploaded voucher list.
+                  </p>
+                </div>
+              </div>
+            </article>
+          </div>
+        </section>
       </div>
-    </section>
+    </AppCard>
+
+    <AppCard
+      v-if="props.canClaim"
+      class="rounded-xl hackathon-workspace-detail-panel"
+      :ui="{ body: 'p-5' }"
+    >
+      <template #header>
+        <div class="space-y-1">
+          <h2 class="text-xl font-semibold text-highlighted">
+            Claim credits
+          </h2>
+          <p class="text-sm text-muted">
+            Claim one value from each offer while inventory remains available. Once claimed, the assigned code or link stays attached to your account for this hackathon.
+          </p>
+        </div>
+      </template>
+
+      <div class="space-y-6">
+        <AppAlert
+          v-if="participantCreditsRequest.error.value"
+          color="error"
+          variant="soft"
+          title="Credits unavailable"
+          :description="normalizeHackathonCreditApiError(participantCreditsRequest.error.value).message"
+        />
+
+        <AppAlert
+          v-else-if="participantCreditsRequest.status.value === 'idle' || participantCreditsRequest.status.value === 'pending'"
+          color="neutral"
+          variant="soft"
+          title="Loading credits"
+          description="Resolving your available and already claimed credit offers."
+        />
+
+        <AppAlert
+          v-else-if="participantCredits.length === 0"
+          color="neutral"
+          variant="soft"
+          title="No credits available yet"
+          description="This tab becomes actionable once this hackathon publishes one or more credit offers."
+        />
+
+        <div
+          v-else
+          class="grid gap-4 xl:grid-cols-2"
+        >
+          <article
+            v-for="offer in participantCredits"
+            :key="offer.id"
+            :data-testid="`participant-credit-offer-${offer.id}`"
+            class="app-inset-card px-5 py-5"
+          >
+            <div class="flex h-full flex-col gap-4">
+              <div
+                :class="[
+                  'space-y-3',
+                  isParticipantOfferExpanded(offer.id) ? 'border-b border-black/8 pb-4 dark:border-white/[0.08]' : ''
+                ]"
+              >
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex min-w-0 flex-wrap items-center gap-2">
+                    <h3 class="text-lg font-semibold text-highlighted">
+                      {{ offer.name }}
+                    </h3>
+                    <AppBadge
+                      v-if="offer.claimedCode"
+                      color="primary"
+                      variant="soft"
+                    >
+                      Redeemed
+                    </AppBadge>
+                    <AppBadge
+                      v-else
+                      :color="offer.availableCount > 0 ? 'success' : 'neutral'"
+                      variant="soft"
+                    >
+                      {{ offer.availableCount > 0 ? 'Available' : 'Not available' }}
+                    </AppBadge>
+                  </div>
+
+                  <button
+                    type="button"
+                    :aria-expanded="isParticipantOfferExpanded(offer.id)"
+                    :aria-controls="`participant-credit-offer-body-${offer.id}`"
+                    class="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 self-center rounded-full border border-black/10 px-3.5 text-sm font-medium text-highlighted transition hover:border-black/20 hover:text-toned dark:border-white/[0.12] dark:text-white dark:hover:border-white/[0.22] dark:hover:text-[#D9D9D9]"
+                    @click="toggleParticipantOfferExpanded(offer.id)"
+                  >
+                    <span>{{ isParticipantOfferExpanded(offer.id) ? 'Collapse' : 'Expand' }}</span>
+                    <AppIcon
+                      :name="isParticipantOfferExpanded(offer.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                      class="size-4"
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div
+                v-if="isParticipantOfferExpanded(offer.id)"
+                :id="`participant-credit-offer-body-${offer.id}`"
+                class="space-y-5"
+              >
+                <!-- eslint-disable vue/no-v-html -->
+                <div
+                  class="hackathon-markdown"
+                  v-html="renderCreditOfferDescription(offer.description)"
+                />
+                <!-- eslint-enable vue/no-v-html -->
+
+                <template v-if="offer.claimedCode">
+                  <div
+                    class="grid gap-3 sm:grid-cols-2"
+                  >
+                    <div class="rounded-xl border border-black/8 bg-white/62 px-4 py-3 dark:border-white/[0.08] dark:bg-black/10">
+                      <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                        Status
+                      </p>
+                      <p class="mt-1 text-base font-semibold text-highlighted">
+                        Attached to your account
+                      </p>
+                    </div>
+
+                    <div class="rounded-xl border border-black/8 bg-white/62 px-4 py-3 dark:border-white/[0.08] dark:bg-black/10">
+                      <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                        Claimed
+                      </p>
+                      <p class="mt-1 text-base font-semibold text-highlighted">
+                        {{ formatCreditClaimedAt(offer.claimedCode.claimedAt) }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="space-y-3">
+                    <p class="text-sm font-medium text-highlighted">
+                      Your assigned value
+                    </p>
+
+                    <AppButton
+                      v-if="isHackathonCreditLink(offer.claimedCode.value)"
+                      :to="offer.claimedCode.value"
+                      color="neutral"
+                      variant="soft"
+                      external
+                      trailing-icon="i-lucide-external-link"
+                      class="self-start"
+                    >
+                      Open redemption link
+                    </AppButton>
+
+                    <div
+                      v-else
+                      class="rounded-xl border border-black/8 bg-white/62 px-4 py-4 dark:border-white/[0.08] dark:bg-black/10"
+                    >
+                      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <code class="break-all font-mono text-sm text-highlighted">
+                          {{ offer.claimedCode.value }}
+                        </code>
+
+                        <AppButton
+                          color="neutral"
+                          variant="soft"
+                          size="sm"
+                          icon="i-lucide-copy"
+                          class="self-start sm:self-auto"
+                          @click="copyCreditValue(offer.claimedCode.value)"
+                        >
+                          Copy code
+                        </AppButton>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+
+                <template v-else>
+                  <AppAlert
+                    v-if="claimErrorById[offer.id]"
+                    color="error"
+                    variant="soft"
+                    title="Credit could not be claimed"
+                    :description="claimErrorById[offer.id]"
+                  />
+
+                  <AppAlert
+                    v-else-if="offer.availableCount === 0"
+                    color="neutral"
+                    variant="soft"
+                    title="Not available"
+                    description="This offer can't be redeemed right now."
+                  />
+
+                  <div
+                    v-else
+                    class="mt-auto"
+                  >
+                    <AppButton
+                      color="primary"
+                      :loading="claimPendingById[offer.id]"
+                      @click="claimOffer(offer.id)"
+                    >
+                      Redeem credit
+                    </AppButton>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </AppCard>
   </div>
 </template>
