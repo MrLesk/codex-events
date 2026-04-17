@@ -42,6 +42,9 @@ function buildHackathonRecord(
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
     pitchScoreWeightPercent: 30,
+    pitchFinalistSubmissionIdsJson: '[]',
+    activePitchPresentationSubmissionId: null,
+    pitchPresentationsCompletedAt: null,
     maxTeamMembers: 5,
     participantsLimit: null,
     inPersonEvent: false,
@@ -420,13 +423,19 @@ describe('hackathon management utilities', () => {
       blindReviewCount: 2,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
-      pitchScoreWeightPercent: 40
+      pitchScoreWeightPercent: 40,
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_2', 'submission_1']),
+      activePitchPresentationSubmissionId: 'submission_2',
+      pitchPresentationsCompletedAt: null
     }))).toMatchObject({
       state: 'blind_review',
       blindReviewCount: 2,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
-      pitchScoreWeightPercent: 40
+      pitchScoreWeightPercent: 40,
+      pitchPresentationSubmissionIds: ['submission_2', 'submission_1'],
+      activePitchPresentationSubmissionId: 'submission_2',
+      pitchPresentationsCompletedAt: null
     })
   })
 

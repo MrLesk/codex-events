@@ -2,19 +2,27 @@ import { describe, expect, test } from 'vitest'
 
 import { ApiError } from '../../../../server/utils/api-error'
 import {
+  advancePitchPresentation,
+  assertAdvancePitchPresentationAllowed,
   assertStartPitchAllowed,
   assertStartPitchReviewAllowed,
   assertStartJudgeReviewAllowed,
   assertStartJudgingPreparationAllowed,
   buildInitialJudgeAssignments,
   buildPitchReviewAssignments,
-  calculateAveragePitchScore
+  calculateAveragePitchScore,
+  prunePitchPresentationProgress
 } from '../../../../server/utils/judging'
 
 function createHackathon(
   state: 'submission_open' | 'judging_preparation' | 'blind_review' | 'shortlist' | 'pitch' | 'pitch_review',
   blindReviewCount: 0 | 1 | 2 = 1,
-  pitchReviewEnabled: boolean = blindReviewCount === 0
+  pitchReviewEnabled: boolean = blindReviewCount === 0,
+  overrides: Partial<{
+    pitchFinalistSubmissionIdsJson: string
+    activePitchPresentationSubmissionId: string | null
+    pitchPresentationsCompletedAt: string | null
+  }> = {}
 ) {
   return {
     id: 'hackathon_1',
@@ -35,6 +43,8 @@ function createHackathon(
     blindScoreWeightPercent: blindReviewCount === 0 ? 0 : 70,
     pitchScoreWeightPercent: pitchReviewEnabled ? (blindReviewCount === 0 ? 100 : 30) : 0,
     pitchFinalistSubmissionIdsJson: '[]',
+    activePitchPresentationSubmissionId: null,
+    pitchPresentationsCompletedAt: null,
     finalRankingSubmissionIdsJson: '[]',
     maxTeamMembers: 4,
     requireXProfile: false,
@@ -44,7 +54,8 @@ function createHackathon(
     currentWinnerTermsDocumentId: null,
     createdByUserId: 'platform_admin',
     createdAt: '2026-03-20T12:00:00.000Z',
-    updatedAt: '2026-03-20T12:00:00.000Z'
+    updatedAt: '2026-03-20T12:00:00.000Z',
+    ...overrides
   }
 }
 
@@ -149,13 +160,19 @@ describe('judging utilities', () => {
   })
 
   test('pitch review readiness requires the live pitch stage and an active judge panel', () => {
-    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 0, true), {
+    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 0, true, {
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
+      pitchPresentationsCompletedAt: '2026-03-26T12:15:00.000Z'
+    }), {
       lockedSubmissionCount: 2,
       finalistSubmissionCount: 2,
       judgePanelCount: 2
     })).not.toThrow()
 
-    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 1, true), {
+    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 1, true, {
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
+      pitchPresentationsCompletedAt: '2026-03-26T12:15:00.000Z'
+    }), {
       lockedSubmissionCount: 3,
       finalistSubmissionCount: 2,
       judgePanelCount: 2
@@ -172,6 +189,102 @@ describe('judging utilities', () => {
       finalistSubmissionCount: 2,
       judgePanelCount: 0
     })).toThrowError(ApiError)
+
+    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 0, true, {
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
+    }), {
+      lockedSubmissionCount: 2,
+      finalistSubmissionCount: 2,
+      judgePanelCount: 2
+    })).toThrowError(ApiError)
+  })
+
+  test('pitch presentation control only advances while the live lineup is still active', () => {
+    expect(() => assertAdvancePitchPresentationAllowed(createHackathon('pitch', 0, true, {
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1'])
+    }), {
+      finalistSubmissionCount: 1
+    })).not.toThrow()
+
+    expect(() => assertAdvancePitchPresentationAllowed(createHackathon('pitch', 0, true, {
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1']),
+      pitchPresentationsCompletedAt: '2026-03-26T12:15:00.000Z'
+    }), {
+      finalistSubmissionCount: 1
+    })).toThrowError(ApiError)
+  })
+
+  test('pitch presentation control walks the saved lineup and marks completion after the last team', () => {
+    const firstAdvance = advancePitchPresentation(
+      createHackathon('pitch', 0, true, {
+        pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
+      }),
+      ['submission_1', 'submission_2'],
+      '2026-03-26T12:10:00.000Z'
+    )
+
+    expect(firstAdvance).toMatchObject({
+      activePitchPresentationSubmissionId: 'submission_1',
+      pitchPresentationsCompletedAt: null
+    })
+
+    const secondAdvance = advancePitchPresentation(
+      createHackathon('pitch', 0, true, {
+        pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
+        activePitchPresentationSubmissionId: 'submission_1'
+      }),
+      ['submission_1', 'submission_2'],
+      '2026-03-26T12:20:00.000Z'
+    )
+
+    expect(secondAdvance).toMatchObject({
+      activePitchPresentationSubmissionId: 'submission_2',
+      pitchPresentationsCompletedAt: null
+    })
+
+    const finalAdvance = advancePitchPresentation(
+      createHackathon('pitch', 0, true, {
+        pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
+        activePitchPresentationSubmissionId: 'submission_2'
+      }),
+      ['submission_1', 'submission_2'],
+      '2026-03-26T12:30:00.000Z'
+    )
+
+    expect(finalAdvance).toMatchObject({
+      activePitchPresentationSubmissionId: null,
+      pitchPresentationsCompletedAt: '2026-03-26T12:30:00.000Z'
+    })
+  })
+
+  test('pruning the active pitch presenter advances to the next lineup entry', () => {
+    expect(prunePitchPresentationProgress(
+      createHackathon('pitch', 0, true, {
+        pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
+        activePitchPresentationSubmissionId: 'submission_1'
+      }),
+      ['submission_1', 'submission_2'],
+      ['submission_2'],
+      'submission_1',
+      '2026-03-26T12:25:00.000Z'
+    )).toEqual({
+      activePitchPresentationSubmissionId: 'submission_2',
+      pitchPresentationsCompletedAt: null
+    })
+
+    expect(prunePitchPresentationProgress(
+      createHackathon('pitch', 0, true, {
+        pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1']),
+        activePitchPresentationSubmissionId: 'submission_1'
+      }),
+      ['submission_1'],
+      [],
+      'submission_1',
+      '2026-03-26T12:25:00.000Z'
+    )).toEqual({
+      activePitchPresentationSubmissionId: null,
+      pitchPresentationsCompletedAt: '2026-03-26T12:25:00.000Z'
+    })
   })
 
   test('initial judging assignments fan out two assignments per submission with distinct judges when possible', () => {

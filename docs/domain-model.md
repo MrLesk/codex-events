@@ -76,6 +76,7 @@ Key characteristics:
 - Each hackathon can require `0`, `1`, or `2` blind reviews per submitted project.
 - Each hackathon can optionally enable a live pitch stage followed by a pitch review stage after blind review or as the only judging path.
 - Each hackathon can configure blind-score and pitch-score weights. When both stages are enabled, the default weighting is `70%` blind score and `30%` pitch score.
+- Each pitch-enabled hackathon persists an ordered pitch presentation lineup and can expose one currently enabled live presentation at a time during the `pitch` stage.
 - Each hackathon can define a maximum team member limit.
 - Each hackathon can optionally define a participant approval limit used as an indicative planning target during admin review.
 - Each hackathon can optionally reference a restricted Discord server URL.
@@ -177,8 +178,8 @@ Rules:
 - A hackathon admin or platform admin can manually withdraw a submitted or approved application on behalf of the participant.
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
-- If the hackathon requires a Luma email and has a Luma event API ID, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
 - If the hackathon requires a Luma email and has a Luma event API ID, application submission verifies that the participant's saved Luma email is registered as a guest on that Luma event.
+- If the hackathon requires a Luma email and has a Luma event API ID, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
 - If the hackathon requires a Luma email and has a Luma event API ID, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
 - Platform admins can run a hackathon-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - A user must be approved before creating or joining a team in that hackathon.
@@ -320,6 +321,8 @@ Operational rules:
 
 - When judging preparation begins and blind review is enabled, submissions are distributed between users in the automatic judge distribution pool as evenly as possible until every locked submission has the configured number of blind review assignments.
 - Blind review assignments for the same submission must belong to different judges.
+- During the live `pitch` stage, admins advance the ordered pitch presentation lineup one team at a time.
+- During the live `pitch` stage, a hackathon can expose at most one currently enabled finalist presentation.
 - When pitch review begins, one pitch review assignment is created for every submission that advanced through the pitch stage and every judge in the frozen pitch panel.
 - The pitch panel is frozen from the active judge roster when pitch review begins.
 - Hackathon admins can reassign a blind review assignment only before its assigned judge has started review.
@@ -474,13 +477,16 @@ Scope:
 - A manual admin action starts judging preparation and locks submissions.
 - A later manual admin action starts blind review when blind review is enabled.
 - `shortlist` exists only when blind review and pitch review are both enabled.
-- `shortlist` presents the blind-review leaderboard plus the persisted ordered finalist set selected by admins for the live pitch stage.
+- `shortlist` presents the blind-review ordering plus the persisted full shortlist order selected by admins.
+- The leading submissions in the saved shortlist order are the persisted finalists for the live pitch stage.
+- The saved shortlist order becomes the starting final ranking order unless admins later reorder it in `final_deliberation`.
+- Pitch-only hackathons skip `shortlist` and send all eligible locked submissions directly into the persisted pitch presentation lineup.
 - Finalist identity remains hidden during `shortlist`.
-- Pitch-only hackathons skip `shortlist` and send all eligible locked submissions directly to `pitch`.
-- A later manual admin action starts `pitch`, which is the live finalist presentation stage and does not create judge assignments.
+- A later manual admin action starts `pitch`, which is the live finalist presentation stage, freezes the ordered pitch lineup, and does not create judge assignments.
 - Starting `pitch` from `shortlist` notifies every active member of each finalist team that the team has been shortlisted.
 - From `pitch` onward, a participant can see shortlist status for that participant's own team in the account overview and workspace when the team advanced.
-- A later manual admin action starts `pitch_review`, which creates the post-pitch judge assignments for finalists.
+- During `pitch`, admins explicitly enable each presentation in lineup order.
+- A later manual admin action starts `pitch_review`, which is allowed only after the full live pitch lineup has been completed and then creates the post-pitch judge assignments for finalists.
 - `final_deliberation` is the universal ranking-review stage after all enabled scoring stages are complete.
 - Hackathon admins can manually reorder the final ranking during `final_deliberation` without changing the underlying judge scores.
 - Final score is computed from the enabled judging stages only.

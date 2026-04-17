@@ -67,6 +67,10 @@ When('the saved {string} session selects outcomes finalists to prefer submission
           orderedSubmissionIds: [
             platformFixtureIds.outcomesSubmissionTwoId,
             platformFixtureIds.outcomesSubmissionOneId
+          ],
+          finalistSubmissionIds: [
+            platformFixtureIds.outcomesSubmissionTwoId,
+            platformFixtureIds.outcomesSubmissionOneId
           ]
         }
       }
@@ -84,16 +88,16 @@ Then('the outcomes shortlist should save submission two as finalist one and subm
   expect(getScenarioState(page).json).toMatchObject({
     data: [
       {
-        submissionId: platformFixtureIds.outcomesSubmissionOneId,
-        rank: 1,
-        isPitchFinalist: true,
-        pitchFinalistRank: 2
-      },
-      {
         submissionId: platformFixtureIds.outcomesSubmissionTwoId,
         rank: 2,
         isPitchFinalist: true,
         pitchFinalistRank: 1
+      },
+      {
+        submissionId: platformFixtureIds.outcomesSubmissionOneId,
+        rank: 1,
+        isPitchFinalist: true,
+        pitchFinalistRank: 2
       }
     ]
   })

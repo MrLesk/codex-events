@@ -102,6 +102,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `blind_score_weight_percent`
 - `pitch_score_weight_percent`
 - `pitch_finalist_submission_ids_json`
+- `active_pitch_presentation_submission_id`
+- `pitch_presentations_completed_at`
 - `final_ranking_submission_ids_json`
 - `max_team_members`
 - `participants_limit`
@@ -159,8 +161,10 @@ It describes the intended persistent model at the level of entities, key fields,
 - `pitch_review_enabled` controls whether the hackathon uses the optional live pitch stage plus the post-pitch review stage.
 - `blind_score_weight_percent` and `pitch_score_weight_percent` default to `70` and `30` when both blind review and pitch review are enabled.
 - When only one judging stage is enabled, final score is derived entirely from that stage.
-- `pitch_finalist_submission_ids_json` stores the ordered finalist submission IDs selected during `shortlist` when blind review and pitch review are both enabled.
-- `final_ranking_submission_ids_json` stores the optional ordered final ranking override recorded during `final_deliberation`.
+- `pitch_finalist_submission_ids_json` stores the ordered pitch presentation lineup for pitch-enabled hackathons. In blind-plus-pitch hackathons it is selected during `shortlist`. In pitch-only hackathons it is populated from all eligible locked submissions when `pitch` starts.
+- `active_pitch_presentation_submission_id` stores the submission currently enabled to present during the live `pitch` stage, or null when the lineup has not started or is already complete.
+- `pitch_presentations_completed_at` records when the full live pitch lineup was completed and gates the transition into `pitch_review`.
+- `final_ranking_submission_ids_json` stores the full saved shortlist order when `shortlist` is used and is later updated by any explicit final-ranking reorder recorded during `final_deliberation`.
 - `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce approval writes by itself.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - `require_why_this_hackathon` controls whether applications must include a non-empty `whyThisHackathon` response.

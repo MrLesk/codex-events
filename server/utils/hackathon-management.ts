@@ -127,6 +127,8 @@ const agendaItemsSchema = z.array(agendaItemSchema)
       })
     })
   })
+
+const storedSubmissionIdsSchema = z.array(z.string().trim().min(1))
   .default([])
 
 const trackSchema = z.object({
@@ -403,6 +405,18 @@ export function parseHackathonAgendaItems(value: string | null | undefined) {
     return agendaItemsSchema
       .parse(JSON.parse(value))
       .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
+  } catch {
+    return []
+  }
+}
+
+export function parseStoredSubmissionIdsJson(value: string | null | undefined) {
+  if (!value) {
+    return []
+  }
+
+  try {
+    return storedSubmissionIdsSchema.parse(JSON.parse(value))
   } catch {
     return []
   }
@@ -1184,6 +1198,8 @@ export function serializeHackathon(
   },
   tracks?: HackathonTrackRecord[]
 ) {
+  const pitchPresentationSubmissionIds = parseStoredSubmissionIdsJson(hackathon.pitchFinalistSubmissionIdsJson)
+
   return {
     id: hackathon.id,
     name: hackathon.name,
@@ -1208,6 +1224,9 @@ export function serializeHackathon(
     pitchReviewEnabled: hackathon.pitchReviewEnabled,
     blindScoreWeightPercent: hackathon.blindScoreWeightPercent,
     pitchScoreWeightPercent: hackathon.pitchScoreWeightPercent,
+    pitchPresentationSubmissionIds,
+    activePitchPresentationSubmissionId: hackathon.activePitchPresentationSubmissionId,
+    pitchPresentationsCompletedAt: hackathon.pitchPresentationsCompletedAt,
     inPersonEvent: hackathon.inPersonEvent,
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,

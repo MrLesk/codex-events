@@ -33,6 +33,9 @@ export default defineApiHandler(async (event) => {
     .set({
       state: 'shortlist',
       pitchFinalistSubmissionIdsJson: '[]',
+      activePitchPresentationSubmissionId: null,
+      pitchPresentationsCompletedAt: null,
+      finalRankingSubmissionIdsJson: '[]',
       updatedAt: transitionedAt
     })
     .where(eq(hackathons.id, hackathonId))

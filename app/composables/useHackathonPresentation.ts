@@ -165,7 +165,7 @@ const stateSummaries: Record<PublicHackathonState, string> = {
   judging_preparation: 'Submissions are locked while judging assignments are prepared.',
   blind_review: 'Judges are actively reviewing locked submissions in the blind workspace.',
   shortlist: 'Blind-review scores are locked in and finalists are being selected for the pitch stage.',
-  pitch: 'Finalists are presenting live. Post-pitch judge review opens after admins end the pitch stage.',
+  pitch: 'Finalists are presenting live in order. Admins enable each team one at a time before post-pitch judge review opens.',
   pitch_review: 'Pitch presentations are over and judges can review full finalist details.',
   final_deliberation: 'Final combined scores are under review before winners are announced.',
   winners_announced: 'Final rankings are published and prize redemption can proceed.',

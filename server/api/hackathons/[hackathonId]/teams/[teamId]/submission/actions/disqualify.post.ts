@@ -8,6 +8,10 @@ import { ApiError } from '../../../../../../../utils/api-error'
 import { apiData } from '../../../../../../../utils/api-response'
 import { parseValidatedBody, parseValidatedParams } from '../../../../../../../utils/validation'
 import {
+  parseStoredPitchFinalistSubmissionIds,
+  prunePitchPresentationProgress
+} from '../../../../../../../utils/judging'
+import {
   assertSubmissionDisqualifiable,
   disqualifySubmissionBodySchema,
   getSubmissionForTeamOrThrow,
@@ -70,15 +74,18 @@ export default defineApiHandler(async (event) => {
   assertSubmissionDisqualifiable(hackathon, submission)
 
   const disqualifiedAt = new Date().toISOString()
-  const pitchFinalistSubmissionIdsJson = pruneStoredSubmissionIdsJson(
-    hackathon.pitchFinalistSubmissionIdsJson,
-    submission.id,
-    {
-      code: 'pitch_finalists_invalid',
-      message: 'The stored pitch finalists are invalid.',
-      hackathonId
-    }
+  const previousPitchFinalistSubmissionIds = parseStoredPitchFinalistSubmissionIds(hackathon)
+  const nextPitchFinalistSubmissionIds = previousPitchFinalistSubmissionIds.filter(
+    finalistSubmissionId => finalistSubmissionId !== submission.id
   )
+  const pitchPresentationProgress = prunePitchPresentationProgress(
+    hackathon,
+    previousPitchFinalistSubmissionIds,
+    nextPitchFinalistSubmissionIds,
+    submission.id,
+    disqualifiedAt
+  )
+  const pitchFinalistSubmissionIdsJson = JSON.stringify(nextPitchFinalistSubmissionIds)
   const finalRankingSubmissionIdsJson = pruneStoredSubmissionIdsJson(
     hackathon.finalRankingSubmissionIdsJson,
     submission.id,
@@ -102,6 +109,8 @@ export default defineApiHandler(async (event) => {
       .update(hackathons)
       .set({
         pitchFinalistSubmissionIdsJson,
+        activePitchPresentationSubmissionId: pitchPresentationProgress.activePitchPresentationSubmissionId,
+        pitchPresentationsCompletedAt: pitchPresentationProgress.pitchPresentationsCompletedAt,
         finalRankingSubmissionIdsJson,
         updatedAt: disqualifiedAt
       })

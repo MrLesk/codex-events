@@ -337,6 +337,18 @@ export function assertStartPitchReviewAllowed(
     }
   })
 
+  assertGuard(
+    hackathon.activePitchPresentationSubmissionId === null
+    && hackathon.pitchPresentationsCompletedAt !== null,
+    {
+      code: 'pitch_presentations_incomplete',
+      message: 'Pitch review can only start after all pitch presentations have been completed.',
+      details: {
+        hackathonId: hackathon.id
+      }
+    }
+  )
+
   assertGuard(metrics.judgePanelCount > 0, {
     code: 'judge_pool_required',
     message: 'Pitch review requires at least one judge in the automatic judge pool.',
@@ -346,17 +358,204 @@ export function assertStartPitchReviewAllowed(
   })
 
   assertGuard(
-    hackathon.blindReviewCount > 0 ? metrics.finalistSubmissionCount > 0 : metrics.lockedSubmissionCount > 0,
+    metrics.finalistSubmissionCount > 0,
     {
       code: 'pitch_finalists_required',
-      message: hackathon.blindReviewCount > 0
-        ? 'Pitch review requires at least one persisted finalist submission.'
-        : 'Pitch review requires at least one locked submission.',
+      message: 'Pitch review requires at least one persisted finalist submission.',
       details: {
         hackathonId: hackathon.id
       }
     }
   )
+}
+
+export function assertAdvancePitchPresentationAllowed(
+  hackathon: HackathonRecord,
+  metrics: {
+    finalistSubmissionCount: number
+  }
+) {
+  assertGuard(hackathon.pitchReviewEnabled, {
+    code: 'pitch_review_not_enabled',
+    message: 'Pitch presentation control is only available when pitch review is enabled.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  assertAllowedState(hackathon.state, ['pitch'], {
+    code: 'hackathon_state_invalid',
+    message: 'Pitch presentation control is only available while the live pitch stage is active.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  assertGuard(metrics.finalistSubmissionCount > 0, {
+    code: 'pitch_finalists_required',
+    message: 'Pitch presentation control requires at least one finalist submission.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  assertGuard(hackathon.pitchPresentationsCompletedAt === null, {
+    code: 'pitch_presentations_already_completed',
+    message: 'All pitch presentations have already been completed.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+}
+
+export function resolvePitchPresentationState(
+  hackathon: HackathonRecord,
+  finalistSubmissionIds: string[]
+) {
+  const uniqueFinalistSubmissionIds = new Set(finalistSubmissionIds)
+
+  assertGuard(uniqueFinalistSubmissionIds.size === finalistSubmissionIds.length, {
+    statusCode: 500,
+    code: 'pitch_finalists_invalid',
+    message: 'The stored pitch finalists are invalid.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  if (hackathon.pitchPresentationsCompletedAt !== null) {
+    assertGuard(hackathon.activePitchPresentationSubmissionId === null, {
+      statusCode: 500,
+      code: 'pitch_presentation_state_invalid',
+      message: 'The stored pitch presentation state is invalid.',
+      details: {
+        hackathonId: hackathon.id
+      }
+    })
+
+    return {
+      currentSubmissionId: null,
+      currentIndex: null,
+      isCompleted: true
+    }
+  }
+
+  if (!hackathon.activePitchPresentationSubmissionId) {
+    return {
+      currentSubmissionId: null,
+      currentIndex: null,
+      isCompleted: false
+    }
+  }
+
+  const currentIndex = finalistSubmissionIds.findIndex(
+    submissionId => submissionId === hackathon.activePitchPresentationSubmissionId
+  )
+
+  assertGuard(currentIndex !== -1, {
+    statusCode: 500,
+    code: 'pitch_presentation_state_invalid',
+    message: 'The stored pitch presentation state is invalid.',
+    details: {
+      hackathonId: hackathon.id,
+      submissionId: hackathon.activePitchPresentationSubmissionId
+    }
+  })
+
+  return {
+    currentSubmissionId: hackathon.activePitchPresentationSubmissionId,
+    currentIndex,
+    isCompleted: false
+  }
+}
+
+export function advancePitchPresentation(
+  hackathon: HackathonRecord,
+  finalistSubmissionIds: string[],
+  advancedAt: string
+) {
+  const presentationState = resolvePitchPresentationState(hackathon, finalistSubmissionIds)
+
+  if (presentationState.isCompleted) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'pitch_presentations_already_completed',
+      message: 'All pitch presentations have already been completed.',
+      details: {
+        hackathonId: hackathon.id
+      }
+    })
+  }
+
+  if (presentationState.currentIndex === null) {
+    return {
+      activePitchPresentationSubmissionId: finalistSubmissionIds[0] ?? null,
+      pitchPresentationsCompletedAt: null
+    }
+  }
+
+  const nextSubmissionId = finalistSubmissionIds[presentationState.currentIndex + 1] ?? null
+
+  if (nextSubmissionId) {
+    return {
+      activePitchPresentationSubmissionId: nextSubmissionId,
+      pitchPresentationsCompletedAt: null
+    }
+  }
+
+  return {
+    activePitchPresentationSubmissionId: null,
+    pitchPresentationsCompletedAt: advancedAt
+  }
+}
+
+export function prunePitchPresentationProgress(
+  hackathon: HackathonRecord,
+  previousSubmissionIds: string[],
+  nextSubmissionIds: string[],
+  removedSubmissionId: string,
+  prunedAt: string
+) {
+  if (hackathon.pitchPresentationsCompletedAt !== null) {
+    return {
+      activePitchPresentationSubmissionId: null,
+      pitchPresentationsCompletedAt: hackathon.pitchPresentationsCompletedAt
+    }
+  }
+
+  if (!hackathon.activePitchPresentationSubmissionId) {
+    return {
+      activePitchPresentationSubmissionId: null,
+      pitchPresentationsCompletedAt: null
+    }
+  }
+
+  if (hackathon.activePitchPresentationSubmissionId !== removedSubmissionId) {
+    assertGuard(nextSubmissionIds.includes(hackathon.activePitchPresentationSubmissionId), {
+      statusCode: 500,
+      code: 'pitch_presentation_state_invalid',
+      message: 'The stored pitch presentation state is invalid.',
+      details: {
+        hackathonId: hackathon.id,
+        submissionId: hackathon.activePitchPresentationSubmissionId
+      }
+    })
+
+    return {
+      activePitchPresentationSubmissionId: hackathon.activePitchPresentationSubmissionId,
+      pitchPresentationsCompletedAt: null
+    }
+  }
+
+  const removedIndex = previousSubmissionIds.findIndex(submissionId => submissionId === removedSubmissionId)
+  const nextSubmissionId = removedIndex === -1
+    ? null
+    : (nextSubmissionIds[removedIndex] ?? null)
+
+  return {
+    activePitchPresentationSubmissionId: nextSubmissionId,
+    pitchPresentationsCompletedAt: nextSubmissionId ? null : prunedAt
+  }
 }
 
 export async function listSubmittedSubmissionsForHackathon(database: AppDatabase, hackathonId: string) {
@@ -573,11 +772,15 @@ export function selectPitchReviewSubmissions(
   hackathon: HackathonRecord,
   lockedSubmissions: SubmissionRecord[]
 ) {
-  if (hackathon.blindReviewCount === 0) {
-    return lockedSubmissions
-  }
-
   const finalistSubmissionIds = parseStoredPitchFinalistSubmissionIds(hackathon)
+
+  if (finalistSubmissionIds.length === 0) {
+    if (hackathon.blindReviewCount === 0 && hackathon.state === 'judging_preparation') {
+      return lockedSubmissions
+    }
+
+    return []
+  }
   const uniqueFinalistSubmissionIds = new Set(finalistSubmissionIds)
 
   assertGuard(uniqueFinalistSubmissionIds.size === finalistSubmissionIds.length, {
