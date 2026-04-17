@@ -55,6 +55,7 @@ export default defineApiHandler(async (event) => {
     pitchReviewEnabled: body.pitchReviewEnabled,
     blindScoreWeightPercent: body.blindScoreWeightPercent,
     pitchScoreWeightPercent: body.pitchScoreWeightPercent,
+    shortlistFinalistCount: body.shortlistFinalistCount,
     inPersonEvent: body.inPersonEvent,
     requireXProfile: body.requireXProfile,
     requireLinkedinProfile: body.requireLinkedinProfile,

@@ -42,6 +42,7 @@ function createHackathon(
     pitchReviewEnabled,
     blindScoreWeightPercent: blindReviewCount === 0 ? 0 : 70,
     pitchScoreWeightPercent: pitchReviewEnabled ? (blindReviewCount === 0 ? 100 : 30) : 0,
+    shortlistFinalistCount: 10,
     pitchFinalistSubmissionIdsJson: '[]',
     activePitchPresentationSubmissionId: null,
     pitchPresentationsCompletedAt: null,

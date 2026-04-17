@@ -76,6 +76,7 @@ Key characteristics:
 - Each hackathon can require `0`, `1`, or `2` blind reviews per submitted project.
 - Each hackathon can optionally enable a live pitch stage followed by a pitch review stage after blind review or as the only judging path.
 - Each hackathon can configure blind-score and pitch-score weights. When both stages are enabled, the default weighting is `70%` blind score and `30%` pitch score.
+- Each hackathon can configure how many top-ranked blind-review submissions appear in the default finalist boundary when `shortlist` begins. The default is `10`.
 - Each pitch-enabled hackathon persists an ordered pitch presentation lineup and can expose one currently enabled live presentation at a time during the `pitch` stage.
 - Each hackathon can define a maximum team member limit.
 - Each hackathon can optionally define a participant approval limit used as an indicative planning target during admin review.
@@ -478,7 +479,8 @@ Scope:
 - A manual admin action stops submissions and starts judging preparation without locking submitted work yet.
 - A later manual admin action starts blind review when blind review is enabled. That transition locks the submitted projects, freezes prize eligibility, and creates blind assignments.
 - `shortlist` exists only when blind review and pitch review are both enabled.
-- `shortlist` presents the blind-review ordering plus the persisted full shortlist order selected by admins.
+- `shortlist` presents the blind-review ordering by default and later uses the persisted full shortlist order after admins save it.
+- Entering `shortlist` shows the top-ranked blind-review submissions as the default finalist boundary up to the hackathon's configured shortlist finalist count until admins save the shortlist.
 - The leading submissions in the saved shortlist order are the persisted finalists for the live pitch stage.
 - The saved shortlist order becomes the starting final ranking order unless admins later reorder it in `final_deliberation`.
 - Pitch-only hackathons skip `shortlist`. Starting `pitch` locks the submitted projects, freezes prize eligibility, and sends those newly locked submissions directly into the persisted pitch presentation lineup.

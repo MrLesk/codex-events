@@ -10,6 +10,7 @@ import {
   buildHackathonOutcomeEmailQueueMessage,
   enqueueHackathonOutcomeEmailMessage
 } from '../../../../utils/hackathon-outcome-email-queue'
+import { hasSavedShortlistSelection } from '../../../../utils/shortlist'
 import {
   assertStartPitchAllowed,
   buildPrizeEligibilitySnapshots,
@@ -37,9 +38,14 @@ export default defineApiHandler(async (event) => {
   const submittedSubmissions = hackathon.blindReviewCount === 0 && hackathon.state === 'judging_preparation'
     ? await listSubmittedSubmissionsForHackathon(database, hackathonId)
     : []
+  const shortlistSelectionSaved = hackathon.blindReviewCount > 0 && hackathon.state === 'shortlist'
+    ? hasSavedShortlistSelection(hackathon)
+    : true
   const finalistSubmissions = hackathon.blindReviewCount === 0 && hackathon.state === 'judging_preparation'
     ? submittedSubmissions
-    : selectPitchReviewSubmissions(hackathon, lockedSubmissions)
+    : shortlistSelectionSaved
+      ? selectPitchReviewSubmissions(hackathon, lockedSubmissions)
+      : []
 
   assertStartPitchAllowed(hackathon, {
     competitionSubmissionCount: hackathon.blindReviewCount === 0 ? submittedSubmissions.length : lockedSubmissions.length,

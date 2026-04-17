@@ -126,6 +126,7 @@ export const hackathons = sqliteTable(
     pitchReviewEnabled: integer('pitch_review_enabled', { mode: 'boolean' }).notNull().default(false),
     blindScoreWeightPercent: integer('blind_score_weight_percent').notNull().default(70),
     pitchScoreWeightPercent: integer('pitch_score_weight_percent').notNull().default(30),
+    shortlistFinalistCount: integer('shortlist_finalist_count').notNull().default(10),
     pitchFinalistSubmissionIdsJson: text('pitch_finalist_submission_ids_json').notNull().default('[]'),
     activePitchPresentationSubmissionId: text('active_pitch_presentation_submission_id'),
     pitchPresentationsCompletedAt: text('pitch_presentations_completed_at'),

@@ -90,6 +90,7 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
     pitchScoreWeightPercent: 30,
+    shortlistFinalistCount: 10,
     pitchPresentationSubmissionIds: [],
     activePitchPresentationSubmissionId: null,
     pitchPresentationsCompletedAt: null,
@@ -231,6 +232,7 @@ function createSubmission(overrides: Partial<SubmissionRecord> = {}): Submission
     lockedAt: null,
     withdrawnAt: null,
     disqualifiedAt: null,
+    disqualificationReason: null,
     createdAt: '2026-03-24T12:00:00.000Z',
     updatedAt: '2026-03-24T12:00:00.000Z',
     ...overrides

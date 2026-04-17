@@ -575,6 +575,7 @@ async function saveConfiguration(configForm: HackathonFormState) {
       pitchReviewEnabled: configForm.pitchReviewEnabled,
       blindScoreWeightPercent: configForm.blindScoreWeightPercent,
       pitchScoreWeightPercent: configForm.pitchScoreWeightPercent,
+      shortlistFinalistCount: configForm.shortlistFinalistCount,
       inPersonEvent: configForm.inPersonEvent,
       requireXProfile: configForm.requireXProfile,
       requireLinkedinProfile: configForm.requireLinkedinProfile,

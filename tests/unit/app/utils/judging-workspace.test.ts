@@ -62,6 +62,7 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
     pitchScoreWeightPercent: 30,
+    shortlistFinalistCount: 10,
     pitchPresentationSubmissionIds: [],
     activePitchPresentationSubmissionId: null,
     pitchPresentationsCompletedAt: null,

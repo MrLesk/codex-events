@@ -20,7 +20,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   selectFinalists: [payload: { orderedSubmissionIds: string[], finalistSubmissionIds: string[] }]
-  startPitch: []
+  startPitch: [payload: { orderedSubmissionIds: string[], finalistSubmissionIds: string[] }]
 }>()
 
 type ShortlistSectionKey = 'finalists' | 'not-finalists'
@@ -100,10 +100,14 @@ const hasDraftChanges = computed(() => {
   )
 })
 
+const canSaveShortlist = computed(() =>
+  canManageShortlist.value
+  && (props.pendingActionKey === null || props.pendingActionKey === 'shortlist-select')
+)
+
 const canStartPitch = computed(() =>
   canManageShortlist.value
   && finalistEntries.value.length > 0
-  && !hasDraftChanges.value
   && (props.pendingActionKey === null || props.pendingActionKey === 'start-pitch')
 )
 
@@ -111,17 +115,21 @@ function formatScore(scoreTotal: number | null) {
   return scoreTotal === null ? 'Awaiting review' : scoreTotal.toFixed(2)
 }
 
-function getBlindSubmissionLabel(entry: Pick<ShortlistEntry, 'rank'>) {
-  return entry.rank === null ? 'Blind submission' : `Blind submission #${entry.rank}`
+function formatProjectName(projectName: string | null) {
+  return projectName ?? 'Untitled project'
+}
+
+function formatPrimaryEntryLabel(entry: Pick<ShortlistEntry, 'projectName' | 'scoreTotal'>) {
+  return `${formatProjectName(entry.projectName)} - ${formatScore(entry.scoreTotal)}`
+}
+
+function getEntrySummary(entry: Pick<ShortlistEntry, 'summary'>) {
+  const summary = entry.summary?.trim() ?? ''
+  return summary.length > 0 ? summary : null
 }
 
 function getDraftShortlistRank(submissionId: string) {
   const index = draftOrderedSubmissionIds.value.findIndex(currentSubmissionId => currentSubmissionId === submissionId)
-  return index === -1 ? null : index + 1
-}
-
-function getDraftPitchFinalistRank(submissionId: string) {
-  const index = draftFinalistSubmissionIds.value.findIndex(currentSubmissionId => currentSubmissionId === submissionId)
   return index === -1 ? null : index + 1
 }
 
@@ -131,29 +139,75 @@ function applyDraftSections(finalistSubmissionIds: string[], notFinalistSubmissi
 }
 
 function moveSubmission(submissionId: string, direction: -1 | 1) {
-  const currentIndex = draftOrderedSubmissionIds.value.findIndex(currentSubmissionId => currentSubmissionId === submissionId)
+  const finalistIndex = draftFinalistSubmissionIds.value.findIndex(currentSubmissionId => currentSubmissionId === submissionId)
+  const notFinalistIndex = draftNotFinalistSubmissionIds.value.findIndex(currentSubmissionId => currentSubmissionId === submissionId)
 
-  if (currentIndex === -1) {
+  if (finalistIndex === -1 && notFinalistIndex === -1) {
     return
   }
 
-  const targetIndex = currentIndex + direction
+  if (finalistIndex !== -1) {
+    if (direction === -1) {
+      if (finalistIndex === 0) {
+        return
+      }
 
-  if (targetIndex < 0 || targetIndex >= draftOrderedSubmissionIds.value.length) {
+      applyDraftSections(
+        moveListItemByIndex(draftFinalistSubmissionIds.value, finalistIndex, finalistIndex - 1),
+        [...draftNotFinalistSubmissionIds.value]
+      )
+      return
+    }
+
+    if (finalistIndex === draftFinalistSubmissionIds.value.length - 1) {
+      moveToNotFinalists(submissionId)
+      return
+    }
+
+    applyDraftSections(
+      moveListItemByIndex(draftFinalistSubmissionIds.value, finalistIndex, finalistIndex + 1),
+      [...draftNotFinalistSubmissionIds.value]
+    )
     return
   }
 
-  const reorderedSubmissionIds = moveListItemByIndex(
-    draftOrderedSubmissionIds.value,
-    currentIndex,
-    targetIndex
-  )
-  const finalistCount = draftFinalistSubmissionIds.value.length
+  if (direction === -1) {
+    if (notFinalistIndex === 0) {
+      moveToFinalists(submissionId)
+      return
+    }
+
+    applyDraftSections(
+      [...draftFinalistSubmissionIds.value],
+      moveListItemByIndex(draftNotFinalistSubmissionIds.value, notFinalistIndex, notFinalistIndex - 1)
+    )
+    return
+  }
+
+  if (notFinalistIndex === draftNotFinalistSubmissionIds.value.length - 1) {
+    return
+  }
 
   applyDraftSections(
-    reorderedSubmissionIds.slice(0, finalistCount),
-    reorderedSubmissionIds.slice(finalistCount)
+    [...draftFinalistSubmissionIds.value],
+    moveListItemByIndex(draftNotFinalistSubmissionIds.value, notFinalistIndex, notFinalistIndex + 1)
   )
+}
+
+function canMoveSubmissionUp(submissionId: string) {
+  if (draftFinalistSubmissionIds.value.includes(submissionId)) {
+    return draftFinalistSubmissionIds.value[0] !== submissionId
+  }
+
+  return draftNotFinalistSubmissionIds.value.includes(submissionId)
+}
+
+function canMoveSubmissionDown(submissionId: string) {
+  if (draftFinalistSubmissionIds.value.includes(submissionId)) {
+    return true
+  }
+
+  return draftNotFinalistSubmissionIds.value.at(-1) !== submissionId
 }
 
 function moveToFinalists(submissionId: string) {
@@ -302,90 +356,74 @@ onBeforeUnmount(() => {
       />
 
       <template v-else-if="shortlist.length > 0">
-        <div
-          v-if="canManageShortlist"
-          class="space-y-4 rounded-xl border border-black/8 bg-black/[0.02] p-4 dark:border-white/[0.08] dark:bg-white/[0.02]"
-        >
-          <div class="flex flex-wrap items-center gap-2">
-            <AppBadge
-              color="secondary"
-              variant="soft"
-            >
-              {{ finalistEntries.length }} finalists
-            </AppBadge>
-
-            <AppBadge
-              color="neutral"
-              variant="soft"
-            >
-              {{ notFinalistEntries.length }} not finalists
-            </AppBadge>
-          </div>
-
-          <p class="text-sm text-toned">
-            Saving this order keeps the full blind ranking, and the finalists above the boundary become the carried order for pitch and the starting final ranking later.
-          </p>
-
-          <div class="flex flex-wrap gap-3">
-            <AppButton
-              color="primary"
-              data-testid="admin-competition-shortlist-save"
-              :loading="pendingActionKey === 'shortlist-select'"
-              :disabled="!hasDraftChanges || (pendingActionKey !== null && pendingActionKey !== 'shortlist-select')"
-              @click="emit('selectFinalists', {
-                orderedSubmissionIds: draftOrderedSubmissionIds,
-                finalistSubmissionIds: draftFinalistSubmissionIds
-              })"
-            >
-              Save shortlist
-            </AppButton>
-
-            <AppButton
-              color="secondary"
-              data-testid="admin-competition-shortlist-continue"
-              :loading="pendingActionKey === 'start-pitch'"
-              :disabled="!canStartPitch"
-              @click="emit('startPitch')"
-            >
-              Continue to pitch
-            </AppButton>
-
-            <AppButton
-              v-if="hasDraftChanges"
-              variant="soft"
-              color="neutral"
-              :disabled="pendingActionKey !== null"
-              @click="resetDraft"
-            >
-              Reset changes
-            </AppButton>
-          </div>
-        </div>
-
         <div class="grid gap-6">
           <section class="space-y-3">
-            <div class="space-y-1">
-              <div class="flex flex-wrap items-center gap-3">
-                <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-                  Finalists
-                </h3>
-                <AppBadge
-                  color="secondary"
-                  variant="soft"
+            <div class="space-y-3">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                <div class="space-y-1">
+                  <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+                    Finalists ({{ finalistEntries.length }})
+                  </h3>
+                  <p class="text-sm text-toned">
+                    These submissions move on to the live pitch stage in the order shown here. Saving this order keeps the full blind ranking, and the finalists above the boundary become the carried order for pitch and the starting final ranking later.
+                  </p>
+                </div>
+
+                <div
+                  v-if="canManageShortlist"
+                  class="flex flex-wrap items-center gap-3 lg:justify-end"
                 >
-                  Advance to pitch
-                </AppBadge>
+                  <AppButton
+                    color="primary"
+                    data-testid="admin-competition-shortlist-save"
+                    :loading="pendingActionKey === 'shortlist-select'"
+                    :disabled="!canSaveShortlist"
+                    @click="emit('selectFinalists', {
+                      orderedSubmissionIds: draftOrderedSubmissionIds,
+                      finalistSubmissionIds: draftFinalistSubmissionIds
+                    })"
+                  >
+                    Save shortlist
+                  </AppButton>
+
+                  <AppButton
+                    color="neutral"
+                    data-testid="admin-competition-shortlist-continue"
+                    class="disabled:pointer-events-auto disabled:cursor-not-allowed"
+                    :loading="pendingActionKey === 'start-pitch'"
+                    :disabled="!canStartPitch"
+                    @click="emit('startPitch', {
+                      orderedSubmissionIds: draftOrderedSubmissionIds,
+                      finalistSubmissionIds: draftFinalistSubmissionIds
+                    })"
+                  >
+                    Continue to pitch
+                  </AppButton>
+
+                  <AppButton
+                    v-if="hasDraftChanges"
+                    variant="outline"
+                    color="neutral"
+                    class="dark:border-white/[0.24] dark:text-white dark:hover:border-white/[0.34] dark:hover:bg-white/[0.04]"
+                    :disabled="pendingActionKey !== null"
+                    @click="resetDraft"
+                  >
+                    Reset changes
+                  </AppButton>
+                </div>
               </div>
-              <p class="text-sm text-toned">
-                These submissions move on to the live pitch stage in the order shown here.
-              </p>
             </div>
 
             <div
               ref="finalistListElement"
               data-shortlist-section="finalists"
-              class="grid min-h-[5.75rem] gap-3 rounded-xl border border-black/8 bg-white/65 p-3 dark:border-white/[0.08] dark:bg-white/[0.02]"
-              :class="activeDragSubmissionId ? 'border-black/16 dark:border-white/[0.16]' : ''"
+              class="grid min-h-[5.75rem] gap-3"
+              :class="[
+                finalistEntries.length > 0
+                  ? 'rounded-xl border border-black/8 bg-white/65 p-3 dark:border-white/[0.08] dark:bg-white/[0.02]'
+                  : 'p-0',
+                activeDragSubmissionId && finalistEntries.length > 0 ? 'border-black/16 dark:border-white/[0.16]' : ''
+              ]"
             >
               <article
                 v-for="entry in finalistEntries"
@@ -400,14 +438,17 @@ onBeforeUnmount(() => {
                     : 'border-black/8 dark:border-white/[0.08]'
                 ]"
               >
-                <AdminEditorRowShell>
+                <AdminEditorRowShell
+                  columns-class="sm:grid-cols-[4.25rem_minmax(0,1fr)_8.75rem]"
+                  actions-class="flex items-center justify-start sm:justify-end sm:self-center"
+                >
                   <template #controls>
                     <button
                       type="button"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
                       :aria-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} up`"
                       :data-testid="`admin-competition-shortlist-move-up-${entry.submissionId}`"
-                      :disabled="getDraftShortlistRank(entry.submissionId) === 1 || pendingActionKey !== null"
+                      :disabled="!canMoveSubmissionUp(entry.submissionId) || pendingActionKey !== null"
                       @click="moveSubmission(entry.submissionId, -1)"
                     >
                       <AppIcon
@@ -434,7 +475,7 @@ onBeforeUnmount(() => {
                       class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
                       :aria-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} down`"
                       :data-testid="`admin-competition-shortlist-move-down-${entry.submissionId}`"
-                      :disabled="getDraftShortlistRank(entry.submissionId) === draftOrderedSubmissionIds.length || pendingActionKey !== null"
+                      :disabled="!canMoveSubmissionDown(entry.submissionId) || pendingActionKey !== null"
                       @click="moveSubmission(entry.submissionId, 1)"
                     >
                       <AppIcon
@@ -444,8 +485,8 @@ onBeforeUnmount(() => {
                     </button>
                   </template>
 
-                  <div class="grid gap-3">
-                    <div class="flex flex-wrap items-center gap-2">
+                  <div class="grid gap-2">
+                    <div class="flex flex-wrap items-baseline gap-3">
                       <p
                         :data-testid="`admin-competition-shortlist-rank-${entry.submissionId}`"
                         class="text-sm font-semibold text-highlighted"
@@ -453,24 +494,24 @@ onBeforeUnmount(() => {
                         #{{ getDraftShortlistRank(entry.submissionId) }}
                       </p>
 
-                      <AppBadge
-                        color="secondary"
-                        variant="soft"
-                      >
-                        Pitch finalist #{{ getDraftPitchFinalistRank(entry.submissionId) }}
-                      </AppBadge>
+                      <p class="min-w-0 flex-1 text-sm font-semibold text-highlighted">
+                        {{ formatPrimaryEntryLabel(entry) }}
+                      </p>
                     </div>
 
-                    <p class="text-sm text-toned">
-                      {{ getBlindSubmissionLabel(entry) }} • blind score {{ formatScore(entry.scoreTotal) }}
+                    <p
+                      v-if="getEntrySummary(entry)"
+                      class="text-sm text-toned"
+                    >
+                      {{ getEntrySummary(entry) }}
                     </p>
                   </div>
 
                   <template #actions>
                     <AppButton
                       variant="soft"
-                      color="neutral"
-                      class="w-full sm:w-auto"
+                      color="primary"
+                      class="w-full"
                       :disabled="pendingActionKey !== null"
                       @click="moveToNotFinalists(entry.submissionId)"
                     >
@@ -482,7 +523,7 @@ onBeforeUnmount(() => {
 
               <div
                 v-if="finalistEntries.length === 0"
-                class="rounded-xl border border-dashed border-black/12 bg-black/[0.02] px-4 py-4 text-sm text-toned dark:border-white/[0.12] dark:bg-white/[0.02]"
+                class="flex min-h-[5.75rem] items-center justify-center rounded-xl border border-dashed border-black/12 bg-black/[0.02] px-4 py-4 text-center text-sm text-toned dark:border-white/[0.12] dark:bg-white/[0.02]"
               >
                 Move submissions here to advance them to pitch.
               </div>
@@ -491,17 +532,9 @@ onBeforeUnmount(() => {
 
           <section class="space-y-3">
             <div class="space-y-1">
-              <div class="flex flex-wrap items-center gap-3">
-                <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-                  Not Finalists
-                </h3>
-                <AppBadge
-                  color="neutral"
-                  variant="soft"
-                >
-                  Saved in final order
-                </AppBadge>
-              </div>
+              <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+                Not Finalists ({{ notFinalistEntries.length }})
+              </h3>
               <p class="text-sm text-toned">
                 These submissions stay below the finalist boundary, but their saved order still carries into the later final ranking baseline.
               </p>
@@ -510,8 +543,13 @@ onBeforeUnmount(() => {
             <div
               ref="notFinalistListElement"
               data-shortlist-section="not-finalists"
-              class="grid min-h-[5.75rem] gap-3 rounded-xl border border-black/8 bg-white/65 p-3 dark:border-white/[0.08] dark:bg-white/[0.02]"
-              :class="activeDragSubmissionId ? 'border-black/16 dark:border-white/[0.16]' : ''"
+              class="grid min-h-[5.75rem] gap-3"
+              :class="[
+                notFinalistEntries.length > 0
+                  ? 'rounded-xl border border-black/8 bg-white/65 p-3 dark:border-white/[0.08] dark:bg-white/[0.02]'
+                  : 'p-0',
+                activeDragSubmissionId && notFinalistEntries.length > 0 ? 'border-black/16 dark:border-white/[0.16]' : ''
+              ]"
             >
               <article
                 v-for="entry in notFinalistEntries"
@@ -526,14 +564,17 @@ onBeforeUnmount(() => {
                     : 'border-black/8 dark:border-white/[0.08]'
                 ]"
               >
-                <AdminEditorRowShell>
+                <AdminEditorRowShell
+                  columns-class="sm:grid-cols-[4.25rem_minmax(0,1fr)_8.75rem]"
+                  actions-class="flex items-center justify-start sm:justify-end sm:self-center"
+                >
                   <template #controls>
                     <button
                       type="button"
                       class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
                       :aria-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} up`"
                       :data-testid="`admin-competition-shortlist-move-up-${entry.submissionId}`"
-                      :disabled="getDraftShortlistRank(entry.submissionId) === 1 || pendingActionKey !== null"
+                      :disabled="!canMoveSubmissionUp(entry.submissionId) || pendingActionKey !== null"
                       @click="moveSubmission(entry.submissionId, -1)"
                     >
                       <AppIcon
@@ -560,7 +601,7 @@ onBeforeUnmount(() => {
                       class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-black/8 bg-white text-toned transition hover:border-black/20 hover:text-highlighted disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.08] dark:bg-[#151515] dark:hover:border-white/[0.18]"
                       :aria-label="`Move shortlist entry ${getDraftShortlistRank(entry.submissionId) ?? 0} down`"
                       :data-testid="`admin-competition-shortlist-move-down-${entry.submissionId}`"
-                      :disabled="getDraftShortlistRank(entry.submissionId) === draftOrderedSubmissionIds.length || pendingActionKey !== null"
+                      :disabled="!canMoveSubmissionDown(entry.submissionId) || pendingActionKey !== null"
                       @click="moveSubmission(entry.submissionId, 1)"
                     >
                       <AppIcon
@@ -570,8 +611,8 @@ onBeforeUnmount(() => {
                     </button>
                   </template>
 
-                  <div class="grid gap-3">
-                    <div class="flex flex-wrap items-center gap-2">
+                  <div class="grid gap-2">
+                    <div class="flex flex-wrap items-baseline gap-3">
                       <p
                         :data-testid="`admin-competition-shortlist-rank-${entry.submissionId}`"
                         class="text-sm font-semibold text-highlighted"
@@ -579,16 +620,16 @@ onBeforeUnmount(() => {
                         #{{ getDraftShortlistRank(entry.submissionId) }}
                       </p>
 
-                      <AppBadge
-                        color="neutral"
-                        variant="soft"
-                      >
-                        Not finalist
-                      </AppBadge>
+                      <p class="min-w-0 flex-1 text-sm font-semibold text-highlighted">
+                        {{ formatPrimaryEntryLabel(entry) }}
+                      </p>
                     </div>
 
-                    <p class="text-sm text-toned">
-                      {{ getBlindSubmissionLabel(entry) }} • blind score {{ formatScore(entry.scoreTotal) }}
+                    <p
+                      v-if="getEntrySummary(entry)"
+                      class="text-sm text-toned"
+                    >
+                      {{ getEntrySummary(entry) }}
                     </p>
                   </div>
 
@@ -596,7 +637,7 @@ onBeforeUnmount(() => {
                     <AppButton
                       variant="soft"
                       color="primary"
-                      class="w-full sm:w-auto"
+                      class="w-full"
                       :disabled="pendingActionKey !== null"
                       @click="moveToFinalists(entry.submissionId)"
                     >
@@ -608,9 +649,9 @@ onBeforeUnmount(() => {
 
               <div
                 v-if="notFinalistEntries.length === 0"
-                class="rounded-xl border border-dashed border-black/12 bg-black/[0.02] px-4 py-4 text-sm text-toned dark:border-white/[0.12] dark:bg-white/[0.02]"
+                class="flex min-h-[5.75rem] items-center justify-center rounded-xl border border-dashed border-black/12 bg-black/[0.02] px-4 py-4 text-center text-sm text-toned dark:border-white/[0.12] dark:bg-white/[0.02]"
               >
-                Every ranked submission is currently inside the finalist boundary.
+                Move submissions here to keep them below the finalist boundary.
               </div>
             </div>
           </section>

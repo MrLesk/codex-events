@@ -905,6 +905,20 @@ const submitConfigForm = handleSubmit(() => {
                       required
                     />
                   </label>
+
+                  <label
+                    v-if="form.pitchReviewEnabled && form.blindReviewCount > 0"
+                    class="grid gap-2 md:max-w-[16rem]"
+                  >
+                    <span class="text-sm font-medium text-toned">Preselected finalists</span>
+                    <AppInput
+                      v-model.number="form.shortlistFinalistCount"
+                      type="number"
+                      min="1"
+                      required
+                    />
+                    <span class="text-xs text-muted">When shortlist starts, the top ranked blind submissions appear as the default finalist boundary up to this count until shortlist is saved.</span>
+                  </label>
                 </div>
 
                 <p class="text-xs text-muted">
@@ -1465,6 +1479,20 @@ const submitConfigForm = handleSubmit(() => {
                 max="100"
                 required
               />
+            </label>
+
+            <label
+              v-if="form.pitchReviewEnabled && form.blindReviewCount > 0"
+              class="grid gap-2 md:max-w-[16rem]"
+            >
+              <span class="text-sm font-medium text-toned">Preselected finalists</span>
+              <AppInput
+                v-model.number="form.shortlistFinalistCount"
+                type="number"
+                min="1"
+                required
+              />
+              <span class="text-xs text-muted">When shortlist starts, the top ranked blind submissions appear as the default finalist boundary up to this count until shortlist is saved.</span>
             </label>
           </div>
 

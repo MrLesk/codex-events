@@ -6,8 +6,8 @@ import { apiList } from '../../../../utils/api-response'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '../../../../utils/hackathon-management'
 import { assertGuard } from '../../../../utils/lifecycle-guard'
 import {
-  assertShortlistViewAllowed,
-  listShortlistEntries
+  getShortlistView,
+  assertShortlistViewAllowed
 } from '../../../../utils/shortlist'
 import { parseValidatedParams } from '../../../../utils/validation'
 
@@ -29,9 +29,10 @@ export default defineApiHandler(async (event) => {
   })
   assertShortlistViewAllowed(hackathon)
 
-  const shortlistEntries = await listShortlistEntries(database, hackathonId)
+  const shortlistView = await getShortlistView(database, hackathonId)
 
-  return apiList(shortlistEntries, {
-    total: shortlistEntries.length
+  return apiList(shortlistView.entries, {
+    total: shortlistView.entries.length,
+    hasSavedShortlistSelection: shortlistView.hasSavedShortlistSelection
   })
 })

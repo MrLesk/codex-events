@@ -72,6 +72,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       pitchReviewEnabled?: boolean
       blindScoreWeightPercent?: number
       pitchScoreWeightPercent?: number
+      shortlistFinalistCount?: number
       pitchFinalistSubmissionIdsJson?: string
       finalRankingSubmissionIdsJson?: string
     }
@@ -141,6 +142,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       pitchReviewEnabled,
       blindScoreWeightPercent,
       pitchScoreWeightPercent,
+      shortlistFinalistCount: options?.shortlistFinalistCount ?? 10,
       pitchFinalistSubmissionIdsJson: options?.pitchFinalistSubmissionIdsJson ?? '[]',
       finalRankingSubmissionIdsJson: options?.finalRankingSubmissionIdsJson ?? '[]',
       maxTeamMembers: 5,
@@ -516,7 +518,10 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, { state: 'blind_review' })
+    await seedOutcomeHackathon(harness, {
+      state: 'blind_review',
+      shortlistFinalistCount: 1
+    })
     await harness.database
       .update(hackathons)
       .set({
@@ -563,9 +568,113 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        action: 'hackathon.start_shortlist'
+        action: 'hackathon.start_shortlist',
+        metadata: expect.objectContaining({
+          rankedSubmissionCount: 2
+        })
       })
     ]))
+  })
+
+  test('shortlist view derives the default finalist boundary until shortlist is saved', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/hackathons/:hackathonId/shortlist',
+          handler: listShortlistHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'shortlist',
+      shortlistFinalistCount: 1,
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_2']),
+      finalRankingSubmissionIdsJson: '[]'
+    })
+
+    const shortlistResponse = await harness.request('/api/hackathons/hackathon_1/shortlist')
+
+    expect(shortlistResponse.status).toBe(200)
+    expect(await shortlistResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          submissionId: 'submission_1',
+          rank: 1,
+          isPitchFinalist: true,
+          pitchFinalistRank: 1
+        }),
+        expect.objectContaining({
+          submissionId: 'submission_2',
+          rank: 2,
+          isPitchFinalist: false,
+          pitchFinalistRank: null
+        })
+      ],
+      meta: expect.objectContaining({
+        total: 2,
+        hasSavedShortlistSelection: false
+      })
+    })
+  })
+
+  test('derived shortlist order follows blind rank instead of team-name order', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/hackathons/:hackathonId/shortlist',
+          handler: listShortlistHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'shortlist',
+      shortlistFinalistCount: 1,
+      pitchFinalistSubmissionIdsJson: '[]',
+      finalRankingSubmissionIdsJson: '[]'
+    })
+    await harness.database
+      .update(teams)
+      .set({
+        name: 'Aardvark Team',
+        slug: 'aardvark-team'
+      })
+      .where(eq(teams.id, 'team_2'))
+
+    const shortlistResponse = await harness.request('/api/hackathons/hackathon_1/shortlist')
+
+    expect(shortlistResponse.status).toBe(200)
+    expect(await shortlistResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          submissionId: 'submission_1',
+          rank: 1,
+          scoreTotal: 7.5,
+          isPitchFinalist: true,
+          pitchFinalistRank: 1
+        }),
+        expect.objectContaining({
+          submissionId: 'submission_2',
+          rank: 2,
+          scoreTotal: 6.5,
+          isPitchFinalist: false,
+          pitchFinalistRank: null
+        })
+      ]
+    })
   })
 
   test('shortlist save persists the full blind order and the finalist boundary while shortlist stays blind', async () => {
@@ -609,12 +718,16 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       data: [
         expect.objectContaining({
           submissionId: 'submission_2',
+          projectName: 'Beta Project',
+          summary: 'Beta summary',
           rank: 2,
           isPitchFinalist: true,
           pitchFinalistRank: 1
         }),
         expect.objectContaining({
           submissionId: 'submission_1',
+          projectName: 'Alpha Project',
+          summary: 'Alpha summary',
           rank: 1,
           isPitchFinalist: false,
           pitchFinalistRank: null
@@ -658,7 +771,11 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
           isPitchFinalist: false,
           pitchFinalistRank: null
         })
-      ]
+      ],
+      meta: expect.objectContaining({
+        total: 2,
+        hasSavedShortlistSelection: true
+      })
     })
     expect(shortlistPayload.data[0]).not.toHaveProperty('teamId')
     expect(shortlistPayload.data[0]).not.toHaveProperty('teamName')
@@ -812,7 +929,8 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
 
     await seedOutcomeHackathon(harness, {
       state: 'shortlist',
-      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1'])
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1']),
+      finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
     })
     await harness.database.insert(users).values({
       id: 'team_member_one',
@@ -879,6 +997,40 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         })
       })
     ]))
+  })
+
+  test('starting pitch from shortlist requires a saved shortlist selection', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/start-pitch',
+          handler: startPitchHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'shortlist',
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1']),
+      finalRankingSubmissionIdsJson: '[]'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/actions/start-pitch', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: expect.objectContaining({
+        code: 'pitch_finalists_required'
+      })
+    })
   })
 
   test('blind-only hackathons can start final deliberation and expose blind-score breakdowns', async () => {

@@ -118,7 +118,9 @@ function averageNumbers(values: number[]) {
   return values.reduce((total, value) => total + value, 0) / values.length
 }
 
-function parseStoredFinalRankingSubmissionIds(hackathon: HackathonRecord) {
+function parseStoredFinalRankingSubmissionIds(
+  hackathon: Pick<HackathonRecord, 'id' | 'finalRankingSubmissionIdsJson'>
+) {
   let parsedValue: unknown
 
   try {
@@ -148,6 +150,12 @@ function parseStoredFinalRankingSubmissionIds(hackathon: HackathonRecord) {
   }
 
   return result.data
+}
+
+export function hasSavedShortlistSelection(
+  hackathon: Pick<HackathonRecord, 'id' | 'finalRankingSubmissionIdsJson'>
+) {
+  return parseStoredFinalRankingSubmissionIds(hackathon).length > 0
 }
 
 function compareEntriesByScore(
@@ -237,7 +245,14 @@ function shouldUseFinalScoreLeaderboard(hackathon: HackathonRecord) {
 }
 
 function toBlindLeaderboardEntries(entries: CompetitionEntry[]): LeaderboardBaseEntry[] {
-  return entries.map(entry => ({
+  const rankedEntries = entries
+    .filter(entry => entry.isBlindRanked)
+    .sort((left, right) => (left.blindRank ?? Number.MAX_SAFE_INTEGER) - (right.blindRank ?? Number.MAX_SAFE_INTEGER))
+  const unrankedEntries = entries
+    .filter(entry => !entry.isBlindRanked)
+    .sort((left, right) => left.team.name.localeCompare(right.team.name))
+
+  return [...rankedEntries, ...unrankedEntries].map(entry => ({
     team: entry.team,
     submission: entry.submission,
     reviewStatus: entry.blindReviewStatus,
@@ -289,6 +304,7 @@ export function serializeShortlistEntry(
   return {
     submissionId: entry.submission.id,
     projectName: entry.submission.projectName,
+    summary: entry.submission.summary,
     submissionStatus: entry.submission.status,
     reviewStatus: entry.reviewStatus,
     ineligibilityStatus: entry.ineligibilityStatus,
@@ -590,32 +606,49 @@ export async function listLeaderboardEntries(database: AppDatabase, hackathonId:
 }
 
 export async function listShortlistEntries(database: AppDatabase, hackathonId: string) {
+  return (await getShortlistView(database, hackathonId)).entries
+}
+
+export async function getShortlistView(database: AppDatabase, hackathonId: string) {
   const { hackathon, entries } = await listBlindLeaderboardEntries(database, hackathonId)
 
   if (!hackathon) {
-    return []
+    return {
+      entries: [],
+      hasSavedShortlistSelection: false
+    }
   }
 
   const rankedEntries = entries.filter(entry => entry.isRanked)
   const orderedRankedEntries = deriveShortlistOrdering(hackathon, rankedEntries)
-  const orderedFinalistSubmissionIds = parseStoredPitchFinalistSubmissionIds(hackathon)
+  const savedShortlistSelection = hasSavedShortlistSelection(hackathon)
+  const orderedFinalistSubmissionIds = savedShortlistSelection
+    ? parseStoredPitchFinalistSubmissionIds(hackathon)
+    : orderedRankedEntries
+        .slice(0, hackathon.shortlistFinalistCount)
+        .map(entry => entry.submission.id)
 
-  assertStoredPitchFinalistsMatchEntries(
-    orderedFinalistSubmissionIds,
-    orderedRankedEntries,
-    hackathon.id
-  )
+  if (savedShortlistSelection) {
+    assertStoredPitchFinalistsMatchEntries(
+      orderedFinalistSubmissionIds,
+      orderedRankedEntries,
+      hackathon.id
+    )
+  }
 
   const pitchFinalistRanksBySubmissionId = new Map(
     orderedFinalistSubmissionIds.map((submissionId, index) => [submissionId, index + 1] as const)
   )
 
-  return orderedRankedEntries.map(entry =>
-    serializeShortlistEntry(
-      entry,
-      pitchFinalistRanksBySubmissionId.get(entry.submission.id) ?? null
-    )
-  )
+  return {
+    entries: orderedRankedEntries.map(entry =>
+      serializeShortlistEntry(
+        entry,
+        pitchFinalistRanksBySubmissionId.get(entry.submission.id) ?? null
+      )
+    ),
+    hasSavedShortlistSelection: savedShortlistSelection
+  }
 }
 
 export async function getFinalDeliberationView(

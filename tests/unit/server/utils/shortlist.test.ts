@@ -6,6 +6,7 @@ import {
   assertFinalDeliberationReorderMatchesEntries,
   assertFinalDeliberationViewAllowed,
   assertHackathonCompletionAllowed,
+  hasSavedShortlistSelection,
   assertSelectedFinalistsRespectOrder,
   assertSelectedFinalistsMatchEntries,
   assertSelectedShortlistOrderMatchesEntries,
@@ -45,6 +46,7 @@ function createHackathon(
     pitchReviewEnabled: true,
     blindScoreWeightPercent: 70,
     pitchScoreWeightPercent: 30,
+    shortlistFinalistCount: 10,
     pitchFinalistSubmissionIdsJson: '[]',
     activePitchPresentationSubmissionId: null,
     pitchPresentationsCompletedAt: null,
@@ -174,6 +176,14 @@ describe('shortlist utilities', () => {
 
     expect(() => assertSelectFinalistsAllowed(createHackathon('shortlist'))).not.toThrow()
     expect(() => assertSelectFinalistsAllowed(createHackathon('blind_review'))).toThrowError(ApiError)
+  })
+
+  test('saved shortlist selection is determined by the persisted shortlist order', () => {
+    expect(hasSavedShortlistSelection(createHackathon('shortlist'))).toBe(false)
+    expect(hasSavedShortlistSelection({
+      ...createHackathon('shortlist'),
+      finalRankingSubmissionIdsJson: JSON.stringify(['submission_1'])
+    })).toBe(true)
   })
 
   test('final score calculation supports blind-only, pitch-only, and combined hackathons', () => {

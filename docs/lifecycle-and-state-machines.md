@@ -88,7 +88,8 @@ The blind-review leaderboard is reviewed, the full blind shortlist order is save
 Behavior:
 
 - Judges can review blind-review scores.
-- Hackathon admins manually order the full blind shortlist and choose which leading submissions are finalists.
+- Entering shortlist shows the top ranked blind-review submissions as the default finalist boundary up to the configured shortlist finalist count until admins save the shortlist.
+- Hackathon admins manually order the full blind shortlist and adjust which leading submissions are finalists.
 - The saved shortlist order becomes the starting final ranking order unless admins later change it in `final_deliberation`.
 - Team identity remains hidden during shortlist.
 - Participant-facing shortlist status is not published yet.

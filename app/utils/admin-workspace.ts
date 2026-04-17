@@ -205,6 +205,7 @@ export interface HackathonRecord {
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number
   pitchScoreWeightPercent: number
+  shortlistFinalistCount: number
   pitchPresentationSubmissionIds: string[]
   activePitchPresentationSubmissionId: string | null
   pitchPresentationsCompletedAt: string | null
@@ -255,6 +256,7 @@ export interface HackathonFormState {
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number
   pitchScoreWeightPercent: number
+  shortlistFinalistCount: number
   inPersonEvent: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
@@ -369,6 +371,7 @@ export interface SubmissionRecord {
   lockedAt: string | null
   withdrawnAt: string | null
   disqualifiedAt: string | null
+  disqualificationReason: string | null
   createdAt: string
   updatedAt: string
 }
@@ -544,6 +547,7 @@ export interface LeaderboardEntry {
 export interface ShortlistEntry {
   submissionId: string
   projectName: string | null
+  summary: string | null
   submissionStatus: SubmissionRecord['status']
   reviewStatus: JudgeAssignmentSummary['status'] | null
   ineligibilityStatus: JudgeAssignmentSummary['ineligibilityStatus'] | null
@@ -1518,6 +1522,7 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
     pitchScoreWeightPercent: 30,
+    shortlistFinalistCount: 10,
     inPersonEvent: false,
     requireXProfile: false,
     requireLinkedinProfile: false,
@@ -1590,6 +1595,7 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
     pitchReviewEnabled: hackathon.pitchReviewEnabled,
     blindScoreWeightPercent: hackathon.blindScoreWeightPercent,
     pitchScoreWeightPercent: hackathon.pitchScoreWeightPercent,
+    shortlistFinalistCount: hackathon.shortlistFinalistCount,
     inPersonEvent: hackathon.inPersonEvent,
     requireXProfile: hackathon.requireXProfile,
     requireLinkedinProfile: hackathon.requireLinkedinProfile,

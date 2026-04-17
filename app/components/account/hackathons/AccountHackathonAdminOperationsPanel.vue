@@ -133,6 +133,7 @@ const applications = ref<AdminApplicationRecord[]>([])
 const applicationsStatus = ref<LoadStatus>('idle')
 const applicationsErrorMessage = ref('')
 const shortlistEntries = ref<ShortlistEntry[]>([])
+const shortlistHasSavedSelection = ref(false)
 const shortlistStatus = ref<LoadStatus>('idle')
 const shortlistErrorMessage = ref('')
 const finalDeliberation = ref<FinalDeliberationView | null>(null)
@@ -1318,6 +1319,7 @@ async function runMutation<Result>(
 async function loadShortlist() {
   if (!canLoadShortlist.value) {
     shortlistEntries.value = []
+    shortlistHasSavedSelection.value = false
     shortlistStatus.value = 'idle'
     shortlistErrorMessage.value = ''
     return
@@ -1331,9 +1333,11 @@ async function loadShortlist() {
       `/api/hackathons/${hackathonId.value}/shortlist`
     )
     shortlistEntries.value = response.data
+    shortlistHasSavedSelection.value = response.meta?.hasSavedShortlistSelection === true
     shortlistStatus.value = 'success'
   } catch (error) {
     shortlistEntries.value = []
+    shortlistHasSavedSelection.value = false
     shortlistStatus.value = 'error'
     shortlistErrorMessage.value = toSectionErrorMessage(
       error,
@@ -1342,14 +1346,23 @@ async function loadShortlist() {
   }
 }
 
-async function selectFinalists(payload: { orderedSubmissionIds: string[], finalistSubmissionIds: string[] }) {
+type ShortlistSelectionPayload = {
+  orderedSubmissionIds: string[]
+  finalistSubmissionIds: string[]
+}
+
+async function persistShortlistSelection(payload: ShortlistSelectionPayload) {
+  await $fetch(`/api/hackathons/${hackathonId.value}/shortlist/actions/select-finalists`, {
+    method: 'POST',
+    body: payload
+  })
+}
+
+async function selectFinalists(payload: ShortlistSelectionPayload) {
   await runMutation(
     'shortlist-select',
     async () => {
-      await $fetch(`/api/hackathons/${hackathonId.value}/shortlist/actions/select-finalists`, {
-        method: 'POST',
-        body: payload
-      })
+      await persistShortlistSelection(payload)
     },
     {
       title: 'Pitch finalists updated',
@@ -1358,10 +1371,27 @@ async function selectFinalists(payload: { orderedSubmissionIds: string[], finali
   )
 }
 
-async function startPitch() {
+async function startPitch(payload: ShortlistSelectionPayload) {
+  if (!shortlistHasSavedSelection.value && import.meta.client) {
+    const confirmed = window.confirm(
+      [
+        'Save the current shortlist and continue to pitch?',
+        'This shortlist has not been saved yet. Continuing will save the current finalist boundary and open the live pitch stage.'
+      ].join('\n\n')
+    )
+
+    if (!confirmed) {
+      return
+    }
+  }
+
   await runMutation(
     'start-pitch',
     async () => {
+      if (!shortlistHasSavedSelection.value || shortlistEntriesChanged(payload)) {
+        await persistShortlistSelection(payload)
+      }
+
       await $fetch(`/api/hackathons/${hackathonId.value}/actions/start-pitch`, {
         method: 'POST'
       })
@@ -1370,6 +1400,20 @@ async function startPitch() {
       title: 'Pitch started',
       description: 'The live finalist pitch stage is now open. Enable each presentation from the lineup before opening pitch review.'
     }
+  )
+}
+
+function shortlistEntriesChanged(payload: ShortlistSelectionPayload) {
+  const currentOrderedSubmissionIds = shortlistEntries.value.map(entry => entry.submissionId)
+  const currentFinalistSubmissionIds = shortlistEntries.value
+    .filter(entry => entry.isPitchFinalist)
+    .map(entry => entry.submissionId)
+
+  return (
+    payload.orderedSubmissionIds.length !== currentOrderedSubmissionIds.length
+    || payload.finalistSubmissionIds.length !== currentFinalistSubmissionIds.length
+    || payload.orderedSubmissionIds.some((submissionId, index) => submissionId !== currentOrderedSubmissionIds[index])
+    || payload.finalistSubmissionIds.some((submissionId, index) => submissionId !== currentFinalistSubmissionIds[index])
   )
 }
 

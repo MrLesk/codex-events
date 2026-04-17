@@ -244,6 +244,23 @@ describe('hackathon config form schema', () => {
 
     expect(result.success).toBe(true)
   })
+
+  test('requires at least one preselected finalist when shortlist is configured', () => {
+    const result = hackathonConfigFormSchema.safeParse({
+      ...createValidHackathonFormState(),
+      shortlistFinalistCount: 0
+    })
+
+    expect(result.success).toBe(false)
+
+    if (result.success) {
+      return
+    }
+
+    expect(result.error.flatten().fieldErrors.shortlistFinalistCount).toEqual([
+      'Too small: expected number to be >=1'
+    ])
+  })
 })
 
 describe('team submission form schema', () => {

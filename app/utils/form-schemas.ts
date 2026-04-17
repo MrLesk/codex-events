@@ -258,6 +258,7 @@ export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object
   pitchReviewEnabled: z.boolean(),
   blindScoreWeightPercent: z.number().int().min(0).max(100),
   pitchScoreWeightPercent: z.number().int().min(0).max(100),
+  shortlistFinalistCount: z.number().int().min(1),
   inPersonEvent: z.boolean(),
   requireXProfile: z.boolean(),
   requireLinkedinProfile: z.boolean(),

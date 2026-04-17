@@ -101,6 +101,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `pitch_review_enabled`
 - `blind_score_weight_percent`
 - `pitch_score_weight_percent`
+- `shortlist_finalist_count`
 - `pitch_finalist_submission_ids_json`
 - `active_pitch_presentation_submission_id`
 - `pitch_presentations_completed_at`
@@ -160,6 +161,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `blind_review_count` controls how many blind review assignments each locked submission receives.
 - `pitch_review_enabled` controls whether the hackathon uses the optional live pitch stage plus the post-pitch review stage.
 - `blind_score_weight_percent` and `pitch_score_weight_percent` default to `70` and `30` when both blind review and pitch review are enabled.
+- `shortlist_finalist_count` defaults to `10` and controls how many top-ranked blind-review submissions appear in the default finalist boundary when `shortlist` begins.
 - When only one judging stage is enabled, final score is derived entirely from that stage.
 - `pitch_finalist_submission_ids_json` stores the ordered pitch presentation lineup for pitch-enabled hackathons. In blind-plus-pitch hackathons it is selected during `shortlist`. In pitch-only hackathons it is populated from all eligible locked submissions when `pitch` starts.
 - `active_pitch_presentation_submission_id` stores the submission currently enabled to present during the live `pitch` stage, or null when the lineup has not started or is already complete.

@@ -42,6 +42,7 @@ function buildHackathonRecord(
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
     pitchScoreWeightPercent: 30,
+    shortlistFinalistCount: 10,
     pitchFinalistSubmissionIdsJson: '[]',
     activePitchPresentationSubmissionId: null,
     pitchPresentationsCompletedAt: null,
@@ -393,13 +394,15 @@ describe('hackathon management utilities', () => {
       blindReviewCount: '2',
       pitchReviewEnabled: 'true',
       blindScoreWeightPercent: '60',
-      pitchScoreWeightPercent: '40'
+      pitchScoreWeightPercent: '40',
+      shortlistFinalistCount: '12'
     })).toMatchObject({
       discordServerUrl: 'https://discord.gg/codex',
       blindReviewCount: 2,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
-      pitchScoreWeightPercent: 40
+      pitchScoreWeightPercent: 40,
+      shortlistFinalistCount: 12
     })
 
     expect(updateHackathonBodySchema.parse({
@@ -407,13 +410,15 @@ describe('hackathon management utilities', () => {
       blindReviewCount: '0',
       pitchReviewEnabled: false,
       blindScoreWeightPercent: '100',
-      pitchScoreWeightPercent: '0'
+      pitchScoreWeightPercent: '0',
+      shortlistFinalistCount: '8'
     })).toMatchObject({
       discordServerUrl: 'https://discord.gg/codex',
       blindReviewCount: 0,
       pitchReviewEnabled: false,
       blindScoreWeightPercent: 100,
-      pitchScoreWeightPercent: 0
+      pitchScoreWeightPercent: 0,
+      shortlistFinalistCount: 8
     })
   })
 
@@ -424,6 +429,7 @@ describe('hackathon management utilities', () => {
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
       pitchScoreWeightPercent: 40,
+      shortlistFinalistCount: 6,
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_2', 'submission_1']),
       activePitchPresentationSubmissionId: 'submission_2',
       pitchPresentationsCompletedAt: null
@@ -433,6 +439,7 @@ describe('hackathon management utilities', () => {
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
       pitchScoreWeightPercent: 40,
+      shortlistFinalistCount: 6,
       pitchPresentationSubmissionIds: ['submission_2', 'submission_1'],
       activePitchPresentationSubmissionId: 'submission_2',
       pitchPresentationsCompletedAt: null
