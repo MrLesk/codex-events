@@ -162,7 +162,7 @@ const stateSummaries: Record<PublicHackathonState, string> = {
   draft: 'Configuration is still underway. Public participation has not opened yet.',
   registration_open: 'Applications are open. Team formation is available after approval.',
   submission_open: 'Approved participants can form teams and work on submissions.',
-  judging_preparation: 'Submissions are locked while judging assignments are prepared.',
+  judging_preparation: 'Team formation is closed. Existing submissions can still be finalized until judging starts.',
   blind_review: 'Judges are actively reviewing locked submissions in the blind workspace.',
   shortlist: 'Blind-review scores are locked in and finalists are being selected for the pitch stage.',
   pitch: 'Finalists are presenting live in order. Admins enable each team one at a time before post-pitch judge review opens.',

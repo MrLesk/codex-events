@@ -237,6 +237,7 @@ describe('public hackathon agenda presentation helpers', () => {
     expect(formatHackathonStateLabel('pitch')).toBe('Pitch')
     expect(resolveHackathonStateColor('pitch')).toBe('primary')
     expect(resolveHackathonStateColor('pitch_review')).toBe('primary')
+    expect(summarizeHackathonState('judging_preparation')).toBe('Team formation is closed. Existing submissions can still be finalized until judging starts.')
     expect(summarizeHackathonState('shortlist')).toBe('Blind-review scores are locked in and finalists are being selected for the pitch stage.')
     expect(summarizeHackathonState('pitch')).toBe('Finalists are presenting live in order. Admins enable each team one at a time before post-pitch judge review opens.')
     expect(summarizeHackathonState('final_deliberation')).toBe('Final combined scores are under review before winners are announced.')

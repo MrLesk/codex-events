@@ -276,7 +276,7 @@ Key characteristics:
 - Solo participants still submit as a team.
 - A submission can reference one track from its hackathon.
 - Team admins create and manage the submission on behalf of the team.
-- Team admins can edit their submission only during the submission window.
+- Team admins can create the first submission draft during the submission window and can continue editing an existing draft or submitted submission until that submission is locked for judging.
 
 Rules:
 
@@ -285,7 +285,7 @@ Rules:
 - A submission must include a non-empty summary only when its hackathon requires submission summaries.
 - A submission must include a valid repository URL only when its hackathon requires repository URLs.
 - A submission must include a valid demo URL only when its hackathon requires demo URLs.
-- When the judging preparation step begins, submissions are locked.
+- When blind review begins, or when the live pitch stage begins in a pitch-only hackathon, submitted submissions are locked.
 - Once locked, submissions can no longer be edited.
 - A submission can be marked with workflow outcomes such as withdrawn or disqualified.
 - A team with no submission is not eligible for judging, but this is represented by the absence of a submission rather than by a submission outcome.
@@ -319,7 +319,7 @@ Relationship rules:
 
 Operational rules:
 
-- When judging preparation begins and blind review is enabled, submissions are distributed between users in the automatic judge distribution pool as evenly as possible until every locked submission has the configured number of blind review assignments.
+- When blind review begins, submitted submissions are locked, prize eligibility is frozen, and submissions are distributed between users in the automatic judge distribution pool as evenly as possible until every locked submission has the configured number of blind review assignments.
 - Blind review assignments for the same submission must belong to different judges.
 - During the live `pitch` stage, admins advance the ordered pitch presentation lineup one team at a time.
 - During the live `pitch` stage, a hackathon can expose at most one currently enabled finalist presentation.
@@ -337,10 +337,10 @@ Operational rules:
 - When a pitch review assignment is skipped or left incomplete at pitch-review close, that assignment is excluded from pitch-score averaging.
 - Hackathon admins and platform admins can revert a judge's ineligibility decision.
 - Disqualification is an admin action.
-- Withdrawal is a team-driven action before judging preparation begins.
+- Withdrawal is a team-driven action until submitted work is locked for judging.
 - A hackathon admin or platform admin can mark a submission as withdrawn on behalf of the team when acting on a team request.
 - The admin-withdraw request identifies the requesting user through `requestedByUserId`, and that user must be an active team admin of the submission's team.
-- Once judging preparation begins, teams can no longer withdraw a submission.
+- Teams can continue to revise or withdraw submitted work during `judging_preparation` until blind review starts, or until `pitch` starts in a pitch-only hackathon.
 - Once blind review, pitch, or pitch review begins, removal from competition is handled as disqualification rather than withdrawal.
 
 ### HackathonCreditOffer
@@ -474,13 +474,13 @@ Scope:
 - Any actor reviewing through a pitch judge assignment sees project name, team name, full submission detail, and any other finalist-visible context exposed for the pitch stage.
 - Hackathon admins and platform admins retain their normal admin visibility outside the judge review flow.
 - Judging does not begin automatically when the submission window closes.
-- A manual admin action starts judging preparation and locks submissions.
-- A later manual admin action starts blind review when blind review is enabled.
+- A manual admin action stops submissions and starts judging preparation without locking submitted work yet.
+- A later manual admin action starts blind review when blind review is enabled. That transition locks the submitted projects, freezes prize eligibility, and creates blind assignments.
 - `shortlist` exists only when blind review and pitch review are both enabled.
 - `shortlist` presents the blind-review ordering plus the persisted full shortlist order selected by admins.
 - The leading submissions in the saved shortlist order are the persisted finalists for the live pitch stage.
 - The saved shortlist order becomes the starting final ranking order unless admins later reorder it in `final_deliberation`.
-- Pitch-only hackathons skip `shortlist` and send all eligible locked submissions directly into the persisted pitch presentation lineup.
+- Pitch-only hackathons skip `shortlist`. Starting `pitch` locks the submitted projects, freezes prize eligibility, and sends those newly locked submissions directly into the persisted pitch presentation lineup.
 - Finalist identity remains hidden during `shortlist`.
 - A later manual admin action starts `pitch`, which is the live finalist presentation stage, freezes the ordered pitch lineup, and does not create judge assignments.
 - Starting `pitch` from `shortlist` notifies every active member of each finalist team that the team has been shortlisted.
@@ -499,7 +499,7 @@ Scope:
 - From `winners_announced` onward, winning teams can see the prizes awarded to their own team in the account overview and workspace.
 - Announcing winners notifies the frozen prize-eligible members of every winning team.
 - Approved teams with no submission appear in a separate no-submission section in the hackathon dashboard.
-- Prize-eligible team membership is frozen when judging preparation begins.
+- Prize-eligible team membership is frozen when submitted projects are locked for judging.
 
 ### Hackathon Credits
 

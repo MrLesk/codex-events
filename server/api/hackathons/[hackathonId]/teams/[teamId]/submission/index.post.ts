@@ -5,7 +5,7 @@ import { apiData } from '../../../../../../utils/api-response'
 import { requireTeamAdminContext } from '../../../../../../utils/team-formation'
 import { parseValidatedBody, parseValidatedParams } from '../../../../../../utils/validation'
 import {
-  assertHackathonAllowsSubmissionEditing,
+  assertHackathonAllowsSubmissionCreation,
   assertSubmissionBodyMatchesHackathonRequirements,
   assertNoSubmissionExists,
   buildSubmissionWritePayload,
@@ -22,7 +22,7 @@ export default defineApiHandler(async (event) => {
   const body = await parseValidatedBody(event, createSubmissionBodySchema)
   const { database, hackathon } = await requireTeamAdminContext(event, hackathonId, teamId)
 
-  assertHackathonAllowsSubmissionEditing(hackathon)
+  assertHackathonAllowsSubmissionCreation(hackathon)
   const existingSubmission = await getSubmissionForTeam(database, teamId)
   assertNoSubmissionExists(existingSubmission, teamId)
   assertSubmissionBodyMatchesHackathonRequirements(hackathon, body)

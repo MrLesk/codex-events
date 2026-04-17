@@ -82,7 +82,7 @@ describe('team submission helpers', () => {
     })
   })
 
-  test('limits edits, submit, and withdraw to the canonical mutable states', () => {
+  test('keeps existing submissions mutable during judging preparation until locking begins', () => {
     expect(getUpdateSubmissionAvailability({
       state: 'submission_open'
     }, createSubmission('draft'), true)).toEqual({
@@ -98,12 +98,17 @@ describe('team submission helpers', () => {
     expect(getUpdateSubmissionAvailability({
       state: 'judging_preparation'
     }, createSubmission('submitted'), true)).toEqual({
-      isAllowed: false,
-      reason: 'Project edits are available only while submission is open.'
+      isAllowed: true
     })
 
     expect(getSubmitSubmissionAvailability({
       state: 'submission_open'
+    }, createSubmission('draft'), true)).toEqual({
+      isAllowed: true
+    })
+
+    expect(getSubmitSubmissionAvailability({
+      state: 'judging_preparation'
     }, createSubmission('draft'), true)).toEqual({
       isAllowed: true
     })
@@ -116,6 +121,12 @@ describe('team submission helpers', () => {
     })
 
     expect(getWithdrawSubmissionAvailability({
+      state: 'judging_preparation'
+    }, createSubmission('submitted'), true)).toEqual({
+      isAllowed: true
+    })
+
+    expect(getWithdrawSubmissionAvailability({
       state: 'submission_open'
     }, createSubmission('submitted'), true)).toEqual({
       isAllowed: true
@@ -125,7 +136,7 @@ describe('team submission helpers', () => {
       state: 'blind_review'
     }, createSubmission('locked'), true)).toEqual({
       isAllowed: false,
-      reason: 'Submissions can be withdrawn only before judging preparation begins.'
+      reason: 'Submissions can be withdrawn only until judging starts.'
     })
   })
 
@@ -133,6 +144,18 @@ describe('team submission helpers', () => {
     expect(getTeamSubmissionStateSummary({
       state: 'submission_open'
     }, null)).toContain('has not started a project submission yet')
+
+    expect(getTeamSubmissionStateSummary({
+      state: 'judging_preparation'
+    }, createSubmission('submitted'))).toBe('This project is submitted. Team admins can still revise it or withdraw it until organizers start judging.')
+
+    expect(getTeamSubmissionStateSummary({
+      state: 'blind_review'
+    }, createSubmission('draft'))).toBe('This draft never entered judging because it was not submitted before submissions were locked.')
+
+    expect(getTeamSubmissionStateSummary({
+      state: 'submission_open'
+    }, createSubmission('withdrawn'))).toBe('This project was withdrawn before submissions were locked and is no longer part of the competition.')
 
     expect(getTeamSubmissionStateSummary({
       state: 'submission_open'

@@ -1091,7 +1091,7 @@ export function getAdminSubmissionInterventionPolicy(
   hackathonState: HackathonState,
   submissionStatus: AdminSubmissionStatus
 ): AdminSubmissionInterventionPolicy {
-  const canAdminWithdraw = hackathonState === 'submission_open'
+  const canAdminWithdraw = ['submission_open', 'judging_preparation'].includes(hackathonState)
     && (submissionStatus === 'draft' || submissionStatus === 'submitted')
   const canDisqualify = ['blind_review', 'shortlist', 'pitch', 'pitch_review', 'final_deliberation', 'winners_announced', 'completed'].includes(hackathonState)
     && submissionStatus === 'locked'
@@ -1099,8 +1099,8 @@ export function getAdminSubmissionInterventionPolicy(
   let adminWithdrawReason: string | undefined
 
   if (!canAdminWithdraw) {
-    if (hackathonState !== 'submission_open') {
-      adminWithdrawReason = 'Admin withdrawal is available only while submission is open.'
+    if (!['submission_open', 'judging_preparation'].includes(hackathonState)) {
+      adminWithdrawReason = 'Admin withdrawal is available only until judging starts.'
     } else {
       adminWithdrawReason = 'Only draft or submitted work can be admin-withdrawn.'
     }
@@ -1661,20 +1661,17 @@ export function getCurrentLifecycleControl(
       let code: string | undefined
 
       if (nowTimestamp < submissionClosesAt) {
-        reason = 'Judging preparation can only start after the submission window closes.'
+        reason = 'Submissions can only be stopped after the submission window closes.'
         code = 'submission_window_still_open'
       } else if (metrics.submittedSubmissionCount === 0) {
-        reason = 'At least one submitted submission is required before judging preparation can start.'
+        reason = 'At least one submitted project is required before submissions can be stopped.'
         code = 'submitted_submissions_required'
-      } else if (metrics.judgePoolCount === 0) {
-        reason = 'At least one judge must be in the automatic judge pool before judging preparation can start.'
-        code = 'judge_pool_required'
       }
 
       return {
         key: 'start_judging_preparation',
-        label: 'Start Judging Preparation',
-        description: 'Lock submitted projects, freeze prize eligibility, and generate initial judge assignments.',
+        label: 'Stop Submissions',
+        description: 'Close team formation and move into judging preparation while existing submissions stay editable until judging starts.',
         endpoint: `/api/hackathons/${hackathon.id}/actions/start-judging-preparation`,
         isEnabled: !reason,
         reason,
@@ -1686,15 +1683,15 @@ export function getCurrentLifecycleControl(
         let reason: string | undefined
         let code: string | undefined
 
-        if (metrics.lockedSubmissionCount === 0) {
-          reason = 'Pitch requires at least one locked submission.'
-          code = 'locked_submissions_required'
+        if (metrics.submittedSubmissionCount === 0) {
+          reason = 'Pitch requires at least one submitted project.'
+          code = 'submitted_submissions_required'
         }
 
         return {
           key: 'start_pitch',
           label: 'Start Pitch',
-          description: 'Open the live pitch stage before judges receive post-pitch review assignments.',
+          description: 'Lock submitted projects, freeze prize eligibility, and open the live pitch stage.',
           endpoint: `/api/hackathons/${hackathon.id}/actions/start-pitch`,
           isEnabled: !reason,
           reason,
@@ -1704,20 +1701,22 @@ export function getCurrentLifecycleControl(
 
       let reason: string | undefined
       let code: string | undefined
-      const expectedActiveAssignmentCount = metrics.lockedSubmissionCount * hackathon.blindReviewCount
 
-      if (metrics.lockedSubmissionCount === 0) {
-        reason = 'Blind review requires at least one locked submission.'
-        code = 'locked_submissions_required'
-      } else if (metrics.activeAssignmentCount !== expectedActiveAssignmentCount) {
-        reason = 'Every locked submission needs the configured number of active blind-review assignments before blind review can start.'
-        code = 'active_assignments_required'
+      if (metrics.submittedSubmissionCount === 0) {
+        reason = 'Blind review requires at least one submitted project.'
+        code = 'submitted_submissions_required'
+      } else if (metrics.judgePoolCount === 0) {
+        reason = 'At least one judge must be in the automatic judge pool before blind review can start.'
+        code = 'judge_pool_required'
+      } else if (metrics.judgePoolCount < hackathon.blindReviewCount) {
+        reason = 'The automatic judge pool must include enough distinct judges for the configured blind review count.'
+        code = 'distinct_blind_review_judges_required'
       }
 
       return {
         key: 'start_blind_review',
         label: 'Start Blind Review',
-        description: 'Open the blind judging workspace once every locked submission has the configured blind-review coverage.',
+        description: 'Lock submitted projects, freeze prize eligibility, and open blind judging.',
         endpoint: `/api/hackathons/${hackathon.id}/actions/start-blind-review`,
         isEnabled: !reason,
         reason,

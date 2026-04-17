@@ -1,15 +1,17 @@
-import { eq } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 
 import { requirePlatformActor } from '../../../../auth/actor'
 import { writeAuditLog } from '../../../../database/audit-log'
 import { getDatabase } from '../../../../database/client'
-import { hackathons } from '../../../../database/schema'
+import { hackathons, judgeAssignments, prizeEligibilitySnapshots, submissions } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
 import {
   assertStartJudgeReviewAllowed,
-  listActiveAssignmentsForSubmissions,
-  listLockedSubmissionsForHackathon
+  buildInitialJudgeAssignments,
+  buildPrizeEligibilitySnapshots,
+  listAutomaticJudgePoolForHackathon,
+  listSubmittedSubmissionsForHackathon
 } from '../../../../utils/judging'
 import {
   requireHackathonAdmin,
@@ -23,27 +25,52 @@ export default defineApiHandler(async (event) => {
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)
   const database = getDatabase(event)
   const { hackathon } = await requireHackathonAdmin(event, hackathonId)
-  const lockedSubmissions = await listLockedSubmissionsForHackathon(database, hackathonId)
-  const activeAssignments = await listActiveAssignmentsForSubmissions(
-    database,
-    lockedSubmissions.map(submission => submission.id),
-    'blind_review'
-  )
+  const submittedSubmissions = await listSubmittedSubmissionsForHackathon(database, hackathonId)
+  const judgePool = await listAutomaticJudgePoolForHackathon(database, hackathonId)
 
   assertStartJudgeReviewAllowed(hackathon, {
-    lockedSubmissionCount: lockedSubmissions.length,
-    activeAssignmentCount: activeAssignments.length
+    submittedSubmissionCount: submittedSubmissions.length,
+    judgePoolCount: judgePool.length
   })
 
   const transitionedAt = new Date().toISOString()
+  const assignmentRows = buildInitialJudgeAssignments(
+    hackathonId,
+    submittedSubmissions,
+    judgePool,
+    hackathon.blindReviewCount,
+    transitionedAt
+  )
+  const snapshotRows = await buildPrizeEligibilitySnapshots(
+    database,
+    hackathonId,
+    submittedSubmissions.map(submission => submission.teamId),
+    transitionedAt
+  )
 
-  await database
-    .update(hackathons)
-    .set({
-      state: 'blind_review',
-      updatedAt: transitionedAt
-    })
-    .where(eq(hackathons.id, hackathonId))
+  await database.batch([
+    database
+      .update(hackathons)
+      .set({
+        state: 'blind_review',
+        updatedAt: transitionedAt
+      })
+      .where(eq(hackathons.id, hackathonId)),
+    database
+      .update(submissions)
+      .set({
+        status: 'locked',
+        lockedAt: transitionedAt,
+        updatedAt: transitionedAt
+      })
+      .where(inArray(submissions.id, submittedSubmissions.map(submission => submission.id))),
+    ...(snapshotRows.length > 0
+      ? [database.insert(prizeEligibilitySnapshots).values(snapshotRows)]
+      : []),
+    ...(assignmentRows.length > 0
+      ? [database.insert(judgeAssignments).values(assignmentRows)]
+      : [])
+  ])
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,
@@ -53,8 +80,9 @@ export default defineApiHandler(async (event) => {
     metadata: {
       previousState: hackathon.state,
       nextState: 'blind_review',
-      lockedSubmissionCount: lockedSubmissions.length,
-      activeAssignmentCount: activeAssignments.length
+      lockedSubmissionCount: submittedSubmissions.length,
+      createdAssignmentCount: assignmentRows.length,
+      createdSnapshotCount: snapshotRows.length
     }
   })
 

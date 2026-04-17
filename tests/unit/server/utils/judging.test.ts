@@ -60,101 +60,83 @@ function createHackathon(
 }
 
 describe('judging utilities', () => {
-  test('judging preparation requires closed submission editing, submitted work, and a judge pool', () => {
+  test('stopping submissions requires a closed submission window and submitted work', () => {
     const hackathon = createHackathon('submission_open', 1)
     const afterClose = new Date('2026-03-25T12:00:00.000Z')
 
     expect(() => assertStartJudgingPreparationAllowed(hackathon, {
-      submittedSubmissionCount: 2,
-      judgePoolCount: 1
+      submittedSubmissionCount: 2
     }, afterClose)).not.toThrow()
 
     expect(() => assertStartJudgingPreparationAllowed(hackathon, {
-      submittedSubmissionCount: 2,
-      judgePoolCount: 1
+      submittedSubmissionCount: 2
     }, new Date('2026-03-25T11:59:59.000Z'))).toThrowError(ApiError)
 
     expect(() => assertStartJudgingPreparationAllowed(hackathon, {
-      submittedSubmissionCount: 0,
-      judgePoolCount: 1
+      submittedSubmissionCount: 0
     }, afterClose)).toThrowError(ApiError)
-
-    expect(() => assertStartJudgingPreparationAllowed(hackathon, {
-      submittedSubmissionCount: 2,
-      judgePoolCount: 0
-    }, afterClose)).toThrowError(ApiError)
-
-    expect(() => assertStartJudgingPreparationAllowed(createHackathon('submission_open', 2), {
-      submittedSubmissionCount: 2,
-      judgePoolCount: 1
-    }, afterClose)).toThrowError(ApiError)
-
-    expect(() => assertStartJudgingPreparationAllowed(createHackathon('submission_open', 0), {
-      submittedSubmissionCount: 2,
-      judgePoolCount: 0
-    }, afterClose)).not.toThrow()
   })
 
-  test('blind review readiness respects blindReviewCount 0, 1, and 2', () => {
+  test('blind review readiness requires submitted work and enough distinct judges', () => {
     expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 0), {
-      lockedSubmissionCount: 2,
-      activeAssignmentCount: 0
+      submittedSubmissionCount: 2,
+      judgePoolCount: 1
     })).toThrowError(ApiError)
 
     expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 1), {
-      lockedSubmissionCount: 2,
-      activeAssignmentCount: 2
+      submittedSubmissionCount: 2,
+      judgePoolCount: 1
     })).not.toThrow()
 
     expect(() => assertStartJudgeReviewAllowed(createHackathon('blind_review', 1), {
-      lockedSubmissionCount: 2,
-      activeAssignmentCount: 2
+      submittedSubmissionCount: 2,
+      judgePoolCount: 1
     })).toThrowError(ApiError)
 
     expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 1), {
-      lockedSubmissionCount: 0,
-      activeAssignmentCount: 0
+      submittedSubmissionCount: 0,
+      judgePoolCount: 1
     })).toThrowError(ApiError)
 
     expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 1), {
-      lockedSubmissionCount: 2,
-      activeAssignmentCount: 1
+      submittedSubmissionCount: 2,
+      judgePoolCount: 0
     })).toThrowError(ApiError)
 
     expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 2), {
-      lockedSubmissionCount: 2,
-      activeAssignmentCount: 4
+      submittedSubmissionCount: 2,
+      judgePoolCount: 2
     })).not.toThrow()
 
     expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 2), {
-      lockedSubmissionCount: 2,
-      activeAssignmentCount: 3
+      submittedSubmissionCount: 2,
+      judgePoolCount: 1
     })).toThrowError(ApiError)
   })
 
   test('pitch readiness supports pitch-only and shortlist-driven startups', () => {
     expect(() => assertStartPitchAllowed(createHackathon('judging_preparation', 0, true), {
-      lockedSubmissionCount: 2,
+      competitionSubmissionCount: 2,
       finalistSubmissionCount: 2
     })).not.toThrow()
 
     expect(() => assertStartPitchAllowed(createHackathon('shortlist', 1, true), {
-      lockedSubmissionCount: 3,
+      competitionSubmissionCount: 3,
       finalistSubmissionCount: 2
     })).not.toThrow()
 
     expect(() => assertStartPitchAllowed(createHackathon('judging_preparation', 1, true), {
-      lockedSubmissionCount: 3,
+      competitionSubmissionCount: 3,
       finalistSubmissionCount: 2
     })).toThrowError(ApiError)
 
     expect(() => assertStartPitchAllowed(createHackathon('shortlist', 1, false), {
-      lockedSubmissionCount: 3,
+      competitionSubmissionCount: 3,
       finalistSubmissionCount: 2
     })).toThrowError(ApiError)
 
     expect(() => assertStartPitchAllowed(createHackathon('shortlist', 1, true), {
-      lockedSubmissionCount: 3,
+      competitionSubmissionCount: 3,
       finalistSubmissionCount: 0
     })).toThrowError(ApiError)
   })

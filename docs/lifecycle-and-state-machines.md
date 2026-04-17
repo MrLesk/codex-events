@@ -62,13 +62,12 @@ The submission period is closed and the judging setup is being prepared.
 
 Behavior:
 
-- All submissions are locked.
 - New teams cannot be created.
 - Judges do not review submissions yet.
-- Prize eligibility snapshots are created for teams with submitted submissions.
-- When blind review is enabled, submissions are distributed between users in the automatic judge distribution pool as evenly as possible until each locked submission has the configured number of blind review assignments.
-- When pitch review is the first judging stage, the eligible pitch submissions and pitch panel are prepared for the next state.
-- Hackathon admins can reassign blind-review submissions only while the active blind assignment has not been started.
+- Existing draft and submitted submissions remain mutable until the next judging-start action locks the submitted work.
+- Prize eligibility is not frozen yet.
+- Blind-review assignments do not exist yet.
+- When pitch review is the first judging stage, the eligible submitted projects are prepared for the next state.
 
 #### `blind_review`
 
@@ -161,11 +160,11 @@ Behavior:
   Actor: hackathon admin or platform admin.
   Guard: registration is closed, the submission window is open, and an admin starts submission manually.
 - `submission_open -> judging_preparation`
-  Guard: submission editing is closed and a hackathon admin starts judging preparation manually.
+  Guard: the submission window is closed and a hackathon admin stops submissions manually.
 - `judging_preparation -> blind_review`
-  Guard: blind review is enabled, blind review assignments are ready, and a hackathon admin starts blind review manually.
+  Guard: blind review is enabled, at least one submitted submission exists, the automatic judge pool has enough distinct judges, and a hackathon admin starts blind review manually. This transition locks submitted work, freezes prize eligibility, and creates blind assignments.
 - `judging_preparation -> pitch`
-  Guard: blind review is disabled, pitch review is enabled, and a hackathon admin starts the live pitch stage manually.
+  Guard: blind review is disabled, pitch review is enabled, at least one submitted submission exists, and a hackathon admin starts the live pitch stage manually. This transition locks submitted work, freezes prize eligibility, and creates the pitch lineup.
 - `blind_review -> shortlist`
   Guard: pitch review is enabled and all active submissions have the configured number of completed blind review outcomes or have been removed from competition.
 - `blind_review -> final_deliberation`
@@ -316,7 +315,8 @@ The team has started a submission but has not submitted it yet.
 Behavior:
 
 - Team admins can create and edit the submission during `submission_open`.
-- A draft that is never submitted is treated as no submission when judging preparation begins.
+- Team admins can continue editing or withdrawing an existing draft during `judging_preparation`.
+- A draft that is never submitted is treated as no submission when submitted work is locked for judging.
 
 #### `submitted`
 
@@ -324,12 +324,12 @@ The team has submitted its project.
 
 Behavior:
 
-- Team admins can continue editing the submission while the hackathon remains in `submission_open`.
+- Team admins can continue editing or withdrawing the submission while the hackathon remains in `submission_open` or `judging_preparation`.
 - The submission remains eligible to be locked for judging unless it is withdrawn or disqualified.
 
 #### `withdrawn`
 
-The team chose to leave the competition before judging preparation began.
+The team chose to leave the competition before submitted work was locked for judging.
 
 Behavior:
 
@@ -360,9 +360,9 @@ Behavior:
   Actor: team admin, hackathon admin, or platform admin acting on the team's request.
 - `submitted -> withdrawn`
   Actor: team admin, hackathon admin, or platform admin acting on the team's request.
-  Guard: the hackathon has not yet entered `judging_preparation`.
+  Guard: submitted work has not yet been locked for judging.
 - `submitted -> locked`
-  Guard: the hackathon enters `judging_preparation`.
+  Guard: blind review begins, or `pitch` begins in a pitch-only hackathon.
 - `draft -> disqualified`
   Actor: hackathon admin or platform admin.
 - `submitted -> disqualified`

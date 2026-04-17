@@ -118,11 +118,21 @@ export function getTeamSubmissionStateSummary(
 
   switch (submission.status) {
     case 'draft':
-      return 'This draft is private to your team. Team admins can edit it, submit it, or withdraw it while submission remains open.'
+      if (hackathon.state === 'submission_open') {
+        return 'This draft is private to your team. Team admins can edit it, submit it, or withdraw it while submission remains open.'
+      }
+
+      if (hackathon.state === 'judging_preparation') {
+        return 'This draft is not yet submitted. Team admins can still edit it, submit it, or withdraw it until organizers start judging.'
+      }
+
+      return 'This draft never entered judging because it was not submitted before submissions were locked.'
     case 'submitted':
-      return 'This project is submitted. Team admins can still revise it or withdraw it while submission remains open.'
+      return hackathon.state === 'judging_preparation'
+        ? 'This project is submitted. Team admins can still revise it or withdraw it until organizers start judging.'
+        : 'This project is submitted. Team admins can still revise it or withdraw it while submission remains open.'
     case 'withdrawn':
-      return 'This project was withdrawn before judging preparation and is no longer part of the competition.'
+      return 'This project was withdrawn before submissions were locked and is no longer part of the competition.'
     case 'locked':
       return 'This project is locked for judging and can no longer be edited or withdrawn.'
     case 'disqualified':
@@ -189,10 +199,10 @@ export function getUpdateSubmissionAvailability(
     }
   }
 
-  if (hackathon.state !== 'submission_open') {
+  if (hackathon.state !== 'submission_open' && hackathon.state !== 'judging_preparation') {
     return {
       isAllowed: false,
-      reason: 'Project edits are available only while submission is open.'
+      reason: 'Project edits are available only until judging starts.'
     }
   }
 
@@ -230,10 +240,10 @@ export function getSubmitSubmissionAvailability(
     }
   }
 
-  if (hackathon.state !== 'submission_open') {
+  if (hackathon.state !== 'submission_open' && hackathon.state !== 'judging_preparation') {
     return {
       isAllowed: false,
-      reason: 'Project submission is available only while submission is open.'
+      reason: 'Project submission is available only until judging starts.'
     }
   }
 
@@ -273,10 +283,10 @@ export function getWithdrawSubmissionAvailability(
     }
   }
 
-  if (hackathon.state !== 'submission_open') {
+  if (hackathon.state !== 'submission_open' && hackathon.state !== 'judging_preparation') {
     return {
       isAllowed: false,
-      reason: 'Submissions can be withdrawn only before judging preparation begins.'
+      reason: 'Submissions can be withdrawn only until judging starts.'
     }
   }
 

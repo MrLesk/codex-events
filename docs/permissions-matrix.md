@@ -48,7 +48,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | --- | --- | --- | --- | --- | --- | --- |
 | Open registration | No | No | No | Yes | Yes | No |
 | Open submission | No | No | No | Yes | Yes | No |
-| Start judging preparation | No | No | No | Yes | Yes | No |
+| Stop submissions | No | No | No | Yes | Yes | No |
 | Start blind review | No | No | No | Yes | Yes | No |
 | Move to shortlist | No | No | No | Yes | Yes | No |
 | Start pitch | No | No | No | Yes | Yes | No |
@@ -123,9 +123,9 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Action | Team Member | Team Admin | Hackathon Admin | Platform Admin |
 | --- | --- | --- | --- | --- |
 | Create submission draft | No | Yes, during `submission_open` | No | No |
-| Edit submission draft | No | Yes, during `submission_open` | No | No |
-| Submit project | No | Yes, during `submission_open` | No | No |
-| Withdraw submission before `judging_preparation` | No | Yes | Yes, only on team request | Yes, only on team request |
+| Edit submission draft | No | Yes, during `submission_open` or `judging_preparation` until the submission is locked | No | No |
+| Submit project | No | Yes, during `submission_open` or `judging_preparation` until the submission is locked | No | No |
+| Withdraw submission before locking | No | Yes | Yes, only on team request | Yes, only on team request |
 | View own team submission | Yes | Yes | Yes | Yes |
 | Disqualify submission | No | No | Yes | Yes |
 

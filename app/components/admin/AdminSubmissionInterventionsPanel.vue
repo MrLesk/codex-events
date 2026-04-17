@@ -132,7 +132,7 @@ function toggleExpanded() {
             Intervention rules
           </h3>
           <p class="text-sm text-current/90">
-            Admin-withdraw should be used only when an active team admin has requested withdrawal before judging preparation begins. Use the inline withdraw action on the relevant team row.
+            Admin-withdraw should be used only when an active team admin has requested withdrawal before submitted projects are locked for judging. Use the inline withdraw action on the relevant team row.
           </p>
           <p class="text-sm text-current/90">
             Disqualification is available only once judge review has started and the submission is already locked for competition.

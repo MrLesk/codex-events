@@ -783,7 +783,7 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
           {
             label: 'Current status',
             value: formatHackathonState(hackathon.state),
-            description: 'Submitted projects are locked and the next judging stage is being prepared.'
+            description: 'Team formation is closed. Existing submissions can still be revised until the next judging stage starts.'
           },
           {
             label: 'Judging path',
@@ -1005,7 +1005,7 @@ const lifecycleActionAvailability = computed(() => {
       if (control.code === 'submission_window_still_open') {
         return {
           label: 'Available when',
-          message: `The submission window closes on ${formatTimestamp(hackathon.submissionClosesAt, 'the submission deadline')}. Judging preparation becomes available after that.`,
+          message: `The submission window closes on ${formatTimestamp(hackathon.submissionClosesAt, 'the submission deadline')}. Submissions can be stopped after that.`,
           className: 'text-warning'
         }
       }
@@ -1013,15 +1013,7 @@ const lifecycleActionAvailability = computed(() => {
       if (control.code === 'submitted_submissions_required') {
         return {
           label: 'Available when',
-          message: 'At least one team needs to send a submission before judging preparation can start.',
-          className: 'text-warning'
-        }
-      }
-
-      if (control.code === 'judge_pool_required') {
-        return {
-          label: 'Available when',
-          message: 'At least one judge must be added to the judge pool before judging preparation can start.',
+          message: 'At least one team needs to send a submission before submissions can be stopped.',
           className: 'text-warning'
         }
       }
@@ -1119,7 +1111,24 @@ const lifecycleMetricCards = computed<LifecycleMetricCard[]>(() => {
         }
       ]
     case 'judging':
-      if (currentHackathon.value?.state === 'judging_preparation' || currentHackathon.value?.state === 'blind_review') {
+      if (currentHackathon.value?.state === 'judging_preparation') {
+        return [
+          {
+            key: 'submitted-projects',
+            label: 'Submitted Projects',
+            value: submittedSubmissionValue.value,
+            description: 'Projects currently submitted and still eligible to be locked when judging starts.'
+          },
+          {
+            key: 'judge-pool',
+            label: currentHackathon.value.blindReviewCount > 0 ? 'Judge Pool' : 'Judge Panel',
+            value: formatLoadMetricValue(roleAssignmentsDataStatus.value, `${judgePoolCount.value}`),
+            description: averageSubmissionsPerJudgeDescription.value
+          }
+        ]
+      }
+
+      if (currentHackathon.value?.state === 'blind_review') {
         return [
           {
             key: 'judging-progress',

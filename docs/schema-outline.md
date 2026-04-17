@@ -481,6 +481,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `track_id` references a `HackathonTrack` belonging to the same hackathon as the submission's team when a track is selected.
 - When a hackathon has one or more configured tracks, submissions must store exactly one valid `track_id`.
 - `summary`, `repository_url`, and `demo_url` are optional at rest and are enforced according to the owning hackathon's submission requirement flags.
+- Existing draft and submitted submissions remain mutable during `judging_preparation` until the submission is locked for judging.
+- `locked_at` records when blind review starts, or when `pitch` starts in a pitch-only hackathon.
 - A draft that is never submitted is treated as no submission for judging and dashboard purposes.
 - Submission content is managed by team admins.
 
@@ -615,7 +617,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - A prize can target one rank or a rank range.
 - Different hackathons can configure different prize structures.
-- Member-scoped prize eligibility is determined from the frozen prize eligibility snapshot created at `judging_preparation`.
+- Member-scoped prize eligibility is determined from the frozen prize eligibility snapshot created when submitted work is locked for judging.
 
 ## HackathonCreditOffer
 

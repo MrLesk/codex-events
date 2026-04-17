@@ -175,13 +175,12 @@ export function assertStartJudgingPreparationAllowed(
   hackathon: HackathonRecord,
   metrics: {
     submittedSubmissionCount: number
-    judgePoolCount: number
   },
   now: Date = new Date()
 ) {
   assertAllowedState(hackathon.state, ['submission_open'], {
     code: 'hackathon_state_invalid',
-    message: 'Judging preparation can only start while the hackathon is in submission_open.',
+    message: 'Submissions can only be stopped while the hackathon is in submission_open.',
     details: {
       hackathonId: hackathon.id
     }
@@ -189,7 +188,7 @@ export function assertStartJudgingPreparationAllowed(
 
   assertGuard(Date.parse(hackathon.submissionClosesAt) <= now.getTime(), {
     code: 'submission_window_still_open',
-    message: 'Judging preparation can only start after the submission window closes.',
+    message: 'Submissions can only be stopped after the submission window closes.',
     details: {
       hackathonId: hackathon.id,
       submissionClosesAt: hackathon.submissionClosesAt
@@ -198,39 +197,18 @@ export function assertStartJudgingPreparationAllowed(
 
   assertGuard(metrics.submittedSubmissionCount > 0, {
     code: 'submitted_submissions_required',
-    message: 'Judging preparation requires at least one submitted submission.',
+    message: 'Stopping submissions requires at least one submitted project.',
     details: {
       hackathonId: hackathon.id
     }
   })
-
-  if (hackathon.blindReviewCount > 0) {
-    assertGuard(metrics.judgePoolCount > 0, {
-      code: 'judge_pool_required',
-      message: 'Judging preparation requires at least one judge in the automatic judge pool.',
-      details: {
-        hackathonId: hackathon.id
-      }
-    })
-
-    assertGuard(metrics.judgePoolCount >= hackathon.blindReviewCount, {
-      statusCode: 409,
-      code: 'distinct_blind_review_judges_required',
-      message: 'The automatic judge pool must include enough distinct judges for the configured blind review count.',
-      details: {
-        hackathonId: hackathon.id,
-        blindReviewCount: hackathon.blindReviewCount,
-        judgePoolCount: metrics.judgePoolCount
-      }
-    })
-  }
 }
 
 export function assertStartJudgeReviewAllowed(
   hackathon: HackathonRecord,
   metrics: {
-    lockedSubmissionCount: number
-    activeAssignmentCount: number
+    submittedSubmissionCount: number
+    judgePoolCount: number
   }
 ) {
   assertAllowedState(hackathon.state, ['judging_preparation'], {
@@ -249,25 +227,30 @@ export function assertStartJudgeReviewAllowed(
     }
   })
 
-  assertGuard(metrics.lockedSubmissionCount > 0, {
-    code: 'locked_submissions_required',
-    message: 'Judge review requires at least one locked submission.',
+  assertGuard(metrics.submittedSubmissionCount > 0, {
+    code: 'submitted_submissions_required',
+    message: 'Blind review requires at least one submitted submission.',
     details: {
       hackathonId: hackathon.id
     }
   })
 
-  const expectedActiveAssignmentCount = metrics.lockedSubmissionCount * hackathon.blindReviewCount
+  assertGuard(metrics.judgePoolCount > 0, {
+    code: 'judge_pool_required',
+    message: 'Blind review requires at least one judge in the automatic judge pool.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
 
-  assertGuard(metrics.activeAssignmentCount === expectedActiveAssignmentCount, {
-    code: 'active_assignments_required',
-    message: 'Judge review requires the configured number of active assignments for every locked submission.',
+  assertGuard(metrics.judgePoolCount >= hackathon.blindReviewCount, {
+    statusCode: 409,
+    code: 'distinct_blind_review_judges_required',
+    message: 'The automatic judge pool must include enough distinct judges for the configured blind review count.',
     details: {
       hackathonId: hackathon.id,
       blindReviewCount: hackathon.blindReviewCount,
-      lockedSubmissionCount: metrics.lockedSubmissionCount,
-      expectedActiveAssignmentCount,
-      activeAssignmentCount: metrics.activeAssignmentCount
+      judgePoolCount: metrics.judgePoolCount
     }
   })
 }
@@ -275,7 +258,7 @@ export function assertStartJudgeReviewAllowed(
 export function assertStartPitchAllowed(
   hackathon: HackathonRecord,
   metrics: {
-    lockedSubmissionCount: number
+    competitionSubmissionCount: number
     finalistSubmissionCount: number
   }
 ) {
@@ -300,12 +283,12 @@ export function assertStartPitchAllowed(
   })
 
   assertGuard(
-    requiresShortlist ? metrics.finalistSubmissionCount > 0 : metrics.lockedSubmissionCount > 0,
+    requiresShortlist ? metrics.finalistSubmissionCount > 0 : metrics.competitionSubmissionCount > 0,
     {
-      code: 'pitch_finalists_required',
+      code: requiresShortlist ? 'pitch_finalists_required' : 'submitted_submissions_required',
       message: requiresShortlist
         ? 'Pitch requires at least one persisted finalist submission.'
-        : 'Pitch requires at least one locked submission.',
+        : 'Pitch requires at least one submitted submission.',
       details: {
         hackathonId: hackathon.id
       }
@@ -686,7 +669,7 @@ export function buildInitialJudgeAssignments(
         throw new ApiError({
           statusCode: 409,
           code: 'judge_pool_required',
-          message: 'Judging preparation requires at least one judge in the automatic judge pool.',
+          message: 'Blind review requires at least one judge in the automatic judge pool.',
           details: { hackathonId }
         })
       }

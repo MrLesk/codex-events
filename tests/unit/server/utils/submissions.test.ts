@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 import { ApiError } from '../../../../server/utils/api-error'
 import {
   assertSubmissionBodyMatchesHackathonRequirements,
+  assertHackathonAllowsSubmissionCreation,
   assertHackathonAllowsSubmissionEditing,
   assertNoSubmissionExists,
   assertSubmissionDisqualifiable,
@@ -94,9 +95,15 @@ function createDatabase(trackIds: string[] = []) {
 }
 
 describe('TASK-3.7 submission helpers', () => {
-  test('submission editing is limited to submission_open', () => {
+  test('submission creation remains limited to submission_open', () => {
+    expect(() => assertHackathonAllowsSubmissionCreation(createHackathon('submission_open'))).not.toThrow()
+    expect(() => assertHackathonAllowsSubmissionCreation(createHackathon('judging_preparation'))).toThrowError(ApiError)
+  })
+
+  test('submission editing remains available until judging starts', () => {
     expect(() => assertHackathonAllowsSubmissionEditing(createHackathon('submission_open'))).not.toThrow()
-    expect(() => assertHackathonAllowsSubmissionEditing(createHackathon('judging_preparation'))).toThrowError(ApiError)
+    expect(() => assertHackathonAllowsSubmissionEditing(createHackathon('judging_preparation'))).not.toThrow()
+    expect(() => assertHackathonAllowsSubmissionEditing(createHackathon('blind_review'))).toThrowError(ApiError)
   })
 
   test('submission creation requires the team to have no prior submission record', () => {
@@ -183,11 +190,12 @@ describe('TASK-3.7 submission helpers', () => {
     )).resolves.toBe('track_1')
   })
 
-  test('withdrawal is allowed only before judging preparation and only for draft or submitted submissions', () => {
+  test('withdrawal is allowed until judging starts and only for draft or submitted submissions', () => {
     expect(() => assertSubmissionWithdrawable(createHackathon('submission_open'), createSubmission('draft'))).not.toThrow()
     expect(() => assertSubmissionWithdrawable(createHackathon('submission_open'), createSubmission('submitted'))).not.toThrow()
-    expect(() => assertSubmissionWithdrawable(createHackathon('judging_preparation'), createSubmission('submitted'))).toThrowError(ApiError)
+    expect(() => assertSubmissionWithdrawable(createHackathon('judging_preparation'), createSubmission('submitted'))).not.toThrow()
     expect(() => assertSubmissionWithdrawable(createHackathon('submission_open'), createSubmission('locked'))).toThrowError(ApiError)
+    expect(() => assertSubmissionWithdrawable(createHackathon('blind_review'), createSubmission('submitted'))).toThrowError(ApiError)
   })
 
   test('disqualification applies only to locked submissions during the judging and outcomes lifecycle', () => {

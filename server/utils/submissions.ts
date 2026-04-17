@@ -151,9 +151,19 @@ export function assertSubmissionBodyMatchesHackathonRequirements(
 }
 
 export function assertHackathonAllowsSubmissionEditing(hackathon: HackathonRecord) {
+  assertAllowedState(hackathon.state, ['submission_open', 'judging_preparation'], {
+    code: 'hackathon_state_invalid',
+    message: 'Submission updates are only available until judging starts.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+}
+
+export function assertHackathonAllowsSubmissionCreation(hackathon: HackathonRecord) {
   assertAllowedState(hackathon.state, ['submission_open'], {
     code: 'hackathon_state_invalid',
-    message: 'Submission creation and editing are only available while submission is open.',
+    message: 'Submission creation is only available while submission is open.',
     details: {
       hackathonId: hackathon.id
     }
@@ -273,9 +283,9 @@ export function assertSubmissionWithdrawable(
   hackathon: HackathonRecord,
   submission: SubmissionRecord
 ) {
-  assertAllowedState(hackathon.state, ['submission_open'], {
+  assertAllowedState(hackathon.state, ['submission_open', 'judging_preparation'], {
     code: 'hackathon_state_invalid',
-    message: 'Submissions can only be withdrawn before judging preparation begins.',
+    message: 'Submissions can only be withdrawn until judging starts.',
     details: {
       hackathonId: hackathon.id
     }

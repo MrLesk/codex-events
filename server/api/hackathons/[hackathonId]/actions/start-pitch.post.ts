@@ -3,7 +3,7 @@ import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import { requirePlatformActor } from '../../../../auth/actor'
 import { writeAuditLog } from '../../../../database/audit-log'
 import { getDatabase } from '../../../../database/client'
-import { hackathons, teamMembers, teams, users } from '../../../../database/schema'
+import { hackathons, prizeEligibilitySnapshots, submissions, teamMembers, teams, users } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
 import {
@@ -12,6 +12,8 @@ import {
 } from '../../../../utils/hackathon-outcome-email-queue'
 import {
   assertStartPitchAllowed,
+  buildPrizeEligibilitySnapshots,
+  listSubmittedSubmissionsForHackathon,
   listLockedSubmissionsForHackathon,
   selectPitchReviewSubmissions
 } from '../../../../utils/judging'
@@ -32,25 +34,55 @@ export default defineApiHandler(async (event) => {
   const database = getDatabase(event)
   const { hackathon } = await requireHackathonAdmin(event, hackathonId)
   const lockedSubmissions = await listLockedSubmissionsForHackathon(database, hackathonId)
-  const finalistSubmissions = selectPitchReviewSubmissions(hackathon, lockedSubmissions)
+  const submittedSubmissions = hackathon.blindReviewCount === 0 && hackathon.state === 'judging_preparation'
+    ? await listSubmittedSubmissionsForHackathon(database, hackathonId)
+    : []
+  const finalistSubmissions = hackathon.blindReviewCount === 0 && hackathon.state === 'judging_preparation'
+    ? submittedSubmissions
+    : selectPitchReviewSubmissions(hackathon, lockedSubmissions)
 
   assertStartPitchAllowed(hackathon, {
-    lockedSubmissionCount: lockedSubmissions.length,
+    competitionSubmissionCount: hackathon.blindReviewCount === 0 ? submittedSubmissions.length : lockedSubmissions.length,
     finalistSubmissionCount: finalistSubmissions.length
   })
 
   const transitionedAt = new Date().toISOString()
+  const pitchOnlySnapshotRows = hackathon.blindReviewCount === 0 && submittedSubmissions.length > 0
+    ? await buildPrizeEligibilitySnapshots(
+        database,
+        hackathonId,
+        submittedSubmissions.map(submission => submission.teamId),
+        transitionedAt
+      )
+    : []
 
-  await database
-    .update(hackathons)
-    .set({
-      pitchFinalistSubmissionIdsJson: JSON.stringify(finalistSubmissions.map(submission => submission.id)),
-      activePitchPresentationSubmissionId: null,
-      pitchPresentationsCompletedAt: null,
-      state: 'pitch',
-      updatedAt: transitionedAt
-    })
-    .where(eq(hackathons.id, hackathonId))
+  await database.batch([
+    database
+      .update(hackathons)
+      .set({
+        pitchFinalistSubmissionIdsJson: JSON.stringify(finalistSubmissions.map(submission => submission.id)),
+        activePitchPresentationSubmissionId: null,
+        pitchPresentationsCompletedAt: null,
+        state: 'pitch',
+        updatedAt: transitionedAt
+      })
+      .where(eq(hackathons.id, hackathonId)),
+    ...(hackathon.blindReviewCount === 0 && submittedSubmissions.length > 0
+      ? [
+          database
+            .update(submissions)
+            .set({
+              status: 'locked',
+              lockedAt: transitionedAt,
+              updatedAt: transitionedAt
+            })
+            .where(inArray(submissions.id, submittedSubmissions.map(submission => submission.id)))
+        ]
+      : []),
+    ...(pitchOnlySnapshotRows.length > 0
+      ? [database.insert(prizeEligibilitySnapshots).values(pitchOnlySnapshotRows)]
+      : [])
+  ])
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,
@@ -60,8 +92,9 @@ export default defineApiHandler(async (event) => {
     metadata: {
       previousState: hackathon.state,
       nextState: 'pitch',
-      lockedSubmissionCount: lockedSubmissions.length,
-      finalistSubmissionCount: finalistSubmissions.length
+      lockedSubmissionCount: hackathon.blindReviewCount === 0 ? submittedSubmissions.length : lockedSubmissions.length,
+      finalistSubmissionCount: finalistSubmissions.length,
+      createdSnapshotCount: pitchOnlySnapshotRows.length
     }
   })
 

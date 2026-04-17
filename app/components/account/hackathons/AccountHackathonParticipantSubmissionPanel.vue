@@ -352,7 +352,7 @@ async function withdrawSubmission() {
 
   toast.add({
     title: 'Submission withdrawn',
-    description: 'The project was withdrawn before judging preparation.',
+    description: 'The project was withdrawn before submissions were locked.',
     color: 'success'
   })
 }

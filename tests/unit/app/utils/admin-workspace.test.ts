@@ -656,6 +656,80 @@ describe('admin-workspace lifecycle controls', () => {
     })
   })
 
+  test('renames the submission-phase lifecycle action and removes judge-pool gating from stop submissions', () => {
+    const control = getCurrentLifecycleControl(
+      createHackathon({
+        state: 'submission_open'
+      }),
+      {
+        submittedSubmissionCount: 2,
+        judgePoolCount: 0,
+        lockedSubmissionCount: 0,
+        activeAssignmentCount: 0,
+        lockedLeaderboardEntryCount: 0,
+        completedReviewCount: 0,
+        prizeCount: 0,
+        hasCurrentWinnerTerms: false
+      },
+      new Date('2026-03-25T12:00:00.000Z')
+    )
+
+    expect(control).toMatchObject({
+      key: 'start_judging_preparation',
+      label: 'Stop Submissions',
+      isEnabled: true
+    })
+  })
+
+  test('gates blind review on submitted work and distinct judge coverage during judging preparation', () => {
+    const disabledControl = getCurrentLifecycleControl(
+      createHackathon({
+        state: 'judging_preparation',
+        blindReviewCount: 2,
+        pitchReviewEnabled: true
+      }),
+      {
+        submittedSubmissionCount: 3,
+        judgePoolCount: 1,
+        lockedSubmissionCount: 0,
+        activeAssignmentCount: 0,
+        lockedLeaderboardEntryCount: 0,
+        completedReviewCount: 0,
+        prizeCount: 0,
+        hasCurrentWinnerTerms: true
+      }
+    )
+
+    expect(disabledControl).toMatchObject({
+      key: 'start_blind_review',
+      isEnabled: false,
+      code: 'distinct_blind_review_judges_required'
+    })
+
+    const enabledControl = getCurrentLifecycleControl(
+      createHackathon({
+        state: 'judging_preparation',
+        blindReviewCount: 2,
+        pitchReviewEnabled: true
+      }),
+      {
+        submittedSubmissionCount: 3,
+        judgePoolCount: 2,
+        lockedSubmissionCount: 0,
+        activeAssignmentCount: 0,
+        lockedLeaderboardEntryCount: 0,
+        completedReviewCount: 0,
+        prizeCount: 0,
+        hasCurrentWinnerTerms: true
+      }
+    )
+
+    expect(enabledControl).toMatchObject({
+      key: 'start_blind_review',
+      isEnabled: true
+    })
+  })
+
   test('routes pitch-only hackathons into the live pitch stage from judging preparation', () => {
     const control = getCurrentLifecycleControl(
       createHackathon({
@@ -668,9 +742,9 @@ describe('admin-workspace lifecycle controls', () => {
       {
         submittedSubmissionCount: 3,
         judgePoolCount: 2,
-        lockedSubmissionCount: 3,
+        lockedSubmissionCount: 0,
         activeAssignmentCount: 0,
-        lockedLeaderboardEntryCount: 3,
+        lockedLeaderboardEntryCount: 0,
         completedReviewCount: 0,
         prizeCount: 0,
         hasCurrentWinnerTerms: true
@@ -1560,6 +1634,11 @@ describe('admin-workspace operational helpers', () => {
       canDisqualify: false
     })
 
+    expect(getAdminSubmissionInterventionPolicy('judging_preparation', 'submitted')).toMatchObject({
+      canAdminWithdraw: true,
+      canDisqualify: false
+    })
+
     expect(getAdminSubmissionInterventionPolicy('blind_review', 'locked')).toMatchObject({
       canAdminWithdraw: false,
       canDisqualify: true
@@ -1567,7 +1646,7 @@ describe('admin-workspace operational helpers', () => {
 
     expect(getAdminSubmissionInterventionPolicy('registration_open', 'submitted')).toMatchObject({
       canAdminWithdraw: false,
-      adminWithdrawReason: 'Admin withdrawal is available only while submission is open.'
+      adminWithdrawReason: 'Admin withdrawal is available only until judging starts.'
     })
   })
 })
