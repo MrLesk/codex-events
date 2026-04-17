@@ -58,6 +58,8 @@ import {
   isApplicationCheckedIn,
   listFailedApplicationLumaSyncApplications,
   listActiveAdminOperationalTeamMembers,
+  shouldLoadAdminSubmissionMonitor,
+  shouldRefreshAdminSubmissionMonitor,
   sortAdminOperationalTeamsForSubmissionDashboard,
   shouldShowApplicationLumaSyncStatus,
   toDateTimeLocalValue
@@ -1103,6 +1105,93 @@ describe('admin-workspace operational helpers', () => {
         label: 'member@example.com'
       }
     ])
+  })
+
+  test('loads the admin submission monitor only when the submissions tab is ready', () => {
+    expect(shouldLoadAdminSubmissionMonitor({
+      isSubmissionsSection: false,
+      canManage: true,
+      teamDataStatus: 'success',
+      teamCount: 3
+    })).toBe(false)
+
+    expect(shouldLoadAdminSubmissionMonitor({
+      isSubmissionsSection: true,
+      canManage: false,
+      teamDataStatus: 'success',
+      teamCount: 3
+    })).toBe(false)
+
+    expect(shouldLoadAdminSubmissionMonitor({
+      isSubmissionsSection: true,
+      canManage: true,
+      teamDataStatus: 'pending',
+      teamCount: 3
+    })).toBe(false)
+
+    expect(shouldLoadAdminSubmissionMonitor({
+      isSubmissionsSection: true,
+      canManage: true,
+      teamDataStatus: 'success',
+      teamCount: 0
+    })).toBe(false)
+
+    expect(shouldLoadAdminSubmissionMonitor({
+      isSubmissionsSection: true,
+      canManage: true,
+      teamDataStatus: 'success',
+      teamCount: 3
+    })).toBe(true)
+  })
+
+  test('refreshes the admin submission monitor when the ready data is still incomplete', () => {
+    expect(shouldRefreshAdminSubmissionMonitor({
+      isReady: false,
+      submissionMonitorStatus: 'success',
+      teamCount: 3,
+      teamDetailsCount: 0,
+      teamSubmissionsCount: 0
+    })).toBe(false)
+
+    expect(shouldRefreshAdminSubmissionMonitor({
+      isReady: true,
+      submissionMonitorStatus: 'pending',
+      teamCount: 3,
+      teamDetailsCount: 0,
+      teamSubmissionsCount: 0
+    })).toBe(false)
+
+    expect(shouldRefreshAdminSubmissionMonitor({
+      isReady: true,
+      submissionMonitorStatus: 'success',
+      teamCount: 0,
+      teamDetailsCount: 0,
+      teamSubmissionsCount: 0
+    })).toBe(false)
+
+    expect(shouldRefreshAdminSubmissionMonitor({
+      isReady: true,
+      submissionMonitorStatus: 'success',
+      teamCount: 3,
+      teamDetailsCount: 3,
+      teamSubmissionsCount: 3
+    })).toBe(false)
+
+    expect(shouldRefreshAdminSubmissionMonitor({
+      isReady: true,
+      submissionMonitorStatus: 'success',
+      teamCount: 3,
+      teamDetailsCount: 0,
+      teamSubmissionsCount: 0
+    })).toBe(true)
+
+    expect(shouldRefreshAdminSubmissionMonitor({
+      isReady: true,
+      submissionMonitorStatus: 'success',
+      teamCount: 3,
+      teamDetailsCount: 3,
+      teamSubmissionsCount: 2
+    })).toBe(true)
   })
 
   test('detects approved participant attendance from checkedInAt', () => {

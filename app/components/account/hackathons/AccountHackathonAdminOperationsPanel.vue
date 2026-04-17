@@ -25,6 +25,8 @@ import {
   getHackathonOperationsPhase,
   formatHackathonState,
   getHackathonStateColor,
+  shouldLoadAdminSubmissionMonitor,
+  shouldRefreshAdminSubmissionMonitor,
   shouldShowApprovedParticipantAttendanceSummary,
   sortAdminOperationalTeamsForSubmissionDashboard,
   normalizeApiError
@@ -150,8 +152,17 @@ const noSubmissionErrorMessage = computed(() =>
   workspace.noSubmissionTeams.error.value?.message ?? ''
 )
 const teamIdsKey = computed(() => allTeams.value.map(team => team.id).join(':'))
-const submissionMonitorEnabled = computed(() =>
-  showSubmissionsSection.value && canManage.value
+const teamDataStatus = computed(() => normalizeAsyncStatus(workspace.teams.status.value))
+const submissionMonitorReady = computed(() =>
+  shouldLoadAdminSubmissionMonitor({
+    isSubmissionsSection: showSubmissionsSection.value,
+    canManage: canManage.value,
+    teamDataStatus: teamDataStatus.value,
+    teamCount: allTeams.value.length
+  })
+)
+const submissionMonitorCacheState = computed(() =>
+  submissionMonitorReady.value ? 'ready' : 'blocked'
 )
 const {
   data: submissionMonitorData,
@@ -162,17 +173,11 @@ const {
   () => [
     'admin-hackathon-submission-monitor',
     hackathonId.value,
+    submissionMonitorCacheState.value,
     teamIdsKey.value
   ].join(':'),
   async () => {
-    if (!submissionMonitorEnabled.value) {
-      return {
-        teamDetails: [],
-        teamSubmissions: []
-      }
-    }
-
-    if (allTeams.value.length === 0) {
+    if (!submissionMonitorReady.value) {
       return {
         teamDetails: [],
         teamSubmissions: []
@@ -202,7 +207,7 @@ const {
     }
   },
   {
-    watch: [hackathonId, teamIdsKey, submissionMonitorEnabled],
+    watch: [hackathonId, teamIdsKey, submissionMonitorCacheState],
     default: () => ({
       teamDetails: [],
       teamSubmissions: []
@@ -300,10 +305,39 @@ function formatLifecycleTimeframe(start: string, end: string) {
   return `${formatTimestamp(start, 'Not scheduled')} - ${formatTimestamp(end, 'Not scheduled')}`
 }
 
-const teamDataStatus = computed(() => normalizeAsyncStatus(workspace.teams.status.value))
 const submissionMonitorLoadStatus = computed<LoadStatus>(() => normalizeAsyncStatus(submissionMonitorStatus.value))
 const leaderboardDataStatus = computed(() => normalizeAsyncStatus(workspace.leaderboard.status.value))
 const roleAssignmentsDataStatus = computed(() => normalizeAsyncStatus(workspace.roleAssignments.status.value))
+
+watch(
+  [
+    submissionMonitorReady,
+    submissionMonitorLoadStatus,
+    teamIdsKey,
+    submissionMonitorData
+  ],
+  async ([ready, status, _teamIds, monitorData]) => {
+    if (import.meta.server) {
+      return
+    }
+
+    if (!shouldRefreshAdminSubmissionMonitor({
+      isReady: ready,
+      submissionMonitorStatus: status,
+      teamCount: allTeams.value.length,
+      teamDetailsCount: monitorData?.teamDetails.length ?? 0,
+      teamSubmissionsCount: monitorData?.teamSubmissions.length ?? 0
+    })) {
+      return
+    }
+
+    await refreshSubmissionMonitor()
+  },
+  {
+    immediate: true
+  }
+)
+
 const submissionOperationalTeams = computed<AdminOperationalTeam[]>(() =>
   buildAdminOperationalTeams(allTeams.value, {
     teamDetails: submissionMonitorData.value?.teamDetails ?? [],

@@ -421,6 +421,46 @@ export function countActiveAdminOperationalTeams(teams: AdminOperationalTeam[]) 
   return filterActiveAdminOperationalTeams(teams).length
 }
 
+export function shouldLoadAdminSubmissionMonitor(options: {
+  isSubmissionsSection: boolean
+  canManage: boolean
+  teamDataStatus: 'idle' | 'pending' | 'success' | 'error'
+  teamCount: number
+}) {
+  if (!options.isSubmissionsSection || !options.canManage) {
+    return false
+  }
+
+  if (options.teamDataStatus !== 'success') {
+    return false
+  }
+
+  return options.teamCount > 0
+}
+
+export function shouldRefreshAdminSubmissionMonitor(options: {
+  isReady: boolean
+  submissionMonitorStatus: 'idle' | 'pending' | 'success' | 'error'
+  teamCount: number
+  teamDetailsCount: number
+  teamSubmissionsCount: number
+}) {
+  if (!options.isReady) {
+    return false
+  }
+
+  if (options.submissionMonitorStatus !== 'success') {
+    return false
+  }
+
+  if (options.teamCount === 0) {
+    return false
+  }
+
+  return options.teamDetailsCount !== options.teamCount
+    || options.teamSubmissionsCount !== options.teamCount
+}
+
 export interface JudgeAssignmentSummary {
   id: string
   hackathonId: string
