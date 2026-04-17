@@ -899,7 +899,7 @@ async function copyCreditValue(value: string) {
 
         <div
           v-else
-          class="grid gap-4 xl:grid-cols-2"
+          class="grid gap-4"
         >
           <article
             v-for="offer in participantCredits"
