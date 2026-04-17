@@ -2532,7 +2532,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     ])
   })
 
-  test('POST /api/hackathons/:hackathonId/actions/start-judging-preparation locks submissions, snapshots members, creates assignments, and audits', async () => {
+  test('POST /api/hackathons/:hackathonId/actions/start-judging-preparation transitions to judging preparation without locking submissions and audits', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
@@ -2710,25 +2710,24 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     const updatedHackathon = await harness.database.query.hackathons.findFirst({
       where: eq(hackathons.id, 'hackathon_judging_prep')
     })
-    const lockedSubmissions = await harness.database.select().from(submissions)
+    const storedSubmissions = await harness.database.select().from(submissions)
     const snapshotRows = await harness.database.select().from(prizeEligibilitySnapshots)
     const assignmentRows = await harness.database.select().from(judgeAssignments)
     const auditEntries = await harness.database.select().from(auditLogs)
 
     expect(updatedHackathon?.state).toBe('judging_preparation')
-    expect(lockedSubmissions).toEqual(expect.arrayContaining([
+    expect(storedSubmissions).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'submission_1',
-        status: 'locked'
+        status: 'submitted'
       }),
       expect.objectContaining({
         id: 'submission_2',
-        status: 'locked'
+        status: 'submitted'
       })
     ]))
-    expect(snapshotRows).toHaveLength(3)
-    expect(assignmentRows).toHaveLength(2)
-    expect(assignmentRows.map(row => row.judgeUserId).sort()).toEqual(['judge_a', 'judge_b'])
+    expect(snapshotRows).toHaveLength(0)
+    expect(assignmentRows).toHaveLength(0)
     expect(auditEntries).toEqual([
       expect.objectContaining({
         actorUserId: 'platform_admin',
@@ -2739,13 +2738,13 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     ])
   })
 
-  test('POST /api/hackathons/:hackathonId/actions/start-judging-preparation rejects two blind reviews when the judge pool lacks distinct judges', async () => {
+  test('POST /api/hackathons/:hackathonId/actions/start-blind-review rejects two blind reviews when the judge pool lacks distinct judges', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/start-judging-preparation',
-          handler: startJudgingPreparationPostHandler
+          path: '/api/hackathons/:hackathonId/actions/start-blind-review',
+          handler: startBlindReviewPostHandler
         }
       ],
       sessionUser: {
@@ -2789,7 +2788,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       registrationClosesAt: '2026-03-19T12:00:00.000Z',
       submissionOpensAt: '2026-03-19T12:00:00.000Z',
       submissionClosesAt: '2026-03-21T12:00:00.000Z',
-      state: 'submission_open',
+      state: 'judging_preparation',
       blindReviewCount: 2,
       pitchReviewEnabled: false,
       blindScoreWeightPercent: 100,
@@ -2837,7 +2836,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       updatedAt: '2026-03-24T12:00:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_insufficient_judges/actions/start-judging-preparation', {
+    const response = await harness.request('/api/hackathons/hackathon_insufficient_judges/actions/start-blind-review', {
       method: 'POST'
     })
 
@@ -2856,12 +2855,12 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     })
     const assignmentRows = await harness.database.select().from(judgeAssignments)
 
-    expect(storedHackathon?.state).toBe('submission_open')
+    expect(storedHackathon?.state).toBe('judging_preparation')
     expect(storedSubmission?.status).toBe('submitted')
     expect(assignmentRows).toHaveLength(0)
   })
 
-  test('POST /api/hackathons/:hackathonId/actions/start-blind-review advances when locked submissions already have active assignments', async () => {
+  test('POST /api/hackathons/:hackathonId/actions/start-blind-review locks submissions, snapshots members, creates assignments, and audits', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
@@ -2912,8 +2911,18 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       submissionOpensAt: '2026-03-23T12:00:00.000Z',
       submissionClosesAt: '2026-03-25T12:00:00.000Z',
       state: 'judging_preparation',
+      blindReviewCount: 1,
       maxTeamMembers: 5,
       createdByUserId: 'platform_admin'
+    })
+
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_judge_a',
+      hackathonId: 'hackathon_blind_review',
+      userId: 'judge_a',
+      role: 'judge',
+      isInJudgePool: true,
+      createdAt: '2026-03-25T12:15:00.000Z'
     })
 
     await harness.database.insert(teams).values({
@@ -2927,25 +2936,23 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       updatedAt: '2026-03-22T12:00:00.000Z'
     })
 
+    await harness.database.insert(teamMembers).values({
+      id: 'membership_admin',
+      teamId: 'team_1',
+      userId: 'team_admin',
+      role: 'admin',
+      joinedAt: '2026-03-22T12:00:00.000Z',
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+
     await harness.database.insert(submissions).values({
       id: 'submission_1',
       teamId: 'team_1',
-      status: 'locked',
+      status: 'submitted',
       projectName: 'Project One',
       submittedAt: '2026-03-24T12:00:00.000Z',
-      lockedAt: '2026-03-25T12:30:00.000Z',
       createdAt: '2026-03-24T12:00:00.000Z',
-      updatedAt: '2026-03-25T12:30:00.000Z'
-    })
-
-    await harness.database.insert(judgeAssignments).values({
-      id: 'assignment_1',
-      hackathonId: 'hackathon_blind_review',
-      submissionId: 'submission_1',
-      judgeUserId: 'judge_a',
-      status: 'assigned',
-      assignedAt: '2026-03-25T12:30:00.000Z',
-      createdAt: '2026-03-25T12:30:00.000Z'
+      updatedAt: '2026-03-24T12:00:00.000Z'
     })
 
     const response = await harness.request('/api/hackathons/hackathon_blind_review/actions/start-blind-review', {
@@ -2963,9 +2970,26 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     const updatedHackathon = await harness.database.query.hackathons.findFirst({
       where: eq(hackathons.id, 'hackathon_blind_review')
     })
+    const storedSubmission = await harness.database.query.submissions.findFirst({
+      where: eq(submissions.id, 'submission_1')
+    })
+    const snapshotRows = await harness.database.select().from(prizeEligibilitySnapshots)
+    const assignmentRows = await harness.database.select().from(judgeAssignments)
     const auditEntries = await harness.database.select().from(auditLogs)
 
     expect(updatedHackathon?.state).toBe('blind_review')
+    expect(storedSubmission?.status).toBe('locked')
+    expect(storedSubmission?.lockedAt).toBeTruthy()
+    expect(snapshotRows).toHaveLength(1)
+    expect(assignmentRows).toEqual([
+      expect.objectContaining({
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        reviewStage: 'blind_review',
+        blindReviewSlot: 1,
+        status: 'assigned'
+      })
+    ])
     expect(auditEntries).toEqual([
       expect.objectContaining({
         actorUserId: 'platform_admin',
@@ -2976,7 +3000,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     ])
   })
 
-  test('POST /api/hackathons/:hackathonId/actions/start-pitch opens the live pitch stage without creating judge assignments in pitch-only hackathons', async () => {
+  test('POST /api/hackathons/:hackathonId/actions/start-pitch opens the live pitch stage, locks submitted work, and avoids judge assignments in pitch-only hackathons', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
@@ -3089,26 +3113,43 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       }
     ])
 
+    await harness.database.insert(teamMembers).values([
+      {
+        id: 'membership_pitch_1',
+        teamId: 'team_pitch_1',
+        userId: 'team_admin_one',
+        role: 'admin',
+        joinedAt: '2026-03-22T12:00:00.000Z',
+        createdAt: '2026-03-22T12:00:00.000Z'
+      },
+      {
+        id: 'membership_pitch_2',
+        teamId: 'team_pitch_2',
+        userId: 'team_admin_two',
+        role: 'admin',
+        joinedAt: '2026-03-22T12:01:00.000Z',
+        createdAt: '2026-03-22T12:01:00.000Z'
+      }
+    ])
+
     await harness.database.insert(submissions).values([
       {
         id: 'submission_pitch_1',
         teamId: 'team_pitch_1',
-        status: 'locked',
+        status: 'submitted',
         projectName: 'Project One',
         submittedAt: '2026-03-24T12:00:00.000Z',
-        lockedAt: '2026-03-25T12:30:00.000Z',
         createdAt: '2026-03-24T12:00:00.000Z',
-        updatedAt: '2026-03-25T12:30:00.000Z'
+        updatedAt: '2026-03-24T12:00:00.000Z'
       },
       {
         id: 'submission_pitch_2',
         teamId: 'team_pitch_2',
-        status: 'locked',
+        status: 'submitted',
         projectName: 'Project Two',
         submittedAt: '2026-03-24T12:05:00.000Z',
-        lockedAt: '2026-03-25T12:30:00.000Z',
         createdAt: '2026-03-24T12:05:00.000Z',
-        updatedAt: '2026-03-25T12:30:00.000Z'
+        updatedAt: '2026-03-24T12:05:00.000Z'
       }
     ])
 
@@ -3130,6 +3171,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     const updatedHackathon = await harness.database.query.hackathons.findFirst({
       where: eq(hackathons.id, 'hackathon_pitch_only')
     })
+    const storedSubmissions = await harness.database.select().from(submissions)
+    const snapshotRows = await harness.database.select().from(prizeEligibilitySnapshots)
     const assignmentRows = await harness.database.select().from(judgeAssignments)
     const auditEntries = await harness.database.select().from(auditLogs)
 
@@ -3137,6 +3180,17 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(updatedHackathon?.pitchFinalistSubmissionIdsJson).toBe(JSON.stringify(['submission_pitch_1', 'submission_pitch_2']))
     expect(updatedHackathon?.activePitchPresentationSubmissionId).toBeNull()
     expect(updatedHackathon?.pitchPresentationsCompletedAt).toBeNull()
+    expect(storedSubmissions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'submission_pitch_1',
+        status: 'locked'
+      }),
+      expect.objectContaining({
+        id: 'submission_pitch_2',
+        status: 'locked'
+      })
+    ]))
+    expect(snapshotRows).toHaveLength(2)
     expect(assignmentRows).toHaveLength(0)
     expect(auditEntries).toEqual([
       expect.objectContaining({
