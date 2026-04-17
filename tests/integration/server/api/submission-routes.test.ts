@@ -739,6 +739,118 @@ describe('TASK-3.7 submission routes', () => {
     expect(storedSubmission?.status).toBe('disqualified')
   })
 
+  test('hackathon admins see the recorded disqualification reason on submission records', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedSubmissionContext(harness, {
+      state: 'shortlist'
+    })
+
+    await harness.database.insert(submissions).values({
+      id: 'submission_1',
+      teamId: 'team_1',
+      status: 'disqualified',
+      projectName: 'Alpha Project',
+      summary: 'Summary',
+      repositoryUrl: null,
+      demoUrl: null,
+      submittedAt: '2026-03-24T12:00:00.000Z',
+      lockedAt: '2026-03-25T12:00:00.000Z',
+      withdrawnAt: null,
+      disqualifiedAt: '2026-03-26T12:00:00.000Z',
+      createdAt: '2026-03-24T12:00:00.000Z',
+      updatedAt: '2026-03-26T12:00:00.000Z'
+    })
+
+    await harness.database.insert(auditLogs).values({
+      id: 'audit_submission_disqualified',
+      actorUserId: 'hackathon_admin',
+      entityType: 'submission',
+      entityId: 'submission_1',
+      action: 'submission.disqualified',
+      metadata: {
+        hackathonId: 'hackathon_1',
+        teamId: 'team_1',
+        reason: 'Competition removal',
+        previousStatus: 'locked',
+        nextStatus: 'disqualified'
+      },
+      createdAt: '2026-03-26T12:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        status: 'disqualified',
+        disqualificationReason: 'Competition removal'
+      }
+    })
+  })
+
+  test('submission records keep the disqualification reason empty when no reason was recorded', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedSubmissionContext(harness, {
+      state: 'shortlist'
+    })
+
+    await harness.database.insert(submissions).values({
+      id: 'submission_1',
+      teamId: 'team_1',
+      status: 'disqualified',
+      projectName: 'Alpha Project',
+      summary: 'Summary',
+      repositoryUrl: null,
+      demoUrl: null,
+      submittedAt: '2026-03-24T12:00:00.000Z',
+      lockedAt: '2026-03-25T12:00:00.000Z',
+      withdrawnAt: null,
+      disqualifiedAt: '2026-03-26T12:00:00.000Z',
+      createdAt: '2026-03-24T12:00:00.000Z',
+      updatedAt: '2026-03-26T12:00:00.000Z'
+    })
+
+    await harness.database.insert(auditLogs).values({
+      id: 'audit_submission_disqualified',
+      actorUserId: 'hackathon_admin',
+      entityType: 'submission',
+      entityId: 'submission_1',
+      action: 'submission.disqualified',
+      metadata: {
+        hackathonId: 'hackathon_1',
+        teamId: 'team_1',
+        reason: '   ',
+        previousStatus: 'locked',
+        nextStatus: 'disqualified'
+      },
+      createdAt: '2026-03-26T12:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        status: 'disqualified',
+        disqualificationReason: null
+      }
+    })
+  })
+
   test('draft submissions cannot be disqualified during shortlist review and remain part of the no-submission model', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),

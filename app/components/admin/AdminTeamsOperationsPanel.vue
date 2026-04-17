@@ -364,6 +364,14 @@ function formatMemberRole(role: 'admin' | 'member') {
               :id="`admin-team-details-${team.team.id}`"
               class="mt-4 space-y-4 border-t border-black/8 pt-4 dark:border-white/[0.08]"
             >
+              <AppAlert
+                v-if="team.submission?.status === 'disqualified' && team.submission.disqualificationReason"
+                color="warning"
+                variant="soft"
+                title="Disqualification reason"
+                :description="team.submission.disqualificationReason"
+              />
+
               <section class="space-y-3">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
                   Team members

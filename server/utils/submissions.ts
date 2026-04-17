@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { requirePlatformActor } from '../auth/actor'
 import { resolveHackathonAuthorization, resolveTeamAuthorization } from '../auth/authorization'
 import { getDatabase, type AppDatabase } from '../database/client'
-import { hackathonTracks, submissions, teams, teamMembers } from '../database/schema'
+import { auditLogs, hackathonTracks, submissions, teams, teamMembers } from '../database/schema'
 import type { hackathons } from '../database/schema'
 import { ApiError } from './api-error'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
@@ -56,7 +56,21 @@ export const disqualifySubmissionBodySchema = z.object({
   reason: z.string().trim().min(1).optional()
 })
 
-export function serializeSubmission(submission: SubmissionRecord) {
+function normalizeSubmissionAuditReason(value: unknown) {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const normalizedValue = value.trim()
+  return normalizedValue.length > 0 ? normalizedValue : null
+}
+
+export function serializeSubmission(
+  submission: SubmissionRecord,
+  options?: {
+    disqualificationReason?: string | null
+  }
+) {
   return {
     id: submission.id,
     teamId: submission.teamId,
@@ -70,6 +84,7 @@ export function serializeSubmission(submission: SubmissionRecord) {
     lockedAt: submission.lockedAt,
     withdrawnAt: submission.withdrawnAt,
     disqualifiedAt: submission.disqualifiedAt,
+    disqualificationReason: options?.disqualificationReason ?? null,
     createdAt: submission.createdAt,
     updatedAt: submission.updatedAt
   }
@@ -99,6 +114,24 @@ export async function getSubmissionForTeamOrThrow(database: AppDatabase, teamId:
   }
 
   return submission
+}
+
+export async function getSubmissionDisqualificationReason(
+  database: AppDatabase,
+  submissionId: string
+) {
+  const disqualificationAuditLog = await database.query.auditLogs.findFirst({
+    where: and(
+      eq(auditLogs.entityType, 'submission'),
+      eq(auditLogs.entityId, submissionId),
+      eq(auditLogs.action, 'submission.disqualified')
+    ),
+    orderBy: [desc(auditLogs.createdAt)]
+  })
+
+  return normalizeSubmissionAuditReason(
+    (disqualificationAuditLog?.metadata as { reason?: unknown } | null)?.reason
+  )
 }
 
 function createConfiguredSubmissionValidationSchema(config: SubmissionRequirementConfig) {

@@ -136,5 +136,7 @@ export default defineApiHandler(async (event) => {
     status: 'disqualified',
     disqualifiedAt,
     updatedAt: disqualifiedAt
+  }, {
+    disqualificationReason: body.reason ?? null
   }))
 })
