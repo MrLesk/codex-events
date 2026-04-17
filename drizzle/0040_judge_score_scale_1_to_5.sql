@@ -1,4 +1,38 @@
-PRAGMA foreign_keys=OFF;
+CREATE TABLE `__migrated_judge_criterion_scores` (
+	`id` text PRIMARY KEY NOT NULL,
+	`judge_assignment_id` text NOT NULL,
+	`evaluation_criterion_id` text NOT NULL,
+	`score` integer NOT NULL,
+	`comment` text,
+	`created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	`updated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
+--> statement-breakpoint
+INSERT INTO `__migrated_judge_criterion_scores`(
+	"id",
+	"judge_assignment_id",
+	"evaluation_criterion_id",
+	"score",
+	"comment",
+	"created_at",
+	"updated_at"
+) SELECT
+	"id",
+	"judge_assignment_id",
+	"evaluation_criterion_id",
+	CASE
+		WHEN "score" <= 1 THEN 1
+		WHEN "score" <= 3 THEN 2
+		WHEN "score" <= 5 THEN 3
+		WHEN "score" <= 7 THEN 4
+		ELSE 5
+	END,
+	"comment",
+	"created_at",
+	"updated_at"
+FROM `judge_criterion_scores`;
+--> statement-breakpoint
+DROP TABLE `judge_criterion_scores`;
 --> statement-breakpoint
 CREATE TABLE `__new_judge_assignments` (
 	`id` text PRIMARY KEY NOT NULL,
@@ -132,23 +166,15 @@ INSERT INTO `__new_judge_criterion_scores`(
 	"id",
 	"judge_assignment_id",
 	"evaluation_criterion_id",
-	CASE
-		WHEN "score" <= 1 THEN 1
-		WHEN "score" <= 3 THEN 2
-		WHEN "score" <= 5 THEN 3
-		WHEN "score" <= 7 THEN 4
-		ELSE 5
-	END,
+	"score",
 	"comment",
 	"created_at",
 	"updated_at"
-FROM `judge_criterion_scores`;
+FROM `__migrated_judge_criterion_scores`;
 --> statement-breakpoint
-DROP TABLE `judge_criterion_scores`;
+DROP TABLE `__migrated_judge_criterion_scores`;
 --> statement-breakpoint
 ALTER TABLE `__new_judge_criterion_scores` RENAME TO `judge_criterion_scores`;
 --> statement-breakpoint
 CREATE UNIQUE INDEX `judge_criterion_scores_assignment_criterion_idx`
 ON `judge_criterion_scores` (`judge_assignment_id`,`evaluation_criterion_id`);
---> statement-breakpoint
-PRAGMA foreign_keys=ON;
