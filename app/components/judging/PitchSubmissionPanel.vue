@@ -16,7 +16,7 @@ defineProps<{
   <AppCard class="rounded-xl hackathon-workspace-detail-panel">
     <template #header>
       <div class="space-y-3">
-        <div class="space-y-2">
+        <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
             Pitch review finalist
           </p>
@@ -44,12 +44,6 @@ defineProps<{
               {{ formatJudgeIneligibilityStatus(assignment.ineligibilityStatus) }}
             </AppBadge>
           </div>
-          <p class="text-sm font-medium text-neutral-700 dark:text-[#D0D0D0]">
-            {{ assignment.pitchSubmission.teamName }}
-          </p>
-          <p class="max-w-3xl text-sm leading-7 text-toned">
-            Pitch review is open. Every judge on the panel is expected to submit one 0-10 vote, with an optional comment if you want to capture extra signal.
-          </p>
         </div>
       </div>
     </template>
@@ -58,23 +52,44 @@ defineProps<{
       data-testid="judge-pitch-submission"
       class="space-y-6"
     >
-      <p class="text-sm leading-7 text-toned">
-        {{ assignment.pitchSubmission.summary || 'No project summary is available for this finalist yet.' }}
-      </p>
-
       <div
-        v-if="assignment.pitchSubmission.track"
-        class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]"
+        class="grid gap-6"
+        :class="'lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start'"
       >
-        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-          Track
-        </p>
-        <p class="mt-1 text-[15px] font-semibold text-highlighted dark:text-white">
-          {{ assignment.pitchSubmission.track.name }}
-        </p>
-        <p class="mt-1 text-sm text-toned">
-          {{ assignment.pitchSubmission.track.description }}
-        </p>
+        <div class="min-w-0 space-y-2">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+            Submission description
+          </p>
+          <p class="text-sm leading-7 text-toned">
+            {{ assignment.pitchSubmission.summary || 'No project summary is available for this finalist yet.' }}
+          </p>
+        </div>
+
+        <div class="space-y-3">
+          <div class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]">
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+              Team
+            </p>
+            <p class="mt-1 text-[15px] font-semibold text-highlighted dark:text-white">
+              {{ assignment.pitchSubmission.teamName }}
+            </p>
+          </div>
+
+          <div
+            v-if="assignment.pitchSubmission.track"
+            class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]"
+          >
+            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+              Track
+            </p>
+            <p class="mt-1 text-[15px] font-semibold text-highlighted dark:text-white">
+              {{ assignment.pitchSubmission.track.name }}
+            </p>
+            <p class="mt-1 text-sm text-toned">
+              {{ assignment.pitchSubmission.track.description }}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div
@@ -108,6 +123,13 @@ defineProps<{
         >
           Demo
         </AppButton>
+      </div>
+
+      <div
+        v-if="$slots.default"
+        class="space-y-5 border-t border-black/8 pt-6 dark:border-white/[0.08]"
+      >
+        <slot />
       </div>
     </div>
   </AppCard>

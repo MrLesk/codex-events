@@ -17,6 +17,7 @@ import {
   buildPitchReviewCompletionPayload,
   buildSavedCriterionScoresPayload,
   canAutoStartBlindReviewFromScoreSelection,
+  canAutoStartPitchReviewFromVoteInput,
   canCompleteJudgeAssignment,
   canMarkJudgeAssignmentIneligible,
   canSkipJudgeAssignment,
@@ -513,6 +514,25 @@ describe('judging-workspace actions', () => {
     )).toBe(false)
     expect(canAutoStartBlindReviewFromScoreSelection(
       createPitchAssignment(),
+      'pitch_review'
+    )).toBe(false)
+  })
+
+  test('allows the first pitch vote input to auto-start only during pitch review', () => {
+    expect(canAutoStartPitchReviewFromVoteInput(
+      createPitchAssignment(),
+      'pitch_review'
+    )).toBe(true)
+    expect(canAutoStartPitchReviewFromVoteInput(
+      createPitchAssignment(),
+      'pitch'
+    )).toBe(false)
+    expect(canAutoStartPitchReviewFromVoteInput(
+      createPitchAssignment({ status: 'judge_started' }),
+      'pitch_review'
+    )).toBe(false)
+    expect(canAutoStartPitchReviewFromVoteInput(
+      createBlindAssignment(),
       'pitch_review'
     )).toBe(false)
   })

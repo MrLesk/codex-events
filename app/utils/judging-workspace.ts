@@ -579,6 +579,15 @@ export function canAutoStartBlindReviewFromScoreSelection(
     && !getJudgeAssignmentActionDisabledReason(assignment, hackathonState)
 }
 
+export function canAutoStartPitchReviewFromVoteInput(
+  assignment: Pick<JudgeAssignmentDetail, 'reviewStage' | 'status'> | null | undefined,
+  hackathonState: HackathonState | null | undefined
+) {
+  return assignment?.reviewStage === 'pitch_review'
+    && assignment.status === 'assigned'
+    && hackathonState === 'pitch_review'
+}
+
 export function getJudgeActionErrorMessage(
   error: unknown,
   fallback: string = 'The judge action could not be completed.'
