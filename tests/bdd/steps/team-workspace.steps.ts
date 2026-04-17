@@ -4,6 +4,7 @@ import { expect, type Page } from '@playwright/test'
 import { createBdd } from 'playwright-bdd'
 
 import {
+  resetOperationsTeamSelectionFixtureScenarioState,
   resetParticipantSubmissionCreateFixtureScenarioState,
   resetParticipantTeamCreateFixtureScenarioState,
   resetParticipantTeamJoinFixtureScenarioState,
@@ -255,6 +256,9 @@ When('I open the participant Team tab for hackathon slug {string} and selected t
   if (parsedPersonaKey === 'regular_user') {
     await resetRegularUserParticipantAccessScenarioState()
   }
+  if (slug === 'operations-fixture-hackathon' && selectedTeamSlug === 'beta-operations-team') {
+    await resetOperationsTeamSelectionFixtureScenarioState()
+  }
   await resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug)
   await applyStoredStateToPage(parsedPersonaKey, page)
   await page.goto(`/account/hackathons/${slug}?tab=teams&team=${encodeURIComponent(selectedTeamSlug)}`)
@@ -501,6 +505,25 @@ Then('the selected participant team action {string} should be visible', async ({
   await expect(page.getByTestId('participant-team-workspace-panel').getByRole('button', {
     name: actionName
   })).toBeVisible()
+})
+
+Then('the selected participant team action {string} should be disabled', async ({ page }, actionName: string) => {
+  await expect(page.getByTestId('participant-team-workspace-panel').getByRole('button', {
+    name: actionName
+  })).toBeDisabled()
+})
+
+Then('the selected participant team action {string} should have title {string}', async ({ page }, actionName: string, title: string) => {
+  await expect(page.getByTestId('participant-team-workspace-panel').getByRole('button', {
+    name: actionName
+  })).toHaveAttribute('title', title)
+})
+
+Then('I should not see the selected participant team heading {string}', async ({ page }, heading: string) => {
+  await expect(page.getByTestId('participant-team-workspace-panel').getByRole('heading', {
+    name: heading,
+    exact: true
+  })).toHaveCount(0)
 })
 
 Then('I should not see the account workspace heading {string}', async ({ page }, heading: string) => {

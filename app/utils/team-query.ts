@@ -35,6 +35,11 @@ export function buildAccountHackathonTeamsTabHref(hackathonSlug: string, teamSlu
   return `${baseHref}&team=${encodeURIComponent(normalizedTeamSlug)}`
 }
 
+export function buildAccountHackathonWorkspaceTabHref(hackathonSlug: string) {
+  const encodedHackathonSlug = encodeURIComponent(hackathonSlug.trim())
+  return `/account/hackathons/${encodedHackathonSlug}?tab=workspace`
+}
+
 export function buildAbsoluteAccountHackathonTeamsTabHref(
   origin: string,
   hackathonSlug: string,

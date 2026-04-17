@@ -41,6 +41,13 @@ Feature: Participant team workspace in the account hackathon page
     Then I should be on the participant workspace tab for hackathon slug "participant-team-join-fixture-hackathon"
     And I should see the participant team text "Create a team"
 
+  Scenario: Regular user can jump from the Teams tab to their own workspace
+    Given the saved "regular_user" Auth0 session state exists
+    When I open the participant Teams tab for hackathon slug "operations-fixture-hackathon" with the saved "regular_user" session
+    Then I should see the participant navigation link "Your team"
+    When I click the participant navigation link "Your team"
+    Then I should be on the participant workspace tab for hackathon slug "operations-fixture-hackathon"
+
   Scenario: Hackathon admin can browse the Teams tab without participant join actions
     Given the saved "hackathon_admin" Auth0 session state exists
     When I open the participant Teams tab for hackathon slug "operations-fixture-hackathon" with the saved "hackathon_admin" session
@@ -53,18 +60,24 @@ Feature: Participant team workspace in the account hackathon page
     Then I should see the participant current team "Judge Review Team"
     And the selected participant team action "Request to join" should be visible
 
-  Scenario: Regular user can view another team while keeping the team directory visible
+  Scenario: Regular user can view another team in a focused detail view
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant Team tab for hackathon slug "operations-fixture-hackathon" and selected team slug "beta-operations-team" with the saved "regular_user" session
     Then I should see the participant current team "Beta Operations Team"
-    And I should see the participant team card "Alpha Operations Team"
-    And I should see the participant team card "Gamma Operations Team"
+    And I should see the participant navigation link "Back to teams"
+    And the participant team directory should not be visible
+    And the selected participant team action "Request to join" should be disabled
+    And the selected participant team action "Request to join" should have title "You can belong to only one active team per hackathon."
 
-  Scenario: Regular user without a team can view another team while keeping the team directory visible
+  Scenario: Regular user without a team can view another team and return to the teams list
     Given the saved "regular_user" Auth0 session state exists
     When I open the participant Team tab for hackathon slug "participant-team-join-fixture-hackathon" and selected team slug "judge-review-team" with the saved "regular_user" session
     Then I should see the participant current team "Judge Review Team"
-    And I should see the participant team card "Judge Review Team"
+    And I should see the participant navigation link "Back to teams"
+    And the participant team directory should not be visible
+    And the selected participant team action "Request to join" should be visible
+    When I click the participant navigation link "Back to teams"
+    Then I should see the participant team card "Judge Review Team"
 
   Scenario: Regular user can leave a solo-admin team during team formation
     Given the saved "regular_user" Auth0 session state exists

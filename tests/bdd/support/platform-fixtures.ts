@@ -1388,6 +1388,24 @@ export async function resetRegularUserParticipantAccessScenarioState(
   }
 }
 
+export async function resetOperationsTeamSelectionFixtureScenarioState(
+  environment: NodeJS.ProcessEnv = process.env
+) {
+  const fixtureSql = [
+    `update teams
+      set is_open_to_join_requests = 1,
+          updated_at = ${sqlLiteral(fixtureTimestamp)}
+      where id = 'team_operations_fixture_beta'`
+  ].join(';\n')
+
+  applyFixtureSql(environment, fixtureSql)
+
+  return {
+    hackathonId: fixtureOperationsHackathonId,
+    userIds: personaUserIds
+  }
+}
+
 export async function resetParticipantTeamCreateFixtureScenarioState(
   environment: NodeJS.ProcessEnv = process.env
 ) {

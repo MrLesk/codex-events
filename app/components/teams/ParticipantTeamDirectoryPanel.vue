@@ -13,6 +13,7 @@ const props = defineProps<{
   teams: TeamDirectoryEntry[]
   maxTeamMembers: number
   createTeamHref?: string | null
+  ownTeamWorkspaceHref?: string | null
   totalTeams?: number
   showLockedStatus?: boolean
   filterOptions?: ReadonlyArray<{
@@ -206,6 +207,16 @@ function selectDirectoryFilter(nextFilter: string) {
               </AppButton>
 
               <AppButton
+                v-else-if="entry.isOwnTeam && props.ownTeamWorkspaceHref"
+                :to="props.ownTeamWorkspaceHref"
+                color="neutral"
+                class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:border-white dark:bg-white dark:text-black dark:hover:bg-[#ECECEC] dark:hover:text-black"
+                trailing-icon="i-lucide-arrow-up-right"
+              >
+                Your team
+              </AppButton>
+
+              <AppButton
                 v-if="entry.hasPendingJoinRequest"
                 color="warning"
                 variant="soft"
@@ -224,7 +235,7 @@ function selectDirectoryFilter(nextFilter: string) {
                 v-else-if="entry.joinAvailability.isAllowed"
                 color="success"
                 trailing-icon="i-lucide-user-plus"
-                class="rounded-lg dark:text-black dark:hover:text-black"
+                class="rounded-lg bg-emerald-800 text-white shadow-sm ring-1 ring-emerald-950/20 hover:bg-emerald-900 disabled:bg-emerald-800 disabled:text-white disabled:opacity-100 dark:bg-emerald-300 dark:text-black dark:ring-emerald-100/15 dark:hover:bg-emerald-200 dark:hover:text-black dark:disabled:bg-emerald-300 dark:disabled:text-black"
                 :loading="isActionPending(`join-team:${entry.team.id}`)"
                 :disabled="isActionPending(`join-team:${entry.team.id}`)"
                 :data-testid="`participant-team-join-${entry.team.id}`"

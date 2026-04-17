@@ -8,7 +8,9 @@ import type {
 import ParticipantTeamDirectoryPanel from '~/components/teams/ParticipantTeamDirectoryPanel.vue'
 import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWorkspacePanel.vue'
 import {
+  buildAbsoluteAccountHackathonTeamsTabHref,
   buildAccountHackathonTeamsTabHref,
+  buildAccountHackathonWorkspaceTabHref,
   isSharedTeamSelection
 } from '~/utils/team-query'
 import {
@@ -56,6 +58,10 @@ const visibleTeamSlugs = computed(() =>
 
 function buildTeamsTabHref(teamSlug?: string | null) {
   return buildAccountHackathonTeamsTabHref(props.hackathon.slug, teamSlug)
+}
+
+function buildWorkspaceTabHref() {
+  return buildAccountHackathonWorkspaceTabHref(props.hackathon.slug)
 }
 
 function mapDirectoryFilter(filter: TeamsDirectoryFilter) {
@@ -164,8 +170,12 @@ const createTeamWorkspaceHref = computed(() => {
     return null
   }
 
-  return `/account/hackathons/${encodeURIComponent(props.hackathon.slug.trim())}?tab=workspace`
+  return buildWorkspaceTabHref()
 })
+const ownTeamWorkspaceHref = computed(() =>
+  workspace.ownTeam.value ? buildWorkspaceTabHref() : null
+)
+const sharedTeamBackHref = computed(() => buildTeamsTabHref())
 const canJoinAnyTeam = computed(() =>
   ownApplicationStatus.value === 'approved'
   && !workspace.ownTeam.value
@@ -237,8 +247,32 @@ const selectedTeamLeaveAvailability = computed(() => ({
   isAllowed: false,
   reason: 'Team management actions live in the Workspace tab.'
 }) satisfies TeamActionAvailability)
+const selectedTeamCanShowJoinAction = computed(() => {
+  if (!selectedTeam.value || selectedTeamIsOwnTeam.value) {
+    return false
+  }
+
+  if (selectedTeamPendingJoinRequestId.value) {
+    return true
+  }
+
+  if (selectedTeam.value.workspaceMode === 'solo' || !selectedTeam.value.isOpenToJoinRequests) {
+    return false
+  }
+
+  return !hasTeamReachedMemberLimit(
+    props.hackathon.maxTeamMembers,
+    selectedTeam.value.activeMemberCount ?? selectedTeam.value.members.length
+  )
+})
 const selectedTeamShowMembershipActions = computed(() =>
   !selectedTeamIsOwnTeam.value
+  && selectedTeamCanShowJoinAction.value
+)
+const selectedSharedTeam = computed(() =>
+  selectedTeam.value && isViewingSharedTeam.value
+    ? selectedTeam.value
+    : null
 )
 const directoryEntries = computed<TeamDirectoryEntry[]>(() =>
   workspace.visibleTeams.value.map((team) => {
@@ -315,6 +349,37 @@ async function cancelJoinRequest(payload: {
     color: 'success'
   })
 }
+
+async function copySelectedTeamLink() {
+  if (!selectedTeam.value || !import.meta.client || !window.isSecureContext || !navigator.clipboard) {
+    toast.add({
+      title: 'Copy unavailable',
+      description: 'This browser could not copy the team link right now.',
+      color: 'error'
+    })
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(buildAbsoluteAccountHackathonTeamsTabHref(
+      window.location.origin,
+      props.hackathon.slug,
+      selectedTeam.value.slug
+    ))
+
+    toast.add({
+      title: 'Team link copied',
+      description: 'The direct team link was copied to your clipboard.',
+      color: 'success'
+    })
+  } catch {
+    toast.add({
+      title: 'Copy failed',
+      description: 'The team link could not be copied right now.',
+      color: 'error'
+    })
+  }
+}
 </script>
 
 <template>
@@ -389,16 +454,27 @@ async function cancelJoinRequest(payload: {
         />
 
         <div
-          v-if="selectedTeam && isViewingSharedTeam"
+          v-if="selectedSharedTeam"
           class="space-y-6"
         >
+          <NuxtLink
+            :to="sharedTeamBackHref"
+            class="inline-flex items-center gap-2 text-[13px] font-medium text-neutral-600 transition-colors hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white"
+          >
+            <AppIcon
+              name="i-lucide-arrow-left"
+              class="size-4"
+            />
+            Back to teams
+          </NuxtLink>
+
           <ParticipantTeamWorkspacePanel
             :settings="{
-              name: selectedTeam.name,
-              bio: selectedTeam.bio ?? '',
-              isOpenToJoinRequests: selectedTeam.isOpenToJoinRequests
+              name: selectedSharedTeam.name,
+              bio: selectedSharedTeam.bio ?? '',
+              isOpenToJoinRequests: selectedSharedTeam.isOpenToJoinRequests
             }"
-            :team="selectedTeam"
+            :team="selectedSharedTeam"
             :max-team-members="props.hackathon.maxTeamMembers"
             :membership="selectedTeamMembership"
             :can-manage-team="false"
@@ -408,16 +484,19 @@ async function cancelJoinRequest(payload: {
             :pending-join-request-id="selectedTeamPendingJoinRequestId"
             :pending-action-key="workspace.pendingActionKey.value"
             :show-membership-actions="selectedTeamShowMembershipActions"
+            @copy-team-link="copySelectedTeamLink"
             @request-join="requestToJoinTeam"
             @cancel-join-request="cancelJoinRequest"
           />
         </div>
 
         <ParticipantTeamDirectoryPanel
+          v-else
           v-model:directory-filter="directoryFilter"
           :teams="visibleDirectoryEntries"
           :max-team-members="props.hackathon.maxTeamMembers"
           :create-team-href="createTeamWorkspaceHref"
+          :own-team-workspace-href="ownTeamWorkspaceHref"
           :total-teams="visibleDirectoryTotal"
           :show-locked-status="showLockedTeamDirectoryStatus"
           :filter-options="directoryFilterOptions"

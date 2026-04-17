@@ -59,6 +59,7 @@ const emit = defineEmits<{
   approveRequest: [requestId: string]
   rejectRequest: [requestId: string]
 }>()
+const toast = useToast()
 
 function isActionPending(actionKey: string) {
   return props.pendingActionKey === actionKey
@@ -129,6 +130,11 @@ const showMembershipActions = computed(() => props.showMembershipActions ?? true
 const showHeaderLeaveAction = computed(() =>
   Boolean(props.membership) && showMembershipActions.value
 )
+const showHeaderMembershipAction = computed(() =>
+  showMembershipActions.value
+  && !props.membership
+  && (Boolean(props.pendingJoinRequestId) || showRequestJoinAction.value)
+)
 const hasPendingJoinRequests = computed(() =>
   (props.joinRequests ?? []).some(request => request.status === 'pending')
 )
@@ -170,6 +176,16 @@ const participantTeamStatusColor = computed(() =>
 )
 const showSoloWorkspaceHint = computed(() =>
   isSoloWorkspace.value && Boolean(props.membership)
+)
+const disabledJoinActionReason = computed(() =>
+  !props.pendingJoinRequestId && showRequestJoinAction.value && !props.joinAvailability.isAllowed
+    ? formatJoinAvailabilityReason(props.team, props.joinAvailability) ?? props.joinAvailability.reason ?? 'Join requests are not available right now.'
+    : ''
+)
+const joinActionButtonClass = computed(() =>
+  disabledJoinActionReason.value
+    ? 'rounded-lg cursor-not-allowed bg-emerald-800 text-white shadow-sm ring-1 ring-emerald-950/20 opacity-100 dark:bg-emerald-300 dark:text-black dark:ring-emerald-100/15'
+    : 'rounded-lg bg-emerald-800 text-white shadow-sm ring-1 ring-emerald-950/20 hover:bg-emerald-900 dark:bg-emerald-300 dark:text-black dark:ring-emerald-100/15 dark:hover:bg-emerald-200 dark:hover:text-black'
 )
 
 function validateTeamProfile() {
@@ -215,6 +231,19 @@ function cancelEditingProfile() {
   errors.bio = ''
   submitCount.value = 0
   isEditingProfile.value = false
+}
+
+function handleJoinActionClick() {
+  if (!props.joinAvailability.isAllowed) {
+    toast.add({
+      title: 'Join request unavailable',
+      description: disabledJoinActionReason.value || 'Join requests are not available right now.',
+      color: 'warning'
+    })
+    return
+  }
+
+  emit('requestJoin', props.team.id)
 }
 </script>
 
@@ -464,7 +493,7 @@ function cancelEditingProfile() {
           </div>
 
           <div
-            v-if="canManageTeam || showHeaderLeaveAction"
+            v-if="canManageTeam || showHeaderLeaveAction || showHeaderMembershipAction"
             class="flex shrink-0 flex-wrap items-center justify-end gap-3 self-end sm:ml-auto sm:self-start"
           >
             <div
@@ -495,6 +524,42 @@ function cancelEditingProfile() {
             </div>
 
             <AppButton
+              v-if="pendingJoinRequestId && showHeaderMembershipAction"
+              color="warning"
+              variant="soft"
+              :loading="isActionPending(`cancel-join-request:${pendingJoinRequestId}`)"
+              :disabled="isActionPending(`cancel-join-request:${pendingJoinRequestId}`)"
+              data-testid="participant-team-cancel-pending-request"
+              @click="emit('cancelJoinRequest', {
+                teamId: team.id,
+                requestId: pendingJoinRequestId
+              })"
+            >
+              Cancel pending request
+            </AppButton>
+
+            <span
+              v-else-if="showHeaderMembershipAction"
+              :title="disabledJoinActionReason || undefined"
+              class="inline-flex"
+            >
+              <AppButton
+                color="success"
+                size="sm"
+                trailing-icon="i-lucide-user-plus"
+                :class="joinActionButtonClass"
+                :loading="joinAvailability.isAllowed && isActionPending(`join-team:${team.id}`)"
+                :disabled="joinAvailability.isAllowed && isActionPending(`join-team:${team.id}`)"
+                :aria-disabled="!joinAvailability.isAllowed ? 'true' : undefined"
+                :title="disabledJoinActionReason || undefined"
+                data-testid="participant-team-request-join"
+                @click="handleJoinActionClick"
+              >
+                Request to join
+              </AppButton>
+            </span>
+
+            <AppButton
               v-if="showHeaderLeaveAction"
               color="error"
               size="sm"
@@ -515,65 +580,8 @@ function cancelEditingProfile() {
         v-if="showSoloWorkspaceHint"
         class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
       >
-        You are participating as solo. Leave the team to join other teams.
+        You are participating as solo. Leave the team before creating or joining another team.
       </p>
-
-      <section
-        v-if="showMembershipActions && !membership"
-        class="app-inset-card px-5 py-5"
-      >
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div class="space-y-2">
-            <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-              <h3 class="text-lg font-semibold text-highlighted dark:text-white">
-                Membership actions
-              </h3>
-            </div>
-            <p
-              v-if="!joinAvailability.isAllowed && formatJoinAvailabilityReason(team, joinAvailability)"
-              class="text-sm text-muted"
-            >
-              {{ formatJoinAvailabilityReason(team, joinAvailability) }}
-            </p>
-            <p
-              v-else
-              class="text-sm text-muted"
-            >
-              Request to join this team if collaboration is still open.
-            </p>
-          </div>
-
-          <div class="flex flex-wrap gap-3">
-            <AppButton
-              v-if="pendingJoinRequestId"
-              color="warning"
-              variant="soft"
-              :loading="isActionPending(`cancel-join-request:${pendingJoinRequestId}`)"
-              :disabled="isActionPending(`cancel-join-request:${pendingJoinRequestId}`)"
-              data-testid="participant-team-cancel-pending-request"
-              @click="emit('cancelJoinRequest', {
-                teamId: team.id,
-                requestId: pendingJoinRequestId
-              })"
-            >
-              Cancel pending request
-            </AppButton>
-
-            <AppButton
-              v-else-if="showRequestJoinAction && joinAvailability.isAllowed"
-              color="success"
-              trailing-icon="i-lucide-user-plus"
-              class="rounded-lg dark:text-black dark:hover:text-black"
-              :loading="isActionPending(`join-team:${team.id}`)"
-              :disabled="isActionPending(`join-team:${team.id}`)"
-              data-testid="participant-team-request-join"
-              @click="emit('requestJoin', team.id)"
-            >
-              Request to join
-            </AppButton>
-          </div>
-        </div>
-      </section>
 
       <section :class="canManageTeam && !isSoloWorkspace ? 'grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]' : 'grid gap-6'">
         <div
