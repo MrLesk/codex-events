@@ -44,6 +44,11 @@ export default defineNuxtConfig({
       queueName: 'codex-hackathons-application-review-email-delivery',
       retryDelaySeconds: 120
     },
+    hackathonOutcomeEmails: {
+      queueBinding: 'HACKATHON_OUTCOME_EMAIL_QUEUE',
+      queueName: 'codex-hackathons-hackathon-outcome-email-delivery',
+      retryDelaySeconds: 120
+    },
     luma: {
       apiKey: '',
       apiBaseUrl: 'https://public-api.luma.com',

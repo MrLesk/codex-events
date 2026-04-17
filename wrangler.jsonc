@@ -49,6 +49,10 @@
 				"queue": "codex-hackathons-application-review-email-delivery"
 			},
 			{
+				"binding": "HACKATHON_OUTCOME_EMAIL_QUEUE",
+				"queue": "codex-hackathons-hackathon-outcome-email-delivery"
+			},
+			{
 				"binding": "APPLICATION_LUMA_SYNC_QUEUE",
 				"queue": "codex-hackathons-application-luma-sync"
 			}
@@ -56,6 +60,13 @@
 		"consumers": [
 			{
 				"queue": "codex-hackathons-application-review-email-delivery",
+				"max_batch_size": 10,
+				"max_batch_timeout": 5,
+				"max_retries": 10,
+				"retry_delay": 120
+			},
+			{
+				"queue": "codex-hackathons-hackathon-outcome-email-delivery",
 				"max_batch_size": 10,
 				"max_batch_timeout": 5,
 				"max_retries": 10,
@@ -116,6 +127,9 @@
 				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING": "APPLICATION_REVIEW_EMAIL_QUEUE",
 				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "dev-codex-hackathons-application-review-email-delivery",
 				"NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS": "120",
+				"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING": "HACKATHON_OUTCOME_EMAIL_QUEUE",
+				"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME": "dev-codex-hackathons-hackathon-outcome-email-delivery",
+				"NUXT_HACKATHON_OUTCOME_EMAILS_RETRY_DELAY_SECONDS": "120",
 				"NUXT_LUMA_QUEUE_BINDING": "APPLICATION_LUMA_SYNC_QUEUE",
 				"NUXT_LUMA_QUEUE_NAME": "dev-codex-hackathons-application-luma-sync",
 				"NUXT_LUMA_RETRY_DELAY_SECONDS": "120"
@@ -145,6 +159,10 @@
 						"queue": "dev-codex-hackathons-application-review-email-delivery"
 					},
 					{
+						"binding": "HACKATHON_OUTCOME_EMAIL_QUEUE",
+						"queue": "dev-codex-hackathons-hackathon-outcome-email-delivery"
+					},
+					{
 						"binding": "APPLICATION_LUMA_SYNC_QUEUE",
 						"queue": "dev-codex-hackathons-application-luma-sync"
 					}
@@ -152,6 +170,13 @@
 				"consumers": [
 					{
 						"queue": "dev-codex-hackathons-application-review-email-delivery",
+						"max_batch_size": 10,
+						"max_batch_timeout": 5,
+						"max_retries": 10,
+						"retry_delay": 120
+					},
+					{
+						"queue": "dev-codex-hackathons-hackathon-outcome-email-delivery",
 						"max_batch_size": 10,
 						"max_batch_timeout": 5,
 						"max_retries": 10,
@@ -212,6 +237,9 @@
 				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING": "APPLICATION_REVIEW_EMAIL_QUEUE",
 				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "codex-hackathons-application-review-email-delivery",
 				"NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS": "120",
+				"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING": "HACKATHON_OUTCOME_EMAIL_QUEUE",
+				"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME": "codex-hackathons-hackathon-outcome-email-delivery",
+				"NUXT_HACKATHON_OUTCOME_EMAILS_RETRY_DELAY_SECONDS": "120",
 				"NUXT_LUMA_QUEUE_BINDING": "APPLICATION_LUMA_SYNC_QUEUE",
 				"NUXT_LUMA_QUEUE_NAME": "codex-hackathons-application-luma-sync",
 				"NUXT_LUMA_RETRY_DELAY_SECONDS": "120"
@@ -241,6 +269,10 @@
 						"queue": "codex-hackathons-application-review-email-delivery"
 					},
 					{
+						"binding": "HACKATHON_OUTCOME_EMAIL_QUEUE",
+						"queue": "codex-hackathons-hackathon-outcome-email-delivery"
+					},
+					{
 						"binding": "APPLICATION_LUMA_SYNC_QUEUE",
 						"queue": "codex-hackathons-application-luma-sync"
 					}
@@ -248,6 +280,13 @@
 				"consumers": [
 					{
 						"queue": "codex-hackathons-application-review-email-delivery",
+						"max_batch_size": 10,
+						"max_batch_timeout": 5,
+						"max_retries": 10,
+						"retry_delay": 120
+					},
+					{
+						"queue": "codex-hackathons-hackathon-outcome-email-delivery",
 						"max_batch_size": 10,
 						"max_batch_timeout": 5,
 						"max_retries": 10,

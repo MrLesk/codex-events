@@ -39,6 +39,9 @@ function createEvent(options?: {
         applicationReviewEmails: {
           queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
         },
+        hackathonOutcomeEmails: {
+          queueBinding: 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+        },
         luma: {
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
         }
@@ -112,6 +115,9 @@ describe('local D1 binding middleware', () => {
     const applicationReviewEmailQueue = {
       send: vi.fn()
     }
+    const hackathonOutcomeEmailQueue = {
+      send: vi.fn()
+    }
     const applicationLumaSyncQueue = {
       send: vi.fn()
     }
@@ -128,6 +134,7 @@ describe('local D1 binding middleware', () => {
         PROFILE_ICONS: profileIconsBucket,
         HACKATHON_IMAGES: hackathonImagesBucket,
         APPLICATION_REVIEW_EMAIL_QUEUE: applicationReviewEmailQueue,
+        HACKATHON_OUTCOME_EMAIL_QUEUE: hackathonOutcomeEmailQueue,
         APPLICATION_LUMA_SYNC_QUEUE: applicationLumaSyncQueue,
         [publicContactRateLimitBindingName]: publicContactRateLimiter,
         [authenticatedUploadRateLimitBindingName]: authenticatedUploadRateLimiter
@@ -144,6 +151,7 @@ describe('local D1 binding middleware', () => {
     expect(event.context.cloudflare?.env.PROFILE_ICONS).toBe(profileIconsBucket)
     expect(event.context.cloudflare?.env.HACKATHON_IMAGES).toBe(hackathonImagesBucket)
     expect(event.context.cloudflare?.env.APPLICATION_REVIEW_EMAIL_QUEUE).toBe(applicationReviewEmailQueue)
+    expect(event.context.cloudflare?.env.HACKATHON_OUTCOME_EMAIL_QUEUE).toBe(hackathonOutcomeEmailQueue)
     expect(event.context.cloudflare?.env.APPLICATION_LUMA_SYNC_QUEUE).toBe(applicationLumaSyncQueue)
     expect(event.context.cloudflare?.env[publicContactRateLimitBindingName]).toBe(publicContactRateLimiter)
     expect(event.context.cloudflare?.env[authenticatedUploadRateLimitBindingName]).toBe(authenticatedUploadRateLimiter)

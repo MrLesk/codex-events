@@ -475,8 +475,11 @@ Scope:
 - A later manual admin action starts blind review when blind review is enabled.
 - `shortlist` exists only when blind review and pitch review are both enabled.
 - `shortlist` presents the blind-review leaderboard plus the persisted ordered finalist set selected by admins for the live pitch stage.
+- Finalist identity remains hidden during `shortlist`.
 - Pitch-only hackathons skip `shortlist` and send all eligible locked submissions directly to `pitch`.
 - A later manual admin action starts `pitch`, which is the live finalist presentation stage and does not create judge assignments.
+- Starting `pitch` from `shortlist` notifies every active member of each finalist team that the team has been shortlisted.
+- From `pitch` onward, a participant can see shortlist status for that participant's own team in the account overview and workspace when the team advanced.
 - A later manual admin action starts `pitch_review`, which creates the post-pitch judge assignments for finalists.
 - `final_deliberation` is the universal ranking-review stage after all enabled scoring stages are complete.
 - Hackathon admins can manually reorder the final ranking during `final_deliberation` without changing the underlying judge scores.
@@ -486,6 +489,9 @@ Scope:
 - When blind review and pitch review are both enabled, final score uses configurable blind and pitch weights that default to `70%` blind and `30%` pitch.
 - When only one judging stage is enabled, final score comes entirely from that stage.
 - Pitch review can be closed by admins with missing votes, and the pitch average uses only submitted pitch-review votes.
+- From `winners_announced` onward, a participant can see the participant's own team's final rank as `X/Y` when that team is ranked.
+- From `winners_announced` onward, winning teams can see the prizes awarded to their own team in the account overview and workspace.
+- Announcing winners notifies the frozen prize-eligible members of every winning team.
 - Approved teams with no submission appear in a separate no-submission section in the hackathon dashboard.
 - Prize-eligible team membership is frozen when judging preparation begins.
 

@@ -5,6 +5,7 @@ import type { HackathonParticipationRecord } from '../../../../app/utils/hackath
 import {
   formatParticipationStageLabel,
   formatParticipationStatusLabel,
+  getHackathonParticipationOutcomeNotice,
   getHackathonParticipationPrimaryAction,
   getParticipationStageColor,
   getParticipationStatusColor
@@ -39,6 +40,7 @@ function buildRecord(
     activeTeam: null,
     latestTeam: null,
     latestSubmission: null,
+    outcome: null,
     ...overrides
   }
 }
@@ -138,6 +140,111 @@ describe('hackathon participation badge helpers', () => {
     expect(getHackathonParticipationPrimaryAction(record)).toEqual({
       href: '/account/hackathons/vienna',
       label: 'Open overview'
+    })
+  })
+
+  test('returns a shortlist notice only after the team advances', () => {
+    const notice = getHackathonParticipationOutcomeNotice(buildRecord({
+      hackathon: {
+        ...buildRecord().hackathon,
+        state: 'pitch'
+      },
+      activeTeam: {
+        id: 'team-1',
+        name: 'North Star Builders',
+        slug: 'north-star-builders',
+        membershipRole: 'admin',
+        joinedAt: '2026-03-15T09:00:00Z',
+        leftAt: null,
+        isActiveMembership: true,
+        activeMemberCount: 3
+      },
+      outcome: {
+        isShortlisted: true,
+        isWinner: false,
+        finalRank: null,
+        rankedTeamCount: 0,
+        prizes: []
+      }
+    }))
+
+    expect(notice).toEqual({
+      color: 'info',
+      title: 'Your team is shortlisted',
+      description: 'North Star Builders advanced to the live pitch stage.'
+    })
+  })
+
+  test('returns a winner notice with prize names once winners are announced', () => {
+    const notice = getHackathonParticipationOutcomeNotice(buildRecord({
+      hackathon: {
+        ...buildRecord().hackathon,
+        state: 'winners_announced'
+      },
+      activeTeam: {
+        id: 'team-1',
+        name: 'North Star Builders',
+        slug: 'north-star-builders',
+        membershipRole: 'admin',
+        joinedAt: '2026-03-15T09:00:00Z',
+        leftAt: null,
+        isActiveMembership: true,
+        activeMemberCount: 3
+      },
+      outcome: {
+        isShortlisted: true,
+        isWinner: true,
+        finalRank: 1,
+        rankedTeamCount: 24,
+        prizes: [
+          {
+            id: 'prize-1',
+            name: 'Grand Prize'
+          },
+          {
+            id: 'prize-2',
+            name: 'Best Demo'
+          }
+        ]
+      }
+    }))
+
+    expect(notice).toEqual({
+      color: 'success',
+      title: 'Your team won',
+      description: 'North Star Builders was shortlisted, finished #1 of 24 and won Grand Prize and Best Demo.'
+    })
+  })
+
+  test('returns a final rank notice for non-winning teams after winners are announced', () => {
+    const notice = getHackathonParticipationOutcomeNotice(buildRecord({
+      hackathon: {
+        ...buildRecord().hackathon,
+        state: 'completed'
+      },
+      latestTeam: {
+        id: 'team-1',
+        name: 'North Star Builders',
+        slug: 'north-star-builders',
+        membershipRole: 'member',
+        joinedAt: '2026-03-15T09:00:00Z',
+        leftAt: '2026-03-16T09:00:00Z',
+        isActiveMembership: false,
+        activeMemberCount: 0
+      },
+      outcome: {
+        isShortlisted: false,
+        isWinner: false,
+        finalRank: 7,
+        rankedTeamCount: 24,
+        prizes: []
+      }
+    }))
+
+    expect(notice).toEqual({
+      color: 'neutral',
+      title: 'Final ranking available',
+      description: 'North Star Builders finished #7 of 24.'
     })
   })
 })

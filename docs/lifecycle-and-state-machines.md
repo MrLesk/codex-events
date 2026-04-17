@@ -84,13 +84,15 @@ Behavior:
 
 #### `shortlist`
 
-The blind-review leaderboard is reviewed and finalists are selected for the live pitch stage.
+The blind-review leaderboard is reviewed, the full blind shortlist order is saved, and the finalist boundary is selected for the live pitch stage.
 
 Behavior:
 
 - Judges can review blind-review scores.
-- Hackathon admins manually choose and order the finalist submissions that advance to the live pitch stage.
+- Hackathon admins manually order the full blind shortlist and choose which leading submissions are finalists.
+- The saved shortlist order becomes the starting final ranking order unless admins later change it in `final_deliberation`.
 - Team identity remains hidden during shortlist.
+- Participant-facing shortlist status is not published yet.
 
 #### `pitch`
 
@@ -99,8 +101,12 @@ Finalist teams are in the live pitch stage before judges receive post-pitch revi
 Behavior:
 
 - Teams pitch live during this state.
+- Hackathon admins explicitly enable the current finalist presentation one team at a time in the saved lineup order.
 - Judges do not receive pitch-review assignments yet.
-- Hackathon admins can manually end the live pitch stage and start `pitch_review`.
+- When `pitch` is entered from `shortlist`, every active member of each finalist team receives a shortlist email.
+- Finalist teams can see that their own team was shortlisted in the account overview and workspace.
+- `pitch_review` stays unavailable until the full saved lineup has been presented.
+- Hackathon admins can manually start `pitch_review` only after the live pitch lineup is complete.
 
 #### `pitch_review`
 
@@ -132,6 +138,10 @@ Behavior:
 
 - Winner selection is closed.
 - Prize redemption can proceed.
+- The participant prize surface becomes the winners surface and shows winning team names next to each prize.
+- Ranked teams can see their own final rank as `X/Y` in the account overview and workspace.
+- Winning teams can see which prizes their own team won in the account overview and workspace.
+- Every frozen prize-eligible member of each winning team receives a winner email.
 
 #### `completed`
 
@@ -161,13 +171,13 @@ Behavior:
 - `blind_review -> final_deliberation`
   Guard: pitch review is disabled and all active submissions have the configured number of completed blind review outcomes or have been removed from competition.
 - `shortlist -> pitch`
-  Guard: hackathon admins finalize the ordered finalist set and start the live pitch stage manually.
+  Guard: hackathon admins finalize the saved shortlist order, including the ordered finalist set at the top of that list, and start the live pitch stage manually. This transition also enqueues shortlist emails for active members of finalist teams.
 - `pitch -> pitch_review`
-  Guard: hackathon admins end the live pitch stage and start pitch review manually.
+  Guard: hackathon admins complete the live pitch lineup and then start pitch review manually.
 - `pitch_review -> final_deliberation`
   Guard: pitch review is closed by hackathon admins after submitted pitch votes are accepted for scoring.
 - `final_deliberation -> winners_announced`
-  Guard: hackathon admins finalize the ranking and announce winners.
+  Guard: hackathon admins finalize the ranking and announce winners. This transition also enqueues winner emails for frozen prize-eligible members of winning teams.
 - `winners_announced -> completed`
   Guard: hackathon admins close the hackathon.
 

@@ -4,6 +4,7 @@ import {
   processApplicationReviewEmailQueueBatch
 } from '../utils/application-review-email-queue'
 import { defaultApplicationLumaSyncQueueName } from '../utils/application-luma-sync-queue'
+import { defaultHackathonOutcomeEmailQueueName } from '../utils/hackathon-outcome-email-queue'
 import { classifyCloudflareQueueBatch, retryCloudflareQueueBatch } from '../utils/cloudflare-queue-routing'
 
 export default defineNitroPlugin((nitroApp) => {
@@ -11,7 +12,8 @@ export default defineNitroPlugin((nitroApp) => {
     const runtimeConfig = useRuntimeConfig()
     const expectedQueueName = runtimeConfig.applicationReviewEmails?.queueName?.trim() || defaultApplicationReviewEmailQueueName
     const lumaQueueName = runtimeConfig.luma?.queueName?.trim() || defaultApplicationLumaSyncQueueName
-    const batchRoute = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, [lumaQueueName])
+    const outcomeQueueName = runtimeConfig.hackathonOutcomeEmails?.queueName?.trim() || defaultHackathonOutcomeEmailQueueName
+    const batchRoute = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, [lumaQueueName, outcomeQueueName])
 
     if (batchRoute === 'ignore') {
       return
@@ -21,7 +23,7 @@ export default defineNitroPlugin((nitroApp) => {
       console.error('Unexpected Cloudflare queue batch reached the review email consumer.', {
         batchQueue: batch.queue,
         expectedQueue: expectedQueueName,
-        ignoredQueues: [lumaQueueName]
+        ignoredQueues: [lumaQueueName, outcomeQueueName]
       })
       retryCloudflareQueueBatch(batch, {
         delaySeconds: runtimeConfig.applicationReviewEmails?.retryDelaySeconds ?? defaultApplicationReviewEmailRetryDelaySeconds

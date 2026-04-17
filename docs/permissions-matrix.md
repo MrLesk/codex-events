@@ -52,6 +52,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Start blind review | No | No | No | Yes | Yes | No |
 | Move to shortlist | No | No | No | Yes | Yes | No |
 | Start pitch | No | No | No | Yes | Yes | No |
+| Advance pitch presentation | No | No | No | Yes | Yes | No |
 | Start pitch review | No | No | No | Yes | Yes | No |
 | Move to final deliberation | No | No | No | Yes | Yes | No |
 | Announce winners | No | No | No | Yes | Yes | No |
@@ -148,12 +149,21 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Action | Judge | Hackathon Admin | Platform Admin |
 | --- | --- | --- | --- |
 | Review blind-review scores in shortlist | Yes | Yes | Yes |
-| Select and order pitch finalists in shortlist | No | Yes | Yes |
+| Set shortlist order and finalist boundary in shortlist | No | Yes | Yes |
 | Close pitch review with submitted votes only | No | Yes | Yes |
 | Review final scores in `final_deliberation` | Yes | Yes | Yes |
 | Reorder final ranking in `final_deliberation` | No | Yes | Yes |
 | Change underlying judge scores in `final_deliberation` | No | No | No |
 | Announce winners | No | Yes | Yes |
+
+## Participant Outcome Visibility
+
+| Action | Approved User | Staff | Judge | Hackathon Admin | Platform Admin |
+| --- | --- | --- | --- | --- | --- |
+| View own shortlist status after `pitch` starts | Yes, only for the user's own finalist team | No | No | No | No |
+| View own final team rank after `winners_announced` | Yes, only for the user's own ranked team | No | No | No | No |
+| View own awarded prizes after `winners_announced` | Yes, only for the user's own winning team | No | No | No | No |
+| View winning team names next to published prizes after `winners_announced` | Yes | Yes | Yes | Yes | Yes |
 
 ## Prize Redemption
 
@@ -179,6 +189,8 @@ This document defines the canonical permissions for the Codex hackathon platform
 - Staff can view hackathon-wide participant and team data.
 - Workspace users can view the published judge and staff rosters for hackathons they can access in `/account/hackathons/:slug`.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
+- Participants can see shortlist status only for their own team, and only from `pitch` onward when that team advanced.
+- After `winners_announced`, participants can see only their own team's final rank and own awarded prizes in the account workspace.
 - Team members can view their own team membership and submission data.
 - Team admins can view team join requests and manage team membership.
 - Judges see the blind judging view for blind assignments and the open pitch judging view for pitch assignments.
@@ -193,6 +205,6 @@ This document defines the canonical permissions for the Codex hackathon platform
 - Submission creation and editing are allowed only during `submission_open`.
 - Blind review can require `0`, `1`, or `2` blind assignments per submission depending on hackathon configuration.
 - Pitch review can be enabled independently from blind review.
-- When pitch review is enabled, admins manually start the live `pitch` stage before they manually start `pitch_review`.
+- When pitch review is enabled, admins manually start the live `pitch` stage, advance the saved presentation lineup one team at a time, and only then manually start `pitch_review`.
 - When a blind assignment is skipped, the system creates a new active assignment for the judge with the lowest blind-review load.
 - When pitch review closes with missing votes, only submitted pitch votes are averaged into the pitch score.

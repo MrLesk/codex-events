@@ -1,3 +1,5 @@
+import type { PublicHackathonState } from '../composables/useHackathonPresentation'
+
 export const accountHackathonWorkspaceTabs = [
   'overview',
   'credits',
@@ -28,6 +30,35 @@ export interface AccountHackathonTabAccess {
   availableTabs: AccountHackathonWorkspaceTab[]
   showPrizeConfiguration: boolean
   showAgendaConfigurationInDetails: boolean
+}
+
+const defaultAccountHackathonTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
+  overview: 'Overview',
+  credits: 'Credits',
+  workspace: 'Workspace',
+  prizes: 'Prizes',
+  details: 'Details',
+  judges: 'Judges',
+  staff: 'Staff',
+  judging: 'Judging',
+  participants: 'Participants',
+  teams: 'Teams',
+  submissions: 'Submissions',
+  operations: 'Operations',
+  settings: 'Settings'
+}
+
+export function getAccountHackathonTabLabel(
+  tab: AccountHackathonWorkspaceTab,
+  options?: {
+    hackathonState?: PublicHackathonState | null
+  }
+) {
+  if (tab === 'prizes' && ['winners_announced', 'completed'].includes(options?.hackathonState ?? '')) {
+    return 'Winners'
+  }
+
+  return defaultAccountHackathonTabLabels[tab]
 }
 
 export function canAccessAccountHackathonWorkspace(options: {

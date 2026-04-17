@@ -25,6 +25,7 @@ type SubmissionRecord = typeof submissions.$inferSelect
 type JudgeAssignmentRecord = typeof judgeAssignments.$inferSelect
 type JudgeCriterionScoreRecord = typeof judgeCriterionScores.$inferSelect
 type PrizeRecord = typeof prizes.$inferSelect
+type SerializedPrizeSummary = ReturnType<typeof serializePrize>
 
 type LeaderboardCriterionScore = {
   evaluationCriterionId: string
@@ -59,6 +60,14 @@ type CompetitionEntry = {
   finalScoreRank: number | null
   isBlindRanked: boolean
   isFinalRanked: boolean
+}
+
+type TeamCompetitionOutcome = {
+  isShortlisted: boolean
+  isWinner: boolean
+  finalRank: number | null
+  rankedTeamCount: number
+  prizes: SerializedPrizeSummary[]
 }
 
 export const selectFinalistsBodySchema = z.object({
@@ -686,6 +695,54 @@ export async function getWinnersView(database: AppDatabase, hackathonId: string)
       ...entry,
       prizes: (awardsBySubmissionId.get(entry.submissionId) ?? []).map(serializePrize)
     }))
+}
+
+export async function getTeamCompetitionOutcome(
+  database: AppDatabase,
+  hackathonId: string,
+  teamId: string
+): Promise<TeamCompetitionOutcome | null> {
+  const [{ hackathon, entries }, prizeList] = await Promise.all([
+    loadCompetitionEntries(database, hackathonId),
+    database.query.prizes.findMany({
+      where: eq(prizes.hackathonId, hackathonId),
+      orderBy: [asc(prizes.displayOrder), asc(prizes.rankEnd), desc(prizes.rankStart), asc(prizes.createdAt)]
+    })
+  ])
+
+  if (!hackathon) {
+    return null
+  }
+
+  const teamEntry = entries.find(entry => entry.team.id === teamId)
+
+  if (!teamEntry) {
+    return null
+  }
+
+  const shortlistVisible = ['pitch', 'pitch_review', 'final_deliberation', 'winners_announced', 'completed']
+    .includes(hackathon.state)
+  const winnersVisible = ['winners_announced', 'completed'].includes(hackathon.state)
+  const shortlistedSubmissionIds = shortlistVisible
+    ? parseStoredPitchFinalistSubmissionIds(hackathon)
+    : []
+  const { orderedRankedEntries, finalRanksBySubmissionId } = deriveFinalDeliberationOrdering(hackathon, entries)
+  const finalRank = winnersVisible
+    ? finalRanksBySubmissionId.get(teamEntry.submission.id) ?? null
+    : null
+  const awardedPrizes = finalRank === null || !winnersVisible
+    ? []
+    : prizeList
+        .filter(prize => finalRank >= prize.rankStart && finalRank <= prize.rankEnd)
+        .map(serializePrize)
+
+  return {
+    isShortlisted: shortlistedSubmissionIds.includes(teamEntry.submission.id),
+    isWinner: awardedPrizes.length > 0,
+    finalRank,
+    rankedTeamCount: winnersVisible ? orderedRankedEntries.length : 0,
+    prizes: awardedPrizes
+  }
 }
 
 function assertStoredPitchFinalistsMatchEntries(

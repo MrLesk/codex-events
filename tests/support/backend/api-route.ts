@@ -48,6 +48,11 @@ export function createApiRouteTestHarness(options: {
       queueName?: string
       retryDelaySeconds?: number
     }
+    hackathonOutcomeEmails?: {
+      queueBinding?: string
+      queueName?: string
+      retryDelaySeconds?: number
+    }
     luma?: {
       apiKey?: string
       apiBaseUrl?: string
@@ -78,6 +83,9 @@ export function createApiRouteTestHarness(options: {
     const reviewEmailsQueueBinding = options.runtimeConfig?.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
     const reviewEmailsQueueName = options.runtimeConfig?.applicationReviewEmails?.queueName ?? 'codex-hackathons-application-review-email-delivery'
     const reviewEmailsRetryDelaySeconds = options.runtimeConfig?.applicationReviewEmails?.retryDelaySeconds ?? 120
+    const outcomeEmailsQueueBinding = options.runtimeConfig?.hackathonOutcomeEmails?.queueBinding ?? 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+    const outcomeEmailsQueueName = options.runtimeConfig?.hackathonOutcomeEmails?.queueName ?? 'codex-hackathons-hackathon-outcome-email-delivery'
+    const outcomeEmailsRetryDelaySeconds = options.runtimeConfig?.hackathonOutcomeEmails?.retryDelaySeconds ?? 120
     const lumaApiKey = options.runtimeConfig?.luma?.apiKey ?? ''
     const lumaApiBaseUrl = options.runtimeConfig?.luma?.apiBaseUrl ?? 'https://public-api.luma.com'
     const lumaProfileBaseUrl = options.runtimeConfig?.luma?.profileBaseUrl ?? 'https://luma.com'
@@ -115,6 +123,11 @@ export function createApiRouteTestHarness(options: {
         queueBinding: reviewEmailsQueueBinding,
         queueName: reviewEmailsQueueName,
         retryDelaySeconds: reviewEmailsRetryDelaySeconds
+      },
+      hackathonOutcomeEmails: {
+        queueBinding: outcomeEmailsQueueBinding,
+        queueName: outcomeEmailsQueueName,
+        retryDelaySeconds: outcomeEmailsRetryDelaySeconds
       },
       luma: {
         apiKey: lumaApiKey,

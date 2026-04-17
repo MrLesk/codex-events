@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   canAccessAccountHackathonWorkspace,
   getAccountHackathonTabAccess,
+  getAccountHackathonTabLabel,
   resolveAccountHackathonScopedId
 } from '../../../../app/utils/account-hackathon-tabs'
 
@@ -133,5 +134,17 @@ describe('getAccountHackathonTabAccess', () => {
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
+  })
+
+  test('renames the prizes tab to winners after winners are published', () => {
+    expect(getAccountHackathonTabLabel('prizes', {
+      hackathonState: 'winners_announced'
+    })).toBe('Winners')
+    expect(getAccountHackathonTabLabel('prizes', {
+      hackathonState: 'completed'
+    })).toBe('Winners')
+    expect(getAccountHackathonTabLabel('prizes', {
+      hackathonState: 'pitch_review'
+    })).toBe('Prizes')
   })
 })

@@ -68,6 +68,7 @@ export default defineEventHandler(async (event) => {
   const profileIconsBindingName = runtimeConfig.profileIcons?.binding ?? 'PROFILE_ICONS'
   const hackathonImagesBindingName = runtimeConfig.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
   const applicationReviewEmailQueueBindingName = runtimeConfig.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
+  const hackathonOutcomeEmailQueueBindingName = runtimeConfig.hackathonOutcomeEmails?.queueBinding ?? 'HACKATHON_OUTCOME_EMAIL_QUEUE'
   const applicationLumaSyncQueueBindingName = runtimeConfig.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
 
@@ -103,6 +104,12 @@ export default defineEventHandler(async (event) => {
       ? undefined
       : proxyEnv.APPLICATION_REVIEW_EMAIL_QUEUE)
   const applicationReviewEmailQueue = existingApplicationReviewEmailQueue ?? proxyApplicationReviewEmailQueue
+  const existingHackathonOutcomeEmailQueue = cloudflareEnv?.[hackathonOutcomeEmailQueueBindingName]
+  const proxyHackathonOutcomeEmailQueue = proxyEnv[hackathonOutcomeEmailQueueBindingName]
+    ?? (hackathonOutcomeEmailQueueBindingName === 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+      ? undefined
+      : proxyEnv.HACKATHON_OUTCOME_EMAIL_QUEUE)
+  const hackathonOutcomeEmailQueue = existingHackathonOutcomeEmailQueue ?? proxyHackathonOutcomeEmailQueue
   const existingApplicationLumaSyncQueue = cloudflareEnv?.[applicationLumaSyncQueueBindingName]
   const proxyApplicationLumaSyncQueue = proxyEnv[applicationLumaSyncQueueBindingName]
     ?? (applicationLumaSyncQueueBindingName === 'APPLICATION_LUMA_SYNC_QUEUE'
@@ -140,6 +147,10 @@ export default defineEventHandler(async (event) => {
 
   if (!event.context.cloudflare.env[applicationReviewEmailQueueBindingName] && isQueueProducerLike(applicationReviewEmailQueue)) {
     event.context.cloudflare.env[applicationReviewEmailQueueBindingName] = applicationReviewEmailQueue as never
+  }
+
+  if (!event.context.cloudflare.env[hackathonOutcomeEmailQueueBindingName] && isQueueProducerLike(hackathonOutcomeEmailQueue)) {
+    event.context.cloudflare.env[hackathonOutcomeEmailQueueBindingName] = hackathonOutcomeEmailQueue as never
   }
 
   if (!event.context.cloudflare.env[applicationLumaSyncQueueBindingName] && isQueueProducerLike(applicationLumaSyncQueue)) {

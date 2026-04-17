@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import type { PublicPrize } from '~/composables/useHackathonPresentation'
 
-defineProps<{
-  prizes: PublicPrize[]
-}>()
+const props = withDefaults(defineProps<{
+  prizes: Array<PublicPrize & {
+    id?: string
+  }>
+  title?: string
+  winnerTeamNamesByPrizeId?: Record<string, string[]>
+}>(), {
+  title: 'Published awards',
+  winnerTeamNamesByPrizeId: () => ({})
+})
 
 function getPodiumCup(prize: PublicPrize) {
   if (prize.rankStart !== prize.rankEnd) {
@@ -33,6 +40,22 @@ function getPodiumCup(prize: PublicPrize) {
 
   return null
 }
+
+function formatWinnerTeamNames(names: string[]) {
+  if (names.length === 0) {
+    return ''
+  }
+
+  if (names.length === 1) {
+    return names[0]!
+  }
+
+  if (names.length === 2) {
+    return `${names[0]} and ${names[1]}`
+  }
+
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
+}
 </script>
 
 <template>
@@ -41,11 +64,11 @@ function getPodiumCup(prize: PublicPrize) {
     data-testid="public-hackathon-prizes"
   >
     <h2 class="mb-4 text-[16px] font-medium text-highlighted dark:text-white">
-      Published awards
+      {{ props.title }}
     </h2>
 
     <div
-      v-if="prizes.length === 0"
+      v-if="props.prizes.length === 0"
       class="text-[14px] leading-relaxed text-neutral-500 dark:text-[#A3A3A3]"
     >
       This program has not published prize definitions yet.
@@ -56,7 +79,7 @@ function getPodiumCup(prize: PublicPrize) {
       class="divide-y divide-black/8 dark:divide-white/[0.08]"
     >
       <div
-        v-for="prize in prizes"
+        v-for="prize in props.prizes"
         :key="`${prize.rankStart}-${prize.rankEnd}-${prize.name}`"
         class="py-5 first:pt-0 last:pb-0"
       >
@@ -81,6 +104,13 @@ function getPodiumCup(prize: PublicPrize) {
                 </h3>
                 <div class="text-[12px] font-medium text-neutral-500 dark:text-[#A3A3A3]">
                   {{ formatPrizeRank(prize) }}
+                </div>
+                <div
+                  v-if="prize.id && (props.winnerTeamNamesByPrizeId[prize.id]?.length ?? 0) > 0"
+                  class="text-[12px] font-medium text-success"
+                >
+                  {{ (props.winnerTeamNamesByPrizeId[prize.id]?.length ?? 0) === 1 ? 'Winner' : 'Winners' }}:
+                  {{ formatWinnerTeamNames(props.winnerTeamNamesByPrizeId[prize.id] ?? []) }}
                 </div>
               </div>
 

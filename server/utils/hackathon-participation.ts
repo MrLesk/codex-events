@@ -12,6 +12,7 @@ import {
   userApplications
 } from '../database/schema'
 import { parseHackathonAgendaItems } from './hackathon-management'
+import { getTeamCompetitionOutcome } from './shortlist'
 import { serializeSubmission } from './submissions'
 
 type HackathonRecord = typeof hackathons.$inferSelect
@@ -21,6 +22,13 @@ type TeamMemberRecord = typeof teamMembers.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
 
 const pastParticipationStates = new Set<HackathonRecord['state']>([
+  'winners_announced',
+  'completed'
+])
+const outcomeVisibleStates = new Set<HackathonRecord['state']>([
+  'pitch',
+  'pitch_review',
+  'final_deliberation',
   'winners_announced',
   'completed'
 ])
@@ -101,6 +109,23 @@ function serializeParticipationTeam(
     leftAt: membership.leftAt,
     isActiveMembership: membership.leftAt === null,
     activeMemberCount
+  }
+}
+
+function serializeParticipationOutcome(outcome: Awaited<ReturnType<typeof getTeamCompetitionOutcome>>) {
+  if (!outcome) {
+    return null
+  }
+
+  return {
+    isShortlisted: outcome.isShortlisted,
+    isWinner: outcome.isWinner,
+    finalRank: outcome.finalRank,
+    rankedTeamCount: outcome.rankedTeamCount,
+    prizes: outcome.prizes.map(prize => ({
+      id: prize.id,
+      name: prize.name
+    }))
   }
 }
 
@@ -219,8 +244,8 @@ export async function listOwnHackathonParticipation(event: H3Event) {
     membershipEntriesByHackathonId.set(relatedTeam.hackathonId, entries)
   }
 
-  const participationRecords = relatedHackathons
-    .map((hackathon: HackathonRecord) => {
+  const participationRecords = (await Promise.all(relatedHackathons
+    .map(async (hackathon: HackathonRecord) => {
       const application = applicationByHackathonId.get(hackathon.id) ?? null
       const membershipEntries = (membershipEntriesByHackathonId.get(hackathon.id) ?? [])
         .sort((left, right) =>
@@ -231,6 +256,9 @@ export async function listOwnHackathonParticipation(event: H3Event) {
       const primaryTeamId = activeMembershipEntry?.team.id ?? latestMembershipEntry?.team.id ?? null
       const latestSubmission = primaryTeamId
         ? latestSubmissionByTeamId.get(primaryTeamId) ?? null
+        : null
+      const outcome = primaryTeamId && outcomeVisibleStates.has(hackathon.state)
+        ? await getTeamCompetitionOutcome(database, hackathon.id, primaryTeamId)
         : null
 
       if (!application && !latestMembershipEntry) {
@@ -268,9 +296,10 @@ export async function listOwnHackathonParticipation(event: H3Event) {
         application: application ? serializeApplicationSummary(application) : null,
         activeTeam,
         latestTeam,
-        latestSubmission: latestSubmission ? serializeSubmission(latestSubmission) : null
+        latestSubmission: latestSubmission ? serializeSubmission(latestSubmission) : null,
+        outcome: serializeParticipationOutcome(outcome)
       }
-    })
+    })))
     .filter((record): record is NonNullable<typeof record> => Boolean(record))
     .sort((left, right) => sortByRecentTimestampDesc(left.lastActivityAt, right.lastActivityAt))
 

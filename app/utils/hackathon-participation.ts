@@ -36,6 +36,19 @@ export interface HackathonParticipationTeamSummary {
   activeMemberCount: number
 }
 
+export interface HackathonParticipationPrizeSummary {
+  id: string
+  name: string
+}
+
+export interface HackathonParticipationOutcomeSummary {
+  isShortlisted: boolean
+  isWinner: boolean
+  finalRank: number | null
+  rankedTeamCount: number
+  prizes: HackathonParticipationPrizeSummary[]
+}
+
 export interface HackathonParticipationRecord {
   hackathon: HackathonParticipationHackathonSummary
   isPast: boolean
@@ -44,6 +57,7 @@ export interface HackathonParticipationRecord {
   activeTeam: HackathonParticipationTeamSummary | null
   latestTeam: HackathonParticipationTeamSummary | null
   latestSubmission: TeamSubmissionRecord | null
+  outcome: HackathonParticipationOutcomeSummary | null
 }
 
 export interface HackathonParticipationPayload {
@@ -60,8 +74,103 @@ export interface HackathonParticipationPrimaryAction {
   label: string
 }
 
+export interface HackathonParticipationOutcomeNotice {
+  color: 'success' | 'info' | 'neutral'
+  title: string
+  description: string
+}
+
 export function normalizeHackathonParticipationApiError(error: unknown) {
   return normalizeParticipantApiError(error)
+}
+
+function formatOutcomePrizeNames(prizes: HackathonParticipationPrizeSummary[]) {
+  const names = prizes
+    .map(prize => prize.name.trim())
+    .filter(Boolean)
+
+  if (names.length === 0) {
+    return ''
+  }
+
+  if (names.length === 1) {
+    return names[0]!
+  }
+
+  if (names.length === 2) {
+    return `${names[0]} and ${names[1]}`
+  }
+
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
+}
+
+export function getHackathonParticipationOutcomeNotice(
+  record: {
+    hackathon: Pick<HackathonParticipationHackathonSummary, 'state'>
+    activeTeam?: Pick<HackathonParticipationTeamSummary, 'name'> | null
+    latestTeam?: Pick<HackathonParticipationTeamSummary, 'name'> | null
+    outcome: HackathonParticipationOutcomeSummary | null
+  }
+): HackathonParticipationOutcomeNotice | null {
+  const outcome = record.outcome
+
+  if (!outcome) {
+    return null
+  }
+
+  const teamName = record.activeTeam?.name ?? record.latestTeam?.name ?? 'Your team'
+
+  if (['pitch', 'pitch_review', 'final_deliberation'].includes(record.hackathon.state)) {
+    if (!outcome.isShortlisted) {
+      return null
+    }
+
+    return {
+      color: 'info',
+      title: 'Your team is shortlisted',
+      description: `${teamName} advanced to the live pitch stage.`
+    }
+  }
+
+  if (!['winners_announced', 'completed'].includes(record.hackathon.state)) {
+    return null
+  }
+
+  const rankLabel = outcome.finalRank !== null && outcome.rankedTeamCount > 0
+    ? `#${outcome.finalRank} of ${outcome.rankedTeamCount}`
+    : null
+
+  if (outcome.isWinner && outcome.prizes.length > 0) {
+    const prizeNames = formatOutcomePrizeNames(outcome.prizes)
+
+    return {
+      color: 'success',
+      title: 'Your team won',
+      description: rankLabel
+        ? `${teamName}${outcome.isShortlisted ? ' was shortlisted,' : ''} finished ${rankLabel} and won ${prizeNames}.`
+        : `${teamName} won ${prizeNames}.`
+    }
+  }
+
+  if (rankLabel) {
+    return {
+      color: 'neutral',
+      title: 'Final ranking available',
+      description: outcome.isShortlisted
+        ? `${teamName} made the shortlist and finished ${rankLabel}.`
+        : `${teamName} finished ${rankLabel}.`
+    }
+  }
+
+  if (outcome.isShortlisted) {
+    return {
+      color: 'neutral',
+      title: 'Final ranking available',
+      description: `${teamName} made the shortlist.`
+    }
+  }
+
+  return null
 }
 
 export function getHackathonParticipationPrimaryAction(

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { PublicHackathon } from '~/composables/useHackathonPresentation'
+import type { HackathonParticipationOutcomeSummary } from '~/utils/hackathon-participation'
 import type {
   SubmissionTrackOption,
   TeamSubmissionRecord
@@ -11,6 +12,7 @@ import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWor
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import { cloneFormValues } from '~/utils/form-values'
 import { teamProfileFormSchema } from '~/utils/form-schemas'
+import { getHackathonParticipationOutcomeNotice } from '~/utils/hackathon-participation'
 import {
   getCreateTeamAvailability,
   getLeaveTeamAvailability,
@@ -38,6 +40,7 @@ const props = defineProps<{
   }
   applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
   initialSubmission: TeamSubmissionRecord | null
+  participationOutcome: HackathonParticipationOutcomeSummary | null
 }>()
 
 const toast = useToast()
@@ -73,6 +76,24 @@ const ownApplicationStatus = computed(() => props.applicationStatus)
 const displayedTeam = computed(() => workspace.currentTeam.value ?? workspace.ownTeam.value)
 const displayedTeamMembership = computed(() =>
   workspace.currentTeamMembership.value ?? workspace.ownTeamMembership.value
+)
+const workspaceOutcomeNotice = computed(() =>
+  getHackathonParticipationOutcomeNotice({
+    hackathon: {
+      state: props.hackathon.state
+    },
+    activeTeam: displayedTeam.value
+      ? {
+          name: displayedTeam.value.name
+        }
+      : null,
+    latestTeam: displayedTeam.value
+      ? {
+          name: displayedTeam.value.name
+        }
+      : null,
+    outcome: props.participationOutcome
+  })
 )
 const canManageTeam = computed(() => workspace.isCurrentTeamAdmin.value)
 const defaultSoloTeamName = computed(() => {
@@ -545,6 +566,14 @@ async function withdrawSubmission() {
           variant="soft"
           title="Current team membership unresolved"
           :description="workspace.ownTeamErrorMessage.value"
+        />
+
+        <AppAlert
+          v-if="workspaceOutcomeNotice"
+          :color="workspaceOutcomeNotice.color"
+          variant="soft"
+          :title="workspaceOutcomeNotice.title"
+          :description="workspaceOutcomeNotice.description"
         />
 
         <template v-if="displayedTeam">

@@ -1,11 +1,15 @@
-import { eq } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 
 import { requirePlatformActor } from '../../../../auth/actor'
 import { writeAuditLog } from '../../../../database/audit-log'
 import { getDatabase } from '../../../../database/client'
-import { hackathons } from '../../../../database/schema'
+import { hackathons, teamMembers, teams, users } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
+import {
+  buildHackathonOutcomeEmailQueueMessage,
+  enqueueHackathonOutcomeEmailMessage
+} from '../../../../utils/hackathon-outcome-email-queue'
 import {
   assertStartPitchAllowed,
   listLockedSubmissionsForHackathon,
@@ -17,6 +21,10 @@ import {
   serializeHackathon
 } from '../../../../utils/hackathon-management'
 import { parseValidatedParams } from '../../../../utils/validation'
+
+type TeamRecord = typeof teams.$inferSelect
+type TeamMemberRecord = typeof teamMembers.$inferSelect
+type UserRecord = typeof users.$inferSelect
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
@@ -36,6 +44,9 @@ export default defineApiHandler(async (event) => {
   await database
     .update(hackathons)
     .set({
+      pitchFinalistSubmissionIdsJson: JSON.stringify(finalistSubmissions.map(submission => submission.id)),
+      activePitchPresentationSubmissionId: null,
+      pitchPresentationsCompletedAt: null,
       state: 'pitch',
       updatedAt: transitionedAt
     })
@@ -53,6 +64,72 @@ export default defineApiHandler(async (event) => {
       finalistSubmissionCount: finalistSubmissions.length
     }
   })
+
+  if (hackathon.state === 'shortlist' && finalistSubmissions.length > 0) {
+    const finalistTeamIds = [...new Set(finalistSubmissions.map(submission => submission.teamId))]
+    const [finalistTeamsResult, finalistMembersResult] = await Promise.all([
+      database.query.teams.findMany({
+        where: inArray(teams.id, finalistTeamIds),
+        orderBy: [asc(teams.createdAt), asc(teams.name)]
+      }),
+      database.query.teamMembers.findMany({
+        where: and(
+          inArray(teamMembers.teamId, finalistTeamIds),
+          isNull(teamMembers.leftAt)
+        ),
+        orderBy: [asc(teamMembers.joinedAt), asc(teamMembers.createdAt)]
+      })
+    ])
+    const finalistTeams = finalistTeamsResult as TeamRecord[]
+    const finalistMembers = finalistMembersResult as TeamMemberRecord[]
+    const finalistUserIds = [...new Set(finalistMembers.map((member: TeamMemberRecord) => member.userId))]
+    const finalistUsersResult = finalistUserIds.length === 0
+      ? []
+      : await database.query.users.findMany({
+          where: inArray(users.id, finalistUserIds)
+        })
+    const finalistUsers = finalistUsersResult as UserRecord[]
+    const teamsById = new Map(finalistTeams.map((team: TeamRecord) => [team.id, team] as const))
+    const usersById = new Map(finalistUsers.map((user: UserRecord) => [user.id, user] as const))
+
+    for (const member of finalistMembers) {
+      const team = teamsById.get(member.teamId)
+
+      if (!team) {
+        continue
+      }
+
+      const recipient = usersById.get(member.userId)
+      const enqueueResult = await enqueueHackathonOutcomeEmailMessage(
+        event,
+        buildHackathonOutcomeEmailQueueMessage({
+          notificationType: 'shortlist',
+          hackathonId,
+          hackathonName: hackathon.name,
+          hackathonSlug: hackathon.slug,
+          teamId: team.id,
+          teamName: team.name,
+          recipientUserId: member.userId,
+          recipientEmail: recipient?.email ?? null,
+          recipientDisplayName: recipient?.displayName ?? null,
+          announcedAt: transitionedAt
+        })
+      )
+
+      await writeAuditLog(database, {
+        actorUserId: actor.platformUser.id,
+        entityType: 'hackathon',
+        entityId: hackathonId,
+        action: 'hackathon.shortlist_email_enqueued',
+        metadata: {
+          trigger: 'start_pitch',
+          teamId: team.id,
+          userId: member.userId,
+          enqueue: enqueueResult
+        }
+      })
+    }
+  }
 
   const updatedHackathon = await database.query.hackathons.findFirst({
     where: eq(hackathons.id, hackathonId)

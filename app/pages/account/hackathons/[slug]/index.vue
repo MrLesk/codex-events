@@ -14,6 +14,7 @@ import type {
   ParticipantApiDataResponse,
   ParticipantApplicationRecord
 } from '~/utils/participant-application'
+import type { WinnerEntry } from '~/utils/admin-workspace'
 
 import AccountHackathonAdminOperationsPanel from '~/components/account/hackathons/AccountHackathonAdminOperationsPanel.vue'
 import AccountHackathonPublishedRosterPanel from '~/components/account/hackathons/AccountHackathonPublishedRosterPanel.vue'
@@ -39,6 +40,7 @@ import {
 import {
   canAccessAccountHackathonWorkspace,
   getAccountHackathonTabAccess,
+  getAccountHackathonTabLabel,
   resolveAccountHackathonScopedId,
   type AccountHackathonWorkspaceTab
 } from '~/utils/account-hackathon-tabs'
@@ -48,6 +50,7 @@ import {
   loadPublishedHackathonRoster,
   type PublishedHackathonRosterMember
 } from '~/utils/hackathon-published-roster'
+import { getHackathonParticipationOutcomeNotice } from '~/utils/hackathon-participation'
 import {
   formatParticipantApplicationStatus,
   getParticipantApplicationWithdrawalAvailability,
@@ -113,20 +116,8 @@ type AccountWorkspaceHackathon = Omit<PublicHackathon, 'tracks'> & {
   }>
 }
 
-const workspaceTabLabels: Record<AccountHackathonWorkspaceTab, string> = {
-  overview: 'Overview',
-  credits: 'Credits',
-  workspace: 'Workspace',
-  prizes: 'Prizes',
-  details: 'Details',
-  judges: 'Judges',
-  staff: 'Staff',
-  judging: 'Judging',
-  participants: 'Participants',
-  teams: 'Teams',
-  submissions: 'Submissions',
-  operations: 'Operations',
-  settings: 'Settings'
+type AccountPrizeSummary = PublicPrize & {
+  id: string
 }
 
 const route = useRoute()
@@ -164,16 +155,18 @@ if (!hackathonResponse.value?.data) {
 const requestFetch = import.meta.server ? useRequestFetch() : $fetch
 const shouldPrefetchPublishedJudgesRoster = actor.value.kind === 'platform_user'
 const shouldPrefetchPublishedStaffRoster = actor.value.kind === 'platform_user'
+const shouldPrefetchWinners = ['winners_announced', 'completed'].includes(hackathonResponse.value.data.state)
 const [
   criteriaResponse,
   prizesResponse,
   accountHackathonsResponse,
   participationResponse,
   publishedJudgesRoster,
-  publishedStaffRoster
+  publishedStaffRoster,
+  winnersResponse
 ] = await Promise.all([
   requestFetch<PublicApiListResponse<{ name: string }>>(`/api/hackathons/${hackathonResponse.value.data.id}/evaluation-criteria`),
-  requestFetch<PublicApiListResponse<PublicPrize>>(`/api/hackathons/${hackathonResponse.value.data.id}/prizes`),
+  requestFetch<PublicApiListResponse<AccountPrizeSummary>>(`/api/hackathons/${hackathonResponse.value.data.id}/prizes`),
   requestFetch<AccountHackathonsResponse>('/api/account/hackathons'),
   requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>('/api/hackathons/participation'),
   shouldPrefetchPublishedJudgesRoster
@@ -193,7 +186,12 @@ const [
           role: 'staff'
         }
       )
-    : Promise.resolve(createEmptyPublishedHackathonRosterLoadState())
+    : Promise.resolve(createEmptyPublishedHackathonRosterLoadState()),
+  shouldPrefetchWinners
+    ? requestFetch<PublicApiListResponse<WinnerEntry>>(`/api/hackathons/${hackathonResponse.value.data.id}/winners`)
+    : Promise.resolve({
+      data: []
+    } satisfies PublicApiListResponse<WinnerEntry>)
 ])
 const toast = useToast()
 const accountHackathonsData = ref(accountHackathonsResponse.data)
@@ -221,6 +219,7 @@ const workspaceHackathonId = computed(() => resolveAccountHackathonScopedId({
 }))
 const criteriaCount = computed(() => criteriaResponse.data.length)
 const prizes = computed(() => prizesResponse.data)
+const winners = computed(() => winnersResponse.data)
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 const canJudge = computed(() =>
   actor.value.kind === 'platform_user'
@@ -308,7 +307,9 @@ function buildWorkspaceSectionLocation(nextSection: AccountHackathonWorkspaceTab
 const visibleTabs = computed(() =>
   availableTabs.value.map(tab => ({
     id: tab,
-    label: workspaceTabLabels[tab],
+    label: getAccountHackathonTabLabel(tab, {
+      hackathonState: hackathon.value.state
+    }),
     to: buildWorkspaceSectionLocation(tab)
   }))
 )
@@ -375,6 +376,11 @@ const applicationStatusSummary = computed(() =>
   applicationStatus.value
     ? summarizeParticipantApplicationStatus(applicationStatus.value, hackathon.value.state)
     : ''
+)
+const participantOutcomeNotice = computed(() =>
+  participationRecord.value
+    ? getHackathonParticipationOutcomeNotice(participationRecord.value)
+    : null
 )
 const showHeaderApplicationStatusSummary = computed(() =>
   Boolean(applicationStatusSummary.value) && applicationStatus.value !== 'approved'
@@ -460,6 +466,21 @@ const detailSummary = computed(() => [
   formatHackathonLocation(hackathon.value),
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
+const winnerTeamNamesByPrizeId = computed<Record<string, string[]>>(() => {
+  const namesByPrizeId = new Map<string, Set<string>>()
+
+  for (const winner of winners.value) {
+    for (const prize of winner.prizes) {
+      const teamNames = namesByPrizeId.get(prize.id) ?? new Set<string>()
+      teamNames.add(winner.teamName)
+      namesByPrizeId.set(prize.id, teamNames)
+    }
+  }
+
+  return Object.fromEntries(
+    [...namesByPrizeId.entries()].map(([prizeId, teamNames]) => [prizeId, [...teamNames]])
+  )
+})
 
 function updateAccessRecordApplicationStatus(nextStatus: ParticipantApplicationRecord['status']) {
   const patchRecords = (records: AccountHackathonAccessRecord[]) =>
@@ -685,6 +706,14 @@ useSeoMeta({
               :description="withdrawApplicationErrorMessage"
             />
 
+            <AppAlert
+              v-if="participantOutcomeNotice"
+              :color="participantOutcomeNotice.color"
+              variant="soft"
+              :title="participantOutcomeNotice.title"
+              :description="participantOutcomeNotice.description"
+            />
+
             <template v-if="applicationStatus === 'approved'">
               <section
                 v-if="showApprovedOverviewActions"
@@ -873,6 +902,7 @@ useSeoMeta({
           :hackathon="hackathon"
           :application-status="applicationStatus"
           :initial-submission="participationRecord?.latestSubmission ?? null"
+          :participation-outcome="participationRecord?.outcome ?? null"
         />
       </section>
 
@@ -883,7 +913,11 @@ useSeoMeta({
         aria-labelledby="account-tab-prizes"
         class="space-y-8"
       >
-        <HackathonPrizeList :prizes="prizes" />
+        <HackathonPrizeList
+          :prizes="prizes"
+          :title="getAccountHackathonTabLabel('prizes', { hackathonState: hackathon.state }) === 'Winners' ? 'Published winners' : undefined"
+          :winner-team-names-by-prize-id="winnerTeamNamesByPrizeId"
+        />
 
         <AccountHackathonAdminSettingsPanel
           v-if="tabAccess.showPrizeConfiguration"
