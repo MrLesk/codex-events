@@ -3,7 +3,6 @@ import type { BlindJudgeAssignmentDetail } from '~/utils/judging-workspace'
 
 import JudgeAssignmentStatusBadge from '~/components/judging/JudgeAssignmentStatusBadge.vue'
 import {
-  formatBlindApplicationCount,
   formatJudgeIneligibilityStatus,
   resolveJudgeIneligibilityColor
 } from '~/utils/judging-workspace'
@@ -17,7 +16,7 @@ defineProps<{
   <AppCard class="rounded-xl hackathon-workspace-detail-panel">
     <template #header>
       <div class="space-y-3">
-        <div class="space-y-2">
+        <div>
           <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
             Blind review assignment
           </p>
@@ -26,7 +25,7 @@ defineProps<{
               data-testid="judge-assignment-project-name"
               class="text-xl font-semibold text-highlighted dark:text-white"
             >
-              Blind submission
+              {{ assignment.blindSubmission.projectName ?? 'Untitled submission' }}
             </h2>
 
             <div
@@ -45,9 +44,6 @@ defineProps<{
               {{ formatJudgeIneligibilityStatus(assignment.ineligibilityStatus) }}
             </AppBadge>
           </div>
-          <p class="max-w-3xl text-sm leading-7 text-toned">
-            Review the submission materials without project or team identity. Score each criterion on the shared 0-10 scale once you have enough signal.
-          </p>
         </div>
       </div>
     </template>
@@ -56,32 +52,33 @@ defineProps<{
       data-testid="judge-blind-submission"
       class="space-y-6"
     >
-      <div class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]">
-        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-          Blind context
-        </p>
-        <p class="mt-1 text-[15px] font-semibold text-highlighted dark:text-white">
-          {{ formatBlindApplicationCount(assignment.blindSubmission.applications.length) }}
-        </p>
-      </div>
-
-      <p class="text-sm leading-7 text-toned">
-        {{ assignment.blindSubmission.summary || 'No project summary is available for this submission yet.' }}
-      </p>
-
       <div
-        v-if="assignment.blindSubmission.track"
-        class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]"
+        class="grid gap-6"
+        :class="assignment.blindSubmission.track ? 'lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start' : ''"
       >
-        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-          Track
-        </p>
-        <p class="mt-1 text-[15px] font-semibold text-highlighted dark:text-white">
-          {{ assignment.blindSubmission.track.name }}
-        </p>
-        <p class="mt-1 text-sm text-toned">
-          {{ assignment.blindSubmission.track.description }}
-        </p>
+        <div class="min-w-0 space-y-2">
+          <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+            Submission description
+          </p>
+          <p class="text-sm leading-7 text-toned">
+            {{ assignment.blindSubmission.summary || 'No project summary is available for this submission yet.' }}
+          </p>
+        </div>
+
+        <div
+          v-if="assignment.blindSubmission.track"
+          class="rounded-xl border border-black/8 bg-[#F7F7F8] px-4 py-3 dark:border-white/[0.08] dark:bg-[#171717]"
+        >
+          <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+            Track
+          </p>
+          <p class="mt-1 text-[15px] font-semibold text-highlighted dark:text-white">
+            {{ assignment.blindSubmission.track.name }}
+          </p>
+          <p class="mt-1 text-sm text-toned">
+            {{ assignment.blindSubmission.track.description }}
+          </p>
+        </div>
       </div>
 
       <div
@@ -115,6 +112,13 @@ defineProps<{
         >
           Demo
         </AppButton>
+      </div>
+
+      <div
+        v-if="$slots.default"
+        class="space-y-5 border-t border-black/8 pt-6 dark:border-white/[0.08]"
+      >
+        <slot />
       </div>
     </div>
   </AppCard>

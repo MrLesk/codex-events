@@ -2,7 +2,7 @@ import { readBody } from 'h3'
 import { eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '../../../../../../../database/audit-log'
-import { judgeAssignments, judgeCriterionScores } from '../../../../../../../database/schema'
+import { judgeAssignments } from '../../../../../../../database/schema'
 import { defineApiHandler } from '../../../../../../../utils/api-handler'
 import { apiData } from '../../../../../../../utils/api-response'
 import {
@@ -14,7 +14,8 @@ import {
   judgingAssignmentParamsSchema,
   normalizeCompletionCriterionScores,
   normalizePitchReviewCompletion,
-  requireJudgeAssignmentContext
+  requireJudgeAssignmentContext,
+  saveJudgeCriterionScores
 } from '../../../../../../../utils/judging'
 import { parseValidatedParams, validateWithSchema } from '../../../../../../../utils/validation'
 
@@ -66,26 +67,15 @@ export default defineApiHandler(async (event) => {
       validateWithSchema(completeJudgeAssignmentBodySchema, body, 'body')
     )
 
-    await database.batch([
-      database
-        .update(judgeAssignments)
-        .set({
-          status: 'judge_completed',
-          completedAt
-        })
-        .where(eq(judgeAssignments.id, assignment.id)),
-      database.insert(judgeCriterionScores).values(
-        normalizedScores.map(score => ({
-          id: crypto.randomUUID(),
-          judgeAssignmentId: assignment.id,
-          evaluationCriterionId: score.evaluationCriterionId,
-          score: score.score,
-          comment: score.comment ?? null,
-          createdAt: completedAt,
-          updatedAt: completedAt
-        }))
-      )
-    ])
+    await database
+      .update(judgeAssignments)
+      .set({
+        status: 'judge_completed',
+        completedAt
+      })
+      .where(eq(judgeAssignments.id, assignment.id))
+
+    await saveJudgeCriterionScores(database, assignment.id, normalizedScores, completedAt)
 
     completionMetadata = {
       criterionScoreCount: normalizedScores.length

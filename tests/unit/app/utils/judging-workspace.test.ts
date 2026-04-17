@@ -15,6 +15,7 @@ import {
   buildCompletionCriterionScoresPayload,
   buildJudgeWorkspaceCacheKey,
   buildPitchReviewCompletionPayload,
+  buildSavedCriterionScoresPayload,
   canAutoStartBlindReviewFromScoreSelection,
   canCompleteJudgeAssignment,
   canMarkJudgeAssignmentIneligible,
@@ -371,7 +372,7 @@ describe('judging-workspace copy', () => {
     const copy = getJudgeAssignmentInboxCardCopy(createBlindAssignment())
 
     expect(copy).toMatchObject({
-      title: 'Blind submission',
+      title: 'Blind Build',
       subtitle: null,
       summary: 'Anonymous summary',
       contextLabel: 'Blind context',
@@ -379,7 +380,7 @@ describe('judging-workspace copy', () => {
       reviewSignal: 'Ready to start',
       openLabel: 'Open blind review'
     })
-    expect(JSON.stringify(copy)).not.toContain('Blind Build')
+    expect(JSON.stringify(copy)).not.toContain('Alpha Team')
   })
 
   test('reveals project and team identity in pitch inbox card copy', () => {
@@ -629,6 +630,35 @@ describe('judging-workspace scoring drafts', () => {
       {
         ...drafts[1],
         score: '7'
+      }
+    ])).toEqual([
+      {
+        evaluationCriterionId: 'criterion-1',
+        score: 8,
+        comment: 'Fresh idea'
+      },
+      {
+        evaluationCriterionId: 'criterion-2',
+        score: 7,
+        comment: undefined
+      }
+    ])
+
+    expect(buildSavedCriterionScoresPayload([
+      {
+        ...drafts[0]
+      },
+      {
+        ...drafts[1],
+        score: '7'
+      },
+      {
+        evaluationCriterionId: 'criterion-3',
+        criterionName: 'Presentation',
+        criterionDescription: 'How clearly the project is presented.',
+        criterionWeight: 2,
+        score: '',
+        comment: 'Still deciding'
       }
     ])).toEqual([
       {

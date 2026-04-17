@@ -5,26 +5,24 @@ Feature: TASK-4.7 judge workspace UI
     Given the saved "judge" Auth0 session state exists
     When I open the judge workspace with the saved "judge" session
     Then I should see the fixture blind workspace assignment card
-    And the fixture blind workspace assignment card should show title "Blind submission"
+    And the fixture blind workspace assignment card should show title "Workspace Project One"
     And the fixture blind workspace assignment card should show context label "Blind context"
     And I should not see the judge workspace text "Fixture Judge Workspace Team One"
-    And I should not see the judge workspace text "Workspace Project One"
     When I open the fixture blind workspace assignment
-    Then I should see the blind assignment title "Blind submission"
+    Then I should see the blind assignment title "Workspace Project One"
     And I should not see the judge workspace text "Fixture Judge Workspace Team One"
-    And I should not see the judge workspace text "Workspace Project One"
     When I start the opened blind review
     Then the opened blind assignment should show status "In review"
     When I complete the opened blind review with workspace fixture scores
     Then the opened blind assignment should show status "Completed"
+    And the opened blind assignment should hide the complete action and show next blind review
 
   Scenario: Judge skips an in-progress blind review from the workspace inbox
     Given the saved "judge" Auth0 session state exists
     When I open the judge workspace with the saved "judge" session
     Then I should see the in-progress blind workspace assignment card
-    And I should not see the judge workspace text "Workspace Project Two"
     When I open the in-progress blind workspace assignment
-    Then I should see the blind assignment title "Blind submission"
+    Then I should see the blind assignment title "Workspace Project Two"
     Then the opened blind assignment should show status "In review"
     When I skip the opened blind review with reason "Conflict"
     Then I should be returned to the hackathon judging tab

@@ -468,7 +468,7 @@ export function getJudgeAssignmentInboxCardCopy(
 ): JudgeAssignmentInboxCardCopy {
   if (isBlindJudgeAssignment(assignment)) {
     return {
-      title: 'Blind submission',
+      title: assignment.blindSubmission.projectName ?? 'Untitled submission',
       subtitle: null,
       summary: assignment.blindSubmission.summary || describeJudgeAssignmentStatus(assignment.status),
       contextLabel: 'Blind context',
@@ -653,6 +653,16 @@ export function buildCompletionCriterionScoresPayload(drafts: CriterionScoreDraf
     score: Number.parseInt(draft.score.trim(), 10),
     comment: draft.comment.trim() || undefined
   }))
+}
+
+export function buildSavedCriterionScoresPayload(drafts: CriterionScoreDraft[]) {
+  return drafts
+    .filter(draft => isValidJudgeScoreValue(draft.score))
+    .map(draft => ({
+      evaluationCriterionId: draft.evaluationCriterionId,
+      score: Number.parseInt(draft.score.trim(), 10),
+      comment: draft.comment.trim() || undefined
+    }))
 }
 
 export function createPitchScoreDraft(

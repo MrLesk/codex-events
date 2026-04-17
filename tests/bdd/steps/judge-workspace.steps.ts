@@ -147,12 +147,22 @@ When('I start the opened blind review', async ({ page }) => {
       response.url().includes(`/api/hackathons/${platformFixtureIds.judgeWorkspaceHackathonId}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}/actions/start`)
       && response.ok()
     ),
+    page.waitForResponse(response =>
+      response.url().includes(`/api/hackathons/${platformFixtureIds.judgeWorkspaceHackathonId}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}`)
+      && response.request().method() === 'PATCH'
+      && response.ok()
+    ),
     page.getByTestId(`judge-criterion-score-option-${platformFixtureIds.judgeWorkspaceCriterionOneId}-8`).click()
   ])
 })
 
 Then('the opened blind assignment should show status {string}', async ({ page }, statusLabel: string) => {
   await expect(page.getByTestId('judge-assignment-status')).toContainText(statusLabel)
+})
+
+Then('the opened blind assignment should hide the complete action and show next blind review', async ({ page }) => {
+  await expect(page.getByTestId('judge-complete-review')).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Start next blind review' })).toBeVisible()
 })
 
 When('I complete the opened blind review with workspace fixture scores', async ({ page }) => {

@@ -75,6 +75,7 @@ const claimPendingById = reactive<Record<string, boolean>>({})
 const claimErrorById = reactive<Record<string, string>>({})
 const expandedInventoryOfferIds = ref(new Set<string>())
 const expandedParticipantOfferIds = ref(new Set<string>())
+const editingOfferNameIds = ref(new Set<string>())
 const savePendingById = reactive<Record<string, boolean>>({})
 const saveErrorById = reactive<Record<string, string>>({})
 const importPendingById = reactive<Record<string, boolean>>({})
@@ -118,8 +119,12 @@ watch(adminCredits, (offers) => {
   const nextExpandedInventoryOfferIds = new Set(
     [...expandedInventoryOfferIds.value].filter(offerId => nextIds.has(offerId))
   )
+  const nextEditingOfferNameIds = new Set(
+    [...editingOfferNameIds.value].filter(offerId => nextIds.has(offerId))
+  )
 
   expandedInventoryOfferIds.value = nextExpandedInventoryOfferIds
+  editingOfferNameIds.value = nextEditingOfferNameIds
 
   for (const key of Object.keys(editById)) {
     if (!nextIds.has(key)) {
@@ -171,6 +176,31 @@ function getEditState(offer: AdminHackathonCreditOffer) {
     name: offer.name,
     description: offer.description
   }
+}
+
+function isEditingOfferName(offerId: string) {
+  return editingOfferNameIds.value.has(offerId)
+}
+
+function startEditingOfferName(offer: AdminHackathonCreditOffer) {
+  getEditState(offer).name = offer.name
+  saveErrorById[offer.id] = ''
+
+  const nextEditingOfferNameIds = new Set(editingOfferNameIds.value)
+  nextEditingOfferNameIds.add(offer.id)
+  editingOfferNameIds.value = nextEditingOfferNameIds
+}
+
+function stopEditingOfferName(offerId: string) {
+  const nextEditingOfferNameIds = new Set(editingOfferNameIds.value)
+  nextEditingOfferNameIds.delete(offerId)
+  editingOfferNameIds.value = nextEditingOfferNameIds
+}
+
+function cancelEditingOfferName(offer: AdminHackathonCreditOffer) {
+  getEditState(offer).name = offer.name
+  saveErrorById[offer.id] = ''
+  stopEditingOfferName(offer.id)
 }
 
 function renderCreditOfferDescription(description: string) {
@@ -325,6 +355,7 @@ async function saveOffer(offer: AdminHackathonCreditOffer) {
     )
 
     await refreshCredits()
+    stopEditingOfferName(offer.id)
     toast.add({
       title: 'Credit offer updated',
       description: 'The participant-facing credit details now match the latest admin changes.',
@@ -465,124 +496,12 @@ async function copyCreditValue(value: string) {
             Credits management
           </h2>
           <p class="text-sm text-muted">
-            Create participant-facing offers, append CSV inventory over time, and review which values are already attached to participants.
+            Review active participant-facing offers, append CSV inventory over time, and inspect which values are already attached to participants.
           </p>
         </div>
       </template>
 
       <div class="space-y-6">
-        <section class="space-y-4">
-          <div class="space-y-1">
-            <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-              Create offer
-            </h3>
-            <p class="text-sm text-muted">
-              Name the participant-facing offer and optionally upload its first CSV batch now.
-            </p>
-          </div>
-
-          <form
-            class="space-y-4"
-            @submit.prevent="createOffer"
-          >
-            <AppFormField
-              label="Offer name"
-              name="credit-offer-name"
-            >
-              <AppInput
-                id="credit-offer-name"
-                v-model="createForm.name"
-                :disabled="createPending"
-                placeholder="OpenAI credits"
-              />
-            </AppFormField>
-
-            <AdminMarkdownEditorField
-              v-model="createForm.description"
-              name="credit-offer-details-editor"
-              editor-id="credit-offer-details-editor"
-              label="Details"
-              description="Participants see this markdown-formatted content before they claim a value."
-              placeholder="Use markdown for redemption steps, links, and formatting."
-              height="260px"
-              required
-            />
-
-            <div class="rounded-xl border border-dashed border-black/10 px-4 py-4 dark:border-white/[0.08]">
-              <input
-                ref="createFileInput"
-                type="file"
-                accept=".csv,text/csv"
-                class="sr-only"
-                :disabled="createPending"
-                @change="handleCreateInventoryChange"
-              >
-
-              <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div class="space-y-1">
-                  <p class="text-sm font-medium text-highlighted">
-                    Initial inventory upload
-                  </p>
-                  <p class="text-xs text-muted">
-                    {{ createUploadDescription }}
-                  </p>
-                </div>
-
-                <div class="flex flex-wrap items-center gap-2">
-                  <AppButton
-                    type="button"
-                    color="neutral"
-                    variant="soft"
-                    size="sm"
-                    icon="i-lucide-upload"
-                    :disabled="createPending"
-                    @click="promptCreateInventoryUpload"
-                  >
-                    {{ createInventoryFile ? 'Change CSV' : 'Select CSV' }}
-                  </AppButton>
-
-                  <AppButton
-                    v-if="createInventoryFile"
-                    type="button"
-                    color="neutral"
-                    variant="ghost"
-                    size="sm"
-                    :disabled="createPending"
-                    @click="clearCreateInventorySelection"
-                  >
-                    Clear
-                  </AppButton>
-                </div>
-              </div>
-
-              <p
-                v-if="selectedCreateFileName"
-                class="mt-3 text-sm text-toned"
-              >
-                {{ selectedCreateFileName }}
-              </p>
-            </div>
-
-            <div class="flex justify-end">
-              <AppButton
-                type="submit"
-                color="primary"
-                :loading="createPending"
-              >
-                {{ createActionLabel }}
-              </AppButton>
-            </div>
-          </form>
-
-          <AppAlert
-            v-if="createError"
-            color="error"
-            variant="soft"
-            title="Credit offer could not be created"
-            :description="createError"
-          />
-        </section>
-
         <AppAlert
           v-if="adminCreditsRequest.error.value"
           color="error"
@@ -603,41 +522,74 @@ async function copyCreditValue(value: string) {
           v-else-if="adminCredits.length === 0"
           color="neutral"
           variant="soft"
-          title="No credit offers yet"
-          description="Create the first offer above, then upload one or more CSV batches into it."
+          title="No active offers yet"
+          description="Create the first offer below, then upload one or more CSV batches into it."
         />
 
-        <section
+        <div
           v-else
-          class="space-y-4 border-t border-black/8 pt-5 dark:border-white/[0.08]"
+          class="grid gap-4"
         >
-          <div class="space-y-1">
-            <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-              Existing offers
-            </h3>
-            <p class="text-sm text-muted">
-              Update participant-facing copy, append CSV inventory, and review which values have been claimed.
-            </p>
-          </div>
+          <article
+            v-for="offer in adminCredits"
+            :key="offer.id"
+            :data-testid="`admin-credit-offer-${offer.id}`"
+            class="app-inset-card px-5 py-5"
+          >
+            <div class="space-y-5">
+              <div class="border-b border-black/8 pb-4 dark:border-white/[0.08]">
+                <div
+                  v-if="isEditingOfferName(offer.id)"
+                  class="space-y-3"
+                >
+                  <form
+                    class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center"
+                    @submit.prevent="saveOffer(offer)"
+                  >
+                    <div class="min-w-0 flex-1">
+                      <label
+                        :for="`credit-offer-name-inline-${offer.id}`"
+                        class="sr-only"
+                      >
+                        Offer name
+                      </label>
+                      <AppInput
+                        :id="`credit-offer-name-inline-${offer.id}`"
+                        v-model="getEditState(offer).name"
+                        size="xl"
+                        class="w-full"
+                        :disabled="savePendingById[offer.id]"
+                      />
+                    </div>
 
-          <div class="grid gap-4">
-            <article
-              v-for="offer in adminCredits"
-              :key="offer.id"
-              :data-testid="`admin-credit-offer-${offer.id}`"
-              class="app-inset-card px-5 py-5"
-            >
-              <div class="space-y-5">
-                <div class="space-y-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
+                    <AppButton
+                      type="submit"
+                      color="primary"
+                      class="shrink-0"
+                      :loading="savePendingById[offer.id]"
+                      :disabled="savePendingById[offer.id]"
+                    >
+                      Save
+                    </AppButton>
+
+                    <AppButton
+                      type="button"
+                      color="neutral"
+                      variant="outline"
+                      class="shrink-0"
+                      :disabled="savePendingById[offer.id]"
+                      @click="cancelEditingOfferName(offer)"
+                    >
+                      Cancel
+                    </AppButton>
+                  </form>
+
                   <div class="flex flex-wrap items-center gap-2">
-                    <h3 class="text-lg font-semibold text-highlighted">
-                      {{ offer.name }}
-                    </h3>
                     <AppBadge
                       color="success"
                       variant="soft"
                     >
-                      {{ offer.availableCount }} available
+                      {{ offer.availableCount }}/{{ offer.totalCount }} available
                     </AppBadge>
                     <AppBadge
                       color="warning"
@@ -645,209 +597,340 @@ async function copyCreditValue(value: string) {
                     >
                       {{ offer.claimedCount }} claimed
                     </AppBadge>
-                    <AppBadge
-                      color="neutral"
-                      variant="soft"
-                    >
-                      {{ offer.totalCount }} total
-                    </AppBadge>
-                  </div>
-
-                  <!-- eslint-disable vue/no-v-html -->
-                  <div
-                    class="hackathon-markdown"
-                    v-html="renderCreditOfferDescription(offer.description)"
-                  />
-                  <!-- eslint-enable vue/no-v-html -->
-                </div>
-
-                <div class="space-y-4">
-                  <AppFormField
-                    label="Offer name"
-                    :name="`credit-offer-name-${offer.id}`"
-                  >
-                    <AppInput
-                      :id="`credit-offer-name-${offer.id}`"
-                      v-model="getEditState(offer).name"
-                      :disabled="savePendingById[offer.id]"
-                    />
-                  </AppFormField>
-
-                  <AdminMarkdownEditorField
-                    v-model="getEditState(offer).description"
-                    :name="`credit-offer-details-${offer.id}`"
-                    :editor-id="`credit-offer-details-${offer.id}`"
-                    label="Details"
-                    description="Participants see this markdown-formatted content before they claim a value."
-                    placeholder="Use markdown for redemption steps, links, and formatting."
-                    height="260px"
-                    required
-                  />
-                </div>
-
-                <div class="grid gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08] lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-                  <div class="space-y-1">
-                    <p class="text-sm font-medium text-highlighted">
-                      Append inventory
-                    </p>
-                    <p class="text-sm text-muted">
-                      Upload a single-column CSV with no header and one code or link per row.
-                    </p>
-                  </div>
-
-                  <div class="flex flex-wrap items-center gap-2 lg:justify-end">
-                    <input
-                      :id="`credit-offer-import-${offer.id}`"
-                      type="file"
-                      accept=".csv,text/csv"
-                      class="sr-only"
-                      :disabled="importPendingById[offer.id]"
-                      @change="handleOfferImportChange($event, offer.id)"
-                    >
-
-                    <AppButton
-                      type="button"
-                      color="neutral"
-                      variant="soft"
-                      size="sm"
-                      icon="i-lucide-upload"
-                      :loading="importPendingById[offer.id]"
-                      @click="promptOfferImportUpload(offer.id)"
-                    >
-                      Upload CSV
-                    </AppButton>
                   </div>
                 </div>
 
-                <div class="flex justify-end">
+                <div
+                  v-else
+                  class="flex flex-wrap items-center gap-2"
+                >
+                  <h3 class="text-lg font-semibold text-highlighted">
+                    {{ offer.name }}
+                  </h3>
                   <AppButton
-                    color="primary"
-                    :loading="savePendingById[offer.id]"
-                    @click="saveOffer(offer)"
+                    color="neutral"
+                    variant="outline"
+                    size="sm"
+                    icon="i-lucide-pencil"
+                    class="h-8 w-8 shrink-0 gap-0 px-0"
+                    :aria-label="`Edit ${offer.name} name`"
+                    @click="startEditingOfferName(offer)"
                   >
-                    Save offer
+                    <span class="sr-only">Edit offer name</span>
                   </AppButton>
-                </div>
-
-                <AppAlert
-                  v-if="saveErrorById[offer.id]"
-                  color="error"
-                  variant="soft"
-                  title="Credit offer could not be saved"
-                  :description="saveErrorById[offer.id]"
-                />
-
-                <AppAlert
-                  v-else-if="importErrorById[offer.id]"
-                  color="error"
-                  variant="soft"
-                  title="CSV import failed"
-                  :description="importErrorById[offer.id]"
-                />
-
-                <div class="space-y-3 border-t border-black/8 pt-5 dark:border-white/[0.08]">
-                  <div class="flex items-start justify-between gap-3">
-                    <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-                      Uploaded values
-                    </h4>
-                    <div class="flex items-center gap-3">
-                      <p class="text-xs text-muted">
-                        {{ offer.totalCount }} total rows
-                      </p>
-                      <button
-                        v-if="offer.codes.length > 0"
-                        type="button"
-                        :aria-expanded="isInventoryExpanded(offer.id)"
-                        :aria-controls="`credit-offer-values-${offer.id}`"
-                        class="inline-flex items-center gap-1 text-[12px] font-medium text-highlighted transition-colors hover:text-toned dark:text-white dark:hover:text-[#D9D9D9]"
-                        @click="toggleInventoryExpanded(offer.id)"
-                      >
-                        <span>{{ isInventoryExpanded(offer.id) ? 'Hide values' : `Show all ${offer.codes.length}` }}</span>
-                        <AppIcon
-                          :name="isInventoryExpanded(offer.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
-                          class="size-3.5"
-                        />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div
-                    v-if="offer.codes.length === 0"
-                    class="rounded-xl border border-dashed border-black/10 px-4 py-4 text-sm text-muted dark:border-white/[0.08]"
+                  <AppBadge
+                    color="success"
+                    variant="soft"
                   >
-                    No inventory uploaded yet.
-                  </div>
-
-                  <div
-                    v-else-if="isInventoryExpanded(offer.id)"
-                    :id="`credit-offer-values-${offer.id}`"
-                    class="overflow-x-auto"
+                    {{ offer.availableCount }}/{{ offer.totalCount }} available
+                  </AppBadge>
+                  <AppBadge
+                    color="warning"
+                    variant="soft"
                   >
-                    <table class="min-w-full border-separate border-spacing-y-2 text-sm">
-                      <thead>
-                        <tr class="text-left text-xs uppercase tracking-[0.14em] text-muted">
-                          <th class="pr-4 pb-2">
-                            Value
-                          </th>
-                          <th class="pr-4 pb-2">
-                            Status
-                          </th>
-                          <th class="pr-4 pb-2">
-                            Claimed by
-                          </th>
-                          <th class="pb-2">
-                            Claimed at
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          v-for="code in offer.codes"
-                          :key="code.id"
-                          class="align-top"
-                        >
-                          <td class="pr-4 py-2 font-mono text-xs text-toned">
-                            <a
-                              v-if="isHackathonCreditLink(code.value)"
-                              :href="code.value"
-                              target="_blank"
-                              rel="noreferrer"
-                              class="break-all text-primary hover:text-primary/80"
-                            >
-                              {{ code.value }}
-                            </a>
-                            <span
-                              v-else
-                              class="break-all"
-                            >
-                              {{ code.value }}
-                            </span>
-                          </td>
-                          <td class="pr-4 py-2 text-toned">
-                            {{ code.claimedByUser ? 'Claimed' : 'Available' }}
-                          </td>
-                          <td class="pr-4 py-2 text-toned">
-                            {{ code.claimedByUser ? `${code.claimedByUser.displayName} (${code.claimedByUser.email})` : '—' }}
-                          </td>
-                          <td class="py-2 text-toned">
-                            {{ code.claimedAt ? formatHackathonDate(code.claimedAt) : '—' }}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <p
-                    v-else
-                    class="text-sm text-muted"
-                  >
-                    Expand this section only when you need to inspect the uploaded voucher list.
-                  </p>
+                    {{ offer.claimedCount }} claimed
+                  </AppBadge>
                 </div>
               </div>
-            </article>
+
+              <div class="space-y-4">
+                <AdminMarkdownEditorField
+                  v-model="getEditState(offer).description"
+                  :name="`credit-offer-details-${offer.id}`"
+                  :editor-id="`credit-offer-details-${offer.id}`"
+                  label="Details"
+                  description="Participants see this markdown-formatted content before they claim a value."
+                  placeholder="Use markdown for redemption steps, links, and formatting."
+                  height="260px"
+                  required
+                />
+              </div>
+
+              <div class="grid gap-4 border-t border-black/8 pt-5 dark:border-white/[0.08] lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <div class="space-y-1">
+                  <p class="text-sm font-medium text-highlighted">
+                    Append inventory
+                  </p>
+                  <p class="text-sm text-muted">
+                    Upload a single-column CSV with no header and one code or link per row.
+                  </p>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 lg:justify-end">
+                  <input
+                    :id="`credit-offer-import-${offer.id}`"
+                    type="file"
+                    accept=".csv,text/csv"
+                    class="sr-only"
+                    :disabled="importPendingById[offer.id]"
+                    @change="handleOfferImportChange($event, offer.id)"
+                  >
+
+                  <AppButton
+                    type="button"
+                    color="neutral"
+                    variant="soft"
+                    size="sm"
+                    icon="i-lucide-upload"
+                    :loading="importPendingById[offer.id]"
+                    @click="promptOfferImportUpload(offer.id)"
+                  >
+                    Upload CSV
+                  </AppButton>
+                </div>
+              </div>
+
+              <div
+                v-if="!isEditingOfferName(offer.id)"
+                class="flex justify-end"
+              >
+                <AppButton
+                  color="primary"
+                  :loading="savePendingById[offer.id]"
+                  @click="saveOffer(offer)"
+                >
+                  Save offer
+                </AppButton>
+              </div>
+
+              <AppAlert
+                v-if="saveErrorById[offer.id]"
+                color="error"
+                variant="soft"
+                title="Credit offer could not be saved"
+                :description="saveErrorById[offer.id]"
+              />
+
+              <AppAlert
+                v-else-if="importErrorById[offer.id]"
+                color="error"
+                variant="soft"
+                title="CSV import failed"
+                :description="importErrorById[offer.id]"
+              />
+
+              <div class="space-y-3 border-t border-black/8 pt-5 dark:border-white/[0.08]">
+                <div class="flex items-start justify-between gap-3">
+                  <h4 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+                    Uploaded values
+                  </h4>
+                  <div class="flex items-center gap-3">
+                    <p class="text-xs text-muted">
+                      {{ offer.totalCount }} total rows
+                    </p>
+                    <button
+                      v-if="offer.codes.length > 0"
+                      type="button"
+                      :aria-expanded="isInventoryExpanded(offer.id)"
+                      :aria-controls="`credit-offer-values-${offer.id}`"
+                      class="inline-flex items-center gap-1 text-[12px] font-medium text-highlighted transition-colors hover:text-toned dark:text-white dark:hover:text-[#D9D9D9]"
+                      @click="toggleInventoryExpanded(offer.id)"
+                    >
+                      <span>{{ isInventoryExpanded(offer.id) ? 'Hide values' : `Show all ${offer.codes.length}` }}</span>
+                      <AppIcon
+                        :name="isInventoryExpanded(offer.id) ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+                        class="size-3.5"
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  v-if="offer.codes.length === 0"
+                  class="rounded-xl border border-dashed border-black/10 px-4 py-4 text-sm text-muted dark:border-white/[0.08]"
+                >
+                  No inventory uploaded yet.
+                </div>
+
+                <div
+                  v-else-if="isInventoryExpanded(offer.id)"
+                  :id="`credit-offer-values-${offer.id}`"
+                  class="overflow-x-auto"
+                >
+                  <table class="min-w-full border-separate border-spacing-y-2 text-sm">
+                    <thead>
+                      <tr class="text-left text-xs uppercase tracking-[0.14em] text-muted">
+                        <th class="pr-4 pb-2">
+                          Value
+                        </th>
+                        <th class="pr-4 pb-2">
+                          Status
+                        </th>
+                        <th class="pr-4 pb-2">
+                          Claimed by
+                        </th>
+                        <th class="pb-2">
+                          Claimed at
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr
+                        v-for="code in offer.codes"
+                        :key="code.id"
+                        class="align-top"
+                      >
+                        <td class="pr-4 py-2 font-mono text-xs text-toned">
+                          <a
+                            v-if="isHackathonCreditLink(code.value)"
+                            :href="code.value"
+                            target="_blank"
+                            rel="noreferrer"
+                            class="break-all text-primary hover:text-primary/80"
+                          >
+                            {{ code.value }}
+                          </a>
+                          <span
+                            v-else
+                            class="break-all"
+                          >
+                            {{ code.value }}
+                          </span>
+                        </td>
+                        <td class="pr-4 py-2 text-toned">
+                          {{ code.claimedByUser ? 'Claimed' : 'Available' }}
+                        </td>
+                        <td class="pr-4 py-2 text-toned">
+                          {{ code.claimedByUser ? `${code.claimedByUser.displayName} (${code.claimedByUser.email})` : '—' }}
+                        </td>
+                        <td class="py-2 text-toned">
+                          {{ code.claimedAt ? formatHackathonDate(code.claimedAt) : '—' }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <p
+                  v-else
+                  class="text-sm text-muted"
+                >
+                  Expand this section only when you need to inspect the uploaded voucher list.
+                </p>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </AppCard>
+
+    <AppCard
+      v-if="props.canManage"
+      class="rounded-xl hackathon-workspace-detail-panel"
+      :ui="{ body: 'p-5' }"
+    >
+      <template #header>
+        <div class="space-y-1">
+          <h2 class="text-xl font-semibold text-highlighted">
+            Create new offer
+          </h2>
+          <p class="text-sm text-muted">
+            Name the next participant-facing offer and optionally upload its first CSV batch now.
+          </p>
+        </div>
+      </template>
+
+      <div class="space-y-4">
+        <form
+          class="space-y-4"
+          @submit.prevent="createOffer"
+        >
+          <AppFormField
+            label="Offer name"
+            name="credit-offer-name"
+          >
+            <AppInput
+              id="credit-offer-name"
+              v-model="createForm.name"
+              :disabled="createPending"
+              placeholder="OpenAI credits"
+            />
+          </AppFormField>
+
+          <AdminMarkdownEditorField
+            v-model="createForm.description"
+            name="credit-offer-details-editor"
+            editor-id="credit-offer-details-editor"
+            label="Details"
+            description="Participants see this markdown-formatted content before they claim a value."
+            placeholder="Use markdown for redemption steps, links, and formatting."
+            height="260px"
+            required
+          />
+
+          <div class="rounded-xl border border-dashed border-black/10 px-4 py-4 dark:border-white/[0.08]">
+            <input
+              ref="createFileInput"
+              type="file"
+              accept=".csv,text/csv"
+              class="sr-only"
+              :disabled="createPending"
+              @change="handleCreateInventoryChange"
+            >
+
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div class="space-y-1">
+                <p class="text-sm font-medium text-highlighted">
+                  Initial inventory upload
+                </p>
+                <p class="text-xs text-muted">
+                  {{ createUploadDescription }}
+                </p>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
+                <AppButton
+                  type="button"
+                  color="neutral"
+                  variant="soft"
+                  size="sm"
+                  icon="i-lucide-upload"
+                  :disabled="createPending"
+                  @click="promptCreateInventoryUpload"
+                >
+                  {{ createInventoryFile ? 'Change CSV' : 'Select CSV' }}
+                </AppButton>
+
+                <AppButton
+                  v-if="createInventoryFile"
+                  type="button"
+                  color="neutral"
+                  variant="ghost"
+                  size="sm"
+                  :disabled="createPending"
+                  @click="clearCreateInventorySelection"
+                >
+                  Clear
+                </AppButton>
+              </div>
+            </div>
+
+            <p
+              v-if="selectedCreateFileName"
+              class="mt-3 text-sm text-toned"
+            >
+              {{ selectedCreateFileName }}
+            </p>
           </div>
-        </section>
+
+          <div class="flex justify-end">
+            <AppButton
+              type="submit"
+              color="primary"
+              :loading="createPending"
+            >
+              {{ createActionLabel }}
+            </AppButton>
+          </div>
+        </form>
+
+        <AppAlert
+          v-if="createError"
+          color="error"
+          variant="soft"
+          title="Credit offer could not be created"
+          :description="createError"
+        />
       </div>
     </AppCard>
 

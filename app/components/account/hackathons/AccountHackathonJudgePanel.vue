@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import type { HackathonRecord } from '~/utils/admin-workspace'
+import type { JudgeInboxGroup } from '~/utils/judging-workspace'
+
 import JudgeAssignmentInboxCard from '~/components/judging/JudgeAssignmentInboxCard.vue'
 import JudgeAssignmentWorkspacePanel from '~/components/judging/JudgeAssignmentWorkspacePanel.vue'
 import { buildAccountHackathonJudgingTabHref } from '~/utils/judging-query'
@@ -14,13 +17,51 @@ const props = withDefaults(defineProps<{
 
 const workspace = useJudgeWorkspace()
 
-const currentHackathon = computed(() =>
+const resolvedCurrentHackathon = computed(() =>
   filterExplicitJudgeHackathons(workspace.hackathons.data.value ?? [], workspace.actor.value)
     .find(hackathon => hackathon.id === props.hackathonId || hackathon.slug === props.slug)
     ?? null
 )
-const currentInboxGroup = computed(() =>
+const resolvedCurrentInboxGroup = computed(() =>
   workspace.inboxGroups.value.find(group => group.hackathon.slug === props.slug) ?? null
+)
+const currentHackathonCache = shallowRef<HackathonRecord | null>(null)
+const currentInboxGroupCache = shallowRef<JudgeInboxGroup | null>(null)
+
+watch(resolvedCurrentHackathon, (nextHackathon) => {
+  if (nextHackathon) {
+    currentHackathonCache.value = nextHackathon
+  }
+}, {
+  immediate: true
+})
+
+watch(resolvedCurrentInboxGroup, (nextInboxGroup) => {
+  if (nextInboxGroup) {
+    currentInboxGroupCache.value = nextInboxGroup
+  }
+}, {
+  immediate: true
+})
+
+const currentHackathon = computed(() =>
+  resolvedCurrentHackathon.value
+  ?? (
+    workspace.status.value === 'pending'
+    && currentHackathonCache.value
+    && (currentHackathonCache.value.id === props.hackathonId || currentHackathonCache.value.slug === props.slug)
+      ? currentHackathonCache.value
+      : null
+  )
+)
+const currentInboxGroup = computed(() =>
+  resolvedCurrentInboxGroup.value
+  ?? (
+    workspace.status.value === 'pending'
+    && currentInboxGroupCache.value?.hackathon.slug === props.slug
+      ? currentInboxGroupCache.value
+      : null
+  )
 )
 const assignments = computed(() => currentInboxGroup.value?.assignments ?? [])
 const selectedAssignmentId = computed(() => props.selectedAssignmentId?.trim() ?? '')
@@ -80,7 +121,7 @@ async function refreshWorkspace() {
     />
 
     <AppAlert
-      v-else-if="workspace.status.value === 'pending'"
+      v-else-if="workspace.status.value === 'pending' && !currentHackathon"
       color="neutral"
       variant="soft"
       title="Loading judging workspace"

@@ -36,106 +36,93 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
 </script>
 
 <template>
-  <AppCard class="rounded-xl hackathon-workspace-detail-panel">
-    <template #header>
-      <div class="space-y-1">
-        <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-          Score this submission
-        </h2>
-        <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-          Move criterion by criterion. Scores are required, notes stay optional.
-        </p>
-      </div>
-    </template>
-
-    <div class="divide-y divide-black/8 overflow-hidden rounded-xl border border-black/8 bg-[#0F0F10]/70 dark:divide-white/[0.08] dark:border-white/[0.08] dark:bg-[#101112]">
-      <div
-        v-for="(draft, index) in modelValue"
-        :key="draft.evaluationCriterionId"
-        class="px-5 py-5"
-      >
-        <div class="space-y-4">
-          <div class="space-y-2">
-            <div class="flex flex-wrap items-start justify-between gap-3">
-              <div class="min-w-0">
-                <h3 class="text-lg font-semibold text-highlighted">
-                  {{ draft.criterionName }}
-                </h3>
-              </div>
-
-              <AppBadge
-                color="neutral"
-                variant="outline"
-                class="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted"
-              >
-                Weight {{ draft.criterionWeight }}
-              </AppBadge>
+  <div class="divide-y divide-black/8 overflow-hidden rounded-xl border border-black/8 bg-[#0F0F10]/70 dark:divide-white/[0.08] dark:border-white/[0.08] dark:bg-[#101112]">
+    <div
+      v-for="(draft, index) in modelValue"
+      :key="draft.evaluationCriterionId"
+      class="px-5 py-5"
+    >
+      <div class="space-y-4">
+        <div class="space-y-2">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div class="min-w-0">
+              <h3 class="text-lg font-semibold text-highlighted">
+                {{ draft.criterionName }}
+              </h3>
             </div>
 
-            <p class="max-w-3xl text-sm leading-7 text-toned">
-              {{ draft.criterionDescription }}
-            </p>
+            <AppBadge
+              color="neutral"
+              variant="outline"
+              class="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted"
+            >
+              Weight {{ draft.criterionWeight }}
+            </AppBadge>
           </div>
 
-          <div class="space-y-3">
-            <label
-              :for="`judge-criterion-score-${draft.evaluationCriterionId}`"
-              class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted"
-            >
-              Score
-            </label>
+          <p class="max-w-3xl text-sm leading-7 text-toned">
+            {{ draft.criterionDescription }}
+          </p>
+        </div>
 
-            <div
-              :id="`judge-criterion-score-${draft.evaluationCriterionId}`"
-              :data-testid="`judge-criterion-score-${draft.evaluationCriterionId}`"
-              class="grid grid-cols-11 gap-1.5"
-              role="radiogroup"
-              :aria-label="`${draft.criterionName} score`"
-            >
-              <button
-                v-for="score in scoreOptions"
-                :key="score"
-                type="button"
-                role="radio"
-                :aria-checked="draft.score === String(score)"
-                :disabled="scoreSelectionDisabled"
-                :data-testid="`judge-criterion-score-option-${draft.evaluationCriterionId}-${score}`"
-                class="rounded-lg border px-0 py-2 text-center text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
-                :class="draft.score === String(score)
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-black/8 bg-black/20 text-muted hover:border-black/14 hover:bg-white/5 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.14] dark:hover:text-white'"
-                @click="updateDraft(index, 'score', String(score))"
-              >
-                {{ score }}
-              </button>
-            </div>
+        <div class="space-y-3">
+          <label
+            :for="`judge-criterion-score-${draft.evaluationCriterionId}`"
+            class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted"
+          >
+            Score
+          </label>
 
-            <div class="flex items-center justify-between gap-3 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-xs">
-              <span>Weak</span>
-              <span>Solid</span>
-              <span>Exceptional</span>
-            </div>
+          <div
+            :id="`judge-criterion-score-${draft.evaluationCriterionId}`"
+            :data-testid="`judge-criterion-score-${draft.evaluationCriterionId}`"
+            class="grid grid-cols-11 gap-1.5"
+            role="radiogroup"
+            :aria-label="`${draft.criterionName} score`"
+          >
+            <button
+              v-for="score in scoreOptions"
+              :key="score"
+              type="button"
+              role="radio"
+              :aria-checked="draft.score === String(score)"
+              :disabled="scoreSelectionDisabled"
+              :data-testid="`judge-criterion-score-option-${draft.evaluationCriterionId}-${score}`"
+              class="rounded-lg border px-0 py-2 text-center text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
+              :class="draft.score === String(score)
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-black/8 bg-black/20 text-muted hover:border-black/14 hover:bg-white/5 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.14] dark:hover:text-white'"
+              @click="updateDraft(index, 'score', String(score))"
+            >
+              {{ score }}
+            </button>
           </div>
 
-          <div class="space-y-2">
-            <label
-              :for="`judge-criterion-comment-${draft.evaluationCriterionId}`"
-              class="text-sm font-medium text-highlighted"
-            >
-              Note
-            </label>
-
-            <textarea
-              :id="`judge-criterion-comment-${draft.evaluationCriterionId}`"
-              :value="draft.comment"
-              rows="2"
-              :disabled="disabled || readonly"
-              class="app-inset-field w-full px-3 py-2.5 text-sm leading-6 disabled:opacity-70"
-              @input="updateDraft(index, 'comment', ($event.target as HTMLTextAreaElement).value)"
-            />
+          <div class="flex items-center justify-between gap-3 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-xs">
+            <span>Weak</span>
+            <span>Solid</span>
+            <span>Exceptional</span>
           </div>
+        </div>
+
+        <div class="space-y-2">
+          <label
+            :for="`judge-criterion-comment-${draft.evaluationCriterionId}`"
+            class="text-sm font-medium text-highlighted"
+          >
+            Note
+          </label>
+
+          <textarea
+            :id="`judge-criterion-comment-${draft.evaluationCriterionId}`"
+            :value="draft.comment"
+            rows="2"
+            :disabled="disabled || readonly"
+            class="app-inset-field w-full px-3 py-2.5 text-sm leading-6 disabled:opacity-70"
+            @input="updateDraft(index, 'comment', ($event.target as HTMLTextAreaElement).value)"
+          />
         </div>
       </div>
     </div>
-  </AppCard>
+  </div>
 </template>

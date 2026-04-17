@@ -11,6 +11,7 @@ import PitchSubmissionPanel from '~/components/judging/PitchSubmissionPanel.vue'
 import { buildAccountHackathonJudgingTabHref } from '~/utils/judging-query'
 import {
   buildCompletionCriterionScoresPayload,
+  buildSavedCriterionScoresPayload,
   buildPitchReviewCompletionPayload,
   canAutoStartBlindReviewFromScoreSelection,
   canCompleteJudgeAssignment,
@@ -64,7 +65,7 @@ const skipReason = ref('')
 const ineligibleReason = ref('')
 const showInlineSkipForm = ref(false)
 const actionState = reactive({
-  pendingAction: '' as '' | 'start' | 'complete' | 'skip' | 'ineligible',
+  pendingAction: '' as '' | 'start' | 'save' | 'complete' | 'skip' | 'ineligible',
   success: '',
   error: ''
 })
@@ -97,12 +98,16 @@ const hasIncompletePitchVote = computed(() => hasIncompletePitchScore(pitchDraft
 const completedCriteriaCount = computed(() =>
   scoreDrafts.value.filter(draft => draft.score.trim().length > 0).length
 )
+const rubricInteractionDisabled = computed(() =>
+  actionState.pendingAction === 'complete'
+  || actionState.pendingAction === 'start'
+  || actionState.pendingAction === 'save'
+)
 const rubricReadonly = computed(() => !assignment.value || assignment.value.status !== 'judge_started')
 const allowBlindScoreSelectionWhenReadonly = computed(() =>
   Boolean(
     canAutoStartBlindReviewFromScoreSelection(assignment.value, hackathon.value?.state)
-    && actionState.pendingAction !== 'start'
-    && actionState.pendingAction !== 'complete'
+    && !rubricInteractionDisabled.value
   )
 )
 const reviewActionDisabledReason = computed(() => {
@@ -270,27 +275,87 @@ async function startReview() {
   })
 }
 
+async function persistBlindCriterionScores(nextDrafts: CriterionScoreDraft[]) {
+  const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
+    `/api/hackathons/${normalizedHackathonId.value}/judging/assignments/${normalizedAssignmentId.value}`,
+    {
+      method: 'PATCH',
+      body: {
+        criterionScores: buildSavedCriterionScoresPayload(nextDrafts)
+      }
+    }
+  )
+
+  assignment.value = response.data
+  scoreDrafts.value = nextDrafts
+}
+
 async function updateBlindScoreDrafts(nextDrafts: CriterionScoreDraft[]) {
   if (!blindAssignment.value || !assignment.value) {
     scoreDrafts.value = nextDrafts
     return
   }
 
-  if (assignment.value.status !== 'assigned') {
-    scoreDrafts.value = nextDrafts
-    return
-  }
-
   const scoreChanged = nextDrafts.some((draft, index) => draft.score !== scoreDrafts.value[index]?.score)
+  scoreDrafts.value = nextDrafts
 
-  if (!scoreChanged || startReviewDisabled.value) {
+  if (!scoreChanged) {
     return
   }
 
-  await startReview()
+  if (assignment.value.status === 'assigned') {
+    if (startReviewDisabled.value) {
+      return
+    }
 
-  if (assignment.value && canCompleteJudgeAssignment(assignment.value)) {
-    scoreDrafts.value = nextDrafts
+    actionState.pendingAction = 'start'
+    actionState.error = ''
+    actionState.success = ''
+
+    try {
+      const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
+        `/api/hackathons/${normalizedHackathonId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/start`,
+        {
+          method: 'POST'
+        }
+      )
+
+      assignment.value = response.data
+      pitchDraft.value = createPitchScoreDraft(response.data)
+      showInlineSkipForm.value = false
+      notifyWorkspaceUpdated()
+
+      await persistBlindCriterionScores(nextDrafts)
+
+      actionState.success = 'Review started. Continue scoring and submit when you are ready.'
+    } catch (error) {
+      actionState.error = getJudgeActionErrorMessage(
+        error,
+        'The selected score could not be saved yet.'
+      )
+    } finally {
+      actionState.pendingAction = ''
+    }
+
+    return
+  }
+
+  if (assignment.value.status !== 'judge_started') {
+    return
+  }
+
+  actionState.pendingAction = 'save'
+  actionState.error = ''
+
+  try {
+    await persistBlindCriterionScores(nextDrafts)
+  } catch (error) {
+    actionState.error = getJudgeActionErrorMessage(
+      error,
+      'The selected score could not be saved yet.'
+    )
+  } finally {
+    actionState.pendingAction = ''
   }
 }
 
@@ -449,7 +514,200 @@ async function markIneligible() {
         v-if="blindAssignment"
         class="order-1"
         :assignment="blindAssignment"
-      />
+      >
+        <div class="space-y-6">
+          <AppAlert
+            v-if="criteria.length === 0"
+            color="warning"
+            variant="soft"
+            title="No evaluation criteria configured"
+            description="This hackathon has no scoring criteria yet, so the review cannot be completed from the blind workspace."
+          />
+
+          <JudgeReviewRubric
+            v-else
+            :model-value="scoreDrafts"
+            :disabled="rubricInteractionDisabled"
+            :readonly="rubricReadonly"
+            :allow-score-selection-when-readonly="allowBlindScoreSelectionWhenReadonly"
+            @update:model-value="updateBlindScoreDrafts"
+          />
+
+          <div class="space-y-4 border-t border-black/8 pt-6 dark:border-white/[0.08]">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div class="space-y-1">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                  Review progress
+                </p>
+                <p class="text-base font-semibold text-highlighted dark:text-white">
+                  {{ reviewProgressHeading }}
+                </p>
+
+                <p class="text-sm leading-7 text-toned">
+                  {{ describeJudgeAssignmentStatus(assignment.status) }}
+                </p>
+              </div>
+
+              <div class="flex flex-wrap gap-3">
+                <AppButton
+                  v-if="canSkipJudgeAssignment(assignment)"
+                  data-testid="judge-show-skip-review"
+                  color="warning"
+                  variant="outline"
+                  size="lg"
+                  class="justify-center rounded-lg"
+                  :disabled="skipReviewDisabled"
+                  @click="openInlineSkipForm"
+                >
+                  {{ skipActionLabel }}
+                </AppButton>
+
+                <AppButton
+                  v-if="canCompleteJudgeAssignment(assignment)"
+                  data-testid="judge-complete-review"
+                  color="success"
+                  variant="outline"
+                  size="lg"
+                  icon="i-lucide-check"
+                  class="justify-center rounded-lg"
+                  :disabled="completeDisabled"
+                  :loading="actionState.pendingAction === 'complete'"
+                  @click="completeReview"
+                >
+                  {{ completeActionLabel }}
+                </AppButton>
+
+                <AppButton
+                  v-if="assignment.status === 'judge_completed'"
+                  :to="judgingWorkspaceHref"
+                  color="neutral"
+                  variant="outline"
+                  size="lg"
+                  class="justify-center rounded-lg"
+                >
+                  Back to queue
+                </AppButton>
+
+                <AppButton
+                  v-if="props.nextReviewHref"
+                  :to="props.nextReviewHref"
+                  color="primary"
+                  variant="outline"
+                  size="lg"
+                  trailing-icon="i-lucide-arrow-right"
+                  class="justify-center rounded-lg"
+                >
+                  {{ nextActionLabel }}
+                </AppButton>
+              </div>
+            </div>
+
+            <AppAlert
+              v-if="reviewActionDisabledReason"
+              color="warning"
+              variant="soft"
+              icon="i-lucide-lock"
+              title="Blind review not active"
+              :description="reviewActionDisabledReason"
+            />
+
+            <AppAlert
+              v-if="actionState.success"
+              color="success"
+              variant="subtle"
+              icon="i-lucide-badge-check"
+              title="Judge action recorded"
+              :description="actionState.success"
+            />
+
+            <AppAlert
+              v-if="actionState.error"
+              color="warning"
+              variant="subtle"
+              icon="i-lucide-triangle-alert"
+              title="Judge action failed"
+              :description="actionState.error"
+            />
+
+            <div
+              v-if="showInlineSkipForm && canSkipJudgeAssignment(assignment) && !skipReviewDisabled"
+              class="space-y-3 app-inset-card p-4"
+            >
+              <div>
+                <p class="text-sm font-semibold text-highlighted">
+                  {{ skipActionLabel }}
+                </p>
+                <p class="mt-1 text-sm leading-7 text-toned">
+                  {{ skipDescription }}
+                </p>
+              </div>
+
+              <AppTextarea
+                v-model="skipReason"
+                rows="3"
+                data-testid="judge-skip-reason"
+                class="leading-6"
+              />
+
+              <div class="flex flex-wrap gap-3">
+                <AppButton
+                  data-testid="judge-skip-review"
+                  color="warning"
+                  variant="outline"
+                  size="lg"
+                  class="justify-center rounded-lg"
+                  :loading="actionState.pendingAction === 'skip'"
+                  @click="skipReview"
+                >
+                  Confirm {{ skipActionLabel.toLowerCase() }}
+                </AppButton>
+
+                <AppButton
+                  color="neutral"
+                  variant="outline"
+                  size="lg"
+                  class="justify-center rounded-lg"
+                  @click="closeInlineSkipForm"
+                >
+                  Cancel
+                </AppButton>
+              </div>
+
+              <div
+                v-if="canMarkJudgeAssignmentIneligible(assignment)"
+                class="mt-4 space-y-3 app-inset-card p-4"
+              >
+                <div>
+                  <p class="text-sm font-semibold text-highlighted">
+                    Mark assignment ineligible
+                  </p>
+                  <p class="mt-1 text-sm leading-7 text-toned">
+                    Required reason. This keeps blind review anonymous while changing the assignment-level outcome.
+                  </p>
+                </div>
+
+                <AppTextarea
+                  v-model="ineligibleReason"
+                  rows="3"
+                  data-testid="judge-ineligibility-reason"
+                  class="leading-6"
+                />
+
+                <AppButton
+                  data-testid="judge-mark-ineligible"
+                  color="error"
+                  variant="soft"
+                  class="w-full justify-center rounded-lg md:w-auto"
+                  :loading="actionState.pendingAction === 'ineligible'"
+                  @click="markIneligible"
+                >
+                  Mark ineligible
+                </AppButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      </BlindSubmissionPanel>
 
       <PitchSubmissionPanel
         v-else-if="pitchAssignment"
@@ -458,6 +716,7 @@ async function markIneligible() {
       />
 
       <AppCard
+        v-if="pitchAssignment"
         class="order-3 rounded-xl hackathon-workspace-detail-panel"
       >
         <template #header>
@@ -657,30 +916,8 @@ async function markIneligible() {
         </div>
       </AppCard>
 
-      <div
-        v-if="blindAssignment"
-        class="order-2 space-y-6"
-      >
-        <AppAlert
-          v-if="criteria.length === 0"
-          color="warning"
-          variant="soft"
-          title="No evaluation criteria configured"
-          description="This hackathon has no scoring criteria yet, so the review cannot be completed from the blind workspace."
-        />
-
-        <JudgeReviewRubric
-          v-else
-          :model-value="scoreDrafts"
-          :disabled="actionState.pendingAction === 'complete' || actionState.pendingAction === 'start'"
-          :readonly="rubricReadonly"
-          :allow-score-selection-when-readonly="allowBlindScoreSelectionWhenReadonly"
-          @update:model-value="updateBlindScoreDrafts"
-        />
-      </div>
-
       <AppCard
-        v-else-if="pitchAssignment"
+        v-if="pitchAssignment"
         class="order-2 rounded-xl hackathon-workspace-detail-panel"
       >
         <template #header>
@@ -711,7 +948,7 @@ async function markIneligible() {
                 type="button"
                 role="radio"
                 :aria-checked="pitchDraft.score === String(score)"
-                :disabled="actionState.pendingAction === 'complete' || rubricReadonly"
+                :disabled="actionState.pendingAction === 'complete' || actionState.pendingAction === 'start' || rubricReadonly"
                 :data-testid="`judge-pitch-score-option-${score}`"
                 class="rounded-lg border px-0 py-2 text-center text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
                 :class="pitchDraft.score === String(score)

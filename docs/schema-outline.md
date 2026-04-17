@@ -557,6 +557,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - A skipped assignment remains part of the audit trail.
 - Blind-review assignments store criterion scores through `JudgeCriterionScore`.
+- Started blind-review assignments can store a partial set of criterion scores before completion.
 - Pitch-review assignments store `pitch_score` and `pitch_comment` directly on the assignment.
 - A completed pitch-review assignment uses the shared `0..10` score scale.
 - A submission's blind score is the average of its completed blind-review assignments after score normalization.
@@ -585,6 +586,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - Criterion scores live under `JudgeAssignment`, not on `Submission`.
 - Criterion scores are recorded only for `blind_review` assignments.
+- Partial blind-review criterion scores can exist while the assignment remains `judge_started`.
 
 ## Prize
 

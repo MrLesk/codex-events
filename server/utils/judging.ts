@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '../auth/actor'
@@ -48,6 +48,10 @@ export const judgingAssignmentParamsSchema = routeIdParamsSchema.extend({
 })
 
 export const completeJudgeAssignmentBodySchema = z.object({
+  criterionScores: z.array(criterionScoreInputSchema).min(1)
+})
+
+export const saveJudgeAssignmentBodySchema = z.object({
   criterionScores: z.array(criterionScoreInputSchema).min(1)
 })
 
@@ -1343,10 +1347,11 @@ export function calculateAveragePitchScore(assignments: JudgeAssignmentRecord[])
   return completedPitchScores.reduce((total, score) => total + score, 0) / completedPitchScores.length
 }
 
-export async function normalizeCompletionCriterionScores(
+async function normalizeJudgeCriterionScores(
   database: AppDatabase,
   hackathonId: string,
-  body: z.infer<typeof completeJudgeAssignmentBodySchema>
+  body: z.infer<typeof saveJudgeAssignmentBodySchema>,
+  requireComplete: boolean
 ) {
   const criteria = await database.query.evaluationCriteria.findMany({
     where: eq(evaluationCriteria.hackathonId, hackathonId),
@@ -1355,7 +1360,7 @@ export async function normalizeCompletionCriterionScores(
 
   assertGuard(criteria.length > 0, {
     code: 'evaluation_criteria_required',
-    message: 'A review cannot be completed until evaluation criteria exist for the hackathon.',
+    message: 'Criterion scores cannot be recorded until evaluation criteria exist for the hackathon.',
     details: {
       hackathonId
     }
@@ -1386,17 +1391,67 @@ export async function normalizeCompletionCriterionScores(
     seenCriterionIds.add(criterionScore.evaluationCriterionId)
   }
 
-  assertGuard(seenCriterionIds.size === criteria.length, {
-    code: 'complete_criterion_scores_required',
-    message: 'A completed review must include a score for every evaluation criterion.',
-    details: {
-      hackathonId,
-      expectedCriterionCount: criteria.length,
-      providedCriterionCount: seenCriterionIds.size
-    }
-  })
+  if (requireComplete) {
+    assertGuard(seenCriterionIds.size === criteria.length, {
+      code: 'complete_criterion_scores_required',
+      message: 'A completed review must include a score for every evaluation criterion.',
+      details: {
+        hackathonId,
+        expectedCriterionCount: criteria.length,
+        providedCriterionCount: seenCriterionIds.size
+      }
+    })
+  }
 
   return body.criterionScores
+}
+
+export async function normalizeCompletionCriterionScores(
+  database: AppDatabase,
+  hackathonId: string,
+  body: z.infer<typeof completeJudgeAssignmentBodySchema>
+) {
+  return await normalizeJudgeCriterionScores(database, hackathonId, body, true)
+}
+
+export async function normalizeSavedCriterionScores(
+  database: AppDatabase,
+  hackathonId: string,
+  body: z.infer<typeof saveJudgeAssignmentBodySchema>
+) {
+  return await normalizeJudgeCriterionScores(database, hackathonId, body, false)
+}
+
+export async function saveJudgeCriterionScores(
+  database: AppDatabase,
+  assignmentId: string,
+  criterionScores: z.infer<typeof saveJudgeAssignmentBodySchema>['criterionScores'],
+  savedAt: string
+) {
+  await database
+    .insert(judgeCriterionScores)
+    .values(
+      criterionScores.map(score => ({
+        id: crypto.randomUUID(),
+        judgeAssignmentId: assignmentId,
+        evaluationCriterionId: score.evaluationCriterionId,
+        score: score.score,
+        comment: score.comment ?? null,
+        createdAt: savedAt,
+        updatedAt: savedAt
+      }))
+    )
+    .onConflictDoUpdate({
+      target: [
+        judgeCriterionScores.judgeAssignmentId,
+        judgeCriterionScores.evaluationCriterionId
+      ],
+      set: {
+        score: sql`excluded.score`,
+        comment: sql`excluded.comment`,
+        updatedAt: savedAt
+      }
+    })
 }
 
 export function normalizePitchReviewCompletion(

@@ -9,6 +9,7 @@ import reassignJudgeAssignmentHandler from '../../../../server/api/hackathons/[h
 import revertAssignmentIneligibilityHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/actions/revert-ineligibility.post'
 import skipJudgeAssignmentHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/actions/skip.post'
 import startJudgeAssignmentHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/actions/start.post'
+import patchJudgeAssignmentHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/index.patch'
 import listJudgeAssignmentsHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/index.get'
 import {
   auditLogs,
@@ -513,6 +514,11 @@ describe('TASK-3.7 judging assignment routes', () => {
           handler: startJudgeAssignmentHandler
         },
         {
+          method: 'patch',
+          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId',
+          handler: patchJudgeAssignmentHandler
+        },
+        {
           method: 'post',
           path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/complete',
           handler: completeJudgeAssignmentHandler
@@ -594,6 +600,130 @@ describe('TASK-3.7 judging assignment routes', () => {
     expect(auditEntries).toEqual(expect.arrayContaining([
       expect.objectContaining({ action: 'judge_assignment.review_started' }),
       expect.objectContaining({ action: 'judge_assignment.review_completed' })
+    ]))
+  })
+
+  test('started blind reviews can save criterion scores before completion', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/start',
+          handler: startJudgeAssignmentHandler
+        },
+        {
+          method: 'patch',
+          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId',
+          handler: patchJudgeAssignmentHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|judge_a',
+        email: 'judge-a@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedBaseJudgingRecords(harness, { includeCriteria: true })
+    await harness.database.insert(judgeAssignments).values({
+      id: 'assignment_1',
+      hackathonId: 'hackathon_1',
+      submissionId: 'submission_1',
+      judgeUserId: 'judge_a',
+      status: 'assigned',
+      assignedAt: '2026-03-25T12:10:00.000Z',
+      createdAt: '2026-03-25T12:10:00.000Z'
+    })
+
+    const startResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/start', {
+      method: 'POST'
+    })
+
+    expect(startResponse.status).toBe(200)
+
+    const firstSaveResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        criterionScores: [
+          {
+            evaluationCriterionId: 'criterion_1',
+            score: 8,
+            comment: 'Strong novelty'
+          }
+        ]
+      })
+    })
+
+    expect(firstSaveResponse.status).toBe(200)
+    expect(await firstSaveResponse.json()).toMatchObject({
+      data: {
+        id: 'assignment_1',
+        status: 'judge_started',
+        criterionScores: [
+          expect.objectContaining({
+            evaluationCriterionId: 'criterion_1',
+            score: 8,
+            comment: 'Strong novelty'
+          })
+        ]
+      }
+    })
+
+    const secondSaveResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        criterionScores: [
+          {
+            evaluationCriterionId: 'criterion_1',
+            score: 9,
+            comment: 'Updated novelty'
+          },
+          {
+            evaluationCriterionId: 'criterion_2',
+            score: 7
+          }
+        ]
+      })
+    })
+
+    expect(secondSaveResponse.status).toBe(200)
+    expect(await secondSaveResponse.json()).toMatchObject({
+      data: {
+        id: 'assignment_1',
+        status: 'judge_started',
+        criterionScores: [
+          expect.objectContaining({
+            evaluationCriterionId: 'criterion_1',
+            score: 9,
+            comment: 'Updated novelty'
+          }),
+          expect.objectContaining({
+            evaluationCriterionId: 'criterion_2',
+            score: 7
+          })
+        ]
+      }
+    })
+
+    const storedScores = await harness.database.select().from(judgeCriterionScores)
+    const updatedAssignment = await harness.database.query.judgeAssignments.findFirst({
+      where: eq(judgeAssignments.id, 'assignment_1')
+    })
+
+    expect(updatedAssignment?.status).toBe('judge_started')
+    expect(storedScores).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        judgeAssignmentId: 'assignment_1',
+        evaluationCriterionId: 'criterion_1',
+        score: 9,
+        comment: 'Updated novelty'
+      }),
+      expect.objectContaining({
+        judgeAssignmentId: 'assignment_1',
+        evaluationCriterionId: 'criterion_2',
+        score: 7,
+        comment: null
+      })
     ]))
   })
 

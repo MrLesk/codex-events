@@ -402,6 +402,7 @@ The judge has begun reviewing the submission.
 Behavior:
 
 - The assignment can no longer be manually reassigned by admins.
+- Blind-review criterion scores can be saved progressively while the assignment remains in progress.
 - A hackathon admin or platform admin can force the assignment to `skipped` if the judge cannot complete the review.
 
 #### `judge_completed`

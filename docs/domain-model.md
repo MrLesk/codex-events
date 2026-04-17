@@ -327,6 +327,7 @@ Operational rules:
 - The pitch panel is frozen from the active judge roster when pitch review begins.
 - Hackathon admins can reassign a blind review assignment only before its assigned judge has started review.
 - Blind scoring data lives on `JudgeAssignment` through criterion scores.
+- A started blind review can persist partial criterion scores before completion.
 - Pitch scoring data lives on `JudgeAssignment` as a pitch score and optional pitch comment.
 - Judge-level ineligibility decisions also live on `JudgeAssignment`.
 - A judge can mark a submission assignment as ineligible and provide a reason.
