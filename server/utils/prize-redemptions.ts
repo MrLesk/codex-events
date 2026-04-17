@@ -245,15 +245,19 @@ export async function buildPrizeRedemptionRows(
   database: AppDatabase,
   hackathonId: string,
   prizeList: PrizeRecord[],
-  announcedAt: string
+  announcedAt: string,
+  winners: Array<{
+    teamId: string
+    prizes: Array<{ id: string }>
+  }> | null = null
 ) {
-  const winners = await getWinnersView(database, hackathonId)
+  const resolvedWinners = winners ?? await getWinnersView(database, hackathonId)
 
-  if (winners.length === 0 || prizeList.length === 0) {
+  if (resolvedWinners.length === 0 || prizeList.length === 0) {
     return []
   }
 
-  const winningTeamIds = [...new Set(winners.map(entry => entry.teamId))]
+  const winningTeamIds = [...new Set(resolvedWinners.map(entry => entry.teamId))]
   const snapshots = winningTeamIds.length === 0
     ? []
     : await database.query.prizeEligibilitySnapshots.findMany({
@@ -274,7 +278,7 @@ export async function buildPrizeRedemptionRows(
   const prizeListById = new Map(prizeList.map(prize => [prize.id, prize]))
   const rows: Array<typeof prizeRedemptions.$inferInsert> = []
 
-  for (const winner of winners) {
+  for (const winner of resolvedWinners) {
     for (const prize of winner.prizes.map(prizeSummary => prizeListById.get(prizeSummary.id)).filter(Boolean) as PrizeRecord[]) {
       if (prize.awardScope === 'team') {
         rows.push({

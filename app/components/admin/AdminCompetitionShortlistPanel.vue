@@ -365,7 +365,7 @@ onBeforeUnmount(() => {
                     Finalists ({{ finalistEntries.length }})
                   </h3>
                   <p class="text-sm text-toned">
-                    These submissions move on to the live pitch stage in the order shown here. Saving this order keeps the full blind ranking, and the finalists above the boundary become the carried order for pitch and the starting final ranking later.
+                    These submissions move on to the live pitch stage in the order shown here. Saving this order keeps the full blind ranking and sets the finalist presentation order for pitch.
                   </p>
                 </div>
 
@@ -536,7 +536,7 @@ onBeforeUnmount(() => {
                 Not Finalists ({{ notFinalistEntries.length }})
               </h3>
               <p class="text-sm text-toned">
-                These submissions stay below the finalist boundary, but their saved order still carries into the later final ranking baseline.
+                These submissions stay below the finalist boundary while preserving the saved blind-ranking order.
               </p>
             </div>
 

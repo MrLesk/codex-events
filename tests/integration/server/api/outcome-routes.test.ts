@@ -1306,7 +1306,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
   })
 
-  test('starting final deliberation from pitch review preserves the saved shortlist ranking baseline', async () => {
+  test('starting final deliberation from pitch review clears any saved order and defaults to weighted score order', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
@@ -1384,23 +1384,23 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     const updatedHackathon = await harness.database.query.hackathons.findFirst({
       where: eq(hackathons.id, 'hackathon_1')
     })
-    expect(updatedHackathon?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_1', 'submission_2']))
+    expect(updatedHackathon?.finalRankingSubmissionIdsJson).toBe('[]')
 
     const viewResponse = await harness.request('/api/hackathons/hackathon_1/final-deliberation')
 
     expect(viewResponse.status).toBe(200)
     expect(await viewResponse.json()).toMatchObject({
       data: {
-        finalRankingSubmissionIds: ['submission_1', 'submission_2'],
+        finalRankingSubmissionIds: [],
         entries: [
-          expect.objectContaining({
-            submissionId: 'submission_1',
-            scoreRank: 2,
-            finalRank: 1
-          }),
           expect.objectContaining({
             submissionId: 'submission_2',
             scoreRank: 1,
+            finalRank: 1
+          }),
+          expect.objectContaining({
+            submissionId: 'submission_1',
+            scoreRank: 2,
             finalRank: 2
           })
         ]
@@ -1831,6 +1831,11 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     })
 
+    const updatedHackathon = await adminHarness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_1')
+    })
+    expect(updatedHackathon?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_2', 'submission_1']))
+
     const redemptionRows = await adminHarness.database.select().from(prizeRedemptions)
     expect(redemptionRows).toHaveLength(3)
     expect(redemptionRows).toEqual(expect.arrayContaining([
@@ -1844,6 +1849,87 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         prizeId: 'prize_member_top_2',
         teamId: 'team_1',
         userId: 'team_admin_one',
+        status: 'pending'
+      }),
+      expect.objectContaining({
+        prizeId: 'prize_member_top_2',
+        teamId: 'team_2',
+        userId: 'team_admin_two',
+        status: 'pending'
+      })
+    ]))
+  })
+
+  test('announcing winners can persist an unsaved manual final order override', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/announce-winners',
+          handler: announceWinnersHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, { state: 'final_deliberation' })
+    await seedPitchAssignments(harness, [
+      {
+        id: 'manual_announce_assignment_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 4,
+        assignedAt: '2026-03-18T12:00:00.000Z',
+        startedAt: '2026-03-18T12:01:00.000Z',
+        completedAt: '2026-03-18T12:02:00.000Z'
+      },
+      {
+        id: 'manual_announce_assignment_2',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 10,
+        assignedAt: '2026-03-18T12:03:00.000Z',
+        startedAt: '2026-03-18T12:04:00.000Z',
+        completedAt: '2026-03-18T12:05:00.000Z'
+      },
+      {
+        id: 'manual_announce_assignment_3',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_b',
+        status: 'judge_completed',
+        pitchScore: 8,
+        assignedAt: '2026-03-18T12:06:00.000Z',
+        startedAt: '2026-03-18T12:07:00.000Z',
+        completedAt: '2026-03-18T12:08:00.000Z'
+      }
+    ])
+
+    const announceResponse = await harness.request('/api/hackathons/hackathon_1/actions/announce-winners', {
+      method: 'POST',
+      body: JSON.stringify({
+        orderedSubmissionIds: ['submission_1', 'submission_2']
+      })
+    })
+
+    expect(announceResponse.status).toBe(200)
+
+    const updatedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_1')
+    })
+    expect(updatedHackathon?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_1', 'submission_2']))
+
+    const redemptionRows = await harness.database.select().from(prizeRedemptions)
+    expect(redemptionRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        prizeId: 'prize_team_rank_1',
+        teamId: 'team_1',
+        userId: null,
         status: 'pending'
       }),
       expect.objectContaining({

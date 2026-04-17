@@ -140,6 +140,8 @@ const shortlistErrorMessage = ref('')
 const finalDeliberation = ref<FinalDeliberationView | null>(null)
 const finalDeliberationStatus = ref<LoadStatus>('idle')
 const finalDeliberationErrorMessage = ref('')
+const finalDeliberationDraftOrderedSubmissionIds = ref<string[]>([])
+const finalDeliberationHasDraftChanges = ref(false)
 const winners = ref<WinnerEntry[]>([])
 const winnersStatus = ref<LoadStatus>('idle')
 const winnersErrorMessage = ref('')
@@ -437,6 +439,28 @@ const showPitchReviewPanel = computed(() =>
 )
 const showFinalDeliberationPanel = computed(() =>
   Boolean(showLifecycleSection.value && currentHackathon.value?.state === 'final_deliberation')
+)
+const hasSavedFinalDeliberationOrder = computed(() =>
+  (finalDeliberation.value?.finalRankingSubmissionIds.length ?? 0) > 0
+)
+const currentFinalDeliberationOrderedSubmissionIds = computed(() => {
+  if (finalDeliberationDraftOrderedSubmissionIds.value.length > 0) {
+    return finalDeliberationDraftOrderedSubmissionIds.value
+  }
+
+  if ((finalDeliberation.value?.finalRankingSubmissionIds.length ?? 0) > 0) {
+    return finalDeliberation.value!.finalRankingSubmissionIds
+  }
+
+  return (finalDeliberation.value?.entries ?? [])
+    .filter((entry): entry is FinalDeliberationView['entries'][number] & { finalRank: number } =>
+      entry.finalRank !== null
+    )
+    .map(entry => entry.submissionId)
+})
+const shouldPersistDraftOnAnnounceWinners = computed(() =>
+  currentFinalDeliberationOrderedSubmissionIds.value.length > 0
+  && (!hasSavedFinalDeliberationOrder.value || finalDeliberationHasDraftChanges.value)
 )
 const showOutcomePanel = computed(() =>
   Boolean(showLifecycleSection.value && currentHackathon.value && ['winners_announced', 'completed'].includes(currentHackathon.value.state))
@@ -1506,11 +1530,15 @@ async function loadFinalDeliberation() {
     finalDeliberation.value = null
     finalDeliberationStatus.value = 'idle'
     finalDeliberationErrorMessage.value = ''
+    finalDeliberationDraftOrderedSubmissionIds.value = []
+    finalDeliberationHasDraftChanges.value = false
     return
   }
 
   finalDeliberationStatus.value = 'pending'
   finalDeliberationErrorMessage.value = ''
+  finalDeliberationDraftOrderedSubmissionIds.value = []
+  finalDeliberationHasDraftChanges.value = false
 
   try {
     const response = await $fetch<ApiDataResponse<FinalDeliberationView>>(
@@ -1526,6 +1554,14 @@ async function loadFinalDeliberation() {
       'Final deliberation data could not be loaded right now.'
     )
   }
+}
+
+function syncFinalDeliberationDraft(payload: {
+  orderedSubmissionIds: string[]
+  hasDraftChanges: boolean
+}) {
+  finalDeliberationDraftOrderedSubmissionIds.value = payload.orderedSubmissionIds
+  finalDeliberationHasDraftChanges.value = payload.hasDraftChanges
 }
 
 async function loadWinners() {
@@ -1701,6 +1737,47 @@ async function reorderFinalDeliberation(orderedSubmissionIds: string[]) {
     {
       title: 'Final order updated',
       description: 'The final ranking order has been updated without changing any judge scores.'
+    }
+  )
+}
+
+async function announceWinners() {
+  if (!finalDeliberation.value) {
+    await loadFinalDeliberation()
+  }
+
+  if (!finalDeliberation.value) {
+    return
+  }
+
+  if (import.meta.client && !hasSavedFinalDeliberationOrder.value) {
+    const confirmed = window.confirm([
+      'Announce winners and save the current final order?',
+      'This final order has not been saved yet. Continuing will save it and publish the winners.'
+    ].join('\n\n'))
+
+    if (!confirmed) {
+      return
+    }
+  }
+
+  await runMutation(
+    'announce-winners',
+    async () => {
+      await $fetch(`/api/hackathons/${hackathonId.value}/actions/announce-winners`, {
+        method: 'POST',
+        ...(shouldPersistDraftOnAnnounceWinners.value
+          ? {
+              body: {
+                orderedSubmissionIds: currentFinalDeliberationOrderedSubmissionIds.value
+              }
+            }
+          : {})
+      })
+    },
+    {
+      title: 'Winners announced',
+      description: 'The final ranking is now published and prize redemption has been initialized when configured.'
     }
   )
 }
@@ -1889,6 +1966,14 @@ async function runLifecycleAction() {
     && currentHackathon.value?.state === 'pitch_review'
   ) {
     await startFinalDeliberation()
+    return
+  }
+
+  if (
+    lifecycleControl.value.key === 'announce_winners'
+    && currentHackathon.value?.state === 'final_deliberation'
+  ) {
+    await announceWinners()
     return
   }
 
@@ -2272,6 +2357,7 @@ async function runLifecycleAction() {
           :is-loading="finalDeliberationStatus === 'pending'"
           :error-message="finalDeliberationStatus === 'error' ? finalDeliberationErrorMessage : ''"
           :pending-action-key="pendingActionKey"
+          @draft-change="syncFinalDeliberationDraft"
           @reorder="reorderFinalDeliberation"
         />
 

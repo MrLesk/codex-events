@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray } from 'drizzle-orm'
+import { z } from 'zod'
 
 import { requirePlatformActor } from '../../../../auth/actor'
 import { writeAuditLog } from '../../../../database/audit-log'
@@ -13,6 +14,7 @@ import {
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,
+  serializePrize,
   serializeHackathon
 } from '../../../../utils/hackathon-management'
 import {
@@ -21,18 +23,31 @@ import {
 } from '../../../../utils/prize-redemptions'
 import {
   assertWinnersAnnouncementAllowed,
-  getTeamCompetitionOutcome,
-  getWinnersView
+  assertFinalDeliberationReorderMatchesEntries,
+  getFinalDeliberationView,
+  getTeamCompetitionOutcome
 } from '../../../../utils/shortlist'
-import { parseValidatedParams } from '../../../../utils/validation'
+import { parseValidatedBody, parseValidatedParams } from '../../../../utils/validation'
 import { assertGuard } from '../../../../utils/lifecycle-guard'
 
 type PrizeEligibilitySnapshotRecord = typeof prizeEligibilitySnapshots.$inferSelect
 type UserRecord = typeof users.$inferSelect
+type WinnerPrizeSummary = ReturnType<typeof serializePrize>
+type AnnouncedWinner = {
+  teamId: string
+  teamName: string
+  finalRank: number
+  prizes: WinnerPrizeSummary[]
+}
+
+const announceWinnersBodySchema = z.object({
+  orderedSubmissionIds: z.array(z.string().trim().min(1)).min(1).optional()
+}).default({})
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)
+  const body = await parseValidatedBody(event, announceWinnersBodySchema)
   const database = getDatabase(event)
   const { hackathon } = await requireHackathonAdmin(event, hackathonId)
 
@@ -51,14 +66,53 @@ export default defineApiHandler(async (event) => {
     })
   }
 
+  const finalDeliberationView = await getFinalDeliberationView(database, hackathonId)
+  const rankedEntries = finalDeliberationView.entries.filter(
+    (entry): entry is typeof finalDeliberationView.entries[number] & { finalRank: number } =>
+      entry.finalRank !== null
+  )
+
+  if (body.orderedSubmissionIds) {
+    assertFinalDeliberationReorderMatchesEntries(
+      body.orderedSubmissionIds,
+      rankedEntries.map(entry => ({ submissionId: entry.submissionId }))
+    )
+  }
+
+  const finalRankingSubmissionIds = body.orderedSubmissionIds
+    ?? (finalDeliberationView.finalRankingSubmissionIds.length > 0
+      ? finalDeliberationView.finalRankingSubmissionIds
+      : rankedEntries.map(entry => entry.submissionId))
+  const rankedEntriesBySubmissionId = new Map(
+    rankedEntries.map(entry => [entry.submissionId, entry] as const)
+  )
+  const winners: AnnouncedWinner[] = finalRankingSubmissionIds
+    .map(submissionId => rankedEntriesBySubmissionId.get(submissionId))
+    .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry))
+    .map((entry, index) => {
+      const finalRank = index + 1
+      const awardedPrizes = prizeList
+        .filter((prize: typeof prizeList[number]) => finalRank >= prize.rankStart && finalRank <= prize.rankEnd)
+        .map(serializePrize)
+
+      return {
+        teamId: entry.teamId,
+        teamName: entry.teamName,
+        finalRank,
+        prizes: awardedPrizes
+      }
+    })
+    .filter(entry => entry.prizes.length > 0)
+
   const announcedAt = new Date().toISOString()
-  const redemptionRows = await buildPrizeRedemptionRows(database, hackathonId, prizeList, announcedAt)
+  const redemptionRows = await buildPrizeRedemptionRows(database, hackathonId, prizeList, announcedAt, winners)
 
   await database.batch([
     database
       .update(hackathons)
       .set({
         state: 'winners_announced',
+        finalRankingSubmissionIdsJson: JSON.stringify(finalRankingSubmissionIds),
         updatedAt: announcedAt
       })
       .where(eq(hackathons.id, hackathonId)),
@@ -66,8 +120,6 @@ export default defineApiHandler(async (event) => {
       ? [database.insert(prizeRedemptions).values(redemptionRows)]
       : [])
   ])
-
-  const winners = await getWinnersView(database, hackathonId)
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,
@@ -77,6 +129,7 @@ export default defineApiHandler(async (event) => {
     metadata: {
       previousState: hackathon.state,
       nextState: 'winners_announced',
+      finalRankingSubmissionIds,
       winnerCount: winners.length,
       createdPrizeRedemptionCount: redemptionRows.length
     }

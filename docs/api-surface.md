@@ -445,7 +445,7 @@ Operations:
 | --- | --- | --- | --- |
 | Get leaderboard | `GET /api/hackathons/:hackathonId/leaderboard` | judge, hackathon admin, or platform admin | Returns the computed scored ordering for the enabled scoring stages completed so far. During blind review, shortlist, and `pitch`, this is the blind-review leaderboard. During or after pitch review, this is the weighted final scoreboard. |
 | Get shortlist view | `GET /api/hackathons/:hackathonId/shortlist` | judge, hackathon admin, or platform admin | Returns the blind shortlist ordering visible during `shortlist`, including the current finalist boundary and finalist order. The shortlist view remains blind with respect to team identity. |
-| Select pitch finalists | `POST /api/hackathons/:hackathonId/shortlist/actions/select-finalists` | hackathon admin or platform admin | Persists the full ordered shortlist plus the leading finalist subset that advances to the live `pitch` stage. Allowed only during `shortlist`. The saved shortlist order also becomes the starting final ranking order unless admins later reorder it in `final_deliberation`. |
+| Select pitch finalists | `POST /api/hackathons/:hackathonId/shortlist/actions/select-finalists` | hackathon admin or platform admin | Persists the full ordered shortlist plus the leading finalist subset that advances to the live `pitch` stage. Allowed only during `shortlist`. |
 
 Testing:
 - Unit: shortlist guard, blind-ordering, and finalist-selection rules.
@@ -461,7 +461,7 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Get final deliberation view | `GET /api/hackathons/:hackathonId/final-deliberation` | judge, hackathon admin, or platform admin | Returns the final weighted scoreboard, score breakdown by enabled stage, and the current carried ranking order visible during `final_deliberation`. |
+| Get final deliberation view | `GET /api/hackathons/:hackathonId/final-deliberation` | judge, hackathon admin, or platform admin | Returns the final weighted scoreboard, score breakdown by enabled stage, and the current final-deliberation order. When no explicit final order has been saved yet, the ranked entries default to combined-score order. |
 | Reorder final ranking | `POST /api/hackathons/:hackathonId/final-deliberation/actions/reorder` | hackathon admin or platform admin | Adjusts final ranking order without mutating underlying blind or pitch scores. |
 
 Testing:

@@ -483,7 +483,7 @@ Scope:
 - `shortlist` presents the blind-review ordering by default and later uses the persisted full shortlist order after admins save it.
 - Entering `shortlist` shows the top-ranked blind-review submissions as the default finalist boundary up to the hackathon's configured shortlist finalist count until admins save the shortlist.
 - The leading submissions in the saved shortlist order are the persisted finalists for the live pitch stage.
-- The saved shortlist order becomes the starting final ranking order unless admins later reorder it in `final_deliberation`.
+- Final deliberation starts from combined-score order until admins explicitly save a final ranking or announce winners.
 - Pitch-only hackathons skip `shortlist`. Starting `pitch` locks the submitted projects, freezes prize eligibility, and sends those newly locked submissions directly into the persisted pitch presentation lineup.
 - Finalist identity remains hidden during `shortlist`.
 - A later manual admin action starts `pitch`, which is the live finalist presentation stage, freezes the ordered pitch lineup, and does not create judge assignments.

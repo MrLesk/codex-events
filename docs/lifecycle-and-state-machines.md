@@ -90,7 +90,7 @@ Behavior:
 - Judges can review blind-review scores.
 - Entering shortlist shows the top ranked blind-review submissions as the default finalist boundary up to the configured shortlist finalist count until admins save the shortlist.
 - Hackathon admins manually order the full blind shortlist and adjust which leading submissions are finalists.
-- The saved shortlist order becomes the starting final ranking order unless admins later change it in `final_deliberation`.
+- Final deliberation opens in combined-score order by default until admins explicitly save a final order or announce winners.
 - Team identity remains hidden during shortlist.
 - Participant-facing shortlist status is not published yet.
 
@@ -128,7 +128,7 @@ Behavior:
 
 - Judges can review final combined scores.
 - Hackathon admins can manually reorder the final ranking without changing the underlying blind or pitch scores.
-- Final order is computed hackathon data with any explicit admin ranking override applied.
+- Final order opens in combined-score order by default and becomes persisted only when admins save the ranking or announce winners.
 
 #### `winners_announced`
 
