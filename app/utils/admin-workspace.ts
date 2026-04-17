@@ -205,6 +205,9 @@ export interface HackathonRecord {
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number
   pitchScoreWeightPercent: number
+  pitchPresentationSubmissionIds: string[]
+  activePitchPresentationSubmissionId: string | null
+  pitchPresentationsCompletedAt: string | null
   inPersonEvent: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
@@ -391,24 +394,22 @@ export interface AdminOperationalTeam {
   noSubmissionReason: AdminSubmissionStatus
 }
 
-export type AdminSubmissionDashboardBucket = 'late' | 'ready' | 'out'
 export type AdminSubmissionDashboardFilter = 'all'
-  | 'late'
-  | 'ready'
-  | 'out'
   | 'none'
   | 'draft'
   | 'submitted'
   | 'locked'
-  | 'withdrawn'
-  | 'disqualified'
+  | 'out'
 
 export interface AdminSubmissionDashboardMetrics {
   totalTeams: number
-  readyTeams: number
+  noRecordTeams: number
   draftTeams: number
-  noSubmissionTeams: number
-  lateTeams: number
+  submittedTeams: number
+  lockedTeams: number
+  submittedOrLaterTeams: number
+  withdrawnTeams: number
+  disqualifiedTeams: number
   outTeams: number
 }
 
@@ -730,26 +731,6 @@ export function getHackathonStateColor(state: HackathonState) {
   }
 }
 
-export function getHackathonDashboardStateBadgePresentation(state: HackathonState): {
-  color: 'primary' | 'secondary' | 'neutral' | 'success' | 'warning' | 'error' | 'info'
-  variant: 'soft' | 'outline'
-  className: string
-} {
-  if (state === 'draft') {
-    return {
-      color: 'neutral' as const,
-      variant: 'outline' as const,
-      className: 'border-black/10 bg-black/[0.04] text-neutral-700 dark:border-white/[0.14] dark:bg-white/[0.08] dark:text-white/85'
-    }
-  }
-
-  return {
-    color: getHackathonStateColor(state),
-    variant: 'soft' as const,
-    className: ''
-  }
-}
-
 export type HackathonOperationsPhase = 'registration_open' | 'submission_open' | 'judging' | 'completed'
 
 export function getHackathonOperationsPhase(state: HackathonState): HackathonOperationsPhase | null {
@@ -845,10 +826,10 @@ export function formatFailedApplicationLumaSyncAlertToggleLabel(count: number, e
   }
 
   if (expanded) {
-    return 'Hide participant list'
+    return 'Collapse'
   }
 
-  return `Show ${count} participant${count === 1 ? '' : 's'}`
+  return 'Expand'
 }
 
 export function formatApplicationLumaSyncStatus(status: AdminApplicationRecord['lumaSyncStatus']) {
@@ -935,7 +916,7 @@ export function getApprovedParticipantAttendanceSummary(
 }
 
 export function formatSubmissionStatus(status: AdminSubmissionStatus) {
-  return status === 'none' ? 'No Submission' : startCase(status)
+  return status === 'none' ? 'No record' : startCase(status)
 }
 
 export function getSubmissionStatusColor(status: AdminSubmissionStatus) {
@@ -1009,37 +990,28 @@ function getAdminOperationalTeamLastActivityTimestamp(team: AdminOperationalTeam
     ?? team.team.updatedAt
 }
 
-export function getAdminSubmissionDashboardBucket(status: AdminSubmissionStatus): AdminSubmissionDashboardBucket {
-  switch (status) {
-    case 'submitted':
-    case 'locked':
-      return 'ready'
-    case 'withdrawn':
-    case 'disqualified':
-      return 'out'
-    case 'none':
-    case 'draft':
-      return 'late'
-  }
+function isAdminSubmissionDashboardOutStatus(status: AdminSubmissionStatus) {
+  return status === 'withdrawn' || status === 'disqualified'
 }
 
 export function getAdminSubmissionDashboardMetrics(teams: AdminOperationalTeam[]): AdminSubmissionDashboardMetrics {
-  const noSubmissionTeams = teams.filter(team => team.submissionStatus === 'none').length
+  const noRecordTeams = teams.filter(team => team.submissionStatus === 'none').length
   const draftTeams = teams.filter(team => team.submissionStatus === 'draft').length
-  const readyTeams = teams.filter(team =>
-    team.submissionStatus === 'submitted' || team.submissionStatus === 'locked'
-  ).length
-  const outTeams = teams.filter(team =>
-    team.submissionStatus === 'withdrawn' || team.submissionStatus === 'disqualified'
-  ).length
+  const submittedTeams = teams.filter(team => team.submissionStatus === 'submitted').length
+  const lockedTeams = teams.filter(team => team.submissionStatus === 'locked').length
+  const withdrawnTeams = teams.filter(team => team.submissionStatus === 'withdrawn').length
+  const disqualifiedTeams = teams.filter(team => team.submissionStatus === 'disqualified').length
 
   return {
     totalTeams: teams.length,
-    readyTeams,
+    noRecordTeams,
     draftTeams,
-    noSubmissionTeams,
-    lateTeams: noSubmissionTeams + draftTeams,
-    outTeams
+    submittedTeams,
+    lockedTeams,
+    submittedOrLaterTeams: submittedTeams + lockedTeams,
+    withdrawnTeams,
+    disqualifiedTeams,
+    outTeams: withdrawnTeams + disqualifiedTeams
   }
 }
 
@@ -1075,8 +1047,8 @@ export function filterAdminOperationalTeams(
 
   return teams.filter((team) => {
     if (filter !== 'all') {
-      if (filter === 'late' || filter === 'ready' || filter === 'out') {
-        if (getAdminSubmissionDashboardBucket(team.submissionStatus) !== filter) {
+      if (filter === 'out') {
+        if (!isAdminSubmissionDashboardOutStatus(team.submissionStatus)) {
           return false
         }
       } else if (team.submissionStatus !== filter) {
@@ -1766,7 +1738,7 @@ export function getCurrentLifecycleControl(
         return {
           key: 'start_shortlist',
           label: 'Start Shortlist',
-          description: 'Move the hackathon into blind finalist selection before the live pitch stage begins.',
+          description: 'Move the hackathon into blind shortlist ordering before the live pitch stage begins.',
           endpoint: `/api/hackathons/${hackathon.id}/actions/start-shortlist`,
           isEnabled: !reason,
           reason,
@@ -1790,9 +1762,14 @@ export function getCurrentLifecycleControl(
       let reason: string | undefined
       let code: string | undefined
 
-      if (metrics.lockedSubmissionCount === 0) {
-        reason = 'Pitch review requires at least one locked submission.'
-        code = 'locked_submissions_required'
+      if (hackathon.pitchPresentationSubmissionIds.length === 0) {
+        reason = 'Pitch review requires at least one finalist submission in the pitch lineup.'
+        code = 'pitch_finalists_required'
+      } else if (hackathon.pitchPresentationsCompletedAt === null) {
+        reason = hackathon.activePitchPresentationSubmissionId
+          ? 'Finish the live pitch presentation lineup from the Competition tab before pitch review can start.'
+          : 'Enable the first pitch presentation from the Competition tab before pitch review can start.'
+        code = 'pitch_presentations_incomplete'
       } else if (metrics.judgePoolCount === 0) {
         reason = 'Pitch review requires at least one judge in the automatic judge pool.'
         code = 'judge_pool_required'

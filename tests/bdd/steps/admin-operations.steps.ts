@@ -295,6 +295,8 @@ When('I load more admin teams', async ({ page }) => {
 })
 
 When('I admin-withdraw the team submission for {string} with note {string}', async ({ page }, teamId: string, note: string) => {
+  await page.getByTestId(`admin-team-withdraw-toggle-${teamId}`).click()
+
   const team = page.getByTestId(`admin-withdraw-team-${teamId}`)
 
   await expect(team).toBeVisible()
@@ -310,6 +312,13 @@ When('I admin-withdraw the team submission for {string} with note {string}', asy
 })
 
 When('I disqualify the admin team submission for {string} with note {string}', async ({ page }, teamId: string, note: string) => {
+  const interventionsToggle = page.getByTestId('admin-submission-interventions-toggle')
+  const interventionsPanel = page.getByTestId('admin-submission-interventions-panel')
+
+  if (await interventionsPanel.count() === 0) {
+    await interventionsToggle.click()
+  }
+
   const team = page.getByTestId(`admin-disqualify-team-${teamId}`)
 
   await expect(team).toBeVisible()

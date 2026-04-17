@@ -15,30 +15,23 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  adminWithdraw: [payload: { teamId: string, requestedByUserId: string, reason?: string }]
   disqualify: [payload: { teamId: string, reason?: string }]
 }>()
 
 const drafts = reactive<Record<string, {
-  requestedByUserId: string
-  adminWithdrawReason: string
   disqualifyReason: string
 }>>({})
+
+const isExpanded = ref(false)
 
 function getDraft(team: AdminOperationalTeam) {
   const existing = drafts[team.team.id]
 
   if (existing) {
-    if (!existing.requestedByUserId && team.activeAdminChoices[0]) {
-      existing.requestedByUserId = team.activeAdminChoices[0].userId
-    }
-
     return existing
   }
 
   const next = {
-    requestedByUserId: team.activeAdminChoices[0]?.userId ?? '',
-    adminWithdrawReason: '',
     disqualifyReason: ''
   }
 
@@ -46,167 +39,138 @@ function getDraft(team: AdminOperationalTeam) {
   return next
 }
 
-const withdrawableTeams = computed(() =>
-  props.teams.filter(team => getAdminSubmissionInterventionPolicy(props.hackathonState, team.submissionStatus).canAdminWithdraw)
-)
 const disqualifiableTeams = computed(() =>
   props.teams.filter(team => getAdminSubmissionInterventionPolicy(props.hackathonState, team.submissionStatus).canDisqualify)
 )
+
+const interventionsAlert = computed(() => {
+  if (disqualifiableTeams.value.length > 0) {
+    return {
+      color: 'warning' as const,
+      title: 'Admin interventions available',
+      description: `${disqualifiableTeams.value.length} locked submission${disqualifiableTeams.value.length === 1 ? '' : 's'} can be removed from competition here. Admin-withdraw remains available inline on eligible team rows during submission open.`
+    }
+  }
+
+  return {
+    color: 'neutral' as const,
+    title: 'Admin interventions',
+    description: 'Use inline withdraw on eligible team rows during submission open. Disqualification appears here only after judging begins and the submission is locked.'
+  }
+})
+
+function toggleExpanded() {
+  isExpanded.value = !isExpanded.value
+}
 </script>
 
 <template>
-  <AppCard class="rounded-xl hackathon-workspace-detail-panel">
-    <template #header>
-      <div class="space-y-1">
-        <h2 class="text-lg font-semibold text-highlighted">
-          Admin Interventions
-        </h2>
-        <p class="text-sm text-muted">
-          Admin-only actions stay separate from participant submission controls and follow the canonical lifecycle guards.
-        </p>
-      </div>
-    </template>
+  <AppAlert
+    v-if="errorMessage"
+    color="error"
+    variant="soft"
+    title="Interventions unavailable"
+    :description="errorMessage"
+  />
 
-    <div class="space-y-8">
-      <AppAlert
-        v-if="errorMessage"
-        color="error"
-        variant="soft"
-        title="Interventions unavailable"
-        :description="errorMessage"
-      />
+  <AppAlert
+    v-else-if="isLoading"
+    color="neutral"
+    variant="soft"
+    title="Loading interventions"
+    description="The admin intervention surface is still loading current team and submission state."
+  />
 
-      <AppAlert
-        v-else-if="isLoading"
-        color="neutral"
-        variant="soft"
-        title="Loading interventions"
-        description="The admin intervention surface is still loading current team and submission state."
-      />
-
-      <template v-else>
-        <section class="space-y-3">
-          <div class="space-y-1">
-            <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
-              Admin-withdrawal
-            </h3>
-            <p class="text-sm text-toned">
-              Use only when an active team admin has requested withdrawal before judging preparation begins.
+  <AppAlert
+    v-else
+    class="block"
+    :color="interventionsAlert.color"
+    variant="soft"
+  >
+    <div class="flex h-full flex-col gap-4">
+      <div
+        :class="[
+          'space-y-3',
+          isExpanded ? 'border-b border-current/15 pb-4' : ''
+        ]"
+      >
+        <div class="flex items-center justify-between gap-3">
+          <div class="min-w-0 space-y-1">
+            <p class="text-lg font-semibold text-current">
+              {{ interventionsAlert.title }}
+            </p>
+            <p class="text-sm text-current/90">
+              {{ interventionsAlert.description }}
             </p>
           </div>
 
-          <div
-            v-if="withdrawableTeams.length > 0"
-            class="grid grid-cols-1 gap-4"
+          <button
+            type="button"
+            data-testid="admin-submission-interventions-toggle"
+            :aria-expanded="isExpanded"
+            aria-controls="admin-submission-interventions-panel"
+            class="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 self-center rounded-full border border-current/15 px-3.5 text-sm font-medium text-current transition hover:border-current/30 hover:text-current/80"
+            @click="toggleExpanded"
           >
-            <article
-              v-for="team in withdrawableTeams"
-              :key="`${team.team.id}-withdraw`"
-              :data-testid="`admin-withdraw-team-${team.team.id}`"
-              class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
-            >
-              <div class="space-y-4">
-                <div>
-                  <h4 class="text-base font-semibold text-highlighted">
-                    {{ team.team.name }}
-                  </h4>
-                  <p class="mt-1 text-sm text-toned">
-                    Current submission status: {{ team.submissionStatus }}
-                  </p>
-                </div>
+            <span>{{ isExpanded ? 'Collapse' : 'Expand' }}</span>
+            <AppIcon
+              :name="isExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+              class="size-4"
+            />
+          </button>
+        </div>
+      </div>
 
-                <div class="grid gap-4 lg:grid-cols-[0.45fr_0.55fr]">
-                  <label class="grid gap-2">
-                    <span class="text-sm font-medium text-toned">Requested by team admin</span>
-                    <AppSelect
-                      v-model="getDraft(team).requestedByUserId"
-                    >
-                      <option
-                        v-for="choice in team.activeAdminChoices"
-                        :key="choice.userId"
-                        :value="choice.userId"
-                      >
-                        {{ choice.label }}
-                      </option>
-                    </AppSelect>
-                  </label>
-
-                  <label class="grid gap-2">
-                    <span class="text-sm font-medium text-toned">Operational note</span>
-                    <AppInput
-                      v-model="getDraft(team).adminWithdrawReason"
-                      type="text"
-                      placeholder="Requested by team due to..."
-                    />
-                  </label>
-                </div>
-
-                <AppAlert
-                  v-if="team.activeAdminChoices.length === 0"
-                  color="warning"
-                  variant="soft"
-                  title="Team-admin request required"
-                  description="This action cannot be issued until the team detail exposes at least one active admin requester."
-                />
-
-                <AppButton
-                  color="warning"
-                  :data-testid="`admin-withdraw-submit-${team.team.id}`"
-                  :loading="pendingActionKey === `admin-withdraw:${team.team.id}`"
-                  :disabled="team.activeAdminChoices.length === 0 || (pendingActionKey !== null && pendingActionKey !== `admin-withdraw:${team.team.id}`)"
-                  @click="emit('adminWithdraw', {
-                    teamId: team.team.id,
-                    requestedByUserId: getDraft(team).requestedByUserId,
-                    reason: getDraft(team).adminWithdrawReason.trim() || undefined
-                  })"
-                >
-                  Admin-withdraw submission
-                </AppButton>
-              </div>
-            </article>
-          </div>
-
-          <AppAlert
-            v-else
-            color="neutral"
-            variant="soft"
-            title="No admin-withdrawal candidates"
-            description="No visible teams are currently in a state that allows admin withdrawal."
-          />
+      <div
+        v-if="isExpanded"
+        id="admin-submission-interventions-panel"
+        data-testid="admin-submission-interventions-panel"
+        class="mt-4 space-y-6"
+      >
+        <section class="space-y-2">
+          <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-current/80">
+            Intervention rules
+          </h3>
+          <p class="text-sm text-current/90">
+            Admin-withdraw should be used only when an active team admin has requested withdrawal before judging preparation begins. Use the inline withdraw action on the relevant team row.
+          </p>
+          <p class="text-sm text-current/90">
+            Disqualification is available only once judge review has started and the submission is already locked for competition.
+          </p>
         </section>
 
         <section class="space-y-3">
           <div class="space-y-1">
-            <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
+            <h3 class="text-sm font-semibold uppercase tracking-[0.18em] text-current/80">
               Disqualification
             </h3>
-            <p class="text-sm text-toned">
-              Use only once judge review has started and the submission is already locked for competition.
+            <p class="text-sm text-current/90">
+              Remove a locked submission from competition when the lifecycle guard allows it.
             </p>
           </div>
 
           <div
             v-if="disqualifiableTeams.length > 0"
-            class="grid grid-cols-1 gap-4"
+            class="space-y-4"
           >
             <article
               v-for="team in disqualifiableTeams"
               :key="`${team.team.id}-disqualify`"
               :data-testid="`admin-disqualify-team-${team.team.id}`"
-              class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
+              class="rounded-lg border border-current/15 px-4 py-4"
             >
               <div class="space-y-4">
                 <div>
-                  <h4 class="text-base font-semibold text-highlighted">
+                  <h4 class="text-base font-semibold text-current">
                     {{ team.team.name }}
                   </h4>
-                  <p class="mt-1 text-sm text-toned">
+                  <p class="mt-1 text-sm text-current/85">
                     Locked project: {{ team.submission?.projectName ?? 'Unnamed project' }}
                   </p>
                 </div>
 
                 <label class="grid gap-2">
-                  <span class="text-sm font-medium text-toned">Operational note</span>
+                  <span class="text-sm font-medium text-current/90">Operational note</span>
                   <AppInput
                     v-model="getDraft(team).disqualifyReason"
                     type="text"
@@ -231,15 +195,14 @@ const disqualifiableTeams = computed(() =>
             </article>
           </div>
 
-          <AppAlert
+          <p
             v-else
-            color="neutral"
-            variant="soft"
-            title="No disqualification candidates"
-            description="No visible teams currently have a locked submission eligible for admin disqualification."
-          />
+            class="text-sm text-current/85"
+          >
+            No locked submissions currently qualify for disqualification.
+          </p>
         </section>
-      </template>
+      </div>
     </div>
-  </AppCard>
+  </AppAlert>
 </template>

@@ -29,14 +29,12 @@ import {
   filterManageableHackathons,
   fromDateTimeLocalValue,
   getAdminJudgeAssignmentInterventionPolicy,
-  getAdminSubmissionDashboardBucket,
   getAdminSubmissionDashboardMetrics,
   getApplicationAttendanceStatusColor,
   getCriteriaConfigurationValidationIssues,
   getHackathonOperationsPhase,
   getAdminWorkspaceSubjectKey,
   getApprovedParticipantAttendanceSummary,
-  getHackathonDashboardStateBadgePresentation,
   hasHackathonJudgingAccess,
   hasHackathonParticipantVisibilityAccess,
   getNextAgendaItemDefaultTimes,
@@ -82,6 +80,9 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
     pitchScoreWeightPercent: 30,
+    pitchPresentationSubmissionIds: [],
+    activePitchPresentationSubmissionId: null,
+    pitchPresentationsCompletedAt: null,
     inPersonEvent: false,
     requireXProfile: false,
     requireLinkedinProfile: true,
@@ -270,20 +271,6 @@ function createNoSubmissionEntry(overrides: Partial<NoSubmissionEntry> = {}): No
 }
 
 describe('admin-workspace access helpers', () => {
-  test('renders a visible draft chip treatment on the admin dashboard', () => {
-    expect(getHackathonDashboardStateBadgePresentation('draft')).toEqual({
-      color: 'neutral',
-      variant: 'outline',
-      className: 'border-black/10 bg-black/[0.04] text-neutral-700 dark:border-white/[0.14] dark:bg-white/[0.08] dark:text-white/85'
-    })
-
-    expect(getHackathonDashboardStateBadgePresentation('registration_open')).toEqual({
-      color: 'info',
-      variant: 'soft',
-      className: ''
-    })
-  })
-
   test('groups hackathon states into the supported operations dashboard phases', () => {
     expect(getHackathonOperationsPhase('draft')).toBeNull()
     expect(getHackathonOperationsPhase('registration_open')).toBe('registration_open')
@@ -702,7 +689,9 @@ describe('admin-workspace lifecycle controls', () => {
         blindReviewCount: 0,
         pitchReviewEnabled: true,
         blindScoreWeightPercent: 0,
-        pitchScoreWeightPercent: 100
+        pitchScoreWeightPercent: 100,
+        pitchPresentationSubmissionIds: ['submission-1', 'submission-2'],
+        pitchPresentationsCompletedAt: '2026-03-26T12:20:00.000Z'
       }),
       {
         submittedSubmissionCount: 3,
@@ -719,6 +708,36 @@ describe('admin-workspace lifecycle controls', () => {
     expect(control).toMatchObject({
       key: 'start_pitch_review',
       isEnabled: true
+    })
+  })
+
+  test('keeps pitch review disabled until the live presentation lineup is completed', () => {
+    const control = getCurrentLifecycleControl(
+      createHackathon({
+        state: 'pitch',
+        blindReviewCount: 0,
+        pitchReviewEnabled: true,
+        blindScoreWeightPercent: 0,
+        pitchScoreWeightPercent: 100,
+        pitchPresentationSubmissionIds: ['submission-1', 'submission-2'],
+        activePitchPresentationSubmissionId: 'submission-1'
+      }),
+      {
+        submittedSubmissionCount: 3,
+        judgePoolCount: 2,
+        lockedSubmissionCount: 3,
+        activeAssignmentCount: 0,
+        lockedLeaderboardEntryCount: 3,
+        completedReviewCount: 0,
+        prizeCount: 0,
+        hasCurrentWinnerTerms: true
+      }
+    )
+
+    expect(control).toMatchObject({
+      key: 'start_pitch_review',
+      isEnabled: false,
+      code: 'pitch_presentations_incomplete'
     })
   })
 
@@ -854,7 +873,7 @@ describe('admin-workspace operational helpers', () => {
     expect(getApplicationLumaSyncStatusColor('reject_failed')).toBe('warning')
     expect(formatAdminJudgeAssignmentStatus('judge_started')).toBe('Judge Started')
     expect(getJudgeAssignmentStatusColor('judge_completed')).toBe('success')
-    expect(formatSubmissionStatus('none')).toBe('No Submission')
+    expect(formatSubmissionStatus('none')).toBe('No record')
     expect(getSubmissionStatusColor('disqualified')).toBe('error')
   })
 
@@ -926,9 +945,9 @@ describe('admin-workspace operational helpers', () => {
 
   test('formats the failed Luma sync recap toggle label', () => {
     expect(formatFailedApplicationLumaSyncAlertToggleLabel(0, false)).toBe('')
-    expect(formatFailedApplicationLumaSyncAlertToggleLabel(1, false)).toBe('Show 1 participant')
-    expect(formatFailedApplicationLumaSyncAlertToggleLabel(3, false)).toBe('Show 3 participants')
-    expect(formatFailedApplicationLumaSyncAlertToggleLabel(3, true)).toBe('Hide participant list')
+    expect(formatFailedApplicationLumaSyncAlertToggleLabel(1, false)).toBe('Expand')
+    expect(formatFailedApplicationLumaSyncAlertToggleLabel(3, false)).toBe('Expand')
+    expect(formatFailedApplicationLumaSyncAlertToggleLabel(3, true)).toBe('Collapse')
   })
 
   test('detects approved participant attendance from checkedInAt', () => {
@@ -1157,7 +1176,7 @@ describe('admin-workspace operational helpers', () => {
     })
   })
 
-  test('derives compact submission dashboard metrics and lifecycle buckets', () => {
+  test('derives compact submission dashboard metrics from exact submission states', () => {
     const operationalTeams = buildAdminOperationalTeams(
       [
         createTeamSummary({
@@ -1260,19 +1279,15 @@ describe('admin-workspace operational helpers', () => {
       }
     )
 
-    expect(getAdminSubmissionDashboardBucket('none')).toBe('late')
-    expect(getAdminSubmissionDashboardBucket('draft')).toBe('late')
-    expect(getAdminSubmissionDashboardBucket('submitted')).toBe('ready')
-    expect(getAdminSubmissionDashboardBucket('locked')).toBe('ready')
-    expect(getAdminSubmissionDashboardBucket('withdrawn')).toBe('out')
-    expect(getAdminSubmissionDashboardBucket('disqualified')).toBe('out')
-
     expect(getAdminSubmissionDashboardMetrics(operationalTeams)).toEqual({
       totalTeams: 4,
-      readyTeams: 1,
+      noRecordTeams: 1,
       draftTeams: 1,
-      noSubmissionTeams: 1,
-      lateTeams: 2,
+      submittedTeams: 1,
+      lockedTeams: 0,
+      submittedOrLaterTeams: 1,
+      withdrawnTeams: 1,
+      disqualifiedTeams: 0,
       outTeams: 1
     })
   })
@@ -1421,17 +1436,16 @@ describe('admin-workspace operational helpers', () => {
     ])
 
     expect(filterAdminOperationalTeams(sortedTeams, {
-      filter: 'late'
-    }).map(team => team.team.id)).toEqual([
-      'team-none',
-      'team-draft'
-    ])
+      filter: 'none'
+    }).map(team => team.team.id)).toEqual(['team-none'])
 
     expect(filterAdminOperationalTeams(sortedTeams, {
-      filter: 'ready'
-    }).map(team => team.team.id)).toEqual([
-      'team-ready'
-    ])
+      filter: 'draft'
+    }).map(team => team.team.id)).toEqual(['team-draft'])
+
+    expect(filterAdminOperationalTeams(sortedTeams, {
+      filter: 'submitted'
+    }).map(team => team.team.id)).toEqual(['team-ready'])
 
     expect(filterAdminOperationalTeams(sortedTeams, {
       search: 'draft-admin@example.com'
@@ -1454,6 +1468,64 @@ describe('admin-workspace operational helpers', () => {
     expect(filterAdminOperationalTeams(sortedTeams, {
       search: 'internal-only draft summary'
     })).toEqual([])
+  })
+
+  test('groups withdrawn and disqualified rows behind the out filter', () => {
+    const sortedTeams = sortAdminOperationalTeamsForSubmissionDashboard(
+      buildAdminOperationalTeams(
+        [
+          createTeamSummary({
+            id: 'team-withdrawn',
+            name: 'Withdrawn Team',
+            slug: 'withdrawn-team',
+            createdByUserId: 'user-withdrawn'
+          }),
+          createTeamSummary({
+            id: 'team-disqualified',
+            name: 'Disqualified Team',
+            slug: 'disqualified-team',
+            createdByUserId: 'user-disqualified'
+          })
+        ],
+        {
+          teamDetails: [
+            createTeamDetail({
+              id: 'team-withdrawn',
+              name: 'Withdrawn Team',
+              slug: 'withdrawn-team',
+              createdByUserId: 'user-withdrawn'
+            }),
+            createTeamDetail({
+              id: 'team-disqualified',
+              name: 'Disqualified Team',
+              slug: 'disqualified-team',
+              createdByUserId: 'user-disqualified'
+            })
+          ],
+          submissions: [
+            createSubmission({
+              id: 'submission-withdrawn',
+              teamId: 'team-withdrawn',
+              status: 'withdrawn',
+              projectName: 'Withdrawn Console'
+            }),
+            createSubmission({
+              id: 'submission-disqualified',
+              teamId: 'team-disqualified',
+              status: 'disqualified',
+              projectName: 'Disqualified Console'
+            })
+          ]
+        }
+      )
+    )
+
+    expect(filterAdminOperationalTeams(sortedTeams, {
+      filter: 'out'
+    }).map(team => team.team.id)).toEqual([
+      'team-withdrawn',
+      'team-disqualified'
+    ])
   })
 
   test('limits admin interventions to the canonical lifecycle and submission states', () => {
