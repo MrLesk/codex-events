@@ -85,6 +85,11 @@ export interface TeamDirectoryEntry {
   joinAvailability: TeamActionAvailability
 }
 
+export interface ParticipantTeamDirectoryStatusBadge {
+  color: 'success' | 'neutral'
+  label: 'Open to join requests' | 'Closed to join requests'
+}
+
 type TeamMembershipCountRecord = Pick<TeamSummaryRecord, 'activeMemberCount'> & {
   members?: Array<Pick<TeamMemberRecord, 'leftAt'>>
 }
@@ -110,6 +115,22 @@ export function formatJoinAvailabilityReason(
   }
 
   return availability.reason
+}
+
+export function getParticipantTeamDirectoryStatusBadge(
+  team: Pick<TeamSummaryRecord, 'workspaceMode' | 'isOpenToJoinRequests'>,
+  options?: {
+    isFull?: boolean
+  }
+): ParticipantTeamDirectoryStatusBadge | null {
+  if (team.workspaceMode === 'solo' || options?.isFull) {
+    return null
+  }
+
+  return {
+    color: team.isOpenToJoinRequests ? 'success' : 'neutral',
+    label: team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests'
+  }
 }
 
 export function createTeamWorkspaceFallbackActor(user: ReturnType<typeof useUser>['value']): TeamWorkspaceActor {

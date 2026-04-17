@@ -2,6 +2,7 @@
 import {
   getActiveTeamMemberCount,
   formatJoinAvailabilityReason,
+  getParticipantTeamDirectoryStatusBadge,
   isTeamDissolved,
   type TeamDirectoryEntry
 } from '~/utils/team-workspace'
@@ -60,6 +61,12 @@ function getUnavailableReason(entry: TeamDirectoryEntry) {
   }
 
   return formatJoinAvailabilityReason(entry.team, entry.joinAvailability)
+}
+
+function getStatusBadge(entry: TeamDirectoryEntry) {
+  return getParticipantTeamDirectoryStatusBadge(entry.team, {
+    isFull: entry.isFull
+  })
 }
 
 const directoryDescription = computed(() => props.showOperationalTeamStates
@@ -182,25 +189,26 @@ function selectDirectoryFilter(nextFilter: string) {
                 </AppBadge>
 
                 <AppBadge
-                  v-else-if="entry.team.workspaceMode !== 'solo'"
-                  :color="props.showLockedStatus ? 'neutral' : entry.team.isOpenToJoinRequests ? 'success' : 'neutral'"
+                  v-else-if="getStatusBadge(entry)"
+                  :color="getStatusBadge(entry)?.color"
                   variant="outline"
-                  :class="props.showLockedStatus || !entry.team.isOpenToJoinRequests ? 'border-black/16 bg-white/75 text-neutral-700 dark:border-white/[0.18] dark:bg-white/[0.03] dark:text-[#D0D0D0]' : ''"
+                  :class="getStatusBadge(entry)?.color === 'neutral' ? 'border-black/16 bg-white/75 text-neutral-700 dark:border-white/[0.18] dark:bg-white/[0.03] dark:text-[#D0D0D0]' : ''"
                 >
-                  {{ entry.team.isOpenToJoinRequests ? 'Open to join requests' : 'Closed to join requests' }}
+                  {{ getStatusBadge(entry)?.label }}
                 </AppBadge>
 
                 <AppBadge
                   v-if="entry.team.workspaceMode === 'solo'"
-                  color="warning"
-                  variant="soft"
+                  color="secondary"
+                  variant="outline"
+                  class="border-violet-700/22 bg-violet-100 text-violet-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] dark:border-violet-300/32 dark:bg-violet-300/14 dark:text-violet-50"
                 >
                   Solo Team
                 </AppBadge>
 
                 <AppBadge
                   v-if="entry.isOwnTeam"
-                  color="primary"
+                  color="info"
                   :variant="entry.team.workspaceMode === 'solo' ? 'outline' : 'soft'"
                 >
                   Your team
@@ -208,8 +216,9 @@ function selectDirectoryFilter(nextFilter: string) {
 
                 <AppBadge
                   v-if="entry.isFull"
-                  color="neutral"
-                  variant="soft"
+                  color="warning"
+                  variant="outline"
+                  class="border-warning/35 bg-warning/10 text-warning shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:border-warning/30 dark:bg-warning/12"
                 >
                   Full
                 </AppBadge>

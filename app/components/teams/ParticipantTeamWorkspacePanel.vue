@@ -478,8 +478,9 @@ function handleJoinActionClick() {
 
               <AppBadge
                 v-if="isSoloWorkspace"
-                color="warning"
-                variant="soft"
+                color="secondary"
+                variant="outline"
+                class="border-violet-700/22 bg-violet-100 text-violet-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] dark:border-violet-300/32 dark:bg-violet-300/14 dark:text-violet-50"
               >
                 Solo Team
               </AppBadge>

@@ -6,6 +6,7 @@ import {
   formatTeamMemberRole,
   getActiveTeamMemberCount,
   getCreateTeamAvailability,
+  getParticipantTeamDirectoryStatusBadge,
   getJoinTeamAvailability,
   getLeaveTeamAvailability,
   getMemberRemovalAvailability,
@@ -184,6 +185,42 @@ describe('team workspace helpers', () => {
     }, {
       isAllowed: true
     })).toBeUndefined()
+  })
+
+  test('suppresses the participant directory join-policy badge for solo and full teams', () => {
+    expect(getParticipantTeamDirectoryStatusBadge({
+      workspaceMode: 'team',
+      isOpenToJoinRequests: true
+    }, {
+      isFull: true
+    })).toBeNull()
+
+    expect(getParticipantTeamDirectoryStatusBadge({
+      workspaceMode: 'solo',
+      isOpenToJoinRequests: true
+    }, {
+      isFull: false
+    })).toBeNull()
+
+    expect(getParticipantTeamDirectoryStatusBadge({
+      workspaceMode: 'team',
+      isOpenToJoinRequests: true
+    }, {
+      isFull: false
+    })).toEqual({
+      color: 'success',
+      label: 'Open to join requests'
+    })
+
+    expect(getParticipantTeamDirectoryStatusBadge({
+      workspaceMode: 'team',
+      isOpenToJoinRequests: false
+    }, {
+      isFull: false
+    })).toEqual({
+      color: 'neutral',
+      label: 'Closed to join requests'
+    })
   })
 
   test('keeps the participant leave action visible for active team members', () => {
