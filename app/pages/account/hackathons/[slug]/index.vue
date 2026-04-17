@@ -29,6 +29,7 @@ import AccountHackathonTeamVisibilityPanel from '~/components/account/hackathons
 import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
 import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOverviewPanel.vue'
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
+import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonTracksPanel from '~/components/public/hackathons/HackathonTracksPanel.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
 import {
@@ -442,22 +443,6 @@ const canViewRestrictedHackathonDetails = computed(() =>
   || canViewParticipantsAndTeams.value
 )
 
-const headerStateLabel = computed(() => formatHackathonStateLabel(hackathon.value.state).toUpperCase())
-const headerStateClass = computed(() => {
-  if (hackathon.value.state === 'submission_open') {
-    return 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
-  }
-
-  if (hackathon.value.state === 'registration_open') {
-    return 'border border-sky-600/35 bg-sky-500/16 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/14 dark:text-sky-300'
-  }
-
-  if (hackathon.value.state === 'winners_announced') {
-    return 'bg-green-500/10 text-green-400 border border-green-500/20'
-  }
-
-  return 'bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]'
-})
 const detailBackgroundImageUrl = computed(() => {
   const backgroundImageUrl = hackathon.value.backgroundImageUrl?.trim()
 
@@ -599,12 +584,12 @@ useSeoMeta({
                   <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
                     {{ hackathon.name }}
                   </h1>
-                  <span
-                    class="shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]"
-                    :class="headerStateClass"
-                  >
-                    {{ headerStateLabel }}
-                  </span>
+                  <HackathonStateBadge
+                    :state="hackathon.state"
+                    :registration-opens-at="hackathon.registrationOpensAt"
+                    :registration-closes-at="hackathon.registrationClosesAt"
+                    class="shrink-0"
+                  />
                   <AppBadge
                     v-if="applicationStatus"
                     :color="applicationStatusColor"

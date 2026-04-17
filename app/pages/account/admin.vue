@@ -52,6 +52,8 @@ const listItems = computed(() =>
       ? 'Open this hackathon to manage operations, change settings, and work across the full internal admin surface.'
       : 'Open this hackathon to manage operations, configure settings, and monitor the participant workflow from one shared detail surface.',
     state: hackathon.state,
+    registrationOpensAt: hackathon.registrationOpensAt,
+    registrationClosesAt: hackathon.registrationClosesAt,
     to: `/account/hackathons/${hackathon.slug}?tab=operations`,
     actionLabel: 'Open operations',
     overline: 'Admin',

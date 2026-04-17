@@ -53,6 +53,8 @@ const listItems = computed(() =>
       name: hackathon.name,
       description: dashboardCopy.description,
       state: hackathon.state,
+      registrationOpensAt: hackathon.registrationOpensAt,
+      registrationClosesAt: hackathon.registrationClosesAt,
       to: `/account/hackathons/${hackathon.slug}?tab=judging`,
       actionLabel: dashboardCopy.actionLabel,
       overline: dashboardCopy.overline,

@@ -13,6 +13,7 @@ import type {
   ParticipantRegistrationTeamMemberHint
 } from '~/utils/participant-application'
 
+import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonRegistrationPanel from '~/components/public/hackathons/HackathonRegistrationPanel.vue'
 import {
   createParticipantTeamMemberHintRows,
@@ -84,9 +85,6 @@ const registrationTeamIntent = ref<'solo' | 'team' | 'unknown'>('unknown')
 const registrationTeamMembers = ref<ParticipantRegistrationTeamMemberHint[]>([])
 const profileFields = computed(() => listHackathonProfileFields(hackathon.value))
 const visibleProfileFields = computed(() => profileFields.value.filter(field => field.visible))
-const headerStatePresentation = computed(() => getPublicHackathonStatePresentation(hackathon.value))
-const headerStateLabel = computed(() => headerStatePresentation.value.label.toUpperCase())
-const headerStateClass = computed(() => resolvePublicHackathonHeaderStateClass(hackathon.value))
 const detailSummary = computed(() => [
   formatHackathonWindow(hackathon.value.registrationOpensAt, hackathon.value.submissionClosesAt),
   formatHackathonLocation(hackathon.value),
@@ -338,12 +336,11 @@ useSeoMeta({
                 >
                   {{ hackathon.name }}
                 </h1>
-                <span
-                  class="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider"
-                  :class="headerStateClass"
-                >
-                  {{ headerStateLabel }}
-                </span>
+                <HackathonStateBadge
+                  :state="hackathon.state"
+                  :registration-opens-at="hackathon.registrationOpensAt"
+                  :registration-closes-at="hackathon.registrationClosesAt"
+                />
               </div>
 
               <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">

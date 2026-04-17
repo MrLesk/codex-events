@@ -8,6 +8,7 @@ import {
   formatHackathonDateWithWeekday,
   formatPrizeReward,
   getPublicHackathonStatePresentation,
+  resolvePublicHackathonHeaderStateClass,
   summarizeHackathonState,
   resolveHackathonStateColor,
   getHackathonDateTimePresentation,
@@ -209,6 +210,26 @@ describe('public hackathon agenda presentation helpers', () => {
       label: 'Registration open',
       color: 'info'
     })
+  })
+
+  test('resolves the canonical lifecycle chip classes from the public detail presentation', () => {
+    expect(resolvePublicHackathonHeaderStateClass({
+      state: 'submission_open'
+    })).toBe('bg-purple-500/10 text-purple-400 border border-purple-500/20')
+
+    expect(resolvePublicHackathonHeaderStateClass({
+      state: 'registration_open',
+      registrationOpensAt: '2026-02-26T00:00:00Z',
+      registrationClosesAt: '2026-03-28T01:00:00Z'
+    }, new Date('2026-03-28T00:30:00Z'))).toBe(
+      'border border-sky-600/35 bg-sky-500/16 text-sky-800 dark:border-sky-400/35 dark:bg-sky-500/14 dark:text-sky-300'
+    )
+
+    expect(resolvePublicHackathonHeaderStateClass({
+      state: 'registration_open',
+      registrationOpensAt: '2026-02-26T00:00:00Z',
+      registrationClosesAt: '2026-03-28T01:00:00Z'
+    }, new Date('2026-03-28T01:00:00Z'))).toBe('bg-white/[0.05] text-[#A3A3A3] border border-white/[0.08]')
   })
 
   test('formats canonical judging lifecycle labels, colors, and summaries', () => {

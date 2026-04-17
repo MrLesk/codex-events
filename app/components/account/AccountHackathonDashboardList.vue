@@ -1,16 +1,17 @@
 <script setup lang="ts">
+import type { PublicHackathonState } from '~/composables/useHackathonPresentation'
 import { collapseMarkdownToPlainText } from '~/utils/hackathon-description'
-import {
-  formatHackathonState,
-  getHackathonDashboardStateBadgePresentation,
-  type HackathonState
-} from '~/utils/admin-workspace'
+import type { HackathonState } from '~/utils/admin-workspace'
+
+import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 
 export interface AccountHackathonDashboardListItem {
   id: string
   name: string
   description: string
-  state: HackathonState
+  state: HackathonState | PublicHackathonState
+  registrationOpensAt: string
+  registrationClosesAt: string
   to: string
   actionLabel?: string
   overline?: string
@@ -61,10 +62,6 @@ function getDescriptionPreview(item: AccountHackathonDashboardListItem) {
 function shouldShowDescriptionToggle(item: AccountHackathonDashboardListItem) {
   return getNormalizedDescription(item.description).length > descriptionPreviewCharacterLimit
 }
-
-function getStateBadgePresentation(state: HackathonState) {
-  return getHackathonDashboardStateBadgePresentation(state)
-}
 </script>
 
 <template>
@@ -113,16 +110,11 @@ function getStateBadgePresentation(state: HackathonState) {
               <p class="text-[18px] font-semibold text-highlighted dark:text-white">
                 {{ item.name }}
               </p>
-              <AppBadge
-                :color="getStateBadgePresentation(item.state).color"
-                :variant="getStateBadgePresentation(item.state).variant"
-                :class="[
-                  'rounded-full px-2.5 py-0.5 text-[11px] font-semibold',
-                  getStateBadgePresentation(item.state).className
-                ]"
-              >
-                {{ formatHackathonState(item.state) }}
-              </AppBadge>
+              <HackathonStateBadge
+                :state="item.state"
+                :registration-opens-at="item.registrationOpensAt"
+                :registration-closes-at="item.registrationClosesAt"
+              />
             </div>
 
             <p class="max-w-3xl break-words text-[14px] text-neutral-600 dark:text-[#B0B0B0]">

@@ -10,6 +10,7 @@ import type {
   ParticipantCurrentTermsResponse
 } from '~/utils/participant-application'
 
+import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import { renderMarkdown } from '~/utils/markdown'
 import { normalizeParticipantApiError, shouldShowPublicRegistrationEntry } from '~/utils/participant-application'
 
@@ -83,9 +84,6 @@ const detailBackgroundImageUrl = computed(() => {
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
-const headerStatePresentation = computed(() => getPublicHackathonStatePresentation(hackathon.value))
-const headerStateLabel = computed(() => headerStatePresentation.value.label.toUpperCase())
-const headerStateClass = computed(() => resolvePublicHackathonHeaderStateClass(hackathon.value))
 const detailSummary = computed(() => [
   formatHackathonWindow(hackathon.value.registrationOpensAt, hackathon.value.submissionClosesAt),
   formatHackathonLocation(hackathon.value),
@@ -173,12 +171,11 @@ useSeoMeta({
               <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
                 {{ hackathon.name }}
               </h1>
-              <span
-                class="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider"
-                :class="headerStateClass"
-              >
-                {{ headerStateLabel }}
-              </span>
+              <HackathonStateBadge
+                :state="hackathon.state"
+                :registration-opens-at="hackathon.registrationOpensAt"
+                :registration-closes-at="hackathon.registrationClosesAt"
+              />
             </div>
 
             <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">

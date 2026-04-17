@@ -6,6 +6,7 @@ import type {
   PublicPrize
 } from '~/composables/useHackathonPresentation'
 
+import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOverviewPanel.vue'
 import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
@@ -91,9 +92,6 @@ if (accountActor.value.kind === 'platform_user' && accountActor.value.hasAccepte
   }
 }
 
-const headerStatePresentation = computed(() => getPublicHackathonStatePresentation(hackathon.value))
-const headerStateLabel = computed(() => headerStatePresentation.value.label.toUpperCase())
-const headerStateClass = computed(() => resolvePublicHackathonHeaderStateClass(hackathon.value))
 const criteriaCount = computed(() => criteria.value.length)
 const detailBackgroundImageUrl = computed(() => {
   const backgroundImageUrl = hackathon.value.backgroundImageUrl?.trim()
@@ -207,12 +205,11 @@ useSeoMeta({
                 >
                   {{ hackathon.name }}
                 </h1>
-                <span
-                  class="rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-wider"
-                  :class="headerStateClass"
-                >
-                  {{ headerStateLabel }}
-                </span>
+                <HackathonStateBadge
+                  :state="hackathon.state"
+                  :registration-opens-at="hackathon.registrationOpensAt"
+                  :registration-closes-at="hackathon.registrationClosesAt"
+                />
               </div>
 
               <div
