@@ -3,8 +3,9 @@ import { describe, expect, test } from 'vitest'
 import type {
   AdminApplicationRecord,
   AdminTeamDetailRecord,
-  NoSubmissionEntry,
   HackathonRecord,
+  HackathonRoleAssignment,
+  NoSubmissionEntry,
   SessionActor,
   SubmissionRecord,
   TeamSummary
@@ -13,6 +14,7 @@ import type {
 import {
   buildAdminJudgeAssignmentOversightGroups,
   buildAdminOperationalTeams,
+  buildPitchReviewCoverageEntries,
   listAllPaginatedItems,
   buildAdminWorkspaceCacheKey,
   canMutateRoleAssignments,
@@ -245,6 +247,7 @@ function createJudgeAssignment(overrides: Partial<import('../../../../app/utils/
     hackathonId: 'hackathon-1',
     submissionId: 'submission-1',
     judgeUserId: 'judge-1',
+    reviewStage: 'blind_review',
     status: 'assigned',
     assignedAt: '2026-03-24T14:00:00.000Z',
     startedAt: null,
@@ -270,6 +273,25 @@ function createJudgeAssignment(overrides: Partial<import('../../../../app/utils/
       applications: []
     },
     criterionScores: [],
+    ...overrides
+  }
+}
+
+function createRoleAssignment(overrides: Partial<HackathonRoleAssignment> = {}): HackathonRoleAssignment {
+  return {
+    id: 'role-assignment-1',
+    hackathonId: 'hackathon-1',
+    userId: 'judge-1',
+    role: 'judge',
+    isInJudgePool: true,
+    isStaff: false,
+    createdAt: '2026-03-24T12:00:00.000Z',
+    user: {
+      id: 'judge-1',
+      email: 'judge-1@example.com',
+      displayName: 'Judge One',
+      isPlatformAdmin: false
+    },
     ...overrides
   }
 }
@@ -852,6 +874,58 @@ describe('admin-workspace lifecycle controls', () => {
     })
   })
 
+  test('blocks pitch-review closure until at least one pitch review is submitted', () => {
+    const control = getCurrentLifecycleControl(
+      createHackathon({
+        state: 'pitch_review',
+        pitchReviewEnabled: true
+      }),
+      {
+        submittedSubmissionCount: 3,
+        judgePoolCount: 2,
+        lockedSubmissionCount: 3,
+        activeAssignmentCount: 4,
+        lockedLeaderboardEntryCount: 3,
+        completedReviewCount: 0,
+        completedPitchAssignmentCount: 0,
+        prizeCount: 1,
+        hasCurrentWinnerTerms: true
+      }
+    )
+
+    expect(control).toMatchObject({
+      key: 'start_final_deliberation',
+      isEnabled: false,
+      code: 'completed_pitch_reviews_required',
+      reason: 'At least one submitted pitch review is required before final deliberation can start.'
+    })
+  })
+
+  test('allows pitch-review closure once at least one pitch review is submitted even if finalist coverage is partial', () => {
+    const control = getCurrentLifecycleControl(
+      createHackathon({
+        state: 'pitch_review',
+        pitchReviewEnabled: true
+      }),
+      {
+        submittedSubmissionCount: 3,
+        judgePoolCount: 2,
+        lockedSubmissionCount: 3,
+        activeAssignmentCount: 4,
+        lockedLeaderboardEntryCount: 3,
+        completedReviewCount: 0,
+        completedPitchAssignmentCount: 1,
+        prizeCount: 1,
+        hasCurrentWinnerTerms: true
+      }
+    )
+
+    expect(control).toMatchObject({
+      key: 'start_final_deliberation',
+      isEnabled: true
+    })
+  })
+
   test('blocks winner announcement when prizes exist without current winner terms', () => {
     const control = getCurrentLifecycleControl(
       createHackathon({ state: 'final_deliberation' }),
@@ -1048,6 +1122,97 @@ describe('admin-workspace operational helpers', () => {
     expect(formatAdminOperationalTeamProjectLabel('draft', null, true)).toBe('Untitled draft')
     expect(formatAdminOperationalTeamProjectLabel('submitted', null, true)).toBe('Untitled project')
     expect(formatAdminOperationalTeamProjectLabel('submitted', 'Relay Console', true)).toBe('Relay Console')
+  })
+
+  test('builds finalist pitch-review coverage with reviewed and missing judges', () => {
+    const coverage = buildPitchReviewCoverageEntries({
+      finalistSubmissionIds: ['submission-1', 'submission-2'],
+      leaderboardEntries: [
+        {
+          submissionId: 'submission-1',
+          projectName: 'Build Relay',
+          teamName: 'Relay Team',
+          submissionStatus: 'locked'
+        },
+        {
+          submissionId: 'submission-2',
+          projectName: 'Trace Lens',
+          teamName: 'Trace Team',
+          submissionStatus: 'locked'
+        }
+      ],
+      assignments: [
+        createJudgeAssignment({
+          id: 'assignment-1',
+          submissionId: 'submission-1',
+          judgeUserId: 'judge-2',
+          reviewStage: 'pitch_review',
+          status: 'judge_completed'
+        }),
+        createJudgeAssignment({
+          id: 'assignment-2',
+          submissionId: 'submission-1',
+          judgeUserId: 'judge-1',
+          reviewStage: 'pitch_review',
+          status: 'assigned'
+        }),
+        createJudgeAssignment({
+          id: 'assignment-3',
+          submissionId: 'submission-2',
+          judgeUserId: 'judge-1',
+          reviewStage: 'pitch_review',
+          status: 'skipped'
+        }),
+        createJudgeAssignment({
+          id: 'assignment-4',
+          submissionId: 'submission-2',
+          judgeUserId: 'judge-2',
+          reviewStage: 'pitch_review',
+          status: 'judge_completed'
+        }),
+        createJudgeAssignment({
+          id: 'assignment-5',
+          submissionId: 'submission-2',
+          judgeUserId: 'judge-3',
+          reviewStage: 'blind_review',
+          status: 'judge_completed'
+        })
+      ],
+      roleAssignments: [
+        createRoleAssignment(),
+        createRoleAssignment({
+          id: 'role-assignment-2',
+          userId: 'judge-2',
+          user: {
+            id: 'judge-2',
+            email: 'judge-2@example.com',
+            displayName: 'Judge Two',
+            isPlatformAdmin: false
+          }
+        })
+      ]
+    })
+
+    expect(coverage).toEqual([
+      {
+        submissionId: 'submission-1',
+        projectLabel: 'Build Relay',
+        teamName: 'Relay Team',
+        reviewedJudgeLabels: ['Judge Two (judge-2@example.com)'],
+        missingJudgeLabels: ['Judge One (judge-1@example.com)'],
+        completedAssignmentCount: 1,
+        totalAssignmentCount: 2
+      },
+      {
+        submissionId: 'submission-2',
+        projectLabel: 'Trace Lens',
+        teamName: 'Trace Team',
+        reviewedJudgeLabels: ['Judge Two (judge-2@example.com)'],
+        missingJudgeLabels: ['Judge One (judge-1@example.com)'],
+        completedAssignmentCount: 1,
+        totalAssignmentCount: 2
+      }
+    ])
   })
 
   test('lists active team members for admin submission details', () => {

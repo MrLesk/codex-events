@@ -17,6 +17,7 @@ import type { PrizeRedemptionAdminView, PrizeRedemptionRecord } from '~/utils/pr
 
 import {
   buildAdminOperationalTeams,
+  buildPitchReviewCoverageEntries,
   countActiveAdminOperationalTeams,
   filterActiveAdminOperationalTeams,
   filterAdminOperationalTeams,
@@ -247,6 +248,7 @@ const showCheckedInParticipantSummary = computed(() =>
 
 const lifecycleMetrics = computed(() => {
   const lockedEntries = leaderboard.value.filter(entry => entry.submissionStatus === 'locked')
+  const finalistSubmissionIds = new Set(currentHackathon.value?.pitchPresentationSubmissionIds ?? [])
 
   return {
     submittedSubmissionCount: Math.max(allTeams.value.length - noSubmissionTeams.value.length, 0),
@@ -255,6 +257,11 @@ const lifecycleMetrics = computed(() => {
     activeAssignmentCount: assignments.value.length,
     lockedLeaderboardEntryCount: lockedEntries.length,
     completedReviewCount: lockedEntries.filter(entry => entry.reviewStatus === 'judge_completed').length,
+    completedPitchAssignmentCount: assignments.value.filter(
+      assignment => assignment.reviewStage === 'pitch_review'
+        && assignment.status === 'judge_completed'
+        && finalistSubmissionIds.has(assignment.submissionId)
+    ).length,
     prizeCount: prizes.value.length,
     hasCurrentWinnerTerms: Boolean(currentHackathon.value?.currentTerms?.winnerTerms)
   }
@@ -610,6 +617,31 @@ const pitchLineupEntries = computed<PitchLineupEntry[]>(() => {
     }
   })
 })
+const pitchReviewCoverageEntries = computed(() => {
+  if (!currentHackathon.value) {
+    return []
+  }
+
+  return buildPitchReviewCoverageEntries({
+    finalistSubmissionIds: currentHackathon.value.pitchPresentationSubmissionIds,
+    leaderboardEntries: leaderboard.value,
+    assignments: assignments.value,
+    roleAssignments: roleAssignments.value
+  })
+})
+const completedPitchAssignmentCount = computed(() =>
+  pitchReviewCoverageEntries.value.reduce(
+    (total, entry) => total + entry.completedAssignmentCount,
+    0
+  )
+)
+const pitchReviewMissingCoverageEntries = computed(() =>
+  pitchReviewCoverageEntries.value.filter(entry => entry.missingJudgeLabels.length > 0)
+)
+const hasCompletedPitchReviews = computed(() => completedPitchAssignmentCount.value > 0)
+const canStartFinalDeliberationFromPitchReview = computed(() =>
+  lifecycleControl.value?.key === 'start_final_deliberation' && lifecycleControl.value.isEnabled
+)
 const canAdvancePitchPresentation = computed(() =>
   Boolean(
     currentHackathon.value
@@ -841,7 +873,9 @@ const lifecycleSummaryItems = computed<LifecycleSummaryItem[]>(() => {
           {
             label: 'Next stage',
             value: 'Final Deliberation',
-            description: 'Final ranking review can start once you are ready to close pitch review.'
+            description: hasCompletedPitchReviews.value
+              ? 'Final ranking review can start once you are ready to close pitch review.'
+              : 'Final ranking review stays locked until at least one pitch review has been submitted.'
           }
         ]
       }
@@ -1570,6 +1604,25 @@ async function advancePitchPresentation() {
 }
 
 async function startFinalDeliberation() {
+  if (currentHackathon.value?.state === 'pitch_review') {
+    if (!hasCompletedPitchReviews.value) {
+      return
+    }
+
+    if (import.meta.client && pitchReviewMissingCoverageEntries.value.length > 0) {
+      const confirmed = window.confirm([
+        'Are you sure you want to proceed to the final deliberation?',
+        ...pitchReviewMissingCoverageEntries.value.map(entry =>
+          `${entry.projectLabel} was not reviewed by ${entry.missingJudgeLabels.join(', ')}.`
+        )
+      ].join('\n'))
+
+      if (!confirmed) {
+        return
+      }
+    }
+  }
+
   await runMutation(
     'start-final-deliberation',
     async () => {
@@ -1778,6 +1831,14 @@ async function disqualifySubmission(payload: {
 
 async function runLifecycleAction() {
   if (!lifecycleControl.value) {
+    return
+  }
+
+  if (
+    lifecycleControl.value.key === 'start_final_deliberation'
+    && currentHackathon.value?.state === 'pitch_review'
+  ) {
+    await startFinalDeliberation()
     return
   }
 
@@ -2081,17 +2142,70 @@ async function runLifecycleAction() {
 
           <div class="space-y-4">
             <AppAlert
-              color="neutral"
+              :color="hasCompletedPitchReviews ? 'neutral' : 'warning'"
               variant="soft"
               title="Pitch review is live"
-              description="Close pitch review once the submitted votes you want to count are in. Missing pitch votes are excluded from the average."
+              :description="hasCompletedPitchReviews
+                ? 'Close pitch review once the submitted votes you want to count are in. Missing pitch votes listed below are excluded from the average if you move on now.'
+                : 'At least one submitted pitch review is required before final deliberation can start. Missing pitch votes listed below are still excluded from the eventual average.'"
             />
+
+            <div
+              v-if="pitchReviewCoverageEntries.length > 0"
+              class="space-y-4"
+            >
+              <div
+                v-for="entry in pitchReviewCoverageEntries"
+                :key="entry.submissionId"
+                class="space-y-3 border-t border-default/80 pt-4 first:border-t-0 first:pt-0"
+              >
+                <div class="space-y-1">
+                  <div class="flex flex-wrap items-baseline gap-3">
+                    <h3 class="text-sm font-semibold text-highlighted">
+                      {{ entry.projectLabel }}
+                    </h3>
+                    <p
+                      v-if="entry.teamName"
+                      class="text-xs font-semibold uppercase tracking-[0.18em] text-muted"
+                    >
+                      {{ entry.teamName }}
+                    </p>
+                  </div>
+                  <p class="text-sm text-toned">
+                    {{ entry.completedAssignmentCount }} of {{ entry.totalAssignmentCount }} pitch reviews submitted.
+                  </p>
+                </div>
+
+                <div class="grid gap-3 lg:grid-cols-2">
+                  <div class="space-y-1">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                      Reviewed By
+                    </p>
+                    <p class="text-sm text-toned">
+                      {{ entry.reviewedJudgeLabels.length > 0 ? entry.reviewedJudgeLabels.join(', ') : 'No completed pitch reviews yet.' }}
+                    </p>
+                  </div>
+
+                  <div class="space-y-1">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                      Missing
+                    </p>
+                    <p
+                      class="text-sm"
+                      :class="entry.missingJudgeLabels.length > 0 ? 'text-warning' : 'text-success'"
+                    >
+                      {{ entry.missingJudgeLabels.length > 0 ? entry.missingJudgeLabels.join(', ') : 'All assigned judges reviewed this finalist.' }}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
 
             <div class="flex flex-wrap gap-3">
               <AppButton
                 color="primary"
                 :loading="pendingActionKey === 'start-final-deliberation'"
-                :disabled="pendingActionKey !== null && pendingActionKey !== 'start-final-deliberation'"
+                :disabled="!canStartFinalDeliberationFromPitchReview || (pendingActionKey !== null && pendingActionKey !== 'start-final-deliberation')"
                 @click="startFinalDeliberation"
               >
                 Move to final deliberation

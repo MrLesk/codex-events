@@ -1010,7 +1010,10 @@ export function assertStartShortlistAllowed(
 
 export function assertStartFinalDeliberationAllowed(
   hackathon: HackathonRecord,
-  entries: LeaderboardBaseEntry[]
+  entries: LeaderboardBaseEntry[],
+  options?: {
+    completedPitchReviewCount?: number
+  }
 ) {
   if (hackathon.state === 'blind_review') {
     assertGuard(!hackathon.pitchReviewEnabled, {
@@ -1043,6 +1046,12 @@ export function assertStartFinalDeliberationAllowed(
     assertGuard(hackathon.pitchReviewEnabled, {
       code: 'pitch_review_not_enabled',
       message: 'Final deliberation can only start from pitch_review when pitch review is enabled.',
+      details: { hackathonId: hackathon.id }
+    })
+
+    assertGuard((options?.completedPitchReviewCount ?? 0) > 0, {
+      code: 'completed_pitch_reviews_required',
+      message: 'Final deliberation requires at least one submitted pitch review.',
       details: { hackathonId: hackathon.id }
     })
 

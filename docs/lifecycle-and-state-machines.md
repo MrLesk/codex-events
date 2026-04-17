@@ -117,7 +117,7 @@ Behavior:
 - Judges can see project name, team name, and full submission detail.
 - Every finalist submission is assigned to every judge in the frozen pitch panel.
 - Judges can start, complete, or skip their pitch assignments.
-- Hackathon admins can close pitch review even when some pitch assignments remain incomplete.
+- Hackathon admins can close pitch review once at least one pitch review vote has been submitted, even when some pitch assignments remain incomplete.
 - Pitch averages are calculated from submitted pitch-review votes only.
 
 #### `final_deliberation`
@@ -175,7 +175,7 @@ Behavior:
 - `pitch -> pitch_review`
   Guard: hackathon admins complete the live pitch lineup and then start pitch review manually.
 - `pitch_review -> final_deliberation`
-  Guard: pitch review is closed by hackathon admins after submitted pitch votes are accepted for scoring.
+  Guard: pitch review is closed by hackathon admins after at least one submitted pitch vote exists and the submitted pitch votes to count are accepted for scoring.
 - `final_deliberation -> winners_announced`
   Guard: hackathon admins finalize the ranking and announce winners. This transition also enqueues winner emails for frozen prize-eligible members of winning teams.
 - `winners_announced -> completed`

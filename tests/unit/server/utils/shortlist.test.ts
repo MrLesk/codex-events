@@ -247,9 +247,17 @@ describe('shortlist utilities', () => {
       createLeaderboardEntry('judge_completed')
     ])).toThrowError(ApiError)
 
-    expect(() => assertStartFinalDeliberationAllowed(createHackathon('pitch_review'), [
-      createLeaderboardEntry('judge_completed')
-    ])).not.toThrow()
+    expect(() => assertStartFinalDeliberationAllowed(
+      createHackathon('pitch_review'),
+      [createLeaderboardEntry('judge_completed')],
+      { completedPitchReviewCount: 1 }
+    )).not.toThrow()
+
+    expect(() => assertStartFinalDeliberationAllowed(
+      createHackathon('pitch_review'),
+      [createLeaderboardEntry('judge_completed')],
+      { completedPitchReviewCount: 0 }
+    )).toThrowError(ApiError)
 
     expect(() => assertFinalDeliberationViewAllowed(createHackathon('final_deliberation'))).not.toThrow()
     expect(() => assertFinalDeliberationReorderAllowed(createHackathon('final_deliberation'))).not.toThrow()

@@ -151,7 +151,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | --- | --- | --- | --- |
 | Review blind-review scores in shortlist | Yes | Yes | Yes |
 | Set shortlist order and finalist boundary in shortlist | No | Yes | Yes |
-| Close pitch review with submitted votes only | No | Yes | Yes |
+| Close pitch review with submitted votes only after at least one submitted pitch vote exists | No | Yes | Yes |
 | Review final scores in `final_deliberation` | Yes | Yes | Yes |
 | Reorder final ranking in `final_deliberation` | No | Yes | Yes |
 | Change underlying judge scores in `final_deliberation` | No | No | No |

@@ -469,6 +469,7 @@ export interface JudgeAssignmentSummary {
   hackathonId: string
   submissionId: string
   judgeUserId: string
+  reviewStage: 'blind_review' | 'pitch_review'
   status: 'assigned' | 'judge_started' | 'judge_completed' | 'skipped'
   assignedAt: string
   startedAt: string | null
@@ -523,6 +524,16 @@ export interface AdminJudgeAssignmentOversightGroup {
   assignedCount: number
   startedCount: number
   assignments: JudgeAssignmentSummary[]
+}
+
+export interface PitchReviewCoverageEntry {
+  submissionId: string
+  projectLabel: string
+  teamName: string | null
+  reviewedJudgeLabels: string[]
+  missingJudgeLabels: string[]
+  completedAssignmentCount: number
+  totalAssignmentCount: number
 }
 
 export interface LeaderboardEntry {
@@ -612,6 +623,7 @@ export interface LifecycleMetrics {
   activeAssignmentCount: number
   lockedLeaderboardEntryCount: number
   completedReviewCount: number
+  completedPitchAssignmentCount?: number
   prizeCount: number
   hasCurrentWinnerTerms: boolean
 }
@@ -910,6 +922,94 @@ export function formatAdminOperationalTeamProjectLabel(
   }
 
   return projectName ?? 'Untitled project'
+}
+
+function getPitchReviewCoverageJudgeLabel(
+  judgeUserId: string,
+  roleAssignmentsByUserId: Map<string, Pick<HackathonRoleAssignment, 'userId' | 'user'>>
+) {
+  const roleAssignment = roleAssignmentsByUserId.get(judgeUserId)
+  const displayName = roleAssignment?.user?.displayName?.trim()
+  const email = roleAssignment?.user?.email?.trim()
+
+  if (displayName && email) {
+    return `${displayName} (${email})`
+  }
+
+  if (displayName) {
+    return displayName
+  }
+
+  if (email) {
+    return email
+  }
+
+  return judgeUserId
+}
+
+export function buildPitchReviewCoverageEntries(options: {
+  finalistSubmissionIds: string[]
+  leaderboardEntries: Array<Pick<LeaderboardEntry, 'submissionId' | 'projectName' | 'teamName' | 'submissionStatus'>>
+  assignments: Array<Pick<JudgeAssignmentSummary, 'submissionId' | 'judgeUserId' | 'reviewStage' | 'status'>>
+  roleAssignments?: Array<Pick<HackathonRoleAssignment, 'userId' | 'user'>>
+}) {
+  const finalistSubmissionIds = new Set(options.finalistSubmissionIds)
+  const leaderboardEntriesBySubmissionId = new Map(
+    options.leaderboardEntries.map(entry => [entry.submissionId, entry] as const)
+  )
+  const roleAssignmentsByUserId = new Map(
+    (options.roleAssignments ?? []).map(roleAssignment => [roleAssignment.userId, roleAssignment] as const)
+  )
+  const pitchAssignmentsBySubmissionId = new Map<
+    string,
+    Array<Pick<JudgeAssignmentSummary, 'judgeUserId' | 'status'>>
+  >()
+
+  for (const assignment of options.assignments) {
+    if (assignment.reviewStage !== 'pitch_review' || !finalistSubmissionIds.has(assignment.submissionId)) {
+      continue
+    }
+
+    const existingAssignments = pitchAssignmentsBySubmissionId.get(assignment.submissionId) ?? []
+    existingAssignments.push({
+      judgeUserId: assignment.judgeUserId,
+      status: assignment.status
+    })
+    pitchAssignmentsBySubmissionId.set(assignment.submissionId, existingAssignments)
+  }
+
+  return options.finalistSubmissionIds.map((submissionId) => {
+    const leaderboardEntry = leaderboardEntriesBySubmissionId.get(submissionId)
+    const projectLabel = formatAdminOperationalTeamProjectLabel(
+      leaderboardEntry?.submissionStatus ?? 'locked',
+      leaderboardEntry?.projectName ?? null,
+      true
+    )
+    const labeledAssignments = (pitchAssignmentsBySubmissionId.get(submissionId) ?? [])
+      .map(assignment => ({
+        label: getPitchReviewCoverageJudgeLabel(assignment.judgeUserId, roleAssignmentsByUserId),
+        status: assignment.status
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label, undefined, {
+        sensitivity: 'base'
+      }))
+
+    return {
+      submissionId,
+      projectLabel,
+      teamName: leaderboardEntry?.teamName ?? null,
+      reviewedJudgeLabels: labeledAssignments
+        .filter(assignment => assignment.status === 'judge_completed')
+        .map(assignment => assignment.label),
+      missingJudgeLabels: labeledAssignments
+        .filter(assignment => assignment.status !== 'judge_completed')
+        .map(assignment => assignment.label),
+      completedAssignmentCount: labeledAssignments.filter(
+        assignment => assignment.status === 'judge_completed'
+      ).length,
+      totalAssignmentCount: labeledAssignments.length
+    } satisfies PitchReviewCoverageEntry
+  })
 }
 
 export function formatApplicationLumaSyncStatus(status: AdminApplicationRecord['lumaSyncStatus']) {
@@ -1901,6 +2001,18 @@ export function getCurrentLifecycleControl(
       }
     }
     case 'pitch_review':
+      if ((metrics.completedPitchAssignmentCount ?? 0) === 0) {
+        return {
+          key: 'start_final_deliberation',
+          label: 'Move To Final Deliberation',
+          description: 'Close pitch review and open the final weighted ranking workspace using submitted pitch votes only.',
+          endpoint: `/api/hackathons/${hackathon.id}/actions/start-final-deliberation`,
+          isEnabled: false,
+          reason: 'At least one submitted pitch review is required before final deliberation can start.',
+          code: 'completed_pitch_reviews_required'
+        }
+      }
+
       return {
         key: 'start_final_deliberation',
         label: 'Move To Final Deliberation',

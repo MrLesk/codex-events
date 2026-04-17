@@ -337,6 +337,7 @@ Operational rules:
 - A hackathon admin or platform admin can force an in-progress assignment to `skipped` if the assigned judge cannot complete the review.
 - When a blind review assignment is skipped, the submission is reassigned to another judge with the lowest number of blind review assignments.
 - When a pitch review assignment is skipped or left incomplete at pitch-review close, that assignment is excluded from pitch-score averaging.
+- Pitch review cannot close until at least one pitch review assignment reaches `judge_completed`.
 - Hackathon admins and platform admins can revert a judge's ineligibility decision.
 - Disqualification is an admin action.
 - Withdrawal is a team-driven action until submitted work is locked for judging.

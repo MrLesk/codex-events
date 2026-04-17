@@ -1,9 +1,9 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 
 import { requirePlatformActor } from '../../../../auth/actor'
 import { writeAuditLog } from '../../../../database/audit-log'
 import { getDatabase } from '../../../../database/client'
-import { hackathons } from '../../../../database/schema'
+import { hackathons, judgeAssignments } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
 import {
@@ -23,8 +23,25 @@ export default defineApiHandler(async (event) => {
   const database = getDatabase(event)
   const { hackathon } = await requireHackathonAdmin(event, hackathonId)
   const leaderboardEntries = await listLeaderboardEntries(database, hackathonId)
+  const lockedSubmissionIds = leaderboardEntries
+    .filter(entry => entry.submission.status === 'locked')
+    .map(entry => entry.submission.id)
+  const completedPitchReviewCount = hackathon.state !== 'pitch_review' || lockedSubmissionIds.length === 0
+    ? 0
+    : (await database.query.judgeAssignments.findMany({
+        columns: {
+          id: true
+        },
+        where: and(
+          inArray(judgeAssignments.submissionId, lockedSubmissionIds),
+          eq(judgeAssignments.reviewStage, 'pitch_review'),
+          eq(judgeAssignments.status, 'judge_completed')
+        )
+      })).length
 
-  assertStartFinalDeliberationAllowed(hackathon, leaderboardEntries)
+  assertStartFinalDeliberationAllowed(hackathon, leaderboardEntries, {
+    completedPitchReviewCount
+  })
 
   const transitionedAt = new Date().toISOString()
 

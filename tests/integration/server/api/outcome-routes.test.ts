@@ -1190,6 +1190,122 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
   })
 
+  test('starting final deliberation from pitch review requires at least one completed pitch review', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/start-final-deliberation',
+          handler: startFinalDeliberationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'pitch_review',
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
+      finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
+    })
+    await seedPitchAssignments(harness, [
+      {
+        id: 'no_pitch_review_assignment_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        status: 'assigned',
+        pitchScore: null,
+        assignedAt: '2026-03-18T13:00:00.000Z'
+      },
+      {
+        id: 'no_pitch_review_assignment_2',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_b',
+        status: 'judge_started',
+        pitchScore: null,
+        assignedAt: '2026-03-18T13:01:00.000Z',
+        startedAt: '2026-03-18T13:02:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/hackathons/hackathon_1/actions/start-final-deliberation', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: expect.objectContaining({
+        code: 'completed_pitch_reviews_required'
+      })
+    })
+  })
+
+  test('starting final deliberation from pitch review still allows partial judge coverage once at least one pitch review is submitted', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/start-final-deliberation',
+          handler: startFinalDeliberationHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'pitch_review',
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
+      finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
+    })
+    await seedPitchAssignments(harness, [
+      {
+        id: 'partial_pitch_review_assignment_1',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_a',
+        status: 'judge_completed',
+        pitchScore: 8,
+        assignedAt: '2026-03-18T13:10:00.000Z',
+        startedAt: '2026-03-18T13:11:00.000Z',
+        completedAt: '2026-03-18T13:12:00.000Z'
+      },
+      {
+        id: 'partial_pitch_review_assignment_2',
+        submissionId: 'submission_1',
+        judgeUserId: 'judge_b',
+        status: 'assigned',
+        pitchScore: null,
+        assignedAt: '2026-03-18T13:13:00.000Z'
+      },
+      {
+        id: 'partial_pitch_review_assignment_3',
+        submissionId: 'submission_2',
+        judgeUserId: 'judge_a',
+        status: 'assigned',
+        pitchScore: null,
+        assignedAt: '2026-03-18T13:14:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/hackathons/hackathon_1/actions/start-final-deliberation', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'hackathon_1',
+        state: 'final_deliberation'
+      }
+    })
+  })
+
   test('starting final deliberation from pitch review preserves the saved shortlist ranking baseline', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
