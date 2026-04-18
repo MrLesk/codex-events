@@ -9,6 +9,7 @@ import { apiData } from '../../../../utils/api-response'
 import {
   assertStartPitchReviewAllowed,
   buildPitchReviewAssignments,
+  chunkRowsForD1,
   listAutomaticJudgePoolForHackathon,
   listLockedSubmissionsForHackathon,
   selectPitchReviewSubmissions
@@ -44,6 +45,7 @@ export default defineApiHandler(async (event) => {
     judgePanel,
     transitionedAt
   )
+  const assignmentRowChunks = chunkRowsForD1(assignmentRows, 12)
 
   await database.batch([
     database
@@ -53,7 +55,9 @@ export default defineApiHandler(async (event) => {
         updatedAt: transitionedAt
       })
       .where(eq(hackathons.id, hackathonId)),
-    database.insert(judgeAssignments).values(assignmentRows)
+    ...assignmentRowChunks.map(rows =>
+      database.insert(judgeAssignments).values(rows)
+    )
   ])
 
   await writeAuditLog(database, {

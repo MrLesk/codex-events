@@ -123,6 +123,23 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     }
   }
 
+  function enforceD1BindParameterLimit(
+    harness: ReturnType<typeof createApiRouteTestHarness>,
+    maxBoundParametersPerStatement = 100
+  ) {
+    const originalPrepare = harness.d1Database.prepare.bind(harness.d1Database)
+
+    vi.spyOn(harness.d1Database, 'prepare').mockImplementation((sql: string) => {
+      const boundParameterCount = (sql.match(/\?/g) ?? []).length
+
+      if (boundParameterCount > maxBoundParametersPerStatement) {
+        throw new Error(`D1 bind parameter limit exceeded: ${boundParameterCount}`)
+      }
+
+      return originalPrepare(sql)
+    })
+  }
+
   afterEach(async () => {
     vi.unstubAllGlobals()
 
@@ -3210,6 +3227,146 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     ])
   })
 
+  test('POST /api/hackathons/:hackathonId/actions/start-blind-review chunks bulk inserts to stay within D1 bind limits', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/start-blind-review',
+          handler: startBlindReviewPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    const participantCount = 17
+
+    await harness.database.insert(users).values([
+      {
+        id: 'platform_admin',
+        auth0Subject: 'auth0|platform_admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        isPlatformAdmin: true
+      },
+      {
+        id: 'judge_a',
+        auth0Subject: 'auth0|judge_a',
+        email: 'judge-a@example.com',
+        displayName: 'Judge A'
+      },
+      ...Array.from({ length: participantCount }, (_, index) => ({
+        id: `team_admin_${index + 1}`,
+        auth0Subject: `auth0|team_admin_${index + 1}`,
+        email: `team-admin-${index + 1}@example.com`,
+        displayName: `Team Admin ${index + 1}`
+      }))
+    ])
+
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_blind_review_large',
+      name: 'Blind Review Large Hackathon',
+      slug: 'blind-review-large-hackathon',
+      description: 'Blind review',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'judging_preparation',
+      blindReviewCount: 1,
+      maxTeamMembers: 5,
+      createdByUserId: 'platform_admin'
+    })
+
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_judge_a',
+      hackathonId: 'hackathon_blind_review_large',
+      userId: 'judge_a',
+      role: 'judge',
+      isInJudgePool: true,
+      createdAt: '2026-03-25T12:15:00.000Z'
+    })
+
+    await harness.database.insert(teams).values(
+      Array.from({ length: participantCount }, (_, index) => ({
+        id: `team_${index + 1}`,
+        hackathonId: 'hackathon_blind_review_large',
+        name: `Team ${index + 1}`,
+        slug: `team-${index + 1}`,
+        isOpenToJoinRequests: false,
+        createdByUserId: `team_admin_${index + 1}`,
+        createdAt: `2026-03-22T${String(index).padStart(2, '0')}:00:00.000Z`,
+        updatedAt: `2026-03-22T${String(index).padStart(2, '0')}:00:00.000Z`
+      }))
+    )
+
+    await harness.database.insert(teamMembers).values(
+      Array.from({ length: participantCount }, (_, index) => ({
+        id: `membership_${index + 1}`,
+        teamId: `team_${index + 1}`,
+        userId: `team_admin_${index + 1}`,
+        role: 'admin' as const,
+        joinedAt: `2026-03-22T${String(index).padStart(2, '0')}:00:00.000Z`,
+        createdAt: `2026-03-22T${String(index).padStart(2, '0')}:00:00.000Z`
+      }))
+    )
+
+    await harness.database.insert(submissions).values(
+      Array.from({ length: participantCount }, (_, index) => ({
+        id: `submission_${index + 1}`,
+        teamId: `team_${index + 1}`,
+        status: 'submitted' as const,
+        projectName: `Project ${index + 1}`,
+        submittedAt: `2026-03-24T${String(index).padStart(2, '0')}:00:00.000Z`,
+        createdAt: `2026-03-24T${String(index).padStart(2, '0')}:00:00.000Z`,
+        updatedAt: `2026-03-24T${String(index).padStart(2, '0')}:00:00.000Z`
+      }))
+    )
+
+    enforceD1BindParameterLimit(harness)
+
+    const response = await harness.request('/api/hackathons/hackathon_blind_review_large/actions/start-blind-review', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'hackathon_blind_review_large',
+        state: 'blind_review'
+      }
+    })
+
+    const updatedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_blind_review_large')
+    })
+    const storedSubmissions = await harness.database.select().from(submissions)
+    const snapshotRows = await harness.database.select().from(prizeEligibilitySnapshots)
+    const assignmentRows = await harness.database.select().from(judgeAssignments)
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(updatedHackathon?.state).toBe('blind_review')
+    expect(storedSubmissions.every(submission => submission.status === 'locked')).toBe(true)
+    expect(snapshotRows).toHaveLength(participantCount)
+    expect(assignmentRows).toHaveLength(participantCount)
+    expect(assignmentRows.every(row => row.reviewStage === 'blind_review')).toBe(true)
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'hackathon',
+        entityId: 'hackathon_blind_review_large',
+        action: 'hackathon.start_blind_review'
+      })
+    ])
+  })
+
   test('POST /api/hackathons/:hackathonId/actions/start-pitch opens the live pitch stage, locks submitted work, and avoids judge assignments in pitch-only hackathons', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -3836,6 +3993,139 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         actorUserId: 'platform_admin',
         entityType: 'hackathon',
         entityId: 'hackathon_pitch_only',
+        action: 'hackathon.start_pitch_review'
+      })
+    ])
+  })
+
+  test('POST /api/hackathons/:hackathonId/actions/start-pitch-review chunks bulk inserts to stay within D1 bind limits', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/start-pitch-review',
+          handler: startPitchReviewPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    const finalistCount = 12
+    const finalistSubmissionIds = Array.from({ length: finalistCount }, (_, index) => `submission_pitch_${index + 1}`)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'platform_admin',
+        auth0Subject: 'auth0|platform_admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        isPlatformAdmin: true
+      },
+      {
+        id: 'judge_a',
+        auth0Subject: 'auth0|judge_a',
+        email: 'judge-a@example.com',
+        displayName: 'Judge A'
+      },
+      ...Array.from({ length: finalistCount }, (_, index) => ({
+        id: `team_admin_pitch_${index + 1}`,
+        auth0Subject: `auth0|team_admin_pitch_${index + 1}`,
+        email: `team-admin-pitch-${index + 1}@example.com`,
+        displayName: `Pitch Team Admin ${index + 1}`
+      }))
+    ])
+
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_pitch_review_large',
+      name: 'Pitch Review Large Hackathon',
+      slug: 'pitch-review-large-hackathon',
+      description: 'Pitch review',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'pitch',
+      blindReviewCount: 0,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 0,
+      pitchScoreWeightPercent: 100,
+      pitchFinalistSubmissionIdsJson: JSON.stringify(finalistSubmissionIds),
+      pitchPresentationsCompletedAt: '2026-03-26T12:20:00.000Z',
+      maxTeamMembers: 5,
+      createdByUserId: 'platform_admin'
+    })
+
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_judge_a',
+      hackathonId: 'hackathon_pitch_review_large',
+      userId: 'judge_a',
+      role: 'judge',
+      isInJudgePool: true,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    await harness.database.insert(teams).values(
+      Array.from({ length: finalistCount }, (_, index) => ({
+        id: `team_pitch_${index + 1}`,
+        hackathonId: 'hackathon_pitch_review_large',
+        name: `Pitch Team ${index + 1}`,
+        slug: `pitch-team-${index + 1}`,
+        isOpenToJoinRequests: false,
+        createdByUserId: `team_admin_pitch_${index + 1}`,
+        createdAt: `2026-03-22T${String(index).padStart(2, '0')}:00:00.000Z`,
+        updatedAt: `2026-03-22T${String(index).padStart(2, '0')}:00:00.000Z`
+      }))
+    )
+
+    await harness.database.insert(submissions).values(
+      Array.from({ length: finalistCount }, (_, index) => ({
+        id: finalistSubmissionIds[index]!,
+        teamId: `team_pitch_${index + 1}`,
+        status: 'locked' as const,
+        projectName: `Pitch Project ${index + 1}`,
+        submittedAt: `2026-03-24T${String(index).padStart(2, '0')}:00:00.000Z`,
+        lockedAt: '2026-03-25T12:30:00.000Z',
+        createdAt: `2026-03-24T${String(index).padStart(2, '0')}:00:00.000Z`,
+        updatedAt: '2026-03-25T12:30:00.000Z'
+      }))
+    )
+
+    enforceD1BindParameterLimit(harness)
+
+    const response = await harness.request('/api/hackathons/hackathon_pitch_review_large/actions/start-pitch-review', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'hackathon_pitch_review_large',
+        state: 'pitch_review'
+      }
+    })
+
+    const updatedHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.id, 'hackathon_pitch_review_large')
+    })
+    const assignmentRows = await harness.database.select().from(judgeAssignments)
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(updatedHackathon?.state).toBe('pitch_review')
+    expect(assignmentRows).toHaveLength(finalistCount)
+    expect(assignmentRows.every(row => row.reviewStage === 'pitch_review')).toBe(true)
+    expect(new Set(assignmentRows.map(row => row.submissionId))).toEqual(new Set(finalistSubmissionIds))
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'hackathon',
+        entityId: 'hackathon_pitch_review_large',
         action: 'hackathon.start_pitch_review'
       })
     ])

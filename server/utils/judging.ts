@@ -38,6 +38,7 @@ type JudgeCriterionScoreRecord = typeof judgeCriterionScores.$inferSelect
 const activeJudgeAssignmentStatuses = ['assigned', 'judge_started'] as const
 const minimumJudgeScore = 1
 const maximumJudgeScore = 5
+const d1MaxBoundParametersPerStatement = 100
 
 const criterionScoreInputSchema = z.object({
   evaluationCriterionId: z.string().trim().min(1),
@@ -74,6 +75,24 @@ export const reassignJudgeAssignmentBodySchema = z.object({
   judgeUserId: z.string().trim().min(1).optional(),
   reason: z.string().trim().min(1).optional()
 })
+
+export function chunkRowsForD1<T>(rows: T[], boundParametersPerRow: number) {
+  if (rows.length === 0) {
+    return []
+  }
+
+  const maxRowsPerInsert = Math.max(
+    1,
+    Math.floor(d1MaxBoundParametersPerStatement / boundParametersPerRow)
+  )
+  const chunks: T[][] = []
+
+  for (let index = 0; index < rows.length; index += maxRowsPerInsert) {
+    chunks.push(rows.slice(index, index + maxRowsPerInsert))
+  }
+
+  return chunks
+}
 
 export function serializeJudgeAssignment(assignment: JudgeAssignmentRecord) {
   return {

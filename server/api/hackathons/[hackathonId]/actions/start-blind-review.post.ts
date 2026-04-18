@@ -10,6 +10,7 @@ import {
   assertStartJudgeReviewAllowed,
   buildInitialJudgeAssignments,
   buildPrizeEligibilitySnapshots,
+  chunkRowsForD1,
   listAutomaticJudgePoolForHackathon,
   listSubmittedSubmissionsForHackathon
 } from '../../../../utils/judging'
@@ -47,6 +48,8 @@ export default defineApiHandler(async (event) => {
     submittedSubmissions.map(submission => submission.teamId),
     transitionedAt
   )
+  const snapshotRowChunks = chunkRowsForD1(snapshotRows, 6)
+  const assignmentRowChunks = chunkRowsForD1(assignmentRows, 10)
 
   await database.batch([
     database
@@ -64,12 +67,12 @@ export default defineApiHandler(async (event) => {
         updatedAt: transitionedAt
       })
       .where(inArray(submissions.id, submittedSubmissions.map(submission => submission.id))),
-    ...(snapshotRows.length > 0
-      ? [database.insert(prizeEligibilitySnapshots).values(snapshotRows)]
-      : []),
-    ...(assignmentRows.length > 0
-      ? [database.insert(judgeAssignments).values(assignmentRows)]
-      : [])
+    ...snapshotRowChunks.map(rows =>
+      database.insert(prizeEligibilitySnapshots).values(rows)
+    ),
+    ...assignmentRowChunks.map(rows =>
+      database.insert(judgeAssignments).values(rows)
+    )
   ])
 
   await writeAuditLog(database, {
