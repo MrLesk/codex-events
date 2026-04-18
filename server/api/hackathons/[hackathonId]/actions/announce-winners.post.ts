@@ -10,6 +10,7 @@ import { apiData } from '../../../../utils/api-response'
 import {
   enqueueWinnerOutcomeEmails
 } from '../../../../utils/hackathon-outcome-email-queue'
+import { chunkRowsForD1 } from '../../../../utils/judging'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,
@@ -102,6 +103,7 @@ export default defineApiHandler(async (event) => {
 
   const announcedAt = new Date().toISOString()
   const redemptionRows = await buildPrizeRedemptionRows(database, hackathonId, prizeList, announcedAt, winners)
+  const redemptionRowChunks = chunkRowsForD1(redemptionRows, 7)
 
   await database.batch([
     database
@@ -112,9 +114,9 @@ export default defineApiHandler(async (event) => {
         updatedAt: announcedAt
       })
       .where(eq(hackathons.id, hackathonId)),
-    ...(redemptionRows.length > 0
-      ? [database.insert(prizeRedemptions).values(redemptionRows)]
-      : [])
+    ...redemptionRowChunks.map(rows =>
+      database.insert(prizeRedemptions).values(rows)
+    )
   ])
 
   await writeAuditLog(database, {

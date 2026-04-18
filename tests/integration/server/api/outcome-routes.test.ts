@@ -2157,6 +2157,90 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     ]))
   })
 
+  test('announcing winners stays D1-safe when redemption creation and winner recipient lookups exceed 100 bound parameters', async () => {
+    const queueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/announce-winners',
+          handler: announceWinnersHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      },
+      cloudflareEnv: {
+        HACKATHON_OUTCOME_EMAIL_QUEUE: queueProducer
+      },
+      runtimeConfig: {
+        hackathonOutcomeEmails: {
+          queueBinding: 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'final_deliberation',
+      pitchReviewEnabled: false
+    })
+
+    const extraWinnerUsers = Array.from({ length: 100 }, (_, index) => ({
+      id: `winner_member_${index + 1}`,
+      auth0Subject: `auth0|winner_member_${index + 1}`,
+      email: `winner-member-${index + 1}@example.com`,
+      displayName: `Winner Member ${index + 1}`
+    }))
+    const extraWinnerSnapshots = extraWinnerUsers.map((user, index) => {
+      const createdAt = new Date(Date.UTC(2026, 2, 18, 14, 0, index)).toISOString()
+
+      return {
+        id: `snapshot_winner_member_${index + 1}`,
+        hackathonId: 'hackathon_1',
+        teamId: index % 2 === 0 ? 'team_1' : 'team_2',
+        userId: user.id,
+        snapshotAt: createdAt,
+        createdAt
+      }
+    })
+
+    for (let index = 0; index < extraWinnerUsers.length; index += 40) {
+      await harness.database.insert(users).values(extraWinnerUsers.slice(index, index + 40))
+    }
+
+    for (let index = 0; index < extraWinnerSnapshots.length; index += 40) {
+      await harness.database.insert(prizeEligibilitySnapshots).values(
+        extraWinnerSnapshots.slice(index, index + 40)
+      )
+    }
+
+    const response = await harness.request('/api/hackathons/hackathon_1/actions/announce-winners', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'hackathon_1',
+        state: 'winners_announced'
+      }
+    })
+
+    const redemptionRows = await harness.database.select().from(prizeRedemptions)
+    expect(redemptionRows).toHaveLength(103)
+    expect(redemptionRows.filter(row => row.userId === null)).toEqual([
+      expect.objectContaining({
+        prizeId: 'prize_team_rank_1',
+        teamId: 'team_1',
+        status: 'pending'
+      })
+    ])
+    expect(redemptionRows.filter(row => row.userId !== null)).toHaveLength(102)
+    expect(queueProducer.send).toHaveBeenCalledTimes(102)
+  })
+
   test('winner reads stay unavailable until completion and then expose the completed showcase payload', async () => {
     const publicHarness = createApiRouteTestHarness({
       routes: [

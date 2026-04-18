@@ -6,6 +6,7 @@ import { z } from 'zod'
 import type { AppDatabase } from '../database/client'
 import { writeAuditLog } from '../database/audit-log'
 import { prizeEligibilitySnapshots, users } from '../database/schema'
+import { chunkRowsForD1 } from './judging'
 import { getFinalDeliberationView } from './shortlist'
 import {
   sendHackathonOutcomeEmail,
@@ -136,19 +137,31 @@ export async function enqueueWinnerOutcomeEmails(options: {
     entry => entry.finalRank !== null
   ).length
   const winningTeamIds = [...new Set(options.winners.map(winner => winner.teamId))]
-  const snapshots = await options.database.query.prizeEligibilitySnapshots.findMany({
-    where: and(
-      eq(prizeEligibilitySnapshots.hackathonId, options.hackathon.id),
-      inArray(prizeEligibilitySnapshots.teamId, winningTeamIds)
-    ),
-    orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
-  }) as PrizeEligibilitySnapshotRecord[]
+  const snapshots = await Promise.all(
+    chunkRowsForD1(winningTeamIds, 1).map(teamIds =>
+      options.database.query.prizeEligibilitySnapshots.findMany({
+        where: and(
+          eq(prizeEligibilitySnapshots.hackathonId, options.hackathon.id),
+          inArray(prizeEligibilitySnapshots.teamId, teamIds)
+        ),
+        orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
+      })
+    )
+  ).then(chunks =>
+    chunks
+      .flat()
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+  ) as PrizeEligibilitySnapshotRecord[]
   const recipientUserIds = [...new Set(snapshots.map(snapshot => snapshot.userId))]
   const winnerRecipients = recipientUserIds.length === 0
     ? []
-    : (await options.database.query.users.findMany({
-        where: inArray(users.id, recipientUserIds)
-      })) as UserRecord[]
+    : (await Promise.all(
+        chunkRowsForD1(recipientUserIds, 1).map(userIds =>
+          options.database.query.users.findMany({
+            where: inArray(users.id, userIds)
+          })
+        )
+      ).then(chunks => chunks.flat())) as UserRecord[]
   const winnersByTeamId = new Map(
     options.winners.map(winner => [winner.teamId, winner] as const)
   )

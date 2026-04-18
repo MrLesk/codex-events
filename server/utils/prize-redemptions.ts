@@ -15,6 +15,7 @@ import {
 } from '../database/schema'
 import { getCurrentHackathonTerms, getHackathonOrThrow, serializePrize } from './hackathon-management'
 import { ApiError } from './api-error'
+import { chunkRowsForD1 } from './judging'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
 import { getWinnersView } from './shortlist'
 
@@ -260,13 +261,21 @@ export async function buildPrizeRedemptionRows(
   const winningTeamIds = [...new Set(resolvedWinners.map(entry => entry.teamId))]
   const snapshots = winningTeamIds.length === 0
     ? []
-    : await database.query.prizeEligibilitySnapshots.findMany({
-        where: and(
-          eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
-          inArray(prizeEligibilitySnapshots.teamId, winningTeamIds)
-        ),
-        orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
-      })
+    : await Promise.all(
+        chunkRowsForD1(winningTeamIds, 1).map(teamIds =>
+          database.query.prizeEligibilitySnapshots.findMany({
+            where: and(
+              eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
+              inArray(prizeEligibilitySnapshots.teamId, teamIds)
+            ),
+            orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
+          })
+        )
+      ).then(chunks =>
+        chunks
+          .flat()
+          .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+      )
   const snapshotsByTeamId = new Map<string, Array<typeof snapshots[number]>>()
 
   for (const snapshot of snapshots) {

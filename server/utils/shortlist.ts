@@ -746,22 +746,37 @@ export async function getWinnersView(database: AppDatabase, hackathonId: string)
     return []
   }
 
-  const snapshots = await database.query.prizeEligibilitySnapshots.findMany({
-    where: and(
-      eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
-      inArray(prizeEligibilitySnapshots.teamId, winningTeamIds)
-    ),
-    orderBy: [asc(prizeEligibilitySnapshots.teamId), asc(prizeEligibilitySnapshots.createdAt)]
-  }) as PrizeEligibilitySnapshotRecord[]
+  const snapshots = await Promise.all(
+    chunkRowsForD1(winningTeamIds, 1).map(teamIds =>
+      database.query.prizeEligibilitySnapshots.findMany({
+        where: and(
+          eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
+          inArray(prizeEligibilitySnapshots.teamId, teamIds)
+        ),
+        orderBy: [asc(prizeEligibilitySnapshots.teamId), asc(prizeEligibilitySnapshots.createdAt)]
+      })
+    )
+  ).then(chunks =>
+    chunks
+      .flat()
+      .sort((left, right) =>
+        left.teamId.localeCompare(right.teamId)
+        || left.createdAt.localeCompare(right.createdAt)
+      )
+  ) as PrizeEligibilitySnapshotRecord[]
   const teamMemberUserIds = [...new Set(snapshots.map(snapshot => snapshot.userId))]
   const relatedUsers = teamMemberUserIds.length === 0
     ? []
-    : (await database.query.users.findMany({
-        where: and(
-          inArray(users.id, teamMemberUserIds),
-          isNull(users.deletedAt)
+    : (await Promise.all(
+        chunkRowsForD1(teamMemberUserIds, 1).map(userIds =>
+          database.query.users.findMany({
+            where: and(
+              inArray(users.id, userIds),
+              isNull(users.deletedAt)
+            )
+          })
         )
-      })) as UserRecord[]
+      ).then(chunks => chunks.flat())) as UserRecord[]
   const usersById = new Map(
     relatedUsers.map(user => [user.id, user] as const)
   )
