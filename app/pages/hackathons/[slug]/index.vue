@@ -5,6 +5,7 @@ import type {
   PublicHackathon,
   PublicPrize
 } from '~/composables/useHackathonPresentation'
+import type { WinnerEntry } from '~/utils/admin-workspace'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
@@ -12,6 +13,7 @@ import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOver
 import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
 import HackathonTracksPanel from '~/components/public/hackathons/HackathonTracksPanel.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
+import HackathonWinnersShowcase from '~/components/public/hackathons/HackathonWinnersShowcase.vue'
 import { resolvePublicHackathonPrimaryAction } from '~/utils/participant-application'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
@@ -72,10 +74,18 @@ if (!hackathonResponse.value?.data) {
 }
 
 const hackathon = computed(() => hackathonResponse.value!.data)
+const requestFetch = import.meta.server ? useRequestFetch() : $fetch
+const winnersResponse = hackathon.value.state === 'completed'
+  ? await requestFetch<PublicApiListResponse<WinnerEntry>>(`/api/public/hackathons/${slug.value}/winners`)
+  : {
+    data: []
+  } satisfies PublicApiListResponse<WinnerEntry>
 const criteria = computed(() => criteriaResponse.value?.data ?? [])
 const prizes = computed(() => prizesResponse.value?.data ?? [])
+const winners = computed(() => winnersResponse.data)
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
-const requestFetch = import.meta.server ? useRequestFetch() : $fetch
+const isWinnerRevealVisible = computed(() => hackathon.value.state === 'completed')
+const publicPrizeTabLabel = computed(() => isWinnerRevealVisible.value ? 'Winners' : 'Prizes')
 const hasHackathonWorkspaceAccess = ref(false)
 
 if (accountActor.value.kind === 'platform_user' && accountActor.value.hasAcceptedCurrentPlatformDocuments) {
@@ -147,7 +157,7 @@ async function selectPublicSection(nextSection: PublicSectionTab) {
 }
 
 watchEffect(() => {
-  if (activePublicSection.value !== 'prizes' || hasPublishedPrizes.value) {
+  if (activePublicSection.value !== 'prizes' || hasPublishedPrizes.value || isWinnerRevealVisible.value) {
     return
   }
 
@@ -258,7 +268,7 @@ useSeoMeta({
               Overview
             </button>
             <button
-              v-if="hasPublishedPrizes"
+              v-if="hasPublishedPrizes || isWinnerRevealVisible"
               id="public-tab-prizes"
               type="button"
               role="tab"
@@ -268,7 +278,7 @@ useSeoMeta({
               :class="activePublicSection === 'prizes' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
               @click="void selectPublicSection('prizes')"
             >
-              Prizes
+              {{ publicPrizeTabLabel }}
             </button>
             <button
               id="public-tab-details"
@@ -299,12 +309,18 @@ useSeoMeta({
       </section>
 
       <section
-        v-else-if="hasPublishedPrizes && activePublicSection === 'prizes'"
+        v-else-if="(hasPublishedPrizes || isWinnerRevealVisible) && activePublicSection === 'prizes'"
         id="public-tab-panel-prizes"
         role="tabpanel"
         aria-labelledby="public-tab-prizes"
       >
+        <HackathonWinnersShowcase
+          v-if="isWinnerRevealVisible"
+          :winners="winners"
+        />
+
         <HackathonPrizeList
+          v-else
           :prizes="prizes"
         />
       </section>

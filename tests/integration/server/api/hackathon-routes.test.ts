@@ -16,6 +16,8 @@ import publicHackathonsGetHandler from '../../../../server/api/public/hackathons
 import publicHackathonDetailGetHandler from '../../../../server/api/public/hackathons/[slug]/index.get'
 import publicHackathonCriteriaGetHandler from '../../../../server/api/public/hackathons/[slug]/evaluation-criteria/index.get'
 import publicHackathonPrizesGetHandler from '../../../../server/api/public/hackathons/[slug]/prizes/index.get'
+import publicHackathonWinnersGetHandler from '../../../../server/api/public/hackathons/[slug]/winners/index.get'
+import publicHackathonWinnerProfileIconGetHandler from '../../../../server/api/public/hackathons/[slug]/winners/[userId]/profile-icon.get'
 import publicHackathonBackgroundImageGetHandler from '../../../../server/api/public/hackathons/[slug]/images/background.get'
 import publicHackathonBannerImageGetHandler from '../../../../server/api/public/hackathons/[slug]/images/banner.get'
 import hackathonPatchHandler from '../../../../server/api/hackathons/[hackathonId]/index.patch'
@@ -40,6 +42,7 @@ import {
   platformDocuments,
   prizes,
   prizeEligibilitySnapshots,
+  prizeRedemptions,
   submissions,
   teamMembers,
   teams,
@@ -1403,6 +1406,213 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       'Third Place Award',
       'Top 3 Teams Benefit'
     ])
+  })
+
+  test('GET /api/public/hackathons/:slug/winners and winner profile icons stay hidden until completion', async () => {
+    const profileIconsBucket = new InMemoryR2Bucket()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/public/hackathons/:slug/winners', handler: publicHackathonWinnersGetHandler },
+        { method: 'get', path: '/api/public/hackathons/:slug/winners/:userId/profile-icon', handler: publicHackathonWinnerProfileIconGetHandler }
+      ],
+      cloudflareEnv: {
+        PROFILE_ICONS: profileIconsBucket
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'judge_1',
+        auth0Subject: 'auth0|judge_1',
+        email: 'judge@example.com',
+        displayName: 'Judge One'
+      },
+      {
+        id: 'winner_user',
+        auth0Subject: 'auth0|winner_user',
+        email: 'winner@example.com',
+        displayName: 'Winner User',
+        firstName: 'Winner',
+        familyName: 'User',
+        bio: 'Builds thoughtful AI prototypes.',
+        xProfileUrl: 'https://x.com/winner-user',
+        linkedinProfileUrl: 'https://linkedin.com/in/winner-user',
+        githubProfileUrl: 'https://github.com/winner-user',
+        profileIconUpdatedAt: '2026-03-18T15:00:00.000Z'
+      }
+    ])
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_completed_public',
+      name: 'Public Winners Hackathon',
+      slug: 'public-winners-hackathon',
+      description: 'Public winners showcase',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'winners_announced',
+      blindReviewCount: 0,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 0,
+      pitchScoreWeightPercent: 100,
+      finalRankingSubmissionIdsJson: JSON.stringify(['submission_public_winner']),
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(teams).values({
+      id: 'team_public_winner',
+      hackathonId: 'hackathon_completed_public',
+      name: 'Public Winners',
+      slug: 'public-winners',
+      isOpenToJoinRequests: false,
+      createdByUserId: 'winner_user',
+      createdAt: '2026-03-24T10:00:00.000Z',
+      updatedAt: '2026-03-24T10:00:00.000Z'
+    })
+    await harness.database.insert(teamMembers).values({
+      id: 'membership_public_winner',
+      teamId: 'team_public_winner',
+      userId: 'winner_user',
+      role: 'admin',
+      joinedAt: '2026-03-24T10:00:00.000Z',
+      createdAt: '2026-03-24T10:00:00.000Z'
+    })
+    await harness.database.insert(submissions).values({
+      id: 'submission_public_winner',
+      teamId: 'team_public_winner',
+      status: 'locked',
+      projectName: 'Public Winner Project',
+      summary: 'Public winner summary',
+      repositoryUrl: 'https://example.com/public-winner-repo',
+      demoUrl: 'https://example.com/public-winner-demo',
+      submittedAt: '2026-03-24T12:00:00.000Z',
+      lockedAt: '2026-03-25T12:00:00.000Z',
+      createdAt: '2026-03-24T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z'
+    })
+    await harness.database.insert(judgeAssignments).values({
+      id: 'pitch_public_winner_assignment',
+      hackathonId: 'hackathon_completed_public',
+      submissionId: 'submission_public_winner',
+      judgeUserId: 'judge_1',
+      reviewStage: 'pitch_review',
+      blindReviewSlot: null,
+      status: 'judge_completed',
+      pitchScore: 5,
+      assignedAt: '2026-03-25T13:00:00.000Z',
+      startedAt: '2026-03-25T13:01:00.000Z',
+      completedAt: '2026-03-25T13:02:00.000Z',
+      ineligibilityStatus: 'eligible',
+      createdAt: '2026-03-25T13:00:00.000Z'
+    })
+    await harness.database.insert(prizes).values({
+      id: 'prize_public_winner',
+      hackathonId: 'hackathon_completed_public',
+      name: 'Public Grand Prize',
+      description: 'Public prize description',
+      rewardType: 'api_credits',
+      rewardValue: '5000',
+      rewardCurrency: 'USD',
+      awardScope: 'team',
+      rankStart: 1,
+      rankEnd: 1
+    })
+    await harness.database.insert(prizeEligibilitySnapshots).values({
+      id: 'snapshot_public_winner',
+      hackathonId: 'hackathon_completed_public',
+      teamId: 'team_public_winner',
+      userId: 'winner_user',
+      snapshotAt: '2026-03-25T13:05:00.000Z',
+      createdAt: '2026-03-25T13:05:00.000Z'
+    })
+    await harness.database.insert(prizeRedemptions).values({
+      id: 'redemption_public_winner',
+      prizeId: 'prize_public_winner',
+      userId: null,
+      teamId: 'team_public_winner',
+      status: 'pending',
+      createdAt: '2026-03-25T13:10:00.000Z',
+      updatedAt: '2026-03-25T13:10:00.000Z'
+    })
+    await profileIconsBucket.put(
+      'users/winner_user/profile-icon',
+      pngSignatureBytes,
+      {
+        httpMetadata: {
+          contentType: 'image/png'
+        }
+      }
+    )
+
+    const preCompletionResponse = await harness.request('/api/public/hackathons/public-winners-hackathon/winners')
+
+    expect(preCompletionResponse.status).toBe(409)
+
+    await harness.database
+      .update(hackathons)
+      .set({
+        state: 'completed'
+      })
+      .where(eq(hackathons.id, 'hackathon_completed_public'))
+
+    const winnersResponse = await harness.request('/api/public/hackathons/public-winners-hackathon/winners')
+
+    expect(winnersResponse.status).toBe(200)
+    expect(await winnersResponse.json()).toMatchObject({
+      data: [
+        {
+          teamId: 'team_public_winner',
+          teamName: 'Public Winners',
+          submissionId: 'submission_public_winner',
+          projectName: 'Public Winner Project',
+          summary: 'Public winner summary',
+          repositoryUrl: 'https://example.com/public-winner-repo',
+          demoUrl: 'https://example.com/public-winner-demo',
+          finalRank: 1,
+          prizes: [
+            expect.objectContaining({
+              id: 'prize_public_winner',
+              name: 'Public Grand Prize'
+            })
+          ],
+          teamMembers: [
+            expect.objectContaining({
+              id: 'winner_user',
+              fullName: 'Winner User',
+              bio: 'Builds thoughtful AI prototypes.',
+              xProfileUrl: 'https://x.com/winner-user',
+              linkedinProfileUrl: 'https://linkedin.com/in/winner-user',
+              githubProfileUrl: 'https://github.com/winner-user',
+              profileIconUrl: '/api/public/hackathons/public-winners-hackathon/winners/winner_user/profile-icon?v=2026-03-18T15%3A00%3A00.000Z'
+            })
+          ]
+        }
+      ]
+    })
+
+    const iconResponse = await harness.request(
+      '/api/public/hackathons/public-winners-hackathon/winners/winner_user/profile-icon?v=2026-03-18T15%3A00%3A00.000Z'
+    )
+
+    expect(iconResponse.status).toBe(200)
+    expect(iconResponse.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+    expect(iconResponse.headers.get('content-type')).toBe('image/png')
+
+    const missingIconResponse = await harness.request(
+      '/api/public/hackathons/public-winners-hackathon/winners/unknown_user/profile-icon?v=2026-03-18T15%3A00%3A00.000Z'
+    )
+
+    expect(missingIconResponse.status).toBe(404)
   })
 
   test('GET /api/hackathons/:hackathonId returns current term references for visible hackathons', async () => {

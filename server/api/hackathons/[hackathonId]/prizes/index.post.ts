@@ -7,6 +7,7 @@ import { prizes } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
 import {
+  assertPrizeConfigurationEditable,
   createPrizeBodySchema,
   requireHackathonAdmin,
   routeIdParamsSchema,
@@ -20,7 +21,8 @@ export default defineApiHandler(async (event) => {
   const body = await parseValidatedBody(event, createPrizeBodySchema)
   const database = getDatabase(event)
 
-  await requireHackathonAdmin(event, hackathonId)
+  const { hackathon } = await requireHackathonAdmin(event, hackathonId)
+  assertPrizeConfigurationEditable(hackathon)
 
   const prizeId = crypto.randomUUID()
   const createdAt = new Date().toISOString()

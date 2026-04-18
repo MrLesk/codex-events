@@ -14,7 +14,9 @@ export function getPublicHomepageHackathonView(
   loadedActiveHackathonCount: number
 ): PublicHomepageHackathonView {
   const activeHackathonCount = Math.max(totalHackathonCount - pastHackathonCount, 0)
-  const useSingleActiveLayout = activeHackathonCount === 1 && loadedActiveHackathonCount === 1
+  const useSingleActiveLayout = pastHackathonCount === 0
+    && activeHackathonCount === 1
+    && loadedActiveHackathonCount === 1
 
   return {
     activeHackathonCount,

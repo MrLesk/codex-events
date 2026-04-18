@@ -499,9 +499,8 @@ Scope:
 - When blind review and pitch review are both enabled, final score uses configurable blind and pitch weights that default to `70%` blind and `30%` pitch.
 - When only one judging stage is enabled, final score comes entirely from that stage.
 - Pitch review can be closed by admins with missing votes, and the pitch average uses only submitted pitch-review votes.
-- From `winners_announced` onward, a participant can see the participant's own team's final rank as `X/Y` when that team is ranked.
-- From `winners_announced` onward, winning teams can see the prizes awarded to their own team in the account overview and workspace.
 - Announcing winners notifies the frozen prize-eligible members of every winning team.
+- Completing the hackathon reveals the public and account-scoped winners showcase, which groups each winning project with its prizes, project links, and the published winning-team roster.
 - Approved teams with no submission appear in a separate no-submission section in the hackathon dashboard.
 - Prize-eligible team membership is frozen when submitted projects are locked for judging.
 

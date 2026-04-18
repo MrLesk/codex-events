@@ -132,16 +132,15 @@ Behavior:
 
 #### `winners_announced`
 
-The winners are final and visible.
+The winners are finalized for operations, but the completed showcase is not visible yet.
 
 Behavior:
 
 - Winner selection is closed.
 - Prize redemption can proceed.
-- The participant prize surface becomes the winners surface and shows winning team names next to each prize.
-- Ranked teams can see their own final rank as `X/Y` in the account overview and workspace.
-- Winning teams can see which prizes their own team won in the account overview and workspace.
 - Every frozen prize-eligible member of each winning team receives a winner email.
+- Public and account-scoped hackathon detail pages still show the `Prizes` tab rather than the completed winners showcase.
+- Prize definitions are locked and can no longer be created, updated, or deleted.
 
 #### `completed`
 
@@ -150,6 +149,9 @@ The hackathon is fully closed.
 Behavior:
 
 - The outcome is final.
+- Public and account-scoped hackathon detail pages switch from `Prizes` to `Winners` and show the completed winner-project showcase.
+- The completed winners showcase exposes one card per winning project with prize information, project links, and the published winning-team roster.
+- Completing the hackathon also enqueues winner emails for frozen prize-eligible members of winning teams.
 - Prize redemption records remain available for operational and audit purposes.
 
 ### Transitions
@@ -177,9 +179,9 @@ Behavior:
 - `pitch_review -> final_deliberation`
   Guard: pitch review is closed by hackathon admins after at least one submitted pitch vote exists and the submitted pitch votes to count are accepted for scoring.
 - `final_deliberation -> winners_announced`
-  Guard: hackathon admins finalize the ranking and announce winners. This transition also enqueues winner emails for frozen prize-eligible members of winning teams.
+  Guard: hackathon admins finalize the ranking and announce winners. This transition persists the final ranking operationally, creates prize redemptions, and enqueues winner emails for frozen prize-eligible members of winning teams.
 - `winners_announced -> completed`
-  Guard: hackathon admins close the hackathon.
+  Guard: hackathon admins close the hackathon. This transition reveals the completed winners showcase on public and account detail pages and enqueues winner emails for frozen prize-eligible members of winning teams.
 
 ## UserApplication
 

@@ -1,7 +1,12 @@
 import type { H3Event } from 'h3'
 
+import { and, asc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
+import type { AppDatabase } from '../database/client'
+import { writeAuditLog } from '../database/audit-log'
+import { prizeEligibilitySnapshots, users } from '../database/schema'
+import { getFinalDeliberationView } from './shortlist'
 import {
   sendHackathonOutcomeEmail,
   type HackathonOutcomeEmailDeliveryResult,
@@ -46,6 +51,8 @@ export const hackathonOutcomeEmailQueueMessageSchema = z.discriminatedUnion('not
 ])
 
 export type HackathonOutcomeEmailQueueMessage = z.infer<typeof hackathonOutcomeEmailQueueMessageSchema>
+type PrizeEligibilitySnapshotRecord = typeof prizeEligibilitySnapshots.$inferSelect
+type UserRecord = typeof users.$inferSelect
 
 interface QueueProducerLike {
   send: (message: unknown, options?: {
@@ -94,6 +101,110 @@ export function buildHackathonOutcomeEmailQueueMessage(
     ...input,
     recipientDisplayName: input.recipientDisplayName?.trim() || null,
     enqueuedAt: new Date().toISOString()
+  }
+}
+
+export async function enqueueWinnerOutcomeEmails(options: {
+  event: H3Event
+  database: AppDatabase
+  hackathon: {
+    id: string
+    name: string
+    slug: string
+  }
+  winners: Array<{
+    teamId: string
+    teamName: string
+    finalRank: number
+    prizes: Array<{
+      name: string
+    }>
+  }>
+  trigger: 'announce_winners' | 'complete'
+  triggeredByUserId: string
+  announcedAt: string
+}) {
+  if (options.winners.length === 0) {
+    return
+  }
+
+  const finalDeliberation = await getFinalDeliberationView(
+    options.database,
+    options.hackathon.id
+  )
+  const rankedTeamCount = finalDeliberation.entries.filter(
+    entry => entry.finalRank !== null
+  ).length
+  const winningTeamIds = [...new Set(options.winners.map(winner => winner.teamId))]
+  const snapshots = await options.database.query.prizeEligibilitySnapshots.findMany({
+    where: and(
+      eq(prizeEligibilitySnapshots.hackathonId, options.hackathon.id),
+      inArray(prizeEligibilitySnapshots.teamId, winningTeamIds)
+    ),
+    orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
+  }) as PrizeEligibilitySnapshotRecord[]
+  const recipientUserIds = [...new Set(snapshots.map(snapshot => snapshot.userId))]
+  const winnerRecipients = recipientUserIds.length === 0
+    ? []
+    : (await options.database.query.users.findMany({
+        where: inArray(users.id, recipientUserIds)
+      })) as UserRecord[]
+  const winnersByTeamId = new Map(
+    options.winners.map(winner => [winner.teamId, winner] as const)
+  )
+  const usersById = new Map(
+    winnerRecipients.map(user => [user.id, user] as const)
+  )
+  const deliveredRecipientKeys = new Set<string>()
+
+  for (const snapshot of snapshots) {
+    const winner = winnersByTeamId.get(snapshot.teamId)
+
+    if (!winner) {
+      continue
+    }
+
+    const recipientKey = `${snapshot.teamId}:${snapshot.userId}`
+
+    if (deliveredRecipientKeys.has(recipientKey)) {
+      continue
+    }
+
+    deliveredRecipientKeys.add(recipientKey)
+
+    const recipient = usersById.get(snapshot.userId)
+    const enqueueResult = await enqueueHackathonOutcomeEmailMessage(
+      options.event,
+      buildHackathonOutcomeEmailQueueMessage({
+        notificationType: 'winner',
+        hackathonId: options.hackathon.id,
+        hackathonName: options.hackathon.name,
+        hackathonSlug: options.hackathon.slug,
+        teamId: winner.teamId,
+        teamName: winner.teamName,
+        recipientUserId: snapshot.userId,
+        recipientEmail: recipient?.email ?? null,
+        recipientDisplayName: recipient?.displayName ?? null,
+        announcedAt: options.announcedAt,
+        finalRank: winner.finalRank,
+        rankedTeamCount: rankedTeamCount || winner.finalRank,
+        prizeNames: winner.prizes.map(prize => prize.name)
+      })
+    )
+
+    await writeAuditLog(options.database, {
+      actorUserId: options.triggeredByUserId,
+      entityType: 'hackathon',
+      entityId: options.hackathon.id,
+      action: 'hackathon.winner_email_enqueued',
+      metadata: {
+        trigger: options.trigger,
+        teamId: winner.teamId,
+        userId: snapshot.userId,
+        finalRank: winner.finalRank,
+        enqueue: enqueueResult
+      }
+    })
   }
 }
 

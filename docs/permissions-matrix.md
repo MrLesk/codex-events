@@ -162,9 +162,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Action | Approved User | Staff | Judge | Hackathon Admin | Platform Admin |
 | --- | --- | --- | --- | --- | --- |
 | View own shortlist status after `pitch` starts | Yes, only for the user's own finalist team | No | No | No | No |
-| View own final team rank after `winners_announced` | Yes, only for the user's own ranked team | No | No | No | No |
-| View own awarded prizes after `winners_announced` | Yes, only for the user's own winning team | No | No | No | No |
-| View winning team names next to published prizes after `winners_announced` | Yes | Yes | Yes | Yes | Yes |
+| View completed winners showcase in hackathon detail pages after `completed` | Yes | Yes | Yes | Yes | Yes |
 
 ## Prize Redemption
 
@@ -191,7 +189,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 - Workspace users can view the published judge and staff rosters for hackathons they can access in `/account/hackathons/:slug`.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Participants can see shortlist status only for their own team, and only from `pitch` onward when that team advanced.
-- After `winners_announced`, participants can see only their own team's final rank and own awarded prizes in the account workspace.
+- Winner-project visibility is delayed until `completed`; before completion, public and account detail pages keep the `Prizes` surface and participant overview or workspace views do not expose winner snippets.
 - Team members can view their own team membership and submission data.
 - Team admins can view team join requests and manage team membership.
 - Judges see the blind judging view for blind assignments and the open pitch judging view for pitch assignments.

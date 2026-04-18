@@ -31,6 +31,7 @@ import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeLis
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonTracksPanel from '~/components/public/hackathons/HackathonTracksPanel.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
+import HackathonWinnersShowcase from '~/components/public/hackathons/HackathonWinnersShowcase.vue'
 import {
   hasHackathonAdminAccess,
   hasHackathonJudgingAccess,
@@ -155,7 +156,7 @@ if (!hackathonResponse.value?.data) {
 const requestFetch = import.meta.server ? useRequestFetch() : $fetch
 const shouldPrefetchPublishedJudgesRoster = actor.value.kind === 'platform_user'
 const shouldPrefetchPublishedStaffRoster = actor.value.kind === 'platform_user'
-const shouldPrefetchWinners = ['winners_announced', 'completed'].includes(hackathonResponse.value.data.state)
+const shouldPrefetchWinners = hackathonResponse.value.data.state === 'completed'
 const [
   criteriaResponse,
   prizesResponse,
@@ -267,6 +268,7 @@ const tabAccess = computed(() =>
   getAccountHackathonTabAccess({
     hasApprovedParticipantAccess: applicationStatus.value === 'approved',
     hasPublishedPrizes: hasPublishedPrizes.value,
+    hackathonState: hackathon.value.state,
     canJudge: canJudge.value,
     canManage: canAdmin.value,
     canViewParticipantsAndTeams: canViewParticipantsAndTeams.value
@@ -461,22 +463,6 @@ const detailSummary = computed(() => [
   formatHackathonLocation(hackathon.value),
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
-const winnerTeamNamesByPrizeId = computed<Record<string, string[]>>(() => {
-  const namesByPrizeId = new Map<string, Set<string>>()
-
-  for (const winner of winners.value) {
-    for (const prize of winner.prizes) {
-      const teamNames = namesByPrizeId.get(prize.id) ?? new Set<string>()
-      teamNames.add(winner.teamName)
-      namesByPrizeId.set(prize.id, teamNames)
-    }
-  }
-
-  return Object.fromEntries(
-    [...namesByPrizeId.entries()].map(([prizeId, teamNames]) => [prizeId, [...teamNames]])
-  )
-})
-
 function updateAccessRecordApplicationStatus(nextStatus: ParticipantApplicationRecord['status']) {
   const patchRecords = (records: AccountHackathonAccessRecord[]) =>
     records.map(record => record.slug === slug.value
@@ -908,10 +894,14 @@ useSeoMeta({
         aria-labelledby="account-tab-prizes"
         class="space-y-8"
       >
+        <HackathonWinnersShowcase
+          v-if="hackathon.state === 'completed'"
+          :winners="winners"
+        />
+
         <HackathonPrizeList
+          v-else
           :prizes="prizes"
-          :title="getAccountHackathonTabLabel('prizes', { hackathonState: hackathon.state }) === 'Winners' ? 'Published winners' : undefined"
-          :winner-team-names-by-prize-id="winnerTeamNamesByPrizeId"
         />
 
         <AccountHackathonAdminSettingsPanel

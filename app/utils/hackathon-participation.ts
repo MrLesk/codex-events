@@ -84,26 +84,6 @@ export function normalizeHackathonParticipationApiError(error: unknown) {
   return normalizeParticipantApiError(error)
 }
 
-function formatOutcomePrizeNames(prizes: HackathonParticipationPrizeSummary[]) {
-  const names = prizes
-    .map(prize => prize.name.trim())
-    .filter(Boolean)
-
-  if (names.length === 0) {
-    return ''
-  }
-
-  if (names.length === 1) {
-    return names[0]!
-  }
-
-  if (names.length === 2) {
-    return `${names[0]} and ${names[1]}`
-  }
-
-  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
-}
-
 export function getHackathonParticipationOutcomeNotice(
   record: {
     hackathon: Pick<HackathonParticipationHackathonSummary, 'state'>
@@ -129,44 +109,6 @@ export function getHackathonParticipationOutcomeNotice(
       color: 'info',
       title: 'Your team is shortlisted',
       description: `${teamName} advanced to the live pitch stage.`
-    }
-  }
-
-  if (!['winners_announced', 'completed'].includes(record.hackathon.state)) {
-    return null
-  }
-
-  const rankLabel = outcome.finalRank !== null && outcome.rankedTeamCount > 0
-    ? `#${outcome.finalRank} of ${outcome.rankedTeamCount}`
-    : null
-
-  if (outcome.isWinner && outcome.prizes.length > 0) {
-    const prizeNames = formatOutcomePrizeNames(outcome.prizes)
-
-    return {
-      color: 'success',
-      title: 'Your team won',
-      description: rankLabel
-        ? `${teamName}${outcome.isShortlisted ? ' was shortlisted,' : ''} finished ${rankLabel} and won ${prizeNames}.`
-        : `${teamName} won ${prizeNames}.`
-    }
-  }
-
-  if (rankLabel) {
-    return {
-      color: 'neutral',
-      title: 'Final ranking available',
-      description: outcome.isShortlisted
-        ? `${teamName} made the shortlist and finished ${rankLabel}.`
-        : `${teamName} finished ${rankLabel}.`
-    }
-  }
-
-  if (outcome.isShortlisted) {
-    return {
-      color: 'neutral',
-      title: 'Final ranking available',
-      description: `${teamName} made the shortlist.`
     }
   }
 

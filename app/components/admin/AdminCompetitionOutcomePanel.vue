@@ -13,7 +13,7 @@ const props = defineProps<{
 }>()
 
 const winnersVisible = computed(() =>
-  ['winners_announced', 'completed'].includes(props.hackathonState)
+  props.hackathonState === 'completed'
 )
 </script>
 
@@ -45,7 +45,7 @@ const winnersVisible = computed(() =>
         color="neutral"
         variant="soft"
         title="Winners are not public yet"
-        description="The winners list becomes available only after winners are announced."
+        description="The completed winners showcase becomes available only after the hackathon is completed."
       />
 
       <template v-else>

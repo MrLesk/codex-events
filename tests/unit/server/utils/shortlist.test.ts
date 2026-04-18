@@ -6,6 +6,7 @@ import {
   assertFinalDeliberationReorderMatchesEntries,
   assertFinalDeliberationViewAllowed,
   assertHackathonCompletionAllowed,
+  assertWinnersVisible,
   hasSavedShortlistSelection,
   assertSelectedFinalistsRespectOrder,
   assertSelectedFinalistsMatchEntries,
@@ -290,6 +291,9 @@ describe('shortlist utilities', () => {
   test('winner announcement and completion guard the documented lifecycle states', () => {
     expect(() => assertWinnersAnnouncementAllowed(createHackathon('final_deliberation'))).not.toThrow()
     expect(() => assertWinnersAnnouncementAllowed(createHackathon('shortlist'))).toThrowError(ApiError)
+
+    expect(() => assertWinnersVisible(createHackathon('completed'))).not.toThrow()
+    expect(() => assertWinnersVisible(createHackathon('winners_announced'))).toThrowError(ApiError)
 
     expect(() => assertHackathonCompletionAllowed(createHackathon('winners_announced'))).not.toThrow()
     expect(() => assertHackathonCompletionAllowed(createHackathon('shortlist'))).toThrowError(ApiError)

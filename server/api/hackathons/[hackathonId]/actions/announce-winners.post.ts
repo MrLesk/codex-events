@@ -1,15 +1,14 @@
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '../../../../auth/actor'
 import { writeAuditLog } from '../../../../database/audit-log'
 import { getDatabase } from '../../../../database/client'
-import { hackathons, prizeEligibilitySnapshots, prizeRedemptions, prizes, users } from '../../../../database/schema'
+import { hackathons, prizeRedemptions, prizes } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
 import {
-  buildHackathonOutcomeEmailQueueMessage,
-  enqueueHackathonOutcomeEmailMessage
+  enqueueWinnerOutcomeEmails
 } from '../../../../utils/hackathon-outcome-email-queue'
 import {
   requireHackathonAdmin,
@@ -24,14 +23,11 @@ import {
 import {
   assertWinnersAnnouncementAllowed,
   assertFinalDeliberationReorderMatchesEntries,
-  getFinalDeliberationView,
-  getTeamCompetitionOutcome
+  getFinalDeliberationView
 } from '../../../../utils/shortlist'
 import { parseValidatedBody, parseValidatedParams } from '../../../../utils/validation'
 import { assertGuard } from '../../../../utils/lifecycle-guard'
 
-type PrizeEligibilitySnapshotRecord = typeof prizeEligibilitySnapshots.$inferSelect
-type UserRecord = typeof users.$inferSelect
 type WinnerPrizeSummary = ReturnType<typeof serializePrize>
 type AnnouncedWinner = {
   teamId: string
@@ -135,85 +131,19 @@ export default defineApiHandler(async (event) => {
     }
   })
 
-  if (winners.length > 0) {
-    const winnerOutcomes = await Promise.all(
-      winners.map(async winner => [
-        winner.teamId,
-        await getTeamCompetitionOutcome(database, hackathonId, winner.teamId)
-      ] as const)
-    )
-    const winningTeamIds = [...new Set(winners.map(winner => winner.teamId))]
-    const snapshotsResult = await database.query.prizeEligibilitySnapshots.findMany({
-      where: and(
-        eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
-        inArray(prizeEligibilitySnapshots.teamId, winningTeamIds)
-      ),
-      orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
-    })
-    const snapshots = snapshotsResult as PrizeEligibilitySnapshotRecord[]
-    const recipientUserIds = [...new Set(snapshots.map((snapshot: PrizeEligibilitySnapshotRecord) => snapshot.userId))]
-    const winnerRecipientsResult = recipientUserIds.length === 0
-      ? []
-      : await database.query.users.findMany({
-          where: inArray(users.id, recipientUserIds)
-        })
-    const winnersByTeamId = new Map(winners.map(winner => [winner.teamId, winner] as const))
-    const winnerOutcomesByTeamId = new Map(winnerOutcomes)
-    const winnerRecipients = winnerRecipientsResult as UserRecord[]
-    const usersById = new Map(winnerRecipients.map((user: UserRecord) => [user.id, user] as const))
-    const deliveredRecipientKeys = new Set<string>()
-
-    for (const snapshot of snapshots) {
-      const winner = winnersByTeamId.get(snapshot.teamId)
-
-      if (!winner) {
-        continue
-      }
-
-      const recipientKey = `${snapshot.teamId}:${snapshot.userId}`
-
-      if (deliveredRecipientKeys.has(recipientKey)) {
-        continue
-      }
-
-      deliveredRecipientKeys.add(recipientKey)
-
-      const recipient = usersById.get(snapshot.userId)
-      const winnerOutcome = winnerOutcomesByTeamId.get(winner.teamId)
-      const enqueueResult = await enqueueHackathonOutcomeEmailMessage(
-        event,
-        buildHackathonOutcomeEmailQueueMessage({
-          notificationType: 'winner',
-          hackathonId,
-          hackathonName: hackathon.name,
-          hackathonSlug: hackathon.slug,
-          teamId: winner.teamId,
-          teamName: winner.teamName,
-          recipientUserId: snapshot.userId,
-          recipientEmail: recipient?.email ?? null,
-          recipientDisplayName: recipient?.displayName ?? null,
-          announcedAt,
-          finalRank: winner.finalRank,
-          rankedTeamCount: winnerOutcome?.rankedTeamCount ?? winner.finalRank,
-          prizeNames: winner.prizes.map(prize => prize.name)
-        })
-      )
-
-      await writeAuditLog(database, {
-        actorUserId: actor.platformUser.id,
-        entityType: 'hackathon',
-        entityId: hackathonId,
-        action: 'hackathon.winner_email_enqueued',
-        metadata: {
-          trigger: 'announce_winners',
-          teamId: winner.teamId,
-          userId: snapshot.userId,
-          finalRank: winner.finalRank,
-          enqueue: enqueueResult
-        }
-      })
-    }
-  }
+  await enqueueWinnerOutcomeEmails({
+    event,
+    database,
+    hackathon: {
+      id: hackathonId,
+      name: hackathon.name,
+      slug: hackathon.slug
+    },
+    winners,
+    trigger: 'announce_winners',
+    triggeredByUserId: actor.platformUser.id,
+    announcedAt
+  })
 
   const updatedHackathon = await database.query.hackathons.findFirst({
     where: eq(hackathons.id, hackathonId)

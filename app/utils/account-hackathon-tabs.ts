@@ -21,6 +21,7 @@ export type AccountHackathonWorkspaceTab = (typeof accountHackathonWorkspaceTabs
 export interface AccountHackathonTabAccessOptions {
   hasApprovedParticipantAccess: boolean
   hasPublishedPrizes: boolean
+  hackathonState?: PublicHackathonState | null
   canJudge: boolean
   canManage: boolean
   canViewParticipantsAndTeams: boolean
@@ -59,7 +60,7 @@ export function getAccountHackathonTabLabel(
     hackathonState?: PublicHackathonState | null
   }
 ) {
-  if (tab === 'prizes' && ['winners_announced', 'completed'].includes(options?.hackathonState ?? '')) {
+  if (tab === 'prizes' && options?.hackathonState === 'completed') {
     return 'Winners'
   }
 
@@ -116,6 +117,7 @@ export function getAccountHackathonTabAccess(
   const {
     hasApprovedParticipantAccess,
     hasPublishedPrizes,
+    hackathonState,
     canJudge,
     canManage,
     canViewParticipantsAndTeams
@@ -126,7 +128,7 @@ export function getAccountHackathonTabAccess(
     availableTabs.push('credits')
   }
 
-  if (hasPublishedPrizes || canManage) {
+  if (hasPublishedPrizes || canManage || hackathonState === 'completed') {
     availableTabs.push('prizes')
   }
 
@@ -166,7 +168,7 @@ export function getAccountHackathonTabAccess(
 
   return {
     availableTabs,
-    showPrizeConfiguration: canManage,
+    showPrizeConfiguration: canManage && !['winners_announced', 'completed'].includes(hackathonState ?? ''),
     showAgendaConfigurationInDetails: canManage
   }
 }

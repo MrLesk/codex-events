@@ -65,7 +65,10 @@ function normalizeUrl(value: string | null | undefined) {
   return normalized ? normalized : null
 }
 
-export function getPublishedHackathonRosterLinks(member: PublishedHackathonRosterMember) {
+export function getPublishedHackathonRosterLinks(member: Pick<
+  PublishedHackathonRosterMember,
+  'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl'
+>) {
   const links: PublishedHackathonRosterLink[] = []
   const xProfileUrl = normalizeUrl(member.xProfileUrl)
   const linkedinProfileUrl = normalizeUrl(member.linkedinProfileUrl)

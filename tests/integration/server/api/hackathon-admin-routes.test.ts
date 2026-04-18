@@ -814,6 +814,68 @@ describe('TASK-3.5 hackathon admin route groups', () => {
     })
   })
 
+  test('prize definition writes lock once winners are announced', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/prizes', handler: prizesPostHandler },
+        { method: 'patch', path: '/api/hackathons/:hackathonId/prizes/:prizeId', handler: prizesPatchHandler },
+        { method: 'delete', path: '/api/hackathons/:hackathonId/prizes/:prizeId', handler: prizesDeleteHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedHackathonContext(harness, {
+      state: 'winners_announced'
+    })
+    await harness.database.insert(prizes).values({
+      id: 'locked_prize',
+      hackathonId: 'hackathon_1',
+      name: 'Locked Prize',
+      description: 'Locked after winner announcement.',
+      rewardType: 'api_credits',
+      rewardValue: '1000',
+      rewardCurrency: 'USD',
+      awardScope: 'team',
+      rankStart: 1,
+      rankEnd: 1
+    })
+
+    const createResponse = await harness.request('/api/hackathons/hackathon_1/prizes', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Late Prize',
+        description: 'Should fail.',
+        rewardType: 'subscription',
+        rewardValue: '12 months',
+        rewardCurrency: null,
+        awardScope: 'member',
+        rankStart: 1,
+        rankEnd: 1
+      })
+    })
+    const updateResponse = await harness.request('/api/hackathons/hackathon_1/prizes/locked_prize', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        rewardValue: '2000'
+      })
+    })
+    const deleteResponse = await harness.request('/api/hackathons/hackathon_1/prizes/locked_prize', {
+      method: 'DELETE'
+    })
+
+    for (const response of [createResponse, updateResponse, deleteResponse]) {
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        error: {
+          code: 'prize_configuration_locked'
+        }
+      })
+    }
+  })
+
   test('admin-visible routes write audit records for administrative writes', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

@@ -354,6 +354,19 @@ When('the saved {string} session announces winners for the outcomes fixture hack
   }
 })
 
+When('the saved {string} session completes the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/actions/complete`)
+    const state = getScenarioState(page)
+    state.response = response
+    state.json = await response.json()
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
 When('the saved {string} session lists winners for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 

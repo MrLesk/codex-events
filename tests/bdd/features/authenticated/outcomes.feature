@@ -26,6 +26,8 @@ Feature: TASK-3.8 authenticated outcome flows
     Then the outcomes final deliberation should rank submission one first and submission two second by final order
     When the saved "hackathon_admin" session announces winners for the outcomes fixture hackathon
     Then the outcomes fixture hackathon state should be "winners_announced"
+    When the saved "hackathon_admin" session completes the outcomes fixture hackathon
+    Then the outcomes fixture hackathon state should be "completed"
     When the saved "regular_user" session lists winners for the outcomes fixture hackathon
     Then the outcomes fixture winners should rank team one first and team two second
     When the saved "regular_user" session lists pending prize redemptions for the outcomes fixture hackathon

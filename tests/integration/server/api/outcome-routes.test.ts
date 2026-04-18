@@ -2060,7 +2060,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     ]))
   })
 
-  test('public winners apply the persisted final ranking override after announcement', async () => {
+  test('winner reads stay unavailable until completion and then expose the completed showcase payload', async () => {
     const publicHarness = createApiRouteTestHarness({
       routes: [
         {
@@ -2076,6 +2076,18 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       state: 'winners_announced',
       finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
     })
+    await publicHarness.database
+      .update(users)
+      .set({
+        firstName: 'Team',
+        familyName: 'Admin One',
+        bio: 'Builds polished demos.',
+        xProfileUrl: 'https://x.com/team-admin-one',
+        linkedinProfileUrl: 'https://linkedin.com/in/team-admin-one',
+        githubProfileUrl: 'https://github.com/team-admin-one',
+        profileIconUpdatedAt: '2026-03-18T13:00:00.000Z'
+      })
+      .where(eq(users.id, 'team_admin_one'))
     await seedPitchAssignments(publicHarness, [
       {
         id: 'pitch_assignment_1',
@@ -2109,6 +2121,17 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
+    const preCompletionResponse = await publicHarness.request('/api/hackathons/hackathon_1/winners')
+
+    expect(preCompletionResponse.status).toBe(409)
+
+    await publicHarness.database
+      .update(hackathons)
+      .set({
+        state: 'completed'
+      })
+      .where(eq(hackathons.id, 'hackathon_1'))
+
     const winnersResponse = await publicHarness.request('/api/hackathons/hackathon_1/winners')
 
     expect(winnersResponse.status).toBe(200)
@@ -2116,23 +2139,142 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       data: [
         expect.objectContaining({
           teamId: 'team_1',
+          teamName: 'Alpha Team',
           finalRank: 1,
-          rank: 1,
+          summary: 'Alpha summary',
+          repositoryUrl: 'https://example.com/alpha',
+          demoUrl: 'https://example.com/alpha-demo',
           prizes: expect.arrayContaining([
             expect.objectContaining({ id: 'prize_team_rank_1' }),
             expect.objectContaining({ id: 'prize_member_top_2' })
+          ]),
+          teamMembers: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'team_admin_one',
+              fullName: 'Team Admin One',
+              bio: 'Builds polished demos.',
+              xProfileUrl: 'https://x.com/team-admin-one',
+              linkedinProfileUrl: 'https://linkedin.com/in/team-admin-one',
+              githubProfileUrl: 'https://github.com/team-admin-one',
+              profileIconUrl: '/api/public/hackathons/outcome-hackathon/winners/team_admin_one/profile-icon?v=2026-03-18T13%3A00%3A00.000Z'
+            })
           ])
         }),
         expect.objectContaining({
           teamId: 'team_2',
           finalRank: 2,
-          rank: 2,
           prizes: expect.arrayContaining([
             expect.objectContaining({ id: 'prize_member_top_2' })
           ])
         })
       ]
     })
+  })
+
+  test('completing a hackathon enqueues winner emails for each winning team member snapshot', async () => {
+    const queueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/hackathons/:hackathonId/actions/complete',
+          handler: completeHackathonHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      },
+      cloudflareEnv: {
+        HACKATHON_OUTCOME_EMAIL_QUEUE: queueProducer
+      },
+      runtimeConfig: {
+        hackathonOutcomeEmails: {
+          queueBinding: 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'winners_announced',
+      finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
+      pitchReviewEnabled: false
+    })
+    await harness.database.insert(users).values({
+      id: 'team_member_one',
+      auth0Subject: 'auth0|team_member_one',
+      email: 'team-member-one@example.com',
+      displayName: 'Team Member One'
+    })
+    await harness.database.insert(prizeEligibilitySnapshots).values({
+      id: 'snapshot_team_1_member_complete',
+      hackathonId: 'hackathon_1',
+      teamId: 'team_1',
+      userId: 'team_member_one',
+      snapshotAt: '2026-03-17T12:00:00.000Z',
+      createdAt: '2026-03-17T12:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/actions/complete', {
+      method: 'POST'
+    })
+
+    expect(response.status).toBe(200)
+    expect(queueProducer.send).toHaveBeenCalledTimes(3)
+    expect(queueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      notificationType: 'winner',
+      teamId: 'team_1',
+      teamName: 'Alpha Team',
+      finalRank: 1,
+      rankedTeamCount: 2,
+      prizeNames: ['Grand Prize', 'Top Two Membership'],
+      recipientEmail: 'team-admin-one@example.com'
+    }), {
+      contentType: 'json'
+    })
+    expect(queueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      notificationType: 'winner',
+      teamId: 'team_1',
+      teamName: 'Alpha Team',
+      finalRank: 1,
+      rankedTeamCount: 2,
+      prizeNames: ['Grand Prize', 'Top Two Membership'],
+      recipientEmail: 'team-member-one@example.com'
+    }), {
+      contentType: 'json'
+    })
+    expect(queueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      notificationType: 'winner',
+      teamId: 'team_2',
+      teamName: 'Beta Team',
+      finalRank: 2,
+      rankedTeamCount: 2,
+      prizeNames: ['Top Two Membership'],
+      recipientEmail: 'team-admin-two@example.com'
+    }), {
+      contentType: 'json'
+    })
+
+    const winnerEmailAuditRows = (await harness.database.select().from(auditLogs))
+      .filter(entry => entry.action === 'hackathon.winner_email_enqueued')
+    expect(winnerEmailAuditRows).toHaveLength(3)
+    expect(winnerEmailAuditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          trigger: 'complete',
+          teamId: 'team_1',
+          userId: 'team_admin_one'
+        })
+      }),
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          trigger: 'complete',
+          teamId: 'team_1',
+          userId: 'team_member_one'
+        })
+      })
+    ]))
   })
 
   test('team admins can view and redeem their pending prize redemptions with exact winner terms acceptance', async () => {

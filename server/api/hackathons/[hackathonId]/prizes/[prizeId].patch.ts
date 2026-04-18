@@ -8,6 +8,7 @@ import { defineApiHandler } from '../../../../utils/api-handler'
 import { ApiError } from '../../../../utils/api-error'
 import { apiData } from '../../../../utils/api-response'
 import {
+  assertPrizeConfigurationEditable,
   getPrizeOrThrow,
   prizeParamsSchema,
   requireHackathonAdmin,
@@ -22,7 +23,8 @@ export default defineApiHandler(async (event) => {
   const body = await parseValidatedBody(event, updatePrizeBodySchema)
   const database = getDatabase(event)
 
-  await requireHackathonAdmin(event, hackathonId)
+  const { hackathon } = await requireHackathonAdmin(event, hackathonId)
+  assertPrizeConfigurationEditable(hackathon)
   const prize = await getPrizeOrThrow(database, hackathonId, prizeId)
 
   const mergedRankStart = body.rankStart ?? prize.rankStart

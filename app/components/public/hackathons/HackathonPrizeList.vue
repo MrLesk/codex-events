@@ -6,10 +6,8 @@ const props = withDefaults(defineProps<{
     id?: string
   }>
   title?: string
-  winnerTeamNamesByPrizeId?: Record<string, string[]>
 }>(), {
-  title: 'Published awards',
-  winnerTeamNamesByPrizeId: () => ({})
+  title: 'Published awards'
 })
 
 function getPodiumCup(prize: PublicPrize) {
@@ -41,21 +39,6 @@ function getPodiumCup(prize: PublicPrize) {
   return null
 }
 
-function formatWinnerTeamNames(names: string[]) {
-  if (names.length === 0) {
-    return ''
-  }
-
-  if (names.length === 1) {
-    return names[0]!
-  }
-
-  if (names.length === 2) {
-    return `${names[0]} and ${names[1]}`
-  }
-
-  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
-}
 </script>
 
 <template>
@@ -104,13 +87,6 @@ function formatWinnerTeamNames(names: string[]) {
                 </h3>
                 <div class="text-[12px] font-medium text-neutral-500 dark:text-[#A3A3A3]">
                   {{ formatPrizeRank(prize) }}
-                </div>
-                <div
-                  v-if="prize.id && (props.winnerTeamNamesByPrizeId[prize.id]?.length ?? 0) > 0"
-                  class="text-[12px] font-medium text-success"
-                >
-                  {{ (props.winnerTeamNamesByPrizeId[prize.id]?.length ?? 0) === 1 ? 'Winner' : 'Winners' }}:
-                  {{ formatWinnerTeamNames(props.winnerTeamNamesByPrizeId[prize.id] ?? []) }}
                 </div>
               </div>
 

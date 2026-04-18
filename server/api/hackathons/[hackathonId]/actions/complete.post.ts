@@ -6,12 +6,16 @@ import { getDatabase } from '../../../../database/client'
 import { hackathons } from '../../../../database/schema'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
+import { enqueueWinnerOutcomeEmails } from '../../../../utils/hackathon-outcome-email-queue'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathon
 } from '../../../../utils/hackathon-management'
-import { assertHackathonCompletionAllowed } from '../../../../utils/shortlist'
+import {
+  assertHackathonCompletionAllowed,
+  getWinnersView
+} from '../../../../utils/shortlist'
 import { parseValidatedParams } from '../../../../utils/validation'
 
 export default defineApiHandler(async (event) => {
@@ -23,6 +27,7 @@ export default defineApiHandler(async (event) => {
   assertHackathonCompletionAllowed(hackathon)
 
   const completedAt = new Date().toISOString()
+  const winners = await getWinnersView(database, hackathonId)
 
   await database
     .update(hackathons)
@@ -41,6 +46,20 @@ export default defineApiHandler(async (event) => {
       previousState: hackathon.state,
       nextState: 'completed'
     }
+  })
+
+  await enqueueWinnerOutcomeEmails({
+    event,
+    database,
+    hackathon: {
+      id: hackathon.id,
+      name: hackathon.name,
+      slug: hackathon.slug
+    },
+    winners,
+    trigger: 'complete',
+    triggeredByUserId: actor.platformUser.id,
+    announcedAt: completedAt
   })
 
   const updatedHackathon = await database.query.hackathons.findFirst({

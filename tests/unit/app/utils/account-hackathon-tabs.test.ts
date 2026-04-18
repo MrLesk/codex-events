@@ -201,13 +201,43 @@ describe('getAccountHackathonTabAccess', () => {
 
   test('renames the prizes tab to winners after winners are published', () => {
     expect(getAccountHackathonTabLabel('prizes', {
-      hackathonState: 'winners_announced'
-    })).toBe('Winners')
-    expect(getAccountHackathonTabLabel('prizes', {
       hackathonState: 'completed'
     })).toBe('Winners')
     expect(getAccountHackathonTabLabel('prizes', {
+      hackathonState: 'winners_announced'
+    })).toBe('Prizes')
+    expect(getAccountHackathonTabLabel('prizes', {
       hackathonState: 'pitch_review'
     })).toBe('Prizes')
+  })
+
+  test('hides admin prize configuration once winners are announced while keeping the tab available', () => {
+    expect(getAccountHackathonTabAccess({
+      hasApprovedParticipantAccess: true,
+      hasPublishedPrizes: true,
+      hackathonState: 'winners_announced',
+      canJudge: true,
+      canManage: true,
+      canViewParticipantsAndTeams: true
+    })).toEqual({
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
+      showPrizeConfiguration: false,
+      showAgendaConfigurationInDetails: true
+    })
+  })
+
+  test('keeps the winners tab available after completion even when no prize definitions are published', () => {
+    expect(getAccountHackathonTabAccess({
+      hasApprovedParticipantAccess: true,
+      hasPublishedPrizes: false,
+      hackathonState: 'completed',
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: false
+    })).toEqual({
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams'],
+      showPrizeConfiguration: false,
+      showAgendaConfigurationInDetails: false
+    })
   })
 })

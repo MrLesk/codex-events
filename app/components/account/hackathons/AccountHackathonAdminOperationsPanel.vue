@@ -421,6 +421,13 @@ const canLoadWinners = computed(() =>
   Boolean(
     showLifecycleSection.value
     && currentHackathon.value
+    && currentHackathon.value.state === 'completed'
+  )
+)
+const canLoadPrizeRedemptions = computed(() =>
+  Boolean(
+    showLifecycleSection.value
+    && currentHackathon.value
     && ['winners_announced', 'completed'].includes(currentHackathon.value.state)
   )
 )
@@ -1592,7 +1599,7 @@ async function loadWinners() {
 }
 
 async function loadPrizeRedemptions() {
-  if (!canLoadWinners.value) {
+  if (!canLoadPrizeRedemptions.value) {
     redemptions.value = []
     redemptionsStatus.value = 'idle'
     redemptionsErrorMessage.value = ''

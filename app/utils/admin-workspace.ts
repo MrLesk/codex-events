@@ -580,20 +580,20 @@ export interface WinnerEntry {
   teamName: string
   submissionId: string
   projectName: string | null
-  submissionStatus: SubmissionRecord['status']
-  reviewStatus: JudgeAssignmentSummary['status'] | null
-  ineligibilityStatus: JudgeAssignmentSummary['ineligibilityStatus'] | null
-  scoreTotal: number | null
-  rank: number | null
-  criterionScores: Array<{
-    evaluationCriterionId: string
-    criterionName: string | null
-    criterionWeight: number | null
-    score: number
-    comment: string | null
-  }>
+  summary: string | null
+  repositoryUrl: string | null
+  demoUrl: string | null
   finalRank: number
   prizes: PrizeDefinition[]
+  teamMembers: Array<{
+    id: string
+    fullName: string
+    bio: string | null
+    xProfileUrl: string | null
+    linkedinProfileUrl: string | null
+    githubProfileUrl: string | null
+    profileIconUrl: string | null
+  }>
 }
 
 export interface FinalDeliberationEntry {

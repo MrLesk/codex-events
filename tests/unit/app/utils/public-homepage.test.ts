@@ -3,8 +3,17 @@ import { describe, expect, test } from 'vitest'
 import { getPublicHomepageHackathonView } from '../../../../app/utils/public-homepage'
 
 describe('public homepage hackathon view helpers', () => {
-  test('forces the active view and hides filters when there is exactly one active hackathon', () => {
+  test('keeps filters visible when past hackathons exist even if there is exactly one active hackathon', () => {
     expect(getPublicHomepageHackathonView('past', 5, 4, 1)).toEqual({
+      activeHackathonCount: 1,
+      effectiveTab: 'past',
+      showFilters: true,
+      useSingleActiveLayout: false
+    })
+  })
+
+  test('forces the active view and hides filters when there is exactly one active hackathon and no past archive', () => {
+    expect(getPublicHomepageHackathonView('past', 1, 0, 1)).toEqual({
       activeHackathonCount: 1,
       effectiveTab: 'active',
       showFilters: false,

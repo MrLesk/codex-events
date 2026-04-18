@@ -1368,6 +1368,45 @@ export function serializePublishedHackathonRosterMember(user: UserRecord) {
   }
 }
 
+export function buildPublicWinnerProfileIconUrl(
+  hackathonSlug: string,
+  userId: string,
+  profileIconUpdatedAt: string | null | undefined
+) {
+  const normalizedVersion = profileIconUpdatedAt?.trim()
+
+  if (!normalizedVersion) {
+    return null
+  }
+
+  const searchParams = new URLSearchParams({
+    v: normalizedVersion
+  })
+
+  return `/api/public/hackathons/${encodeURIComponent(hackathonSlug)}/winners/${encodeURIComponent(userId)}/profile-icon?${searchParams.toString()}`
+}
+
+export function serializeHackathonWinnerTeamMember(
+  user: UserRecord,
+  hackathonSlug: string
+) {
+  const member = serializePublishedHackathonRosterMember(user)
+
+  return {
+    id: member.id,
+    fullName: member.fullName,
+    bio: member.bio,
+    xProfileUrl: member.xProfileUrl,
+    linkedinProfileUrl: member.linkedinProfileUrl,
+    githubProfileUrl: member.githubProfileUrl,
+    profileIconUrl: buildPublicWinnerProfileIconUrl(
+      hackathonSlug,
+      user.id,
+      user.profileIconUpdatedAt
+    )
+  }
+}
+
 export function serializeHackathonTermsDocument(document: HackathonTermsDocumentRecord) {
   return {
     id: document.id,
@@ -1417,6 +1456,32 @@ export function serializePrize(prize: PrizeRecord) {
     displayOrder: prize.displayOrder,
     createdAt: prize.createdAt
   }
+}
+
+export function assertPrizeConfigurationEditable(
+  hackathon: Pick<HackathonRecord, 'id' | 'state'>
+) {
+  assertAllowedState(
+    hackathon.state,
+    [
+      'draft',
+      'registration_open',
+      'submission_open',
+      'judging_preparation',
+      'blind_review',
+      'shortlist',
+      'pitch',
+      'pitch_review',
+      'final_deliberation'
+    ],
+    {
+      code: 'prize_configuration_locked',
+      message: 'Prize definitions are locked once winners are announced.',
+      details: {
+        hackathonId: hackathon.id
+      }
+    }
+  )
 }
 
 export function serializePublicPrize(prize: PrizeRecord) {

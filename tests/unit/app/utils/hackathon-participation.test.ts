@@ -175,7 +175,7 @@ describe('hackathon participation badge helpers', () => {
     })
   })
 
-  test('returns a winner notice with prize names once winners are announced', () => {
+  test('does not return a winner notice once winners are announced', () => {
     const notice = getHackathonParticipationOutcomeNotice(buildRecord({
       hackathon: {
         ...buildRecord().hackathon,
@@ -209,14 +209,10 @@ describe('hackathon participation badge helpers', () => {
       }
     }))
 
-    expect(notice).toEqual({
-      color: 'success',
-      title: 'Your team won',
-      description: 'North Star Builders was shortlisted, finished #1 of 24 and won Grand Prize and Best Demo.'
-    })
+    expect(notice).toBeNull()
   })
 
-  test('returns a final rank notice for non-winning teams after winners are announced', () => {
+  test('does not return a final rank notice after completion', () => {
     const notice = getHackathonParticipationOutcomeNotice(buildRecord({
       hackathon: {
         ...buildRecord().hackathon,
@@ -241,10 +237,6 @@ describe('hackathon participation badge helpers', () => {
       }
     }))
 
-    expect(notice).toEqual({
-      color: 'neutral',
-      title: 'Final ranking available',
-      description: 'North Star Builders finished #7 of 24.'
-    })
+    expect(notice).toBeNull()
   })
 })
