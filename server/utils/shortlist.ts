@@ -20,6 +20,7 @@ import {
 } from './hackathon-management'
 import {
   calculateAveragePitchScore,
+  chunkRowsForD1,
   parseStoredPitchFinalistSubmissionIds
 } from './judging'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
@@ -450,10 +451,18 @@ async function loadCompetitionEntries(
   const assignmentIds = assignmentRows.map(assignment => assignment.id)
   const scoreRows = assignmentIds.length === 0
     ? []
-    : await database.query.judgeCriterionScores.findMany({
-        where: inArray(judgeCriterionScores.judgeAssignmentId, assignmentIds),
-        orderBy: [asc(judgeCriterionScores.createdAt)]
-      })
+    : await Promise.all(
+        chunkRowsForD1(assignmentIds, 1).map(chunkedAssignmentIds =>
+          database.query.judgeCriterionScores.findMany({
+            where: inArray(judgeCriterionScores.judgeAssignmentId, chunkedAssignmentIds),
+            orderBy: [asc(judgeCriterionScores.createdAt)]
+          })
+        )
+      ).then(chunks =>
+        chunks
+          .flat()
+          .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+      )
   const scoresByAssignmentId = new Map<string, Array<typeof scoreRows[number]>>()
 
   for (const scoreRow of scoreRows) {

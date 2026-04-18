@@ -624,6 +624,103 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
   })
 
+  test('leaderboard and shortlist stay available when shortlist includes more than 100 blind assignment ids', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/hackathons/:hackathonId/leaderboard',
+          handler: listLeaderboardHandler
+        },
+        {
+          method: 'get',
+          path: '/api/hackathons/:hackathonId/shortlist',
+          handler: listShortlistHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'shortlist',
+      shortlistFinalistCount: 1,
+      pitchFinalistSubmissionIdsJson: '[]',
+      finalRankingSubmissionIdsJson: '[]'
+    })
+
+    const skippedAssignments = Array.from({ length: 97 }, (_, index) => {
+      const assignedAt = new Date(Date.UTC(2026, 2, 18, 0, index, 0)).toISOString()
+
+      return {
+        id: `skipped_assignment_${index + 1}`,
+        hackathonId: 'hackathon_1',
+        submissionId: index % 2 === 0 ? 'submission_1' : 'submission_2',
+        judgeUserId: index % 2 === 0 ? 'judge_a' : 'judge_b',
+        reviewStage: 'blind_review' as const,
+        blindReviewSlot: (index % 2) + 1,
+        status: 'skipped' as const,
+        pitchScore: null,
+        assignedAt,
+        startedAt: null,
+        completedAt: null,
+        skippedAt: assignedAt,
+        skippedByUserId: index % 2 === 0 ? 'judge_a' : 'judge_b',
+        skipReason: 'manual reassignment',
+        ineligibilityStatus: 'eligible' as const,
+        createdAt: assignedAt
+      }
+    })
+
+    await harness.database.insert(judgeAssignments).values(skippedAssignments)
+
+    const [leaderboardResponse, shortlistResponse] = await Promise.all([
+      harness.request('/api/hackathons/hackathon_1/leaderboard'),
+      harness.request('/api/hackathons/hackathon_1/shortlist')
+    ])
+
+    expect(leaderboardResponse.status).toBe(200)
+    expect(await leaderboardResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          submissionId: 'submission_1',
+          rank: 1,
+          scoreTotal: 4
+        }),
+        expect.objectContaining({
+          submissionId: 'submission_2',
+          rank: 2,
+          scoreTotal: 3.5
+        })
+      ]
+    })
+
+    expect(shortlistResponse.status).toBe(200)
+    expect(await shortlistResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          submissionId: 'submission_1',
+          rank: 1,
+          isPitchFinalist: true,
+          pitchFinalistRank: 1
+        }),
+        expect.objectContaining({
+          submissionId: 'submission_2',
+          rank: 2,
+          isPitchFinalist: false,
+          pitchFinalistRank: null
+        })
+      ],
+      meta: expect.objectContaining({
+        total: 2,
+        hasSavedShortlistSelection: false
+      })
+    })
+  })
+
   test('derived shortlist order follows blind rank instead of team-name order', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
