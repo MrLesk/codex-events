@@ -1,11 +1,11 @@
 ---
 id: TASK-225
 title: Hotfix D1 parameter-limit failure on admin applications endpoint
-status: In Progress
+status: Done
 assignee:
   - codex
 created_date: '2026-04-16 19:40'
-updated_date: '2026-04-16 19:44'
+updated_date: '2026-04-18 12:16'
 labels: []
 dependencies: []
 priority: high
@@ -45,6 +45,12 @@ Local validation passed: bun run lint, bun run typecheck, bun run test:unit, and
 Production deploy attempt from local failed before upload with Cloudflare API authentication/permission errors for /workers/scripts/codex-hackathons/assets-upload-session using the current CLOUDFLARE_API_TOKEN. Production still needs deployment by a token or workflow with asset-upload permissions.
 <!-- SECTION:NOTES:END -->
 
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Batched the admin application withdrawal-availability enrichment so large application sets stay under Cloudflare D1 bound-parameter limits while keeping the existing response shape unchanged. The admin applications endpoint now succeeds for hackathons with more than 100 application user IDs, and regression coverage was added in `tests/integration/server/api/application-routes.test.ts` for the oversized-query path. Local validation passed with `bun run lint`, `bun run typecheck`, `bun run test:unit`, and targeted integration coverage. Remaining operational follow-up: production deployment still needs to run with a Cloudflare token or workflow that has the required assets-upload permissions.
+<!-- SECTION:FINAL_SUMMARY:END -->
+
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Canonical docs were updated or confirmed unchanged
@@ -54,5 +60,5 @@ Production deploy attempt from local failed before upload with Cloudflare API au
 - [x] #5 Test gaps are documented when automation is not practical
 - [x] #6 Config and developer workflow docs were updated when setup changed
 - [x] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->

@@ -3,11 +3,11 @@ id: TASK-232
 title: >-
   Validate participant Luma registration email during hackathon application
   submission
-status: In Progress
+status: Done
 assignee:
   - codex
 created_date: '2026-04-17 08:19'
-updated_date: '2026-04-17 09:50'
+updated_date: '2026-04-18 12:17'
 labels: []
 dependencies: []
 documentation:
@@ -52,6 +52,8 @@ Implemented registration-time Luma guest validation by reusing the existing even
 Validation results: `bun run test:unit` passed, targeted integration coverage for `tests/integration/server/api/application-routes.test.ts` passed, and targeted ESLint for touched code files passed. Full `bun run lint` and `bun run typecheck` are currently blocked by unrelated existing worktree errors in `app/pages/account/hackathons/[slug]/index.vue`, `app/utils/hackathon-credits.ts`, `server/utils/hackathon-outcome-emails.ts`, and `server/utils/hackathon-participation.ts`.
 
 User confirmed the remaining full-repo `lint` and `typecheck` failures are owned by other agents because they are tied to unrelated changes in the current worktree. No additional changes will be made in those files from this task; TASK-232 is waiting only on shared repo validation to go green.
+
+Repo-wide `bun run lint`, `bun run typecheck`, and `bun run test:unit` now pass on the current main worktree, so the shared validation blocker that kept this task open is resolved.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
@@ -61,20 +63,19 @@ Added registration-time Luma guest verification for participant applications whe
 
 To support that flow cleanly, `server/utils/application-luma-sync-queue.ts` now exports a reusable lookup helper that returns `found`, `not_found`, or `lookup_failed` outcomes without changing the existing async approval/rejection sync path. The participant registration form also now tells users up front to enter the same email they used on the Luma event. Canonical docs in `docs/domain-model.md` and `docs/api-surface.md` now describe the registration-time guard.
 
-Tests updated:
+Validation and tests:
+- `bun run lint` passed
+- `bun run typecheck` passed
 - `bun run test:unit` passed
 - `bun run test:integration -- tests/integration/server/api/application-routes.test.ts` passed
-- Targeted ESLint for touched code files passed
-
-Validation blocker:
-- Full `bun run lint` and `bun run typecheck` currently fail because of unrelated pre-existing worktree issues in other files, so the task remains short of a clean repo-wide validation pass even though the changed area itself is green.
+- Targeted ESLint for the touched code files passed
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Canonical docs were updated or confirmed unchanged
 - [x] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
+- [x] #3 Relevant validation commands pass
 - [x] #4 Tests were added or updated when behavior changed
 - [x] #5 Test gaps are documented when automation is not practical
 - [x] #6 Config and developer workflow docs were updated when setup changed
