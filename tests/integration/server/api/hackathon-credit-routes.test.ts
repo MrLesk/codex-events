@@ -259,6 +259,68 @@ describe('TASK-220 hackathon credit routes', () => {
     ])
   })
 
+  test('admin credit import batches large CSV uploads under D1 parameter limits', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/credits', handler: creditsPostHandler },
+        { method: 'post', path: '/api/hackathons/:hackathonId/credits/:creditId/import', handler: creditImportPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedCreditsContext(harness)
+
+    const createResponse = await harness.request('/api/hackathons/hackathon_1/credits', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Sentry credits',
+        description: 'Redeem the Sentry code in the provider console.'
+      })
+    })
+    expect(createResponse.status).toBe(200)
+    const createdOfferPayload = await createResponse.json()
+
+    const uploadedValues = Array.from({ length: 100 }, (_, index) => `CODE-${index + 1}`)
+    const importForm = new FormData()
+    importForm.append(
+      'file',
+      new Blob([`${uploadedValues.join('\n')}\n`], { type: 'text/csv' }),
+      'credits.csv'
+    )
+
+    const importResponse = await harness.request(`/api/hackathons/hackathon_1/credits/${createdOfferPayload.data.id}/import`, {
+      method: 'POST',
+      body: importForm
+    })
+    expect(importResponse.status).toBe(200)
+    expect(await importResponse.json()).toEqual({
+      data: {
+        importedCount: 100
+      }
+    })
+
+    const importedCodes = await harness.database.query.hackathonCreditCodes.findMany({
+      where: eq(hackathonCreditCodes.creditOfferId, createdOfferPayload.data.id)
+    })
+    expect(importedCodes).toHaveLength(100)
+    expect(new Set(importedCodes.map(code => code.value))).toEqual(new Set(uploadedValues))
+
+    const auditEntries = await harness.database.select().from(auditLogs)
+    expect(auditEntries).toEqual([
+      expect.objectContaining({ action: 'hackathon_credit_offer.created' }),
+      expect.objectContaining({
+        action: 'hackathon_credit_offer.inventory_imported',
+        metadata: expect.objectContaining({
+          hackathonId: 'hackathon_1',
+          importedCount: 100
+        })
+      })
+    ])
+  })
+
   test('approved participants can list and claim one credit per offer', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

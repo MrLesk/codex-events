@@ -16,6 +16,7 @@ import { requireHackathonAdmin } from '../../../../../utils/hackathon-management
 import { parseValidatedParams } from '../../../../../utils/validation'
 
 export default defineApiHandler(async (event) => {
+  const maxCreditCodeRowsPerInsert = 25
   const actor = await requirePlatformActor(event)
   const { hackathonId, creditId } = parseValidatedParams(event, creditParamsSchema)
   const database = getDatabase(event)
@@ -36,15 +37,20 @@ export default defineApiHandler(async (event) => {
 
   const importedAtBase = Date.now()
   const values = parseSingleColumnCreditCsv(new TextDecoder().decode(filePart.data))
+  const codeRows = values.map((value, index) => ({
+    id: crypto.randomUUID(),
+    creditOfferId: creditId,
+    value,
+    createdAt: new Date(importedAtBase + index).toISOString()
+  }))
 
-  await database.insert(hackathonCreditCodes).values(
-    values.map((value, index) => ({
-      id: crypto.randomUUID(),
-      creditOfferId: creditId,
-      value,
-      createdAt: new Date(importedAtBase + index).toISOString()
-    }))
-  )
+  // D1 allows at most 100 bound parameters per statement. Each inserted row binds
+  // four values, so keep bulk credit imports at 25 rows per insert query.
+  for (let index = 0; index < codeRows.length; index += maxCreditCodeRowsPerInsert) {
+    await database
+      .insert(hackathonCreditCodes)
+      .values(codeRows.slice(index, index + maxCreditCodeRowsPerInsert))
+  }
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,
