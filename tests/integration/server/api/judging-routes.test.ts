@@ -25,6 +25,7 @@ import {
   userApplications,
   users
 } from '../../../../server/database/schema'
+import { chunkRowsForD1 } from '../../../../server/utils/judging'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 describe('TASK-3.7 judging assignment routes', () => {
@@ -462,6 +463,66 @@ describe('TASK-3.7 judging assignment routes', () => {
         total: 4
       }
     })
+  })
+
+  test('hackathon admins can list more than 100 blind assignments without hitting D1 bind limits', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/judging/assignments', handler: listJudgeAssignmentsHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedBaseJudgingRecords(harness)
+
+    const assignedAtBase = Date.parse('2026-03-25T12:10:00.000Z')
+    const assignmentRows = Array.from({ length: 101 }, (_, index) => {
+      const timestamp = new Date(assignedAtBase + index * 1000).toISOString()
+
+      return {
+        id: `assignment_${index + 1}`,
+        hackathonId: 'hackathon_1',
+        submissionId: index % 2 === 0 ? 'submission_1' : 'submission_2',
+        judgeUserId: index % 3 === 0 ? 'judge_a' : index % 3 === 1 ? 'judge_b' : 'judge_c',
+        blindReviewSlot: (index % 2) + 1 as 1 | 2,
+        status: 'judge_completed' as const,
+        assignedAt: timestamp,
+        startedAt: timestamp,
+        completedAt: timestamp,
+        createdAt: timestamp
+      }
+    })
+
+    for (const rows of chunkRowsForD1(assignmentRows, 9)) {
+      await harness.database.insert(judgeAssignments).values(rows)
+    }
+
+    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments')
+
+    expect(response.status).toBe(200)
+    const payload = await response.json() as {
+      data: Array<Record<string, unknown>>
+      meta: {
+        total: number
+      }
+    }
+
+    expect(payload.data).toHaveLength(101)
+    expect(payload.meta.total).toBe(101)
+    expect(payload.data).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'assignment_1',
+        status: 'judge_completed'
+      }),
+      expect.objectContaining({
+        id: 'assignment_101',
+        status: 'judge_completed'
+      })
+    ]))
   })
 
   test('judges list only their active pitch assignments in the open pitch view', async () => {

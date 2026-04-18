@@ -896,13 +896,21 @@ export async function getBlindAssignmentDetails(
       where: inArray(evaluationCriteria.hackathonId, hackathonIds),
       orderBy: [asc(evaluationCriteria.hackathonId), asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)]
     }),
-    database.query.judgeCriterionScores.findMany({
-      where: inArray(
-        judgeCriterionScores.judgeAssignmentId,
-        assignments.map(assignment => assignment.id)
-      ),
-      orderBy: [asc(judgeCriterionScores.createdAt)]
-    }),
+    Promise.all(
+      chunkRowsForD1(
+        assignments.map(assignment => assignment.id),
+        1
+      ).map(assignmentIds =>
+        database.query.judgeCriterionScores.findMany({
+          where: inArray(judgeCriterionScores.judgeAssignmentId, assignmentIds),
+          orderBy: [asc(judgeCriterionScores.createdAt)]
+        })
+      )
+    ).then(chunks =>
+      chunks
+        .flat()
+        .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+    ),
     trackIds.length === 0
       ? Promise.resolve([])
       : database.query.hackathonTracks.findMany({
