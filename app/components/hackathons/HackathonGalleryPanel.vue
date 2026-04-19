@@ -52,6 +52,7 @@ const emit = defineEmits<{
 const fileInput = ref<HTMLInputElement | null>(null)
 const galleryElement = ref<HTMLElement | null>(null)
 const photoCountLabel = computed(() => `${props.photos.length} ${props.photos.length === 1 ? 'photo' : 'photos'}`)
+const showInitialLoadingState = computed(() => props.isLoading && props.photos.length === 0)
 const hasPendingMutation = computed(() =>
   props.pendingDeletePhotoId !== null || props.pendingPublicVisibilityPhotoId !== null
 )
@@ -192,7 +193,7 @@ onBeforeUnmount(() => {
       />
 
       <div
-        v-if="isLoading"
+        v-if="showInitialLoadingState"
         class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
       >
         <div
