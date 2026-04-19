@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, desc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { HackathonPhotoImageVariant, HackathonPhotoRecord } from '../../shared/hackathon-photos'
@@ -372,7 +372,7 @@ function serializeHackathonPhotoRecord(
 export async function listHackathonPhotoRecords(database: AppDatabase, hackathonId: string) {
   const photos = await database.query.hackathonPhotos.findMany({
     where: eq(hackathonPhotos.hackathonId, hackathonId),
-    orderBy: [desc(hackathonPhotos.createdAt)]
+    orderBy: [asc(hackathonPhotos.createdAt)]
   })
 
   const usersById = await getUsersByIds(database, photos.map(photo => photo.uploadedByUserId))
@@ -395,7 +395,7 @@ export async function listPublicHackathonPhotoRecords(
       eq(hackathonPhotos.hackathonId, hackathonId),
       eq(hackathonPhotos.isPubliclyVisible, true)
     ),
-    orderBy: [desc(hackathonPhotos.createdAt)]
+    orderBy: [asc(hackathonPhotos.createdAt)]
   })
 
   return photos.map(photo => serializeHackathonPhotoRecord(photo, {
