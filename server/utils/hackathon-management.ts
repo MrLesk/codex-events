@@ -941,7 +941,7 @@ export async function requireHackathonWorkspaceAccess(event: H3Event, hackathonI
   }
 }
 
-async function canViewRestrictedHackathonDetails(event: H3Event, hackathonId: string) {
+export async function canViewRestrictedHackathonDetails(event: H3Event, hackathonId: string) {
   const actor = await getRequestActor(event)
 
   if (actor.kind !== 'platform_user') {
@@ -1368,8 +1368,9 @@ export function serializePublishedHackathonRosterMember(user: UserRecord) {
   }
 }
 
-export function buildPublicWinnerProfileIconUrl(
+function buildPublicCompletedProjectProfileIconUrl(
   hackathonSlug: string,
+  section: 'winners' | 'published-projects',
   userId: string,
   profileIconUpdatedAt: string | null | undefined
 ) {
@@ -1383,7 +1384,33 @@ export function buildPublicWinnerProfileIconUrl(
     v: normalizedVersion
   })
 
-  return `/api/public/hackathons/${encodeURIComponent(hackathonSlug)}/winners/${encodeURIComponent(userId)}/profile-icon?${searchParams.toString()}`
+  return `/api/public/hackathons/${encodeURIComponent(hackathonSlug)}/${section}/${encodeURIComponent(userId)}/profile-icon?${searchParams.toString()}`
+}
+
+export function buildPublicWinnerProfileIconUrl(
+  hackathonSlug: string,
+  userId: string,
+  profileIconUpdatedAt: string | null | undefined
+) {
+  return buildPublicCompletedProjectProfileIconUrl(
+    hackathonSlug,
+    'winners',
+    userId,
+    profileIconUpdatedAt
+  )
+}
+
+export function buildPublicPublishedProjectProfileIconUrl(
+  hackathonSlug: string,
+  userId: string,
+  profileIconUpdatedAt: string | null | undefined
+) {
+  return buildPublicCompletedProjectProfileIconUrl(
+    hackathonSlug,
+    'published-projects',
+    userId,
+    profileIconUpdatedAt
+  )
 }
 
 export function serializeHackathonWinnerTeamMember(
@@ -1400,6 +1427,27 @@ export function serializeHackathonWinnerTeamMember(
     linkedinProfileUrl: member.linkedinProfileUrl,
     githubProfileUrl: member.githubProfileUrl,
     profileIconUrl: buildPublicWinnerProfileIconUrl(
+      hackathonSlug,
+      user.id,
+      user.profileIconUpdatedAt
+    )
+  }
+}
+
+export function serializeHackathonPublishedProjectTeamMember(
+  user: UserRecord,
+  hackathonSlug: string
+) {
+  const member = serializePublishedHackathonRosterMember(user)
+
+  return {
+    id: member.id,
+    fullName: member.fullName,
+    bio: member.bio,
+    xProfileUrl: member.xProfileUrl,
+    linkedinProfileUrl: member.linkedinProfileUrl,
+    githubProfileUrl: member.githubProfileUrl,
+    profileIconUrl: buildPublicPublishedProjectProfileIconUrl(
       hackathonSlug,
       user.id,
       user.profileIconUpdatedAt

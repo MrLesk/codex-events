@@ -15,7 +15,7 @@ import type {
   ParticipantApiDataResponse,
   ParticipantApplicationRecord
 } from '~/utils/participant-application'
-import type { WinnerEntry } from '~/utils/admin-workspace'
+import type { PublishedProjectEntry, WinnerEntry } from '~/utils/admin-workspace'
 
 import AccountHackathonAdminOperationsPanel from '~/components/account/hackathons/AccountHackathonAdminOperationsPanel.vue'
 import AccountHackathonParticipationRankNotice from '~/components/account/hackathons/AccountHackathonParticipationRankNotice.vue'
@@ -29,6 +29,7 @@ import AccountHackathonParticipantVisibilityPanel from '~/components/account/hac
 import AccountHackathonRoleRosterPanel from '~/components/account/hackathons/AccountHackathonRoleRosterPanel.vue'
 import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
 import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOverviewPanel.vue'
+import HackathonPublishedProjectsShowcase from '~/components/public/hackathons/HackathonPublishedProjectsShowcase.vue'
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonTracksPanel from '~/components/public/hackathons/HackathonTracksPanel.vue'
@@ -168,6 +169,7 @@ const [
   publishedJudgesRoster,
   publishedStaffRoster,
   winnersResponse,
+  publishedProjectsResponse,
   participationRankResponse
 ] = await Promise.all([
   requestFetch<PublicApiListResponse<AccountPrizeSummary>>(`/api/hackathons/${hackathonResponse.value.data.id}/prizes`),
@@ -196,6 +198,11 @@ const [
     : Promise.resolve({
       data: []
     } satisfies PublicApiListResponse<WinnerEntry>),
+  shouldPrefetchWinners
+    ? requestFetch<PublicApiListResponse<PublishedProjectEntry>>(`/api/hackathons/${hackathonResponse.value.data.id}/published-projects`)
+    : Promise.resolve({
+      data: []
+    } satisfies PublicApiListResponse<PublishedProjectEntry>),
   shouldPrefetchParticipationRank
     ? requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationRankSummary | null>>(
         `/api/hackathons/${hackathonResponse.value.data.id}/rank/me`
@@ -230,6 +237,7 @@ const workspaceHackathonId = computed(() => resolveAccountHackathonScopedId({
 }))
 const prizes = computed(() => prizesResponse.data)
 const winners = computed(() => winnersResponse.data)
+const publishedProjects = computed(() => publishedProjectsResponse.data)
 const participationRank = computed(() => participationRankResponse.data)
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 const canJudge = computed(() =>
@@ -916,10 +924,14 @@ useSeoMeta({
         aria-labelledby="account-tab-prizes"
         class="space-y-8"
       >
-        <HackathonWinnersShowcase
-          v-if="hackathon.state === 'completed'"
-          :winners="winners"
-        />
+        <template v-if="hackathon.state === 'completed'">
+          <HackathonWinnersShowcase :winners="winners" />
+
+          <HackathonPublishedProjectsShowcase
+            v-if="publishedProjects.length > 0"
+            :projects="publishedProjects"
+          />
+        </template>
 
         <HackathonPrizeList
           v-else

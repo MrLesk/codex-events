@@ -241,6 +241,31 @@ export function useTeamSubmissionWorkspace(
     return submission
   }
 
+  async function updateCurrentSubmissionPublicVisibility(isPubliclyVisible: boolean) {
+    if (!resolvedHackathonId.value || !resolvedTeamId.value || !currentSubmission.value) {
+      mutationError.value = 'The team submission workspace is unavailable for public publishing updates.'
+      return null
+    }
+
+    const submission = await runMutation(`update-submission-public-visibility:${currentSubmission.value.id}`, async () => {
+      const response = await apiFetch<TeamSubmissionApiDataResponse<TeamSubmissionRecord>>(
+        `/api/hackathons/${resolvedHackathonId.value}/teams/${resolvedTeamId.value}/submission/public-visibility`,
+        {
+          method: 'PATCH',
+          body: {
+            isPubliclyVisible
+          }
+        }
+      )
+
+      currentSubmission.value = response.data
+      currentSubmissionStatus.value = 'success'
+      return response.data
+    })
+
+    return submission
+  }
+
   watch([resolvedHackathonId, resolvedTeamId, canViewSubmission], async ([hackathonId, teamId, canView]) => {
     if (!hackathonId || !teamId || !canView) {
       resetSubmissionState()
@@ -274,6 +299,7 @@ export function useTeamSubmissionWorkspace(
     canViewSubmission,
     createSubmissionDraft,
     updateCurrentSubmission,
+    updateCurrentSubmissionPublicVisibility,
     submitCurrentSubmission,
     withdrawCurrentSubmission
   }

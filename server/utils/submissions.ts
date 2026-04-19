@@ -47,6 +47,10 @@ export const createSubmissionBodySchema = z.object(submissionBodyShape)
 
 export const updateSubmissionBodySchema = z.object(submissionBodyShape)
 
+export const updateSubmissionPublicVisibilityBodySchema = z.object({
+  isPubliclyVisible: z.coerce.boolean()
+})
+
 export const adminWithdrawSubmissionBodySchema = z.object({
   requestedByUserId: z.string().trim().min(1),
   reason: z.string().trim().min(1).optional()
@@ -80,6 +84,7 @@ export function serializeSubmission(
     summary: submission.summary,
     repositoryUrl: submission.repositoryUrl,
     demoUrl: submission.demoUrl,
+    isPubliclyVisible: submission.isPubliclyVisible,
     submittedAt: submission.submittedAt,
     lockedAt: submission.lockedAt,
     withdrawnAt: submission.withdrawnAt,
@@ -359,6 +364,40 @@ export function assertSubmissionDisqualifiable(
     details: {
       submissionId: submission.id
     }
+  })
+}
+
+export function assertSubmissionPublicVisibilityMutable(
+  hackathon: HackathonRecord,
+  submission: SubmissionRecord,
+  options: {
+    isWinningTeam: boolean
+  }
+) {
+  assertAllowedState(hackathon.state, ['completed'], {
+    code: 'hackathon_state_invalid',
+    message: 'Project publishing is only available after the hackathon is completed.',
+    details: {
+      hackathonId: hackathon.id
+    }
+  })
+
+  assertAllowedState(submission.status, ['locked'], {
+    code: 'submission_state_invalid',
+    message: 'Only completed competition projects can be published publicly.',
+    details: {
+      submissionId: submission.id
+    }
+  })
+
+  assertGuard(!options.isWinningTeam, {
+    code: 'submission_public_visibility_invalid',
+    message: 'Winning projects are already published through the winners showcase.',
+    details: {
+      submissionId: submission.id,
+      teamId: submission.teamId
+    },
+    statusCode: 409
   })
 }
 

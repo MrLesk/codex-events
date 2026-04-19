@@ -127,6 +127,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Edit submission draft | No | Yes, during `submission_open` or `judging_preparation` until the submission is locked | No | No |
 | Submit project | No | Yes, during `submission_open` or `judging_preparation` until the submission is locked | No | No |
 | Withdraw submission before locking | No | Yes | Yes, only on team request | Yes, only on team request |
+| Toggle completed project public visibility | No | Yes, only after `completed` for a locked non-winning submission | No | No |
 | View own team submission | Yes | Yes | Yes | Yes |
 | Disqualify submission | No | No | Yes | Yes |
 
@@ -162,7 +163,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Action | Approved User | Staff | Judge | Hackathon Admin | Platform Admin |
 | --- | --- | --- | --- | --- | --- |
 | View own shortlist status after `pitch` starts | Yes, only for the user's own finalist team | No | No | No | No |
-| View completed winners showcase in hackathon detail pages after `completed` | Yes | Yes | Yes | Yes | Yes |
+| View completed winners and published projects showcase in hackathon detail pages after `completed` | Yes | Yes | Yes | Yes | Yes |
 
 ## Prize Redemption
 
@@ -189,11 +190,12 @@ This document defines the canonical permissions for the Codex hackathon platform
 - Workspace users can view the published judge and staff rosters for hackathons they can access in `/account/hackathons/:slug`.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Participants can see shortlist status only for their own team, and only from `pitch` onward when that team advanced.
-- Winner-project visibility is delayed until `completed`; before completion, public and account detail pages keep the `Prizes` surface and participant overview or workspace views do not expose winner snippets.
+- Winner-project visibility and opt-in published-project visibility are delayed until `completed`; before completion, public and account detail pages keep the `Prizes` surface and participant overview or workspace views do not expose completed project showcase snippets.
 - Team members can view their own team membership and submission data.
 - Team admins can view team join requests and manage team membership.
 - Judges see the blind judging view for blind assignments and the open pitch judging view for pitch assignments.
 - Hackathon admins and platform admins can view hackathon-wide operational data.
+- The completed published-projects section includes only opted-in locked non-winning submissions and remains visually separate from the winners section.
 - The participant-facing teams directory remains visible to workspace users after team formation closes, but join actions remain state-gated.
 - Approved participants can view only their own claimed credit values.
 - Hackathon admins and platform admins can view credit inventory and claim records for their hackathons.

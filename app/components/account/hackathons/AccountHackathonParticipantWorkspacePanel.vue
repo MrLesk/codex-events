@@ -28,6 +28,7 @@ import {
 import {
   getCreateSubmissionAvailability,
   getSubmitSubmissionAvailability,
+  getUpdateSubmissionPublicVisibilityAvailability,
   getUpdateSubmissionAvailability,
   getWithdrawSubmissionAvailability,
   shouldShowParticipantSubmissionWorkspace
@@ -214,6 +215,17 @@ const submitSubmissionAvailability = computed(() =>
 )
 const withdrawSubmissionAvailability = computed(() =>
   getWithdrawSubmissionAvailability(props.hackathon, submissionWorkspace.currentSubmission.value, canManageTeam.value)
+)
+const publicVisibilityAvailability = computed(() =>
+  getUpdateSubmissionPublicVisibilityAvailability(
+    props.hackathon,
+    submissionWorkspace.currentSubmission.value,
+    canManageTeam.value,
+    Boolean(props.participationOutcome?.isWinner)
+  )
+)
+const showPublicVisibilityToggle = computed(() =>
+  Boolean(submissionWorkspace.currentSubmission.value) && publicVisibilityAvailability.value.isAllowed
 )
 const submissionUnavailableDescription = computed(() => {
   return 'The current submission surface could not be resolved right now.'
@@ -533,6 +545,22 @@ async function withdrawSubmission() {
     color: 'success'
   })
 }
+
+async function toggleSubmissionPublicVisibility(nextValue: boolean) {
+  const submission = await submissionWorkspace.updateCurrentSubmissionPublicVisibility(nextValue)
+
+  if (!submission) {
+    return
+  }
+
+  toast.add({
+    title: 'Project visibility updated',
+    description: submission.isPubliclyVisible
+      ? 'This project now appears in the public published projects section.'
+      : 'This project is now hidden from the public published projects section.',
+    color: 'success'
+  })
+}
 </script>
 
 <template>
@@ -840,11 +868,14 @@ async function withdrawSubmission() {
             :update-availability="updateSubmissionAvailability"
             :submit-availability="submitSubmissionAvailability"
             :withdraw-availability="withdrawSubmissionAvailability"
+            :public-visibility-availability="publicVisibilityAvailability"
+            :show-public-visibility-toggle="showPublicVisibilityToggle"
             :pending-action-key="submissionWorkspace.pendingActionKey.value"
             @create-draft="createSubmissionDraft"
             @save-changes="saveSubmissionChanges"
             @submit-project="submitProject"
             @withdraw-submission="withdrawSubmission"
+            @toggle-public-visibility="toggleSubmissionPublicVisibility"
           />
 
           <AppCard

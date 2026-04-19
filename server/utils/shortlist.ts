@@ -16,6 +16,7 @@ import {
 } from '../database/schema'
 import { ApiError } from './api-error'
 import {
+  serializeHackathonPublishedProjectTeamMember,
   serializeHackathonWinnerTeamMember,
   serializePrize
 } from './hackathon-management'
@@ -375,6 +376,186 @@ function serializeWinnerEntry(
   }
 }
 
+function serializePublishedProjectEntry(entry: CompetitionEntry) {
+  return {
+    teamId: entry.team.id,
+    teamName: entry.team.name,
+    submissionId: entry.submission.id,
+    projectName: entry.submission.projectName,
+    summary: entry.submission.summary,
+    repositoryUrl: entry.submission.repositoryUrl,
+    demoUrl: entry.submission.demoUrl
+  }
+}
+
+function buildAwardsBySubmissionId(
+  prizeList: PrizeRecord[],
+  winnerEntries: Array<ReturnType<typeof serializeWinnerEntry>>
+) {
+  const awardsBySubmissionId = new Map<string, Array<PrizeRecord>>()
+
+  for (const prize of prizeList) {
+    for (const winnerEntry of winnerEntries) {
+      if (winnerEntry.finalRank >= prize.rankStart && winnerEntry.finalRank <= prize.rankEnd) {
+        const awardedPrizes = awardsBySubmissionId.get(winnerEntry.submissionId) ?? []
+        awardedPrizes.push(prize)
+        awardsBySubmissionId.set(winnerEntry.submissionId, awardedPrizes)
+      }
+    }
+  }
+
+  return awardsBySubmissionId
+}
+
+async function loadCompletedOutcomeTeamMembers(
+  database: AppDatabase,
+  hackathonId: string,
+  teamIds: string[],
+  hackathonSlug: string,
+  serializeMember: (
+    user: UserRecord,
+    hackathonSlug: string
+  ) => ReturnType<typeof serializeHackathonWinnerTeamMember>
+) {
+  if (teamIds.length === 0) {
+    return new Map<string, Array<ReturnType<typeof serializeHackathonWinnerTeamMember>>>()
+  }
+
+  const snapshots = await Promise.all(
+    chunkRowsForD1(teamIds, 1).map(chunkedTeamIds =>
+      database.query.prizeEligibilitySnapshots.findMany({
+        where: and(
+          eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
+          inArray(prizeEligibilitySnapshots.teamId, chunkedTeamIds)
+        ),
+        orderBy: [asc(prizeEligibilitySnapshots.teamId), asc(prizeEligibilitySnapshots.createdAt)]
+      })
+    )
+  ).then(chunks =>
+    chunks
+      .flat()
+      .sort((left, right) =>
+        left.teamId.localeCompare(right.teamId)
+        || left.createdAt.localeCompare(right.createdAt)
+      )
+  ) as PrizeEligibilitySnapshotRecord[]
+  const teamMemberUserIds = [...new Set(snapshots.map(snapshot => snapshot.userId))]
+  const relatedUsers = teamMemberUserIds.length === 0
+    ? []
+    : (await Promise.all(
+        chunkRowsForD1(teamMemberUserIds, 1).map(userIds =>
+          database.query.users.findMany({
+            where: and(
+              inArray(users.id, userIds),
+              isNull(users.deletedAt)
+            )
+          })
+        )
+      ).then(chunks => chunks.flat())) as UserRecord[]
+  const usersById = new Map(
+    relatedUsers.map(user => [user.id, user] as const)
+  )
+  const teamMembersByTeamId = new Map<string, Array<ReturnType<typeof serializeHackathonWinnerTeamMember>>>()
+  const seenTeamMemberKeys = new Set<string>()
+
+  for (const snapshot of snapshots) {
+    const user = usersById.get(snapshot.userId)
+
+    if (!user) {
+      continue
+    }
+
+    const teamMemberKey = `${snapshot.teamId}:${snapshot.userId}`
+
+    if (seenTeamMemberKeys.has(teamMemberKey)) {
+      continue
+    }
+
+    seenTeamMemberKeys.add(teamMemberKey)
+
+    const teamMembers = teamMembersByTeamId.get(snapshot.teamId) ?? []
+    teamMembers.push(serializeMember(user, hackathonSlug))
+    teamMembersByTeamId.set(snapshot.teamId, teamMembers)
+  }
+
+  return teamMembersByTeamId
+}
+
+async function loadCompletedOutcomeCollections(database: AppDatabase, hackathonId: string) {
+  const [{ hackathon, entries }, prizeList] = await Promise.all([
+    loadCompetitionEntries(database, hackathonId),
+    database.query.prizes.findMany({
+      where: eq(prizes.hackathonId, hackathonId),
+      orderBy: [asc(prizes.displayOrder), asc(prizes.rankEnd), desc(prizes.rankStart), asc(prizes.createdAt)]
+    })
+  ])
+
+  if (!hackathon) {
+    return {
+      winners: [],
+      publishedProjects: []
+    }
+  }
+
+  const {
+    orderedRankedEntries,
+    finalRanksBySubmissionId,
+    unrankedEntries
+  } = deriveFinalDeliberationOrdering(hackathon, entries)
+  const completedEntries = [
+    ...orderedRankedEntries,
+    ...unrankedEntries
+  ]
+  const winnerEntries = orderedRankedEntries.map(entry =>
+    serializeWinnerEntry(
+      entry,
+      hackathon,
+      finalRanksBySubmissionId.get(entry.submission.id)!
+    )
+  )
+  const awardsBySubmissionId = buildAwardsBySubmissionId(prizeList, winnerEntries)
+  const winningEntries = winnerEntries
+    .filter(entry => (awardsBySubmissionId.get(entry.submissionId) ?? []).length > 0)
+    .map(entry => ({
+      ...entry,
+      prizes: (awardsBySubmissionId.get(entry.submissionId) ?? []).map(serializePrize)
+    }))
+  const publishedProjectEntries = completedEntries
+    .filter(entry =>
+      entry.submission.status === 'locked'
+      && entry.submission.isPubliclyVisible
+      && !awardsBySubmissionId.has(entry.submission.id)
+    )
+    .map(serializePublishedProjectEntry)
+  const [winnerTeamMembersByTeamId, publishedTeamMembersByTeamId] = await Promise.all([
+    loadCompletedOutcomeTeamMembers(
+      database,
+      hackathonId,
+      [...new Set(winningEntries.map(entry => entry.teamId))],
+      hackathon.slug,
+      serializeHackathonWinnerTeamMember
+    ),
+    loadCompletedOutcomeTeamMembers(
+      database,
+      hackathonId,
+      [...new Set(publishedProjectEntries.map(entry => entry.teamId))],
+      hackathon.slug,
+      serializeHackathonPublishedProjectTeamMember
+    )
+  ])
+
+  return {
+    winners: winningEntries.map(entry => ({
+      ...entry,
+      teamMembers: winnerTeamMembersByTeamId.get(entry.teamId) ?? []
+    })),
+    publishedProjects: publishedProjectEntries.map(entry => ({
+      ...entry,
+      teamMembers: publishedTeamMembersByTeamId.get(entry.teamId) ?? []
+    }))
+  }
+}
+
 async function loadCompetitionEntries(
   database: AppDatabase,
   hackathonId: string
@@ -723,113 +904,11 @@ export async function getFinalDeliberationView(
 }
 
 export async function getWinnersView(database: AppDatabase, hackathonId: string) {
-  const [{ hackathon, entries }, prizeList] = await Promise.all([
-    loadCompetitionEntries(database, hackathonId),
-    database.query.prizes.findMany({
-      where: eq(prizes.hackathonId, hackathonId),
-      orderBy: [asc(prizes.displayOrder), asc(prizes.rankEnd), desc(prizes.rankStart), asc(prizes.createdAt)]
-    })
-  ])
+  return (await loadCompletedOutcomeCollections(database, hackathonId)).winners
+}
 
-  if (!hackathon) {
-    return []
-  }
-
-  const { orderedRankedEntries, finalRanksBySubmissionId } = deriveFinalDeliberationOrdering(hackathon, entries)
-  const winnerEntries = orderedRankedEntries.map(entry =>
-    serializeWinnerEntry(
-      entry,
-      hackathon,
-      finalRanksBySubmissionId.get(entry.submission.id)!
-    )
-  )
-
-  const awardsBySubmissionId = new Map<string, Array<PrizeRecord>>()
-
-  for (const prize of prizeList) {
-    for (const winnerEntry of winnerEntries) {
-      if (winnerEntry.finalRank >= prize.rankStart && winnerEntry.finalRank <= prize.rankEnd) {
-        const awardedPrizes = awardsBySubmissionId.get(winnerEntry.submissionId) ?? []
-        awardedPrizes.push(prize)
-        awardsBySubmissionId.set(winnerEntry.submissionId, awardedPrizes)
-      }
-    }
-  }
-
-  const winningEntries = winnerEntries
-    .filter(entry => (awardsBySubmissionId.get(entry.submissionId) ?? []).length > 0)
-    .map(entry => ({
-      ...entry,
-      prizes: (awardsBySubmissionId.get(entry.submissionId) ?? []).map(serializePrize)
-    }))
-
-  const winningTeamIds = [...new Set(winningEntries.map(entry => entry.teamId))]
-
-  if (winningTeamIds.length === 0) {
-    return []
-  }
-
-  const snapshots = await Promise.all(
-    chunkRowsForD1(winningTeamIds, 1).map(teamIds =>
-      database.query.prizeEligibilitySnapshots.findMany({
-        where: and(
-          eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
-          inArray(prizeEligibilitySnapshots.teamId, teamIds)
-        ),
-        orderBy: [asc(prizeEligibilitySnapshots.teamId), asc(prizeEligibilitySnapshots.createdAt)]
-      })
-    )
-  ).then(chunks =>
-    chunks
-      .flat()
-      .sort((left, right) =>
-        left.teamId.localeCompare(right.teamId)
-        || left.createdAt.localeCompare(right.createdAt)
-      )
-  ) as PrizeEligibilitySnapshotRecord[]
-  const teamMemberUserIds = [...new Set(snapshots.map(snapshot => snapshot.userId))]
-  const relatedUsers = teamMemberUserIds.length === 0
-    ? []
-    : (await Promise.all(
-        chunkRowsForD1(teamMemberUserIds, 1).map(userIds =>
-          database.query.users.findMany({
-            where: and(
-              inArray(users.id, userIds),
-              isNull(users.deletedAt)
-            )
-          })
-        )
-      ).then(chunks => chunks.flat())) as UserRecord[]
-  const usersById = new Map(
-    relatedUsers.map(user => [user.id, user] as const)
-  )
-  const teamMembersByTeamId = new Map<string, Array<ReturnType<typeof serializeHackathonWinnerTeamMember>>>()
-  const seenTeamMemberKeys = new Set<string>()
-
-  for (const snapshot of snapshots) {
-    const user = usersById.get(snapshot.userId)
-
-    if (!user) {
-      continue
-    }
-
-    const teamMemberKey = `${snapshot.teamId}:${snapshot.userId}`
-
-    if (seenTeamMemberKeys.has(teamMemberKey)) {
-      continue
-    }
-
-    seenTeamMemberKeys.add(teamMemberKey)
-
-    const teamMembers = teamMembersByTeamId.get(snapshot.teamId) ?? []
-    teamMembers.push(serializeHackathonWinnerTeamMember(user, hackathon.slug))
-    teamMembersByTeamId.set(snapshot.teamId, teamMembers)
-  }
-
-  return winningEntries.map(entry => ({
-    ...entry,
-    teamMembers: teamMembersByTeamId.get(entry.teamId) ?? []
-  }))
+export async function getPublishedProjectsView(database: AppDatabase, hackathonId: string) {
+  return (await loadCompletedOutcomeCollections(database, hackathonId)).publishedProjects
 }
 
 export async function getTeamCompetitionOutcome(
@@ -1227,9 +1306,13 @@ export function assertWinnersAnnouncementAllowed(hackathon: HackathonRecord) {
 }
 
 export function assertWinnersVisible(hackathon: HackathonRecord) {
+  assertCompletedOutcomeVisible(hackathon)
+}
+
+export function assertCompletedOutcomeVisible(hackathon: HackathonRecord) {
   assertAllowedState(hackathon.state, ['completed'], {
     code: 'hackathon_state_invalid',
-    message: 'Winners are only visible after the hackathon is completed.',
+    message: 'Completed hackathon project showcases are only visible after the hackathon is completed.',
     details: { hackathonId: hackathon.id }
   })
 }

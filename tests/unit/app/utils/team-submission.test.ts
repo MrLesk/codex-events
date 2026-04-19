@@ -7,6 +7,7 @@ import {
   getTeamSubmissionStateSummary,
   getTeamSubmissionStatusColor,
   getSubmitSubmissionAvailability,
+  getUpdateSubmissionPublicVisibilityAvailability,
   getUpdateSubmissionAvailability,
   getWithdrawSubmissionAvailability,
   shouldShowParticipantSubmissionWorkspace,
@@ -22,6 +23,7 @@ function createSubmission(status: TeamSubmissionRecord['status']): TeamSubmissio
     summary: 'Fixture summary',
     repositoryUrl: 'https://github.com/example/launch-console',
     demoUrl: 'https://example.com/launch-console',
+    isPubliclyVisible: false,
     submittedAt: status === 'submitted' || status === 'locked' ? '2026-03-24T12:00:00.000Z' : null,
     lockedAt: status === 'locked' ? '2026-03-25T12:00:00.000Z' : null,
     withdrawnAt: status === 'withdrawn' ? '2026-03-24T14:00:00.000Z' : null,
@@ -165,5 +167,34 @@ describe('team submission helpers', () => {
     expect(formatTeamSubmissionStatus('withdrawn')).toBe('Withdrawn')
     expect(getTeamSubmissionStatusColor('submitted')).toBe('primary')
     expect(getTeamSubmissionStatusColor('disqualified')).toBe('error')
+  })
+
+  test('allows public project publishing only for completed non-winning locked submissions managed by team admins', () => {
+    expect(getUpdateSubmissionPublicVisibilityAvailability({
+      state: 'completed'
+    }, createSubmission('locked'), true, false)).toEqual({
+      isAllowed: true
+    })
+
+    expect(getUpdateSubmissionPublicVisibilityAvailability({
+      state: 'completed'
+    }, createSubmission('locked'), true, true)).toEqual({
+      isAllowed: false,
+      reason: 'Winning projects are already published in the winners showcase.'
+    })
+
+    expect(getUpdateSubmissionPublicVisibilityAvailability({
+      state: 'final_deliberation'
+    }, createSubmission('locked'), true, false)).toEqual({
+      isAllowed: false,
+      reason: 'Project publishing is available only after the hackathon is completed.'
+    })
+
+    expect(getUpdateSubmissionPublicVisibilityAvailability({
+      state: 'completed'
+    }, createSubmission('submitted'), true, false)).toEqual({
+      isAllowed: false,
+      reason: 'Only completed competition projects can be published publicly.'
+    })
   })
 })

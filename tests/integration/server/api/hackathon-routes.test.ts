@@ -17,6 +17,8 @@ import publicHackathonsGetHandler from '../../../../server/api/public/hackathons
 import publicHackathonDetailGetHandler from '../../../../server/api/public/hackathons/[slug]/index.get'
 import publicHackathonCriteriaGetHandler from '../../../../server/api/public/hackathons/[slug]/evaluation-criteria/index.get'
 import publicHackathonPrizesGetHandler from '../../../../server/api/public/hackathons/[slug]/prizes/index.get'
+import publicHackathonPublishedProjectsGetHandler from '../../../../server/api/public/hackathons/[slug]/published-projects/index.get'
+import publicHackathonPublishedProjectProfileIconGetHandler from '../../../../server/api/public/hackathons/[slug]/published-projects/[userId]/profile-icon.get'
 import publicHackathonWinnersGetHandler from '../../../../server/api/public/hackathons/[slug]/winners/index.get'
 import publicHackathonWinnerProfileIconGetHandler from '../../../../server/api/public/hackathons/[slug]/winners/[userId]/profile-icon.get'
 import publicHackathonBackgroundImageGetHandler from '../../../../server/api/public/hackathons/[slug]/images/background.get'
@@ -1758,7 +1760,9 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/public/hackathons/:slug/winners', handler: publicHackathonWinnersGetHandler },
-        { method: 'get', path: '/api/public/hackathons/:slug/winners/:userId/profile-icon', handler: publicHackathonWinnerProfileIconGetHandler }
+        { method: 'get', path: '/api/public/hackathons/:slug/winners/:userId/profile-icon', handler: publicHackathonWinnerProfileIconGetHandler },
+        { method: 'get', path: '/api/public/hackathons/:slug/published-projects', handler: publicHackathonPublishedProjectsGetHandler },
+        { method: 'get', path: '/api/public/hackathons/:slug/published-projects/:userId/profile-icon', handler: publicHackathonPublishedProjectProfileIconGetHandler }
       ],
       cloudflareEnv: {
         PROFILE_ICONS: profileIconsBucket
@@ -1791,6 +1795,19 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         linkedinProfileUrl: 'https://linkedin.com/in/winner-user',
         githubProfileUrl: 'https://github.com/winner-user',
         profileIconUpdatedAt: '2026-03-18T15:00:00.000Z'
+      },
+      {
+        id: 'published_user',
+        auth0Subject: 'auth0|published_user',
+        email: 'published@example.com',
+        displayName: 'Published User',
+        firstName: 'Published',
+        familyName: 'User',
+        bio: 'Shares finished hackathon projects.',
+        xProfileUrl: 'https://x.com/published-user',
+        linkedinProfileUrl: 'https://linkedin.com/in/published-user',
+        githubProfileUrl: 'https://github.com/published-user',
+        profileIconUpdatedAt: '2026-03-18T16:00:00.000Z'
       }
     ])
     await harness.database.insert(hackathons).values({
@@ -1814,7 +1831,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       maxTeamMembers: 5,
       createdByUserId: 'creator_1'
     })
-    await harness.database.insert(teams).values({
+    await harness.database.insert(teams).values([{
       id: 'team_public_winner',
       hackathonId: 'hackathon_completed_public',
       name: 'Public Winners',
@@ -1823,16 +1840,32 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       createdByUserId: 'winner_user',
       createdAt: '2026-03-24T10:00:00.000Z',
       updatedAt: '2026-03-24T10:00:00.000Z'
-    })
-    await harness.database.insert(teamMembers).values({
+    }, {
+      id: 'team_public_showcase',
+      hackathonId: 'hackathon_completed_public',
+      name: 'Published Builders',
+      slug: 'published-builders',
+      isOpenToJoinRequests: false,
+      createdByUserId: 'published_user',
+      createdAt: '2026-03-24T10:30:00.000Z',
+      updatedAt: '2026-03-24T10:30:00.000Z'
+    }])
+    await harness.database.insert(teamMembers).values([{
       id: 'membership_public_winner',
       teamId: 'team_public_winner',
       userId: 'winner_user',
       role: 'admin',
       joinedAt: '2026-03-24T10:00:00.000Z',
       createdAt: '2026-03-24T10:00:00.000Z'
-    })
-    await harness.database.insert(submissions).values({
+    }, {
+      id: 'membership_public_showcase',
+      teamId: 'team_public_showcase',
+      userId: 'published_user',
+      role: 'admin',
+      joinedAt: '2026-03-24T10:30:00.000Z',
+      createdAt: '2026-03-24T10:30:00.000Z'
+    }])
+    await harness.database.insert(submissions).values([{
       id: 'submission_public_winner',
       teamId: 'team_public_winner',
       status: 'locked',
@@ -1840,11 +1873,25 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       summary: 'Public winner summary',
       repositoryUrl: 'https://example.com/public-winner-repo',
       demoUrl: 'https://example.com/public-winner-demo',
+      isPubliclyVisible: false,
       submittedAt: '2026-03-24T12:00:00.000Z',
       lockedAt: '2026-03-25T12:00:00.000Z',
       createdAt: '2026-03-24T12:00:00.000Z',
       updatedAt: '2026-03-25T12:00:00.000Z'
-    })
+    }, {
+      id: 'submission_public_showcase',
+      teamId: 'team_public_showcase',
+      status: 'locked',
+      projectName: 'Published Showcase Project',
+      summary: 'Published showcase summary',
+      repositoryUrl: 'https://example.com/published-showcase-repo',
+      demoUrl: 'https://example.com/published-showcase-demo',
+      isPubliclyVisible: true,
+      submittedAt: '2026-03-24T12:10:00.000Z',
+      lockedAt: '2026-03-25T12:10:00.000Z',
+      createdAt: '2026-03-24T12:10:00.000Z',
+      updatedAt: '2026-03-25T12:10:00.000Z'
+    }])
     await harness.database.insert(judgeAssignments).values({
       id: 'pitch_public_winner_assignment',
       hackathonId: 'hackathon_completed_public',
@@ -1872,14 +1919,21 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       rankStart: 1,
       rankEnd: 1
     })
-    await harness.database.insert(prizeEligibilitySnapshots).values({
+    await harness.database.insert(prizeEligibilitySnapshots).values([{
       id: 'snapshot_public_winner',
       hackathonId: 'hackathon_completed_public',
       teamId: 'team_public_winner',
       userId: 'winner_user',
       snapshotAt: '2026-03-25T13:05:00.000Z',
       createdAt: '2026-03-25T13:05:00.000Z'
-    })
+    }, {
+      id: 'snapshot_public_showcase',
+      hackathonId: 'hackathon_completed_public',
+      teamId: 'team_public_showcase',
+      userId: 'published_user',
+      snapshotAt: '2026-03-25T13:06:00.000Z',
+      createdAt: '2026-03-25T13:06:00.000Z'
+    }])
     await harness.database.insert(prizeRedemptions).values({
       id: 'redemption_public_winner',
       prizeId: 'prize_public_winner',
@@ -1898,10 +1952,21 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         }
       }
     )
+    await profileIconsBucket.put(
+      'users/published_user/profile-icon',
+      pngSignatureBytes,
+      {
+        httpMetadata: {
+          contentType: 'image/png'
+        }
+      }
+    )
 
     const preCompletionResponse = await harness.request('/api/public/hackathons/public-winners-hackathon/winners')
+    const preCompletionPublishedProjectsResponse = await harness.request('/api/public/hackathons/public-winners-hackathon/published-projects')
 
     expect(preCompletionResponse.status).toBe(409)
+    expect(preCompletionPublishedProjectsResponse.status).toBe(409)
 
     await harness.database
       .update(hackathons)
@@ -1945,6 +2010,34 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       ]
     })
 
+    const publishedProjectsResponse = await harness.request('/api/public/hackathons/public-winners-hackathon/published-projects')
+
+    expect(publishedProjectsResponse.status).toBe(200)
+    expect(await publishedProjectsResponse.json()).toMatchObject({
+      data: [
+        {
+          teamId: 'team_public_showcase',
+          teamName: 'Published Builders',
+          submissionId: 'submission_public_showcase',
+          projectName: 'Published Showcase Project',
+          summary: 'Published showcase summary',
+          repositoryUrl: 'https://example.com/published-showcase-repo',
+          demoUrl: 'https://example.com/published-showcase-demo',
+          teamMembers: [
+            expect.objectContaining({
+              id: 'published_user',
+              fullName: 'Published User',
+              bio: 'Shares finished hackathon projects.',
+              xProfileUrl: 'https://x.com/published-user',
+              linkedinProfileUrl: 'https://linkedin.com/in/published-user',
+              githubProfileUrl: 'https://github.com/published-user',
+              profileIconUrl: '/api/public/hackathons/public-winners-hackathon/published-projects/published_user/profile-icon?v=2026-03-18T16%3A00%3A00.000Z'
+            })
+          ]
+        }
+      ]
+    })
+
     const iconResponse = await harness.request(
       '/api/public/hackathons/public-winners-hackathon/winners/winner_user/profile-icon?v=2026-03-18T15%3A00%3A00.000Z'
     )
@@ -1958,6 +2051,14 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     )
 
     expect(missingIconResponse.status).toBe(404)
+
+    const publishedIconResponse = await harness.request(
+      '/api/public/hackathons/public-winners-hackathon/published-projects/published_user/profile-icon?v=2026-03-18T16%3A00%3A00.000Z'
+    )
+
+    expect(publishedIconResponse.status).toBe(200)
+    expect(publishedIconResponse.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+    expect(publishedIconResponse.headers.get('content-type')).toBe('image/png')
   })
 
   test('GET /api/hackathons/:hackathonId returns current term references for visible hackathons', async () => {

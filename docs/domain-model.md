@@ -278,6 +278,7 @@ Key characteristics:
 - A submission can reference one track from its hackathon.
 - Team admins create and manage the submission on behalf of the team.
 - Team admins can create the first submission draft during the submission window and can continue editing an existing draft or submitted submission until that submission is locked for judging.
+- After a hackathon is completed, team admins of non-winning locked submissions can opt into public project publishing for that submission.
 
 Rules:
 
@@ -288,6 +289,8 @@ Rules:
 - A submission must include a valid demo URL only when its hackathon requires demo URLs.
 - When blind review begins, or when the live pitch stage begins in a pitch-only hackathon, submitted submissions are locked.
 - Once locked, submissions can no longer be edited.
+- Public project publishing is submission-scoped, not team-scoped.
+- Public project publishing is available only after `completed`, only for locked non-winning submissions, and only when a team admin opts in.
 - A submission can be marked with workflow outcomes such as withdrawn or disqualified.
 - A team with no submission is not eligible for judging, but this is represented by the absence of a submission rather than by a submission outcome.
 - A draft submission that is never submitted is treated as no submission for judging and dashboard purposes.

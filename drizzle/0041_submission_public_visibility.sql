@@ -1,0 +1,2 @@
+ALTER TABLE `submissions`
+ADD `is_publicly_visible` integer DEFAULT false NOT NULL;

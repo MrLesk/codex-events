@@ -2,6 +2,7 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
+import { Switch as UiSwitch } from '~/components/ui/switch'
 import type { PublicHackathonState } from '~/composables/useHackathonPresentation'
 import type {
   SubmissionTrackOption,
@@ -42,6 +43,8 @@ const props = defineProps<{
   updateAvailability: TeamSubmissionActionAvailability
   submitAvailability: TeamSubmissionActionAvailability
   withdrawAvailability: TeamSubmissionActionAvailability
+  publicVisibilityAvailability?: TeamSubmissionActionAvailability
+  showPublicVisibilityToggle?: boolean
   pendingActionKey?: string | null
 }>()
 
@@ -50,6 +53,7 @@ const emit = defineEmits<{
   saveChanges: []
   submitProject: []
   withdrawSubmission: []
+  togglePublicVisibility: [value: boolean]
 }>()
 
 const submissionStatus = computed(() => getTeamSubmissionWorkspaceStatus(props.submission))
@@ -90,12 +94,24 @@ const isCreatePending = computed(() => isActionPending(createActionKey.value))
 const isUpdatePending = computed(() => Boolean(updateActionKey.value && isActionPending(updateActionKey.value)))
 const isSubmitPending = computed(() => Boolean(submitActionKey.value && isActionPending(submitActionKey.value)))
 const isWithdrawPending = computed(() => Boolean(withdrawActionKey.value && isActionPending(withdrawActionKey.value)))
+const publicVisibilityActionKey = computed(() =>
+  props.submission ? `update-submission-public-visibility:${props.submission.id}` : null
+)
+const isPublicVisibilityPending = computed(() =>
+  Boolean(publicVisibilityActionKey.value && isActionPending(publicVisibilityActionKey.value))
+)
+const publicVisibilitySwitchId = computed(() =>
+  props.submission ? `participant-submission-public-visibility-${props.submission.id}` : 'participant-submission-public-visibility'
+)
 const isDraftMutationDisabled = computed(() =>
   isFormReadOnly.value
   || (!props.submission && !props.createAvailability.isAllowed)
   || Boolean(props.submission && !props.updateAvailability.isAllowed)
   || isCreatePending.value
   || isUpdatePending.value
+)
+const publicVisibilityStatusLabel = computed(() =>
+  props.submission?.isPubliclyVisible ? 'Visible in the public showcase' : 'Hidden from the public showcase'
 )
 
 function isActionPending(actionKey: string) {
@@ -237,6 +253,37 @@ function handleSubmitProjectAttempt(event?: Event) {
           >
             {{ updateAvailability.reason }}
           </p>
+
+          <div
+            v-if="props.showPublicVisibilityToggle && submission"
+            class="rounded-xl border border-black/8 bg-black/[0.02] p-4 dark:border-white/[0.08] dark:bg-white/[0.03]"
+          >
+            <div class="flex items-start justify-between gap-4">
+              <div class="space-y-1">
+                <label
+                  :for="publicVisibilitySwitchId"
+                  class="text-sm font-medium text-highlighted dark:text-white"
+                >
+                  Show this project publicly
+                </label>
+                <p class="text-sm text-muted">
+                  This project will appear below the winners in a separate published projects section after completion.
+                </p>
+              </div>
+
+              <UiSwitch
+                :id="publicVisibilitySwitchId"
+                :model-value="submission.isPubliclyVisible"
+                :disabled="isPublicVisibilityPending || !props.publicVisibilityAvailability?.isAllowed"
+                data-testid="participant-submission-public-visibility-toggle"
+                @update:model-value="emit('togglePublicVisibility', $event)"
+              />
+            </div>
+
+            <p class="mt-3 text-xs font-medium uppercase tracking-[0.14em] text-muted">
+              {{ publicVisibilityStatusLabel }}
+            </p>
+          </div>
 
           <form
             class="space-y-4"

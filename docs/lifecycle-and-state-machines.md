@@ -149,8 +149,9 @@ The hackathon is fully closed.
 Behavior:
 
 - The outcome is final.
-- Public and account-scoped hackathon detail pages switch from `Prizes` to `Winners` and show the completed winner-project showcase.
+- Public and account-scoped hackathon detail pages switch from `Prizes` to `Winners` and show the completed outcome showcase.
 - The completed winners showcase exposes one card per winning project with prize information, project links, and the published winning-team roster.
+- A separate published-projects section appears below the winners for locked non-winning submissions that team admins opted to show publicly after completion.
 - Completing the hackathon also enqueues winner emails for frozen prize-eligible members of winning teams.
 - Prize redemption records remain available for operational and audit purposes.
 
@@ -181,7 +182,7 @@ Behavior:
 - `final_deliberation -> winners_announced`
   Guard: hackathon admins finalize the ranking and announce winners. This transition persists the final ranking operationally, creates prize redemptions, and enqueues winner emails for frozen prize-eligible members of winning teams.
 - `winners_announced -> completed`
-  Guard: hackathon admins close the hackathon. This transition reveals the completed winners showcase on public and account detail pages and enqueues winner emails for frozen prize-eligible members of winning teams.
+  Guard: hackathon admins close the hackathon. This transition reveals the completed outcome showcase on public and account detail pages, including the winners section and the separate published-projects section for eligible opted-in submissions, and enqueues winner emails for frozen prize-eligible members of winning teams.
 
 ## UserApplication
 
@@ -346,6 +347,7 @@ Behavior:
 
 - The submission cannot be edited.
 - Judge assignments can be created and processed.
+- After the hackathon reaches `completed`, a team admin can opt a locked non-winning submission into the public published-projects showcase.
 
 #### `disqualified`
 

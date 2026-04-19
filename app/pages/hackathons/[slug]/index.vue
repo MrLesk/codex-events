@@ -5,12 +5,13 @@ import type {
   PublicHackathon,
   PublicPrize
 } from '~/composables/useHackathonPresentation'
-import type { WinnerEntry } from '~/utils/admin-workspace'
+import type { PublishedProjectEntry, WinnerEntry } from '~/utils/admin-workspace'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOverviewPanel.vue'
 import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
+import HackathonPublishedProjectsShowcase from '~/components/public/hackathons/HackathonPublishedProjectsShowcase.vue'
 import HackathonTracksPanel from '~/components/public/hackathons/HackathonTracksPanel.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
 import HackathonWinnersShowcase from '~/components/public/hackathons/HackathonWinnersShowcase.vue'
@@ -76,8 +77,14 @@ const winnersResponse = hackathon.value.state === 'completed'
   : {
     data: []
   } satisfies PublicApiListResponse<WinnerEntry>
+const publishedProjectsResponse = hackathon.value.state === 'completed'
+  ? await requestFetch<PublicApiListResponse<PublishedProjectEntry>>(`/api/public/hackathons/${slug.value}/published-projects`)
+  : {
+    data: []
+  } satisfies PublicApiListResponse<PublishedProjectEntry>
 const prizes = computed(() => prizesResponse.value?.data ?? [])
 const winners = computed(() => winnersResponse.data)
+const publishedProjects = computed(() => publishedProjectsResponse.data)
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 const isWinnerRevealVisible = computed(() => hackathon.value.state === 'completed')
 const publicPrizeTabLabel = computed(() => isWinnerRevealVisible.value ? 'Winners' : 'Prizes')
@@ -308,10 +315,15 @@ useSeoMeta({
         role="tabpanel"
         aria-labelledby="public-tab-prizes"
       >
-        <HackathonWinnersShowcase
-          v-if="isWinnerRevealVisible"
-          :winners="winners"
-        />
+        <template v-if="isWinnerRevealVisible">
+          <HackathonWinnersShowcase :winners="winners" />
+
+          <HackathonPublishedProjectsShowcase
+            v-if="publishedProjects.length > 0"
+            class="mt-8"
+            :projects="publishedProjects"
+          />
+        </template>
 
         <HackathonPrizeList
           v-else

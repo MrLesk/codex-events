@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm'
 import getSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/index.get'
 import createSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/index.post'
 import patchSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/index.patch'
+import patchSubmissionPublicVisibilityHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/public-visibility.patch'
 import submitSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/actions/submit.post'
 import withdrawSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/actions/withdraw.post'
 import adminWithdrawSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/actions/admin-withdraw.post'
@@ -15,6 +16,8 @@ import {
   hackathonRoleAssignments,
   hackathonTermsDocuments,
   hackathons,
+  prizeRedemptions,
+  prizes,
   submissions,
   teamMembers,
   teams,
@@ -39,6 +42,11 @@ function createRoutes() {
       method: 'patch' as const,
       path: '/api/hackathons/:hackathonId/teams/:teamId/submission',
       handler: patchSubmissionHandler
+    },
+    {
+      method: 'patch' as const,
+      path: '/api/hackathons/:hackathonId/teams/:teamId/submission/public-visibility',
+      handler: patchSubmissionPublicVisibilityHandler
     },
     {
       method: 'post' as const,
@@ -571,6 +579,159 @@ describe('TASK-3.7 submission routes', () => {
     expect(await outsiderResponse.json()).toMatchObject({
       error: {
         code: 'team_submission_access_denied'
+      }
+    })
+  })
+
+  test('team admins can toggle public visibility for completed non-winning locked submissions', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedSubmissionContext(harness, {
+      state: 'completed'
+    })
+    await harness.database.insert(submissions).values({
+      id: 'submission_1',
+      teamId: 'team_1',
+      status: 'locked',
+      projectName: 'Alpha Project',
+      summary: 'Alpha summary',
+      repositoryUrl: 'https://github.com/example/alpha',
+      demoUrl: 'https://example.com/alpha',
+      isPubliclyVisible: false,
+      submittedAt: '2026-03-24T12:00:00.000Z',
+      lockedAt: '2026-03-25T12:00:00.000Z',
+      withdrawnAt: null,
+      disqualifiedAt: null,
+      createdAt: '2026-03-24T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/public-visibility', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        isPubliclyVisible: true
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        id: 'submission_1',
+        isPubliclyVisible: true
+      }
+    })
+
+    const storedSubmission = await harness.database.query.submissions.findFirst({
+      where: eq(submissions.id, 'submission_1')
+    })
+
+    expect(storedSubmission?.isPubliclyVisible).toBe(true)
+  })
+
+  test('public visibility toggle stays unavailable before completion and for winner teams', async () => {
+    const preCompletionHarness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(preCompletionHarness)
+    await seedSubmissionContext(preCompletionHarness, {
+      state: 'winners_announced'
+    })
+    await preCompletionHarness.database.insert(submissions).values({
+      id: 'submission_pre_completion',
+      teamId: 'team_1',
+      status: 'locked',
+      projectName: 'Alpha Project',
+      summary: 'Alpha summary',
+      repositoryUrl: 'https://github.com/example/alpha',
+      demoUrl: 'https://example.com/alpha',
+      isPubliclyVisible: false,
+      submittedAt: '2026-03-24T12:00:00.000Z',
+      lockedAt: '2026-03-25T12:00:00.000Z',
+      withdrawnAt: null,
+      disqualifiedAt: null,
+      createdAt: '2026-03-24T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z'
+    })
+
+    const preCompletionResponse = await preCompletionHarness.request('/api/hackathons/hackathon_1/teams/team_1/submission/public-visibility', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        isPubliclyVisible: true
+      })
+    })
+
+    expect(preCompletionResponse.status).toBe(409)
+
+    const winnerHarness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|team_admin',
+        email: 'team-admin@example.com'
+      }
+    })
+    harnesses.push(winnerHarness)
+    await seedSubmissionContext(winnerHarness, {
+      state: 'completed'
+    })
+    await winnerHarness.database.insert(submissions).values({
+      id: 'submission_winner',
+      teamId: 'team_1',
+      status: 'locked',
+      projectName: 'Winning Project',
+      summary: 'Winning summary',
+      repositoryUrl: 'https://github.com/example/winner',
+      demoUrl: 'https://example.com/winner',
+      isPubliclyVisible: false,
+      submittedAt: '2026-03-24T12:00:00.000Z',
+      lockedAt: '2026-03-25T12:00:00.000Z',
+      withdrawnAt: null,
+      disqualifiedAt: null,
+      createdAt: '2026-03-24T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z'
+    })
+    await winnerHarness.database.insert(prizes).values({
+      id: 'prize_winner',
+      hackathonId: 'hackathon_1',
+      name: 'Grand Prize',
+      description: 'Winner prize',
+      rewardType: 'api_credits',
+      rewardValue: '5000',
+      rewardCurrency: 'USD',
+      awardScope: 'team',
+      rankStart: 1,
+      rankEnd: 1
+    })
+    await winnerHarness.database.insert(prizeRedemptions).values({
+      id: 'redemption_winner',
+      prizeId: 'prize_winner',
+      userId: null,
+      teamId: 'team_1',
+      status: 'pending',
+      createdAt: '2026-03-26T12:00:00.000Z',
+      updatedAt: '2026-03-26T12:00:00.000Z'
+    })
+
+    const winnerResponse = await winnerHarness.request('/api/hackathons/hackathon_1/teams/team_1/submission/public-visibility', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        isPubliclyVisible: true
+      })
+    })
+
+    expect(winnerResponse.status).toBe(409)
+    expect(await winnerResponse.json()).toMatchObject({
+      error: {
+        code: 'submission_public_visibility_invalid'
       }
     })
   })

@@ -596,6 +596,17 @@ export interface WinnerEntry {
   }>
 }
 
+export interface PublishedProjectEntry {
+  teamId: string
+  teamName: string
+  submissionId: string
+  projectName: string | null
+  summary: string | null
+  repositoryUrl: string | null
+  demoUrl: string | null
+  teamMembers: WinnerEntry['teamMembers']
+}
+
 export interface FinalDeliberationEntry {
   teamId: string
   teamName: string

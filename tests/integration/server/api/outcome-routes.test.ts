@@ -14,6 +14,7 @@ import listHackathonAuditHandler from '../../../../server/api/hackathons/[hackat
 import listFinalDeliberationHandler from '../../../../server/api/hackathons/[hackathonId]/final-deliberation/index.get'
 import listLeaderboardHandler from '../../../../server/api/hackathons/[hackathonId]/leaderboard/index.get'
 import listHackathonPrizeRedemptionsHandler from '../../../../server/api/hackathons/[hackathonId]/prize-redemptions/index.get'
+import listPublishedProjectsHandler from '../../../../server/api/hackathons/[hackathonId]/published-projects/index.get'
 import reorderFinalDeliberationHandler from '../../../../server/api/hackathons/[hackathonId]/final-deliberation/actions/reorder.post'
 import selectFinalistsHandler from '../../../../server/api/hackathons/[hackathonId]/shortlist/actions/select-finalists.post'
 import listShortlistHandler from '../../../../server/api/hackathons/[hackathonId]/shortlist/index.get'
@@ -2348,6 +2349,61 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
           prizes: expect.arrayContaining([
             expect.objectContaining({ id: 'prize_member_top_2' })
           ])
+        })
+      ]
+    })
+  })
+
+  test('published project reads stay unavailable until completion and then expose opted-in non-winner projects', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/hackathons/:hackathonId/published-projects',
+          handler: listPublishedProjectsHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|team_admin_one',
+        email: 'team-admin-one@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await seedOutcomeHackathon(harness, {
+      state: 'winners_announced',
+      withPrizes: false,
+      finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
+    })
+    await harness.database
+      .update(submissions)
+      .set({
+        isPubliclyVisible: true
+      })
+      .where(eq(submissions.id, 'submission_2'))
+
+    const preCompletionResponse = await harness.request('/api/hackathons/hackathon_1/published-projects')
+
+    expect(preCompletionResponse.status).toBe(409)
+
+    await harness.database
+      .update(hackathons)
+      .set({
+        state: 'completed'
+      })
+      .where(eq(hackathons.id, 'hackathon_1'))
+
+    const publishedProjectsResponse = await harness.request('/api/hackathons/hackathon_1/published-projects')
+
+    expect(publishedProjectsResponse.status).toBe(200)
+    expect(await publishedProjectsResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          teamId: 'team_2',
+          teamName: 'Beta Team',
+          submissionId: 'submission_2',
+          projectName: 'Beta Project',
+          summary: 'Beta summary'
         })
       ]
     })

@@ -11,6 +11,7 @@ export interface TeamSubmissionRecord {
   summary: string | null
   repositoryUrl: string | null
   demoUrl: string | null
+  isPubliclyVisible: boolean
   submittedAt: string | null
   lockedAt: string | null
   withdrawnAt: string | null
@@ -298,6 +299,51 @@ export function getWithdrawSubmissionAvailability(
         : submission.status === 'locked'
           ? 'Locked submissions cannot be withdrawn.'
           : 'Disqualified submissions cannot be withdrawn.'
+    }
+  }
+
+  return {
+    isAllowed: true
+  }
+}
+
+export function getUpdateSubmissionPublicVisibilityAvailability(
+  hackathon: Pick<PublicHackathon, 'state'>,
+  submission: TeamSubmissionRecord | null | undefined,
+  canManageSubmission: boolean,
+  isWinner: boolean
+): TeamSubmissionActionAvailability {
+  const adminRequirement = requireTeamAdminAccess(canManageSubmission)
+
+  if (adminRequirement) {
+    return adminRequirement
+  }
+
+  if (!submission) {
+    return {
+      isAllowed: false,
+      reason: 'There is no submission available to publish publicly.'
+    }
+  }
+
+  if (hackathon.state !== 'completed') {
+    return {
+      isAllowed: false,
+      reason: 'Project publishing is available only after the hackathon is completed.'
+    }
+  }
+
+  if (submission.status !== 'locked') {
+    return {
+      isAllowed: false,
+      reason: 'Only completed competition projects can be published publicly.'
+    }
+  }
+
+  if (isWinner) {
+    return {
+      isAllowed: false,
+      reason: 'Winning projects are already published in the winners showcase.'
     }
   }
 

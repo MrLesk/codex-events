@@ -424,6 +424,7 @@ export const submissions = sqliteTable(
     summary: text('summary'),
     repositoryUrl: text('repository_url'),
     demoUrl: text('demo_url'),
+    isPubliclyVisible: integer('is_publicly_visible', { mode: 'boolean' }).notNull().default(false),
     submittedAt: text('submitted_at'),
     lockedAt: text('locked_at'),
     withdrawnAt: text('withdrawn_at'),

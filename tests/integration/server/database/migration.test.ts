@@ -168,6 +168,24 @@ describe('shared database migration', () => {
     }])
   })
 
+  test('stores the submission public visibility column with a false default', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'creator_1', now)
+    await seedHackathon(database, 'hackathon_1', 'submission_open', now, 'creator_1')
+    await seedTeam(database, 'team_1', 'hackathon_1', 'creator_1', now)
+    await seedSubmission(database, 'submission_1', 'team_1', 'locked', now)
+
+    const submissionRow = await database.prepare(`
+      select is_publicly_visible
+      from submissions
+      where id = ?
+    `).all<{ is_publicly_visible: number }>('submission_1')
+
+    expect(submissionRow.results).toEqual([{
+      is_publicly_visible: 0
+    }])
+  })
+
   test('applies the judge score scale migration on populated judge data without breaking foreign keys', async () => {
     const migrationDatabase = createTestD1Database({
       applyMigrations: false

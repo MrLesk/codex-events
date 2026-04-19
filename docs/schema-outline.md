@@ -456,6 +456,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `summary`
 - `repository_url`
 - `demo_url`
+- `is_publicly_visible`
 - `track_id`
 - `submitted_at`
 - `locked_at`
@@ -485,6 +486,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `summary`, `repository_url`, and `demo_url` are optional at rest and are enforced according to the owning hackathon's submission requirement flags.
 - Existing draft and submitted submissions remain mutable during `judging_preparation` until the submission is locked for judging.
 - `locked_at` records when blind review starts, or when `pitch` starts in a pitch-only hackathon.
+- `is_publicly_visible` controls whether a locked non-winning project appears in the completed published-projects showcase after a team admin opts in.
 - A draft that is never submitted is treated as no submission for judging and dashboard purposes.
 - Submission content is managed by team admins.
 

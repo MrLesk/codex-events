@@ -19,6 +19,7 @@ function buildSubmission(
     summary: 'SSR submission test payload.',
     repositoryUrl: 'https://github.com/openai/north-star',
     demoUrl: 'https://north-star.example.com',
+    isPubliclyVisible: false,
     submittedAt: null,
     lockedAt: null,
     withdrawnAt: null,
@@ -132,5 +133,45 @@ describe('useTeamSubmissionWorkspace', () => {
 
     expect(workspace.currentSubmissionStatus.value).toBe('success')
     expect(apiFetch).toHaveBeenCalledWith('/api/hackathons/hackathon_1/teams/team_2/submission')
+  })
+
+  test('updates submission public visibility through the dedicated route', async () => {
+    const { useTeamSubmissionWorkspace } = await import('../../../../app/composables/useTeamSubmissionWorkspace')
+
+    apiFetch.mockResolvedValue({
+      data: buildSubmission({
+        status: 'locked',
+        isPubliclyVisible: true
+      })
+    })
+
+    const workspace = useTeamSubmissionWorkspace({
+      state: 'completed'
+    } as never, {
+      visibleHackathonId: 'hackathon_1',
+      team: {
+        id: 'team_1',
+        isPersisted: true
+      },
+      canViewSubmission: true,
+      canManageSubmission: true,
+      initialSubmission: buildSubmission({
+        status: 'locked',
+        isPubliclyVisible: false
+      }),
+      hasInitialSubmissionState: true
+    })
+
+    await flushWorkspace()
+
+    await workspace.updateCurrentSubmissionPublicVisibility(true)
+
+    expect(apiFetch).toHaveBeenCalledWith('/api/hackathons/hackathon_1/teams/team_1/submission/public-visibility', {
+      method: 'PATCH',
+      body: {
+        isPubliclyVisible: true
+      }
+    })
+    expect(workspace.currentSubmission.value?.isPubliclyVisible).toBe(true)
   })
 })
