@@ -13,6 +13,15 @@ describe('markdown utils', () => {
     )
   })
 
+  test('renders emphasis and lists for project-style markdown descriptions', () => {
+    const html = renderMarkdown('**Highlights**\n\n- Fast setup\n- Live demo')
+
+    expect(html).toContain('<strong>Highlights</strong>')
+    expect(html).toContain('<ul>')
+    expect(html).toContain('<li>Fast setup</li>')
+    expect(html).toContain('<li>Live demo</li>')
+  })
+
   test('can strip the leading top-level heading before rendering', () => {
     const html = renderMarkdown('# Title\n\nBody copy', {
       stripLeadingHeading: true

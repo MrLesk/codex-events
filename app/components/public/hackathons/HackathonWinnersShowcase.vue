@@ -6,6 +6,7 @@ import {
   formatPrizeReward
 } from '~/composables/useHackathonPresentation'
 import { getPublishedHackathonRosterLinks } from '~/utils/hackathon-published-roster'
+import { renderMarkdown } from '~/utils/markdown'
 
 const props = withDefaults(defineProps<{
   winners: WinnerEntry[]
@@ -22,6 +23,12 @@ const props = withDefaults(defineProps<{
 
 function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
   return `${formatPrizeRank(prize)} · ${formatPrizeReward(prize)}`
+}
+
+function renderWinnerSummary(summary: string | null) {
+  const normalizedSummary = summary?.trim() ?? ''
+
+  return normalizedSummary ? renderMarkdown(normalizedSummary) : ''
 }
 </script>
 
@@ -107,8 +114,16 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
               <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 Project description
               </p>
-              <p class="text-sm leading-7 text-neutral-700 dark:text-[#C7C7C7]">
-                {{ winner.summary || 'No project description is available for this winner yet.' }}
+              <div
+                v-if="winner.summary?.trim()"
+                class="hackathon-markdown"
+                v-html="renderWinnerSummary(winner.summary)"
+              />
+              <p
+                v-else
+                class="text-sm leading-7 text-neutral-700 dark:text-[#C7C7C7]"
+              >
+                No project description is available for this winner yet.
               </p>
             </div>
 
