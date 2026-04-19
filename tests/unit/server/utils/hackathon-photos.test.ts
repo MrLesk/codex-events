@@ -27,19 +27,67 @@ function createEvent(cloudflareEnv: Record<string, unknown>) {
     context: {
       cloudflare: {
         env: cloudflareEnv
+      },
+      runtimeConfig: {
+        hackathonImages: {
+          publicCdnBaseUrl: ''
+        }
       }
     }
   } as H3Event
 }
 
 describe('hackathon photo utilities', () => {
-  test('builds canonical protected and public photo paths', () => {
+  test('builds canonical protected and fallback public photo paths', () => {
     expect(hackathonPhotoObjectKey('hackathon_1', 'photo_1')).toBe('hackathons/hackathon_1/photos/photo_1')
     expect(buildHackathonPhotoImageUrl('hackathon_1', 'photo_1', 'preview', '2026-04-19T10:00:00.000Z')).toBe(
       '/api/hackathons/hackathon_1/photos/photo_1/image?variant=preview&v=2026-04-19T10%3A00%3A00.000Z'
     )
-    expect(buildPublicHackathonPhotoImageUrl('codex-vienna', 'photo_1', 'original', '2026-04-19T10:00:00.000Z')).toBe(
+    expect(buildPublicHackathonPhotoImageUrl(
+      createEvent({}),
+      'hackathon_1',
+      'codex-vienna',
+      'photo_1',
+      'original',
+      '2026-04-19T10:00:00.000Z'
+    )).toBe(
       '/api/public/hackathons/codex-vienna/photos/photo_1/image?variant=original&v=2026-04-19T10%3A00%3A00.000Z'
+    )
+  })
+
+  test('builds CDN-backed public photo URLs when a public CDN base URL is configured', () => {
+    const event = {
+      context: {
+        cloudflare: {
+          env: {}
+        },
+        runtimeConfig: {
+          hackathonImages: {
+            publicCdnBaseUrl: 'https://cdn.dev.codex-hackathons.com'
+          }
+        }
+      }
+    } as H3Event
+
+    expect(buildPublicHackathonPhotoImageUrl(
+      event,
+      'hackathon_1',
+      'codex-vienna',
+      'photo_1',
+      'preview',
+      '2026-04-19T10:00:00.000Z'
+    )).toBe(
+      'https://cdn.dev.codex-hackathons.com/cdn-cgi/image/width=720,height=720,fit=scale-down,format=webp,quality=82/hackathons/hackathon_1/photos/photo_1'
+    )
+    expect(buildPublicHackathonPhotoImageUrl(
+      event,
+      'hackathon_1',
+      'codex-vienna',
+      'photo_1',
+      'original',
+      '2026-04-19T10:00:00.000Z'
+    )).toBe(
+      'https://cdn.dev.codex-hackathons.com/hackathons/hackathon_1/photos/photo_1'
     )
   })
 

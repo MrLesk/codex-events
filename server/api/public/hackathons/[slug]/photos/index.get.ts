@@ -12,7 +12,7 @@ export default defineApiHandler(async (event) => {
   const { slug } = parseValidatedParams(event, routeSlugParamsSchema)
   const database = getDatabase(event)
   const hackathon = await getPublicHackathonBySlugOrThrow(database, slug)
-  const photos = await listPublicHackathonPhotoRecords(database, hackathon.id, hackathon.slug)
+  const photos = await listPublicHackathonPhotoRecords(event, database, hackathon.id, hackathon.slug)
 
   return apiList(photos, {
     total: photos.length

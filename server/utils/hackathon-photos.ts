@@ -39,6 +39,18 @@ export const updateHackathonPhotoPublicVisibilityBodySchema = z.object({
   isPubliclyVisible: z.coerce.boolean()
 })
 
+const publicHackathonPhotoPreviewTransformOptions = 'width=720,height=720,fit=scale-down,format=webp,quality=82'
+
+type RuntimeConfigShape = {
+  hackathonImages?: {
+    publicCdnBaseUrl?: string
+  }
+}
+
+type HackathonPhotoContextShape = H3Event['context'] & {
+  runtimeConfig?: RuntimeConfigShape
+}
+
 interface ImagesInfoResultLike {
   width: number
   height: number
@@ -105,6 +117,22 @@ export function hackathonPhotoObjectKey(hackathonId: string, photoId: string) {
   return `hackathons/${hackathonId}/photos/${photoId}`
 }
 
+function hackathonPhotoObjectPath(hackathonId: string, photoId: string) {
+  return `/${hackathonPhotoObjectKey(
+    encodeURIComponent(hackathonId),
+    encodeURIComponent(photoId)
+  )}`
+}
+
+function resolveHackathonImagesPublicCdnBaseUrl(event: H3Event) {
+  const eventRuntimeConfig = (event.context as HackathonPhotoContextShape).runtimeConfig
+  const runtimeConfigGetter = (globalThis as { useRuntimeConfig?: (event: H3Event) => RuntimeConfigShape }).useRuntimeConfig
+  const configuredBaseUrl = eventRuntimeConfig?.hackathonImages?.publicCdnBaseUrl
+    ?? runtimeConfigGetter?.(event)?.hackathonImages?.publicCdnBaseUrl
+
+  return configuredBaseUrl?.trim() ?? ''
+}
+
 export function buildHackathonPhotoImageUrl(
   hackathonId: string,
   photoId: string,
@@ -120,11 +148,28 @@ export function buildHackathonPhotoImageUrl(
 }
 
 export function buildPublicHackathonPhotoImageUrl(
+  event: H3Event,
+  hackathonId: string,
   slug: string,
   photoId: string,
   variant: HackathonPhotoImageVariant,
   version: string
 ) {
+  const publicCdnBaseUrl = resolveHackathonImagesPublicCdnBaseUrl(event)
+
+  if (publicCdnBaseUrl) {
+    const objectPath = hackathonPhotoObjectPath(hackathonId, photoId)
+
+    if (variant === 'preview') {
+      return new URL(
+        `/cdn-cgi/image/${publicHackathonPhotoPreviewTransformOptions}${objectPath}`,
+        publicCdnBaseUrl
+      ).toString()
+    }
+
+    return new URL(objectPath, publicCdnBaseUrl).toString()
+  }
+
   const params = new URLSearchParams({
     variant,
     v: version
@@ -340,6 +385,7 @@ export async function listHackathonPhotoRecords(database: AppDatabase, hackathon
 }
 
 export async function listPublicHackathonPhotoRecords(
+  event: H3Event,
   database: AppDatabase,
   hackathonId: string,
   slug: string
@@ -353,7 +399,14 @@ export async function listPublicHackathonPhotoRecords(
   })
 
   return photos.map(photo => serializeHackathonPhotoRecord(photo, {
-    imagePathBuilder: (photoId, variant, version) => buildPublicHackathonPhotoImageUrl(slug, photoId, variant, version),
+    imagePathBuilder: (photoId, variant, version) => buildPublicHackathonPhotoImageUrl(
+      event,
+      hackathonId,
+      slug,
+      photoId,
+      variant,
+      version
+    ),
     uploadedByUserId: null,
     uploader: null
   }))

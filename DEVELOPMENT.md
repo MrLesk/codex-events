@@ -111,6 +111,8 @@ Hackathon background and banner uploads use a dedicated Cloudflare R2 binding at
 
 - `NUXT_HACKATHON_IMAGES_BINDING` should match the R2 binding used for hackathon background and banner image objects. The canonical default is `HACKATHON_IMAGES`.
 - local development uses the repository `wrangler.jsonc` R2 bucket binding for hackathon image object storage.
+- `NUXT_HACKATHON_IMAGES_PUBLIC_CDN_BASE_URL` should be the HTTPS custom-domain base URL for public hackathon gallery images served directly from R2 in deployed environments. The repository config uses `https://cdn.dev.codex-hackathons.com` for `dev` and `https://cdn.codex-hackathons.com` for `production`.
+- local `localhost` development can leave `NUXT_HACKATHON_IMAGES_PUBLIC_CDN_BASE_URL` unset to keep public gallery images on the local Worker routes.
 
 Protected hackathon photo previews use a Cloudflare Images binding at runtime:
 

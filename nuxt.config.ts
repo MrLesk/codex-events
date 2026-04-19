@@ -65,7 +65,8 @@ export default defineNuxtConfig({
       binding: 'PROFILE_ICONS'
     },
     hackathonImages: {
-      binding: 'HACKATHON_IMAGES'
+      binding: 'HACKATHON_IMAGES',
+      publicCdnBaseUrl: ''
     }
   },
   alias: {

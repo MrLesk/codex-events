@@ -36,6 +36,7 @@ export function createApiRouteTestHarness(options: {
     }
     hackathonImages?: {
       binding?: string
+      publicCdnBaseUrl?: string
     }
     resend?: {
       apiKey?: string
@@ -76,6 +77,7 @@ export function createApiRouteTestHarness(options: {
     const databaseBinding = options.runtimeConfig?.database?.binding ?? 'DB'
     const profileIconsBinding = options.runtimeConfig?.profileIcons?.binding ?? 'PROFILE_ICONS'
     const hackathonImagesBinding = options.runtimeConfig?.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
+    const hackathonImagesPublicCdnBaseUrl = options.runtimeConfig?.hackathonImages?.publicCdnBaseUrl ?? ''
     const resendApiKey = options.runtimeConfig?.resend?.apiKey ?? ''
     const resendFromEmail = options.runtimeConfig?.resend?.fromEmail ?? ''
     const resendFromName = options.runtimeConfig?.resend?.fromName ?? 'Codex Hackathons'
@@ -111,7 +113,8 @@ export function createApiRouteTestHarness(options: {
         binding: profileIconsBinding
       },
       hackathonImages: {
-        binding: hackathonImagesBinding
+        binding: hackathonImagesBinding,
+        publicCdnBaseUrl: hackathonImagesPublicCdnBaseUrl
       },
       resend: {
         apiKey: resendApiKey,

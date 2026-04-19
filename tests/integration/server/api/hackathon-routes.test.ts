@@ -2847,7 +2847,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       },
       runtimeConfig: {
         hackathonImages: {
-          binding: hackathonImagesBindingName
+          binding: hackathonImagesBindingName,
+          publicCdnBaseUrl: 'https://cdn.dev.codex-hackathons.com'
         }
       }
     })
@@ -3013,7 +3014,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       },
       runtimeConfig: {
         hackathonImages: {
-          binding: hackathonImagesBindingName
+          binding: hackathonImagesBindingName,
+          publicCdnBaseUrl: 'https://cdn.dev.codex-hackathons.com'
         }
       }
     })
@@ -3175,7 +3177,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       },
       runtimeConfig: {
         hackathonImages: {
-          binding: hackathonImagesBindingName
+          binding: hackathonImagesBindingName,
+          publicCdnBaseUrl: 'https://cdn.dev.codex-hackathons.com'
         }
       }
     })
@@ -3326,7 +3329,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       },
       runtimeConfig: {
         hackathonImages: {
-          binding: hackathonImagesBindingName
+          binding: hackathonImagesBindingName,
+          publicCdnBaseUrl: 'https://cdn.dev.codex-hackathons.com'
         }
       }
     })
@@ -3409,7 +3413,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       },
       runtimeConfig: {
         hackathonImages: {
-          binding: hackathonImagesBindingName
+          binding: hackathonImagesBindingName,
+          publicCdnBaseUrl: 'https://cdn.dev.codex-hackathons.com'
         }
       }
     })
@@ -3486,8 +3491,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
           isPubliclyVisible: true,
           uploadedByUserId: null,
           uploadedBy: null,
-          previewUrl: '/api/public/hackathons/public-gallery-hackathon/photos/photo_public/image?variant=preview&v=2026-04-01T12%3A00%3A00.000Z',
-          originalUrl: '/api/public/hackathons/public-gallery-hackathon/photos/photo_public/image?variant=original&v=2026-04-01T12%3A00%3A00.000Z'
+          previewUrl: 'https://cdn.dev.codex-hackathons.com/cdn-cgi/image/width=720,height=720,fit=scale-down,format=webp,quality=82/hackathons/hackathon_public_gallery/photos/photo_public',
+          originalUrl: 'https://cdn.dev.codex-hackathons.com/hackathons/hackathon_public_gallery/photos/photo_public'
         }
       ]
     })

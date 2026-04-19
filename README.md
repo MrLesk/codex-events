@@ -58,6 +58,7 @@ These values configure authentication for the Nuxt application:
 - `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
 - `NUXT_PROFILE_ICONS_BINDING`
 - `NUXT_HACKATHON_IMAGES_BINDING`
+- `NUXT_HACKATHON_IMAGES_PUBLIC_CDN_BASE_URL`
 
 For your Auth0 Regular Web Application, configure callback and logout URLs for the domain where you run this app. For example:
 
@@ -75,6 +76,7 @@ If you also use an Auth0 custom domain, keep it separate from the application ho
 
 - application URL: `https://dev.codex-hackathons.com`
 - Auth0 custom domain: `https://auth.dev.codex-hackathons.com`
+- public hackathon gallery CDN: `https://cdn.dev.codex-hackathons.com`
 
 Auth0 is responsible for authentication and identity. Platform authorization remains in the application data model, not in Auth0 roles.
 
