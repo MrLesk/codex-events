@@ -6,6 +6,7 @@ import {
   auditLogs,
   hackathonCreditCodes,
   hackathonCreditOffers,
+  hackathonFeedback,
   hackathonPhotos,
   hackathonRoleAssignments,
   hackathonTracks,
@@ -41,6 +42,7 @@ describe('shared schema foundation', () => {
     const userAuthIdentityIndexes = getTableConfig(userAuthIdentities).indexes.map(index => index.config.name)
     const joinRequestIndexes = getTableConfig(teamJoinRequests).indexes.map(index => index.config.name)
     const trackIndexes = getTableConfig(hackathonTracks).indexes.map(index => index.config.name)
+    const feedbackIndexes = getTableConfig(hackathonFeedback).indexes.map(index => index.config.name)
     const photoIndexes = getTableConfig(hackathonPhotos).indexes.map(index => index.config.name)
     const submissionIndexes = getTableConfig(submissions).indexes.map(index => index.config.name)
     const assignmentIndexes = getTableConfig(judgeAssignments).indexes.map(index => index.config.name)
@@ -53,6 +55,7 @@ describe('shared schema foundation', () => {
     expect(joinRequestIndexes).toContain('team_join_requests_pending_team_user_idx')
     expect(trackIndexes).toContain('hackathon_tracks_hackathon_display_order_idx')
     expect(trackIndexes).toContain('hackathon_tracks_hackathon_idx')
+    expect(feedbackIndexes).toContain('hackathon_feedback_hackathon_created_idx')
     expect(photoIndexes).toContain('hackathon_photos_hackathon_created_idx')
     expect(photoIndexes).toContain('hackathon_photos_uploaded_by_idx')
     expect(submissionIndexes).toContain('submissions_active_team_idx')
@@ -70,6 +73,7 @@ describe('shared schema foundation', () => {
     const creditOfferColumns = getTableColumns(hackathonCreditOffers)
     const creditCodeColumns = getTableColumns(hackathonCreditCodes)
     const trackColumns = getTableColumns(hackathonTracks)
+    const feedbackColumns = getTableColumns(hackathonFeedback)
     const photoColumns = getTableColumns(hackathonPhotos)
     const roleAssignmentColumns = getTableColumns(hackathonRoleAssignments)
     const applicationColumns = getTableColumns(userApplications)
@@ -78,6 +82,7 @@ describe('shared schema foundation', () => {
     const prizeChecks = getTableConfig(prizes).checks.map(checkItem => checkItem.name)
     const hackathonChecks = getTableConfig(hackathons).checks.map(checkItem => checkItem.name)
     const roleAssignmentChecks = getTableConfig(hackathonRoleAssignments).checks.map(checkItem => checkItem.name)
+    const feedbackChecks = getTableConfig(hackathonFeedback).checks.map(checkItem => checkItem.name)
     const photoChecks = getTableConfig(hackathonPhotos).checks.map(checkItem => checkItem.name)
     const auditIndexes = getTableConfig(auditLogs).indexes.map(index => index.config.name)
 
@@ -101,6 +106,14 @@ describe('shared schema foundation', () => {
     expect(trackColumns.hackathonId.name).toBe('hackathon_id')
     expect(trackColumns.description.name).toBe('description')
     expect(trackColumns.displayOrder.name).toBe('display_order')
+    expect(feedbackColumns.hackathonId.name).toBe('hackathon_id')
+    expect(feedbackColumns.foodRating.name).toBe('food_rating')
+    expect(feedbackColumns.participantsCommunityRating.name).toBe('participants_community_rating')
+    expect(feedbackColumns.communicationBeforeRating.name).toBe('communication_before_rating')
+    expect(feedbackColumns.communicationDuringRating.name).toBe('communication_during_rating')
+    expect(feedbackColumns.rulesFairnessRating.name).toBe('rules_fairness_rating')
+    expect(feedbackColumns.safetyAccessibilityInclusionRating.name).toBe('safety_accessibility_inclusion_rating')
+    expect(feedbackColumns.comment.name).toBe('comment')
     expect(photoColumns.fileName.name).toBe('file_name')
     expect(photoColumns.isPubliclyVisible.name).toBe('is_publicly_visible')
     expect(photoColumns.contentType.name).toBe('content_type')
@@ -126,6 +139,8 @@ describe('shared schema foundation', () => {
     expect(getTableConfig(hackathons).indexes.map(index => index.config.name)).toContain('hackathons_luma_event_api_id_idx')
     expect(roleAssignmentChecks).toContain('hackathon_role_assignments_judge_pool_check')
     expect(roleAssignmentChecks).toContain('hackathon_role_assignments_staff_flag_check')
+    expect(feedbackChecks).toContain('hackathon_feedback_food_rating_check')
+    expect(feedbackChecks).toContain('hackathon_feedback_safety_accessibility_inclusion_rating_check')
     expect(photoChecks).toContain('hackathon_photos_width_check')
     expect(photoChecks).toContain('hackathon_photos_height_check')
     expect(auditIndexes).toContain('audit_logs_entity_idx')

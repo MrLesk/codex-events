@@ -186,6 +186,88 @@ describe('shared database migration', () => {
     }])
   })
 
+  test('stores anonymous hackathon feedback rows and enforces the 1 to 5 rating range', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'creator_1', now)
+    await seedHackathon(database, 'hackathon_1', 'completed', now, 'creator_1')
+
+    await database.prepare(`
+      insert into hackathon_feedback (
+        id, hackathon_id, food_rating, staff_rating, organization_rating, platform_rating, judges_rating,
+        venue_rating, participants_community_rating, communication_before_rating, communication_during_rating,
+        rules_fairness_rating, overall_experience_rating, schedule_pacing_rating, technical_setup_rating,
+        safety_accessibility_inclusion_rating, outcomes_rating, comment, created_at
+      )
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      'feedback_1',
+      'hackathon_1',
+      5,
+      4,
+      4,
+      3,
+      4,
+      5,
+      5,
+      4,
+      4,
+      5,
+      5,
+      4,
+      3,
+      5,
+      4,
+      'Great event overall.',
+      now
+    )
+
+    const feedbackRows = await database.prepare(`
+      select hackathon_id, overall_experience_rating, comment
+      from hackathon_feedback
+      where id = ?
+    `).all<{
+      hackathon_id: string
+      overall_experience_rating: number
+      comment: string | null
+    }>('feedback_1')
+
+    expect(feedbackRows.results).toEqual([{
+      hackathon_id: 'hackathon_1',
+      overall_experience_rating: 5,
+      comment: 'Great event overall.'
+    }])
+
+    await expect(database.prepare(`
+      insert into hackathon_feedback (
+        id, hackathon_id, food_rating, staff_rating, organization_rating, platform_rating, judges_rating,
+        venue_rating, participants_community_rating, communication_before_rating, communication_during_rating,
+        rules_fairness_rating, overall_experience_rating, schedule_pacing_rating, technical_setup_rating,
+        safety_accessibility_inclusion_rating, outcomes_rating, comment, created_at
+      )
+      values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      'feedback_invalid',
+      'hackathon_1',
+      6,
+      4,
+      4,
+      3,
+      4,
+      5,
+      5,
+      4,
+      4,
+      5,
+      5,
+      4,
+      3,
+      5,
+      4,
+      null,
+      isoTimestamp(1)
+    )).rejects.toThrow()
+  })
+
   test('applies the judge score scale migration on populated judge data without breaking foreign keys', async () => {
     const migrationDatabase = createTestD1Database({
       applyMigrations: false

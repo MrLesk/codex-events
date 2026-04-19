@@ -24,6 +24,7 @@ import AccountHackathonParticipantWorkspacePanel from '~/components/account/hack
 import AccountHackathonParticipantTeamPanel from '~/components/account/hackathons/AccountHackathonParticipantTeamPanel.vue'
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
 import AccountHackathonCreditsPanel from '~/components/account/hackathons/AccountHackathonCreditsPanel.vue'
+import AccountHackathonFeedbackPanel from '~/components/account/hackathons/AccountHackathonFeedbackPanel.vue'
 import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
 import AccountHackathonGalleryPanel from '~/components/account/hackathons/AccountHackathonGalleryPanel.vue'
 import AccountHackathonParticipantVisibilityPanel from '~/components/account/hackathons/AccountHackathonParticipantVisibilityPanel.vue'
@@ -1031,6 +1032,19 @@ useSeoMeta({
           title="Admins"
           description="Admins can manage the internal workspace for this hackathon. Promoting a judge or staff member keeps their current capability on the admin assignment."
           empty-assigned-message="No admins yet. Add an admin here when someone needs full hackathon management access."
+        />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'feedback'"
+        id="account-tab-panel-feedback"
+        role="tabpanel"
+        aria-labelledby="account-tab-feedback"
+        class="space-y-8"
+      >
+        <AccountHackathonFeedbackPanel
+          :hackathon-id="workspaceHackathonId"
+          :hackathon-state="hackathon.state"
         />
       </section>
 

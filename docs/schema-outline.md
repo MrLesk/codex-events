@@ -264,6 +264,42 @@ It describes the intended persistent model at the level of entities, key fields,
 - `hackathon_admin` can set `is_in_judge_pool` and `is_staff` independently.
 - Non-admin `staff` and `judge` assignments remain distinct.
 
+## HackathonFeedback
+
+### Key Fields
+
+- `id`
+- `hackathon_id`
+- `food_rating`
+- `staff_rating`
+- `organization_rating`
+- `platform_rating`
+- `judges_rating`
+- `venue_rating`
+- `participants_community_rating`
+- `communication_before_rating`
+- `communication_during_rating`
+- `rules_fairness_rating`
+- `overall_experience_rating`
+- `schedule_pacing_rating`
+- `technical_setup_rating`
+- `safety_accessibility_inclusion_rating`
+- `outcomes_rating`
+- `comment`
+- `created_at`
+
+### Constraints
+
+- Each rating field is an integer in `1..5`.
+
+### Notes
+
+- Each row records one anonymous post-hackathon feedback submission for a hackathon.
+- Feedback rows do not reference a platform user, application, or team.
+- `comment` is optional.
+- Feedback submission is available only after the hackathon reaches `completed`.
+- Judges, staff, hackathon admins, and platform admins can read hackathon feedback results in the account workspace.
+
 ## PlatformDocument
 
 ### Key Fields

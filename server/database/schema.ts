@@ -235,6 +235,81 @@ export const hackathonPhotos = sqliteTable(
   ]
 )
 
+export const hackathonFeedback = sqliteTable(
+  'hackathon_feedback',
+  {
+    id: idColumn(),
+    hackathonId: text('hackathon_id')
+      .notNull()
+      .references(() => hackathons.id, { onDelete: 'cascade' }),
+    foodRating: integer('food_rating').notNull(),
+    staffRating: integer('staff_rating').notNull(),
+    organizationRating: integer('organization_rating').notNull(),
+    platformRating: integer('platform_rating').notNull(),
+    judgesRating: integer('judges_rating').notNull(),
+    venueRating: integer('venue_rating').notNull(),
+    participantsCommunityRating: integer('participants_community_rating').notNull(),
+    communicationBeforeRating: integer('communication_before_rating').notNull(),
+    communicationDuringRating: integer('communication_during_rating').notNull(),
+    rulesFairnessRating: integer('rules_fairness_rating').notNull(),
+    overallExperienceRating: integer('overall_experience_rating').notNull(),
+    schedulePacingRating: integer('schedule_pacing_rating').notNull(),
+    technicalSetupRating: integer('technical_setup_rating').notNull(),
+    safetyAccessibilityInclusionRating: integer('safety_accessibility_inclusion_rating').notNull(),
+    outcomesRating: integer('outcomes_rating').notNull(),
+    comment: text('comment'),
+    createdAt: createdAtColumn()
+  },
+  table => [
+    index('hackathon_feedback_hackathon_created_idx').on(table.hackathonId, table.createdAt),
+    check('hackathon_feedback_food_rating_check', sql`${table.foodRating} >= 1 and ${table.foodRating} <= 5`),
+    check('hackathon_feedback_staff_rating_check', sql`${table.staffRating} >= 1 and ${table.staffRating} <= 5`),
+    check(
+      'hackathon_feedback_organization_rating_check',
+      sql`${table.organizationRating} >= 1 and ${table.organizationRating} <= 5`
+    ),
+    check(
+      'hackathon_feedback_platform_rating_check',
+      sql`${table.platformRating} >= 1 and ${table.platformRating} <= 5`
+    ),
+    check('hackathon_feedback_judges_rating_check', sql`${table.judgesRating} >= 1 and ${table.judgesRating} <= 5`),
+    check('hackathon_feedback_venue_rating_check', sql`${table.venueRating} >= 1 and ${table.venueRating} <= 5`),
+    check(
+      'hackathon_feedback_participants_community_rating_check',
+      sql`${table.participantsCommunityRating} >= 1 and ${table.participantsCommunityRating} <= 5`
+    ),
+    check(
+      'hackathon_feedback_communication_before_rating_check',
+      sql`${table.communicationBeforeRating} >= 1 and ${table.communicationBeforeRating} <= 5`
+    ),
+    check(
+      'hackathon_feedback_communication_during_rating_check',
+      sql`${table.communicationDuringRating} >= 1 and ${table.communicationDuringRating} <= 5`
+    ),
+    check(
+      'hackathon_feedback_rules_fairness_rating_check',
+      sql`${table.rulesFairnessRating} >= 1 and ${table.rulesFairnessRating} <= 5`
+    ),
+    check(
+      'hackathon_feedback_overall_experience_rating_check',
+      sql`${table.overallExperienceRating} >= 1 and ${table.overallExperienceRating} <= 5`
+    ),
+    check(
+      'hackathon_feedback_schedule_pacing_rating_check',
+      sql`${table.schedulePacingRating} >= 1 and ${table.schedulePacingRating} <= 5`
+    ),
+    check(
+      'hackathon_feedback_technical_setup_rating_check',
+      sql`${table.technicalSetupRating} >= 1 and ${table.technicalSetupRating} <= 5`
+    ),
+    check(
+      'hackathon_feedback_safety_accessibility_inclusion_rating_check',
+      sql`${table.safetyAccessibilityInclusionRating} >= 1 and ${table.safetyAccessibilityInclusionRating} <= 5`
+    ),
+    check('hackathon_feedback_outcomes_rating_check', sql`${table.outcomesRating} >= 1 and ${table.outcomesRating} <= 5`)
+  ]
+)
+
 export const hackathonRoleAssignments = sqliteTable(
   'hackathon_role_assignments',
   {
@@ -704,6 +779,7 @@ export const schema = {
   userAuthIdentities,
   hackathons,
   hackathonTracks,
+  hackathonFeedback,
   hackathonRoleAssignments,
   platformDocuments,
   userPlatformDocumentAcceptances,

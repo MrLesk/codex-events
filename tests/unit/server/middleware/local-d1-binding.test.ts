@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import {
   authenticatedUploadRateLimitBindingName,
-  publicContactRateLimitBindingName
+  publicContactRateLimitBindingName,
+  publicHackathonFeedbackRateLimitBindingName
 } from '../../../../server/utils/rate-limit'
 
 const { createLocalPlatformProxy } = vi.hoisted(() => ({
@@ -135,6 +136,9 @@ describe('local D1 binding middleware', () => {
     const publicContactRateLimiter = {
       limit: vi.fn(async () => ({ success: true }))
     }
+    const publicHackathonFeedbackRateLimiter = {
+      limit: vi.fn(async () => ({ success: true }))
+    }
     const authenticatedUploadRateLimiter = {
       limit: vi.fn(async () => ({ success: true }))
     }
@@ -149,6 +153,7 @@ describe('local D1 binding middleware', () => {
         HACKATHON_OUTCOME_EMAIL_QUEUE: hackathonOutcomeEmailQueue,
         APPLICATION_LUMA_SYNC_QUEUE: applicationLumaSyncQueue,
         [publicContactRateLimitBindingName]: publicContactRateLimiter,
+        [publicHackathonFeedbackRateLimitBindingName]: publicHackathonFeedbackRateLimiter,
         [authenticatedUploadRateLimitBindingName]: authenticatedUploadRateLimiter
       }
     })
@@ -167,6 +172,9 @@ describe('local D1 binding middleware', () => {
     expect(event.context.cloudflare?.env.HACKATHON_OUTCOME_EMAIL_QUEUE).toBe(hackathonOutcomeEmailQueue)
     expect(event.context.cloudflare?.env.APPLICATION_LUMA_SYNC_QUEUE).toBe(applicationLumaSyncQueue)
     expect(event.context.cloudflare?.env[publicContactRateLimitBindingName]).toBe(publicContactRateLimiter)
+    expect(event.context.cloudflare?.env[publicHackathonFeedbackRateLimitBindingName]).toBe(
+      publicHackathonFeedbackRateLimiter
+    )
     expect(event.context.cloudflare?.env[authenticatedUploadRateLimitBindingName]).toBe(authenticatedUploadRateLimiter)
   })
 })

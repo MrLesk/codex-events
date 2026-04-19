@@ -3,7 +3,8 @@ import type { D1DatabaseBinding } from '../database/client'
 import { ApiError } from '../utils/api-error'
 import {
   authenticatedUploadRateLimitBindingName,
-  publicContactRateLimitBindingName
+  publicContactRateLimitBindingName,
+  publicHackathonFeedbackRateLimitBindingName
 } from '../utils/rate-limit'
 import { createLocalPlatformProxy } from '../database/local-platform-proxy'
 
@@ -139,6 +140,9 @@ export default defineEventHandler(async (event) => {
   const applicationLumaSyncQueue = existingApplicationLumaSyncQueue ?? proxyApplicationLumaSyncQueue
   const existingPublicContactRateLimiter = cloudflareEnv?.[publicContactRateLimitBindingName]
   const publicContactRateLimiter = existingPublicContactRateLimiter ?? proxyEnv[publicContactRateLimitBindingName]
+  const existingPublicHackathonFeedbackRateLimiter = cloudflareEnv?.[publicHackathonFeedbackRateLimitBindingName]
+  const publicHackathonFeedbackRateLimiter = existingPublicHackathonFeedbackRateLimiter
+    ?? proxyEnv[publicHackathonFeedbackRateLimitBindingName]
   const existingAuthenticatedUploadRateLimiter = cloudflareEnv?.[authenticatedUploadRateLimitBindingName]
   const authenticatedUploadRateLimiter = existingAuthenticatedUploadRateLimiter ?? proxyEnv[authenticatedUploadRateLimitBindingName]
 
@@ -184,6 +188,13 @@ export default defineEventHandler(async (event) => {
 
   if (!event.context.cloudflare.env[publicContactRateLimitBindingName] && isRateLimitBindingLike(publicContactRateLimiter)) {
     event.context.cloudflare.env[publicContactRateLimitBindingName] = publicContactRateLimiter as never
+  }
+
+  if (
+    !event.context.cloudflare.env[publicHackathonFeedbackRateLimitBindingName]
+    && isRateLimitBindingLike(publicHackathonFeedbackRateLimiter)
+  ) {
+    event.context.cloudflare.env[publicHackathonFeedbackRateLimitBindingName] = publicHackathonFeedbackRateLimiter as never
   }
 
   if (

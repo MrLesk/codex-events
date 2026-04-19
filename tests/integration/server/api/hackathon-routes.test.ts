@@ -8,6 +8,7 @@ import ownHackathonRankGetHandler from '../../../../server/api/hackathons/[hacka
 import hackathonsPostHandler from '../../../../server/api/hackathons/index.post'
 import hackathonDetailGetHandler from '../../../../server/api/hackathons/[hackathonId]/index.get'
 import hackathonCriteriaGetHandler from '../../../../server/api/hackathons/[hackathonId]/evaluation-criteria/index.get'
+import hackathonFeedbackGetHandler from '../../../../server/api/hackathons/[hackathonId]/feedback/index.get'
 import hackathonJudgesGetHandler from '../../../../server/api/hackathons/[hackathonId]/judges/index.get'
 import hackathonPrizesGetHandler from '../../../../server/api/hackathons/[hackathonId]/prizes/index.get'
 import hackathonStaffGetHandler from '../../../../server/api/hackathons/[hackathonId]/staff/index.get'
@@ -15,6 +16,7 @@ import hackathonBySlugGetHandler from '../../../../server/api/hackathons/slug/[s
 import openRegistrationPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/open-registration.post'
 import publicHackathonsGetHandler from '../../../../server/api/public/hackathons/index.get'
 import publicHackathonDetailGetHandler from '../../../../server/api/public/hackathons/[slug]/index.get'
+import publicHackathonFeedbackPostHandler from '../../../../server/api/public/hackathons/[slug]/feedback.post'
 import publicHackathonCriteriaGetHandler from '../../../../server/api/public/hackathons/[slug]/evaluation-criteria/index.get'
 import publicHackathonPrizesGetHandler from '../../../../server/api/public/hackathons/[slug]/prizes/index.get'
 import publicHackathonPublishedProjectsGetHandler from '../../../../server/api/public/hackathons/[slug]/published-projects/index.get'
@@ -44,6 +46,7 @@ import startPitchReviewPostHandler from '../../../../server/api/hackathons/[hack
 import {
   auditLogs,
   evaluationCriteria,
+  hackathonFeedback,
   hackathonPhotos,
   hackathonRoleAssignments,
   hackathonTermsDocuments,
@@ -61,7 +64,10 @@ import {
   userApplications,
   users
 } from '../../../../server/database/schema'
-import { authenticatedUploadRateLimitBindingName } from '../../../../server/utils/rate-limit'
+import {
+  authenticatedUploadRateLimitBindingName,
+  publicHackathonFeedbackRateLimitBindingName
+} from '../../../../server/utils/rate-limit'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 describe('TASK-3.5 hackathon CRUD routes', () => {
@@ -1616,6 +1622,448 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(payload.data).not.toHaveProperty('discordServerUrl')
     expect(payload.data.currentTerms.applicationTerms).not.toHaveProperty('id')
     expect(payload.data.currentTerms.winnerTerms).not.toHaveProperty('id')
+  })
+
+  test('POST /api/public/hackathons/:slug/feedback stores anonymous completed-hackathon feedback', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/public/hackathons/:slug/feedback', handler: publicHackathonFeedbackPostHandler }
+      ],
+      cloudflareEnv: {
+        [publicHackathonFeedbackRateLimitBindingName]: createRateLimiter()
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'creator_1',
+      auth0Subject: 'auth0|creator_1',
+      email: 'creator@example.com',
+      displayName: 'Creator'
+    })
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_feedback_public',
+      name: 'Feedback Hackathon',
+      slug: 'feedback-hackathon',
+      description: 'Public feedback collection',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'completed',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+
+    const response = await harness.request('/api/public/hackathons/feedback-hackathon/feedback', {
+      method: 'POST',
+      headers: {
+        'cf-connecting-ip': '203.0.113.10'
+      },
+      body: JSON.stringify({
+        foodRating: 5,
+        staffRating: 4,
+        organizationRating: 4,
+        platformRating: 3,
+        judgesRating: 4,
+        venueRating: 5,
+        participantsCommunityRating: 5,
+        communicationBeforeRating: 4,
+        communicationDuringRating: 4,
+        rulesFairnessRating: 5,
+        overallExperienceRating: 5,
+        schedulePacingRating: 4,
+        technicalSetupRating: 3,
+        safetyAccessibilityInclusionRating: 5,
+        outcomesRating: 4,
+        comment: '  Great event overall.  '
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      data: {
+        status: 'submitted'
+      }
+    })
+
+    const savedFeedback = await harness.database.query.hackathonFeedback.findMany({
+      where: eq(hackathonFeedback.hackathonId, 'hackathon_feedback_public')
+    })
+
+    expect(savedFeedback).toHaveLength(1)
+    expect(savedFeedback[0]).toMatchObject({
+      hackathonId: 'hackathon_feedback_public',
+      overallExperienceRating: 5,
+      comment: 'Great event overall.'
+    })
+  })
+
+  test('POST /api/public/hackathons/:slug/feedback rejects submissions before the hackathon is completed', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/public/hackathons/:slug/feedback', handler: publicHackathonFeedbackPostHandler }
+      ]
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'creator_1',
+      auth0Subject: 'auth0|creator_1',
+      email: 'creator@example.com',
+      displayName: 'Creator'
+    })
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_feedback_unavailable',
+      name: 'Unavailable Feedback Hackathon',
+      slug: 'unavailable-feedback-hackathon',
+      description: 'Feedback unavailable',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'winners_announced',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+
+    const response = await harness.request('/api/public/hackathons/unavailable-feedback-hackathon/feedback', {
+      method: 'POST',
+      body: JSON.stringify({
+        foodRating: 5,
+        staffRating: 4,
+        organizationRating: 4,
+        platformRating: 3,
+        judgesRating: 4,
+        venueRating: 5,
+        participantsCommunityRating: 5,
+        communicationBeforeRating: 4,
+        communicationDuringRating: 4,
+        rulesFairnessRating: 5,
+        overallExperienceRating: 5,
+        schedulePacingRating: 4,
+        technicalSetupRating: 3,
+        safetyAccessibilityInclusionRating: 5,
+        outcomesRating: 4
+      })
+    })
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'hackathon_feedback_unavailable',
+        message: 'Hackathon feedback is only available after the hackathon is completed.',
+        details: {
+          currentState: 'winners_announced',
+          allowedStates: ['completed'],
+          hackathonId: 'hackathon_feedback_unavailable'
+        }
+      }
+    })
+  })
+
+  test('POST /api/public/hackathons/:slug/feedback returns 429 when the public feedback rate limit is exceeded', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/public/hackathons/:slug/feedback', handler: publicHackathonFeedbackPostHandler }
+      ],
+      cloudflareEnv: {
+        [publicHackathonFeedbackRateLimitBindingName]: createRateLimiter(false)
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'creator_1',
+      auth0Subject: 'auth0|creator_1',
+      email: 'creator@example.com',
+      displayName: 'Creator'
+    })
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_feedback_limited',
+      name: 'Limited Feedback Hackathon',
+      slug: 'limited-feedback-hackathon',
+      description: 'Feedback rate limited',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'completed',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+
+    const response = await harness.request('/api/public/hackathons/limited-feedback-hackathon/feedback', {
+      method: 'POST',
+      headers: {
+        'cf-connecting-ip': '203.0.113.10'
+      },
+      body: JSON.stringify({
+        foodRating: 5,
+        staffRating: 4,
+        organizationRating: 4,
+        platformRating: 3,
+        judgesRating: 4,
+        venueRating: 5,
+        participantsCommunityRating: 5,
+        communicationBeforeRating: 4,
+        communicationDuringRating: 4,
+        rulesFairnessRating: 5,
+        overallExperienceRating: 5,
+        schedulePacingRating: 4,
+        technicalSetupRating: 3,
+        safetyAccessibilityInclusionRating: 5,
+        outcomesRating: 4
+      })
+    })
+
+    expect(response.status).toBe(429)
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'hackathon_feedback_rate_limited',
+        message: 'Too many feedback submissions were sent. Please wait before trying again.'
+      }
+    })
+
+    const savedFeedback = await harness.database.query.hackathonFeedback.findMany({
+      where: eq(hackathonFeedback.hackathonId, 'hackathon_feedback_limited')
+    })
+
+    expect(savedFeedback).toHaveLength(0)
+  })
+
+  test('GET /api/hackathons/:hackathonId/feedback returns aggregate results to judges, staff, and admins', async () => {
+    const scenarios = [
+      {
+        userId: 'judge_user',
+        email: 'judge@example.com',
+        roleAssignment: {
+          role: 'judge' as const,
+          isInJudgePool: true,
+          isStaff: false
+        }
+      },
+      {
+        userId: 'staff_user',
+        email: 'staff@example.com',
+        roleAssignment: {
+          role: 'staff' as const,
+          isInJudgePool: false,
+          isStaff: true
+        }
+      },
+      {
+        userId: 'admin_user',
+        email: 'admin@example.com',
+        roleAssignment: {
+          role: 'hackathon_admin' as const,
+          isInJudgePool: false,
+          isStaff: false
+        }
+      }
+    ] as const
+
+    for (const scenario of scenarios) {
+      const harness = createApiRouteTestHarness({
+        routes: [
+          { method: 'get', path: '/api/hackathons/:hackathonId/feedback', handler: hackathonFeedbackGetHandler }
+        ],
+        sessionUser: {
+          sub: `auth0|${scenario.userId}`,
+          email: scenario.email
+        }
+      })
+      harnesses.push(harness)
+
+      await harness.database.insert(users).values([
+        {
+          id: 'creator_1',
+          auth0Subject: 'auth0|creator_1',
+          email: 'creator@example.com',
+          displayName: 'Creator'
+        },
+        {
+          id: scenario.userId,
+          auth0Subject: `auth0|${scenario.userId}`,
+          email: scenario.email,
+          displayName: scenario.userId
+        }
+      ])
+      await harness.database.insert(hackathons).values({
+        id: 'hackathon_feedback_results',
+        name: 'Feedback Results Hackathon',
+        slug: 'feedback-results-hackathon',
+        description: 'Internal feedback reporting',
+        city: 'Vienna',
+        country: 'Austria',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'completed',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1'
+      })
+      await harness.database.insert(hackathonRoleAssignments).values({
+        id: `assignment_${scenario.userId}`,
+        hackathonId: 'hackathon_feedback_results',
+        userId: scenario.userId,
+        createdAt: '2026-03-10T09:10:00.000Z',
+        ...scenario.roleAssignment
+      })
+      await harness.database.insert(hackathonFeedback).values([
+        {
+          id: 'feedback_1',
+          hackathonId: 'hackathon_feedback_results',
+          foodRating: 5,
+          staffRating: 4,
+          organizationRating: 5,
+          platformRating: 4,
+          judgesRating: 4,
+          venueRating: 5,
+          participantsCommunityRating: 5,
+          communicationBeforeRating: 4,
+          communicationDuringRating: 5,
+          rulesFairnessRating: 4,
+          overallExperienceRating: 5,
+          schedulePacingRating: 4,
+          technicalSetupRating: 4,
+          safetyAccessibilityInclusionRating: 5,
+          outcomesRating: 5,
+          comment: 'Loved the energy.',
+          createdAt: '2026-03-25T10:00:00.000Z'
+        },
+        {
+          id: 'feedback_2',
+          hackathonId: 'hackathon_feedback_results',
+          foodRating: 5,
+          staffRating: 3,
+          organizationRating: 4,
+          platformRating: 1,
+          judgesRating: 5,
+          venueRating: 4,
+          participantsCommunityRating: 4,
+          communicationBeforeRating: 3,
+          communicationDuringRating: 4,
+          rulesFairnessRating: 5,
+          overallExperienceRating: 4,
+          schedulePacingRating: 3,
+          technicalSetupRating: 2,
+          safetyAccessibilityInclusionRating: 4,
+          outcomesRating: 4,
+          comment: 'Could use more outlets.',
+          createdAt: '2026-03-25T11:00:00.000Z'
+        }
+      ])
+
+      const response = await harness.request('/api/hackathons/hackathon_feedback_results/feedback')
+
+      expect(response.status).toBe(200)
+      const payload = await response.json()
+
+      expect(payload).toMatchObject({
+        data: {
+          responseCount: 2,
+          questionSummaries: expect.arrayContaining([
+            expect.objectContaining({
+              id: 'foodRating',
+              averageRating: 5,
+              responseCount: 2,
+              ratingCounts: {
+                1: 0,
+                2: 0,
+                3: 0,
+                4: 0,
+                5: 2
+              }
+            }),
+            expect.objectContaining({
+              id: 'platformRating',
+              averageRating: 2.5,
+              responseCount: 2,
+              ratingCounts: {
+                1: 1,
+                2: 0,
+                3: 0,
+                4: 1,
+                5: 0
+              }
+            })
+          ])
+        }
+      })
+      expect(payload.data.comments.map((entry: { comment: string }) => entry.comment)).toEqual([
+        'Could use more outlets.',
+        'Loved the energy.'
+      ])
+    }
+  })
+
+  test('GET /api/hackathons/:hackathonId/feedback rejects platform users without judge, staff, or admin access', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/feedback', handler: hackathonFeedbackGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant_user',
+        email: 'participant@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'participant_user',
+        auth0Subject: 'auth0|participant_user',
+        email: 'participant@example.com',
+        displayName: 'Participant User'
+      }
+    ])
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_feedback_results',
+      name: 'Feedback Results Hackathon',
+      slug: 'feedback-results-hackathon',
+      description: 'Internal feedback reporting',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'completed',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_feedback_results/feedback')
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'hackathon_feedback_results_access_denied',
+        message: 'This operation requires judge, staff, or hackathon admin access.',
+        details: {
+          hackathonId: 'hackathon_feedback_results'
+        }
+      }
+    })
   })
 
   test('GET /api/public/hackathons/:slug/criteria and prizes omit internal identifiers and timestamps', async () => {

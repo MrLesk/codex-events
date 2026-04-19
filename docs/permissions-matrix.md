@@ -192,6 +192,13 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Update hackathon gallery public visibility | No | Yes | Yes | Yes | Yes |
 | Delete hackathon gallery photos | No | Yes | Yes | Yes | Yes |
 
+## Hackathon Feedback
+
+| Action | Public User | Staff | Judge | Hackathon Admin | Platform Admin |
+| --- | --- | --- | --- | --- | --- |
+| Submit anonymous hackathon feedback | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` |
+| View hackathon feedback results in the account workspace | No | Yes | Yes | Yes | Yes |
+
 ## Visibility Rules
 
 - Users can view only their own application records.
@@ -201,6 +208,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 - Approved participants can view hackathon photo galleries for hackathons where they are approved.
 - Judges, staff, hackathon admins, and platform admins can manage hackathon photo galleries for hackathons where they hold that access.
 - Public hackathon detail pages expose a Gallery tab only when the hackathon has one or more gallery photos marked public.
+- The public hackathon feedback route is unlinked and available only after the hackathon reaches `completed`.
 - Participants can see shortlist status only for their own team, and only from `pitch` onward when that team advanced.
 - Winner-project visibility and opt-in published-project visibility are delayed until `completed`; before completion, public and account detail pages keep the `Prizes` surface and participant overview or workspace views do not expose completed project showcase snippets.
 - Team members can view their own team membership and submission data.
@@ -211,6 +219,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 - The participant-facing teams directory remains visible to workspace users after team formation closes, but join actions remain state-gated.
 - Approved participants can view only their own claimed credit values.
 - Hackathon admins and platform admins can view credit inventory and claim records for their hackathons.
+- Hackathon feedback results are visible only to judges, staff, hackathon admins, and platform admins.
 
 ## Operational Notes
 

@@ -6,6 +6,7 @@ export const accountHackathonWorkspaceTabs = [
   'prizes',
   'details',
   'gallery',
+  'feedback',
   'judges',
   'staff',
   'workspace',
@@ -47,6 +48,7 @@ const defaultAccountHackathonTabLabels: Record<AccountHackathonWorkspaceTab, str
   prizes: 'Prizes',
   details: 'Details',
   gallery: 'Gallery',
+  feedback: 'Feedback',
   judges: 'Judges',
   staff: 'Staff',
   judging: 'Judging',
@@ -143,6 +145,10 @@ export function getAccountHackathonTabAccess(
   }
 
   availableTabs.push('judges', 'staff')
+
+  if (canJudge || canManage || canViewParticipantsAndTeams) {
+    availableTabs.push('feedback')
+  }
 
   if (hasApprovedParticipantAccess) {
     availableTabs.push('workspace', 'teams')

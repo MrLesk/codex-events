@@ -63,7 +63,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'participants', 'teams', 'submissions', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'teams', 'submissions', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
@@ -78,10 +78,30 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'details', 'gallery', 'judges', 'staff', 'workspace', 'teams', 'participants'],
+      availableTabs: ['overview', 'credits', 'details', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
+  })
+
+  test('shows the feedback tab to judges, staff, and admins only', () => {
+    expect(getAccountHackathonTabAccess({
+      hasApprovedParticipantAccess: false,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      canJudge: true,
+      canManage: false,
+      canViewParticipantsAndTeams: false
+    }).availableTabs).toContain('feedback')
+
+    expect(getAccountHackathonTabAccess({
+      hasApprovedParticipantAccess: true,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: false
+    }).availableTabs).not.toContain('feedback')
   })
 
   test('only actors who already qualify for the canonical participant team panel can access the teams tab', () => {
@@ -139,7 +159,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
@@ -190,7 +210,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'prizes', 'details', 'gallery', 'judges', 'staff', 'judging'],
+      availableTabs: ['overview', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'judging'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
@@ -220,7 +240,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: false,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'details', 'gallery', 'judges', 'staff', 'participants', 'teams'],
+      availableTabs: ['overview', 'details', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'teams'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
@@ -248,7 +268,7 @@ describe('getAccountHackathonTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: true
     })

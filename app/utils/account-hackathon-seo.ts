@@ -35,6 +35,11 @@ export function getAccountHackathonSeoContent(
         title: `Gallery | ${hackathonName} | Codex Hackathons`,
         description: `Browse hackathon gallery photos from ${hackathonName}.`
       }
+    case 'feedback':
+      return {
+        title: `Feedback | ${hackathonName} | Codex Hackathons`,
+        description: `Review post-hackathon feedback for ${hackathonName}.`
+      }
     case 'judges':
       return {
         title: `Judges | ${hackathonName} | Codex Hackathons`,

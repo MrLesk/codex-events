@@ -117,6 +117,22 @@ Rules:
 - Photo delivery uses protected account-scoped routes for the private gallery and separate public routes for the public gallery subset.
 - Preview images are derived from the stored original object and do not create a separate canonical domain entity.
 
+### HackathonFeedback
+
+An anonymous post-hackathon feedback submission belonging to one hackathon.
+
+Rules:
+
+- Each feedback submission belongs to exactly one hackathon.
+- The public hackathon feedback route is `/hackathons/:slug/feedback`.
+- The public feedback route is available only after the hackathon reaches `completed`.
+- Each feedback submission records one required `1..5` rating for each canonical feedback topic.
+- The canonical feedback topics are food, staff, organization, platform, judges, venue, participants and community, communication before the hackathon, communication during the hackathon, clarity and fairness of the rules, overall experience, schedule and pacing, technical setup, safety/accessibility/inclusion, and outcomes.
+- A feedback submission can include one optional free-text comment.
+- Feedback submissions are anonymous in product data and do not reference a user, application, or team.
+- Anonymous feedback submission is protected by per-IP rate limiting rather than by account identity.
+- The account-scoped hackathon workspace exposes feedback results to judges, staff, hackathon admins, and platform admins.
+
 ### PlatformDocument
 
 A platform-wide document used during platform account registration.

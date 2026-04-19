@@ -92,6 +92,7 @@ The canonical backend domains are:
 - `hackathons`
 - `hackathon-roles`
 - `hackathon-terms`
+- `feedback`
 - `applications`
 - `teams`
 - `team-join-requests`
@@ -315,6 +316,23 @@ Testing:
 - Unit: photo-upload validation, protected image binding guards, and workspace-tab visibility helpers.
 - Integration: approved-participant read access plus role-based upload, public-visibility update, delete access, and public-gallery reads.
 - End-to-end: account and public hackathon Gallery tab read and management flows.
+
+## Feedback
+
+Purpose:
+- Support anonymous post-hackathon feedback submission from the public hackathon area and restricted feedback-result review in the account workspace.
+
+Operations:
+
+| Operation | Method And Path | Actor | Guards And Notes |
+| --- | --- | --- | --- |
+| Submit public hackathon feedback | `POST /api/public/hackathons/:slug/feedback` | public or authenticated user | Allowed only after the hackathon reaches `completed`. Accepts one required `1..5` rating for each canonical feedback topic plus one optional free-text comment. Records anonymous hackathon-scoped feedback and enforces a Cloudflare-backed per-IP rate limit for repeated submissions. |
+| Get hackathon feedback results | `GET /api/hackathons/:hackathonId/feedback` | judge, staff, hackathon admin, or platform admin | Returns hackathon-scoped feedback results for the account workspace, including aggregate per-question metrics, total response count, and optional written comments. |
+
+Testing:
+- Unit: feedback payload validation, completed-state visibility rules, and result summarization.
+- Integration: anonymous submission persistence, rate limiting, and restricted result visibility.
+- End-to-end: public feedback form submission and account feedback-tab visibility.
 
 ## Hackathon Terms
 
@@ -586,6 +604,7 @@ Testing:
 - Hackathon credits are separate from prizes and do not depend on winner announcement.
 - Approved participants can claim at most one uploaded value from each hackathon credit offer.
 - Prize-eligible team membership freezes when submitted work is locked for judging.
+- Hackathon feedback submission is anonymous in product data and becomes available only after the hackathon reaches `completed`.
 - Blind judging excludes team identity even when the reviewing actor is also an admin.
 - Pitch judging exposes project and team identity to the pitch panel.
 - Blind assignment scores are normalized to the shared `1..5` scale by dividing weighted criterion totals by total criterion weight.
@@ -612,6 +631,7 @@ Testing:
 | Hackathons | Required | Required | Required for actor-facing admin and public flows |
 | Hackathon roles | Required | Required | Required |
 | Hackathon terms | Required | Required | Required where the flow is actor-facing |
+| Feedback | Required | Required | Required |
 | Applications | Required | Required | Required |
 | Teams | Required | Required | Required |
 | Team join requests | Required | Required | Required |

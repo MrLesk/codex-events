@@ -38,6 +38,13 @@ describe('account hackathon seo helpers', () => {
     })
   })
 
+  test('returns internal metadata for the feedback tab', () => {
+    expect(getAccountHackathonSeoContent('feedback', 'Buildathon')).toEqual({
+      title: 'Feedback | Buildathon | Codex Hackathons',
+      description: 'Review post-hackathon feedback for Buildathon.'
+    })
+  })
+
   test('returns admin-facing metadata for the submissions tab', () => {
     expect(getAccountHackathonSeoContent('submissions', 'Buildathon')).toEqual({
       title: 'Submissions | Buildathon | Codex Hackathons',
