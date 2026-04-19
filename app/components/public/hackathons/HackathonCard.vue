@@ -27,6 +27,20 @@ const hackathonDayLabel = computed(() => formatHackathonDateWithWeekday(earliest
 const locationLabel = computed(() => formatHackathonLocation(props.hackathon))
 const registrationOpensAtTimestamp = computed(() => new Date(props.hackathon.registrationOpensAt).getTime())
 const registrationClosesAtTimestamp = computed(() => new Date(props.hackathon.registrationClosesAt).getTime())
+const hackathonHref = computed(() => {
+  const path = `/hackathons/${props.hackathon.slug}`
+
+  if (props.hackathon.state === 'completed') {
+    return {
+      path,
+      query: {
+        tab: 'prizes'
+      }
+    }
+  }
+
+  return path
+})
 const isRegistrationOpen = computed(() => {
   const now = Date.now()
   return now >= registrationOpensAtTimestamp.value && now <= registrationClosesAtTimestamp.value
@@ -53,7 +67,7 @@ const ctaLabel = computed(() => {
     </div>
 
     <NuxtLink
-      :to="`/hackathons/${hackathon.slug}`"
+      :to="hackathonHref"
       class="group block"
       :class="props.showTimelineRail ? 'lg:ml-8' : ''"
       :data-testid="`public-hackathon-card-${hackathon.slug}`"

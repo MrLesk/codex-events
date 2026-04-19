@@ -4,17 +4,17 @@ export interface PublicHomepageHackathonView {
   activeHackathonCount: number
   effectiveTab: PublicHomepageTab
   showFilters: boolean
-  useSingleActiveLayout: boolean
+  useSingleHackathonLayout: boolean
 }
 
 function resolvePublicHomepageEffectiveTab(
   requestedTab: PublicHomepageTab | null,
   activeHackathonCount: number,
   pastHackathonCount: number,
-  useSingleActiveLayout: boolean
+  singleHackathonTab: PublicHomepageTab | null
 ): PublicHomepageTab {
-  if (useSingleActiveLayout) {
-    return 'active'
+  if (singleHackathonTab) {
+    return singleHackathonTab
   }
 
   if (requestedTab) {
@@ -36,12 +36,15 @@ export function getPublicHomepageHackathonView(
   requestedTab: PublicHomepageTab | null,
   totalHackathonCount: number,
   pastHackathonCount: number,
-  loadedActiveHackathonCount: number
+  loadedHackathonCount: number
 ): PublicHomepageHackathonView {
   const activeHackathonCount = Math.max(totalHackathonCount - pastHackathonCount, 0)
-  const useSingleActiveLayout = pastHackathonCount === 0
-    && activeHackathonCount === 1
-    && loadedActiveHackathonCount === 1
+  const useSingleHackathonLayout = totalHackathonCount === 1 && loadedHackathonCount === 1
+  const singleHackathonTab = useSingleHackathonLayout && pastHackathonCount > 0
+    ? 'past'
+    : useSingleHackathonLayout
+      ? 'active'
+      : null
 
   return {
     activeHackathonCount,
@@ -49,9 +52,9 @@ export function getPublicHomepageHackathonView(
       requestedTab,
       activeHackathonCount,
       pastHackathonCount,
-      useSingleActiveLayout
+      singleHackathonTab
     ),
-    showFilters: !useSingleActiveLayout,
-    useSingleActiveLayout
+    showFilters: !useSingleHackathonLayout,
+    useSingleHackathonLayout
   }
 }

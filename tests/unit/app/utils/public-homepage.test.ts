@@ -8,7 +8,7 @@ describe('public homepage hackathon view helpers', () => {
       activeHackathonCount: 1,
       effectiveTab: 'past',
       showFilters: true,
-      useSingleActiveLayout: false
+      useSingleHackathonLayout: false
     })
   })
 
@@ -17,7 +17,7 @@ describe('public homepage hackathon view helpers', () => {
       activeHackathonCount: 1,
       effectiveTab: 'active',
       showFilters: false,
-      useSingleActiveLayout: true
+      useSingleHackathonLayout: true
     })
   })
 
@@ -26,7 +26,7 @@ describe('public homepage hackathon view helpers', () => {
       activeHackathonCount: 2,
       effectiveTab: 'past',
       showFilters: true,
-      useSingleActiveLayout: false
+      useSingleHackathonLayout: false
     })
   })
 
@@ -35,16 +35,16 @@ describe('public homepage hackathon view helpers', () => {
       activeHackathonCount: 2,
       effectiveTab: 'active',
       showFilters: true,
-      useSingleActiveLayout: false
+      useSingleHackathonLayout: false
     })
   })
 
-  test('defaults to the past tab when only past hackathons exist and no tab is requested', () => {
-    expect(getPublicHomepageHackathonView(null, 1, 1, 0)).toEqual({
+  test('forces the past view and hides filters when there is exactly one past hackathon', () => {
+    expect(getPublicHomepageHackathonView('active', 1, 1, 1)).toEqual({
       activeHackathonCount: 0,
       effectiveTab: 'past',
-      showFilters: true,
-      useSingleActiveLayout: false
+      showFilters: false,
+      useSingleHackathonLayout: true
     })
   })
 
@@ -53,16 +53,16 @@ describe('public homepage hackathon view helpers', () => {
       activeHackathonCount: 0,
       effectiveTab: 'active',
       showFilters: true,
-      useSingleActiveLayout: false
+      useSingleHackathonLayout: false
     })
   })
 
-  test('keeps filters visible until the single active hackathon is present in the loaded results', () => {
-    expect(getPublicHomepageHackathonView('past', 5, 4, 0)).toEqual({
-      activeHackathonCount: 1,
+  test('keeps filters visible until the single hackathon is present in the loaded results', () => {
+    expect(getPublicHomepageHackathonView('past', 1, 1, 0)).toEqual({
+      activeHackathonCount: 0,
       effectiveTab: 'past',
       showFilters: true,
-      useSingleActiveLayout: false
+      useSingleHackathonLayout: false
     })
   })
 })

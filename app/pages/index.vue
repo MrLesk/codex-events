@@ -60,15 +60,13 @@ const pastTotal = ref(
 )
 
 const hasMoreHackathons = computed(() => hackathons.value.length < total.value)
-const loadedActiveHackathonCount = computed(() =>
-  hackathons.value.filter(hackathon => hackathon.state !== 'completed').length
-)
+const loadedHackathonCount = computed(() => hackathons.value.length)
 const homepageHackathonView = computed(() =>
   getPublicHomepageHackathonView(
     requestedTab.value,
     total.value,
     pastTotal.value,
-    loadedActiveHackathonCount.value
+    loadedHackathonCount.value
   )
 )
 const selectedTab = computed<PublicHomepageTab>(() => homepageHackathonView.value.effectiveTab)
@@ -226,14 +224,14 @@ useSeoMeta({
         class="relative space-y-16 pt-6"
       >
         <div
-          v-if="!homepageHackathonView.useSingleActiveLayout"
+          v-if="!homepageHackathonView.useSingleHackathonLayout"
           class="absolute bottom-0 left-0 top-0 hidden w-1 bg-black/16 dark:bg-white/[0.2] lg:block"
         />
         <HackathonCard
           v-for="hackathon in filteredHackathons"
           :key="hackathon.slug"
           :hackathon="hackathon"
-          :show-timeline-rail="!homepageHackathonView.useSingleActiveLayout"
+          :show-timeline-rail="!homepageHackathonView.useSingleHackathonLayout"
         />
       </div>
     </template>
