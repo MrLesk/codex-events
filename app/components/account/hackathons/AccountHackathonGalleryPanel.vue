@@ -3,6 +3,7 @@ import type { HackathonPhotoRecord } from '../../../../shared/hackathon-photos'
 
 import HackathonGalleryPanel from '~/components/hackathons/HackathonGalleryPanel.vue'
 import { normalizeApiError } from '~/utils/admin-workspace'
+import { createHackathonGalleryUploadItems } from '~/utils/hackathon-gallery'
 
 type ApiListResponse<T> = {
   data: T
@@ -23,6 +24,7 @@ const mutationErrorMessage = ref('')
 const pendingDeletePhotoId = ref<string | null>(null)
 const pendingPublicVisibilityPhotoId = ref<string | null>(null)
 const isUploading = ref(false)
+const uploadingItems = ref(createHackathonGalleryUploadItems([]))
 
 const {
   data: photosResponse,
@@ -49,11 +51,12 @@ const emptyStateDescription = computed(() => canManage.value
 )
 
 async function uploadPhotos(files: File[]) {
-  if (!canManage.value || files.length === 0) {
+  if (!canManage.value || files.length === 0 || isUploading.value) {
     return
   }
 
   mutationErrorMessage.value = ''
+  uploadingItems.value = createHackathonGalleryUploadItems(files)
   isUploading.value = true
 
   try {
@@ -80,6 +83,7 @@ async function uploadPhotos(files: File[]) {
     mutationErrorMessage.value = normalizeApiError(error).message
   } finally {
     isUploading.value = false
+    uploadingItems.value = []
   }
 }
 
@@ -158,6 +162,7 @@ async function togglePublicVisibility(payload: { photo: HackathonPhotoRecord, va
     :load-error-message="photosStatus === 'error' ? loadErrorMessage : ''"
     :mutation-error-message="mutationErrorMessage"
     :is-uploading="isUploading"
+    :uploading-items="uploadingItems"
     :pending-delete-photo-id="pendingDeletePhotoId"
     :pending-public-visibility-photo-id="pendingPublicVisibilityPhotoId"
     add-button-label="Add photos"
