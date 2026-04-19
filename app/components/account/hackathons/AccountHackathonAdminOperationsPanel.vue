@@ -1613,6 +1613,7 @@ async function loadPrizeRedemptions() {
     const response = await $fetch<ApiDataResponse<PrizeRedemptionAdminView>>(
       `/api/hackathons/${hackathonId.value}/prize-redemptions`
     )
+    winners.value = response.data.winners
     redemptions.value = response.data.redemptions
     redemptionsStatus.value = 'success'
   } catch (error) {
