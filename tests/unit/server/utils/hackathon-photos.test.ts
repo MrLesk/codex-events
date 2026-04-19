@@ -6,6 +6,7 @@ import { ApiError } from '../../../../server/utils/api-error'
 import {
   assertValidHackathonPhotoPart,
   buildHackathonPhotoImageUrl,
+  buildPublicHackathonPhotoImageUrl,
   createHackathonPhotoPreviewResponse,
   getHackathonPhotoDimensions,
   hackathonPhotoMaxBytes,
@@ -32,10 +33,13 @@ function createEvent(cloudflareEnv: Record<string, unknown>) {
 }
 
 describe('hackathon photo utilities', () => {
-  test('builds canonical protected photo paths', () => {
+  test('builds canonical protected and public photo paths', () => {
     expect(hackathonPhotoObjectKey('hackathon_1', 'photo_1')).toBe('hackathons/hackathon_1/photos/photo_1')
     expect(buildHackathonPhotoImageUrl('hackathon_1', 'photo_1', 'preview', '2026-04-19T10:00:00.000Z')).toBe(
       '/api/hackathons/hackathon_1/photos/photo_1/image?variant=preview&v=2026-04-19T10%3A00%3A00.000Z'
+    )
+    expect(buildPublicHackathonPhotoImageUrl('codex-vienna', 'photo_1', 'original', '2026-04-19T10:00:00.000Z')).toBe(
+      '/api/public/hackathons/codex-vienna/photos/photo_1/image?variant=original&v=2026-04-19T10%3A00%3A00.000Z'
     )
   })
 
@@ -119,6 +123,42 @@ describe('hackathon photo utilities', () => {
     expect(response.headers.get('content-type')).toBe('image/webp')
     expect(response.headers.get('vary')).toBe('Cookie')
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([9, 8, 7]))
+  })
+
+  test('can create a transformed preview response with public caching headers', async () => {
+    const imagesBinding = {
+      info: vi.fn(async () => ({ width: 1600, height: 900 })),
+      input: vi.fn(() => ({
+        transform: vi.fn(() => ({
+          output: vi.fn(async () => ({
+            response: () => new Response(new Uint8Array([6, 5, 4]), {
+              status: 200
+            }),
+            contentType: () => 'image/webp'
+          }))
+        }))
+      }))
+    }
+    const event = createEvent({
+      IMAGES: imagesBinding
+    })
+
+    const response = await createHackathonPhotoPreviewResponse(event, {
+      arrayBuffer: async () => pngSignatureBytes.buffer.slice(
+        pngSignatureBytes.byteOffset,
+        pngSignatureBytes.byteOffset + pngSignatureBytes.byteLength
+      ),
+      httpMetadata: {
+        contentType: 'image/png'
+      }
+    }, {
+      cacheControl: 'public, max-age=31536000, immutable',
+      includeCookieVary: false
+    })
+
+    expect(response.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+    expect(response.headers.get('vary')).toBeNull()
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array([6, 5, 4]))
   })
 
   test('normalizes Node Buffer payloads before writing photo objects to R2', async () => {

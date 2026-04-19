@@ -294,24 +294,27 @@ Testing:
 - Integration: assignment uniqueness, permission enforcement, and published-roster visibility rules.
 - End-to-end: admin role-management flows.
 
-## Hackathon Photos
+## Hackathon Gallery
 
 Purpose:
-- Support a protected hackathon photo gallery in the account-scoped workspace.
+- Support a protected hackathon gallery in the account-scoped workspace and a selected public subset on the public hackathon detail page.
 
 Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| List hackathon photos | `GET /api/hackathons/:hackathonId/photos` | approved participant, judge, staff, hackathon admin, or platform admin | Returns protected gallery photo metadata plus account-scoped image URLs for the requested hackathon. |
-| Upload hackathon photos | `POST /api/hackathons/:hackathonId/photos` | judge, staff, hackathon admin, or platform admin | Accepts multipart upload for one or more JPEG or PNG images, stores the originals in R2, derives image dimensions through the Worker `IMAGES` binding, records gallery rows, and enforces the authenticated upload rate limiter. |
+| List hackathon gallery photos | `GET /api/hackathons/:hackathonId/photos` | approved participant, judge, staff, hackathon admin, or platform admin | Returns protected gallery photo metadata plus account-scoped image URLs for the requested hackathon. |
+| Upload hackathon gallery photos | `POST /api/hackathons/:hackathonId/photos` | judge, staff, hackathon admin, or platform admin | Accepts multipart upload for one or more JPEG or PNG images, stores the originals in R2, derives image dimensions through the Worker `IMAGES` binding, records gallery rows, and enforces the authenticated upload rate limiter. New rows start hidden from the public hackathon page. |
+| Update hackathon gallery photo public visibility | `PATCH /api/hackathons/:hackathonId/photos/:photoId/public-visibility` | judge, staff, hackathon admin, or platform admin | Updates whether the selected gallery photo appears in the public Gallery tab for the hackathon. |
 | Delete hackathon photo | `DELETE /api/hackathons/:hackathonId/photos/:photoId` | judge, staff, hackathon admin, or platform admin | Deletes the stored original object and removes the gallery row. |
 | Get protected hackathon photo bytes | `GET /api/hackathons/:hackathonId/photos/:photoId/image?variant=preview|original` | approved participant, judge, staff, hackathon admin, or platform admin | Returns the protected original image bytes or a transformed preview variant for the requested gallery photo. |
+| List public hackathon gallery photos | `GET /api/public/hackathons/:slug/photos` | public or authenticated user | Returns only the gallery photos marked public for the exact public hackathon slug, with public image URLs and no uploader identity data. |
+| Get public hackathon gallery photo bytes | `GET /api/public/hackathons/:slug/photos/:photoId/image?variant=preview|original` | public or authenticated user | Returns public original or preview bytes only for gallery photos marked public on a public hackathon. |
 
 Testing:
 - Unit: photo-upload validation, protected image binding guards, and workspace-tab visibility helpers.
-- Integration: approved-participant read access plus role-based upload and delete access.
-- End-to-end: account hackathon Photos tab read and management flows.
+- Integration: approved-participant read access plus role-based upload, public-visibility update, delete access, and public-gallery reads.
+- End-to-end: account and public hackathon Gallery tab read and management flows.
 
 ## Hackathon Terms
 

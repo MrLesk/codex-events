@@ -5,8 +5,10 @@ import type {
   PublicHackathon,
   PublicPrize
 } from '~/composables/useHackathonPresentation'
+import type { HackathonPhotoRecord } from '../../../../shared/hackathon-photos'
 import type { PublishedProjectEntry, WinnerEntry } from '~/utils/admin-workspace'
 
+import HackathonGalleryPanel from '~/components/hackathons/HackathonGalleryPanel.vue'
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOverviewPanel.vue'
@@ -82,10 +84,13 @@ const publishedProjectsResponse = hackathon.value.state === 'completed'
   : {
     data: []
   } satisfies PublicApiListResponse<PublishedProjectEntry>
+const galleryResponse = await requestFetch<PublicApiListResponse<HackathonPhotoRecord>>(`/api/public/hackathons/${slug.value}/photos`)
 const prizes = computed(() => prizesResponse.value?.data ?? [])
 const winners = computed(() => winnersResponse.data)
 const publishedProjects = computed(() => publishedProjectsResponse.data)
+const galleryPhotos = computed(() => galleryResponse.data)
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
+const hasPublicGallery = computed(() => galleryPhotos.value.length > 0)
 const isWinnerRevealVisible = computed(() => hackathon.value.state === 'completed')
 const publicPrizeTabLabel = computed(() => isWinnerRevealVisible.value ? 'Winners' : 'Prizes')
 const hasHackathonWorkspaceAccess = ref(false)
@@ -136,7 +141,7 @@ const showPrimaryAction = computed(() => Boolean(primaryAction.value))
 const primaryActionHref = computed(() => primaryAction.value?.to ?? '')
 const isPrimaryActionExternal = computed(() => primaryAction.value?.external ?? false)
 const primaryActionLabel = computed(() => primaryAction.value?.label ?? '')
-const publicSectionTabs = ['overview', 'prizes', 'details'] as const
+const publicSectionTabs = ['overview', 'prizes', 'details', 'gallery'] as const
 type PublicSectionTab = (typeof publicSectionTabs)[number]
 const activePublicSection = computed<PublicSectionTab>(() =>
   resolveTabQueryValue(route.query.tab, publicSectionTabs, 'overview')
@@ -159,6 +164,21 @@ async function selectPublicSection(nextSection: PublicSectionTab) {
 
 watchEffect(() => {
   if (activePublicSection.value !== 'prizes' || hasPublishedPrizes.value || isWinnerRevealVisible.value) {
+    return
+  }
+
+  void navigateTo({
+    path: route.path,
+    query: {
+      ...route.query,
+      tab: 'overview'
+    },
+    hash: route.hash
+  }, { replace: true })
+})
+
+watchEffect(() => {
+  if (activePublicSection.value !== 'gallery' || hasPublicGallery.value) {
     return
   }
 
@@ -293,6 +313,19 @@ useSeoMeta({
             >
               Details
             </button>
+            <button
+              v-if="hasPublicGallery"
+              id="public-tab-gallery"
+              type="button"
+              role="tab"
+              :aria-selected="activePublicSection === 'gallery'"
+              aria-controls="public-tab-panel-gallery"
+              class="border-b-2 pb-3 text-[14px] font-medium transition-colors"
+              :class="activePublicSection === 'gallery' ? 'border-black text-highlighted dark:border-white dark:text-white' : 'border-transparent text-neutral-500 hover:text-highlighted dark:text-[#A3A3A3] dark:hover:text-white'"
+              @click="void selectPublicSection('gallery')"
+            >
+              Gallery
+            </button>
           </nav>
         </div>
       </AppContainer>
@@ -332,7 +365,7 @@ useSeoMeta({
       </section>
 
       <section
-        v-else
+        v-else-if="activePublicSection === 'details'"
         id="public-tab-panel-details"
         role="tabpanel"
         aria-labelledby="public-tab-details"
@@ -345,6 +378,20 @@ useSeoMeta({
         <HackathonTracksPanel :tracks="hackathon.tracks ?? []" />
 
         <HackathonAgendaPanel :agenda-items="hackathon.agendaItems" />
+      </section>
+
+      <section
+        v-else
+        id="public-tab-panel-gallery"
+        role="tabpanel"
+        aria-labelledby="public-tab-gallery"
+      >
+        <HackathonGalleryPanel
+          :description="`Browse selected gallery photos from ${hackathon.name}. Open any image to view it at full size.`"
+          :photos="galleryPhotos"
+          empty-state-title="No gallery photos yet"
+          empty-state-description="Public gallery photos will appear here once the hackathon team selects them."
+        />
       </section>
     </AppContainer>
   </div>

@@ -1,0 +1,44 @@
+import { eq } from 'drizzle-orm'
+
+import { writeAuditLog } from '../../../../../database/audit-log'
+import { hackathonPhotos } from '../../../../../database/schema'
+import { defineApiHandler } from '../../../../../utils/api-handler'
+import { apiData } from '../../../../../utils/api-response'
+import {
+  getHackathonPhotoRecordOrThrow,
+  hackathonPhotoParamsSchema,
+  listHackathonPhotoRecords,
+  requireHackathonPhotoManageAccess,
+  updateHackathonPhotoPublicVisibilityBodySchema
+} from '../../../../../utils/hackathon-photos'
+import { parseValidatedBody, parseValidatedParams } from '../../../../../utils/validation'
+
+export default defineApiHandler(async (event) => {
+  const { hackathonId, photoId } = parseValidatedParams(event, hackathonPhotoParamsSchema)
+  const body = await parseValidatedBody(event, updateHackathonPhotoPublicVisibilityBodySchema)
+  const { actor, database } = await requireHackathonPhotoManageAccess(event, hackathonId)
+  const photo = await getHackathonPhotoRecordOrThrow(database, hackathonId, photoId)
+
+  await database
+    .update(hackathonPhotos)
+    .set({
+      isPubliclyVisible: body.isPubliclyVisible
+    })
+    .where(eq(hackathonPhotos.id, photo.id))
+
+  await writeAuditLog(database, {
+    actorUserId: actor.platformUser.id,
+    entityType: 'hackathon_photo',
+    entityId: photo.id,
+    action: 'hackathon_photo.updated_public_visibility',
+    metadata: {
+      hackathonId,
+      isPubliclyVisible: body.isPubliclyVisible
+    }
+  })
+
+  const photos = await listHackathonPhotoRecords(database, hackathonId)
+  const updatedPhoto = photos.find(entry => entry.id === photo.id)
+
+  return apiData(updatedPhoto!)
+})

@@ -27,7 +27,7 @@ export default defineApiHandler(async (event) => {
     ...restrictedFields,
     ...(canViewPhotos
       ? {
-          hasPhotos: await hasHackathonPhotos(database, hackathon.id)
+          hasGallery: await hasHackathonPhotos(database, hackathon.id)
         }
       : {})
   })

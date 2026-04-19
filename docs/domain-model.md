@@ -109,10 +109,12 @@ Rules:
 - Each photo belongs to exactly one hackathon.
 - Each photo records the uploading user.
 - Each photo stores canonical original-image metadata including file name, content type, width, height, and creation time.
+- Each photo records whether it is visible in the public hackathon gallery.
 - The account-scoped hackathon workspace exposes the photo gallery only to approved participants, judges, staff, hackathon admins, and platform admins.
 - Approved participants have read-only access to the hackathon photo gallery.
-- Judges, staff, hackathon admins, and platform admins can add and remove gallery photos.
-- Photo delivery uses protected account-scoped routes rather than public hackathon detail routes.
+- Judges, staff, hackathon admins, and platform admins can add, remove, and mark gallery photos for the public hackathon page.
+- The public hackathon detail page exposes only the subset of gallery photos marked public for that hackathon.
+- Photo delivery uses protected account-scoped routes for the private gallery and separate public routes for the public gallery subset.
 - Preview images are derived from the stored original object and do not create a separate canonical domain entity.
 
 ### PlatformDocument

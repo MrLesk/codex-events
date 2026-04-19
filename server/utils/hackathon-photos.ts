@@ -35,6 +35,10 @@ export const hackathonPhotoImageQuerySchema = z.object({
   v: z.string().trim().min(1).optional()
 })
 
+export const updateHackathonPhotoPublicVisibilityBodySchema = z.object({
+  isPubliclyVisible: z.coerce.boolean()
+})
+
 interface ImagesInfoResultLike {
   width: number
   height: number
@@ -113,6 +117,20 @@ export function buildHackathonPhotoImageUrl(
   })
 
   return `/api/hackathons/${encodeURIComponent(hackathonId)}/photos/${encodeURIComponent(photoId)}/image?${params.toString()}`
+}
+
+export function buildPublicHackathonPhotoImageUrl(
+  slug: string,
+  photoId: string,
+  variant: HackathonPhotoImageVariant,
+  version: string
+) {
+  const params = new URLSearchParams({
+    variant,
+    v: version
+  })
+
+  return `/api/public/hackathons/${encodeURIComponent(slug)}/photos/${encodeURIComponent(photoId)}/image?${params.toString()}`
 }
 
 export function assertValidHackathonPhotoPart(part: {
@@ -251,25 +269,58 @@ export async function getHackathonPhotoRecordOrThrow(
   return photo
 }
 
+export async function getPublicHackathonPhotoRecordOrThrow(
+  database: AppDatabase,
+  hackathonId: string,
+  photoId: string
+) {
+  const photo = await database.query.hackathonPhotos.findFirst({
+    where: and(
+      eq(hackathonPhotos.hackathonId, hackathonId),
+      eq(hackathonPhotos.id, photoId),
+      eq(hackathonPhotos.isPubliclyVisible, true)
+    )
+  })
+
+  if (!photo) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'hackathon_photo_not_found',
+      message: 'The requested hackathon photo was not found.',
+      details: {
+        hackathonId,
+        photoId
+      }
+    })
+  }
+
+  return photo
+}
+
 function serializeHackathonPhotoRecord(
   photo: typeof hackathonPhotos.$inferSelect,
-  uploader: {
-    id: string
-    displayName: string
-  } | null
+  options: {
+    imagePathBuilder: (photoId: string, variant: HackathonPhotoImageVariant, version: string) => string
+    uploadedByUserId: string | null
+    uploader: {
+      id: string
+      displayName: string
+    } | null
+  }
 ): HackathonPhotoRecord {
   return {
     id: photo.id,
     hackathonId: photo.hackathonId,
     fileName: photo.fileName,
+    isPubliclyVisible: photo.isPubliclyVisible,
     contentType: photo.contentType,
     width: photo.width,
     height: photo.height,
     createdAt: photo.createdAt,
-    uploadedByUserId: photo.uploadedByUserId,
-    uploadedBy: uploader,
-    previewUrl: buildHackathonPhotoImageUrl(photo.hackathonId, photo.id, 'preview', photo.createdAt),
-    originalUrl: buildHackathonPhotoImageUrl(photo.hackathonId, photo.id, 'original', photo.createdAt)
+    uploadedByUserId: options.uploadedByUserId,
+    uploadedBy: options.uploader,
+    previewUrl: options.imagePathBuilder(photo.id, 'preview', photo.createdAt),
+    originalUrl: options.imagePathBuilder(photo.id, 'original', photo.createdAt)
   }
 }
 
@@ -281,7 +332,31 @@ export async function listHackathonPhotoRecords(database: AppDatabase, hackathon
 
   const usersById = await getUsersByIds(database, photos.map(photo => photo.uploadedByUserId))
 
-  return photos.map(photo => serializeHackathonPhotoRecord(photo, usersById.get(photo.uploadedByUserId) ?? null))
+  return photos.map(photo => serializeHackathonPhotoRecord(photo, {
+    imagePathBuilder: (photoId, variant, version) => buildHackathonPhotoImageUrl(hackathonId, photoId, variant, version),
+    uploadedByUserId: photo.uploadedByUserId,
+    uploader: usersById.get(photo.uploadedByUserId) ?? null
+  }))
+}
+
+export async function listPublicHackathonPhotoRecords(
+  database: AppDatabase,
+  hackathonId: string,
+  slug: string
+) {
+  const photos = await database.query.hackathonPhotos.findMany({
+    where: and(
+      eq(hackathonPhotos.hackathonId, hackathonId),
+      eq(hackathonPhotos.isPubliclyVisible, true)
+    ),
+    orderBy: [desc(hackathonPhotos.createdAt)]
+  })
+
+  return photos.map(photo => serializeHackathonPhotoRecord(photo, {
+    imagePathBuilder: (photoId, variant, version) => buildPublicHackathonPhotoImageUrl(slug, photoId, variant, version),
+    uploadedByUserId: null,
+    uploader: null
+  }))
 }
 
 export async function hasHackathonPhotos(database: AppDatabase, hackathonId: string) {
@@ -290,6 +365,20 @@ export async function hasHackathonPhotos(database: AppDatabase, hackathonId: str
       id: true
     },
     where: eq(hackathonPhotos.hackathonId, hackathonId)
+  })
+
+  return Boolean(photo)
+}
+
+export async function hasPublicHackathonPhotos(database: AppDatabase, hackathonId: string) {
+  const photo = await database.query.hackathonPhotos.findFirst({
+    columns: {
+      id: true
+    },
+    where: and(
+      eq(hackathonPhotos.hackathonId, hackathonId),
+      eq(hackathonPhotos.isPubliclyVisible, true)
+    )
   })
 
   return Boolean(photo)
@@ -378,7 +467,11 @@ export async function requireHackathonPhotoManageAccess(event: H3Event, hackatho
 
 export async function createHackathonPhotoPreviewResponse(
   event: H3Event,
-  photoObject: NonNullable<Awaited<ReturnType<typeof getHackathonPhotoObject>>>
+  photoObject: NonNullable<Awaited<ReturnType<typeof getHackathonPhotoObject>>>,
+  options?: {
+    cacheControl?: string
+    includeCookieVary?: boolean
+  }
 ) {
   const bytes = new Uint8Array(await photoObject.arrayBuffer())
   const transformed = await getImagesBinding(event)
@@ -394,15 +487,19 @@ export async function createHackathonPhotoPreviewResponse(
     })
 
   const response = transformed.response()
+  const headers: Record<string, string> = {
+    'cache-control': options?.cacheControl ?? 'private, max-age=31536000, immutable',
+    'content-type': transformed.contentType(),
+    'x-content-type-options': 'nosniff'
+  }
+
+  if (options?.includeCookieVary ?? true) {
+    headers.vary = 'Cookie'
+  }
 
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
-    headers: {
-      'cache-control': 'private, max-age=31536000, immutable',
-      'content-type': transformed.contentType(),
-      'vary': 'Cookie',
-      'x-content-type-options': 'nosniff'
-    }
+    headers
   })
 }

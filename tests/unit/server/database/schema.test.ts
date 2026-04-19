@@ -102,6 +102,7 @@ describe('shared schema foundation', () => {
     expect(trackColumns.description.name).toBe('description')
     expect(trackColumns.displayOrder.name).toBe('display_order')
     expect(photoColumns.fileName.name).toBe('file_name')
+    expect(photoColumns.isPubliclyVisible.name).toBe('is_publicly_visible')
     expect(photoColumns.contentType.name).toBe('content_type')
     expect(photoColumns.uploadedByUserId.name).toBe('uploaded_by_user_id')
     expect(roleAssignmentColumns.isStaff.name).toBe('is_staff')

@@ -9,11 +9,12 @@ export interface HackathonPhotoRecord {
   id: string
   hackathonId: string
   fileName: string | null
+  isPubliclyVisible: boolean
   contentType: string
   width: number
   height: number
   createdAt: string
-  uploadedByUserId: string
+  uploadedByUserId: string | null
   uploadedBy: {
     id: string
     displayName: string

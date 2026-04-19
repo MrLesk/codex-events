@@ -47,6 +47,7 @@ export default defineApiHandler(async (event) => {
     hackathonId,
     uploadedByUserId: actor.platformUser.id,
     fileName: file.fileName,
+    isPubliclyVisible: false,
     contentType: file.contentType,
     width: file.width,
     height: file.height,

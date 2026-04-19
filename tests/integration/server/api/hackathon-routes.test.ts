@@ -19,6 +19,8 @@ import publicHackathonCriteriaGetHandler from '../../../../server/api/public/hac
 import publicHackathonPrizesGetHandler from '../../../../server/api/public/hackathons/[slug]/prizes/index.get'
 import publicHackathonPublishedProjectsGetHandler from '../../../../server/api/public/hackathons/[slug]/published-projects/index.get'
 import publicHackathonPublishedProjectProfileIconGetHandler from '../../../../server/api/public/hackathons/[slug]/published-projects/[userId]/profile-icon.get'
+import publicHackathonPhotosGetHandler from '../../../../server/api/public/hackathons/[slug]/photos/index.get'
+import publicHackathonPhotoImageGetHandler from '../../../../server/api/public/hackathons/[slug]/photos/[photoId]/image.get'
 import publicHackathonWinnersGetHandler from '../../../../server/api/public/hackathons/[slug]/winners/index.get'
 import publicHackathonWinnerProfileIconGetHandler from '../../../../server/api/public/hackathons/[slug]/winners/[userId]/profile-icon.get'
 import publicHackathonBackgroundImageGetHandler from '../../../../server/api/public/hackathons/[slug]/images/background.get'
@@ -32,6 +34,7 @@ import hackathonPhotosGetHandler from '../../../../server/api/hackathons/[hackat
 import hackathonPhotosPostHandler from '../../../../server/api/hackathons/[hackathonId]/photos/index.post'
 import hackathonPhotoDeleteHandler from '../../../../server/api/hackathons/[hackathonId]/photos/[photoId].delete'
 import hackathonPhotoImageGetHandler from '../../../../server/api/hackathons/[hackathonId]/photos/[photoId]/image.get'
+import hackathonPhotoPublicVisibilityPatchHandler from '../../../../server/api/hackathons/[hackathonId]/photos/[photoId]/public-visibility.patch'
 import openSubmissionPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/open-submission.post'
 import startJudgingPreparationPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-judging-preparation.post'
 import startBlindReviewPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-blind-review.post'
@@ -2262,7 +2265,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       data: {
         address: 'Address',
         discordServerUrl: 'https://discord.gg/private-codex',
-        hasPhotos: false
+        hasGallery: false
       }
     })
 
@@ -2343,7 +2346,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         discordServerUrl: null
       }
     })
-    expect(submittedPayload.data).not.toHaveProperty('hasPhotos')
+    expect(submittedPayload.data).not.toHaveProperty('hasGallery')
   })
 
   test('GET /api/hackathons/slug/:slug exposes discordServerUrl to judges', async () => {
@@ -2406,12 +2409,12 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       data: {
         address: 'Address',
         discordServerUrl: 'https://discord.gg/private-codex',
-        hasPhotos: false
+        hasGallery: false
       }
     })
   })
 
-  test('GET /api/hackathons/slug/:slug exposes hasPhotos to approved participants when gallery images exist', async () => {
+  test('GET /api/hackathons/slug/:slug exposes hasGallery to approved participants when gallery images exist', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/hackathons/slug/:slug', handler: hackathonBySlugGetHandler }
@@ -2493,7 +2496,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: {
-        hasPhotos: true
+        hasGallery: true
       }
     })
   })
@@ -2994,6 +2997,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         { method: 'get', path: '/api/hackathons/:hackathonId/photos', handler: hackathonPhotosGetHandler },
         { method: 'post', path: '/api/hackathons/:hackathonId/photos', handler: hackathonPhotosPostHandler },
         { method: 'delete', path: '/api/hackathons/:hackathonId/photos/:photoId', handler: hackathonPhotoDeleteHandler },
+        { method: 'patch', path: '/api/hackathons/:hackathonId/photos/:photoId/public-visibility', handler: hackathonPhotoPublicVisibilityPatchHandler },
         { method: 'get', path: '/api/hackathons/:hackathonId/photos/:photoId/image', handler: hackathonPhotoImageGetHandler }
       ],
       sessionUser: {
@@ -3087,6 +3091,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         expect.objectContaining({
           id: 'photo_1',
           fileName: 'gallery-photo.png',
+          isPubliclyVisible: false,
           previewUrl: '/api/hackathons/hackathon_photos_read/photos/photo_1/image?variant=preview&v=2026-04-01T12%3A00%3A00.000Z',
           originalUrl: '/api/hackathons/hackathon_photos_read/photos/photo_1/image?variant=original&v=2026-04-01T12%3A00%3A00.000Z'
         })
@@ -3131,6 +3136,23 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         code: 'hackathon_photo_manage_required'
       }
     })
+
+    const publicVisibilityResponse = await harness.request('/api/hackathons/hackathon_photos_read/photos/photo_1/public-visibility', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        isPubliclyVisible: true
+      }),
+      headers: {
+        'content-type': 'application/json'
+      }
+    })
+
+    expect(publicVisibilityResponse.status).toBe(403)
+    expect(await publicVisibilityResponse.json()).toMatchObject({
+      error: {
+        code: 'hackathon_photo_manage_required'
+      }
+    })
   })
 
   test('hackathon photo routes let judges upload and delete gallery photos', async () => {
@@ -3139,7 +3161,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       routes: [
         { method: 'get', path: '/api/hackathons/:hackathonId/photos', handler: hackathonPhotosGetHandler },
         { method: 'post', path: '/api/hackathons/:hackathonId/photos', handler: hackathonPhotosPostHandler },
-        { method: 'delete', path: '/api/hackathons/:hackathonId/photos/:photoId', handler: hackathonPhotoDeleteHandler }
+        { method: 'delete', path: '/api/hackathons/:hackathonId/photos/:photoId', handler: hackathonPhotoDeleteHandler },
+        { method: 'patch', path: '/api/hackathons/:hackathonId/photos/:photoId/public-visibility', handler: hackathonPhotoPublicVisibilityPatchHandler }
       ],
       sessionUser: {
         sub: 'auth0|judge_user',
@@ -3216,6 +3239,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
           contentType: 'image/png',
           width: 1600,
           height: 900,
+          isPubliclyVisible: false,
           uploadedByUserId: 'judge_user'
         })
       ]
@@ -3226,6 +3250,27 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
 
     expect(storedPhotoObject).not.toBeNull()
     expect(new Uint8Array(await storedPhotoObject!.arrayBuffer())).toEqual(pngSignatureBytes)
+
+    const publicVisibilityResponse = await harness.request(
+      `/api/hackathons/hackathon_photos_judge/photos/${createdPhotoId}/public-visibility`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          isPubliclyVisible: true
+        }),
+        headers: {
+          'content-type': 'application/json'
+        }
+      }
+    )
+
+    expect(publicVisibilityResponse.status).toBe(200)
+    expect(await publicVisibilityResponse.json()).toMatchObject({
+      data: {
+        id: createdPhotoId,
+        isPubliclyVisible: true
+      }
+    })
 
     const deleteResponse = await harness.request(
       `/api/hackathons/hackathon_photos_judge/photos/${createdPhotoId}`,
@@ -3250,6 +3295,11 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         actorUserId: 'judge_user',
         entityType: 'hackathon_photo',
         action: 'hackathon_photo.created'
+      }),
+      expect.objectContaining({
+        actorUserId: 'judge_user',
+        entityType: 'hackathon_photo',
+        action: 'hackathon_photo.updated_public_visibility'
       }),
       expect.objectContaining({
         actorUserId: 'judge_user',
@@ -3336,10 +3386,130 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       data: [
         expect.objectContaining({
           fileName: 'staff-upload.png',
+          isPubliclyVisible: false,
           uploadedByUserId: 'staff_user'
         })
       ]
     })
+  })
+
+  test('public hackathon photo routes expose only publicly visible gallery images', async () => {
+    const hackathonImagesBucket = new InMemoryR2Bucket()
+    const previewBytes = new Uint8Array([7, 8, 9, 10])
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/public/hackathons/:slug/photos', handler: publicHackathonPhotosGetHandler },
+        { method: 'get', path: '/api/public/hackathons/:slug/photos/:photoId/image', handler: publicHackathonPhotoImageGetHandler }
+      ],
+      cloudflareEnv: {
+        [hackathonImagesBindingName]: hackathonImagesBucket,
+        IMAGES: createImagesBinding({
+          previewBytes
+        })
+      },
+      runtimeConfig: {
+        hackathonImages: {
+          binding: hackathonImagesBindingName
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'creator_1',
+      auth0Subject: 'auth0|creator_1',
+      email: 'creator@example.com',
+      displayName: 'Creator'
+    })
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_public_gallery',
+      name: 'Public Gallery Hackathon',
+      slug: 'public-gallery-hackathon',
+      description: 'Hackathon with a public gallery',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+
+    await hackathonImagesBucket.put('hackathons/hackathon_public_gallery/photos/photo_public', pngSignatureBytes, {
+      httpMetadata: {
+        contentType: 'image/png'
+      }
+    })
+    await hackathonImagesBucket.put('hackathons/hackathon_public_gallery/photos/photo_private', pngSignatureBytes, {
+      httpMetadata: {
+        contentType: 'image/png'
+      }
+    })
+
+    await harness.database.insert(hackathonPhotos).values([
+      {
+        id: 'photo_public',
+        hackathonId: 'hackathon_public_gallery',
+        uploadedByUserId: 'creator_1',
+        fileName: 'public-gallery-photo.png',
+        isPubliclyVisible: true,
+        contentType: 'image/png',
+        width: 1600,
+        height: 900,
+        createdAt: '2026-04-01T12:00:00.000Z'
+      },
+      {
+        id: 'photo_private',
+        hackathonId: 'hackathon_public_gallery',
+        uploadedByUserId: 'creator_1',
+        fileName: 'private-gallery-photo.png',
+        isPubliclyVisible: false,
+        contentType: 'image/png',
+        width: 1600,
+        height: 900,
+        createdAt: '2026-04-01T12:05:00.000Z'
+      }
+    ])
+
+    const listResponse = await harness.request('/api/public/hackathons/public-gallery-hackathon/photos')
+
+    expect(listResponse.status).toBe(200)
+    expect(await listResponse.json()).toMatchObject({
+      data: [
+        {
+          id: 'photo_public',
+          hackathonId: 'hackathon_public_gallery',
+          fileName: 'public-gallery-photo.png',
+          isPubliclyVisible: true,
+          uploadedByUserId: null,
+          uploadedBy: null,
+          previewUrl: '/api/public/hackathons/public-gallery-hackathon/photos/photo_public/image?variant=preview&v=2026-04-01T12%3A00%3A00.000Z',
+          originalUrl: '/api/public/hackathons/public-gallery-hackathon/photos/photo_public/image?variant=original&v=2026-04-01T12%3A00%3A00.000Z'
+        }
+      ]
+    })
+
+    const previewResponse = await harness.request('/api/public/hackathons/public-gallery-hackathon/photos/photo_public/image?variant=preview')
+
+    expect(previewResponse.status).toBe(200)
+    expect(previewResponse.headers.get('content-type')).toBe('image/webp')
+    expect(previewResponse.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+    expect(previewResponse.headers.get('vary')).toBeNull()
+    expect(new Uint8Array(await previewResponse.arrayBuffer())).toEqual(previewBytes)
+
+    const originalResponse = await harness.request('/api/public/hackathons/public-gallery-hackathon/photos/photo_public/image?variant=original')
+
+    expect(originalResponse.status).toBe(200)
+    expect(originalResponse.headers.get('content-type')).toBe('image/png')
+    expect(originalResponse.headers.get('cache-control')).toBe('public, max-age=31536000, immutable')
+    expect(new Uint8Array(await originalResponse.arrayBuffer())).toEqual(pngSignatureBytes)
+
+    const hiddenPhotoResponse = await harness.request('/api/public/hackathons/public-gallery-hackathon/photos/photo_private/image?variant=original')
+
+    expect(hiddenPhotoResponse.status).toBe(404)
   })
 
   test('POST /api/hackathons/:hackathonId/images/background rejects invalid image files', async () => {

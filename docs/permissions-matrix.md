@@ -189,6 +189,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 | --- | --- | --- | --- | --- | --- |
 | View hackathon photo gallery in the account workspace | Yes | Yes | Yes | Yes | Yes |
 | Upload hackathon gallery photos | No | Yes | Yes | Yes | Yes |
+| Update hackathon gallery public visibility | No | Yes | Yes | Yes | Yes |
 | Delete hackathon gallery photos | No | Yes | Yes | Yes | Yes |
 
 ## Visibility Rules
@@ -199,6 +200,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
 - Approved participants can view hackathon photo galleries for hackathons where they are approved.
 - Judges, staff, hackathon admins, and platform admins can manage hackathon photo galleries for hackathons where they hold that access.
+- Public hackathon detail pages expose a Gallery tab only when the hackathon has one or more gallery photos marked public.
 - Participants can see shortlist status only for their own team, and only from `pitch` onward when that team advanced.
 - Winner-project visibility and opt-in published-project visibility are delayed until `completed`; before completion, public and account detail pages keep the `Prizes` surface and participant overview or workspace views do not expose completed project showcase snippets.
 - Team members can view their own team membership and submission data.

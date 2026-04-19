@@ -221,6 +221,7 @@ export const hackathonPhotos = sqliteTable(
       .notNull()
       .references(() => users.id),
     fileName: text('file_name'),
+    isPubliclyVisible: integer('is_publicly_visible', { mode: 'boolean' }).notNull().default(false),
     contentType: text('content_type').notNull(),
     width: integer('width').notNull(),
     height: integer('height').notNull(),

@@ -30,10 +30,10 @@ export function getAccountHackathonSeoContent(
         title: `Details | ${hackathonName} | Codex Hackathons`,
         description: `See the schedule, location, and judging details for ${hackathonName}.`
       }
-    case 'photos':
+    case 'gallery':
       return {
-        title: `Photos | ${hackathonName} | Codex Hackathons`,
-        description: `Browse hackathon photos from ${hackathonName}.`
+        title: `Gallery | ${hackathonName} | Codex Hackathons`,
+        description: `Browse hackathon gallery photos from ${hackathonName}.`
       }
     case 'judges':
       return {
