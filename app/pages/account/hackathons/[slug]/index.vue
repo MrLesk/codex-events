@@ -25,6 +25,7 @@ import AccountHackathonParticipantTeamPanel from '~/components/account/hackathon
 import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
 import AccountHackathonCreditsPanel from '~/components/account/hackathons/AccountHackathonCreditsPanel.vue'
 import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
+import AccountHackathonPhotosPanel from '~/components/account/hackathons/AccountHackathonPhotosPanel.vue'
 import AccountHackathonParticipantVisibilityPanel from '~/components/account/hackathons/AccountHackathonParticipantVisibilityPanel.vue'
 import AccountHackathonRoleRosterPanel from '~/components/account/hackathons/AccountHackathonRoleRosterPanel.vue'
 import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
@@ -111,6 +112,7 @@ interface AccountHackathonsResponse {
 
 type AccountWorkspaceHackathon = Omit<PublicHackathon, 'tracks'> & {
   id: string
+  hasPhotos?: boolean
   discordServerUrl?: string | null
   tracks?: Array<{
     id: string
@@ -285,6 +287,7 @@ const hasParticipantContext = computed(() =>
 const tabAccess = computed(() =>
   getAccountHackathonTabAccess({
     hasApprovedParticipantAccess: applicationStatus.value === 'approved',
+    hasPhotos: Boolean(hackathon.value.hasPhotos),
     hasPublishedPrizes: hasPublishedPrizes.value,
     hackathonState: hackathon.value.state,
     canJudge: canJudge.value,
@@ -972,6 +975,19 @@ useSeoMeta({
           :show-terms-management="false"
           :show-criteria-configuration="false"
           :show-prize-configuration="false"
+        />
+      </section>
+
+      <section
+        v-else-if="activeSection === 'photos'"
+        id="account-tab-panel-photos"
+        role="tabpanel"
+        aria-labelledby="account-tab-photos"
+        class="space-y-8"
+      >
+        <AccountHackathonPhotosPanel
+          :hackathon-id="workspaceHackathonId"
+          :can-manage="canAdmin || canJudge || canViewParticipantsAndTeams"
         />
       </section>
 

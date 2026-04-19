@@ -14,6 +14,7 @@ This document defines the canonical technology stack for the Codex hackathon pla
 - `Cloudflare Workers` for application hosting and server-side execution
 - `Cloudflare D1` for the primary relational database
 - `Cloudflare R2` for file storage, including account profile icons and hackathon background/banner images
+- `Cloudflare Images` bindings for protected hackathon photo preview transformations
 - `Cloudflare Queues` for asynchronous jobs
 - `Cloudflare Cron Triggers` for scheduled platform tasks
 - `Resend` for outbound transactional email delivery

@@ -112,6 +112,11 @@ Hackathon background and banner uploads use a dedicated Cloudflare R2 binding at
 - `NUXT_HACKATHON_IMAGES_BINDING` should match the R2 binding used for hackathon background and banner image objects. The canonical default is `HACKATHON_IMAGES`.
 - local development uses the repository `wrangler.jsonc` R2 bucket binding for hackathon image object storage.
 
+Protected hackathon photo previews use a Cloudflare Images binding at runtime:
+
+- `wrangler.jsonc` binds the Worker `IMAGES` binding for protected gallery preview transformations.
+- local development uses the same `IMAGES` binding through Wrangler's local platform proxy.
+
 Application decision emails and optional Luma guest-status sync both use Cloudflare Queues at runtime:
 
 - `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING` and `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for participant decision emails.

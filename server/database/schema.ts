@@ -210,6 +210,30 @@ export const hackathonTracks = sqliteTable(
   ]
 )
 
+export const hackathonPhotos = sqliteTable(
+  'hackathon_photos',
+  {
+    id: idColumn(),
+    hackathonId: text('hackathon_id')
+      .notNull()
+      .references(() => hackathons.id, { onDelete: 'cascade' }),
+    uploadedByUserId: text('uploaded_by_user_id')
+      .notNull()
+      .references(() => users.id),
+    fileName: text('file_name'),
+    contentType: text('content_type').notNull(),
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    createdAt: createdAtColumn()
+  },
+  table => [
+    index('hackathon_photos_hackathon_created_idx').on(table.hackathonId, table.createdAt),
+    index('hackathon_photos_uploaded_by_idx').on(table.uploadedByUserId),
+    check('hackathon_photos_width_check', sql`${table.width} >= 1`),
+    check('hackathon_photos_height_check', sql`${table.height} >= 1`)
+  ]
+)
+
 export const hackathonRoleAssignments = sqliteTable(
   'hackathon_role_assignments',
   {

@@ -21,6 +21,7 @@
         "markdown-it": "^14.1.1",
         "md-editor-v3": "^6.4.1",
         "nuxt": "4.4.2",
+        "photoswipe": "^5.4.4",
         "reka-ui": "^2.9.2",
         "resend": "6.9.4",
         "shadcn-nuxt": "2.4.3",
@@ -1671,6 +1672,8 @@
     "peberminta": ["peberminta@0.9.0", "", {}, "sha512-XIxfHpEuSJbITd1H3EeQwpcZbTLHc+VVr8ANI9t5sit565tsI4/xK3KWTUFE2e6QiangUkh3B0jihzmGnNrRsQ=="],
 
     "perfect-debounce": ["perfect-debounce@2.1.0", "", {}, "sha512-LjgdTytVFXeUgtHZr9WYViYSM/g8MkcTPYDlPa3cDqMirHjKiSZPYd6DoL7pK8AJQr+uWkQvCjHNdiMqsrJs+g=="],
+
+    "photoswipe": ["photoswipe@5.4.4", "", {}, "sha512-WNFHoKrkZNnvFFhbHL93WDkW3ifwVOXSW3w1UuZZelSmgXpIGiZSNlZJq37rR8YejqME2rHs9EhH9ZvlvFH2NA=="],
 
     "picocolors": ["picocolors@1.1.1", "", {}, "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="],
 

@@ -12,6 +12,7 @@ describe('getAccountHackathonTabAccess', () => {
   test('hides the prizes tab and admin prize configuration for non-admins when no prizes are published', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: false,
+      hasPhotos: false,
       hasPublishedPrizes: false,
       canJudge: false,
       canManage: false,
@@ -26,6 +27,7 @@ describe('getAccountHackathonTabAccess', () => {
   test('shows the prizes tab to participants when published prizes exist, without admin prize configuration', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: true,
+      hasPhotos: false,
       hasPublishedPrizes: true,
       canJudge: false,
       canManage: false,
@@ -37,15 +39,31 @@ describe('getAccountHackathonTabAccess', () => {
     })
   })
 
+  test('shows the photos tab to approved participants once gallery photos exist', () => {
+    expect(getAccountHackathonTabAccess({
+      hasApprovedParticipantAccess: true,
+      hasPhotos: true,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: false
+    })).toEqual({
+      availableTabs: ['overview', 'credits', 'details', 'photos', 'judges', 'staff', 'workspace', 'teams'],
+      showPrizeConfiguration: false,
+      showAgendaConfigurationInDetails: false
+    })
+  })
+
   test('keeps the prizes tab available to admins even before prizes are published', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: false,
+      hasPhotos: false,
       hasPublishedPrizes: false,
       canJudge: false,
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'judges', 'staff', 'participants', 'teams', 'submissions', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'photos', 'judges', 'staff', 'participants', 'teams', 'submissions', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
@@ -54,12 +72,13 @@ describe('getAccountHackathonTabAccess', () => {
   test('shows participant and team visibility tabs to staff without admin operations', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: true,
+      hasPhotos: false,
       hasPublishedPrizes: false,
       canJudge: false,
       canManage: false,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'details', 'judges', 'staff', 'workspace', 'teams', 'participants'],
+      availableTabs: ['overview', 'credits', 'details', 'photos', 'judges', 'staff', 'workspace', 'teams', 'participants'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
@@ -69,6 +88,7 @@ describe('getAccountHackathonTabAccess', () => {
     const scenarios = [
       {
         hasApprovedParticipantAccess: true,
+        hasPhotos: false,
         hasPublishedPrizes: false,
         canJudge: false,
         canManage: false,
@@ -76,6 +96,7 @@ describe('getAccountHackathonTabAccess', () => {
       },
       {
         hasApprovedParticipantAccess: false,
+        hasPhotos: false,
         hasPublishedPrizes: false,
         canJudge: false,
         canManage: true,
@@ -83,6 +104,7 @@ describe('getAccountHackathonTabAccess', () => {
       },
       {
         hasApprovedParticipantAccess: false,
+        hasPhotos: false,
         hasPublishedPrizes: false,
         canJudge: false,
         canManage: false,
@@ -90,6 +112,7 @@ describe('getAccountHackathonTabAccess', () => {
       },
       {
         hasApprovedParticipantAccess: false,
+        hasPhotos: false,
         hasPublishedPrizes: false,
         canJudge: true,
         canManage: false,
@@ -110,12 +133,13 @@ describe('getAccountHackathonTabAccess', () => {
   test('preserves judge and admin workspace sections alongside the admin prize configuration surface', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: true,
+      hasPhotos: false,
       hasPublishedPrizes: true,
       canJudge: true,
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'photos', 'judges', 'staff', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
     })
@@ -160,12 +184,13 @@ describe('getAccountHackathonTabAccess', () => {
   test('keeps participant workspace and teams tabs hidden when the actor has no participant access record', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: false,
+      hasPhotos: false,
       hasPublishedPrizes: true,
       canJudge: true,
       canManage: false,
       canViewParticipantsAndTeams: false
     })).toEqual({
-      availableTabs: ['overview', 'prizes', 'details', 'judges', 'staff', 'judging'],
+      availableTabs: ['overview', 'prizes', 'details', 'photos', 'judges', 'staff', 'judging'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
@@ -174,6 +199,7 @@ describe('getAccountHackathonTabAccess', () => {
   test('keeps participant workspace hidden when the actor is not approved even if a participant access record exists', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: false,
+      hasPhotos: false,
       hasPublishedPrizes: true,
       canJudge: false,
       canManage: false,
@@ -188,12 +214,13 @@ describe('getAccountHackathonTabAccess', () => {
   test('keeps the participant workspace hidden when the actor is not approved', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: false,
+      hasPhotos: false,
       hasPublishedPrizes: false,
       canJudge: false,
       canManage: false,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'details', 'judges', 'staff', 'participants', 'teams'],
+      availableTabs: ['overview', 'details', 'photos', 'judges', 'staff', 'participants', 'teams'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: false
     })
@@ -214,13 +241,14 @@ describe('getAccountHackathonTabAccess', () => {
   test('hides admin prize configuration once winners are announced while keeping the tab available', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: true,
+      hasPhotos: false,
       hasPublishedPrizes: true,
       hackathonState: 'winners_announced',
       canJudge: true,
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'credits', 'prizes', 'details', 'judges', 'staff', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'prizes', 'details', 'photos', 'judges', 'staff', 'workspace', 'teams', 'participants', 'submissions', 'judging', 'operations', 'settings'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: true
     })
@@ -229,6 +257,7 @@ describe('getAccountHackathonTabAccess', () => {
   test('keeps the winners tab available after completion even when no prize definitions are published', () => {
     expect(getAccountHackathonTabAccess({
       hasApprovedParticipantAccess: true,
+      hasPhotos: false,
       hasPublishedPrizes: false,
       hackathonState: 'completed',
       canJudge: false,

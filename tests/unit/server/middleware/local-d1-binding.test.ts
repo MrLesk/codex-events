@@ -112,6 +112,17 @@ describe('local D1 binding middleware', () => {
       put: vi.fn(),
       delete: vi.fn()
     }
+    const imagesBinding = {
+      info: vi.fn(async () => ({ width: 1600, height: 900 })),
+      input: vi.fn(() => ({
+        transform: vi.fn(() => ({
+          output: vi.fn(async () => ({
+            response: () => new Response(new Uint8Array([1, 2, 3])),
+            contentType: () => 'image/webp'
+          }))
+        }))
+      }))
+    }
     const applicationReviewEmailQueue = {
       send: vi.fn()
     }
@@ -133,6 +144,7 @@ describe('local D1 binding middleware', () => {
         DB: d1Database,
         PROFILE_ICONS: profileIconsBucket,
         HACKATHON_IMAGES: hackathonImagesBucket,
+        IMAGES: imagesBinding,
         APPLICATION_REVIEW_EMAIL_QUEUE: applicationReviewEmailQueue,
         HACKATHON_OUTCOME_EMAIL_QUEUE: hackathonOutcomeEmailQueue,
         APPLICATION_LUMA_SYNC_QUEUE: applicationLumaSyncQueue,
@@ -150,6 +162,7 @@ describe('local D1 binding middleware', () => {
     expect(event.context.cloudflare?.env.DB).toBe(d1Database)
     expect(event.context.cloudflare?.env.PROFILE_ICONS).toBe(profileIconsBucket)
     expect(event.context.cloudflare?.env.HACKATHON_IMAGES).toBe(hackathonImagesBucket)
+    expect(event.context.cloudflare?.env.IMAGES).toBe(imagesBinding)
     expect(event.context.cloudflare?.env.APPLICATION_REVIEW_EMAIL_QUEUE).toBe(applicationReviewEmailQueue)
     expect(event.context.cloudflare?.env.HACKATHON_OUTCOME_EMAIL_QUEUE).toBe(hackathonOutcomeEmailQueue)
     expect(event.context.cloudflare?.env.APPLICATION_LUMA_SYNC_QUEUE).toBe(applicationLumaSyncQueue)

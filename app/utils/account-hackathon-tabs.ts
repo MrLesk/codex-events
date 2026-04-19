@@ -5,6 +5,7 @@ export const accountHackathonWorkspaceTabs = [
   'credits',
   'prizes',
   'details',
+  'photos',
   'judges',
   'staff',
   'workspace',
@@ -20,6 +21,7 @@ export type AccountHackathonWorkspaceTab = (typeof accountHackathonWorkspaceTabs
 
 export interface AccountHackathonTabAccessOptions {
   hasApprovedParticipantAccess: boolean
+  hasPhotos: boolean
   hasPublishedPrizes: boolean
   hackathonState?: PublicHackathonState | null
   canJudge: boolean
@@ -44,6 +46,7 @@ const defaultAccountHackathonTabLabels: Record<AccountHackathonWorkspaceTab, str
   workspace: 'Workspace',
   prizes: 'Prizes',
   details: 'Details',
+  photos: 'Photos',
   judges: 'Judges',
   staff: 'Staff',
   judging: 'Judging',
@@ -116,6 +119,7 @@ export function getAccountHackathonTabAccess(
 ): AccountHackathonTabAccess {
   const {
     hasApprovedParticipantAccess,
+    hasPhotos,
     hasPublishedPrizes,
     hackathonState,
     canJudge,
@@ -132,7 +136,13 @@ export function getAccountHackathonTabAccess(
     availableTabs.push('prizes')
   }
 
-  availableTabs.push('details', 'judges', 'staff')
+  availableTabs.push('details')
+
+  if (canJudge || canManage || canViewParticipantsAndTeams || (hasApprovedParticipantAccess && hasPhotos)) {
+    availableTabs.push('photos')
+  }
+
+  availableTabs.push('judges', 'staff')
 
   if (hasApprovedParticipantAccess) {
     availableTabs.push('workspace', 'teams')

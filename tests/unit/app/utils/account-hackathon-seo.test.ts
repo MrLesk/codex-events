@@ -31,6 +31,13 @@ describe('account hackathon seo helpers', () => {
     })
   })
 
+  test('returns gallery metadata for the photos tab', () => {
+    expect(getAccountHackathonSeoContent('photos', 'Buildathon')).toEqual({
+      title: 'Photos | Buildathon | Codex Hackathons',
+      description: 'Browse hackathon photos from Buildathon.'
+    })
+  })
+
   test('returns admin-facing metadata for the submissions tab', () => {
     expect(getAccountHackathonSeoContent('submissions', 'Buildathon')).toEqual({
       title: 'Submissions | Buildathon | Codex Hackathons',

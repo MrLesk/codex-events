@@ -183,12 +183,22 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Create or update credit offers | No | Yes | Yes |
 | Upload additional credit inventory to an offer | No | Yes | Yes |
 
+## Hackathon Photo Gallery
+
+| Action | Approved User | Staff | Judge | Hackathon Admin | Platform Admin |
+| --- | --- | --- | --- | --- | --- |
+| View hackathon photo gallery in the account workspace | Yes | Yes | Yes | Yes | Yes |
+| Upload hackathon gallery photos | No | Yes | Yes | Yes | Yes |
+| Delete hackathon gallery photos | No | Yes | Yes | Yes | Yes |
+
 ## Visibility Rules
 
 - Users can view only their own application records.
 - Staff can view hackathon-wide participant and team data.
 - Workspace users can view the published judge and staff rosters for hackathons they can access in `/account/hackathons/:slug`.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
+- Approved participants can view hackathon photo galleries for hackathons where they are approved.
+- Judges, staff, hackathon admins, and platform admins can manage hackathon photo galleries for hackathons where they hold that access.
 - Participants can see shortlist status only for their own team, and only from `pitch` onward when that team advanced.
 - Winner-project visibility and opt-in published-project visibility are delayed until `completed`; before completion, public and account detail pages keep the `Prizes` surface and participant overview or workspace views do not expose completed project showcase snippets.
 - Team members can view their own team membership and submission data.

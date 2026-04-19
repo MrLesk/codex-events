@@ -27,6 +27,15 @@ interface RateLimitBindingLike {
   }>
 }
 
+interface ImagesBindingLike {
+  info: (stream: ReadableStream<Uint8Array>, options?: unknown) => Promise<unknown>
+  input: (stream: ReadableStream<Uint8Array>, options?: unknown) => {
+    transform: (options: unknown) => {
+      output: (options: unknown) => Promise<unknown>
+    }
+  }
+}
+
 function isR2BucketLike(value: unknown): value is R2BucketLike {
   if (!value || typeof value !== 'object') {
     return false
@@ -56,6 +65,15 @@ function isRateLimitBindingLike(value: unknown): value is RateLimitBindingLike {
   return typeof candidate.limit === 'function'
 }
 
+function isImagesBindingLike(value: unknown): value is ImagesBindingLike {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Partial<ImagesBindingLike>
+  return typeof candidate.info === 'function' && typeof candidate.input === 'function'
+}
+
 function shouldUseLocalPlatformProxy() {
   return import.meta.dev
     || process.env.NODE_ENV === 'test'
@@ -67,6 +85,7 @@ export default defineEventHandler(async (event) => {
   const databaseBindingName = runtimeConfig.database?.binding ?? 'DB'
   const profileIconsBindingName = runtimeConfig.profileIcons?.binding ?? 'PROFILE_ICONS'
   const hackathonImagesBindingName = runtimeConfig.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
+  const imagesBindingName = 'IMAGES'
   const applicationReviewEmailQueueBindingName = runtimeConfig.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
   const hackathonOutcomeEmailQueueBindingName = runtimeConfig.hackathonOutcomeEmails?.queueBinding ?? 'HACKATHON_OUTCOME_EMAIL_QUEUE'
   const applicationLumaSyncQueueBindingName = runtimeConfig.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
@@ -98,6 +117,8 @@ export default defineEventHandler(async (event) => {
   const proxyHackathonImagesBucket = proxyEnv[hackathonImagesBindingName]
     ?? (hackathonImagesBindingName === 'HACKATHON_IMAGES' ? undefined : proxyEnv.HACKATHON_IMAGES)
   const hackathonImagesBucket = existingHackathonImagesBucket ?? proxyHackathonImagesBucket
+  const existingImagesBinding = cloudflareEnv?.[imagesBindingName]
+  const imagesBinding = existingImagesBinding ?? proxyEnv[imagesBindingName]
   const existingApplicationReviewEmailQueue = cloudflareEnv?.[applicationReviewEmailQueueBindingName]
   const proxyApplicationReviewEmailQueue = proxyEnv[applicationReviewEmailQueueBindingName]
     ?? (applicationReviewEmailQueueBindingName === 'APPLICATION_REVIEW_EMAIL_QUEUE'
@@ -143,6 +164,10 @@ export default defineEventHandler(async (event) => {
 
   if (!event.context.cloudflare.env[hackathonImagesBindingName] && isR2BucketLike(hackathonImagesBucket)) {
     event.context.cloudflare.env[hackathonImagesBindingName] = hackathonImagesBucket as never
+  }
+
+  if (!event.context.cloudflare.env[imagesBindingName] && isImagesBindingLike(imagesBinding)) {
+    event.context.cloudflare.env[imagesBindingName] = imagesBinding as never
   }
 
   if (!event.context.cloudflare.env[applicationReviewEmailQueueBindingName] && isQueueProducerLike(applicationReviewEmailQueue)) {

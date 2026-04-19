@@ -100,6 +100,21 @@ Rules:
 - Tracks do not change judging assignment, scoring criteria, or blind-review behavior in this version.
 - A track cannot be deleted once one or more submissions reference it.
 
+### HackathonPhoto
+
+A protected gallery image belonging to one hackathon.
+
+Rules:
+
+- Each photo belongs to exactly one hackathon.
+- Each photo records the uploading user.
+- Each photo stores canonical original-image metadata including file name, content type, width, height, and creation time.
+- The account-scoped hackathon workspace exposes the photo gallery only to approved participants, judges, staff, hackathon admins, and platform admins.
+- Approved participants have read-only access to the hackathon photo gallery.
+- Judges, staff, hackathon admins, and platform admins can add and remove gallery photos.
+- Photo delivery uses protected account-scoped routes rather than public hackathon detail routes.
+- Preview images are derived from the stored original object and do not create a separate canonical domain entity.
+
 ### PlatformDocument
 
 A platform-wide document used during platform account registration.
@@ -289,9 +304,9 @@ Rules:
 - A submission must include a valid demo URL only when its hackathon requires demo URLs.
 - When blind review begins, or when the live pitch stage begins in a pitch-only hackathon, submitted submissions are locked.
 - Once locked, submissions can no longer be edited.
+- A submission can be marked with workflow outcomes such as withdrawn or disqualified.
 - Public project publishing is submission-scoped, not team-scoped.
 - Public project publishing is available only after `completed`, only for locked non-winning submissions, and only when a team admin opts in.
-- A submission can be marked with workflow outcomes such as withdrawn or disqualified.
 - A team with no submission is not eligible for judging, but this is represented by the absence of a submission rather than by a submission outcome.
 - A draft submission that is never submitted is treated as no submission for judging and dashboard purposes.
 - Blind judging includes the selected track because track membership is part of the submission itself and does not reveal team identity.

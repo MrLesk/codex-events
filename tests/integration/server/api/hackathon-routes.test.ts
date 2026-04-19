@@ -28,6 +28,10 @@ import hackathonBackgroundImageDeleteHandler from '../../../../server/api/hackat
 import hackathonBackgroundImagePostHandler from '../../../../server/api/hackathons/[hackathonId]/images/background.post'
 import hackathonBannerImageDeleteHandler from '../../../../server/api/hackathons/[hackathonId]/images/banner.delete'
 import hackathonBannerImagePostHandler from '../../../../server/api/hackathons/[hackathonId]/images/banner.post'
+import hackathonPhotosGetHandler from '../../../../server/api/hackathons/[hackathonId]/photos/index.get'
+import hackathonPhotosPostHandler from '../../../../server/api/hackathons/[hackathonId]/photos/index.post'
+import hackathonPhotoDeleteHandler from '../../../../server/api/hackathons/[hackathonId]/photos/[photoId].delete'
+import hackathonPhotoImageGetHandler from '../../../../server/api/hackathons/[hackathonId]/photos/[photoId]/image.get'
 import openSubmissionPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/open-submission.post'
 import startJudgingPreparationPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-judging-preparation.post'
 import startBlindReviewPostHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-blind-review.post'
@@ -37,6 +41,7 @@ import startPitchReviewPostHandler from '../../../../server/api/hackathons/[hack
 import {
   auditLogs,
   evaluationCriteria,
+  hackathonPhotos,
   hackathonRoleAssignments,
   hackathonTermsDocuments,
   hackathons,
@@ -70,6 +75,30 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
   function createRateLimiter(success = true) {
     return {
       limit: vi.fn(async () => ({ success }))
+    }
+  }
+
+  function createImagesBinding(options?: {
+    width?: number
+    height?: number
+    previewBytes?: Uint8Array
+  }) {
+    const width = options?.width ?? 1600
+    const height = options?.height ?? 900
+    const previewBytes = options?.previewBytes ?? new Uint8Array([0x52, 0x49, 0x46, 0x46])
+
+    return {
+      info: vi.fn(async () => ({ width, height })),
+      input: vi.fn(() => ({
+        transform: vi.fn(() => ({
+          output: vi.fn(async () => ({
+            response: () => new Response(previewBytes, {
+              status: 200
+            }),
+            contentType: () => 'image/webp'
+          }))
+        }))
+      }))
     }
   }
 
@@ -2232,7 +2261,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(await approvedResponse.json()).toMatchObject({
       data: {
         address: 'Address',
-        discordServerUrl: 'https://discord.gg/private-codex'
+        discordServerUrl: 'https://discord.gg/private-codex',
+        hasPhotos: false
       }
     })
 
@@ -2306,12 +2336,14 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
 
     const submittedResponse = await submittedHarness.request('/api/hackathons/slug/private-discord-hackathon')
     expect(submittedResponse.status).toBe(200)
-    expect(await submittedResponse.json()).toMatchObject({
+    const submittedPayload = await submittedResponse.json()
+    expect(submittedPayload).toMatchObject({
       data: {
         address: '',
         discordServerUrl: null
       }
     })
+    expect(submittedPayload.data).not.toHaveProperty('hasPhotos')
   })
 
   test('GET /api/hackathons/slug/:slug exposes discordServerUrl to judges', async () => {
@@ -2373,7 +2405,95 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(await response.json()).toMatchObject({
       data: {
         address: 'Address',
-        discordServerUrl: 'https://discord.gg/private-codex'
+        discordServerUrl: 'https://discord.gg/private-codex',
+        hasPhotos: false
+      }
+    })
+  })
+
+  test('GET /api/hackathons/slug/:slug exposes hasPhotos to approved participants when gallery images exist', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/slug/:slug', handler: hackathonBySlugGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|approved_participant',
+        email: 'approved@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'approved_participant',
+        auth0Subject: 'auth0|approved_participant',
+        email: 'approved@example.com',
+        displayName: 'Approved Participant'
+      }
+    ])
+    await seedCurrentPlatformConsent(harness, 'approved_participant')
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_private_photos',
+      name: 'Private Photos Hackathon',
+      slug: 'private-photos-hackathon',
+      description: 'Private Photos Hackathon',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(hackathonTermsDocuments).values({
+      id: 'terms_photos',
+      hackathonId: 'hackathon_private_photos',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Application Terms',
+      content: 'Application terms',
+      publishedAt: '2026-03-20T00:00:00.000Z'
+    })
+    await harness.database.insert(userApplications).values({
+      id: 'application_approved_photos',
+      hackathonId: 'hackathon_private_photos',
+      userId: 'approved_participant',
+      status: 'approved',
+      submittedAt: '2026-03-21T12:00:00.000Z',
+      reviewedAt: '2026-03-22T12:00:00.000Z',
+      reviewedByUserId: 'creator_1',
+      applicationTermsDocumentId: 'terms_photos',
+      applicationTermsAcceptedAt: '2026-03-21T12:00:00.000Z',
+      registrationDetailsJson: '{}',
+      createdAt: '2026-03-21T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:00:00.000Z'
+    })
+    await harness.database.insert(hackathonPhotos).values({
+      id: 'photo_approved_visibility',
+      hackathonId: 'hackathon_private_photos',
+      uploadedByUserId: 'creator_1',
+      fileName: 'gallery-photo.png',
+      contentType: 'image/png',
+      width: 1600,
+      height: 900,
+      createdAt: '2026-04-01T12:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/slug/private-photos-hackathon')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        hasPhotos: true
       }
     })
   })
@@ -2863,6 +2983,362 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       error: {
         code: 'hackathon_banner_image_not_found'
       }
+    })
+  })
+
+  test('hackathon photo routes let approved participants read but not manage the protected gallery', async () => {
+    const hackathonImagesBucket = new InMemoryR2Bucket()
+    const previewBytes = new Uint8Array([1, 2, 3, 4])
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/photos', handler: hackathonPhotosGetHandler },
+        { method: 'post', path: '/api/hackathons/:hackathonId/photos', handler: hackathonPhotosPostHandler },
+        { method: 'delete', path: '/api/hackathons/:hackathonId/photos/:photoId', handler: hackathonPhotoDeleteHandler },
+        { method: 'get', path: '/api/hackathons/:hackathonId/photos/:photoId/image', handler: hackathonPhotoImageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant_user',
+        email: 'participant@example.com'
+      },
+      cloudflareEnv: {
+        [hackathonImagesBindingName]: hackathonImagesBucket,
+        IMAGES: createImagesBinding({
+          previewBytes
+        }),
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter()
+      },
+      runtimeConfig: {
+        hackathonImages: {
+          binding: hackathonImagesBindingName
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'participant_user',
+        auth0Subject: 'auth0|participant_user',
+        email: 'participant@example.com',
+        displayName: 'Participant User'
+      }
+    ])
+    await seedCurrentPlatformConsent(harness, 'participant_user')
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_photos_read',
+      name: 'Photo Read Hackathon',
+      slug: 'photo-read-hackathon',
+      description: 'Hackathon with protected photos',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(hackathonTermsDocuments).values({
+      id: 'application_terms_photo_read',
+      hackathonId: 'hackathon_photos_read',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Photo Read Application Terms',
+      content: 'Terms',
+      publishedAt: '2026-03-01T00:00:00.000Z'
+    })
+    await harness.database.insert(userApplications).values({
+      id: 'application_participant_photo_read',
+      hackathonId: 'hackathon_photos_read',
+      userId: 'participant_user',
+      status: 'approved',
+      applicationTermsDocumentId: 'application_terms_photo_read',
+      applicationTermsAcceptedAt: '2026-03-02T00:00:00.000Z'
+    })
+    await hackathonImagesBucket.put('hackathons/hackathon_photos_read/photos/photo_1', pngSignatureBytes, {
+      httpMetadata: {
+        contentType: 'image/png'
+      }
+    })
+    await harness.database.insert(hackathonPhotos).values({
+      id: 'photo_1',
+      hackathonId: 'hackathon_photos_read',
+      uploadedByUserId: 'creator_1',
+      fileName: 'gallery-photo.png',
+      contentType: 'image/png',
+      width: 1600,
+      height: 900,
+      createdAt: '2026-04-01T12:00:00.000Z'
+    })
+
+    const listResponse = await harness.request('/api/hackathons/hackathon_photos_read/photos')
+
+    expect(listResponse.status).toBe(200)
+    expect(await listResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          id: 'photo_1',
+          fileName: 'gallery-photo.png',
+          previewUrl: '/api/hackathons/hackathon_photos_read/photos/photo_1/image?variant=preview&v=2026-04-01T12%3A00%3A00.000Z',
+          originalUrl: '/api/hackathons/hackathon_photos_read/photos/photo_1/image?variant=original&v=2026-04-01T12%3A00%3A00.000Z'
+        })
+      ]
+    })
+
+    const previewResponse = await harness.request('/api/hackathons/hackathon_photos_read/photos/photo_1/image?variant=preview')
+
+    expect(previewResponse.status).toBe(200)
+    expect(previewResponse.headers.get('content-type')).toBe('image/webp')
+    expect(previewResponse.headers.get('cache-control')).toBe('private, max-age=31536000, immutable')
+    expect(new Uint8Array(await previewResponse.arrayBuffer())).toEqual(previewBytes)
+
+    const originalResponse = await harness.request('/api/hackathons/hackathon_photos_read/photos/photo_1/image?variant=original')
+
+    expect(originalResponse.status).toBe(200)
+    expect(originalResponse.headers.get('content-type')).toBe('image/png')
+    expect(new Uint8Array(await originalResponse.arrayBuffer())).toEqual(pngSignatureBytes)
+
+    const uploadForm = new FormData()
+    uploadForm.append('file', new Blob([pngSignatureBytes], { type: 'image/png' }), 'blocked-upload.png')
+
+    const uploadResponse = await harness.request('/api/hackathons/hackathon_photos_read/photos', {
+      method: 'POST',
+      body: uploadForm
+    })
+
+    expect(uploadResponse.status).toBe(403)
+    expect(await uploadResponse.json()).toMatchObject({
+      error: {
+        code: 'hackathon_photo_manage_required'
+      }
+    })
+
+    const deleteResponse = await harness.request('/api/hackathons/hackathon_photos_read/photos/photo_1', {
+      method: 'DELETE'
+    })
+
+    expect(deleteResponse.status).toBe(403)
+    expect(await deleteResponse.json()).toMatchObject({
+      error: {
+        code: 'hackathon_photo_manage_required'
+      }
+    })
+  })
+
+  test('hackathon photo routes let judges upload and delete gallery photos', async () => {
+    const hackathonImagesBucket = new InMemoryR2Bucket()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/photos', handler: hackathonPhotosGetHandler },
+        { method: 'post', path: '/api/hackathons/:hackathonId/photos', handler: hackathonPhotosPostHandler },
+        { method: 'delete', path: '/api/hackathons/:hackathonId/photos/:photoId', handler: hackathonPhotoDeleteHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|judge_user',
+        email: 'judge@example.com'
+      },
+      cloudflareEnv: {
+        [hackathonImagesBindingName]: hackathonImagesBucket,
+        IMAGES: createImagesBinding(),
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter()
+      },
+      runtimeConfig: {
+        hackathonImages: {
+          binding: hackathonImagesBindingName
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'judge_user',
+        auth0Subject: 'auth0|judge_user',
+        email: 'judge@example.com',
+        displayName: 'Judge User'
+      }
+    ])
+    await seedCurrentPlatformConsent(harness, 'judge_user')
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_photos_judge',
+      name: 'Photo Judge Hackathon',
+      slug: 'photo-judge-hackathon',
+      description: 'Hackathon with judge-managed photos',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_judge_photo_gallery',
+      hackathonId: 'hackathon_photos_judge',
+      userId: 'judge_user',
+      role: 'judge',
+      isInJudgePool: true,
+      isStaff: false,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    const uploadForm = new FormData()
+    uploadForm.append('file', new Blob([pngSignatureBytes], { type: 'image/png' }), 'judge-upload.png')
+
+    const uploadResponse = await harness.request('/api/hackathons/hackathon_photos_judge/photos', {
+      method: 'POST',
+      body: uploadForm
+    })
+
+    expect(uploadResponse.status).toBe(200)
+    const uploadPayload = await uploadResponse.json()
+    expect(uploadPayload).toMatchObject({
+      data: [
+        expect.objectContaining({
+          fileName: 'judge-upload.png',
+          contentType: 'image/png',
+          width: 1600,
+          height: 900,
+          uploadedByUserId: 'judge_user'
+        })
+      ]
+    })
+
+    const createdPhotoId = uploadPayload.data[0].id as string
+    const storedPhotoObject = await hackathonImagesBucket.get(`hackathons/hackathon_photos_judge/photos/${createdPhotoId}`)
+
+    expect(storedPhotoObject).not.toBeNull()
+    expect(new Uint8Array(await storedPhotoObject!.arrayBuffer())).toEqual(pngSignatureBytes)
+
+    const deleteResponse = await harness.request(
+      `/api/hackathons/hackathon_photos_judge/photos/${createdPhotoId}`,
+      {
+        method: 'DELETE'
+      }
+    )
+
+    expect(deleteResponse.status).toBe(200)
+    expect(await deleteResponse.json()).toMatchObject({
+      data: {
+        id: createdPhotoId
+      }
+    })
+
+    const remainingPhotos = await harness.database.select().from(hackathonPhotos)
+    expect(remainingPhotos).toEqual([])
+
+    const auditEntries = await harness.database.select().from(auditLogs)
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        actorUserId: 'judge_user',
+        entityType: 'hackathon_photo',
+        action: 'hackathon_photo.created'
+      }),
+      expect.objectContaining({
+        actorUserId: 'judge_user',
+        entityType: 'hackathon_photo',
+        action: 'hackathon_photo.deleted'
+      })
+    ])
+  })
+
+  test('hackathon photo routes let staff upload gallery photos', async () => {
+    const hackathonImagesBucket = new InMemoryR2Bucket()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/photos', handler: hackathonPhotosPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|staff_user',
+        email: 'staff@example.com'
+      },
+      cloudflareEnv: {
+        [hackathonImagesBindingName]: hackathonImagesBucket,
+        IMAGES: createImagesBinding(),
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter()
+      },
+      runtimeConfig: {
+        hackathonImages: {
+          binding: hackathonImagesBindingName
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'staff_user',
+        auth0Subject: 'auth0|staff_user',
+        email: 'staff@example.com',
+        displayName: 'Staff User'
+      }
+    ])
+    await seedCurrentPlatformConsent(harness, 'staff_user')
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_photos_staff',
+      name: 'Photo Staff Hackathon',
+      slug: 'photo-staff-hackathon',
+      description: 'Hackathon with staff-managed photos',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(hackathonRoleAssignments).values({
+      id: 'role_staff_photo_gallery',
+      hackathonId: 'hackathon_photos_staff',
+      userId: 'staff_user',
+      role: 'staff',
+      isInJudgePool: false,
+      isStaff: true,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    const uploadForm = new FormData()
+    uploadForm.append('file', new Blob([pngSignatureBytes], { type: 'image/png' }), 'staff-upload.png')
+
+    const uploadResponse = await harness.request('/api/hackathons/hackathon_photos_staff/photos', {
+      method: 'POST',
+      body: uploadForm
+    })
+
+    expect(uploadResponse.status).toBe(200)
+    expect(await uploadResponse.json()).toMatchObject({
+      data: [
+        expect.objectContaining({
+          fileName: 'staff-upload.png',
+          uploadedByUserId: 'staff_user'
+        })
+      ]
     })
   })
 

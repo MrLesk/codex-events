@@ -6,6 +6,7 @@ import {
   auditLogs,
   hackathonCreditCodes,
   hackathonCreditOffers,
+  hackathonPhotos,
   hackathonRoleAssignments,
   hackathonTracks,
   hackathons,
@@ -40,6 +41,7 @@ describe('shared schema foundation', () => {
     const userAuthIdentityIndexes = getTableConfig(userAuthIdentities).indexes.map(index => index.config.name)
     const joinRequestIndexes = getTableConfig(teamJoinRequests).indexes.map(index => index.config.name)
     const trackIndexes = getTableConfig(hackathonTracks).indexes.map(index => index.config.name)
+    const photoIndexes = getTableConfig(hackathonPhotos).indexes.map(index => index.config.name)
     const submissionIndexes = getTableConfig(submissions).indexes.map(index => index.config.name)
     const assignmentIndexes = getTableConfig(judgeAssignments).indexes.map(index => index.config.name)
     const creditOfferIndexes = getTableConfig(hackathonCreditOffers).indexes.map(index => index.config.name)
@@ -51,6 +53,8 @@ describe('shared schema foundation', () => {
     expect(joinRequestIndexes).toContain('team_join_requests_pending_team_user_idx')
     expect(trackIndexes).toContain('hackathon_tracks_hackathon_display_order_idx')
     expect(trackIndexes).toContain('hackathon_tracks_hackathon_idx')
+    expect(photoIndexes).toContain('hackathon_photos_hackathon_created_idx')
+    expect(photoIndexes).toContain('hackathon_photos_uploaded_by_idx')
     expect(submissionIndexes).toContain('submissions_active_team_idx')
     expect(submissionIndexes).toContain('submissions_track_idx')
     expect(assignmentIndexes).toContain('judge_assignments_active_blind_submission_slot_idx')
@@ -66,6 +70,7 @@ describe('shared schema foundation', () => {
     const creditOfferColumns = getTableColumns(hackathonCreditOffers)
     const creditCodeColumns = getTableColumns(hackathonCreditCodes)
     const trackColumns = getTableColumns(hackathonTracks)
+    const photoColumns = getTableColumns(hackathonPhotos)
     const roleAssignmentColumns = getTableColumns(hackathonRoleAssignments)
     const applicationColumns = getTableColumns(userApplications)
     const prizeColumns = getTableColumns(prizes)
@@ -73,6 +78,7 @@ describe('shared schema foundation', () => {
     const prizeChecks = getTableConfig(prizes).checks.map(checkItem => checkItem.name)
     const hackathonChecks = getTableConfig(hackathons).checks.map(checkItem => checkItem.name)
     const roleAssignmentChecks = getTableConfig(hackathonRoleAssignments).checks.map(checkItem => checkItem.name)
+    const photoChecks = getTableConfig(hackathonPhotos).checks.map(checkItem => checkItem.name)
     const auditIndexes = getTableConfig(auditLogs).indexes.map(index => index.config.name)
 
     expect(hackathonColumns.lumaEventUrl.name).toBe('luma_event_url')
@@ -95,6 +101,9 @@ describe('shared schema foundation', () => {
     expect(trackColumns.hackathonId.name).toBe('hackathon_id')
     expect(trackColumns.description.name).toBe('description')
     expect(trackColumns.displayOrder.name).toBe('display_order')
+    expect(photoColumns.fileName.name).toBe('file_name')
+    expect(photoColumns.contentType.name).toBe('content_type')
+    expect(photoColumns.uploadedByUserId.name).toBe('uploaded_by_user_id')
     expect(roleAssignmentColumns.isStaff.name).toBe('is_staff')
     expect(applicationColumns.preApprovalStatus.name).toBe('pre_approval_status')
     expect(applicationColumns.lumaSyncStatus.name).toBe('luma_sync_status')
@@ -116,6 +125,8 @@ describe('shared schema foundation', () => {
     expect(getTableConfig(hackathons).indexes.map(index => index.config.name)).toContain('hackathons_luma_event_api_id_idx')
     expect(roleAssignmentChecks).toContain('hackathon_role_assignments_judge_pool_check')
     expect(roleAssignmentChecks).toContain('hackathon_role_assignments_staff_flag_check')
+    expect(photoChecks).toContain('hackathon_photos_width_check')
+    expect(photoChecks).toContain('hackathon_photos_height_check')
     expect(auditIndexes).toContain('audit_logs_entity_idx')
   })
 })

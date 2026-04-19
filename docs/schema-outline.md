@@ -203,6 +203,32 @@ It describes the intended persistent model at the level of entities, key fields,
 - Tracks do not control judge assignment in this version.
 - Track deletion is blocked once submissions reference it.
 
+## HackathonPhoto
+
+### Key Fields
+
+- `id`
+- `hackathon_id`
+- `uploaded_by_user_id`
+- `file_name`
+- `content_type`
+- `width`
+- `height`
+- `created_at`
+
+### Constraints
+
+- `width >= 1`
+- `height >= 1`
+
+### Notes
+
+- Each row records one protected gallery photo for a hackathon.
+- Original image bytes are stored in object storage keyed by `hackathon_id` and photo `id`.
+- `file_name` is optional because the upload can succeed even when the client omits a stable file name.
+- Preview variants are derived at read time from the stored original image and are not stored as separate canonical rows.
+- Approved participants can read gallery rows for their hackathons, while judges, staff, hackathon admins, and platform admins can also create and delete them.
+
 ## HackathonRoleAssignment
 
 ### Key Fields

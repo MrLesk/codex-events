@@ -162,7 +162,7 @@ These values identify the Cloudflare account and storage resources used by the p
 - `CLOUDFLARE_D1_DATABASE_ID`
 - `CLOUDFLARE_R2_BUCKET`
 
-The canonical stack expects Cloudflare Workers for application hosting, D1 for the primary relational database, R2 for file storage (including profile icons and hackathon images), Queues for asynchronous jobs, and Cron Triggers for scheduled platform tasks. See [`docs/tech-stack.md`](docs/tech-stack.md).
+The canonical stack expects Cloudflare Workers for application hosting, D1 for the primary relational database, R2 for file storage (including profile icons and hackathon images), a Cloudflare `IMAGES` binding for protected hackathon photo previews, Queues for asynchronous jobs, and Cron Triggers for scheduled platform tasks. See [`docs/tech-stack.md`](docs/tech-stack.md).
 
 For least-privilege production deployment, the Cloudflare token used by this repository needs permission to deploy the Worker, upload Worker secrets, apply remote D1 migrations, and manage the Auth0 custom-domain verification CNAME on the production zone. The current exact permission list is documented in [`DEVELOPMENT.md`](DEVELOPMENT.md#production-release-pipeline).
 

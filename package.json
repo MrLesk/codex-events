@@ -45,6 +45,7 @@
     "markdown-it": "^14.1.1",
     "md-editor-v3": "^6.4.1",
     "nuxt": "4.4.2",
+    "photoswipe": "^5.4.4",
     "reka-ui": "^2.9.2",
     "resend": "6.9.4",
     "shadcn-nuxt": "2.4.3",

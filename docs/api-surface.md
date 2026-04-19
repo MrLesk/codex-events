@@ -294,6 +294,25 @@ Testing:
 - Integration: assignment uniqueness, permission enforcement, and published-roster visibility rules.
 - End-to-end: admin role-management flows.
 
+## Hackathon Photos
+
+Purpose:
+- Support a protected hackathon photo gallery in the account-scoped workspace.
+
+Operations:
+
+| Operation | Method And Path | Actor | Guards And Notes |
+| --- | --- | --- | --- |
+| List hackathon photos | `GET /api/hackathons/:hackathonId/photos` | approved participant, judge, staff, hackathon admin, or platform admin | Returns protected gallery photo metadata plus account-scoped image URLs for the requested hackathon. |
+| Upload hackathon photos | `POST /api/hackathons/:hackathonId/photos` | judge, staff, hackathon admin, or platform admin | Accepts multipart upload for one or more JPEG or PNG images, stores the originals in R2, derives image dimensions through the Worker `IMAGES` binding, records gallery rows, and enforces the authenticated upload rate limiter. |
+| Delete hackathon photo | `DELETE /api/hackathons/:hackathonId/photos/:photoId` | judge, staff, hackathon admin, or platform admin | Deletes the stored original object and removes the gallery row. |
+| Get protected hackathon photo bytes | `GET /api/hackathons/:hackathonId/photos/:photoId/image?variant=preview|original` | approved participant, judge, staff, hackathon admin, or platform admin | Returns the protected original image bytes or a transformed preview variant for the requested gallery photo. |
+
+Testing:
+- Unit: photo-upload validation, protected image binding guards, and workspace-tab visibility helpers.
+- Integration: approved-participant read access plus role-based upload and delete access.
+- End-to-end: account hackathon Photos tab read and management flows.
+
 ## Hackathon Terms
 
 Purpose:
