@@ -162,7 +162,6 @@ const shouldPrefetchWinners = hackathonResponse.value.data.state === 'completed'
 const shouldPrefetchParticipationRank = actor.value.kind === 'platform_user'
   && hackathonResponse.value.data.state === 'completed'
 const [
-  criteriaResponse,
   prizesResponse,
   accountHackathonsResponse,
   participationResponse,
@@ -171,7 +170,6 @@ const [
   winnersResponse,
   participationRankResponse
 ] = await Promise.all([
-  requestFetch<PublicApiListResponse<{ name: string }>>(`/api/hackathons/${hackathonResponse.value.data.id}/evaluation-criteria`),
   requestFetch<PublicApiListResponse<AccountPrizeSummary>>(`/api/hackathons/${hackathonResponse.value.data.id}/prizes`),
   requestFetch<AccountHackathonsResponse>('/api/account/hackathons'),
   requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>('/api/hackathons/participation'),
@@ -230,7 +228,6 @@ const workspaceHackathonId = computed(() => resolveAccountHackathonScopedId({
   accessRecordId: accessRecord.value?.id,
   hackathonId: hackathon.value.id
 }))
-const criteriaCount = computed(() => criteriaResponse.data.length)
 const prizes = computed(() => prizesResponse.data)
 const winners = computed(() => winnersResponse.data)
 const participationRank = computed(() => participationRankResponse.data)
@@ -949,7 +946,6 @@ useSeoMeta({
         <HackathonTimeline
           :hackathon="hackathon"
           :discord-server-url="hackathon.discordServerUrl ?? null"
-          :criteria-count="criteriaCount"
           :show-address="canViewRestrictedHackathonDetails"
         />
 

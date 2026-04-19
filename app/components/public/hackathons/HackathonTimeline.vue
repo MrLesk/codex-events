@@ -4,7 +4,6 @@ import type { PublicHackathon } from '~/composables/useHackathonPresentation'
 const props = defineProps<{
   hackathon: PublicHackathon
   discordServerUrl?: string | null
-  criteriaCount?: number
   showAddress?: boolean
 }>()
 

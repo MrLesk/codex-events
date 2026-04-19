@@ -45,14 +45,10 @@ if (!slug.value) {
 
 const [
   { data: hackathonResponse, error: hackathonError },
-  { data: criteriaResponse },
   { data: prizesResponse }
 ] = await Promise.all([
   useFetch<PublicApiDataResponse<PublicHackathon>>(() => `/api/public/hackathons/${slug.value}`, {
     key: () => `public-hackathon-detail:${slug.value}`
-  }),
-  useFetch<PublicApiListResponse<{ name: string }>>(() => `/api/public/hackathons/${slug.value}/evaluation-criteria`, {
-    key: () => `public-hackathon-criteria:${slug.value}`
   }),
   useFetch<PublicApiListResponse<PublicPrize>>(() => `/api/public/hackathons/${slug.value}/prizes`, {
     key: () => `public-hackathon-prizes:${slug.value}`
@@ -80,7 +76,6 @@ const winnersResponse = hackathon.value.state === 'completed'
   : {
     data: []
   } satisfies PublicApiListResponse<WinnerEntry>
-const criteria = computed(() => criteriaResponse.value?.data ?? [])
 const prizes = computed(() => prizesResponse.value?.data ?? [])
 const winners = computed(() => winnersResponse.data)
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
@@ -102,7 +97,6 @@ if (accountActor.value.kind === 'platform_user' && accountActor.value.hasAccepte
   }
 }
 
-const criteriaCount = computed(() => criteria.value.length)
 const detailBackgroundImageUrl = computed(() => {
   const backgroundImageUrl = hackathon.value.backgroundImageUrl?.trim()
 
@@ -334,7 +328,6 @@ useSeoMeta({
       >
         <HackathonTimeline
           :hackathon="hackathon"
-          :criteria-count="criteriaCount"
         />
 
         <HackathonTracksPanel :tracks="hackathon.tracks ?? []" />
