@@ -7,6 +7,7 @@ import type {
 } from '~/composables/useHackathonPresentation'
 import type {
   HackathonParticipationApiDataResponse,
+  HackathonParticipationRankSummary,
   HackathonParticipationPayload,
   HackathonParticipationRecord
 } from '~/utils/hackathon-participation'
@@ -17,6 +18,7 @@ import type {
 import type { WinnerEntry } from '~/utils/admin-workspace'
 
 import AccountHackathonAdminOperationsPanel from '~/components/account/hackathons/AccountHackathonAdminOperationsPanel.vue'
+import AccountHackathonParticipationRankNotice from '~/components/account/hackathons/AccountHackathonParticipationRankNotice.vue'
 import AccountHackathonPublishedRosterPanel from '~/components/account/hackathons/AccountHackathonPublishedRosterPanel.vue'
 import AccountHackathonParticipantWorkspacePanel from '~/components/account/hackathons/AccountHackathonParticipantWorkspacePanel.vue'
 import AccountHackathonParticipantTeamPanel from '~/components/account/hackathons/AccountHackathonParticipantTeamPanel.vue'
@@ -157,6 +159,8 @@ const requestFetch = import.meta.server ? useRequestFetch() : $fetch
 const shouldPrefetchPublishedJudgesRoster = actor.value.kind === 'platform_user'
 const shouldPrefetchPublishedStaffRoster = actor.value.kind === 'platform_user'
 const shouldPrefetchWinners = hackathonResponse.value.data.state === 'completed'
+const shouldPrefetchParticipationRank = actor.value.kind === 'platform_user'
+  && hackathonResponse.value.data.state === 'completed'
 const [
   criteriaResponse,
   prizesResponse,
@@ -164,7 +168,8 @@ const [
   participationResponse,
   publishedJudgesRoster,
   publishedStaffRoster,
-  winnersResponse
+  winnersResponse,
+  participationRankResponse
 ] = await Promise.all([
   requestFetch<PublicApiListResponse<{ name: string }>>(`/api/hackathons/${hackathonResponse.value.data.id}/evaluation-criteria`),
   requestFetch<PublicApiListResponse<AccountPrizeSummary>>(`/api/hackathons/${hackathonResponse.value.data.id}/prizes`),
@@ -192,7 +197,14 @@ const [
     ? requestFetch<PublicApiListResponse<WinnerEntry>>(`/api/hackathons/${hackathonResponse.value.data.id}/winners`)
     : Promise.resolve({
       data: []
-    } satisfies PublicApiListResponse<WinnerEntry>)
+    } satisfies PublicApiListResponse<WinnerEntry>),
+  shouldPrefetchParticipationRank
+    ? requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationRankSummary | null>>(
+        `/api/hackathons/${hackathonResponse.value.data.id}/rank/me`
+      )
+    : Promise.resolve({
+      data: null
+    } satisfies HackathonParticipationApiDataResponse<HackathonParticipationRankSummary | null>)
 ])
 const toast = useToast()
 const accountHackathonsData = ref(accountHackathonsResponse.data)
@@ -221,6 +233,7 @@ const workspaceHackathonId = computed(() => resolveAccountHackathonScopedId({
 const criteriaCount = computed(() => criteriaResponse.data.length)
 const prizes = computed(() => prizesResponse.data)
 const winners = computed(() => winnersResponse.data)
+const participationRank = computed(() => participationRankResponse.data)
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 const canJudge = computed(() =>
   actor.value.kind === 'platform_user'
@@ -378,6 +391,11 @@ const participantOutcomeNotice = computed(() =>
   participationRecord.value
     ? getHackathonParticipationOutcomeNotice(participationRecord.value)
     : null
+)
+const participantRankTeamName = computed(() =>
+  participationRecord.value?.activeTeam?.name
+  ?? participationRecord.value?.latestTeam?.name
+  ?? null
 )
 const showHeaderApplicationStatusSummary = computed(() =>
   Boolean(applicationStatusSummary.value) && applicationStatus.value !== 'approved'
@@ -695,6 +713,12 @@ useSeoMeta({
               :description="participantOutcomeNotice.description"
             />
 
+            <AccountHackathonParticipationRankNotice
+              :hackathon-state="hackathon.state"
+              :team-name="participantRankTeamName"
+              :rank-summary="participationRank"
+            />
+
             <template v-if="applicationStatus === 'approved'">
               <section
                 v-if="showApprovedOverviewActions"
@@ -884,6 +908,7 @@ useSeoMeta({
           :application-status="applicationStatus"
           :initial-submission="participationRecord?.latestSubmission ?? null"
           :participation-outcome="participationRecord?.outcome ?? null"
+          :participation-rank="participationRank"
         />
       </section>
 

@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 
 import hackathonsGetHandler from '../../../../server/api/hackathons/index.get'
 import hackathonParticipationGetHandler from '../../../../server/api/hackathons/participation.get'
+import ownHackathonRankGetHandler from '../../../../server/api/hackathons/[hackathonId]/rank/me.get'
 import hackathonsPostHandler from '../../../../server/api/hackathons/index.post'
 import hackathonDetailGetHandler from '../../../../server/api/hackathons/[hackathonId]/index.get'
 import hackathonCriteriaGetHandler from '../../../../server/api/hackathons/[hackathonId]/evaluation-criteria/index.get'
@@ -785,6 +786,333 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
             }
           }
         ]
+      }
+    })
+  })
+
+  test('GET /api/hackathons/:hackathonId/rank/me returns the blind-review placement for completed post-shortlist teams', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/hackathons/:hackathonId/rank/me', handler: ownHackathonRankGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|participant_rank_1',
+        email: 'participant-rank@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_rank_1',
+        auth0Subject: 'auth0|creator_rank_1',
+        email: 'creator-rank@example.com',
+        displayName: 'Creator Rank'
+      },
+      {
+        id: 'participant_rank_1',
+        auth0Subject: 'auth0|participant_rank_1',
+        email: 'participant-rank@example.com',
+        displayName: 'Participant Rank'
+      },
+      {
+        id: 'judge_rank_1',
+        auth0Subject: 'auth0|judge_rank_1',
+        email: 'judge-rank@example.com',
+        displayName: 'Judge Rank'
+      },
+      {
+        id: 'active_unranked_rank_1',
+        auth0Subject: 'auth0|active_unranked_rank_1',
+        email: 'active-unranked-rank@example.com',
+        displayName: 'Active Unranked Rank'
+      },
+      {
+        id: 'dissolved_rank_1',
+        auth0Subject: 'auth0|dissolved_rank_1',
+        email: 'dissolved-rank@example.com',
+        displayName: 'Dissolved Rank'
+      }
+    ])
+
+    await harness.database.insert(hackathons).values({
+      id: 'hackathon_rank_1',
+      name: 'Ranked Hackathon',
+      slug: 'ranked-hackathon',
+      description: 'Completed pitch hackathon',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-01T09:00:00.000Z',
+      registrationClosesAt: '2026-03-05T09:00:00.000Z',
+      submissionOpensAt: '2026-03-05T09:00:00.000Z',
+      submissionClosesAt: '2026-03-10T09:00:00.000Z',
+      state: 'completed',
+      maxTeamMembers: 5,
+      blindReviewCount: 1,
+      pitchReviewEnabled: true,
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_rank_top', 'submission_rank_runner_up']),
+      finalRankingSubmissionIdsJson: JSON.stringify(['submission_rank_top', 'submission_rank_runner_up']),
+      createdByUserId: 'creator_rank_1'
+    })
+
+    await harness.database.insert(hackathonTermsDocuments).values({
+      id: 'terms_rank_1',
+      hackathonId: 'hackathon_rank_1',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Rank terms',
+      content: 'Terms',
+      publishedAt: '2026-02-28T09:00:00.000Z'
+    })
+
+    await harness.database.insert(userApplications).values({
+      id: 'application_rank_1',
+      hackathonId: 'hackathon_rank_1',
+      userId: 'participant_rank_1',
+      status: 'approved',
+      submittedAt: '2026-03-01T10:00:00.000Z',
+      reviewedAt: '2026-03-01T12:00:00.000Z',
+      applicationTermsDocumentId: 'terms_rank_1',
+      applicationTermsAcceptedAt: '2026-03-01T10:00:00.000Z',
+      updatedAt: '2026-03-01T12:00:00.000Z'
+    })
+
+    await harness.database.insert(teams).values([
+      {
+        id: 'team_rank_user',
+        hackathonId: 'hackathon_rank_1',
+        name: 'User Team',
+        slug: 'user-team',
+        createdByUserId: 'participant_rank_1'
+      },
+      {
+        id: 'team_rank_top',
+        hackathonId: 'hackathon_rank_1',
+        name: 'Top Team',
+        slug: 'top-team',
+        createdByUserId: 'creator_rank_1'
+      },
+      {
+        id: 'team_rank_runner_up',
+        hackathonId: 'hackathon_rank_1',
+        name: 'Runner Up Team',
+        slug: 'runner-up-team',
+        createdByUserId: 'creator_rank_1'
+      },
+      {
+        id: 'team_rank_active_unranked',
+        hackathonId: 'hackathon_rank_1',
+        name: 'Active Unranked Team',
+        slug: 'active-unranked-team',
+        createdByUserId: 'creator_rank_1'
+      },
+      {
+        id: 'team_rank_dissolved',
+        hackathonId: 'hackathon_rank_1',
+        name: 'Dissolved Team',
+        slug: 'dissolved-team',
+        createdByUserId: 'creator_rank_1'
+      }
+    ])
+
+    await harness.database.insert(teamMembers).values([
+      {
+        id: 'membership_rank_user',
+        teamId: 'team_rank_user',
+        userId: 'participant_rank_1',
+        role: 'admin',
+        joinedAt: '2026-03-01T12:30:00.000Z',
+        leftAt: null
+      },
+      {
+        id: 'membership_rank_top',
+        teamId: 'team_rank_top',
+        userId: 'creator_rank_1',
+        role: 'admin',
+        joinedAt: '2026-03-01T12:31:00.000Z',
+        leftAt: null
+      },
+      {
+        id: 'membership_rank_runner_up',
+        teamId: 'team_rank_runner_up',
+        userId: 'judge_rank_1',
+        role: 'admin',
+        joinedAt: '2026-03-01T12:32:00.000Z',
+        leftAt: null
+      },
+      {
+        id: 'membership_rank_active_unranked',
+        teamId: 'team_rank_active_unranked',
+        userId: 'active_unranked_rank_1',
+        role: 'member',
+        joinedAt: '2026-03-01T12:33:00.000Z',
+        leftAt: null
+      },
+      {
+        id: 'membership_rank_dissolved',
+        teamId: 'team_rank_dissolved',
+        userId: 'dissolved_rank_1',
+        role: 'member',
+        joinedAt: '2026-03-01T12:34:00.000Z',
+        leftAt: '2026-03-02T12:34:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(submissions).values([
+      {
+        id: 'submission_rank_user',
+        teamId: 'team_rank_user',
+        status: 'locked',
+        projectName: 'User Project',
+        submittedAt: '2026-03-09T12:00:00.000Z',
+        lockedAt: '2026-03-10T09:00:00.000Z',
+        createdAt: '2026-03-09T11:00:00.000Z',
+        updatedAt: '2026-03-10T09:00:00.000Z'
+      },
+      {
+        id: 'submission_rank_top',
+        teamId: 'team_rank_top',
+        status: 'locked',
+        projectName: 'Top Project',
+        submittedAt: '2026-03-09T12:05:00.000Z',
+        lockedAt: '2026-03-10T09:00:00.000Z',
+        createdAt: '2026-03-09T11:05:00.000Z',
+        updatedAt: '2026-03-10T09:00:00.000Z'
+      },
+      {
+        id: 'submission_rank_runner_up',
+        teamId: 'team_rank_runner_up',
+        status: 'locked',
+        projectName: 'Runner Up Project',
+        submittedAt: '2026-03-09T12:10:00.000Z',
+        lockedAt: '2026-03-10T09:00:00.000Z',
+        createdAt: '2026-03-09T11:10:00.000Z',
+        updatedAt: '2026-03-10T09:00:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(evaluationCriteria).values({
+      id: 'criterion_rank_1',
+      hackathonId: 'hackathon_rank_1',
+      name: 'Execution',
+      description: 'Execution quality',
+      weight: 100,
+      displayOrder: 1,
+      createdAt: '2026-03-08T09:00:00.000Z'
+    })
+
+    await harness.database.insert(judgeAssignments).values([
+      {
+        id: 'assignment_rank_user_blind',
+        hackathonId: 'hackathon_rank_1',
+        submissionId: 'submission_rank_user',
+        judgeUserId: 'judge_rank_1',
+        reviewStage: 'blind_review',
+        blindReviewSlot: 1,
+        status: 'judge_completed',
+        assignedAt: '2026-03-10T10:00:00.000Z',
+        startedAt: '2026-03-10T10:01:00.000Z',
+        completedAt: '2026-03-10T10:02:00.000Z',
+        createdAt: '2026-03-10T10:00:00.000Z'
+      },
+      {
+        id: 'assignment_rank_top_blind',
+        hackathonId: 'hackathon_rank_1',
+        submissionId: 'submission_rank_top',
+        judgeUserId: 'judge_rank_1',
+        reviewStage: 'blind_review',
+        blindReviewSlot: 1,
+        status: 'judge_completed',
+        assignedAt: '2026-03-10T10:03:00.000Z',
+        startedAt: '2026-03-10T10:04:00.000Z',
+        completedAt: '2026-03-10T10:05:00.000Z',
+        createdAt: '2026-03-10T10:03:00.000Z'
+      },
+      {
+        id: 'assignment_rank_runner_up_blind',
+        hackathonId: 'hackathon_rank_1',
+        submissionId: 'submission_rank_runner_up',
+        judgeUserId: 'judge_rank_1',
+        reviewStage: 'blind_review',
+        blindReviewSlot: 1,
+        status: 'judge_completed',
+        assignedAt: '2026-03-10T10:06:00.000Z',
+        startedAt: '2026-03-10T10:07:00.000Z',
+        completedAt: '2026-03-10T10:08:00.000Z',
+        createdAt: '2026-03-10T10:06:00.000Z'
+      },
+      {
+        id: 'assignment_rank_top_pitch',
+        hackathonId: 'hackathon_rank_1',
+        submissionId: 'submission_rank_top',
+        judgeUserId: 'judge_rank_1',
+        reviewStage: 'pitch_review',
+        blindReviewSlot: null,
+        status: 'judge_completed',
+        pitchScore: 5,
+        pitchComment: 'Strong pitch',
+        assignedAt: '2026-03-10T11:00:00.000Z',
+        startedAt: '2026-03-10T11:01:00.000Z',
+        completedAt: '2026-03-10T11:02:00.000Z',
+        createdAt: '2026-03-10T11:00:00.000Z'
+      },
+      {
+        id: 'assignment_rank_runner_up_pitch',
+        hackathonId: 'hackathon_rank_1',
+        submissionId: 'submission_rank_runner_up',
+        judgeUserId: 'judge_rank_1',
+        reviewStage: 'pitch_review',
+        blindReviewSlot: null,
+        status: 'judge_completed',
+        pitchScore: 4,
+        pitchComment: 'Good pitch',
+        assignedAt: '2026-03-10T11:03:00.000Z',
+        startedAt: '2026-03-10T11:04:00.000Z',
+        completedAt: '2026-03-10T11:05:00.000Z',
+        createdAt: '2026-03-10T11:03:00.000Z'
+      }
+    ])
+
+    await harness.database.insert(judgeCriterionScores).values([
+      {
+        id: 'score_rank_user',
+        judgeAssignmentId: 'assignment_rank_user_blind',
+        evaluationCriterionId: 'criterion_rank_1',
+        score: 3,
+        comment: 'Solid',
+        createdAt: '2026-03-10T10:02:00.000Z',
+        updatedAt: '2026-03-10T10:02:00.000Z'
+      },
+      {
+        id: 'score_rank_top',
+        judgeAssignmentId: 'assignment_rank_top_blind',
+        evaluationCriterionId: 'criterion_rank_1',
+        score: 5,
+        comment: 'Excellent',
+        createdAt: '2026-03-10T10:05:00.000Z',
+        updatedAt: '2026-03-10T10:05:00.000Z'
+      },
+      {
+        id: 'score_rank_runner_up',
+        judgeAssignmentId: 'assignment_rank_runner_up_blind',
+        evaluationCriterionId: 'criterion_rank_1',
+        score: 4,
+        comment: 'Great',
+        createdAt: '2026-03-10T10:08:00.000Z',
+        updatedAt: '2026-03-10T10:08:00.000Z'
+      }
+    ])
+
+    const response = await harness.request('/api/hackathons/hackathon_rank_1/rank/me')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      data: {
+        basis: 'blind_review',
+        rank: 3,
+        rankedTeamCount: 3,
+        totalTeamCount: 4
       }
     })
   })

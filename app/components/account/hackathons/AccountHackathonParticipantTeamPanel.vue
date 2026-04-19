@@ -477,6 +477,7 @@ async function copySelectedTeamLink() {
               isOpenToJoinRequests: selectedSharedTeam.isOpenToJoinRequests
             }"
             :team="selectedSharedTeam"
+            :hackathon-state="props.hackathon.state"
             :max-team-members="props.hackathon.maxTeamMembers"
             :membership="selectedTeamMembership"
             :can-manage-team="false"

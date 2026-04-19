@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { PublicHackathonState } from '~/composables/useHackathonPresentation'
 import type {
   TeamActionAvailability,
   TeamDetailRecord,
@@ -15,7 +16,8 @@ import {
   formatTeamMemberRole,
   getTeamJoinRequestStatusColor,
   hasTeamReachedMemberLimit,
-  isTeamDissolved
+  isTeamDissolved,
+  shouldShowParticipantLeaveTeamAction
 } from '~/utils/team-workspace'
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import { teamProfileFormSchema } from '~/utils/form-schemas'
@@ -31,6 +33,7 @@ const settings = defineModel<{
 
 const props = defineProps<{
   team: TeamDetailRecord
+  hackathonState: PublicHackathonState
   maxTeamMembers: number
   membership?: TeamMemberRecord | null
   canManageTeam?: boolean
@@ -131,7 +134,12 @@ const isEditingProfile = ref(false)
 const isPersisted = computed(() => props.team.isPersisted !== false)
 const showMembershipActions = computed(() => props.showMembershipActions ?? true)
 const showHeaderLeaveAction = computed(() =>
-  Boolean(props.membership) && showMembershipActions.value
+  shouldShowParticipantLeaveTeamAction(
+    {
+      state: props.hackathonState
+    },
+    props.membership
+  ) && showMembershipActions.value
 )
 const showHeaderMembershipAction = computed(() =>
   showMembershipActions.value

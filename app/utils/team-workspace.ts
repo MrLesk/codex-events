@@ -159,8 +159,15 @@ export function getOwnTeamMembership(team: TeamDetailRecord | null | undefined, 
   return team.members.find(member => member.userId === userId && member.leftAt === null) ?? null
 }
 
-export function shouldShowParticipantLeaveTeamAction(membership: TeamMemberRecord | null | undefined) {
-  return Boolean(membership)
+export function shouldShowParticipantLeaveTeamAction(
+  hackathon: Pick<PublicHackathon, 'state'>,
+  membership: TeamMemberRecord | null | undefined
+) {
+  if (!membership) {
+    return false
+  }
+
+  return !['winners_announced', 'completed'].includes(hackathon.state)
 }
 
 export function getTeamFormationAvailability(

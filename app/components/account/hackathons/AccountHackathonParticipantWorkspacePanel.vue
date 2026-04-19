@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import type { PublicHackathon } from '~/composables/useHackathonPresentation'
-import type { HackathonParticipationOutcomeSummary } from '~/utils/hackathon-participation'
+import type {
+  HackathonParticipationOutcomeSummary,
+  HackathonParticipationRankSummary
+} from '~/utils/hackathon-participation'
 import type {
   SubmissionTrackOption,
   TeamSubmissionRecord
 } from '~/utils/team-submission'
 import type { TeamActionAvailability } from '~/utils/team-workspace'
 
+import AccountHackathonParticipationRankNotice from '~/components/account/hackathons/AccountHackathonParticipationRankNotice.vue'
 import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSubmissionPanel.vue'
 import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWorkspacePanel.vue'
 import { Switch as UiSwitch } from '~/components/ui/switch'
@@ -41,6 +45,7 @@ const props = defineProps<{
   applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
   initialSubmission: TeamSubmissionRecord | null
   participationOutcome: HackathonParticipationOutcomeSummary | null
+  participationRank: HackathonParticipationRankSummary | null
 }>()
 
 const toast = useToast()
@@ -185,7 +190,7 @@ const removalAvailabilityByUserId = computed<Record<string, TeamActionAvailabili
   )
 })
 const showMembershipActions = computed(() =>
-  shouldShowParticipantLeaveTeamAction(displayedTeamMembership.value)
+  shouldShowParticipantLeaveTeamAction(props.hackathon, displayedTeamMembership.value)
 )
 
 watch(() => submissionWorkspace.currentSubmission.value, (submission) => {
@@ -601,10 +606,17 @@ async function withdrawSubmission() {
           :description="workspaceOutcomeNotice.description"
         />
 
+        <AccountHackathonParticipationRankNotice
+          :hackathon-state="props.hackathon.state"
+          :team-name="displayedTeam?.name ?? null"
+          :rank-summary="props.participationRank"
+        />
+
         <template v-if="displayedTeam">
           <ParticipantTeamWorkspacePanel
             v-model:settings="teamSettings"
             :team="displayedTeam"
+            :hackathon-state="props.hackathon.state"
             :max-team-members="props.hackathon.maxTeamMembers"
             :membership="displayedTeamMembership"
             :can-manage-team="canManageTeam"

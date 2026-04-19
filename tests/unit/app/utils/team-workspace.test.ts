@@ -223,9 +223,19 @@ describe('team workspace helpers', () => {
     })
   })
 
-  test('keeps the participant leave action visible for active team members', () => {
-    expect(shouldShowParticipantLeaveTeamAction(baseTeam.members[0])).toBe(true)
-    expect(shouldShowParticipantLeaveTeamAction(null)).toBe(false)
+  test('keeps the participant leave action visible only before winners are announced', () => {
+    expect(shouldShowParticipantLeaveTeamAction({
+      state: 'submission_open'
+    }, baseTeam.members[0])).toBe(true)
+    expect(shouldShowParticipantLeaveTeamAction({
+      state: 'winners_announced'
+    }, baseTeam.members[0])).toBe(false)
+    expect(shouldShowParticipantLeaveTeamAction({
+      state: 'completed'
+    }, baseTeam.members[0])).toBe(false)
+    expect(shouldShowParticipantLeaveTeamAction({
+      state: 'submission_open'
+    }, null)).toBe(false)
   })
 
   test('derives active member count and dissolved status from team records', () => {

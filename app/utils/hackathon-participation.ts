@@ -49,6 +49,13 @@ export interface HackathonParticipationOutcomeSummary {
   prizes: HackathonParticipationPrizeSummary[]
 }
 
+export interface HackathonParticipationRankSummary {
+  basis: 'final' | 'blind_review'
+  rank: number
+  rankedTeamCount: number
+  totalTeamCount: number
+}
+
 export interface HackathonParticipationRecord {
   hackathon: HackathonParticipationHackathonSummary
   isPast: boolean
@@ -113,6 +120,33 @@ export function getHackathonParticipationOutcomeNotice(
   }
 
   return null
+}
+
+export function getHackathonParticipationRankNotice(input: {
+  hackathonState: PublicHackathonState
+  teamName?: string | null
+  rankSummary: HackathonParticipationRankSummary | null
+}): HackathonParticipationOutcomeNotice | null {
+  if (input.hackathonState !== 'completed' || !input.rankSummary) {
+    return null
+  }
+
+  const teamName = input.teamName?.trim() || 'Your team'
+  const rankLabel = `#${input.rankSummary.rank} out of ${input.rankSummary.totalTeamCount}`
+
+  if (input.rankSummary.basis === 'final') {
+    return {
+      color: 'info',
+      title: 'Your final placement',
+      description: `${teamName} finished ${rankLabel} in the completed final ranking.`
+    }
+  }
+
+  return {
+    color: 'info',
+    title: 'Your blind-review placement',
+    description: `${teamName} finished ${rankLabel} in blind review. Teams below the finalist cutoff do not receive a final placement.`
+  }
 }
 
 export function getHackathonParticipationPrimaryAction(

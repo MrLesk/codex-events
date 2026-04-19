@@ -10,6 +10,7 @@ import {
   prizeEligibilitySnapshots,
   prizes,
   submissions,
+  teamMembers,
   teams,
   users
 } from '../database/schema'
@@ -76,6 +77,12 @@ type TeamCompetitionOutcome = {
   finalRank: number | null
   rankedTeamCount: number
   prizes: SerializedPrizeSummary[]
+  rankSummary: {
+    basis: 'final' | 'blind_review'
+    rank: number
+    rankedTeamCount: number
+    totalTeamCount: number
+  } | null
 }
 
 export const selectFinalistsBodySchema = z.object({
@@ -374,6 +381,7 @@ async function loadCompetitionEntries(
 ): Promise<{
   hackathon: HackathonRecord | null
   entries: CompetitionEntry[]
+  totalTeamCount: number
 }> {
   const hackathon = await database.query.hackathons.findFirst({
     where: eq(hackathons.id, hackathonId)
@@ -382,7 +390,8 @@ async function loadCompetitionEntries(
   if (!hackathon) {
     return {
       hackathon: null,
-      entries: []
+      entries: [],
+      totalTeamCount: 0
     }
   }
 
@@ -394,11 +403,19 @@ async function loadCompetitionEntries(
   if (hackathonTeams.length === 0) {
     return {
       hackathon,
-      entries: []
+      entries: [],
+      totalTeamCount: 0
     }
   }
 
   const teamIds = hackathonTeams.map(team => team.id)
+  const activeMembershipRows = await database.query.teamMembers.findMany({
+    where: and(
+      inArray(teamMembers.teamId, teamIds),
+      isNull(teamMembers.leftAt)
+    )
+  })
+  const totalTeamCount = new Set(activeMembershipRows.map(membership => membership.teamId)).size
   const submissionsForHackathon = await database.query.submissions.findMany({
     where: inArray(submissions.teamId, teamIds),
     orderBy: [desc(submissions.createdAt)]
@@ -424,7 +441,8 @@ async function loadCompetitionEntries(
   if (trackedSubmissions.length === 0) {
     return {
       hackathon,
-      entries: []
+      entries: [],
+      totalTeamCount
     }
   }
 
@@ -591,7 +609,8 @@ async function loadCompetitionEntries(
 
   return {
     hackathon,
-    entries: entriesWithFinalRanks
+    entries: entriesWithFinalRanks,
+    totalTeamCount
   }
 }
 
@@ -818,7 +837,7 @@ export async function getTeamCompetitionOutcome(
   hackathonId: string,
   teamId: string
 ): Promise<TeamCompetitionOutcome | null> {
-  const [{ hackathon, entries }, prizeList] = await Promise.all([
+  const [{ hackathon, entries, totalTeamCount }, prizeList] = await Promise.all([
     loadCompetitionEntries(database, hackathonId),
     database.query.prizes.findMany({
       where: eq(prizes.hackathonId, hackathonId),
@@ -843,6 +862,7 @@ export async function getTeamCompetitionOutcome(
     ? parseStoredPitchFinalistSubmissionIds(hackathon)
     : []
   const { orderedRankedEntries, finalRanksBySubmissionId } = deriveFinalDeliberationOrdering(hackathon, entries)
+  const blindRankedTeamCount = entries.filter(entry => entry.isBlindRanked).length
   const finalRank = winnersVisible
     ? finalRanksBySubmissionId.get(teamEntry.submission.id) ?? null
     : null
@@ -851,13 +871,31 @@ export async function getTeamCompetitionOutcome(
     : prizeList
         .filter(prize => finalRank >= prize.rankStart && finalRank <= prize.rankEnd)
         .map(serializePrize)
+  const rankSummary = !winnersVisible
+    ? null
+    : finalRank !== null
+      ? {
+          basis: 'final' as const,
+          rank: finalRank,
+          rankedTeamCount: orderedRankedEntries.length,
+          totalTeamCount
+        }
+      : teamEntry.blindRank !== null
+        ? {
+            basis: 'blind_review' as const,
+            rank: teamEntry.blindRank,
+            rankedTeamCount: blindRankedTeamCount,
+            totalTeamCount
+          }
+        : null
 
   return {
     isShortlisted: shortlistedSubmissionIds.includes(teamEntry.submission.id),
     isWinner: awardedPrizes.length > 0,
     finalRank,
     rankedTeamCount: winnersVisible ? orderedRankedEntries.length : 0,
-    prizes: awardedPrizes
+    prizes: awardedPrizes,
+    rankSummary
   }
 }
 

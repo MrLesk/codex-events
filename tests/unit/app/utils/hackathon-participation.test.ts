@@ -6,6 +6,7 @@ import {
   formatParticipationStageLabel,
   formatParticipationStatusLabel,
   getHackathonParticipationOutcomeNotice,
+  getHackathonParticipationRankNotice,
   getHackathonParticipationPrimaryAction,
   getParticipationStageColor,
   getParticipationStatusColor
@@ -238,5 +239,43 @@ describe('hackathon participation badge helpers', () => {
     }))
 
     expect(notice).toBeNull()
+  })
+
+  test('returns a final placement notice after completion when a final rank exists', () => {
+    const notice = getHackathonParticipationRankNotice({
+      hackathonState: 'completed',
+      teamName: 'North Star Builders',
+      rankSummary: {
+        basis: 'final',
+        rank: 2,
+        rankedTeamCount: 10,
+        totalTeamCount: 40
+      }
+    })
+
+    expect(notice).toEqual({
+      color: 'info',
+      title: 'Your final placement',
+      description: 'North Star Builders finished #2 out of 40 in the completed final ranking.'
+    })
+  })
+
+  test('returns a blind-review placement notice after completion for post-shortlist teams', () => {
+    const notice = getHackathonParticipationRankNotice({
+      hackathonState: 'completed',
+      teamName: 'North Star Builders',
+      rankSummary: {
+        basis: 'blind_review',
+        rank: 14,
+        rankedTeamCount: 40,
+        totalTeamCount: 40
+      }
+    })
+
+    expect(notice).toEqual({
+      color: 'info',
+      title: 'Your blind-review placement',
+      description: 'North Star Builders finished #14 out of 40 in blind review. Teams below the finalist cutoff do not receive a final placement.'
+    })
   })
 })
