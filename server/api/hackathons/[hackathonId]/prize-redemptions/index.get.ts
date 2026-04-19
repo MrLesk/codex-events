@@ -26,6 +26,7 @@ export default defineApiHandler(async (event) => {
     listBlindRankingEntries(database, hackathonId)
   ])
   const teamIds = [...new Set([
+    ...winners.map(entry => entry.teamId),
     ...finalDeliberation.entries
       .filter((entry): entry is typeof finalDeliberation.entries[number] & { finalRank: number } =>
         entry.finalRank !== null
@@ -40,7 +41,10 @@ export default defineApiHandler(async (event) => {
   const teamMembersByTeamId = await listOperationalPrizeRedemptionTeamMembersByTeamId(database, teamIds)
 
   return apiData({
-    winners,
+    winners: winners.map(entry => ({
+      ...entry,
+      teamMembers: teamMembersByTeamId.get(entry.teamId) ?? []
+    })),
     redemptions,
     finalRankingEntries: finalDeliberation.entries
       .filter((entry): entry is typeof finalDeliberation.entries[number] & { finalRank: number } =>

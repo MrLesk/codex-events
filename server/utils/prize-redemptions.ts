@@ -141,6 +141,8 @@ export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
       xProfileUrl: string | null
       linkedinProfileUrl: string | null
       githubProfileUrl: string | null
+      chatgptEmail: string | null
+      openaiOrgId: string | null
       profileIconUrl: string | null
     }>>()
   }
@@ -184,6 +186,8 @@ export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
     xProfileUrl: string | null
     linkedinProfileUrl: string | null
     githubProfileUrl: string | null
+    chatgptEmail: string | null
+    openaiOrgId: string | null
     profileIconUrl: string | null
   }>>()
 
@@ -204,6 +208,8 @@ export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
       xProfileUrl: member.xProfileUrl,
       linkedinProfileUrl: member.linkedinProfileUrl,
       githubProfileUrl: member.githubProfileUrl,
+      chatgptEmail: user.chatgptEmail,
+      openaiOrgId: user.openaiOrgId,
       profileIconUrl: null
     })
     teamMembersByTeamId.set(membership.teamId, teamRosterMembers)

@@ -129,7 +129,7 @@ describe('prize-redemption workspace helpers', () => {
     })
   })
 
-  test('groups podium awards first, keeps additional winners visible as team rows, and returns the remaining ranked teams', () => {
+  test('groups winners into one ordered list and separates non-winning finalists from the rest of the ranking', () => {
     const winners = [
       {
         teamId: 'team_1',
@@ -426,23 +426,30 @@ describe('prize-redemption workspace helpers', () => {
     ]
 
     expect(buildPrizeRedemptionOperationsView(winners, redemptions, finalRankingEntries)).toEqual({
-      podiumItems: [
+      winnerItems: [
         expect.objectContaining({
           winner: expect.objectContaining({ teamName: 'Alpha Team', finalRank: 1 }),
-          primaryPrize: expect.objectContaining({ id: 'prize_rank_1' }),
-          additionalPrizes: [expect.objectContaining({ id: 'prize_top_5' })]
+          prizes: [
+            expect.objectContaining({ id: 'prize_rank_1' }),
+            expect.objectContaining({ id: 'prize_top_5' })
+          ],
+          pendingCount: 2,
+          redeemedCount: 0,
+          totalCount: 2
         }),
         expect.objectContaining({
           winner: expect.objectContaining({ teamName: 'Beta Team', finalRank: 2 }),
-          primaryPrize: expect.objectContaining({ id: 'prize_rank_2' }),
-          additionalPrizes: [expect.objectContaining({ id: 'prize_top_5' })]
-        })
-      ],
-      additionalWinnerItems: [
+          prizes: [
+            expect.objectContaining({ id: 'prize_rank_2' }),
+            expect.objectContaining({ id: 'prize_top_5' })
+          ],
+          pendingCount: 1,
+          redeemedCount: 1,
+          totalCount: 2
+        }),
         expect.objectContaining({
           winner: expect.objectContaining({ teamName: 'Delta Team', finalRank: 4 }),
           prizes: [expect.objectContaining({ id: 'prize_top_5' })],
-          recipientLabels: ['Winner Member Four'],
           pendingCount: 1,
           redeemedCount: 0,
           totalCount: 1
@@ -450,13 +457,12 @@ describe('prize-redemption workspace helpers', () => {
         expect.objectContaining({
           winner: expect.objectContaining({ teamName: 'Epsilon Team', finalRank: 5 }),
           prizes: [expect.objectContaining({ id: 'prize_top_5' })],
-          recipientLabels: ['Winner Member Five'],
           pendingCount: 0,
           redeemedCount: 1,
           totalCount: 1
         })
       ],
-      remainingRankedEntries: [
+      shortlistedEntries: [
         expect.objectContaining({
           teamName: 'Gamma Team',
           submissionId: 'submission_3',

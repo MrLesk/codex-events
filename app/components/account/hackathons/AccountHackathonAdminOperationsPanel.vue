@@ -476,9 +476,6 @@ const shouldPersistDraftOnAnnounceWinners = computed(() =>
   currentFinalDeliberationOrderedSubmissionIds.value.length > 0
   && (!hasSavedFinalDeliberationOrder.value || finalDeliberationHasDraftChanges.value)
 )
-const showOutcomePanel = computed(() =>
-  Boolean(showLifecycleSection.value && currentHackathon.value && ['winners_announced', 'completed'].includes(currentHackathon.value.state))
-)
 const showPrizeRedemptionsPanel = computed(() =>
   Boolean(showLifecycleSection.value && currentHackathon.value && ['winners_announced', 'completed'].includes(currentHackathon.value.state))
 )
@@ -2382,15 +2379,6 @@ async function runLifecycleAction() {
           @reorder="reorderFinalDeliberation"
         />
 
-        <AdminCompetitionOutcomePanel
-          v-if="showOutcomePanel"
-          :hackathon-state="currentHackathon.state"
-          :winners="winners"
-          :winner-terms-title="currentHackathon.currentTerms?.winnerTerms?.title ?? null"
-          :is-loading="winnersStatus === 'pending'"
-          :error-message="winnersStatus === 'error' ? winnersErrorMessage : ''"
-        />
-
         <AdminCompetitionPrizeRedemptionsPanel
           v-if="showPrizeRedemptionsPanel"
           :hackathon-state="currentHackathon.state"
@@ -2399,6 +2387,7 @@ async function runLifecycleAction() {
           :blind-ranking-entries="prizeRedemptionBlindRankingEntries"
           :final-ranking-entries="prizeRedemptionFinalRankingEntries"
           :pitch-presentation-submission-ids="currentHackathon.pitchPresentationSubmissionIds"
+          :winner-terms-title="currentHackathon.currentTerms?.winnerTerms?.title ?? null"
           :is-loading="redemptionsStatus === 'pending'"
           :error-message="redemptionsStatus === 'error' ? redemptionsErrorMessage : ''"
         />

@@ -592,6 +592,8 @@ export interface WinnerEntry {
     xProfileUrl: string | null
     linkedinProfileUrl: string | null
     githubProfileUrl: string | null
+    chatgptEmail?: string | null
+    openaiOrgId?: string | null
     profileIconUrl: string | null
   }>
 }

@@ -117,13 +117,17 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         id: 'team_admin_one',
         auth0Subject: 'auth0|team_admin_one',
         email: 'team-admin-one@example.com',
-        displayName: 'Team Admin One'
+        displayName: 'Team Admin One',
+        chatgptEmail: 'team-admin-one@chatgpt.example',
+        openaiOrgId: 'org_team_admin_one'
       },
       {
         id: 'team_admin_two',
         auth0Subject: 'auth0|team_admin_two',
         email: 'team-admin-two@example.com',
-        displayName: 'Team Admin Two'
+        displayName: 'Team Admin Two',
+        chatgptEmail: 'team-admin-two@chatgpt.example',
+        openaiOrgId: 'org_team_admin_two'
       }
     ])
 
@@ -2318,7 +2322,10 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     const winnersResponse = await publicHarness.request('/api/hackathons/hackathon_1/winners')
 
     expect(winnersResponse.status).toBe(200)
-    expect(await winnersResponse.json()).toMatchObject({
+
+    const winnersPayload = await winnersResponse.json()
+
+    expect(winnersPayload).toMatchObject({
       data: [
         expect.objectContaining({
           teamId: 'team_1',
@@ -2352,6 +2359,8 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         })
       ]
     })
+    expect(winnersPayload.data[0].teamMembers[0]).not.toHaveProperty('chatgptEmail')
+    expect(winnersPayload.data[0].teamMembers[0]).not.toHaveProperty('openaiOrgId')
   })
 
   test('published project reads stay unavailable until completion and then expose opted-in non-winner projects', async () => {
@@ -2655,7 +2664,10 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     const response = await harness.request('/api/hackathons/hackathon_1/prize-redemptions')
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toMatchObject({
+
+    const payload = await response.json()
+
+    expect(payload).toMatchObject({
       data: {
         winners: expect.arrayContaining([
           expect.objectContaining({
@@ -2664,7 +2676,9 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
             teamMembers: expect.arrayContaining([
               expect.objectContaining({
                 id: 'team_admin_one',
-                fullName: 'Team Admin One'
+                fullName: 'Team Admin One',
+                chatgptEmail: 'team-admin-one@chatgpt.example',
+                openaiOrgId: 'org_team_admin_one'
               })
             ])
           })
@@ -2695,7 +2709,9 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
             teamMembers: expect.arrayContaining([
               expect.objectContaining({
                 id: 'team_admin_one',
-                fullName: 'Team Admin One'
+                fullName: 'Team Admin One',
+                chatgptEmail: 'team-admin-one@chatgpt.example',
+                openaiOrgId: 'org_team_admin_one'
               })
             ])
           }),
@@ -2708,7 +2724,9 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
             teamMembers: expect.arrayContaining([
               expect.objectContaining({
                 id: 'team_admin_two',
-                fullName: 'Team Admin Two'
+                fullName: 'Team Admin Two',
+                chatgptEmail: 'team-admin-two@chatgpt.example',
+                openaiOrgId: 'org_team_admin_two'
               })
             ])
           })
@@ -2723,7 +2741,9 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
             teamMembers: expect.arrayContaining([
               expect.objectContaining({
                 id: 'team_admin_one',
-                fullName: 'Team Admin One'
+                fullName: 'Team Admin One',
+                chatgptEmail: 'team-admin-one@chatgpt.example',
+                openaiOrgId: 'org_team_admin_one'
               })
             ])
           }),
@@ -2736,7 +2756,9 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
             teamMembers: expect.arrayContaining([
               expect.objectContaining({
                 id: 'team_admin_two',
-                fullName: 'Team Admin Two'
+                fullName: 'Team Admin Two',
+                chatgptEmail: 'team-admin-two@chatgpt.example',
+                openaiOrgId: 'org_team_admin_two'
               })
             ])
           })

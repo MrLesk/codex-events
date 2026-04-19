@@ -93,23 +93,18 @@ export interface PrizeRedemptionAvailability {
   reason?: string
 }
 
-export interface PrizeRedemptionPodiumItem {
-  winner: WinnerEntry
-  primaryPrize: PrizeRedemptionPrize
-  primaryRedemption: PrizeRedemptionRecord | null
-  additionalPrizes: PrizeRedemptionPrize[]
+export interface PrizeRedemptionWinnerRecipientEntry {
+  redemptionId: string
+  prize: PrizeRedemptionPrize
+  label: string
+  status: PrizeRedemptionRecord['status']
+  legalName: string | null
 }
 
-export interface PrizeRedemptionAdditionalWinnerItem {
+export interface PrizeRedemptionWinnerItem {
   winner: WinnerEntry
   prizes: PrizeRedemptionPrize[]
-  recipientLabels: string[]
-  recipientEntries: Array<{
-    redemptionId: string
-    label: string
-    status: PrizeRedemptionRecord['status']
-    legalName: string | null
-  }>
+  recipientEntries: PrizeRedemptionWinnerRecipientEntry[]
   pendingCount: number
   redeemedCount: number
   totalCount: number
@@ -188,10 +183,6 @@ function comparePrizeDefinitions(
     || left.id.localeCompare(right.id)
 }
 
-function isPodiumPrize(prize: Pick<PrizeRedemptionPrize, 'rankStart' | 'rankEnd'>) {
-  return prize.rankStart === prize.rankEnd && prize.rankStart >= 1 && prize.rankStart <= 3
-}
-
 export function buildPrizeRedemptionOperationsView(
   winners: WinnerEntry[],
   redemptions: PrizeRedemptionRecord[],
@@ -200,39 +191,7 @@ export function buildPrizeRedemptionOperationsView(
   const winnerMemberNamesByUserId = buildWinnerMemberLookup(winners)
   const winnerSubmissionIds = new Set(winners.map(winner => winner.submissionId))
 
-  const podiumItems: PrizeRedemptionPodiumItem[] = winners
-    .filter(winner => winner.finalRank >= 1 && winner.finalRank <= 3)
-    .sort((left, right) => left.finalRank - right.finalRank)
-    .flatMap((winner) => {
-      const podiumPrizes = winner.prizes
-        .filter(prize =>
-          isPodiumPrize(prize)
-          && prize.rankStart === winner.finalRank
-          && prize.rankEnd === winner.finalRank
-        )
-        .sort(comparePrizeDefinitions)
-
-      const primaryPrize = podiumPrizes[0]
-
-      if (!primaryPrize) {
-        return []
-      }
-
-      return [{
-        winner,
-        primaryPrize,
-        primaryRedemption: redemptions.find(redemption =>
-          redemption.prize.id === primaryPrize.id
-          && redemption.teamId === winner.teamId
-        ) ?? null,
-        additionalPrizes: winner.prizes
-          .filter(prize => prize.id !== primaryPrize.id)
-          .sort(comparePrizeDefinitions)
-      }]
-    })
-
-  const additionalWinnerItems: PrizeRedemptionAdditionalWinnerItem[] = winners
-    .filter(winner => winner.finalRank > 3 && winner.prizes.length > 0)
+  const winnerItems: PrizeRedemptionWinnerItem[] = winners
     .sort((left, right) => left.finalRank - right.finalRank)
     .map((winner) => {
       const prizeIds = new Set(winner.prizes.map(prize => prize.id))
@@ -259,14 +218,13 @@ export function buildPrizeRedemptionOperationsView(
             ? winner.teamName
             : (redemption.userId ? (winnerMemberNamesByUserId.get(redemption.userId) ?? redemption.userId) : 'No recipient recorded'),
           status: redemption.status,
+          prize: redemption.prize,
           legalName: redemption.legalName
         }))
-      const recipientLabels = [...new Set(recipientEntries.map(entry => entry.label))]
 
       return {
         winner,
         prizes: [...winner.prizes].sort(comparePrizeDefinitions),
-        recipientLabels,
         recipientEntries,
         pendingCount: recipientEntries.filter(entry => entry.status === 'pending').length,
         redeemedCount: recipientEntries.filter(entry => entry.status === 'redeemed').length,
@@ -274,7 +232,7 @@ export function buildPrizeRedemptionOperationsView(
       }
     })
 
-  const remainingRankedEntries = [...finalRankingEntries]
+  const shortlistedEntries = [...finalRankingEntries]
     .filter(entry => !winnerSubmissionIds.has(entry.submissionId))
     .sort((left, right) =>
       left.finalRank - right.finalRank
@@ -283,9 +241,8 @@ export function buildPrizeRedemptionOperationsView(
     )
 
   return {
-    podiumItems,
-    additionalWinnerItems,
-    remainingRankedEntries
+    winnerItems,
+    shortlistedEntries
   }
 }
 
