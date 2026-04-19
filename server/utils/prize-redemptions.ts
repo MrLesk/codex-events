@@ -11,9 +11,15 @@ import {
   prizeRedemptions,
   prizes,
   teamMembers,
+  users,
   type hackathons
 } from '../database/schema'
-import { getCurrentHackathonTerms, getHackathonOrThrow, serializePrize } from './hackathon-management'
+import {
+  getCurrentHackathonTerms,
+  getHackathonOrThrow,
+  serializePrize,
+  serializePublishedHackathonRosterMember
+} from './hackathon-management'
 import { ApiError } from './api-error'
 import { chunkRowsForD1 } from './judging'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
@@ -121,6 +127,89 @@ export async function listHackathonPrizeRedemptions(database: AppDatabase, hacka
     prizesById.get(redemption.prizeId)!,
     hackathon
   ))
+}
+
+export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
+  database: AppDatabase,
+  teamIds: string[]
+) {
+  if (teamIds.length === 0) {
+    return new Map<string, Array<{
+      id: string
+      fullName: string
+      bio: string | null
+      xProfileUrl: string | null
+      linkedinProfileUrl: string | null
+      githubProfileUrl: string | null
+      profileIconUrl: string | null
+    }>>()
+  }
+
+  const memberships = await Promise.all(
+    chunkRowsForD1(teamIds, 1).map(chunkedTeamIds =>
+      database.query.teamMembers.findMany({
+        where: and(
+          inArray(teamMembers.teamId, chunkedTeamIds),
+          isNull(teamMembers.leftAt)
+        ),
+        orderBy: [asc(teamMembers.teamId), asc(teamMembers.joinedAt)]
+      })
+    )
+  ).then(chunks =>
+    chunks
+      .flat()
+      .sort((left, right) =>
+        left.teamId.localeCompare(right.teamId)
+        || left.joinedAt.localeCompare(right.joinedAt)
+      )
+  )
+  const userIds = [...new Set(memberships.map(membership => membership.userId))]
+  const relatedUsers = userIds.length === 0
+    ? []
+    : await Promise.all(
+        chunkRowsForD1(userIds, 1).map(chunkedUserIds =>
+          database.query.users.findMany({
+            where: and(
+              inArray(users.id, chunkedUserIds),
+              isNull(users.deletedAt)
+            )
+          })
+        )
+      ).then(chunks => chunks.flat())
+  const usersById = new Map(relatedUsers.map(user => [user.id, user] as const))
+  const teamMembersByTeamId = new Map<string, Array<{
+    id: string
+    fullName: string
+    bio: string | null
+    xProfileUrl: string | null
+    linkedinProfileUrl: string | null
+    githubProfileUrl: string | null
+    profileIconUrl: string | null
+  }>>()
+
+  for (const membership of memberships) {
+    const user = usersById.get(membership.userId)
+
+    if (!user) {
+      continue
+    }
+
+    const teamRosterMembers = teamMembersByTeamId.get(membership.teamId) ?? []
+    const member = serializePublishedHackathonRosterMember(user)
+
+    teamRosterMembers.push({
+      id: member.id,
+      fullName: member.fullName,
+      bio: member.bio,
+      xProfileUrl: member.xProfileUrl,
+      linkedinProfileUrl: member.linkedinProfileUrl,
+      githubProfileUrl: member.githubProfileUrl,
+      profileIconUrl: null
+    })
+    teamMembersByTeamId.set(membership.teamId, teamRosterMembers)
+  }
+
+  return teamMembersByTeamId
 }
 
 export async function listOwnPendingPrizeRedemptions(event: H3Event) {

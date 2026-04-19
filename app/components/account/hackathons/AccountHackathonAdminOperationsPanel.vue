@@ -13,7 +13,12 @@ import type {
   SubmissionRecord,
   WinnerEntry
 } from '~/utils/admin-workspace'
-import type { PrizeRedemptionAdminView, PrizeRedemptionRecord } from '~/utils/prize-redemptions'
+import type {
+  PrizeRedemptionAdminView,
+  PrizeRedemptionBlindRankingEntry,
+  PrizeRedemptionFinalRankingEntry,
+  PrizeRedemptionRecord
+} from '~/utils/prize-redemptions'
 
 import {
   buildAdminOperationalTeams,
@@ -146,6 +151,8 @@ const winners = ref<WinnerEntry[]>([])
 const winnersStatus = ref<LoadStatus>('idle')
 const winnersErrorMessage = ref('')
 const redemptions = ref<PrizeRedemptionRecord[]>([])
+const prizeRedemptionBlindRankingEntries = ref<PrizeRedemptionBlindRankingEntry[]>([])
+const prizeRedemptionFinalRankingEntries = ref<PrizeRedemptionFinalRankingEntry[]>([])
 const redemptionsStatus = ref<LoadStatus>('idle')
 const redemptionsErrorMessage = ref('')
 const submissionSearchInput = ref('')
@@ -1601,6 +1608,8 @@ async function loadWinners() {
 async function loadPrizeRedemptions() {
   if (!canLoadPrizeRedemptions.value) {
     redemptions.value = []
+    prizeRedemptionBlindRankingEntries.value = []
+    prizeRedemptionFinalRankingEntries.value = []
     redemptionsStatus.value = 'idle'
     redemptionsErrorMessage.value = ''
     return
@@ -1615,9 +1624,13 @@ async function loadPrizeRedemptions() {
     )
     winners.value = response.data.winners
     redemptions.value = response.data.redemptions
+    prizeRedemptionBlindRankingEntries.value = response.data.blindRankingEntries
+    prizeRedemptionFinalRankingEntries.value = response.data.finalRankingEntries
     redemptionsStatus.value = 'success'
   } catch (error) {
     redemptions.value = []
+    prizeRedemptionBlindRankingEntries.value = []
+    prizeRedemptionFinalRankingEntries.value = []
     redemptionsStatus.value = 'error'
     redemptionsErrorMessage.value = toSectionErrorMessage(
       error,
@@ -2383,6 +2396,9 @@ async function runLifecycleAction() {
           :hackathon-state="currentHackathon.state"
           :winners="winners"
           :redemptions="redemptions"
+          :blind-ranking-entries="prizeRedemptionBlindRankingEntries"
+          :final-ranking-entries="prizeRedemptionFinalRankingEntries"
+          :pitch-presentation-submission-ids="currentHackathon.pitchPresentationSubmissionIds"
           :is-loading="redemptionsStatus === 'pending'"
           :error-message="redemptionsStatus === 'error' ? redemptionsErrorMessage : ''"
         />

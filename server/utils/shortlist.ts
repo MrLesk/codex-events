@@ -604,6 +604,10 @@ async function listBlindLeaderboardEntries(database: AppDatabase, hackathonId: s
   }
 }
 
+export async function listBlindRankingEntries(database: AppDatabase, hackathonId: string) {
+  return (await listBlindLeaderboardEntries(database, hackathonId)).entries.map(serializeLeaderboardEntry)
+}
+
 export async function listLeaderboardEntries(database: AppDatabase, hackathonId: string) {
   const { hackathon, entries } = await loadCompetitionEntries(database, hackathonId)
 

@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  buildPrizeRedemptionPostShortlistEntries,
   buildPrizeRedemptionOperationsView,
   buildWinnerMemberLookup,
   describePrizeRedemptionRecipient,
@@ -128,7 +129,7 @@ describe('prize-redemption workspace helpers', () => {
     })
   })
 
-  test('groups podium awards first and keeps additional winners visible as team rows', () => {
+  test('groups podium awards first, keeps additional winners visible as team rows, and returns the remaining ranked teams', () => {
     const winners = [
       {
         teamId: 'team_1',
@@ -373,7 +374,58 @@ describe('prize-redemption workspace helpers', () => {
       })
     ]
 
-    expect(buildPrizeRedemptionOperationsView(winners, redemptions)).toEqual({
+    const finalRankingEntries = [
+      {
+        teamId: 'team_1',
+        teamName: 'Alpha Team',
+        submissionId: 'submission_1',
+        projectName: 'Alpha Project',
+        finalRank: 1,
+        teamMembers: []
+      },
+      {
+        teamId: 'team_2',
+        teamName: 'Beta Team',
+        submissionId: 'submission_2',
+        projectName: 'Beta Project',
+        finalRank: 2,
+        teamMembers: []
+      },
+      {
+        teamId: 'team_3',
+        teamName: 'Gamma Team',
+        submissionId: 'submission_3',
+        projectName: 'Gamma Project',
+        finalRank: 3,
+        teamMembers: []
+      },
+      {
+        teamId: 'team_4',
+        teamName: 'Delta Team',
+        submissionId: 'submission_4',
+        projectName: 'Delta Project',
+        finalRank: 4,
+        teamMembers: []
+      },
+      {
+        teamId: 'team_5',
+        teamName: 'Epsilon Team',
+        submissionId: 'submission_5',
+        projectName: 'Epsilon Project',
+        finalRank: 5,
+        teamMembers: []
+      },
+      {
+        teamId: 'team_6',
+        teamName: 'Zeta Team',
+        submissionId: 'submission_6',
+        projectName: 'Zeta Project',
+        finalRank: 6,
+        teamMembers: []
+      }
+    ]
+
+    expect(buildPrizeRedemptionOperationsView(winners, redemptions, finalRankingEntries)).toEqual({
       podiumItems: [
         expect.objectContaining({
           winner: expect.objectContaining({ teamName: 'Alpha Team', finalRank: 1 }),
@@ -403,7 +455,57 @@ describe('prize-redemption workspace helpers', () => {
           redeemedCount: 1,
           totalCount: 1
         })
+      ],
+      remainingRankedEntries: [
+        expect.objectContaining({
+          teamName: 'Gamma Team',
+          submissionId: 'submission_3',
+          finalRank: 3
+        }),
+        expect.objectContaining({
+          teamName: 'Zeta Team',
+          submissionId: 'submission_6',
+          finalRank: 6
+        })
       ]
     })
+  })
+
+  test('filters post-shortlist teams from the blind-review ranking using the finalist submission ids', () => {
+    expect(buildPrizeRedemptionPostShortlistEntries([
+      {
+        teamId: 'team_1',
+        teamName: 'Alpha Team',
+        submissionId: 'submission_1',
+        projectName: 'Alpha Project',
+        blindRank: 1,
+        teamMembers: []
+      },
+      {
+        teamId: 'team_2',
+        teamName: 'Beta Team',
+        submissionId: 'submission_2',
+        projectName: 'Beta Project',
+        blindRank: 2,
+        teamMembers: []
+      },
+      {
+        teamId: 'team_3',
+        teamName: 'Gamma Team',
+        submissionId: 'submission_3',
+        projectName: 'Gamma Project',
+        blindRank: 3,
+        teamMembers: []
+      }
+    ], ['submission_1'])).toEqual([
+      expect.objectContaining({
+        submissionId: 'submission_2',
+        blindRank: 2
+      }),
+      expect.objectContaining({
+        submissionId: 'submission_3',
+        blindRank: 3
+      })
+    ])
   })
 })

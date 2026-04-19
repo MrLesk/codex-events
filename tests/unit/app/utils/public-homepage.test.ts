@@ -30,6 +30,24 @@ describe('public homepage hackathon view helpers', () => {
     })
   })
 
+  test('defaults to the active tab when active hackathons exist and no tab is requested', () => {
+    expect(getPublicHomepageHackathonView(null, 6, 4, 2)).toEqual({
+      activeHackathonCount: 2,
+      effectiveTab: 'active',
+      showFilters: true,
+      useSingleActiveLayout: false
+    })
+  })
+
+  test('defaults to the past tab when only past hackathons exist and no tab is requested', () => {
+    expect(getPublicHomepageHackathonView(null, 1, 1, 0)).toEqual({
+      activeHackathonCount: 0,
+      effectiveTab: 'past',
+      showFilters: true,
+      useSingleActiveLayout: false
+    })
+  })
+
   test('clamps the active count at zero when past counts exceed total counts', () => {
     expect(getPublicHomepageHackathonView('active', 2, 5, 0)).toEqual({
       activeHackathonCount: 0,

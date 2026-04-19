@@ -2,8 +2,15 @@ import { getDatabase } from '../../../../database/client'
 import { defineApiHandler } from '../../../../utils/api-handler'
 import { apiData } from '../../../../utils/api-response'
 import { requireHackathonAdmin, routeIdParamsSchema } from '../../../../utils/hackathon-management'
-import { listHackathonPrizeRedemptions } from '../../../../utils/prize-redemptions'
-import { getWinnersView } from '../../../../utils/shortlist'
+import {
+  listHackathonPrizeRedemptions,
+  listOperationalPrizeRedemptionTeamMembersByTeamId
+} from '../../../../utils/prize-redemptions'
+import {
+  getFinalDeliberationView,
+  getWinnersView,
+  listBlindRankingEntries
+} from '../../../../utils/shortlist'
 import { parseValidatedParams } from '../../../../utils/validation'
 
 export default defineApiHandler(async (event) => {
@@ -12,13 +19,52 @@ export default defineApiHandler(async (event) => {
 
   await requireHackathonAdmin(event, hackathonId)
 
-  const [winners, redemptions] = await Promise.all([
+  const [winners, redemptions, finalDeliberation, blindRankingEntries] = await Promise.all([
     getWinnersView(database, hackathonId),
-    listHackathonPrizeRedemptions(database, hackathonId)
+    listHackathonPrizeRedemptions(database, hackathonId),
+    getFinalDeliberationView(database, hackathonId),
+    listBlindRankingEntries(database, hackathonId)
   ])
+  const teamIds = [...new Set([
+    ...finalDeliberation.entries
+      .filter((entry): entry is typeof finalDeliberation.entries[number] & { finalRank: number } =>
+        entry.finalRank !== null
+      )
+      .map(entry => entry.teamId),
+    ...blindRankingEntries
+      .filter((entry): entry is typeof blindRankingEntries[number] & { rank: number } =>
+        entry.rank !== null
+      )
+      .map(entry => entry.teamId)
+  ])]
+  const teamMembersByTeamId = await listOperationalPrizeRedemptionTeamMembersByTeamId(database, teamIds)
 
   return apiData({
     winners,
-    redemptions
+    redemptions,
+    finalRankingEntries: finalDeliberation.entries
+      .filter((entry): entry is typeof finalDeliberation.entries[number] & { finalRank: number } =>
+        entry.finalRank !== null
+      )
+      .map(entry => ({
+        teamId: entry.teamId,
+        teamName: entry.teamName,
+        submissionId: entry.submissionId,
+        projectName: entry.projectName,
+        finalRank: entry.finalRank,
+        teamMembers: teamMembersByTeamId.get(entry.teamId) ?? []
+      })),
+    blindRankingEntries: blindRankingEntries
+      .filter((entry): entry is typeof blindRankingEntries[number] & { rank: number } =>
+        entry.rank !== null
+      )
+      .map(entry => ({
+        teamId: entry.teamId,
+        teamName: entry.teamName,
+        submissionId: entry.submissionId,
+        projectName: entry.projectName,
+        blindRank: entry.rank,
+        teamMembers: teamMembersByTeamId.get(entry.teamId) ?? []
+      }))
   })
 })

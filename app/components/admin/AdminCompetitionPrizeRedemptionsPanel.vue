@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import type { HackathonState, WinnerEntry } from '~/utils/admin-workspace'
-import type { PrizeRedemptionRecord } from '~/utils/prize-redemptions'
+import type {
+  PrizeRedemptionBlindRankingEntry,
+  PrizeRedemptionFinalRankingEntry,
+  PrizeRedemptionRecord
+} from '~/utils/prize-redemptions'
 
 import {
   formatPrizeRank,
   formatPrizeReward
 } from '~/composables/useHackathonPresentation'
 import {
+  buildPrizeRedemptionPostShortlistEntries,
   buildPrizeRedemptionOperationsView,
   formatPrizeRedemptionStatus,
   getPrizeRedemptionStatusColor
@@ -16,6 +21,9 @@ const props = defineProps<{
   hackathonState: HackathonState
   winners: WinnerEntry[]
   redemptions: PrizeRedemptionRecord[]
+  blindRankingEntries: PrizeRedemptionBlindRankingEntry[]
+  finalRankingEntries: PrizeRedemptionFinalRankingEntry[]
+  pitchPresentationSubmissionIds: string[]
   isLoading?: boolean
   errorMessage?: string
 }>()
@@ -27,10 +35,17 @@ const redemptionsVisible = computed(() =>
 const pendingCount = computed(() => props.redemptions.filter(redemption => redemption.status === 'pending').length)
 const redeemedCount = computed(() => props.redemptions.filter(redemption => redemption.status === 'redeemed').length)
 const operationsPrizeView = computed(() =>
-  buildPrizeRedemptionOperationsView(props.winners, props.redemptions)
+  buildPrizeRedemptionOperationsView(props.winners, props.redemptions, props.finalRankingEntries)
 )
 const podiumItems = computed(() => operationsPrizeView.value.podiumItems)
 const additionalWinnerItems = computed(() => operationsPrizeView.value.additionalWinnerItems)
+const remainingRankedEntries = computed(() => operationsPrizeView.value.remainingRankedEntries)
+const postShortlistEntries = computed(() =>
+  buildPrizeRedemptionPostShortlistEntries(
+    props.blindRankingEntries,
+    props.pitchPresentationSubmissionIds
+  )
+)
 </script>
 
 <template>
@@ -375,6 +390,174 @@ const additionalWinnerItems = computed(() => operationsPrizeView.value.additiona
                       class="text-sm text-toned"
                     >
                       No team members are published for this winner.
+                    </p>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section
+            v-if="hackathonState === 'completed' && remainingRankedEntries.length > 0"
+            class="space-y-3"
+          >
+            <div class="space-y-1">
+              <h3 class="text-sm font-semibold text-highlighted">
+                Remaining final ranking
+              </h3>
+              <p class="text-sm text-muted">
+                Projects without winner benefits stay listed here so the full final ranking is visible after the hackathon is completed.
+              </p>
+            </div>
+
+            <div class="grid gap-4">
+              <article
+                v-for="entry in remainingRankedEntries"
+                :key="entry.submissionId"
+                :data-testid="`admin-competition-remaining-ranked-${entry.submissionId}`"
+                class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
+              >
+                <div class="grid gap-6 xl:grid-cols-[minmax(0,2.25fr)_minmax(18rem,1fr)]">
+                  <div class="space-y-4">
+                    <div class="space-y-1">
+                      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                        Final rank
+                      </p>
+                      <div class="flex flex-wrap items-center gap-3">
+                        <h4 class="text-lg font-semibold text-highlighted">
+                          #{{ entry.finalRank }} {{ entry.teamName }}
+                        </h4>
+                      </div>
+                      <p class="text-sm text-toned">
+                        {{ entry.projectName ?? entry.submissionId }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="space-y-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                      Team members
+                    </p>
+
+                    <div
+                      v-if="entry.teamMembers.length > 0"
+                      class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1"
+                    >
+                      <article
+                        v-for="member in entry.teamMembers"
+                        :key="member.id"
+                        class="hackathon-workspace-detail-inset flex items-center gap-3 rounded-xl p-4"
+                      >
+                        <AppAvatar
+                          size="lg"
+                          :src="member.profileIconUrl ?? undefined"
+                          :alt="member.fullName"
+                          class="shrink-0"
+                        />
+
+                        <div class="min-w-0 flex-1">
+                          <h5 class="text-sm font-semibold text-highlighted">
+                            {{ member.fullName }}
+                          </h5>
+                          <p
+                            v-if="member.bio"
+                            class="mt-1 line-clamp-2 text-sm text-toned"
+                          >
+                            {{ member.bio }}
+                          </p>
+                        </div>
+                      </article>
+                    </div>
+
+                    <p
+                      v-else
+                      class="text-sm text-toned"
+                    >
+                      No team members are published for this team.
+                    </p>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section
+            v-if="hackathonState === 'completed' && postShortlistEntries.length > 0"
+            class="space-y-3"
+          >
+            <div class="space-y-1">
+              <h3 class="text-sm font-semibold text-highlighted">
+                Post-shortlist teams
+              </h3>
+              <p class="text-sm text-muted">
+                Teams below the finalist cutoff stay visible here in blind-review rank order so the completed operations view still shows what came after the shortlist.
+              </p>
+            </div>
+
+            <div class="grid gap-4">
+              <article
+                v-for="entry in postShortlistEntries"
+                :key="entry.submissionId"
+                :data-testid="`admin-competition-post-shortlist-${entry.submissionId}`"
+                class="rounded-none border-0 bg-transparent dark:border-0 dark:bg-transparent px-5 py-5"
+              >
+                <div class="grid gap-6 xl:grid-cols-[minmax(0,2.25fr)_minmax(18rem,1fr)]">
+                  <div class="space-y-4">
+                    <div class="space-y-1">
+                      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                        Blind-review rank
+                      </p>
+                      <div class="flex flex-wrap items-center gap-3">
+                        <h4 class="text-lg font-semibold text-highlighted">
+                          #{{ entry.blindRank }} {{ entry.teamName }}
+                        </h4>
+                      </div>
+                      <p class="text-sm text-toned">
+                        {{ entry.projectName ?? entry.submissionId }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="space-y-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                      Team members
+                    </p>
+
+                    <div
+                      v-if="entry.teamMembers.length > 0"
+                      class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1"
+                    >
+                      <article
+                        v-for="member in entry.teamMembers"
+                        :key="member.id"
+                        class="hackathon-workspace-detail-inset flex items-center gap-3 rounded-xl p-4"
+                      >
+                        <AppAvatar
+                          size="lg"
+                          :src="member.profileIconUrl ?? undefined"
+                          :alt="member.fullName"
+                          class="shrink-0"
+                        />
+
+                        <div class="min-w-0 flex-1">
+                          <h5 class="text-sm font-semibold text-highlighted">
+                            {{ member.fullName }}
+                          </h5>
+                          <p
+                            v-if="member.bio"
+                            class="mt-1 line-clamp-2 text-sm text-toned"
+                          >
+                            {{ member.bio }}
+                          </p>
+                        </div>
+                      </article>
+                    </div>
+
+                    <p
+                      v-else
+                      class="text-sm text-toned"
+                    >
+                      No team members are published for this team.
                     </p>
                   </div>
                 </div>

@@ -3,7 +3,7 @@ import type { PublicApiListResponse, PublicHackathon } from '~/composables/useHa
 
 import HackathonCard from '~/components/public/hackathons/HackathonCard.vue'
 import { getPublicHomepageHackathonView, type PublicHomepageTab } from '~/utils/public-homepage'
-import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
+import { normalizeTabQueryValue } from '~/utils/tab-query'
 
 const publicHackathonsPageSize = 4
 const route = useRoute()
@@ -13,12 +13,16 @@ const total = ref(0)
 const isLoadingMore = ref(false)
 const loadMoreError = ref<string>()
 const homepageTabs = ['active', 'past'] as const
-const activeTab = computed<PublicHomepageTab>(() =>
-  resolveTabQueryValue(route.query.tab, homepageTabs, 'active')
-)
+const requestedTab = computed<PublicHomepageTab | null>(() => {
+  const normalizedTab = normalizeTabQueryValue(route.query.tab)
+
+  return normalizedTab && homepageTabs.includes(normalizedTab as PublicHomepageTab)
+    ? normalizedTab as PublicHomepageTab
+    : null
+})
 
 async function selectHomepageTab(nextTab: PublicHomepageTab) {
-  if (normalizeTabQueryValue(route.query.tab) === nextTab) {
+  if (selectedTab.value === nextTab) {
     return
   }
 
@@ -61,12 +65,13 @@ const loadedActiveHackathonCount = computed(() =>
 )
 const homepageHackathonView = computed(() =>
   getPublicHomepageHackathonView(
-    activeTab.value,
+    requestedTab.value,
     total.value,
     pastTotal.value,
     loadedActiveHackathonCount.value
   )
 )
+const selectedTab = computed<PublicHomepageTab>(() => homepageHackathonView.value.effectiveTab)
 const filteredHackathons = computed(() => hackathons.value.filter((hackathon) => {
   const isPast = hackathon.state === 'completed'
 
@@ -165,26 +170,26 @@ useSeoMeta({
         <div class="flex min-w-0 flex-wrap items-center gap-2">
           <button
             class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-            :class="activeTab === 'active' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+            :class="selectedTab === 'active' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
             @click="void selectHomepageTab('active')"
           >
             <span>Active</span>
             <span
               class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-              :class="activeTab === 'active' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+              :class="selectedTab === 'active' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
             >
               {{ homepageFilterCounts.active }}
             </span>
           </button>
           <button
             class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"
-            :class="activeTab === 'past' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
+            :class="selectedTab === 'past' ? 'bg-black text-white font-medium dark:bg-white dark:text-black' : 'bg-black/6 text-neutral-700 hover:bg-black/10 hover:text-highlighted dark:bg-white/[0.08] dark:text-[#A3A3A3] dark:hover:bg-white/[0.12] dark:hover:text-white'"
             @click="void selectHomepageTab('past')"
           >
             <span>Past</span>
             <span
               class="rounded-full px-2 py-0.5 text-[11px] font-semibold leading-none"
-              :class="activeTab === 'past' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
+              :class="selectedTab === 'past' ? 'bg-white/15 text-white dark:bg-black/10 dark:text-black' : 'bg-black/6 text-neutral-700 dark:bg-white/[0.08] dark:text-[#B0B0B0]'"
             >
               {{ homepageFilterCounts.past }}
             </span>

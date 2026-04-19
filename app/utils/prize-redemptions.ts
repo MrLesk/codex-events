@@ -51,9 +51,31 @@ export interface PrizeRedemptionCurrentTermsResponse {
   winner_terms: TermsDocument | null
 }
 
+export type PrizeRedemptionTeamMember = WinnerEntry['teamMembers'][number]
+
+export interface PrizeRedemptionFinalRankingEntry {
+  teamId: string
+  teamName: string
+  submissionId: string
+  projectName: string | null
+  finalRank: number
+  teamMembers: PrizeRedemptionTeamMember[]
+}
+
+export interface PrizeRedemptionBlindRankingEntry {
+  teamId: string
+  teamName: string
+  submissionId: string
+  projectName: string | null
+  blindRank: number
+  teamMembers: PrizeRedemptionTeamMember[]
+}
+
 export interface PrizeRedemptionAdminView {
   winners: WinnerEntry[]
   redemptions: PrizeRedemptionRecord[]
+  finalRankingEntries: PrizeRedemptionFinalRankingEntry[]
+  blindRankingEntries: PrizeRedemptionBlindRankingEntry[]
 }
 
 export interface PrizeRedemptionApiDataResponse<T> {
@@ -172,9 +194,11 @@ function isPodiumPrize(prize: Pick<PrizeRedemptionPrize, 'rankStart' | 'rankEnd'
 
 export function buildPrizeRedemptionOperationsView(
   winners: WinnerEntry[],
-  redemptions: PrizeRedemptionRecord[]
+  redemptions: PrizeRedemptionRecord[],
+  finalRankingEntries: PrizeRedemptionFinalRankingEntry[] = []
 ) {
   const winnerMemberNamesByUserId = buildWinnerMemberLookup(winners)
+  const winnerSubmissionIds = new Set(winners.map(winner => winner.submissionId))
 
   const podiumItems: PrizeRedemptionPodiumItem[] = winners
     .filter(winner => winner.finalRank >= 1 && winner.finalRank <= 3)
@@ -250,10 +274,38 @@ export function buildPrizeRedemptionOperationsView(
       }
     })
 
+  const remainingRankedEntries = [...finalRankingEntries]
+    .filter(entry => !winnerSubmissionIds.has(entry.submissionId))
+    .sort((left, right) =>
+      left.finalRank - right.finalRank
+      || left.teamName.localeCompare(right.teamName)
+      || left.submissionId.localeCompare(right.submissionId)
+    )
+
   return {
     podiumItems,
-    additionalWinnerItems
+    additionalWinnerItems,
+    remainingRankedEntries
   }
+}
+
+export function buildPrizeRedemptionPostShortlistEntries(
+  blindRankingEntries: PrizeRedemptionBlindRankingEntry[],
+  finalistSubmissionIds: string[]
+) {
+  if (finalistSubmissionIds.length === 0) {
+    return []
+  }
+
+  const finalistSubmissionIdSet = new Set(finalistSubmissionIds)
+
+  return [...blindRankingEntries]
+    .filter(entry => !finalistSubmissionIdSet.has(entry.submissionId))
+    .sort((left, right) =>
+      left.blindRank - right.blindRank
+      || left.teamName.localeCompare(right.teamName)
+      || left.submissionId.localeCompare(right.submissionId)
+    )
 }
 
 export function describePrizeRedemptionRecipient(

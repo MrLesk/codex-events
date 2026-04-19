@@ -2628,7 +2628,63 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
             teamId: 'team_1',
             userId: 'team_admin_one'
           })
-        ])
+        ]),
+        finalRankingEntries: [
+          expect.objectContaining({
+            teamId: 'team_1',
+            teamName: 'Alpha Team',
+            submissionId: 'submission_1',
+            projectName: 'Alpha Project',
+            finalRank: 1,
+            teamMembers: expect.arrayContaining([
+              expect.objectContaining({
+                id: 'team_admin_one',
+                fullName: 'Team Admin One'
+              })
+            ])
+          }),
+          expect.objectContaining({
+            teamId: 'team_2',
+            teamName: 'Beta Team',
+            submissionId: 'submission_2',
+            projectName: 'Beta Project',
+            finalRank: 2,
+            teamMembers: expect.arrayContaining([
+              expect.objectContaining({
+                id: 'team_admin_two',
+                fullName: 'Team Admin Two'
+              })
+            ])
+          })
+        ],
+        blindRankingEntries: [
+          expect.objectContaining({
+            teamId: 'team_1',
+            teamName: 'Alpha Team',
+            submissionId: 'submission_1',
+            projectName: 'Alpha Project',
+            blindRank: 1,
+            teamMembers: expect.arrayContaining([
+              expect.objectContaining({
+                id: 'team_admin_one',
+                fullName: 'Team Admin One'
+              })
+            ])
+          }),
+          expect.objectContaining({
+            teamId: 'team_2',
+            teamName: 'Beta Team',
+            submissionId: 'submission_2',
+            projectName: 'Beta Project',
+            blindRank: 2,
+            teamMembers: expect.arrayContaining([
+              expect.objectContaining({
+                id: 'team_admin_two',
+                fullName: 'Team Admin Two'
+              })
+            ])
+          })
+        ]
       }
     })
   })
