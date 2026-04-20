@@ -186,7 +186,7 @@ describe('shared database migration', () => {
     }])
   })
 
-  test('stores anonymous hackathon feedback rows and enforces the 1 to 5 rating range', async () => {
+  test('stores anonymous hackathon feedback rows, allows not-applicable null ratings, and enforces the 1 to 5 rating range', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
     await seedHackathon(database, 'hackathon_1', 'completed', now, 'creator_1')
@@ -205,7 +205,7 @@ describe('shared database migration', () => {
       5,
       4,
       4,
-      3,
+      null,
       4,
       5,
       5,
@@ -222,18 +222,20 @@ describe('shared database migration', () => {
     )
 
     const feedbackRows = await database.prepare(`
-      select hackathon_id, overall_experience_rating, comment
+      select hackathon_id, overall_experience_rating, platform_rating, comment
       from hackathon_feedback
       where id = ?
     `).all<{
       hackathon_id: string
       overall_experience_rating: number
+      platform_rating: number | null
       comment: string | null
     }>('feedback_1')
 
     expect(feedbackRows.results).toEqual([{
       hackathon_id: 'hackathon_1',
       overall_experience_rating: 5,
+      platform_rating: null,
       comment: 'Great event overall.'
     }])
 

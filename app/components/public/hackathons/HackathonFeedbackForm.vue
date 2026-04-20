@@ -1,10 +1,17 @@
 <script setup lang="ts">
 import type {
   HackathonFeedbackQuestionId,
-  HackathonFeedbackRatingValue
+  HackathonFeedbackRatingValue,
+  HackathonFeedbackSelectionValue
 } from '../../../../shared/hackathon-feedback'
 
-import { hackathonFeedbackQuestionIds, hackathonFeedbackQuestions, hackathonFeedbackRatingValues } from '../../../../shared/hackathon-feedback'
+import {
+  hackathonFeedbackNotApplicableLabel,
+  hackathonFeedbackNotApplicableValue,
+  hackathonFeedbackQuestionIds,
+  hackathonFeedbackQuestions,
+  hackathonFeedbackRatingValues
+} from '../../../../shared/hackathon-feedback'
 import { normalizeApiError } from '~/utils/admin-workspace'
 
 const props = defineProps<{
@@ -14,7 +21,7 @@ const props = defineProps<{
 function createEmptyRatings() {
   return Object.fromEntries(
     hackathonFeedbackQuestionIds.map(questionId => [questionId, null])
-  ) as Record<HackathonFeedbackQuestionId, HackathonFeedbackRatingValue | null>
+  ) as Record<HackathonFeedbackQuestionId, HackathonFeedbackSelectionValue | null>
 }
 
 const ratings = ref(createEmptyRatings())
@@ -28,7 +35,11 @@ const missingQuestionCount = computed(() =>
   hackathonFeedbackQuestionIds.filter(questionId => ratings.value[questionId] === null).length
 )
 
-function updateRating(questionId: HackathonFeedbackQuestionId, rating: HackathonFeedbackRatingValue) {
+function isQuestionMissing(questionId: HackathonFeedbackQuestionId) {
+  return submitAttempted.value && ratings.value[questionId] === null
+}
+
+function updateRating(questionId: HackathonFeedbackQuestionId, rating: HackathonFeedbackSelectionValue) {
   if (isSubmitting.value || submitSuccess.value) {
     return
   }
@@ -50,18 +61,25 @@ async function submitFeedback() {
 
   if (missingQuestionCount.value > 0) {
     submitError.value = missingQuestionCount.value === 1
-      ? 'Select a score for the remaining question before you submit.'
-      : `Select a score for the remaining ${missingQuestionCount.value} questions before you submit.`
+      ? 'Select a response for the remaining question before you submit.'
+      : `Select a response for the remaining ${missingQuestionCount.value} questions before you submit.`
     return
   }
 
   isSubmitting.value = true
 
   try {
+    const payload = Object.fromEntries(
+      hackathonFeedbackQuestionIds.map(questionId => [
+        questionId,
+        ratings.value[questionId] === hackathonFeedbackNotApplicableValue ? null : ratings.value[questionId]
+      ])
+    ) as Record<HackathonFeedbackQuestionId, HackathonFeedbackRatingValue | null>
+
     await $fetch(`/api/public/hackathons/${props.hackathonSlug}/feedback`, {
       method: 'POST',
       body: {
-        ...ratings.value,
+        ...payload,
         comment: comment.value
       }
     })
@@ -85,7 +103,7 @@ async function submitFeedback() {
         Share Your Feedback
       </h2>
       <p class="max-w-3xl text-sm leading-7 text-neutral-600 dark:text-[#A3A3A3]">
-        Rate each part of the hackathon from 1 to 5. This form is anonymous and includes one optional written comment.
+        Rate each part of the hackathon from 1 to 5, or choose Not applicable if you did not use or experience it. This form is anonymous and includes one optional written comment.
       </p>
     </div>
 
@@ -102,37 +120,49 @@ async function submitFeedback() {
       class="space-y-6"
       @submit.prevent="submitFeedback"
     >
-      <AppAlert
-        v-if="submitError"
-        color="warning"
-        variant="soft"
-        title="Feedback not submitted"
-        :description="submitError"
-      />
-
       <div class="divide-y divide-black/8 overflow-hidden rounded-xl border border-black/8 bg-[#0F0F10]/70 dark:divide-white/[0.08] dark:border-white/[0.08] dark:bg-[#101112]">
         <div
           v-for="question in hackathonFeedbackQuestions"
           :key="question.id"
           class="px-5 py-5"
         >
-          <div class="space-y-4">
-            <div class="space-y-2">
-              <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                {{ question.label }}
-              </p>
-              <h3 class="text-lg font-semibold text-highlighted dark:text-white">
-                {{ question.prompt }}
-              </h3>
-            </div>
+          <div class="space-y-3">
+            <div
+              :id="`hackathon-feedback-${question.id}`"
+              class="space-y-3"
+              role="radiogroup"
+              :aria-label="question.prompt"
+              :aria-describedby="isQuestionMissing(question.id) ? `hackathon-feedback-${question.id}-error` : undefined"
+              :aria-invalid="isQuestionMissing(question.id) ? 'true' : undefined"
+            >
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div class="space-y-2">
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                    {{ question.label }}
+                  </p>
+                  <h3 class="text-lg font-semibold text-highlighted dark:text-white">
+                    {{ question.prompt }}
+                  </h3>
+                </div>
 
-            <div class="space-y-3">
-              <div
-                :id="`hackathon-feedback-${question.id}`"
-                class="grid grid-cols-5 gap-1.5"
-                role="radiogroup"
-                :aria-label="question.prompt"
-              >
+                <button
+                  type="button"
+                  role="radio"
+                  :aria-checked="ratings[question.id] === hackathonFeedbackNotApplicableValue"
+                  class="shrink-0 rounded-lg border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
+                  :class="ratings[question.id] === hackathonFeedbackNotApplicableValue
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : isQuestionMissing(question.id)
+                      ? 'border-error/45 bg-black/20 text-error hover:border-error/55 hover:bg-white/5 hover:text-error dark:border-error/50 dark:hover:border-error/60'
+                    : 'border-black/8 bg-black/20 text-muted hover:border-black/14 hover:bg-white/5 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.14] dark:hover:text-white'"
+                  :disabled="isSubmitting"
+                  @click="updateRating(question.id, hackathonFeedbackNotApplicableValue)"
+                >
+                  {{ hackathonFeedbackNotApplicableLabel }}
+                </button>
+              </div>
+
+              <div class="grid grid-cols-5 gap-1.5">
                 <button
                   v-for="score in hackathonFeedbackRatingValues"
                   :key="score"
@@ -142,6 +172,8 @@ async function submitFeedback() {
                   class="rounded-lg border px-0 py-2 text-center text-[11px] font-semibold tabular-nums transition-colors disabled:cursor-not-allowed disabled:opacity-50 sm:text-xs"
                   :class="ratings[question.id] === score
                     ? 'border-primary bg-primary text-primary-foreground'
+                    : isQuestionMissing(question.id)
+                      ? 'border-error/45 bg-black/20 text-error hover:border-error/55 hover:bg-white/5 hover:text-error dark:border-error/50 dark:hover:border-error/60'
                     : 'border-black/8 bg-black/20 text-muted hover:border-black/14 hover:bg-white/5 hover:text-highlighted dark:border-white/[0.08] dark:hover:border-white/[0.14] dark:hover:text-white'"
                   :disabled="isSubmitting"
                   @click="updateRating(question.id, score)"
@@ -149,13 +181,21 @@ async function submitFeedback() {
                   {{ score }}
                 </button>
               </div>
-
-              <div class="flex items-center justify-between gap-3 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-xs">
-                <span>Poor</span>
-                <span>Okay</span>
-                <span>Excellent</span>
-              </div>
             </div>
+
+            <div class="flex items-center justify-between gap-3 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted sm:text-xs">
+              <span>Poor</span>
+              <span>Okay</span>
+              <span>Excellent</span>
+            </div>
+
+            <p
+              v-if="isQuestionMissing(question.id)"
+              :id="`hackathon-feedback-${question.id}-error`"
+              class="px-1 text-[11px] text-error"
+            >
+              Choose a rating or Not applicable.
+            </p>
           </div>
         </div>
 
@@ -182,20 +222,30 @@ async function submitFeedback() {
         </div>
       </div>
 
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-          Feedback is anonymous.
-        </p>
+      <div class="space-y-3">
+        <AppAlert
+          v-if="submitError"
+          color="warning"
+          variant="soft"
+          title="Feedback not submitted"
+          :description="submitError"
+        />
 
-        <AppButton
-          type="submit"
-          color="neutral"
-          variant="solid"
-          :loading="isSubmitting"
-          class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-        >
-          Submit Feedback
-        </AppButton>
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+            Feedback is anonymous.
+          </p>
+
+          <AppButton
+            type="submit"
+            color="neutral"
+            variant="solid"
+            :loading="isSubmitting"
+            class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+          >
+            Submit Feedback
+          </AppButton>
+        </div>
       </div>
     </form>
   </section>

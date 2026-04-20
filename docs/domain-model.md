@@ -126,12 +126,13 @@ Rules:
 - Each feedback submission belongs to exactly one hackathon.
 - The public hackathon feedback route is `/hackathons/:slug/feedback`.
 - The public feedback route is available only after the hackathon reaches `completed`.
-- Each feedback submission records one required `1..5` rating for each canonical feedback topic.
+- Each feedback topic records either a participant-selected `1..5` rating or an explicit `Not applicable` response when the participant did not directly experience that area.
 - The canonical feedback topics are food, staff, organization, platform, judges, venue, participants and community, communication before the hackathon, communication during the hackathon, clarity and fairness of the rules, overall experience, schedule and pacing, technical setup, safety/accessibility/inclusion, and outcomes.
 - A feedback submission can include one optional free-text comment.
 - Feedback submissions are anonymous in product data and do not reference a user, application, or team.
 - Anonymous feedback submission is protected by per-IP rate limiting rather than by account identity.
 - The account-scoped hackathon workspace exposes feedback results to judges, staff, hackathon admins, and platform admins.
+- Feedback reporting excludes `Not applicable` responses from per-question averages and exposes skipped-answer counts separately from rated counts.
 
 ### PlatformDocument
 

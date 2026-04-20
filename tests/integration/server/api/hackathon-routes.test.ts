@@ -1667,7 +1667,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         foodRating: 5,
         staffRating: 4,
         organizationRating: 4,
-        platformRating: 3,
+        platformRating: null,
         judgesRating: 4,
         venueRating: 5,
         participantsCommunityRating: 5,
@@ -1697,6 +1697,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
     expect(savedFeedback).toHaveLength(1)
     expect(savedFeedback[0]).toMatchObject({
       hackathonId: 'hackathon_feedback_public',
+      platformRating: null,
       overallExperienceRating: 5,
       comment: 'Great event overall.'
     })
@@ -1928,7 +1929,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
           foodRating: 5,
           staffRating: 4,
           organizationRating: 5,
-          platformRating: 4,
+          platformRating: null,
           judgesRating: 4,
           venueRating: 5,
           participantsCommunityRating: 5,
@@ -1979,6 +1980,8 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
               id: 'foodRating',
               averageRating: 5,
               responseCount: 2,
+              ratedResponseCount: 2,
+              notApplicableCount: 0,
               ratingCounts: {
                 1: 0,
                 2: 0,
@@ -1989,13 +1992,15 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
             }),
             expect.objectContaining({
               id: 'platformRating',
-              averageRating: 2.5,
+              averageRating: 1,
               responseCount: 2,
+              ratedResponseCount: 1,
+              notApplicableCount: 1,
               ratingCounts: {
                 1: 1,
                 2: 0,
                 3: 0,
-                4: 1,
+                4: 0,
                 5: 0
               }
             })

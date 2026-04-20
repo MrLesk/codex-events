@@ -21,7 +21,10 @@ import { assertAllowedState } from './lifecycle-guard'
 
 export const hackathonFeedbackCommentMaxLength = 4000
 
-const hackathonFeedbackRatingFieldSchema = z.coerce.number().int().min(1).max(5)
+const hackathonFeedbackRatingFieldSchema = z.union([
+  z.null(),
+  z.coerce.number().int().min(1).max(5)
+])
 
 const hackathonFeedbackRatingShape = Object.fromEntries(
   hackathonFeedbackQuestionIds.map(questionId => [questionId, hackathonFeedbackRatingFieldSchema])
@@ -105,17 +108,28 @@ export async function getHackathonFeedbackSummary(
         hackathonFeedbackRatingValues.map(rating => [rating, 0])
       ) as Record<(typeof hackathonFeedbackRatingValues)[number], number>
       let ratingTotal = 0
+      let ratedResponseCount = 0
+      let notApplicableCount = 0
 
       for (const row of rows) {
         const rating = row[question.id]
+
+        if (rating === null) {
+          notApplicableCount += 1
+          continue
+        }
+
         ratingCounts[rating as (typeof hackathonFeedbackRatingValues)[number]] += 1
         ratingTotal += rating
+        ratedResponseCount += 1
       }
 
       return {
         ...question,
-        averageRating: rows.length > 0 ? Number((ratingTotal / rows.length).toFixed(2)) : null,
+        averageRating: ratedResponseCount > 0 ? Number((ratingTotal / ratedResponseCount).toFixed(2)) : null,
         responseCount: rows.length,
+        ratedResponseCount,
+        notApplicableCount,
         ratingCounts
       }
     }),

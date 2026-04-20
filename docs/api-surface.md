@@ -326,11 +326,11 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Submit public hackathon feedback | `POST /api/public/hackathons/:slug/feedback` | public or authenticated user | Allowed only after the hackathon reaches `completed`. Accepts one required `1..5` rating for each canonical feedback topic plus one optional free-text comment. Records anonymous hackathon-scoped feedback and enforces a Cloudflare-backed per-IP rate limit for repeated submissions. |
-| Get hackathon feedback results | `GET /api/hackathons/:hackathonId/feedback` | judge, staff, hackathon admin, or platform admin | Returns hackathon-scoped feedback results for the account workspace, including aggregate per-question metrics, total response count, and optional written comments. |
+| Submit public hackathon feedback | `POST /api/public/hackathons/:slug/feedback` | public or authenticated user | Allowed only after the hackathon reaches `completed`. Accepts one explicit answer for each canonical feedback topic: either a `1..5` rating or `null` for `Not applicable`, plus one optional free-text comment. Records anonymous hackathon-scoped feedback and enforces a Cloudflare-backed per-IP rate limit for repeated submissions. |
+| Get hackathon feedback results | `GET /api/hackathons/:hackathonId/feedback` | judge, staff, hackathon admin, or platform admin | Returns hackathon-scoped feedback results for the account workspace, including total response count, per-question rating distributions, rated-response counts, `Not applicable` counts, averages computed from rated responses only, and optional written comments. |
 
 Testing:
-- Unit: feedback payload validation, completed-state visibility rules, and result summarization.
+- Unit: feedback payload validation, completed-state visibility rules, skip semantics, and result summarization.
 - Integration: anonymous submission persistence, rate limiting, and restricted result visibility.
 - End-to-end: public feedback form submission and account feedback-tab visibility.
 
@@ -605,6 +605,7 @@ Testing:
 - Approved participants can claim at most one uploaded value from each hackathon credit offer.
 - Prize-eligible team membership freezes when submitted work is locked for judging.
 - Hackathon feedback submission is anonymous in product data and becomes available only after the hackathon reaches `completed`.
+- Each feedback topic accepts either a `1..5` rating or an explicit `Not applicable` response.
 - Blind judging excludes team identity even when the reviewing actor is also an admin.
 - Pitch judging exposes project and team identity to the pitch panel.
 - Blind assignment scores are normalized to the shared `1..5` scale by dividing weighted criterion totals by total criterion weight.

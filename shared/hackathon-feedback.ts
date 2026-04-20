@@ -1,6 +1,10 @@
 export const hackathonFeedbackRatingValues = [1, 2, 3, 4, 5] as const
 
 export type HackathonFeedbackRatingValue = (typeof hackathonFeedbackRatingValues)[number]
+export const hackathonFeedbackNotApplicableValue = 'not_applicable' as const
+export const hackathonFeedbackNotApplicableLabel = 'Not applicable'
+export type HackathonFeedbackSelectionValue = HackathonFeedbackRatingValue | typeof hackathonFeedbackNotApplicableValue
+export type HackathonFeedbackStoredRatingValue = HackathonFeedbackRatingValue | null
 
 export const hackathonFeedbackQuestionIds = [
   'communicationBeforeRating',
@@ -33,6 +37,8 @@ export type HackathonFeedbackRatingDistribution = Record<HackathonFeedbackRating
 export interface HackathonFeedbackQuestionSummary extends HackathonFeedbackQuestionDefinition {
   averageRating: number | null
   responseCount: number
+  ratedResponseCount: number
+  notApplicableCount: number
   ratingCounts: HackathonFeedbackRatingDistribution
 }
 

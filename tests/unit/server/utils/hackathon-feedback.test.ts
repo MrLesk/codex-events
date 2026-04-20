@@ -13,7 +13,7 @@ describe('hackathon feedback utilities', () => {
     foodRating: 5,
     staffRating: 4,
     organizationRating: 4,
-    platformRating: 3,
+    platformRating: null,
     judgesRating: 4,
     venueRating: 5,
     participantsCommunityRating: 5,
@@ -35,11 +35,18 @@ describe('hackathon feedback utilities', () => {
     })
   })
 
-  test('rejects ratings outside the shared 1 to 5 scale', () => {
+  test('rejects ratings outside the shared 1 to 5 scale when a question is rated', () => {
     expect(() => createHackathonFeedbackBodySchema.parse({
       ...validPayload,
       platformRating: 6
     })).toThrow()
+  })
+
+  test('preserves explicit not-applicable values as null for persistence', () => {
+    expect(buildHackathonFeedbackInsertValues('hackathon_1', {
+      ...validPayload,
+      comment: 'Still useful.'
+    }).platformRating).toBeNull()
   })
 
   test('normalizes blank feedback comments to null for persistence', () => {

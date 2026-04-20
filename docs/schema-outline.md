@@ -290,12 +290,13 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Constraints
 
-- Each rating field is an integer in `1..5`.
+- Each rating field is nullable and, when present, must be an integer in `1..5`.
 
 ### Notes
 
 - Each row records one anonymous post-hackathon feedback submission for a hackathon.
 - Feedback rows do not reference a platform user, application, or team.
+- A null rating means the participant explicitly chose `Not applicable` for that topic.
 - `comment` is optional.
 - Feedback submission is available only after the hackathon reaches `completed`.
 - Judges, staff, hackathon admins, and platform admins can read hackathon feedback results in the account workspace.

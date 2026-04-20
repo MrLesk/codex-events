@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import type { PublicHackathonState } from '~/composables/useHackathonPresentation'
 import type { ApiDataResponse } from '~/utils/admin-workspace'
-import type { HackathonFeedbackSummary } from '../../../../shared/hackathon-feedback'
+import type {
+  HackathonFeedbackQuestionSummary,
+  HackathonFeedbackSummary
+} from '../../../../shared/hackathon-feedback'
 
-import { hackathonFeedbackRatingValues } from '../../../../shared/hackathon-feedback'
+import {
+  hackathonFeedbackNotApplicableLabel,
+  hackathonFeedbackRatingValues
+} from '../../../../shared/hackathon-feedback'
 
 const props = defineProps<{
   hackathonId: string
@@ -52,6 +58,45 @@ function getRatingCountClass(count: number) {
     ? 'border-black/12 bg-black/[0.04] text-highlighted dark:border-white/[0.14] dark:bg-white/[0.06] dark:text-white'
     : 'border-black/8 bg-transparent text-muted dark:border-white/[0.08]'
 }
+
+function formatDistributionPercentageValue(count: number, total: number) {
+  if (total <= 0) {
+    return '0'
+  }
+
+  return String(Math.round((count / total) * 100))
+}
+
+function getDistributionWidth(count: number, total: number) {
+  if (count <= 0 || total <= 0) {
+    return '0%'
+  }
+
+  return `${(count / total) * 100}%`
+}
+
+function getQuestionDistributionRows(question: HackathonFeedbackQuestionSummary) {
+  return [
+    ...[...hackathonFeedbackRatingValues].reverse().map(score => ({
+      key: `rating-${score}`,
+      label: String(score),
+      count: question.ratingCounts[score],
+      tone: 'rating' as const
+    })),
+    {
+      key: 'not-applicable',
+      label: hackathonFeedbackNotApplicableLabel,
+      count: question.notApplicableCount,
+      tone: 'not_applicable' as const
+    }
+  ]
+}
+
+function getDistributionBarClass(tone: 'rating' | 'not_applicable') {
+  return tone === 'not_applicable'
+    ? 'bg-neutral-500/70 dark:bg-white/35'
+    : 'bg-highlighted dark:bg-white'
+}
 </script>
 
 <template>
@@ -83,7 +128,7 @@ function getRatingCountClass(count: number) {
               Post-hackathon responses
             </h2>
             <p class="max-w-3xl text-sm leading-7 text-neutral-600 dark:text-[#A3A3A3]">
-              Review aggregate scores for each question and scan the written comments that were submitted anonymously.
+              Review averages, rating distributions, skipped-answer counts, and the written comments that were submitted anonymously.
             </p>
           </div>
 
@@ -138,23 +183,41 @@ function getRatingCountClass(count: number) {
                     {{ formatAverageRating(question.averageRating) }}<span class="text-base text-muted"> / 5</span>
                   </p>
                   <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    {{ question.responseCount }} responses
+                    {{ question.ratedResponseCount }} rated<span v-if="question.notApplicableCount > 0"> • {{ question.notApplicableCount }} N/A</span>
                   </p>
                 </div>
               </div>
 
-              <div class="mt-4 grid grid-cols-5 gap-2">
+              <div class="mt-4 space-y-3">
                 <div
-                  v-for="score in hackathonFeedbackRatingValues"
-                  :key="score"
-                  class="rounded-lg border px-3 py-3 text-center transition-colors"
-                  :class="getRatingCountClass(question.ratingCounts[score])"
+                  v-for="distribution in getQuestionDistributionRows(question)"
+                  :key="distribution.key"
+                  class="grid grid-cols-[minmax(3rem,auto)_1fr_auto_auto] items-center gap-3"
                 >
-                  <p class="text-[11px] font-semibold uppercase tracking-[0.14em]">
-                    {{ score }}
+                  <p class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+                    {{ distribution.label }}
                   </p>
-                  <p class="mt-1 text-lg font-semibold">
-                    {{ question.ratingCounts[score] }}
+
+                  <div class="h-3 overflow-hidden rounded-full bg-black/8 dark:bg-white/[0.08]">
+                    <div
+                      class="h-full rounded-full transition-[width]"
+                      :class="getDistributionBarClass(distribution.tone)"
+                      :style="{ width: getDistributionWidth(distribution.count, question.responseCount) }"
+                    />
+                  </div>
+
+                  <p
+                    class="rounded-md border px-2 py-1 text-sm font-semibold transition-colors"
+                    :class="getRatingCountClass(distribution.count)"
+                  >
+                    {{ distribution.count }}
+                  </p>
+
+                  <p class="flex items-center justify-end gap-0.5 text-xs font-medium text-muted">
+                    <span class="w-[3ch] text-right font-mono tabular-nums">
+                      {{ formatDistributionPercentageValue(distribution.count, question.responseCount) }}
+                    </span>
+                    <span>%</span>
                   </p>
                 </div>
               </div>
