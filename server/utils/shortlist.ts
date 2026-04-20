@@ -304,6 +304,9 @@ export function serializeLeaderboardEntry(entry: LeaderboardBaseEntry) {
     teamName: entry.team.name,
     submissionId: entry.submission.id,
     projectName: entry.submission.projectName,
+    summary: entry.submission.summary,
+    repositoryUrl: entry.submission.repositoryUrl,
+    demoUrl: entry.submission.demoUrl,
     submissionStatus: entry.submission.status,
     reviewStatus: entry.reviewStatus,
     ineligibilityStatus: entry.ineligibilityStatus,
@@ -342,6 +345,9 @@ function serializeFinalDeliberationEntry(
     teamName: entry.team.name,
     submissionId: entry.submission.id,
     projectName: entry.submission.projectName,
+    summary: entry.submission.summary,
+    repositoryUrl: entry.submission.repositoryUrl,
+    demoUrl: entry.submission.demoUrl,
     submissionStatus: entry.submission.status,
     reviewStatus: hackathon.pitchReviewEnabled
       ? entry.pitchReviewStatus

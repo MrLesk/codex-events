@@ -55,6 +55,9 @@ export default defineApiHandler(async (event) => {
         teamName: entry.teamName,
         submissionId: entry.submissionId,
         projectName: entry.projectName,
+        summary: entry.summary,
+        repositoryUrl: entry.repositoryUrl,
+        demoUrl: entry.demoUrl,
         finalRank: entry.finalRank,
         teamMembers: teamMembersByTeamId.get(entry.teamId) ?? []
       })),
@@ -67,6 +70,9 @@ export default defineApiHandler(async (event) => {
         teamName: entry.teamName,
         submissionId: entry.submissionId,
         projectName: entry.projectName,
+        summary: entry.summary,
+        repositoryUrl: entry.repositoryUrl,
+        demoUrl: entry.demoUrl,
         blindRank: entry.rank,
         teamMembers: teamMembersByTeamId.get(entry.teamId) ?? []
       }))

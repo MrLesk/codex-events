@@ -55,7 +55,7 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
   return `${formatPrizeRank(prize)} · ${formatPrizeReward(prize)}`
 }
 
-function renderWinnerSummary(summary: string | null) {
+function renderProjectSummary(summary: string | null) {
   const normalizedSummary = summary?.trim() ?? ''
 
   return normalizedSummary ? renderMarkdown(normalizedSummary) : ''
@@ -206,7 +206,7 @@ function renderWinnerSummary(summary: string | null) {
                   <div
                     v-if="item.winner.summary?.trim()"
                     class="hackathon-markdown"
-                    v-html="renderWinnerSummary(item.winner.summary)"
+                    v-html="renderProjectSummary(item.winner.summary)"
                   />
                   <p
                     v-else
@@ -434,13 +434,56 @@ function renderWinnerSummary(summary: string | null) {
         </div>
 
         <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
-          <div class="space-y-2">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-              Placement
-            </p>
-            <p class="text-sm leading-7 text-neutral-700 dark:text-[#C7C7C7]">
-              This team made the shortlist and finished #{{ entry.finalRank }} in the published final order.
-            </p>
+          <div class="min-w-0 space-y-4">
+            <div class="space-y-2">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                Project description
+              </p>
+              <div
+                v-if="entry.summary?.trim()"
+                class="hackathon-markdown"
+                v-html="renderProjectSummary(entry.summary)"
+              />
+              <p
+                v-else
+                class="text-sm leading-7 text-neutral-700 dark:text-[#C7C7C7]"
+              >
+                No project description is available for this team yet.
+              </p>
+            </div>
+
+            <div
+              v-if="entry.repositoryUrl || entry.demoUrl"
+              class="flex flex-wrap gap-3"
+            >
+              <AppButton
+                v-if="entry.repositoryUrl"
+                :to="entry.repositoryUrl"
+                target="_blank"
+                rel="noreferrer"
+                color="primary"
+                variant="soft"
+                icon="i-lucide-github"
+                trailing-icon="i-lucide-external-link"
+                class="rounded-lg"
+              >
+                Source code
+              </AppButton>
+
+              <AppButton
+                v-if="entry.demoUrl"
+                :to="entry.demoUrl"
+                target="_blank"
+                rel="noreferrer"
+                color="neutral"
+                variant="outline"
+                icon="i-lucide-monitor-play"
+                trailing-icon="i-lucide-external-link"
+                class="rounded-lg"
+              >
+                Live demo
+              </AppButton>
+            </div>
           </div>
 
           <div class="space-y-3">
@@ -575,13 +618,56 @@ function renderWinnerSummary(summary: string | null) {
         </div>
 
         <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_19rem] lg:items-start">
-          <div class="space-y-2">
-            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-              Placement
-            </p>
-            <p class="text-sm leading-7 text-neutral-700 dark:text-[#C7C7C7]">
-              This team remains listed after completion in blind-review order because it stayed below the finalist cutoff.
-            </p>
+          <div class="min-w-0 space-y-4">
+            <div class="space-y-2">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                Project description
+              </p>
+              <div
+                v-if="entry.summary?.trim()"
+                class="hackathon-markdown"
+                v-html="renderProjectSummary(entry.summary)"
+              />
+              <p
+                v-else
+                class="text-sm leading-7 text-neutral-700 dark:text-[#C7C7C7]"
+              >
+                No project description is available for this team yet.
+              </p>
+            </div>
+
+            <div
+              v-if="entry.repositoryUrl || entry.demoUrl"
+              class="flex flex-wrap gap-3"
+            >
+              <AppButton
+                v-if="entry.repositoryUrl"
+                :to="entry.repositoryUrl"
+                target="_blank"
+                rel="noreferrer"
+                color="primary"
+                variant="soft"
+                icon="i-lucide-github"
+                trailing-icon="i-lucide-external-link"
+                class="rounded-lg"
+              >
+                Source code
+              </AppButton>
+
+              <AppButton
+                v-if="entry.demoUrl"
+                :to="entry.demoUrl"
+                target="_blank"
+                rel="noreferrer"
+                color="neutral"
+                variant="outline"
+                icon="i-lucide-monitor-play"
+                trailing-icon="i-lucide-external-link"
+                class="rounded-lg"
+              >
+                Live demo
+              </AppButton>
+            </div>
           </div>
 
           <div class="space-y-3">

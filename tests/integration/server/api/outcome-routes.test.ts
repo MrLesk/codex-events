@@ -2705,6 +2705,9 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
             teamName: 'Alpha Team',
             submissionId: 'submission_1',
             projectName: 'Alpha Project',
+            summary: 'Alpha summary',
+            repositoryUrl: 'https://example.com/alpha',
+            demoUrl: 'https://example.com/alpha-demo',
             finalRank: 1,
             teamMembers: expect.arrayContaining([
               expect.objectContaining({
@@ -2720,6 +2723,9 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
             teamName: 'Beta Team',
             submissionId: 'submission_2',
             projectName: 'Beta Project',
+            summary: 'Beta summary',
+            repositoryUrl: 'https://example.com/beta',
+            demoUrl: 'https://example.com/beta-demo',
             finalRank: 2,
             teamMembers: expect.arrayContaining([
               expect.objectContaining({
@@ -2737,6 +2743,9 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
             teamName: 'Alpha Team',
             submissionId: 'submission_1',
             projectName: 'Alpha Project',
+            summary: 'Alpha summary',
+            repositoryUrl: 'https://example.com/alpha',
+            demoUrl: 'https://example.com/alpha-demo',
             blindRank: 1,
             teamMembers: expect.arrayContaining([
               expect.objectContaining({
@@ -2752,6 +2761,9 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
             teamName: 'Beta Team',
             submissionId: 'submission_2',
             projectName: 'Beta Project',
+            summary: 'Beta summary',
+            repositoryUrl: 'https://example.com/beta',
+            demoUrl: 'https://example.com/beta-demo',
             blindRank: 2,
             teamMembers: expect.arrayContaining([
               expect.objectContaining({
