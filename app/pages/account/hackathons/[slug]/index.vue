@@ -335,9 +335,27 @@ const visibleTabs = computed(() =>
 const activeSection = computed<AccountHackathonWorkspaceTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
+const accountTabListRef = ref<HTMLElement | null>(null)
 const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
 const selectedJudgeAssignmentId = computed(() => normalizeJudgeAssignmentIdQueryValue(route.query.assignment))
 const activeSectionSeo = computed(() => getAccountHackathonSeoContent(activeSection.value, hackathon.value.name))
+
+function scrollActiveTabIntoView() {
+  if (!import.meta.client) {
+    return
+  }
+
+  void nextTick(() => {
+    const activeTabElement = accountTabListRef.value?.querySelector<HTMLElement>(
+      `#account-tab-${activeSection.value}`
+    )
+
+    activeTabElement?.scrollIntoView({
+      block: 'nearest',
+      inline: 'center'
+    })
+  })
+}
 
 watchEffect(() => {
   const normalizedTab = normalizeTabQueryValue(route.query.tab)
@@ -354,7 +372,15 @@ watchEffect(() => {
   void navigateTo(buildWorkspaceSectionLocation(resolvedTab), { replace: true })
 })
 
+watch(activeSection, () => {
+  scrollActiveTabIntoView()
+}, {
+  flush: 'post'
+})
+
 onMounted(() => {
+  scrollActiveTabIntoView()
+
   if (!applicationSubmittedNoticeVisible.value || !isParticipantApplicationSubmittedNotice(route.query.notice)) {
     return
   }
@@ -643,6 +669,7 @@ useSeoMeta({
           </div>
 
           <nav
+            ref="accountTabListRef"
             aria-label="Account hackathon sections"
             role="tablist"
             class="account-hackathon-tab-list flex items-center gap-5 overflow-x-auto"
