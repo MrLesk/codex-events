@@ -141,6 +141,7 @@ The automation covers:
 - Auth0 tenant default redirection URI (`default_redirection_uri`) as fallback return navigation
 
 By default the branding sync uses the canonical Codex Hackathons wordmark asset served from `/auth0/codex-hackathons-wordmark.svg` on your `AUTH0_APP_BASE_URL`. Override `AUTH0_APP_DISPLAY_NAME`, `AUTH0_BRANDING_LOGO_URL`, or the color variables if your deployment needs different branding.
+If your Auth0 tenant does not include the paid Universal Login page-template feature, the bootstrap warns and skips page-template-dependent prompt customization instead of failing the deployment. Supported Auth0 settings such as custom domains, branding, client URLs, and Actions still remain enforced.
 
 If you automate tenant bootstrap in production, authorize the Auth0 Management API machine-to-machine application only for the scopes required by the checked-in bootstrap scripts. The current exact scope list is documented in [`DEVELOPMENT.md`](DEVELOPMENT.md#production-release-pipeline).
 
@@ -174,7 +175,7 @@ Pushes to `main` now publish that shared dev environment automatically through G
 
 For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run the same scripts locally. They pass the management token through to Wrangler as `CLOUDFLARE_API_TOKEN`.
 
-The repository also includes a production release workflow. Publishing a GitHub Release triggers `.github/workflows/release-production.yml`, which derives the deployed package version from the release tag, applies production Auth0 and Cloudflare changes, deploys `https://codex-hackathons.com`, and then commits the matching `package.json` version back to `main`.
+The repository also includes a production release workflow. Publishing a GitHub Release triggers `.github/workflows/release-production.yml`, which derives the deployed package version from the release tag, applies production Auth0 and Cloudflare changes, deploys `https://codex-hackathons.com`, and then commits the matching `package.json` version back to `main`. On Auth0 tenants without the paid Universal Login page-template feature, the workflow now logs a warning and continues past the page-template-dependent Auth0 customization steps instead of aborting the entire release.
 
 ## Documentation Map
 

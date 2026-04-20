@@ -1,13 +1,16 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  Auth0ManagementRequestError,
   assertManagementAccessTokenScopes,
   buildRequiredClientUrls,
   buildClearedSignupPartials,
   buildExpectedLoginCustomText,
   buildUniversalLoginPageTemplate,
+  isPaidAuth0LoginCustomizationUnavailable,
   requiredManagementApiScopes,
-  resolveConfig
+  resolveConfig,
+  runOptionalPaidAuth0LoginCustomization
 } from '../../../../tools/auth0/auth0-bootstrap'
 
 function createFixtureJwt(payload: Record<string, unknown>) {
@@ -149,6 +152,46 @@ describe('auth0 bootstrap config', () => {
     expect(buildClearedSignupPartials({
       'form-content-end': '<p>Consent checkboxes</p>'
     })).toEqual({})
+  })
+
+  test('detects paid-plan Universal Login customization failures as skippable', () => {
+    const error = new Auth0ManagementRequestError(
+      '/api/v2/branding/templates/universal-login',
+      402,
+      '{"statusCode":402,"error":"Payment Required","message":"A paid subscription is required for this feature."}'
+    )
+
+    expect(isPaidAuth0LoginCustomizationUnavailable(error)).toBe(true)
+  })
+
+  test('continues after paid-plan Auth0 login customization failures', async () => {
+    const warnings: string[] = []
+
+    const skipped = await runOptionalPaidAuth0LoginCustomization(
+      async () => {
+        throw new Auth0ManagementRequestError(
+          '/api/v2/prompts/signup/partials',
+          402,
+          '{"statusCode":402,"error":"Payment Required","message":"A paid subscription is required for this feature."}'
+        )
+      },
+      warning => warnings.push(warning)
+    )
+
+    expect(skipped).toBe(true)
+    expect(warnings).toEqual([
+      expect.stringContaining('/api/v2/prompts/signup/partials')
+    ])
+  })
+
+  test('rethrows non-paid Auth0 bootstrap failures', async () => {
+    await expect(runOptionalPaidAuth0LoginCustomization(async () => {
+      throw new Auth0ManagementRequestError(
+        '/api/v2/clients/app-client-id',
+        400,
+        '{"statusCode":400,"error":"Bad Request","message":"Invalid callback URL"}'
+      )
+    })).rejects.toThrow('/api/v2/clients/app-client-id')
   })
 
   test('requires update:users in the Auth0 management token scope set', () => {

@@ -90,6 +90,20 @@ interface Auth0BindingsResponse {
   }>
 }
 
+export class Auth0ManagementRequestError extends Error {
+  path: string
+  status: number
+  responseBody: string
+
+  constructor(path: string, status: number, responseBody: string) {
+    super(`Auth0 management request for ${path} failed with status ${status}: ${responseBody}`)
+    this.name = 'Auth0ManagementRequestError'
+    this.path = path
+    this.status = status
+    this.responseBody = responseBody
+  }
+}
+
 const consentClaimNamespace = 'https://codex-hackathons/consents'
 const defaultActionName = 'codex-signup-consent-claims'
 const defaultActionRuntime = 'node22'
@@ -609,10 +623,48 @@ async function auth0ManagementRequest(
     }
 
     const errorBody = await response.text()
-    throw new Error(`Auth0 management request for ${path} failed with status ${response.status}: ${errorBody}`)
+    throw new Auth0ManagementRequestError(path, response.status, errorBody)
   }
 
   throw new Error(`Auth0 management request for ${path} exhausted retry attempts.`)
+}
+
+const paidAuth0LoginCustomizationPathPatterns = [
+  /^\/api\/v2\/branding\/templates\/universal-login$/,
+  /^\/api\/v2\/prompts\/[^/]+\/custom-text\/en$/,
+  /^\/api\/v2\/prompts\/[^/]+\/partials$/
+]
+
+export function isPaidAuth0LoginCustomizationUnavailable(error: unknown) {
+  return error instanceof Auth0ManagementRequestError
+    && error.status === 402
+    && /paid subscription is required/i.test(error.responseBody)
+    && paidAuth0LoginCustomizationPathPatterns.some(pattern => pattern.test(error.path))
+}
+
+function buildPaidAuth0LoginCustomizationWarning(error: Auth0ManagementRequestError) {
+  return [
+    'Warning: skipping Auth0 Universal Login page-template and prompt customization because',
+    `${error.path} requires a paid Auth0 feature on this tenant.`,
+    'The deployment will continue with supported Auth0 settings.'
+  ].join(' ')
+}
+
+export async function runOptionalPaidAuth0LoginCustomization(
+  run: () => Promise<void>,
+  onSkip: (warning: string) => void = warning => console.warn(warning)
+) {
+  try {
+    await run()
+    return false
+  } catch (error) {
+    if (!isPaidAuth0LoginCustomizationUnavailable(error)) {
+      throw error
+    }
+
+    onSkip(buildPaidAuth0LoginCustomizationWarning(error))
+    return true
+  }
 }
 
 async function getCustomDomains(config: TenantConfig, token: string) {
@@ -1265,11 +1317,13 @@ export async function main() {
     await ensureClientUrls(config, managementToken, mode, failures)
     await ensureTenantDefaultRedirection(config, managementToken, mode, failures)
     await ensureBranding(config, managementToken, mode, failures)
-    await ensureUniversalLoginPageTemplate(config, managementToken, mode, failures)
-    await ensureLoginCustomText(config, managementToken, mode, failures)
-    await ensureSignupCustomText(config, managementToken, mode, failures)
-    await ensureSignupPartials(config, managementToken, mode, failures)
-    await ensureResetPasswordCustomText(config, managementToken, mode, failures)
+    await runOptionalPaidAuth0LoginCustomization(async () => {
+      await ensureUniversalLoginPageTemplate(config, managementToken, mode, failures)
+      await ensureLoginCustomText(config, managementToken, mode, failures)
+      await ensureSignupCustomText(config, managementToken, mode, failures)
+      await ensureSignupPartials(config, managementToken, mode, failures)
+      await ensureResetPasswordCustomText(config, managementToken, mode, failures)
+    })
     const action = await ensureAction(config, managementToken, mode, failures)
     await ensureActionBinding(config, managementToken, mode, action, failures)
 
