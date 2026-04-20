@@ -58,6 +58,9 @@ export interface PrizeRedemptionFinalRankingEntry {
   teamName: string
   submissionId: string
   projectName: string | null
+  summary: string | null
+  repositoryUrl: string | null
+  demoUrl: string | null
   finalRank: number
   teamMembers: PrizeRedemptionTeamMember[]
 }
@@ -67,6 +70,9 @@ export interface PrizeRedemptionBlindRankingEntry {
   teamName: string
   submissionId: string
   projectName: string | null
+  summary: string | null
+  repositoryUrl: string | null
+  demoUrl: string | null
   blindRank: number
   teamMembers: PrizeRedemptionTeamMember[]
 }

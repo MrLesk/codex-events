@@ -541,6 +541,9 @@ export interface LeaderboardEntry {
   teamName: string
   submissionId: string
   projectName: string | null
+  summary: string | null
+  repositoryUrl: string | null
+  demoUrl: string | null
   submissionStatus: SubmissionRecord['status']
   reviewStatus: JudgeAssignmentSummary['status'] | null
   ineligibilityStatus: JudgeAssignmentSummary['ineligibilityStatus'] | null
@@ -614,6 +617,9 @@ export interface FinalDeliberationEntry {
   teamName: string
   submissionId: string
   projectName: string | null
+  summary: string | null
+  repositoryUrl: string | null
+  demoUrl: string | null
   submissionStatus: SubmissionRecord['status']
   reviewStatus: JudgeAssignmentSummary['status'] | null
   ineligibilityStatus: JudgeAssignmentSummary['ineligibilityStatus'] | null

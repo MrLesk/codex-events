@@ -380,6 +380,9 @@ describe('prize-redemption workspace helpers', () => {
         teamName: 'Alpha Team',
         submissionId: 'submission_1',
         projectName: 'Alpha Project',
+        summary: 'Alpha summary',
+        repositoryUrl: 'https://example.com/alpha',
+        demoUrl: 'https://example.com/alpha-demo',
         finalRank: 1,
         teamMembers: []
       },
@@ -388,6 +391,9 @@ describe('prize-redemption workspace helpers', () => {
         teamName: 'Beta Team',
         submissionId: 'submission_2',
         projectName: 'Beta Project',
+        summary: 'Beta summary',
+        repositoryUrl: 'https://example.com/beta',
+        demoUrl: 'https://example.com/beta-demo',
         finalRank: 2,
         teamMembers: []
       },
@@ -396,6 +402,9 @@ describe('prize-redemption workspace helpers', () => {
         teamName: 'Gamma Team',
         submissionId: 'submission_3',
         projectName: 'Gamma Project',
+        summary: 'Gamma summary',
+        repositoryUrl: 'https://example.com/gamma',
+        demoUrl: 'https://example.com/gamma-demo',
         finalRank: 3,
         teamMembers: []
       },
@@ -404,6 +413,9 @@ describe('prize-redemption workspace helpers', () => {
         teamName: 'Delta Team',
         submissionId: 'submission_4',
         projectName: 'Delta Project',
+        summary: 'Delta summary',
+        repositoryUrl: 'https://example.com/delta',
+        demoUrl: 'https://example.com/delta-demo',
         finalRank: 4,
         teamMembers: []
       },
@@ -412,6 +424,9 @@ describe('prize-redemption workspace helpers', () => {
         teamName: 'Epsilon Team',
         submissionId: 'submission_5',
         projectName: 'Epsilon Project',
+        summary: 'Epsilon summary',
+        repositoryUrl: 'https://example.com/epsilon',
+        demoUrl: 'https://example.com/epsilon-demo',
         finalRank: 5,
         teamMembers: []
       },
@@ -420,6 +435,9 @@ describe('prize-redemption workspace helpers', () => {
         teamName: 'Zeta Team',
         submissionId: 'submission_6',
         projectName: 'Zeta Project',
+        summary: 'Zeta summary',
+        repositoryUrl: 'https://example.com/zeta',
+        demoUrl: 'https://example.com/zeta-demo',
         finalRank: 6,
         teamMembers: []
       }
@@ -484,6 +502,9 @@ describe('prize-redemption workspace helpers', () => {
         teamName: 'Alpha Team',
         submissionId: 'submission_1',
         projectName: 'Alpha Project',
+        summary: 'Alpha summary',
+        repositoryUrl: 'https://example.com/alpha',
+        demoUrl: 'https://example.com/alpha-demo',
         blindRank: 1,
         teamMembers: []
       },
@@ -492,6 +513,9 @@ describe('prize-redemption workspace helpers', () => {
         teamName: 'Beta Team',
         submissionId: 'submission_2',
         projectName: 'Beta Project',
+        summary: 'Beta summary',
+        repositoryUrl: 'https://example.com/beta',
+        demoUrl: 'https://example.com/beta-demo',
         blindRank: 2,
         teamMembers: []
       },
@@ -500,6 +524,9 @@ describe('prize-redemption workspace helpers', () => {
         teamName: 'Gamma Team',
         submissionId: 'submission_3',
         projectName: 'Gamma Project',
+        summary: 'Gamma summary',
+        repositoryUrl: 'https://example.com/gamma',
+        demoUrl: 'https://example.com/gamma-demo',
         blindRank: 3,
         teamMembers: []
       }
