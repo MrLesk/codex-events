@@ -13,7 +13,7 @@ function createEvent(runtimeConfig?: Record<string, unknown>) {
 }
 
 describe('hackathon outcome email utilities', () => {
-  test('skips delivery when Resend configuration is missing', async () => {
+  test('skips delivery when outbound email configuration is missing', async () => {
     const result = await sendHackathonOutcomeEmail(createEvent(), {
       notificationType: 'shortlist',
       hackathonId: 'hackathon_1',
@@ -29,19 +29,17 @@ describe('hackathon outcome email utilities', () => {
 
     expect(result).toEqual({
       status: 'skipped',
-      reason: 'resend_configuration_missing'
+      reason: 'outbound_email_configuration_missing'
     })
   })
 
-  test('sends shortlist notifications through Resend when configured', async () => {
+  test('sends shortlist notifications through Cloudflare Email Service when configured', async () => {
     const send = vi.fn(async () => ({
-      data: { id: 'email_1' },
-      error: null,
-      headers: null
+      messageId: 'email_1'
     }))
     const event = createEvent({
-      resend: {
-        apiKey: 're_test_123',
+      outboundEmail: {
+        binding: 'EMAIL',
         fromEmail: 'notifications@example.com',
         fromName: 'Codex Hackathons',
         replyTo: 'support@example.com'
@@ -63,11 +61,7 @@ describe('hackathon outcome email utilities', () => {
       recipientDisplayName: 'Ada Lovelace',
       announcedAt: '2026-03-27T12:00:00.000Z'
     }, {
-      resendClient: {
-        emails: {
-          send
-        }
-      } as never
+      emailBinding: { send }
     })
 
     expect(result).toEqual({
@@ -75,13 +69,14 @@ describe('hackathon outcome email utilities', () => {
       messageId: 'email_1'
     })
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
-      from: 'Codex Hackathons <notifications@example.com>',
-      to: ['participant@example.com'],
+      from: { email: 'notifications@example.com', name: 'Codex Hackathons' },
+      to: 'participant@example.com',
       subject: 'North Star Builders is shortlisted for Codex Spring',
       replyTo: 'support@example.com',
-      tags: [{ name: 'notification_type', value: 'hackathon_shortlist' }]
-    }), expect.objectContaining({
-      idempotencyKey: 'hackathon-outcome:shortlist:team_1:user_1:2026-03-27T12:00:00.000Z'
+      headers: {
+        'X-Codex-Notification-Type': 'hackathon_shortlist',
+        'X-Codex-Email-Key': 'hackathon-outcome:shortlist:team_1:user_1:2026-03-27T12:00:00.000Z'
+      }
     }))
 
     const payload = send.mock.calls[0]?.[0]
@@ -91,13 +86,10 @@ describe('hackathon outcome email utilities', () => {
 
   test('sends winner notifications with prizes and final rank', async () => {
     const send = vi.fn(async () => ({
-      data: { id: 'email_2' },
-      error: null,
-      headers: null
+      messageId: 'email_2'
     }))
     const event = createEvent({
-      resend: {
-        apiKey: 're_test_123',
+      outboundEmail: {
         fromEmail: 'notifications@example.com'
       }
     })
@@ -117,11 +109,7 @@ describe('hackathon outcome email utilities', () => {
       rankedTeamCount: 12,
       prizeNames: ['Grand Prize', 'Best Demo']
     }, {
-      resendClient: {
-        emails: {
-          send
-        }
-      } as never
+      emailBinding: { send }
     })
 
     expect(result).toEqual({
@@ -132,6 +120,6 @@ describe('hackathon outcome email utilities', () => {
     const payload = send.mock.calls[0]?.[0]
     expect(payload?.subject).toBe('Congratulations - North Star Builders won at Codex Spring')
     expect(payload?.text).toContain('finished #1 of 12 and won Grand Prize and Best Demo')
-    expect(payload?.tags).toEqual([{ name: 'notification_type', value: 'hackathon_winner' }])
+    expect(payload?.headers?.['X-Codex-Notification-Type']).toBe('hackathon_winner')
   })
 })

@@ -1,15 +1,21 @@
 import type { H3Event } from 'h3'
 
-import { Resend, type CreateEmailRequestOptions, type ErrorResponse } from 'resend'
 import { z } from 'zod'
 
-const hackathonOutcomeEmailRuntimeConfigSchema = z.object({
-  resend: z.object({
-    apiKey: z.string().trim().optional(),
-    fromEmail: z.string().trim().optional(),
-    fromName: z.string().trim().optional(),
-    replyTo: z.string().trim().optional()
-  }).optional(),
+import {
+  createOutboundEmailMetadataHeaders,
+  getOutboundEmailFailureReason,
+  getOutboundEmailFromAddress,
+  getOutboundEmailReplyTo,
+  normalizeOutboundEmailError,
+  outboundEmailConfigurationMissingReason,
+  outboundEmailRuntimeConfigSchema,
+  resolveOutboundEmailBinding,
+  type OutboundEmailBindingLike,
+  type OutboundEmailProviderError
+} from './outbound-email'
+
+const hackathonOutcomeEmailRuntimeConfigSchema = outboundEmailRuntimeConfigSchema.extend({
   auth0: z.object({
     appBaseUrl: z.string().trim().optional()
   }).optional()
@@ -18,7 +24,6 @@ const hackathonOutcomeEmailRuntimeConfigSchema = z.object({
 const emailAddressSchema = z.string().trim().email()
 
 type HackathonOutcomeEmailRuntimeConfig = z.infer<typeof hackathonOutcomeEmailRuntimeConfigSchema>
-type ResendClientLike = Pick<Resend, 'emails'>
 
 export interface HackathonOutcomeShortlistEmailInput {
   notificationType: 'shortlist'
@@ -57,7 +62,7 @@ export type HackathonOutcomeEmailDeliveryResult = {
 } | {
   status: 'failed'
   reason: string
-  providerError?: ErrorResponse | null
+  providerError?: OutboundEmailProviderError | null
 } | {
   status: 'skipped'
   reason: string
@@ -99,17 +104,6 @@ function resolveHackathonDashboardUrl(runtimeConfig: HackathonOutcomeEmailRuntim
   } catch {
     return null
   }
-}
-
-function buildSenderAddress(runtimeConfig: HackathonOutcomeEmailRuntimeConfig) {
-  const fromEmail = runtimeConfig.resend?.fromEmail?.trim()
-  const fromName = runtimeConfig.resend?.fromName?.trim()
-
-  if (!fromEmail) {
-    return null
-  }
-
-  return fromName ? `${fromName} <${fromEmail}>` : fromEmail
 }
 
 function toPreferredFirstName(displayName: string | null | undefined) {
@@ -206,7 +200,8 @@ export async function sendHackathonOutcomeEmail(
   event: H3Event,
   input: HackathonOutcomeEmailInput,
   options?: {
-    resendClient?: ResendClientLike
+    emailBinding?: OutboundEmailBindingLike
+    cloudflareEnv?: Record<string, unknown>
     runtimeConfig?: unknown
   }
 ): Promise<HackathonOutcomeEmailDeliveryResult> {
@@ -229,62 +224,50 @@ export async function sendHackathonOutcomeEmail(
   const runtimeConfig = options?.runtimeConfig
     ? resolveRuntimeConfigFromUnknown(options.runtimeConfig)
     : resolveRuntimeConfig(event)
-  const apiKey = runtimeConfig.resend?.apiKey?.trim()
-  const fromAddress = buildSenderAddress(runtimeConfig)
+  const fromAddress = getOutboundEmailFromAddress(runtimeConfig)
+  const { binding } = resolveOutboundEmailBinding({
+    event,
+    runtimeConfig,
+    cloudflareEnv: options?.cloudflareEnv,
+    emailBinding: options?.emailBinding
+  })
 
-  if (!apiKey || !fromAddress) {
+  if (!binding || !fromAddress) {
     return {
       status: 'skipped',
-      reason: 'resend_configuration_missing'
+      reason: outboundEmailConfigurationMissingReason
     }
   }
 
   const dashboardUrl = resolveHackathonDashboardUrl(runtimeConfig, input.hackathonSlug)
   const content = buildHackathonOutcomeEmailContent(input, dashboardUrl)
-  const replyTo = runtimeConfig.resend?.replyTo?.trim()
-  const resendClient = options?.resendClient ?? new Resend(apiKey)
-  const requestOptions: CreateEmailRequestOptions = {
-    idempotencyKey: `hackathon-outcome:${input.notificationType}:${input.teamId}:${input.recipientUserId}:${input.announcedAt}`
-  }
-  let response: Awaited<ReturnType<ResendClientLike['emails']['send']>>
+  const replyTo = getOutboundEmailReplyTo(runtimeConfig)
+  const emailKey = `hackathon-outcome:${input.notificationType}:${input.teamId}:${input.recipientUserId}:${input.announcedAt}`
+  let response: Awaited<ReturnType<OutboundEmailBindingLike['send']>>
 
   try {
-    response = await resendClient.emails.send({
+    response = await binding.send({
       from: fromAddress,
-      to: [parsedRecipientEmail.data],
+      to: parsedRecipientEmail.data,
       subject: content.subject,
       text: content.text,
       html: content.html,
       ...(replyTo ? { replyTo } : {}),
-      tags: [
-        {
-          name: 'notification_type',
-          value: content.tagValue
-        }
-      ]
-    }, requestOptions)
+      headers: createOutboundEmailMetadataHeaders({
+        notificationType: content.tagValue,
+        idempotencyKey: emailKey
+      })
+    })
   } catch (error) {
     return {
       status: 'failed',
-      reason: 'transport_error',
-      providerError: {
-        name: 'application_error',
-        statusCode: null,
-        message: error instanceof Error ? error.message : 'Unexpected email transport error'
-      }
-    }
-  }
-
-  if (response.error) {
-    return {
-      status: 'failed',
-      reason: 'provider_error',
-      providerError: response.error
+      reason: getOutboundEmailFailureReason(error),
+      providerError: normalizeOutboundEmailError(error)
     }
   }
 
   return {
     status: 'sent',
-    messageId: response.data?.id ?? null
+    messageId: response.messageId ?? null
   }
 }

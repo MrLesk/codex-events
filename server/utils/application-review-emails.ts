@@ -1,19 +1,25 @@
 import type { H3Event } from 'h3'
 
-import { Resend, type ErrorResponse, type CreateEmailRequestOptions } from 'resend'
 import { z } from 'zod'
+
+import {
+  createOutboundEmailMetadataHeaders,
+  getOutboundEmailFailureReason,
+  getOutboundEmailFromAddress,
+  getOutboundEmailReplyTo,
+  normalizeOutboundEmailError,
+  outboundEmailConfigurationMissingReason,
+  outboundEmailRuntimeConfigSchema,
+  resolveOutboundEmailBinding,
+  type OutboundEmailBindingLike,
+  type OutboundEmailProviderError
+} from './outbound-email'
 
 export const applicationReviewDecisionValues = ['approved', 'rejected'] as const
 
 export type ApplicationReviewDecision = typeof applicationReviewDecisionValues[number]
 
-const applicationReviewEmailRuntimeConfigSchema = z.object({
-  resend: z.object({
-    apiKey: z.string().trim().optional(),
-    fromEmail: z.string().trim().optional(),
-    fromName: z.string().trim().optional(),
-    replyTo: z.string().trim().optional()
-  }).optional(),
+const applicationReviewEmailRuntimeConfigSchema = outboundEmailRuntimeConfigSchema.extend({
   auth0: z.object({
     appBaseUrl: z.string().trim().optional()
   }).optional()
@@ -22,7 +28,6 @@ const applicationReviewEmailRuntimeConfigSchema = z.object({
 const emailAddressSchema = z.string().trim().email()
 
 type ApplicationReviewEmailRuntimeConfig = z.infer<typeof applicationReviewEmailRuntimeConfigSchema>
-type ResendClientLike = Pick<Resend, 'emails'>
 export type ApplicationReviewEmailRuntimeConfigShape = ApplicationReviewEmailRuntimeConfig
 
 export interface ApplicationReviewDecisionEmailInput {
@@ -41,7 +46,7 @@ export type ApplicationReviewDecisionEmailDeliveryResult = {
 } | {
   status: 'failed'
   reason: string
-  providerError?: ErrorResponse | null
+  providerError?: OutboundEmailProviderError | null
 } | {
   status: 'skipped'
   reason: string
@@ -83,17 +88,6 @@ function resolveApplicationDashboardUrl(runtimeConfig: ApplicationReviewEmailRun
   } catch {
     return null
   }
-}
-
-function buildSenderAddress(runtimeConfig: ApplicationReviewEmailRuntimeConfig) {
-  const fromEmail = runtimeConfig.resend?.fromEmail?.trim()
-  const fromName = runtimeConfig.resend?.fromName?.trim()
-
-  if (!fromEmail) {
-    return null
-  }
-
-  return fromName ? `${fromName} <${fromEmail}>` : fromEmail
 }
 
 function toPreferredFirstName(displayName: string | null | undefined) {
@@ -162,7 +156,8 @@ export async function sendApplicationReviewDecisionEmail(
   event: H3Event,
   input: ApplicationReviewDecisionEmailInput,
   options?: {
-    resendClient?: ResendClientLike
+    emailBinding?: OutboundEmailBindingLike
+    cloudflareEnv?: Record<string, unknown>
     runtimeConfig?: unknown
   }
 ): Promise<ApplicationReviewDecisionEmailDeliveryResult> {
@@ -185,62 +180,50 @@ export async function sendApplicationReviewDecisionEmail(
   const runtimeConfig = options?.runtimeConfig
     ? resolveRuntimeConfigFromUnknown(options.runtimeConfig)
     : resolveRuntimeConfig(event)
-  const apiKey = runtimeConfig.resend?.apiKey?.trim()
-  const fromAddress = buildSenderAddress(runtimeConfig)
+  const fromAddress = getOutboundEmailFromAddress(runtimeConfig)
+  const { binding } = resolveOutboundEmailBinding({
+    event,
+    runtimeConfig,
+    cloudflareEnv: options?.cloudflareEnv,
+    emailBinding: options?.emailBinding
+  })
 
-  if (!apiKey || !fromAddress) {
+  if (!binding || !fromAddress) {
     return {
       status: 'skipped',
-      reason: 'resend_configuration_missing'
+      reason: outboundEmailConfigurationMissingReason
     }
   }
 
   const dashboardUrl = resolveApplicationDashboardUrl(runtimeConfig, input.hackathonSlug)
   const content = buildApplicationReviewEmailContent(input, dashboardUrl)
-  const replyTo = runtimeConfig.resend?.replyTo?.trim()
-  const resendClient = options?.resendClient ?? new Resend(apiKey)
-  const requestOptions: CreateEmailRequestOptions = {
-    idempotencyKey: `application-review:${input.applicationId}:${input.decision}:${input.reviewedAt}`
-  }
-  let response: Awaited<ReturnType<ResendClientLike['emails']['send']>>
+  const replyTo = getOutboundEmailReplyTo(runtimeConfig)
+  const emailKey = `application-review:${input.applicationId}:${input.decision}:${input.reviewedAt}`
+  let response: Awaited<ReturnType<OutboundEmailBindingLike['send']>>
 
   try {
-    response = await resendClient.emails.send({
+    response = await binding.send({
       from: fromAddress,
-      to: [parsedRecipientEmail.data],
+      to: parsedRecipientEmail.data,
       subject: content.subject,
       text: content.text,
       html: content.html,
       ...(replyTo ? { replyTo } : {}),
-      tags: [
-        {
-          name: 'notification_type',
-          value: `application_${input.decision}`
-        }
-      ]
-    }, requestOptions)
+      headers: createOutboundEmailMetadataHeaders({
+        notificationType: `application_${input.decision}`,
+        idempotencyKey: emailKey
+      })
+    })
   } catch (error) {
     return {
       status: 'failed',
-      reason: 'transport_error',
-      providerError: {
-        name: 'application_error',
-        statusCode: null,
-        message: error instanceof Error ? error.message : 'Unexpected email transport error'
-      }
-    }
-  }
-
-  if (response.error) {
-    return {
-      status: 'failed',
-      reason: 'provider_error',
-      providerError: response.error
+      reason: getOutboundEmailFailureReason(error),
+      providerError: normalizeOutboundEmailError(error)
     }
   }
 
   return {
     status: 'sent',
-    messageId: response.data?.id ?? null
+    messageId: response.messageId ?? null
   }
 }

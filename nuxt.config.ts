@@ -33,8 +33,8 @@ export default defineNuxtConfig({
       databaseConnectionName: '',
       accountLinkChallengeSecret: ''
     },
-    resend: {
-      apiKey: '',
+    outboundEmail: {
+      binding: 'EMAIL',
       fromEmail: '',
       fromName: 'Codex Hackathons',
       replyTo: ''

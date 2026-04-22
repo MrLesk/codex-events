@@ -32,9 +32,16 @@ NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET=$(openssl rand -hex 32)
 NUXT_DATABASE_BINDING=DB
 NUXT_PROFILE_ICONS_BINDING=PROFILE_ICONS
 NUXT_HACKATHON_IMAGES_BINDING=HACKATHON_IMAGES
+NUXT_OUTBOUND_EMAIL_BINDING=EMAIL
+NUXT_OUTBOUND_EMAIL_FROM_EMAIL=info@your-platform.example
+NUXT_OUTBOUND_EMAIL_FROM_NAME=Codex Hackathons
+NUXT_OUTBOUND_EMAIL_REPLY_TO=support@your-platform.example
 NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING=APPLICATION_REVIEW_EMAIL_QUEUE
 NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME=codex-hackathons-application-review-email-delivery
 NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS=120
+NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING=HACKATHON_OUTCOME_EMAIL_QUEUE
+NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME=codex-hackathons-hackathon-outcome-email-delivery
+NUXT_HACKATHON_OUTCOME_EMAILS_RETRY_DELAY_SECONDS=120
 NUXT_LUMA_API_KEY=
 NUXT_LUMA_API_BASE_URL=https://public-api.luma.com
 NUXT_LUMA_PROFILE_BASE_URL=https://luma.com
@@ -120,9 +127,18 @@ Protected hackathon photo previews use a Cloudflare Images binding at runtime:
 - `wrangler.jsonc` binds the Worker `IMAGES` binding for protected gallery preview transformations.
 - local development uses the same `IMAGES` binding through Wrangler's local platform proxy.
 
-Application decision emails and optional Luma guest-status sync both use Cloudflare Queues at runtime:
+Outbound email delivery uses Cloudflare Email Service through the Worker `send_email` binding:
+
+- `NUXT_OUTBOUND_EMAIL_BINDING` should match the `send_email` binding name in `wrangler.jsonc`.
+- `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` must be a sender address on an Email Service onboarded domain and must be allowed by the binding's `allowed_sender_addresses`.
+- `NUXT_OUTBOUND_EMAIL_FROM_NAME` controls the sender display name.
+- `NUXT_OUTBOUND_EMAIL_REPLY_TO` controls the reply destination for participant-facing notifications.
+- The sending domain must use Cloudflare DNS and be onboarded in Cloudflare Email Service before deployed email delivery works. Email Sending requires a Workers Paid plan.
+
+Application decision emails, hackathon outcome emails, and optional Luma guest-status sync use Cloudflare Queues at runtime:
 
 - `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING` and `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for participant decision emails.
+- `NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING` and `NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for shortlist and winner emails.
 - `NUXT_LUMA_QUEUE_BINDING` and `NUXT_LUMA_QUEUE_NAME` should match the producer and consumer queue configuration for Luma sync jobs.
 - `NUXT_LUMA_API_KEY` is only required when you operate hackathons that use Luma sync.
 - `NUXT_LUMA_WEBHOOK_SECRET` is the runtime signing secret for inbound Luma webhook verification and is uploaded automatically by the checked-in deploy workflows after Luma webhook reconciliation.
@@ -156,6 +172,7 @@ The deployed dev environment uses:
 
 - application URL: `https://dev.codex-hackathons.com`
 - Auth0 custom domain: `https://auth.dev.codex-hackathons.com`
+- outbound email sender: `info@dev.codex-hackathons.com`
 
 Pushes to `main` publish the shared dev environment automatically through `.github/workflows/ci.yml` after the fast CI checks pass. The shared dev deploy and Auth0-backed BDD jobs use the GitHub Actions `dev` environment.
 
@@ -170,10 +187,6 @@ The GitHub `dev` environment must provide these secrets:
 - `NUXT_AUTH0_MANAGEMENT_CLIENT_ID`
 - `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET`
 - `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
-- `NUXT_RESEND_API_KEY`
-- `NUXT_RESEND_FROM_EMAIL`
-- `NUXT_RESEND_FROM_NAME`
-- `NUXT_RESEND_REPLY_TO`
 - `NUXT_LUMA_API_KEY` when any shared dev hackathon uses Luma sync
 - `AUTH0_TEST_DOMAIN`
 - `AUTH0_TEST_MGMT_CLIENT_ID`
@@ -238,9 +251,6 @@ The GitHub `production` environment must provide these secrets before the workfl
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_AUTH0_SESSION_SECRET`
 - `NUXT_LUMA_API_KEY`
-- `NUXT_RESEND_API_KEY`
-- `NUXT_RESEND_FROM_EMAIL`
-- `NUXT_RESEND_REPLY_TO`
 
 Least-privilege external credential requirements for the current production workflow:
 
@@ -278,7 +288,7 @@ The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CL
 
 The `read:users` and `update:users` scopes are required by the runtime account-linking flow. The app reads linked Auth0 identities to reconcile cross-device sessions and posts to Auth0's user identities endpoint when a verified social login must be connected to an existing password-backed platform account.
 
-`AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. `NUXT_RESEND_API_KEY` should be a send-capable Resend API key for the sender identity configured by `NUXT_RESEND_FROM_EMAIL`; the checked-in production workflow does not currently require any additional repository-specific Resend scopes. The release workflow creates or reuses the Cloudflare Queues declared for the `production` environment in `wrangler.jsonc`, reconciles the managed production Luma webhook when `NUXT_LUMA_API_KEY` is present, uploads Worker secrets plus the generated `NUXT_LUMA_WEBHOOK_SECRET`, applies migrations, and deploys the Worker.
+`AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. Outbound email delivery uses the Cloudflare Email Service `send_email` binding configured in `wrangler.jsonc`; the production sending domain must be onboarded in Cloudflare Email Service before release. The release workflow creates or reuses the Cloudflare Queues declared for the `production` environment in `wrangler.jsonc`, reconciles the managed production Luma webhook when `NUXT_LUMA_API_KEY` is present, uploads Worker secrets plus the generated `NUXT_LUMA_WEBHOOK_SECRET`, applies migrations, and deploys the Worker.
 
 The GitHub `production` environment does not need a stored `NUXT_LUMA_WEBHOOK_SECRET`; the workflow derives it from Luma on each release.
 

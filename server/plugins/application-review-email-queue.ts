@@ -8,7 +8,7 @@ import { defaultHackathonOutcomeEmailQueueName } from '../utils/hackathon-outcom
 import { classifyCloudflareQueueBatch, retryCloudflareQueueBatch } from '../utils/cloudflare-queue-routing'
 
 export default defineNitroPlugin((nitroApp) => {
-  nitroApp.hooks.hook('cloudflare:queue', async ({ batch }) => {
+  nitroApp.hooks.hook('cloudflare:queue', async ({ batch, env }) => {
     const runtimeConfig = useRuntimeConfig()
     const expectedQueueName = runtimeConfig.applicationReviewEmails?.queueName?.trim() || defaultApplicationReviewEmailQueueName
     const lumaQueueName = runtimeConfig.luma?.queueName?.trim() || defaultApplicationLumaSyncQueueName
@@ -32,7 +32,8 @@ export default defineNitroPlugin((nitroApp) => {
     }
 
     await processApplicationReviewEmailQueueBatch(batch, {
-      runtimeConfig
+      runtimeConfig,
+      cloudflareEnv: env as Record<string, unknown> | undefined
     })
   })
 })

@@ -159,8 +159,7 @@ We share personal data only where needed to run the platform and hackathons.
 At launch, the platform uses:
 
 - **Auth0** for authentication and identity
-- **Cloudflare** for application hosting, database, storage, and queue infrastructure
-- **Resend** for transactional email delivery
+- **Cloudflare** for application hosting, database, storage, queue infrastructure, and transactional email delivery
 
 These providers process data on our behalf according to their service terms and data-processing arrangements.
 
@@ -383,7 +382,7 @@ You may stop using the platform at any time. Account deletion is handled accordi
 
 ## 9. Third-party services and links
 
-The platform relies on third-party services such as Auth0, Cloudflare, and Resend. Hackathon workflows may also include links to third-party services such as repository hosts or event pages.
+The platform relies on third-party services such as Auth0 and Cloudflare. Hackathon workflows may also include links to third-party services such as repository hosts or event pages.
 
 We are not responsible for third-party services that we do not control. Your use of those services is subject to their own terms and privacy notices.
 

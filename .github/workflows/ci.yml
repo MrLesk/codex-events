@@ -69,10 +69,6 @@ jobs:
       NUXT_AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.NUXT_AUTH0_MANAGEMENT_CLIENT_ID }}
       NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET }}
       NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ${{ secrets.NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET }}
-      NUXT_RESEND_API_KEY: ${{ secrets.NUXT_RESEND_API_KEY }}
-      NUXT_RESEND_FROM_EMAIL: ${{ secrets.NUXT_RESEND_FROM_EMAIL }}
-      NUXT_RESEND_FROM_NAME: ${{ secrets.NUXT_RESEND_FROM_NAME }}
-      NUXT_RESEND_REPLY_TO: ${{ secrets.NUXT_RESEND_REPLY_TO }}
       NUXT_LUMA_API_KEY: ${{ secrets.NUXT_LUMA_API_KEY }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -125,10 +121,6 @@ jobs:
             --arg auth0ManagementClientId "$NUXT_AUTH0_MANAGEMENT_CLIENT_ID" \
             --arg auth0ManagementClientSecret "$NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET" \
             --arg accountLinkChallengeSecret "$NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET" \
-            --arg resendApiKey "$NUXT_RESEND_API_KEY" \
-            --arg resendFromEmail "$NUXT_RESEND_FROM_EMAIL" \
-            --arg resendFromName "$NUXT_RESEND_FROM_NAME" \
-            --arg resendReplyTo "$NUXT_RESEND_REPLY_TO" \
             --arg lumaApiKey "$NUXT_LUMA_API_KEY" \
             '{
               NUXT_AUTH0_CLIENT_ID: $auth0ClientId,
@@ -138,10 +130,6 @@ jobs:
               NUXT_AUTH0_MANAGEMENT_CLIENT_ID: $auth0ManagementClientId,
               NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: $auth0ManagementClientSecret,
               NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: $accountLinkChallengeSecret,
-              NUXT_RESEND_API_KEY: $resendApiKey,
-              NUXT_RESEND_FROM_EMAIL: $resendFromEmail,
-              NUXT_RESEND_FROM_NAME: $resendFromName,
-              NUXT_RESEND_REPLY_TO: $resendReplyTo,
               NUXT_LUMA_API_KEY: $lumaApiKey
             }' > .wrangler-dev-secrets.json
           if [ -f .wrangler-dev-luma-webhook-secret.json ]; then

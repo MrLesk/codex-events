@@ -106,7 +106,7 @@ describe('application review email queue utilities', () => {
       status: 'failed' as const,
       reason: 'provider_error',
       providerError: {
-        name: 'rate_limit_exceeded',
+        name: 'E_RATE_LIMIT_EXCEEDED',
         statusCode: 429,
         message: 'too many requests'
       }
@@ -135,8 +135,8 @@ describe('application review email queue utilities', () => {
       status: 'failed' as const,
       reason: 'provider_error',
       providerError: {
-        name: 'validation_error',
-        statusCode: 422,
+        name: 'E_VALIDATION_ERROR',
+        statusCode: null,
         message: 'invalid from address'
       }
     }))

@@ -14,11 +14,9 @@ function createEvent(runtimeConfig?: Record<string, unknown>) {
 }
 
 describe('legal contact utilities', () => {
-  test('reads Resend configuration from useRuntimeConfig when event context does not include it', async () => {
+  test('reads outbound email configuration from useRuntimeConfig when event context does not include it', async () => {
     const send = vi.fn(async () => ({
-      data: { id: 'email_runtime_config' },
-      error: null,
-      headers: null
+      messageId: 'email_runtime_config'
     }))
     const runtimeConfigHolder = globalThis as typeof globalThis & {
       useRuntimeConfig?: (event: H3Event) => Record<string, unknown>
@@ -26,8 +24,7 @@ describe('legal contact utilities', () => {
     const previousUseRuntimeConfig = runtimeConfigHolder.useRuntimeConfig
 
     runtimeConfigHolder.useRuntimeConfig = () => ({
-      resend: {
-        apiKey: 're_test_123',
+      outboundEmail: {
         fromEmail: 'notifications@example.com',
         fromName: 'Codex Hackathons'
       }
@@ -42,11 +39,7 @@ describe('legal contact utilities', () => {
         message: 'Hello there.',
         website: ''
       }, {
-        resendClient: {
-          emails: {
-            send
-          }
-        } as never
+        emailBinding: { send }
       })
 
       expect(result).toEqual({
@@ -62,7 +55,7 @@ describe('legal contact utilities', () => {
     }
   })
 
-  test('skips delivery when Resend configuration is missing', async () => {
+  test('skips delivery when outbound email configuration is missing', async () => {
     const result = await sendPublicLegalContactEmail(createEvent(), {
       name: 'Ada Lovelace',
       email: 'ada@example.com',
@@ -72,7 +65,7 @@ describe('legal contact utilities', () => {
 
     expect(result).toEqual({
       status: 'skipped',
-      reason: 'resend_configuration_missing'
+      reason: 'outbound_email_configuration_missing'
     })
   })
 
@@ -80,8 +73,7 @@ describe('legal contact utilities', () => {
     const send = vi.fn()
 
     const result = await sendPublicLegalContactEmail(createEvent({
-      resend: {
-        apiKey: 're_test_123',
+      outboundEmail: {
         fromEmail: 'notifications@example.com',
         fromName: 'Codex Hackathons'
       }
@@ -91,11 +83,7 @@ describe('legal contact utilities', () => {
       message: 'Hello there.',
       website: 'https://spam.example'
     }, {
-      resendClient: {
-        emails: {
-          send
-        }
-      } as never
+      emailBinding: { send }
     })
 
     expect(result).toEqual({
@@ -105,16 +93,13 @@ describe('legal contact utilities', () => {
     expect(send).not.toHaveBeenCalled()
   })
 
-  test('sends contact requests through Resend when configured', async () => {
+  test('sends contact requests through Cloudflare Email Service when configured', async () => {
     const send = vi.fn(async () => ({
-      data: { id: 'email_1' },
-      error: null,
-      headers: null
+      messageId: 'email_1'
     }))
 
     const result = await sendPublicLegalContactEmail(createEvent({
-      resend: {
-        apiKey: 're_test_123',
+      outboundEmail: {
         fromEmail: 'notifications@example.com',
         fromName: 'Codex Hackathons'
       }
@@ -124,11 +109,7 @@ describe('legal contact utilities', () => {
       message: 'Hello there.\nI have a legal question.',
       website: ''
     }, {
-      resendClient: {
-        emails: {
-          send
-        }
-      } as never
+      emailBinding: { send }
     })
 
     expect(result).toEqual({
@@ -137,30 +118,27 @@ describe('legal contact utilities', () => {
     })
     expect(send).toHaveBeenCalledTimes(1)
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
-      from: 'Codex Hackathons <notifications@example.com>',
-      to: [platformSupportEmail],
+      from: { email: 'notifications@example.com', name: 'Codex Hackathons' },
+      to: platformSupportEmail,
       replyTo: 'ada@example.com',
       subject: 'Codex Hackathons contact request from Ada Lovelace',
-      tags: [{ name: 'notification_type', value: 'legal_contact' }]
-    }), expect.objectContaining({
-      idempotencyKey: expect.stringContaining('legal-contact:ada@example.com:Ada Lovelace:')
+      headers: {
+        'X-Codex-Notification-Type': 'legal_contact',
+        'X-Codex-Email-Key': expect.stringContaining('legal-contact:ada@example.com:Ada Lovelace:')
+      }
     }))
   })
 
-  test('returns failed delivery status when Resend reports a provider error', async () => {
-    const send = vi.fn(async () => ({
-      data: null,
-      error: {
-        message: 'Too many requests',
-        statusCode: 429,
-        name: 'rate_limit_exceeded'
-      },
-      headers: null
-    }))
+  test('returns failed delivery status when Cloudflare reports a provider error', async () => {
+    const error = Object.assign(new Error('Too many requests'), {
+      code: 'E_RATE_LIMIT_EXCEEDED'
+    })
+    const send = vi.fn(async () => {
+      throw error
+    })
 
     const result = await sendPublicLegalContactEmail(createEvent({
-      resend: {
-        apiKey: 're_test_123',
+      outboundEmail: {
         fromEmail: 'notifications@example.com'
       }
     }), {
@@ -169,11 +147,7 @@ describe('legal contact utilities', () => {
       message: 'Hello there.',
       website: ''
     }, {
-      resendClient: {
-        emails: {
-          send
-        }
-      } as never
+      emailBinding: { send }
     })
 
     expect(result).toEqual({
@@ -182,7 +156,7 @@ describe('legal contact utilities', () => {
       providerError: {
         message: 'Too many requests',
         statusCode: 429,
-        name: 'rate_limit_exceeded'
+        name: 'E_RATE_LIMIT_EXCEEDED'
       }
     })
   })

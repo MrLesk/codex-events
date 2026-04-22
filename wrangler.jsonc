@@ -53,6 +53,14 @@
 	"images": {
 		"binding": "IMAGES"
 	},
+	"send_email": [
+		{
+			"name": "EMAIL",
+			"allowed_sender_addresses": [
+				"info@codex-hackathons.com"
+			]
+		}
+	],
 	"queues": {
 		"producers": [
 			{
@@ -144,15 +152,19 @@
 					"NUXT_AUTH0_MANAGEMENT_DOMAIN": "codex-hackathons-dev.eu.auth0.com",
 					"NUXT_AUTH0_MANAGEMENT_AUDIENCE": "https://codex-hackathons-dev.eu.auth0.com/api/v2/",
 					"NUXT_AUTH0_DATABASE_CONNECTION_NAME": "codex-hackathons-e2e-users",
-				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING": "APPLICATION_REVIEW_EMAIL_QUEUE",
-				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "dev-codex-hackathons-application-review-email-delivery",
-				"NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS": "120",
-				"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING": "HACKATHON_OUTCOME_EMAIL_QUEUE",
-				"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME": "dev-codex-hackathons-hackathon-outcome-email-delivery",
-				"NUXT_HACKATHON_OUTCOME_EMAILS_RETRY_DELAY_SECONDS": "120",
-				"NUXT_LUMA_QUEUE_BINDING": "APPLICATION_LUMA_SYNC_QUEUE",
-				"NUXT_LUMA_QUEUE_NAME": "dev-codex-hackathons-application-luma-sync",
-				"NUXT_LUMA_RETRY_DELAY_SECONDS": "120"
+					"NUXT_OUTBOUND_EMAIL_BINDING": "EMAIL",
+					"NUXT_OUTBOUND_EMAIL_FROM_EMAIL": "info@dev.codex-hackathons.com",
+					"NUXT_OUTBOUND_EMAIL_FROM_NAME": "Codex Hackathons",
+					"NUXT_OUTBOUND_EMAIL_REPLY_TO": "support@codex-hackathons.com",
+					"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING": "APPLICATION_REVIEW_EMAIL_QUEUE",
+					"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "dev-codex-hackathons-application-review-email-delivery",
+					"NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS": "120",
+					"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING": "HACKATHON_OUTCOME_EMAIL_QUEUE",
+					"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME": "dev-codex-hackathons-hackathon-outcome-email-delivery",
+					"NUXT_HACKATHON_OUTCOME_EMAILS_RETRY_DELAY_SECONDS": "120",
+					"NUXT_LUMA_QUEUE_BINDING": "APPLICATION_LUMA_SYNC_QUEUE",
+					"NUXT_LUMA_QUEUE_NAME": "dev-codex-hackathons-application-luma-sync",
+					"NUXT_LUMA_RETRY_DELAY_SECONDS": "120"
 			},
 			"d1_databases": [
 				{
@@ -175,6 +187,14 @@
 			"images": {
 				"binding": "IMAGES"
 			},
+			"send_email": [
+				{
+					"name": "EMAIL",
+					"allowed_sender_addresses": [
+						"info@dev.codex-hackathons.com"
+					]
+				}
+			],
 			"queues": {
 				"producers": [
 					{
@@ -266,15 +286,19 @@
 					"NUXT_AUTH0_MANAGEMENT_DOMAIN": "codex-hackathons.eu.auth0.com",
 					"NUXT_AUTH0_MANAGEMENT_AUDIENCE": "https://codex-hackathons.eu.auth0.com/api/v2/",
 					"NUXT_AUTH0_DATABASE_CONNECTION_NAME": "Username-Password-Authentication",
-				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING": "APPLICATION_REVIEW_EMAIL_QUEUE",
-				"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "codex-hackathons-application-review-email-delivery",
-				"NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS": "120",
-				"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING": "HACKATHON_OUTCOME_EMAIL_QUEUE",
-				"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME": "codex-hackathons-hackathon-outcome-email-delivery",
-				"NUXT_HACKATHON_OUTCOME_EMAILS_RETRY_DELAY_SECONDS": "120",
-				"NUXT_LUMA_QUEUE_BINDING": "APPLICATION_LUMA_SYNC_QUEUE",
-				"NUXT_LUMA_QUEUE_NAME": "codex-hackathons-application-luma-sync",
-				"NUXT_LUMA_RETRY_DELAY_SECONDS": "120"
+					"NUXT_OUTBOUND_EMAIL_BINDING": "EMAIL",
+					"NUXT_OUTBOUND_EMAIL_FROM_EMAIL": "info@codex-hackathons.com",
+					"NUXT_OUTBOUND_EMAIL_FROM_NAME": "Codex Hackathons",
+					"NUXT_OUTBOUND_EMAIL_REPLY_TO": "support@codex-hackathons.com",
+					"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING": "APPLICATION_REVIEW_EMAIL_QUEUE",
+					"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "codex-hackathons-application-review-email-delivery",
+					"NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS": "120",
+					"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING": "HACKATHON_OUTCOME_EMAIL_QUEUE",
+					"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME": "codex-hackathons-hackathon-outcome-email-delivery",
+					"NUXT_HACKATHON_OUTCOME_EMAILS_RETRY_DELAY_SECONDS": "120",
+					"NUXT_LUMA_QUEUE_BINDING": "APPLICATION_LUMA_SYNC_QUEUE",
+					"NUXT_LUMA_QUEUE_NAME": "codex-hackathons-application-luma-sync",
+					"NUXT_LUMA_RETRY_DELAY_SECONDS": "120"
 			},
 			"d1_databases": [
 				{
@@ -297,6 +321,14 @@
 			"images": {
 				"binding": "IMAGES"
 			},
+			"send_email": [
+				{
+					"name": "EMAIL",
+					"allowed_sender_addresses": [
+						"info@codex-hackathons.com"
+					]
+				}
+			],
 			"queues": {
 				"producers": [
 					{

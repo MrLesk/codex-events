@@ -80,21 +80,24 @@ If you also use an Auth0 custom domain, keep it separate from the application ho
 
 Auth0 is responsible for authentication and identity. Platform authorization remains in the application data model, not in Auth0 roles.
 
-### Outbound Email Runtime (Resend)
+### Outbound Email Runtime (Cloudflare Email Service)
 
-These values configure participant-facing application decision emails sent after hackathon application approval or rejection:
+These values configure outbound transactional email sent through the Cloudflare Worker `send_email` binding:
 
-- `NUXT_RESEND_API_KEY`
-- `NUXT_RESEND_FROM_EMAIL`
-- `NUXT_RESEND_FROM_NAME`
-- `NUXT_RESEND_REPLY_TO`
+- `NUXT_OUTBOUND_EMAIL_BINDING`
+- `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
+- `NUXT_OUTBOUND_EMAIL_FROM_NAME`
+- `NUXT_OUTBOUND_EMAIL_REPLY_TO`
 - `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING`
 - `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME`
 - `NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS`
+- `NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING`
+- `NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME`
+- `NUXT_HACKATHON_OUTCOME_EMAILS_RETRY_DELAY_SECONDS`
 
-Set `NUXT_RESEND_API_KEY` as a secret in deployed environments (for example, a Cloudflare Workers secret) and keep sender identity values in your environment configuration.
+Configure a Cloudflare Email Service sending domain for the sender address used by `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`. The sender address must also be allowed by the `send_email.allowed_sender_addresses` entry for the target environment in `wrangler.jsonc`.
 
-Application review APIs enqueue email delivery work to a Cloudflare Queue. Ensure your Worker has both producer and consumer queue configuration for the queue identified by `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME` and bound through `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING`.
+Application review and hackathon outcome APIs enqueue email delivery work to Cloudflare Queues. Ensure your Worker has producer and consumer queue configuration for the queues identified by the outbound email queue runtime values.
 
 ### Luma Sync Runtime
 
@@ -165,7 +168,7 @@ These values identify the Cloudflare account and storage resources used by the p
 - `CLOUDFLARE_D1_DATABASE_ID`
 - `CLOUDFLARE_R2_BUCKET`
 
-The canonical stack expects Cloudflare Workers for application hosting, D1 for the primary relational database, R2 for file storage (including profile icons and hackathon images), a Cloudflare `IMAGES` binding for protected hackathon photo previews, Queues for asynchronous jobs, and Cron Triggers for scheduled platform tasks. See [`docs/tech-stack.md`](docs/tech-stack.md).
+The canonical stack expects Cloudflare Workers for application hosting, D1 for the primary relational database, R2 for file storage (including profile icons and hackathon images), a Cloudflare `IMAGES` binding for protected hackathon photo previews, Queues for asynchronous jobs, Cloudflare Email Service for outbound transactional email delivery, and Cron Triggers for scheduled platform tasks. See [`docs/tech-stack.md`](docs/tech-stack.md).
 
 For least-privilege production deployment, the Cloudflare token used by this repository needs permission to deploy the Worker, upload Worker secrets, apply remote D1 migrations, and manage the Auth0 custom-domain verification CNAME on the production zone. The current exact permission list is documented in [`DEVELOPMENT.md`](DEVELOPMENT.md#production-release-pipeline).
 

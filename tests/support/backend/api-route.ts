@@ -38,8 +38,8 @@ export function createApiRouteTestHarness(options: {
       binding?: string
       publicCdnBaseUrl?: string
     }
-    resend?: {
-      apiKey?: string
+    outboundEmail?: {
+      binding?: string
       fromEmail?: string
       fromName?: string
       replyTo?: string
@@ -78,10 +78,10 @@ export function createApiRouteTestHarness(options: {
     const profileIconsBinding = options.runtimeConfig?.profileIcons?.binding ?? 'PROFILE_ICONS'
     const hackathonImagesBinding = options.runtimeConfig?.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
     const hackathonImagesPublicCdnBaseUrl = options.runtimeConfig?.hackathonImages?.publicCdnBaseUrl ?? ''
-    const resendApiKey = options.runtimeConfig?.resend?.apiKey ?? ''
-    const resendFromEmail = options.runtimeConfig?.resend?.fromEmail ?? ''
-    const resendFromName = options.runtimeConfig?.resend?.fromName ?? 'Codex Hackathons'
-    const resendReplyTo = options.runtimeConfig?.resend?.replyTo ?? ''
+    const outboundEmailBinding = options.runtimeConfig?.outboundEmail?.binding ?? 'EMAIL'
+    const outboundEmailFromEmail = options.runtimeConfig?.outboundEmail?.fromEmail ?? ''
+    const outboundEmailFromName = options.runtimeConfig?.outboundEmail?.fromName ?? 'Codex Hackathons'
+    const outboundEmailReplyTo = options.runtimeConfig?.outboundEmail?.replyTo ?? ''
     const reviewEmailsQueueBinding = options.runtimeConfig?.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
     const reviewEmailsQueueName = options.runtimeConfig?.applicationReviewEmails?.queueName ?? 'codex-hackathons-application-review-email-delivery'
     const reviewEmailsRetryDelaySeconds = options.runtimeConfig?.applicationReviewEmails?.retryDelaySeconds ?? 120
@@ -116,11 +116,11 @@ export function createApiRouteTestHarness(options: {
         binding: hackathonImagesBinding,
         publicCdnBaseUrl: hackathonImagesPublicCdnBaseUrl
       },
-      resend: {
-        apiKey: resendApiKey,
-        fromEmail: resendFromEmail,
-        fromName: resendFromName,
-        replyTo: resendReplyTo
+      outboundEmail: {
+        binding: outboundEmailBinding,
+        fromEmail: outboundEmailFromEmail,
+        fromName: outboundEmailFromName,
+        replyTo: outboundEmailReplyTo
       },
       applicationReviewEmails: {
         queueBinding: reviewEmailsQueueBinding,

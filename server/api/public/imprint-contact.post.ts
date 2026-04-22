@@ -2,6 +2,7 @@ import { ApiError } from '../../utils/api-error'
 import { defineApiHandler } from '../../utils/api-handler'
 import { apiData } from '../../utils/api-response'
 import { publicLegalContactBodySchema, sendPublicLegalContactEmail } from '../../utils/legal-contact'
+import { outboundEmailConfigurationMissingReason } from '../../utils/outbound-email'
 import { assertPublicContactRateLimit } from '../../utils/rate-limit'
 import { parseValidatedBody } from '../../utils/validation'
 
@@ -16,7 +17,7 @@ export default defineApiHandler(async (event) => {
     })
   }
 
-  if (result.status === 'skipped' && result.reason === 'resend_configuration_missing') {
+  if (result.status === 'skipped' && result.reason === outboundEmailConfigurationMissingReason) {
     throw new ApiError({
       statusCode: 503,
       code: 'support_contact_unavailable',

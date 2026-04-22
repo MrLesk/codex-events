@@ -13,6 +13,7 @@ import {
   type HackathonOutcomeEmailDeliveryResult,
   type HackathonOutcomeEmailInput
 } from './hackathon-outcome-emails'
+import { isRetryableOutboundEmailProviderError } from './outbound-email'
 
 export const defaultHackathonOutcomeEmailQueueBinding = 'HACKATHON_OUTCOME_EMAIL_QUEUE'
 export const defaultHackathonOutcomeEmailQueueName = 'codex-hackathons-hackathon-outcome-email-delivery'
@@ -324,24 +325,14 @@ function shouldRetryDeliveryFailure(delivery: HackathonOutcomeEmailDeliveryResul
     return true
   }
 
-  const providerError = delivery.providerError
-  const statusCode = providerError?.statusCode ?? null
-  const providerName = providerError?.name ?? ''
-
-  if (statusCode === 429 || (statusCode !== null && statusCode >= 500)) {
-    return true
-  }
-
-  return providerName === 'application_error'
-    || providerName === 'internal_server_error'
-    || providerName === 'rate_limit_exceeded'
-    || providerName === 'concurrent_idempotent_requests'
+  return isRetryableOutboundEmailProviderError(delivery.providerError)
 }
 
 export async function processHackathonOutcomeEmailQueueMessage(
   message: QueueMessageLike,
   options?: {
     runtimeConfig?: unknown
+    cloudflareEnv?: Record<string, unknown>
     sendOutcomeEmail?: typeof sendHackathonOutcomeEmail
   }
 ): Promise<HackathonOutcomeEmailQueueMessageOutcome> {
@@ -364,7 +355,8 @@ export async function processHackathonOutcomeEmailQueueMessage(
     { context: {} } as H3Event,
     parsedMessage.data,
     {
-      runtimeConfig: options?.runtimeConfig
+      runtimeConfig: options?.runtimeConfig,
+      cloudflareEnv: options?.cloudflareEnv
     }
   )
 
@@ -406,6 +398,7 @@ export async function processHackathonOutcomeEmailQueueBatch(
   batch: QueueBatchLike,
   options?: {
     runtimeConfig?: unknown
+    cloudflareEnv?: Record<string, unknown>
     queueName?: string
     sendOutcomeEmail?: typeof sendHackathonOutcomeEmail
   }
@@ -426,6 +419,7 @@ export async function processHackathonOutcomeEmailQueueBatch(
   for (const message of batch.messages) {
     outcomes.push(await processHackathonOutcomeEmailQueueMessage(message, {
       runtimeConfig: options?.runtimeConfig,
+      cloudflareEnv: options?.cloudflareEnv,
       sendOutcomeEmail: options?.sendOutcomeEmail
     }))
   }

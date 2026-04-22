@@ -117,7 +117,7 @@ describe('hackathon outcome email queue utilities', () => {
       status: 'failed' as const,
       reason: 'provider_error',
       providerError: {
-        name: 'rate_limit_exceeded',
+        name: 'E_RATE_LIMIT_EXCEEDED',
         statusCode: 429,
         message: 'too many requests'
       }

@@ -37,6 +37,9 @@ function createEvent(options?: {
         hackathonImages: {
           binding: 'HACKATHON_IMAGES'
         },
+        outboundEmail: {
+          binding: 'EMAIL'
+        },
         applicationReviewEmails: {
           queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
         },
@@ -124,6 +127,9 @@ describe('local D1 binding middleware', () => {
         }))
       }))
     }
+    const outboundEmailBinding = {
+      send: vi.fn(async () => ({ messageId: 'email_1' }))
+    }
     const applicationReviewEmailQueue = {
       send: vi.fn()
     }
@@ -149,6 +155,7 @@ describe('local D1 binding middleware', () => {
         PROFILE_ICONS: profileIconsBucket,
         HACKATHON_IMAGES: hackathonImagesBucket,
         IMAGES: imagesBinding,
+        EMAIL: outboundEmailBinding,
         APPLICATION_REVIEW_EMAIL_QUEUE: applicationReviewEmailQueue,
         HACKATHON_OUTCOME_EMAIL_QUEUE: hackathonOutcomeEmailQueue,
         APPLICATION_LUMA_SYNC_QUEUE: applicationLumaSyncQueue,
@@ -168,6 +175,7 @@ describe('local D1 binding middleware', () => {
     expect(event.context.cloudflare?.env.PROFILE_ICONS).toBe(profileIconsBucket)
     expect(event.context.cloudflare?.env.HACKATHON_IMAGES).toBe(hackathonImagesBucket)
     expect(event.context.cloudflare?.env.IMAGES).toBe(imagesBinding)
+    expect(event.context.cloudflare?.env.EMAIL).toBe(outboundEmailBinding)
     expect(event.context.cloudflare?.env.APPLICATION_REVIEW_EMAIL_QUEUE).toBe(applicationReviewEmailQueue)
     expect(event.context.cloudflare?.env.HACKATHON_OUTCOME_EMAIL_QUEUE).toBe(hackathonOutcomeEmailQueue)
     expect(event.context.cloudflare?.env.APPLICATION_LUMA_SYNC_QUEUE).toBe(applicationLumaSyncQueue)

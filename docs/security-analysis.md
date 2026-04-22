@@ -157,7 +157,7 @@ What happens:
 
 Why this matters:
 
-- The contact form can be abused for spam, support mailbox flooding, or Resend credit burn.
+- The contact form can be abused for spam, support mailbox flooding, or Cloudflare Email Service quota burn.
 - Upload routes can be used for storage churn and operational abuse after account compromise or by any abusive authenticated actor.
 
 Recommendation:

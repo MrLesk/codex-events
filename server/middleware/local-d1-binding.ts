@@ -7,6 +7,7 @@ import {
   publicHackathonFeedbackRateLimitBindingName
 } from '../utils/rate-limit'
 import { createLocalPlatformProxy } from '../database/local-platform-proxy'
+import { defaultOutboundEmailBinding } from '../utils/outbound-email'
 
 const localPlatformProxyCache = new Map<'local', Promise<Awaited<ReturnType<typeof createLocalPlatformProxy>>>>()
 
@@ -18,6 +19,10 @@ interface R2BucketLike {
 
 interface QueueProducerLike {
   send: (message: unknown, options?: unknown) => Promise<void>
+}
+
+interface OutboundEmailBindingLike {
+  send: (message: unknown) => Promise<unknown>
 }
 
 interface RateLimitBindingLike {
@@ -57,6 +62,15 @@ function isQueueProducerLike(value: unknown): value is QueueProducerLike {
   return typeof candidate.send === 'function'
 }
 
+function isOutboundEmailBindingLike(value: unknown): value is OutboundEmailBindingLike {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+
+  const candidate = value as Partial<OutboundEmailBindingLike>
+  return typeof candidate.send === 'function'
+}
+
 function isRateLimitBindingLike(value: unknown): value is RateLimitBindingLike {
   if (!value || typeof value !== 'object') {
     return false
@@ -87,6 +101,7 @@ export default defineEventHandler(async (event) => {
   const profileIconsBindingName = runtimeConfig.profileIcons?.binding ?? 'PROFILE_ICONS'
   const hackathonImagesBindingName = runtimeConfig.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
   const imagesBindingName = 'IMAGES'
+  const outboundEmailBindingName = runtimeConfig.outboundEmail?.binding ?? defaultOutboundEmailBinding
   const applicationReviewEmailQueueBindingName = runtimeConfig.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
   const hackathonOutcomeEmailQueueBindingName = runtimeConfig.hackathonOutcomeEmails?.queueBinding ?? 'HACKATHON_OUTCOME_EMAIL_QUEUE'
   const applicationLumaSyncQueueBindingName = runtimeConfig.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
@@ -120,6 +135,10 @@ export default defineEventHandler(async (event) => {
   const hackathonImagesBucket = existingHackathonImagesBucket ?? proxyHackathonImagesBucket
   const existingImagesBinding = cloudflareEnv?.[imagesBindingName]
   const imagesBinding = existingImagesBinding ?? proxyEnv[imagesBindingName]
+  const existingOutboundEmailBinding = cloudflareEnv?.[outboundEmailBindingName]
+  const proxyOutboundEmailBinding = proxyEnv[outboundEmailBindingName]
+    ?? (outboundEmailBindingName === defaultOutboundEmailBinding ? undefined : proxyEnv[defaultOutboundEmailBinding])
+  const outboundEmailBinding = existingOutboundEmailBinding ?? proxyOutboundEmailBinding
   const existingApplicationReviewEmailQueue = cloudflareEnv?.[applicationReviewEmailQueueBindingName]
   const proxyApplicationReviewEmailQueue = proxyEnv[applicationReviewEmailQueueBindingName]
     ?? (applicationReviewEmailQueueBindingName === 'APPLICATION_REVIEW_EMAIL_QUEUE'
@@ -172,6 +191,10 @@ export default defineEventHandler(async (event) => {
 
   if (!event.context.cloudflare.env[imagesBindingName] && isImagesBindingLike(imagesBinding)) {
     event.context.cloudflare.env[imagesBindingName] = imagesBinding as never
+  }
+
+  if (!event.context.cloudflare.env[outboundEmailBindingName] && isOutboundEmailBindingLike(outboundEmailBinding)) {
+    event.context.cloudflare.env[outboundEmailBindingName] = outboundEmailBinding as never
   }
 
   if (!event.context.cloudflare.env[applicationReviewEmailQueueBindingName] && isQueueProducerLike(applicationReviewEmailQueue)) {

@@ -1,20 +1,11 @@
-/* eslint-disable import/first */
 import { afterEach, describe, expect, test, vi } from 'vitest'
-
-const send = vi.fn()
-
-vi.mock('resend', () => ({
-  Resend: class {
-    emails = {
-      send
-    }
-  }
-}))
 
 import { platformSupportEmail } from '../../../../shared/platform-legal'
 import imprintContactPostHandler from '../../../../server/api/public/imprint-contact.post'
 import { publicContactRateLimitBindingName } from '../../../../server/utils/rate-limit'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
+
+const send = vi.fn()
 
 describe('public legal API routes', () => {
   const databases: Array<ReturnType<typeof createApiRouteTestHarness>> = []
@@ -36,9 +27,7 @@ describe('public legal API routes', () => {
 
   test('POST /api/public/imprint-contact sends a public contact request', async () => {
     send.mockResolvedValue({
-      data: { id: 'email_1' },
-      error: null,
-      headers: null
+      messageId: 'email_1'
     })
 
     const harness = createApiRouteTestHarness({
@@ -46,11 +35,12 @@ describe('public legal API routes', () => {
         { method: 'post', path: '/api/public/imprint-contact', handler: imprintContactPostHandler }
       ],
       cloudflareEnv: {
+        EMAIL: { send },
         [publicContactRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
-        resend: {
-          apiKey: 're_test_123',
+        outboundEmail: {
+          binding: 'EMAIL',
           fromEmail: 'notifications@example.com',
           fromName: 'Codex Hackathons'
         }
@@ -75,9 +65,9 @@ describe('public legal API routes', () => {
       }
     })
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
-      to: [platformSupportEmail],
+      to: platformSupportEmail,
       replyTo: 'ada@example.com'
-    }), expect.any(Object))
+    }))
   })
 
   test('POST /api/public/imprint-contact returns 503 when email delivery is not configured', async () => {
@@ -116,11 +106,12 @@ describe('public legal API routes', () => {
         { method: 'post', path: '/api/public/imprint-contact', handler: imprintContactPostHandler }
       ],
       cloudflareEnv: {
+        EMAIL: { send },
         [publicContactRateLimitBindingName]: createRateLimiter()
       },
       runtimeConfig: {
-        resend: {
-          apiKey: 're_test_123',
+        outboundEmail: {
+          binding: 'EMAIL',
           fromEmail: 'notifications@example.com',
           fromName: 'Codex Hackathons'
         }
@@ -157,8 +148,8 @@ describe('public legal API routes', () => {
         [publicContactRateLimitBindingName]: createRateLimiter(false)
       },
       runtimeConfig: {
-        resend: {
-          apiKey: 're_test_123',
+        outboundEmail: {
+          binding: 'EMAIL',
           fromEmail: 'notifications@example.com',
           fromName: 'Codex Hackathons'
         }

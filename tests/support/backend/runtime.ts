@@ -24,8 +24,8 @@ type EventContext = H3Event['context'] & {
     profileIcons?: {
       binding?: string
     }
-    resend?: {
-      apiKey?: string
+    outboundEmail?: {
+      binding?: string
       fromEmail?: string
       fromName?: string
       replyTo?: string

@@ -17,7 +17,7 @@ This document defines the canonical technology stack for the Codex hackathon pla
 - `Cloudflare Images` bindings for protected hackathon photo preview transformations
 - `Cloudflare Queues` for asynchronous jobs
 - `Cloudflare Cron Triggers` for scheduled platform tasks
-- `Resend` for outbound transactional email delivery
+- `Cloudflare Email Service` for outbound transactional email delivery
 - `Auth0` for user authentication and identity
 
 ## Architecture Notes

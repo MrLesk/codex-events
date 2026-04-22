@@ -1,9 +1,19 @@
 import type { H3Event } from 'h3'
 
-import { Resend, type CreateEmailRequestOptions, type ErrorResponse } from 'resend'
 import { z } from 'zod'
 
 import { platformSupportEmail } from '#platform-legal'
+import {
+  createOutboundEmailMetadataHeaders,
+  getOutboundEmailFailureReason,
+  getOutboundEmailFromAddress,
+  normalizeOutboundEmailError,
+  outboundEmailConfigurationMissingReason,
+  outboundEmailRuntimeConfigSchema,
+  resolveOutboundEmailBinding,
+  type OutboundEmailBindingLike,
+  type OutboundEmailProviderError
+} from './outbound-email'
 
 export const publicLegalContactBodySchema = z.object({
   name: z.string().trim().min(1).max(120),
@@ -12,15 +22,7 @@ export const publicLegalContactBodySchema = z.object({
   website: z.string().trim().max(500).optional().default('')
 })
 
-type LegalContactRuntimeConfig = {
-  resend?: {
-    apiKey?: string
-    fromEmail?: string
-    fromName?: string
-  }
-}
-
-type ResendClientLike = Pick<Resend, 'emails'>
+type LegalContactRuntimeConfig = z.infer<typeof outboundEmailRuntimeConfigSchema>
 
 export type PublicLegalContactInput = z.infer<typeof publicLegalContactBodySchema>
 export type PublicLegalContactEmailResult = {
@@ -29,10 +31,10 @@ export type PublicLegalContactEmailResult = {
 } | {
   status: 'failed'
   reason: 'provider_error' | 'transport_error'
-  providerError?: ErrorResponse | null
+  providerError?: OutboundEmailProviderError | null
 } | {
   status: 'skipped'
-  reason: 'honeypot_triggered' | 'resend_configuration_missing'
+  reason: 'honeypot_triggered' | typeof outboundEmailConfigurationMissingReason
 }
 
 function escapeHtml(value: string) {
@@ -47,38 +49,15 @@ function escapeHtml(value: string) {
 function resolveRuntimeConfig(event: H3Event): LegalContactRuntimeConfig {
   const eventRuntimeConfig = (event.context as H3Event['context'] & { runtimeConfig?: unknown }).runtimeConfig
   const candidate = eventRuntimeConfig ?? useRuntimeConfig(event) ?? {}
-  const parsed = z.object({
-    resend: z.object({
-      apiKey: z.string().trim().optional(),
-      fromEmail: z.string().trim().optional(),
-      fromName: z.string().trim().optional()
-    }).optional()
-  }).safeParse(candidate)
+  const parsed = outboundEmailRuntimeConfigSchema.safeParse(candidate)
 
   return parsed.success ? parsed.data : {}
 }
 
 function resolveRuntimeConfigFromUnknown(candidate: unknown): LegalContactRuntimeConfig {
-  const parsed = z.object({
-    resend: z.object({
-      apiKey: z.string().trim().optional(),
-      fromEmail: z.string().trim().optional(),
-      fromName: z.string().trim().optional()
-    }).optional()
-  }).safeParse(candidate)
+  const parsed = outboundEmailRuntimeConfigSchema.safeParse(candidate)
 
   return parsed.success ? parsed.data : {}
-}
-
-function buildSenderAddress(runtimeConfig: LegalContactRuntimeConfig) {
-  const fromEmail = runtimeConfig.resend?.fromEmail?.trim()
-  const fromName = runtimeConfig.resend?.fromName?.trim()
-
-  if (!fromEmail) {
-    return null
-  }
-
-  return fromName ? `${fromName} <${fromEmail}>` : fromEmail
 }
 
 function buildLegalContactEmailContent(input: PublicLegalContactInput) {
@@ -109,7 +88,8 @@ export async function sendPublicLegalContactEmail(
   event: H3Event,
   input: PublicLegalContactInput,
   options?: {
-    resendClient?: ResendClientLike
+    emailBinding?: OutboundEmailBindingLike
+    cloudflareEnv?: Record<string, unknown>
     runtimeConfig?: unknown
   }
 ): Promise<PublicLegalContactEmailResult> {
@@ -123,60 +103,48 @@ export async function sendPublicLegalContactEmail(
   const runtimeConfig = options?.runtimeConfig
     ? resolveRuntimeConfigFromUnknown(options.runtimeConfig)
     : resolveRuntimeConfig(event)
-  const apiKey = runtimeConfig.resend?.apiKey?.trim()
-  const fromAddress = buildSenderAddress(runtimeConfig)
+  const fromAddress = getOutboundEmailFromAddress(runtimeConfig)
+  const { binding } = resolveOutboundEmailBinding({
+    event,
+    runtimeConfig,
+    cloudflareEnv: options?.cloudflareEnv,
+    emailBinding: options?.emailBinding
+  })
 
-  if (!apiKey || !fromAddress) {
+  if (!binding || !fromAddress) {
     return {
       status: 'skipped',
-      reason: 'resend_configuration_missing'
+      reason: outboundEmailConfigurationMissingReason
     }
   }
 
-  const resendClient = options?.resendClient ?? new Resend(apiKey)
   const content = buildLegalContactEmailContent(input)
-  const requestOptions: CreateEmailRequestOptions = {
-    idempotencyKey: `legal-contact:${input.email}:${input.name}:${input.message.length}`
-  }
-  let response: Awaited<ReturnType<ResendClientLike['emails']['send']>>
+  const emailKey = `legal-contact:${input.email}:${input.name}:${input.message.length}`
+  let response: Awaited<ReturnType<OutboundEmailBindingLike['send']>>
 
   try {
-    response = await resendClient.emails.send({
+    response = await binding.send({
       from: fromAddress,
-      to: [platformSupportEmail],
+      to: platformSupportEmail,
       replyTo: input.email,
       subject: content.subject,
       text: content.text,
       html: content.html,
-      tags: [
-        {
-          name: 'notification_type',
-          value: 'legal_contact'
-        }
-      ]
-    }, requestOptions)
+      headers: createOutboundEmailMetadataHeaders({
+        notificationType: 'legal_contact',
+        idempotencyKey: emailKey
+      })
+    })
   } catch (error) {
     return {
       status: 'failed',
-      reason: 'transport_error',
-      providerError: {
-        name: 'application_error',
-        statusCode: null,
-        message: error instanceof Error ? error.message : 'Unexpected email transport error'
-      }
-    }
-  }
-
-  if (response.error) {
-    return {
-      status: 'failed',
-      reason: 'provider_error',
-      providerError: response.error
+      reason: getOutboundEmailFailureReason(error),
+      providerError: normalizeOutboundEmailError(error)
     }
   }
 
   return {
     status: 'sent',
-    messageId: response.data?.id ?? null
+    messageId: response.messageId ?? null
   }
 }
