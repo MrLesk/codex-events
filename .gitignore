@@ -19,6 +19,7 @@ logs
 .fleet
 .idea
 .features-gen
+tmp/
 playwright-report
 test-results
 tests/bdd/.auth
