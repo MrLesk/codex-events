@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
+  <title id="title">Codex Hackathons operating stack</title>
+  <desc id="desc">A diagram showing Codex Hackathons running on Cloudflare infrastructure with Auth0 authentication and optional Luma integration.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1280" y2="520" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#EEF6FF"/>
+    </linearGradient>
+    <linearGradient id="core" x1="280" y1="164" x2="1000" y2="350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#09152D"/>
+      <stop offset="1" stop-color="#0B2545"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#0B2545" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="520" rx="34" fill="url(#background)"/>
+  <path d="M84 412 C248 320 313 438 464 326 C618 212 735 314 864 190 C999 62 1094 76 1190 122" fill="none" stroke="#2563EB" stroke-opacity="0.12" stroke-width="3"/>
+
+  <text x="640" y="70" text-anchor="middle" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="30" font-weight="820">Built for controlled, self-hosted operation</text>
+  <text x="640" y="101" text-anchor="middle" fill="#526174" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15">Cloudflare-native runtime, Auth0 identity, platform-owned authorization, optional event sync.</text>
+
+  <rect x="282" y="154" width="716" height="196" rx="30" fill="url(#core)" filter="url(#softShadow)"/>
+  <text x="640" y="215" text-anchor="middle" fill="#FFFFFF" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="31" font-weight="850">Codex Hackathons</text>
+  <text x="640" y="249" text-anchor="middle" fill="#BFD3F7" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15">Applications, teams, submissions, judging, winners, credits, galleries, feedback</text>
+
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="14" font-weight="760">
+    <rect x="334" y="285" width="118" height="38" rx="13" fill="#FFFFFF" opacity="0.10"/>
+    <text x="393" y="309" text-anchor="middle" fill="#FFFFFF">Roles</text>
+    <rect x="474" y="285" width="118" height="38" rx="13" fill="#FFFFFF" opacity="0.10"/>
+    <text x="533" y="309" text-anchor="middle" fill="#FFFFFF">State</text>
+    <rect x="614" y="285" width="118" height="38" rx="13" fill="#FFFFFF" opacity="0.10"/>
+    <text x="673" y="309" text-anchor="middle" fill="#FFFFFF">Audit</text>
+    <rect x="754" y="285" width="118" height="38" rx="13" fill="#FFFFFF" opacity="0.10"/>
+    <text x="813" y="309" text-anchor="middle" fill="#FFFFFF">Terms</text>
+  </g>
+
+  <g stroke="#94A3B8" stroke-width="2" stroke-dasharray="6 8" opacity="0.85">
+    <path d="M282 252 H174"/>
+    <path d="M998 252 H1106"/>
+    <path d="M640 350 V414"/>
+  </g>
+
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <rect x="74" y="188" width="196" height="128" rx="24" fill="#FFFFFF" stroke="#D8E3F0" filter="url(#softShadow)"/>
+    <text x="172" y="236" text-anchor="middle" fill="#0F172A" font-size="21" font-weight="830">Operators</text>
+    <text x="172" y="267" text-anchor="middle" fill="#64748B" font-size="13">own domains, releases,</text>
+    <text x="172" y="287" text-anchor="middle" fill="#64748B" font-size="13">admins, and event data</text>
+
+    <rect x="1010" y="188" width="196" height="128" rx="24" fill="#FFFFFF" stroke="#D8E3F0" filter="url(#softShadow)"/>
+    <text x="1108" y="236" text-anchor="middle" fill="#0F172A" font-size="21" font-weight="830">Auth0</text>
+    <text x="1108" y="267" text-anchor="middle" fill="#64748B" font-size="13">authentication and</text>
+    <text x="1108" y="287" text-anchor="middle" fill="#64748B" font-size="13">linked identities</text>
+
+    <rect x="238" y="414" width="804" height="72" rx="24" fill="#FFFFFF" stroke="#D8E3F0" filter="url(#softShadow)"/>
+    <text x="292" y="457" fill="#0F172A" font-size="19" font-weight="830">Cloudflare</text>
+    <text x="414" y="457" fill="#2563EB" font-size="14" font-weight="760">Workers</text>
+    <text x="506" y="457" fill="#2563EB" font-size="14" font-weight="760">D1</text>
+    <text x="558" y="457" fill="#2563EB" font-size="14" font-weight="760">R2</text>
+    <text x="612" y="457" fill="#2563EB" font-size="14" font-weight="760">Images</text>
+    <text x="704" y="457" fill="#2563EB" font-size="14" font-weight="760">Queues</text>
+    <text x="796" y="457" fill="#2563EB" font-size="14" font-weight="760">Cron</text>
+    <text x="858" y="457" fill="#2563EB" font-size="14" font-weight="760">Email Service</text>
+
+    <rect x="1045" y="414" width="162" height="72" rx="24" fill="#FFFFFF" stroke="#D8E3F0" filter="url(#softShadow)"/>
+    <text x="1126" y="444" text-anchor="middle" fill="#0F172A" font-size="18" font-weight="830">Luma</text>
+    <text x="1126" y="466" text-anchor="middle" fill="#64748B" font-size="12">optional sync</text>
+  </g>
+</svg>
