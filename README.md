@@ -32,8 +32,7 @@
 </p>
 
 <p align="center">
-  <sub>Generated bitmap overview</sub><br />
-  <img src="docs/assets/readme/generated-platform-overview.png" width="100%" alt="Generated Codex Hackathons platform overview" />
+  <img src="docs/assets/readme/generated-platform-overview.png" width="100%" alt="Codex Hackathons platform overview" />
 </p>
 
 ---
