@@ -18,7 +18,7 @@
   <rect width="1280" height="520" rx="34" fill="url(#background)"/>
   <path d="M84 412 C248 320 313 438 464 326 C618 212 735 314 864 190 C999 62 1094 76 1190 122" fill="none" stroke="#2563EB" stroke-opacity="0.12" stroke-width="3"/>
 
-  <text x="640" y="70" text-anchor="middle" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="30" font-weight="820">Built for controlled, self-hosted operation</text>
+  <text x="640" y="70" text-anchor="middle" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="30" font-weight="820">Built for self-hosted hackathon programs</text>
   <text x="640" y="101" text-anchor="middle" fill="#526174" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15">Cloudflare-native runtime, Auth0 identity, platform-owned authorization, optional event sync.</text>
 
   <rect x="282" y="154" width="716" height="196" rx="30" fill="url(#core)" filter="url(#softShadow)"/>
@@ -45,7 +45,7 @@
   <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
     <rect x="74" y="188" width="196" height="128" rx="24" fill="#FFFFFF" stroke="#D8E3F0" filter="url(#softShadow)"/>
     <text x="172" y="236" text-anchor="middle" fill="#0F172A" font-size="21" font-weight="830">Operators</text>
-    <text x="172" y="267" text-anchor="middle" fill="#64748B" font-size="13">own domains, releases,</text>
+    <text x="172" y="267" text-anchor="middle" fill="#64748B" font-size="13">manage domains, releases,</text>
     <text x="172" y="287" text-anchor="middle" fill="#64748B" font-size="13">admins, and event data</text>
 
     <rect x="1010" y="188" width="196" height="128" rx="24" fill="#FFFFFF" stroke="#D8E3F0" filter="url(#softShadow)"/>

@@ -5,11 +5,11 @@
 <h1 align="center">Codex Hackathons</h1>
 
 <p align="center">
-  <strong>Self-hosted hackathon operations for teams that need real control, real workflows, and repeatable event execution.</strong>
+  <strong>A self-hosted hackathon workspace for teams that want clear paths from registration to results.</strong>
 </p>
 
 <p align="center">
-  Run applications, teams, submissions, judging, winners, prizes, galleries, feedback, and event operations from one platform on infrastructure you control.
+  Coordinate applications, teams, submissions, judging, winners, prizes, galleries, and feedback from one place, on infrastructure you choose.
 </p>
 
 <p align="center">
@@ -32,41 +32,42 @@
 </p>
 
 <p align="center">
+  <sub>Platform overview</sub><br />
   <img src="docs/assets/readme/generated-platform-overview.png" width="100%" alt="Codex Hackathons platform overview" />
 </p>
 
 ---
 
-## Built For Serious Hackathon Programs
+## A Shared Workspace For Hackathons
 
-Codex Hackathons is for organizations that have outgrown forms, spreadsheets, manual judge sheets, event-tool exports, email threads, and one-off admin scripts. It gives community, developer-relations, research, accelerator, and internal innovation teams one operating system for recurring or parallel hackathons.
+Codex Hackathons helps teams replace scattered forms, spreadsheets, judge sheets, event-tool exports, email threads, and one-off scripts with a shared workspace for recurring or parallel hackathons.
 
 <table>
   <tr>
     <td width="33%">
-      <strong>Own the full event lifecycle</strong><br />
+      <strong>Keep each event understandable</strong><br />
       Manage applications, approvals, teams, submissions, judging, winners, prizes, galleries, and post-event feedback without stitching tools together.
     </td>
     <td width="33%">
-      <strong>Operate multiple hackathons</strong><br />
+      <strong>Reuse the same foundation</strong><br />
       Users keep reusable platform accounts while each hackathon has its own schedule, rules, roles, terms, teams, submissions, judging, and outcomes.
     </td>
     <td width="33%">
-      <strong>Keep control of the data</strong><br />
-      Run the platform in your own Cloudflare and Auth0 environment, with authorization and competition state owned by the application data model.
+      <strong>Choose where it runs</strong><br />
+      Deploy the platform in your Cloudflare and Auth0 environment, with authorization and competition state stored in the application data model.
     </td>
   </tr>
 </table>
 
-## Why Teams Choose It
+## What It Helps With
 
-| Capability | What operators get |
+| Capability | How it helps |
 | --- | --- |
 | **Application-first participation** | Per-hackathon registration windows, profile requirements, application terms, approvals, participant decision emails, and optional Luma attendance integration. |
 | **Built-in team workflows** | Solo participation, team creation, join requests, team admins, team limits, and account-scoped team workspaces. |
 | **Structured submissions** | Submission windows, tracks, summaries, repository links, demo links, drafts, locking, withdrawal, and disqualification handling. |
-| **Serious judging** | Blind review, judge assignment, skipped-review redistribution, shortlist management, live pitch stages, pitch review, weighted scoring, and final deliberation. |
-| **Outcome operations** | Winner announcements, prize eligibility snapshots, winner emails, winner terms, legal-name collection, prize redemption tracking, and completed public showcases. |
+| **Structured judging** | Blind review, judge assignment, skipped-review redistribution, shortlist management, live pitch stages, pitch review, weighted scoring, and final deliberation. |
+| **Outcomes and follow-through** | Winner announcements, prize eligibility snapshots, winner emails, winner terms, legal-name collection, prize redemption tracking, and completed public showcases. |
 | **Clear permission boundaries** | Platform admins, hackathon admins, staff, judges, approved participants, team admins, and prize recipients are separate actors with explicit platform-data permissions. |
 | **Post-event learning** | Anonymous feedback collection after completion, with results available to the operating team. |
 
@@ -75,7 +76,7 @@ Codex Hackathons is for organizations that have outgrown forms, spreadsheets, ma
 <table>
   <tr>
     <th align="left">Public and participant experience</th>
-    <th align="left">Organizer operations</th>
+    <th align="left">Organizer workflows</th>
     <th align="left">Competition and outcomes</th>
   </tr>
   <tr>
@@ -83,7 +84,7 @@ Codex Hackathons is for organizations that have outgrown forms, spreadsheets, ma
       Public hackathon pages, schedules, tracks, prizes, registration, account onboarding, reusable profiles, application status, team formation, submissions, galleries, credits, shortlist visibility, and completed outcomes.
     </td>
     <td valign="top">
-      Platform-admin and hackathon-admin workflows, staff and judge assignments, staged application review, participant-facing emails, lifecycle controls, operational sync, audit-ready retention, and role-specific workspaces.
+      Platform-admin and hackathon-admin workflows, staff and judge assignments, staged application review, participant-facing emails, lifecycle transitions, event sync, durable records, and role-specific workspaces.
     </td>
     <td valign="top">
       Team-owned submissions, blind and pitch scoring, finalist boundaries, final ranking, prizes, winner communications, prize redemption, public winner showcases, published projects, galleries, and feedback reporting.
@@ -93,9 +94,9 @@ Codex Hackathons is for organizations that have outgrown forms, spreadsheets, ma
 
 ---
 
-## Operating Model
+## How It Runs
 
-You run Codex Hackathons in infrastructure you control. Auth0 owns authentication. Codex Hackathons owns authorization: platform roles, hackathon roles, team roles, application state, judging assignments, prize eligibility, and event operations live in platform data.
+Codex Hackathons runs in infrastructure you choose. Auth0 handles authentication. The platform handles authorization: platform roles, hackathon roles, team roles, application state, judging assignments, prize eligibility, and event history live in platform data.
 
 <p align="center">
   <img src="docs/assets/readme/operating-stack.svg" width="100%" alt="Codex Hackathons operating stack" />
@@ -115,7 +116,7 @@ The canonical deployment model uses:
 | **Auth0** | User authentication and linked identity resolution. |
 | **Luma** | Optional event guest verification, approval/rejection sync, and attendance webhooks. |
 
-The repository includes automation for the parts that should not be hand-maintained forever:
+The repository includes automation for recurring setup and maintenance:
 
 - Auth0 tenant drift checks and bootstrap commands for required app URLs, branding, custom domains, Actions, and account-linking callbacks.
 - First-platform-admin bootstrap commands.
@@ -123,9 +124,9 @@ The repository includes automation for the parts that should not be hand-maintai
 - Cloudflare queue, secret, migration, and deployment workflows.
 - A GitHub Release driven production deployment workflow.
 
-## Good Fit
+## Where It Fits
 
-Codex Hackathons is a good fit when your team needs to:
+Codex Hackathons is a good fit when your team wants to:
 
 - run multiple hackathons from the same platform;
 - review and approve participants before they enter the workspace;
@@ -133,22 +134,22 @@ Codex Hackathons is a good fit when your team needs to:
 - run blind judging, live pitches, or both;
 - keep admin, staff, judge, participant, and winner permissions explicit;
 - host on Cloudflare with your own Auth0 tenant and deployment pipeline;
-- keep participant data, competition state, and prize operations in one auditable system.
+- keep participant data, competition state, and prize follow-up in one consistent record.
 
-It is probably more platform than you need if you only want a single static event page, an RSVP form, or an unstructured showcase gallery.
+It may be more than you need if you only want a single static event page, an RSVP form, or an unstructured showcase gallery.
 
-## What Operators Need To Provide
+## What You Bring
 
-An adopter should plan for:
+Plan for:
 
 - a Cloudflare account with Workers, D1, R2, Images, Queues, Cron Triggers, DNS, Email Sending on a Workers Paid plan, and appropriate API tokens;
 - an Auth0 tenant and Regular Web Application for the platform;
 - an onboarded Cloudflare Email Service sending domain and verified sender address;
 - production and, if desired, shared development domains;
 - optional Luma API access when hackathons use Luma guest sync or attendance webhooks;
-- operational owners who can manage platform admins, hackathon admins, judges, staff, and release access.
+- people who can manage platform admins, hackathon admins, judges, staff, and release access.
 
-Environment-specific values are documented through [`.env.example`](.env.example), [`wrangler.jsonc`](wrangler.jsonc), and [`DEVELOPMENT.md`](DEVELOPMENT.md). The root README intentionally stays at the adopter and operator level rather than listing every runtime variable.
+Environment-specific values are documented through [`.env.example`](.env.example), [`wrangler.jsonc`](wrangler.jsonc), and [`DEVELOPMENT.md`](DEVELOPMENT.md). The root README stays at the adopter level rather than listing every runtime variable.
 
 ---
 
