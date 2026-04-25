@@ -86,7 +86,7 @@ function selectDirectoryFilter(nextFilter: string) {
 <template>
   <AppCard
     data-testid="participant-team-directory-panel"
-    class="rounded-xl hackathon-workspace-detail-panel"
+    class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
     :ui="{ body: 'p-5' }"
   >
     <div class="space-y-4">
@@ -115,7 +115,7 @@ function selectDirectoryFilter(nextFilter: string) {
 
       <div
         v-if="filterOptions?.length"
-        class="app-surface-panel flex flex-col gap-4 rounded-xl p-2"
+        class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 flex flex-col gap-4 rounded-xl p-2"
       >
         <div class="flex min-w-0 flex-wrap items-center gap-2">
           <button
@@ -162,7 +162,7 @@ function selectDirectoryFilter(nextFilter: string) {
           v-for="entry in teams"
           :key="entry.team.id"
           :data-testid="`participant-team-card-${entry.team.id}`"
-          class="app-inset-card px-5 py-5"
+          class="rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 px-5 py-5"
         >
           <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div class="min-w-0 flex-1 space-y-2">

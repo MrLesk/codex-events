@@ -161,7 +161,7 @@ function submitReassignment() {
 </script>
 
 <template>
-  <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+  <AppCard class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -232,7 +232,7 @@ function submitReassignment() {
                 v-for="assignment in group.assignments"
                 :key="assignment.id"
                 :data-testid="`admin-competition-assignment-${assignment.submissionId}`"
-                class="app-inset-card px-5 py-5"
+                class="rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 px-5 py-5"
               >
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div class="min-w-0 space-y-2">
@@ -316,7 +316,7 @@ function submitReassignment() {
       class="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4"
       @click.self="closeReassignDialog"
     >
-      <AppCard class="w-full max-w-xl rounded-xl hackathon-workspace-detail-panel shadow-2xl">
+      <AppCard class="w-full max-w-xl rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 shadow-2xl">
         <template #header>
           <div class="flex items-start justify-between gap-4">
             <div class="space-y-1">

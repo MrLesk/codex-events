@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<{
 
 <template>
   <section
-    class="hackathon-workspace-detail-panel rounded-xl p-6"
+    class="!border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl p-6"
     data-testid="hackathon-published-projects-showcase"
   >
     <div class="space-y-1">
@@ -48,7 +48,7 @@ const props = withDefaults(defineProps<{
         v-for="project in props.projects"
         :key="project.submissionId"
         :data-testid="`hackathon-published-project-${project.submissionId}`"
-        class="hackathon-workspace-detail-inset space-y-5 rounded-xl p-5"
+        class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 space-y-5 rounded-xl p-5"
       >
         <div class="space-y-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
           <div class="flex flex-wrap items-center gap-2">
@@ -138,7 +138,7 @@ const props = withDefaults(defineProps<{
               <article
                 v-for="member in project.teamMembers"
                 :key="member.id"
-                class="hackathon-workspace-detail-inset flex items-center gap-3 rounded-xl p-4"
+                class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex items-center gap-3 rounded-xl p-4"
               >
                 <AppAvatar
                   size="lg"

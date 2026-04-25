@@ -23,7 +23,7 @@ const agendaTimeChipClasses = 'flex min-w-0 items-center justify-center rounded-
 <template>
   <section
     v-if="agendaEntries.length > 0"
-    class="hackathon-workspace-detail-panel relative overflow-hidden rounded-[1.75rem] p-5 sm:p-7"
+    class="!border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 relative overflow-hidden rounded-[1.75rem] p-5 sm:p-7"
     data-testid="public-hackathon-agenda"
   >
     <div
@@ -95,7 +95,7 @@ const agendaTimeChipClasses = 'flex min-w-0 items-center justify-center rounded-
             </p>
           </div>
 
-          <div class="hackathon-workspace-detail-inset group relative overflow-hidden rounded-[1.35rem] p-4 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:border-black/15 active:translate-y-px dark:hover:border-white/[0.16] sm:p-5">
+          <div class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 group relative overflow-hidden rounded-[1.35rem] p-4 transition duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-[1px] hover:border-black/15 active:translate-y-px dark:hover:border-white/[0.16] sm:p-5">
             <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div class="min-w-0 flex-1">
                 <div

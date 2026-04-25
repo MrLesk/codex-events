@@ -610,7 +610,7 @@ useSeoMeta({
       aria-hidden="true"
     >
       <div
-        class="hackathon-detail-background-media"
+        class="absolute inset-0 scale-110 bg-cover bg-center bg-no-repeat opacity-55 blur-md saturate-125 contrast-105"
         :style="detailBackgroundImageStyle"
       />
       <div class="absolute inset-0 bg-gradient-to-b from-black/20 via-black/45 to-black/68 dark:from-black/35 dark:via-black/55 dark:to-black/76" />
@@ -702,7 +702,7 @@ useSeoMeta({
       >
         <AppCard
           v-if="hasParticipantContext"
-          class="hackathon-workspace-detail-panel rounded-xl"
+          class="!border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl"
         >
           <template #header>
             <div class="space-y-1">
@@ -760,7 +760,7 @@ useSeoMeta({
                 v-if="showApprovedOverviewActions"
                 class="grid gap-4 lg:grid-cols-2"
               >
-                <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+                <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
                   <div class="flex h-full flex-col gap-4">
                     <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
                       <h2 class="text-lg font-semibold text-highlighted dark:text-white">
@@ -785,7 +785,7 @@ useSeoMeta({
                   </div>
                 </div>
 
-                <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+                <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
                   <div class="flex h-full flex-col gap-4">
                     <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
                       <h2 class="text-lg font-semibold text-highlighted dark:text-white">
@@ -815,7 +815,7 @@ useSeoMeta({
                 v-if="showTeamAndSubmissionCards"
                 class="grid gap-4 lg:grid-cols-2"
               >
-                <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+                <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
                   <h2 class="text-xl font-semibold text-highlighted dark:text-white">
                     Workspace
                   </h2>
@@ -856,7 +856,7 @@ useSeoMeta({
                   </template>
                 </div>
 
-                <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+                <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
                   <h2 class="text-xl font-semibold text-highlighted dark:text-white">
                     Teams
                   </h2>
@@ -883,7 +883,7 @@ useSeoMeta({
 
             <section
               v-if="applicationStatus === 'submitted' || applicationStatus === 'approved'"
-              class="rounded-xl hackathon-workspace-detail-inset px-5 py-5"
+              class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5"
             >
               <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div class="space-y-2">

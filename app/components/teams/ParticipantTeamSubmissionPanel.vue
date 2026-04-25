@@ -203,7 +203,7 @@ function handleSubmitProjectAttempt(event?: Event) {
     />
 
     <template v-else>
-      <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+      <AppCard class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60">
         <template #header>
           <div class="space-y-3">
             <div class="flex flex-wrap items-center gap-3">

@@ -22,7 +22,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+  <AppCard class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-xl font-semibold text-highlighted dark:text-white">
@@ -39,7 +39,7 @@ const emit = defineEmits<{
         v-for="member in team.members"
         :key="member.id"
         :data-testid="`participant-team-member-${member.userId}`"
-        class="app-inset-card px-5 py-5"
+        class="rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 px-5 py-5"
       >
         <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div class="space-y-2">

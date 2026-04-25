@@ -1080,7 +1080,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
         v-if="showSettingsOverview"
         class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
       >
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+        <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Created by
           </p>
@@ -1092,7 +1092,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
           </p>
         </div>
 
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+        <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Admins
           </p>
@@ -1101,7 +1101,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
           </p>
         </div>
 
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+        <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Staff
           </p>
@@ -1110,7 +1110,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
           </p>
         </div>
 
-        <div class="rounded-xl hackathon-workspace-detail-inset px-5 py-5">
+        <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Judges
           </p>
@@ -1146,7 +1146,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
       <section class="space-y-6">
         <AppCard
           v-if="props.showTermsManagement"
-          class="rounded-xl hackathon-workspace-detail-panel"
+          class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
         >
           <template #header>
             <h2 class="text-lg font-semibold text-highlighted">
@@ -1229,7 +1229,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
 
         <AppCard
           v-if="props.showCriteriaConfiguration"
-          class="rounded-xl hackathon-workspace-detail-panel"
+          class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
         >
           <template #header>
             <div class="space-y-1">
@@ -1430,7 +1430,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
 
         <AppCard
           v-if="props.showPrizeConfiguration"
-          class="rounded-xl hackathon-workspace-detail-panel"
+          class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
         >
           <template #header>
             <div class="space-y-1">

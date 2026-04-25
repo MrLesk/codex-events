@@ -17,7 +17,7 @@ const descriptionMarkdown = computed(() => props.description.trim())
 
   <section
     v-else
-    class="hackathon-workspace-detail-panel-dashed rounded-xl p-8 text-center"
+    class="!border !border-dashed !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.32)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl p-8 text-center"
     data-testid="public-hackathon-overview-empty"
   >
     <p class="text-[15px] font-medium text-highlighted dark:text-white">

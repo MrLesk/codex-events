@@ -39,7 +39,7 @@ const reviewSignalValue = computed(() => assignmentCopy.value.reviewSignal)
   <NuxtLink
     :to="assignmentHref"
     :data-testid="`judge-assignment-card-${assignment.id}`"
-    class="hackathon-workspace-panel group rounded-xl p-5 transition-colors hover:border-black/20 dark:hover:border-white/[0.2]"
+    class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 group rounded-xl p-5 transition-colors hover:border-black/20 dark:hover:border-white/[0.2]"
   >
     <div class="flex flex-col gap-4">
       <div class="flex flex-wrap items-start justify-between gap-3">

@@ -56,7 +56,7 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
 </script>
 
 <template>
-  <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+  <AppCard class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -145,7 +145,7 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
             v-for="item in winnerItems"
             :key="item.winner.submissionId"
             :data-testid="`admin-competition-winner-${item.winner.submissionId}`"
-            class="hackathon-workspace-detail-inset space-y-5 rounded-xl p-5"
+            class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 space-y-5 rounded-xl p-5"
           >
             <div class="space-y-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
               <div class="flex flex-wrap items-center gap-2">
@@ -304,7 +304,7 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
                   <article
                     v-for="member in item.winner.teamMembers"
                     :key="member.id"
-                    class="hackathon-workspace-detail-inset flex items-center gap-3 rounded-xl p-4"
+                    class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex items-center gap-3 rounded-xl p-4"
                   >
                     <AppAvatar
                       size="lg"
@@ -377,7 +377,7 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
 
   <AppCard
     v-if="isCompleted && !isLoading && !errorMessage && shortlistedEntries.length > 0"
-    class="rounded-xl hackathon-workspace-detail-panel"
+    class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
   >
     <template #header>
       <div class="space-y-1">
@@ -395,7 +395,7 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
         v-for="entry in shortlistedEntries"
         :key="entry.submissionId"
         :data-testid="`admin-competition-shortlisted-${entry.submissionId}`"
-        class="hackathon-workspace-detail-inset space-y-5 rounded-xl p-5"
+        class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 space-y-5 rounded-xl p-5"
       >
         <div class="space-y-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
           <div class="flex flex-wrap items-center gap-2">
@@ -489,7 +489,7 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
               <article
                 v-for="member in entry.teamMembers"
                 :key="member.id"
-                class="hackathon-workspace-detail-inset flex items-center gap-3 rounded-xl p-4"
+                class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex items-center gap-3 rounded-xl p-4"
               >
                 <AppAvatar
                   size="lg"
@@ -560,7 +560,7 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
 
   <AppCard
     v-if="isCompleted && !isLoading && !errorMessage && postShortlistEntries.length > 0"
-    class="rounded-xl hackathon-workspace-detail-panel"
+    class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
   >
     <template #header>
       <div class="space-y-1">
@@ -578,7 +578,7 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
         v-for="entry in postShortlistEntries"
         :key="entry.submissionId"
         :data-testid="`admin-competition-post-shortlist-${entry.submissionId}`"
-        class="hackathon-workspace-detail-inset space-y-5 rounded-xl p-5"
+        class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 space-y-5 rounded-xl p-5"
       >
         <div class="space-y-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
           <div class="flex flex-wrap items-center gap-2">
@@ -672,7 +672,7 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
               <article
                 v-for="member in entry.teamMembers"
                 :key="member.id"
-                class="hackathon-workspace-detail-inset flex items-center gap-3 rounded-xl p-4"
+                class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex items-center gap-3 rounded-xl p-4"
               >
                 <AppAvatar
                   size="lg"

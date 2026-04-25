@@ -22,7 +22,7 @@ const hasDefaultSlot = computed(() => Boolean(slots.default))
 
 const rootClass = computed(() =>
   cn(
-    'app-surface-panel rounded-xl py-0 text-foreground',
+    '!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 rounded-xl py-0 text-foreground',
     props.variant === 'subtle' ? 'bg-default/72 dark:bg-default/72' : '',
     props.ui.root,
     props.class

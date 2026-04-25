@@ -224,7 +224,8 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    border-color: var(--border);
+    outline-color: color-mix(in oklab, var(--ring) 50%, transparent);
   }
 
   html {
@@ -267,60 +268,6 @@
 }
 
 @layer components {
-  .app-surface-panel {
-    @apply !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80;
-  }
-
-  .app-surface-panel-dashed {
-    @apply !border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80;
-  }
-
-  .app-surface-panel-elevated {
-    @apply !border !border-black/8 !bg-white/78 !shadow-none dark:!border-white/[0.08] dark:!bg-white/[0.04];
-  }
-
-  .hackathon-workspace-panel {
-    @apply !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80;
-  }
-
-  .hackathon-workspace-panel-dashed {
-    @apply !border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80;
-  }
-
-  .hackathon-workspace-detail-panel {
-    @apply !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60;
-  }
-
-  .hackathon-workspace-detail-panel-dashed {
-    @apply !border !border-dashed !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.32)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60;
-  }
-
-  .hackathon-workspace-detail-inset {
-    @apply !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64;
-  }
-}
-
-@layer components {
-  .app-inset-card {
-    @apply rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64;
-  }
-
-  .app-inset-card-tight {
-    @apply rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64;
-  }
-
-  .app-inset-card-hover {
-    @apply transition hover:border-black/12 hover:bg-white/82 hover:shadow-[0_16px_36px_-28px_rgba(15,23,42,0.52)] dark:hover:border-white/[0.14] dark:hover:bg-[#191919]/68;
-  }
-
-  .app-inset-field {
-    @apply rounded-lg border border-black/8 bg-white text-highlighted transition disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25];
-  }
-
-  .app-inset-choice {
-    @apply rounded-2xl border border-default/70 bg-bg/80 shadow-[0_16px_36px_-30px_rgba(15,20,34,0.22)] backdrop-blur-sm;
-  }
-
   .app-shell-scroll-region {
     scrollbar-gutter: stable;
   }
@@ -350,10 +297,6 @@
 
   .dark .account-hackathon-tab-list::-webkit-scrollbar-thumb {
     background-color: rgba(212, 212, 212, 0.38);
-  }
-
-  .hackathon-detail-background-media {
-    @apply absolute inset-0 scale-110 bg-cover bg-center bg-no-repeat opacity-55 blur-md saturate-125 contrast-105;
   }
 
   /* Slightly increase label-to-control spacing across common form layouts. */

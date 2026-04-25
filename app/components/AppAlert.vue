@@ -47,7 +47,7 @@ const rootClass = computed(() => {
   }
 
   return cn(
-    'app-surface-panel rounded-xl px-4 py-3',
+    '!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 rounded-xl px-4 py-3',
     props.icon ? 'grid-cols-[calc(var(--spacing)*4)_1fr] gap-x-3' : undefined,
     variants[key] ?? variants['soft:neutral'],
     props.class

@@ -270,7 +270,7 @@ function handleJoinActionClick() {
 <template>
   <AppCard
     data-testid="participant-team-workspace-panel"
-    class="rounded-xl hackathon-workspace-detail-panel"
+    class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
   >
     <template #header>
       <div class="space-y-3">
@@ -745,7 +745,7 @@ function handleJoinActionClick() {
         <div
           v-if="showJoinRequestsPanel"
           data-testid="participant-team-join-requests-panel"
-          class="space-y-4 app-inset-card px-5 py-5"
+          class="space-y-4 rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 px-5 py-5"
         >
           <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
             <h3 class="text-lg font-semibold text-highlighted dark:text-white">

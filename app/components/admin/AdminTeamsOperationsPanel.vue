@@ -209,7 +209,7 @@ function formatMemberRole(role: 'admin' | 'member') {
       <div
         v-for="card in summaryCards"
         :key="card.key"
-        class="hackathon-workspace-detail-inset rounded-xl px-5 py-5"
+        class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 rounded-xl px-5 py-5"
       >
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           {{ card.label }}
@@ -245,7 +245,7 @@ function formatMemberRole(role: 'admin' | 'member') {
         description="Teams can already form. No record and draft are shown as current team status, not as late-state queues."
       />
 
-      <div class="hackathon-workspace-detail-inset flex flex-col gap-4 rounded-xl p-2">
+      <div class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-col gap-4 rounded-xl p-2">
         <div class="flex min-w-0 flex-wrap items-center gap-2">
           <button
             v-for="option in filterOptions"
@@ -293,7 +293,7 @@ function formatMemberRole(role: 'admin' | 'member') {
         </div>
       </div>
 
-      <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+      <AppCard class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">

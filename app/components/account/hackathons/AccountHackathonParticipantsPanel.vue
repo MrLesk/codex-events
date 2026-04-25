@@ -104,7 +104,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
       class="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4"
       :class="participantSummaryGridClass"
     >
-      <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
+      <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Awaiting review
         </p>
@@ -113,7 +113,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
         </p>
       </div>
 
-      <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
+      <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Approved
         </p>
@@ -127,7 +127,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
 
       <div
         v-if="showAttendance"
-        class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5"
+        class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:px-5 sm:py-5"
       >
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Checked in
@@ -140,7 +140,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
         </p>
       </div>
 
-      <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
+      <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Rejected
         </p>
@@ -149,7 +149,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
         </p>
       </div>
 
-      <div class="rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:px-5 sm:py-5">
+      <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:px-5 sm:py-5">
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Withdrawn
         </p>
@@ -160,7 +160,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
 
       <div
         v-if="participantsLimitSummary"
-        class="col-span-2 rounded-xl hackathon-workspace-detail-inset px-4 py-4 sm:col-span-4 sm:px-5 sm:py-5 xl:col-span-1"
+        class="col-span-2 rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-4 py-4 sm:col-span-4 sm:px-5 sm:py-5 xl:col-span-1"
       >
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           Participants limit
@@ -171,7 +171,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
       </div>
     </div>
 
-    <div class="hackathon-workspace-detail-inset flex flex-col gap-4 rounded-xl p-2">
+    <div class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-col gap-4 rounded-xl p-2">
       <div class="flex min-w-0 flex-wrap items-center gap-2">
         <button
           class="inline-flex min-w-max grow basis-0 items-center justify-between gap-2 rounded-lg px-4 py-1.5 text-[13px] transition-colors sm:min-w-0 sm:grow-0 sm:basis-auto sm:justify-start"

@@ -118,7 +118,7 @@ function updateDraft(index: number, key: 'score' | 'comment', value: string) {
             :value="draft.comment"
             rows="2"
             :disabled="disabled || readonly"
-            class="app-inset-field w-full px-3 py-2.5 text-sm leading-6 disabled:opacity-70"
+            class="rounded-lg border border-black/8 bg-white text-highlighted transition disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] w-full px-3 py-2.5 text-sm leading-6 disabled:opacity-70"
             @input="updateDraft(index, 'comment', ($event.target as HTMLTextAreaElement).value)"
           />
         </div>

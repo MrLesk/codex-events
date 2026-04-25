@@ -672,7 +672,7 @@ async function removePublishedRosterMember(userId: string) {
 </script>
 
 <template>
-  <AppCard class="rounded-xl hackathon-workspace-detail-panel">
+  <AppCard class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60">
     <template #header>
       <div class="space-y-1">
         <h2 class="text-lg font-semibold text-highlighted">
@@ -716,7 +716,7 @@ async function removePublishedRosterMember(userId: string) {
         <article
           v-for="member in members"
           :key="member.id"
-          class="hackathon-workspace-detail-inset flex h-full flex-col gap-4 rounded-xl p-5"
+          class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex h-full flex-col gap-4 rounded-xl p-5"
         >
           <div class="flex items-start gap-4">
             <AppAvatar

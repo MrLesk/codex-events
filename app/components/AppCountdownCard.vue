@@ -186,7 +186,7 @@ const targetTimestampLabel = computed(() => formatTimestamp(normalizedTargetAt.v
 
 const inlineRootClass = computed(() =>
   cn(
-    'app-inset-card countdown-surface px-4 py-4',
+    'rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 countdown-surface px-4 py-4',
     surfaceToneClass.value,
     props.class
   )
@@ -194,14 +194,14 @@ const inlineRootClass = computed(() =>
 
 const cardRootClass = computed(() =>
   cn(
-    'rounded-xl hackathon-workspace-detail-panel overflow-hidden',
+    'rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 overflow-hidden',
     props.class
   )
 )
 
 const countdownSurfaceClass = computed(() =>
   cn(
-    'app-inset-card countdown-surface relative overflow-hidden px-5 py-5',
+    'rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 countdown-surface relative overflow-hidden px-5 py-5',
     surfaceToneClass.value
   )
 )

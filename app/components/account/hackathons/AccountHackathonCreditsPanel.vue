@@ -464,7 +464,7 @@ async function copyCreditValue(value: string) {
       <div
         v-for="card in adminSummaryCards"
         :key="card.label"
-        class="rounded-xl hackathon-workspace-detail-inset px-5 py-5"
+        class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5"
       >
         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
           {{ card.label }}
@@ -480,7 +480,7 @@ async function copyCreditValue(value: string) {
 
     <AppCard
       v-if="props.canManage"
-      class="rounded-xl hackathon-workspace-detail-panel"
+      class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       :ui="{ body: 'p-5' }"
     >
       <template #header>
@@ -527,7 +527,7 @@ async function copyCreditValue(value: string) {
             v-for="offer in adminCredits"
             :key="offer.id"
             :data-testid="`admin-credit-offer-${offer.id}`"
-            class="app-inset-card px-5 py-5"
+            class="rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 px-5 py-5"
           >
             <div class="space-y-5">
               <div class="border-b border-black/8 pb-4 dark:border-white/[0.08]">
@@ -809,7 +809,7 @@ async function copyCreditValue(value: string) {
 
     <AppCard
       v-if="props.canManage"
-      class="rounded-xl hackathon-workspace-detail-panel"
+      class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       :ui="{ body: 'p-5' }"
     >
       <template #header>
@@ -929,7 +929,7 @@ async function copyCreditValue(value: string) {
 
     <AppCard
       v-if="props.canClaim"
-      class="rounded-xl hackathon-workspace-detail-panel"
+      class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       :ui="{ body: 'p-5' }"
     >
       <template #header>
@@ -976,7 +976,7 @@ async function copyCreditValue(value: string) {
             v-for="offer in participantCredits"
             :key="offer.id"
             :data-testid="`participant-credit-offer-${offer.id}`"
-            class="app-inset-card px-5 py-5"
+            class="rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 px-5 py-5"
           >
             <div class="flex h-full flex-col gap-4">
               <div

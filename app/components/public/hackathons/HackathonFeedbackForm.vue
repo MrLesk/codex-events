@@ -215,7 +215,7 @@ async function submitFeedback() {
               rows="5"
               maxlength="4000"
               :disabled="isSubmitting"
-              class="app-inset-field w-full px-3 py-3 text-sm leading-6 disabled:opacity-70"
+              class="rounded-lg border border-black/8 bg-white text-highlighted transition disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25] w-full px-3 py-3 text-sm leading-6 disabled:opacity-70"
               placeholder="What went especially well, or what should change next time?"
             />
           </div>

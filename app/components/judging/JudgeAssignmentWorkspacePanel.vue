@@ -502,8 +502,8 @@ async function markIneligible() {
       v-if="isWorkspaceLoading"
       class="grid gap-6"
     >
-      <div class="h-80 rounded-xl hackathon-workspace-detail-panel" />
-      <div class="h-80 rounded-xl hackathon-workspace-detail-panel" />
+      <div class="h-80 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60" />
+      <div class="h-80 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60" />
     </div>
 
     <AppAlert
@@ -647,7 +647,7 @@ async function markIneligible() {
 
             <div
               v-if="showInlineSkipForm && canSkipJudgeAssignment(assignment) && !skipReviewDisabled"
-              class="space-y-3 app-inset-card p-4"
+              class="space-y-3 rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 p-4"
             >
               <div>
                 <p class="text-sm font-semibold text-highlighted">
@@ -691,7 +691,7 @@ async function markIneligible() {
 
               <div
                 v-if="canMarkJudgeAssignmentIneligible(assignment)"
-                class="mt-4 space-y-3 app-inset-card p-4"
+                class="mt-4 space-y-3 rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 p-4"
               >
                 <div>
                   <p class="text-sm font-semibold text-highlighted">
@@ -889,7 +889,7 @@ async function markIneligible() {
 
             <div
               v-if="showInlineSkipForm && canSkipJudgeAssignment(assignment) && !skipReviewDisabled"
-              class="space-y-3 app-inset-card p-4"
+              class="space-y-3 rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 p-4"
             >
               <div>
                 <p class="text-sm font-semibold text-highlighted">
@@ -933,7 +933,7 @@ async function markIneligible() {
 
               <div
                 v-if="canMarkJudgeAssignmentIneligible(assignment)"
-                class="mt-4 space-y-3 app-inset-card p-4"
+                class="mt-4 space-y-3 rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 p-4"
               >
                 <div>
                   <p class="text-sm font-semibold text-highlighted">

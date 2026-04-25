@@ -72,7 +72,7 @@ const ctaLabel = computed(() => {
       :class="props.showTimelineRail ? 'lg:ml-8' : ''"
       :data-testid="`public-hackathon-card-${hackathon.slug}`"
     >
-      <div class="app-surface-panel overflow-hidden rounded-3xl transition-colors group-hover:border-black/20 dark:group-hover:border-white/[0.2]">
+      <div class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 overflow-hidden rounded-3xl transition-colors group-hover:border-black/20 dark:group-hover:border-white/[0.2]">
         <div class="relative h-[300px] overflow-hidden md:h-[340px]">
           <div class="absolute inset-0 z-10 bg-gradient-to-b from-black/20 via-black/30 to-black/65 transition-colors group-hover:from-black/15 group-hover:to-black/55 dark:from-black/25 dark:via-black/35 dark:to-black/72" />
           <img
@@ -102,7 +102,7 @@ const ctaLabel = computed(() => {
           </div>
         </div>
 
-        <div class="app-surface-panel-elevated flex flex-col gap-5 rounded-none border-0 p-6 md:flex-row md:items-center md:justify-between">
+        <div class="!border !border-black/8 !bg-white/78 !shadow-none dark:!border-white/[0.08] dark:!bg-white/[0.04] flex flex-col gap-5 rounded-none border-0 p-6 md:flex-row md:items-center md:justify-between">
           <div>
             <p class="mb-1 text-[15px] font-medium text-highlighted dark:text-white">
               {{ hackathonDayLabel }}

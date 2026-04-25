@@ -201,7 +201,7 @@ useSeoMeta({
       />
 
       <template v-else>
-        <section class="app-surface-panel flex flex-col gap-4 rounded-xl p-2">
+        <section class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 flex flex-col gap-4 rounded-xl p-2">
           <div class="flex min-w-0 flex-wrap items-center gap-2">
             <button
               v-for="tab in filterTabs"

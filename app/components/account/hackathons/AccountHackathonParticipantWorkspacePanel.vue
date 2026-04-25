@@ -565,7 +565,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
 
 <template>
   <div
-    data-testid="account-hackathon-workspace-panel"
+    data-testid="account-!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80"
     class="space-y-6"
   >
     <AppAlert
@@ -675,7 +675,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
         >
           <div class="space-y-6">
             <AppCard
-              class="rounded-xl hackathon-workspace-detail-panel"
+              class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
               :ui="{ body: 'p-5' }"
             >
               <div class="space-y-4">
@@ -708,7 +708,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
             </AppCard>
 
             <AppCard
-              class="rounded-xl hackathon-workspace-detail-panel"
+              class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
               :ui="{ body: 'p-5' }"
             >
               <div class="space-y-4">
@@ -735,7 +735,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
           </div>
 
           <AppCard
-            class="rounded-xl hackathon-workspace-detail-panel"
+            class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
             :ui="{ body: 'p-5' }"
           >
             <div class="space-y-4">
@@ -880,7 +880,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
 
           <AppCard
             v-else
-            class="rounded-xl hackathon-workspace-detail-panel"
+            class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
           >
             <template #header>
               <div class="space-y-1">

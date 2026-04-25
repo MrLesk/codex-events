@@ -441,7 +441,7 @@ const submitConfigForm = handleSubmit(() => {
       id="admin-config-basics"
       class="space-y-6"
     >
-      <AppCard class="scroll-mt-28 rounded-xl hackathon-workspace-detail-panel">
+      <AppCard class="scroll-mt-28 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60">
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
@@ -1107,7 +1107,7 @@ const submitConfigForm = handleSubmit(() => {
       <AppCard
         v-if="showProgramIdentitySection"
         id="admin-config-identity"
-        class="scroll-mt-28 rounded-xl hackathon-workspace-detail-panel"
+        class="scroll-mt-28 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       >
         <template #header>
           <div class="space-y-1">
@@ -1360,7 +1360,7 @@ const submitConfigForm = handleSubmit(() => {
     >
       <AppCard
         id="admin-config-timeline"
-        class="scroll-mt-28 rounded-xl hackathon-workspace-detail-panel"
+        class="scroll-mt-28 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       >
         <template #header>
           <div class="space-y-1">
@@ -1414,7 +1414,7 @@ const submitConfigForm = handleSubmit(() => {
 
       <AppCard
         id="admin-config-judging"
-        class="scroll-mt-28 rounded-xl hackathon-workspace-detail-panel"
+        class="scroll-mt-28 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       >
         <template #header>
           <div class="space-y-1">
@@ -1504,7 +1504,7 @@ const submitConfigForm = handleSubmit(() => {
 
       <AppCard
         id="admin-config-rules"
-        class="scroll-mt-28 rounded-xl hackathon-workspace-detail-panel"
+        class="scroll-mt-28 rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
       >
         <template #header>
           <div class="space-y-1">
@@ -1655,7 +1655,7 @@ const submitConfigForm = handleSubmit(() => {
 
     <div
       v-if="!showInlineDetailsActions && !isSettingsMode"
-      class="hackathon-workspace-detail-inset flex flex-col gap-4 rounded-xl px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
+      class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-col gap-4 rounded-xl px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
     >
       <p class="max-w-3xl text-sm text-muted">
         {{ helperText ?? 'Save your changes to update this hackathon.' }}

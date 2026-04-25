@@ -148,7 +148,7 @@ async function refreshWorkspace() {
 
       <template v-else>
         <section class="grid gap-4 sm:grid-cols-3">
-          <div class="rounded-xl hackathon-workspace-panel p-4">
+          <div class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4">
             <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
               Active assignments
             </p>
@@ -157,7 +157,7 @@ async function refreshWorkspace() {
             </p>
           </div>
 
-          <div class="rounded-xl hackathon-workspace-panel p-4">
+          <div class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4">
             <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
               In review
             </p>
@@ -166,7 +166,7 @@ async function refreshWorkspace() {
             </p>
           </div>
 
-          <div class="rounded-xl hackathon-workspace-panel p-4">
+          <div class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4">
             <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
               Ready to start
             </p>
@@ -178,7 +178,7 @@ async function refreshWorkspace() {
 
         <section
           v-if="nextAction"
-          class="rounded-xl hackathon-workspace-panel p-4"
+          class="rounded-xl !border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-4"
         >
           <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="space-y-1">
@@ -203,7 +203,7 @@ async function refreshWorkspace() {
 
         <section
           v-if="assignments.length === 0"
-          class="rounded-xl hackathon-workspace-panel-dashed p-8 text-center"
+          class="rounded-xl !border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 p-8 text-center"
         >
           <p class="text-[15px] font-medium text-highlighted dark:text-white">
             No active blind reviews for this hackathon

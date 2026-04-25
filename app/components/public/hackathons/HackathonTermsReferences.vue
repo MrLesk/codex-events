@@ -39,7 +39,7 @@ const termsReferences = computed(() => {
 
       <div
         v-if="termsReferences.length === 0"
-        class="app-inset-card-tight border-dashed p-5 text-sm leading-7 text-muted"
+        class="rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 border-dashed p-5 text-sm leading-7 text-muted"
       >
         This program has not published current terms references yet.
       </div>
@@ -51,7 +51,7 @@ const termsReferences = computed(() => {
         <div
           v-for="document in termsReferences"
           :key="`${document.documentType}:${document.version}`"
-          class="app-inset-card-tight p-5"
+          class="rounded-xl border border-black/8 bg-white/78 shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-white/[0.10] dark:bg-[#151515]/64 p-5"
         >
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div class="space-y-2">

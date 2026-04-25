@@ -157,13 +157,13 @@ useSeoMeta({
       icon="i-lucide-triangle-alert"
       title="Hackathons are temporarily unavailable"
       description="We couldn't load the latest hackathons. Please refresh the page or try again in a moment."
-      class="app-surface-panel text-foreground dark:text-[#ECECEC]"
+      class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 text-foreground dark:text-[#ECECEC]"
     />
 
     <template v-else>
       <div
         v-if="homepageHackathonView.showFilters"
-        class="app-surface-panel flex flex-col gap-4 rounded-xl p-2"
+        class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 flex flex-col gap-4 rounded-xl p-2"
       >
         <div class="flex min-w-0 flex-wrap items-center gap-2">
           <button
@@ -197,7 +197,7 @@ useSeoMeta({
 
       <div
         v-if="hackathons.length === 0"
-        class="app-surface-panel-dashed rounded-xl p-10 text-center"
+        class="!border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 rounded-xl p-10 text-center"
       >
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-[#8C8C8C]">
           0 hackathons configured
@@ -209,7 +209,7 @@ useSeoMeta({
 
       <div
         v-else-if="filteredHackathons.length === 0"
-        class="app-surface-panel-dashed rounded-xl p-10 text-center"
+        class="!border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 rounded-xl p-10 text-center"
       >
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-[#8C8C8C]">
           No programs in this view
@@ -263,7 +263,7 @@ useSeoMeta({
       icon="i-lucide-triangle-alert"
       title="More hackathons unavailable"
       :description="loadMoreError"
-      class="app-surface-panel text-foreground dark:text-[#ECECEC]"
+      class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 text-foreground dark:text-[#ECECEC]"
     />
   </div>
 </template>

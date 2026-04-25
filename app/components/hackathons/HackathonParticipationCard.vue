@@ -32,7 +32,7 @@ const showParticipationStageBadge = computed(() =>
 <template>
   <article
     :data-testid="`hackathon-participation-${props.record.hackathon.slug}`"
-    class="app-surface-panel overflow-hidden rounded-xl"
+    class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 overflow-hidden rounded-xl"
   >
     <div class="space-y-5 p-6">
       <div class="flex flex-wrap items-start justify-between gap-4">

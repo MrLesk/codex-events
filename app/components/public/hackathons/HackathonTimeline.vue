@@ -98,7 +98,7 @@ const timelineEntries = computed(() => [
     <div
       v-for="entry in timelineEntries"
       :key="entry.id"
-      class="hackathon-workspace-detail-panel rounded-xl p-6"
+      class="!border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl p-6"
     >
       <template v-if="entry.start && entry.end">
         <div class="mb-3 flex items-start justify-between gap-4">
@@ -111,7 +111,7 @@ const timelineEntries = computed(() => [
         </div>
 
         <div
-          class="hackathon-workspace-detail-inset rounded-[1rem] px-3.5 py-3"
+          class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 rounded-[1rem] px-3.5 py-3"
           :title="`${entry.start.metaLabel} -> ${entry.end.metaLabel}`"
         >
           <div class="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 sm:gap-4">
