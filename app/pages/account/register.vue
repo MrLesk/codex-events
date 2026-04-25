@@ -8,7 +8,7 @@ import {
   isAccountRegistrationLinkOnlyMode,
   missingIdentityEmailMessage
 } from '~/utils/account-registration'
-import { accountDashboardHref, normalizeAuthReturnTo } from '../../../shared/auth-navigation'
+import { accountDashboardHref, normalizeAuthReturnTo } from '#shared/auth-navigation'
 
 definePageMeta({
   middleware: ['require-auth']

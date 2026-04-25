@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AccountSettingsProfileForm from '~/components/account/AccountSettingsProfileForm.vue'
-import { authLogoutHref } from '../../../shared/auth-navigation'
+import { authLogoutHref } from '#shared/auth-navigation'
 import { normalizeApiError } from '~/utils/admin-workspace'
 import { buildProfileIconHref } from '~/utils/profile-icon'
 

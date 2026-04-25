@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { accountRegisterHref, buildAuthLoginHref } from '../../../shared/auth-navigation'
+import { accountRegisterHref, buildAuthLoginHref } from '#shared/auth-navigation'
 
 useSeoMeta({
   title: 'Signing In | Codex Hackathons',

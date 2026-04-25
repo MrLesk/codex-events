@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { LogOutIcon } from 'lucide-vue-next'
-import { authLogoutHref } from '../../shared/auth-navigation'
+import { authLogoutHref } from '#shared/auth-navigation'
 import {
   DropdownMenu,
   DropdownMenuContent,

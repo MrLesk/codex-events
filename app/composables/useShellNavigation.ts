@@ -1,7 +1,7 @@
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 import type { PublicApiDataResponse } from '~/composables/useHackathonPresentation'
 
-import { accountDashboardHref, buildAuthLoginHref } from '../../shared/auth-navigation'
+import { accountDashboardHref, buildAuthLoginHref } from '#shared/auth-navigation'
 import {
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled

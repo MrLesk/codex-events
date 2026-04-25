@@ -4,7 +4,7 @@ import type {
   PublicHackathon,
   PublicPrize
 } from '~/composables/useHackathonPresentation'
-import type { HackathonPhotoRecord } from '../../../../shared/hackathon-photos'
+import type { HackathonPhotoRecord } from '#shared/hackathon-photos'
 import type { PublishedProjectEntry, WinnerEntry } from '~/utils/admin-workspace'
 
 import HackathonGalleryPanel from '~/components/hackathons/HackathonGalleryPanel.vue'

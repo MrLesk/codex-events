@@ -1,7 +1,7 @@
 import type { RouteLocationNormalized } from 'vue-router'
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 
-import { buildAuthLoginHref } from '../../shared/auth-navigation'
+import { buildAuthLoginHref } from '#shared/auth-navigation'
 import { resolveActorAppRedirect } from './auth-navigation'
 
 export type HackathonScopedRole = 'hackathon_admin' | 'judge' | 'staff'

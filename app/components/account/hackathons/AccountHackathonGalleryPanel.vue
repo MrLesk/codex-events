@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HackathonPhotoRecord } from '../../../../shared/hackathon-photos'
+import type { HackathonPhotoRecord } from '#shared/hackathon-photos'
 
 import HackathonGalleryPanel from '~/components/hackathons/HackathonGalleryPanel.vue'
 import { normalizeApiError } from '~/utils/admin-workspace'

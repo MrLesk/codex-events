@@ -3,7 +3,7 @@ import {
   accountRegisterHref,
   buildAccountRegisterHref,
   normalizeAuthReturnTo
-} from '../../shared/auth-navigation'
+} from '#shared/auth-navigation'
 
 interface RedirectAwareActor {
   kind: 'anonymous' | 'authenticated_identity' | 'platform_user'

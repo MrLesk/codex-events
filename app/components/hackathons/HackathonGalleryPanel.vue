@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HackathonPhotoRecord } from '../../../shared/hackathon-photos'
+import type { HackathonPhotoRecord } from '#shared/hackathon-photos'
 import type { HackathonGalleryUploadItem } from '~/utils/hackathon-gallery'
 
 import 'photoswipe/style.css'

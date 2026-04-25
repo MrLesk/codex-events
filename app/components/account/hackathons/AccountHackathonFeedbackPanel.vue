@@ -4,12 +4,12 @@ import type { ApiDataResponse } from '~/utils/admin-workspace'
 import type {
   HackathonFeedbackQuestionSummary,
   HackathonFeedbackSummary
-} from '../../../../shared/hackathon-feedback'
+} from '#shared/hackathon-feedback'
 
 import {
   hackathonFeedbackNotApplicableLabel,
   hackathonFeedbackRatingValues
-} from '../../../../shared/hackathon-feedback'
+} from '#shared/hackathon-feedback'
 
 const props = defineProps<{
   hackathonId: string
