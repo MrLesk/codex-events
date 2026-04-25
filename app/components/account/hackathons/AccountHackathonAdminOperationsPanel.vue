@@ -2160,197 +2160,24 @@ async function runLifecycleAction() {
           @force-skip="forceSkipAssignment"
         />
 
-        <AppCard
+        <LazyAdminCompetitionPitchStagePanel
           v-if="showPitchStagePanel"
-          class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
-        >
-          <template #header>
-            <div class="space-y-1">
-              <h2 class="text-lg font-semibold text-highlighted">
-                Pitch
-              </h2>
-              <p class="text-sm text-muted">
-                Finalist teams present live in the saved lineup order. Judge assignments for post-pitch scoring are created only after the full lineup is completed and you start pitch review separately.
-              </p>
-            </div>
-          </template>
+          :entries="pitchLineupEntries"
+          :alert="pitchStageAlert"
+          :can-advance="canAdvancePitchPresentation"
+          :advance-label="advancePitchPresentationLabel"
+          :pending-action-key="pendingActionKey"
+          @advance="advancePitchPresentation"
+        />
 
-          <div class="space-y-5">
-            <AppAlert
-              color="neutral"
-              variant="soft"
-              :title="pitchStageAlert.title"
-              :description="pitchStageAlert.description"
-            />
-
-            <div
-              v-if="pitchLineupEntries.length > 0"
-              class="grid gap-3"
-            >
-              <article
-                v-for="entry in pitchLineupEntries"
-                :key="entry.submissionId"
-                class="rounded-xl border p-4 transition"
-                :class="entry.status === 'live'
-                  ? 'border-primary/30 bg-primary/[0.06] dark:border-primary/35 dark:bg-primary/[0.08]'
-                  : entry.status === 'presented'
-                    ? 'border-black/8 bg-black/[0.03] dark:border-white/[0.08] dark:bg-white/[0.04]'
-                    : 'border-black/8 bg-white/80 dark:border-white/[0.08] dark:bg-[#111111]'"
-              >
-                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div class="space-y-1">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                        Presentation #{{ entry.order }}
-                      </p>
-
-                      <AppBadge
-                        v-if="entry.status === 'live'"
-                        color="primary"
-                        variant="soft"
-                      >
-                        Live now
-                      </AppBadge>
-
-                      <AppBadge
-                        v-else-if="entry.status === 'presented'"
-                        color="success"
-                        variant="soft"
-                      >
-                        Presented
-                      </AppBadge>
-                    </div>
-
-                    <h3 class="text-base font-semibold text-highlighted">
-                      {{ entry.projectName ?? 'Untitled submission' }}
-                    </h3>
-
-                    <p class="text-sm text-toned">
-                      {{ entry.teamName ?? 'Team not available' }}
-                      <span v-if="entry.rank !== null"> • shortlist rank #{{ entry.rank }}</span>
-                    </p>
-                  </div>
-
-                  <p class="text-sm text-muted">
-                    {{ entry.status === 'upcoming'
-                      ? 'Waiting to present'
-                      : entry.status === 'live'
-                        ? 'Currently enabled to present'
-                        : 'Presentation completed' }}
-                  </p>
-                </div>
-              </article>
-            </div>
-
-            <AppAlert
-              v-else
-              color="warning"
-              variant="soft"
-              title="Pitch lineup unavailable"
-              description="No finalist submissions are currently stored for the live pitch lineup."
-            />
-
-            <div class="flex flex-wrap gap-3">
-              <AppButton
-                color="primary"
-                :loading="pendingActionKey === 'advance-pitch-presentation'"
-                :disabled="!canAdvancePitchPresentation"
-                @click="advancePitchPresentation"
-              >
-                {{ advancePitchPresentationLabel }}
-              </AppButton>
-            </div>
-          </div>
-        </AppCard>
-
-        <AppCard
+        <LazyAdminCompetitionPitchReviewPanel
           v-if="showPitchReviewPanel"
-          class="rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60"
-        >
-          <template #header>
-            <div class="space-y-1">
-              <h2 class="text-lg font-semibold text-highlighted">
-                Pitch Review
-              </h2>
-              <p class="text-sm text-muted">
-                Judges now see full submission details and submit post-pitch scores on the shared `1-5` scale. When you move on, the platform averages the submitted pitch votes only.
-              </p>
-            </div>
-          </template>
-
-          <div class="space-y-4">
-            <AppAlert
-              :color="hasCompletedPitchReviews ? 'neutral' : 'warning'"
-              variant="soft"
-              title="Pitch review is live"
-              :description="hasCompletedPitchReviews
-                ? 'Close pitch review once the submitted votes you want to count are in. Missing pitch votes listed below are excluded from the average if you move on now.'
-                : 'At least one submitted pitch review is required before final deliberation can start. Missing pitch votes listed below are still excluded from the eventual average.'"
-            />
-
-            <div
-              v-if="pitchReviewCoverageEntries.length > 0"
-              class="space-y-4"
-            >
-              <div
-                v-for="entry in pitchReviewCoverageEntries"
-                :key="entry.submissionId"
-                class="space-y-3 border-t border-default/80 pt-4 first:border-t-0 first:pt-0"
-              >
-                <div class="space-y-1">
-                  <div class="flex flex-wrap items-baseline gap-3">
-                    <h3 class="text-sm font-semibold text-highlighted">
-                      {{ entry.projectLabel }}
-                    </h3>
-                    <p
-                      v-if="entry.teamName"
-                      class="text-xs font-semibold uppercase tracking-[0.18em] text-muted"
-                    >
-                      {{ entry.teamName }}
-                    </p>
-                  </div>
-                  <p class="text-sm text-toned">
-                    {{ entry.completedAssignmentCount }} of {{ entry.totalAssignmentCount }} pitch reviews submitted.
-                  </p>
-                </div>
-
-                <div class="grid gap-3 lg:grid-cols-2">
-                  <div class="space-y-1">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                      Reviewed By
-                    </p>
-                    <p class="text-sm text-toned">
-                      {{ entry.reviewedJudgeLabels.length > 0 ? entry.reviewedJudgeLabels.join(', ') : 'No completed pitch reviews yet.' }}
-                    </p>
-                  </div>
-
-                  <div class="space-y-1">
-                    <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                      Missing
-                    </p>
-                    <p
-                      class="text-sm"
-                      :class="entry.missingJudgeLabels.length > 0 ? 'text-warning' : 'text-success'"
-                    >
-                      {{ entry.missingJudgeLabels.length > 0 ? entry.missingJudgeLabels.join(', ') : 'All assigned judges reviewed this finalist.' }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="flex flex-wrap gap-3">
-              <AppButton
-                color="primary"
-                :loading="pendingActionKey === 'start-final-deliberation'"
-                :disabled="!canStartFinalDeliberationFromPitchReview || (pendingActionKey !== null && pendingActionKey !== 'start-final-deliberation')"
-                @click="startFinalDeliberation"
-              >
-                Move to final deliberation
-              </AppButton>
-            </div>
-          </div>
-        </AppCard>
+          :entries="pitchReviewCoverageEntries"
+          :has-completed-pitch-reviews="hasCompletedPitchReviews"
+          :can-start-final-deliberation="canStartFinalDeliberationFromPitchReview"
+          :pending-action-key="pendingActionKey"
+          @start-final-deliberation="startFinalDeliberation"
+        />
 
         <LazyAdminCompetitionFinalDeliberationPanel
           v-if="showFinalDeliberationPanel"
