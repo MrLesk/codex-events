@@ -1,6 +1,6 @@
 import { defineEventHandler, sendRedirect } from 'h3'
 
-import { getDatabase } from '../../../database/client'
+import { getDatabase } from '#server/database/client'
 import {
   buildPlatformAccountLinkRedirect,
   clearPlatformAccountLinkAuthentication,
@@ -8,12 +8,12 @@ import {
   linkPlatformAccountIdentity,
   readPlatformAccountLinkAuthenticatedSubject,
   readPlatformAccountLinkChallenge
-} from '../../../utils/platform-account-linking'
-import { isApiError } from '../../../utils/api-error'
+} from '#server/utils/platform-account-linking'
+import { isApiError } from '#server/utils/api-error'
 import {
   ensurePlatformUserAuthIdentities,
   findPlatformUserByAuth0Subject
-} from '../../../utils/platform-auth-identities'
+} from '#server/utils/platform-auth-identities'
 
 export default defineEventHandler(async (event) => {
   const challengeResult = await readPlatformAccountLinkChallenge(event)

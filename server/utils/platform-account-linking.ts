@@ -1,5 +1,5 @@
 import type { H3Event } from 'h3'
-import type { AppDatabase } from '../database/client'
+import type { AppDatabase } from '#server/database/client'
 import type {
   CookieHandler,
   CookieSerializeOptions,
@@ -17,7 +17,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { deleteCookie, getCookie, getRequestURL, parseCookies, setCookie } from 'h3'
 
 import { accountDashboardHref, buildAccountRegisterHref, normalizeAuthReturnTo } from '../../shared/auth-navigation'
-import { users } from '../database/schema'
+import { users } from '#server/database/schema'
 import { ApiError } from './api-error'
 
 const challengeCookieName = 'codex_platform_account_link'

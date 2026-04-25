@@ -3,13 +3,13 @@ import type { H3Event } from 'h3'
 import { asc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { writeAuditLog } from '../database/audit-log'
-import { createDatabase, resolveD1Binding, type AppDatabase, type D1DatabaseBinding } from '../database/client'
+import { writeAuditLog } from '#server/database/audit-log'
+import { createDatabase, resolveD1Binding, type AppDatabase, type D1DatabaseBinding } from '#server/database/client'
 import {
   hackathons,
   userApplications,
   users
-} from '../database/schema'
+} from '#server/database/schema'
 import { isHackathonLumaSyncEnabled } from './applications'
 
 export const defaultApplicationLumaSyncQueueBinding = 'APPLICATION_LUMA_SYNC_QUEUE'

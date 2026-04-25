@@ -1,11 +1,11 @@
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiList } from '../../../../utils/api-response'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiList } from '#server/utils/api-response'
 import {
   listHackathonApplications,
   requireHackathonApplicationVisibilityContext
-} from '../../../../utils/applications'
-import { parseValidatedParams } from '../../../../utils/validation'
-import { routeIdParamsSchema } from '../../../../utils/hackathon-management'
+} from '#server/utils/applications'
+import { parseValidatedParams } from '#server/utils/validation'
+import { routeIdParamsSchema } from '#server/utils/hackathon-management'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)

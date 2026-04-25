@@ -1,15 +1,15 @@
 import { eq } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../../auth/actor'
-import { writeAuditLog } from '../../../../../database/audit-log'
-import { getDatabase } from '../../../../../database/client'
-import { hackathons } from '../../../../../database/schema'
-import { defineApiHandler } from '../../../../../utils/api-handler'
-import { apiData } from '../../../../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
+import { getDatabase } from '#server/database/client'
+import { hackathons } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema
-} from '../../../../../utils/hackathon-management'
+} from '#server/utils/hackathon-management'
 import {
   assertSelectFinalistsAllowed,
   assertSelectedFinalistsRespectOrder,
@@ -18,8 +18,8 @@ import {
   listLeaderboardEntries,
   listShortlistEntries,
   selectFinalistsBodySchema
-} from '../../../../../utils/shortlist'
-import { parseValidatedBody, parseValidatedParams } from '../../../../../utils/validation'
+} from '#server/utils/shortlist'
+import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

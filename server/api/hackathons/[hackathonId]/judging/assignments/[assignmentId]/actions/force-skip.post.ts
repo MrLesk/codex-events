@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm'
 
-import { writeAuditLog } from '../../../../../../../database/audit-log'
-import { judgeAssignments } from '../../../../../../../database/schema'
-import { defineApiHandler } from '../../../../../../../utils/api-handler'
-import { apiData } from '../../../../../../../utils/api-response'
+import { writeAuditLog } from '#server/database/audit-log'
+import { judgeAssignments } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   assertAssignmentReviewStageIsActive,
   assertJudgeAssignmentStatus,
@@ -14,8 +14,8 @@ import {
   pickReplacementJudgeUserId,
   requireAdminAssignmentContext,
   skipJudgeAssignmentBodySchema
-} from '../../../../../../../utils/judging'
-import { parseValidatedBody, parseValidatedParams } from '../../../../../../../utils/validation'
+} from '#server/utils/judging'
+import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, assignmentId } = parseValidatedParams(event, judgingAssignmentParamsSchema)

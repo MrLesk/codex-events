@@ -1,14 +1,14 @@
 import { setHeader } from 'h3'
 
-import { getDatabase } from '../../../../../database/client'
-import { defineApiHandler } from '../../../../../utils/api-handler'
-import { ApiError } from '../../../../../utils/api-error'
-import { getHackathonImageObject } from '../../../../../utils/hackathon-images'
+import { getDatabase } from '#server/database/client'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { ApiError } from '#server/utils/api-error'
+import { getHackathonImageObject } from '#server/utils/hackathon-images'
 import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema
-} from '../../../../../utils/hackathon-management'
-import { parseValidatedParams } from '../../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { slug } = parseValidatedParams(event, routeSlugParamsSchema)

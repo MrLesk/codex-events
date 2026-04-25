@@ -1,22 +1,22 @@
 import { eq } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../auth/actor'
-import { writeAuditLog } from '../../../../database/audit-log'
-import { getDatabase } from '../../../../database/client'
-import { hackathons } from '../../../../database/schema'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiData } from '../../../../utils/api-response'
-import { enqueueWinnerOutcomeEmails } from '../../../../utils/hackathon-outcome-email-queue'
+import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
+import { getDatabase } from '#server/database/client'
+import { hackathons } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
+import { enqueueWinnerOutcomeEmails } from '#server/utils/hackathon-outcome-email-queue'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathon
-} from '../../../../utils/hackathon-management'
+} from '#server/utils/hackathon-management'
 import {
   assertHackathonCompletionAllowed,
   getWinnersView
-} from '../../../../utils/shortlist'
-import { parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/shortlist'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

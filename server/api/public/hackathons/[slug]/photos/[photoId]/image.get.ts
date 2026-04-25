@@ -1,19 +1,19 @@
 import { z } from 'zod'
 
-import { getDatabase } from '../../../../../../database/client'
-import { defineApiHandler } from '../../../../../../utils/api-handler'
-import { ApiError } from '../../../../../../utils/api-error'
+import { getDatabase } from '#server/database/client'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { ApiError } from '#server/utils/api-error'
 import {
   createHackathonPhotoPreviewResponse,
   getHackathonPhotoObject,
   getPublicHackathonPhotoRecordOrThrow,
   hackathonPhotoImageQuerySchema
-} from '../../../../../../utils/hackathon-photos'
+} from '#server/utils/hackathon-photos'
 import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema
-} from '../../../../../../utils/hackathon-management'
-import { parseValidatedParams, parseValidatedQuery } from '../../../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { parseValidatedParams, parseValidatedQuery } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { slug, photoId } = parseValidatedParams(event, routeSlugParamsSchema.extend({

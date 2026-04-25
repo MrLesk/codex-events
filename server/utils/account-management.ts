@@ -1,16 +1,16 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
-import type { AuthenticatedIdentityActor } from '../auth/actor'
-import type { AppDatabase } from '../database/client'
+import type { AuthenticatedIdentityActor } from '#server/auth/actor'
+import type { AppDatabase } from '#server/database/client'
 import {
   hackathonRoleAssignments,
   platformDocuments,
   userAuthIdentities,
   userPlatformDocumentAcceptances,
   users
-} from '../database/schema'
-import { buildAuditLogInsert, writeAuditLog } from '../database/audit-log'
+} from '#server/database/schema'
+import { buildAuditLogInsert, writeAuditLog } from '#server/database/audit-log'
 import { ApiError } from './api-error'
 import { assertGuard } from './lifecycle-guard'
 import { findPlatformUserByAuth0Subject } from './platform-auth-identities'

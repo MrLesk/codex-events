@@ -1,17 +1,17 @@
-import { requirePlatformActor } from '../../../../auth/actor'
-import { getDatabase } from '../../../../database/client'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiData } from '../../../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { getDatabase } from '#server/database/client'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   getOwnUserApplication,
   serializeUserApplication
-} from '../../../../utils/applications'
+} from '#server/utils/applications'
 import {
   getHackathonTermsDocumentOrThrow,
   getVisibleHackathonOrThrow,
   routeIdParamsSchema
-} from '../../../../utils/hackathon-management'
-import { parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

@@ -1,29 +1,29 @@
 import { eq } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../../../auth/actor'
-import { writeAuditLog } from '../../../../../../database/audit-log'
-import { userApplications } from '../../../../../../database/schema'
-import { defineApiHandler } from '../../../../../../utils/api-handler'
-import { apiData } from '../../../../../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
+import { userApplications } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
   getApplicationLumaSyncFailureStatus
-} from '../../../../../../utils/application-luma-sync-queue'
+} from '#server/utils/application-luma-sync-queue'
 import {
   assertApplicationWithdrawable,
   assertNoActiveTeamMembershipForApplicationWithdrawal,
   getOwnUserApplication,
   isHackathonLumaSyncEnabled,
   serializeUserApplication
-} from '../../../../../../utils/applications'
+} from '#server/utils/applications'
 import {
   getVisibleHackathonOrThrow,
   routeIdParamsSchema
-} from '../../../../../../utils/hackathon-management'
-import { parseValidatedParams } from '../../../../../../utils/validation'
-import { ApiError } from '../../../../../../utils/api-error'
-import { getDatabase } from '../../../../../../database/client'
+} from '#server/utils/hackathon-management'
+import { parseValidatedParams } from '#server/utils/validation'
+import { ApiError } from '#server/utils/api-error'
+import { getDatabase } from '#server/database/client'
 
 type UserApplicationLumaSyncStatus = typeof userApplications.$inferSelect['lumaSyncStatus']
 

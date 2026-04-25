@@ -1,7 +1,7 @@
-import { requirePlatformActor } from '../../../../auth/actor'
-import { teamJoinRequests } from '../../../../database/schema'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiData } from '../../../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { teamJoinRequests } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   assertNoActiveTeamMembershipForHackathon,
   assertPendingJoinRequestAllowed,
@@ -13,9 +13,9 @@ import {
   getTeamOrThrow,
   requireTeamFormationApprovedContext,
   serializeTeamJoinRequest
-} from '../../../../utils/team-formation'
-import { parseValidatedBody, parseValidatedParams } from '../../../../utils/validation'
-import { routeIdParamsSchema } from '../../../../utils/hackathon-management'
+} from '#server/utils/team-formation'
+import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
+import { routeIdParamsSchema } from '#server/utils/hackathon-management'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

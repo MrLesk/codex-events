@@ -3,9 +3,9 @@ import type { H3Event } from 'h3'
 import { and, asc, count, eq, getTableColumns, inArray, isNull, like, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { requirePlatformActor } from '../auth/actor'
-import { assertTeamAdminAccess, resolveHackathonAuthorization, resolveTeamAuthorization } from '../auth/authorization'
-import { getDatabase, type AppDatabase } from '../database/client'
+import { requirePlatformActor } from '#server/auth/actor'
+import { assertTeamAdminAccess, resolveHackathonAuthorization, resolveTeamAuthorization } from '#server/auth/authorization'
+import { getDatabase, type AppDatabase } from '#server/database/client'
 import {
   submissions,
   teamJoinRequests,
@@ -14,8 +14,8 @@ import {
   teams,
   userApplications,
   users
-} from '../database/schema'
-import type { hackathons } from '../database/schema'
+} from '#server/database/schema'
+import type { hackathons } from '#server/database/schema'
 import { ApiError } from './api-error'
 import { requireApprovedUserForHackathon } from './applications'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'

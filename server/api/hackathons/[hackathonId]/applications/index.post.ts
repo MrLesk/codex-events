@@ -1,10 +1,10 @@
-import { requirePlatformActor } from '../../../../auth/actor'
-import { getDatabase } from '../../../../database/client'
-import { userApplications } from '../../../../database/schema'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { ApiError } from '../../../../utils/api-error'
-import { apiData } from '../../../../utils/api-response'
-import { lookupLumaEventGuestByEmail } from '../../../../utils/application-luma-sync-queue'
+import { requirePlatformActor } from '#server/auth/actor'
+import { getDatabase } from '#server/database/client'
+import { userApplications } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { ApiError } from '#server/utils/api-error'
+import { apiData } from '#server/utils/api-response'
+import { lookupLumaEventGuestByEmail } from '#server/utils/application-luma-sync-queue'
 import {
   assertCurrentApplicationTermsAcceptance,
   assertHackathonAllowsApplications,
@@ -16,9 +16,9 @@ import {
   serializeRegistrationDetailsJson,
   serializeUserApplication,
   submitApplicationBodySchema
-} from '../../../../utils/applications'
-import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '../../../../utils/hackathon-management'
-import { parseValidatedBody, parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/applications'
+import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

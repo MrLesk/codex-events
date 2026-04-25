@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../auth/actor'
-import { getDatabase } from '../../database/client'
+import { requirePlatformActor } from '#server/auth/actor'
+import { getDatabase } from '#server/database/client'
 import {
   hackathonRoleAssignments,
   hackathons,
@@ -9,9 +9,9 @@ import {
   teamMembers,
   teams,
   userApplications
-} from '../../database/schema'
-import { defineApiHandler } from '../../utils/api-handler'
-import { apiData } from '../../utils/api-response'
+} from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 
 type UserApplicationRecord = typeof userApplications.$inferSelect
 type TeamMembershipRecord = typeof teamMembers.$inferSelect

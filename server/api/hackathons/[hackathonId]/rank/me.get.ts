@@ -1,16 +1,16 @@
 import { and, desc, eq } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../auth/actor'
-import { getDatabase } from '../../../../database/client'
-import { teamMembers, teams } from '../../../../database/schema'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiData } from '../../../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { getDatabase } from '#server/database/client'
+import { teamMembers, teams } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   getVisibleHackathonOrThrow,
   routeIdParamsSchema
-} from '../../../../utils/hackathon-management'
-import { getTeamCompetitionOutcome } from '../../../../utils/shortlist'
-import { parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { getTeamCompetitionOutcome } from '#server/utils/shortlist'
+import { parseValidatedParams } from '#server/utils/validation'
 
 type MembershipRow = {
   teamId: string

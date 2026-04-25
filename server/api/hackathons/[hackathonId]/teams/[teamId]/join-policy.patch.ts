@@ -1,9 +1,9 @@
 import { eq } from 'drizzle-orm'
 
-import { teams } from '../../../../../database/schema'
-import { requirePlatformActor } from '../../../../../auth/actor'
-import { defineApiHandler } from '../../../../../utils/api-handler'
-import { apiData } from '../../../../../utils/api-response'
+import { teams } from '#server/database/schema'
+import { requirePlatformActor } from '#server/auth/actor'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   assertHackathonAllowsTeamFormation,
   getTeamWithMembersOrThrow,
@@ -11,8 +11,8 @@ import {
   serializeTeam,
   teamParamsSchema,
   updateJoinPolicyBodySchema
-} from '../../../../../utils/team-formation'
-import { parseValidatedBody, parseValidatedParams } from '../../../../../utils/validation'
+} from '#server/utils/team-formation'
+import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   await requirePlatformActor(event)

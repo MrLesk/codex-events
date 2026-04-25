@@ -1,11 +1,11 @@
 import { eq } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../../../auth/actor'
-import { submissions } from '../../../../../../database/schema'
-import { defineApiHandler } from '../../../../../../utils/api-handler'
-import { apiData } from '../../../../../../utils/api-response'
-import { requireTeamAdminContext } from '../../../../../../utils/team-formation'
-import { parseValidatedBody, parseValidatedParams } from '../../../../../../utils/validation'
+import { requirePlatformActor } from '#server/auth/actor'
+import { submissions } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
+import { requireTeamAdminContext } from '#server/utils/team-formation'
+import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
 import {
   assertHackathonAllowsSubmissionEditing,
   assertSubmissionBodyMatchesHackathonRequirements,
@@ -16,7 +16,7 @@ import {
   serializeSubmission,
   submissionParamsSchema,
   updateSubmissionBodySchema
-} from '../../../../../../utils/submissions'
+} from '#server/utils/submissions'
 
 export default defineApiHandler(async (event) => {
   await requirePlatformActor(event)

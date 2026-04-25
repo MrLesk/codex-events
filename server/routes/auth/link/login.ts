@@ -1,7 +1,7 @@
 import { defineEventHandler, sendRedirect } from 'h3'
 
-import { getRequestActor } from '../../../auth/actor'
-import { getDatabase } from '../../../database/client'
+import { getRequestActor } from '#server/auth/actor'
+import { getDatabase } from '#server/database/client'
 import {
   buildPlatformAccountLinkRedirect,
   clearPlatformAccountLinkAuthentication,
@@ -10,7 +10,7 @@ import {
   issuePlatformAccountLinkChallenge,
   readPlatformAccountLinkChallenge,
   startPlatformAccountLinkAuthentication
-} from '../../../utils/platform-account-linking'
+} from '#server/utils/platform-account-linking'
 
 export default defineEventHandler(async (event) => {
   let challengeResult = await readPlatformAccountLinkChallenge(event)

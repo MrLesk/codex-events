@@ -1,15 +1,15 @@
 import { asc, eq, inArray } from 'drizzle-orm'
 
-import { getDatabase } from '../../../../database/client'
-import { hackathonRoleAssignments, users } from '../../../../database/schema'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiList } from '../../../../utils/api-response'
+import { getDatabase } from '#server/database/client'
+import { hackathonRoleAssignments, users } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiList } from '#server/utils/api-response'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathonRoleAssignment
-} from '../../../../utils/hackathon-management'
-import { parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { parseValidatedParams } from '#server/utils/validation'
 
 type HackathonRoleAssignmentRecord = typeof hackathonRoleAssignments.$inferSelect
 type UserRecord = typeof users.$inferSelect

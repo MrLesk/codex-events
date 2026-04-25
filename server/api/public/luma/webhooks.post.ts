@@ -1,21 +1,21 @@
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { readRawBody } from 'h3'
 
-import { writeAuditLog } from '../../../database/audit-log'
-import { getD1Binding, getDatabase } from '../../../database/client'
+import { writeAuditLog } from '#server/database/audit-log'
+import { getD1Binding, getDatabase } from '#server/database/client'
 import {
   hackathons,
   userApplications,
   users
-} from '../../../database/schema'
-import { defineApiHandler } from '../../../utils/api-handler'
-import { apiData } from '../../../utils/api-response'
-import { isHackathonLumaAttendanceSyncEnabled } from '../../../utils/applications'
+} from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
+import { isHackathonLumaAttendanceSyncEnabled } from '#server/utils/applications'
 import {
   extractLumaAttendanceCheckInEvent,
   resolveLumaAttendanceGuestEmail,
   verifyLumaWebhookRequest
-} from '../../../utils/luma-webhooks'
+} from '#server/utils/luma-webhooks'
 
 export default defineApiHandler(async (event) => {
   const rawBody = await readRawBody(event, 'utf8') ?? ''

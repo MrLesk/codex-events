@@ -3,12 +3,12 @@ import type { H3Event } from 'h3'
 import { and, asc, count, desc, eq, inArray, isNull, like, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { getRequestActor, requirePlatformActor } from '../auth/actor'
+import { getRequestActor, requirePlatformActor } from '#server/auth/actor'
 import {
   assertHackathonAdminAccess,
   resolveHackathonAuthorization
-} from '../auth/authorization'
-import { getDatabase, type AppDatabase } from '../database/client'
+} from '#server/auth/authorization'
+import { getDatabase, type AppDatabase } from '#server/database/client'
 import {
   evaluationCriteria,
   hackathonTracks,
@@ -27,7 +27,7 @@ import {
   teams,
   userApplications,
   users
-} from '../database/schema'
+} from '#server/database/schema'
 import { ApiError } from './api-error'
 import { publicHackathonImagePath } from './hackathon-images'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'

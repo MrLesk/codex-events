@@ -5,10 +5,10 @@ import { z } from 'zod'
 
 import type { HackathonPhotoImageVariant, HackathonPhotoRecord } from '../../shared/hackathon-photos'
 
-import { requirePlatformActor } from '../auth/actor'
-import { resolveHackathonAuthorization } from '../auth/authorization'
-import { getDatabase, type AppDatabase } from '../database/client'
-import { hackathonPhotos, userApplications } from '../database/schema'
+import { requirePlatformActor } from '#server/auth/actor'
+import { resolveHackathonAuthorization } from '#server/auth/authorization'
+import { getDatabase, type AppDatabase } from '#server/database/client'
+import { hackathonPhotos, userApplications } from '#server/database/schema'
 import { ApiError } from './api-error'
 import { getHackathonImagesBucket } from './hackathon-images'
 import {

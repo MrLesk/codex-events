@@ -1,13 +1,13 @@
 import type { H3Event } from 'h3'
-import type { users as usersTable } from '../database/schema'
+import type { users as usersTable } from '#server/database/schema'
 
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { resolveHackathonAuthorization } from '../auth/authorization'
-import { requirePlatformActor } from '../auth/actor'
-import { getDatabase } from '../database/client'
-import { hackathonCreditCodes, hackathonCreditOffers, userApplications } from '../database/schema'
+import { resolveHackathonAuthorization } from '#server/auth/authorization'
+import { requirePlatformActor } from '#server/auth/actor'
+import { getDatabase } from '#server/database/client'
+import { hackathonCreditCodes, hackathonCreditOffers, userApplications } from '#server/database/schema'
 import { ApiError } from './api-error'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from './hackathon-management'
 import { assertGuard } from './lifecycle-guard'

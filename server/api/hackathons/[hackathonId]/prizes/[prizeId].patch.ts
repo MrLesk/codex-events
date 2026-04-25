@@ -1,12 +1,12 @@
 import { eq } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../auth/actor'
-import { writeAuditLog } from '../../../../database/audit-log'
-import { getDatabase } from '../../../../database/client'
-import { prizes } from '../../../../database/schema'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { ApiError } from '../../../../utils/api-error'
-import { apiData } from '../../../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
+import { getDatabase } from '#server/database/client'
+import { prizes } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { ApiError } from '#server/utils/api-error'
+import { apiData } from '#server/utils/api-response'
 import {
   assertPrizeConfigurationEditable,
   getPrizeOrThrow,
@@ -14,8 +14,8 @@ import {
   requireHackathonAdmin,
   serializePrize,
   updatePrizeBodySchema
-} from '../../../../utils/hackathon-management'
-import { parseValidatedBody, parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

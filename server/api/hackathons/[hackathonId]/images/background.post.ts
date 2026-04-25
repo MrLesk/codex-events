@@ -2,24 +2,24 @@ import { readMultipartFormData } from 'h3'
 
 import { eq } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../auth/actor'
-import { getDatabase } from '../../../../database/client'
-import { hackathons } from '../../../../database/schema'
-import { writeAuditLog } from '../../../../database/audit-log'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiData } from '../../../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { getDatabase } from '#server/database/client'
+import { hackathons } from '#server/database/schema'
+import { writeAuditLog } from '#server/database/audit-log'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   assertValidHackathonImagePart,
   buildPublicHackathonImageUrl,
   putHackathonImageObject
-} from '../../../../utils/hackathon-images'
+} from '#server/utils/hackathon-images'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathon
-} from '../../../../utils/hackathon-management'
-import { assertAuthenticatedUploadRateLimit } from '../../../../utils/rate-limit'
-import { parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

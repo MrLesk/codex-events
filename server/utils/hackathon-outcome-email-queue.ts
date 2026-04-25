@@ -3,9 +3,9 @@ import type { H3Event } from 'h3'
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 
-import type { AppDatabase } from '../database/client'
-import { writeAuditLog } from '../database/audit-log'
-import { prizeEligibilitySnapshots, users } from '../database/schema'
+import type { AppDatabase } from '#server/database/client'
+import { writeAuditLog } from '#server/database/audit-log'
+import { prizeEligibilitySnapshots, users } from '#server/database/schema'
 import { chunkRowsForD1 } from './judging'
 import { getFinalDeliberationView } from './shortlist'
 import {

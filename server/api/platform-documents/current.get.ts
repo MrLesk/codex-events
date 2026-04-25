@@ -1,7 +1,7 @@
-import { getDatabase } from '../../database/client'
-import { defineApiHandler } from '../../utils/api-handler'
-import { apiData } from '../../utils/api-response'
-import { getCurrentPlatformDocuments, serializePlatformDocument } from '../../utils/platform-documents'
+import { getDatabase } from '#server/database/client'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
+import { getCurrentPlatformDocuments, serializePlatformDocument } from '#server/utils/platform-documents'
 
 export default defineApiHandler(async (event) => {
   const currentDocuments = await getCurrentPlatformDocuments(getDatabase(event))

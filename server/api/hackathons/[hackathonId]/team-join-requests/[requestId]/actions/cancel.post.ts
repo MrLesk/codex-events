@@ -1,18 +1,18 @@
 import { eq } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../../../auth/actor'
-import { defineApiHandler } from '../../../../../../utils/api-handler'
-import { apiData } from '../../../../../../utils/api-response'
-import { ApiError } from '../../../../../../utils/api-error'
+import { requirePlatformActor } from '#server/auth/actor'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
+import { ApiError } from '#server/utils/api-error'
 import {
   assertJoinRequestPending,
   getJoinRequestOrThrow,
   serializeTeamJoinRequest,
   teamJoinRequestParamsSchema
-} from '../../../../../../utils/team-formation'
-import { getDatabase } from '../../../../../../database/client'
-import { teamJoinRequests } from '../../../../../../database/schema'
-import { parseValidatedParams } from '../../../../../../utils/validation'
+} from '#server/utils/team-formation'
+import { getDatabase } from '#server/database/client'
+import { teamJoinRequests } from '#server/database/schema'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

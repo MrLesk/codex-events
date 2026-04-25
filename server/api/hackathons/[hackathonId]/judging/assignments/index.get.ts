@@ -1,15 +1,15 @@
 import { and, eq, inArray } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../../auth/actor'
-import { resolveHackathonAuthorization } from '../../../../../auth/authorization'
-import { getDatabase } from '../../../../../database/client'
-import { judgeAssignments } from '../../../../../database/schema'
-import { defineApiHandler } from '../../../../../utils/api-handler'
-import { apiList } from '../../../../../utils/api-response'
-import { assertGuard } from '../../../../../utils/lifecycle-guard'
-import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '../../../../../utils/hackathon-management'
-import { getJudgeAssignmentDetails } from '../../../../../utils/judging'
-import { parseValidatedParams } from '../../../../../utils/validation'
+import { requirePlatformActor } from '#server/auth/actor'
+import { resolveHackathonAuthorization } from '#server/auth/authorization'
+import { getDatabase } from '#server/database/client'
+import { judgeAssignments } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiList } from '#server/utils/api-response'
+import { assertGuard } from '#server/utils/lifecycle-guard'
+import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { getJudgeAssignmentDetails } from '#server/utils/judging'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

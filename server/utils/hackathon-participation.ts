@@ -2,15 +2,15 @@ import type { H3Event } from 'h3'
 
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../auth/actor'
-import { getDatabase } from '../database/client'
+import { requirePlatformActor } from '#server/auth/actor'
+import { getDatabase } from '#server/database/client'
 import {
   hackathons,
   submissions,
   teamMembers,
   teams,
   userApplications
-} from '../database/schema'
+} from '#server/database/schema'
 import { parseHackathonAgendaItems } from './hackathon-management'
 import { getTeamCompetitionOutcome } from './shortlist'
 import { serializeSubmission } from './submissions'

@@ -1,16 +1,16 @@
 import { eq } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../../../../auth/actor'
-import { writeAuditLog } from '../../../../../../../database/audit-log'
-import { hackathons, submissions } from '../../../../../../../database/schema'
-import { defineApiHandler } from '../../../../../../../utils/api-handler'
-import { ApiError } from '../../../../../../../utils/api-error'
-import { apiData } from '../../../../../../../utils/api-response'
-import { parseValidatedBody, parseValidatedParams } from '../../../../../../../utils/validation'
+import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
+import { hackathons, submissions } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { ApiError } from '#server/utils/api-error'
+import { apiData } from '#server/utils/api-response'
+import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
 import {
   parseStoredPitchFinalistSubmissionIds,
   prunePitchPresentationProgress
-} from '../../../../../../../utils/judging'
+} from '#server/utils/judging'
 import {
   assertSubmissionDisqualifiable,
   disqualifySubmissionBodySchema,
@@ -18,7 +18,7 @@ import {
   requireAdminSubmissionContext,
   serializeSubmission,
   submissionParamsSchema
-} from '../../../../../../../utils/submissions'
+} from '#server/utils/submissions'
 
 function pruneStoredSubmissionIdsJson(
   storedSubmissionIdsJson: string,

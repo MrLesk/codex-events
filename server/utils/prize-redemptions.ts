@@ -3,9 +3,9 @@ import type { H3Event } from 'h3'
 import { and, asc, desc, eq, inArray, isNull, or } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { requirePlatformActor } from '../auth/actor'
-import { resolveTeamAuthorization } from '../auth/authorization'
-import { getDatabase, type AppDatabase } from '../database/client'
+import { requirePlatformActor } from '#server/auth/actor'
+import { resolveTeamAuthorization } from '#server/auth/authorization'
+import { getDatabase, type AppDatabase } from '#server/database/client'
 import {
   prizeEligibilitySnapshots,
   prizeRedemptions,
@@ -13,7 +13,7 @@ import {
   teamMembers,
   users,
   type hackathons
-} from '../database/schema'
+} from '#server/database/schema'
 import {
   getCurrentHackathonTerms,
   getHackathonOrThrow,

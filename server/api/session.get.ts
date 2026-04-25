@@ -1,10 +1,10 @@
 import { desc, eq } from 'drizzle-orm'
 
-import { requireAuthenticatedActor } from '../auth/actor'
-import { hackathonRoleAssignments } from '../database/schema'
-import { getDatabase } from '../database/client'
-import { defineApiHandler } from '../utils/api-handler'
-import { apiData } from '../utils/api-response'
+import { requireAuthenticatedActor } from '#server/auth/actor'
+import { hackathonRoleAssignments } from '#server/database/schema'
+import { getDatabase } from '#server/database/client'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 
 type HackathonRoleAssignmentRecord = typeof hackathonRoleAssignments.$inferSelect
 

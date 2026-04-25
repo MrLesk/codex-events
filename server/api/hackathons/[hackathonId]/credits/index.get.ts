@@ -1,18 +1,18 @@
 import type {
   hackathonCreditCodes,
   hackathonCreditOffers
-} from '../../../../database/schema'
+} from '#server/database/schema'
 
-import { apiList } from '../../../../utils/api-response'
-import { defineApiHandler } from '../../../../utils/api-handler'
+import { apiList } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/utils/api-handler'
 import {
   listHackathonCreditCodesByOfferId,
   listHackathonCreditOffers,
   requireHackathonCreditsViewAccess,
   serializeParticipantHackathonCreditOffer
-} from '../../../../utils/hackathon-credits'
-import { routeIdParamsSchema } from '../../../../utils/hackathon-management'
-import { parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/hackathon-credits'
+import { routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { parseValidatedParams } from '#server/utils/validation'
 
 type HackathonCreditOfferRecord = typeof hackathonCreditOffers.$inferSelect
 type HackathonCreditCodeRecord = typeof hackathonCreditCodes.$inferSelect

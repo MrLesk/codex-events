@@ -1,8 +1,8 @@
-import { parseValidatedBody, parseValidatedParams } from '../../../../../../utils/validation'
+import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
 
-import { assertGuard } from '../../../../../../utils/lifecycle-guard'
-import { defineApiHandler } from '../../../../../../utils/api-handler'
-import { apiData } from '../../../../../../utils/api-response'
+import { assertGuard } from '#server/utils/lifecycle-guard'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   assertAssignmentReviewStageIsActive,
   assertJudgeAssignmentStatus,
@@ -12,7 +12,7 @@ import {
   requireJudgeAssignmentContext,
   saveJudgeAssignmentBodySchema,
   saveJudgeCriterionScores
-} from '../../../../../../utils/judging'
+} from '#server/utils/judging'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, assignmentId } = parseValidatedParams(event, judgingAssignmentParamsSchema)

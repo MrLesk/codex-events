@@ -1,11 +1,11 @@
-import type { AppDatabase, D1DatabaseBinding } from '../database/client'
-import type { RequestActor } from '../auth/actor'
+import type { AppDatabase, D1DatabaseBinding } from '#server/database/client'
+import type { RequestActor } from '#server/auth/actor'
 import type {
   HackathonAuthorization,
   JudgeAssignmentAuthorization,
   TeamAuthorization
-} from '../auth/authorization'
-import type { LinkablePlatformAccountIdentity } from '../utils/platform-account-linking'
+} from '#server/auth/authorization'
+import type { LinkablePlatformAccountIdentity } from '#server/utils/platform-account-linking'
 
 declare module 'h3' {
   interface H3EventContext {

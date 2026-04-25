@@ -2,10 +2,10 @@ import {
   defaultApplicationReviewEmailQueueName,
   defaultApplicationReviewEmailRetryDelaySeconds,
   processApplicationReviewEmailQueueBatch
-} from '../utils/application-review-email-queue'
-import { defaultApplicationLumaSyncQueueName } from '../utils/application-luma-sync-queue'
-import { defaultHackathonOutcomeEmailQueueName } from '../utils/hackathon-outcome-email-queue'
-import { classifyCloudflareQueueBatch, retryCloudflareQueueBatch } from '../utils/cloudflare-queue-routing'
+} from '#server/utils/application-review-email-queue'
+import { defaultApplicationLumaSyncQueueName } from '#server/utils/application-luma-sync-queue'
+import { defaultHackathonOutcomeEmailQueueName } from '#server/utils/hackathon-outcome-email-queue'
+import { classifyCloudflareQueueBatch, retryCloudflareQueueBatch } from '#server/utils/cloudflare-queue-routing'
 
 export default defineNitroPlugin((nitroApp) => {
   nitroApp.hooks.hook('cloudflare:queue', async ({ batch, env }) => {

@@ -2,9 +2,9 @@ import type { H3Event } from 'h3'
 
 import { and, eq, isNull } from 'drizzle-orm'
 
-import { getDatabase } from '../database/client'
-import { hackathonRoleAssignments, judgeAssignments, teamMembers } from '../database/schema'
-import { ApiError } from '../utils/api-error'
+import { getDatabase } from '#server/database/client'
+import { hackathonRoleAssignments, judgeAssignments, teamMembers } from '#server/database/schema'
+import { ApiError } from '#server/utils/api-error'
 import {
   assertRegularPlatformAccess,
   getRequestActor,

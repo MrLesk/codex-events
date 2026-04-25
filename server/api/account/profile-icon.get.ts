@@ -2,17 +2,17 @@ import { and, eq, isNull } from 'drizzle-orm'
 import { setHeader } from 'h3'
 import { z } from 'zod'
 
-import { requirePlatformActor } from '../../auth/actor'
-import { resolveHackathonAuthorization } from '../../auth/authorization'
-import { users, userApplications } from '../../database/schema'
-import { defineApiHandler } from '../../utils/api-handler'
-import { ApiError } from '../../utils/api-error'
+import { requirePlatformActor } from '#server/auth/actor'
+import { resolveHackathonAuthorization } from '#server/auth/authorization'
+import { users, userApplications } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { ApiError } from '#server/utils/api-error'
 import {
   isUserVisibleInPublishedHackathonRoster,
   requireHackathonWorkspaceAccess
-} from '../../utils/hackathon-management'
-import { getProfileIconObject } from '../../utils/profile-icons'
-import { parseValidatedQuery } from '../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { getProfileIconObject } from '#server/utils/profile-icons'
+import { parseValidatedQuery } from '#server/utils/validation'
 
 const profileIconQuerySchema = z.object({
   user: z.string().trim().min(1).optional(),

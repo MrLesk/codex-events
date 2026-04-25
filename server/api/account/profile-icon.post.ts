@@ -1,17 +1,17 @@
 import { readMultipartFormData } from 'h3'
 
-import { requirePlatformActor } from '../../auth/actor'
-import { getDatabase } from '../../database/client'
+import { requirePlatformActor } from '#server/auth/actor'
+import { getDatabase } from '#server/database/client'
 import {
   updatePlatformAccountProfileIconTimestamp
-} from '../../utils/account-management'
-import { defineApiHandler } from '../../utils/api-handler'
-import { apiData } from '../../utils/api-response'
+} from '#server/utils/account-management'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   assertValidProfileIconPart,
   putProfileIconObject
-} from '../../utils/profile-icons'
-import { assertAuthenticatedUploadRateLimit } from '../../utils/rate-limit'
+} from '#server/utils/profile-icons'
+import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

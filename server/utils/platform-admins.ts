@@ -1,12 +1,12 @@
 import { and, asc, count, desc, eq, isNull, like, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { buildAuditLogInsert } from '../database/audit-log'
-import type { AppDatabase } from '../database/client'
+import { buildAuditLogInsert } from '#server/database/audit-log'
+import type { AppDatabase } from '#server/database/client'
 import {
   hackathonRoleAssignments,
   users
-} from '../database/schema'
+} from '#server/database/schema'
 import {
   getActiveUserOrThrow,
   serializeHackathonRoleUserSummary

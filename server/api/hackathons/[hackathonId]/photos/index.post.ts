@@ -1,20 +1,20 @@
 import { readMultipartFormData } from 'h3'
 
-import { writeAuditLog } from '../../../../database/audit-log'
-import { hackathonPhotos } from '../../../../database/schema'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiList } from '../../../../utils/api-response'
-import { ApiError } from '../../../../utils/api-error'
+import { writeAuditLog } from '#server/database/audit-log'
+import { hackathonPhotos } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiList } from '#server/utils/api-response'
+import { ApiError } from '#server/utils/api-error'
 import {
   assertValidHackathonPhotoPart,
   getHackathonPhotoDimensions,
   listHackathonPhotoRecords,
   putHackathonPhotoObject,
   requireHackathonPhotoManageAccess
-} from '../../../../utils/hackathon-photos'
-import { routeIdParamsSchema } from '../../../../utils/hackathon-management'
-import { assertAuthenticatedUploadRateLimit } from '../../../../utils/rate-limit'
-import { parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/hackathon-photos'
+import { routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)

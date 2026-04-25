@@ -1,16 +1,16 @@
 import { and, eq } from 'drizzle-orm'
 
-import { writeAuditLog } from '../../../../database/audit-log'
-import { hackathonPhotos } from '../../../../database/schema'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiData } from '../../../../utils/api-response'
+import { writeAuditLog } from '#server/database/audit-log'
+import { hackathonPhotos } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   deleteHackathonPhotoObject,
   getHackathonPhotoRecordOrThrow,
   hackathonPhotoParamsSchema,
   requireHackathonPhotoManageAccess
-} from '../../../../utils/hackathon-photos'
-import { parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/hackathon-photos'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, photoId } = parseValidatedParams(event, hackathonPhotoParamsSchema)

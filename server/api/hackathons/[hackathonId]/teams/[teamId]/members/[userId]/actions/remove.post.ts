@@ -1,19 +1,19 @@
 import { eq } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../../../../../auth/actor'
-import { writeAuditLog } from '../../../../../../../../database/audit-log'
-import { teamMembers } from '../../../../../../../../database/schema'
-import { defineApiHandler } from '../../../../../../../../utils/api-handler'
-import { apiData } from '../../../../../../../../utils/api-response'
-import { ApiError } from '../../../../../../../../utils/api-error'
+import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
+import { teamMembers } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
+import { ApiError } from '#server/utils/api-error'
 import {
   assertLeaveOrRemovalAllowed,
   getActiveTeamMemberOrThrow,
   getActiveTeamMembers,
   requireTeamAdminContext,
   teamMemberParamsSchema
-} from '../../../../../../../../utils/team-formation'
-import { parseValidatedParams } from '../../../../../../../../utils/validation'
+} from '#server/utils/team-formation'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

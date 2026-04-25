@@ -1,10 +1,10 @@
-import { ApiError } from '../../utils/api-error'
-import { defineApiHandler } from '../../utils/api-handler'
-import { apiData } from '../../utils/api-response'
-import { publicLegalContactBodySchema, sendPublicLegalContactEmail } from '../../utils/legal-contact'
-import { outboundEmailConfigurationMissingReason } from '../../utils/outbound-email'
-import { assertPublicContactRateLimit } from '../../utils/rate-limit'
-import { parseValidatedBody } from '../../utils/validation'
+import { ApiError } from '#server/utils/api-error'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
+import { publicLegalContactBodySchema, sendPublicLegalContactEmail } from '#server/utils/legal-contact'
+import { outboundEmailConfigurationMissingReason } from '#server/utils/outbound-email'
+import { assertPublicContactRateLimit } from '#server/utils/rate-limit'
+import { parseValidatedBody } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   await assertPublicContactRateLimit(event)

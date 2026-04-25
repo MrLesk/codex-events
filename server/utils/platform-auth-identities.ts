@@ -1,7 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm'
 
-import type { AppDatabase } from '../database/client'
-import { userAuthIdentities, users } from '../database/schema'
+import type { AppDatabase } from '#server/database/client'
+import { userAuthIdentities, users } from '#server/database/schema'
 import { ApiError } from './api-error'
 
 type PlatformUserRecord = typeof users.$inferSelect

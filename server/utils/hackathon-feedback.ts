@@ -12,10 +12,10 @@ import {
   hackathonFeedbackQuestions,
   hackathonFeedbackRatingValues
 } from '../../shared/hackathon-feedback'
-import type { HackathonAuthorization } from '../auth/authorization'
-import type { AppDatabase } from '../database/client'
-import type { hackathonStates } from '../database/schema'
-import { hackathonFeedback } from '../database/schema'
+import type { HackathonAuthorization } from '#server/auth/authorization'
+import type { AppDatabase } from '#server/database/client'
+import type { hackathonStates } from '#server/database/schema'
+import { hackathonFeedback } from '#server/database/schema'
 import { ApiError } from './api-error'
 import { assertAllowedState } from './lifecycle-guard'
 

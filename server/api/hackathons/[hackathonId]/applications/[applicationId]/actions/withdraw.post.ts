@@ -1,16 +1,16 @@
 import { and, eq, inArray } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../../../auth/actor'
-import { writeAuditLog } from '../../../../../../database/audit-log'
-import { teamJoinRequests, teamMembers, teams, userApplications } from '../../../../../../database/schema'
-import { defineApiHandler } from '../../../../../../utils/api-handler'
-import { ApiError } from '../../../../../../utils/api-error'
-import { apiData } from '../../../../../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
+import { teamJoinRequests, teamMembers, teams, userApplications } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { ApiError } from '#server/utils/api-error'
+import { apiData } from '#server/utils/api-response'
 import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
   getApplicationLumaSyncFailureStatus
-} from '../../../../../../utils/application-luma-sync-queue'
+} from '#server/utils/application-luma-sync-queue'
 import {
   applicationParamsSchema,
   assertApplicationWithdrawable,
@@ -19,8 +19,8 @@ import {
   requireHackathonAdminApplicationContext,
   isHackathonLumaSyncEnabled,
   serializeUserApplication
-} from '../../../../../../utils/applications'
-import { parseValidatedParams } from '../../../../../../utils/validation'
+} from '#server/utils/applications'
+import { parseValidatedParams } from '#server/utils/validation'
 
 type UserApplicationLumaSyncStatus = typeof userApplications.$inferSelect['lumaSyncStatus']
 

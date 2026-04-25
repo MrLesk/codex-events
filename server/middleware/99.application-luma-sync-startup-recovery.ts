@@ -1,6 +1,6 @@
 import {
   scheduleApplicationLumaSyncStartupRecovery
-} from '../utils/application-luma-sync-queue'
+} from '#server/utils/application-luma-sync-queue'
 
 type CloudflareContextWithWaitUntil = {
   waitUntil?: (promise: Promise<unknown>) => void

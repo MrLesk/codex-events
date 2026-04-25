@@ -1,11 +1,11 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 
-import type { AppDatabase } from '../database/client'
+import type { AppDatabase } from '#server/database/client'
 import {
   platformDocumentTypes,
   platformDocuments,
   userPlatformDocumentAcceptances
-} from '../database/schema'
+} from '#server/database/schema'
 import { ApiError } from './api-error'
 
 type PlatformDocumentRecord = typeof platformDocuments.$inferSelect

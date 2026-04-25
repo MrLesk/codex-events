@@ -1,18 +1,18 @@
 import { eq } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../../../auth/actor'
-import { writeAuditLog } from '../../../../../../database/audit-log'
-import { userApplications } from '../../../../../../database/schema'
-import { defineApiHandler } from '../../../../../../utils/api-handler'
-import { apiData } from '../../../../../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
+import { userApplications } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   applicationParamsSchema,
   assertApplicationReviewable,
   getUserApplicationWithTermsOrThrow,
   requireHackathonAdminApplicationContext,
   serializeUserApplication
-} from '../../../../../../utils/applications'
-import { parseValidatedParams } from '../../../../../../utils/validation'
+} from '#server/utils/applications'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

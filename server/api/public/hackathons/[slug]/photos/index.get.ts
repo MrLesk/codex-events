@@ -1,12 +1,12 @@
-import { getDatabase } from '../../../../../database/client'
-import { defineApiHandler } from '../../../../../utils/api-handler'
-import { apiList } from '../../../../../utils/api-response'
-import { listPublicHackathonPhotoRecords } from '../../../../../utils/hackathon-photos'
+import { getDatabase } from '#server/database/client'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiList } from '#server/utils/api-response'
+import { listPublicHackathonPhotoRecords } from '#server/utils/hackathon-photos'
 import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema
-} from '../../../../../utils/hackathon-management'
-import { parseValidatedParams } from '../../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { slug } = parseValidatedParams(event, routeSlugParamsSchema)

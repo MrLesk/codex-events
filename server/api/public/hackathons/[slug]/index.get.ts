@@ -1,14 +1,14 @@
-import { getDatabase } from '../../../../database/client'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiData } from '../../../../utils/api-response'
+import { getDatabase } from '#server/database/client'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   getCurrentHackathonTerms,
   listHackathonTracks,
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema,
   serializePublicHackathon
-} from '../../../../utils/hackathon-management'
-import { parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { slug } = parseValidatedParams(event, routeSlugParamsSchema)

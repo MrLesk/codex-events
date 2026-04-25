@@ -1,33 +1,33 @@
 import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { requirePlatformActor } from '../../../../auth/actor'
-import { writeAuditLog } from '../../../../database/audit-log'
-import { getDatabase } from '../../../../database/client'
-import { hackathons, prizeRedemptions, prizes } from '../../../../database/schema'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiData } from '../../../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
+import { getDatabase } from '#server/database/client'
+import { hackathons, prizeRedemptions, prizes } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   enqueueWinnerOutcomeEmails
-} from '../../../../utils/hackathon-outcome-email-queue'
-import { chunkRowsForD1 } from '../../../../utils/judging'
+} from '#server/utils/hackathon-outcome-email-queue'
+import { chunkRowsForD1 } from '#server/utils/judging'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializePrize,
   serializeHackathon
-} from '../../../../utils/hackathon-management'
+} from '#server/utils/hackathon-management'
 import {
   buildPrizeRedemptionRows,
   getCurrentWinnerTermsForHackathon
-} from '../../../../utils/prize-redemptions'
+} from '#server/utils/prize-redemptions'
 import {
   assertWinnersAnnouncementAllowed,
   assertFinalDeliberationReorderMatchesEntries,
   getFinalDeliberationView
-} from '../../../../utils/shortlist'
-import { parseValidatedBody, parseValidatedParams } from '../../../../utils/validation'
-import { assertGuard } from '../../../../utils/lifecycle-guard'
+} from '#server/utils/shortlist'
+import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
+import { assertGuard } from '#server/utils/lifecycle-guard'
 
 type WinnerPrizeSummary = ReturnType<typeof serializePrize>
 type AnnouncedWinner = {

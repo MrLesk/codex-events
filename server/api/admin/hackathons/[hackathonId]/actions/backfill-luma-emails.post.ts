@@ -1,25 +1,25 @@
 import { and, eq, isNotNull, isNull } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../../auth/actor'
-import { assertPlatformAdminAccess } from '../../../../../auth/authorization'
-import { writeAuditLog } from '../../../../../database/audit-log'
-import { getDatabase } from '../../../../../database/client'
+import { requirePlatformActor } from '#server/auth/actor'
+import { assertPlatformAdminAccess } from '#server/auth/authorization'
+import { writeAuditLog } from '#server/database/audit-log'
+import { getDatabase } from '#server/database/client'
 import {
   hackathons,
   userApplications,
   users
-} from '../../../../../database/schema'
-import { defineApiHandler } from '../../../../../utils/api-handler'
-import { apiData } from '../../../../../utils/api-response'
+} from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   resolveApplicationLumaSyncRuntimeConfig,
   resolveLumaEmailFromUsername
-} from '../../../../../utils/application-luma-sync-queue'
-import { isHackathonLumaSyncEnabled } from '../../../../../utils/applications'
-import { ApiError } from '../../../../../utils/api-error'
-import { routeIdParamsSchema } from '../../../../../utils/hackathon-management'
-import { assertGuard } from '../../../../../utils/lifecycle-guard'
-import { parseValidatedParams } from '../../../../../utils/validation'
+} from '#server/utils/application-luma-sync-queue'
+import { isHackathonLumaSyncEnabled } from '#server/utils/applications'
+import { ApiError } from '#server/utils/api-error'
+import { routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { assertGuard } from '#server/utils/lifecycle-guard'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

@@ -1,5 +1,5 @@
-import { defineApiHandler } from '../../../utils/api-handler'
-import { apiData } from '../../../utils/api-response'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   getVisibleHackathonOrThrow,
   getCurrentHackathonTerms,
@@ -7,9 +7,9 @@ import {
   resolveVisibleHackathonRestrictedFields,
   routeIdParamsSchema,
   serializeHackathon
-} from '../../../utils/hackathon-management'
-import { parseValidatedParams } from '../../../utils/validation'
-import { getDatabase } from '../../../database/client'
+} from '#server/utils/hackathon-management'
+import { parseValidatedParams } from '#server/utils/validation'
+import { getDatabase } from '#server/database/client'
 
 function serializeTermsReference(document: NonNullable<Awaited<ReturnType<typeof getCurrentHackathonTerms>>['applicationTerms']>) {
   return {

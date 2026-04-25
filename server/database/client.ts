@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { drizzle } from 'drizzle-orm/d1'
 
 import * as schema from './schema'
-import { ApiError } from '../utils/api-error'
+import { ApiError } from '#server/utils/api-error'
 
 export type D1DatabaseBinding = Parameters<typeof drizzle>[0]
 export type AppDatabase = ReturnType<typeof createDatabase>

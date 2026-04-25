@@ -1,17 +1,17 @@
-import { getDatabase } from '../../../../database/client'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiData } from '../../../../utils/api-response'
+import { getDatabase } from '#server/database/client'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   assertHackathonFeedbackAvailable,
   createHackathonFeedback,
   createHackathonFeedbackBodySchema
-} from '../../../../utils/hackathon-feedback'
+} from '#server/utils/hackathon-feedback'
 import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema
-} from '../../../../utils/hackathon-management'
-import { assertPublicHackathonFeedbackRateLimit } from '../../../../utils/rate-limit'
-import { parseValidatedBody, parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { assertPublicHackathonFeedbackRateLimit } from '#server/utils/rate-limit'
+import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { slug } = parseValidatedParams(event, routeSlugParamsSchema)

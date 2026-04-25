@@ -1,29 +1,29 @@
 import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../../../auth/actor'
-import { writeAuditLog } from '../../../../database/audit-log'
-import { getDatabase } from '../../../../database/client'
-import { hackathons, prizeEligibilitySnapshots, submissions, teamMembers, teams, users } from '../../../../database/schema'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiData } from '../../../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
+import { getDatabase } from '#server/database/client'
+import { hackathons, prizeEligibilitySnapshots, submissions, teamMembers, teams, users } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   buildHackathonOutcomeEmailQueueMessage,
   enqueueHackathonOutcomeEmailMessage
-} from '../../../../utils/hackathon-outcome-email-queue'
-import { hasSavedShortlistSelection } from '../../../../utils/shortlist'
+} from '#server/utils/hackathon-outcome-email-queue'
+import { hasSavedShortlistSelection } from '#server/utils/shortlist'
 import {
   assertStartPitchAllowed,
   buildPrizeEligibilitySnapshots,
   listSubmittedSubmissionsForHackathon,
   listLockedSubmissionsForHackathon,
   selectPitchReviewSubmissions
-} from '../../../../utils/judging'
+} from '#server/utils/judging'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathon
-} from '../../../../utils/hackathon-management'
-import { parseValidatedParams } from '../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { parseValidatedParams } from '#server/utils/validation'
 
 type TeamRecord = typeof teams.$inferSelect
 type TeamMemberRecord = typeof teamMembers.$inferSelect

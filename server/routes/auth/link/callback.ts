@@ -6,7 +6,7 @@ import {
   clearPlatformAccountLinkChallenge,
   completePlatformAccountLinkAuthentication,
   readPlatformAccountLinkChallenge
-} from '../../../utils/platform-account-linking'
+} from '#server/utils/platform-account-linking'
 
 export default defineEventHandler(async (event) => {
   const initialChallenge = await readPlatformAccountLinkChallenge(event)

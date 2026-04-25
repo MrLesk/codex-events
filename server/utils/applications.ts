@@ -7,23 +7,23 @@ import {
   isProofOfExecutionLinksValid,
   normalizeProofOfExecutionLinks
 } from '#proof-of-execution-links'
-import { requirePlatformActor } from '../auth/actor'
+import { requirePlatformActor } from '#server/auth/actor'
 import {
   assertHackathonParticipantVisibilityAccess,
   resolveHackathonAuthorization
-} from '../auth/authorization'
-import { getDatabase, type AppDatabase } from '../database/client'
+} from '#server/auth/authorization'
+import { getDatabase, type AppDatabase } from '#server/database/client'
 import {
   submissions,
   teamMembers,
   teams,
   userApplications,
   users
-} from '../database/schema'
+} from '#server/database/schema'
 import type {
   hackathonTermsDocuments,
   hackathons
-} from '../database/schema'
+} from '#server/database/schema'
 import { ApiError } from './api-error'
 import {
   getCurrentHackathonTerms,

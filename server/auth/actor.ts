@@ -1,21 +1,21 @@
 import type { H3Event } from 'h3'
-import type { users } from '../database/schema'
+import type { users } from '#server/database/schema'
 
-import { getDatabase } from '../database/client'
-import { ApiError } from '../utils/api-error'
+import { getDatabase } from '#server/database/client'
+import { ApiError } from '#server/utils/api-error'
 import {
   ensurePlatformUserAuthIdentities,
   findActivePlatformUserById,
   findPlatformUserByAuth0Subject
-} from '../utils/platform-auth-identities'
+} from '#server/utils/platform-auth-identities'
 import {
   findLinkablePlatformAccountIdentity,
   listPlatformAccountIdentitySubjects,
   serializePlatformAccountLinkState,
   type LinkablePlatformAccountIdentity,
   type PlatformAccountLinkState
-} from '../utils/platform-account-linking'
-import { hasAcceptedCurrentPlatformDocuments } from '../utils/platform-documents'
+} from '#server/utils/platform-account-linking'
+import { hasAcceptedCurrentPlatformDocuments } from '#server/utils/platform-documents'
 
 interface SessionUserProfile {
   sub: string

@@ -2,21 +2,21 @@ import type {
   hackathonCreditCodes,
   hackathonCreditOffers,
   users as usersTable
-} from '../../../../../database/schema'
+} from '#server/database/schema'
 
 import { inArray } from 'drizzle-orm'
 
-import { getDatabase } from '../../../../../database/client'
-import { users } from '../../../../../database/schema'
-import { defineApiHandler } from '../../../../../utils/api-handler'
-import { apiList } from '../../../../../utils/api-response'
-import { requireHackathonAdmin, routeIdParamsSchema } from '../../../../../utils/hackathon-management'
+import { getDatabase } from '#server/database/client'
+import { users } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiList } from '#server/utils/api-response'
+import { requireHackathonAdmin, routeIdParamsSchema } from '#server/utils/hackathon-management'
 import {
   listHackathonCreditCodesByOfferId,
   listHackathonCreditOffers,
   serializeAdminHackathonCreditOffer
-} from '../../../../../utils/hackathon-credits'
-import { parseValidatedParams } from '../../../../../utils/validation'
+} from '#server/utils/hackathon-credits'
+import { parseValidatedParams } from '#server/utils/validation'
 
 type HackathonCreditOfferRecord = typeof hackathonCreditOffers.$inferSelect
 type HackathonCreditCodeRecord = typeof hackathonCreditCodes.$inferSelect

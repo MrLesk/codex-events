@@ -1,10 +1,10 @@
 import { readBody } from 'h3'
 import { eq } from 'drizzle-orm'
 
-import { writeAuditLog } from '../../../../../../../database/audit-log'
-import { judgeAssignments } from '../../../../../../../database/schema'
-import { defineApiHandler } from '../../../../../../../utils/api-handler'
-import { apiData } from '../../../../../../../utils/api-response'
+import { writeAuditLog } from '#server/database/audit-log'
+import { judgeAssignments } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiData } from '#server/utils/api-response'
 import {
   assertAssignmentReviewStageIsActive,
   assertJudgeAssignmentStatus,
@@ -16,8 +16,8 @@ import {
   normalizePitchReviewCompletion,
   requireJudgeAssignmentContext,
   saveJudgeCriterionScores
-} from '../../../../../../../utils/judging'
-import { parseValidatedParams, validateWithSchema } from '../../../../../../../utils/validation'
+} from '#server/utils/judging'
+import { parseValidatedParams, validateWithSchema } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, assignmentId } = parseValidatedParams(event, judgingAssignmentParamsSchema)

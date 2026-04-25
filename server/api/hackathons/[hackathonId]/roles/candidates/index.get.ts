@@ -1,14 +1,14 @@
-import { getDatabase } from '../../../../../database/client'
-import { defineApiHandler } from '../../../../../utils/api-handler'
-import { apiList } from '../../../../../utils/api-response'
+import { getDatabase } from '#server/database/client'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiList } from '#server/utils/api-response'
 import {
   listHackathonRoleCandidates,
   listHackathonRoleCandidatesQuerySchema,
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathonRoleUserSummary
-} from '../../../../../utils/hackathon-management'
-import { parseValidatedParams, parseValidatedQuery } from '../../../../../utils/validation'
+} from '#server/utils/hackathon-management'
+import { parseValidatedParams, parseValidatedQuery } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)

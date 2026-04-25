@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
-import type { AppDatabase } from '../database/client'
+import type { AppDatabase } from '#server/database/client'
 import {
   evaluationCriteria,
   hackathons,
@@ -13,7 +13,7 @@ import {
   teamMembers,
   teams,
   users
-} from '../database/schema'
+} from '#server/database/schema'
 import { ApiError } from './api-error'
 import {
   serializeHackathonPublishedProjectTeamMember,

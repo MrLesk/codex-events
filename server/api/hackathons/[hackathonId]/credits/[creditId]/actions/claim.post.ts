@@ -1,18 +1,18 @@
 import { and, eq } from 'drizzle-orm'
 
-import { writeAuditLog } from '../../../../../../database/audit-log'
-import { getD1Binding } from '../../../../../../database/client'
-import { hackathonCreditCodes } from '../../../../../../database/schema'
-import { defineApiHandler } from '../../../../../../utils/api-handler'
-import { ApiError } from '../../../../../../utils/api-error'
-import { apiData } from '../../../../../../utils/api-response'
+import { writeAuditLog } from '#server/database/audit-log'
+import { getD1Binding } from '#server/database/client'
+import { hackathonCreditCodes } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { ApiError } from '#server/utils/api-error'
+import { apiData } from '#server/utils/api-response'
 import {
   creditParamsSchema,
   isHackathonCreditClaimConflict,
   requireHackathonCreditClaimAccess,
   serializeParticipantHackathonCreditOffer
-} from '../../../../../../utils/hackathon-credits'
-import { parseValidatedParams } from '../../../../../../utils/validation'
+} from '#server/utils/hackathon-credits'
+import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, creditId } = parseValidatedParams(event, creditParamsSchema)
