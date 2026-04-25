@@ -559,6 +559,99 @@ export async function listNoSubmissionTeams(database: AppDatabase, hackathonId: 
     }))
 }
 
+export async function listSubmissionMonitorTeams(database: AppDatabase, hackathonId: string) {
+  const allTeams = await database.query.teams.findMany({
+    where: eq(teams.hackathonId, hackathonId),
+    orderBy: [asc(teams.name), asc(teams.createdAt)]
+  })
+
+  if (allTeams.length === 0) {
+    return {
+      teamDetails: [],
+      teamSubmissions: []
+    }
+  }
+
+  const teamIds = allTeams.map(team => team.id)
+  const allMembers = await database.query.teamMembers.findMany({
+    where: and(
+      inArray(teamMembers.teamId, teamIds),
+      isNull(teamMembers.leftAt)
+    ),
+    orderBy: [asc(teamMembers.createdAt)]
+  })
+  const allSubmissions = await database.query.submissions.findMany({
+    where: inArray(submissions.teamId, teamIds),
+    orderBy: [desc(submissions.createdAt)]
+  })
+  const disqualifiedSubmissionIds = allSubmissions
+    .filter(submission => submission.status === 'disqualified')
+    .map(submission => submission.id)
+  const disqualificationAuditLogs = disqualifiedSubmissionIds.length > 0
+    ? await database.query.auditLogs.findMany({
+        where: and(
+          eq(auditLogs.entityType, 'submission'),
+          inArray(auditLogs.entityId, disqualifiedSubmissionIds),
+          eq(auditLogs.action, 'submission.disqualified')
+        ),
+        orderBy: [desc(auditLogs.createdAt)]
+      })
+    : []
+  const usersById = await getUsersByIds(database, allMembers.map(member => member.userId))
+  const membersByTeamId = new Map<string, Array<typeof allMembers[number]>>()
+  const latestSubmissionByTeamId = new Map<string, SubmissionRecord>()
+  const disqualificationReasonBySubmissionId = new Map<string, string | null>()
+
+  for (const member of allMembers) {
+    const teamEntries = membersByTeamId.get(member.teamId) ?? []
+    teamEntries.push(member)
+    membersByTeamId.set(member.teamId, teamEntries)
+  }
+
+  for (const submission of allSubmissions) {
+    if (!latestSubmissionByTeamId.has(submission.teamId)) {
+      latestSubmissionByTeamId.set(submission.teamId, submission)
+    }
+  }
+
+  for (const auditLog of disqualificationAuditLogs) {
+    if (disqualificationReasonBySubmissionId.has(auditLog.entityId)) {
+      continue
+    }
+
+    disqualificationReasonBySubmissionId.set(
+      auditLog.entityId,
+      normalizeSubmissionAuditReason((auditLog.metadata as { reason?: unknown } | null)?.reason)
+    )
+  }
+
+  return {
+    teamDetails: allTeams.map((team) => {
+      const members = membersByTeamId.get(team.id) ?? []
+
+      return serializeTeam(team, {
+        activeMemberCount: members.length,
+        members: members.map(member =>
+          serializeTeamMember(member, usersById.get(member.userId) ?? null)
+        )
+      })
+    }),
+    teamSubmissions: allTeams.map((team) => {
+      const submission = latestSubmissionByTeamId.get(team.id) ?? null
+
+      if (!submission) {
+        return null
+      }
+
+      return serializeSubmission(submission, {
+        disqualificationReason: submission.status === 'disqualified'
+          ? disqualificationReasonBySubmissionId.get(submission.id) ?? null
+          : null
+      })
+    })
+  }
+}
+
 export async function getTeamSubmissionDetail(database: AppDatabase, hackathonId: string, teamId: string) {
   const team = await getTeamOrThrow(database, hackathonId, teamId)
   const members = await getActiveTeamMembers(database, teamId)

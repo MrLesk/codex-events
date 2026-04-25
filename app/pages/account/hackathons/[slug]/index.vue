@@ -16,6 +16,7 @@ import type {
   ParticipantApplicationRecord
 } from '~/utils/participant-application'
 import type { PublishedProjectEntry, WinnerEntry } from '~/utils/admin-workspace'
+import type { Ref } from 'vue'
 
 import AccountHackathonAdminOperationsPanel from '~/components/account/hackathons/AccountHackathonAdminOperationsPanel.vue'
 import AccountHackathonParticipationRankNotice from '~/components/account/hackathons/AccountHackathonParticipationRankNotice.vue'
@@ -54,6 +55,7 @@ import { getAccountHackathonSeoContent } from '~/utils/account-hackathon-seo'
 import {
   createEmptyPublishedHackathonRosterLoadState,
   loadPublishedHackathonRoster,
+  type PublishedHackathonRosterLoadState,
   type PublishedHackathonRosterMember
 } from '~/utils/hackathon-published-roster'
 import { getHackathonParticipationOutcomeNotice } from '~/utils/hackathon-participation'
@@ -111,6 +113,11 @@ interface AccountHackathonsResponse {
   }
 }
 
+interface RefreshableAsyncRequest {
+  status: Ref<string>
+  refresh: () => Promise<unknown>
+}
+
 type AccountWorkspaceHackathon = Omit<PublicHackathon, 'tracks'> & {
   id: string
   hasGallery?: boolean
@@ -125,6 +132,16 @@ type AccountWorkspaceHackathon = Omit<PublicHackathon, 'tracks'> & {
 
 type AccountPrizeSummary = PublicPrize & {
   id: string
+}
+
+function refreshWhenEnabled(request: RefreshableAsyncRequest, enabled: Ref<boolean>) {
+  watch(enabled, async (isEnabled) => {
+    if (!isEnabled || request.status.value !== 'idle') {
+      return
+    }
+
+    await request.refresh()
+  })
 }
 
 const route = useRoute()
@@ -160,59 +177,14 @@ if (!hackathonResponse.value?.data) {
 }
 
 const requestFetch = import.meta.server ? useRequestFetch() : $fetch
-const shouldPrefetchPublishedJudgesRoster = actor.value.kind === 'platform_user'
-const shouldPrefetchPublishedStaffRoster = actor.value.kind === 'platform_user'
-const shouldPrefetchWinners = hackathonResponse.value.data.state === 'completed'
-const shouldPrefetchParticipationRank = actor.value.kind === 'platform_user'
-  && hackathonResponse.value.data.state === 'completed'
 const [
   prizesResponse,
   accountHackathonsResponse,
-  participationResponse,
-  publishedJudgesRoster,
-  publishedStaffRoster,
-  winnersResponse,
-  publishedProjectsResponse,
-  participationRankResponse
+  participationResponse
 ] = await Promise.all([
   requestFetch<PublicApiListResponse<AccountPrizeSummary>>(`/api/hackathons/${hackathonResponse.value.data.id}/prizes`),
   requestFetch<AccountHackathonsResponse>('/api/account/hackathons'),
-  requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>('/api/hackathons/participation'),
-  shouldPrefetchPublishedJudgesRoster
-    ? loadPublishedHackathonRoster(
-        path => requestFetch<PublicApiListResponse<PublishedHackathonRosterMember>>(path),
-        {
-          hackathonId: hackathonResponse.value.data.id,
-          role: 'judge'
-        }
-      )
-    : Promise.resolve(createEmptyPublishedHackathonRosterLoadState()),
-  shouldPrefetchPublishedStaffRoster
-    ? loadPublishedHackathonRoster(
-        path => requestFetch<PublicApiListResponse<PublishedHackathonRosterMember>>(path),
-        {
-          hackathonId: hackathonResponse.value.data.id,
-          role: 'staff'
-        }
-      )
-    : Promise.resolve(createEmptyPublishedHackathonRosterLoadState()),
-  shouldPrefetchWinners
-    ? requestFetch<PublicApiListResponse<WinnerEntry>>(`/api/hackathons/${hackathonResponse.value.data.id}/winners`)
-    : Promise.resolve({
-      data: []
-    } satisfies PublicApiListResponse<WinnerEntry>),
-  shouldPrefetchWinners
-    ? requestFetch<PublicApiListResponse<PublishedProjectEntry>>(`/api/hackathons/${hackathonResponse.value.data.id}/published-projects`)
-    : Promise.resolve({
-      data: []
-    } satisfies PublicApiListResponse<PublishedProjectEntry>),
-  shouldPrefetchParticipationRank
-    ? requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationRankSummary | null>>(
-        `/api/hackathons/${hackathonResponse.value.data.id}/rank/me`
-      )
-    : Promise.resolve({
-      data: null
-    } satisfies HackathonParticipationApiDataResponse<HackathonParticipationRankSummary | null>)
+  requestFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>('/api/hackathons/participation')
 ])
 const toast = useToast()
 const accountHackathonsData = ref(accountHackathonsResponse.data)
@@ -239,9 +211,6 @@ const workspaceHackathonId = computed(() => resolveAccountHackathonScopedId({
   hackathonId: hackathon.value.id
 }))
 const prizes = computed(() => prizesResponse.data)
-const winners = computed(() => winnersResponse.data)
-const publishedProjects = computed(() => publishedProjectsResponse.data)
-const participationRank = computed(() => participationRankResponse.data)
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 const canJudge = computed(() =>
   actor.value.kind === 'platform_user'
@@ -335,6 +304,139 @@ const visibleTabs = computed(() =>
 const activeSection = computed<AccountHackathonWorkspaceTab>(() =>
   resolveTabQueryValue(route.query.tab, availableTabs.value, 'overview')
 )
+const shouldLoadPublishedJudgesRoster = computed(() =>
+  actor.value.kind === 'platform_user' && activeSection.value === 'judges'
+)
+const shouldLoadPublishedStaffRoster = computed(() =>
+  actor.value.kind === 'platform_user' && activeSection.value === 'staff'
+)
+const shouldLoadCompletedPrizesData = computed(() =>
+  hackathon.value.state === 'completed' && activeSection.value === 'prizes'
+)
+const shouldLoadParticipationRank = computed(() =>
+  actor.value.kind === 'platform_user'
+  && hackathon.value.state === 'completed'
+  && (activeSection.value === 'overview' || activeSection.value === 'workspace')
+)
+const [
+  publishedJudgesRosterRequest,
+  publishedStaffRosterRequest,
+  winnersRequest,
+  publishedProjectsRequest,
+  participationRankRequest
+] = await Promise.all([
+  useApiData<PublishedHackathonRosterLoadState>(
+    () => `account-hackathon-judges:${workspaceHackathonId.value}`,
+    async ({ apiFetch, signal }) => {
+      if (!shouldLoadPublishedJudgesRoster.value) {
+        return createEmptyPublishedHackathonRosterLoadState()
+      }
+
+      return await loadPublishedHackathonRoster(
+        path => apiFetch<PublicApiListResponse<PublishedHackathonRosterMember>>(path, { signal }),
+        {
+          hackathonId: workspaceHackathonId.value,
+          role: 'judge'
+        }
+      )
+    },
+    {
+      default: createEmptyPublishedHackathonRosterLoadState,
+      immediate: shouldLoadPublishedJudgesRoster.value
+    }
+  ),
+  useApiData<PublishedHackathonRosterLoadState>(
+    () => `account-hackathon-staff:${workspaceHackathonId.value}`,
+    async ({ apiFetch, signal }) => {
+      if (!shouldLoadPublishedStaffRoster.value) {
+        return createEmptyPublishedHackathonRosterLoadState()
+      }
+
+      return await loadPublishedHackathonRoster(
+        path => apiFetch<PublicApiListResponse<PublishedHackathonRosterMember>>(path, { signal }),
+        {
+          hackathonId: workspaceHackathonId.value,
+          role: 'staff'
+        }
+      )
+    },
+    {
+      default: createEmptyPublishedHackathonRosterLoadState,
+      immediate: shouldLoadPublishedStaffRoster.value
+    }
+  ),
+  useApiData<WinnerEntry[]>(
+    () => `account-hackathon-winners:${workspaceHackathonId.value}`,
+    async ({ apiFetch, signal }) => {
+      if (!shouldLoadCompletedPrizesData.value) {
+        return []
+      }
+
+      const response = await apiFetch<PublicApiListResponse<WinnerEntry>>(
+        `/api/hackathons/${workspaceHackathonId.value}/winners`,
+        { signal }
+      )
+
+      return response.data
+    },
+    {
+      default: () => [],
+      immediate: shouldLoadCompletedPrizesData.value
+    }
+  ),
+  useApiData<PublishedProjectEntry[]>(
+    () => `account-hackathon-published-projects:${workspaceHackathonId.value}`,
+    async ({ apiFetch, signal }) => {
+      if (!shouldLoadCompletedPrizesData.value) {
+        return []
+      }
+
+      const response = await apiFetch<PublicApiListResponse<PublishedProjectEntry>>(
+        `/api/hackathons/${workspaceHackathonId.value}/published-projects`,
+        { signal }
+      )
+
+      return response.data
+    },
+    {
+      default: () => [],
+      immediate: shouldLoadCompletedPrizesData.value
+    }
+  ),
+  useApiData<HackathonParticipationRankSummary | null>(
+    () => `account-hackathon-participation-rank:${workspaceHackathonId.value}`,
+    async ({ apiFetch, signal }) => {
+      if (!shouldLoadParticipationRank.value) {
+        return null
+      }
+
+      const response = await apiFetch<HackathonParticipationApiDataResponse<HackathonParticipationRankSummary | null>>(
+        `/api/hackathons/${workspaceHackathonId.value}/rank/me`,
+        { signal }
+      )
+
+      return response.data
+    },
+    {
+      default: () => null,
+      immediate: shouldLoadParticipationRank.value
+    }
+  )
+])
+refreshWhenEnabled(publishedJudgesRosterRequest, shouldLoadPublishedJudgesRoster)
+refreshWhenEnabled(publishedStaffRosterRequest, shouldLoadPublishedStaffRoster)
+refreshWhenEnabled(winnersRequest, shouldLoadCompletedPrizesData)
+refreshWhenEnabled(publishedProjectsRequest, shouldLoadCompletedPrizesData)
+refreshWhenEnabled(participationRankRequest, shouldLoadParticipationRank)
+const publishedJudgesRoster = computed(() =>
+  publishedJudgesRosterRequest.data.value ?? createEmptyPublishedHackathonRosterLoadState()
+)
+const publishedStaffRoster = computed(() =>
+  publishedStaffRosterRequest.data.value ?? createEmptyPublishedHackathonRosterLoadState()
+)
+const winners = computed(() => winnersRequest.data.value ?? [])
+const publishedProjects = computed(() => publishedProjectsRequest.data.value ?? [])
+const participationRank = computed(() => participationRankRequest.data.value ?? null)
 const accountTabListRef = ref<HTMLElement | null>(null)
 const selectedTeamSlug = computed(() => normalizeTeamSlugQueryValue(route.query.team))
 const selectedJudgeAssignmentId = computed(() => normalizeJudgeAssignmentIdQueryValue(route.query.assignment))

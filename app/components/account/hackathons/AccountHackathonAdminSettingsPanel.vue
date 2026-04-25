@@ -86,7 +86,19 @@ if (!hackathonResponse.value?.data) {
 }
 
 const hackathonId = computed(() => hackathonResponse.value!.data.id)
-const workspace = useAdminHackathonWorkspace(hackathonId)
+const showSettingsOverview = computed(() => props.showProgramSettings && props.programSettingsMode === 'settings')
+const workspace = useAdminHackathonWorkspace(hackathonId, {
+  loadCriteria: computed(() => props.showCriteriaConfiguration),
+  loadPrizes: computed(() => props.showPrizeConfiguration),
+  loadApplicationTermsVersions: computed(() => props.showTermsManagement),
+  loadWinnerTermsVersions: computed(() => props.showTermsManagement),
+  loadRoleAssignments: showSettingsOverview,
+  loadApplications: false,
+  loadTeams: false,
+  loadNoSubmissionTeams: false,
+  loadAssignments: false,
+  loadLeaderboard: false
+})
 
 const isSavingConfig = ref(false)
 const isSavingCriteria = ref(false)
@@ -126,7 +138,6 @@ const currentHackathon = computed(() => workspace.currentHackathon.value)
 const actor = computed(() => workspace.actor.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
 const programSettingsCopy = computed(() => getHackathonProgramSettingsCopy(props.programSettingsMode))
-const showSettingsOverview = computed(() => props.showProgramSettings && props.programSettingsMode === 'settings')
 const criteria = computed(() => workspace.criteria.data.value?.data ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])

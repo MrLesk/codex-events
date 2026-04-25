@@ -11,6 +11,7 @@ import withdrawSubmissionHandler from '../../../../server/api/hackathons/[hackat
 import adminWithdrawSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/actions/admin-withdraw.post'
 import disqualifySubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/actions/disqualify.post'
 import listNoSubmissionTeamsHandler from '../../../../server/api/hackathons/[hackathonId]/no-submission-teams/index.get'
+import getSubmissionMonitorHandler from '../../../../server/api/hackathons/[hackathonId]/teams/submission-monitor.get'
 import {
   auditLogs,
   hackathonRoleAssignments,
@@ -72,6 +73,11 @@ function createRoutes() {
       method: 'get' as const,
       path: '/api/hackathons/:hackathonId/no-submission-teams',
       handler: listNoSubmissionTeamsHandler
+    },
+    {
+      method: 'get' as const,
+      path: '/api/hackathons/:hackathonId/teams/submission-monitor',
+      handler: getSubmissionMonitorHandler
     }
   ]
 }
@@ -1114,6 +1120,76 @@ describe('TASK-3.7 submission routes', () => {
           }
         }
       ]
+    })
+  })
+
+  test('submission monitor returns team details and latest submissions in one admin request', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedSubmissionContext(harness)
+
+    await harness.database.insert(submissions).values({
+      id: 'submission_current',
+      teamId: 'team_1',
+      status: 'submitted',
+      projectName: 'Alpha Submitted',
+      summary: 'Submitted summary',
+      repositoryUrl: null,
+      demoUrl: null,
+      submittedAt: '2026-03-24T13:00:00.000Z',
+      lockedAt: null,
+      withdrawnAt: null,
+      disqualifiedAt: null,
+      createdAt: '2026-03-24T13:00:00.000Z',
+      updatedAt: '2026-03-24T13:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/hackathons/hackathon_1/teams/submission-monitor')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        teamDetails: [
+          {
+            id: 'team_1',
+            activeMemberCount: 2,
+            members: [
+              {
+                userId: 'team_admin',
+                role: 'admin'
+              },
+              {
+                userId: 'team_member',
+                role: 'member'
+              }
+            ]
+          },
+          {
+            id: 'team_2',
+            activeMemberCount: 1,
+            members: [
+              {
+                userId: 'other_team_admin',
+                role: 'admin'
+              }
+            ]
+          }
+        ],
+        teamSubmissions: [
+          {
+            id: 'submission_current',
+            teamId: 'team_1',
+            status: 'submitted'
+          },
+          null
+        ]
+      }
     })
   })
 })

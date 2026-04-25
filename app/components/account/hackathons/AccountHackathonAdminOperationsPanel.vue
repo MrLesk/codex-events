@@ -31,8 +31,6 @@ import {
   getHackathonOperationsPhase,
   formatHackathonState,
   getHackathonStateColor,
-  shouldLoadAdminSubmissionMonitor,
-  shouldRefreshAdminSubmissionMonitor,
   shouldShowApprovedParticipantAttendanceSummary,
   sortAdminOperationalTeamsForSubmissionDashboard,
   normalizeApiError
@@ -96,7 +94,21 @@ if (!hackathonResponse.value?.data) {
 }
 
 const hackathonId = computed(() => hackathonResponse.value!.data.id)
-const workspace = useAdminHackathonWorkspace(hackathonId)
+const showParticipantsSection = computed(() => section.value === 'participants')
+const showSubmissionsSection = computed(() => section.value === 'submissions')
+const showLifecycleSection = computed(() => section.value === 'operations')
+const workspace = useAdminHackathonWorkspace(hackathonId, {
+  loadCriteria: false,
+  loadPrizes: showLifecycleSection,
+  loadApplicationTermsVersions: false,
+  loadWinnerTermsVersions: false,
+  loadRoleAssignments: showLifecycleSection,
+  loadApplications: false,
+  loadTeams: showLifecycleSection,
+  loadNoSubmissionTeams: showLifecycleSection,
+  loadAssignments: showLifecycleSection,
+  loadLeaderboard: showLifecycleSection
+})
 const apiFetch = import.meta.server ? useRequestFetch() : $fetch
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type ApplyStagedApplicationDecisionsResponse = ApiDataResponse<{
@@ -124,9 +136,6 @@ type PitchLineupEntry = {
 
 const mutationError = ref('')
 const pendingActionKey = ref<string | null>(null)
-const showParticipantsSection = computed(() => section.value === 'participants')
-const showSubmissionsSection = computed(() => section.value === 'submissions')
-const showLifecycleSection = computed(() => section.value === 'operations')
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
@@ -157,22 +166,10 @@ const redemptionsStatus = ref<LoadStatus>('idle')
 const redemptionsErrorMessage = ref('')
 const submissionSearchInput = ref('')
 const submissionStatusFilter = ref<AdminSubmissionDashboardFilter>('all')
-const initializedHackathonId = ref<string | null>(null)
 const noSubmissionTeams = computed(() => workspace.noSubmissionTeams.data.value?.data ?? [])
 const noSubmissionStatus = computed<LoadStatus>(() => normalizeAsyncStatus(workspace.noSubmissionTeams.status.value))
-const noSubmissionErrorMessage = computed(() =>
-  workspace.noSubmissionTeams.error.value?.message ?? ''
-)
-const teamIdsKey = computed(() => allTeams.value.map(team => team.id).join(':'))
 const teamDataStatus = computed(() => normalizeAsyncStatus(workspace.teams.status.value))
-const submissionMonitorReady = computed(() =>
-  shouldLoadAdminSubmissionMonitor({
-    isSubmissionsSection: showSubmissionsSection.value,
-    canManage: canManage.value,
-    teamDataStatus: teamDataStatus.value,
-    teamCount: allTeams.value.length
-  })
-)
+const submissionMonitorReady = computed(() => showSubmissionsSection.value && canManage.value)
 const submissionMonitorCacheState = computed(() =>
   submissionMonitorReady.value ? 'ready' : 'blocked'
 )
@@ -185,8 +182,7 @@ const {
   () => [
     'admin-hackathon-submission-monitor',
     hackathonId.value,
-    submissionMonitorCacheState.value,
-    teamIdsKey.value
+    submissionMonitorCacheState.value
   ].join(':'),
   async () => {
     if (!submissionMonitorReady.value) {
@@ -196,34 +192,19 @@ const {
       }
     }
 
-    const [teamDetails, teamSubmissions] = await Promise.all([
-      Promise.all(allTeams.value.map(async (team) => {
-        const response = await apiFetch<ApiDataResponse<AdminTeamDetailRecord>>(
-          `/api/hackathons/${hackathonId.value}/teams/${team.id}`
-        )
+    const response = await apiFetch<ApiDataResponse<SubmissionMonitorData>>(
+      `/api/hackathons/${hackathonId.value}/teams/submission-monitor`
+    )
 
-        return response.data
-      })),
-      Promise.all(allTeams.value.map(async (team) => {
-        const response = await apiFetch<ApiDataResponse<SubmissionRecord | null>>(
-          `/api/hackathons/${hackathonId.value}/teams/${team.id}/submission`
-        )
-
-        return response.data
-      }))
-    ])
-
-    return {
-      teamDetails,
-      teamSubmissions
-    }
+    return response.data
   },
   {
-    watch: [hackathonId, teamIdsKey, submissionMonitorCacheState],
+    watch: [hackathonId, submissionMonitorCacheState],
     default: () => ({
       teamDetails: [],
       teamSubmissions: []
-    })
+    }),
+    immediate: submissionMonitorReady.value
   }
 )
 
@@ -233,6 +214,13 @@ function toSectionErrorMessage(error: unknown, fallback: string) {
 }
 
 async function loadApplications() {
+  if (!canLoadApplications.value) {
+    applications.value = []
+    applicationsStatus.value = 'idle'
+    applicationsErrorMessage.value = ''
+    return
+  }
+
   applicationsStatus.value = 'pending'
   applicationsErrorMessage.value = ''
 
@@ -330,22 +318,14 @@ const roleAssignmentsDataStatus = computed(() => normalizeAsyncStatus(workspace.
 watch(
   [
     submissionMonitorReady,
-    submissionMonitorLoadStatus,
-    teamIdsKey,
-    submissionMonitorData
+    submissionMonitorLoadStatus
   ],
-  async ([ready, status, _teamIds, monitorData]) => {
+  async ([ready, status]) => {
     if (import.meta.server) {
       return
     }
 
-    if (!shouldRefreshAdminSubmissionMonitor({
-      isReady: ready,
-      submissionMonitorStatus: status,
-      teamCount: allTeams.value.length,
-      teamDetailsCount: monitorData?.teamDetails.length ?? 0,
-      teamSubmissionsCount: monitorData?.teamSubmissions.length ?? 0
-    })) {
+    if (!ready || status !== 'idle') {
       return
     }
 
@@ -357,10 +337,9 @@ watch(
 )
 
 const submissionOperationalTeams = computed<AdminOperationalTeam[]>(() =>
-  buildAdminOperationalTeams(allTeams.value, {
+  buildAdminOperationalTeams(submissionMonitorData.value?.teamDetails ?? [], {
     teamDetails: submissionMonitorData.value?.teamDetails ?? [],
-    submissions: submissionMonitorData.value?.teamSubmissions ?? [],
-    noSubmissionEntries: noSubmissionTeams.value
+    submissions: submissionMonitorData.value?.teamSubmissions ?? []
   })
 )
 const activeSubmissionOperationalTeams = computed<AdminOperationalTeam[]>(() =>
@@ -379,7 +358,7 @@ const submissionDashboardMetrics = computed(() =>
   getAdminSubmissionDashboardMetrics(activeSubmissionOperationalTeams.value)
 )
 const submissionPanelStatus = computed(() =>
-  combineLoadStatuses([teamDataStatus.value, noSubmissionStatus.value, submissionMonitorLoadStatus.value])
+  submissionMonitorLoadStatus.value
 )
 const submissionMonitorErrorMessage = computed(() => {
   if (!submissionMonitorError.value) {
@@ -392,9 +371,7 @@ const submissionMonitorErrorMessage = computed(() => {
   )
 })
 const submissionPanelErrorMessage = computed(() =>
-  workspace.teams.error.value?.message
-  || noSubmissionErrorMessage.value
-  || submissionMonitorErrorMessage.value
+  submissionMonitorErrorMessage.value
 )
 const operationsPhase = computed(() =>
   currentHackathon.value ? getHackathonOperationsPhase(currentHackathon.value.state) : null
@@ -410,6 +387,9 @@ const assignmentsErrorMessage = computed(() => {
     'Assignment oversight data could not be loaded right now.'
   )
 })
+const canLoadApplications = computed(() =>
+  Boolean(canManage.value && (showParticipantsSection.value || showLifecycleSection.value))
+)
 const canLoadShortlist = computed(() =>
   Boolean(
     showLifecycleSection.value
@@ -517,22 +497,25 @@ function stopPitchReviewAutoRefresh() {
   }
 }
 
-watch([() => currentHackathon.value?.id, canManage], async ([id, allowed]) => {
+watch([
+  () => currentHackathon.value?.id,
+  canManage,
+  canLoadApplications,
+  canLoadShortlist,
+  canLoadFinalDeliberation,
+  canLoadWinners,
+  canLoadPrizeRedemptions
+], async ([id, allowed]) => {
   if (!id || !allowed) {
     return
   }
 
-  if (initializedHackathonId.value === id) {
-    return
-  }
-
-  initializedHackathonId.value = id
   await Promise.all([
-    loadApplications(),
-    loadShortlist(),
-    loadFinalDeliberation(),
-    loadWinners(),
-    loadPrizeRedemptions()
+    canLoadApplications.value && applicationsStatus.value === 'idle' ? loadApplications() : Promise.resolve(),
+    canLoadShortlist.value && shortlistStatus.value === 'idle' ? loadShortlist() : Promise.resolve(),
+    canLoadFinalDeliberation.value && finalDeliberationStatus.value === 'idle' ? loadFinalDeliberation() : Promise.resolve(),
+    canLoadWinners.value && winnersStatus.value === 'idle' ? loadWinners() : Promise.resolve(),
+    canLoadPrizeRedemptions.value && redemptionsStatus.value === 'idle' ? loadPrizeRedemptions() : Promise.resolve()
   ])
 }, {
   immediate: true
