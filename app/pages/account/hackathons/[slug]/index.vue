@@ -18,26 +18,28 @@ import type {
 import type { PublishedProjectEntry, WinnerEntry } from '~/utils/admin-workspace'
 import type { Ref } from 'vue'
 
-import AccountHackathonAdminOperationsPanel from '~/components/account/hackathons/AccountHackathonAdminOperationsPanel.vue'
+import {
+  LazyAccountHackathonsAccountHackathonAdminOperationsPanel as LazyAccountHackathonAdminOperationsPanel,
+  LazyAccountHackathonsAccountHackathonAdminSettingsPanel as LazyAccountHackathonAdminSettingsPanel,
+  LazyAccountHackathonsAccountHackathonCreditsPanel as LazyAccountHackathonCreditsPanel,
+  LazyAccountHackathonsAccountHackathonFeedbackPanel as LazyAccountHackathonFeedbackPanel,
+  LazyAccountHackathonsAccountHackathonGalleryPanel as LazyAccountHackathonGalleryPanel,
+  LazyAccountHackathonsAccountHackathonJudgePanel as LazyAccountHackathonJudgePanel,
+  LazyAccountHackathonsAccountHackathonParticipantTeamPanel as LazyAccountHackathonParticipantTeamPanel,
+  LazyAccountHackathonsAccountHackathonParticipantVisibilityPanel as LazyAccountHackathonParticipantVisibilityPanel,
+  LazyAccountHackathonsAccountHackathonParticipantWorkspacePanel as LazyAccountHackathonParticipantWorkspacePanel,
+  LazyAccountHackathonsAccountHackathonPublishedRosterPanel as LazyAccountHackathonPublishedRosterPanel,
+  LazyAccountHackathonsAccountHackathonRoleRosterPanel as LazyAccountHackathonRoleRosterPanel,
+  LazyPublicHackathonsHackathonAgendaPanel as LazyHackathonAgendaPanel,
+  LazyPublicHackathonsHackathonPrizeList as LazyHackathonPrizeList,
+  LazyPublicHackathonsHackathonPublishedProjectsShowcase as LazyHackathonPublishedProjectsShowcase,
+  LazyPublicHackathonsHackathonTimeline as LazyHackathonTimeline,
+  LazyPublicHackathonsHackathonTracksPanel as LazyHackathonTracksPanel,
+  LazyPublicHackathonsHackathonWinnersShowcase as LazyHackathonWinnersShowcase
+} from '#components'
 import AccountHackathonParticipationRankNotice from '~/components/account/hackathons/AccountHackathonParticipationRankNotice.vue'
-import AccountHackathonPublishedRosterPanel from '~/components/account/hackathons/AccountHackathonPublishedRosterPanel.vue'
-import AccountHackathonParticipantWorkspacePanel from '~/components/account/hackathons/AccountHackathonParticipantWorkspacePanel.vue'
-import AccountHackathonParticipantTeamPanel from '~/components/account/hackathons/AccountHackathonParticipantTeamPanel.vue'
-import AccountHackathonAdminSettingsPanel from '~/components/account/hackathons/AccountHackathonAdminSettingsPanel.vue'
-import AccountHackathonCreditsPanel from '~/components/account/hackathons/AccountHackathonCreditsPanel.vue'
-import AccountHackathonFeedbackPanel from '~/components/account/hackathons/AccountHackathonFeedbackPanel.vue'
-import AccountHackathonJudgePanel from '~/components/account/hackathons/AccountHackathonJudgePanel.vue'
-import AccountHackathonGalleryPanel from '~/components/account/hackathons/AccountHackathonGalleryPanel.vue'
-import AccountHackathonParticipantVisibilityPanel from '~/components/account/hackathons/AccountHackathonParticipantVisibilityPanel.vue'
-import AccountHackathonRoleRosterPanel from '~/components/account/hackathons/AccountHackathonRoleRosterPanel.vue'
-import HackathonAgendaPanel from '~/components/public/hackathons/HackathonAgendaPanel.vue'
 import HackathonOverviewPanel from '~/components/public/hackathons/HackathonOverviewPanel.vue'
-import HackathonPublishedProjectsShowcase from '~/components/public/hackathons/HackathonPublishedProjectsShowcase.vue'
-import HackathonPrizeList from '~/components/public/hackathons/HackathonPrizeList.vue'
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
-import HackathonTracksPanel from '~/components/public/hackathons/HackathonTracksPanel.vue'
-import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
-import HackathonWinnersShowcase from '~/components/public/hackathons/HackathonWinnersShowcase.vue'
 import {
   hasHackathonAdminAccess,
   hasHackathonJudgingAccess,
@@ -1027,7 +1029,7 @@ useSeoMeta({
         aria-labelledby="account-tab-credits"
         class="space-y-8"
       >
-        <AccountHackathonCreditsPanel
+        <LazyAccountHackathonCreditsPanel
           :hackathon-id="hackathon.id"
           :can-manage="canAdmin"
           :can-claim="canClaimCredits"
@@ -1041,7 +1043,7 @@ useSeoMeta({
         aria-labelledby="account-tab-workspace"
         class="space-y-8"
       >
-        <AccountHackathonParticipantWorkspacePanel
+        <LazyAccountHackathonParticipantWorkspacePanel
           :hackathon="hackathon"
           :application-status="applicationStatus"
           :initial-submission="participationRecord?.latestSubmission ?? null"
@@ -1058,20 +1060,20 @@ useSeoMeta({
         class="space-y-8"
       >
         <template v-if="hackathon.state === 'completed'">
-          <HackathonWinnersShowcase :winners="winners" />
+          <LazyHackathonWinnersShowcase :winners="winners" />
 
-          <HackathonPublishedProjectsShowcase
+          <LazyHackathonPublishedProjectsShowcase
             v-if="publishedProjects.length > 0"
             :projects="publishedProjects"
           />
         </template>
 
-        <HackathonPrizeList
+        <LazyHackathonPrizeList
           v-else
           :prizes="prizes"
         />
 
-        <AccountHackathonAdminSettingsPanel
+        <LazyAccountHackathonAdminSettingsPanel
           v-if="tabAccess.showPrizeConfiguration"
           :slug="slug"
           :show-program-settings="false"
@@ -1088,17 +1090,17 @@ useSeoMeta({
         aria-labelledby="account-tab-details"
         class="space-y-7"
       >
-        <HackathonTimeline
+        <LazyHackathonTimeline
           :hackathon="hackathon"
           :discord-server-url="hackathon.discordServerUrl ?? null"
           :show-address="canViewRestrictedHackathonDetails"
         />
 
-        <HackathonTracksPanel :tracks="hackathon.tracks ?? []" />
+        <LazyHackathonTracksPanel :tracks="hackathon.tracks ?? []" />
 
-        <HackathonAgendaPanel :agenda-items="hackathon.agendaItems" />
+        <LazyHackathonAgendaPanel :agenda-items="hackathon.agendaItems" />
 
-        <AccountHackathonAdminSettingsPanel
+        <LazyAccountHackathonAdminSettingsPanel
           v-if="tabAccess.showAgendaConfigurationInDetails"
           :slug="slug"
           program-settings-mode="details"
@@ -1115,7 +1117,7 @@ useSeoMeta({
         aria-labelledby="account-tab-gallery"
         class="space-y-8"
       >
-        <AccountHackathonGalleryPanel
+        <LazyAccountHackathonGalleryPanel
           :hackathon-id="workspaceHackathonId"
           :can-manage="canAdmin || canJudge || canViewParticipantsAndTeams"
         />
@@ -1128,7 +1130,7 @@ useSeoMeta({
         aria-labelledby="account-tab-judges"
         class="space-y-8"
       >
-        <AccountHackathonPublishedRosterPanel
+        <LazyAccountHackathonPublishedRosterPanel
           :hackathon-id="workspaceHackathonId"
           :roster="publishedJudgesRoster"
           role="judge"
@@ -1145,7 +1147,7 @@ useSeoMeta({
         aria-labelledby="account-tab-staff"
         class="space-y-8"
       >
-        <AccountHackathonPublishedRosterPanel
+        <LazyAccountHackathonPublishedRosterPanel
           :hackathon-id="workspaceHackathonId"
           :roster="publishedStaffRoster"
           role="staff"
@@ -1154,7 +1156,7 @@ useSeoMeta({
           :management-hackathon-id="canAdmin ? workspaceHackathonId : null"
         />
 
-        <AccountHackathonRoleRosterPanel
+        <LazyAccountHackathonRoleRosterPanel
           v-if="canAdmin"
           :hackathon-id="workspaceHackathonId"
           role="admin"
@@ -1171,7 +1173,7 @@ useSeoMeta({
         aria-labelledby="account-tab-feedback"
         class="space-y-8"
       >
-        <AccountHackathonFeedbackPanel
+        <LazyAccountHackathonFeedbackPanel
           :hackathon-id="workspaceHackathonId"
           :hackathon-state="hackathon.state"
         />
@@ -1183,7 +1185,7 @@ useSeoMeta({
         role="tabpanel"
         aria-labelledby="account-tab-judging"
       >
-        <AccountHackathonJudgePanel
+        <LazyAccountHackathonJudgePanel
           :hackathon-id="workspaceHackathonId"
           :slug="slug"
           :selected-assignment-id="selectedJudgeAssignmentId"
@@ -1197,13 +1199,13 @@ useSeoMeta({
         aria-labelledby="account-tab-participants"
         class="space-y-8"
       >
-        <AccountHackathonAdminOperationsPanel
+        <LazyAccountHackathonAdminOperationsPanel
           v-if="canAdmin"
           :slug="slug"
           section="participants"
         />
 
-        <AccountHackathonParticipantVisibilityPanel
+        <LazyAccountHackathonParticipantVisibilityPanel
           v-else-if="canViewParticipantsAndTeams"
           :hackathon-id="workspaceHackathonId"
         />
@@ -1216,7 +1218,7 @@ useSeoMeta({
         aria-labelledby="account-tab-teams"
         class="space-y-8"
       >
-        <AccountHackathonParticipantTeamPanel
+        <LazyAccountHackathonParticipantTeamPanel
           :hackathon="hackathon"
           :selected-team-slug="selectedTeamSlug"
           :show-operational-team-states="canViewParticipantsAndTeams || canAdmin"
@@ -1230,7 +1232,7 @@ useSeoMeta({
         aria-labelledby="account-tab-submissions"
         class="space-y-8"
       >
-        <AccountHackathonAdminOperationsPanel
+        <LazyAccountHackathonAdminOperationsPanel
           :slug="slug"
           section="submissions"
         />
@@ -1243,7 +1245,7 @@ useSeoMeta({
         aria-labelledby="account-tab-operations"
         class="space-y-8"
       >
-        <AccountHackathonAdminOperationsPanel
+        <LazyAccountHackathonAdminOperationsPanel
           :slug="slug"
           section="operations"
         />
@@ -1255,7 +1257,7 @@ useSeoMeta({
         role="tabpanel"
         aria-labelledby="account-tab-settings"
       >
-        <AccountHackathonAdminSettingsPanel
+        <LazyAccountHackathonAdminSettingsPanel
           :slug="slug"
           program-settings-mode="settings"
           :show-terms-management="true"

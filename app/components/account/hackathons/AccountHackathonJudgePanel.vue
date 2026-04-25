@@ -2,8 +2,10 @@
 import type { HackathonRecord } from '~/utils/admin-workspace'
 import type { JudgeInboxGroup } from '~/utils/judging-workspace'
 
-import JudgeAssignmentInboxCard from '~/components/judging/JudgeAssignmentInboxCard.vue'
-import JudgeAssignmentWorkspacePanel from '~/components/judging/JudgeAssignmentWorkspacePanel.vue'
+import {
+  LazyJudgingJudgeAssignmentInboxCard as LazyJudgeAssignmentInboxCard,
+  LazyJudgingJudgeAssignmentWorkspacePanel as LazyJudgeAssignmentWorkspacePanel
+} from '#components'
 import { buildAccountHackathonJudgingTabHref } from '~/utils/judging-query'
 import { filterExplicitJudgeHackathons } from '~/utils/judging-workspace'
 
@@ -137,7 +139,7 @@ async function refreshWorkspace() {
     />
 
     <template v-else>
-      <JudgeAssignmentWorkspacePanel
+      <LazyJudgeAssignmentWorkspacePanel
         v-if="selectedAssignmentId && currentHackathon"
         :hackathon-id="currentHackathon.id"
         :hackathon-slug="currentHackathon.slug"
@@ -217,7 +219,7 @@ async function refreshWorkspace() {
           v-else
           class="grid gap-4"
         >
-          <JudgeAssignmentInboxCard
+          <LazyJudgeAssignmentInboxCard
             v-for="assignment in assignments"
             :key="assignment.id"
             :assignment="assignment"

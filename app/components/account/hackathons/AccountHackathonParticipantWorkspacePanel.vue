@@ -10,9 +10,11 @@ import type {
 } from '~/utils/team-submission'
 import type { TeamActionAvailability } from '~/utils/team-workspace'
 
-import AccountHackathonParticipationRankNotice from '~/components/account/hackathons/AccountHackathonParticipationRankNotice.vue'
-import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSubmissionPanel.vue'
-import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWorkspacePanel.vue'
+import {
+  LazyAccountHackathonsAccountHackathonParticipationRankNotice as LazyAccountHackathonParticipationRankNotice,
+  LazyTeamsParticipantTeamSubmissionPanel as LazyParticipantTeamSubmissionPanel,
+  LazyTeamsParticipantTeamWorkspacePanel as LazyParticipantTeamWorkspacePanel
+} from '#components'
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import { cloneFormValues } from '~/utils/form-values'
 import { teamProfileFormSchema } from '~/utils/form-schemas'
@@ -634,14 +636,14 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
           :description="workspaceOutcomeNotice.description"
         />
 
-        <AccountHackathonParticipationRankNotice
+        <LazyAccountHackathonParticipationRankNotice
           :hackathon-state="props.hackathon.state"
           :team-name="displayedTeam?.name ?? null"
           :rank-summary="props.participationRank"
         />
 
         <template v-if="displayedTeam">
-          <ParticipantTeamWorkspacePanel
+          <LazyParticipantTeamWorkspacePanel
             v-model:settings="teamSettings"
             :team="displayedTeam"
             :hackathon-state="props.hackathon.state"
@@ -848,7 +850,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
             class="rounded-xl"
           />
 
-          <ParticipantTeamSubmissionPanel
+          <LazyParticipantTeamSubmissionPanel
             v-else-if="canViewSubmission && displayedTeam"
             v-model:form="submissionForm"
             :team-id="displayedTeam.id"

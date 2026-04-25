@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import Sortable, { type SortableEvent } from 'sortablejs'
+import type Sortable from 'sortablejs'
+import type { SortableEvent } from 'sortablejs'
 
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 
@@ -24,14 +25,17 @@ const emit = defineEmits<{
 }>()
 
 type ShortlistSectionKey = 'finalists' | 'not-finalists'
+type SortableInstance = Sortable
+type SortableConstructor = typeof Sortable
 
 const draftFinalistSubmissionIds = ref<string[]>([])
 const draftNotFinalistSubmissionIds = ref<string[]>([])
 const activeDragSubmissionId = ref<string | null>(null)
 const finalistListElement = ref<HTMLElement | null>(null)
 const notFinalistListElement = ref<HTMLElement | null>(null)
-let finalistSortable: Sortable | null = null
-let notFinalistSortable: Sortable | null = null
+let finalistSortable: SortableInstance | null = null
+let notFinalistSortable: SortableInstance | null = null
+let sortableConstructor: SortableConstructor | null = null
 
 watch(() => props.shortlist, (entries) => {
   draftFinalistSubmissionIds.value = entries
@@ -278,7 +282,16 @@ function destroySortables() {
   activeDragSubmissionId.value = null
 }
 
-function createSectionSortable(element: HTMLElement) {
+async function loadSortableConstructor() {
+  if (!sortableConstructor) {
+    const module = await import('sortablejs')
+    sortableConstructor = module.default
+  }
+
+  return sortableConstructor
+}
+
+function createSectionSortable(Sortable: SortableConstructor, element: HTMLElement) {
   return Sortable.create(element, {
     animation: 180,
     group: 'admin-shortlist',
@@ -295,7 +308,7 @@ function createSectionSortable(element: HTMLElement) {
   })
 }
 
-function initializeSortables() {
+async function initializeSortables() {
   if (
     !import.meta.client
     || !canManageShortlist.value
@@ -307,14 +320,26 @@ function initializeSortables() {
     return
   }
 
+  const Sortable = await loadSortableConstructor()
+
+  if (
+    !canManageShortlist.value
+    || props.pendingActionKey !== null
+    || !finalistListElement.value
+    || !notFinalistListElement.value
+  ) {
+    destroySortables()
+    return
+  }
+
   destroySortables()
-  finalistSortable = createSectionSortable(finalistListElement.value)
-  notFinalistSortable = createSectionSortable(notFinalistListElement.value)
+  finalistSortable = createSectionSortable(Sortable, finalistListElement.value)
+  notFinalistSortable = createSectionSortable(Sortable, notFinalistListElement.value)
 }
 
 watch([draftStateKey, canManageShortlist, () => props.pendingActionKey], async () => {
   await nextTick()
-  initializeSortables()
+  await initializeSortables()
 }, {
   immediate: true,
   flush: 'post'

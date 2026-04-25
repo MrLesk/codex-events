@@ -627,7 +627,7 @@ async function copyCreditValue(value: string) {
               </div>
 
               <div class="space-y-4">
-                <AdminMarkdownEditorField
+                <LazyAdminMarkdownEditorField
                   v-model="getEditState(offer).description"
                   :name="`credit-offer-details-${offer.id}`"
                   :editor-id="`credit-offer-details-${offer.id}`"
@@ -840,7 +840,7 @@ async function copyCreditValue(value: string) {
             />
           </AppFormField>
 
-          <AdminMarkdownEditorField
+          <LazyAdminMarkdownEditorField
             v-model="createForm.description"
             name="credit-offer-details-editor"
             editor-id="credit-offer-details-editor"

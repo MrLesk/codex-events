@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import Sortable from 'sortablejs'
+import type Sortable from 'sortablejs'
+
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
-import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
 
 import type {
   ApiDataResponse,
@@ -53,6 +53,8 @@ type PrizeEditState = Pick<PrizeDefinition, 'name' | 'description' | 'rewardType
 type EditablePrizeRow = PrizeDefinition & {
   isLocalDraft?: boolean
 }
+type SortableInstance = Sortable
+type SortableConstructor = typeof Sortable
 
 const toast = useToast()
 const slug = computed(() => props.slug.trim())
@@ -131,8 +133,9 @@ const applicationTermsDraft = ref('')
 const winnerTermsDraft = ref('')
 const lastSyncedApplicationTermsContent = ref('')
 const lastSyncedWinnerTermsContent = ref('')
-let criteriaSortable: Sortable | null = null
-let prizeSortable: Sortable | null = null
+let criteriaSortable: SortableInstance | null = null
+let prizeSortable: SortableInstance | null = null
+let sortableConstructor: SortableConstructor | null = null
 
 const currentHackathon = computed(() => workspace.currentHackathon.value)
 const actor = computed(() => workspace.actor.value)
@@ -394,8 +397,24 @@ function movePrize(prizeId: string, direction: -1 | 1) {
   applyPrizeOrderFromList(moveItemByDirection(orderedPrizes.value, prizeId, direction))
 }
 
-function initializeCriteriaSortable() {
+async function loadSortableConstructor() {
+  if (!sortableConstructor) {
+    const module = await import('sortablejs')
+    sortableConstructor = module.default
+  }
+
+  return sortableConstructor
+}
+
+async function initializeCriteriaSortable() {
   if (!import.meta.client || !props.showCriteriaConfiguration || !criteriaListElement.value) {
+    destroyCriteriaSortable()
+    return
+  }
+
+  const Sortable = await loadSortableConstructor()
+
+  if (!props.showCriteriaConfiguration || !criteriaListElement.value) {
     destroyCriteriaSortable()
     return
   }
@@ -440,8 +459,15 @@ function destroyPrizeSortable() {
   prizeDropTargetId.value = null
 }
 
-function initializePrizeSortable() {
+async function initializePrizeSortable() {
   if (!import.meta.client || !props.showPrizeConfiguration || !prizeListElement.value) {
+    destroyPrizeSortable()
+    return
+  }
+
+  const Sortable = await loadSortableConstructor()
+
+  if (!props.showPrizeConfiguration || !prizeListElement.value) {
     destroyPrizeSortable()
     return
   }
@@ -501,7 +527,7 @@ watch(prizes, (items) => {
 
 watch([orderedCriteria, () => props.showCriteriaConfiguration], async () => {
   await nextTick()
-  initializeCriteriaSortable()
+  await initializeCriteriaSortable()
 }, {
   immediate: true,
   flush: 'post'
@@ -509,7 +535,7 @@ watch([orderedCriteria, () => props.showCriteriaConfiguration], async () => {
 
 watch([orderedPrizes, () => props.showPrizeConfiguration], async () => {
   await nextTick()
-  initializePrizeSortable()
+  await initializePrizeSortable()
 }, {
   immediate: true,
   flush: 'post'
@@ -1135,7 +1161,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
         v-if="props.showProgramSettings"
         class="space-y-6"
       >
-        <AdminHackathonCreateEditForm
+        <LazyAdminHackathonCreateEditForm
           :initial-hackathon="currentHackathon"
           :can-upload-managed-images="true"
           :is-submitting="isSavingConfig"
@@ -1177,7 +1203,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
               </div>
 
               <div class="space-y-4">
-                <AdminMarkdownEditorField
+                <LazyAdminMarkdownEditorField
                   v-model="applicationTermsDraft"
                   name="application-terms-editor"
                   editor-id="application-terms-editor"
@@ -1212,7 +1238,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
               </div>
 
               <div class="space-y-4">
-                <AdminMarkdownEditorField
+                <LazyAdminMarkdownEditorField
                   v-model="winnerTermsDraft"
                   name="winner-terms-editor"
                   editor-id="winner-terms-editor"

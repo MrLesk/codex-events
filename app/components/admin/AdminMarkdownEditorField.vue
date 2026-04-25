@@ -30,7 +30,7 @@ function updateFallbackValue(event: Event) {
     :description="props.description"
   >
     <ClientOnly>
-      <AdminMarkdownEditorClient
+      <LazyAdminMarkdownEditorClient
         v-model="model"
         :editor-id="props.editorId"
         :placeholder="props.placeholder"

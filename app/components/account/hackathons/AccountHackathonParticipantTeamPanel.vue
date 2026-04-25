@@ -5,8 +5,10 @@ import type {
   TeamDirectoryEntry
 } from '~/utils/team-workspace'
 
-import ParticipantTeamDirectoryPanel from '~/components/teams/ParticipantTeamDirectoryPanel.vue'
-import ParticipantTeamWorkspacePanel from '~/components/teams/ParticipantTeamWorkspacePanel.vue'
+import {
+  LazyTeamsParticipantTeamDirectoryPanel as LazyParticipantTeamDirectoryPanel,
+  LazyTeamsParticipantTeamWorkspacePanel as LazyParticipantTeamWorkspacePanel
+} from '#components'
 import {
   buildAbsoluteAccountHackathonTeamsTabHref,
   buildAccountHackathonTeamsTabHref,
@@ -470,7 +472,7 @@ async function copySelectedTeamLink() {
             Back to teams
           </NuxtLink>
 
-          <ParticipantTeamWorkspacePanel
+          <LazyParticipantTeamWorkspacePanel
             :settings="{
               name: selectedSharedTeam.name,
               bio: selectedSharedTeam.bio ?? '',
@@ -493,7 +495,7 @@ async function copySelectedTeamLink() {
           />
         </div>
 
-        <ParticipantTeamDirectoryPanel
+        <LazyParticipantTeamDirectoryPanel
           v-else
           v-model:directory-filter="directoryFilter"
           :teams="visibleDirectoryEntries"

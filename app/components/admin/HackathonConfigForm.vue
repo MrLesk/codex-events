@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import Sortable from 'sortablejs'
+import type Sortable from 'sortablejs'
+
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
-import AdminMarkdownEditorField from '~/components/admin/AdminMarkdownEditorField.vue'
 
 import type { HackathonFormState } from '~/utils/admin-workspace'
 import type { HackathonProgramSettingsMode } from '~/utils/hackathon-program-settings'
@@ -33,6 +33,8 @@ const emit = defineEmits<{
 
 type AgendaFormItem = HackathonFormState['agendaItems'][number]
 type TrackFormItem = HackathonFormState['tracks'][number]
+type SortableInstance = Sortable
+type SortableConstructor = typeof Sortable
 
 const props = defineProps<{
   isSubmitting?: boolean
@@ -71,8 +73,9 @@ const agendaListElement = ref<HTMLElement | null>(null)
 const activeTrackDragId = ref<string | null>(null)
 const trackDropTargetId = ref<string | null>(null)
 const trackListElement = ref<HTMLElement | null>(null)
-let agendaSortable: Sortable | null = null
-let trackSortable: Sortable | null = null
+let agendaSortable: SortableInstance | null = null
+let trackSortable: SortableInstance | null = null
+let sortableConstructor: SortableConstructor | null = null
 
 const managedBackgroundImageUrl = computed(() => form.value.backgroundImageUrl.trim())
 const managedBannerImageUrl = computed(() => form.value.bannerImageUrl.trim())
@@ -250,8 +253,24 @@ function destroyTrackSortable() {
   trackDropTargetId.value = null
 }
 
-function initializeAgendaSortable() {
+async function loadSortableConstructor() {
+  if (!sortableConstructor) {
+    const module = await import('sortablejs')
+    sortableConstructor = module.default
+  }
+
+  return sortableConstructor
+}
+
+async function initializeAgendaSortable() {
   if (!import.meta.client || !showAgendaItemsSection.value || !agendaListElement.value || form.value.agendaItems.length === 0) {
+    destroyAgendaSortable()
+    return
+  }
+
+  const Sortable = await loadSortableConstructor()
+
+  if (!showAgendaItemsSection.value || !agendaListElement.value || form.value.agendaItems.length === 0) {
     destroyAgendaSortable()
     return
   }
@@ -289,8 +308,15 @@ function initializeAgendaSortable() {
   })
 }
 
-function initializeTrackSortable() {
+async function initializeTrackSortable() {
   if (!import.meta.client || !showTracksSection.value || !trackListElement.value || form.value.tracks.length === 0) {
+    destroyTrackSortable()
+    return
+  }
+
+  const Sortable = await loadSortableConstructor()
+
+  if (!showTracksSection.value || !trackListElement.value || form.value.tracks.length === 0) {
     destroyTrackSortable()
     return
   }
@@ -408,7 +434,7 @@ const tracksOrderKey = computed(() => form.value.tracks.map(track => track.id).j
 
 watch([agendaItemsOrderKey, showAgendaItemsSection], async () => {
   await nextTick()
-  initializeAgendaSortable()
+  await initializeAgendaSortable()
 }, {
   immediate: true,
   flush: 'post'
@@ -416,7 +442,7 @@ watch([agendaItemsOrderKey, showAgendaItemsSection], async () => {
 
 watch([tracksOrderKey, showTracksSection], async () => {
   await nextTick()
-  initializeTrackSortable()
+  await initializeTrackSortable()
 }, {
   immediate: true,
   flush: 'post'
@@ -505,7 +531,7 @@ const submitConfigForm = handleSubmit(() => {
               <span class="text-xs text-muted">Use the Luma API ID, not the public URL.</span>
             </label>
 
-            <AdminMarkdownEditorField
+            <LazyAdminMarkdownEditorField
               v-model="form.description"
               name="hackathon-description-editor"
               editor-id="hackathon-description-editor"

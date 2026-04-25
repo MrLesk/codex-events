@@ -21,6 +21,9 @@ import type {
 } from '~/utils/prize-redemptions'
 
 import {
+  LazyAccountHackathonsAccountHackathonParticipantsPanel as LazyAccountHackathonParticipantsPanel
+} from '#components'
+import {
   buildAdminOperationalTeams,
   buildPitchReviewCoverageEntries,
   countActiveAdminOperationalTeams,
@@ -35,7 +38,6 @@ import {
   sortAdminOperationalTeamsForSubmissionDashboard,
   normalizeApiError
 } from '~/utils/admin-workspace'
-import AccountHackathonParticipantsPanel from '~/components/account/hackathons/AccountHackathonParticipantsPanel.vue'
 import { formatTimestamp } from '~/utils/date-formatting'
 
 type AccountHackathonAdminOperationsSection = 'participants' | 'submissions' | 'operations'
@@ -2071,7 +2073,7 @@ async function runLifecycleAction() {
           </div>
         </div>
 
-        <AdminCompetitionShortlistPanel
+        <LazyAdminCompetitionShortlistPanel
           v-if="canLoadShortlist"
           :hackathon-state="currentHackathon.state"
           :shortlist="shortlistEntries"
@@ -2146,7 +2148,7 @@ async function runLifecycleAction() {
           </div>
         </AppCard>
 
-        <AdminCompetitionAssignmentsPanel
+        <LazyAdminCompetitionAssignmentsPanel
           v-if="showAssignmentsPanel"
           :hackathon-state="currentHackathon.state"
           :assignments="assignments"
@@ -2350,7 +2352,7 @@ async function runLifecycleAction() {
           </div>
         </AppCard>
 
-        <AdminCompetitionFinalDeliberationPanel
+        <LazyAdminCompetitionFinalDeliberationPanel
           v-if="showFinalDeliberationPanel"
           :hackathon="currentHackathon"
           :entries="finalDeliberation?.entries ?? []"
@@ -2362,7 +2364,7 @@ async function runLifecycleAction() {
           @reorder="reorderFinalDeliberation"
         />
 
-        <AdminCompetitionPrizeRedemptionsPanel
+        <LazyAdminCompetitionPrizeRedemptionsPanel
           v-if="showPrizeRedemptionsPanel"
           :hackathon-state="currentHackathon.state"
           :winners="winners"
@@ -2380,7 +2382,7 @@ async function runLifecycleAction() {
         v-if="showParticipantsSection"
         class="space-y-4"
       >
-        <AccountHackathonParticipantsPanel
+        <LazyAccountHackathonParticipantsPanel
           :hackathon-id="hackathonId"
           :applications="applications"
           :is-loading="applicationsStatus === 'pending'"
@@ -2400,7 +2402,7 @@ async function runLifecycleAction() {
         v-if="showSubmissionsSection"
         class="space-y-6"
       >
-        <AdminSubmissionInterventionsPanel
+        <LazyAdminSubmissionInterventionsPanel
           :hackathon-state="currentHackathon.state"
           :teams="sortedSubmissionTeams"
           :is-loading="submissionPanelStatus === 'pending'"
@@ -2409,7 +2411,7 @@ async function runLifecycleAction() {
           @disqualify="disqualifySubmission"
         />
 
-        <AdminTeamsOperationsPanel
+        <LazyAdminTeamsOperationsPanel
           v-model:search="submissionSearchInput"
           v-model:filter="submissionStatusFilter"
           :hackathon-state="currentHackathon.state"

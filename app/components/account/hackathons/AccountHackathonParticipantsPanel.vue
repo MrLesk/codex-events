@@ -228,7 +228,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
       </div>
     </div>
 
-    <AdminApplicationsReviewPanel
+    <LazyAdminApplicationsReviewPanel
       :hackathon-id="hackathonId"
       :applications="applications"
       :view="participantView"

@@ -7,9 +7,11 @@ import type {
 } from '~/utils/admin-workspace'
 
 import {
+  LazyAccountHackathonsAccountHackathonParticipantsPanel as LazyAccountHackathonParticipantsPanel
+} from '#components'
+import {
   shouldShowApprovedParticipantAttendanceSummary
 } from '~/utils/admin-workspace'
-import AccountHackathonParticipantsPanel from '~/components/account/hackathons/AccountHackathonParticipantsPanel.vue'
 
 const props = defineProps<{
   hackathonId: string
@@ -43,7 +45,7 @@ const showAttendance = computed(() =>
 </script>
 
 <template>
-  <AccountHackathonParticipantsPanel
+  <LazyAccountHackathonParticipantsPanel
     :hackathon-id="props.hackathonId"
     :applications="applications"
     :is-loading="status === 'pending'"

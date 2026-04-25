@@ -5,7 +5,9 @@ import type {
   TeamSubmissionRecord
 } from '~/utils/team-submission'
 
-import ParticipantTeamSubmissionPanel from '~/components/teams/ParticipantTeamSubmissionPanel.vue'
+import {
+  LazyTeamsParticipantTeamSubmissionPanel as LazyParticipantTeamSubmissionPanel
+} from '#components'
 import { formatTimestamp } from '~/utils/date-formatting'
 import {
   getCreateTeamAvailability,
@@ -412,7 +414,7 @@ async function withdrawSubmission() {
           class="rounded-xl"
         />
 
-        <ParticipantTeamSubmissionPanel
+        <LazyParticipantTeamSubmissionPanel
           v-else-if="displayedTeam && canViewSubmission"
           v-model:form="submissionForm"
           :team-id="displayedTeam.id"

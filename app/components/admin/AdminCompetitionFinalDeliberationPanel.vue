@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import Sortable, { type SortableEvent } from 'sortablejs'
+import type Sortable from 'sortablejs'
+import type { SortableEvent } from 'sortablejs'
 
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 
@@ -27,7 +28,11 @@ const emit = defineEmits<{
 const draftOrderedSubmissionIds = ref<string[]>([])
 const rankedListElement = ref<HTMLElement | null>(null)
 const activeDragSubmissionId = ref<string | null>(null)
-let rankedSortable: Sortable | null = null
+type SortableInstance = Sortable
+type SortableConstructor = typeof Sortable
+
+let rankedSortable: SortableInstance | null = null
+let sortableConstructor: SortableConstructor | null = null
 
 const rankedEntries = computed(() =>
   props.entries.filter((entry): entry is FinalDeliberationEntry & { finalRank: number, scoreTotal: number } =>
@@ -153,10 +158,30 @@ function destroySortable() {
   activeDragSubmissionId.value = null
 }
 
-function initializeSortable() {
+async function loadSortableConstructor() {
+  if (!sortableConstructor) {
+    const module = await import('sortablejs')
+    sortableConstructor = module.default
+  }
+
+  return sortableConstructor
+}
+
+async function initializeSortable() {
   if (
     !import.meta.client
     || props.pendingActionKey !== null
+    || !rankedListElement.value
+    || orderedRankedEntries.value.length === 0
+  ) {
+    destroySortable()
+    return
+  }
+
+  const Sortable = await loadSortableConstructor()
+
+  if (
+    props.pendingActionKey !== null
     || !rankedListElement.value
     || orderedRankedEntries.value.length === 0
   ) {
@@ -182,7 +207,7 @@ function initializeSortable() {
 
 watch([draftStateKey, () => props.pendingActionKey], async () => {
   await nextTick()
-  initializeSortable()
+  await initializeSortable()
 }, {
   immediate: true,
   flush: 'post'
