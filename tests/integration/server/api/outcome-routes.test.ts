@@ -2564,13 +2564,33 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         status: 'pending',
         createdAt: '2026-03-18T12:01:00.000Z',
         updatedAt: '2026-03-18T12:01:00.000Z'
+      },
+      {
+        id: 'redemption_other_team',
+        prizeId: 'prize_team_rank_1',
+        userId: null,
+        teamId: 'team_2',
+        status: 'pending',
+        createdAt: '2026-03-18T12:02:00.000Z',
+        updatedAt: '2026-03-18T12:02:00.000Z'
+      },
+      {
+        id: 'redemption_already_redeemed',
+        prizeId: 'prize_member_top_2',
+        userId: 'team_admin_one',
+        teamId: 'team_1',
+        status: 'redeemed',
+        redeemedAt: '2026-03-18T12:03:00.000Z',
+        createdAt: '2026-03-18T12:03:00.000Z',
+        updatedAt: '2026-03-18T12:03:00.000Z'
       }
     ])
 
     const listResponse = await harness.request('/api/prize-redemptions/me')
 
     expect(listResponse.status).toBe(200)
-    expect(await listResponse.json()).toMatchObject({
+    const listPayload = await listResponse.json()
+    expect(listPayload).toMatchObject({
       data: [
         expect.objectContaining({
           id: 'redemption_team_scope'
@@ -2580,6 +2600,11 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         })
       ]
     })
+    expect(listPayload.data).toHaveLength(2)
+    expect(listPayload.data.map((entry: { id: string }) => entry.id)).toEqual([
+      'redemption_team_scope',
+      'redemption_member_scope'
+    ])
 
     const redeemResponse = await harness.request('/api/prize-redemptions/redemption_team_scope/actions/redeem', {
       method: 'POST',
@@ -2797,17 +2822,17 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
 
     await seedOutcomeHackathon(hackathonHarness, { state: 'winners_announced' })
     await hackathonHarness.database.insert(auditLogs).values([
-      {
-        id: 'audit_hackathon_scope',
-        actorUserId: 'hackathon_admin',
-        entityType: 'hackathon',
-        entityId: 'hackathon_1',
+      ...Array.from({ length: 205 }, (_, index) => ({
+        id: `audit_hackathon_scope_${index}`,
+        actorUserId: index % 2 === 0 ? 'hackathon_admin' : 'platform_admin',
+        entityType: index % 2 === 0 ? 'hackathon' as const : 'account',
+        entityId: index % 2 === 0 ? 'hackathon_1' : `user_${index}`,
         action: 'hackathon.announce_winners',
         metadata: {
           hackathonId: 'hackathon_1'
         },
-        createdAt: '2026-03-18T13:00:00.000Z'
-      },
+        createdAt: new Date(Date.UTC(2026, 2, 18, 13, 0, index)).toISOString()
+      })),
       {
         id: 'audit_platform_scope',
         actorUserId: 'platform_admin',
@@ -2815,20 +2840,20 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         entityId: 'user_123',
         action: 'account.deleted',
         metadata: {},
-        createdAt: '2026-03-18T13:05:00.000Z'
+        createdAt: '2026-03-18T14:00:00.000Z'
       }
     ])
 
     const hackathonAuditResponse = await hackathonHarness.request('/api/hackathons/hackathon_1/audit')
 
     expect(hackathonAuditResponse.status).toBe(200)
-    expect(await hackathonAuditResponse.json()).toMatchObject({
-      data: [
-        expect.objectContaining({
-          id: 'audit_hackathon_scope'
-        })
-      ]
-    })
+    const hackathonAuditPayload = await hackathonAuditResponse.json()
+    expect(hackathonAuditPayload.data).toHaveLength(200)
+    expect(hackathonAuditPayload.data[0]).toMatchObject({ id: 'audit_hackathon_scope_204' })
+    expect(hackathonAuditPayload.data.at(-1)).toMatchObject({ id: 'audit_hackathon_scope_5' })
+    expect(hackathonAuditPayload.data).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'audit_platform_scope' })])
+    )
 
     const platformHarness = createApiRouteTestHarness({
       routes: [
@@ -2845,38 +2870,25 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
     harnesses.push(platformHarness)
     await seedOutcomeHackathon(platformHarness, { state: 'winners_announced' })
-    await platformHarness.database.insert(auditLogs).values([
-      {
-        id: 'audit_hackathon_scope',
-        actorUserId: 'hackathon_admin',
-        entityType: 'hackathon',
-        entityId: 'hackathon_1',
-        action: 'hackathon.announce_winners',
-        metadata: {
-          hackathonId: 'hackathon_1'
-        },
-        createdAt: '2026-03-18T13:00:00.000Z'
-      },
-      {
-        id: 'audit_platform_scope',
-        actorUserId: 'platform_admin',
-        entityType: 'account',
-        entityId: 'user_123',
-        action: 'account.deleted',
-        metadata: {},
-        createdAt: '2026-03-18T13:05:00.000Z'
-      }
-    ])
+    await platformHarness.database.insert(auditLogs).values(
+      Array.from({ length: 205 }, (_, index) => ({
+        id: `platform_audit_scope_${index}`,
+        actorUserId: index % 2 === 0 ? 'platform_admin' : 'hackathon_admin',
+        entityType: index % 2 === 0 ? 'account' : 'hackathon',
+        entityId: index % 2 === 0 ? `user_${index}` : 'hackathon_1',
+        action: index % 2 === 0 ? 'account.deleted' : 'hackathon.announce_winners',
+        metadata: index % 2 === 0 ? {} : { hackathonId: 'hackathon_1' },
+        createdAt: new Date(Date.UTC(2026, 2, 18, 13, 0, index)).toISOString()
+      }))
+    )
 
     const platformAuditResponse = await platformHarness.request('/api/audit')
 
     expect(platformAuditResponse.status).toBe(200)
-    expect(await platformAuditResponse.json()).toMatchObject({
-      data: expect.arrayContaining([
-        expect.objectContaining({ id: 'audit_hackathon_scope' }),
-        expect.objectContaining({ id: 'audit_platform_scope' })
-      ])
-    })
+    const platformAuditPayload = await platformAuditResponse.json()
+    expect(platformAuditPayload.data).toHaveLength(200)
+    expect(platformAuditPayload.data[0]).toMatchObject({ id: 'platform_audit_scope_204' })
+    expect(platformAuditPayload.data.at(-1)).toMatchObject({ id: 'platform_audit_scope_5' })
   })
 
   test('hackathons can be completed only after winners are announced', async () => {

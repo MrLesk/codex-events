@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, or } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '../auth/actor'
@@ -228,23 +228,32 @@ export async function listOwnPendingPrizeRedemptions(event: H3Event) {
       isNull(teamMembers.leftAt)
     )
   })
-  const teamAdminTeamIds = new Set(teamAdminMemberships.map((membership: TeamMemberRecord) => membership.teamId))
+  const teamAdminTeamIds = teamAdminMemberships.map(
+    (membership: TeamMemberRecord) => membership.teamId as string
+  )
+  const visibilityClauses = [eq(prizeRedemptions.userId, actor.platformUser.id)]
+
+  if (teamAdminTeamIds.length > 0) {
+    visibilityClauses.push(and(
+      isNull(prizeRedemptions.userId),
+      inArray(prizeRedemptions.teamId, teamAdminTeamIds)
+    )!)
+  }
+
   const redemptions = await database.query.prizeRedemptions.findMany({
-    where: eq(prizeRedemptions.status, 'pending'),
+    where: and(
+      eq(prizeRedemptions.status, 'pending'),
+      or(...visibilityClauses)
+    ),
     orderBy: [asc(prizeRedemptions.createdAt)]
   })
 
-  const visibleRedemptions = redemptions.filter((redemption: PrizeRedemptionRecord) =>
-    redemption.userId === actor.platformUser.id
-    || (redemption.userId === null && redemption.teamId !== null && teamAdminTeamIds.has(redemption.teamId))
-  )
-
-  if (visibleRedemptions.length === 0) {
+  if (redemptions.length === 0) {
     return []
   }
 
   const prizeList = await database.query.prizes.findMany({
-    where: inArray(prizes.id, visibleRedemptions.map((redemption: PrizeRedemptionRecord) => redemption.prizeId))
+    where: inArray(prizes.id, redemptions.map((redemption: PrizeRedemptionRecord) => redemption.prizeId))
   })
   const hackathonsById = new Map<string, HackathonRecord>()
 
@@ -258,7 +267,7 @@ export async function listOwnPendingPrizeRedemptions(event: H3Event) {
     prizeList.map((prize: PrizeRecord) => [prize.id, prize] as const)
   )
 
-  return visibleRedemptions.map((redemption: PrizeRedemptionRecord) => serializePrizeRedemption(
+  return redemptions.map((redemption: PrizeRedemptionRecord) => serializePrizeRedemption(
     redemption,
     prizesById.get(redemption.prizeId)!,
     hackathonsById.get(prizesById.get(redemption.prizeId)!.hackathonId)!

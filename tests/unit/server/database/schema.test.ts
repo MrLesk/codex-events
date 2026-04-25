@@ -12,6 +12,8 @@ import {
   hackathonTracks,
   hackathons,
   judgeAssignments,
+  prizeEligibilitySnapshots,
+  prizeRedemptions,
   prizes,
   submissions,
   teamJoinRequests,
@@ -48,6 +50,8 @@ describe('shared schema foundation', () => {
     const assignmentIndexes = getTableConfig(judgeAssignments).indexes.map(index => index.config.name)
     const creditOfferIndexes = getTableConfig(hackathonCreditOffers).indexes.map(index => index.config.name)
     const creditCodeIndexes = getTableConfig(hackathonCreditCodes).indexes.map(index => index.config.name)
+    const prizeEligibilitySnapshotIndexes = getTableConfig(prizeEligibilitySnapshots).indexes.map(index => index.config.name)
+    const prizeRedemptionIndexes = getTableConfig(prizeRedemptions).indexes.map(index => index.config.name)
 
     expect(userIndexes).toContain('users_auth0_subject_active_idx')
     expect(userIndexes).toContain('users_email_active_idx')
@@ -66,6 +70,10 @@ describe('shared schema foundation', () => {
     expect(creditOfferIndexes).toContain('hackathon_credit_offers_hackathon_display_order_idx')
     expect(creditCodeIndexes).toContain('hackathon_credit_codes_offer_claim_state_idx')
     expect(creditCodeIndexes).toContain('hackathon_credit_codes_offer_claimed_user_idx')
+    expect(prizeEligibilitySnapshotIndexes).toContain('prize_eligibility_snapshots_hackathon_user_team_idx')
+    expect(prizeEligibilitySnapshotIndexes).toContain('prize_eligibility_snapshots_hackathon_team_user_idx')
+    expect(prizeRedemptionIndexes).toContain('prize_redemptions_pending_user_created_idx')
+    expect(prizeRedemptionIndexes).toContain('prize_redemptions_pending_team_created_idx')
   })
 
   it('defines schedule and entity checks on shared tables', () => {
@@ -144,5 +152,8 @@ describe('shared schema foundation', () => {
     expect(photoChecks).toContain('hackathon_photos_width_check')
     expect(photoChecks).toContain('hackathon_photos_height_check')
     expect(auditIndexes).toContain('audit_logs_entity_idx')
+    expect(auditIndexes).toContain('audit_logs_created_idx')
+    expect(auditIndexes).toContain('audit_logs_entity_created_idx')
+    expect(auditIndexes).toContain('audit_logs_metadata_hackathon_created_idx')
   })
 })

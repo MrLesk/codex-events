@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, eq, inArray, isNull, like, or } from 'drizzle-orm'
+import { and, asc, count, eq, getTableColumns, inArray, isNull, like, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '../auth/actor'
@@ -424,73 +424,76 @@ export async function listVisibleTeams(
       like(teams.slug, `%${query.search}%`)
     )!)
   }
-
-  const allTeams = await database.query.teams.findMany({
-    where: and(...filters),
-    orderBy: [asc(teams.name), asc(teams.createdAt)]
-  })
-
-  const allMembers = allTeams.length > 0
-    ? await database.query.teamMembers.findMany({
-        where: and(
-          inArray(teamMembers.teamId, allTeams.map(team => team.id)),
-          isNull(teamMembers.leftAt)
-        )
-      })
-    : []
-
-  const counts = new Map<string, number>()
-
-  for (const member of allMembers) {
-    counts.set(member.teamId, (counts.get(member.teamId) ?? 0) + 1)
-  }
-
   const includeInactiveTeams = options?.includeInactiveTeams ?? false
-  const activeTeams = includeInactiveTeams
-    ? allTeams
-    : allTeams.filter(team => (counts.get(team.id) ?? 0) > 0)
-  const filterCounts: VisibleTeamDirectoryFilterCounts = {
-    all: activeTeams.length,
-    open_to_join: activeTeams.filter(team =>
-      team.isOpenToJoinRequests && (counts.get(team.id) ?? 0) < hackathon.maxTeamMembers
-    ).length,
-    solo: activeTeams.filter(team => team.workspaceMode === 'solo').length,
-    multi_person: activeTeams.filter(team => team.workspaceMode === 'team').length,
-    full: activeTeams.filter(team => (counts.get(team.id) ?? 0) >= hackathon.maxTeamMembers).length
-  }
-  let filteredTeams = activeTeams
-
-  if (query.workspace_mode) {
-    filteredTeams = filteredTeams.filter(team => team.workspaceMode === query.workspace_mode)
-  }
-
-  if (typeof query.open_to_join === 'boolean') {
-    filteredTeams = filteredTeams.filter(team => team.isOpenToJoinRequests === query.open_to_join)
-  }
-
-  if (typeof query.has_capacity === 'boolean') {
-    filteredTeams = filteredTeams.filter((team) => {
-      const hasCapacity = (counts.get(team.id) ?? 0) < hackathon.maxTeamMembers
-      return query.has_capacity ? hasCapacity : !hasCapacity
+  const baseWhere = and(...filters)
+  const activeMemberCounts = database
+    .select({
+      teamId: teamMembers.teamId,
+      activeMemberCount: count(teamMembers.id).as('active_member_count')
     })
-  }
+    .from(teamMembers)
+    .where(isNull(teamMembers.leftAt))
+    .groupBy(teamMembers.teamId)
+    .as('active_member_counts')
+  const activeMemberCountSql = sql<number>`coalesce(${activeMemberCounts.activeMemberCount}, 0)`
+  const activeVisibilityWhere = includeInactiveTeams ? undefined : sql`${activeMemberCountSql} > 0`
+  const filteredWhere = and(
+    baseWhere,
+    activeVisibilityWhere,
+    query.workspace_mode ? eq(teams.workspaceMode, query.workspace_mode) : undefined,
+    typeof query.open_to_join === 'boolean' ? eq(teams.isOpenToJoinRequests, query.open_to_join) : undefined,
+    typeof query.has_capacity === 'boolean'
+      ? (query.has_capacity
+          ? sql`${activeMemberCountSql} < ${hackathon.maxTeamMembers}`
+          : sql`${activeMemberCountSql} >= ${hackathon.maxTeamMembers}`)
+      : undefined,
+    query.member_count === 'multi_person' ? sql`${activeMemberCountSql} > 1` : undefined,
+    query.member_count === 'full' ? sql`${activeMemberCountSql} >= ${hackathon.maxTeamMembers}` : undefined
+  )
 
-  if (query.member_count === 'multi_person') {
-    filteredTeams = filteredTeams.filter(team => (counts.get(team.id) ?? 0) > 1)
-  }
+  const pagedTeams = await database
+    .select({
+      ...getTableColumns(teams),
+      activeMemberCount: activeMemberCountSql.as('active_member_count')
+    })
+    .from(teams)
+    .leftJoin(activeMemberCounts, eq(teams.id, activeMemberCounts.teamId))
+    .where(filteredWhere)
+    .orderBy(asc(teams.name), asc(teams.createdAt))
+    .limit(query.page_size)
+    .offset((query.page - 1) * query.page_size)
 
-  if (query.member_count === 'full') {
-    filteredTeams = filteredTeams.filter(team => (counts.get(team.id) ?? 0) >= hackathon.maxTeamMembers)
-  }
+  const totalRows = await database
+    .select({ total: count() })
+    .from(teams)
+    .leftJoin(activeMemberCounts, eq(teams.id, activeMemberCounts.teamId))
+    .where(filteredWhere)
 
-  const start = (query.page - 1) * query.page_size
-  const pagedTeams = filteredTeams.slice(start, start + query.page_size)
+  const [filterCountRow] = await database
+    .select({
+      all: count(),
+      open_to_join: sql<number>`coalesce(sum(case when ${teams.isOpenToJoinRequests} = 1 and ${activeMemberCountSql} < ${hackathon.maxTeamMembers} then 1 else 0 end), 0)`,
+      solo: sql<number>`coalesce(sum(case when ${teams.workspaceMode} = 'solo' then 1 else 0 end), 0)`,
+      multi_person: sql<number>`coalesce(sum(case when ${teams.workspaceMode} = 'team' then 1 else 0 end), 0)`,
+      full: sql<number>`coalesce(sum(case when ${activeMemberCountSql} >= ${hackathon.maxTeamMembers} then 1 else 0 end), 0)`
+    })
+    .from(teams)
+    .leftJoin(activeMemberCounts, eq(teams.id, activeMemberCounts.teamId))
+    .where(and(baseWhere, activeVisibilityWhere))
+
+  const filterCounts: VisibleTeamDirectoryFilterCounts = {
+    all: filterCountRow?.all ?? 0,
+    open_to_join: filterCountRow?.open_to_join ?? 0,
+    solo: filterCountRow?.solo ?? 0,
+    multi_person: filterCountRow?.multi_person ?? 0,
+    full: filterCountRow?.full ?? 0
+  }
 
   return {
     data: pagedTeams.map(team => serializeTeam(team, {
-      activeMemberCount: counts.get(team.id) ?? 0
+      activeMemberCount: team.activeMemberCount
     })),
-    total: filteredTeams.length,
+    total: totalRows[0]?.total ?? 0,
     filterCounts
   }
 }

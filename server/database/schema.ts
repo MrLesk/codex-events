@@ -742,6 +742,11 @@ export const prizeEligibilitySnapshots = sqliteTable(
     createdAt: createdAtColumn()
   },
   table => [
+    index('prize_eligibility_snapshots_hackathon_user_team_idx').on(
+      table.hackathonId,
+      table.userId,
+      table.teamId
+    ),
     uniqueIndex('prize_eligibility_snapshots_hackathon_team_user_idx').on(
       table.hackathonId,
       table.teamId,
@@ -766,7 +771,15 @@ export const prizeRedemptions = sqliteTable(
     redeemedAt: text('redeemed_at'),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()
-  }
+  },
+  table => [
+    index('prize_redemptions_pending_user_created_idx')
+      .on(table.userId, table.createdAt)
+      .where(sql`${table.status} = 'pending' and ${table.userId} is not null`),
+    index('prize_redemptions_pending_team_created_idx')
+      .on(table.teamId, table.createdAt)
+      .where(sql`${table.status} = 'pending' and ${table.teamId} is not null and ${table.userId} is null`)
+  ]
 )
 
 export const auditLogs = sqliteTable(
@@ -785,7 +798,13 @@ export const auditLogs = sqliteTable(
   },
   table => [
     index('audit_logs_entity_idx').on(table.entityType, table.entityId),
-    index('audit_logs_actor_idx').on(table.actorUserId)
+    index('audit_logs_actor_idx').on(table.actorUserId),
+    index('audit_logs_created_idx').on(table.createdAt),
+    index('audit_logs_entity_created_idx').on(table.entityType, table.entityId, table.createdAt),
+    index('audit_logs_metadata_hackathon_created_idx').on(
+      sql`json_extract(${table.metadata}, '$.hackathonId')`,
+      table.createdAt
+    )
   ]
 )
 

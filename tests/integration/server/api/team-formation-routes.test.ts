@@ -514,6 +514,37 @@ describe('TASK-3.6 team formation routes', () => {
     })
   })
 
+  test('team list paginates filtered teams while preserving the filtered total', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|requester',
+        email: 'requester@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedTeamFormationContext(harness)
+
+    const response = await harness.request('/api/hackathons/hackathon_1/teams?page=2&page_size=1&open_to_join=true&has_capacity=true')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      meta: {
+        page: 2,
+        pageSize: 1,
+        total: 2
+      },
+      data: [
+        expect.objectContaining({
+          id: 'team_2',
+          slug: 'beta-team',
+          activeMemberCount: 1,
+          isOpenToJoinRequests: true
+        })
+      ]
+    })
+  })
+
   test('create team derives a unique slug from the submitted team name', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),

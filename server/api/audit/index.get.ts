@@ -7,6 +7,8 @@ import { auditLogs } from '../../database/schema'
 import { defineApiHandler } from '../../utils/api-handler'
 import { apiList } from '../../utils/api-response'
 
+const auditLogReadLimit = 200
+
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
   const database = getDatabase(event)
@@ -14,7 +16,8 @@ export default defineApiHandler(async (event) => {
   assertPlatformAdminAccess(actor)
 
   const auditRows = await database.query.auditLogs.findMany({
-    orderBy: [desc(auditLogs.createdAt)]
+    orderBy: [desc(auditLogs.createdAt)],
+    limit: auditLogReadLimit
   })
 
   return apiList(auditRows, {
