@@ -11,7 +11,6 @@ import {
 import { accountDashboardHref, normalizeAuthReturnTo } from '../../../shared/auth-navigation'
 
 definePageMeta({
-  layout: 'profile',
   middleware: ['require-auth']
 })
 

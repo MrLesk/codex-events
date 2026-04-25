@@ -13,7 +13,6 @@ import {
 } from '~/utils/admin-workspace'
 
 definePageMeta({
-  layout: 'profile',
   middleware: ['require-platform-admin']
 })
 

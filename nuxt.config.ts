@@ -74,6 +74,14 @@ export default defineNuxtConfig({
     '#platform-legal': fileURLToPath(new URL('./shared/platform-legal.ts', import.meta.url))
   },
 
+  routeRules: {
+    '/account': { appLayout: 'profile' },
+    '/account/**': { appLayout: 'profile' },
+    '/admin/**': { appLayout: 'profile' },
+    '/prize-redemptions': { appLayout: 'profile' },
+    '/prize-redemptions/**': { appLayout: 'profile' }
+  },
+
   sourcemap: {
     client: process.env.NODE_ENV !== 'production',
     server: process.env.NODE_ENV !== 'production'

@@ -2,7 +2,6 @@
 import HackathonParticipationCard from '~/components/hackathons/HackathonParticipationCard.vue'
 
 definePageMeta({
-  layout: 'profile',
   middleware: ['require-platform-account']
 })
 

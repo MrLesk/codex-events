@@ -8,7 +8,6 @@ import {
 } from '~/utils/judging-workspace'
 
 definePageMeta({
-  layout: 'profile',
   middleware: ['require-judge-dashboard']
 })
 

@@ -2,7 +2,6 @@
 import AccountPlatformAdminRosterPanel from '~/components/account/AccountPlatformAdminRosterPanel.vue'
 
 definePageMeta({
-  layout: 'profile',
   middleware: ['require-platform-admin']
 })
 

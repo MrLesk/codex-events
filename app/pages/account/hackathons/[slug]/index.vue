@@ -78,7 +78,6 @@ import { buildAccountHackathonTeamsTabHref, normalizeTeamSlugQueryValue } from '
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
 definePageMeta({
-  layout: 'profile',
   middleware: ['require-platform-account']
 })
 

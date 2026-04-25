@@ -9,7 +9,6 @@ import {
 } from '~/utils/prize-redemptions'
 
 definePageMeta({
-  layout: 'profile',
   middleware: ['require-auth']
 })
 

@@ -5,7 +5,6 @@ import { normalizeApiError } from '~/utils/admin-workspace'
 import { buildProfileIconHref } from '~/utils/profile-icon'
 
 definePageMeta({
-  layout: 'profile',
   middleware: ['require-auth']
 })
 

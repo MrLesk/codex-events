@@ -10,7 +10,6 @@ import { canCreateHackathon } from '~/utils/admin-workspace'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
 definePageMeta({
-  layout: 'profile',
   middleware: ['require-account-admin']
 })
 

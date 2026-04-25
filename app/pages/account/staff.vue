@@ -3,7 +3,6 @@ import AccountHackathonDashboardList from '~/components/account/AccountHackathon
 import { filterStaffAccessibleHackathons } from '~/utils/staff-dashboard'
 
 definePageMeta({
-  layout: 'profile',
   middleware: ['require-staff-dashboard']
 })
 

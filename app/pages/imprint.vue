@@ -26,6 +26,7 @@ const contactState = reactive({
   success: '',
   error: ''
 })
+const { polite, assertive } = useAnnouncer()
 
 const {
   errors,
@@ -97,8 +98,10 @@ const submitContactForm = handleSubmit(async (contactForm) => {
 
     resetContactFormState()
     contactState.success = 'We will reply to the email address you provided.'
+    polite('Message sent. We will reply to the email address you provided.')
   } catch (error) {
     contactState.error = extractErrorMessage(error, 'Unable to send your message right now.')
+    assertive(contactState.error)
   } finally {
     contactState.pending = false
   }
