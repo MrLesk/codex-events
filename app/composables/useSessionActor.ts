@@ -129,7 +129,6 @@ function buildAuthenticatedIdentityFallback(user: ReturnType<typeof useUser>['va
 
 export function useSessionActor() {
   const user = useUser()
-  const apiFetch = import.meta.server ? useRequestFetch() : $fetch
   const authSubject = computed(() => user.value?.sub ?? null)
 
   const {
@@ -137,14 +136,16 @@ export function useSessionActor() {
     status,
     refresh,
     clear
-  } = useAsyncData<ResolvedSessionActor | null>(
+  } = useApiData<ResolvedSessionActor | null>(
     () => `session-actor:${authSubject.value ?? 'anonymous'}`,
-    async () => {
+    async ({ apiFetch, signal }) => {
       if (!authSubject.value) {
         return null
       }
 
-      const response = await apiFetch<SessionActorResponse>('/api/session')
+      const response = await apiFetch<SessionActorResponse>('/api/session', {
+        signal
+      })
 
       return response.data.actor
     },

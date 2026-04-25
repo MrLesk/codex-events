@@ -13,14 +13,16 @@ export function usePrizeRedemptionWorkspace() {
   const user = useUser()
   const authSubject = computed(() => user.value?.sub ?? 'anonymous')
 
-  const pendingRedemptionsRequest = useAsyncData<PrizeRedemptionRecord[]>(
+  const pendingRedemptionsRequest = useApiData<PrizeRedemptionRecord[]>(
     () => `prize-redemptions:${authSubject.value}`,
-    async () => {
+    async ({ apiFetch, signal }) => {
       if (!user.value?.sub) {
         return []
       }
 
-      const response = await apiFetch<PrizeRedemptionApiDataResponse<PrizeRedemptionRecord[]>>('/api/prize-redemptions/me')
+      const response = await apiFetch<PrizeRedemptionApiDataResponse<PrizeRedemptionRecord[]>>('/api/prize-redemptions/me', {
+        signal
+      })
       return response.data
     },
     {
@@ -35,9 +37,9 @@ export function usePrizeRedemptionWorkspace() {
       .sort((left, right) => left.localeCompare(right))
   )
 
-  const currentTermsRequest = useAsyncData<Record<string, TermsDocument | null>>(
+  const currentTermsRequest = useApiData<Record<string, TermsDocument | null>>(
     () => `prize-redemption-terms:${authSubject.value}:${visibleHackathonIds.value.join(',')}`,
-    async () => {
+    async ({ apiFetch, signal }) => {
       if (!user.value?.sub || visibleHackathonIds.value.length === 0) {
         return {}
       }
@@ -45,7 +47,10 @@ export function usePrizeRedemptionWorkspace() {
       const entries = await Promise.all(
         visibleHackathonIds.value.map(async (hackathonId) => {
           const response = await apiFetch<PrizeRedemptionApiDataResponse<PrizeRedemptionCurrentTermsResponse>>(
-            `/api/hackathons/${hackathonId}/terms/current`
+            `/api/hackathons/${hackathonId}/terms/current`,
+            {
+              signal
+            }
           )
 
           return [hackathonId, response.data.winner_terms ?? null] as const

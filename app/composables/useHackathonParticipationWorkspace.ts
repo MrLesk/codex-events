@@ -6,13 +6,12 @@ import type {
 import { normalizeHackathonParticipationApiError } from '~/utils/hackathon-participation'
 
 export function useHackathonParticipationWorkspace() {
-  const apiFetch = $fetch
   const user = useUser()
   const authSubject = computed(() => user.value?.sub ?? 'anonymous')
 
-  const participationRequest = useAsyncData<HackathonParticipationPayload>(
+  const participationRequest = useApiData<HackathonParticipationPayload>(
     () => `hackathon-participation:${authSubject.value}`,
-    async () => {
+    async ({ apiFetch, signal }) => {
       if (!user.value?.sub) {
         return {
           current: [],
@@ -21,7 +20,10 @@ export function useHackathonParticipationWorkspace() {
       }
 
       const response = await apiFetch<HackathonParticipationApiDataResponse<HackathonParticipationPayload>>(
-        '/api/hackathons/participation'
+        '/api/hackathons/participation',
+        {
+          signal
+        }
       )
 
       return response.data

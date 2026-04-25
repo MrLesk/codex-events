@@ -8,19 +8,15 @@ export interface PlatformDocumentRecord {
   createdAt: string
 }
 
-interface CurrentPlatformDocumentsResponse {
-  data: {
-    privacy_policy: PlatformDocumentRecord | null
-    platform_terms: PlatformDocumentRecord | null
-  }
+interface CurrentPlatformDocuments {
+  privacy_policy: PlatformDocumentRecord | null
+  platform_terms: PlatformDocumentRecord | null
 }
 
 export function useCurrentPlatformDocuments() {
-  const apiFetch = import.meta.server ? useRequestFetch() : $fetch
-
-  const request = useAsyncData<CurrentPlatformDocumentsResponse | null>(
+  const request = useApiResponse<CurrentPlatformDocuments | null>(
     'current-platform-documents',
-    async () => await apiFetch<CurrentPlatformDocumentsResponse>('/api/platform-documents/current'),
+    '/api/platform-documents/current',
     {
       default: () => null
     }
@@ -28,8 +24,8 @@ export function useCurrentPlatformDocuments() {
 
   return {
     ...request,
-    documents: computed(() => request.data.value?.data ?? null),
-    privacyPolicyDocument: computed(() => request.data.value?.data.privacy_policy ?? null),
-    platformTermsDocument: computed(() => request.data.value?.data.platform_terms ?? null)
+    documents: computed(() => request.data.value ?? null),
+    privacyPolicyDocument: computed(() => request.data.value?.privacy_policy ?? null),
+    platformTermsDocument: computed(() => request.data.value?.platform_terms ?? null)
   }
 }

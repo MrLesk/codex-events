@@ -128,7 +128,7 @@ export function resolveUserHackathonPrimaryAction(entry: UserHackathonEntry): Us
 export function useUserHackathons() {
   const user = useUser()
 
-  return useFetch<UserHackathonsResponse>('/api/account/hackathons', {
+  return useApiFetch<UserHackathonsResponse>('/api/account/hackathons', {
     key: () => `account-hackathons:${user.value?.sub ?? 'anonymous'}`,
     default: () => ({
       data: {

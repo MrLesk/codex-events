@@ -1,7 +1,7 @@
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 import type { PublicApiDataResponse } from '~/composables/useHackathonPresentation'
 
-import { accountDashboardHref, buildAuthLoginHref } from '~/utils/auth-navigation'
+import { accountDashboardHref, buildAuthLoginHref } from '../../shared/auth-navigation'
 import {
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled
@@ -37,7 +37,6 @@ export interface ShellNavigationGroup {
 export function useShellNavigation() {
   const route = useRoute()
   const user = useUser()
-  const apiFetch = import.meta.server ? useRequestFetch() : $fetch
 
   const returnTo = computed(() => route.fullPath || accountDashboardHref)
   const authEntryHref = computed(() => buildAuthLoginHref(returnTo.value))
@@ -47,15 +46,18 @@ export function useShellNavigation() {
   )
   const {
     data: currentAccountHackathon
-  } = useAsyncData<{ id: string } | null>(
+  } = useApiData<{ id: string } | null>(
     () => `shell-account-hackathon:${currentAccountHackathonSlug.value || 'none'}`,
-    async () => {
+    async ({ apiFetch, signal }) => {
       if (!currentAccountHackathonSlug.value) {
         return null
       }
 
       const response = await apiFetch<PublicApiDataResponse<{ id: string }>>(
-        `/api/hackathons/slug/${currentAccountHackathonSlug.value}`
+        `/api/hackathons/slug/${currentAccountHackathonSlug.value}`,
+        {
+          signal
+        }
       )
 
       return response.data
@@ -70,14 +72,16 @@ export function useShellNavigation() {
     data: pendingPrizeRedemptions,
     error: pendingPrizeRedemptionsError,
     clear: clearPrizeRedemptions
-  } = useAsyncData<Array<{ id: string }>>(
+  } = useApiData<Array<{ id: string }>>(
     computed(() => `shell-prize-redemptions-${user.value?.sub ?? 'anonymous'}`),
-    async () => {
+    async ({ apiFetch, signal }) => {
       if (actor.value.kind !== 'platform_user') {
         return []
       }
 
-      const response = await apiFetch<ShellPrizeRedemptionsResponse>('/api/prize-redemptions/me')
+      const response = await apiFetch<ShellPrizeRedemptionsResponse>('/api/prize-redemptions/me', {
+        signal
+      })
 
       return response.data
     },

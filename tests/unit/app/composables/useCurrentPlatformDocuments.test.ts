@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-const useAsyncData = vi.hoisted(() => vi.fn())
+const useApiResponse = vi.hoisted(() => vi.fn())
 
 function createComputed<T>(getter: () => T) {
   return {
@@ -13,11 +13,9 @@ function createComputed<T>(getter: () => T) {
 describe('useCurrentPlatformDocuments', () => {
   beforeEach(() => {
     vi.resetModules()
-    useAsyncData.mockReset()
-    vi.stubGlobal('useAsyncData', useAsyncData as typeof useAsyncData)
+    useApiResponse.mockReset()
+    vi.stubGlobal('useApiResponse', useApiResponse)
     vi.stubGlobal('computed', createComputed as typeof computed)
-    vi.stubGlobal('$fetch', vi.fn())
-    vi.stubGlobal('useFetch', vi.fn())
   })
 
   afterEach(() => {
@@ -48,19 +46,22 @@ describe('useCurrentPlatformDocuments', () => {
       }
     }
     const request = {
-      data: { value: response },
+      data: { value: response.data },
       status: { value: 'success' },
       error: { value: null },
       refresh: vi.fn(),
       clear: vi.fn()
     }
 
-    useAsyncData.mockReturnValue(request)
+    useApiResponse.mockReturnValue(request)
 
     const { useCurrentPlatformDocuments } = await import('../../../../app/composables/useCurrentPlatformDocuments')
     const result = useCurrentPlatformDocuments()
 
-    expect(useAsyncData).toHaveBeenCalledTimes(1)
+    expect(useApiResponse).toHaveBeenCalledTimes(1)
+    expect(useApiResponse).toHaveBeenCalledWith('current-platform-documents', '/api/platform-documents/current', {
+      default: expect.any(Function)
+    })
     expect(result.documents.value).toEqual(response.data)
     expect(result.privacyPolicyDocument.value).toEqual(response.data.privacy_policy)
     expect(result.platformTermsDocument.value).toEqual(response.data.platform_terms)
