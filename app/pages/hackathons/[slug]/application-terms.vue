@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import type {
-  PublicApiDataResponse,
-  PublicHackathon
-} from '~/composables/useHackathonPresentation'
-import type { ApiDataResponse, HackathonRecord } from '~/utils/admin-workspace'
+import type { PublicHackathon } from '~/composables/useHackathonPresentation'
 import type {
   ParticipantApiDataResponse,
   ParticipantApplicationTermsDocument,
-  ParticipantCurrentTermsResponse
+  ParticipantCurrentTermsResponse,
+  VisibleHackathonRecord
 } from '~/utils/participant-application'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
@@ -30,10 +27,10 @@ if (!slug.value) {
 }
 
 const {
-  data: hackathonResponse,
+  data: hackathonData,
   error: hackathonError
-} = await useFetch<PublicApiDataResponse<PublicHackathon>>(() => `/api/public/hackathons/${slug.value}`, {
-  key: () => `public-hackathon-application-terms:${slug.value}`
+} = await useApiResponse<PublicHackathon>(() => `public-hackathon-application-terms:${slug.value}`, () => `/api/public/hackathons/${slug.value}`, {
+  watch: [slug]
 })
 
 if (hackathonError.value) {
@@ -43,14 +40,14 @@ if (hackathonError.value) {
   })
 }
 
-if (!hackathonResponse.value?.data) {
+if (!hackathonData.value) {
   throw createError({
     statusCode: 404,
     statusMessage: 'Hackathon not found.'
   })
 }
 
-const hackathon = computed(() => hackathonResponse.value!.data)
+const hackathon = computed(() => hackathonData.value!)
 const registerHref = computed(() => `/hackathons/${slug.value}/register`)
 const backHref = computed(() =>
   shouldShowPublicRegistrationEntry(
@@ -89,22 +86,61 @@ const detailSummary = computed(() => [
   formatMaxTeamMembers(hackathon.value.maxTeamMembers)
 ].join(' • '))
 
-const workspaceErrorMessage = ref('')
-const currentApplicationTerms = ref<ParticipantApplicationTermsDocument | null>(null)
-
-if (accountActor.value?.kind === 'platform_user' && accountActor.value.hasAcceptedCurrentPlatformDocuments) {
-  const requestFetch = import.meta.server ? useRequestFetch() : $fetch
-
-  try {
-    const visibleHackathonResponse = await requestFetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/slug/${slug.value}`)
-    const currentTermsResponse = await requestFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
-      `/api/hackathons/${visibleHackathonResponse.data.id}/terms/current`
-    )
-    currentApplicationTerms.value = currentTermsResponse.data.application_terms
-  } catch (error) {
-    workspaceErrorMessage.value = normalizeParticipantApiError(error).message
+const accountActorCacheKey = computed(() => {
+  if (accountActor.value.kind !== 'platform_user') {
+    return accountActor.value.kind
   }
-}
+
+  return `${accountActor.value.platformUser.id}:${accountActor.value.hasAcceptedCurrentPlatformDocuments ? 'accepted' : 'unaccepted'}`
+})
+const applicationTermsState = await useApiData<{
+  currentApplicationTerms: ParticipantApplicationTermsDocument | null
+  workspaceErrorMessage: string
+}>(
+  () => `public-hackathon-application-terms-document:${slug.value}:${accountActorCacheKey.value}`,
+  async ({ apiFetch, signal }) => {
+    if (accountActor.value.kind !== 'platform_user' || !accountActor.value.hasAcceptedCurrentPlatformDocuments) {
+      return {
+        currentApplicationTerms: null,
+        workspaceErrorMessage: ''
+      }
+    }
+
+    try {
+      const visibleHackathonResponse = await apiFetch<ParticipantApiDataResponse<VisibleHackathonRecord>>(
+        `/api/hackathons/slug/${slug.value}`,
+        {
+          signal
+        }
+      )
+      const currentTermsResponse = await apiFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
+        `/api/hackathons/${visibleHackathonResponse.data.id}/terms/current`,
+        {
+          signal
+        }
+      )
+
+      return {
+        currentApplicationTerms: currentTermsResponse.data.application_terms,
+        workspaceErrorMessage: ''
+      }
+    } catch (error) {
+      return {
+        currentApplicationTerms: null,
+        workspaceErrorMessage: normalizeParticipantApiError(error).message
+      }
+    }
+  },
+  {
+    default: () => ({
+      currentApplicationTerms: null,
+      workspaceErrorMessage: ''
+    }),
+    watch: [slug, accountActorCacheKey]
+  }
+)
+const currentApplicationTerms = computed(() => applicationTermsState.data.value.currentApplicationTerms)
+const workspaceErrorMessage = computed(() => applicationTermsState.data.value.workspaceErrorMessage)
 
 const applicationTermsMarkdown = computed(() => {
   const content = currentApplicationTerms.value?.content?.trim() ?? ''

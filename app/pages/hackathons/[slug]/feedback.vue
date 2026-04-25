@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import type {
-  PublicApiDataResponse,
-  PublicHackathon
-} from '~/composables/useHackathonPresentation'
+import type { PublicHackathon } from '~/composables/useHackathonPresentation'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonFeedbackForm from '~/components/public/hackathons/HackathonFeedbackForm.vue'
@@ -22,10 +19,10 @@ if (!slug.value) {
 }
 
 const {
-  data: hackathonResponse,
+  data: hackathonData,
   error: hackathonError
-} = await useFetch<PublicApiDataResponse<PublicHackathon>>(() => `/api/public/hackathons/${slug.value}`, {
-  key: () => `public-hackathon-feedback:${slug.value}`
+} = await useApiResponse<PublicHackathon>(() => `public-hackathon-feedback:${slug.value}`, () => `/api/public/hackathons/${slug.value}`, {
+  watch: [slug]
 })
 
 if (hackathonError.value) {
@@ -35,14 +32,14 @@ if (hackathonError.value) {
   })
 }
 
-if (!hackathonResponse.value?.data) {
+if (!hackathonData.value) {
   throw createError({
     statusCode: 404,
     statusMessage: 'Hackathon not found.'
   })
 }
 
-const hackathon = computed(() => hackathonResponse.value!.data)
+const hackathon = computed(() => hackathonData.value!)
 
 if (hackathon.value.state !== 'completed') {
   throw createError({

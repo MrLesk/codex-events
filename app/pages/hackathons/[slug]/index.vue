@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type {
-  PublicApiDataResponse,
   PublicApiListResponse,
   PublicHackathon,
   PublicPrize
@@ -47,14 +46,15 @@ if (!slug.value) {
 }
 
 const [
-  { data: hackathonResponse, error: hackathonError },
-  { data: prizesResponse }
+  { data: hackathonData, error: hackathonError },
+  { data: prizesData }
 ] = await Promise.all([
-  useFetch<PublicApiDataResponse<PublicHackathon>>(() => `/api/public/hackathons/${slug.value}`, {
-    key: () => `public-hackathon-detail:${slug.value}`
+  useApiResponse<PublicHackathon>(() => `public-hackathon-detail:${slug.value}`, () => `/api/public/hackathons/${slug.value}`, {
+    watch: [slug]
   }),
-  useFetch<PublicApiListResponse<PublicPrize>>(() => `/api/public/hackathons/${slug.value}/prizes`, {
-    key: () => `public-hackathon-prizes:${slug.value}`
+  useApiResponse<PublicPrize[]>(() => `public-hackathon-prizes:${slug.value}`, () => `/api/public/hackathons/${slug.value}/prizes`, {
+    default: () => [],
+    watch: [slug]
   })
 ])
 
@@ -65,49 +65,120 @@ if (hackathonError.value) {
   })
 }
 
-if (!hackathonResponse.value?.data) {
+if (!hackathonData.value) {
   throw createError({
     statusCode: 404,
     statusMessage: 'Hackathon not found.'
   })
 }
 
-const hackathon = computed(() => hackathonResponse.value!.data)
-const requestFetch = import.meta.server ? useRequestFetch() : $fetch
-const winnersResponse = hackathon.value.state === 'completed'
-  ? await requestFetch<PublicApiListResponse<WinnerEntry>>(`/api/public/hackathons/${slug.value}/winners`)
-  : {
-    data: []
-  } satisfies PublicApiListResponse<WinnerEntry>
-const publishedProjectsResponse = hackathon.value.state === 'completed'
-  ? await requestFetch<PublicApiListResponse<PublishedProjectEntry>>(`/api/public/hackathons/${slug.value}/published-projects`)
-  : {
-    data: []
-  } satisfies PublicApiListResponse<PublishedProjectEntry>
-const galleryResponse = await requestFetch<PublicApiListResponse<HackathonPhotoRecord>>(`/api/public/hackathons/${slug.value}/photos`)
-const prizes = computed(() => prizesResponse.value?.data ?? [])
-const winners = computed(() => winnersResponse.data)
-const publishedProjects = computed(() => publishedProjectsResponse.data)
-const galleryPhotos = computed(() => galleryResponse.data)
+const hackathon = computed(() => hackathonData.value!)
+const hackathonState = computed(() => hackathon.value.state)
+const accountActorCacheKey = computed(() => {
+  if (accountActor.value.kind !== 'platform_user') {
+    return accountActor.value.kind
+  }
+
+  return `${accountActor.value.platformUser.id}:${accountActor.value.hasAcceptedCurrentPlatformDocuments ? 'accepted' : 'unaccepted'}`
+})
+const [
+  { data: winnersData, error: winnersError },
+  { data: publishedProjectsData, error: publishedProjectsError },
+  { data: galleryPhotosData, error: galleryError },
+  workspaceAccessRequest
+] = await Promise.all([
+  useApiData<WinnerEntry[]>(
+    () => `public-hackathon-winners:${slug.value}:${hackathonState.value}`,
+    async ({ apiFetch, signal }) => {
+      if (hackathonState.value !== 'completed') {
+        return []
+      }
+
+      const response = await apiFetch<PublicApiListResponse<WinnerEntry>>(`/api/public/hackathons/${slug.value}/winners`, {
+        signal
+      })
+
+      return response.data
+    },
+    {
+      default: () => [],
+      watch: [slug, hackathonState]
+    }
+  ),
+  useApiData<PublishedProjectEntry[]>(
+    () => `public-hackathon-published-projects:${slug.value}:${hackathonState.value}`,
+    async ({ apiFetch, signal }) => {
+      if (hackathonState.value !== 'completed') {
+        return []
+      }
+
+      const response = await apiFetch<PublicApiListResponse<PublishedProjectEntry>>(
+        `/api/public/hackathons/${slug.value}/published-projects`,
+        {
+          signal
+        }
+      )
+
+      return response.data
+    },
+    {
+      default: () => [],
+      watch: [slug, hackathonState]
+    }
+  ),
+  useApiResponse<HackathonPhotoRecord[]>(() => `public-hackathon-gallery:${slug.value}`, () => `/api/public/hackathons/${slug.value}/photos`, {
+    default: () => [],
+    watch: [slug]
+  }),
+  useApiData<boolean>(
+    () => `public-hackathon-workspace-access:${slug.value}:${accountActorCacheKey.value}`,
+    async ({ apiFetch, signal }) => {
+      if (accountActor.value.kind !== 'platform_user' || !accountActor.value.hasAcceptedCurrentPlatformDocuments) {
+        return false
+      }
+
+      try {
+        const accountHackathonsResponse = await apiFetch<AccountHackathonsResponse>('/api/account/hackathons', {
+          signal
+        })
+        const accessibleHackathons = [
+          ...accountHackathonsResponse.data.current,
+          ...accountHackathonsResponse.data.past
+        ]
+
+        return accessibleHackathons.some(record => record.slug === slug.value)
+      } catch {
+        return false
+      }
+    },
+    {
+      default: () => false,
+      watch: [slug, accountActorCacheKey]
+    }
+  )
+])
+
+if (winnersError.value) {
+  throw winnersError.value
+}
+
+if (publishedProjectsError.value) {
+  throw publishedProjectsError.value
+}
+
+if (galleryError.value) {
+  throw galleryError.value
+}
+
+const prizes = computed(() => prizesData.value)
+const winners = computed(() => winnersData.value)
+const publishedProjects = computed(() => publishedProjectsData.value)
+const galleryPhotos = computed(() => galleryPhotosData.value)
 const hasPublishedPrizes = computed(() => prizes.value.length > 0)
 const hasPublicGallery = computed(() => galleryPhotos.value.length > 0)
 const isWinnerRevealVisible = computed(() => hackathon.value.state === 'completed')
 const publicPrizeTabLabel = computed(() => isWinnerRevealVisible.value ? 'Winners' : 'Prizes')
-const hasHackathonWorkspaceAccess = ref(false)
-
-if (accountActor.value.kind === 'platform_user' && accountActor.value.hasAcceptedCurrentPlatformDocuments) {
-  try {
-    const accountHackathonsResponse = await requestFetch<AccountHackathonsResponse>('/api/account/hackathons')
-    const accessibleHackathons = [
-      ...accountHackathonsResponse.data.current,
-      ...accountHackathonsResponse.data.past
-    ]
-
-    hasHackathonWorkspaceAccess.value = accessibleHackathons.some(record => record.slug === slug.value)
-  } catch {
-    hasHackathonWorkspaceAccess.value = false
-  }
-}
+const hasHackathonWorkspaceAccess = computed(() => workspaceAccessRequest.data.value)
 
 const detailBackgroundImageUrl = computed(() => {
   const backgroundImageUrl = hackathon.value.backgroundImageUrl?.trim()

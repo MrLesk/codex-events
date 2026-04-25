@@ -1,16 +1,13 @@
 <script setup lang="ts">
-import type {
-  PublicApiDataResponse,
-  PublicHackathon
-} from '~/composables/useHackathonPresentation'
-import type { ApiDataResponse, HackathonRecord } from '~/utils/admin-workspace'
+import type { PublicHackathon } from '~/composables/useHackathonPresentation'
 import type {
   ParticipantApplicationRecord,
   ParticipantApiDataResponse,
   ParticipantCurrentTermsResponse,
   ParticipantApplicationTermsDocument,
   ParticipantApplicationSubmittedTransition,
-  ParticipantRegistrationTeamMemberHint
+  ParticipantRegistrationTeamMemberHint,
+  VisibleHackathonRecord
 } from '~/utils/participant-application'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
@@ -43,10 +40,10 @@ if (!slug.value) {
 }
 
 const {
-  data: hackathonResponse,
+  data: hackathonData,
   error: hackathonError
-} = await useFetch<PublicApiDataResponse<PublicHackathon>>(() => `/api/public/hackathons/${slug.value}`, {
-  key: () => `public-hackathon-register:${slug.value}`
+} = await useApiResponse<PublicHackathon>(() => `public-hackathon-register:${slug.value}`, () => `/api/public/hackathons/${slug.value}`, {
+  watch: [slug]
 })
 
 if (hackathonError.value) {
@@ -56,14 +53,14 @@ if (hackathonError.value) {
   })
 }
 
-if (!hackathonResponse.value?.data) {
+if (!hackathonData.value) {
   throw createError({
     statusCode: 404,
     statusMessage: 'Hackathon not found.'
   })
 }
 
-const hackathon = computed(() => hackathonResponse.value!.data)
+const hackathon = computed(() => hackathonData.value!)
 const detailBackgroundImageUrl = computed(() => {
   const backgroundImageUrl = hackathon.value.backgroundImageUrl?.trim()
 
@@ -150,40 +147,141 @@ watch(() => hackathon.value.inPersonEvent, (isInPersonEvent) => {
   }
 }, { immediate: true })
 
-if (accountActor.value?.kind === 'platform_user' && accountActor.value.hasAcceptedCurrentPlatformDocuments) {
-  const requestFetch = import.meta.server ? useRequestFetch() : $fetch
-
-  try {
-    const visibleHackathonResponse = await requestFetch<ApiDataResponse<HackathonRecord>>(`/api/hackathons/slug/${slug.value}`)
-    visibleHackathonId.value = visibleHackathonResponse.data.id
-
-    const ownApplicationResponse = await requestFetch<ParticipantApiDataResponse<ParticipantApplicationRecord | null>>(
-      `/api/hackathons/${visibleHackathonId.value}/applications/me`
-    )
-    hasExistingApplication.value = Boolean(ownApplicationResponse.data)
-
-    const routeResolution = resolveParticipantRegistrationEntry({
-      actorKind: accountActor.value.kind,
-      hasAcceptedCurrentPlatformDocuments: accountActor.value.hasAcceptedCurrentPlatformDocuments,
-      hackathonSlug: slug.value,
-      hackathonState: hackathon.value.state,
-      registrationOpensAt: hackathon.value.registrationOpensAt,
-      registrationClosesAt: hackathon.value.registrationClosesAt,
-      hasExistingApplication: hasExistingApplication.value
-    })
-
-    if (routeResolution) {
-      await navigateTo(routeResolution.to, routeResolution.external ? { external: true } : undefined)
-    } else {
-      const currentTermsResponse = await requestFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
-        `/api/hackathons/${visibleHackathonId.value}/terms/current`
-      )
-      currentApplicationTerms.value = currentTermsResponse.data.application_terms
-    }
-  } catch (error) {
-    workspaceErrorMessage.value = normalizeParticipantApiError(error).message
+const accountActorCacheKey = computed(() => {
+  if (accountActor.value.kind !== 'platform_user') {
+    return accountActor.value.kind
   }
+
+  return `${accountActor.value.platformUser.id}:${accountActor.value.hasAcceptedCurrentPlatformDocuments ? 'accepted' : 'unaccepted'}`
+})
+const registrationRouteState = await useApiData<{
+  visibleHackathonId: string | null
+  hasExistingApplication: boolean
+  currentApplicationTerms: ParticipantApplicationTermsDocument | null
+  workspaceErrorMessage: string
+  redirectTo: {
+    to: string
+    external?: boolean
+  } | null
+}>(
+  () => `public-hackathon-register-state:${slug.value}:${accountActorCacheKey.value}`,
+  async ({ apiFetch, signal }) => {
+    if (accountActor.value.kind !== 'platform_user' || !accountActor.value.hasAcceptedCurrentPlatformDocuments) {
+      return {
+        visibleHackathonId: null,
+        hasExistingApplication: false,
+        currentApplicationTerms: null,
+        workspaceErrorMessage: '',
+        redirectTo: null
+      }
+    }
+
+    try {
+      const visibleHackathonResponse = await apiFetch<ParticipantApiDataResponse<VisibleHackathonRecord>>(
+        `/api/hackathons/slug/${slug.value}`,
+        {
+          signal
+        }
+      )
+      const resolvedVisibleHackathonId = visibleHackathonResponse.data.id
+      const ownApplicationResponse = await apiFetch<ParticipantApiDataResponse<ParticipantApplicationRecord | null>>(
+        `/api/hackathons/${resolvedVisibleHackathonId}/applications/me`,
+        {
+          signal
+        }
+      )
+      const resolvedHasExistingApplication = Boolean(ownApplicationResponse.data)
+      const routeResolution = resolveParticipantRegistrationEntry({
+        actorKind: accountActor.value.kind,
+        hasAcceptedCurrentPlatformDocuments: accountActor.value.hasAcceptedCurrentPlatformDocuments,
+        hackathonSlug: slug.value,
+        hackathonState: hackathon.value.state,
+        registrationOpensAt: hackathon.value.registrationOpensAt,
+        registrationClosesAt: hackathon.value.registrationClosesAt,
+        hasExistingApplication: resolvedHasExistingApplication
+      })
+
+      if (routeResolution) {
+        return {
+          visibleHackathonId: resolvedVisibleHackathonId,
+          hasExistingApplication: resolvedHasExistingApplication,
+          currentApplicationTerms: null,
+          workspaceErrorMessage: '',
+          redirectTo: {
+            to: routeResolution.to,
+            external: routeResolution.external
+          }
+        }
+      }
+
+      const currentTermsResponse = await apiFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
+        `/api/hackathons/${resolvedVisibleHackathonId}/terms/current`,
+        {
+          signal
+        }
+      )
+
+      return {
+        visibleHackathonId: resolvedVisibleHackathonId,
+        hasExistingApplication: resolvedHasExistingApplication,
+        currentApplicationTerms: currentTermsResponse.data.application_terms,
+        workspaceErrorMessage: '',
+        redirectTo: null
+      }
+    } catch (error) {
+      return {
+        visibleHackathonId: null,
+        hasExistingApplication: false,
+        currentApplicationTerms: null,
+        workspaceErrorMessage: normalizeParticipantApiError(error).message,
+        redirectTo: null
+      }
+    }
+  },
+  {
+    default: () => ({
+      visibleHackathonId: null,
+      hasExistingApplication: false,
+      currentApplicationTerms: null,
+      workspaceErrorMessage: '',
+      redirectTo: null
+    }),
+    watch: [
+      slug,
+      accountActorCacheKey,
+      computed(() => hackathon.value.state),
+      computed(() => hackathon.value.registrationOpensAt),
+      computed(() => hackathon.value.registrationClosesAt)
+    ]
+  }
+)
+
+async function navigateToRegistrationRedirect(redirectTo: {
+  to: string
+  external?: boolean
+} | null) {
+  if (!redirectTo) {
+    return
+  }
+
+  await navigateTo(
+    redirectTo.to,
+    redirectTo.external ? { external: true } : undefined
+  )
 }
+
+await navigateToRegistrationRedirect(registrationRouteState.data.value.redirectTo)
+
+watch(() => registrationRouteState.data.value, (state) => {
+  visibleHackathonId.value = state.visibleHackathonId
+  hasExistingApplication.value = state.hasExistingApplication
+  currentApplicationTerms.value = state.currentApplicationTerms
+  workspaceErrorMessage.value = state.workspaceErrorMessage
+}, { immediate: true })
+
+watch(() => registrationRouteState.data.value.redirectTo, async (redirectTo) => {
+  await navigateToRegistrationRedirect(redirectTo)
+})
 
 const participantSubmissionPolicy = computed(() =>
   getParticipantApplicationSubmissionPolicy({
