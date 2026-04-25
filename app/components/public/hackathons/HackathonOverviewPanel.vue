@@ -1,24 +1,18 @@
 <script setup lang="ts">
-import { renderMarkdown } from '~/utils/markdown'
-
 const props = defineProps<{
   description: string
 }>()
 
 const descriptionMarkdown = computed(() => props.description.trim())
-const descriptionHtml = computed(() => descriptionMarkdown.value ? renderMarkdown(descriptionMarkdown.value) : '')
 </script>
 
 <template>
   <section
-    v-if="descriptionHtml"
+    v-if="descriptionMarkdown"
     class="hackathon-workspace-detail-panel rounded-xl p-6"
     data-testid="public-hackathon-overview"
   >
-    <div
-      class="hackathon-markdown"
-      v-html="descriptionHtml"
-    />
+    <AppMarkdownRenderer :source="descriptionMarkdown" />
   </section>
 
   <section

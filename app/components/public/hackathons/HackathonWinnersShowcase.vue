@@ -6,7 +6,6 @@ import {
   formatPrizeReward
 } from '~/composables/useHackathonPresentation'
 import { getPublishedHackathonRosterLinks } from '~/utils/hackathon-published-roster'
-import { renderMarkdown } from '~/utils/markdown'
 
 const props = withDefaults(defineProps<{
   winners: WinnerEntry[]
@@ -23,12 +22,6 @@ const props = withDefaults(defineProps<{
 
 function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
   return `${formatPrizeRank(prize)} · ${formatPrizeReward(prize)}`
-}
-
-function renderWinnerSummary(summary: string | null) {
-  const normalizedSummary = summary?.trim() ?? ''
-
-  return normalizedSummary ? renderMarkdown(normalizedSummary) : ''
 }
 </script>
 
@@ -114,10 +107,9 @@ function renderWinnerSummary(summary: string | null) {
               <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 Project description
               </p>
-              <div
+              <AppMarkdownRenderer
                 v-if="winner.summary?.trim()"
-                class="hackathon-markdown"
-                v-html="renderWinnerSummary(winner.summary)"
+                :source="winner.summary"
               />
               <p
                 v-else

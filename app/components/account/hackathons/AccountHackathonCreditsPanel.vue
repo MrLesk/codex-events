@@ -11,7 +11,6 @@ import {
   isHackathonCreditLink,
   normalizeHackathonCreditApiError
 } from '~/utils/hackathon-credits'
-import { renderMarkdown } from '~/utils/markdown'
 
 const props = defineProps<{
   hackathonId: string
@@ -201,12 +200,6 @@ function cancelEditingOfferName(offer: AdminHackathonCreditOffer) {
   getEditState(offer).name = offer.name
   saveErrorById[offer.id] = ''
   stopEditingOfferName(offer.id)
-}
-
-function renderCreditOfferDescription(description: string) {
-  const normalizedDescription = description.trim()
-
-  return normalizedDescription ? renderMarkdown(normalizedDescription) : ''
 }
 
 function formatCreditClaimedAt(value: string | null) {
@@ -1034,12 +1027,7 @@ async function copyCreditValue(value: string) {
                 :id="`participant-credit-offer-body-${offer.id}`"
                 class="space-y-5"
               >
-                <!-- eslint-disable vue/no-v-html -->
-                <div
-                  class="hackathon-markdown"
-                  v-html="renderCreditOfferDescription(offer.description)"
-                />
-                <!-- eslint-enable vue/no-v-html -->
+                <AppMarkdownRenderer :source="offer.description" />
 
                 <template v-if="offer.claimedCode">
                   <div

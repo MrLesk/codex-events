@@ -11,7 +11,6 @@ import {
   formatPrizeReward
 } from '~/composables/useHackathonPresentation'
 import { getPublishedHackathonRosterLinks } from '~/utils/hackathon-published-roster'
-import { renderMarkdown } from '~/utils/markdown'
 import {
   buildPrizeRedemptionPostShortlistEntries,
   buildPrizeRedemptionOperationsView,
@@ -53,12 +52,6 @@ const postShortlistEntries = computed(() =>
 
 function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
   return `${formatPrizeRank(prize)} · ${formatPrizeReward(prize)}`
-}
-
-function renderProjectSummary(summary: string | null) {
-  const normalizedSummary = summary?.trim() ?? ''
-
-  return normalizedSummary ? renderMarkdown(normalizedSummary) : ''
 }
 </script>
 
@@ -203,10 +196,9 @@ function renderProjectSummary(summary: string | null) {
                   <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                     Project description
                   </p>
-                  <div
+                  <AppMarkdownRenderer
                     v-if="item.winner.summary?.trim()"
-                    class="hackathon-markdown"
-                    v-html="renderProjectSummary(item.winner.summary)"
+                    :source="item.winner.summary"
                   />
                   <p
                     v-else
@@ -439,10 +431,9 @@ function renderProjectSummary(summary: string | null) {
               <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 Project description
               </p>
-              <div
+              <AppMarkdownRenderer
                 v-if="entry.summary?.trim()"
-                class="hackathon-markdown"
-                v-html="renderProjectSummary(entry.summary)"
+                :source="entry.summary"
               />
               <p
                 v-else
@@ -623,10 +614,9 @@ function renderProjectSummary(summary: string | null) {
               <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 Project description
               </p>
-              <div
+              <AppMarkdownRenderer
                 v-if="entry.summary?.trim()"
-                class="hackathon-markdown"
-                v-html="renderProjectSummary(entry.summary)"
+                :source="entry.summary"
               />
               <p
                 v-else

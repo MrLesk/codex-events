@@ -8,7 +8,6 @@ import {
   isAccountRegistrationLinkOnlyMode,
   missingIdentityEmailMessage
 } from '~/utils/account-registration'
-import { renderMarkdown } from '~/utils/markdown'
 import {
   accountDashboardHref,
   normalizeAuthReturnTo
@@ -66,16 +65,6 @@ const linkingError = computed<ApiErrorShape | null>(() => {
     code: errorCode,
     message: messages[errorCode] ?? 'The login method could not be linked right now. Try again.'
   }
-})
-
-const privacyPolicyHtml = computed(() => {
-  const content = privacyPolicyDocument.value?.content?.trim() ?? ''
-  return content ? renderMarkdown(content.replaceAll('\\n', '\n')) : ''
-})
-
-const platformTermsHtml = computed(() => {
-  const content = platformTermsDocument.value?.content?.trim() ?? ''
-  return content ? renderMarkdown(content.replaceAll('\\n', '\n')) : ''
 })
 
 const isReadyToSubmit = computed(() =>
@@ -278,12 +267,11 @@ useSeoMeta({
               </p>
             </div>
 
-            <!-- eslint-disable vue/no-v-html -->
-            <div
-              class="hackathon-markdown max-h-[24rem] overflow-y-auto rounded-lg border border-black/8 bg-white p-5 dark:border-white/[0.08] dark:bg-black/20"
-              v-html="privacyPolicyHtml"
+            <AppMarkdownRenderer
+              :source="privacyPolicyDocument?.content"
+              normalize-escaped-newlines
+              class="max-h-[24rem] overflow-y-auto rounded-lg border border-black/8 bg-white p-5 dark:border-white/[0.08] dark:bg-black/20"
             />
-            <!-- eslint-enable vue/no-v-html -->
 
             <AppCheckbox
               v-model="privacyAccepted"
@@ -314,12 +302,11 @@ useSeoMeta({
               </p>
             </div>
 
-            <!-- eslint-disable vue/no-v-html -->
-            <div
-              class="hackathon-markdown max-h-[24rem] overflow-y-auto rounded-lg border border-black/8 bg-white p-5 dark:border-white/[0.08] dark:bg-black/20"
-              v-html="platformTermsHtml"
+            <AppMarkdownRenderer
+              :source="platformTermsDocument?.content"
+              normalize-escaped-newlines
+              class="max-h-[24rem] overflow-y-auto rounded-lg border border-black/8 bg-white p-5 dark:border-white/[0.08] dark:bg-black/20"
             />
-            <!-- eslint-enable vue/no-v-html -->
 
             <AppCheckbox
               v-model="termsAccepted"

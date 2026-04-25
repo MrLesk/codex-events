@@ -2,7 +2,6 @@
 import type { PublishedProjectEntry } from '~/utils/admin-workspace'
 
 import { getPublishedHackathonRosterLinks } from '~/utils/hackathon-published-roster'
-import { renderMarkdown } from '~/utils/markdown'
 
 const props = withDefaults(defineProps<{
   projects: PublishedProjectEntry[]
@@ -16,12 +15,6 @@ const props = withDefaults(defineProps<{
   emptyTitle: 'No additional projects published',
   emptyDescription: 'No other teams have chosen to publish their completed projects yet.'
 })
-
-function renderProjectSummary(summary: string | null) {
-  const normalizedSummary = summary?.trim() ?? ''
-
-  return normalizedSummary ? renderMarkdown(normalizedSummary) : ''
-}
 </script>
 
 <template>
@@ -87,10 +80,9 @@ function renderProjectSummary(summary: string | null) {
               <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                 Project description
               </p>
-              <div
+              <AppMarkdownRenderer
                 v-if="project.summary?.trim()"
-                class="hackathon-markdown"
-                v-html="renderProjectSummary(project.summary)"
+                :source="project.summary"
               />
               <p
                 v-else

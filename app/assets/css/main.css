@@ -365,54 +365,6 @@
     margin-top: 0.125rem;
   }
 
-  .hackathon-markdown {
-    @apply text-[15px] leading-7 text-neutral-700 dark:text-[#D3D6DF];
-  }
-
-  .hackathon-markdown > * + * {
-    margin-top: 0.85rem;
-  }
-
-  .hackathon-markdown :is(h1, h2, h3, h4) {
-    @apply font-semibold tracking-[-0.01em] text-highlighted dark:text-white;
-  }
-
-  .hackathon-markdown h1 {
-    @apply text-[1.3rem] leading-tight;
-  }
-
-  .hackathon-markdown h2 {
-    @apply mt-6 text-[1.08rem] leading-tight;
-  }
-
-  .hackathon-markdown h3 {
-    @apply mt-5 text-[1rem] leading-tight;
-  }
-
-  .hackathon-markdown :is(ul, ol) {
-    @apply space-y-2 pl-6;
-  }
-
-  .hackathon-markdown ul {
-    list-style: disc;
-  }
-
-  .hackathon-markdown ol {
-    list-style: decimal;
-  }
-
-  .hackathon-markdown a {
-    @apply underline decoration-neutral-400/70 underline-offset-2 transition-colors hover:text-highlighted dark:decoration-white/45 dark:hover:text-white;
-  }
-
-  .hackathon-markdown code {
-    @apply rounded bg-black/6 px-1 py-0.5 text-[0.875em] text-highlighted dark:bg-white/[0.08] dark:text-white;
-  }
-
-  .hackathon-markdown blockquote {
-    @apply border-l-2 border-black/20 pl-4 italic text-neutral-600 dark:border-white/[0.25] dark:text-[#B3B7C2];
-  }
-
 }
 
 @layer utilities {

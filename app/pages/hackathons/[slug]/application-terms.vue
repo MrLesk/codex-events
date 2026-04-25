@@ -11,7 +11,6 @@ import type {
 } from '~/utils/participant-application'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
-import { renderMarkdown } from '~/utils/markdown'
 import { normalizeParticipantApiError, shouldShowPublicRegistrationEntry } from '~/utils/participant-application'
 
 definePageMeta({
@@ -107,17 +106,9 @@ if (accountActor.value?.kind === 'platform_user' && accountActor.value.hasAccept
   }
 }
 
-const applicationTermsHtml = computed(() => {
+const applicationTermsMarkdown = computed(() => {
   const content = currentApplicationTerms.value?.content?.trim() ?? ''
-
-  if (!content) {
-    return ''
-  }
-
-  const normalizedMarkdown = content.replaceAll('\\n', '\n')
-  return renderMarkdown(normalizedMarkdown, {
-    stripLeadingHeading: true
-  })
+  return content.replaceAll('\\n', '\n')
 })
 const termsPublishedLabel = computed(() => {
   if (!currentApplicationTerms.value) {
@@ -226,12 +217,10 @@ useSeoMeta({
           </div>
         </div>
 
-        <!-- eslint-disable vue/no-v-html -->
-        <div
-          class="hackathon-markdown"
-          v-html="applicationTermsHtml"
+        <AppMarkdownRenderer
+          :source="applicationTermsMarkdown"
+          strip-leading-heading
         />
-        <!-- eslint-enable vue/no-v-html -->
       </section>
     </AppContainer>
   </div>

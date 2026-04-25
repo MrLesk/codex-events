@@ -2,7 +2,6 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
-import { renderMarkdown } from '~/utils/markdown'
 import { cloneFormValues } from '~/utils/form-values'
 import { imprintContactFormSchema } from '~/utils/form-schemas'
 import {
@@ -13,7 +12,6 @@ import {
   platformSupportEmail
 } from '#platform-legal'
 
-const imprintHtml = computed(() => renderMarkdown(platformImprintMarkdown))
 const initialContactForm = {
   name: '',
   email: '',
@@ -165,12 +163,7 @@ useSeoMeta({
     <AppContainer class="relative z-10 grid max-w-[68rem] gap-6 pb-10 pt-6 sm:pb-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
       <div class="space-y-6">
         <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
-          <!-- eslint-disable vue/no-v-html -->
-          <div
-            class="hackathon-markdown"
-            v-html="imprintHtml"
-          />
-          <!-- eslint-enable vue/no-v-html -->
+          <AppMarkdownRenderer :source="platformImprintMarkdown" />
         </section>
 
         <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">

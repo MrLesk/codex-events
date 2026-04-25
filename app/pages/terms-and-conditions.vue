@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import { renderMarkdown } from '~/utils/markdown'
 import {
   platformLegalLastUpdatedLabel,
   platformSupportEmail,
   platformTermsMarkdown
 } from '#platform-legal'
-
-const termsHtml = computed(() => renderMarkdown(platformTermsMarkdown))
 
 useSeoMeta({
   title: 'Terms and Conditions | Codex Hackathons',
@@ -54,12 +51,7 @@ useSeoMeta({
 
     <AppContainer class="relative z-10 max-w-[68rem] space-y-6 pb-10 pt-6 sm:pb-14">
       <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
-        <!-- eslint-disable vue/no-v-html -->
-        <div
-          class="hackathon-markdown"
-          v-html="termsHtml"
-        />
-        <!-- eslint-enable vue/no-v-html -->
+        <AppMarkdownRenderer :source="platformTermsMarkdown" />
       </section>
     </AppContainer>
   </div>
