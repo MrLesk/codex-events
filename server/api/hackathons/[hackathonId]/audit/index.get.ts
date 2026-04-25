@@ -1,11 +1,11 @@
 import { and, desc, eq, or, sql } from 'drizzle-orm'
 
-import { getDatabase } from '../../../../database/client'
-import { auditLogs } from '../../../../database/schema'
-import { defineApiHandler } from '../../../../utils/api-handler'
-import { apiList } from '../../../../utils/api-response'
-import { requireHackathonAdmin, routeIdParamsSchema } from '../../../../utils/hackathon-management'
-import { parseValidatedParams } from '../../../../utils/validation'
+import { getDatabase } from '#server/database/client'
+import { auditLogs } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiList } from '#server/utils/api-response'
+import { requireHackathonAdmin, routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { parseValidatedParams } from '#server/utils/validation'
 
 const auditLogReadLimit = 200
 

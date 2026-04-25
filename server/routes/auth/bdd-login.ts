@@ -5,8 +5,8 @@ export default defineEventHandler(async (event) => {
 
   if (!connection) {
     throw createError({
-      statusCode: 500,
-      statusMessage: 'AUTH0_TEST_CONNECTION_NAME is required for BDD Auth0 login.'
+      status: 500,
+      statusText: 'AUTH0_TEST_CONNECTION_NAME is required for BDD Auth0 login.'
     })
   }
 

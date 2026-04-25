@@ -1,11 +1,11 @@
 import { desc } from 'drizzle-orm'
 
-import { requirePlatformActor } from '../../auth/actor'
-import { assertPlatformAdminAccess } from '../../auth/authorization'
-import { getDatabase } from '../../database/client'
-import { auditLogs } from '../../database/schema'
-import { defineApiHandler } from '../../utils/api-handler'
-import { apiList } from '../../utils/api-response'
+import { requirePlatformActor } from '#server/auth/actor'
+import { assertPlatformAdminAccess } from '#server/auth/authorization'
+import { getDatabase } from '#server/database/client'
+import { auditLogs } from '#server/database/schema'
+import { defineApiHandler } from '#server/utils/api-handler'
+import { apiList } from '#server/utils/api-response'
 
 const auditLogReadLimit = 200
 
