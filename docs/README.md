@@ -13,6 +13,7 @@ This directory contains the canonical product and engineering documentation for 
 ## Documents
 
 - [api-surface.md](api-surface.md): canonical backend API domains, operations, contract conventions, and validation expectations
+- [database-query-plan-audit.md](database-query-plan-audit.md): measured `EXPLAIN QUERY PLAN` audit for release hot paths on the current migrated SQLite schema
 - [domain-model.md](domain-model.md): core entities, relationships, permissions, and business invariants
 - [lifecycle-and-state-machines.md](lifecycle-and-state-machines.md): lifecycle states, transitions, and transition guards
 - [permissions-matrix.md](permissions-matrix.md): actor permissions, visibility rules, and state-based action constraints
