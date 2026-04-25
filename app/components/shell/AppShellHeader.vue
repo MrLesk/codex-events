@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { buildAuthLoginHref } from '~/utils/auth-navigation'
+import { buildAuthLoginHref } from '../../../shared/auth-navigation'
 import { buildProfileIconHref } from '~/utils/profile-icon'
 
 const route = useRoute()

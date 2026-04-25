@@ -1,6 +1,6 @@
 import type { PublicHackathon, PublicHackathonState } from '~/composables/useHackathonPresentation'
 
-import { buildAccountRegisterHref, buildAuthLoginHref } from './auth-navigation'
+import { buildAccountRegisterHref, buildAuthLoginHref } from '../../shared/auth-navigation'
 
 export {
   isProofOfExecutionLinksValid,

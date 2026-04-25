@@ -16,7 +16,7 @@ import {
 import { and, eq, isNull } from 'drizzle-orm'
 import { deleteCookie, getCookie, getRequestURL, parseCookies, setCookie } from 'h3'
 
-import { accountDashboardHref, buildAccountRegisterHref, normalizeAuthReturnTo } from '../../app/utils/auth-navigation'
+import { accountDashboardHref, buildAccountRegisterHref, normalizeAuthReturnTo } from '../../shared/auth-navigation'
 import { users } from '../database/schema'
 import { ApiError } from './api-error'
 

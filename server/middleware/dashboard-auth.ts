@@ -1,4 +1,4 @@
-import { buildAuthLoginHref } from '../../app/utils/auth-navigation'
+import { buildAuthLoginHref } from '../../shared/auth-navigation'
 
 export default defineEventHandler(async (event) => {
   const url = getRequestURL(event)

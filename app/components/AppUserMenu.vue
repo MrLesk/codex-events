@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { LogOutIcon } from 'lucide-vue-next'
+import { authLogoutHref } from '../../shared/auth-navigation'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger
 } from '~/components/ui/dropdown-menu'
-import { authLogoutHref } from '~/utils/auth-navigation'
 import {
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled

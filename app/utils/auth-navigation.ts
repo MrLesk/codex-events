@@ -1,36 +1,13 @@
-export const authLogoutHref = '/auth/logout'
-export const accountDashboardHref = '/account'
-export const accountRegisterHref = '/account/register'
-export const accountSettingsHref = '/account/settings'
+import {
+  accountDashboardHref,
+  accountRegisterHref,
+  buildAccountRegisterHref,
+  normalizeAuthReturnTo
+} from '../../shared/auth-navigation'
 
 interface RedirectAwareActor {
   kind: 'anonymous' | 'authenticated_identity' | 'platform_user'
   hasAcceptedCurrentPlatformDocuments?: boolean
-}
-
-export function normalizeAuthReturnTo(returnTo: string | null | undefined, fallback = '/') {
-  const normalizedReturnTo = returnTo?.trim() || fallback
-
-  if (!normalizedReturnTo.startsWith('/') || normalizedReturnTo.startsWith('//')) {
-    return fallback
-  }
-
-  return normalizedReturnTo
-}
-
-export function buildAuthLoginHref(returnTo: string | null | undefined) {
-  const normalizedReturnTo = normalizeAuthReturnTo(returnTo, accountDashboardHref)
-  const loginReturnTo = normalizedReturnTo === '/' ? accountDashboardHref : normalizedReturnTo
-
-  return `/auth/login?returnTo=${encodeURIComponent(loginReturnTo)}`
-}
-
-export function buildAccountRegisterHref(returnTo: string | null | undefined) {
-  return `${accountRegisterHref}?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo, accountDashboardHref))}`
-}
-
-export function buildAccountSettingsHref(returnTo: string | null | undefined) {
-  return `${accountSettingsHref}?returnTo=${encodeURIComponent(normalizeAuthReturnTo(returnTo, accountDashboardHref))}`
 }
 
 function readRegisterReturnTo(registerHref: string) {

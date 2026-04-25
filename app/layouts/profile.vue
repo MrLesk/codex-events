@@ -2,7 +2,7 @@
 import AppShellFooter from '~/components/shell/AppShellFooter.vue'
 import AppShellHeader from '~/components/shell/AppShellHeader.vue'
 import AppShellSidebar from '~/components/shell/AppShellSidebar.vue'
-import { accountRegisterHref } from '~/utils/auth-navigation'
+import { accountRegisterHref } from '../../shared/auth-navigation'
 
 const { actor, accountHackathonNavigationMode, hasPlatformAccount, sidebarGroups } = useShellNavigation()
 const route = useRoute()

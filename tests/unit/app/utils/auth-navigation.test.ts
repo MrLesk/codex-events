@@ -7,9 +7,9 @@ import {
   buildAccountRegisterHref,
   buildAccountSettingsHref,
   buildAuthLoginHref,
-  normalizeAuthReturnTo,
-  resolveActorAppRedirect
-} from '../../../../app/utils/auth-navigation'
+  normalizeAuthReturnTo
+} from '../../../../shared/auth-navigation'
+import { resolveActorAppRedirect } from '../../../../app/utils/auth-navigation'
 
 describe('auth navigation helpers', () => {
   test('builds a login redirect with an encoded return target', () => {
