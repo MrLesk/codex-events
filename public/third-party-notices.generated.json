@@ -1,6 +1,6 @@
 {
-  "generatedAtIso": "2026-04-25T22:44:13.241Z",
-  "generatedAtLabel": "25 April 2026 at 22:44",
+  "generatedAtIso": "2026-04-26T10:10:51.659Z",
+  "generatedAtLabel": "26 April 2026 at 10:10",
   "notices": [
     {
       "homepageUrl": "https://github.com/antfu/install-pkg#readme",
@@ -1731,18 +1731,6 @@
       "version": "1.2.3"
     },
     {
-      "homepageUrl": null,
-      "license": "MIT",
-      "licenseFileName": "license.md",
-      "licenseText": "Copyright 2024 Plus Five Five, Inc\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
-      "name": "@react-email/render",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40react-email%2Frender/v/2.0.7",
-      "repositoryUrl": "https://github.com/resend/react-email",
-      "version": "2.0.7"
-    },
-    {
       "homepageUrl": "https://rolldown.rs/",
       "license": "MIT",
       "licenseFileName": "LICENSE",
@@ -1873,18 +1861,6 @@
       "registryUrl": "https://www.npmjs.com/package/%40rollup%2Frollup-darwin-arm64/v/4.59.0",
       "repositoryUrl": "https://github.com/rollup/rollup",
       "version": "4.59.0"
-    },
-    {
-      "homepageUrl": "https://github.com/mxxii/selderee",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\r\n\r\nCopyright (c) 2021-2022 KillyMXI <killy@mxii.eu.org>\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy\r\nof this software and associated documentation files (the \"Software\"), to deal\r\nin the Software without restriction, including without limitation the rights\r\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\r\ncopies of the Software, and to permit persons to whom the Software is\r\nfurnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in all\r\ncopies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\r\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\r\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\r\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\r\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\r\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\r\nSOFTWARE.",
-      "name": "@selderee/plugin-htmlparser2",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/%40selderee%2Fplugin-htmlparser2/v/0.11.0",
-      "repositoryUrl": "https://github.com/mxxii/selderee",
-      "version": "0.11.0"
     },
     {
       "homepageUrl": null,
@@ -4899,30 +4875,6 @@
       "version": "6.1.0"
     },
     {
-      "homepageUrl": "https://github.com/html-to-text/node-html-to-text",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\n\nPortions Copyright (c) 2012-2019 werk85 <malte@werk85.de>\nPortions Copyright (c) 2020-2022 KillyMXI <killy@mxii.eu.org>\n\nPermission is hereby granted, free of charge, to any person\nobtaining a copy of this software and associated documentation\nfiles (the \"Software\"), to deal in the Software without\nrestriction, including without limitation the rights to use,\ncopy, modify, merge, publish, distribute, sublicense, and/or sell\ncopies of the Software, and to permit persons to whom the\nSoftware is furnished to do so, subject to the following\nconditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES\nOF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT\nHOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,\nWHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING\nFROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR\nOTHER DEALINGS IN THE SOFTWARE.",
-      "name": "html-to-text",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/html-to-text/v/9.0.5",
-      "repositoryUrl": "https://github.com/html-to-text/node-html-to-text",
-      "version": "9.0.5"
-    },
-    {
-      "homepageUrl": null,
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "Copyright 2010, 2011, Chris Winberry <chris@winberry.net>. All rights reserved.\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof this software and associated documentation files (the \"Software\"), to\ndeal in the Software without restriction, including without limitation the\nrights to use, copy, modify, merge, publish, distribute, sublicense, and/or\nsell copies of the Software, and to permit persons to whom the Software is\nfurnished to do so, subject to the following conditions:\n \nThe above copyright notice and this permission notice shall be included in\nall copies or substantial portions of the Software.\n \nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING\nFROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS\nIN THE SOFTWARE.",
-      "name": "htmlparser2",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/htmlparser2/v/8.0.2",
-      "repositoryUrl": "https://github.com/fb55/htmlparser2",
-      "version": "8.0.2"
-    },
-    {
       "homepageUrl": null,
       "license": "MIT",
       "licenseFileName": "LICENSE",
@@ -5521,18 +5473,6 @@
       "registryUrl": "https://www.npmjs.com/package/lazystream/v/1.0.1",
       "repositoryUrl": "https://github.com/jpommerening/node-lazystream",
       "version": "1.0.1"
-    },
-    {
-      "homepageUrl": "https://github.com/mxxii/leac",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\r\n\r\nCopyright (c) 2021-2022 KillyMXI <killy@mxii.eu.org>\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy\r\nof this software and associated documentation files (the \"Software\"), to deal\r\nin the Software without restriction, including without limitation the rights\r\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\r\ncopies of the Software, and to permit persons to whom the Software is\r\nfurnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in all\r\ncopies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\r\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\r\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\r\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\r\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\r\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\r\nSOFTWARE.",
-      "name": "leac",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/leac/v/0.6.0",
-      "repositoryUrl": "https://github.com/mxxii/leac",
-      "version": "0.6.0"
     },
     {
       "homepageUrl": null,
@@ -6531,18 +6471,6 @@
       "version": "1.6.0"
     },
     {
-      "homepageUrl": "https://github.com/mxxii/parseley",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\r\n\r\nCopyright (c) 2021-2022 KillyMXI <killy@mxii.eu.org>\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy\r\nof this software and associated documentation files (the \"Software\"), to deal\r\nin the Software without restriction, including without limitation the rights\r\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\r\ncopies of the Software, and to permit persons to whom the Software is\r\nfurnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in all\r\ncopies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\r\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\r\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\r\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\r\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\r\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\r\nSOFTWARE.",
-      "name": "parseley",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/parseley/v/0.12.1",
-      "repositoryUrl": "https://github.com/mxxii/parseley",
-      "version": "0.12.1"
-    },
-    {
       "homepageUrl": null,
       "license": "MIT",
       "licenseFileName": "LICENSE",
@@ -6661,18 +6589,6 @@
       "registryUrl": "https://www.npmjs.com/package/pathe/v/2.0.3",
       "repositoryUrl": "unjs/pathe",
       "version": "2.0.3"
-    },
-    {
-      "homepageUrl": "https://github.com/mxxii/peberminta",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\r\n\r\nCopyright (c) 2021-2022 KillyMXI <killy@mxii.eu.org>\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy\r\nof this software and associated documentation files (the \"Software\"), to deal\r\nin the Software without restriction, including without limitation the rights\r\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\r\ncopies of the Software, and to permit persons to whom the Software is\r\nfurnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in all\r\ncopies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\r\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\r\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\r\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\r\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\r\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\r\nSOFTWARE.",
-      "name": "peberminta",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/peberminta/v/0.9.0",
-      "repositoryUrl": "https://github.com/mxxii/peberminta",
-      "version": "0.9.0"
     },
     {
       "homepageUrl": null,
@@ -7143,18 +7059,6 @@
       "version": "4.2.0"
     },
     {
-      "homepageUrl": "https://prettier.io",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "Copyright © James Long and contributors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:\n\nThe above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
-      "name": "prettier",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/prettier/v/3.8.1",
-      "repositoryUrl": "prettier/prettier",
-      "version": "3.8.1"
-    },
-    {
       "homepageUrl": null,
       "license": "MIT",
       "licenseFileName": "license",
@@ -7561,18 +7465,6 @@
       "registryUrl": "https://www.npmjs.com/package/scule/v/1.3.0",
       "repositoryUrl": "unjs/scule",
       "version": "1.3.0"
-    },
-    {
-      "homepageUrl": "https://github.com/mxxii/selderee",
-      "license": "MIT",
-      "licenseFileName": "LICENSE",
-      "licenseText": "MIT License\r\n\r\nCopyright (c) 2021-2022 KillyMXI <killy@mxii.eu.org>\r\n\r\nPermission is hereby granted, free of charge, to any person obtaining a copy\r\nof this software and associated documentation files (the \"Software\"), to deal\r\nin the Software without restriction, including without limitation the rights\r\nto use, copy, modify, merge, publish, distribute, sublicense, and/or sell\r\ncopies of the Software, and to permit persons to whom the Software is\r\nfurnished to do so, subject to the following conditions:\r\n\r\nThe above copyright notice and this permission notice shall be included in all\r\ncopies or substantial portions of the Software.\r\n\r\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR\r\nIMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,\r\nFITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE\r\nAUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER\r\nLIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,\r\nOUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE\r\nSOFTWARE.",
-      "name": "selderee",
-      "noticeFileName": null,
-      "noticeText": null,
-      "registryUrl": "https://www.npmjs.com/package/selderee/v/0.11.0",
-      "repositoryUrl": "https://github.com/mxxii/selderee",
-      "version": "0.11.0"
     },
     {
       "homepageUrl": null,

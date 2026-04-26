@@ -33,7 +33,6 @@
     "@iconify-json/lucide": "1.2.103",
     "@iconify-json/simple-icons": "1.2.79",
     "@nuxt/icon": "^2.2.1",
-    "@react-email/render": "2.0.7",
     "@tailwindcss/vite": "^4.2.4",
     "@vee-validate/zod": "^4.15.1",
     "@vueuse/core": "^14.2.1",
