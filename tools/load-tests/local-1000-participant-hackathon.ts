@@ -1,7 +1,7 @@
 import 'dotenv/config'
 
 import { execFileSync, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { chromium, expect, request, type APIRequestContext, type Browser, type Page } from '@playwright/test'
@@ -22,6 +22,10 @@ type LoadRunOptions = {
   stateRoot: string
   baseUrl: string
   reportDir: string
+  performanceSamples: number
+  performanceConcurrency: number
+  browserMetrics: boolean
+  lighthouse: boolean
 }
 
 type CheckResult = {
@@ -29,6 +33,82 @@ type CheckResult = {
   status: 'passed' | 'failed'
   durationMs: number
   detail?: string
+}
+
+type PerformanceMetric = {
+  phase: string
+  method: 'GET'
+  path: string
+  samples: number
+  concurrency: number
+  successes: number
+  failures: number
+  responseBytes: {
+    min: number | null
+    max: number | null
+    avg: number | null
+  }
+  durationMs: {
+    min: number | null
+    avg: number | null
+    p50: number | null
+    p90: number | null
+    p95: number | null
+    p99: number | null
+    max: number | null
+  }
+  statusCodes: Record<string, number>
+  errors: string[]
+}
+
+type BrowserMetric = {
+  name: string
+  url: string
+  status: 'passed' | 'failed'
+  durationMs: number
+  responseStatus?: number
+  navigation?: {
+    responseEndMs: number | null
+    domContentLoadedMs: number | null
+    loadEventEndMs: number | null
+    totalDurationMs: number | null
+    resourceCount: number
+    transferSizeBytes: number
+    encodedBodySizeBytes: number
+    decodedBodySizeBytes: number
+    jsHeapUsedBytes: number | null
+    jsHeapTotalBytes: number | null
+  }
+  detail?: string
+}
+
+type LighthouseReport = {
+  name: string
+  url: string
+  status: 'passed' | 'failed'
+  durationMs: number
+  reportPath?: string
+  scores?: Record<string, number | null>
+  detail?: string
+}
+
+type ResourceSnapshot = {
+  label: string
+  capturedAt: string
+  pid: number | null
+  cpuPercent: number | null
+  memoryPercent: number | null
+  rssKb: number | null
+  vszKb: number | null
+  elapsed: string | null
+  command: string | null
+  detail?: string
+}
+
+type ReadTarget = {
+  path: string
+  expectedTotal?: number
+  performanceProbe?: boolean
 }
 
 type ApiEnvelope<T> = {
@@ -41,6 +121,8 @@ type HackathonResponse = {
   slug: string
   state: string
   pitchPresentationSubmissionIds?: string[]
+  activePitchPresentationSubmissionId?: string | null
+  pitchPresentationsCompletedAt?: string | null
 }
 
 type ListResponse<T> = {
@@ -75,6 +157,9 @@ const defaultPhaseWaitMs = 10 * 60 * 1000
 const defaultStateRoot = '.wrangler/state-load-1000'
 const defaultBaseUrl = 'http://localhost:3100'
 const defaultReportDir = '.wrangler/load-test-reports'
+const defaultPerformanceSamples = 1
+const defaultPerformanceConcurrency = 1
+const lifecycleActionTimeoutMs = 300000
 
 const personaUserIds: Record<StablePersonaKey, string> = {
   platform_admin: 'load_user_platform_admin',
@@ -84,6 +169,10 @@ const personaUserIds: Record<StablePersonaKey, string> = {
 }
 
 const checks: CheckResult[] = []
+const performanceMetrics: PerformanceMetric[] = []
+const browserMetrics: BrowserMetric[] = []
+const lighthouseReports: LighthouseReport[] = []
+const resourceSnapshots: ResourceSnapshot[] = []
 const startedAt = new Date()
 
 function usage() {
@@ -96,7 +185,11 @@ Options:
   --state-root <path>               Dedicated local D1 state root. Default: ${defaultStateRoot}
   --base-url <url>                  Local app origin. Default: ${defaultBaseUrl}
   --report-dir <path>               Report output directory. Default: ${defaultReportDir}
-  --smoke                           Use 40 participants and 1 second waits.
+  --perf-samples <number>           Repeated API samples per probed endpoint. Use 0 to disable. Default: ${defaultPerformanceSamples}
+  --perf-concurrency <number>       Max parallel API samples per probed endpoint. Default: ${defaultPerformanceConcurrency}
+  --no-browser-metrics              Skip Playwright browser-side navigation metrics.
+  --lighthouse                      Run Lighthouse against the public completed hackathon page.
+  --smoke                           Use 40 participants, 30 second waits, and one API sample.
   --help                            Show this message.
 `
 }
@@ -128,7 +221,11 @@ function parseOptions(argv: string[]): LoadRunOptions | null {
     submissionWaitMs: defaultPhaseWaitMs,
     stateRoot: defaultStateRoot,
     baseUrl: defaultBaseUrl,
-    reportDir: defaultReportDir
+    reportDir: defaultReportDir,
+    performanceSamples: defaultPerformanceSamples,
+    performanceConcurrency: defaultPerformanceConcurrency,
+    browserMetrics: true,
+    lighthouse: false
   }
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -143,6 +240,8 @@ function parseOptions(argv: string[]): LoadRunOptions | null {
       options.participantCount = 40
       options.registrationWaitMs = 30_000
       options.submissionWaitMs = 30_000
+      options.performanceSamples = 1
+      options.performanceConcurrency = 1
       continue
     }
 
@@ -191,6 +290,28 @@ function parseOptions(argv: string[]): LoadRunOptions | null {
 
       options.reportDir = nextToken.trim()
       index += 1
+      continue
+    }
+
+    if (token === '--perf-samples') {
+      options.performanceSamples = parseNonNegativeInteger(nextToken, token)
+      index += 1
+      continue
+    }
+
+    if (token === '--perf-concurrency') {
+      options.performanceConcurrency = parsePositiveInteger(nextToken, token)
+      index += 1
+      continue
+    }
+
+    if (token === '--no-browser-metrics') {
+      options.browserMetrics = false
+      continue
+    }
+
+    if (token === '--lighthouse') {
+      options.lighthouse = true
       continue
     }
 
@@ -259,6 +380,28 @@ function pad(value: number, width = 4) {
   return String(value).padStart(width, '0')
 }
 
+function scaledCount(baseCountAt1000Participants: number, participantCount: number, minimum = 1) {
+  return Math.max(minimum, Math.round((baseCountAt1000Participants * participantCount) / 1000))
+}
+
+function loadShortlistFinalistCount(participantCount: number) {
+  return Math.min(100, Math.max(5, scaledCount(25, participantCount)))
+}
+
+function calculateTeamPlan(participantCount: number) {
+  const soloParticipantCount = Math.min(participantCount, Math.max(1, Math.floor(participantCount * 0.3)))
+  const remainingAfterSolo = participantCount - soloParticipantCount
+  const pairParticipantTarget = Math.floor(participantCount * 0.4)
+  const pairParticipantCount = Math.min(remainingAfterSolo, pairParticipantTarget - (pairParticipantTarget % 2))
+  const multiParticipantCount = participantCount - soloParticipantCount - pairParticipantCount
+
+  return {
+    soloParticipantCount,
+    pairParticipantCount,
+    multiParticipantCount
+  }
+}
+
 function participantId(index: number) {
   return `load_participant_${pad(index)}`
 }
@@ -312,6 +455,7 @@ function buildBaseSeedSql(personas: ProvisionedStablePersona[], options: LoadRun
   const futureSubmissionOpen = futureRegistrationClose
   const futureSubmissionClose = addMinutes(futureSubmissionOpen, 20)
   const createdAt = now.toISOString()
+  const finalistCount = loadShortlistFinalistCount(options.participantCount)
   const statements: string[] = ['pragma foreign_keys = on']
   const personaRows = personas.map(persona => [
     personaUserIds[persona.key],
@@ -458,9 +602,9 @@ function buildBaseSeedSql(personas: ProvisionedStablePersona[], options: LoadRun
     'updated_at'
   ], [[
     loadHackathonId,
-    'Local 1000 Participant Load Test',
+    `Local ${options.participantCount} Participant Load Test`,
     loadHackathonSlug,
-    'A local full-lifecycle load validation hackathon with 1000 seeded participants, team activity, submissions, judging, pitch review, prizes, credits, and feedback.',
+    `A local full-lifecycle load validation hackathon with ${options.participantCount} seeded participants, team activity, submissions, judging, pitch review, prizes, credits, and feedback.`,
     JSON.stringify(agendaItems),
     'https://discord.gg/codex-load-test',
     'https://lu.ma/codex-load-test',
@@ -476,7 +620,7 @@ function buildBaseSeedSql(personas: ProvisionedStablePersona[], options: LoadRun
     true,
     70,
     30,
-    Math.min(25, Math.max(5, Math.floor(options.participantCount / 20))),
+    finalistCount,
     4,
     options.participantCount,
     true,
@@ -605,7 +749,7 @@ function buildBaseSeedSql(personas: ProvisionedStablePersona[], options: LoadRun
     ['load_prize_grand', loadHackathonId, 'Grand Prize', 'Top overall team prize.', 'api_credits', '10000', 'USD', 'team', 1, 1, 1, createdAt],
     ['load_prize_top_three_members', loadHackathonId, 'Top Three Member Prize', 'Member benefit for top three teams.', 'subscription', 'pro', null, 'member', 1, 3, 2, createdAt],
     ['load_prize_top_ten', loadHackathonId, 'Top Ten Credits', 'Credits for top ten teams.', 'api_credits', '1000', 'USD', 'team', 4, 10, 3, createdAt],
-    ['load_prize_finalists', loadHackathonId, 'Finalist Benefit', 'Member benefit for live pitch finalists.', 'other', 'finalist-kit', null, 'member', 11, Math.min(25, Math.max(11, Math.floor(options.participantCount / 20))), 4, createdAt]
+    ['load_prize_finalists', loadHackathonId, 'Finalist Benefit', 'Member benefit for live pitch finalists.', 'other', 'finalist-kit', null, 'member', 11, Math.max(11, finalistCount), 4, createdAt]
   ])
 
   pushInsert(statements, 'hackathon_credit_offers', [
@@ -660,10 +804,12 @@ function buildBaseSeedSql(personas: ProvisionedStablePersona[], options: LoadRun
 
 function buildScheduleUpdateSql(options: LoadRunOptions) {
   const now = new Date()
+  const registrationWindowMs = Math.max(1, options.registrationWaitMs)
+  const submissionWindowMs = Math.max(1, options.submissionWaitMs)
   const registrationOpensAt = new Date(now.getTime() - 1000)
-  const registrationClosesAt = new Date(now.getTime() + options.registrationWaitMs)
+  const registrationClosesAt = new Date(now.getTime() + registrationWindowMs)
   const submissionOpensAt = registrationClosesAt
-  const submissionClosesAt = new Date(submissionOpensAt.getTime() + options.submissionWaitMs)
+  const submissionClosesAt = new Date(submissionOpensAt.getTime() + submissionWindowMs)
 
   return [
     `update hackathons
@@ -679,6 +825,7 @@ function buildScheduleUpdateSql(options: LoadRunOptions) {
 function buildRegistrationSeedSql(options: LoadRunOptions) {
   const now = new Date()
   const createdAt = now.toISOString()
+  const teamPlan = calculateTeamPlan(options.participantCount)
   const statements: string[] = ['pragma foreign_keys = on']
   const participantRows = Array.from({ length: options.participantCount }, (_, index) => {
     const number = index + 1
@@ -750,7 +897,7 @@ function buildRegistrationSeedSql(options: LoadRunOptions) {
     'updated_at'
   ], participantRows.map((row, index) => {
     const number = index + 1
-    const teamIntent = number <= 300 ? 'solo' : 'team'
+    const teamIntent = number <= teamPlan.soloParticipantCount ? 'solo' : 'team'
 
     return [
       `load_application_${pad(number)}`,
@@ -779,7 +926,7 @@ function buildRegistrationSeedSql(options: LoadRunOptions) {
   }> = []
   let participantCursor = 1
 
-  while (participantCursor <= Math.min(300, options.participantCount)) {
+  while (participantCursor <= teamPlan.soloParticipantCount) {
     const userId = participantId(participantCursor)
     teams.push({
       id: `load_team_solo_${pad(participantCursor)}`,
@@ -794,7 +941,9 @@ function buildRegistrationSeedSql(options: LoadRunOptions) {
   }
 
   let pairIndex = 1
-  while (participantCursor + 1 <= Math.min(700, options.participantCount)) {
+  const pairParticipantEnd = teamPlan.soloParticipantCount + teamPlan.pairParticipantCount
+
+  while (participantCursor + 1 <= pairParticipantEnd) {
     const firstUserId = participantId(participantCursor)
     const secondUserId = participantId(participantCursor + 1)
 
@@ -834,7 +983,7 @@ function buildRegistrationSeedSql(options: LoadRunOptions) {
     multiIndex += 1
   }
 
-  const historicalTeams = Array.from({ length: Math.min(40, Math.floor(options.participantCount / 2)) }, (_, index) => {
+  const historicalTeams = Array.from({ length: Math.min(scaledCount(40, options.participantCount), Math.floor(options.participantCount / 2)) }, (_, index) => {
     const number = index + 1
 
     return {
@@ -933,7 +1082,7 @@ function buildRegistrationSeedSql(options: LoadRunOptions) {
       team.creator,
       createdAt
     ])),
-    ...Array.from({ length: Math.min(100, options.participantCount) }, (_, index) => {
+    ...Array.from({ length: Math.min(scaledCount(100, options.participantCount), options.participantCount) }, (_, index) => {
       const number = index + 1
       const team = teams[(index + 7) % teams.length]!
       const status = number % 2 === 0 ? 'rejected' : 'canceled'
@@ -957,12 +1106,17 @@ function buildRegistrationSeedSql(options: LoadRunOptions) {
   }
 }
 
-function buildSubmissionSeedSql(teamIds: string[]) {
+function buildSubmissionSeedSql(teamIds: string[], options: LoadRunOptions) {
   const now = new Date()
   const createdAt = now.toISOString()
-  const submittedTeamCount = Math.max(1, Math.min(540, teamIds.length - 35))
-  const draftTeamCount = Math.min(10, Math.max(0, teamIds.length - submittedTeamCount))
-  const withdrawnTeamCount = Math.min(5, Math.max(0, teamIds.length - submittedTeamCount - draftTeamCount))
+  const reservedTeamCount = Math.min(
+    Math.max(0, teamIds.length - 1),
+    Math.max(3, scaledCount(35, options.participantCount))
+  )
+  const draftTeamCount = Math.min(scaledCount(10, options.participantCount), reservedTeamCount)
+  const withdrawnTeamCount = Math.min(scaledCount(5, options.participantCount), reservedTeamCount - draftTeamCount)
+  const noSubmissionTeamCount = Math.max(0, reservedTeamCount - draftTeamCount - withdrawnTeamCount)
+  const submittedTeamCount = Math.max(1, teamIds.length - draftTeamCount - withdrawnTeamCount - noSubmissionTeamCount)
   const submittedTeams = teamIds.slice(0, submittedTeamCount)
   const draftTeams = teamIds.slice(submittedTeamCount, submittedTeamCount + draftTeamCount)
   const withdrawnTeams = teamIds.slice(submittedTeamCount + draftTeamCount, submittedTeamCount + draftTeamCount + withdrawnTeamCount)
@@ -1048,7 +1202,7 @@ function buildSubmissionSeedSql(teamIds: string[]) {
     submittedTeamCount,
     draftTeamCount,
     withdrawnTeamCount,
-    noSubmissionTeamCount: Math.max(0, teamIds.length - submittedTeamCount - draftTeamCount - withdrawnTeamCount)
+    noSubmissionTeamCount
   }
 }
 
@@ -1104,9 +1258,9 @@ function buildCompletePitchReviewSql() {
   ].join(';\n') + ';\n'
 }
 
-function buildPostCompletionSeedSql() {
+function buildPostCompletionSeedSql(options: LoadRunOptions) {
   const now = new Date().toISOString()
-  const feedbackRows = Array.from({ length: 75 }, (_, index) => {
+  const feedbackRows = Array.from({ length: scaledCount(75, options.participantCount) }, (_, index) => {
     const number = index + 1
     const rating = (number % 5) + 1
 
@@ -1419,22 +1573,61 @@ async function timeCheck<T>(name: string, action: () => Promise<T>) {
   }
 }
 
+function serializeError(error: unknown) {
+  if (error instanceof Error) {
+    return {
+      message: error.message,
+      stack: error.stack
+    }
+  }
+
+  return {
+    message: String(error)
+  }
+}
+
 async function apiJson<T>(
   api: APIRequestContext,
   method: 'GET' | 'POST',
   path: string,
   data?: unknown
 ) {
-  const response = method === 'GET'
-    ? await api.get(path)
-    : await api.post(path, data === undefined ? undefined : { data })
-  const text = await response.text()
+  const maxAttempts = method === 'GET' ? 3 : 1
+  let lastError: Error | null = null
 
-  if (!response.ok()) {
-    throw new Error(`${method} ${path} returned ${response.status()} ${response.statusText()}: ${text.slice(0, 1200)}`)
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const response = method === 'GET'
+        ? await api.get(path)
+        : await api.post(path, data === undefined ? undefined : { data })
+      const text = await response.text()
+
+      if (!response.ok()) {
+        const error = new Error(`${method} ${path} returned ${response.status()} ${response.statusText()}: ${text.slice(0, 1200)}`)
+
+        if (method === 'GET' && response.status() >= 500 && attempt < maxAttempts - 1) {
+          lastError = error
+          await sleep(500 * (attempt + 1))
+          continue
+        }
+
+        throw error
+      }
+
+      return JSON.parse(text) as T
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error))
+
+      if (method === 'GET' && attempt < maxAttempts - 1) {
+        await sleep(500 * (attempt + 1))
+        continue
+      }
+
+      throw lastError
+    }
   }
 
-  return JSON.parse(text) as T
+  throw lastError ?? new Error(`${method} ${path} failed without a captured error.`)
 }
 
 async function assertGetOk(api: APIRequestContext, path: string, expectedTotal?: number) {
@@ -1450,13 +1643,188 @@ async function assertGetOk(api: APIRequestContext, path: string, expectedTotal?:
   })
 }
 
+function percentile(values: number[], percentileValue: number) {
+  if (values.length === 0) {
+    return null
+  }
+
+  const sorted = [...values].sort((left, right) => left - right)
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * percentileValue) - 1))
+
+  return sorted[index] ?? null
+}
+
+function average(values: number[]) {
+  if (values.length === 0) {
+    return null
+  }
+
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length)
+}
+
+function minOrNull(values: number[]) {
+  return values.length === 0 ? null : Math.min(...values)
+}
+
+function maxOrNull(values: number[]) {
+  return values.length === 0 ? null : Math.max(...values)
+}
+
+function largeReadTargets(phase: string, participantCount: number): ReadTarget[] {
+  const targets: ReadTarget[] = [
+    { path: `/api/hackathons/${loadHackathonId}/applications`, expectedTotal: participantCount, performanceProbe: true },
+    { path: `/api/hackathons/${loadHackathonId}/teams`, performanceProbe: true },
+    { path: `/api/hackathons/${loadHackathonId}/teams/submission-monitor`, performanceProbe: true },
+    { path: `/api/hackathons/${loadHackathonId}/no-submission-teams`, performanceProbe: true },
+    { path: `/api/hackathons/${loadHackathonId}/credits` },
+    { path: `/api/hackathons/${loadHackathonId}/admin/credits` },
+    { path: `/api/hackathons/${loadHackathonId}/roles` }
+  ]
+
+  if (['blind_review', 'shortlist', 'pitch', 'pitch_review', 'final_deliberation', 'winners_announced', 'completed'].includes(phase)) {
+    targets.push(
+      { path: `/api/hackathons/${loadHackathonId}/leaderboard`, performanceProbe: true },
+      { path: `/api/hackathons/${loadHackathonId}/judging/assignments`, performanceProbe: true }
+    )
+  }
+
+  if (['shortlist', 'pitch'].includes(phase)) {
+    targets.push({ path: `/api/hackathons/${loadHackathonId}/shortlist`, performanceProbe: true })
+  }
+
+  if (phase === 'final_deliberation') {
+    targets.push({ path: `/api/hackathons/${loadHackathonId}/final-deliberation`, performanceProbe: true })
+  }
+
+  if (['winners_announced', 'completed'].includes(phase)) {
+    targets.push({ path: `/api/hackathons/${loadHackathonId}/prize-redemptions`, performanceProbe: true })
+  }
+
+  if (phase === 'completed') {
+    targets.push(
+      { path: `/api/hackathons/${loadHackathonId}/winners`, performanceProbe: true },
+      { path: `/api/hackathons/${loadHackathonId}/published-projects`, performanceProbe: true },
+      { path: `/api/hackathons/${loadHackathonId}/feedback`, performanceProbe: true }
+    )
+  }
+
+  return targets
+}
+
+async function measureGetPerformance(api: APIRequestContext, phase: string, target: ReadTarget, options: LoadRunOptions) {
+  if (options.performanceSamples === 0) {
+    return
+  }
+
+  const checkStarted = Date.now()
+  const samples: Array<{
+    durationMs: number
+    responseBytes: number
+    statusCode: number
+    error?: string
+  }> = []
+
+  for (let offset = 0; offset < options.performanceSamples; offset += options.performanceConcurrency) {
+    const batchSize = Math.min(options.performanceConcurrency, options.performanceSamples - offset)
+    const batch = Array.from({ length: batchSize }, async () => {
+      const started = Date.now()
+
+      try {
+        const response = await api.get(target.path)
+        const text = await response.text()
+        const durationMs = Date.now() - started
+        let error: string | undefined
+
+        if (!response.ok()) {
+          error = `${response.status()} ${response.statusText()}: ${text.slice(0, 500)}`
+        } else if (target.expectedTotal !== undefined) {
+          const payload = JSON.parse(text) as ListResponse<unknown> | ApiEnvelope<unknown>
+          const maybeTotal = 'meta' in payload ? payload.meta?.total : undefined
+
+          if (maybeTotal !== target.expectedTotal) {
+            error = `Expected meta.total ${target.expectedTotal}, received ${String(maybeTotal)}.`
+          }
+        }
+
+        return {
+          durationMs,
+          responseBytes: Buffer.byteLength(text),
+          statusCode: response.status(),
+          error
+        }
+      } catch (error) {
+        return {
+          durationMs: Date.now() - started,
+          responseBytes: 0,
+          statusCode: 0,
+          error: error instanceof Error ? error.message : String(error)
+        }
+      }
+    })
+
+    samples.push(...await Promise.all(batch))
+  }
+
+  const successfulSamples = samples.filter(sample => !sample.error)
+  const durations = successfulSamples.map(sample => sample.durationMs)
+  const responseBytes = successfulSamples.map(sample => sample.responseBytes)
+  const statusCodes = samples.reduce<Record<string, number>>((counts, sample) => {
+    const key = String(sample.statusCode)
+    counts[key] = (counts[key] ?? 0) + 1
+    return counts
+  }, {})
+  const errors = samples
+    .filter(sample => sample.error)
+    .map(sample => sample.error!)
+    .slice(0, 5)
+
+  performanceMetrics.push({
+    phase,
+    method: 'GET',
+    path: target.path,
+    samples: options.performanceSamples,
+    concurrency: options.performanceConcurrency,
+    successes: successfulSamples.length,
+    failures: samples.length - successfulSamples.length,
+    responseBytes: {
+      min: minOrNull(responseBytes),
+      max: maxOrNull(responseBytes),
+      avg: average(responseBytes)
+    },
+    durationMs: {
+      min: minOrNull(durations),
+      avg: average(durations),
+      p50: percentile(durations, 0.5),
+      p90: percentile(durations, 0.9),
+      p95: percentile(durations, 0.95),
+      p99: percentile(durations, 0.99),
+      max: maxOrNull(durations)
+    },
+    statusCodes,
+    errors
+  })
+
+  checks.push({
+    name: `Perf ${phase} GET ${target.path}`,
+    status: errors.length > 0 ? 'failed' : 'passed',
+    durationMs: Date.now() - checkStarted,
+    detail: errors.length > 0 ? errors.join(' | ') : undefined
+  })
+}
+
+async function collectPerformanceMetrics(api: APIRequestContext, phase: string, participantCount: number, options: LoadRunOptions) {
+  for (const target of largeReadTargets(phase, participantCount).filter(target => target.performanceProbe)) {
+    await measureGetPerformance(api, phase, target, options)
+  }
+}
+
 async function getHackathon(api: APIRequestContext) {
   const payload = await apiJson<ApiEnvelope<HackathonResponse>>(api, 'GET', `/api/hackathons/${loadHackathonId}`)
   return payload.data
 }
 
 async function waitForHackathonState(api: APIRequestContext, expectedState: string) {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
+  for (let attempt = 0; attempt < lifecycleActionTimeoutMs / 1000; attempt += 1) {
     const hackathon = await getHackathon(api)
 
     if (hackathon.state === expectedState) {
@@ -1468,6 +1836,48 @@ async function waitForHackathonState(api: APIRequestContext, expectedState: stri
 
   const hackathon = await getHackathon(api)
   throw new Error(`Expected hackathon state "${expectedState}", received "${hackathon.state}".`)
+}
+
+function pitchPresentationStepMatches(
+  hackathon: HackathonResponse,
+  presentationSubmissionIds: string[],
+  stepIndex: number
+) {
+  if (stepIndex === presentationSubmissionIds.length) {
+    return hackathon.activePitchPresentationSubmissionId === null
+      && hackathon.pitchPresentationsCompletedAt !== null
+  }
+
+  return hackathon.activePitchPresentationSubmissionId === presentationSubmissionIds[stepIndex]
+    && hackathon.pitchPresentationsCompletedAt === null
+}
+
+async function advancePitchPresentationWithRetry(
+  api: APIRequestContext,
+  presentationSubmissionIds: string[],
+  stepIndex: number
+) {
+  let lastError: unknown = null
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await apiJson(api, 'POST', `/api/hackathons/${loadHackathonId}/actions/advance-pitch-presentation`)
+      return
+    } catch (error) {
+      lastError = error
+      const hackathon = await getHackathon(api).catch(() => null)
+
+      if (hackathon && pitchPresentationStepMatches(hackathon, presentationSubmissionIds, stepIndex)) {
+        return
+      }
+
+      if (attempt < 2) {
+        await sleep(500 * (attempt + 1))
+      }
+    }
+  }
+
+  throw lastError
 }
 
 async function openOperationsPage(page: Page) {
@@ -1484,6 +1894,228 @@ async function openOperationsPage(page: Page) {
     const pageText = (await page.locator('body').innerText()).slice(0, 1200)
     throw new Error(`Operations panel did not render. URL: ${page.url()}. Page text: ${pageText}`, {
       cause: error
+    })
+  }
+}
+
+async function collectBrowserNavigationMetric(
+  page: Page,
+  name: string,
+  path: string,
+  baseUrl: string,
+  verify: () => Promise<void>
+) {
+  const started = Date.now()
+  const url = new URL(path, baseUrl).toString()
+
+  try {
+    const response = await page.goto(path, {
+      waitUntil: 'load',
+      timeout: 120000
+    })
+    await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => undefined)
+    await verify()
+    const navigation = await page.evaluate(() => {
+      const nav = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined
+      const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[]
+      const memory = (performance as unknown as {
+        memory?: {
+          usedJSHeapSize: number
+          totalJSHeapSize: number
+        }
+      }).memory
+
+      return {
+        responseEndMs: nav?.responseEnd ?? null,
+        domContentLoadedMs: nav?.domContentLoadedEventEnd ?? null,
+        loadEventEndMs: nav?.loadEventEnd ?? null,
+        totalDurationMs: nav?.duration ?? null,
+        resourceCount: resources.length,
+        transferSizeBytes: Math.round(resources.reduce((sum, resource) => sum + resource.transferSize, 0)),
+        encodedBodySizeBytes: Math.round(resources.reduce((sum, resource) => sum + resource.encodedBodySize, 0)),
+        decodedBodySizeBytes: Math.round(resources.reduce((sum, resource) => sum + resource.decodedBodySize, 0)),
+        jsHeapUsedBytes: memory?.usedJSHeapSize ?? null,
+        jsHeapTotalBytes: memory?.totalJSHeapSize ?? null
+      }
+    })
+
+    browserMetrics.push({
+      name,
+      url,
+      status: 'passed',
+      durationMs: Date.now() - started,
+      responseStatus: response?.status(),
+      navigation
+    })
+  } catch (error) {
+    browserMetrics.push({
+      name,
+      url,
+      status: 'failed',
+      durationMs: Date.now() - started,
+      detail: serializeError(error).message
+    })
+  }
+}
+
+async function collectBrowserMetrics(adminPage: Page, publicPage: Page, options: LoadRunOptions) {
+  if (!options.browserMetrics) {
+    return
+  }
+
+  await timeCheck('Browser metric: admin operations page', async () => {
+    await collectBrowserNavigationMetric(
+      adminPage,
+      'admin operations page',
+      `/account/hackathons/${loadHackathonSlug}?tab=operations`,
+      options.baseUrl,
+      async () => {
+        await expect(adminPage.locator('#account-tab-panel-operations')).toBeVisible({ timeout: 60000 })
+      }
+    )
+  })
+
+  await timeCheck('Browser metric: public completed page', async () => {
+    await collectBrowserNavigationMetric(
+      publicPage,
+      'public completed hackathon page',
+      `/hackathons/${loadHackathonSlug}`,
+      options.baseUrl,
+      async () => {
+        await expect(publicPage.locator('body')).toContainText(`Local ${options.participantCount} Participant Load Test`, { timeout: 60000 })
+      }
+    )
+  })
+}
+
+function recordServerSnapshot(server: ChildProcessWithoutNullStreams | null, label: string) {
+  const pid = server?.pid ?? null
+
+  if (!pid) {
+    resourceSnapshots.push({
+      label,
+      capturedAt: new Date().toISOString(),
+      pid,
+      cpuPercent: null,
+      memoryPercent: null,
+      rssKb: null,
+      vszKb: null,
+      elapsed: null,
+      command: null,
+      detail: 'No server process was available.'
+    })
+    return
+  }
+
+  try {
+    const output = execFileSync('ps', [
+      '-p',
+      String(pid),
+      '-o',
+      'pid=',
+      '-o',
+      'pcpu=',
+      '-o',
+      'pmem=',
+      '-o',
+      'rss=',
+      '-o',
+      'vsz=',
+      '-o',
+      'etime=',
+      '-o',
+      'command='
+    ], {
+      encoding: 'utf8'
+    }).trim()
+    const [pidText, cpuText, memoryText, rssText, vszText, elapsedText, ...commandParts] = output.split(/\s+/)
+    const parsedPid = Number.parseInt(pidText ?? '', 10)
+    const parsedCpuPercent = Number.parseFloat(cpuText ?? '')
+    const parsedMemoryPercent = Number.parseFloat(memoryText ?? '')
+    const parsedRssKb = Number.parseInt(rssText ?? '', 10)
+    const parsedVszKb = Number.parseInt(vszText ?? '', 10)
+
+    resourceSnapshots.push({
+      label,
+      capturedAt: new Date().toISOString(),
+      pid: Number.isFinite(parsedPid) ? parsedPid : pid,
+      cpuPercent: Number.isFinite(parsedCpuPercent) ? parsedCpuPercent : null,
+      memoryPercent: Number.isFinite(parsedMemoryPercent) ? parsedMemoryPercent : null,
+      rssKb: Number.isFinite(parsedRssKb) ? parsedRssKb : null,
+      vszKb: Number.isFinite(parsedVszKb) ? parsedVszKb : null,
+      elapsed: elapsedText ?? null,
+      command: commandParts.join(' ') || null
+    })
+  } catch (error) {
+    resourceSnapshots.push({
+      label,
+      capturedAt: new Date().toISOString(),
+      pid,
+      cpuPercent: null,
+      memoryPercent: null,
+      rssKb: null,
+      vszKb: null,
+      elapsed: null,
+      command: null,
+      detail: serializeError(error).message
+    })
+  }
+}
+
+function runLighthouseReport(options: LoadRunOptions, name: string, path: string) {
+  if (!options.lighthouse) {
+    return
+  }
+
+  const reportDirectory = resolve(process.cwd(), options.reportDir)
+  const stamp = new Date().toISOString().replaceAll(':', '-').replaceAll('.', '-')
+  const reportPath = join(reportDirectory, `lighthouse-${name.replaceAll(/\W+/g, '-')}-${stamp}.json`)
+  const url = new URL(path, options.baseUrl).toString()
+  const started = Date.now()
+
+  mkdirSync(reportDirectory, { recursive: true })
+
+  try {
+    execFileSync(
+      join(process.cwd(), 'node_modules/.bin/lighthouse'),
+      [
+        url,
+        '--output=json',
+        `--output-path=${reportPath}`,
+        '--chrome-flags=--headless=new --no-sandbox',
+        '--quiet'
+      ],
+      {
+        cwd: process.cwd(),
+        env: localD1Environment(options),
+        stdio: 'pipe',
+        timeout: lifecycleActionTimeoutMs
+      }
+    )
+
+    const report = JSON.parse(readFileSync(reportPath, 'utf8')) as {
+      categories?: Record<string, { score?: number | null }>
+    }
+    const scores = Object.fromEntries(
+      Object.entries(report.categories ?? {}).map(([category, value]) => [category, value.score ?? null])
+    )
+
+    lighthouseReports.push({
+      name,
+      url,
+      status: 'passed',
+      durationMs: Date.now() - started,
+      reportPath,
+      scores
+    })
+  } catch (error) {
+    lighthouseReports.push({
+      name,
+      url,
+      status: 'failed',
+      durationMs: Date.now() - started,
+      reportPath,
+      detail: serializeError(error).message
     })
   }
 }
@@ -1513,7 +2145,7 @@ async function clickOperationsButton(page: Page, label: string) {
   const responsePromise = actionPath
     ? page.waitForResponse(
         response => response.request().method() === 'POST' && response.url().includes(actionPath),
-        { timeout: 30000 }
+        { timeout: lifecycleActionTimeoutMs }
       )
     : null
 
@@ -1536,41 +2168,31 @@ async function advanceLifecycleWithButton(
   nextState: string
 ) {
   await timeCheck(`Operations: ${label}`, async () => {
-    await clickOperationsButton(page, label)
+    try {
+      await clickOperationsButton(page, label)
+    } catch (error) {
+      const actionPath = lifecycleActionPathByLabel.get(label)
+
+      if (!actionPath) {
+        throw error
+      }
+
+      checks.push({
+        name: `Operations UI fallback: ${label}`,
+        status: 'failed',
+        durationMs: 0,
+        detail: serializeError(error).message
+      })
+      await apiJson(api, 'POST', actionPath)
+    }
+
     await waitForHackathonState(api, nextState)
   })
 }
 
 async function runLargeReads(api: APIRequestContext, phase: string, participantCount: number) {
-  await assertGetOk(api, `/api/hackathons/${loadHackathonId}/applications`, participantCount)
-  await assertGetOk(api, `/api/hackathons/${loadHackathonId}/teams`)
-  await assertGetOk(api, `/api/hackathons/${loadHackathonId}/teams/submission-monitor`)
-  await assertGetOk(api, `/api/hackathons/${loadHackathonId}/no-submission-teams`)
-  await assertGetOk(api, `/api/hackathons/${loadHackathonId}/credits`)
-  await assertGetOk(api, `/api/hackathons/${loadHackathonId}/admin/credits`)
-  await assertGetOk(api, `/api/hackathons/${loadHackathonId}/roles`)
-
-  if (['blind_review', 'shortlist', 'pitch', 'pitch_review', 'final_deliberation', 'winners_announced', 'completed'].includes(phase)) {
-    await assertGetOk(api, `/api/hackathons/${loadHackathonId}/leaderboard`)
-    await assertGetOk(api, `/api/hackathons/${loadHackathonId}/judging/assignments`)
-  }
-
-  if (['shortlist', 'pitch'].includes(phase)) {
-    await assertGetOk(api, `/api/hackathons/${loadHackathonId}/shortlist`)
-  }
-
-  if (phase === 'final_deliberation') {
-    await assertGetOk(api, `/api/hackathons/${loadHackathonId}/final-deliberation`)
-  }
-
-  if (['winners_announced', 'completed'].includes(phase)) {
-    await assertGetOk(api, `/api/hackathons/${loadHackathonId}/prize-redemptions`)
-  }
-
-  if (phase === 'completed') {
-    await assertGetOk(api, `/api/hackathons/${loadHackathonId}/winners`)
-    await assertGetOk(api, `/api/hackathons/${loadHackathonId}/published-projects`)
-    await assertGetOk(api, `/api/hackathons/${loadHackathonId}/feedback`)
+  for (const target of largeReadTargets(phase, participantCount)) {
+    await assertGetOk(api, target.path, target.expectedTotal)
   }
 }
 
@@ -1605,33 +2227,47 @@ async function getFinalRankingSubmissionIds(api: APIRequestContext) {
   return rankedIds
 }
 
-async function writeReport(options: LoadRunOptions, summary: Record<string, unknown>) {
+async function writeReport(options: LoadRunOptions, summary: Record<string, unknown>, failure: ReturnType<typeof serializeError> | null) {
   const finishedAt = new Date()
   const report = {
+    status: failure ? 'failed' : 'completed',
     startedAt: startedAt.toISOString(),
     finishedAt: finishedAt.toISOString(),
     durationMs: finishedAt.getTime() - startedAt.getTime(),
     options,
     summary,
-    checks
+    failure,
+    checks,
+    performanceMetrics,
+    browserMetrics,
+    lighthouseReports,
+    resourceSnapshots
   }
   const reportDirectory = resolve(process.cwd(), options.reportDir)
   const stamp = finishedAt.toISOString().replaceAll(':', '-').replaceAll('.', '-')
-  const jsonPath = join(reportDirectory, `local-1000-participant-hackathon-${stamp}.json`)
-  const markdownPath = join(reportDirectory, `local-1000-participant-hackathon-${stamp}.md`)
+  const jsonPath = join(reportDirectory, `local-${options.participantCount}-participant-hackathon-${stamp}.json`)
+  const markdownPath = join(reportDirectory, `local-${options.participantCount}-participant-hackathon-${stamp}.md`)
   const failedChecks = checks.filter(check => check.status === 'failed')
+  const slowestPerformanceMetrics = [...performanceMetrics]
+    .sort((left, right) => (right.durationMs.p95 ?? right.durationMs.max ?? 0) - (left.durationMs.p95 ?? left.durationMs.max ?? 0))
+    .slice(0, 20)
 
   mkdirSync(reportDirectory, { recursive: true })
   writeFileSync(jsonPath, `${JSON.stringify(report, null, 2)}\n`, 'utf8')
   writeFileSync(markdownPath, [
-    '# Local 1000 Participant Hackathon Validation',
+    `# Local ${options.participantCount} Participant Hackathon Validation`,
     '',
+    `- Status: ${report.status}`,
     `- Started: ${report.startedAt}`,
     `- Finished: ${report.finishedAt}`,
     `- Duration: ${Math.round(report.durationMs / 1000)}s`,
     `- State root: \`${options.stateRoot}\``,
     `- Base URL: ${options.baseUrl}`,
     `- Failed checks: ${failedChecks.length}`,
+    `- API performance metrics: ${performanceMetrics.length}`,
+    `- Browser metrics: ${browserMetrics.length}`,
+    `- Lighthouse reports: ${lighthouseReports.length}`,
+    failure ? `- Failure: ${failure.message}` : '',
     '',
     '## Summary',
     '',
@@ -1643,6 +2279,24 @@ async function writeReport(options: LoadRunOptions, summary: Record<string, unkn
     '',
     ...checks.map(check =>
       `- ${check.status === 'passed' ? 'PASS' : 'FAIL'} ${check.name} (${check.durationMs}ms)${check.detail ? `: ${check.detail}` : ''}`
+    ),
+    '',
+    '## Slowest API Performance Probes',
+    '',
+    ...slowestPerformanceMetrics.map(metric =>
+      `- ${metric.phase} GET ${metric.path}: p95 ${metric.durationMs.p95 ?? 'n/a'}ms, max ${metric.durationMs.max ?? 'n/a'}ms, avg ${metric.durationMs.avg ?? 'n/a'}ms, failures ${metric.failures}/${metric.samples}`
+    ),
+    '',
+    '## Browser Metrics',
+    '',
+    ...browserMetrics.map(metric =>
+      `- ${metric.status === 'passed' ? 'PASS' : 'FAIL'} ${metric.name}: ${metric.durationMs}ms, load ${metric.navigation?.loadEventEndMs ?? 'n/a'}ms, resources ${metric.navigation?.resourceCount ?? 'n/a'}${metric.detail ? `: ${metric.detail}` : ''}`
+    ),
+    '',
+    '## Lighthouse',
+    '',
+    ...lighthouseReports.map(report =>
+      `- ${report.status === 'passed' ? 'PASS' : 'FAIL'} ${report.name}: ${report.durationMs}ms${report.scores ? `, scores ${JSON.stringify(report.scores)}` : ''}${report.reportPath ? `, ${report.reportPath}` : ''}${report.detail ? `: ${report.detail}` : ''}`
     ),
     ''
   ].join('\n'), 'utf8')
@@ -1666,16 +2320,24 @@ async function run() {
   process.env.NUXT_AUTH0_APP_BASE_URL = options.baseUrl
   process.env.NUXT_AUTH0_BDD_APP_BASE_URL = options.baseUrl
 
-  console.log(`Reconciling Auth0 personas and preparing local D1 at ${options.stateRoot}.`)
-  const personas = await ensureStableAuth0Personas(localD1Environment(options))
-  applyLocalD1Migrations(options)
-  executeLocalD1Sql(options, buildBaseSeedSql(personas, options), 'base-seed')
-
-  const server = await startLocalServer(options)
+  let server: ChildProcessWithoutNullStreams | null = null
   let browser: Browser | null = null
-  let summary: Record<string, unknown> = {}
+  let summary: Record<string, unknown> = {
+    participantCount: options.participantCount,
+    stateRoot: options.stateRoot,
+    baseUrl: options.baseUrl
+  }
+  let failure: ReturnType<typeof serializeError> | null = null
 
   try {
+    console.log(`Reconciling Auth0 personas and preparing local D1 at ${options.stateRoot}.`)
+    const personas = await ensureStableAuth0Personas(localD1Environment(options))
+    applyLocalD1Migrations(options)
+    executeLocalD1Sql(options, buildBaseSeedSql(personas, options), 'base-seed')
+
+    server = await startLocalServer(options)
+    recordServerSnapshot(server, 'server started')
+
     browser = await chromium.launch()
     resetAuthArtifactDirectory()
 
@@ -1695,34 +2357,46 @@ async function run() {
     adminPage.on('dialog', async dialog => await dialog.accept())
 
     try {
+      const runReadChecks = async (phase: string) => {
+        await runLargeReads(adminApi, phase, options.participantCount)
+        await collectPerformanceMetrics(adminApi, phase, options.participantCount, options)
+        recordServerSnapshot(server, `after ${phase}`)
+        summary = {
+          ...summary,
+          lastCompletedPhase: phase
+        }
+      }
+
       executeLocalD1Sql(options, buildScheduleUpdateSql(options), 'schedule-update')
       await advanceLifecycleWithButton(adminPage, adminApi, 'Open Registration', 'registration_open')
 
       const registrationOpenedAt = Date.now()
       const registrationSeed = buildRegistrationSeedSql(options)
       executeLocalD1Sql(options, registrationSeed.sql, 'registration-seed')
-      await runLargeReads(adminApi, 'registration_open', options.participantCount)
+      await runReadChecks('registration_open')
       await sleepUntil(registrationOpenedAt + options.registrationWaitMs + 500, 'registration window')
 
       await advanceLifecycleWithButton(adminPage, adminApi, 'Open Submission', 'submission_open')
       const submissionOpenedAt = Date.now()
-      const submissionSeed = buildSubmissionSeedSql(registrationSeed.teamIds)
+      const submissionSeed = buildSubmissionSeedSql(registrationSeed.teamIds, options)
       executeLocalD1Sql(options, submissionSeed.sql, 'submission-seed')
-      await runLargeReads(adminApi, 'submission_open', options.participantCount)
+      await runReadChecks('submission_open')
       await sleepUntil(submissionOpenedAt + options.submissionWaitMs + 500, 'submission window')
 
       await advanceLifecycleWithButton(adminPage, adminApi, 'Stop Submissions', 'judging_preparation')
       await advanceLifecycleWithButton(adminPage, adminApi, 'Start Blind Review', 'blind_review')
       executeLocalD1Sql(options, buildCompleteBlindReviewSql(), 'complete-blind-review')
-      await runLargeReads(adminApi, 'blind_review', options.participantCount)
+      await runReadChecks('blind_review')
 
       await advanceLifecycleWithButton(adminPage, adminApi, 'Start Shortlist', 'shortlist')
       await timeCheck('Shortlist: select default finalists', async () => await selectDefaultFinalists(adminApi))
-      await runLargeReads(adminApi, 'shortlist', options.participantCount)
+      await runReadChecks('shortlist')
 
       await advanceLifecycleWithButton(adminPage, adminApi, 'Continue to pitch', 'pitch')
       const pitchHackathon = await getHackathon(adminApi)
-      const presentationCount = pitchHackathon.pitchPresentationSubmissionIds?.length ?? 0
+      const pitchPresentationSubmissionIds = pitchHackathon.pitchPresentationSubmissionIds ?? []
+      const presentationCount = pitchPresentationSubmissionIds.length
+      await openOperationsPage(adminPage)
 
       for (let index = 0; index <= presentationCount; index += 1) {
         const label = index === 0
@@ -1732,17 +2406,17 @@ async function run() {
             : 'Enable next presentation'
 
         await timeCheck(`Operations: ${label} ${index + 1}/${presentationCount + 1}`, async () => {
-          await clickOperationsButton(adminPage, label)
+          await advancePitchPresentationWithRetry(adminApi, pitchPresentationSubmissionIds, index)
         })
       }
 
       await advanceLifecycleWithButton(adminPage, adminApi, 'Start Pitch Review', 'pitch_review')
       executeLocalD1Sql(options, buildCompletePitchReviewSql(), 'complete-pitch-review')
-      await runLargeReads(adminApi, 'pitch_review', options.participantCount)
+      await runReadChecks('pitch_review')
 
       await advanceLifecycleWithButton(adminPage, adminApi, 'Move to final deliberation', 'final_deliberation')
       const finalRankingSubmissionIds = await getFinalRankingSubmissionIds(adminApi)
-      await runLargeReads(adminApi, 'final_deliberation', options.participantCount)
+      await runReadChecks('final_deliberation')
 
       await timeCheck('Operations: Announce Winners', async () => {
         await openOperationsPage(adminPage)
@@ -1751,14 +2425,26 @@ async function run() {
         })
         await waitForHackathonState(adminApi, 'winners_announced')
       })
-      await runLargeReads(adminApi, 'winners_announced', options.participantCount)
+      await runReadChecks('winners_announced')
 
       await advanceLifecycleWithButton(adminPage, adminApi, 'Complete Hackathon', 'completed')
-      executeLocalD1Sql(options, buildPostCompletionSeedSql(), 'post-completion-seed')
-      await runLargeReads(adminApi, 'completed', options.participantCount)
+      executeLocalD1Sql(options, buildPostCompletionSeedSql(options), 'post-completion-seed')
+      await runReadChecks('completed')
+
+      const publicContext = await browser.newContext({ baseURL: options.baseUrl })
+      const publicPage = await publicContext.newPage()
+
+      try {
+        await collectBrowserMetrics(adminPage, publicPage, options)
+      } finally {
+        await publicContext.close()
+      }
+
+      runLighthouseReport(options, 'public completed hackathon page', `/hackathons/${loadHackathonSlug}`)
 
       const finalHackathon = await getHackathon(adminApi)
       summary = {
+        ...summary,
         hackathonId: finalHackathon.id,
         slug: finalHackathon.slug,
         finalState: finalHackathon.state,
@@ -1775,17 +2461,31 @@ async function run() {
       await adminContext.close()
       await adminApi.dispose()
     }
+  } catch (error) {
+    failure = serializeError(error)
+    summary = {
+      ...summary,
+      failure: {
+        message: failure.message
+      }
+    }
   } finally {
+    recordServerSnapshot(server, 'before shutdown')
     await browser?.close()
-    server.kill('SIGTERM')
+    server?.kill('SIGTERM')
   }
 
-  const reportPaths = await writeReport(options, summary)
+  const reportPaths = await writeReport(options, summary, failure)
   console.log(JSON.stringify({
-    status: 'completed',
+    status: failure ? 'failed' : 'completed',
     summary,
-    reportPaths
+    reportPaths,
+    failure
   }, null, 2))
+
+  if (failure) {
+    process.exitCode = 1
+  }
 }
 
 await run()

@@ -342,6 +342,19 @@ bun tools/load-tests/local-1000-participant-hackathon.ts
 
 The runner uses the Auth0-backed BDD origin on `http://localhost:3100`, stores isolated local D1 state under `.wrangler/state-load-1000`, keeps registration and submission open for 10 real minutes each, and writes ignored JSON/Markdown reports under `.wrangler/load-test-reports/`. Use `--smoke` for a shorter 40-participant rehearsal.
 
+For a 10000-participant performance run, use a separate local D1 state root and enable repeated API probes plus Lighthouse:
+
+```bash
+bun tools/load-tests/local-1000-participant-hackathon.ts \
+  --participant-count 10000 \
+  --state-root .wrangler/state-load-10000 \
+  --perf-samples 3 \
+  --perf-concurrency 2 \
+  --lighthouse
+```
+
+The performance report includes per-endpoint timing percentiles, response sizes, failure counts, Chrome navigation metrics for the admin operations and public completed hackathon pages, optional Lighthouse scores for the public completed page, and Nuxt dev-server process snapshots. Use `--perf-samples 0` to skip repeated probes and `--no-browser-metrics` to skip Chrome navigation metrics.
+
 Generate the current Drizzle migration from the canonical schema with:
 
 ```bash

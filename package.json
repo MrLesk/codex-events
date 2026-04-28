@@ -67,6 +67,7 @@
     "dotenv": "17.4.2",
     "drizzle-kit": "0.31.10",
     "eslint": "10.2.1",
+    "lighthouse": "^13.1.0",
     "miniflare": "4.20260424.0",
     "playwright-bdd": "8.5.0",
     "sql.js": "^1.14.1",

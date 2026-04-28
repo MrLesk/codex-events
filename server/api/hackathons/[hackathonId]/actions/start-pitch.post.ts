@@ -110,26 +110,44 @@ export default defineApiHandler(async (event) => {
   if (hackathon.state === 'shortlist' && finalistSubmissions.length > 0) {
     const finalistTeamIds = [...new Set(finalistSubmissions.map(submission => submission.teamId))]
     const [finalistTeamsResult, finalistMembersResult] = await Promise.all([
-      database.query.teams.findMany({
-        where: inArray(teams.id, finalistTeamIds),
-        orderBy: [asc(teams.createdAt), asc(teams.name)]
-      }),
-      database.query.teamMembers.findMany({
-        where: and(
-          inArray(teamMembers.teamId, finalistTeamIds),
-          isNull(teamMembers.leftAt)
-        ),
-        orderBy: [asc(teamMembers.joinedAt), asc(teamMembers.createdAt)]
-      })
+      Promise.all(
+        chunkRowsForD1(finalistTeamIds, 1).map(teamIds =>
+          database.query.teams.findMany({
+            where: inArray(teams.id, teamIds),
+            orderBy: [asc(teams.createdAt), asc(teams.name)]
+          })
+        )
+      ).then(chunks => chunks.flat()),
+      Promise.all(
+        chunkRowsForD1(finalistTeamIds, 1).map(teamIds =>
+          database.query.teamMembers.findMany({
+            where: and(
+              inArray(teamMembers.teamId, teamIds),
+              isNull(teamMembers.leftAt)
+            ),
+            orderBy: [asc(teamMembers.joinedAt), asc(teamMembers.createdAt)]
+          })
+        )
+      ).then(chunks => chunks.flat())
     ])
-    const finalistTeams = finalistTeamsResult as TeamRecord[]
-    const finalistMembers = finalistMembersResult as TeamMemberRecord[]
+    const finalistTeams = (finalistTeamsResult as TeamRecord[]).sort((left, right) =>
+      left.createdAt.localeCompare(right.createdAt)
+      || left.name.localeCompare(right.name)
+    )
+    const finalistMembers = (finalistMembersResult as TeamMemberRecord[]).sort((left, right) =>
+      left.joinedAt.localeCompare(right.joinedAt)
+      || left.createdAt.localeCompare(right.createdAt)
+    )
     const finalistUserIds = [...new Set(finalistMembers.map((member: TeamMemberRecord) => member.userId))]
     const finalistUsersResult = finalistUserIds.length === 0
       ? []
-      : await database.query.users.findMany({
-          where: inArray(users.id, finalistUserIds)
-        })
+      : await Promise.all(
+          chunkRowsForD1(finalistUserIds, 1).map(userIds =>
+            database.query.users.findMany({
+              where: inArray(users.id, userIds)
+            })
+          )
+        ).then(chunks => chunks.flat())
     const finalistUsers = finalistUsersResult as UserRecord[]
     const teamsById = new Map(finalistTeams.map((team: TeamRecord) => [team.id, team] as const))
     const usersById = new Map(finalistUsers.map((user: UserRecord) => [user.id, user] as const))

@@ -139,7 +139,7 @@ export async function enqueueWinnerOutcomeEmails(options: {
   ).length
   const winningTeamIds = [...new Set(options.winners.map(winner => winner.teamId))]
   const snapshots = await Promise.all(
-    chunkRowsForD1(winningTeamIds, 1).map(teamIds =>
+    chunkRowsForD1(winningTeamIds, 2).map(teamIds =>
       options.database.query.prizeEligibilitySnapshots.findMany({
         where: and(
           eq(prizeEligibilitySnapshots.hackathonId, options.hackathon.id),
