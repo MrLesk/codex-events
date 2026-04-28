@@ -48,6 +48,7 @@ export default defineApiHandler(async (event) => {
     submittedSubmissions.map(submission => submission.teamId),
     transitionedAt
   )
+  const submissionIdChunks = chunkRowsForD1(submittedSubmissions.map(submission => submission.id), 4)
   const snapshotRowChunks = chunkRowsForD1(snapshotRows, 6)
   const assignmentRowChunks = chunkRowsForD1(assignmentRows, 10)
 
@@ -59,14 +60,16 @@ export default defineApiHandler(async (event) => {
         updatedAt: transitionedAt
       })
       .where(eq(hackathons.id, hackathonId)),
-    database
-      .update(submissions)
-      .set({
-        status: 'locked',
-        lockedAt: transitionedAt,
-        updatedAt: transitionedAt
-      })
-      .where(inArray(submissions.id, submittedSubmissions.map(submission => submission.id))),
+    ...submissionIdChunks.map(submissionIds =>
+      database
+        .update(submissions)
+        .set({
+          status: 'locked',
+          lockedAt: transitionedAt,
+          updatedAt: transitionedAt
+        })
+        .where(inArray(submissions.id, submissionIds))
+    ),
     ...snapshotRowChunks.map(rows =>
       database.insert(prizeEligibilitySnapshots).values(rows)
     ),

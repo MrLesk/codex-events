@@ -23,6 +23,7 @@ import { getVisibleHackathonOrThrow, routeIdParamsSchema } from './hackathon-man
 
 const teamNameSchema = z.string().trim().min(1)
 const teamBioSchema = z.string().trim().max(4000)
+const d1LookupBatchSize = 75
 
 export const teamParamsSchema = routeIdParamsSchema.extend({
   teamId: z.string().trim().min(1)
@@ -243,18 +244,36 @@ export function serializeTeamJoinRequest(
 }
 
 export async function getUsersByIds(database: AppDatabase, userIds: string[]) {
-  if (userIds.length === 0) {
+  const uniqueUserIds = [...new Set(userIds)]
+
+  if (uniqueUserIds.length === 0) {
     return new Map<string, UserRecord>()
   }
 
-  const relatedUsers = await database.query.users.findMany({
-    where: and(
-      inArray(users.id, userIds),
-      isNull(users.deletedAt)
+  const relatedUsers = (
+    await Promise.all(
+      chunkValues(uniqueUserIds, d1LookupBatchSize).map(userIdBatch =>
+        database.query.users.findMany({
+          where: and(
+            inArray(users.id, userIdBatch),
+            isNull(users.deletedAt)
+          )
+        })
+      )
     )
-  })
+  ).flat()
 
   return new Map(relatedUsers.map(user => [user.id, user]))
+}
+
+function chunkValues<T>(values: T[], size: number) {
+  const chunks: T[][] = []
+
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size))
+  }
+
+  return chunks
 }
 
 export async function getTeamOrThrow(database: AppDatabase, hackathonId: string, teamId: string) {

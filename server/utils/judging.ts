@@ -94,6 +94,22 @@ export function chunkRowsForD1<T>(rows: T[], boundParametersPerRow: number) {
   return chunks
 }
 
+async function queryValueChunks<T>(
+  values: string[],
+  boundParametersPerValue: number,
+  query: (valueBatch: string[]) => Promise<T[]>
+) {
+  if (values.length === 0) {
+    return []
+  }
+
+  return (
+    await Promise.all(
+      chunkRowsForD1(values, boundParametersPerValue).map(valueBatch => query(valueBatch))
+    )
+  ).flat()
+}
+
 export function serializeJudgeAssignment(assignment: JudgeAssignmentRecord) {
   return {
     id: assignment.id,
@@ -578,13 +594,20 @@ export async function listSubmittedSubmissionsForHackathon(database: AppDatabase
     return []
   }
 
-  return await database.query.submissions.findMany({
-    where: and(
-      eq(submissions.status, 'submitted'),
-      inArray(submissions.teamId, hackathonTeams.map(team => team.id))
-    ),
-    orderBy: [asc(submissions.submittedAt), asc(submissions.createdAt)]
-  })
+  return (
+    await queryValueChunks(hackathonTeams.map(team => team.id), 2, teamIds =>
+      database.query.submissions.findMany({
+        where: and(
+          eq(submissions.status, 'submitted'),
+          inArray(submissions.teamId, teamIds)
+        ),
+        orderBy: [asc(submissions.submittedAt), asc(submissions.createdAt)]
+      })
+    )
+  ).sort((left, right) =>
+    (left.submittedAt ?? '').localeCompare(right.submittedAt ?? '')
+    || left.createdAt.localeCompare(right.createdAt)
+  )
 }
 
 export async function listLockedSubmissionsForHackathon(database: AppDatabase, hackathonId: string) {
@@ -599,13 +622,20 @@ export async function listLockedSubmissionsForHackathon(database: AppDatabase, h
     return []
   }
 
-  return await database.query.submissions.findMany({
-    where: and(
-      eq(submissions.status, 'locked'),
-      inArray(submissions.teamId, hackathonTeams.map(team => team.id))
-    ),
-    orderBy: [asc(submissions.lockedAt), asc(submissions.createdAt)]
-  })
+  return (
+    await queryValueChunks(hackathonTeams.map(team => team.id), 2, teamIds =>
+      database.query.submissions.findMany({
+        where: and(
+          eq(submissions.status, 'locked'),
+          inArray(submissions.teamId, teamIds)
+        ),
+        orderBy: [asc(submissions.lockedAt), asc(submissions.createdAt)]
+      })
+    )
+  ).sort((left, right) =>
+    (left.lockedAt ?? '').localeCompare(right.lockedAt ?? '')
+    || left.createdAt.localeCompare(right.createdAt)
+  )
 }
 
 export async function listActiveAssignmentsForSubmissions(
@@ -617,14 +647,21 @@ export async function listActiveAssignmentsForSubmissions(
     return []
   }
 
-  return await database.query.judgeAssignments.findMany({
-    where: and(
-      inArray(judgeAssignments.submissionId, submissionIds),
-      inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses]),
-      ...(reviewStage ? [eq(judgeAssignments.reviewStage, reviewStage)] : [])
-    ),
-    orderBy: [asc(judgeAssignments.assignedAt), asc(judgeAssignments.createdAt)]
-  })
+  return (
+    await queryValueChunks(submissionIds, 2, chunkedSubmissionIds =>
+      database.query.judgeAssignments.findMany({
+        where: and(
+          inArray(judgeAssignments.submissionId, chunkedSubmissionIds),
+          inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses]),
+          ...(reviewStage ? [eq(judgeAssignments.reviewStage, reviewStage)] : [])
+        ),
+        orderBy: [asc(judgeAssignments.assignedAt), asc(judgeAssignments.createdAt)]
+      })
+    )
+  ).sort((left, right) =>
+    left.assignedAt.localeCompare(right.assignedAt)
+    || left.createdAt.localeCompare(right.createdAt)
+  )
 }
 
 export async function listAutomaticJudgePoolForHackathon(database: AppDatabase, hackathonId: string) {
@@ -829,13 +866,20 @@ export async function buildPrizeEligibilitySnapshots(
     return []
   }
 
-  const members = await database.query.teamMembers.findMany({
-    where: and(
-      inArray(teamMembers.teamId, teamIds),
-      isNull(teamMembers.leftAt)
-    ),
-    orderBy: [asc(teamMembers.joinedAt), asc(teamMembers.createdAt)]
-  })
+  const members = (
+    await queryValueChunks(teamIds, 1, chunkedTeamIds =>
+      database.query.teamMembers.findMany({
+        where: and(
+          inArray(teamMembers.teamId, chunkedTeamIds),
+          isNull(teamMembers.leftAt)
+        ),
+        orderBy: [asc(teamMembers.joinedAt), asc(teamMembers.createdAt)]
+      })
+    )
+  ).sort((left, right) =>
+    left.joinedAt.localeCompare(right.joinedAt)
+    || left.createdAt.localeCompare(right.createdAt)
+  )
 
   return members.map(member => ({
     id: crypto.randomUUID(),
@@ -875,23 +919,25 @@ export async function getBlindAssignmentDetails(
   const submissionIds = [...new Set(assignments.map(assignment => assignment.submissionId))]
   const hackathonIds = [...new Set(assignments.map(assignment => assignment.hackathonId))]
 
-  const submissionRows = await database.query.submissions.findMany({
-    where: inArray(submissions.id, submissionIds)
-  })
+  const submissionRows = await queryValueChunks(submissionIds, 1, chunkedSubmissionIds =>
+    database.query.submissions.findMany({
+      where: inArray(submissions.id, chunkedSubmissionIds)
+    })
+  )
   const submissionsById = new Map(submissionRows.map(submission => [submission.id, submission]))
   const teamIds = [...new Set(submissionRows.map(submission => submission.teamId))]
   const trackIds = [...new Set(submissionRows.map(submission => submission.trackId).filter((trackId): trackId is string => Boolean(trackId)))]
 
   const [activeMembers, criteria, criterionScores, tracks] = await Promise.all([
-    teamIds.length === 0
-      ? Promise.resolve([])
-      : database.query.teamMembers.findMany({
-          where: and(
-            inArray(teamMembers.teamId, teamIds),
-            isNull(teamMembers.leftAt)
-          ),
-          orderBy: [asc(teamMembers.joinedAt), asc(teamMembers.createdAt)]
-        }),
+    queryValueChunks(teamIds, 1, chunkedTeamIds =>
+      database.query.teamMembers.findMany({
+        where: and(
+          inArray(teamMembers.teamId, chunkedTeamIds),
+          isNull(teamMembers.leftAt)
+        ),
+        orderBy: [asc(teamMembers.joinedAt), asc(teamMembers.createdAt)]
+      })
+    ),
     database.query.evaluationCriteria.findMany({
       where: inArray(evaluationCriteria.hackathonId, hackathonIds),
       orderBy: [asc(evaluationCriteria.hackathonId), asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)]
@@ -938,15 +984,15 @@ export async function getBlindAssignmentDetails(
   }
 
   const applicationUserIds = [...new Set(activeMembers.map(member => member.userId))]
-  const applicationRows = applicationUserIds.length === 0
-    ? []
-    : await database.query.userApplications.findMany({
-        where: and(
-          inArray(userApplications.hackathonId, hackathonIds),
-          inArray(userApplications.userId, applicationUserIds)
-        ),
-        orderBy: [asc(userApplications.submittedAt), asc(userApplications.createdAt)]
-      })
+  const applicationRows = await queryValueChunks(applicationUserIds, 2, chunkedUserIds =>
+    database.query.userApplications.findMany({
+      where: and(
+        inArray(userApplications.hackathonId, hackathonIds),
+        inArray(userApplications.userId, chunkedUserIds)
+      ),
+      orderBy: [asc(userApplications.submittedAt), asc(userApplications.createdAt)]
+    })
+  )
   const applicationsByHackathonAndUserId = new Map<string, typeof applicationRows[number]>()
 
   for (const application of applicationRows) {
@@ -1015,9 +1061,11 @@ export async function getPitchAssignmentDetails(
   }
 
   const submissionIds = [...new Set(assignments.map(assignment => assignment.submissionId))]
-  const submissionRows = await database.query.submissions.findMany({
-    where: inArray(submissions.id, submissionIds)
-  })
+  const submissionRows = await queryValueChunks(submissionIds, 1, chunkedSubmissionIds =>
+    database.query.submissions.findMany({
+      where: inArray(submissions.id, chunkedSubmissionIds)
+    })
+  )
   const submissionsById = new Map(submissionRows.map(submission => [submission.id, submission]))
   const teamIds = [...new Set(submissionRows.map(submission => submission.teamId))]
   const trackIds = [

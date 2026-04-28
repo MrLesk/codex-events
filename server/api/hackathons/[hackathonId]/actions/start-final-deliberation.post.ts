@@ -15,6 +15,7 @@ import {
   assertStartFinalDeliberationAllowed,
   listLeaderboardEntries
 } from '#server/utils/shortlist'
+import { chunkRowsForD1 } from '#server/utils/judging'
 import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
@@ -28,16 +29,22 @@ export default defineApiHandler(async (event) => {
     .map(entry => entry.submission.id)
   const completedPitchReviewCount = hackathon.state !== 'pitch_review' || lockedSubmissionIds.length === 0
     ? 0
-    : (await database.query.judgeAssignments.findMany({
-        columns: {
-          id: true
-        },
-        where: and(
-          inArray(judgeAssignments.submissionId, lockedSubmissionIds),
-          eq(judgeAssignments.reviewStage, 'pitch_review'),
-          eq(judgeAssignments.status, 'judge_completed')
+    : (
+        await Promise.all(
+          chunkRowsForD1(lockedSubmissionIds, 2).map(submissionIds =>
+            database.query.judgeAssignments.findMany({
+              columns: {
+                id: true
+              },
+              where: and(
+                inArray(judgeAssignments.submissionId, submissionIds),
+                eq(judgeAssignments.reviewStage, 'pitch_review'),
+                eq(judgeAssignments.status, 'judge_completed')
+              )
+            })
+          )
         )
-      })).length
+      ).flat().length
 
   assertStartFinalDeliberationAllowed(hackathon, leaderboardEntries, {
     completedPitchReviewCount

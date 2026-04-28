@@ -366,7 +366,7 @@ export async function buildPrizeRedemptionRows(
   const snapshots = winningTeamIds.length === 0
     ? []
     : await Promise.all(
-        chunkRowsForD1(winningTeamIds, 1).map(teamIds =>
+        chunkRowsForD1(winningTeamIds, 2).map(teamIds =>
           database.query.prizeEligibilitySnapshots.findMany({
             where: and(
               eq(prizeEligibilitySnapshots.hackathonId, hackathonId),

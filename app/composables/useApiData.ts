@@ -23,11 +23,6 @@ export const useApiFetch = createUseFetch({
   dedupe: 'cancel'
 })
 
-const useManagedApiData = createUseAsyncData({
-  deep: false,
-  dedupe: 'cancel'
-})
-
 export function useApiData<Data>(
   key: MaybeRefOrGetter<string>,
   handler: (context: UseApiDataContext) => Promise<Data>,
@@ -35,10 +30,14 @@ export function useApiData<Data>(
 ) {
   const apiFetch = import.meta.server ? useRequestFetch() : $fetch
 
-  return useManagedApiData<Data>(
+  return useAsyncData<Data>(
     key,
     (_nuxtApp, { signal }) => handler({ apiFetch, signal }),
-    options
+    {
+      deep: false,
+      dedupe: 'cancel',
+      ...options
+    }
   )
 }
 

@@ -1,23 +1,20 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-const createUseAsyncData = vi.hoisted(() => vi.fn())
 const createUseFetch = vi.hoisted(() => vi.fn())
-const managedUseAsyncData = vi.hoisted(() => vi.fn())
 const managedUseFetch = vi.hoisted(() => vi.fn())
+const useAsyncData = vi.hoisted(() => vi.fn())
 
 describe('useApiData', () => {
   beforeEach(() => {
     vi.resetModules()
-    createUseAsyncData.mockReset()
     createUseFetch.mockReset()
-    managedUseAsyncData.mockReset()
     managedUseFetch.mockReset()
+    useAsyncData.mockReset()
 
-    createUseAsyncData.mockReturnValue(managedUseAsyncData)
     createUseFetch.mockReturnValue(managedUseFetch)
 
-    vi.stubGlobal('createUseAsyncData', createUseAsyncData)
     vi.stubGlobal('createUseFetch', createUseFetch)
+    vi.stubGlobal('useAsyncData', useAsyncData)
     vi.stubGlobal('useRequestFetch', vi.fn())
     vi.stubGlobal('$fetch', vi.fn())
     vi.stubGlobal('toValue', (value: unknown) =>
@@ -31,14 +28,10 @@ describe('useApiData', () => {
     vi.unstubAllGlobals()
   })
 
-  test('creates shared fetch factories with cancel dedupe and shallow refs by default', async () => {
+  test('creates a shared fetch factory with cancel dedupe and shallow refs by default', async () => {
     await import('../../../../app/composables/useApiData')
 
     expect(createUseFetch).toHaveBeenCalledWith({
-      deep: false,
-      dedupe: 'cancel'
-    })
-    expect(createUseAsyncData).toHaveBeenCalledWith({
       deep: false,
       dedupe: 'cancel'
     })
@@ -48,7 +41,7 @@ describe('useApiData', () => {
     const clientFetch = vi.fn()
     vi.stubGlobal('$fetch', clientFetch)
 
-    managedUseAsyncData.mockImplementation((key, handler, options) => ({
+    useAsyncData.mockImplementation((key, handler, options) => ({
       key,
       handler,
       options
@@ -69,6 +62,10 @@ describe('useApiData', () => {
     })
 
     expect(request.key).toBe('session-actor:auth0|user')
+    expect(request.options).toMatchObject({
+      deep: false,
+      dedupe: 'cancel'
+    })
 
     const signal = new AbortController().signal
 
@@ -88,7 +85,7 @@ describe('useApiData', () => {
 
     vi.stubGlobal('$fetch', clientFetch)
 
-    managedUseAsyncData.mockImplementation((key, handler, options) => ({
+    useAsyncData.mockImplementation((key, handler, options) => ({
       key,
       handler,
       options

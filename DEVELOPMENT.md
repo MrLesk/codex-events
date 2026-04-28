@@ -334,6 +334,14 @@ bun run test:bdd
 
 GitHub Actions does not run `bun run test:bdd` on every `push` or `pull_request`. The default CI workflow runs the fast gate (`lint`, `typecheck`, `test:unit`, `test:integration`), while the Auth0-backed BDD suite runs only through manual `workflow_dispatch` invocations and the nightly scheduled workflow run.
 
+Run the local full-lifecycle 1000-participant D1 validation with:
+
+```bash
+bun tools/load-tests/local-1000-participant-hackathon.ts
+```
+
+The runner uses the Auth0-backed BDD origin on `http://localhost:3100`, stores isolated local D1 state under `.wrangler/state-load-1000`, keeps registration and submission open for 10 real minutes each, and writes ignored JSON/Markdown reports under `.wrangler/load-test-reports/`. Use `--smoke` for a shorter 40-participant rehearsal.
+
 Generate the current Drizzle migration from the canonical schema with:
 
 ```bash

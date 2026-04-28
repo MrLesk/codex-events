@@ -14,6 +14,7 @@ import { hasSavedShortlistSelection } from '#server/utils/shortlist'
 import {
   assertStartPitchAllowed,
   buildPrizeEligibilitySnapshots,
+  chunkRowsForD1,
   listSubmittedSubmissionsForHackathon,
   listLockedSubmissionsForHackathon,
   selectPitchReviewSubmissions
@@ -61,6 +62,8 @@ export default defineApiHandler(async (event) => {
         transitionedAt
       )
     : []
+  const submittedSubmissionIdChunks = chunkRowsForD1(submittedSubmissions.map(submission => submission.id), 4)
+  const pitchOnlySnapshotRowChunks = chunkRowsForD1(pitchOnlySnapshotRows, 6)
 
   await database.batch([
     database
@@ -74,7 +77,7 @@ export default defineApiHandler(async (event) => {
       })
       .where(eq(hackathons.id, hackathonId)),
     ...(hackathon.blindReviewCount === 0 && submittedSubmissions.length > 0
-      ? [
+      ? submittedSubmissionIdChunks.map(submissionIds =>
           database
             .update(submissions)
             .set({
@@ -82,11 +85,11 @@ export default defineApiHandler(async (event) => {
               lockedAt: transitionedAt,
               updatedAt: transitionedAt
             })
-            .where(inArray(submissions.id, submittedSubmissions.map(submission => submission.id)))
-        ]
+            .where(inArray(submissions.id, submissionIds))
+        )
       : []),
     ...(pitchOnlySnapshotRows.length > 0
-      ? [database.insert(prizeEligibilitySnapshots).values(pitchOnlySnapshotRows)]
+      ? pitchOnlySnapshotRowChunks.map(rows => database.insert(prizeEligibilitySnapshots).values(rows))
       : [])
   ])
 

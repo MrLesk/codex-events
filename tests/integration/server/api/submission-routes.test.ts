@@ -257,6 +257,23 @@ function approvedApplication(id: string, userId: string) {
   }
 }
 
+function enforceD1BindParameterLimit(
+  harness: ReturnType<typeof createApiRouteTestHarness>,
+  maxBoundParametersPerStatement = 100
+) {
+  const originalPrepare = harness.d1Database.prepare.bind(harness.d1Database)
+
+  vi.spyOn(harness.d1Database, 'prepare').mockImplementation((sql: string) => {
+    const boundParameterCount = (sql.match(/\?/g) ?? []).length
+
+    if (boundParameterCount > maxBoundParametersPerStatement) {
+      throw new Error(`D1 bind parameter limit exceeded: ${boundParameterCount}`)
+    }
+
+    return originalPrepare(sql)
+  })
+}
+
 describe('TASK-3.7 submission routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
 
@@ -1191,5 +1208,79 @@ describe('TASK-3.7 submission routes', () => {
         ]
       }
     })
+  })
+
+  test('submission operation lists batch large team lookups under D1 parameter limits', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: createRoutes(),
+      sessionUser: {
+        sub: 'auth0|hackathon_admin',
+        email: 'hackathon-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedSubmissionContext(harness)
+
+    const teamCount = 120
+    const bulkUsers = Array.from({ length: teamCount }, (_, index) => ({
+      id: `bulk_user_${index + 1}`,
+      auth0Subject: `auth0|bulk_user_${index + 1}`,
+      email: `bulk-user-${index + 1}@example.com`,
+      displayName: `Bulk User ${index + 1}`
+    }))
+    const bulkApplications = bulkUsers.map(user => approvedApplication(`bulk_application_${user.id}`, user.id))
+    const bulkTeams = bulkUsers.map((user, index) => ({
+      id: `bulk_team_${index + 1}`,
+      hackathonId: 'hackathon_1',
+      name: `Bulk Team ${index + 1}`,
+      slug: `bulk-team-${index + 1}`,
+      isOpenToJoinRequests: false,
+      createdByUserId: user.id,
+      createdAt: '2026-03-22T14:00:00.000Z',
+      updatedAt: '2026-03-22T14:00:00.000Z'
+    }))
+    const bulkMemberships = bulkUsers.map((user, index) => ({
+      id: `bulk_membership_${index + 1}`,
+      teamId: `bulk_team_${index + 1}`,
+      userId: user.id,
+      role: 'admin' as const,
+      joinedAt: '2026-03-22T14:00:00.000Z',
+      createdAt: '2026-03-22T14:00:00.000Z'
+    }))
+    const bulkSubmissions = bulkUsers.map((_, index) => ({
+      id: `bulk_submission_${index + 1}`,
+      teamId: `bulk_team_${index + 1}`,
+      status: 'draft' as const,
+      projectName: `Bulk Draft ${index + 1}`,
+      summary: 'Draft summary',
+      repositoryUrl: null,
+      demoUrl: null,
+      submittedAt: null,
+      lockedAt: null,
+      withdrawnAt: null,
+      disqualifiedAt: null,
+      createdAt: '2026-03-24T12:00:00.000Z',
+      updatedAt: '2026-03-24T12:00:00.000Z'
+    }))
+
+    for (let index = 0; index < teamCount; index += 40) {
+      await harness.database.insert(users).values(bulkUsers.slice(index, index + 40))
+      await harness.database.insert(userApplications).values(bulkApplications.slice(index, index + 40))
+      await harness.database.insert(teams).values(bulkTeams.slice(index, index + 40))
+      await harness.database.insert(teamMembers).values(bulkMemberships.slice(index, index + 40))
+      await harness.database.insert(submissions).values(bulkSubmissions.slice(index, index + 40))
+    }
+
+    enforceD1BindParameterLimit(harness)
+
+    const monitorResponse = await harness.request('/api/hackathons/hackathon_1/teams/submission-monitor')
+    expect(monitorResponse.status).toBe(200)
+    const monitorBody = await monitorResponse.json()
+    expect(monitorBody.data.teamDetails).toHaveLength(teamCount + 2)
+    expect(monitorBody.data.teamSubmissions).toHaveLength(teamCount + 2)
+
+    const noSubmissionResponse = await harness.request('/api/hackathons/hackathon_1/no-submission-teams')
+    expect(noSubmissionResponse.status).toBe(200)
+    expect((await noSubmissionResponse.json()).data).toHaveLength(teamCount + 2)
   })
 })
