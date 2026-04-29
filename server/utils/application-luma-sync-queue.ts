@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { asc, eq, inArray } from 'drizzle-orm'
+import { asc, eq, isNotNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { writeAuditLog } from '#server/database/audit-log'
@@ -1136,7 +1136,7 @@ export async function recoverStaleApplicationLumaSyncMessages(options?: {
   }
 
   const relatedHackathons = await database.query.hackathons.findMany({
-    where: inArray(hackathons.id, [...new Set(staleApplications.map(application => application.hackathonId))])
+    where: isNotNull(hackathons.lumaEventApiId)
   })
   const hackathonsById = new Map(relatedHackathons.map(hackathon => [hackathon.id, hackathon]))
   const recoveredApplicationIds: string[] = []

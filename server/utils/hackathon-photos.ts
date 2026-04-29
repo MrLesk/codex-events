@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { HackathonPhotoImageVariant, HackathonPhotoRecord } from '#shared/hackathon-photos'
@@ -8,7 +8,7 @@ import type { HackathonPhotoImageVariant, HackathonPhotoRecord } from '#shared/h
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveHackathonAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
-import { hackathonPhotos, userApplications } from '#server/database/schema'
+import { hackathonPhotos, userApplications, users } from '#server/database/schema'
 import { ApiError } from './api-error'
 import { getHackathonImagesBucket } from './hackathon-images'
 import {
@@ -21,7 +21,6 @@ import {
   type SupportedImageContentType
 } from './image-signatures'
 import { assertGuard } from './lifecycle-guard'
-import { getUsersByIds } from './team-formation'
 
 export const hackathonPhotoMaxBytes = 10 * 1024 * 1024
 export const hackathonPhotoContentTypes = supportedImageContentTypes
@@ -375,7 +374,12 @@ export async function listHackathonPhotoRecords(database: AppDatabase, hackathon
     orderBy: [asc(hackathonPhotos.createdAt)]
   })
 
-  const usersById = await getUsersByIds(database, photos.map(photo => photo.uploadedByUserId))
+  const uploaders = await database
+    .select(getTableColumns(users))
+    .from(users)
+    .innerJoin(hackathonPhotos, eq(hackathonPhotos.uploadedByUserId, users.id))
+    .where(eq(hackathonPhotos.hackathonId, hackathonId))
+  const usersById = new Map(uploaders.map(user => [user.id, user] as const))
 
   return photos.map(photo => serializeHackathonPhotoRecord(photo, {
     imagePathBuilder: (photoId, variant, version) => buildHackathonPhotoImageUrl(hackathonId, photoId, variant, version),

@@ -1,6 +1,7 @@
 import type { H3Event } from 'h3'
 
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, desc, eq, exists, getTableColumns, isNull, or } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/sqlite-core'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
@@ -158,9 +159,11 @@ export async function listOwnHackathonParticipation(event: H3Event) {
   let relatedTeams: TeamRecord[] = []
 
   if (teamIds.length > 0) {
-    relatedTeams = await database.query.teams.findMany({
-      where: inArray(teams.id, teamIds)
-    }) as TeamRecord[]
+    relatedTeams = await database
+      .select(getTableColumns(teams))
+      .from(teams)
+      .innerJoin(teamMembers, eq(teamMembers.teamId, teams.id))
+      .where(eq(teamMembers.userId, userId)) as TeamRecord[]
   }
 
   const teamsById = new Map(relatedTeams.map((team: TeamRecord) => [team.id, team]))
@@ -178,7 +181,27 @@ export async function listOwnHackathonParticipation(event: H3Event) {
   }
 
   const relatedHackathons = await database.query.hackathons.findMany({
-    where: inArray(hackathons.id, hackathonIds),
+    where: or(
+      exists(
+        database
+          .select({ id: userApplications.id })
+          .from(userApplications)
+          .where(and(
+            eq(userApplications.hackathonId, hackathons.id),
+            eq(userApplications.userId, userId)
+          ))
+      ),
+      exists(
+        database
+          .select({ id: teamMembers.id })
+          .from(teamMembers)
+          .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+          .where(and(
+            eq(teams.hackathonId, hackathons.id),
+            eq(teamMembers.userId, userId)
+          ))
+      )
+    ),
     orderBy: [desc(hackathons.createdAt)]
   }) as HackathonRecord[]
 
@@ -186,17 +209,22 @@ export async function listOwnHackathonParticipation(event: H3Event) {
   let teamSubmissions: SubmissionRecord[] = []
 
   if (teamIds.length > 0) {
+    const ownTeamMembers = alias(teamMembers, 'own_team_members')
     const [activeTeamMembersResult, teamSubmissionsResult] = await Promise.all([
-      database.query.teamMembers.findMany({
-        where: and(
-          inArray(teamMembers.teamId, teamIds),
+      database
+        .select(getTableColumns(teamMembers))
+        .from(teamMembers)
+        .innerJoin(ownTeamMembers, eq(ownTeamMembers.teamId, teamMembers.teamId))
+        .where(and(
+          eq(ownTeamMembers.userId, userId),
           isNull(teamMembers.leftAt)
-        )
-      }),
-      database.query.submissions.findMany({
-        where: inArray(submissions.teamId, teamIds),
-        orderBy: [desc(submissions.createdAt)]
-      })
+        )),
+      database
+        .select(getTableColumns(submissions))
+        .from(submissions)
+        .innerJoin(ownTeamMembers, eq(ownTeamMembers.teamId, submissions.teamId))
+        .where(eq(ownTeamMembers.userId, userId))
+        .orderBy(desc(submissions.createdAt))
     ])
 
     activeTeamMembers = activeTeamMembersResult as TeamMemberRecord[]

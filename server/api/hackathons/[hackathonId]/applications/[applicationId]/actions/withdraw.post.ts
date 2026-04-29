@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, isNull, ne } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
@@ -57,12 +57,6 @@ export default defineApiHandler(async (event) => {
   const shouldSyncLuma = isHackathonLumaSyncEnabled(hackathon)
   let lumaSyncStatus: UserApplicationLumaSyncStatus = shouldSyncLuma ? 'not_synced' : null
   let updatedAt = withdrawnAt
-  const remainingMembershipIds = withdrawalPlan.teamAction === 'dissolve_team' && withdrawalPlan.targetMembership
-    ? withdrawalPlan.activeMembers
-        .filter(member => member.id !== withdrawalPlan.targetMembership?.id)
-        .map(member => member.id)
-    : []
-
   await database.batch([
     database
       .update(userApplications)
@@ -86,14 +80,18 @@ export default defineApiHandler(async (event) => {
       : []),
     ...(withdrawalPlan.teamAction === 'dissolve_team' && withdrawalPlan.activeTeam
       ? [
-          ...(remainingMembershipIds.length > 0
+          ...(withdrawalPlan.targetMembership
             ? [
                 database
                   .update(teamMembers)
                   .set({
                     leftAt: withdrawnAt
                   })
-                  .where(inArray(teamMembers.id, remainingMembershipIds))
+                  .where(and(
+                    eq(teamMembers.teamId, withdrawalPlan.activeTeam.id),
+                    isNull(teamMembers.leftAt),
+                    ne(teamMembers.id, withdrawalPlan.targetMembership.id)
+                  ))
               ]
             : []),
           ...(withdrawalPlan.targetMembership

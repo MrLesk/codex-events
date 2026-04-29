@@ -1,9 +1,9 @@
-import { eq, inArray } from 'drizzle-orm'
+import { and, eq, exists } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
-import { hackathons, judgeAssignments, prizeEligibilitySnapshots, submissions } from '#server/database/schema'
+import { hackathons, judgeAssignments, prizeEligibilitySnapshots, submissions, teams } from '#server/database/schema'
 import { defineApiHandler } from '#server/utils/api-handler'
 import { apiData } from '#server/utils/api-response'
 import {
@@ -48,7 +48,6 @@ export default defineApiHandler(async (event) => {
     submittedSubmissions.map(submission => submission.teamId),
     transitionedAt
   )
-  const submissionIdChunks = chunkRowsForD1(submittedSubmissions.map(submission => submission.id), 4)
   const snapshotRowChunks = chunkRowsForD1(snapshotRows, 6)
   const assignmentRowChunks = chunkRowsForD1(assignmentRows, 10)
 
@@ -60,16 +59,25 @@ export default defineApiHandler(async (event) => {
         updatedAt: transitionedAt
       })
       .where(eq(hackathons.id, hackathonId)),
-    ...submissionIdChunks.map(submissionIds =>
-      database
-        .update(submissions)
-        .set({
-          status: 'locked',
-          lockedAt: transitionedAt,
-          updatedAt: transitionedAt
-        })
-        .where(inArray(submissions.id, submissionIds))
-    ),
+    database
+      .update(submissions)
+      .set({
+        status: 'locked',
+        lockedAt: transitionedAt,
+        updatedAt: transitionedAt
+      })
+      .where(and(
+        eq(submissions.status, 'submitted'),
+        exists(
+          database
+            .select({ id: teams.id })
+            .from(teams)
+            .where(and(
+              eq(teams.id, submissions.teamId),
+              eq(teams.hackathonId, hackathonId)
+            ))
+        )
+      )),
     ...snapshotRowChunks.map(rows =>
       database.insert(prizeEligibilitySnapshots).values(rows)
     ),

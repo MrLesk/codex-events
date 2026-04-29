@@ -38,7 +38,7 @@ export default defineApiHandler(async (event) => {
       )
       .map(entry => entry.teamId)
   ])]
-  const teamMembersByTeamId = await listOperationalPrizeRedemptionTeamMembersByTeamId(database, teamIds)
+  const teamMembersByTeamId = await listOperationalPrizeRedemptionTeamMembersByTeamId(database, hackathonId, teamIds)
 
   return apiData({
     winners: winners.map(entry => ({

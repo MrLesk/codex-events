@@ -1,12 +1,11 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { asc, eq, getTableColumns } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { AppDatabase } from '#server/database/client'
 import { writeAuditLog } from '#server/database/audit-log'
 import { prizeEligibilitySnapshots, users } from '#server/database/schema'
-import { chunkRowsForD1 } from './judging'
 import { getFinalDeliberationView } from './shortlist'
 import {
   sendHackathonOutcomeEmail,
@@ -138,31 +137,16 @@ export async function enqueueWinnerOutcomeEmails(options: {
     entry => entry.finalRank !== null
   ).length
   const winningTeamIds = [...new Set(options.winners.map(winner => winner.teamId))]
-  const snapshots = await Promise.all(
-    chunkRowsForD1(winningTeamIds, 2).map(teamIds =>
-      options.database.query.prizeEligibilitySnapshots.findMany({
-        where: and(
-          eq(prizeEligibilitySnapshots.hackathonId, options.hackathon.id),
-          inArray(prizeEligibilitySnapshots.teamId, teamIds)
-        ),
-        orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
-      })
-    )
-  ).then(chunks =>
-    chunks
-      .flat()
-      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-  ) as PrizeEligibilitySnapshotRecord[]
-  const recipientUserIds = [...new Set(snapshots.map(snapshot => snapshot.userId))]
-  const winnerRecipients = recipientUserIds.length === 0
-    ? []
-    : (await Promise.all(
-        chunkRowsForD1(recipientUserIds, 1).map(userIds =>
-          options.database.query.users.findMany({
-            where: inArray(users.id, userIds)
-          })
-        )
-      ).then(chunks => chunks.flat())) as UserRecord[]
+  const winningTeamIdSet = new Set(winningTeamIds)
+  const snapshots = (await options.database.query.prizeEligibilitySnapshots.findMany({
+    where: eq(prizeEligibilitySnapshots.hackathonId, options.hackathon.id),
+    orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
+  })).filter(snapshot => winningTeamIdSet.has(snapshot.teamId)) as PrizeEligibilitySnapshotRecord[]
+  const winnerRecipients = await options.database
+    .select(getTableColumns(users))
+    .from(users)
+    .innerJoin(prizeEligibilitySnapshots, eq(prizeEligibilitySnapshots.userId, users.id))
+    .where(eq(prizeEligibilitySnapshots.hackathonId, options.hackathon.id)) as UserRecord[]
   const winnersByTeamId = new Map(
     options.winners.map(winner => [winner.teamId, winner] as const)
   )

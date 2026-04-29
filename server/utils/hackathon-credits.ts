@@ -1,7 +1,7 @@
 import type { H3Event } from 'h3'
 import type { users as usersTable } from '#server/database/schema'
 
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, getTableColumns } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { resolveHackathonAuthorization } from '#server/auth/authorization'
@@ -140,18 +140,16 @@ export async function listHackathonCreditOffers(
   })
 }
 
-export async function listHackathonCreditCodesByOfferId(
+export async function listHackathonCreditCodesForHackathon(
   database: ReturnType<typeof getDatabase>,
-  creditOfferIds: string[]
+  hackathonId: string
 ) {
-  if (creditOfferIds.length === 0) {
-    return []
-  }
-
-  return await database.query.hackathonCreditCodes.findMany({
-    where: inArray(hackathonCreditCodes.creditOfferId, creditOfferIds),
-    orderBy: [asc(hackathonCreditCodes.createdAt), asc(hackathonCreditCodes.id)]
-  })
+  return await database
+    .select(getTableColumns(hackathonCreditCodes))
+    .from(hackathonCreditCodes)
+    .innerJoin(hackathonCreditOffers, eq(hackathonCreditOffers.id, hackathonCreditCodes.creditOfferId))
+    .where(eq(hackathonCreditOffers.hackathonId, hackathonId))
+    .orderBy(asc(hackathonCreditCodes.createdAt), asc(hackathonCreditCodes.id))
 }
 
 async function getApprovedUserApplication(

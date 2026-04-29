@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { and, eq, exists, isNull, not } from 'drizzle-orm'
 import { setHeader } from 'h3'
 import { z } from 'zod'
 
@@ -34,61 +34,27 @@ export default defineApiHandler(async (event) => {
 
   assertCompletedOutcomeVisible(hackathon)
 
-  const snapshots = await database.query.prizeEligibilitySnapshots.findMany({
-    columns: {
-      teamId: true
-    },
-    where: and(
+  const nonWinningPublishedTeam = await database
+    .select({
+      teamId: submissions.teamId
+    })
+    .from(submissions)
+    .innerJoin(prizeEligibilitySnapshots, eq(prizeEligibilitySnapshots.teamId, submissions.teamId))
+    .where(and(
       eq(prizeEligibilitySnapshots.hackathonId, hackathon.id),
-      eq(prizeEligibilitySnapshots.userId, userId)
-    )
-  })
-  const snapshotTeamIds = [...new Set(
-    (snapshots as Array<{ teamId: string }>).map(snapshot => snapshot.teamId)
-  )]
-
-  if (snapshotTeamIds.length === 0) {
-    throw new ApiError({
-      statusCode: 404,
-      code: 'profile_icon_not_found',
-      message: 'The platform user does not have an uploaded profile icon.'
-    })
-  }
-
-  const publishedSubmissions = await database.query.submissions.findMany({
-    columns: {
-      teamId: true
-    },
-    where: and(
-      inArray(submissions.teamId, snapshotTeamIds),
+      eq(prizeEligibilitySnapshots.userId, userId),
       eq(submissions.status, 'locked'),
-      eq(submissions.isPubliclyVisible, true)
-    )
-  })
-  const publishedTeamIds = [...new Set(
-    (publishedSubmissions as Array<{ teamId: string }>).map(submission => submission.teamId)
-  )]
+      eq(submissions.isPubliclyVisible, true),
+      not(exists(
+        database
+          .select({ id: prizeRedemptions.id })
+          .from(prizeRedemptions)
+          .where(eq(prizeRedemptions.teamId, submissions.teamId))
+      ))
+    ))
+    .limit(1)
 
-  if (publishedTeamIds.length === 0) {
-    throw new ApiError({
-      statusCode: 404,
-      code: 'profile_icon_not_found',
-      message: 'The platform user does not have an uploaded profile icon.'
-    })
-  }
-
-  const winningRedemptions = await database.query.prizeRedemptions.findMany({
-    columns: {
-      teamId: true
-    },
-    where: inArray(prizeRedemptions.teamId, publishedTeamIds)
-  })
-  const winningTeamIds = new Set(
-    (winningRedemptions as Array<{ teamId: string | null }>).flatMap(redemption => redemption.teamId ? [redemption.teamId] : [])
-  )
-  const nonWinningPublishedTeamIds = publishedTeamIds.filter(teamId => !winningTeamIds.has(teamId))
-
-  if (nonWinningPublishedTeamIds.length === 0) {
+  if (nonWinningPublishedTeam.length === 0) {
     throw new ApiError({
       statusCode: 404,
       code: 'profile_icon_not_found',

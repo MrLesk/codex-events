@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, desc, eq, exists, getTableColumns, isNull, or } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
@@ -117,15 +117,25 @@ export default defineApiHandler(async (event) => {
 
   const teamIds: string[] = dedupe(memberships.map(record => record.teamId))
   const teamRecords: TeamRecord[] = teamIds.length > 0
-    ? await database.query.teams.findMany({
-        where: inArray(teams.id, teamIds)
-      })
+    ? await database
+        .select(getTableColumns(teams))
+        .from(teams)
+        .innerJoin(teamMembers, eq(teamMembers.teamId, teams.id))
+        .where(and(
+          eq(teamMembers.userId, actor.platformUser.id),
+          isNull(teamMembers.leftAt)
+        ))
     : []
   const submissionsByTeam: SubmissionRecord[] = teamIds.length > 0
-    ? await database.query.submissions.findMany({
-        where: inArray(submissions.teamId, teamIds),
-        orderBy: [desc(submissions.updatedAt)]
-      })
+    ? await database
+        .select(getTableColumns(submissions))
+        .from(submissions)
+        .innerJoin(teamMembers, eq(teamMembers.teamId, submissions.teamId))
+        .where(and(
+          eq(teamMembers.userId, actor.platformUser.id),
+          isNull(teamMembers.leftAt)
+        ))
+        .orderBy(desc(submissions.updatedAt))
     : []
 
   const hackathonIds: string[] = dedupe([
@@ -142,7 +152,37 @@ export default defineApiHandler(async (event) => {
   }
 
   const hackathonRecords: HackathonRecord[] = await database.query.hackathons.findMany({
-    where: inArray(hackathons.id, hackathonIds)
+    where: or(
+      exists(
+        database
+          .select({ id: userApplications.id })
+          .from(userApplications)
+          .where(and(
+            eq(userApplications.hackathonId, hackathons.id),
+            eq(userApplications.userId, actor.platformUser.id)
+          ))
+      ),
+      exists(
+        database
+          .select({ id: teamMembers.id })
+          .from(teamMembers)
+          .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+          .where(and(
+            eq(teams.hackathonId, hackathons.id),
+            eq(teamMembers.userId, actor.platformUser.id),
+            isNull(teamMembers.leftAt)
+          ))
+      ),
+      exists(
+        database
+          .select({ id: hackathonRoleAssignments.id })
+          .from(hackathonRoleAssignments)
+          .where(and(
+            eq(hackathonRoleAssignments.hackathonId, hackathons.id),
+            eq(hackathonRoleAssignments.userId, actor.platformUser.id)
+          ))
+      )
+    )
   })
   const orderedHackathons = sortHackathonsByFreshness(hackathonRecords)
   const applicationByHackathonId = new Map(applications.map(record => [record.hackathonId, record] as const))

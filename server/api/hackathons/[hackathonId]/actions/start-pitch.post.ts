@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, exists, getTableColumns, isNull } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
@@ -62,7 +62,6 @@ export default defineApiHandler(async (event) => {
         transitionedAt
       )
     : []
-  const submittedSubmissionIdChunks = chunkRowsForD1(submittedSubmissions.map(submission => submission.id), 4)
   const pitchOnlySnapshotRowChunks = chunkRowsForD1(pitchOnlySnapshotRows, 6)
 
   await database.batch([
@@ -77,7 +76,7 @@ export default defineApiHandler(async (event) => {
       })
       .where(eq(hackathons.id, hackathonId)),
     ...(hackathon.blindReviewCount === 0 && submittedSubmissions.length > 0
-      ? submittedSubmissionIdChunks.map(submissionIds =>
+      ? [
           database
             .update(submissions)
             .set({
@@ -85,8 +84,19 @@ export default defineApiHandler(async (event) => {
               lockedAt: transitionedAt,
               updatedAt: transitionedAt
             })
-            .where(inArray(submissions.id, submissionIds))
-        )
+            .where(and(
+              eq(submissions.status, 'submitted'),
+              exists(
+                database
+                  .select({ id: teams.id })
+                  .from(teams)
+                  .where(and(
+                    eq(teams.id, submissions.teamId),
+                    eq(teams.hackathonId, hackathonId)
+                  ))
+              )
+            ))
+        ]
       : []),
     ...(pitchOnlySnapshotRows.length > 0
       ? pitchOnlySnapshotRowChunks.map(rows => database.insert(prizeEligibilitySnapshots).values(rows))
@@ -108,46 +118,43 @@ export default defineApiHandler(async (event) => {
   })
 
   if (hackathon.state === 'shortlist' && finalistSubmissions.length > 0) {
-    const finalistTeamIds = [...new Set(finalistSubmissions.map(submission => submission.teamId))]
-    const [finalistTeamsResult, finalistMembersResult] = await Promise.all([
-      Promise.all(
-        chunkRowsForD1(finalistTeamIds, 1).map(teamIds =>
-          database.query.teams.findMany({
-            where: inArray(teams.id, teamIds),
-            orderBy: [asc(teams.createdAt), asc(teams.name)]
-          })
-        )
-      ).then(chunks => chunks.flat()),
-      Promise.all(
-        chunkRowsForD1(finalistTeamIds, 1).map(teamIds =>
-          database.query.teamMembers.findMany({
-            where: and(
-              inArray(teamMembers.teamId, teamIds),
-              isNull(teamMembers.leftAt)
-            ),
-            orderBy: [asc(teamMembers.joinedAt), asc(teamMembers.createdAt)]
-          })
-        )
-      ).then(chunks => chunks.flat())
+    const finalistTeamIdSet = new Set(finalistSubmissions.map(submission => submission.teamId))
+    const [hackathonTeams, activeMembersResult, finalistUsersResult] = await Promise.all([
+      database.query.teams.findMany({
+        where: eq(teams.hackathonId, hackathonId),
+        orderBy: [asc(teams.createdAt), asc(teams.name)]
+      }),
+      database
+        .select(getTableColumns(teamMembers))
+        .from(teamMembers)
+        .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+        .where(and(
+          eq(teams.hackathonId, hackathonId),
+          isNull(teamMembers.leftAt)
+        ))
+        .orderBy(asc(teamMembers.joinedAt), asc(teamMembers.createdAt)),
+      database
+        .select(getTableColumns(users))
+        .from(users)
+        .innerJoin(teamMembers, eq(teamMembers.userId, users.id))
+        .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+        .where(and(
+          eq(teams.hackathonId, hackathonId),
+          isNull(teamMembers.leftAt)
+        ))
     ])
-    const finalistTeams = (finalistTeamsResult as TeamRecord[]).sort((left, right) =>
-      left.createdAt.localeCompare(right.createdAt)
-      || left.name.localeCompare(right.name)
-    )
-    const finalistMembers = (finalistMembersResult as TeamMemberRecord[]).sort((left, right) =>
-      left.joinedAt.localeCompare(right.joinedAt)
-      || left.createdAt.localeCompare(right.createdAt)
-    )
-    const finalistUserIds = [...new Set(finalistMembers.map((member: TeamMemberRecord) => member.userId))]
-    const finalistUsersResult = finalistUserIds.length === 0
-      ? []
-      : await Promise.all(
-          chunkRowsForD1(finalistUserIds, 1).map(userIds =>
-            database.query.users.findMany({
-              where: inArray(users.id, userIds)
-            })
-          )
-        ).then(chunks => chunks.flat())
+    const finalistTeams = (hackathonTeams as TeamRecord[])
+      .filter(team => finalistTeamIdSet.has(team.id))
+      .sort((left, right) =>
+        left.createdAt.localeCompare(right.createdAt)
+        || left.name.localeCompare(right.name)
+      )
+    const finalistMembers = (activeMembersResult as TeamMemberRecord[])
+      .filter(member => finalistTeamIdSet.has(member.teamId))
+      .sort((left, right) =>
+        left.joinedAt.localeCompare(right.joinedAt)
+        || left.createdAt.localeCompare(right.createdAt)
+      )
     const finalistUsers = finalistUsersResult as UserRecord[]
     const teamsById = new Map(finalistTeams.map((team: TeamRecord) => [team.id, team] as const))
     const usersById = new Map(finalistUsers.map((user: UserRecord) => [user.id, user] as const))

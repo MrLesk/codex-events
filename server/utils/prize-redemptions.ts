@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, desc, eq, inArray, isNull, or } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
@@ -11,6 +11,7 @@ import {
   prizeRedemptions,
   prizes,
   teamMembers,
+  teams,
   users,
   type hackathons
 } from '#server/database/schema'
@@ -21,14 +22,12 @@ import {
   serializePublishedHackathonRosterMember
 } from './hackathon-management'
 import { ApiError } from './api-error'
-import { chunkRowsForD1 } from './judging'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
 import { getWinnersView } from './shortlist'
 
 type HackathonRecord = typeof hackathons.$inferSelect
 type PrizeRecord = typeof prizes.$inferSelect
 type PrizeRedemptionRecord = typeof prizeRedemptions.$inferSelect
-type TeamMemberRecord = typeof teamMembers.$inferSelect
 
 export const prizeRedemptionParamsSchema = z.object({
   redemptionId: z.string().trim().min(1)
@@ -115,10 +114,12 @@ export async function listHackathonPrizeRedemptions(database: AppDatabase, hacka
     return []
   }
 
-  const redemptionRows = await database.query.prizeRedemptions.findMany({
-    where: inArray(prizeRedemptions.prizeId, prizeList.map(prize => prize.id)),
-    orderBy: [asc(prizeRedemptions.createdAt)]
-  })
+  const redemptionRows = await database
+    .select(getTableColumns(prizeRedemptions))
+    .from(prizeRedemptions)
+    .innerJoin(prizes, eq(prizes.id, prizeRedemptions.prizeId))
+    .where(eq(prizes.hackathonId, hackathonId))
+    .orderBy(asc(prizeRedemptions.createdAt))
   const prizesById = new Map(prizeList.map(prize => [prize.id, prize]))
   const hackathon = await getHackathonOrThrow(database, hackathonId)
 
@@ -131,6 +132,7 @@ export async function listHackathonPrizeRedemptions(database: AppDatabase, hacka
 
 export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
   database: AppDatabase,
+  hackathonId: string,
   teamIds: string[]
 ) {
   if (teamIds.length === 0) {
@@ -147,37 +149,27 @@ export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
     }>>()
   }
 
-  const memberships = await Promise.all(
-    chunkRowsForD1(teamIds, 1).map(chunkedTeamIds =>
-      database.query.teamMembers.findMany({
-        where: and(
-          inArray(teamMembers.teamId, chunkedTeamIds),
-          isNull(teamMembers.leftAt)
-        ),
-        orderBy: [asc(teamMembers.teamId), asc(teamMembers.joinedAt)]
-      })
-    )
-  ).then(chunks =>
-    chunks
-      .flat()
-      .sort((left, right) =>
-        left.teamId.localeCompare(right.teamId)
-        || left.joinedAt.localeCompare(right.joinedAt)
-      )
-  )
-  const userIds = [...new Set(memberships.map(membership => membership.userId))]
-  const relatedUsers = userIds.length === 0
-    ? []
-    : await Promise.all(
-        chunkRowsForD1(userIds, 1).map(chunkedUserIds =>
-          database.query.users.findMany({
-            where: and(
-              inArray(users.id, chunkedUserIds),
-              isNull(users.deletedAt)
-            )
-          })
-        )
-      ).then(chunks => chunks.flat())
+  const requestedTeamIds = new Set(teamIds)
+  const memberships = (await database
+    .select(getTableColumns(teamMembers))
+    .from(teamMembers)
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .where(and(
+      eq(teams.hackathonId, hackathonId),
+      isNull(teamMembers.leftAt)
+    ))
+    .orderBy(asc(teamMembers.teamId), asc(teamMembers.joinedAt)))
+    .filter(membership => requestedTeamIds.has(membership.teamId))
+  const relatedUsers = await database
+    .select(getTableColumns(users))
+    .from(users)
+    .innerJoin(teamMembers, eq(teamMembers.userId, users.id))
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .where(and(
+      eq(teams.hackathonId, hackathonId),
+      isNull(teamMembers.leftAt),
+      isNull(users.deletedAt)
+    ))
   const usersById = new Map(relatedUsers.map(user => [user.id, user] as const))
   const teamMembersByTeamId = new Map<string, Array<{
     id: string
@@ -221,43 +213,56 @@ export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
 export async function listOwnPendingPrizeRedemptions(event: H3Event) {
   const actor = await requirePlatformActor(event)
   const database = getDatabase(event)
-  const teamAdminMemberships = await database.query.teamMembers.findMany({
-    where: and(
-      eq(teamMembers.userId, actor.platformUser.id),
-      eq(teamMembers.role, 'admin'),
-      isNull(teamMembers.leftAt)
-    )
-  })
-  const teamAdminTeamIds = teamAdminMemberships.map(
-    (membership: TeamMemberRecord) => membership.teamId as string
-  )
-  const visibilityClauses = [eq(prizeRedemptions.userId, actor.platformUser.id)]
-
-  if (teamAdminTeamIds.length > 0) {
-    visibilityClauses.push(and(
-      isNull(prizeRedemptions.userId),
-      inArray(prizeRedemptions.teamId, teamAdminTeamIds)
-    )!)
-  }
-
-  const redemptions = await database.query.prizeRedemptions.findMany({
-    where: and(
-      eq(prizeRedemptions.status, 'pending'),
-      or(...visibilityClauses)
-    ),
-    orderBy: [asc(prizeRedemptions.createdAt)]
-  })
+  const [directRedemptions, teamScopedRedemptions] = await Promise.all([
+    database.query.prizeRedemptions.findMany({
+      where: and(
+        eq(prizeRedemptions.status, 'pending'),
+        eq(prizeRedemptions.userId, actor.platformUser.id)
+      ),
+      orderBy: [asc(prizeRedemptions.createdAt)]
+    }),
+    database
+      .select(getTableColumns(prizeRedemptions))
+      .from(prizeRedemptions)
+      .innerJoin(teamMembers, eq(teamMembers.teamId, prizeRedemptions.teamId))
+      .where(and(
+        eq(prizeRedemptions.status, 'pending'),
+        isNull(prizeRedemptions.userId),
+        eq(teamMembers.userId, actor.platformUser.id),
+        eq(teamMembers.role, 'admin'),
+        isNull(teamMembers.leftAt)
+      ))
+      .orderBy(asc(prizeRedemptions.createdAt))
+  ])
+  const redemptions = [...directRedemptions, ...teamScopedRedemptions]
+    .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
 
   if (redemptions.length === 0) {
     return []
   }
 
-  const prizeList = await database.query.prizes.findMany({
-    where: inArray(prizes.id, redemptions.map((redemption: PrizeRedemptionRecord) => redemption.prizeId))
-  })
+  const prizeList: PrizeRecord[] = []
   const hackathonsById = new Map<string, HackathonRecord>()
 
-  for (const prize of prizeList as PrizeRecord[]) {
+  for (const redemption of redemptions) {
+    const prize = await database.query.prizes.findFirst({
+      where: eq(prizes.id, redemption.prizeId)
+    })
+
+    if (!prize) {
+      throw new ApiError({
+        statusCode: 404,
+        code: 'prize_not_found',
+        message: 'The prize attached to a pending redemption was not found.',
+        details: {
+          redemptionId: redemption.id,
+          prizeId: redemption.prizeId
+        }
+      })
+    }
+
+    prizeList.push(prize)
+
     if (!hackathonsById.has(prize.hackathonId)) {
       hackathonsById.set(prize.hackathonId, await getHackathonOrThrow(database, prize.hackathonId))
     }
@@ -365,21 +370,10 @@ export async function buildPrizeRedemptionRows(
   const winningTeamIds = [...new Set(resolvedWinners.map(entry => entry.teamId))]
   const snapshots = winningTeamIds.length === 0
     ? []
-    : await Promise.all(
-        chunkRowsForD1(winningTeamIds, 2).map(teamIds =>
-          database.query.prizeEligibilitySnapshots.findMany({
-            where: and(
-              eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
-              inArray(prizeEligibilitySnapshots.teamId, teamIds)
-            ),
-            orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
-          })
-        )
-      ).then(chunks =>
-        chunks
-          .flat()
-          .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-      )
+    : (await database.query.prizeEligibilitySnapshots.findMany({
+        where: eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
+        orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
+      })).filter(snapshot => winningTeamIds.includes(snapshot.teamId))
   const snapshotsByTeamId = new Map<string, Array<typeof snapshots[number]>>()
 
   for (const snapshot of snapshots) {

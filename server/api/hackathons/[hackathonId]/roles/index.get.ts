@@ -1,4 +1,4 @@
-import { asc, eq, inArray } from 'drizzle-orm'
+import { asc, eq, getTableColumns } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { hackathonRoleAssignments, users } from '#server/database/schema'
@@ -25,11 +25,11 @@ export default defineApiHandler(async (event) => {
     orderBy: [asc(hackathonRoleAssignments.createdAt)]
   })
 
-  const relatedUsers = assignments.length > 0
-    ? await database.query.users.findMany({
-        where: inArray(users.id, assignments.map((assignment: HackathonRoleAssignmentRecord) => assignment.userId))
-      })
-    : []
+  const relatedUsers = await database
+    .select(getTableColumns(users))
+    .from(users)
+    .innerJoin(hackathonRoleAssignments, eq(hackathonRoleAssignments.userId, users.id))
+    .where(eq(hackathonRoleAssignments.hackathonId, hackathonId))
   const usersById = new Map<string, UserRecord>(
     relatedUsers.map((user: UserRecord) => [user.id, user])
   )

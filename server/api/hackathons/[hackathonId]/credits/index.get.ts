@@ -6,7 +6,7 @@ import type {
 import { apiList } from '#server/utils/api-response'
 import { defineApiHandler } from '#server/utils/api-handler'
 import {
-  listHackathonCreditCodesByOfferId,
+  listHackathonCreditCodesForHackathon,
   listHackathonCreditOffers,
   requireHackathonCreditsViewAccess,
   serializeParticipantHackathonCreditOffer
@@ -21,7 +21,7 @@ export default defineApiHandler(async (event) => {
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)
   const { actor, database, approvedApplication } = await requireHackathonCreditsViewAccess(event, hackathonId)
   const offers: HackathonCreditOfferRecord[] = await listHackathonCreditOffers(database, hackathonId)
-  const codes: HackathonCreditCodeRecord[] = await listHackathonCreditCodesByOfferId(database, offers.map(offer => offer.id))
+  const codes: HackathonCreditCodeRecord[] = await listHackathonCreditCodesForHackathon(database, hackathonId)
   const codesByOfferId = new Map<string, HackathonCreditCodeRecord[]>()
 
   for (const code of codes) {

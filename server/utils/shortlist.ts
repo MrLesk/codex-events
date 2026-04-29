@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { AppDatabase } from '#server/database/client'
@@ -22,7 +22,6 @@ import {
 } from './hackathon-management'
 import {
   calculateAveragePitchScore,
-  chunkRowsForD1,
   parseStoredPitchFinalistSubmissionIds
 } from './judging'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
@@ -427,37 +426,19 @@ async function loadCompletedOutcomeTeamMembers(
     return new Map<string, Array<ReturnType<typeof serializeHackathonWinnerTeamMember>>>()
   }
 
-  const snapshots = await Promise.all(
-    chunkRowsForD1(teamIds, 2).map(chunkedTeamIds =>
-      database.query.prizeEligibilitySnapshots.findMany({
-        where: and(
-          eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
-          inArray(prizeEligibilitySnapshots.teamId, chunkedTeamIds)
-        ),
-        orderBy: [asc(prizeEligibilitySnapshots.teamId), asc(prizeEligibilitySnapshots.createdAt)]
-      })
-    )
-  ).then(chunks =>
-    chunks
-      .flat()
-      .sort((left, right) =>
-        left.teamId.localeCompare(right.teamId)
-        || left.createdAt.localeCompare(right.createdAt)
-      )
-  ) as PrizeEligibilitySnapshotRecord[]
-  const teamMemberUserIds = [...new Set(snapshots.map(snapshot => snapshot.userId))]
-  const relatedUsers = teamMemberUserIds.length === 0
-    ? []
-    : (await Promise.all(
-        chunkRowsForD1(teamMemberUserIds, 1).map(userIds =>
-          database.query.users.findMany({
-            where: and(
-              inArray(users.id, userIds),
-              isNull(users.deletedAt)
-            )
-          })
-        )
-      ).then(chunks => chunks.flat())) as UserRecord[]
+  const requestedTeamIds = new Set(teamIds)
+  const snapshots = (await database.query.prizeEligibilitySnapshots.findMany({
+    where: eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
+    orderBy: [asc(prizeEligibilitySnapshots.teamId), asc(prizeEligibilitySnapshots.createdAt)]
+  })).filter(snapshot => requestedTeamIds.has(snapshot.teamId)) as PrizeEligibilitySnapshotRecord[]
+  const relatedUsers = await database
+    .select(getTableColumns(users))
+    .from(users)
+    .innerJoin(prizeEligibilitySnapshots, eq(prizeEligibilitySnapshots.userId, users.id))
+    .where(and(
+      eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
+      isNull(users.deletedAt)
+    )) as UserRecord[]
   const usersById = new Map(
     relatedUsers.map(user => [user.id, user] as const)
   )
@@ -595,30 +576,21 @@ async function loadCompetitionEntries(
     }
   }
 
-  const teamIds = hackathonTeams.map(team => team.id)
-  const activeMembershipRows = (
-    await Promise.all(
-      chunkRowsForD1(teamIds, 1).map(chunkedTeamIds =>
-        database.query.teamMembers.findMany({
-          where: and(
-            inArray(teamMembers.teamId, chunkedTeamIds),
-            isNull(teamMembers.leftAt)
-          )
-        })
-      )
-    )
-  ).flat()
+  const activeMembershipRows = await database
+    .select(getTableColumns(teamMembers))
+    .from(teamMembers)
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .where(and(
+      eq(teams.hackathonId, hackathonId),
+      isNull(teamMembers.leftAt)
+    ))
   const totalTeamCount = new Set(activeMembershipRows.map(membership => membership.teamId)).size
-  const submissionsForHackathon = (
-    await Promise.all(
-      chunkRowsForD1(teamIds, 1).map(chunkedTeamIds =>
-        database.query.submissions.findMany({
-          where: inArray(submissions.teamId, chunkedTeamIds),
-          orderBy: [desc(submissions.createdAt)]
-        })
-      )
-    )
-  ).flat().sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+  const submissionsForHackathon = await database
+    .select(getTableColumns(submissions))
+    .from(submissions)
+    .innerJoin(teams, eq(teams.id, submissions.teamId))
+    .where(eq(teams.hackathonId, hackathonId))
+    .orderBy(desc(submissions.createdAt))
   const latestSubmissionByTeamId = new Map<string, SubmissionRecord>()
 
   for (const submission of submissionsForHackathon) {
@@ -645,16 +617,10 @@ async function loadCompetitionEntries(
     }
   }
 
-  const assignmentRows = (
-    await Promise.all(
-      chunkRowsForD1(trackedSubmissions.map(entry => entry.submission.id), 1).map(submissionIds =>
-        database.query.judgeAssignments.findMany({
-          where: inArray(judgeAssignments.submissionId, submissionIds),
-          orderBy: [desc(judgeAssignments.createdAt)]
-        })
-      )
-    )
-  ).flat().sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+  const assignmentRows = await database.query.judgeAssignments.findMany({
+    where: eq(judgeAssignments.hackathonId, hackathonId),
+    orderBy: [desc(judgeAssignments.createdAt)]
+  })
   const assignmentsBySubmissionId = new Map<string, JudgeAssignmentRecord[]>()
 
   for (const assignment of assignmentRows) {
@@ -668,21 +634,14 @@ async function loadCompetitionEntries(
     orderBy: [asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)]
   })
   const criteriaById = new Map(criteria.map(criterion => [criterion.id, criterion]))
-  const assignmentIds = assignmentRows.map(assignment => assignment.id)
-  const scoreRows = assignmentIds.length === 0
+  const scoreRows = assignmentRows.length === 0
     ? []
-    : await Promise.all(
-        chunkRowsForD1(assignmentIds, 1).map(chunkedAssignmentIds =>
-          database.query.judgeCriterionScores.findMany({
-            where: inArray(judgeCriterionScores.judgeAssignmentId, chunkedAssignmentIds),
-            orderBy: [asc(judgeCriterionScores.createdAt)]
-          })
-        )
-      ).then(chunks =>
-        chunks
-          .flat()
-          .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
-      )
+    : await database
+        .select(getTableColumns(judgeCriterionScores))
+        .from(judgeCriterionScores)
+        .innerJoin(judgeAssignments, eq(judgeAssignments.id, judgeCriterionScores.judgeAssignmentId))
+        .where(eq(judgeAssignments.hackathonId, hackathonId))
+        .orderBy(asc(judgeCriterionScores.createdAt))
   const scoresByAssignmentId = new Map<string, Array<typeof scoreRows[number]>>()
 
   for (const scoreRow of scoreRows) {

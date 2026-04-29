@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import {
@@ -63,8 +63,6 @@ type TeamRecord = typeof teams.$inferSelect
 type TeamMemberRecord = typeof teamMembers.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
 type SubmitApplicationBody = z.infer<typeof submitApplicationBodySchema>
-
-const d1LookupBatchSize = 75
 
 export type AdminApplicationWithdrawalTeamAction = 'none' | 'remove_member' | 'dissolve_team'
 
@@ -218,19 +216,20 @@ export async function getAdminApplicationWithdrawalPlan(
   hackathonId: string,
   application: UserApplicationRecord
 ): Promise<AdminApplicationWithdrawalPlan> {
-  const activeMemberships = await database.query.teamMembers.findMany({
-    where: and(
+  const activeMembershipRows = await database
+    .select({
+      membership: getTableColumns(teamMembers),
+      team: getTableColumns(teams)
+    })
+    .from(teamMembers)
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .where(and(
+      eq(teams.hackathonId, hackathonId),
       eq(teamMembers.userId, application.userId),
       isNull(teamMembers.leftAt)
-    )
-  })
-
-  const relatedTeams = activeMemberships.length > 0
-    ? await database.query.teams.findMany({
-        where: inArray(teams.id, activeMemberships.map(membership => membership.teamId))
-      })
-    : []
-  const activeTeam = relatedTeams.find(team => team.hackathonId === hackathonId) ?? null
+    ))
+  const activeMemberships = activeMembershipRows.map(row => row.membership)
+  const activeTeam = activeMembershipRows[0]?.team ?? null
   const targetMembership = activeTeam
     ? activeMemberships.find(membership => membership.teamId === activeTeam.id) ?? null
     : null
@@ -276,32 +275,27 @@ async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
     return new Map<string, AdminApplicationWithdrawalAvailability>()
   }
 
-  const userIds = [...new Set(applications.map(application => application.userId))]
-  const activeMemberships: TeamMemberRecord[] = []
-
-  for (let index = 0; index < userIds.length; index += d1LookupBatchSize) {
-    activeMemberships.push(...await database.query.teamMembers.findMany({
-      where: and(
-        inArray(teamMembers.userId, userIds.slice(index, index + d1LookupBatchSize)),
-        isNull(teamMembers.leftAt)
-      ),
-      orderBy: [asc(teamMembers.createdAt)]
-    }))
-  }
-
-  const relatedTeamIds = [...new Set(activeMemberships.map(membership => membership.teamId))]
-  const relatedTeams: TeamRecord[] = []
-
-  for (let index = 0; index < relatedTeamIds.length; index += d1LookupBatchSize) {
-    relatedTeams.push(...await database.query.teams.findMany({
-      where: inArray(teams.id, relatedTeamIds.slice(index, index + d1LookupBatchSize))
-    }))
-  }
+  const activeMembershipRows = await database
+    .select({
+      membership: getTableColumns(teamMembers),
+      team: getTableColumns(teams)
+    })
+    .from(teamMembers)
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .innerJoin(userApplications, and(
+      eq(userApplications.hackathonId, hackathonId),
+      eq(userApplications.userId, teamMembers.userId)
+    ))
+    .where(and(
+      eq(teams.hackathonId, hackathonId),
+      isNull(teamMembers.leftAt)
+    ))
+    .orderBy(asc(teamMembers.createdAt))
+  const activeMemberships = activeMembershipRows.map(row => row.membership)
+  const relatedTeams = activeMembershipRows.map(row => row.team)
 
   const teamsById = new Map(
-    relatedTeams
-      .filter(team => team.hackathonId === hackathonId)
-      .map(team => [team.id, team] as const)
+    relatedTeams.map(team => [team.id, team] as const)
   )
   const activeMembershipByUserId = new Map<string, TeamMemberRecord>()
 
@@ -313,32 +307,26 @@ async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
     activeMembershipByUserId.set(membership.userId, membership)
   }
 
-  const activeTeamIds = [...new Set([...activeMembershipByUserId.values()].map(membership => membership.teamId))]
-  const teamActiveMembers: TeamMemberRecord[] = []
-  const activeSubmissions: SubmissionRecord[] = []
-
-  for (let index = 0; index < activeTeamIds.length; index += d1LookupBatchSize) {
-    const teamIdBatch = activeTeamIds.slice(index, index + d1LookupBatchSize)
-    const [teamActiveMemberBatch, activeSubmissionBatch] = await Promise.all([
-      database.query.teamMembers.findMany({
-        where: and(
-          inArray(teamMembers.teamId, teamIdBatch),
-          isNull(teamMembers.leftAt)
-        ),
-        orderBy: [asc(teamMembers.createdAt)]
-      }),
-      database.query.submissions.findMany({
-        where: and(
-          inArray(submissions.teamId, teamIdBatch),
-          inArray(submissions.status, ['draft', 'submitted', 'locked'])
-        ),
-        orderBy: [desc(submissions.createdAt)]
-      })
-    ])
-
-    teamActiveMembers.push(...teamActiveMemberBatch)
-    activeSubmissions.push(...activeSubmissionBatch)
-  }
+  const [teamActiveMembers, activeSubmissions] = await Promise.all([
+    database
+      .select(getTableColumns(teamMembers))
+      .from(teamMembers)
+      .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+      .where(and(
+        eq(teams.hackathonId, hackathonId),
+        isNull(teamMembers.leftAt)
+      ))
+      .orderBy(asc(teamMembers.createdAt)),
+    database
+      .select(getTableColumns(submissions))
+      .from(submissions)
+      .innerJoin(teams, eq(teams.id, submissions.teamId))
+      .where(and(
+        eq(teams.hackathonId, hackathonId),
+        inArray(submissions.status, ['draft', 'submitted', 'locked'])
+      ))
+      .orderBy(desc(submissions.createdAt))
+  ])
 
   const activeMembersByTeamId = new Map<string, TeamMemberRecord[]>()
   const activeSubmissionByTeamId = new Map<string, SubmissionRecord>()
@@ -716,24 +704,18 @@ export async function assertNoActiveTeamMembershipForApplicationWithdrawal(
   hackathonId: string,
   userId: string
 ) {
-  const activeMemberships = await database.query.teamMembers.findMany({
-    where: and(
+  const activeMembership = await database
+    .select({ id: teamMembers.id })
+    .from(teamMembers)
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .where(and(
+      eq(teams.hackathonId, hackathonId),
       eq(teamMembers.userId, userId),
       isNull(teamMembers.leftAt)
-    )
-  })
+    ))
+    .limit(1)
 
-  if (activeMemberships.length === 0) {
-    return
-  }
-
-  const relatedTeams = await database.query.teams.findMany({
-    where: inArray(teams.id, activeMemberships.map(membership => membership.teamId))
-  })
-
-  const hasActiveHackathonTeamMembership = relatedTeams.some(team => team.hackathonId === hackathonId)
-
-  assertGuard(!hasActiveHackathonTeamMembership, {
+  assertGuard(activeMembership.length === 0, {
     code: 'user_application_withdrawal_blocked',
     message: 'Leave your active team before withdrawing from this hackathon.',
     details: {
@@ -775,19 +757,17 @@ export async function listHackathonApplications(database: AppDatabase, hackathon
   const usersById = new Map<string, UserRecord>()
 
   if (applications.length > 0) {
-    const relatedUserIds = [...new Set(applications.map(application => application.userId))]
+    const relatedUsers = await database
+      .select(getTableColumns(users))
+      .from(users)
+      .innerJoin(userApplications, and(
+        eq(userApplications.hackathonId, hackathonId),
+        eq(userApplications.userId, users.id)
+      ))
+      .where(isNull(users.deletedAt))
 
-    for (let index = 0; index < relatedUserIds.length; index += d1LookupBatchSize) {
-      const relatedUsers = await database.query.users.findMany({
-        where: and(
-          inArray(users.id, relatedUserIds.slice(index, index + d1LookupBatchSize)),
-          isNull(users.deletedAt)
-        )
-      })
-
-      for (const user of relatedUsers) {
-        usersById.set(user.id, user)
-      }
+    for (const user of relatedUsers) {
+      usersById.set(user.id, user)
     }
   }
 

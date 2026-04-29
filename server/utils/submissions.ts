@@ -1,12 +1,12 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveHackathonAuthorization, resolveTeamAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
-import { auditLogs, hackathonTracks, submissions, teams, teamMembers } from '#server/database/schema'
+import { auditLogs, hackathonTracks, submissions, teams, teamMembers, users } from '#server/database/schema'
 import type { hackathons } from '#server/database/schema'
 import { ApiError } from './api-error'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
@@ -14,8 +14,6 @@ import { getVisibleHackathonOrThrow, requireHackathonAdmin, routeIdParamsSchema 
 import { getActiveTeamMembers, getTeamOrThrow, getUsersByIds, serializeTeam, serializeTeamMember } from './team-formation'
 
 const requiredStringSchema = z.string().trim().min(1)
-const d1LookupBatchSize = 75
-
 function createOptionalUrlSchema(message: string) {
   return z.string().trim().refine(
     value => value.length === 0 || z.string().url().safeParse(value).success,
@@ -70,16 +68,6 @@ function normalizeSubmissionAuditReason(value: unknown) {
   return normalizedValue.length > 0 ? normalizedValue : null
 }
 
-function chunkValues<T>(values: T[], size: number) {
-  const chunks: T[][] = []
-
-  for (let index = 0; index < values.length; index += size) {
-    chunks.push(values.slice(index, index + size))
-  }
-
-  return chunks
-}
-
 export function serializeSubmission(
   submission: SubmissionRecord,
   options?: {
@@ -108,6 +96,21 @@ export function serializeSubmission(
 
 export function isNoSubmissionStatus(status: SubmissionRecord['status']) {
   return status === 'draft' || status === 'withdrawn' || status === 'disqualified'
+}
+
+async function listActiveHackathonMemberUsersById(database: AppDatabase, hackathonId: string) {
+  const relatedUsers = await database
+    .select(getTableColumns(users))
+    .from(users)
+    .innerJoin(teamMembers, eq(teamMembers.userId, users.id))
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .where(and(
+      eq(teams.hackathonId, hackathonId),
+      isNull(teamMembers.leftAt),
+      isNull(users.deletedAt)
+    ))
+
+  return new Map(relatedUsers.map(user => [user.id, user] as const))
 }
 
 export async function getSubmissionForTeam(database: AppDatabase, teamId: string) {
@@ -519,33 +522,25 @@ export async function listNoSubmissionTeams(database: AppDatabase, hackathonId: 
     return []
   }
 
-  const teamIds = allTeams.map(team => team.id)
-  const allMembers = (
-    await Promise.all(
-      chunkValues(teamIds, d1LookupBatchSize).map(teamIdBatch =>
-        database.query.teamMembers.findMany({
-          where: and(
-            inArray(teamMembers.teamId, teamIdBatch),
-            isNull(teamMembers.leftAt)
-          ),
-          orderBy: [asc(teamMembers.createdAt)]
-        })
-      )
-    )
-  ).flat()
+  const [allMembers, allSubmissions] = await Promise.all([
+    database
+      .select(getTableColumns(teamMembers))
+      .from(teamMembers)
+      .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+      .where(and(
+        eq(teams.hackathonId, hackathonId),
+        isNull(teamMembers.leftAt)
+      ))
+      .orderBy(asc(teamMembers.createdAt)),
+    database
+      .select(getTableColumns(submissions))
+      .from(submissions)
+      .innerJoin(teams, eq(teams.id, submissions.teamId))
+      .where(eq(teams.hackathonId, hackathonId))
+      .orderBy(desc(submissions.createdAt))
+  ])
 
-  const allSubmissions = (
-    await Promise.all(
-      chunkValues(teamIds, d1LookupBatchSize).map(teamIdBatch =>
-        database.query.submissions.findMany({
-          where: inArray(submissions.teamId, teamIdBatch),
-          orderBy: [desc(submissions.createdAt)]
-        })
-      )
-    )
-  ).flat()
-
-  const usersById = await getUsersByIds(database, allMembers.map(member => member.userId))
+  const usersById = await listActiveHackathonMemberUsersById(database, hackathonId)
   const membersByTeamId = new Map<string, Array<typeof allMembers[number]>>()
   const latestSubmissionByTeamId = new Map<string, SubmissionRecord>()
 
@@ -596,50 +591,41 @@ export async function listSubmissionMonitorTeams(database: AppDatabase, hackatho
     }
   }
 
-  const teamIds = allTeams.map(team => team.id)
-  const allMembers = (
-    await Promise.all(
-      chunkValues(teamIds, d1LookupBatchSize).map(teamIdBatch =>
-        database.query.teamMembers.findMany({
-          where: and(
-            inArray(teamMembers.teamId, teamIdBatch),
-            isNull(teamMembers.leftAt)
-          ),
-          orderBy: [asc(teamMembers.createdAt)]
-        })
-      )
-    )
-  ).flat()
-  const allSubmissions = (
-    await Promise.all(
-      chunkValues(teamIds, d1LookupBatchSize).map(teamIdBatch =>
-        database.query.submissions.findMany({
-          where: inArray(submissions.teamId, teamIdBatch),
-          orderBy: [desc(submissions.createdAt)]
-        })
-      )
-    )
-  ).flat()
+  const [allMembers, allSubmissions] = await Promise.all([
+    database
+      .select(getTableColumns(teamMembers))
+      .from(teamMembers)
+      .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+      .where(and(
+        eq(teams.hackathonId, hackathonId),
+        isNull(teamMembers.leftAt)
+      ))
+      .orderBy(asc(teamMembers.createdAt)),
+    database
+      .select(getTableColumns(submissions))
+      .from(submissions)
+      .innerJoin(teams, eq(teams.id, submissions.teamId))
+      .where(eq(teams.hackathonId, hackathonId))
+      .orderBy(desc(submissions.createdAt))
+  ])
   const disqualifiedSubmissionIds = allSubmissions
     .filter(submission => submission.status === 'disqualified')
     .map(submission => submission.id)
   const disqualificationAuditLogs = disqualifiedSubmissionIds.length > 0
-    ? (
-        await Promise.all(
-          chunkValues(disqualifiedSubmissionIds, d1LookupBatchSize).map(submissionIdBatch =>
-            database.query.auditLogs.findMany({
-              where: and(
-                eq(auditLogs.entityType, 'submission'),
-                inArray(auditLogs.entityId, submissionIdBatch),
-                eq(auditLogs.action, 'submission.disqualified')
-              ),
-              orderBy: [desc(auditLogs.createdAt)]
-            })
-          )
-        )
-      ).flat()
+    ? await database
+        .select(getTableColumns(auditLogs))
+        .from(auditLogs)
+        .innerJoin(submissions, eq(submissions.id, auditLogs.entityId))
+        .innerJoin(teams, eq(teams.id, submissions.teamId))
+        .where(and(
+          eq(teams.hackathonId, hackathonId),
+          eq(submissions.status, 'disqualified'),
+          eq(auditLogs.entityType, 'submission'),
+          eq(auditLogs.action, 'submission.disqualified')
+        ))
+        .orderBy(desc(auditLogs.createdAt))
     : []
-  const usersById = await getUsersByIds(database, allMembers.map(member => member.userId))
+  const usersById = await listActiveHackathonMemberUsersById(database, hackathonId)
   const membersByTeamId = new Map<string, Array<typeof allMembers[number]>>()
   const latestSubmissionByTeamId = new Map<string, SubmissionRecord>()
   const disqualificationReasonBySubmissionId = new Map<string, string | null>()

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, isNotNull } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
@@ -22,7 +22,6 @@ import {
 import { routeIdParamsSchema } from '#server/utils/hackathon-management'
 import { parseValidatedParams } from '#server/utils/validation'
 
-type UserApplicationRecord = typeof userApplications.$inferSelect
 type UserApplicationLumaSyncStatus = typeof userApplications.$inferSelect['lumaSyncStatus']
 
 export default defineApiHandler(async (event) => {
@@ -49,10 +48,15 @@ export default defineApiHandler(async (event) => {
   }
 
   const applicantsById = new Map<string, typeof users.$inferSelect>()
-  const stagedApplicantIds = stagedApplications.map((application: UserApplicationRecord) => application.userId)
-  const relatedUsers = await database.query.users.findMany({
-    where: inArray(users.id, stagedApplicantIds)
-  })
+  const relatedUsers = await database
+    .select(getTableColumns(users))
+    .from(users)
+    .innerJoin(userApplications, eq(userApplications.userId, users.id))
+    .where(and(
+      eq(userApplications.hackathonId, hackathonId),
+      eq(userApplications.status, 'submitted'),
+      isNotNull(userApplications.preApprovalStatus)
+    ))
 
   for (const user of relatedUsers) {
     applicantsById.set(user.id, user)

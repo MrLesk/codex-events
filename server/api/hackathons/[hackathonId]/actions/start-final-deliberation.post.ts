@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
@@ -15,7 +15,6 @@ import {
   assertStartFinalDeliberationAllowed,
   listLeaderboardEntries
 } from '#server/utils/shortlist'
-import { chunkRowsForD1 } from '#server/utils/judging'
 import { parseValidatedParams } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
@@ -24,27 +23,18 @@ export default defineApiHandler(async (event) => {
   const database = getDatabase(event)
   const { hackathon } = await requireHackathonAdmin(event, hackathonId)
   const leaderboardEntries = await listLeaderboardEntries(database, hackathonId)
-  const lockedSubmissionIds = leaderboardEntries
-    .filter(entry => entry.submission.status === 'locked')
-    .map(entry => entry.submission.id)
-  const completedPitchReviewCount = hackathon.state !== 'pitch_review' || lockedSubmissionIds.length === 0
+  const completedPitchReviewCount = hackathon.state !== 'pitch_review'
     ? 0
-    : (
-        await Promise.all(
-          chunkRowsForD1(lockedSubmissionIds, 2).map(submissionIds =>
-            database.query.judgeAssignments.findMany({
-              columns: {
-                id: true
-              },
-              where: and(
-                inArray(judgeAssignments.submissionId, submissionIds),
-                eq(judgeAssignments.reviewStage, 'pitch_review'),
-                eq(judgeAssignments.status, 'judge_completed')
-              )
-            })
-          )
+    : (await database.query.judgeAssignments.findMany({
+        columns: {
+          id: true
+        },
+        where: and(
+          eq(judgeAssignments.hackathonId, hackathonId),
+          eq(judgeAssignments.reviewStage, 'pitch_review'),
+          eq(judgeAssignments.status, 'judge_completed')
         )
-      ).flat().length
+      })).length
 
   assertStartFinalDeliberationAllowed(hackathon, leaderboardEntries, {
     completedPitchReviewCount

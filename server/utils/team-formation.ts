@@ -366,28 +366,18 @@ export async function getOwnActiveTeamMembershipForHackathon(
   hackathonId: string,
   userId: string
 ) {
-  const memberships = await database.query.teamMembers.findMany({
-    where: and(
+  const [membership] = await database
+    .select(getTableColumns(teamMembers))
+    .from(teamMembers)
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .where(and(
+      eq(teams.hackathonId, hackathonId),
       eq(teamMembers.userId, userId),
       isNull(teamMembers.leftAt)
-    )
-  })
+    ))
+    .limit(1)
 
-  if (memberships.length === 0) {
-    return null
-  }
-
-  const relatedTeams = await database.query.teams.findMany({
-    where: inArray(teams.id, memberships.map(membership => membership.teamId))
-  })
-
-  const allowedTeamIds = new Set(
-    relatedTeams
-      .filter(team => team.hackathonId === hackathonId)
-      .map(team => team.id)
-  )
-
-  return memberships.find(membership => allowedTeamIds.has(membership.teamId)) ?? null
+  return membership ?? null
 }
 
 export async function assertNoActiveTeamMembershipForHackathon(
@@ -680,7 +670,12 @@ export async function listTeamJoinRequests(database: AppDatabase, teamId: string
     orderBy: [asc(teamJoinRequests.createdAt)]
   })
 
-  const usersById = await getUsersByIds(database, requests.map(request => request.userId))
+  const requestUsers = await database
+    .select(getTableColumns(users))
+    .from(users)
+    .innerJoin(teamJoinRequests, eq(teamJoinRequests.userId, users.id))
+    .where(eq(teamJoinRequests.teamId, teamId))
+  const usersById = new Map(requestUsers.map(user => [user.id, user] as const))
 
   return requests.map(request => serializeTeamJoinRequest(request, {
     user: usersById.get(request.userId) ?? null

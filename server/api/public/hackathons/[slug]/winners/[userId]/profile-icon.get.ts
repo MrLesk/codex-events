@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import { setHeader } from 'h3'
 import { z } from 'zod'
 
@@ -34,33 +34,17 @@ export default defineApiHandler(async (event) => {
 
   assertWinnersVisible(hackathon)
 
-  const snapshots = await database.query.prizeEligibilitySnapshots.findMany({
-    columns: {
-      teamId: true
-    },
-    where: and(
+  const [winningRedemption] = await database
+    .select({
+      id: prizeRedemptions.id
+    })
+    .from(prizeRedemptions)
+    .innerJoin(prizeEligibilitySnapshots, eq(prizeEligibilitySnapshots.teamId, prizeRedemptions.teamId))
+    .where(and(
       eq(prizeEligibilitySnapshots.hackathonId, hackathon.id),
       eq(prizeEligibilitySnapshots.userId, userId)
-    )
-  })
-  const winningTeamIds = [...new Set(
-    (snapshots as Array<{ teamId: string }>).map(snapshot => snapshot.teamId)
-  )]
-
-  if (winningTeamIds.length === 0) {
-    throw new ApiError({
-      statusCode: 404,
-      code: 'profile_icon_not_found',
-      message: 'The platform user does not have an uploaded profile icon.'
-    })
-  }
-
-  const winningRedemption = await database.query.prizeRedemptions.findFirst({
-    columns: {
-      id: true
-    },
-    where: inArray(prizeRedemptions.teamId, winningTeamIds)
-  })
+    ))
+    .limit(1)
 
   if (!winningRedemption) {
     throw new ApiError({

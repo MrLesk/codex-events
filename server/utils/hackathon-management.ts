@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, count, desc, eq, inArray, isNull, like, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, exists, getTableColumns, inArray, isNull, like, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { getRequestActor, requirePlatformActor } from '#server/auth/actor'
@@ -1030,10 +1030,21 @@ export async function listVisibleHackathons(
     return { items, total, page, pageSize }
   }
 
-  const internalHackathonIds = await getActorInternalHackathonIds(database, actor)
+  const internalHackathonVisibility = actor.kind === 'platform_user'
+    ? exists(
+        database
+          .select({ id: hackathonRoleAssignments.id })
+          .from(hackathonRoleAssignments)
+          .where(and(
+            eq(hackathonRoleAssignments.hackathonId, hackathons.id),
+            eq(hackathonRoleAssignments.userId, actor.platformUser.id),
+            inArray(hackathonRoleAssignments.role, ['hackathon_admin', 'staff'])
+          ))
+      )
+    : undefined
   const visibilityClauses = [
     ...buildPublicHackathonVisibilityClauses(),
-    ...(internalHackathonIds.size > 0 ? [inArray(hackathons.id, [...internalHackathonIds])] : [])
+    ...(internalHackathonVisibility ? [internalHackathonVisibility] : [])
   ]
   const visibilityWhere = baseWhere
     ? and(baseWhere, or(...visibilityClauses))
@@ -1066,22 +1077,16 @@ export async function listHackathonRoleCandidates(
     )!)
   }
 
-  const currentHackathonAdminRows = await database.query.hackathonRoleAssignments.findMany({
-    columns: {
-      userId: true
-    },
-    where: and(
-      eq(hackathonRoleAssignments.hackathonId, hackathonId),
-      eq(hackathonRoleAssignments.role, 'hackathon_admin')
-    )
-  })
-  const currentHackathonAdminIds = currentHackathonAdminRows.map(row => row.userId)
   const where = and(...filters)
   const orderBy = [
     desc(sql<number>`case when ${users.isPlatformAdmin} then 1 else 0 end`),
-    ...(currentHackathonAdminIds.length > 0
-      ? [desc(sql<number>`case when ${inArray(users.id, currentHackathonAdminIds)} then 1 else 0 end`)]
-      : []),
+    desc(sql<number>`case when exists (
+      select 1
+      from ${hackathonRoleAssignments}
+      where ${hackathonRoleAssignments.hackathonId} = ${hackathonId}
+        and ${hackathonRoleAssignments.role} = 'hackathon_admin'
+        and ${hackathonRoleAssignments.userId} = ${users.id}
+    ) then 1 else 0 end`),
     asc(users.displayName),
     asc(users.email),
     asc(users.id)
@@ -1114,29 +1119,22 @@ export async function listPublishedHackathonRosterMembers(
   hackathonId: string,
   role: PublishedHackathonRosterRole
 ) {
-  const assignments = await database.query.hackathonRoleAssignments.findMany({
-    where: eq(hackathonRoleAssignments.hackathonId, hackathonId),
-    orderBy: [asc(hackathonRoleAssignments.createdAt)]
-  })
-  const visibleAssignments = assignments.filter(assignment => isHackathonRolePublishedInRoster(assignment, role))
-
-  if (visibleAssignments.length === 0) {
-    return []
-  }
-
-  const relatedUsers = await database.query.users.findMany({
-    where: and(
-      inArray(users.id, visibleAssignments.map(assignment => assignment.userId)),
+  const assignmentUserRows = await database
+    .select({
+      assignment: getTableColumns(hackathonRoleAssignments),
+      user: getTableColumns(users)
+    })
+    .from(hackathonRoleAssignments)
+    .innerJoin(users, eq(users.id, hackathonRoleAssignments.userId))
+    .where(and(
+      eq(hackathonRoleAssignments.hackathonId, hackathonId),
       isNull(users.deletedAt)
-    )
-  })
-  const usersById = new Map<string, UserRecord>(
-    relatedUsers.map(user => [user.id, user])
-  )
+    ))
+    .orderBy(asc(hackathonRoleAssignments.createdAt))
 
-  return visibleAssignments
-    .map(assignment => usersById.get(assignment.userId) ?? null)
-    .filter((user): user is UserRecord => Boolean(user))
+  return assignmentUserRows
+    .filter(row => isHackathonRolePublishedInRoster(row.assignment, role))
+    .map(row => row.user as UserRecord)
     .map(serializePublishedHackathonRosterMember)
     .sort(comparePublishedHackathonRosterMembers)
 }
