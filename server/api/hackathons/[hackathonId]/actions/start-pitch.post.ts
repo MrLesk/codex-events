@@ -10,7 +10,7 @@ import {
   buildHackathonOutcomeEmailQueueMessage,
   enqueueHackathonOutcomeEmailMessage
 } from '#server/utils/hackathon-outcome-email-queue'
-import { hasSavedShortlistSelection } from '#server/utils/shortlist'
+import { hasSavedShortlistSelection } from '#server/domains/outcomes'
 import {
   assertStartPitchAllowed,
   buildPrizeEligibilitySnapshots,

@@ -11,7 +11,7 @@ import {
   routeSlugParamsSchema
 } from '#server/domains/hackathons'
 import { getProfileIconObject } from '#server/utils/profile-icons'
-import { assertWinnersVisible } from '#server/utils/shortlist'
+import { assertWinnersVisible } from '#server/domains/outcomes'
 import {
   parseValidatedParams,
   parseValidatedQuery

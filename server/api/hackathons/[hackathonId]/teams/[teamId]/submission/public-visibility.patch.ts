@@ -13,7 +13,7 @@ import {
   submissionParamsSchema,
   updateSubmissionPublicVisibilityBodySchema
 } from '#server/domains/submissions'
-import { refreshCompletedOutcomeCache } from '#server/utils/shortlist'
+import { refreshCompletedOutcomeCache } from '#server/domains/outcomes'
 
 export default defineApiHandler(async (event) => {
   await requirePlatformActor(event)

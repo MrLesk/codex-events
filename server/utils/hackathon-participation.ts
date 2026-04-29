@@ -13,7 +13,7 @@ import {
   userApplications
 } from '#server/database/schema'
 import { parseHackathonAgendaItems } from '#server/domains/hackathons'
-import { getTeamCompetitionOutcome } from './shortlist'
+import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
 import { serializeSubmission } from '#server/domains/submissions'
 
 type HackathonRecord = typeof hackathons.$inferSelect

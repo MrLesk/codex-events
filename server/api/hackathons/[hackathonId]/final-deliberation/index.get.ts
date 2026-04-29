@@ -8,7 +8,7 @@ import { assertGuard } from '#server/domains/lifecycle-guard'
 import {
   assertFinalDeliberationViewAllowed,
   getFinalDeliberationView
-} from '#server/utils/shortlist'
+} from '#server/domains/outcomes'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

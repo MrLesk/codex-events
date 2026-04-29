@@ -9,7 +9,7 @@ import {
   getVisibleHackathonOrThrow,
   routeIdParamsSchema
 } from '#server/domains/hackathons'
-import { getTeamCompetitionOutcome } from '#server/utils/shortlist'
+import { getTeamCompetitionOutcome } from '#server/domains/outcomes'
 import { parseValidatedParams } from '#server/http/validation'
 
 type MembershipRow = {

@@ -5,7 +5,7 @@ import { defineApiHandler } from '#server/http/api-handler'
 import { apiList } from '#server/http/api-response'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/domains/hackathons'
 import { assertGuard } from '#server/domains/lifecycle-guard'
-import { listLeaderboardEntries, serializeLeaderboardEntry } from '#server/utils/shortlist'
+import { listLeaderboardEntries, serializeLeaderboardEntry } from '#server/domains/outcomes'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

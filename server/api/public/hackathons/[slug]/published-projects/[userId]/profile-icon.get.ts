@@ -11,7 +11,7 @@ import {
   routeSlugParamsSchema
 } from '#server/domains/hackathons'
 import { getProfileIconObject } from '#server/utils/profile-icons'
-import { assertCompletedOutcomeVisible } from '#server/utils/shortlist'
+import { assertCompletedOutcomeVisible } from '#server/domains/outcomes'
 import {
   parseValidatedParams,
   parseValidatedQuery

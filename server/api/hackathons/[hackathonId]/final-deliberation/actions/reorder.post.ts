@@ -16,7 +16,7 @@ import {
   getFinalDeliberationView,
   listLeaderboardEntries,
   reorderFinalDeliberationBodySchema
-} from '#server/utils/shortlist'
+} from '#server/domains/outcomes'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

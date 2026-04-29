@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { ApiError } from '../../../../server/http/api-error'
+import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertFinalDeliberationReorderAllowed,
   assertFinalDeliberationReorderMatchesEntries,
@@ -17,7 +17,7 @@ import {
   assertStartShortlistAllowed,
   assertWinnersAnnouncementAllowed,
   calculateFinalScore
-} from '../../../../server/utils/shortlist'
+} from '../../../../../server/domains/outcomes'
 
 function createHackathon(
   state:

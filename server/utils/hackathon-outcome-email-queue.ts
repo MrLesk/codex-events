@@ -6,7 +6,7 @@ import { z } from 'zod'
 import type { AppDatabase } from '#server/database/client'
 import { writeAuditLog } from '#server/database/audit-log'
 import { prizeEligibilitySnapshots, users } from '#server/database/schema'
-import { getFinalDeliberationView } from './shortlist'
+import { getFinalDeliberationView } from '#server/domains/outcomes'
 import {
   sendHackathonOutcomeEmail,
   type HackathonOutcomeEmailDeliveryResult,

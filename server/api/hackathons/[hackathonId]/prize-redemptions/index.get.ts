@@ -12,7 +12,7 @@ import {
   getFinalDeliberationView,
   getWinnersView,
   listBlindRankingEntries
-} from '#server/utils/shortlist'
+} from '#server/domains/outcomes'
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 
 const prizeRedemptionQuerySchema = z.object({

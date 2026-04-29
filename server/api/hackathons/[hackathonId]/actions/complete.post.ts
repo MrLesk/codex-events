@@ -16,7 +16,7 @@ import {
   assertHackathonCompletionAllowed,
   getWinnersView,
   refreshCompletedOutcomeCache
-} from '#server/utils/shortlist'
+} from '#server/domains/outcomes'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

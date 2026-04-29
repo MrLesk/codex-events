@@ -23,7 +23,7 @@ import {
 } from '#server/domains/hackathons'
 import { ApiError } from '#server/http/api-error'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
-import { getWinnersView } from './shortlist'
+import { getWinnersView } from '#server/domains/outcomes'
 
 type HackathonRecord = typeof hackathons.$inferSelect
 type PrizeRecord = typeof prizes.$inferSelect

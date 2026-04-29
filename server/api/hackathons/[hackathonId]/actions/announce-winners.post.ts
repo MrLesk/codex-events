@@ -25,7 +25,7 @@ import {
   assertWinnersAnnouncementAllowed,
   assertFinalDeliberationReorderMatchesEntries,
   getFinalDeliberationView
-} from '#server/utils/shortlist'
+} from '#server/domains/outcomes'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 

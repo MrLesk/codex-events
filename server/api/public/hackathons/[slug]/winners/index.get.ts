@@ -5,7 +5,7 @@ import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema
 } from '#server/domains/hackathons'
-import { assertWinnersVisible, getWinnersView } from '#server/utils/shortlist'
+import { assertWinnersVisible, getWinnersView } from '#server/domains/outcomes'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
