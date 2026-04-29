@@ -16,7 +16,7 @@ import HackathonPublishedProjectsShowcase from '~/components/public/hackathons/H
 import HackathonTracksPanel from '~/components/public/hackathons/HackathonTracksPanel.vue'
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
 import HackathonWinnersShowcase from '~/components/public/hackathons/HackathonWinnersShowcase.vue'
-import { resolvePublicHackathonPrimaryAction } from '~/utils/participant-application'
+import { resolvePublicHackathonPrimaryAction } from '~/domains/applications/participant-application'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
 
 definePageMeta({

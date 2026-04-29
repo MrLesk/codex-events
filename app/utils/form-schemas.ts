@@ -4,14 +4,14 @@ import type { HackathonFormState } from './admin-workspace'
 import type {
   HackathonProfileField,
   ParticipantRegistrationTeamIntent
-} from './participant-application'
+} from '~/domains/applications/participant-application'
 
 import {
   isProofOfExecutionLinksValid,
   isOpenAiOrgIdFormatValid,
   isParticipantProfileUrlValid,
   isParticipantSocialProfileUrlValid
-} from './participant-application'
+} from '~/domains/applications/participant-application'
 
 function isHttpUrl(value: string) {
   try {

@@ -28,8 +28,8 @@ import {
   shouldShowParticipantOverviewStatusBanner,
   shouldShowPublicRegistrationEntry,
   summarizeParticipantApplicationStatus
-} from '../../../../app/utils/participant-application'
-import { cloneFormValues } from '../../../../app/utils/form-values'
+} from '../../../../../app/domains/applications/participant-application'
+import { cloneFormValues } from '../../../../../app/utils/form-values'
 
 describe('participant application helpers', () => {
   test('lists only the required profile fields missing from the platform account', () => {

@@ -4,13 +4,13 @@ import type {
   ParticipantApiDataResponse,
   ParticipantApiListResponse,
   ParticipantSessionUser
-} from './participant-application'
+} from '~/domains/applications/participant-application'
 
 import {
   buildAnonymousParticipantActor,
   buildAuthenticatedIdentityParticipantActor,
   normalizeParticipantApiError
-} from './participant-application'
+} from '~/domains/applications/participant-application'
 
 export type TeamWorkspaceActor = ParticipantActor
 export type TeamWorkspaceApiDataResponse<T> = ParticipantApiDataResponse<T>

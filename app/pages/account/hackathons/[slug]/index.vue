@@ -14,7 +14,7 @@ import type {
 import type {
   ParticipantApiDataResponse,
   ParticipantApplicationRecord
-} from '~/utils/participant-application'
+} from '~/domains/applications/participant-application'
 import type { PublishedProjectEntry, WinnerEntry } from '~/utils/admin-workspace'
 import type { Ref } from 'vue'
 
@@ -69,7 +69,7 @@ import {
   normalizeParticipantApiError,
   shouldShowParticipantOverviewStatusBanner,
   summarizeParticipantApplicationStatus
-} from '~/utils/participant-application'
+} from '~/domains/applications/participant-application'
 import {
   hasHackathonEnteredSubmissionPhase
 } from '~/utils/team-submission'

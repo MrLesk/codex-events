@@ -7,14 +7,14 @@ import type {
   ParticipantRegistrationTeamIntent,
   ParticipantSessionUser,
   VisibleHackathonRecord
-} from '~/utils/participant-application'
+} from '~/domains/applications/participant-application'
 
 import {
   buildAnonymousParticipantActor,
   buildAuthenticatedIdentityParticipantActor,
   listMissingRequiredProfileFields,
   normalizeParticipantApiError
-} from '~/utils/participant-application'
+} from '~/domains/applications/participant-application'
 
 async function getVisibleHackathonBySlug(
   slug: string,

@@ -1,7 +1,7 @@
 import type { PublicHackathon } from './useHackathonPresentation'
 import type {
   ParticipantApplicationRecord
-} from '~/utils/participant-application'
+} from '~/domains/applications/participant-application'
 import type {
   TeamDetailRecord,
   TeamJoinRequestRecord,

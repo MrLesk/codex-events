@@ -5,10 +5,10 @@ import type {
   ParticipantApplicationTermsDocument,
   ParticipantCurrentTermsResponse,
   VisibleHackathonRecord
-} from '~/utils/participant-application'
+} from '~/domains/applications/participant-application'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
-import { normalizeParticipantApiError, shouldShowPublicRegistrationEntry } from '~/utils/participant-application'
+import { normalizeParticipantApiError, shouldShowPublicRegistrationEntry } from '~/domains/applications/participant-application'
 
 definePageMeta({
   layout: 'hackathon-detail',

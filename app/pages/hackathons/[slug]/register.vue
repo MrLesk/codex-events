@@ -8,10 +8,10 @@ import type {
   ParticipantApplicationSubmittedTransition,
   ParticipantRegistrationTeamMemberHint,
   VisibleHackathonRecord
-} from '~/utils/participant-application'
+} from '~/domains/applications/participant-application'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
-import HackathonRegistrationPanel from '~/components/public/hackathons/HackathonRegistrationPanel.vue'
+import ParticipantApplicationRegistrationPanel from '~/components/applications/ParticipantApplicationRegistrationPanel.vue'
 import {
   createParticipantTeamMemberHintRows,
   getParticipantApplicationSubmissionPolicy,
@@ -21,7 +21,7 @@ import {
   normalizeParticipantTeamMemberHintsForSubmission,
   resolveParticipantApplicationSubmittedTransition,
   resolveParticipantRegistrationEntry
-} from '~/utils/participant-application'
+} from '~/domains/applications/participant-application'
 
 definePageMeta({
   layout: 'hackathon-detail',
@@ -475,7 +475,7 @@ useSeoMeta({
       />
 
       <template v-else-if="accountActor?.kind === 'platform_user'">
-        <HackathonRegistrationPanel
+        <ParticipantApplicationRegistrationPanel
           v-model:terms-accepted="applicationTermsAccepted"
           v-model:in-person-attendance-commitment="inPersonAttendanceCommitment"
           v-model:why-this-hackathon="whyThisHackathon"

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import type { AdminApplicationReviewView } from '~/utils/admin-application-review'
+import type { AdminApplicationReviewView } from '~/domains/applications/admin-application-review'
 import type { AdminApplicationRecord } from '~/utils/admin-workspace'
 
+import { LazyApplicationsAdminApplicationsReviewPanel as LazyAdminApplicationsReviewPanel } from '#components'
 import {
   formatApprovedParticipantRegistrationSummary,
   getApprovedParticipantAttendanceSummary,

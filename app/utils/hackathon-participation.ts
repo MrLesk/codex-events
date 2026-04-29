@@ -1,7 +1,7 @@
 import type { PublicHackathonState } from '~/composables/useHackathonPresentation'
 import type { TeamSubmissionRecord } from '~/utils/team-submission'
 
-import { normalizeParticipantApiError } from './participant-application'
+import { normalizeParticipantApiError } from '~/domains/applications/participant-application'
 
 export interface HackathonParticipationHackathonSummary {
   id: string

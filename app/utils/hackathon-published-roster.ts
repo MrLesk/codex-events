@@ -1,4 +1,4 @@
-import { normalizeParticipantApiError } from './participant-application'
+import { normalizeParticipantApiError } from '~/domains/applications/participant-application'
 
 export type PublishedHackathonRosterRole = 'judge' | 'staff'
 

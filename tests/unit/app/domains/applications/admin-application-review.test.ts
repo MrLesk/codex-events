@@ -8,8 +8,8 @@ import {
   hasAdminApplicationReviewApplicantApprovalSelected,
   hasAdminApplicationReviewGroupApprovalSelected,
   searchAdminApplicationReviewGroups
-} from '../../../../app/utils/admin-application-review'
-import type { AdminApplicationRecord } from '../../../../app/utils/admin-workspace'
+} from '../../../../../app/domains/applications/admin-application-review'
+import type { AdminApplicationRecord } from '../../../../../app/utils/admin-workspace'
 
 function createApplication(options: {
   id: string

@@ -4,7 +4,7 @@ import type {
   AdminApplicationReviewGroup,
   AdminApplicationReviewPendingTeammate,
   AdminApplicationReviewView
-} from '~/utils/admin-application-review'
+} from '~/domains/applications/admin-application-review'
 
 import {
   buildAdminApplicationReviewGroups,
@@ -14,8 +14,8 @@ import {
   hasAdminApplicationReviewApplicantApprovalSelected,
   hasAdminApplicationReviewGroupApprovalSelected,
   searchAdminApplicationReviewGroups
-} from '~/utils/admin-application-review'
-import { parseProofOfExecutionLinks } from '~/utils/participant-application'
+} from '~/domains/applications/admin-application-review'
+import { parseProofOfExecutionLinks } from '~/domains/applications/participant-application'
 import { buildProfileIconHref } from '~/utils/profile-icon'
 import {
   formatFailedApplicationLumaSyncAlertToggleLabel,
