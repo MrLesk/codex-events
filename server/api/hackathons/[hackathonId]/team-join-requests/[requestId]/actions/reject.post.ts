@@ -12,7 +12,7 @@ import {
   requireTeamAdminContext,
   serializeTeamJoinRequest,
   teamJoinRequestParamsSchema
-} from '#server/utils/team-formation'
+} from '#server/domains/teams'
 import { getDatabase } from '#server/database/client'
 import { parseValidatedParams } from '#server/http/validation'
 

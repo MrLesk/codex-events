@@ -11,7 +11,7 @@ import type { hackathons } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { getVisibleHackathonOrThrow, requireHackathonAdmin, routeIdParamsSchema } from '#server/domains/hackathons'
-import { getActiveTeamMembers, getTeamOrThrow, getUsersByIds, serializeTeam, serializeTeamMember } from './team-formation'
+import { getActiveTeamMembers, getTeamOrThrow, getUsersByIds, serializeTeam, serializeTeamMember } from '#server/domains/teams'
 
 const requiredStringSchema = z.string().trim().min(1)
 function createOptionalUrlSchema(message: string) {

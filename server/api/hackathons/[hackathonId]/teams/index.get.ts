@@ -4,7 +4,7 @@ import {
   listTeamsQuerySchema,
   listVisibleTeams,
   requireTeamVisibilityContext
-} from '#server/utils/team-formation'
+} from '#server/domains/teams'
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 import { routeIdParamsSchema } from '#server/domains/hackathons'
 

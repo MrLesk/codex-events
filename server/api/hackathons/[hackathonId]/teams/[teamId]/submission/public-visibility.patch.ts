@@ -4,7 +4,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { prizeRedemptions, submissions } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
-import { requireTeamAdminContext } from '#server/utils/team-formation'
+import { requireTeamAdminContext } from '#server/domains/teams'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 import {
   assertSubmissionPublicVisibilityMutable,

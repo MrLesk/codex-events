@@ -5,7 +5,7 @@ import {
   serializeTeam,
   teamParamsSchema,
   requireTeamVisibilityContext
-} from '#server/utils/team-formation'
+} from '#server/domains/teams'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

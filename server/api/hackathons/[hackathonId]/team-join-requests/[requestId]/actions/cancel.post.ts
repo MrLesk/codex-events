@@ -9,7 +9,7 @@ import {
   getJoinRequestOrThrow,
   serializeTeamJoinRequest,
   teamJoinRequestParamsSchema
-} from '#server/utils/team-formation'
+} from '#server/domains/teams'
 import { getDatabase } from '#server/database/client'
 import { teamJoinRequests } from '#server/database/schema'
 import { parseValidatedParams } from '#server/http/validation'

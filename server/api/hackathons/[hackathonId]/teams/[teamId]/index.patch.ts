@@ -12,7 +12,7 @@ import {
   serializeTeam,
   teamParamsSchema,
   updateTeamBodySchema
-} from '#server/utils/team-formation'
+} from '#server/domains/teams'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

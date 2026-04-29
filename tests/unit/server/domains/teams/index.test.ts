@@ -1,13 +1,13 @@
 import { afterEach, describe, expect, test } from 'vitest'
 
-import { ApiError } from '../../../../server/http/api-error'
+import { ApiError } from '../../../../../server/http/api-error'
 import {
   hackathons,
   submissions,
   teamMembers,
   teams,
   users
-} from '../../../../server/database/schema'
+} from '../../../../../server/database/schema'
 import {
   assertHackathonAllowsTeamFormation,
   assertJoinRequestPending,
@@ -16,8 +16,8 @@ import {
   createTeamSlug,
   listVisibleTeams,
   serializeTeamMember
-} from '../../../../server/utils/team-formation'
-import { createApiRouteTestHarness } from '../../../support/backend/api-route'
+} from '../../../../../server/domains/teams'
+import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
 
 function createHackathon(state: 'registration_open' | 'submission_open' | 'judging_preparation') {
   return {
