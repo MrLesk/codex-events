@@ -11,8 +11,8 @@ import {
   sendHackathonOutcomeEmail,
   type HackathonOutcomeEmailDeliveryResult,
   type HackathonOutcomeEmailInput
-} from './hackathon-outcome-emails'
-import { isRetryableOutboundEmailProviderError } from './outbound-email'
+} from './emails'
+import { isRetryableOutboundEmailProviderError } from '#server/utils/outbound-email'
 
 export const defaultHackathonOutcomeEmailQueueBinding = 'HACKATHON_OUTCOME_EMAIL_QUEUE'
 export const defaultHackathonOutcomeEmailQueueName = 'codex-hackathons-hackathon-outcome-email-delivery'

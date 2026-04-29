@@ -13,7 +13,7 @@ import {
   resolveOutboundEmailBinding,
   type OutboundEmailBindingLike,
   type OutboundEmailProviderError
-} from './outbound-email'
+} from '#server/utils/outbound-email'
 
 const hackathonOutcomeEmailRuntimeConfigSchema = outboundEmailRuntimeConfigSchema.extend({
   auth0: z.object({

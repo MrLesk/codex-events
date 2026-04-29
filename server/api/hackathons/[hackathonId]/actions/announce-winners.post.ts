@@ -9,7 +9,7 @@ import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import {
   enqueueWinnerOutcomeEmails
-} from '#server/utils/hackathon-outcome-email-queue'
+} from '#server/domains/outcomes/email-queue'
 import { chunkRowsForD1 } from '#server/domains/judging'
 import {
   requireHackathonAdmin,

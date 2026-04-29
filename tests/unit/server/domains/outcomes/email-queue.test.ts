@@ -7,7 +7,7 @@ import {
   enqueueHackathonOutcomeEmailMessage,
   processHackathonOutcomeEmailQueueBatch,
   processHackathonOutcomeEmailQueueMessage
-} from '../../../../server/utils/hackathon-outcome-email-queue'
+} from '../../../../../server/domains/outcomes/email-queue'
 
 function createEvent(options?: {
   queueProducer?: {

@@ -6,7 +6,7 @@ import { getDatabase } from '#server/database/client'
 import { hackathons } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
-import { enqueueWinnerOutcomeEmails } from '#server/utils/hackathon-outcome-email-queue'
+import { enqueueWinnerOutcomeEmails } from '#server/domains/outcomes/email-queue'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,

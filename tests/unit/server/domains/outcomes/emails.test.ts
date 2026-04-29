@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 import { describe, expect, test, vi } from 'vitest'
 
-import { sendHackathonOutcomeEmail } from '../../../../server/utils/hackathon-outcome-emails'
+import { sendHackathonOutcomeEmail } from '../../../../../server/domains/outcomes/emails'
 
 function createEvent(runtimeConfig?: Record<string, unknown>) {
   return {

@@ -9,7 +9,7 @@ import { apiData } from '#server/http/api-response'
 import {
   buildHackathonOutcomeEmailQueueMessage,
   enqueueHackathonOutcomeEmailMessage
-} from '#server/utils/hackathon-outcome-email-queue'
+} from '#server/domains/outcomes/email-queue'
 import { hasSavedShortlistSelection } from '#server/domains/outcomes'
 import {
   assertStartPitchAllowed,
