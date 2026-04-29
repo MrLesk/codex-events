@@ -18,7 +18,7 @@ import {
   requireAdminSubmissionContext,
   serializeSubmission,
   submissionParamsSchema
-} from '#server/utils/submissions'
+} from '#server/domains/submissions'
 
 function pruneStoredSubmissionIdsJson(
   storedSubmissionIdsJson: string,

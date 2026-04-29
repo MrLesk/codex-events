@@ -14,7 +14,7 @@ import {
 } from '#server/database/schema'
 import { parseHackathonAgendaItems } from '#server/domains/hackathons'
 import { getTeamCompetitionOutcome } from './shortlist'
-import { serializeSubmission } from './submissions'
+import { serializeSubmission } from '#server/domains/submissions'
 
 type HackathonRecord = typeof hackathons.$inferSelect
 type ApplicationRecord = typeof userApplications.$inferSelect

@@ -7,7 +7,7 @@ import {
   getSubmissionForTeam,
   requireSubmissionVisibilityContext,
   serializeSubmission
-} from '#server/utils/submissions'
+} from '#server/domains/submissions'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, teamId } = parseValidatedParams(event, submissionParamsSchema)

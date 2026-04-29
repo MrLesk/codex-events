@@ -12,7 +12,7 @@ import {
   serializeSubmission,
   submissionParamsSchema,
   updateSubmissionPublicVisibilityBodySchema
-} from '#server/utils/submissions'
+} from '#server/domains/submissions'
 import { refreshCompletedOutcomeCache } from '#server/utils/shortlist'
 
 export default defineApiHandler(async (event) => {

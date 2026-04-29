@@ -5,8 +5,8 @@ import {
   submissions,
   teams,
   users
-} from '../../../../server/database/schema'
-import { ApiError } from '../../../../server/http/api-error'
+} from '../../../../../server/database/schema'
+import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertSubmissionBodyMatchesHackathonRequirements,
   assertHackathonAllowsSubmissionCreation,
@@ -20,8 +20,8 @@ import {
   getHackathonSubmissionSummary,
   isNoSubmissionStatus,
   resolveValidatedSubmissionTrackId
-} from '../../../../server/utils/submissions'
-import { createApiRouteTestHarness } from '../../../support/backend/api-route'
+} from '../../../../../server/domains/submissions'
+import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
 
 function createHackathon(
   state:

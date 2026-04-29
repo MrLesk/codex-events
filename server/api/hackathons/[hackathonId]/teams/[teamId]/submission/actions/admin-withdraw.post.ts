@@ -14,7 +14,7 @@ import {
   requireAdminSubmissionContext,
   serializeSubmission,
   submissionParamsSchema
-} from '#server/utils/submissions'
+} from '#server/domains/submissions'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

@@ -16,7 +16,7 @@ import {
   serializeSubmission,
   submissionParamsSchema,
   updateSubmissionBodySchema
-} from '#server/utils/submissions'
+} from '#server/domains/submissions'
 
 export default defineApiHandler(async (event) => {
   await requirePlatformActor(event)
