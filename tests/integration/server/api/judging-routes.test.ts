@@ -25,7 +25,7 @@ import {
   userApplications,
   users
 } from '../../../../server/database/schema'
-import { chunkRowsForD1 } from '../../../../server/utils/judging'
+import { chunkRowsForD1 } from '../../../../server/domains/judging'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 describe('TASK-3.7 judging assignment routes', () => {

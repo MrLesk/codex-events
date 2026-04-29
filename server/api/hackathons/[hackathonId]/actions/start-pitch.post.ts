@@ -18,7 +18,7 @@ import {
   listSubmittedSubmissionsForHackathon,
   listLockedSubmissionsForHackathon,
   selectPitchReviewSubmissions
-} from '#server/utils/judging'
+} from '#server/domains/judging'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,

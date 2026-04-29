@@ -10,7 +10,7 @@ import { apiData } from '#server/http/api-response'
 import {
   enqueueWinnerOutcomeEmails
 } from '#server/utils/hackathon-outcome-email-queue'
-import { chunkRowsForD1 } from '#server/utils/judging'
+import { chunkRowsForD1 } from '#server/domains/judging'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,

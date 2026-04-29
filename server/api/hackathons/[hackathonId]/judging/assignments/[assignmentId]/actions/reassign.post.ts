@@ -14,7 +14,7 @@ import {
   pickReplacementJudgeUserId,
   reassignJudgeAssignmentBodySchema,
   requireAdminAssignmentContext
-} from '#server/utils/judging'
+} from '#server/domains/judging'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

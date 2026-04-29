@@ -10,7 +10,7 @@ import {
   getJudgeAssignmentDetail,
   judgingAssignmentParamsSchema,
   requireJudgeAssignmentContext
-} from '#server/utils/judging'
+} from '#server/domains/judging'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

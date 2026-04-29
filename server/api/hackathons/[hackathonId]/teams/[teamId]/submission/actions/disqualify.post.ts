@@ -10,7 +10,7 @@ import { parseValidatedBody, parseValidatedParams } from '#server/http/validatio
 import {
   parseStoredPitchFinalistSubmissionIds,
   prunePitchPresentationProgress
-} from '#server/utils/judging'
+} from '#server/domains/judging'
 import {
   assertSubmissionDisqualifiable,
   disqualifySubmissionBodySchema,

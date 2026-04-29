@@ -12,7 +12,7 @@ import {
   requireJudgeAssignmentContext,
   saveJudgeAssignmentBodySchema,
   saveJudgeCriterionScores
-} from '#server/utils/judging'
+} from '#server/domains/judging'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, assignmentId } = parseValidatedParams(event, judgingAssignmentParamsSchema)

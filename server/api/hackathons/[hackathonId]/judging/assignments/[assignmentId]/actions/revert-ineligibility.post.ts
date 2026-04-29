@@ -9,7 +9,7 @@ import {
   getBlindAssignmentDetail,
   judgingAssignmentParamsSchema,
   requireAdminAssignmentContext
-} from '#server/utils/judging'
+} from '#server/domains/judging'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import { parseValidatedParams } from '#server/http/validation'
 

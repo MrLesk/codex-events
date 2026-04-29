@@ -12,7 +12,7 @@ import {
   getJudgeAssignmentDetails,
   listActiveJudgeAssignmentSummaries,
   listJudgeAssignmentsQuerySchema
-} from '#server/utils/judging'
+} from '#server/domains/judging'
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

@@ -16,7 +16,7 @@ import {
   normalizePitchReviewCompletion,
   requireJudgeAssignmentContext,
   saveJudgeCriterionScores
-} from '#server/utils/judging'
+} from '#server/domains/judging'
 import { parseValidatedParams, validateWithSchema } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

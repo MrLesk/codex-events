@@ -9,7 +9,7 @@ import { apiData } from '#server/http/api-response'
 import {
   assertStartJudgingPreparationAllowed,
   listSubmittedSubmissionsForHackathon
-} from '#server/utils/judging'
+} from '#server/domains/judging'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,

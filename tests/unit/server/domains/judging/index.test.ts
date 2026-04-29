@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { ApiError } from '../../../../server/http/api-error'
+import { ApiError } from '../../../../../server/http/api-error'
 import {
   advancePitchPresentation,
   assertAdvancePitchPresentationAllowed,
@@ -12,7 +12,7 @@ import {
   buildPitchReviewAssignments,
   calculateAveragePitchScore,
   prunePitchPresentationProgress
-} from '../../../../server/utils/judging'
+} from '../../../../../server/domains/judging'
 
 function createHackathon(
   state: 'submission_open' | 'judging_preparation' | 'blind_review' | 'shortlist' | 'pitch' | 'pitch_review',

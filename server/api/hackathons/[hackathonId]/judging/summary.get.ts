@@ -2,7 +2,7 @@ import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import { requireHackathonAdmin, routeIdParamsSchema } from '#server/domains/hackathons'
-import { getJudgingAssignmentSummary } from '#server/utils/judging'
+import { getJudgingAssignmentSummary } from '#server/domains/judging'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

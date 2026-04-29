@@ -13,7 +13,7 @@ import {
   chunkRowsForD1,
   listAutomaticJudgePoolForHackathon,
   listSubmittedSubmissionsForHackathon
-} from '#server/utils/judging'
+} from '#server/domains/judging'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,
