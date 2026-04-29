@@ -10,7 +10,7 @@ import {
   judgingAssignmentParamsSchema,
   requireAdminAssignmentContext
 } from '#server/utils/judging'
-import { assertGuard } from '#server/utils/lifecycle-guard'
+import { assertGuard } from '#server/domains/hackathons/lifecycle-guard'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

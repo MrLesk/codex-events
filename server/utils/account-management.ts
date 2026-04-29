@@ -12,7 +12,7 @@ import {
 } from '#server/database/schema'
 import { buildAuditLogInsert, writeAuditLog } from '#server/database/audit-log'
 import { ApiError } from '#server/http/api-error'
-import { assertGuard } from './lifecycle-guard'
+import { assertGuard } from '#server/domains/hackathons/lifecycle-guard'
 import { findPlatformUserByAuth0Subject } from './platform-auth-identities'
 import { findLinkablePlatformAccountIdentity } from './platform-account-linking'
 import { assertCurrentPlatformDocument, getCurrentPlatformDocument } from './platform-documents'

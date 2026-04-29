@@ -2,7 +2,7 @@ import { requireAuthenticatedActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
-import { getCurrentHackathonTerms, getVisibleHackathonOrThrow, routeIdParamsSchema, serializeHackathonTermsDocument } from '#server/utils/hackathon-management'
+import { getCurrentHackathonTerms, getVisibleHackathonOrThrow, routeIdParamsSchema, serializeHackathonTermsDocument } from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

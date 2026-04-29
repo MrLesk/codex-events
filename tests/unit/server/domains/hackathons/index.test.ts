@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { ApiError } from '../../../../server/http/api-error'
+import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertHackathonSchedule,
   buildHackathonUpdatePayload,
@@ -14,7 +14,7 @@ import {
   serializePublicHackathon,
   serializePublishedHackathonRosterMember,
   updateHackathonBodySchema
-} from '../../../../server/utils/hackathon-management'
+} from '../../../../../server/domains/hackathons'
 
 function buildHackathonRecord(
   overrides: Partial<Parameters<typeof serializeHackathon>[0]> = {}

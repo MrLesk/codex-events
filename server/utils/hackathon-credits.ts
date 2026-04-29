@@ -9,8 +9,8 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { hackathonCreditCodes, hackathonCreditOffers, userApplications } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
-import { getVisibleHackathonOrThrow, routeIdParamsSchema } from './hackathon-management'
-import { assertGuard } from './lifecycle-guard'
+import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/domains/hackathons'
+import { assertGuard } from '#server/domains/hackathons/lifecycle-guard'
 
 type HackathonCreditOfferRecord = typeof hackathonCreditOffers.$inferSelect
 type HackathonCreditCodeRecord = typeof hackathonCreditCodes.$inferSelect

@@ -10,7 +10,7 @@ import {
 import {
   getActiveUserOrThrow,
   serializeHackathonRoleUserSummary
-} from './hackathon-management'
+} from '#server/domains/hackathons'
 
 export const listPlatformAdminCandidatesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),

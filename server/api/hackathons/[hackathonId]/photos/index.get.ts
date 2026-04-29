@@ -4,7 +4,7 @@ import {
   listHackathonPhotoRecords,
   requireHackathonPhotoReadAccess
 } from '#server/utils/hackathon-photos'
-import { routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { routeIdParamsSchema } from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

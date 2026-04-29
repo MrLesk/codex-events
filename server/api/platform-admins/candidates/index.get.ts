@@ -3,7 +3,7 @@ import { assertPlatformAdminAccess } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiList } from '#server/http/api-response'
-import { serializeHackathonRoleUserSummary } from '#server/utils/hackathon-management'
+import { serializeHackathonRoleUserSummary } from '#server/domains/hackathons'
 import {
   listPlatformAdminCandidates,
   listPlatformAdminCandidatesQuerySchema

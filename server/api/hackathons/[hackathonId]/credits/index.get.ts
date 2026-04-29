@@ -11,7 +11,7 @@ import {
   requireHackathonCreditsViewAccess,
   serializeParticipantHackathonCreditOffer
 } from '#server/utils/hackathon-credits'
-import { routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { routeIdParamsSchema } from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 
 type HackathonCreditOfferRecord = typeof hackathonCreditOffers.$inferSelect

@@ -4,7 +4,7 @@ import { getDatabase } from '#server/database/client'
 import { hackathonCreditCodes, hackathonCreditOffers, users } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiList } from '#server/http/api-response'
-import { requireHackathonAdmin, routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { requireHackathonAdmin, routeIdParamsSchema } from '#server/domains/hackathons'
 import {
   listHackathonCreditCodesForHackathon,
   listHackathonCreditOffers,

@@ -6,8 +6,8 @@ import { getDatabase } from '#server/database/client'
 import { judgeAssignments } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiList } from '#server/http/api-response'
-import { assertGuard } from '#server/utils/lifecycle-guard'
-import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/domains/hackathons'
 import {
   getJudgeAssignmentDetails,
   listActiveJudgeAssignmentSummaries,

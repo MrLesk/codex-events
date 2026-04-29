@@ -17,7 +17,7 @@ import {
   serializeUserApplication,
   submitApplicationBodySchema
 } from '#server/domains/applications'
-import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/domains/hackathons'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

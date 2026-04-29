@@ -19,7 +19,7 @@ import {
   requireHackathonAdminApplicationContext,
   serializeUserApplication
 } from '#server/domains/applications'
-import { routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { routeIdParamsSchema } from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 
 type UserApplicationLumaSyncStatus = typeof userApplications.$inferSelect['lumaSyncStatus']

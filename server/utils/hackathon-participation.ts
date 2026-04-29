@@ -12,7 +12,7 @@ import {
   teams,
   userApplications
 } from '#server/database/schema'
-import { parseHackathonAgendaItems } from './hackathon-management'
+import { parseHackathonAgendaItems } from '#server/domains/hackathons'
 import { getTeamCompetitionOutcome } from './shortlist'
 import { serializeSubmission } from './submissions'
 

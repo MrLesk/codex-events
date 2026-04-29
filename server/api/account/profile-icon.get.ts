@@ -10,7 +10,7 @@ import { ApiError } from '#server/http/api-error'
 import {
   isUserVisibleInPublishedHackathonRoster,
   requireHackathonWorkspaceAccess
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import { getProfileIconObject } from '#server/utils/profile-icons'
 import { parseValidatedQuery } from '#server/http/validation'
 

@@ -6,7 +6,7 @@ import {
   requireTeamVisibilityContext
 } from '#server/utils/team-formation'
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
-import { routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { routeIdParamsSchema } from '#server/domains/hackathons'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)

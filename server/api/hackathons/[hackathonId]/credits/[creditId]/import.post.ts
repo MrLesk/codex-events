@@ -12,7 +12,7 @@ import {
   getHackathonCreditOfferOrThrow,
   parseSingleColumnCreditCsv
 } from '#server/utils/hackathon-credits'
-import { requireHackathonAdmin } from '#server/utils/hackathon-management'
+import { requireHackathonAdmin } from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

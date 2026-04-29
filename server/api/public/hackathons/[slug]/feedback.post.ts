@@ -9,7 +9,7 @@ import {
 import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import { assertPublicHackathonFeedbackRateLimit } from '#server/utils/rate-limit'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 

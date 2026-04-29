@@ -14,7 +14,7 @@ import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathon
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

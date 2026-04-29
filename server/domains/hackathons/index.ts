@@ -28,9 +28,9 @@ import {
   userApplications,
   users
 } from '#server/database/schema'
+import { assertAllowedState, assertGuard } from '#server/domains/hackathons/lifecycle-guard'
 import { ApiError } from '#server/http/api-error'
-import { publicHackathonImagePath } from './hackathon-images'
-import { assertAllowedState, assertGuard } from './lifecycle-guard'
+import { publicHackathonImagePath } from '#server/utils/hackathon-images'
 
 const isoTimestampSchema = z.string().refine(
   value => !Number.isNaN(Date.parse(value)),

@@ -8,7 +8,7 @@ import { apiData } from '#server/http/api-response'
 import {
   getVisibleHackathonOrThrow,
   routeIdParamsSchema
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import { getTeamCompetitionOutcome } from '#server/utils/shortlist'
 import { parseValidatedParams } from '#server/http/validation'
 

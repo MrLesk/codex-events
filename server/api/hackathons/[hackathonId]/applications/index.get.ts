@@ -6,7 +6,7 @@ import {
   requireHackathonApplicationVisibilityContext
 } from '#server/domains/applications'
 import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
-import { routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { routeIdParamsSchema } from '#server/domains/hackathons'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)

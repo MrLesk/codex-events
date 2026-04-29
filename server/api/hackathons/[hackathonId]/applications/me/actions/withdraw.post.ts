@@ -20,7 +20,7 @@ import {
 import {
   getVisibleHackathonOrThrow,
   routeIdParamsSchema
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 import { ApiError } from '#server/http/api-error'
 import { getDatabase } from '#server/database/client'

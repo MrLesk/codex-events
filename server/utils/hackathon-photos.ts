@@ -14,13 +14,13 @@ import { getHackathonImagesBucket } from './hackathon-images'
 import {
   getHackathonOrThrow,
   routeIdParamsSchema
-} from './hackathon-management'
+} from '#server/domains/hackathons'
 import {
   detectSupportedImageContentType,
   supportedImageContentTypes,
   type SupportedImageContentType
 } from './image-signatures'
-import { assertGuard } from './lifecycle-guard'
+import { assertGuard } from '#server/domains/hackathons/lifecycle-guard'
 
 export const hackathonPhotoMaxBytes = 10 * 1024 * 1024
 export const hackathonPhotoContentTypes = supportedImageContentTypes

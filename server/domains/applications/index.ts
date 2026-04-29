@@ -33,8 +33,8 @@ import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathonTermsDocument
-} from '#server/utils/hackathon-management'
-import { assertAllowedState, assertGuard } from '#server/utils/lifecycle-guard'
+} from '#server/domains/hackathons'
+import { assertAllowedState, assertGuard } from '#server/domains/hackathons/lifecycle-guard'
 
 export const applicationParamsSchema = routeIdParamsSchema.extend({
   applicationId: z.string().trim().min(1)

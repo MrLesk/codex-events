@@ -4,7 +4,7 @@ import { getDatabase } from '#server/database/client'
 import { prizes } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiList } from '#server/http/api-response'
-import { getVisibleHackathonOrThrow, routeIdParamsSchema, serializePrize } from '#server/utils/hackathon-management'
+import { getVisibleHackathonOrThrow, routeIdParamsSchema, serializePrize } from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

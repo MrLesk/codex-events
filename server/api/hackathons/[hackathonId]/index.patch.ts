@@ -14,7 +14,7 @@ import {
   routeIdParamsSchema,
   serializeHackathon,
   updateHackathonBodySchema
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 import { eq } from 'drizzle-orm'
 

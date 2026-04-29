@@ -1,6 +1,6 @@
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-import { assertGuard } from '#server/utils/lifecycle-guard'
+import { assertGuard } from '#server/domains/hackathons/lifecycle-guard'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import {

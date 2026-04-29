@@ -21,12 +21,12 @@ import {
   serializeHackathonPublishedProjectTeamMember,
   serializeHackathonWinnerTeamMember,
   serializePrize
-} from './hackathon-management'
+} from '#server/domains/hackathons'
 import {
   calculateAveragePitchScore,
   parseStoredPitchFinalistSubmissionIds
 } from './judging'
-import { assertAllowedState, assertGuard } from './lifecycle-guard'
+import { assertAllowedState, assertGuard } from '#server/domains/hackathons/lifecycle-guard'
 
 type HackathonRecord = typeof hackathons.$inferSelect
 type TeamRecord = typeof teams.$inferSelect

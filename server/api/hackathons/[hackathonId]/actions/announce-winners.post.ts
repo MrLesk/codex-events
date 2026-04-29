@@ -16,7 +16,7 @@ import {
   routeIdParamsSchema,
   serializePrize,
   serializeHackathon
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import {
   buildPrizeRedemptionRows,
   getCurrentWinnerTermsForHackathon
@@ -27,7 +27,7 @@ import {
   getFinalDeliberationView
 } from '#server/utils/shortlist'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
-import { assertGuard } from '#server/utils/lifecycle-guard'
+import { assertGuard } from '#server/domains/hackathons/lifecycle-guard'
 
 type WinnerPrizeSummary = ReturnType<typeof serializePrize>
 type AnnouncedWinner = {

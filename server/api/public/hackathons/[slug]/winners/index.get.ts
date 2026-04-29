@@ -4,7 +4,7 @@ import { apiList } from '#server/http/api-response'
 import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import { assertWinnersVisible, getWinnersView } from '#server/utils/shortlist'
 import { parseValidatedParams } from '#server/http/validation'
 

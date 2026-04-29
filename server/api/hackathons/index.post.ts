@@ -15,7 +15,7 @@ import {
   listHackathonTracks,
   serializeHackathonAgendaItems,
   serializeHackathon
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import { parseValidatedBody } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

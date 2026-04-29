@@ -9,7 +9,7 @@ import { apiData } from '#server/http/api-response'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import {
   assertSelectFinalistsAllowed,
   assertSelectedFinalistsRespectOrder,

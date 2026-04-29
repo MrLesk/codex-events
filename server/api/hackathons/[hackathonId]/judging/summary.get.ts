@@ -1,7 +1,7 @@
 import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
-import { requireHackathonAdmin, routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { requireHackathonAdmin, routeIdParamsSchema } from '#server/domains/hackathons'
 import { getJudgingAssignmentSummary } from '#server/utils/judging'
 import { parseValidatedParams } from '#server/http/validation'
 

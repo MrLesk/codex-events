@@ -17,7 +17,7 @@ import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathon
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
 import { parseValidatedParams } from '#server/http/validation'
 

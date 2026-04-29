@@ -9,7 +9,7 @@ import { ApiError } from '#server/http/api-error'
 import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import { getProfileIconObject } from '#server/utils/profile-icons'
 import { assertWinnersVisible } from '#server/utils/shortlist'
 import {

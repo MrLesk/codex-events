@@ -11,7 +11,7 @@ import {
   serializeTeamMember
 } from '#server/utils/team-formation'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
-import { routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { routeIdParamsSchema } from '#server/domains/hackathons'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

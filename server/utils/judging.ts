@@ -25,8 +25,8 @@ import {
   type hackathons
 } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
-import { assertAllowedState, assertGuard } from './lifecycle-guard'
-import { getVisibleHackathonOrThrow, routeIdParamsSchema } from './hackathon-management'
+import { assertAllowedState, assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/domains/hackathons'
 
 type HackathonRecord = typeof hackathons.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect

@@ -12,7 +12,7 @@ import {
   putHackathonPhotoObject,
   requireHackathonPhotoManageAccess
 } from '#server/utils/hackathon-photos'
-import { routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { routeIdParamsSchema } from '#server/domains/hackathons'
 import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
 import { parseValidatedParams } from '#server/http/validation'
 

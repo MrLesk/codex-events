@@ -8,7 +8,7 @@ import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathonRoleAssignment
-} from '#server/utils/hackathon-management'
+} from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 
 type HackathonRoleAssignmentRecord = typeof hackathonRoleAssignments.$inferSelect

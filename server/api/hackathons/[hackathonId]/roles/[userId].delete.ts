@@ -6,7 +6,7 @@ import { getDatabase } from '#server/database/client'
 import { hackathonRoleAssignments } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
-import { getRoleAssignmentOrThrow, requireHackathonAdmin, roleAssignmentParamsSchema } from '#server/utils/hackathon-management'
+import { getRoleAssignmentOrThrow, requireHackathonAdmin, roleAssignmentParamsSchema } from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

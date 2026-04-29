@@ -10,7 +10,7 @@ import {
   createHackathonCreditOfferBodySchema,
   serializeHackathonCreditOffer
 } from '#server/utils/hackathon-credits'
-import { requireHackathonAdmin, routeIdParamsSchema } from '#server/utils/hackathon-management'
+import { requireHackathonAdmin, routeIdParamsSchema } from '#server/domains/hackathons'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
