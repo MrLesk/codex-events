@@ -13,9 +13,9 @@ import {
 import { buildAuditLogInsert, writeAuditLog } from '#server/database/audit-log'
 import { ApiError } from '#server/http/api-error'
 import { assertGuard } from '#server/domains/lifecycle-guard'
-import { findPlatformUserByAuth0Subject } from './platform-auth-identities'
-import { findLinkablePlatformAccountIdentity } from './platform-account-linking'
-import { assertCurrentPlatformDocument, getCurrentPlatformDocument } from './platform-documents'
+import { assertCurrentPlatformDocument, getCurrentPlatformDocument } from '#server/domains/platform/documents'
+import { findPlatformUserByAuth0Subject } from './auth-identities'
+import { findLinkablePlatformAccountIdentity } from './linking'
 
 function sanitizeTimestampForIdentifier(timestamp: string) {
   return timestamp.replaceAll(/[^0-9]/g, '')

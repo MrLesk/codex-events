@@ -7,11 +7,11 @@ import { apiData } from '#server/http/api-response'
 import {
   platformAccountRegistrationBodySchema,
   registerPlatformAccount
-} from '#server/utils/account-management'
+} from '#server/domains/accounts'
 import { ApiError } from '#server/http/api-error'
 import {
   issuePlatformAccountLinkChallenge
-} from '#server/utils/platform-account-linking'
+} from '#server/domains/accounts/linking'
 import { parseValidatedBody } from '#server/http/validation'
 
 const registrationRequestBodySchema = platformAccountRegistrationBodySchema.extend({

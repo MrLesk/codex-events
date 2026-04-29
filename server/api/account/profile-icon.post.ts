@@ -4,13 +4,13 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import {
   updatePlatformAccountProfileIconTimestamp
-} from '#server/utils/account-management'
+} from '#server/domains/accounts'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import {
   assertValidProfileIconPart,
   putProfileIconObject
-} from '#server/utils/profile-icons'
+} from '#server/domains/accounts/profile-icons'
 import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
 
 export default defineApiHandler(async (event) => {

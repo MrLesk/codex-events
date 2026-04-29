@@ -4,7 +4,7 @@ import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiList } from '#server/http/api-response'
 import { serializeHackathonRoleUserSummary } from '#server/domains/hackathons'
-import { listPlatformAdmins } from '#server/utils/platform-admins'
+import { listPlatformAdmins } from '#server/domains/platform/admins'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

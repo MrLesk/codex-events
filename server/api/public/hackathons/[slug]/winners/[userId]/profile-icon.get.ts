@@ -10,7 +10,7 @@ import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema
 } from '#server/domains/hackathons'
-import { getProfileIconObject } from '#server/utils/profile-icons'
+import { getProfileIconObject } from '#server/domains/accounts/profile-icons'
 import { assertWinnersVisible } from '#server/domains/outcomes'
 import {
   parseValidatedParams,

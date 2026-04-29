@@ -8,12 +8,12 @@ import {
   linkPlatformAccountIdentity,
   readPlatformAccountLinkAuthenticatedSubject,
   readPlatformAccountLinkChallenge
-} from '#server/utils/platform-account-linking'
+} from '#server/domains/accounts/linking'
 import { isApiError } from '#server/http/api-error'
 import {
   ensurePlatformUserAuthIdentities,
   findPlatformUserByAuth0Subject
-} from '#server/utils/platform-auth-identities'
+} from '#server/domains/accounts/auth-identities'
 
 export default defineEventHandler(async (event) => {
   const challengeResult = await readPlatformAccountLinkChallenge(event)

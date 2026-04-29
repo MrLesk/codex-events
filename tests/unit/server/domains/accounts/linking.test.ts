@@ -129,7 +129,7 @@ describe('platform account-link Auth0 helper', () => {
 
   test('uses isolated Auth0 state and transaction identifiers for the link verification flow', async () => {
     const event = createEvent()
-    const linking = await import('../../../../server/utils/platform-account-linking')
+    const linking = await import('../../../../../server/domains/accounts/linking')
 
     const authorizationUrl = await linking.startPlatformAccountLinkAuthentication(event, 'existing-user@example.com')
 
@@ -159,7 +159,7 @@ describe('platform account-link Auth0 helper', () => {
 
   test('reuses the isolated client to complete verification, read the authenticated subject, and clear link-session state', async () => {
     const event = createEvent()
-    const linking = await import('../../../../server/utils/platform-account-linking')
+    const linking = await import('../../../../../server/domains/accounts/linking')
 
     await linking.startPlatformAccountLinkAuthentication(event, 'existing-user@example.com')
     await linking.completePlatformAccountLinkAuthentication(event)
@@ -179,7 +179,7 @@ describe('platform account-link Auth0 helper', () => {
 
   test('fails early when the Auth0 management token lacks update:users for account linking', async () => {
     const event = createEvent()
-    const linking = await import('../../../../server/utils/platform-account-linking')
+    const linking = await import('../../../../../server/domains/accounts/linking')
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string'
         ? input

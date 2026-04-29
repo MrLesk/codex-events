@@ -5,7 +5,7 @@ import {
   detectSupportedImageContentType,
   supportedImageContentTypes,
   type SupportedImageContentType
-} from './image-signatures'
+} from '#server/utils/image-signatures'
 
 export const profileIconMaxBytes = 1024 * 1024
 

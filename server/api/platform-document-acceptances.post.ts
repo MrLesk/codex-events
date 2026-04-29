@@ -4,7 +4,7 @@ import { requirePlatformAccountActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
-import { recordPlatformDocumentAcceptance, serializePlatformDocument } from '#server/utils/platform-documents'
+import { recordPlatformDocumentAcceptance, serializePlatformDocument } from '#server/domains/platform/documents'
 import { parseValidatedBody } from '#server/http/validation'
 
 const bodySchema = z.object({

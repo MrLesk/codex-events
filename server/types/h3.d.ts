@@ -5,7 +5,7 @@ import type {
   JudgeAssignmentAuthorization,
   TeamAuthorization
 } from '#server/auth/authorization'
-import type { LinkablePlatformAccountIdentity } from '#server/utils/platform-account-linking'
+import type { LinkablePlatformAccountIdentity } from '#server/domains/accounts/linking'
 
 declare module 'h3' {
   interface H3EventContext {

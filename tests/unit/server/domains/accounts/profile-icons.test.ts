@@ -2,14 +2,14 @@ import type { H3Event } from 'h3'
 
 import { describe, expect, test } from 'vitest'
 
-import { ApiError } from '../../../../server/http/api-error'
+import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertValidProfileIconPart,
   getProfileIconsBucket,
   putProfileIconObject,
   profileIconMaxBytes,
   profileIconObjectKey
-} from '../../../../server/utils/profile-icons'
+} from '../../../../../server/domains/accounts/profile-icons'
 
 function createBucketStub() {
   return {

@@ -10,7 +10,7 @@ import {
 import {
   assessPlatformAdminGrantState,
   grantPlatformAdminAccess
-} from '../../server/utils/platform-admins'
+} from '../../server/domains/platform/admins'
 
 type CommandMode = 'apply' | 'check'
 

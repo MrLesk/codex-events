@@ -7,15 +7,15 @@ import {
   ensurePlatformUserAuthIdentities,
   findActivePlatformUserById,
   findPlatformUserByAuth0Subject
-} from '#server/utils/platform-auth-identities'
+} from '#server/domains/accounts/auth-identities'
 import {
   findLinkablePlatformAccountIdentity,
   listPlatformAccountIdentitySubjects,
   serializePlatformAccountLinkState,
   type LinkablePlatformAccountIdentity,
   type PlatformAccountLinkState
-} from '#server/utils/platform-account-linking'
-import { hasAcceptedCurrentPlatformDocuments } from '#server/utils/platform-documents'
+} from '#server/domains/accounts/linking'
+import { hasAcceptedCurrentPlatformDocuments } from '#server/domains/platform/documents'
 
 interface SessionUserProfile {
   sub: string

@@ -10,7 +10,7 @@ import {
   issuePlatformAccountLinkChallenge,
   readPlatformAccountLinkChallenge,
   startPlatformAccountLinkAuthentication
-} from '#server/utils/platform-account-linking'
+} from '#server/domains/accounts/linking'
 
 export default defineEventHandler(async (event) => {
   let challengeResult = await readPlatformAccountLinkChallenge(event)

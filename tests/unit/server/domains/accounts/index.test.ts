@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { buildDeletedUserPatch } from '../../../../server/utils/account-management'
+import { buildDeletedUserPatch } from '../../../../../server/domains/accounts'
 
 describe('account management utilities', () => {
   test('builds a GDPR-capable deleted-user patch that sanitizes identity fields', () => {

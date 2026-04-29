@@ -6,7 +6,7 @@ import { apiData } from '#server/http/api-response'
 import {
   grantPlatformAdminAccess,
   platformAdminUserParamsSchema
-} from '#server/utils/platform-admins'
+} from '#server/domains/platform/admins'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

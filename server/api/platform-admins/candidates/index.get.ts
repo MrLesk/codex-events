@@ -7,7 +7,7 @@ import { serializeHackathonRoleUserSummary } from '#server/domains/hackathons'
 import {
   listPlatformAdminCandidates,
   listPlatformAdminCandidatesQuerySchema
-} from '#server/utils/platform-admins'
+} from '#server/domains/platform/admins'
 import { parseValidatedQuery } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

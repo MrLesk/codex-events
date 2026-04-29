@@ -17,9 +17,9 @@ const {
   clearPlatformAccountLinkAuthentication: vi.fn(async () => {})
 }))
 
-vi.mock('../../../../../server/utils/platform-account-linking', async () => {
-  const actual = await vi.importActual<typeof import('../../../../../server/utils/platform-account-linking')>(
-    '../../../../../server/utils/platform-account-linking'
+vi.mock('../../../../../server/domains/accounts/linking', async () => {
+  const actual = await vi.importActual<typeof import('../../../../../server/domains/accounts/linking')>(
+    '../../../../../server/domains/accounts/linking'
   )
 
   return {

@@ -5,7 +5,7 @@ import { apiData } from '#server/http/api-response'
 import {
   platformAccountProfileBodySchema,
   updatePlatformAccountProfile
-} from '#server/utils/account-management'
+} from '#server/domains/accounts'
 import { parseValidatedBody } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

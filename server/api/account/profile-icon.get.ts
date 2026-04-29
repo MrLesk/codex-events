@@ -11,7 +11,7 @@ import {
   isUserVisibleInPublishedHackathonRoster,
   requireHackathonWorkspaceAccess
 } from '#server/domains/hackathons'
-import { getProfileIconObject } from '#server/utils/profile-icons'
+import { getProfileIconObject } from '#server/domains/accounts/profile-icons'
 import { parseValidatedQuery } from '#server/http/validation'
 
 const profileIconQuerySchema = z.object({

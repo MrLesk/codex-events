@@ -1,10 +1,10 @@
 import { describe, expect, test, vi } from 'vitest'
 
-import { ApiError } from '../../../../server/http/api-error'
+import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertCurrentPlatformDocument,
   getCurrentPlatformDocuments
-} from '../../../../server/utils/platform-documents'
+} from '../../../../../server/domains/platform/documents'
 
 describe('platform document utilities', () => {
   test('loads current platform documents with a single query', async () => {

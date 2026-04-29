@@ -94,7 +94,7 @@ Recommendation:
 
 Affected paths:
 
-- `server/utils/account-management.ts`
+- `server/domains/accounts/index.ts`
 - `tests/integration/server/api/actor-platform-routes.test.ts`
 
 What happens:
@@ -170,7 +170,7 @@ Recommendation:
 
 Affected paths:
 
-- `server/utils/profile-icons.ts`
+- `server/domains/accounts/profile-icons.ts`
 - `server/domains/hackathons/images.ts`
 - `server/api/account/profile-icon.get.ts`
 - `server/api/public/hackathons/[slug]/images/background.get.ts`
