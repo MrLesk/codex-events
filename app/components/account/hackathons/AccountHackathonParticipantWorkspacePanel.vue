@@ -3,12 +3,12 @@ import type { PublicHackathon } from '~/domains/hackathons/presentation'
 import type {
   HackathonParticipationOutcomeSummary,
   HackathonParticipationRankSummary
-} from '~/utils/hackathon-participation'
+} from '~/domains/hackathons/participation'
 import type {
   SubmissionTrackOption,
   TeamSubmissionRecord
-} from '~/utils/team-submission'
-import type { TeamActionAvailability } from '~/utils/team-workspace'
+} from '~/domains/submissions/team-submission'
+import type { TeamActionAvailability } from '~/domains/teams/workspace'
 
 import {
   LazyAccountHackathonsAccountHackathonParticipationRankNotice as LazyAccountHackathonParticipationRankNotice,
@@ -18,7 +18,7 @@ import {
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import { cloneFormValues } from '~/utils/form-values'
 import { teamProfileFormSchema } from '~/utils/form-schemas'
-import { getHackathonParticipationOutcomeNotice } from '~/utils/hackathon-participation'
+import { getHackathonParticipationOutcomeNotice } from '~/domains/hackathons/participation'
 import {
   getCreateTeamAvailability,
   getLeaveTeamAvailability,
@@ -26,7 +26,7 @@ import {
   getTeamFormationAvailability,
   getUpdateJoinPolicyAvailability,
   shouldShowParticipantLeaveTeamAction
-} from '~/utils/team-workspace'
+} from '~/domains/teams/workspace'
 import {
   getCreateSubmissionAvailability,
   getSubmitSubmissionAvailability,
@@ -34,7 +34,7 @@ import {
   getUpdateSubmissionAvailability,
   getWithdrawSubmissionAvailability,
   shouldShowParticipantSubmissionWorkspace
-} from '~/utils/team-submission'
+} from '~/domains/submissions/team-submission'
 import {
   buildAbsoluteAccountHackathonTeamsTabHref,
   buildAccountHackathonTeamsTabHref

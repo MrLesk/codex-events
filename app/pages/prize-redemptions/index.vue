@@ -6,7 +6,7 @@ import {
   getPrizeRedemptionAvailability,
   getPrizeRedemptionStatusColor,
   summarizePrizeRedemptionTask
-} from '~/utils/prize-redemptions'
+} from '~/domains/prize-redemptions'
 
 definePageMeta({
   middleware: ['require-auth']

@@ -9,13 +9,13 @@ import type {
   TeamSubmissionActionAvailability,
   TeamSubmissionRequirementConfig,
   TeamSubmissionRecord
-} from '~/utils/team-submission'
+} from '~/domains/submissions/team-submission'
 
 import {
   formatTeamSubmissionStatus,
   getTeamSubmissionStatusColor,
   getTeamSubmissionWorkspaceStatus
-} from '~/utils/team-submission'
+} from '~/domains/submissions/team-submission'
 import { createTeamSubmissionFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'
 

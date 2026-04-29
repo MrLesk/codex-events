@@ -4,19 +4,19 @@ import type {
   PrizeRedemptionBlindRankingEntry,
   PrizeRedemptionFinalRankingEntry,
   PrizeRedemptionRecord
-} from '~/utils/prize-redemptions'
+} from '~/domains/prize-redemptions'
 
 import {
   formatPrizeRank,
   formatPrizeReward
 } from '~/domains/hackathons/presentation'
-import { getPublishedHackathonRosterLinks } from '~/utils/hackathon-published-roster'
+import { getPublishedHackathonRosterLinks } from '~/domains/hackathons/published-roster'
 import {
   buildPrizeRedemptionPostShortlistEntries,
   buildPrizeRedemptionOperationsView,
   formatPrizeRedemptionStatus,
   getPrizeRedemptionStatusColor
-} from '~/utils/prize-redemptions'
+} from '~/domains/prize-redemptions'
 
 const props = defineProps<{
   hackathonState: HackathonState

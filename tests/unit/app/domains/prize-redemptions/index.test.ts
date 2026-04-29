@@ -10,7 +10,7 @@ import {
   getPrizeRedemptionStatusColor,
   summarizePrizeRedemptionTask,
   type PrizeRedemptionTask
-} from '../../../../app/utils/prize-redemptions'
+} from '../../../../../app/domains/prize-redemptions'
 
 function createTask(overrides?: Partial<PrizeRedemptionTask>): PrizeRedemptionTask {
   return {

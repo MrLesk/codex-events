@@ -2,9 +2,9 @@ import type { PublicHackathon } from '~/domains/hackathons/presentation'
 import type {
   TeamSubmissionFormInput,
   TeamSubmissionRecord
-} from '~/utils/team-submission'
+} from '~/domains/submissions/team-submission'
 
-import { normalizeTeamSubmissionApiError } from '~/utils/team-submission'
+import { normalizeTeamSubmissionApiError } from '~/domains/submissions/team-submission'
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 

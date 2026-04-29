@@ -6,7 +6,7 @@ import {
   deriveAdminCapableRoleFlags,
   isAdminCapableHackathonUser,
   listHackathonRoleRosterBadges
-} from '../../../../app/utils/hackathon-role-roster'
+} from '../../../../../app/domains/hackathons/role-roster'
 
 describe('hackathon role roster helpers', () => {
   test('builds assigned judge rows from explicit judges and judge-enabled admins', () => {

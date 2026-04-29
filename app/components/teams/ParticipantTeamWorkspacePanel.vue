@@ -6,7 +6,7 @@ import type {
   TeamJoinRequestRecord,
   TeamMemberRecord,
   TeamUserSummary
-} from '~/utils/team-workspace'
+} from '~/domains/teams/workspace'
 
 import { formatTimestamp } from '~/utils/date-formatting'
 import {
@@ -18,7 +18,7 @@ import {
   hasTeamReachedMemberLimit,
   isTeamDissolved,
   shouldShowParticipantLeaveTeamAction
-} from '~/utils/team-workspace'
+} from '~/domains/teams/workspace'
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import { teamProfileFormSchema } from '~/utils/form-schemas'
 import { cloneFormValues } from '~/utils/form-values'

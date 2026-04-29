@@ -5,12 +5,12 @@ import type {
   HackathonCreditApiDataResponse,
   HackathonCreditApiListResponse,
   ParticipantHackathonCreditOffer
-} from '~/utils/hackathon-credits'
+} from '~/domains/credits'
 import {
   createHackathonCreditOfferWithInventory,
   isHackathonCreditLink,
   normalizeHackathonCreditApiError
-} from '~/utils/hackathon-credits'
+} from '~/domains/credits'
 
 const props = defineProps<{
   hackathonId: string

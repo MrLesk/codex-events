@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CriterionScoreDraft } from '~/utils/judging-workspace'
+import type { CriterionScoreDraft } from '~/domains/judging/workspace'
 
 const props = withDefaults(defineProps<{
   modelValue: CriterionScoreDraft[]

@@ -1,9 +1,9 @@
 import type {
   HackathonParticipationApiDataResponse,
   HackathonParticipationPayload
-} from '~/utils/hackathon-participation'
+} from '~/domains/hackathons/participation'
 
-import { normalizeHackathonParticipationApiError } from '~/utils/hackathon-participation'
+import { normalizeHackathonParticipationApiError } from '~/domains/hackathons/participation'
 
 export function useHackathonParticipationWorkspace() {
   const user = useUser()

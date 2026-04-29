@@ -3,10 +3,10 @@ import type {
   TeamActionAvailability,
   TeamDetailRecord,
   TeamMemberRecord
-} from '~/utils/team-workspace'
+} from '~/domains/teams/workspace'
 
 import { formatTimestamp } from '~/utils/date-formatting'
-import { formatTeamMemberRole } from '~/utils/team-workspace'
+import { formatTeamMemberRole } from '~/domains/teams/workspace'
 
 defineProps<{
   team: TeamDetailRecord

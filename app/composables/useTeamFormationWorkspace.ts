@@ -9,12 +9,12 @@ import type {
   TeamWorkspaceActor,
   TeamWorkspaceApiDataResponse,
   TeamWorkspaceApiListResponse
-} from '~/utils/team-workspace'
+} from '~/domains/teams/workspace'
 
 import {
   getOwnTeamMembership,
   normalizeTeamWorkspaceApiError
-} from '~/utils/team-workspace'
+} from '~/domains/teams/workspace'
 
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 type VisibleTeamsFilter = {

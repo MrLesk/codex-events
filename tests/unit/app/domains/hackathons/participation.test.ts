@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import type { HackathonParticipationRecord } from '../../../../app/utils/hackathon-participation'
+import type { HackathonParticipationRecord } from '../../../../../app/domains/hackathons/participation'
 
 import {
   formatParticipationStageLabel,
@@ -10,7 +10,7 @@ import {
   getHackathonParticipationPrimaryAction,
   getParticipationStageColor,
   getParticipationStatusColor
-} from '../../../../app/utils/hackathon-participation'
+} from '../../../../../app/domains/hackathons/participation'
 
 function buildRecord(
   overrides: Partial<HackathonParticipationRecord> = {}

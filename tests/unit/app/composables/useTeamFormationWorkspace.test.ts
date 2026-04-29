@@ -3,7 +3,7 @@ import { computed, nextTick, ref, toValue, watch } from 'vue'
 
 const apiFetch = vi.fn()
 
-vi.mock('~/utils/team-workspace', async () => await import('../../../../app/utils/team-workspace'))
+vi.mock('~/domains/teams/workspace', async () => await import('../../../../app/domains/teams/workspace'))
 
 function createTeamDetail(memberUserIds: string[]) {
   return {

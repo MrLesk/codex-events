@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { TeamJoinRequestRecord } from '~/utils/team-workspace'
+import type { TeamJoinRequestRecord } from '~/domains/teams/workspace'
 
 import { formatTimestamp } from '~/utils/date-formatting'
 import {
   formatTeamJoinRequestStatus,
   getTeamJoinRequestStatusColor
-} from '~/utils/team-workspace'
+} from '~/domains/teams/workspace'
 
 defineProps<{
   requests: TeamJoinRequestRecord[]

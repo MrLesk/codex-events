@@ -4,12 +4,12 @@ import type { HackathonRoleAssignment, HackathonRoleUserSummary } from '~/utils/
 import type {
   HackathonRoleRosterBadge,
   HackathonRoleRosterRow
-} from '~/utils/hackathon-role-roster'
+} from '~/domains/hackathons/role-roster'
 import type {
   PublishedHackathonRosterLoadState,
   PublishedHackathonRosterMember,
   PublishedHackathonRosterRole
-} from '~/utils/hackathon-published-roster'
+} from '~/domains/hackathons/published-roster'
 
 import { buildApiCacheKey, getApiSubjectKey, normalizeApiError } from '~/lib/api'
 import {
@@ -18,11 +18,11 @@ import {
   deriveAdminCapableRoleFlags,
   isAdminCapableHackathonUser,
   listHackathonRoleRosterBadges
-} from '~/utils/hackathon-role-roster'
+} from '~/domains/hackathons/role-roster'
 import {
   getPublishedHackathonRosterLinks,
   loadPublishedHackathonRoster
-} from '~/utils/hackathon-published-roster'
+} from '~/domains/hackathons/published-roster'
 import { buildProfileIconHref } from '~/utils/profile-icon'
 
 const props = defineProps<{

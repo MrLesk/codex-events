@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { computed, nextTick, ref, toValue, watch } from 'vue'
 
-import type { TeamSubmissionRecord } from '../../../../app/utils/team-submission'
+import type { TeamSubmissionRecord } from '../../../../../app/domains/submissions/team-submission'
 
 const apiFetch = vi.fn()
 
-vi.mock('~/utils/team-submission', async () => await import('../../../../app/utils/team-submission'))
+vi.mock('~/domains/submissions/team-submission', async () => await import('../../../../app/domains/submissions/team-submission'))
 
 function buildSubmission(
   overrides: Partial<TeamSubmissionRecord> = {}

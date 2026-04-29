@@ -3,7 +3,7 @@ import type { EvaluationCriterion, HackathonRecord, SessionActor } from '~/utils
 import type {
   JudgeAssignmentApiDetail,
   JudgeInboxGroup
-} from '~/utils/judging-workspace'
+} from '~/domains/judging/workspace'
 
 import {
   buildJudgeWorkspaceCacheKey,
@@ -13,7 +13,7 @@ import {
   listAllVisibleHackathons,
   normalizeJudgeAssignmentDetail,
   sortJudgeAssignments
-} from '~/utils/judging-workspace'
+} from '~/domains/judging/workspace'
 
 export function useJudgeWorkspace() {
   const authenticatedUser = useUser()

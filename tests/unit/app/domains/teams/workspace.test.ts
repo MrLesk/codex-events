@@ -17,7 +17,7 @@ import {
   hasTeamReachedMemberLimit,
   isTeamDissolved,
   type TeamDetailRecord
-} from '../../../../app/utils/team-workspace'
+} from '../../../../../app/domains/teams/workspace'
 
 const baseTeam: TeamDetailRecord = {
   id: 'team_fixture',

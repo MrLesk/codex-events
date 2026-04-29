@@ -4,7 +4,7 @@ import {
   createHackathonCreditOfferWithInventory,
   isHackathonCreditLink,
   normalizeHackathonCreditApiError
-} from '../../../../app/utils/hackathon-credits'
+} from '../../../../../app/domains/credits'
 
 describe('hackathon credit helpers', () => {
   function createOfferFixture() {

@@ -3,7 +3,7 @@ import type { PublicHackathon } from '~/domains/hackathons/presentation'
 import type {
   TeamActionAvailability,
   TeamDirectoryEntry
-} from '~/utils/team-workspace'
+} from '~/domains/teams/workspace'
 
 import {
   LazyTeamsParticipantTeamDirectoryPanel as LazyParticipantTeamDirectoryPanel,
@@ -19,7 +19,7 @@ import {
   getCreateTeamAvailability,
   getJoinTeamAvailability,
   hasTeamReachedMemberLimit
-} from '~/utils/team-workspace'
+} from '~/domains/teams/workspace'
 
 const baseDirectoryFilterOptions = [
   { label: 'All teams', value: 'all' },

@@ -4,12 +4,12 @@ import type {
   EvaluationCriterion,
   HackathonRecord,
   SessionActor
-} from '../../../../app/utils/admin-workspace'
+} from '../../../../../app/utils/admin-workspace'
 import type {
   JudgeAssignmentApiDetail,
   BlindJudgeAssignmentDetail,
   PitchJudgeAssignmentDetail
-} from '../../../../app/utils/judging-workspace'
+} from '../../../../../app/domains/judging/workspace'
 
 import {
   buildCompletionCriterionScoresPayload,
@@ -38,7 +38,7 @@ import {
   listAllVisibleHackathons,
   normalizeJudgeAssignmentDetail,
   sortJudgeAssignments
-} from '../../../../app/utils/judging-workspace'
+} from '../../../../../app/domains/judging/workspace'
 
 function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRecord {
   return {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { JudgeAssignmentDetail } from '~/utils/judging-workspace'
+import type { JudgeAssignmentDetail } from '~/domains/judging/workspace'
 
 import JudgeAssignmentStatusBadge from './JudgeAssignmentStatusBadge.vue'
 
@@ -11,7 +11,7 @@ import {
   getJudgeAssignmentInboxCardCopy,
   isBlindJudgeAssignment,
   resolveJudgeIneligibilityColor
-} from '~/utils/judging-workspace'
+} from '~/domains/judging/workspace'
 
 const props = defineProps<{
   assignment: JudgeAssignmentDetail

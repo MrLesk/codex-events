@@ -12,7 +12,7 @@ import {
   getWithdrawSubmissionAvailability,
   shouldShowParticipantSubmissionWorkspace,
   type TeamSubmissionRecord
-} from '../../../../app/utils/team-submission'
+} from '../../../../../app/domains/submissions/team-submission'
 
 function createSubmission(status: TeamSubmissionRecord['status']): TeamSubmissionRecord {
   return {

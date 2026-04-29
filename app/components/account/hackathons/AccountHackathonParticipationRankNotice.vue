@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { PublicHackathonState } from '~/domains/hackathons/presentation'
-import type { HackathonParticipationRankSummary } from '~/utils/hackathon-participation'
+import type { HackathonParticipationRankSummary } from '~/domains/hackathons/participation'
 
-import { getHackathonParticipationRankNotice } from '~/utils/hackathon-participation'
+import { getHackathonParticipationRankNotice } from '~/domains/hackathons/participation'
 
 const props = defineProps<{
   hackathonState: PublicHackathonState

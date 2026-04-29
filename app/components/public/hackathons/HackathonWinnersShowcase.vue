@@ -5,7 +5,7 @@ import {
   formatPrizeRank,
   formatPrizeReward
 } from '~/domains/hackathons/presentation'
-import { getPublishedHackathonRosterLinks } from '~/utils/hackathon-published-roster'
+import { getPublishedHackathonRosterLinks } from '~/domains/hackathons/published-roster'
 
 const props = withDefaults(defineProps<{
   winners: WinnerEntry[]

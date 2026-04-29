@@ -17,7 +17,7 @@ import type {
   PrizeRedemptionBlindRankingEntry,
   PrizeRedemptionFinalRankingEntry,
   PrizeRedemptionRecord
-} from '~/utils/prize-redemptions'
+} from '~/domains/prize-redemptions'
 
 import { listAllPaginatedItems, normalizeApiError } from '~/lib/api'
 import {

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { BlindJudgeAssignmentDetail } from '~/utils/judging-workspace'
+import type { BlindJudgeAssignmentDetail } from '~/domains/judging/workspace'
 
 import JudgeAssignmentStatusBadge from '~/components/judging/JudgeAssignmentStatusBadge.vue'
 import {
   formatJudgeIneligibilityStatus,
   resolveJudgeIneligibilityColor
-} from '~/utils/judging-workspace'
+} from '~/domains/judging/workspace'
 
 defineProps<{
   assignment: BlindJudgeAssignmentDetail

@@ -5,7 +5,7 @@ import {
   getPublishedHackathonRosterEndpoint,
   getPublishedHackathonRosterLinks,
   loadPublishedHackathonRoster
-} from '../../../../app/utils/hackathon-published-roster'
+} from '../../../../../app/domains/hackathons/published-roster'
 
 describe('published hackathon roster helpers', () => {
   test('returns public social links in the published card order', () => {

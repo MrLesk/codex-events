@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PublishedProjectEntry } from '~/utils/admin-workspace'
 
-import { getPublishedHackathonRosterLinks } from '~/utils/hackathon-published-roster'
+import { getPublishedHackathonRosterLinks } from '~/domains/hackathons/published-roster'
 
 const props = withDefaults(defineProps<{
   projects: PublishedProjectEntry[]

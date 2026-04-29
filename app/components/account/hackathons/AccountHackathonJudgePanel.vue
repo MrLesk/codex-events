@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { HackathonRecord } from '~/utils/admin-workspace'
-import type { JudgeInboxGroup } from '~/utils/judging-workspace'
+import type { JudgeInboxGroup } from '~/domains/judging/workspace'
 
 import {
   LazyJudgingJudgeAssignmentInboxCard as LazyJudgeAssignmentInboxCard,
   LazyJudgingJudgeAssignmentWorkspacePanel as LazyJudgeAssignmentWorkspacePanel
 } from '#components'
 import { buildAccountHackathonJudgingTabHref } from '~/utils/judging-query'
-import { filterExplicitJudgeHackathons } from '~/utils/judging-workspace'
+import { filterExplicitJudgeHackathons } from '~/domains/judging/workspace'
 
 const props = withDefaults(defineProps<{
   hackathonId: string

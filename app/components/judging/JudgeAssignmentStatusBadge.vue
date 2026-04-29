@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { JudgeAssignmentStatus } from '~/utils/judging-workspace'
+import type { JudgeAssignmentStatus } from '~/domains/judging/workspace'
 
 import {
   formatJudgeAssignmentStatus,
   resolveJudgeAssignmentStatusColor
-} from '~/utils/judging-workspace'
+} from '~/domains/judging/workspace'
 
 defineProps<{
   status: JudgeAssignmentStatus

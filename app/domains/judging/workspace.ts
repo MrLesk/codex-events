@@ -4,14 +4,14 @@ import type {
   HackathonState,
   HackathonRecord,
   SessionActor
-} from './admin-workspace'
+} from '~/utils/admin-workspace'
 
 import { normalizeApiError } from '~/lib/api'
 import {
   formatHackathonState,
   isHackathonRoleJudgingEnabled
-} from './admin-workspace'
-import { formatTimestamp } from './date-formatting'
+} from '~/utils/admin-workspace'
+import { formatTimestamp } from '~/utils/date-formatting'
 
 export type JudgeAssignmentStatus = 'assigned' | 'judge_started' | 'judge_completed' | 'skipped'
 export type JudgeIneligibilityStatus = 'eligible' | 'ineligible'

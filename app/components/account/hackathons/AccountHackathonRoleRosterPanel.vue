@@ -5,7 +5,7 @@ import type {
   HackathonRoleRosterBadge,
   HackathonRoleRosterRow,
   HackathonRosterRole
-} from '~/utils/hackathon-role-roster'
+} from '~/domains/hackathons/role-roster'
 
 import { normalizeApiError } from '~/lib/api'
 import {
@@ -14,7 +14,7 @@ import {
   deriveAdminCapableRoleFlags,
   isAdminCapableHackathonUser,
   listHackathonRoleRosterBadges
-} from '~/utils/hackathon-role-roster'
+} from '~/domains/hackathons/role-roster'
 
 const props = defineProps<{
   hackathonId: string

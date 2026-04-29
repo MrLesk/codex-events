@@ -15,7 +15,7 @@ import type {
   HackathonParticipationRankSummary,
   HackathonParticipationPayload,
   HackathonParticipationRecord
-} from '~/utils/hackathon-participation'
+} from '~/domains/hackathons/participation'
 import type {
   ParticipantApiDataResponse,
   ParticipantApplicationRecord
@@ -64,8 +64,8 @@ import {
   loadPublishedHackathonRoster,
   type PublishedHackathonRosterLoadState,
   type PublishedHackathonRosterMember
-} from '~/utils/hackathon-published-roster'
-import { getHackathonParticipationOutcomeNotice } from '~/utils/hackathon-participation'
+} from '~/domains/hackathons/published-roster'
+import { getHackathonParticipationOutcomeNotice } from '~/domains/hackathons/participation'
 import {
   formatParticipantApplicationStatus,
   getParticipantApplicationWithdrawalAvailability,
@@ -77,7 +77,7 @@ import {
 } from '~/domains/applications/participant-application'
 import {
   hasHackathonEnteredSubmissionPhase
-} from '~/utils/team-submission'
+} from '~/domains/submissions/team-submission'
 import { normalizeJudgeAssignmentIdQueryValue } from '~/utils/judging-query'
 import { buildAccountHackathonTeamsTabHref, normalizeTeamSlugQueryValue } from '~/utils/team-query'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'

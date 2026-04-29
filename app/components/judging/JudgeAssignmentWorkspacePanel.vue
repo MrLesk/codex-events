@@ -3,7 +3,7 @@ import type { ApiDataResponse } from '~/lib/api'
 import type {
   CriterionScoreDraft,
   JudgeAssignmentDetail
-} from '~/utils/judging-workspace'
+} from '~/domains/judging/workspace'
 
 import BlindSubmissionPanel from '~/components/judging/BlindSubmissionPanel.vue'
 import JudgeReviewRubric from '~/components/judging/JudgeReviewRubric.vue'
@@ -28,7 +28,7 @@ import {
   hasIncompletePitchScore,
   isBlindJudgeAssignment,
   isPitchJudgeAssignment
-} from '~/utils/judging-workspace'
+} from '~/domains/judging/workspace'
 
 const props = defineProps<{
   hackathonId: string

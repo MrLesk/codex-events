@@ -5,7 +5,7 @@ import {
   getParticipantTeamDirectoryStatusBadge,
   isTeamDissolved,
   type TeamDirectoryEntry
-} from '~/utils/team-workspace'
+} from '~/domains/teams/workspace'
 
 const directoryFilter = defineModel<string>('directoryFilter', {
   required: false,

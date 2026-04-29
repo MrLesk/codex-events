@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { PitchJudgeAssignmentDetail } from '~/utils/judging-workspace'
+import type { PitchJudgeAssignmentDetail } from '~/domains/judging/workspace'
 
 import JudgeAssignmentStatusBadge from '~/components/judging/JudgeAssignmentStatusBadge.vue'
 import {
   formatJudgeIneligibilityStatus,
   resolveJudgeIneligibilityColor
-} from '~/utils/judging-workspace'
+} from '~/domains/judging/workspace'
 
 defineProps<{
   assignment: PitchJudgeAssignmentDetail

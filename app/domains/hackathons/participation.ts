@@ -1,5 +1,5 @@
 import type { PublicHackathonState } from '~/domains/hackathons/presentation'
-import type { TeamSubmissionRecord } from '~/utils/team-submission'
+import type { TeamSubmissionRecord } from '~/domains/submissions/team-submission'
 
 import { normalizeParticipantApiError } from '~/domains/applications/participant-application'
 

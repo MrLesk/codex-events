@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HackathonParticipationRecord } from '~/utils/hackathon-participation'
+import type { HackathonParticipationRecord } from '~/domains/hackathons/participation'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import {
@@ -8,7 +8,7 @@ import {
   getHackathonParticipationPrimaryAction,
   getParticipationStageColor,
   getParticipationStatusColor
-} from '~/utils/hackathon-participation'
+} from '~/domains/hackathons/participation'
 import { formatHackathonDateWithWeekday, formatHackathonLocation } from '~/domains/hackathons/presentation'
 
 const props = defineProps<{

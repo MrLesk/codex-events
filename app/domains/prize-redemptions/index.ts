@@ -2,7 +2,7 @@ import type {
   HackathonState,
   TermsDocument,
   WinnerEntry
-} from './admin-workspace'
+} from '~/utils/admin-workspace'
 
 export interface PrizeRedemptionPrize {
   id: string

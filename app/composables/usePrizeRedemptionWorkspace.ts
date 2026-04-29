@@ -4,9 +4,9 @@ import type {
   PrizeRedemptionCurrentTermsResponse,
   PrizeRedemptionRecord,
   PrizeRedemptionTask
-} from '~/utils/prize-redemptions'
+} from '~/domains/prize-redemptions'
 
-import { normalizePrizeRedemptionApiError } from '~/utils/prize-redemptions'
+import { normalizePrizeRedemptionApiError } from '~/domains/prize-redemptions'
 
 export function usePrizeRedemptionWorkspace() {
   const apiFetch = $fetch

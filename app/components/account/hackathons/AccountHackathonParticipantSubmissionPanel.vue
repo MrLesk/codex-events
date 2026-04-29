@@ -3,7 +3,7 @@ import type { PublicHackathon } from '~/domains/hackathons/presentation'
 import type {
   SubmissionTrackOption,
   TeamSubmissionRecord
-} from '~/utils/team-submission'
+} from '~/domains/submissions/team-submission'
 
 import {
   LazyTeamsParticipantTeamSubmissionPanel as LazyParticipantTeamSubmissionPanel
@@ -12,14 +12,14 @@ import { formatTimestamp } from '~/utils/date-formatting'
 import {
   getCreateTeamAvailability,
   getTeamFormationAvailability
-} from '~/utils/team-workspace'
+} from '~/domains/teams/workspace'
 import {
   getCreateSubmissionAvailability,
   getSubmitSubmissionAvailability,
   getUpdateSubmissionAvailability,
   getWithdrawSubmissionAvailability,
   shouldShowParticipantSubmissionWorkspace
-} from '~/utils/team-submission'
+} from '~/domains/submissions/team-submission'
 
 interface AccountHackathonSubmissionTeam {
   id: string

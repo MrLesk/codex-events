@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import AccountHackathonDashboardList from '~/components/account/AccountHackathonDashboardList.vue'
 import { formatHackathonLocation } from '~/domains/hackathons/presentation'
-import type { JudgeDashboardAssignmentSummary } from '~/utils/judging-workspace'
+import type { JudgeDashboardAssignmentSummary } from '~/domains/judging/workspace'
 
 import {
   filterExplicitJudgeHackathons,
   getJudgeHackathonDashboardCopy
-} from '~/utils/judging-workspace'
+} from '~/domains/judging/workspace'
 
 definePageMeta({
   middleware: ['require-judge-dashboard']
