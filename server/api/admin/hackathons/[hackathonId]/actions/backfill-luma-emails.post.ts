@@ -14,7 +14,7 @@ import { apiData } from '#server/http/api-response'
 import {
   resolveApplicationLumaSyncRuntimeConfig,
   resolveLumaEmailFromUsername
-} from '#server/utils/application-luma-sync-queue'
+} from '#server/domains/applications/luma-sync-queue'
 import { isHackathonLumaSyncEnabled } from '#server/domains/applications'
 import { ApiError } from '#server/http/api-error'
 import { routeIdParamsSchema } from '#server/domains/hackathons'

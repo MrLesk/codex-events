@@ -3,8 +3,8 @@ import {
   defaultHackathonOutcomeEmailRetryDelaySeconds,
   processHackathonOutcomeEmailQueueBatch
 } from '#server/utils/hackathon-outcome-email-queue'
-import { defaultApplicationLumaSyncQueueName } from '#server/utils/application-luma-sync-queue'
-import { defaultApplicationReviewEmailQueueName } from '#server/utils/application-review-email-queue'
+import { defaultApplicationLumaSyncQueueName } from '#server/domains/applications/luma-sync-queue'
+import { defaultApplicationReviewEmailQueueName } from '#server/domains/applications/review-email-queue'
 import { classifyCloudflareQueueBatch, retryCloudflareQueueBatch } from '#server/utils/cloudflare-queue-routing'
 
 export default defineNitroPlugin((nitroApp) => {

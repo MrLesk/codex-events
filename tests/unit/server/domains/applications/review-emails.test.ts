@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 import { describe, expect, test, vi } from 'vitest'
 
-import { sendApplicationReviewDecisionEmail } from '../../../../server/utils/application-review-emails'
+import { sendApplicationReviewDecisionEmail } from '../../../../../server/domains/applications/review-emails'
 
 function createEvent(runtimeConfig?: Record<string, unknown>) {
   return {

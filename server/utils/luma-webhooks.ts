@@ -1,7 +1,7 @@
 import { getRequestHeader, type H3Event } from 'h3'
 import { z } from 'zod'
 
-import { defaultLumaApiBaseUrl, defaultLumaRequestUserAgent } from './application-luma-sync-queue'
+import { defaultLumaApiBaseUrl, defaultLumaRequestUserAgent } from '#server/domains/applications/luma-sync-queue'
 import { ApiError } from '#server/http/api-error'
 
 const textEncoder = new TextEncoder()

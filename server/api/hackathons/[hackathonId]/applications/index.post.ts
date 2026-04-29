@@ -4,7 +4,7 @@ import { userApplications } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { ApiError } from '#server/http/api-error'
 import { apiData } from '#server/http/api-response'
-import { lookupLumaEventGuestByEmail } from '#server/utils/application-luma-sync-queue'
+import { lookupLumaEventGuestByEmail } from '#server/domains/applications/luma-sync-queue'
 import {
   assertCurrentApplicationTermsAcceptance,
   assertHackathonAllowsApplications,

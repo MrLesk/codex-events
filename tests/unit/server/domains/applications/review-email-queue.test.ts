@@ -7,7 +7,7 @@ import {
   enqueueApplicationReviewEmailMessage,
   processApplicationReviewEmailQueueBatch,
   processApplicationReviewEmailQueueMessage
-} from '../../../../server/utils/application-review-email-queue'
+} from '../../../../../server/domains/applications/review-email-queue'
 
 function createEvent(options?: {
   queueProducer?: {

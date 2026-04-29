@@ -6,8 +6,8 @@ import {
   sendApplicationReviewDecisionEmail,
   type ApplicationReviewDecisionEmailInput,
   type ApplicationReviewDecisionEmailDeliveryResult
-} from './application-review-emails'
-import { isRetryableOutboundEmailProviderError } from './outbound-email'
+} from './review-emails'
+import { isRetryableOutboundEmailProviderError } from '#server/utils/outbound-email'
 
 export const defaultApplicationReviewEmailQueueBinding = 'APPLICATION_REVIEW_EMAIL_QUEUE'
 export const defaultApplicationReviewEmailQueueName = 'codex-hackathons-application-review-email-delivery'

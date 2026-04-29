@@ -10,7 +10,7 @@ import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
   getApplicationLumaSyncFailureStatus
-} from '#server/utils/application-luma-sync-queue'
+} from '#server/domains/applications/luma-sync-queue'
 import {
   applicationParamsSchema,
   assertApplicationWithdrawable,

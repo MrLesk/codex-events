@@ -13,7 +13,7 @@ import {
   resolveOutboundEmailBinding,
   type OutboundEmailBindingLike,
   type OutboundEmailProviderError
-} from './outbound-email'
+} from '#server/utils/outbound-email'
 
 export const applicationReviewDecisionValues = ['approved', 'rejected'] as const
 

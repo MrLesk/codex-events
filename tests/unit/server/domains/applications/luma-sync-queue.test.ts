@@ -3,14 +3,14 @@ import type { H3Event } from 'h3'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
-import { createDatabase } from '../../../../server/database/client'
+import { createDatabase } from '../../../../../server/database/client'
 import {
   auditLogs,
   hackathonTermsDocuments,
   hackathons,
   userApplications,
   users
-} from '../../../../server/database/schema'
+} from '../../../../../server/database/schema'
 import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
@@ -21,8 +21,8 @@ import {
   resetApplicationLumaSyncStartupRecoveryForTest,
   resolveLumaEmailFromUsername,
   scheduleApplicationLumaSyncStartupRecovery
-} from '../../../../server/utils/application-luma-sync-queue'
-import { createTestD1Database } from '../../../support/backend/fake-d1'
+} from '../../../../../server/domains/applications/luma-sync-queue'
+import { createTestD1Database } from '../../../../support/backend/fake-d1'
 
 function createEvent(options?: {
   queueProducer?: {
