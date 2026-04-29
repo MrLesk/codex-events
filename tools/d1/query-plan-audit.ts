@@ -65,7 +65,7 @@ order by updated_at desc`
 }, {
   area: 'Admin applications',
   key: 'admin-applications-by-hackathon',
-  owner: 'server/utils/applications.ts',
+  owner: 'server/domains/applications/index.ts',
   purpose: 'List hackathon applications for the admin review screen.',
   sql: `select *
 from user_applications
@@ -92,7 +92,7 @@ where hackathon_id = 'hack_1'
 }, {
   area: 'Judging assignments',
   key: 'judging-blind-applications-by-hackathon-and-user',
-  owner: 'server/utils/judging.ts',
+  owner: 'server/domains/judging/index.ts',
   purpose: 'Load applications for the team members attached to blind-review assignments.',
   sql: `select *
 from user_applications
@@ -102,7 +102,7 @@ order by submitted_at asc, created_at asc`
 }, {
   area: 'Public hackathon detail',
   key: 'public-hackathon-by-slug',
-  owner: 'server/utils/hackathon-management.ts',
+  owner: 'server/domains/hackathons/index.ts',
   purpose: 'Resolve a public hackathon by slug while enforcing public visibility states.',
   sql: `select *
 from hackathons
@@ -122,7 +122,7 @@ where slug = 'public-slug'
 }, {
   area: 'Public hackathon detail',
   key: 'public-current-terms-by-id',
-  owner: 'server/utils/hackathon-management.ts',
+  owner: 'server/domains/hackathons/index.ts',
   purpose: 'Load the current hackathon terms documents by exact id.',
   sql: `select *
 from hackathon_terms_documents
@@ -130,7 +130,7 @@ where id in ('terms_1', 'terms_2')`
 }, {
   area: 'Public hackathon detail',
   key: 'public-tracks-by-hackathon',
-  owner: 'server/utils/hackathon-management.ts',
+  owner: 'server/domains/hackathons/index.ts',
   purpose: 'List hackathon tracks for public detail rendering.',
   sql: `select *
 from hackathon_tracks
@@ -139,7 +139,7 @@ order by display_order asc, created_at asc, id asc`
 }, {
   area: 'Public projects and winners',
   key: 'public-outcome-teams-by-hackathon',
-  owner: 'server/utils/shortlist.ts',
+  owner: 'server/domains/outcomes/index.ts',
   purpose: 'Load all teams that belong to the completed-outcome hackathon.',
   sql: `select *
 from teams
@@ -148,7 +148,7 @@ order by created_at asc, name asc`
 }, {
   area: 'Public projects and winners',
   key: 'public-outcome-submissions-by-team',
-  owner: 'server/utils/shortlist.ts',
+  owner: 'server/domains/outcomes/index.ts',
   purpose: 'Load the latest submission candidates for the outcome view team set.',
   sql: `select *
 from submissions
@@ -157,7 +157,7 @@ order by created_at desc`
 }, {
   area: 'Public projects and winners',
   key: 'public-outcome-assignments-by-submission',
-  owner: 'server/utils/shortlist.ts',
+  owner: 'server/domains/outcomes/index.ts',
   purpose: 'Load all judging assignments attached to the tracked submissions.',
   sql: `select *
 from judge_assignments
@@ -166,7 +166,7 @@ order by created_at desc`
 }, {
   area: 'Public projects and winners',
   key: 'public-outcome-criterion-scores-by-assignment',
-  owner: 'server/utils/shortlist.ts',
+  owner: 'server/domains/outcomes/index.ts',
   purpose: 'Load criterion scores for the tracked judge assignments.',
   sql: `select *
 from judge_criterion_scores
@@ -175,7 +175,7 @@ order by created_at asc`
 }, {
   area: 'Public projects and winners',
   key: 'public-outcome-prize-eligibility-by-team',
-  owner: 'server/utils/shortlist.ts',
+  owner: 'server/domains/outcomes/index.ts',
   purpose: 'Load frozen winner roster membership snapshots for the outcome team set.',
   sql: `select *
 from prize_eligibility_snapshots
@@ -208,7 +208,7 @@ limit 200`
 }, {
   area: 'Prize redemptions',
   key: 'prize-redemption-team-admin-memberships',
-  owner: 'server/utils/prize-redemptions.ts',
+  owner: 'server/domains/prize-redemptions/index.ts',
   purpose: 'Find active team-admin memberships before building prize redemption visibility.',
   sql: `select *
 from team_members
@@ -218,7 +218,7 @@ where user_id = 'user_1'
 }, {
   area: 'Prize redemptions',
   key: 'prize-redemption-pending-visible',
-  owner: 'server/utils/prize-redemptions.ts',
+  owner: 'server/domains/prize-redemptions/index.ts',
   purpose: 'List pending redemptions visible to the current user or their admin teams.',
   sql: `select *
 from prize_redemptions
