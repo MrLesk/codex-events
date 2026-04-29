@@ -12,7 +12,7 @@ import {
   assertValidHackathonImagePart,
   buildPublicHackathonImageUrl,
   putHackathonImageObject
-} from '#server/utils/hackathon-images'
+} from '#server/domains/hackathons/images'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,

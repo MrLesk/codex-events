@@ -7,7 +7,7 @@ import {
   detectSupportedImageContentType,
   supportedImageContentTypes,
   type SupportedImageContentType
-} from './image-signatures'
+} from '#server/utils/image-signatures'
 
 export const hackathonImageMaxBytes = 5 * 1024 * 1024
 

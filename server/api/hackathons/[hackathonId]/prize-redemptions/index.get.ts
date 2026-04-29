@@ -7,7 +7,7 @@ import { requireHackathonAdmin, routeIdParamsSchema } from '#server/domains/hack
 import {
   listHackathonPrizeRedemptions,
   listOperationalPrizeRedemptionTeamMembersByTeamId
-} from '#server/utils/prize-redemptions'
+} from '#server/domains/prize-redemptions'
 import {
   getFinalDeliberationView,
   getWinnersView,

@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest'
 
-import { ApiError } from '../../../../server/http/api-error'
+import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertHackathonFeedbackAvailable,
   buildHackathonFeedbackInsertValues,
   createHackathonFeedbackBodySchema,
   normalizeHackathonFeedbackComment
-} from '../../../../server/utils/hackathon-feedback'
+} from '../../../../../server/domains/hackathons/feedback'
 
 describe('hackathon feedback utilities', () => {
   const validPayload = {

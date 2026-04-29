@@ -5,7 +5,7 @@ import {
   assertHackathonFeedbackAvailable,
   createHackathonFeedback,
   createHackathonFeedbackBodySchema
-} from '#server/utils/hackathon-feedback'
+} from '#server/domains/hackathons/feedback'
 import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema

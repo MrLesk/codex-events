@@ -83,7 +83,7 @@ order by updated_at desc
 
 #### admin-applications-by-hackathon
 
-- Owner: `server/utils/applications.ts`
+- Owner: `server/domains/applications/index.ts`
 - Purpose: List hackathon applications for the admin review screen.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
@@ -131,7 +131,7 @@ where hackathon_id = 'hack_1'
 
 #### judging-blind-applications-by-hackathon-and-user
 
-- Owner: `server/utils/judging.ts`
+- Owner: `server/domains/judging/index.ts`
 - Purpose: Load applications for the team members attached to blind-review assignments.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
@@ -150,7 +150,7 @@ order by submitted_at asc, created_at asc
 
 #### public-hackathon-by-slug
 
-- Owner: `server/utils/hackathon-management.ts`
+- Owner: `server/domains/hackathons/index.ts`
 - Purpose: Resolve a public hackathon by slug while enforcing public visibility states.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
@@ -176,7 +176,7 @@ where slug = 'public-slug'
 
 #### public-current-terms-by-id
 
-- Owner: `server/utils/hackathon-management.ts`
+- Owner: `server/domains/hackathons/index.ts`
 - Purpose: Load the current hackathon terms documents by exact id.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
@@ -190,7 +190,7 @@ where id in ('terms_1', 'terms_2')
 
 #### public-tracks-by-hackathon
 
-- Owner: `server/utils/hackathon-management.ts`
+- Owner: `server/domains/hackathons/index.ts`
 - Purpose: List hackathon tracks for public detail rendering.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
@@ -207,7 +207,7 @@ order by display_order asc, created_at asc, id asc
 
 #### public-outcome-teams-by-hackathon
 
-- Owner: `server/utils/shortlist.ts`
+- Owner: `server/domains/outcomes/index.ts`
 - Purpose: Load all teams that belong to the completed-outcome hackathon.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
@@ -223,7 +223,7 @@ order by created_at asc, name asc
 
 #### public-outcome-submissions-by-team
 
-- Owner: `server/utils/shortlist.ts`
+- Owner: `server/domains/outcomes/index.ts`
 - Purpose: Load the latest submission candidates for the outcome view team set.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
@@ -239,7 +239,7 @@ order by created_at desc
 
 #### public-outcome-assignments-by-submission
 
-- Owner: `server/utils/shortlist.ts`
+- Owner: `server/domains/outcomes/index.ts`
 - Purpose: Load all judging assignments attached to the tracked submissions.
 - Measured finding: Measured full scan plus temp sort on the current schema.
 - Plan details:
@@ -255,7 +255,7 @@ order by created_at desc
 
 #### public-outcome-criterion-scores-by-assignment
 
-- Owner: `server/utils/shortlist.ts`
+- Owner: `server/domains/outcomes/index.ts`
 - Purpose: Load criterion scores for the tracked judge assignments.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
@@ -271,7 +271,7 @@ order by created_at asc
 
 #### public-outcome-prize-eligibility-by-team
 
-- Owner: `server/utils/shortlist.ts`
+- Owner: `server/domains/outcomes/index.ts`
 - Purpose: Load frozen winner roster membership snapshots for the outcome team set.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
@@ -332,7 +332,7 @@ limit 200
 
 #### prize-redemption-team-admin-memberships
 
-- Owner: `server/utils/prize-redemptions.ts`
+- Owner: `server/domains/prize-redemptions/index.ts`
 - Purpose: Find active team-admin memberships before building prize redemption visibility.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
@@ -348,7 +348,7 @@ where user_id = 'user_1'
 
 #### prize-redemption-pending-visible
 
-- Owner: `server/utils/prize-redemptions.ts`
+- Owner: `server/domains/prize-redemptions/index.ts`
 - Purpose: List pending redemptions visible to the current user or their admin teams.
 - Measured finding: Measured full scan plus temp sort on the current schema.
 - Plan details:
@@ -372,12 +372,12 @@ order by created_at asc
 ## Recommendations
 
 - `account-submissions-by-team` (`server/api/account/hackathons.get.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `admin-applications-by-hackathon` (`server/utils/applications.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `judging-blind-applications-by-hackathon-and-user` (`server/utils/judging.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `public-outcome-teams-by-hackathon` (`server/utils/shortlist.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `public-outcome-submissions-by-team` (`server/utils/shortlist.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `public-outcome-assignments-by-submission` (`server/utils/shortlist.ts`): follow up with the owning query path because the measured plan shows a full scan plus temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `public-outcome-criterion-scores-by-assignment` (`server/utils/shortlist.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `public-outcome-prize-eligibility-by-team` (`server/utils/shortlist.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `admin-applications-by-hackathon` (`server/domains/applications/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `judging-blind-applications-by-hackathon-and-user` (`server/domains/judging/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `public-outcome-teams-by-hackathon` (`server/domains/outcomes/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `public-outcome-submissions-by-team` (`server/domains/outcomes/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `public-outcome-assignments-by-submission` (`server/domains/outcomes/index.ts`): follow up with the owning query path because the measured plan shows a full scan plus temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `public-outcome-criterion-scores-by-assignment` (`server/domains/outcomes/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `public-outcome-prize-eligibility-by-team` (`server/domains/outcomes/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
 - `hackathon-audit-latest` (`server/api/hackathons/[hackathonId]/audit/index.get.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `prize-redemption-pending-visible` (`server/utils/prize-redemptions.ts`): follow up with the owning query path because the measured plan shows a full scan plus temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `prize-redemption-pending-visible` (`server/domains/prize-redemptions/index.ts`): follow up with the owning query path because the measured plan shows a full scan plus temp sort. Only add an index or rewrite after validating that this path is still release-critical.

@@ -3,7 +3,7 @@ import { apiList } from '#server/http/api-response'
 import {
   listHackathonPhotoRecords,
   requireHackathonPhotoReadAccess
-} from '#server/utils/hackathon-photos'
+} from '#server/domains/hackathons/photos'
 import { routeIdParamsSchema } from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 

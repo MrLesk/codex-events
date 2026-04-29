@@ -10,7 +10,7 @@ import {
   listHackathonCreditOffers,
   requireHackathonCreditsViewAccess,
   serializeParticipantHackathonCreditOffer
-} from '#server/utils/hackathon-credits'
+} from '#server/domains/credits'
 import { routeIdParamsSchema } from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 

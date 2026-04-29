@@ -10,7 +10,7 @@ import {
   listHackathonPhotoRecords,
   requireHackathonPhotoManageAccess,
   updateHackathonPhotoPublicVisibilityBodySchema
-} from '#server/utils/hackathon-photos'
+} from '#server/domains/hackathons/photos'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

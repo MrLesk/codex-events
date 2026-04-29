@@ -5,7 +5,7 @@ import { apiData } from '#server/http/api-response'
 import {
   assertHackathonFeedbackResultsAccess,
   getHackathonFeedbackSummary
-} from '#server/utils/hackathon-feedback'
+} from '#server/domains/hackathons/feedback'
 import {
   getHackathonOrThrow,
   routeIdParamsSchema

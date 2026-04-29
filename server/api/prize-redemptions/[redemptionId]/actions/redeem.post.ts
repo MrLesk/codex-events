@@ -11,7 +11,7 @@ import {
   redeemPrizeRedemptionBodySchema,
   requirePrizeRedemptionRecipientContext,
   serializePrizeRedemption
-} from '#server/utils/prize-redemptions'
+} from '#server/domains/prize-redemptions'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

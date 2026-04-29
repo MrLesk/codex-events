@@ -2,7 +2,7 @@ import { setHeader } from 'h3'
 
 import { defineApiHandler } from '#server/http/api-handler'
 import { ApiError } from '#server/http/api-error'
-import { getHackathonImageObject } from '#server/utils/hackathon-images'
+import { getHackathonImageObject } from '#server/domains/hackathons/images'
 import {
   getVisibleHackathonBySlugOrThrow,
   routeSlugParamsSchema

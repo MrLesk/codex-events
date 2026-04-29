@@ -1,7 +1,7 @@
 import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
-import { hasHackathonPhotos } from '#server/utils/hackathon-photos'
+import { hasHackathonPhotos } from '#server/domains/hackathons/photos'
 import {
   canViewRestrictedHackathonDetails,
   getCurrentHackathonTerms,

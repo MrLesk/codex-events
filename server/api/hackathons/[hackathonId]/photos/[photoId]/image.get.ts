@@ -9,7 +9,7 @@ import {
   hackathonPhotoImageQuerySchema,
   hackathonPhotoParamsSchema,
   requireHackathonPhotoReadAccess
-} from '#server/utils/hackathon-photos'
+} from '#server/domains/hackathons/photos'
 import {
   parseValidatedParams,
   parseValidatedQuery

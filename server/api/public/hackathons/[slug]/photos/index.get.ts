@@ -1,7 +1,7 @@
 import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiList } from '#server/http/api-response'
-import { listPublicHackathonPhotoRecords } from '#server/utils/hackathon-photos'
+import { listPublicHackathonPhotoRecords } from '#server/domains/hackathons/photos'
 import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema

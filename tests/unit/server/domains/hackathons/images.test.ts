@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 import { describe, expect, test } from 'vitest'
 
-import { ApiError } from '../../../../server/http/api-error'
+import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertValidHackathonImagePart,
   getHackathonImagesBucket,
@@ -10,7 +10,7 @@ import {
   hackathonImageObjectKey,
   putHackathonImageObject,
   publicHackathonImagePath
-} from '../../../../server/utils/hackathon-images'
+} from '../../../../../server/domains/hackathons/images'
 
 function createBucketStub() {
   return {

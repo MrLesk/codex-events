@@ -20,7 +20,7 @@ import {
 import {
   buildPrizeRedemptionRows,
   getCurrentWinnerTermsForHackathon
-} from '#server/utils/prize-redemptions'
+} from '#server/domains/prize-redemptions'
 import {
   assertWinnersAnnouncementAllowed,
   assertFinalDeliberationReorderMatchesEntries,

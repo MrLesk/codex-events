@@ -10,7 +10,7 @@ import { resolveHackathonAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import { hackathonPhotos, userApplications, users } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
-import { getHackathonImagesBucket } from './hackathon-images'
+import { getHackathonImagesBucket } from './images'
 import {
   getHackathonOrThrow,
   routeIdParamsSchema
@@ -19,7 +19,7 @@ import {
   detectSupportedImageContentType,
   supportedImageContentTypes,
   type SupportedImageContentType
-} from './image-signatures'
+} from '#server/utils/image-signatures'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 
 export const hackathonPhotoMaxBytes = 10 * 1024 * 1024

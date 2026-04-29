@@ -9,7 +9,7 @@ import {
   listHackathonCreditCodesForHackathon,
   listHackathonCreditOffers,
   serializeAdminHackathonCreditOffer
-} from '#server/utils/hackathon-credits'
+} from '#server/domains/credits'
 import { parseValidatedParams } from '#server/http/validation'
 
 type HackathonCreditOfferRecord = typeof hackathonCreditOffers.$inferSelect

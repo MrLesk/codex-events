@@ -46,7 +46,7 @@ I did not find a confirmed authorization bypass in the admin, judging, submissio
 Affected paths:
 
 - `server/api/hackathons/[hackathonId]/teams/[teamId]/index.get.ts`
-- `server/utils/team-formation.ts`
+- `server/domains/teams/index.ts`
 - `app/components/teams/ParticipantTeamMembershipPanel.vue`
 
 What happens:
@@ -171,7 +171,7 @@ Recommendation:
 Affected paths:
 
 - `server/utils/profile-icons.ts`
-- `server/utils/hackathon-images.ts`
+- `server/domains/hackathons/images.ts`
 - `server/api/account/profile-icon.get.ts`
 - `server/api/public/hackathons/[slug]/images/background.get.ts`
 - `server/api/public/hackathons/[slug]/images/banner.get.ts`

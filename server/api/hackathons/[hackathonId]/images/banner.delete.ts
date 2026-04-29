@@ -6,7 +6,7 @@ import { getDatabase } from '#server/database/client'
 import { hackathons } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
-import { deleteHackathonImageObject } from '#server/utils/hackathon-images'
+import { deleteHackathonImageObject } from '#server/domains/hackathons/images'
 import {
   requireHackathonAdmin,
   routeIdParamsSchema,

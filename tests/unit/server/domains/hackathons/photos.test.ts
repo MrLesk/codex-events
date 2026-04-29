@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 import { describe, expect, test, vi } from 'vitest'
 
-import { ApiError } from '../../../../server/http/api-error'
+import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertValidHackathonPhotoPart,
   buildHackathonPhotoImageUrl,
@@ -12,7 +12,7 @@ import {
   hackathonPhotoMaxBytes,
   hackathonPhotoObjectKey,
   putHackathonPhotoObject
-} from '../../../../server/utils/hackathon-photos'
+} from '../../../../../server/domains/hackathons/photos'
 
 const pngSignatureBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 

@@ -8,7 +8,7 @@ import {
   getHackathonPhotoObject,
   getPublicHackathonPhotoRecordOrThrow,
   hackathonPhotoImageQuerySchema
-} from '#server/utils/hackathon-photos'
+} from '#server/domains/hackathons/photos'
 import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema

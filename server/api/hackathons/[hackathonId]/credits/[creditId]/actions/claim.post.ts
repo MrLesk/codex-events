@@ -11,7 +11,7 @@ import {
   isHackathonCreditClaimConflict,
   requireHackathonCreditClaimAccess,
   serializeParticipantHackathonCreditOffer
-} from '#server/utils/hackathon-credits'
+} from '#server/domains/credits'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

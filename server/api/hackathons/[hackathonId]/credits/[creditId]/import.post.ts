@@ -11,7 +11,7 @@ import {
   creditParamsSchema,
   getHackathonCreditOfferOrThrow,
   parseSingleColumnCreditCsv
-} from '#server/utils/hackathon-credits'
+} from '#server/domains/credits'
 import { requireHackathonAdmin } from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
 

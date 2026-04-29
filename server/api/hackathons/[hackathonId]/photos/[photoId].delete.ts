@@ -9,7 +9,7 @@ import {
   getHackathonPhotoRecordOrThrow,
   hackathonPhotoParamsSchema,
   requireHackathonPhotoManageAccess
-} from '#server/utils/hackathon-photos'
+} from '#server/domains/hackathons/photos'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

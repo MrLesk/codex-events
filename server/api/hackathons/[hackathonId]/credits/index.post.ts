@@ -9,7 +9,7 @@ import { apiData } from '#server/http/api-response'
 import {
   createHackathonCreditOfferBodySchema,
   serializeHackathonCreditOffer
-} from '#server/utils/hackathon-credits'
+} from '#server/domains/credits'
 import { requireHackathonAdmin, routeIdParamsSchema } from '#server/domains/hackathons'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
