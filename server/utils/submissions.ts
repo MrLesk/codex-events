@@ -9,7 +9,7 @@ import { getDatabase, type AppDatabase } from '#server/database/client'
 import { auditLogs, hackathonTracks, submissions, teams, teamMembers, users } from '#server/database/schema'
 import type { hackathons } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
-import { assertAllowedState, assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { getVisibleHackathonOrThrow, requireHackathonAdmin, routeIdParamsSchema } from '#server/domains/hackathons'
 import { getActiveTeamMembers, getTeamOrThrow, getUsersByIds, serializeTeam, serializeTeamMember } from './team-formation'
 

@@ -20,7 +20,7 @@ import {
   supportedImageContentTypes,
   type SupportedImageContentType
 } from './image-signatures'
-import { assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { assertGuard } from '#server/domains/lifecycle-guard'
 
 export const hackathonPhotoMaxBytes = 10 * 1024 * 1024
 export const hackathonPhotoContentTypes = supportedImageContentTypes

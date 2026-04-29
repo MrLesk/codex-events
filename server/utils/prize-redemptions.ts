@@ -22,7 +22,7 @@ import {
   serializePublishedHackathonRosterMember
 } from '#server/domains/hackathons'
 import { ApiError } from '#server/http/api-error'
-import { assertAllowedState, assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { getWinnersView } from './shortlist'
 
 type HackathonRecord = typeof hackathons.$inferSelect

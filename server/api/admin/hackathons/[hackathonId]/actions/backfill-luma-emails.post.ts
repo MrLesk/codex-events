@@ -18,7 +18,7 @@ import {
 import { isHackathonLumaSyncEnabled } from '#server/domains/applications'
 import { ApiError } from '#server/http/api-error'
 import { routeIdParamsSchema } from '#server/domains/hackathons'
-import { assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { assertGuard } from '#server/domains/lifecycle-guard'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {

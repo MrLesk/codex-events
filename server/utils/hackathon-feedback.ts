@@ -17,7 +17,7 @@ import type { AppDatabase } from '#server/database/client'
 import type { hackathonStates } from '#server/database/schema'
 import { hackathonFeedback } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
-import { assertAllowedState } from '#server/domains/hackathons/lifecycle-guard'
+import { assertAllowedState } from '#server/domains/lifecycle-guard'
 
 export const hackathonFeedbackCommentMaxLength = 4000
 

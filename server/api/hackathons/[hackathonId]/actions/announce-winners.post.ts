@@ -27,7 +27,7 @@ import {
   getFinalDeliberationView
 } from '#server/utils/shortlist'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
-import { assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { assertGuard } from '#server/domains/lifecycle-guard'
 
 type WinnerPrizeSummary = ReturnType<typeof serializePrize>
 type AnnouncedWinner = {

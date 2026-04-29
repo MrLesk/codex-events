@@ -10,7 +10,7 @@ import { getDatabase } from '#server/database/client'
 import { hackathonCreditCodes, hackathonCreditOffers, userApplications } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/domains/hackathons'
-import { assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { assertGuard } from '#server/domains/lifecycle-guard'
 
 type HackathonCreditOfferRecord = typeof hackathonCreditOffers.$inferSelect
 type HackathonCreditCodeRecord = typeof hackathonCreditCodes.$inferSelect

@@ -28,7 +28,7 @@ import {
   userApplications,
   users
 } from '#server/database/schema'
-import { assertAllowedState, assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { ApiError } from '#server/http/api-error'
 import { publicHackathonImagePath } from '#server/utils/hackathon-images'
 

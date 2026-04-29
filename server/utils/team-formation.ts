@@ -18,7 +18,7 @@ import {
 import type { hackathons } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import { requireApprovedUserForHackathon } from '#server/domains/applications'
-import { assertAllowedState, assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/domains/hackathons'
 
 const teamNameSchema = z.string().trim().min(1)

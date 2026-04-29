@@ -34,7 +34,7 @@ import {
   routeIdParamsSchema,
   serializeHackathonTermsDocument
 } from '#server/domains/hackathons'
-import { assertAllowedState, assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 
 export const applicationParamsSchema = routeIdParamsSchema.extend({
   applicationId: z.string().trim().min(1)

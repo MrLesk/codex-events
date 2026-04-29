@@ -26,7 +26,7 @@ import {
   calculateAveragePitchScore,
   parseStoredPitchFinalistSubmissionIds
 } from './judging'
-import { assertAllowedState, assertGuard } from '#server/domains/hackathons/lifecycle-guard'
+import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 
 type HackathonRecord = typeof hackathons.$inferSelect
 type TeamRecord = typeof teams.$inferSelect
