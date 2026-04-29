@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import type {
-  ApiDataResponse,
-  HackathonFormState,
-  HackathonRecord
-} from '~/utils/admin-workspace'
+import type { ApiDataResponse } from '~/lib/api'
+import type { HackathonFormState, HackathonRecord } from '~/utils/admin-workspace'
 
+import { normalizeApiError } from '~/lib/api'
 import {
   fromDateTimeLocalValue,
-  normalizeApiError,
   toHackathonAgendaPayload,
   toHackathonTracksPayload
 } from '~/utils/admin-workspace'

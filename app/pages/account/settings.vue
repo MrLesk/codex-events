@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AccountSettingsProfileForm from '~/components/account/AccountSettingsProfileForm.vue'
 import { authLogoutHref } from '#shared/auth-navigation'
-import { normalizeApiError } from '~/utils/admin-workspace'
+import { normalizeApiError } from '~/lib/api'
 import { buildProfileIconHref } from '~/utils/profile-icon'
 
 definePageMeta({

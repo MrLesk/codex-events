@@ -1,22 +1,17 @@
-import type {
-  ApiListResponse,
-  HackathonRoleAssignment
-} from '~/utils/admin-workspace'
+import type { ApiListResponse } from '~/lib/api'
+import type { HackathonRoleAssignment } from '~/utils/admin-workspace'
 
-import {
-  buildAdminWorkspaceCacheKey,
-  getAdminWorkspaceSubjectKey
-} from '~/utils/admin-workspace'
+import { buildApiCacheKey, getApiSubjectKey } from '~/lib/api'
 
 export function useHackathonRoleRosterWorkspace(hackathonId: MaybeRefOrGetter<string>) {
   const authenticatedUser = useUser()
   const resolvedHackathonId = computed(() => toValue(hackathonId))
-  const subjectKey = computed(() => getAdminWorkspaceSubjectKey(authenticatedUser.value?.sub))
+  const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
 
   const roleAssignments = useFetch<ApiListResponse<HackathonRoleAssignment>>(
     () => `/api/hackathons/${resolvedHackathonId.value}/roles`,
     {
-      key: () => buildAdminWorkspaceCacheKey('hackathon-role-roster-roles', subjectKey.value, resolvedHackathonId.value),
+      key: () => buildApiCacheKey('hackathon-role-roster-roles', subjectKey.value, resolvedHackathonId.value),
       watch: [subjectKey, resolvedHackathonId]
     }
   )

@@ -1,16 +1,10 @@
 <script setup lang="ts">
 import type { HackathonPhotoRecord } from '#shared/hackathon-photos'
+import type { ApiListResponse } from '~/lib/api'
 
 import HackathonGalleryPanel from '~/components/hackathons/HackathonGalleryPanel.vue'
-import { normalizeApiError } from '~/utils/admin-workspace'
+import { normalizeApiError } from '~/lib/api'
 import { createHackathonGalleryUploadItems } from '~/utils/hackathon-gallery'
-
-type ApiListResponse<T> = {
-  data: T
-  meta?: {
-    total?: number
-  }
-}
 
 const props = defineProps<{
   hackathonId: string
@@ -31,7 +25,7 @@ const {
   status: photosStatus,
   error: photosError,
   refresh: refreshPhotos
-} = useFetch<ApiListResponse<HackathonPhotoRecord[]>>(
+} = useFetch<ApiListResponse<HackathonPhotoRecord>>(
   () => `/api/hackathons/${hackathonId.value}/photos`,
   {
     key: () => `hackathon-photos:${hackathonId.value}`,

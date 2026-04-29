@@ -1,4 +1,5 @@
 import type { MultiWatchSources } from 'vue'
+import type { ApiDataResponse } from '~/lib/api'
 
 interface UseApiDataOptions<Data> {
   default?: () => Data
@@ -12,10 +13,6 @@ interface UseApiDataOptions<Data> {
 interface UseApiDataContext {
   apiFetch: ReturnType<typeof useRequestFetch>
   signal: AbortSignal
-}
-
-interface ApiDataResponse<Data> {
-  data: Data
 }
 
 export const useApiFetch = createUseFetch({

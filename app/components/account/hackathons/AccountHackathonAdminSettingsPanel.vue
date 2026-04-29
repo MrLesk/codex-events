@@ -4,8 +4,8 @@ import type Sortable from 'sortablejs'
 import AccountHackathonAdminTermsCard from '~/components/account/hackathons/AccountHackathonAdminTermsCard.vue'
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 
+import type { ApiDataResponse } from '~/lib/api'
 import type {
-  ApiDataResponse,
   EvaluationCriterion,
   HackathonFormState,
   HackathonRecord,
@@ -13,6 +13,8 @@ import type {
   TermsDocument
 } from '~/utils/admin-workspace'
 import type { HackathonProgramSettingsMode } from '~/utils/hackathon-program-settings'
+
+import { normalizeApiError } from '~/lib/api'
 import { moveListItemByIndex } from '~/utils/reorder-list'
 
 import {
@@ -21,7 +23,6 @@ import {
   getTermsVersionPublishErrorMessage,
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled,
-  normalizeApiError,
   toHackathonAgendaPayload,
   toHackathonTracksPayload
 } from '~/utils/admin-workspace'

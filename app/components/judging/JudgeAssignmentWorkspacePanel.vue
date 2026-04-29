@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ApiDataResponse } from '~/utils/admin-workspace'
+import type { ApiDataResponse } from '~/lib/api'
 import type {
   CriterionScoreDraft,
   JudgeAssignmentDetail

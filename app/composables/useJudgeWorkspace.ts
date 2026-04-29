@@ -1,10 +1,5 @@
-import type {
-  ApiDataResponse,
-  ApiListResponse,
-  EvaluationCriterion,
-  HackathonRecord,
-  SessionActor
-} from '~/utils/admin-workspace'
+import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
+import type { EvaluationCriterion, HackathonRecord, SessionActor } from '~/utils/admin-workspace'
 import type {
   JudgeAssignmentApiDetail,
   JudgeInboxGroup

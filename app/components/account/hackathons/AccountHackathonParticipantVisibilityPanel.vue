@@ -1,10 +1,6 @@
 <script setup lang="ts">
-import type {
-  AdminApplicationRecord,
-  ApiDataResponse,
-  HackathonRecord,
-  ApiListResponse
-} from '~/utils/admin-workspace'
+import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
+import type { AdminApplicationRecord, HackathonRecord } from '~/utils/admin-workspace'
 
 import {
   LazyAccountHackathonsAccountHackathonParticipantsPanel as LazyAccountHackathonParticipantsPanel

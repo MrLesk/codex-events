@@ -1,23 +1,17 @@
 <script setup lang="ts">
-import type {
-  ApiListResponse,
-  HackathonRoleUserSummary
-} from '~/utils/admin-workspace'
+import type { ApiListResponse } from '~/lib/api'
+import type { HackathonRoleUserSummary } from '~/utils/admin-workspace'
 
-import {
-  buildAdminWorkspaceCacheKey,
-  getAdminWorkspaceSubjectKey,
-  normalizeApiError
-} from '~/utils/admin-workspace'
+import { buildApiCacheKey, getApiSubjectKey, normalizeApiError } from '~/lib/api'
 
 const toast = useToast()
 const authenticatedUser = useUser()
 const platformAdminCandidatePageSize = 20
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
-const subjectKey = computed(() => getAdminWorkspaceSubjectKey(authenticatedUser.value?.sub))
+const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
 const currentAdmins = useFetch<ApiListResponse<HackathonRoleUserSummary>>('/api/platform-admins', {
-  key: () => buildAdminWorkspaceCacheKey('platform-admins', subjectKey.value),
+  key: () => buildApiCacheKey('platform-admins', subjectKey.value),
   watch: [subjectKey]
 })
 

@@ -1,15 +1,15 @@
+import type { ApiListResponse } from '~/lib/api'
 import type {
-  ApiListResponse,
   EvaluationCriterion,
   HackathonState,
   HackathonRecord,
   SessionActor
 } from './admin-workspace'
 
+import { normalizeApiError } from '~/lib/api'
 import {
   formatHackathonState,
-  isHackathonRoleJudgingEnabled,
-  normalizeApiError
+  isHackathonRoleJudgingEnabled
 } from './admin-workspace'
 import { formatTimestamp } from './date-formatting'
 

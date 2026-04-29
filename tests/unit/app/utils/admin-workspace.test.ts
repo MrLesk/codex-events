@@ -15,8 +15,6 @@ import {
   buildAdminJudgeAssignmentOversightGroups,
   buildAdminOperationalTeams,
   buildPitchReviewCoverageEntries,
-  listAllPaginatedItems,
-  buildAdminWorkspaceCacheKey,
   canMutateRoleAssignments,
   countActiveAdminOperationalTeams,
   createEmptyHackathonFormState,
@@ -40,7 +38,6 @@ import {
   getApplicationAttendanceStatusColor,
   getCriteriaConfigurationValidationIssues,
   getHackathonOperationsPhase,
-  getAdminWorkspaceSubjectKey,
   getApprovedParticipantAttendanceSummary,
   hasHackathonJudgingAccess,
   hasHackathonParticipantVisibilityAccess,
@@ -55,7 +52,6 @@ import {
   shouldShowApprovedParticipantAttendanceSummary,
   getTermsVersionPublishErrorMessage,
   hasHackathonAdminAccess,
-  normalizeApiError,
   getSubmissionStatusColor,
   isApplicationCheckedIn,
   listFailedApplicationLumaSyncApplications,
@@ -517,12 +513,6 @@ describe('admin-workspace form helpers', () => {
     })
   })
 
-  test('normalizes authenticated subjects for cache-key partitioning', () => {
-    expect(getAdminWorkspaceSubjectKey('  auth0|admin  ')).toBe('auth0|admin')
-    expect(getAdminWorkspaceSubjectKey('')).toBe('anonymous')
-    expect(buildAdminWorkspaceCacheKey('admin-workspace-session', 'auth0|admin')).toBe('admin-workspace-session:auth0|admin')
-  })
-
   test('requires a title before publishing a terms version', () => {
     expect(getTermsVersionPublishErrorMessage('', 'Canonical application terms')).toBe(
       'Enter a title before publishing this terms version.'
@@ -971,48 +961,6 @@ describe('admin-workspace lifecycle controls', () => {
 })
 
 describe('admin-workspace operational helpers', () => {
-  test('extracts canonical API messages from fetch-style upload errors', () => {
-    expect(normalizeApiError({
-      response: {
-        _data: {
-          error: {
-            code: 'profile_icon_file_too_large',
-            message: 'Profile icons must be 1MB or smaller.'
-          }
-        }
-      }
-    })).toEqual({
-      code: 'profile_icon_file_too_large',
-      message: 'Profile icons must be 1MB or smaller.'
-    })
-  })
-
-  test('collects paginated items until the full set is loaded', async () => {
-    const responses = [
-      {
-        data: Array.from({ length: 2 }, (_, index) => ({ id: `team-${index + 1}` })),
-        meta: { total: 3 }
-      },
-      {
-        data: [{ id: 'team-3' }],
-        meta: { total: 3 }
-      }
-    ]
-
-    const pagesRequested: number[] = []
-    const items = await listAllPaginatedItems(async (page) => {
-      pagesRequested.push(page)
-      return responses[page - 1] as { data: Array<{ id: string }>, meta: { total: number } }
-    }, 2)
-
-    expect(pagesRequested).toEqual([1, 2])
-    expect(items).toEqual([
-      { id: 'team-1' },
-      { id: 'team-2' },
-      { id: 'team-3' }
-    ])
-  })
-
   test('formats operational statuses into badge labels and colors', () => {
     expect(formatApplicationStatus('submitted')).toBe('Submitted')
     expect(getApplicationStatusColor('approved')).toBe('success')

@@ -1,7 +1,7 @@
+import type { Ref } from 'vue'
+import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
 import type {
   AdminApplicationRecord,
-  ApiDataResponse,
-  ApiListResponse,
   EvaluationCriterion,
   HackathonRecord,
   HackathonRoleAssignment,
@@ -13,14 +13,11 @@ import type {
   TeamSummary,
   TermsDocument
 } from '~/utils/admin-workspace'
-import type { Ref } from 'vue'
 
+import { buildApiCacheKey, getApiSubjectKey, listAllPaginatedItems } from '~/lib/api'
 import {
-  buildAdminWorkspaceCacheKey,
   filterManageableHackathons,
-  getAdminWorkspaceSubjectKey,
-  hasHackathonAdminAccess,
-  listAllPaginatedItems
+  hasHackathonAdminAccess
 } from '~/utils/admin-workspace'
 
 interface AdminWorkspaceOptions {
@@ -61,18 +58,18 @@ function refreshWhenEnabled(request: RefreshableAsyncRequest, enabled: Ref<boole
 
 export function useAdminWorkspace(options: AdminWorkspaceOptions = {}) {
   const authenticatedUser = useUser()
-  const subjectKey = computed(() => getAdminWorkspaceSubjectKey(authenticatedUser.value?.sub))
+  const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
   const loadHackathons = resolveLoadFlag(options.loadHackathons)
 
   const session = useFetch<ApiDataResponse<{ actor: SessionActor }>>('/api/session', {
-    key: () => buildAdminWorkspaceCacheKey('admin-workspace-session', subjectKey.value),
+    key: () => buildApiCacheKey('admin-workspace-session', subjectKey.value),
     watch: [subjectKey]
   })
 
   const actor = computed(() => session.data.value?.data.actor ?? null)
 
   const hackathons = useFetch<ApiListResponse<HackathonRecord>>('/api/hackathons?page=1&page_size=100', {
-    key: () => buildAdminWorkspaceCacheKey('admin-workspace-hackathons', subjectKey.value),
+    key: () => buildApiCacheKey('admin-workspace-hackathons', subjectKey.value),
     watch: [subjectKey],
     immediate: loadHackathons.value
   })
@@ -121,7 +118,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   const hackathon = useFetch<ApiDataResponse<HackathonRecord>>(
     () => `/api/hackathons/${resolvedHackathonId.value}`,
     {
-      key: () => buildAdminWorkspaceCacheKey('admin-hackathon', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+      key: () => buildApiCacheKey('admin-hackathon', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
       watch: [adminWorkspace.subjectKey, resolvedHackathonId]
     }
   )
@@ -129,7 +126,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   const criteria = useFetch<ApiListResponse<EvaluationCriterion>>(
     () => `/api/hackathons/${resolvedHackathonId.value}/evaluation-criteria`,
     {
-      key: () => buildAdminWorkspaceCacheKey('admin-hackathon-criteria', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+      key: () => buildApiCacheKey('admin-hackathon-criteria', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
       watch: [adminWorkspace.subjectKey, resolvedHackathonId],
       immediate: loadCriteria.value
     }
@@ -139,7 +136,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   const prizes = useFetch<ApiListResponse<PrizeDefinition>>(
     () => `/api/hackathons/${resolvedHackathonId.value}/prizes`,
     {
-      key: () => buildAdminWorkspaceCacheKey('admin-hackathon-prizes', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+      key: () => buildApiCacheKey('admin-hackathon-prizes', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
       watch: [adminWorkspace.subjectKey, resolvedHackathonId],
       immediate: loadPrizes.value
     }
@@ -149,7 +146,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   const applicationTermsVersions = useFetch<ApiListResponse<TermsDocument>>(
     () => `/api/hackathons/${resolvedHackathonId.value}/terms/application_terms/versions`,
     {
-      key: () => buildAdminWorkspaceCacheKey('admin-hackathon-application-terms', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+      key: () => buildApiCacheKey('admin-hackathon-application-terms', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
       watch: [adminWorkspace.subjectKey, resolvedHackathonId],
       immediate: loadApplicationTermsVersions.value
     }
@@ -159,7 +156,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   const winnerTermsVersions = useFetch<ApiListResponse<TermsDocument>>(
     () => `/api/hackathons/${resolvedHackathonId.value}/terms/winner_terms/versions`,
     {
-      key: () => buildAdminWorkspaceCacheKey('admin-hackathon-winner-terms', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+      key: () => buildApiCacheKey('admin-hackathon-winner-terms', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
       watch: [adminWorkspace.subjectKey, resolvedHackathonId],
       immediate: loadWinnerTermsVersions.value
     }
@@ -169,7 +166,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   const roleAssignments = useFetch<ApiListResponse<HackathonRoleAssignment>>(
     () => `/api/hackathons/${resolvedHackathonId.value}/roles`,
     {
-      key: () => buildAdminWorkspaceCacheKey('admin-hackathon-roles', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+      key: () => buildApiCacheKey('admin-hackathon-roles', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
       watch: [adminWorkspace.subjectKey, resolvedHackathonId],
       immediate: loadRoleAssignments.value
     }
@@ -177,7 +174,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   refreshWhenEnabled(roleAssignments, loadRoleAssignments)
 
   const applications = useAsyncData<AdminApplicationRecord[]>(
-    () => buildAdminWorkspaceCacheKey('admin-hackathon-applications', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+    () => buildApiCacheKey('admin-hackathon-applications', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
     async () => await listAllPaginatedItems(
       async (page, pageSize) => await apiFetch<ApiListResponse<AdminApplicationRecord>>(
         `/api/hackathons/${resolvedHackathonId.value}/applications`,
@@ -199,7 +196,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   refreshWhenEnabled(applications, loadApplications)
 
   const teams = useAsyncData<TeamSummary[]>(
-    () => buildAdminWorkspaceCacheKey('admin-hackathon-teams', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+    () => buildApiCacheKey('admin-hackathon-teams', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
     async () => await listAllPaginatedItems(
       async (page, pageSize) => await apiFetch<ApiListResponse<TeamSummary>>(
         `/api/hackathons/${resolvedHackathonId.value}/teams`,
@@ -223,7 +220,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   const noSubmissionTeams = useFetch<ApiDataResponse<NoSubmissionEntry[]>>(
     () => `/api/hackathons/${resolvedHackathonId.value}/no-submission-teams`,
     {
-      key: () => buildAdminWorkspaceCacheKey('admin-hackathon-no-submission', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+      key: () => buildApiCacheKey('admin-hackathon-no-submission', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
       watch: [adminWorkspace.subjectKey, resolvedHackathonId],
       immediate: loadNoSubmissionTeams.value
     }
@@ -233,7 +230,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   const assignments = useFetch<ApiListResponse<JudgeAssignmentSummary>>(
     () => `/api/hackathons/${resolvedHackathonId.value}/judging/assignments`,
     {
-      key: () => buildAdminWorkspaceCacheKey('admin-hackathon-assignments', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+      key: () => buildApiCacheKey('admin-hackathon-assignments', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
       watch: [adminWorkspace.subjectKey, resolvedHackathonId],
       immediate: loadAssignments.value
     }
@@ -243,7 +240,7 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   const leaderboard = useFetch<ApiListResponse<LeaderboardEntry>>(
     () => `/api/hackathons/${resolvedHackathonId.value}/leaderboard`,
     {
-      key: () => buildAdminWorkspaceCacheKey('admin-hackathon-leaderboard', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+      key: () => buildApiCacheKey('admin-hackathon-leaderboard', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
       watch: [adminWorkspace.subjectKey, resolvedHackathonId],
       immediate: loadLeaderboard.value
     }

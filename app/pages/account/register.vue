@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { ApiErrorShape } from '~/utils/admin-workspace'
+import type { ApiErrorShape } from '~/lib/api'
 
-import { normalizeApiError } from '~/utils/admin-workspace'
+import { normalizeApiError } from '~/lib/api'
 import {
   getAccountRegistrationSubmitErrorMessage,
   getAccountRegistrationIntro,

@@ -1,9 +1,6 @@
 <script setup lang="ts">
-import type {
-  ApiListResponse,
-  HackathonRoleAssignment,
-  HackathonRoleUserSummary
-} from '~/utils/admin-workspace'
+import type { ApiListResponse } from '~/lib/api'
+import type { HackathonRoleAssignment, HackathonRoleUserSummary } from '~/utils/admin-workspace'
 import type {
   HackathonRoleRosterBadge,
   HackathonRoleRosterRow
@@ -14,11 +11,7 @@ import type {
   PublishedHackathonRosterRole
 } from '~/utils/hackathon-published-roster'
 
-import {
-  buildAdminWorkspaceCacheKey,
-  getAdminWorkspaceSubjectKey,
-  normalizeApiError
-} from '~/utils/admin-workspace'
+import { buildApiCacheKey, getApiSubjectKey, normalizeApiError } from '~/lib/api'
 import {
   buildAssignedRoleRosterRows,
   buildRoleRosterRows,
@@ -87,11 +80,11 @@ const errorState = computed(() => props.role === 'judge'
 const errorMessage = computed(() => rosterState.value.errorMessage?.trim() ?? '')
 const managementHackathonId = computed(() => props.managementHackathonId?.trim() ?? '')
 const canManageRoster = computed(() => managementHackathonId.value.length > 0)
-const subjectKey = computed(() => getAdminWorkspaceSubjectKey(authenticatedUser.value?.sub))
+const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
 const roleAssignmentsResponse = useFetch<ApiListResponse<HackathonRoleAssignment>>(
   () => `/api/hackathons/${managementHackathonId.value}/roles`,
   {
-    key: () => buildAdminWorkspaceCacheKey(
+    key: () => buildApiCacheKey(
       'hackathon-role-roster-roles',
       subjectKey.value,
       managementHackathonId.value || 'none'

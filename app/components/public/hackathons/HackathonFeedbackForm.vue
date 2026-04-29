@@ -12,7 +12,7 @@ import {
   hackathonFeedbackQuestions,
   hackathonFeedbackRatingValues
 } from '#shared/hackathon-feedback'
-import { normalizeApiError } from '~/utils/admin-workspace'
+import { normalizeApiError } from '~/lib/api'
 
 const props = defineProps<{
   hackathonSlug: string
