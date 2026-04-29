@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { TeamJoinRequestRecord } from '~/domains/teams/workspace'
 
-import { formatTimestamp } from '~/utils/date-formatting'
+import { formatTimestamp } from '~/lib/date-formatting'
 import {
   formatTeamJoinRequestStatus,
   getTeamJoinRequestStatusColor

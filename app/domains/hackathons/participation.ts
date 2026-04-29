@@ -1,7 +1,7 @@
 import type { PublicHackathonState } from '~/domains/hackathons/presentation'
 import type { TeamSubmissionRecord } from '~/domains/submissions/team-submission'
 
-import { normalizeParticipantApiError } from '~/domains/applications/participant-application'
+import { normalizeApiError } from '~/lib/api'
 
 export interface HackathonParticipationHackathonSummary {
   id: string
@@ -88,7 +88,7 @@ export interface HackathonParticipationOutcomeNotice {
 }
 
 export function normalizeHackathonParticipationApiError(error: unknown) {
-  return normalizeParticipantApiError(error)
+  return normalizeApiError(error)
 }
 
 export function getHackathonParticipationOutcomeNotice(

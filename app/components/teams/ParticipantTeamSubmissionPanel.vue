@@ -16,7 +16,7 @@ import {
   getTeamSubmissionStatusColor,
   getTeamSubmissionWorkspaceStatus
 } from '~/domains/submissions/team-submission'
-import { createTeamSubmissionFormSchema } from '~/utils/form-schemas'
+import { createTeamSubmissionFormSchema } from '~/domains/submissions/team-submission-form'
 import { cloneFormValues } from '~/utils/form-values'
 
 const form = defineModel<{

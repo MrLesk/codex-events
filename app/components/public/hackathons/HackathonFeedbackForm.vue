@@ -3,7 +3,7 @@ import type {
   HackathonFeedbackQuestionId,
   HackathonFeedbackRatingValue,
   HackathonFeedbackSelectionValue
-} from '#shared/hackathon-feedback'
+} from '#shared/domains/hackathons/feedback'
 
 import {
   hackathonFeedbackNotApplicableLabel,
@@ -11,7 +11,7 @@ import {
   hackathonFeedbackQuestionIds,
   hackathonFeedbackQuestions,
   hackathonFeedbackRatingValues
-} from '#shared/hackathon-feedback'
+} from '#shared/domains/hackathons/feedback'
 import { normalizeApiError } from '~/lib/api'
 
 const props = defineProps<{

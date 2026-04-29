@@ -17,7 +17,7 @@ import {
 } from '#components'
 import { Switch as UiSwitch } from '~/components/ui/switch'
 import { cloneFormValues } from '~/utils/form-values'
-import { teamProfileFormSchema } from '~/utils/form-schemas'
+import { teamProfileFormSchema } from '~/domains/teams/team-forms'
 import { getHackathonParticipationOutcomeNotice } from '~/domains/hackathons/participation'
 import {
   getCreateTeamAvailability,
@@ -38,7 +38,7 @@ import {
 import {
   buildAbsoluteAccountHackathonTeamsTabHref,
   buildAccountHackathonTeamsTabHref
-} from '~/utils/team-query'
+} from '~/domains/teams/query'
 
 const props = defineProps<{
   hackathon: PublicHackathon & {

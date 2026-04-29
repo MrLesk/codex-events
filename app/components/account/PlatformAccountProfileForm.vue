@@ -2,7 +2,7 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
-import { accountProfileFormSchema } from '~/utils/form-schemas'
+import { accountProfileFormSchema } from '~/domains/accounts/profile-forms'
 import { cloneFormValues } from '~/utils/form-values'
 
 interface PlatformAccountProfileFormModel {

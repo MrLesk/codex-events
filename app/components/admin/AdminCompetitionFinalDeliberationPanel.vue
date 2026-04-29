@@ -5,9 +5,9 @@ import type { SortableEvent } from 'sortablejs'
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 
 import type {
-  FinalDeliberationEntry,
   HackathonRecord
-} from '~/utils/admin-workspace'
+} from '~/domains/hackathons/records'
+import type { FinalDeliberationEntry } from '~/domains/outcomes/admin-outcomes'
 
 import { moveListItemByIndex } from '~/utils/reorder-list'
 

@@ -6,30 +6,34 @@ import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 
 import type { ApiDataResponse } from '~/lib/api'
 import type {
-  EvaluationCriterion,
-  HackathonFormState,
   HackathonRecord,
-  PrizeDefinition,
   TermsDocument
-} from '~/utils/admin-workspace'
-import type { HackathonProgramSettingsMode } from '~/utils/hackathon-program-settings'
+} from '~/domains/hackathons/records'
+import type {
+  HackathonFormState
+} from '~/domains/hackathons/admin-hackathon'
+import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
+import type { PrizeDefinition } from '~/domains/outcomes/prizes'
+import type { HackathonProgramSettingsMode } from '~/domains/hackathons/program-settings'
 
 import { normalizeApiError } from '~/lib/api'
 import { moveListItemByIndex } from '~/utils/reorder-list'
 
 import {
   fromDateTimeLocalValue,
-  getCriteriaConfigurationValidationIssues,
   getTermsVersionPublishErrorMessage,
-  isHackathonRoleJudgingEnabled,
-  isHackathonRoleStaffEnabled,
   toHackathonAgendaPayload,
   toHackathonTracksPayload
-} from '~/utils/admin-workspace'
-import { getHackathonProgramSettingsCopy } from '~/utils/hackathon-program-settings'
+} from '~/domains/hackathons/admin-hackathon'
+import {
+  isHackathonRoleJudgingEnabled,
+  isHackathonRoleStaffEnabled
+} from '~/domains/hackathons/access'
+import { getCriteriaConfigurationValidationIssues } from '~/domains/judging/criteria-config'
+import { getHackathonProgramSettingsCopy } from '~/domains/hackathons/program-settings'
 
 const props = withDefaults(defineProps<{
-  slug: string
+  hackathonId: string
   showProgramSettings?: boolean
   programSettingsMode?: HackathonProgramSettingsMode
   showTermsManagement?: boolean
@@ -59,49 +63,21 @@ type SortableInstance = Sortable
 type SortableConstructor = typeof Sortable
 
 const toast = useToast()
-const slug = computed(() => props.slug.trim())
+const hackathonId = computed(() => props.hackathonId.trim())
 
-if (!slug.value) {
+if (!hackathonId.value) {
   throw createError({
     statusCode: 404,
     statusMessage: 'Hackathon not found.'
   })
 }
 
-const {
-  data: hackathonResponse,
-  error: hackathonError
-} = await useFetch<ApiDataResponse<HackathonRecord>>(() => `/api/hackathons/slug/${slug.value}`, {
-  key: () => `admin-hackathon-workspace:${slug.value}`
-})
-
-if (hackathonError.value) {
-  throw createError({
-    statusCode: hackathonError.value.statusCode ?? hackathonError.value.status ?? 500,
-    statusMessage: hackathonError.value.statusMessage ?? 'Unable to load the requested hackathon.'
-  })
-}
-
-if (!hackathonResponse.value?.data) {
-  throw createError({
-    statusCode: 404,
-    statusMessage: 'Hackathon not found.'
-  })
-}
-
-const hackathonId = computed(() => hackathonResponse.value!.data.id)
 const showSettingsOverview = computed(() => props.showProgramSettings && props.programSettingsMode === 'settings')
-const workspace = useAdminHackathonWorkspace(hackathonId, {
+const workspace = useAdminHackathonSettingsWorkspace(hackathonId, {
   loadCriteria: computed(() => props.showCriteriaConfiguration),
   loadPrizes: computed(() => props.showPrizeConfiguration),
-  loadApplicationTermsVersions: computed(() => props.showTermsManagement),
-  loadWinnerTermsVersions: computed(() => props.showTermsManagement),
-  loadRoleAssignments: showSettingsOverview,
-  loadApplications: false,
-  loadTeams: false,
-  loadNoSubmissionTeams: false,
-  loadAssignments: false,
-  loadLeaderboard: false
+  loadTerms: computed(() => props.showTermsManagement),
+  loadRoleAssignments: showSettingsOverview
 })
 
 const isSavingConfig = ref(false)

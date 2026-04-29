@@ -7,16 +7,16 @@ import { useForm } from 'vee-validate'
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 import HackathonConfigProgramIdentitySection from '~/components/admin/HackathonConfigProgramIdentitySection.vue'
 
-import type { HackathonFormState } from '~/utils/admin-workspace'
-import type { HackathonProgramSettingsMode } from '~/utils/hackathon-program-settings'
+import type { HackathonFormState } from '~/domains/hackathons/admin-hackathon'
+import type { HackathonProgramSettingsMode } from '~/domains/hackathons/program-settings'
 
 import {
   createHackathonSlug,
-  getNextAgendaItemDefaultTimes
-} from '~/utils/admin-workspace'
-import { hackathonConfigFormSchema } from '~/utils/form-schemas'
+  getNextAgendaItemDefaultTimes,
+  hackathonConfigFormSchema
+} from '~/domains/hackathons/admin-hackathon'
 import { cloneFormValues } from '~/utils/form-values'
-import { getHackathonConfigFormModeView } from '~/utils/hackathon-program-settings'
+import { getHackathonConfigFormModeView } from '~/domains/hackathons/program-settings'
 import { moveListItemByIndex } from '~/utils/reorder-list'
 
 const form = defineModel<HackathonFormState>('form', {

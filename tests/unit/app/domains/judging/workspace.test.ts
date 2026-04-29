@@ -1,10 +1,8 @@
 import { describe, expect, test, vi } from 'vitest'
 
-import type {
-  EvaluationCriterion,
-  HackathonRecord,
-  SessionActor
-} from '../../../../../app/utils/admin-workspace'
+import type { SessionActor } from '../../../../../app/domains/accounts/session-actor'
+import type { HackathonRecord } from '../../../../../app/domains/hackathons/records'
+import type { EvaluationCriterion } from '../../../../../app/domains/judging/criteria-config'
 import type {
   JudgeAssignmentApiDetail,
   BlindJudgeAssignmentDetail,
@@ -93,6 +91,7 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
     kind: 'platform_user',
     isAuthenticated: true,
     hasPlatformAccount: true,
+    hasAcceptedCurrentPlatformDocuments: true,
     sessionUser: {
       sub: 'auth0|judge',
       email: 'judge@example.com',

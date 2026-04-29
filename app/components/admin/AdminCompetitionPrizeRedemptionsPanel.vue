@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { HackathonState, WinnerEntry } from '~/utils/admin-workspace'
+import type { HackathonState } from '~/domains/hackathons/states'
+import type { WinnerEntry } from '~/domains/outcomes/published-outcomes'
 import type {
   PrizeRedemptionBlindRankingEntry,
   PrizeRedemptionFinalRankingEntry,

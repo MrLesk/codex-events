@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { buildAuthLoginHref } from '#shared/auth-navigation'
-import { buildProfileIconHref } from '~/utils/profile-icon'
+import { buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
+import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
 
 const route = useRoute()
 const user = useUser()

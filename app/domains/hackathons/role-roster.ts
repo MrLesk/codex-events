@@ -1,11 +1,11 @@
 import type {
   HackathonRoleAssignment,
   HackathonRoleUserSummary
-} from '~/utils/admin-workspace'
+} from '~/domains/hackathons/access'
 import {
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled
-} from '~/utils/admin-workspace'
+} from '~/domains/hackathons/access'
 
 export type HackathonRosterRole = 'judge' | 'staff' | 'admin'
 

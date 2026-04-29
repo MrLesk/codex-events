@@ -20,7 +20,10 @@ import type {
   ParticipantApiDataResponse,
   ParticipantApplicationRecord
 } from '~/domains/applications/participant-application'
-import type { PublishedProjectEntry, WinnerEntry } from '~/utils/admin-workspace'
+import type {
+  PublishedProjectEntry,
+  WinnerEntry
+} from '~/domains/outcomes/published-outcomes'
 import type { Ref } from 'vue'
 
 import {
@@ -49,7 +52,7 @@ import {
   hasHackathonAdminAccess,
   hasHackathonJudgingAccess,
   hasHackathonParticipantVisibilityAccess
-} from '~/utils/admin-workspace'
+} from '~/domains/hackathons/access'
 import {
   canAccessAccountHackathonWorkspace,
   getAccountHackathonWorkspaceBackLink,
@@ -57,8 +60,8 @@ import {
   getAccountHackathonTabLabel,
   resolveAccountHackathonScopedId,
   type AccountHackathonWorkspaceTab
-} from '~/utils/account-hackathon-tabs'
-import { getAccountHackathonSeoContent } from '~/utils/account-hackathon-seo'
+} from '~/domains/hackathons/account-workspace-tabs'
+import { getAccountHackathonSeoContent } from '~/domains/hackathons/account-workspace-seo'
 import {
   createEmptyPublishedHackathonRosterLoadState,
   loadPublishedHackathonRoster,
@@ -78,9 +81,9 @@ import {
 import {
   hasHackathonEnteredSubmissionPhase
 } from '~/domains/submissions/team-submission'
-import { normalizeJudgeAssignmentIdQueryValue } from '~/utils/judging-query'
-import { buildAccountHackathonTeamsTabHref, normalizeTeamSlugQueryValue } from '~/utils/team-query'
-import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
+import { normalizeJudgeAssignmentIdQueryValue } from '~/domains/judging/query'
+import { buildAccountHackathonTeamsTabHref, normalizeTeamSlugQueryValue } from '~/domains/teams/query'
+import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 
 definePageMeta({
   middleware: ['require-platform-account']
@@ -1079,7 +1082,7 @@ useSeoMeta({
 
         <LazyAccountHackathonAdminSettingsPanel
           v-if="tabAccess.showPrizeConfiguration"
-          :slug="slug"
+          :hackathon-id="workspaceHackathonId"
           :show-program-settings="false"
           :show-terms-management="false"
           :show-criteria-configuration="false"
@@ -1106,7 +1109,7 @@ useSeoMeta({
 
         <LazyAccountHackathonAdminSettingsPanel
           v-if="tabAccess.showAgendaConfigurationInDetails"
-          :slug="slug"
+          :hackathon-id="workspaceHackathonId"
           program-settings-mode="details"
           :show-terms-management="false"
           :show-criteria-configuration="false"
@@ -1205,7 +1208,7 @@ useSeoMeta({
       >
         <LazyAccountHackathonAdminOperationsPanel
           v-if="canAdmin"
-          :slug="slug"
+          :hackathon-id="workspaceHackathonId"
           section="participants"
         />
 
@@ -1237,7 +1240,7 @@ useSeoMeta({
         class="space-y-8"
       >
         <LazyAccountHackathonAdminOperationsPanel
-          :slug="slug"
+          :hackathon-id="workspaceHackathonId"
           section="submissions"
         />
       </section>
@@ -1250,7 +1253,7 @@ useSeoMeta({
         class="space-y-8"
       >
         <LazyAccountHackathonAdminOperationsPanel
-          :slug="slug"
+          :hackathon-id="workspaceHackathonId"
           section="operations"
         />
       </section>
@@ -1262,7 +1265,7 @@ useSeoMeta({
         aria-labelledby="account-tab-settings"
       >
         <LazyAccountHackathonAdminSettingsPanel
-          :slug="slug"
+          :hackathon-id="workspaceHackathonId"
           program-settings-mode="settings"
           :show-terms-management="true"
           :show-criteria-configuration="true"

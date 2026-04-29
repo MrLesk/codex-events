@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { LogOutIcon } from 'lucide-vue-next'
-import { authLogoutHref } from '#shared/auth-navigation'
+import { authLogoutHref } from '#shared/domains/accounts/auth-navigation'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
 import {
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled
-} from '~/utils/admin-workspace'
+} from '~/domains/hackathons/access'
 
 const props = defineProps<{
   name?: string | null

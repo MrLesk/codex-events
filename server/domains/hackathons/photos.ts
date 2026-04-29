@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { and, asc, eq, getTableColumns } from 'drizzle-orm'
 import { z } from 'zod'
 
-import type { HackathonPhotoImageVariant, HackathonPhotoRecord } from '#shared/hackathon-photos'
+import type { HackathonPhotoImageVariant, HackathonPhotoRecord } from '#shared/domains/hackathons/photos'
 
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveHackathonAuthorization } from '#server/auth/authorization'

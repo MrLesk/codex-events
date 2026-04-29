@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import AccountSettingsProfileForm from '~/components/account/AccountSettingsProfileForm.vue'
-import { authLogoutHref } from '#shared/auth-navigation'
+import { authLogoutHref } from '#shared/domains/accounts/auth-navigation'
 import { normalizeApiError } from '~/lib/api'
-import { buildProfileIconHref } from '~/utils/profile-icon'
+import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
 
 definePageMeta({
   middleware: ['require-auth']

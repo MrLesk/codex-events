@@ -2,8 +2,8 @@
 import type { PublicApiListResponse, PublicHackathon } from '~/domains/hackathons/presentation'
 
 import HackathonCard from '~/components/public/hackathons/HackathonCard.vue'
-import { getPublicHomepageHackathonView, type PublicHomepageTab } from '~/utils/public-homepage'
-import { normalizeTabQueryValue } from '~/utils/tab-query'
+import { getPublicHomepageHackathonView, type PublicHomepageTab } from '~/domains/hackathons/public-homepage'
+import { normalizeTabQueryValue } from '~/lib/query-values'
 
 const publicHackathonsPageSize = 4
 const route = useRoute()

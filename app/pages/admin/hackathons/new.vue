@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import type { ApiDataResponse } from '~/lib/api'
-import type { HackathonFormState, HackathonRecord } from '~/utils/admin-workspace'
+import type {
+  HackathonFormState
+} from '~/domains/hackathons/admin-hackathon'
+import type {
+  HackathonRecord
+} from '~/domains/hackathons/records'
 
 import { normalizeApiError } from '~/lib/api'
 import {
   fromDateTimeLocalValue,
   toHackathonAgendaPayload,
   toHackathonTracksPayload
-} from '~/utils/admin-workspace'
+} from '~/domains/hackathons/admin-hackathon'
 
 definePageMeta({
   middleware: ['require-platform-admin']

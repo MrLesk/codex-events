@@ -9,8 +9,11 @@ import {
   formatHackathonLocation,
   getHackathonEarliestStartAt
 } from '~/domains/hackathons/presentation'
-import type { HackathonPhotoRecord } from '#shared/hackathon-photos'
-import type { PublishedProjectEntry, WinnerEntry } from '~/utils/admin-workspace'
+import type { HackathonPhotoRecord } from '#shared/domains/hackathons/photos'
+import type {
+  PublishedProjectEntry,
+  WinnerEntry
+} from '~/domains/outcomes/published-outcomes'
 
 import HackathonGalleryPanel from '~/components/hackathons/HackathonGalleryPanel.vue'
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
@@ -22,7 +25,7 @@ import HackathonTracksPanel from '~/components/public/hackathons/HackathonTracks
 import HackathonTimeline from '~/components/public/hackathons/HackathonTimeline.vue'
 import HackathonWinnersShowcase from '~/components/public/hackathons/HackathonWinnersShowcase.vue'
 import { resolvePublicHackathonPrimaryAction } from '~/domains/applications/participant-application'
-import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
+import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 
 definePageMeta({
   layout: 'public'

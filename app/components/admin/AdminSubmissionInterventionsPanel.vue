@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type {
-  AdminOperationalTeam,
-  HackathonState
-} from '~/utils/admin-workspace'
+  AdminOperationalTeam
+} from '~/domains/submissions/admin-operations'
+import type { HackathonState } from '~/domains/hackathons/states'
 
-import { getAdminSubmissionInterventionPolicy } from '~/utils/admin-workspace'
+import { getAdminSubmissionInterventionPolicy } from '~/domains/submissions/admin-operations'
 
 const props = defineProps<{
   hackathonState: HackathonState

@@ -1,17 +1,18 @@
 <script setup lang="ts">
 import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
+import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
+import type { HackathonRoleAssignment } from '~/domains/hackathons/access'
 import type {
-  AdminApplicationRecord,
-  AdminOperationalTeam,
-  AdminTeamDetailRecord,
-  AdminSubmissionDashboardFilter,
   FinalDeliberationView,
-  HackathonRecord,
-  HackathonRoleAssignment,
-  ShortlistEntry,
-  SubmissionRecord,
-  WinnerEntry
-} from '~/utils/admin-workspace'
+  ShortlistEntry
+} from '~/domains/outcomes/admin-outcomes'
+import type { WinnerEntry } from '~/domains/outcomes/published-outcomes'
+import type {
+  AdminSubmissionDashboardFilter,
+  AdminOperationalTeam
+} from '~/domains/submissions/admin-operations'
+import type { SubmissionRecord } from '~/domains/submissions/admin-submission-record'
+import type { AdminTeamDetailRecord } from '~/domains/teams/admin-team-record'
 import type {
   PrizeRedemptionAdminView,
   PrizeRedemptionBlindRankingEntry,
@@ -25,19 +26,21 @@ import {
 } from '#components'
 import {
   buildAdminOperationalTeams,
-  buildPitchReviewCoverageEntries,
   countActiveAdminOperationalTeams,
   filterActiveAdminOperationalTeams,
   filterAdminOperationalTeams,
-  getCurrentLifecycleControl,
   getAdminSubmissionDashboardMetrics,
-  getHackathonOperationsPhase,
-  formatHackathonState,
-  getHackathonStateColor,
-  shouldShowApprovedParticipantAttendanceSummary,
   sortAdminOperationalTeamsForSubmissionDashboard
-} from '~/utils/admin-workspace'
-import { formatTimestamp } from '~/utils/date-formatting'
+} from '~/domains/submissions/admin-operations'
+import {
+  formatHackathonState,
+  getHackathonOperationsPhase,
+  getHackathonStateColor
+} from '~/domains/hackathons/states'
+import { getCurrentLifecycleControl } from '~/domains/hackathons/lifecycle-controls'
+import { shouldShowApprovedParticipantAttendanceSummary } from '~/domains/applications/admin-application-record'
+import { buildPitchReviewCoverageEntries } from '~/domains/judging/admin-oversight'
+import { formatTimestamp } from '~/lib/date-formatting'
 
 type AccountHackathonAdminOperationsSection = 'participants' | 'submissions' | 'operations'
 type LifecycleMetricCard = {
@@ -58,57 +61,26 @@ type LifecycleSummaryItem = {
 }
 
 const props = defineProps<{
-  slug: string
+  hackathonId: string
   section: AccountHackathonAdminOperationsSection
 }>()
 
 const toast = useToast()
-const slug = computed(() => props.slug.trim())
+const hackathonId = computed(() => props.hackathonId.trim())
 const section = computed(() => props.section)
 
-if (!slug.value) {
+if (!hackathonId.value) {
   throw createError({
     statusCode: 404,
     statusMessage: 'Hackathon not found.'
   })
 }
 
-const {
-  data: hackathonResponse,
-  error: hackathonError
-} = await useFetch<ApiDataResponse<HackathonRecord>>(() => `/api/hackathons/slug/${slug.value}`, {
-  key: () => `admin-hackathon-operations:${slug.value}`
-})
-
-if (hackathonError.value) {
-  throw createError({
-    statusCode: hackathonError.value.statusCode ?? hackathonError.value.status ?? 500,
-    statusMessage: hackathonError.value.statusMessage ?? 'Unable to load the requested hackathon.'
-  })
-}
-
-if (!hackathonResponse.value?.data) {
-  throw createError({
-    statusCode: 404,
-    statusMessage: 'Hackathon not found.'
-  })
-}
-
-const hackathonId = computed(() => hackathonResponse.value!.data.id)
 const showParticipantsSection = computed(() => section.value === 'participants')
 const showSubmissionsSection = computed(() => section.value === 'submissions')
 const showLifecycleSection = computed(() => section.value === 'operations')
-const workspace = useAdminHackathonWorkspace(hackathonId, {
-  loadCriteria: false,
-  loadPrizes: showLifecycleSection,
-  loadApplicationTermsVersions: false,
-  loadWinnerTermsVersions: false,
-  loadRoleAssignments: showLifecycleSection,
-  loadApplications: false,
-  loadTeams: showLifecycleSection,
-  loadNoSubmissionTeams: false,
-  loadAssignments: showLifecycleSection,
-  loadLeaderboard: showLifecycleSection
+const workspace = useAdminHackathonOperationsWorkspace(hackathonId, {
+  loadLifecycleData: showLifecycleSection
 })
 const apiFetch = import.meta.server ? useRequestFetch() : $fetch
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'

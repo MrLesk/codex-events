@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import type { HackathonPhotoRecord } from '#shared/hackathon-photos'
-import type { HackathonGalleryUploadItem } from '~/utils/hackathon-gallery'
+import type { HackathonPhotoRecord } from '#shared/domains/hackathons/photos'
+import type { HackathonGalleryUploadItem } from '~/domains/hackathons/gallery'
 
 import 'photoswipe/style.css'
 
 import { Switch as UiSwitch } from '~/components/ui/switch'
-import { formatTimestamp } from '~/utils/date-formatting'
+import { formatTimestamp } from '~/lib/date-formatting'
 
 type PhotoSwipeLightboxInstance = {
   init: () => void

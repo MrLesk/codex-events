@@ -1,17 +1,15 @@
 import type { ApiListResponse } from '~/lib/api'
+import type { SessionActor } from '~/domains/accounts/session-actor'
 import type {
-  EvaluationCriterion,
-  HackathonState,
-  HackathonRecord,
-  SessionActor
-} from '~/utils/admin-workspace'
+  HackathonRecord
+} from '~/domains/hackathons/records'
+import type { HackathonState } from '~/domains/hackathons/states'
+import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
 
 import { normalizeApiError } from '~/lib/api'
-import {
-  formatHackathonState,
-  isHackathonRoleJudgingEnabled
-} from '~/utils/admin-workspace'
-import { formatTimestamp } from '~/utils/date-formatting'
+import { isHackathonRoleJudgingEnabled } from '~/domains/hackathons/access'
+import { formatHackathonState } from '~/domains/hackathons/states'
+import { formatTimestamp } from '~/lib/date-formatting'
 
 export type JudgeAssignmentStatus = 'assigned' | 'judge_started' | 'judge_completed' | 'skipped'
 export type JudgeIneligibilityStatus = 'eligible' | 'ineligible'

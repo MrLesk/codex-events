@@ -2,20 +2,20 @@
 import type {
   AdminOperationalTeam,
   AdminSubmissionDashboardFilter,
-  AdminSubmissionDashboardMetrics,
-  HackathonState
-} from '~/utils/admin-workspace'
+  AdminSubmissionDashboardMetrics
+} from '~/domains/submissions/admin-operations'
+import type { HackathonState } from '~/domains/hackathons/states'
 
-import { formatTimestamp } from '~/utils/date-formatting'
+import { formatTimestamp } from '~/lib/date-formatting'
 import {
-  formatAdminOperationalTeamProjectLabel,
   formatAdminSubmissionRowToggleLabel,
   getAdminSubmissionInterventionPolicy,
   formatSubmissionStatus,
   getSubmissionStatusColor,
-  isHackathonStateReached,
   listActiveAdminOperationalTeamMembers
-} from '~/utils/admin-workspace'
+} from '~/domains/submissions/admin-operations'
+import { formatAdminOperationalTeamProjectLabel } from '~/domains/submissions/project-labels'
+import { isHackathonStateReached } from '~/domains/hackathons/states'
 
 const search = defineModel<string>('search', {
   required: true

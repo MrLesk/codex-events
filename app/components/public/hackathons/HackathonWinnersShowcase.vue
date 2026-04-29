@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WinnerEntry } from '~/utils/admin-workspace'
+import type { WinnerEntry } from '~/domains/outcomes/published-outcomes'
 
 import {
   formatPrizeRank,

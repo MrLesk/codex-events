@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PitchReviewCoverageEntry } from '~/utils/admin-workspace'
+import type { PitchReviewCoverageEntry } from '~/domains/judging/admin-oversight'
 
 const props = defineProps<{
   entries: PitchReviewCoverageEntry[]

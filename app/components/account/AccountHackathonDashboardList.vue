@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { PublicHackathonState } from '~/domains/hackathons/presentation'
-import { collapseMarkdownToPlainText } from '~/utils/hackathon-description'
-import type { HackathonState } from '~/utils/admin-workspace'
+import type { HackathonState } from '~/domains/hackathons/states'
+import { collapseMarkdownToPlainText } from '~/domains/hackathons/description'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 

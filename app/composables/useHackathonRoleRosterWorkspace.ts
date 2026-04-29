@@ -1,5 +1,5 @@
 import type { ApiListResponse } from '~/lib/api'
-import type { HackathonRoleAssignment } from '~/utils/admin-workspace'
+import type { HackathonRoleAssignment } from '~/domains/hackathons/access'
 
 import { buildApiCacheKey, getApiSubjectKey } from '~/lib/api'
 

@@ -3,7 +3,7 @@ import type { JudgeAssignmentDetail } from '~/domains/judging/workspace'
 
 import JudgeAssignmentStatusBadge from './JudgeAssignmentStatusBadge.vue'
 
-import { buildAccountHackathonJudgingTabHref } from '~/utils/judging-query'
+import { buildAccountHackathonJudgingTabHref } from '~/domains/judging/query'
 import {
   formatJudgeIneligibilityStatus,
   formatJudgeReviewStage,

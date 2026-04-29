@@ -1,6 +1,6 @@
 import type { PublicHackathon } from '~/domains/hackathons/presentation'
 
-import { normalizeParticipantApiError } from '~/domains/applications/participant-application'
+import { normalizeApiError } from '~/lib/api'
 
 export interface TeamSubmissionRecord {
   id: string
@@ -49,7 +49,7 @@ export interface SubmissionTrackOption {
 }
 
 export function normalizeTeamSubmissionApiError(error: unknown) {
-  return normalizeParticipantApiError(error)
+  return normalizeApiError(error)
 }
 
 export function getTeamSubmissionWorkspaceStatus(submission: TeamSubmissionRecord | null | undefined): TeamSubmissionWorkspaceStatus {

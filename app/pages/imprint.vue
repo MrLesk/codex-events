@@ -3,7 +3,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
 import { cloneFormValues } from '~/utils/form-values'
-import { imprintContactFormSchema } from '~/utils/form-schemas'
+import { imprintContactFormSchema } from '~/domains/platform/legal-contact'
 import {
   platformImprintContactApiPath,
   platformImprintMarkdown,

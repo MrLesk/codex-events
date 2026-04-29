@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { ApiListResponse } from '~/lib/api'
-import type { HackathonRoleAssignment, HackathonRoleUserSummary } from '~/utils/admin-workspace'
+import type {
+  HackathonRoleAssignment,
+  HackathonRoleUserSummary
+} from '~/domains/hackathons/access'
 import type {
   HackathonRoleRosterBadge,
   HackathonRoleRosterRow,

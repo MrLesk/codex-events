@@ -2,15 +2,17 @@
 import HackathonConfigForm from '~/components/admin/HackathonConfigForm.vue'
 
 import type {
-  HackathonFormState,
+  HackathonFormState
+} from '~/domains/hackathons/admin-hackathon'
+import type {
   HackathonRecord
-} from '~/utils/admin-workspace'
-import type { HackathonProgramSettingsMode } from '~/utils/hackathon-program-settings'
+} from '~/domains/hackathons/records'
+import type { HackathonProgramSettingsMode } from '~/domains/hackathons/program-settings'
 
 import {
   createEmptyHackathonFormState,
   createHackathonFormState
-} from '~/utils/admin-workspace'
+} from '~/domains/hackathons/admin-hackathon'
 import { cloneFormValues } from '~/utils/form-values'
 
 const emit = defineEmits<{

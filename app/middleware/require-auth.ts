@@ -1,4 +1,4 @@
-import { ensureAuthenticatedActor } from '~/utils/navigation-guards'
+import { ensureAuthenticatedActor } from '~/domains/accounts/navigation-guards'
 
 export default defineNuxtRouteMiddleware(async (to) => {
   const resolvedSession = await ensureAuthenticatedActor(to)

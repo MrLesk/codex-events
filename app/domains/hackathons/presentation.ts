@@ -1,15 +1,6 @@
-export type PublicHackathonState
-  = 'draft'
-    | 'registration_open'
-    | 'submission_open'
-    | 'judging_preparation'
-    | 'blind_review'
-    | 'shortlist'
-    | 'pitch'
-    | 'pitch_review'
-    | 'final_deliberation'
-    | 'winners_announced'
-    | 'completed'
+import type { HackathonState } from '~/domains/hackathons/states'
+
+export type PublicHackathonState = HackathonState
 
 export interface PublicHackathonTermsReference {
   documentType: 'application_terms' | 'winner_terms'

@@ -1,4 +1,4 @@
-import { ensurePlatformAccountActor } from '~/utils/navigation-guards'
+import { ensurePlatformAccountActor } from '~/domains/accounts/navigation-guards'
 
 export default defineNuxtRouteMiddleware(async (to) => {
   const resolvedSession = await ensurePlatformAccountActor(to)

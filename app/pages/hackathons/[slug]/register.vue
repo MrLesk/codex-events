@@ -24,11 +24,11 @@ import {
   getParticipantApplicationSubmissionPolicy,
   listHackathonProfileFields,
   normalizeParticipantApiError,
-  normalizeParticipantProfileUrl,
   normalizeParticipantTeamMemberHintsForSubmission,
   resolveParticipantApplicationSubmittedTransition,
   resolveParticipantRegistrationEntry
 } from '~/domains/applications/participant-application'
+import { normalizeAccountProfileUrl } from '~/domains/accounts/profile'
 
 definePageMeta({
   layout: 'hackathon-detail',
@@ -341,9 +341,9 @@ async function submitParticipantApplication() {
       body: {
         firstName: profileForm.firstName,
         familyName: profileForm.familyName,
-        xProfileUrl: normalizeParticipantProfileUrl(profileForm.xProfileUrl),
-        linkedinProfileUrl: normalizeParticipantProfileUrl(profileForm.linkedinProfileUrl),
-        githubProfileUrl: normalizeParticipantProfileUrl(profileForm.githubProfileUrl),
+        xProfileUrl: normalizeAccountProfileUrl(profileForm.xProfileUrl),
+        linkedinProfileUrl: normalizeAccountProfileUrl(profileForm.linkedinProfileUrl),
+        githubProfileUrl: normalizeAccountProfileUrl(profileForm.githubProfileUrl),
         chatgptEmail: profileForm.chatgptEmail,
         openaiOrgId: profileForm.openaiOrgId,
         lumaEmail: profileForm.lumaEmail

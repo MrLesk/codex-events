@@ -8,8 +8,8 @@ export default defineConfig({
       '~': fileURLToPath(new URL('./app', import.meta.url)),
       '#server': fileURLToPath(new URL('./server', import.meta.url)),
       '#shared': fileURLToPath(new URL('./shared', import.meta.url)),
-      '#proof-of-execution-links': fileURLToPath(new URL('./shared/proof-of-execution-links.ts', import.meta.url)),
-      '#platform-legal': fileURLToPath(new URL('./shared/platform-legal.ts', import.meta.url))
+      '#proof-of-execution-links': fileURLToPath(new URL('./shared/domains/applications/proof-of-execution-links.ts', import.meta.url)),
+      '#platform-legal': fileURLToPath(new URL('./shared/domains/platform/legal.ts', import.meta.url))
     }
   },
   test: {

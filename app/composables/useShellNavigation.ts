@@ -1,15 +1,15 @@
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
 import type { PublicApiDataResponse } from '~/domains/hackathons/presentation'
 
-import { accountDashboardHref, buildAuthLoginHref } from '#shared/auth-navigation'
+import { accountDashboardHref, buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
 import {
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled
-} from '~/utils/admin-workspace'
+} from '~/domains/hackathons/access'
 import {
   isAccountHackathonDetailPath,
   resolveShellAccountHackathonNavigationMode
-} from '~/utils/shell-navigation'
+} from '~/domains/accounts/shell-navigation'
 
 interface ShellPrizeRedemptionsResponse {
   data: Array<{

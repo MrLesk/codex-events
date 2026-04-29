@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import type {
   AdminJudgeAssignmentOversightGroup,
-  JudgeAssignmentSummary,
-  HackathonState
-} from '~/utils/admin-workspace'
+  JudgeAssignmentSummary
+} from '~/domains/judging/admin-oversight'
+import type { HackathonState } from '~/domains/hackathons/states'
 
 import {
   buildAdminJudgeAssignmentOversightGroups,
   formatAdminJudgeAssignmentStatus,
   getAdminJudgeAssignmentInterventionPolicy,
   getJudgeAssignmentStatusColor
-} from '~/utils/admin-workspace'
-import { formatTimestamp } from '~/utils/date-formatting'
+} from '~/domains/judging/admin-oversight'
+import { formatTimestamp } from '~/lib/date-formatting'
 
 type JudgeChoice = {
   value: string

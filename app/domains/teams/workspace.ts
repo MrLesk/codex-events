@@ -1,20 +1,22 @@
 import type { PublicHackathon } from '~/domains/hackathons/presentation'
 import type {
-  ParticipantActor,
-  ParticipantApiDataResponse,
-  ParticipantApiListResponse,
-  ParticipantSessionUser
-} from '~/domains/applications/participant-application'
+  SessionActor,
+  SessionUserIdentity
+} from '~/domains/accounts/session-actor'
+import type {
+  ApiDataResponse,
+  ApiListResponse
+} from '~/lib/api'
 
 import {
-  buildAnonymousParticipantActor,
-  buildAuthenticatedIdentityParticipantActor,
-  normalizeParticipantApiError
-} from '~/domains/applications/participant-application'
+  buildAnonymousSessionActor,
+  buildAuthenticatedIdentitySessionActor
+} from '~/domains/accounts/session-actor'
+import { normalizeApiError } from '~/lib/api'
 
-export type TeamWorkspaceActor = ParticipantActor
-export type TeamWorkspaceApiDataResponse<T> = ParticipantApiDataResponse<T>
-export type TeamWorkspaceApiListResponse<T> = ParticipantApiListResponse<T>
+export type TeamWorkspaceActor = SessionActor
+export type TeamWorkspaceApiDataResponse<T> = ApiDataResponse<T>
+export type TeamWorkspaceApiListResponse<T> = ApiListResponse<T>
 
 export interface TeamUserSummary {
   id: string
@@ -135,20 +137,20 @@ export function getParticipantTeamDirectoryStatusBadge(
 
 export function createTeamWorkspaceFallbackActor(user: ReturnType<typeof useUser>['value']): TeamWorkspaceActor {
   if (!user?.sub) {
-    return buildAnonymousParticipantActor()
+    return buildAnonymousSessionActor()
   }
 
-  return buildAuthenticatedIdentityParticipantActor({
+  return buildAuthenticatedIdentitySessionActor({
     sub: user.sub,
     email: user.email ?? null,
     name: user.name ?? null,
     nickname: user.nickname ?? null,
     picture: user.picture ?? null
-  } satisfies ParticipantSessionUser)
+  } satisfies SessionUserIdentity)
 }
 
 export function normalizeTeamWorkspaceApiError(error: unknown) {
-  return normalizeParticipantApiError(error)
+  return normalizeApiError(error)
 }
 
 export function getOwnTeamMembership(team: TeamDetailRecord | null | undefined, userId: string | null | undefined) {

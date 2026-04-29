@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PublishedProjectEntry } from '~/utils/admin-workspace'
+import type { PublishedProjectEntry } from '~/domains/outcomes/published-outcomes'
 
 import { getPublishedHackathonRosterLinks } from '~/domains/hackathons/published-roster'
 

@@ -1,6 +1,6 @@
 import Fuse from 'fuse.js'
 
-import type { AdminApplicationRecord } from '~/utils/admin-workspace'
+import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
 import type { ParticipantRegistrationDetails } from './participant-application'
 
 import { parseParticipantRegistrationDetailsJson } from './participant-application'

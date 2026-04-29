@@ -1,4 +1,4 @@
-import { normalizeParticipantApiError } from '~/domains/applications/participant-application'
+import { normalizeApiError } from '~/lib/api'
 
 export type PublishedHackathonRosterRole = 'judge' | 'staff'
 
@@ -54,7 +54,7 @@ export async function loadPublishedHackathonRoster(
   } catch (error) {
     return {
       members: [],
-      errorMessage: normalizeParticipantApiError(error).message
+      errorMessage: normalizeApiError(error).message
     }
   }
 }

@@ -8,7 +8,7 @@ import type {
 import {
   LazyTeamsParticipantTeamSubmissionPanel as LazyParticipantTeamSubmissionPanel
 } from '#components'
-import { formatTimestamp } from '~/utils/date-formatting'
+import { formatTimestamp } from '~/lib/date-formatting'
 import {
   getCreateTeamAvailability,
   getTeamFormationAvailability

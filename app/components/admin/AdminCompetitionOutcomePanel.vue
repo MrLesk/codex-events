@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type {
-  HackathonState,
-  WinnerEntry
-} from '~/utils/admin-workspace'
+  HackathonState
+} from '~/domains/hackathons/states'
+import type { WinnerEntry } from '~/domains/outcomes/published-outcomes'
 
 const props = defineProps<{
   hackathonState: HackathonState

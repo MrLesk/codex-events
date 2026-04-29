@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ApiListResponse } from '~/lib/api'
-import type { HackathonRoleUserSummary } from '~/utils/admin-workspace'
+import type { HackathonRoleUserSummary } from '~/domains/hackathons/access'
 
 import { buildApiCacheKey, getApiSubjectKey, normalizeApiError } from '~/lib/api'
 

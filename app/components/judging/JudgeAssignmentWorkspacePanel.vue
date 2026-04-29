@@ -8,7 +8,7 @@ import type {
 import BlindSubmissionPanel from '~/components/judging/BlindSubmissionPanel.vue'
 import JudgeReviewRubric from '~/components/judging/JudgeReviewRubric.vue'
 import PitchSubmissionPanel from '~/components/judging/PitchSubmissionPanel.vue'
-import { buildAccountHackathonJudgingTabHref } from '~/utils/judging-query'
+import { buildAccountHackathonJudgingTabHref } from '~/domains/judging/query'
 import {
   buildCompletionCriterionScoresPayload,
   buildSavedCriterionScoresPayload,

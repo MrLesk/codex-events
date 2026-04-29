@@ -1,5 +1,5 @@
-import { isHackathonRoleStaffEnabled } from '~/utils/admin-workspace'
-import { ensureAccountPageAccess } from '~/utils/navigation-guards'
+import { isHackathonRoleStaffEnabled } from '~/domains/hackathons/access'
+import { ensureAccountPageAccess } from '~/domains/accounts/navigation-guards'
 
 export default defineNuxtRouteMiddleware(async (to) => {
   const redirect = await ensureAccountPageAccess(

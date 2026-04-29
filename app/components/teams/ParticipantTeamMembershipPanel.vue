@@ -5,7 +5,7 @@ import type {
   TeamMemberRecord
 } from '~/domains/teams/workspace'
 
-import { formatTimestamp } from '~/utils/date-formatting'
+import { formatTimestamp } from '~/lib/date-formatting'
 import { formatTeamMemberRole } from '~/domains/teams/workspace'
 
 defineProps<{

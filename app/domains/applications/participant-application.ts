@@ -1,6 +1,21 @@
 import type { PublicHackathon, PublicHackathonState } from '~/domains/hackathons/presentation'
+import type {
+  ApiDataResponse,
+  ApiErrorShape,
+  ApiListResponse
+} from '~/lib/api'
+import type {
+  PlatformUserProfile,
+  SessionActor,
+  SessionUserIdentity
+} from '~/domains/accounts/session-actor'
 
-import { buildAccountRegisterHref, buildAuthLoginHref } from '#shared/auth-navigation'
+import { buildAccountRegisterHref, buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
+import { normalizeApiError } from '~/lib/api'
+import {
+  buildAnonymousSessionActor,
+  buildAuthenticatedIdentitySessionActor
+} from '~/domains/accounts/session-actor'
 
 export {
   isProofOfExecutionLinksValid,
@@ -8,68 +23,9 @@ export {
   parseProofOfExecutionLinks
 } from '#proof-of-execution-links'
 
-export interface ParticipantSessionUser {
-  sub: string
-  email?: string | null
-  name?: string | null
-  nickname?: string | null
-  picture?: string | null
-}
-
-export interface ParticipantPlatformUserProfile {
-  id: string
-  email: string
-  displayName: string
-  firstName: string
-  familyName: string
-  isPlatformAdmin: boolean
-  xProfileUrl?: string | null
-  linkedinProfileUrl?: string | null
-  githubProfileUrl?: string | null
-  chatgptEmail?: string | null
-  openaiOrgId?: string | null
-  lumaEmail?: string | null
-  lumaUsername?: string | null
-  profileIconUpdatedAt?: string | null
-}
-
-export type ParticipantActor
-  = | {
-    kind: 'anonymous'
-    isAuthenticated: false
-    hasPlatformAccount: false
-    hasAcceptedCurrentPlatformDocuments: false
-    sessionUser: null
-    platformUser: null
-    isPlatformAdmin: false
-    hackathonRoles: []
-  }
-  | {
-    kind: 'authenticated_identity'
-    isAuthenticated: true
-    hasPlatformAccount: false
-    hasAcceptedCurrentPlatformDocuments: false
-    sessionUser: ParticipantSessionUser
-    platformUser: null
-    isPlatformAdmin: false
-    hackathonRoles: []
-  }
-  | {
-    kind: 'platform_user'
-    isAuthenticated: true
-    hasPlatformAccount: true
-    hasAcceptedCurrentPlatformDocuments: boolean
-    sessionUser: ParticipantSessionUser
-    platformUser: ParticipantPlatformUserProfile
-    isPlatformAdmin: boolean
-    hackathonRoles: Array<{
-      hackathonId: string
-      role: 'hackathon_admin' | 'judge' | 'staff'
-      isInJudgePool: boolean
-      isStaff: boolean
-      createdAt: string
-    }>
-  }
+export type ParticipantSessionUser = SessionUserIdentity
+export type ParticipantPlatformUserProfile = PlatformUserProfile
+export type ParticipantActor = SessionActor
 
 export interface ParticipantApplicationTermsDocument {
   id: string
@@ -125,18 +81,8 @@ export interface ParticipantCurrentTermsResponse {
   winner_terms: ParticipantApplicationTermsDocument | null
 }
 
-export interface ParticipantApiDataResponse<T> {
-  data: T
-}
-
-export interface ParticipantApiListResponse<T> {
-  data: T[]
-  meta?: {
-    page?: number
-    pageSize?: number
-    total?: number
-  }
-}
+export type ParticipantApiDataResponse<T> = ApiDataResponse<T>
+export type ParticipantApiListResponse<T> = ApiListResponse<T>
 
 export interface ParticipantApplicationActionAvailability {
   isAllowed: boolean
@@ -226,99 +172,10 @@ export function listHackathonProfileFields(
   }))
 }
 
-export interface ParticipantApiErrorShape {
-  code: string
-  message: string
-  details?: Record<string, unknown>
-}
+export type ParticipantApiErrorShape = ApiErrorShape
 
-const urlSchemePattern = /^[a-zA-Z][a-zA-Z\d+\-.]*:/
-const socialProfileAllowedDomains = {
-  xProfileUrl: ['x.com', 'twitter.com'],
-  linkedinProfileUrl: ['linkedin.com'],
-  githubProfileUrl: ['github.com']
-} as const
-
-function isHostnameAllowed(hostname: string, allowedDomains: readonly string[]) {
-  const normalizedHostname = hostname.toLowerCase()
-
-  return allowedDomains.some(domain =>
-    normalizedHostname === domain || normalizedHostname.endsWith(`.${domain}`)
-  )
-}
-
-export function normalizeParticipantProfileUrl(value: string | null | undefined) {
-  const normalized = value?.trim() ?? ''
-
-  if (!normalized) {
-    return ''
-  }
-
-  if (urlSchemePattern.test(normalized) || normalized.startsWith('//')) {
-    return normalized
-  }
-
-  return `https://${normalized}`
-}
-
-export function isParticipantProfileUrlValid(value: string | null | undefined) {
-  const normalized = normalizeParticipantProfileUrl(value)
-
-  if (!normalized) {
-    return true
-  }
-
-  try {
-    const parsed = new URL(normalized)
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
-  } catch {
-    return false
-  }
-}
-
-export function isParticipantSocialProfileUrlValid(
-  key: keyof typeof socialProfileAllowedDomains,
-  value: string | null | undefined
-) {
-  const normalized = normalizeParticipantProfileUrl(value)
-
-  if (!normalized) {
-    return true
-  }
-
-  if (!isParticipantProfileUrlValid(normalized)) {
-    return false
-  }
-
-  const parsed = new URL(normalized)
-  return isHostnameAllowed(parsed.hostname, socialProfileAllowedDomains[key])
-}
-
-export function buildAnonymousParticipantActor(): ParticipantActor {
-  return {
-    kind: 'anonymous',
-    isAuthenticated: false,
-    hasPlatformAccount: false,
-    hasAcceptedCurrentPlatformDocuments: false,
-    sessionUser: null,
-    platformUser: null,
-    isPlatformAdmin: false,
-    hackathonRoles: []
-  }
-}
-
-export function buildAuthenticatedIdentityParticipantActor(sessionUser: ParticipantSessionUser): ParticipantActor {
-  return {
-    kind: 'authenticated_identity',
-    isAuthenticated: true,
-    hasPlatformAccount: false,
-    hasAcceptedCurrentPlatformDocuments: false,
-    sessionUser,
-    platformUser: null,
-    isPlatformAdmin: false,
-    hackathonRoles: []
-  }
-}
+export const buildAnonymousParticipantActor = buildAnonymousSessionActor
+export const buildAuthenticatedIdentityParticipantActor = buildAuthenticatedIdentitySessionActor
 
 export function listMissingRequiredProfileFields(
   hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>,
@@ -631,12 +488,6 @@ export function isParticipantApplicationSubmittedNotice(
   return firstNotice.trim().toLowerCase() === 'application_submitted'
 }
 
-const openAiOrgIdPattern = /^(org_|org-)[A-Za-z0-9_-]+$/
-
-export function isOpenAiOrgIdFormatValid(value: string) {
-  return openAiOrgIdPattern.test(value.trim())
-}
-
 export function createParticipantTeamMemberHintRows(maxTeamMembers: number): ParticipantRegistrationTeamMemberHint[] {
   return Array.from({ length: Math.max(0, maxTeamMembers - 1) }, () => ({
     fullName: '',
@@ -831,43 +682,5 @@ export function getParticipantApplicationSubmissionPolicy(options: {
 }
 
 export function normalizeParticipantApiError(error: unknown): ParticipantApiErrorShape {
-  if (typeof error === 'object' && error !== null) {
-    const maybeError = error as {
-      data?: {
-        error?: ParticipantApiErrorShape
-      }
-      response?: {
-        _data?: {
-          error?: ParticipantApiErrorShape
-        }
-      }
-      message?: string
-      statusMessage?: string
-    }
-
-    const apiError = maybeError.data?.error ?? maybeError.response?._data?.error
-
-    if (apiError?.code && apiError.message) {
-      return apiError
-    }
-
-    if (typeof maybeError.statusMessage === 'string' && maybeError.statusMessage.length > 0) {
-      return {
-        code: 'request_failed',
-        message: maybeError.statusMessage
-      }
-    }
-
-    if (typeof maybeError.message === 'string' && maybeError.message.length > 0) {
-      return {
-        code: 'request_failed',
-        message: maybeError.message
-      }
-    }
-  }
-
-  return {
-    code: 'request_failed',
-    message: 'The request failed unexpectedly.'
-  }
+  return normalizeApiError(error)
 }

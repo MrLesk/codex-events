@@ -14,7 +14,7 @@ import {
   buildAccountHackathonTeamsTabHref,
   buildAccountHackathonWorkspaceTabHref,
   isSharedTeamSelection
-} from '~/utils/team-query'
+} from '~/domains/teams/query'
 import {
   getCreateTeamAvailability,
   getJoinTeamAvailability,

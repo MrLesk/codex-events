@@ -6,9 +6,9 @@ import {
   countAdminOverviewHackathonsByTab,
   getAdminOverviewTabForHackathon,
   type AdminOverviewTab
-} from '~/utils/admin-overview'
-import { canCreateHackathon } from '~/utils/admin-workspace'
-import { normalizeTabQueryValue, resolveTabQueryValue } from '~/utils/tab-query'
+} from '~/domains/hackathons/admin-overview'
+import { canCreateHackathon } from '~/domains/hackathons/access'
+import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 
 definePageMeta({
   middleware: ['require-account-admin']

@@ -11,14 +11,10 @@ import {
   getParticipantApplicationStatusColor,
   isProofOfExecutionLinksValid,
   isParticipantApplicationSubmittedNotice,
-  isParticipantProfileUrlValid,
-  isParticipantSocialProfileUrlValid,
-  isOpenAiOrgIdFormatValid,
   listHackathonProfileFields,
   listMissingRequiredProfileFields,
   listRequiredProfileFields,
   normalizeProofOfExecutionLinks,
-  normalizeParticipantProfileUrl,
   normalizeParticipantTeamMemberHintsForSubmission,
   parseProofOfExecutionLinks,
   parseParticipantRegistrationDetailsJson,
@@ -658,25 +654,6 @@ describe('participant application helpers', () => {
     ])
   })
 
-  test('validates OpenAI org ID format used by the registration form', () => {
-    expect(isOpenAiOrgIdFormatValid('org_123abc')).toBe(true)
-    expect(isOpenAiOrgIdFormatValid('org_regular_user')).toBe(true)
-    expect(isOpenAiOrgIdFormatValid('org-123abc')).toBe(true)
-    expect(isOpenAiOrgIdFormatValid('')).toBe(false)
-  })
-
-  test('normalizes participant profile URLs by prepending https when scheme is missing', () => {
-    expect(normalizeParticipantProfileUrl('github.com/codex')).toBe('https://github.com/codex')
-    expect(normalizeParticipantProfileUrl('https://x.com/codex')).toBe('https://x.com/codex')
-    expect(normalizeParticipantProfileUrl('')).toBe('')
-  })
-
-  test('accepts schema-less profile URLs as valid registration input', () => {
-    expect(isParticipantProfileUrlValid('github.com/codex')).toBe(true)
-    expect(isParticipantProfileUrlValid('https://github.com/codex')).toBe(true)
-    expect(isParticipantProfileUrlValid('nota url')).toBe(false)
-  })
-
   test('parses and validates comma-separated proof-of-execution links', () => {
     expect(parseProofOfExecutionLinks(' https://github.com/example/project , https://demo.example.com/app ')).toEqual([
       'https://github.com/example/project',
@@ -689,16 +666,6 @@ describe('participant application helpers', () => {
 
     expect(isProofOfExecutionLinksValid('https://github.com/example/project, https://demo.example.com/app')).toBe(true)
     expect(isProofOfExecutionLinksValid('https://github.com/example/project, ftp://example.com/file')).toBe(false)
-  })
-
-  test('validates social profile URL domains by field', () => {
-    expect(isParticipantSocialProfileUrlValid('githubProfileUrl', 'github.com/codex')).toBe(true)
-    expect(isParticipantSocialProfileUrlValid('githubProfileUrl', 'github.cox/codex')).toBe(false)
-    expect(isParticipantSocialProfileUrlValid('linkedinProfileUrl', 'linkedin.com/in/codex')).toBe(true)
-    expect(isParticipantSocialProfileUrlValid('linkedinProfileUrl', 'example.com/in/codex')).toBe(false)
-    expect(isParticipantSocialProfileUrlValid('xProfileUrl', 'x.com/codex')).toBe(true)
-    expect(isParticipantSocialProfileUrlValid('xProfileUrl', 'twitter.com/codex')).toBe(true)
-    expect(isParticipantSocialProfileUrlValid('xProfileUrl', 'social.example/codex')).toBe(false)
   })
 
   test('parses persisted registration details JSON with fallback behavior', () => {

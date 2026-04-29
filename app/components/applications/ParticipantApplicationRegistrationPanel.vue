@@ -13,7 +13,7 @@ import type {
 } from '~/domains/applications/participant-application'
 
 import { areParticipantTeamMemberHintsEqual } from '~/domains/applications/participant-application'
-import { buildParticipantRegistrationFormSchema } from '~/utils/form-schemas'
+import { buildParticipantRegistrationFormSchema } from '~/domains/applications/participant-application-form'
 import { cloneFormValues } from '~/utils/form-values'
 
 const termsAccepted = defineModel<boolean>('termsAccepted', {

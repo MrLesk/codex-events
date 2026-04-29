@@ -10,7 +10,7 @@ import {
   formatCountdownCompactLabel,
   resolveCountdownState
 } from '~/utils/countdown'
-import { formatTimestamp } from '~/utils/date-formatting'
+import { formatTimestamp } from '~/lib/date-formatting'
 import { cn } from '~/lib/utils'
 
 const props = withDefaults(defineProps<{

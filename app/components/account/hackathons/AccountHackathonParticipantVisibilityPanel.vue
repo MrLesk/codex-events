@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
-import type { AdminApplicationRecord, HackathonRecord } from '~/utils/admin-workspace'
+import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
+import type { HackathonRecord } from '~/domains/hackathons/records'
 
 import {
   LazyAccountHackathonsAccountHackathonParticipantsPanel as LazyAccountHackathonParticipantsPanel
 } from '#components'
 import {
   shouldShowApprovedParticipantAttendanceSummary
-} from '~/utils/admin-workspace'
+} from '~/domains/applications/admin-application-record'
 
 const props = defineProps<{
   hackathonId: string

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminApplicationRecord } from '~/utils/admin-workspace'
+import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
 import type {
   AdminApplicationReviewGroup,
   AdminApplicationReviewPendingTeammate,
@@ -16,7 +16,7 @@ import {
   searchAdminApplicationReviewGroups
 } from '~/domains/applications/admin-application-review'
 import { parseProofOfExecutionLinks } from '~/domains/applications/participant-application'
-import { buildProfileIconHref } from '~/utils/profile-icon'
+import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
 import {
   formatFailedApplicationLumaSyncAlertToggleLabel,
   formatApplicationAttendanceStatus,
@@ -27,8 +27,8 @@ import {
   isApplicationCheckedIn,
   listFailedApplicationLumaSyncApplications,
   shouldShowApplicationLumaSyncStatus
-} from '~/utils/admin-workspace'
-import { formatTimestamp } from '~/utils/date-formatting'
+} from '~/domains/applications/admin-application-record'
+import { formatTimestamp } from '~/lib/date-formatting'
 
 const props = withDefaults(defineProps<{
   hackathonId: string

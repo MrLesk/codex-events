@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ShellNavigationGroup } from '~/composables/useShellNavigation'
-import { isShellNavigationLinkActive } from '~/utils/shell-navigation'
+import { isShellNavigationLinkActive } from '~/domains/accounts/shell-navigation'
 
 const props = defineProps<{
   groups: ShellNavigationGroup[]

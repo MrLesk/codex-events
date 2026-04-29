@@ -9,7 +9,7 @@ import {
   hasAdminApplicationReviewGroupApprovalSelected,
   searchAdminApplicationReviewGroups
 } from '../../../../../app/domains/applications/admin-application-review'
-import type { AdminApplicationRecord } from '../../../../../app/utils/admin-workspace'
+import type { AdminApplicationRecord } from '../../../../../app/domains/applications/admin-application-record'
 
 function createApplication(options: {
   id: string

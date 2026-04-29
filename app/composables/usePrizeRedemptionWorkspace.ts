@@ -1,4 +1,4 @@
-import type { TermsDocument } from '~/utils/admin-workspace'
+import type { TermsDocument } from '~/domains/hackathons/records'
 import type {
   PrizeRedemptionApiDataResponse,
   PrizeRedemptionCurrentTermsResponse,

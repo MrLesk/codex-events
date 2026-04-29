@@ -1,5 +1,7 @@
 import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
-import type { EvaluationCriterion, HackathonRecord, SessionActor } from '~/utils/admin-workspace'
+import type { SessionActor } from '~/domains/accounts/session-actor'
+import type { HackathonRecord } from '~/domains/hackathons/records'
+import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
 import type {
   JudgeAssignmentApiDetail,
   JudgeInboxGroup

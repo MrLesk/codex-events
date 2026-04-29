@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { HackathonPhotoRecord } from '#shared/hackathon-photos'
+import type { HackathonPhotoRecord } from '#shared/domains/hackathons/photos'
 import type { ApiListResponse } from '~/lib/api'
 
 import HackathonGalleryPanel from '~/components/hackathons/HackathonGalleryPanel.vue'
 import { normalizeApiError } from '~/lib/api'
-import { createHackathonGalleryUploadItems } from '~/utils/hackathon-gallery'
+import { createHackathonGalleryUploadItems } from '~/domains/hackathons/gallery'
 
 const props = defineProps<{
   hackathonId: string

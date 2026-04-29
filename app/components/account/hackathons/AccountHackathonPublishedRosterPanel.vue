@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { ApiListResponse } from '~/lib/api'
-import type { HackathonRoleAssignment, HackathonRoleUserSummary } from '~/utils/admin-workspace'
+import type {
+  HackathonRoleAssignment,
+  HackathonRoleUserSummary
+} from '~/domains/hackathons/access'
 import type {
   HackathonRoleRosterBadge,
   HackathonRoleRosterRow
@@ -23,7 +26,7 @@ import {
   getPublishedHackathonRosterLinks,
   loadPublishedHackathonRoster
 } from '~/domains/hackathons/published-roster'
-import { buildProfileIconHref } from '~/utils/profile-icon'
+import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
 
 const props = defineProps<{
   hackathonId: string

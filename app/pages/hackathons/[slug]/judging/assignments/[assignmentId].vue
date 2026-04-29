@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { buildAccountHackathonJudgingTabHref } from '~/utils/judging-query'
+import { buildAccountHackathonJudgingTabHref } from '~/domains/judging/query'
 
 definePageMeta({
   middleware: ['require-hackathon-judge']

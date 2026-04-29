@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HackathonFormState } from '~/utils/admin-workspace'
+import type { HackathonFormState } from '~/domains/hackathons/admin-hackathon'
 
 import { getCountryOptions } from '~/utils/country-options'
 

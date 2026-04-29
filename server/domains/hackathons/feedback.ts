@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type {
   HackathonFeedbackQuestionId,
   HackathonFeedbackSummary
-} from '#shared/hackathon-feedback'
+} from '#shared/domains/hackathons/feedback'
 
 import { desc, eq } from 'drizzle-orm'
 
@@ -11,7 +11,7 @@ import {
   hackathonFeedbackQuestionIds,
   hackathonFeedbackQuestions,
   hackathonFeedbackRatingValues
-} from '#shared/hackathon-feedback'
+} from '#shared/domains/hackathons/feedback'
 import type { HackathonAuthorization } from '#server/auth/authorization'
 import type { AppDatabase } from '#server/database/client'
 import type { hackathonStates } from '#server/database/schema'

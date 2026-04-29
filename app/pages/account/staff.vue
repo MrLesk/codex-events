@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import AccountHackathonDashboardList from '~/components/account/AccountHackathonDashboardList.vue'
 import { formatHackathonLocation } from '~/domains/hackathons/presentation'
-import { filterStaffAccessibleHackathons } from '~/utils/staff-dashboard'
+import { filterStaffAccessibleHackathons } from '~/domains/hackathons/staff-dashboard'
 
 definePageMeta({
   middleware: ['require-staff-dashboard']

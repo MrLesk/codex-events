@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TermsDocument } from '~/utils/admin-workspace'
+import type { TermsDocument } from '~/domains/hackathons/records'
 
 const props = defineProps<{
   applicationTermsDraft: string

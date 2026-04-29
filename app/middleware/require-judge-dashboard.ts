@@ -1,4 +1,4 @@
-import { ensureAccountPageAccess } from '~/utils/navigation-guards'
+import { ensureAccountPageAccess } from '~/domains/accounts/navigation-guards'
 
 export default defineNuxtRouteMiddleware(async (to) => {
   const redirect = await ensureAccountPageAccess(

@@ -1,8 +1,6 @@
-import type {
-  HackathonState,
-  TermsDocument,
-  WinnerEntry
-} from '~/utils/admin-workspace'
+import type { TermsDocument } from '~/domains/hackathons/records'
+import type { HackathonState } from '~/domains/hackathons/states'
+import type { WinnerEntry } from '~/domains/outcomes/published-outcomes'
 
 export interface PrizeRedemptionPrize {
   id: string

@@ -8,7 +8,7 @@ import type {
   TeamUserSummary
 } from '~/domains/teams/workspace'
 
-import { formatTimestamp } from '~/utils/date-formatting'
+import { formatTimestamp } from '~/lib/date-formatting'
 import {
   getActiveTeamMemberCount,
   formatJoinAvailabilityReason,
@@ -20,7 +20,7 @@ import {
   shouldShowParticipantLeaveTeamAction
 } from '~/domains/teams/workspace'
 import { Switch as UiSwitch } from '~/components/ui/switch'
-import { teamProfileFormSchema } from '~/utils/form-schemas'
+import { teamProfileFormSchema } from '~/domains/teams/team-forms'
 import { cloneFormValues } from '~/utils/form-values'
 
 const settings = defineModel<{

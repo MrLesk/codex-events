@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { platformSupportEmail } from '../../../../shared/platform-legal'
+import { platformSupportEmail } from '../../../../shared/domains/platform/legal'
 import imprintContactPostHandler from '../../../../server/api/public/imprint-contact.post'
 import { publicContactRateLimitBindingName } from '../../../../server/utils/rate-limit'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { AdminApplicationReviewView } from '~/domains/applications/admin-application-review'
-import type { AdminApplicationRecord } from '~/utils/admin-workspace'
+import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
 
 import { LazyApplicationsAdminApplicationsReviewPanel as LazyAdminApplicationsReviewPanel } from '#components'
 import {
@@ -8,7 +8,7 @@ import {
   getApprovedParticipantAttendanceSummary,
   getParticipantApplicationStatusSummary,
   getParticipantsLimitSummary
-} from '~/utils/admin-workspace'
+} from '~/domains/applications/admin-application-record'
 
 const props = withDefaults(defineProps<{
   hackathonId: string
