@@ -504,6 +504,22 @@ export interface JudgeAssignmentSummary {
       applicationTermsDocumentId: string
     }>
   }
+  pitchSubmission?: {
+    id: string
+    projectName: string | null
+    teamName: string
+    summary: string | null
+    repositoryUrl: string | null
+    demoUrl: string | null
+    track: {
+      id: string
+      name: string
+      description: string
+    } | null
+    status: SubmissionRecord['status']
+    submittedAt: string | null
+    lockedAt: string | null
+  }
   criterionScores?: Array<{
     id: string
     evaluationCriterionId: string
@@ -1392,7 +1408,10 @@ function getAdminJudgeAssignmentOversightStatusSortOrder(status: JudgeAssignment
 }
 
 function getAdminJudgeAssignmentOversightProjectLabel(assignment: JudgeAssignmentSummary) {
-  const projectName = assignment.blindSubmission?.projectName?.trim()
+  const projectName = (
+    assignment.blindSubmission?.projectName
+    ?? assignment.pitchSubmission?.projectName
+  )?.trim()
   return projectName && projectName.length > 0 ? projectName : assignment.submissionId
 }
 

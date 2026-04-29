@@ -50,6 +50,7 @@ export const ineligibilityStatuses = ['eligible', 'ineligible'] as const
 export const prizeRewardTypes = ['api_credits', 'subscription', 'physical', 'other'] as const
 export const prizeAwardScopes = ['team', 'member'] as const
 export const prizeRedemptionStatuses = ['pending', 'redeemed', 'failed'] as const
+export const hackathonOutcomeCacheCollections = ['winners', 'published_projects'] as const
 
 export const users = sqliteTable(
   'users',
@@ -446,7 +447,8 @@ export const userApplications = sqliteTable(
   table => [
     uniqueIndex('user_applications_hackathon_user_idx').on(table.hackathonId, table.userId),
     index('user_applications_user_submitted_idx').on(table.userId, table.submittedAt),
-    index('user_applications_hackathon_submitted_idx').on(table.hackathonId, table.submittedAt)
+    index('user_applications_hackathon_submitted_idx').on(table.hackathonId, table.submittedAt),
+    index('user_applications_hackathon_status_submitted_idx').on(table.hackathonId, table.status, table.submittedAt)
   ]
 )
 
@@ -470,7 +472,8 @@ export const teams = sqliteTable(
   },
   table => [
     uniqueIndex('teams_hackathon_slug_idx').on(table.hackathonId, table.slug),
-    index('teams_hackathon_idx').on(table.hackathonId)
+    index('teams_hackathon_idx').on(table.hackathonId),
+    index('teams_hackathon_name_created_idx').on(table.hackathonId, table.name, table.createdAt)
   ]
 )
 
@@ -552,6 +555,8 @@ export const submissions = sqliteTable(
       .on(table.teamId)
       .where(sql`${table.status} in ('draft', 'submitted', 'locked')`),
     index('submissions_team_updated_idx').on(table.teamId, table.updatedAt),
+    index('submissions_team_status_created_idx').on(table.teamId, table.status, table.createdAt),
+    index('submissions_public_status_team_idx').on(table.isPubliclyVisible, table.status, table.teamId),
     index('submissions_track_idx').on(table.trackId)
   ]
 )
@@ -619,6 +624,12 @@ export const judgeAssignments = sqliteTable(
       table.status,
       table.judgeUserId
     ),
+    index('judge_assignments_hackathon_submission_stage_status_idx').on(
+      table.hackathonId,
+      table.submissionId,
+      table.reviewStage,
+      table.status
+    ),
     check(
       'judge_assignments_stage_shape_check',
       sql`(${table.reviewStage} = 'blind_review'
@@ -655,7 +666,8 @@ export const judgeCriterionScores = sqliteTable(
     uniqueIndex('judge_criterion_scores_assignment_criterion_idx').on(
       table.judgeAssignmentId,
       table.evaluationCriterionId
-    )
+    ),
+    index('judge_criterion_scores_assignment_created_idx').on(table.judgeAssignmentId, table.createdAt)
   ]
 )
 
@@ -747,6 +759,11 @@ export const prizeEligibilitySnapshots = sqliteTable(
       table.userId,
       table.teamId
     ),
+    index('prize_eligibility_snapshots_hackathon_team_created_idx').on(
+      table.hackathonId,
+      table.teamId,
+      table.createdAt
+    ),
     uniqueIndex('prize_eligibility_snapshots_hackathon_team_user_idx').on(
       table.hackathonId,
       table.teamId,
@@ -773,12 +790,56 @@ export const prizeRedemptions = sqliteTable(
     updatedAt: updatedAtColumn()
   },
   table => [
+    index('prize_redemptions_prize_created_idx').on(table.prizeId, table.createdAt),
+    index('prize_redemptions_team_idx').on(table.teamId),
     index('prize_redemptions_pending_user_created_idx')
       .on(table.userId, table.createdAt)
       .where(sql`${table.status} = 'pending' and ${table.userId} is not null`),
     index('prize_redemptions_pending_team_created_idx')
       .on(table.teamId, table.createdAt)
       .where(sql`${table.status} = 'pending' and ${table.teamId} is not null and ${table.userId} is null`)
+  ]
+)
+
+export const hackathonOutcomeCaches = sqliteTable(
+  'hackathon_outcome_caches',
+  {
+    hackathonId: text('hackathon_id')
+      .primaryKey()
+      .references(() => hackathons.id, { onDelete: 'cascade' }),
+    generationId: text('generation_id').notNull(),
+    generatedAt: text('generated_at').notNull(),
+    updatedAt: updatedAtColumn()
+  },
+  table => [
+    index('hackathon_outcome_caches_updated_idx').on(table.updatedAt)
+  ]
+)
+
+export const hackathonOutcomeCacheEntries = sqliteTable(
+  'hackathon_outcome_cache_entries',
+  {
+    id: idColumn(),
+    hackathonId: text('hackathon_id')
+      .notNull()
+      .references(() => hackathons.id, { onDelete: 'cascade' }),
+    generationId: text('generation_id').notNull(),
+    collection: text('collection', { enum: hackathonOutcomeCacheCollections }).notNull(),
+    displayOrder: integer('display_order').notNull(),
+    payloadJson: text('payload_json').notNull(),
+    createdAt: createdAtColumn()
+  },
+  table => [
+    uniqueIndex('hackathon_outcome_cache_entries_generation_order_idx').on(
+      table.hackathonId,
+      table.generationId,
+      table.collection,
+      table.displayOrder
+    ),
+    index('hackathon_outcome_cache_entries_hackathon_generation_idx').on(
+      table.hackathonId,
+      table.generationId
+    )
   ]
 )
 
@@ -801,6 +862,9 @@ export const auditLogs = sqliteTable(
     index('audit_logs_actor_idx').on(table.actorUserId),
     index('audit_logs_created_idx').on(table.createdAt),
     index('audit_logs_entity_created_idx').on(table.entityType, table.entityId, table.createdAt),
+    index('audit_logs_submission_disqualified_created_idx')
+      .on(table.entityType, table.action, table.entityId, table.createdAt)
+      .where(sql`${table.entityType} = 'submission' and ${table.action} = 'submission.disqualified'`),
     index('audit_logs_metadata_hackathon_created_idx').on(
       sql`json_extract(${table.metadata}, '$.hackathonId')`,
       table.createdAt
@@ -831,6 +895,8 @@ export const schema = {
   prizes,
   prizeEligibilitySnapshots,
   prizeRedemptions,
+  hackathonOutcomeCaches,
+  hackathonOutcomeCacheEntries,
   auditLogs
 }
 

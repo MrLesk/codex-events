@@ -1,5 +1,11 @@
-import { describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test } from 'vitest'
 
+import {
+  hackathons,
+  submissions,
+  teams,
+  users
+} from '../../../../server/database/schema'
 import { ApiError } from '../../../../server/utils/api-error'
 import {
   assertSubmissionBodyMatchesHackathonRequirements,
@@ -11,9 +17,11 @@ import {
   assertSubmissionSubmittable,
   assertSubmissionWithdrawable,
   buildSubmissionWritePayload,
+  getHackathonSubmissionSummary,
   isNoSubmissionStatus,
   resolveValidatedSubmissionTrackId
 } from '../../../../server/utils/submissions'
+import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 function createHackathon(
   state:
@@ -95,6 +103,14 @@ function createDatabase(trackIds: string[] = []) {
 }
 
 describe('TASK-3.7 submission helpers', () => {
+  const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
+
+  afterEach(async () => {
+    while (harnesses.length > 0) {
+      await harnesses.pop()?.d1Database.close()
+    }
+  })
+
   test('submission creation remains limited to submission_open', () => {
     expect(() => assertHackathonAllowsSubmissionCreation(createHackathon('submission_open'))).not.toThrow()
     expect(() => assertHackathonAllowsSubmissionCreation(createHackathon('judging_preparation'))).toThrowError(ApiError)
@@ -232,6 +248,123 @@ describe('TASK-3.7 submission helpers', () => {
       demoUrl: 'https://example.com/updated-project',
       trackId: 'track_1',
       updatedAt: '2026-03-24T13:00:00.000Z'
+    })
+  })
+
+  test('submission summary reports status counts without returning submission rows', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: []
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'platform_admin',
+      auth0Subject: 'auth0|platform_admin',
+      email: 'platform-admin@example.com',
+      displayName: 'Platform Admin'
+    })
+
+    await harness.database.insert(hackathons).values({
+      ...createHackathon('submission_open'),
+      id: 'hackathon_1',
+      createdByUserId: 'platform_admin'
+    })
+
+    await harness.database.insert(teams).values([
+      {
+        id: 'team_none',
+        hackathonId: 'hackathon_1',
+        name: 'No Submission',
+        slug: 'no-submission',
+        createdByUserId: 'platform_admin'
+      },
+      {
+        id: 'team_draft',
+        hackathonId: 'hackathon_1',
+        name: 'Draft Team',
+        slug: 'draft-team',
+        createdByUserId: 'platform_admin'
+      },
+      {
+        id: 'team_submitted',
+        hackathonId: 'hackathon_1',
+        name: 'Submitted Team',
+        slug: 'submitted-team',
+        createdByUserId: 'platform_admin'
+      },
+      {
+        id: 'team_locked',
+        hackathonId: 'hackathon_1',
+        name: 'Locked Team',
+        slug: 'locked-team',
+        createdByUserId: 'platform_admin'
+      },
+      {
+        id: 'team_withdrawn',
+        hackathonId: 'hackathon_1',
+        name: 'Withdrawn Team',
+        slug: 'withdrawn-team',
+        createdByUserId: 'platform_admin'
+      },
+      {
+        id: 'team_disqualified',
+        hackathonId: 'hackathon_1',
+        name: 'Disqualified Team',
+        slug: 'disqualified-team',
+        createdByUserId: 'platform_admin'
+      }
+    ])
+
+    await harness.database.insert(submissions).values([
+      {
+        id: 'submission_draft',
+        teamId: 'team_draft',
+        status: 'draft',
+        projectName: 'Draft Project'
+      },
+      {
+        id: 'submission_submitted',
+        teamId: 'team_submitted',
+        status: 'submitted',
+        projectName: 'Submitted Project',
+        submittedAt: '2026-03-24T12:00:00.000Z'
+      },
+      {
+        id: 'submission_locked',
+        teamId: 'team_locked',
+        status: 'locked',
+        projectName: 'Locked Project',
+        submittedAt: '2026-03-24T12:00:00.000Z',
+        lockedAt: '2026-03-25T12:00:00.000Z'
+      },
+      {
+        id: 'submission_withdrawn',
+        teamId: 'team_withdrawn',
+        status: 'withdrawn',
+        projectName: 'Withdrawn Project',
+        withdrawnAt: '2026-03-25T12:00:00.000Z'
+      },
+      {
+        id: 'submission_disqualified',
+        teamId: 'team_disqualified',
+        status: 'disqualified',
+        projectName: 'Disqualified Project',
+        disqualifiedAt: '2026-03-25T12:00:00.000Z'
+      }
+    ])
+
+    await expect(getHackathonSubmissionSummary(harness.database, 'hackathon_1')).resolves.toEqual({
+      totalTeams: 6,
+      noSubmissionTeamCount: 4,
+      submittedOrLaterTeamCount: 2,
+      statusCounts: {
+        none: 1,
+        draft: 1,
+        submitted: 1,
+        locked: 1,
+        withdrawn: 1,
+        disqualified: 1
+      }
     })
   })
 })

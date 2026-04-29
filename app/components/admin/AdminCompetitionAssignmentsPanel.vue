@@ -21,6 +21,7 @@ type JudgeChoice = {
 const props = defineProps<{
   hackathonState: HackathonState
   assignments: JudgeAssignmentSummary[]
+  totalAssignments?: number
   judgeChoices: JudgeChoice[]
   isLoading?: boolean
   errorMessage?: string
@@ -61,11 +62,15 @@ function getReplacementChoices(assignment: JudgeAssignmentSummary) {
 }
 
 function getAssignmentProjectLabel(assignment: JudgeAssignmentSummary) {
-  return assignment.blindSubmission?.projectName ?? assignment.submissionId
+  return assignment.blindSubmission?.projectName
+    ?? assignment.pitchSubmission?.projectName
+    ?? assignment.submissionId
 }
 
 function getAssignmentSummary(assignment: JudgeAssignmentSummary) {
-  return assignment.blindSubmission?.summary || 'No blind summary is available for this assignment yet.'
+  return assignment.blindSubmission?.summary
+    || assignment.pitchSubmission?.summary
+    || 'No summary is available for this assignment yet.'
 }
 
 function getJudgeSectionSummary(group: AdminJudgeAssignmentOversightGroup) {
@@ -119,6 +124,9 @@ const oversightGroups = computed(() =>
   buildAdminJudgeAssignmentOversightGroups(actionableAssignments.value, {
     judgeLabelsByUserId: judgeLabelsByUserId.value
   })
+)
+const hiddenAssignmentCount = computed(() =>
+  Math.max((props.totalAssignments ?? props.assignments.length) - props.assignments.length, 0)
 )
 
 const activeReassignAssignment = computed(() => {
@@ -191,6 +199,14 @@ function submitReassignment() {
       />
 
       <template v-else>
+        <AppAlert
+          v-if="hiddenAssignmentCount > 0"
+          color="neutral"
+          variant="soft"
+          title="Assignment list limited"
+          :description="`Showing the first ${assignments.length} active assignments. Use the judging summary above for full progress counts.`"
+        />
+
         <AppAlert
           v-if="oversightGroups.length === 0"
           color="neutral"

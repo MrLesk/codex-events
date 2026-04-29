@@ -8,12 +8,17 @@ import { defineApiHandler } from '#server/utils/api-handler'
 import { apiList } from '#server/utils/api-response'
 import { assertGuard } from '#server/utils/lifecycle-guard'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/utils/hackathon-management'
-import { getJudgeAssignmentDetails } from '#server/utils/judging'
-import { parseValidatedParams } from '#server/utils/validation'
+import {
+  getJudgeAssignmentDetails,
+  listActiveJudgeAssignmentSummaries,
+  listJudgeAssignmentsQuerySchema
+} from '#server/utils/judging'
+import { parseValidatedParams, parseValidatedQuery } from '#server/utils/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)
+  const query = parseValidatedQuery(event, listJudgeAssignmentsQuerySchema)
   const database = getDatabase(event)
 
   await getVisibleHackathonOrThrow(event, hackathonId)
@@ -31,14 +36,22 @@ export default defineApiHandler(async (event) => {
     }
   })
 
+  if (authorization.isPlatformAdmin || authorization.isHackathonAdmin) {
+    const result = await listActiveJudgeAssignmentSummaries(database, hackathonId, query)
+
+    return apiList(result.data, {
+      page: query.page,
+      pageSize: query.page_size,
+      total: result.total
+    })
+  }
+
   const assignments: Array<typeof judgeAssignments.$inferSelect> = await database.query.judgeAssignments.findMany({
-    where: authorization.isPlatformAdmin || authorization.isHackathonAdmin
-      ? eq(judgeAssignments.hackathonId, hackathonId)
-      : and(
-          eq(judgeAssignments.hackathonId, hackathonId),
-          eq(judgeAssignments.judgeUserId, actor.platformUser.id),
-          inArray(judgeAssignments.status, ['assigned', 'judge_started'])
-        )
+    where: and(
+      eq(judgeAssignments.hackathonId, hackathonId),
+      eq(judgeAssignments.judgeUserId, actor.platformUser.id),
+      inArray(judgeAssignments.status, ['assigned', 'judge_started'])
+    )
   })
 
   const data = await getJudgeAssignmentDetails(database, assignments)

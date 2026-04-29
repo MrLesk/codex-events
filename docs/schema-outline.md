@@ -775,6 +775,44 @@ It describes the intended persistent model at the level of entities, key fields,
 - Some prizes may redeem per team and some per user.
 - Redemption requires legal name and acceptance of winner terms.
 
+## HackathonOutcomeCache
+
+### Key Fields
+
+- `hackathon_id`
+- `generation_id`
+- `generated_at`
+- `updated_at`
+
+### Notes
+
+- Each completed hackathon has at most one current outcome cache generation.
+- The current generation points to ordered outcome cache entries.
+- The cache is refreshed when a hackathon is completed and when an eligible completed project changes public visibility.
+
+## HackathonOutcomeCacheEntry
+
+### Key Fields
+
+- `id`
+- `hackathon_id`
+- `generation_id`
+- `collection`
+- `display_order`
+- `payload_json`
+- `created_at`
+
+### Enums
+
+- `collection`
+  - `winners`
+  - `published_projects`
+
+### Notes
+
+- Outcome cache entries store one serialized winner or published-project row each.
+- `display_order` preserves the generated ordering within a cache generation.
+
 ## AuditLog
 
 ### Key Fields
@@ -813,6 +851,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `Prize` belongs to `Hackathon`
 - `PrizeEligibilitySnapshot` belongs to `Hackathon`, `Team`, and `User`
 - `PrizeRedemption` belongs to `Prize` and may reference `User` and `Team`
+- `HackathonOutcomeCache` belongs to `Hackathon`
+- `HackathonOutcomeCacheEntry` belongs to `Hackathon` and a cache generation
 - `AuditLog` references the acting `User` and the affected entity
 
 ## Derived Views
@@ -826,3 +866,5 @@ These are computed from persisted data and do not require separate canonical ent
 - no-submission team section
 - published judge roster
 - published staff roster
+
+Completed winners and published-project showcase payloads are generated from persisted judging and prize data, then stored as ordered `HackathonOutcomeCacheEntry` rows for repeated completed-state reads.

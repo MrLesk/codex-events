@@ -176,11 +176,23 @@ export function useAdminHackathonWorkspace(hackathonId: MaybeRefOrGetter<string>
   )
   refreshWhenEnabled(roleAssignments, loadRoleAssignments)
 
-  const applications = useFetch<ApiListResponse<AdminApplicationRecord>>(
-    () => `/api/hackathons/${resolvedHackathonId.value}/applications`,
+  const applications = useAsyncData<AdminApplicationRecord[]>(
+    () => buildAdminWorkspaceCacheKey('admin-hackathon-applications', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
+    async () => await listAllPaginatedItems(
+      async (page, pageSize) => await apiFetch<ApiListResponse<AdminApplicationRecord>>(
+        `/api/hackathons/${resolvedHackathonId.value}/applications`,
+        {
+          query: {
+            page,
+            page_size: pageSize
+          }
+        }
+      ),
+      100
+    ),
     {
-      key: () => buildAdminWorkspaceCacheKey('admin-hackathon-applications', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
       watch: [adminWorkspace.subjectKey, resolvedHackathonId],
+      default: () => [],
       immediate: loadApplications.value
     }
   )

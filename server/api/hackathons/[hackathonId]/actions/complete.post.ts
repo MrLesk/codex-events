@@ -14,7 +14,8 @@ import {
 } from '#server/utils/hackathon-management'
 import {
   assertHackathonCompletionAllowed,
-  getWinnersView
+  getWinnersView,
+  refreshCompletedOutcomeCache
 } from '#server/utils/shortlist'
 import { parseValidatedParams } from '#server/utils/validation'
 
@@ -36,6 +37,8 @@ export default defineApiHandler(async (event) => {
       updatedAt: completedAt
     })
     .where(eq(hackathons.id, hackathonId))
+
+  await refreshCompletedOutcomeCache(database, hackathonId)
 
   await writeAuditLog(database, {
     actorUserId: actor.platformUser.id,

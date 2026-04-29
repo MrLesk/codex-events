@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, desc, eq, getTableColumns, isNull } from 'drizzle-orm'
+import { and, asc, count, desc, eq, getTableColumns, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
@@ -96,6 +96,40 @@ export function serializeSubmission(
 
 export function isNoSubmissionStatus(status: SubmissionRecord['status']) {
   return status === 'draft' || status === 'withdrawn' || status === 'disqualified'
+}
+
+export async function getHackathonSubmissionSummary(database: AppDatabase, hackathonId: string) {
+  const [summaryRow] = await database
+    .select({
+      totalTeams: count(teams.id),
+      none: sql<number>`coalesce(sum(case when ${submissions.id} is null then 1 else 0 end), 0)`,
+      draft: sql<number>`coalesce(sum(case when ${submissions.status} = 'draft' then 1 else 0 end), 0)`,
+      submitted: sql<number>`coalesce(sum(case when ${submissions.status} = 'submitted' then 1 else 0 end), 0)`,
+      locked: sql<number>`coalesce(sum(case when ${submissions.status} = 'locked' then 1 else 0 end), 0)`,
+      withdrawn: sql<number>`coalesce(sum(case when ${submissions.status} = 'withdrawn' then 1 else 0 end), 0)`,
+      disqualified: sql<number>`coalesce(sum(case when ${submissions.status} = 'disqualified' then 1 else 0 end), 0)`
+    })
+    .from(teams)
+    .leftJoin(submissions, eq(submissions.teamId, teams.id))
+    .where(eq(teams.hackathonId, hackathonId))
+  const statusCounts = {
+    none: summaryRow?.none ?? 0,
+    draft: summaryRow?.draft ?? 0,
+    submitted: summaryRow?.submitted ?? 0,
+    locked: summaryRow?.locked ?? 0,
+    withdrawn: summaryRow?.withdrawn ?? 0,
+    disqualified: summaryRow?.disqualified ?? 0
+  }
+
+  return {
+    totalTeams: summaryRow?.totalTeams ?? 0,
+    noSubmissionTeamCount: statusCounts.none
+      + statusCounts.draft
+      + statusCounts.withdrawn
+      + statusCounts.disqualified,
+    submittedOrLaterTeamCount: statusCounts.submitted + statusCounts.locked,
+    statusCounts
+  }
 }
 
 async function listActiveHackathonMemberUsersById(database: AppDatabase, hackathonId: string) {

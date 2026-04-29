@@ -13,6 +13,7 @@ import {
   submissionParamsSchema,
   updateSubmissionPublicVisibilityBodySchema
 } from '#server/utils/submissions'
+import { refreshCompletedOutcomeCache } from '#server/utils/shortlist'
 
 export default defineApiHandler(async (event) => {
   await requirePlatformActor(event)
@@ -40,6 +41,8 @@ export default defineApiHandler(async (event) => {
       updatedAt
     })
     .where(eq(submissions.id, submission.id))
+
+  await refreshCompletedOutcomeCache(database, hackathonId)
 
   return apiData(serializeSubmission({
     ...submission,

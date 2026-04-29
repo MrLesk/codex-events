@@ -34,6 +34,7 @@ import {
   getHackathonOperationsPhase,
   formatHackathonState,
   getHackathonStateColor,
+  listAllPaginatedItems,
   shouldShowApprovedParticipantAttendanceSummary,
   sortAdminOperationalTeamsForSubmissionDashboard,
   normalizeApiError
@@ -107,7 +108,7 @@ const workspace = useAdminHackathonWorkspace(hackathonId, {
   loadRoleAssignments: showLifecycleSection,
   loadApplications: false,
   loadTeams: showLifecycleSection,
-  loadNoSubmissionTeams: showLifecycleSection,
+  loadNoSubmissionTeams: false,
   loadAssignments: showLifecycleSection,
   loadLeaderboard: showLifecycleSection
 })
@@ -122,6 +123,24 @@ type StageApplicationResponse = ApiDataResponse<AdminApplicationRecord>
 type SubmissionMonitorData = {
   teamDetails: AdminTeamDetailRecord[]
   teamSubmissions: Array<SubmissionRecord | null>
+}
+type SubmissionSummary = {
+  totalTeams: number
+  noSubmissionTeamCount: number
+  submittedOrLaterTeamCount: number
+  statusCounts: {
+    none: number
+    draft: number
+    submitted: number
+    locked: number
+    withdrawn: number
+    disqualified: number
+  }
+}
+type JudgingSummary = {
+  totalAssignmentCount: number
+  activeAssignmentCount: number
+  completedPitchAssignmentCount: number
 }
 type JudgeChoice = {
   value: string
@@ -143,6 +162,16 @@ const currentHackathon = computed(() => workspace.currentHackathon.value)
 const canManage = computed(() => workspace.canManageCurrentHackathon.value)
 const roleAssignments = computed(() => workspace.roleAssignments.data.value?.data ?? [])
 const assignments = computed(() => workspace.assignments.data.value?.data ?? [])
+const assignmentsTotal = computed(() => workspace.assignments.data.value?.meta?.total ?? assignments.value.length)
+const judgingSummary = useFetch<ApiDataResponse<JudgingSummary>>(
+  () => `/api/hackathons/${hackathonId.value}/judging/summary`,
+  {
+    key: () => `admin-hackathon-judging-summary:${hackathonId.value}`,
+    watch: [hackathonId],
+    immediate: showLifecycleSection.value
+  }
+)
+const judgingSummaryData = computed(() => judgingSummary.data.value?.data ?? null)
 const leaderboard = computed(() => workspace.leaderboard.data.value?.data ?? [])
 const allTeams = computed(() => workspace.teams.data.value ?? [])
 const prizes = computed(() => workspace.prizes.data.value?.data ?? [])
@@ -168,8 +197,16 @@ const redemptionsStatus = ref<LoadStatus>('idle')
 const redemptionsErrorMessage = ref('')
 const submissionSearchInput = ref('')
 const submissionStatusFilter = ref<AdminSubmissionDashboardFilter>('all')
-const noSubmissionTeams = computed(() => workspace.noSubmissionTeams.data.value?.data ?? [])
-const noSubmissionStatus = computed<LoadStatus>(() => normalizeAsyncStatus(workspace.noSubmissionTeams.status.value))
+const submissionSummary = useFetch<ApiDataResponse<SubmissionSummary>>(
+  () => `/api/hackathons/${hackathonId.value}/submissions/summary`,
+  {
+    key: () => `admin-hackathon-submission-summary:${hackathonId.value}`,
+    watch: [hackathonId],
+    immediate: showLifecycleSection.value
+  }
+)
+const submissionSummaryData = computed(() => submissionSummary.data.value?.data ?? null)
+const submissionSummaryStatus = computed<LoadStatus>(() => normalizeAsyncStatus(submissionSummary.status.value))
 const teamDataStatus = computed(() => normalizeAsyncStatus(workspace.teams.status.value))
 const submissionMonitorReady = computed(() => showSubmissionsSection.value && canManage.value)
 const submissionMonitorCacheState = computed(() =>
@@ -227,10 +264,18 @@ async function loadApplications() {
   applicationsErrorMessage.value = ''
 
   try {
-    const response = await $fetch<ApiListResponse<AdminApplicationRecord>>(
-      `/api/hackathons/${hackathonId.value}/applications`
+    applications.value = await listAllPaginatedItems(
+      async (page, pageSize) => await $fetch<ApiListResponse<AdminApplicationRecord>>(
+        `/api/hackathons/${hackathonId.value}/applications`,
+        {
+          query: {
+            page,
+            page_size: pageSize
+          }
+        }
+      ),
+      100
     )
-    applications.value = response.data
     applicationsStatus.value = 'success'
   } catch (error) {
     applications.value = []
@@ -247,20 +292,15 @@ const showCheckedInParticipantSummary = computed(() =>
 
 const lifecycleMetrics = computed(() => {
   const lockedEntries = leaderboard.value.filter(entry => entry.submissionStatus === 'locked')
-  const finalistSubmissionIds = new Set(currentHackathon.value?.pitchPresentationSubmissionIds ?? [])
 
   return {
-    submittedSubmissionCount: Math.max(allTeams.value.length - noSubmissionTeams.value.length, 0),
+    submittedSubmissionCount: submissionSummaryData.value?.submittedOrLaterTeamCount ?? 0,
     judgePoolCount: roleAssignments.value.filter(assignment => assignment.isInJudgePool).length,
     lockedSubmissionCount: lockedEntries.length,
-    activeAssignmentCount: assignments.value.length,
+    activeAssignmentCount: judgingSummaryData.value?.activeAssignmentCount ?? assignments.value.length,
     lockedLeaderboardEntryCount: lockedEntries.length,
     completedReviewCount: lockedEntries.filter(entry => entry.reviewStatus === 'judge_completed').length,
-    completedPitchAssignmentCount: assignments.value.filter(
-      assignment => assignment.reviewStage === 'pitch_review'
-        && assignment.status === 'judge_completed'
-        && finalistSubmissionIds.has(assignment.submissionId)
-    ).length,
+    completedPitchAssignmentCount: judgingSummaryData.value?.completedPitchAssignmentCount ?? 0,
     prizeCount: prizes.value.length,
     hasCurrentWinnerTerms: Boolean(currentHackathon.value?.currentTerms?.winnerTerms)
   }
@@ -332,6 +372,23 @@ watch(
     }
 
     await refreshSubmissionMonitor()
+  },
+  {
+    immediate: true
+  }
+)
+
+watch(
+  showLifecycleSection,
+  async (isVisible) => {
+    if (import.meta.server || !isVisible) {
+      return
+    }
+
+    await Promise.all([
+      submissionSummary.status.value === 'idle' ? submissionSummary.refresh() : Promise.resolve(),
+      judgingSummary.status.value === 'idle' ? judgingSummary.refresh() : Promise.resolve()
+    ])
   },
   {
     immediate: true
@@ -600,24 +657,26 @@ const multiPersonTeamValue = computed(() =>
   formatLoadMetricValue(teamDataStatus.value, `${multiPersonTeamCount.value}`)
 )
 const activeSubmissionTeamCount = computed(() =>
-  countActiveAdminOperationalTeams(submissionOperationalTeams.value)
+  showLifecycleSection.value
+    ? submissionSummaryData.value?.totalTeams ?? 0
+    : countActiveAdminOperationalTeams(submissionOperationalTeams.value)
 )
 
 const submittedSubmissionCount = computed(() =>
-  Math.max(allTeams.value.length - noSubmissionTeams.value.length, 0)
+  submissionSummaryData.value?.submittedOrLaterTeamCount ?? 0
 )
 
 const draftSubmissionCount = computed(() =>
-  noSubmissionTeams.value.filter(entry => entry.submission?.status === 'draft').length
+  submissionSummaryData.value?.statusCounts.draft ?? 0
 )
 
 const draftSubmissionValue = computed(() =>
-  formatLoadMetricValue(noSubmissionStatus.value, `${draftSubmissionCount.value}`)
+  formatLoadMetricValue(submissionSummaryStatus.value, `${draftSubmissionCount.value}`)
 )
 
 const submittedSubmissionValue = computed(() =>
   formatLoadMetricValue(
-    combineLoadStatuses([teamDataStatus.value, noSubmissionStatus.value]),
+    combineLoadStatuses([teamDataStatus.value, submissionSummaryStatus.value]),
     `${submittedSubmissionCount.value} / ${activeSubmissionTeamCount.value}`
   )
 )
@@ -2152,6 +2211,7 @@ async function runLifecycleAction() {
           v-if="showAssignmentsPanel"
           :hackathon-state="currentHackathon.state"
           :assignments="assignments"
+          :total-assignments="assignmentsTotal"
           :judge-choices="judgeChoices"
           :is-loading="assignmentsDataStatus === 'pending'"
           :error-message="assignmentsDataStatus === 'error' ? assignmentsErrorMessage : ''"

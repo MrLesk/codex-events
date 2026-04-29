@@ -1,9 +1,11 @@
-import { and, asc, desc, eq, getTableColumns, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, getTableColumns, isNull, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import type { AppDatabase } from '#server/database/client'
 import {
   evaluationCriteria,
+  hackathonOutcomeCacheEntries,
+  hackathonOutcomeCaches,
   hackathons,
   judgeAssignments,
   judgeCriterionScores,
@@ -35,6 +37,15 @@ type PrizeEligibilitySnapshotRecord = typeof prizeEligibilitySnapshots.$inferSel
 type PrizeRecord = typeof prizes.$inferSelect
 type UserRecord = typeof users.$inferSelect
 type SerializedPrizeSummary = ReturnType<typeof serializePrize>
+type CompletedOutcomeCollections = {
+  winners: Array<ReturnType<typeof serializeWinnerEntry> & {
+    prizes: SerializedPrizeSummary[]
+    teamMembers: Array<ReturnType<typeof serializeHackathonWinnerTeamMember>>
+  }>
+  publishedProjects: Array<ReturnType<typeof serializePublishedProjectEntry> & {
+    teamMembers: Array<ReturnType<typeof serializeHackathonPublishedProjectTeamMember>>
+  }>
+}
 
 type LeaderboardCriterionScore = {
   evaluationCriterionId: string
@@ -468,7 +479,7 @@ async function loadCompletedOutcomeTeamMembers(
   return teamMembersByTeamId
 }
 
-async function loadCompletedOutcomeCollections(database: AppDatabase, hackathonId: string) {
+async function buildCompletedOutcomeCollections(database: AppDatabase, hackathonId: string): Promise<CompletedOutcomeCollections> {
   const [{ hackathon, entries }, prizeList] = await Promise.all([
     loadCompetitionEntries(database, hackathonId),
     database.query.prizes.findMany({
@@ -541,6 +552,140 @@ async function loadCompletedOutcomeCollections(database: AppDatabase, hackathonI
       teamMembers: publishedTeamMembersByTeamId.get(entry.teamId) ?? []
     }))
   }
+}
+
+async function readCompletedOutcomeCache(
+  database: AppDatabase,
+  cache: typeof hackathonOutcomeCaches.$inferSelect
+): Promise<CompletedOutcomeCollections> {
+  const rows = await database.query.hackathonOutcomeCacheEntries.findMany({
+    where: and(
+      eq(hackathonOutcomeCacheEntries.hackathonId, cache.hackathonId),
+      eq(hackathonOutcomeCacheEntries.generationId, cache.generationId)
+    ),
+    orderBy: [
+      asc(hackathonOutcomeCacheEntries.collection),
+      asc(hackathonOutcomeCacheEntries.displayOrder)
+    ]
+  })
+  const winners: CompletedOutcomeCollections['winners'] = []
+  const publishedProjects: CompletedOutcomeCollections['publishedProjects'] = []
+
+  for (const row of rows) {
+    if (row.collection === 'winners') {
+      winners.push(JSON.parse(row.payloadJson))
+    } else {
+      publishedProjects.push(JSON.parse(row.payloadJson))
+    }
+  }
+
+  return {
+    winners,
+    publishedProjects
+  }
+}
+
+async function insertCompletedOutcomeCacheEntries(
+  database: AppDatabase,
+  rows: Array<typeof hackathonOutcomeCacheEntries.$inferInsert>
+) {
+  const chunkSize = 10
+
+  for (let index = 0; index < rows.length; index += chunkSize) {
+    await database
+      .insert(hackathonOutcomeCacheEntries)
+      .values(rows.slice(index, index + chunkSize))
+  }
+}
+
+async function writeCompletedOutcomeCache(
+  database: AppDatabase,
+  hackathonId: string,
+  collections: CompletedOutcomeCollections,
+  timestamp = new Date().toISOString()
+) {
+  const generationId = crypto.randomUUID()
+  const rows: Array<typeof hackathonOutcomeCacheEntries.$inferInsert> = [
+    ...collections.winners.map((entry, index) => ({
+      hackathonId,
+      generationId,
+      collection: 'winners' as const,
+      displayOrder: index,
+      payloadJson: JSON.stringify(entry),
+      createdAt: timestamp
+    })),
+    ...collections.publishedProjects.map((entry, index) => ({
+      hackathonId,
+      generationId,
+      collection: 'published_projects' as const,
+      displayOrder: index,
+      payloadJson: JSON.stringify(entry),
+      createdAt: timestamp
+    }))
+  ]
+
+  if (rows.length > 0) {
+    await insertCompletedOutcomeCacheEntries(database, rows)
+  }
+
+  await database
+    .insert(hackathonOutcomeCaches)
+    .values({
+      hackathonId,
+      generationId,
+      generatedAt: timestamp,
+      updatedAt: timestamp
+    })
+    .onConflictDoUpdate({
+      target: hackathonOutcomeCaches.hackathonId,
+      set: {
+        generationId: sql`excluded.generation_id`,
+        generatedAt: sql`excluded.generated_at`,
+        updatedAt: timestamp
+      }
+    })
+
+  await database
+    .delete(hackathonOutcomeCacheEntries)
+    .where(and(
+      eq(hackathonOutcomeCacheEntries.hackathonId, hackathonId),
+      ne(hackathonOutcomeCacheEntries.generationId, generationId)
+    ))
+}
+
+async function loadCompletedOutcomeCollections(database: AppDatabase, hackathonId: string) {
+  const hackathon = await database.query.hackathons.findFirst({
+    columns: {
+      id: true,
+      state: true
+    },
+    where: eq(hackathons.id, hackathonId)
+  })
+
+  if (hackathon?.state === 'completed') {
+    const cache = await database.query.hackathonOutcomeCaches.findFirst({
+      where: eq(hackathonOutcomeCaches.hackathonId, hackathonId)
+    })
+
+    if (cache) {
+      return await readCompletedOutcomeCache(database, cache)
+    }
+  }
+
+  const collections = await buildCompletedOutcomeCollections(database, hackathonId)
+
+  if (hackathon?.state === 'completed') {
+    await writeCompletedOutcomeCache(database, hackathonId, collections)
+  }
+
+  return collections
+}
+
+export async function refreshCompletedOutcomeCache(database: AppDatabase, hackathonId: string) {
+  const collections = await buildCompletedOutcomeCollections(database, hackathonId)
+  await writeCompletedOutcomeCache(database, hackathonId, collections)
+
+  return collections
 }
 
 async function loadCompetitionEntries(

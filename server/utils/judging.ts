@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, eq, getTableColumns, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, count, eq, getTableColumns, inArray, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
@@ -206,6 +206,137 @@ type PitchJudgeAssignmentDetail = ReturnType<typeof serializeJudgeAssignment> & 
 }
 
 type JudgeAssignmentDetail = BlindJudgeAssignmentDetail | PitchJudgeAssignmentDetail
+export const listJudgeAssignmentsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  page_size: z.coerce.number().int().min(1).max(100).default(100)
+})
+type ListJudgeAssignmentsQuery = z.infer<typeof listJudgeAssignmentsQuerySchema>
+
+export type JudgeAssignmentSummary = ReturnType<typeof serializeJudgeAssignment> & {
+  blindSubmission?: ReturnType<typeof serializeBlindSubmission>
+  pitchSubmission?: ReturnType<typeof serializePitchSubmission>
+}
+
+export async function getJudgingAssignmentSummary(
+  database: AppDatabase,
+  hackathon: Pick<HackathonRecord, 'id'>
+) {
+  const [totalRows, activeRows, completedPitchRows] = await Promise.all([
+    database
+      .select({ total: count() })
+      .from(judgeAssignments)
+      .where(eq(judgeAssignments.hackathonId, hackathon.id)),
+    database
+      .select({ total: count() })
+      .from(judgeAssignments)
+      .where(and(
+        eq(judgeAssignments.hackathonId, hackathon.id),
+        inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses])
+      )),
+    database
+      .select({ total: count() })
+      .from(judgeAssignments)
+      .where(and(
+        eq(judgeAssignments.hackathonId, hackathon.id),
+        eq(judgeAssignments.reviewStage, 'pitch_review'),
+        eq(judgeAssignments.status, 'judge_completed')
+      ))
+  ])
+
+  return {
+    totalAssignmentCount: totalRows[0]?.total ?? 0,
+    activeAssignmentCount: activeRows[0]?.total ?? 0,
+    completedPitchAssignmentCount: completedPitchRows[0]?.total ?? 0
+  }
+}
+
+export async function listActiveJudgeAssignmentSummaries(
+  database: AppDatabase,
+  hackathonId: string,
+  query: ListJudgeAssignmentsQuery = { page: 1, page_size: 100 }
+) {
+  const activeAssignmentWhere = and(
+    eq(judgeAssignments.hackathonId, hackathonId),
+    inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses])
+  )
+  const [rows, totalRows] = await Promise.all([
+    database
+      .select({
+        assignment: getTableColumns(judgeAssignments),
+        submission: {
+          id: submissions.id,
+          projectName: submissions.projectName,
+          summary: submissions.summary,
+          repositoryUrl: submissions.repositoryUrl,
+          demoUrl: submissions.demoUrl,
+          status: submissions.status,
+          submittedAt: submissions.submittedAt,
+          lockedAt: submissions.lockedAt
+        },
+        team: {
+          id: teams.id,
+          name: teams.name
+        }
+      })
+      .from(judgeAssignments)
+      .innerJoin(submissions, eq(submissions.id, judgeAssignments.submissionId))
+      .innerJoin(teams, eq(teams.id, submissions.teamId))
+      .where(activeAssignmentWhere)
+      .orderBy(asc(judgeAssignments.judgeUserId), asc(judgeAssignments.createdAt))
+      .limit(query.page_size)
+      .offset((query.page - 1) * query.page_size),
+    database
+      .select({ total: count() })
+      .from(judgeAssignments)
+      .where(activeAssignmentWhere)
+  ])
+
+  const data = rows.map(({ assignment, submission, team }): JudgeAssignmentSummary => {
+    const submissionRecord = {
+      id: submission.id,
+      teamId: team.id,
+      trackId: null,
+      status: submission.status,
+      projectName: submission.projectName,
+      summary: submission.summary,
+      repositoryUrl: submission.repositoryUrl,
+      demoUrl: submission.demoUrl,
+      isPubliclyVisible: false,
+      submittedAt: submission.submittedAt,
+      lockedAt: submission.lockedAt,
+      withdrawnAt: null,
+      disqualifiedAt: null,
+      createdAt: assignment.createdAt,
+      updatedAt: assignment.createdAt
+    } satisfies SubmissionRecord
+
+    return assignment.reviewStage === 'pitch_review'
+      ? {
+          ...serializeJudgeAssignment(assignment),
+          pitchSubmission: serializePitchSubmission(submissionRecord, {
+            id: team.id,
+            hackathonId,
+            name: team.name,
+            bio: null,
+            slug: '',
+            workspaceMode: 'team',
+            isOpenToJoinRequests: false,
+            createdByUserId: '',
+            createdAt: assignment.createdAt,
+            updatedAt: assignment.createdAt
+          }, null)
+        }
+      : {
+          ...serializeJudgeAssignment(assignment),
+          blindSubmission: serializeBlindSubmission(submissionRecord, [], null)
+        }
+  })
+
+  return {
+    data,
+    total: totalRows[0]?.total ?? 0
+  }
+}
 
 export function assertStartJudgingPreparationAllowed(
   hackathon: HackathonRecord,

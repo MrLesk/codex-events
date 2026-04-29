@@ -10,7 +10,7 @@ It translates the canonical product model into stable backend domains, operation
 - The API surface is organized by stable backend domains rather than by UI screens.
 - Auth0 provides identity.
 - Platform authorization is resolved from application data.
-- Derived views such as the leaderboard, final score breakdown, and the no-submission team section remain computed from persisted data.
+- Derived views such as the leaderboard, final score breakdown, and the no-submission team section remain computed from persisted data. Completed public outcome showcases are persisted as a generated cache after completion so repeated public reads do not rebuild the same aggregate.
 
 ## Shared Conventions
 
@@ -365,7 +365,7 @@ Operations:
 | Submit application | `POST /api/hackathons/:hackathonId/applications` | authenticated user | Allowed only in `registration_open`, only if no prior application exists, and only if the user profile satisfies the hackathon's required profile flags. Requires exact-version acceptance of the current application terms. Carries registration hint payload with `registrationTeamIntent` (`solo`, `team`, `unknown`) and optional teammate hints, plus optional `whyThisHackathon` and `proofOfExecutionUrl`, where `proofOfExecutionUrl` accepts one or more comma-separated `http` or `https` links. For in-person hackathons, also requires `inPersonAttendanceCommitment = true`. If configured, also requires non-empty `whyThisHackathon` and/or at least one proof link in `proofOfExecutionUrl`. When the hackathon requires a Luma email and has a configured `lumaEventApiId`, submission also verifies that the participant's saved `lumaEmail` is registered as a guest on that Luma event before the application is created. |
 | Get own application | `GET /api/hackathons/:hackathonId/applications/me` | authenticated user | Returns the caller's application for the hackathon, if present. |
 | Withdraw own application | `POST /api/hackathons/:hackathonId/applications/me/actions/withdraw` | authenticated user | Allowed only when the caller's application is `submitted` or `approved` and the caller has no active team membership in the hackathon. Transitions the application to `withdrawn`, records `withdrawnAt`, writes an audit record, and enqueues Luma guest rejection when the hackathon requires a Luma email and defines a Luma event API ID. This operation does not delete the application record. |
-| List hackathon applications | `GET /api/hackathons/:hackathonId/applications` | staff, hackathon admin, or platform admin | Returns application records for participant-visibility and review workflows. Staff access is read-only. |
+| List hackathon applications | `GET /api/hackathons/:hackathonId/applications` | staff, hackathon admin, or platform admin | Returns paginated application records for participant-visibility and review workflows. Supports `page`, `page_size` up to `100`, and optional `status`; response metadata includes total count and status counts. Staff access is read-only. |
 | Withdraw application | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw` | hackathon admin or platform admin | Allowed only when the target application is `submitted` or `approved`. Transitions the application to `withdrawn`, records `withdrawnAt`, writes an audit record, and enqueues Luma guest rejection when the hackathon requires a Luma email and defines a Luma event API ID. If the participant still has an active team, the operation removes that membership when the team can remain valid. If the participant is the last active member or last active admin, the operation dissolves the team, closes pending join requests, and is blocked when doing so would affect an active draft, submitted, or locked submission. |
 | Stage application approval | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/approve` | hackathon admin or platform admin | Persists `pre_approval_status = approved` for a `submitted` application without changing canonical status. |
 | Stage application rejection | `POST /api/hackathons/:hackathonId/applications/:applicationId/actions/reject` | hackathon admin or platform admin | Persists `pre_approval_status = rejected` for a `submitted` application without changing canonical status. |
@@ -448,6 +448,7 @@ Operations:
 | Withdraw submission on team request | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/admin-withdraw` | hackathon admin or platform admin | Allowed only until submitted work is locked for judging. The body must include `requestedByUserId`, and that user must be an active team admin of the submission's team. |
 | Disqualify submission | `POST /api/hackathons/:hackathonId/teams/:teamId/submission/actions/disqualify` | hackathon admin or platform admin | Used instead of withdrawal once review-phase removal rules apply. |
 | List no-submission teams | `GET /api/hackathons/:hackathonId/no-submission-teams` | hackathon admin or platform admin | Returns the computed operational section for approved teams with no active submitted submission. |
+| Get submission summary | `GET /api/hackathons/:hackathonId/submissions/summary` | hackathon admin or platform admin | Returns aggregate team/submission counts for Operations without returning team or submission rows. |
 
 Testing:
 - Unit: submission-state and withdrawal or disqualification rules.
@@ -463,7 +464,8 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| List active judge assignments | `GET /api/hackathons/:hackathonId/judging/assignments` | assigned judge, hackathon admin, or platform admin | Judges see only their assignments for the current judging stage. Blind assignments render in blind view. Pitch assignments render in the open pitch view. Admins can access operational assignment views. |
+| List active judge assignments | `GET /api/hackathons/:hackathonId/judging/assignments` | assigned judge, hackathon admin, or platform admin | Judges see only their assignments for the current judging stage. Blind assignments render in blind view. Pitch assignments render in the open pitch view. Admin operational assignment views are paginated and support `page` and `page_size` up to `100`. |
+| Get judging summary | `GET /api/hackathons/:hackathonId/judging/summary` | hackathon admin or platform admin | Returns aggregate judging assignment counts for Operations without returning assignment rows. |
 | Get assignment detail | `GET /api/hackathons/:hackathonId/judging/assignments/:assignmentId` | assigned judge, hackathon admin, or platform admin acting through assignment review | Blind-review responses exclude team identity and include anonymized application information plus the selected submission track. Pitch-review responses expose project name, team name, and full finalist submission detail. |
 | Save in-progress blind-review criterion scores | `PATCH /api/hackathons/:hackathonId/judging/assignments/:assignmentId` | assigned judge, hackathon admin, or platform admin acting through assignment review | Allowed only for `blind_review` assignments in `judge_started`. Persists the provided subset of criterion scores without completing the review. Completed blind reviews must still include every criterion. |
 | Start assigned review | `POST /api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/start` | assigned judge, hackathon admin, or platform admin acting through assignment review | Transitions `assigned` to `judge_started`. |
@@ -523,8 +525,8 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Get winners | `GET /api/hackathons/:hackathonId/winners` | public or authenticated user after completion | Returns the completed winners showcase with prize, project, and published winning-team details. |
-| Get published projects | `GET /api/hackathons/:hackathonId/published-projects` | public or authenticated user after completion | Returns the separate completed published-projects section with opted-in non-winning locked projects and published team-member details. |
+| Get winners | `GET /api/hackathons/:hackathonId/winners` | public or authenticated user after completion | Returns the completed winners showcase with prize, project, and published winning-team details. Completed reads use the generated outcome cache. |
+| Get published projects | `GET /api/hackathons/:hackathonId/published-projects` | public or authenticated user after completion | Returns the separate completed published-projects section with opted-in non-winning locked projects and published team-member details. Completed reads use the generated outcome cache, which is refreshed when eligible project visibility changes. |
 
 Testing:
 - Unit: winner visibility guards.
@@ -540,7 +542,7 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| List prize eligibility and redemptions for a hackathon | `GET /api/hackathons/:hackathonId/prize-redemptions` | hackathon admin or platform admin | Returns operational redemption records and eligibility context. |
+| List prize eligibility and redemptions for a hackathon | `GET /api/hackathons/:hackathonId/prize-redemptions` | hackathon admin or platform admin | Returns operational redemption records and eligibility context. Ranking context is omitted by default and included only when `include_rankings=true`. |
 | Get own pending prize redemptions | `GET /api/prize-redemptions/me` | prize recipient | Returns the caller's redemption tasks across hackathons. Member-scoped redemptions appear for the eligible user. Team-scoped redemptions appear for active team admins of the winning team. |
 | Submit prize redemption | `POST /api/prize-redemptions/:redemptionId/actions/redeem` | prize recipient | Requires legal name and exact-version acceptance of the current winner terms for the hackathon. Team-scoped redemption requires active team-admin access to the winning team. |
 

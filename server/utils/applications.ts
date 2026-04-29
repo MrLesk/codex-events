@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { and, asc, desc, eq, getTableColumns, inArray, isNull } from 'drizzle-orm'
+import { and, asc, count, desc, eq, getTableColumns, inArray, isNull } from 'drizzle-orm'
 import { z } from 'zod'
 
 import {
@@ -18,6 +18,7 @@ import {
   teamMembers,
   teams,
   userApplications,
+  userApplicationStatuses,
   users
 } from '#server/database/schema'
 import type {
@@ -41,6 +42,12 @@ export const applicationParamsSchema = routeIdParamsSchema.extend({
 
 export const registrationTeamIntentValues = ['solo', 'team', 'unknown'] as const
 
+export const listApplicationsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  page_size: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.enum(userApplicationStatuses).optional()
+})
+
 const registrationTeamMemberHintSchema = z.object({
   fullName: z.string().max(200).optional().nullable(),
   email: z.string().email().max(320).optional().nullable()
@@ -63,6 +70,7 @@ type TeamRecord = typeof teams.$inferSelect
 type TeamMemberRecord = typeof teamMembers.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
 type SubmitApplicationBody = z.infer<typeof submitApplicationBodySchema>
+type ListApplicationsQuery = z.infer<typeof listApplicationsQuerySchema>
 
 export type AdminApplicationWithdrawalTeamAction = 'none' | 'remove_member' | 'dissolve_team'
 
@@ -748,28 +756,61 @@ export async function requireApprovedUserForHackathon(event: H3Event, hackathonI
   }
 }
 
-export async function listHackathonApplications(database: AppDatabase, hackathonId: string) {
-  const applications = await database.query.userApplications.findMany({
-    where: eq(userApplications.hackathonId, hackathonId),
-    orderBy: [desc(userApplications.submittedAt), asc(userApplications.createdAt)]
-  })
-
-  const usersById = new Map<string, UserRecord>()
-
-  if (applications.length > 0) {
-    const relatedUsers = await database
-      .select(getTableColumns(users))
-      .from(users)
-      .innerJoin(userApplications, and(
-        eq(userApplications.hackathonId, hackathonId),
-        eq(userApplications.userId, users.id)
+export async function listHackathonApplications(
+  database: AppDatabase,
+  hackathonId: string,
+  query: ListApplicationsQuery = { page: 1, page_size: 20 }
+) {
+  const whereClause = and(
+    eq(userApplications.hackathonId, hackathonId),
+    query.status ? eq(userApplications.status, query.status) : undefined
+  )
+  const [applicationRows, totalRows, statusCountRows] = await Promise.all([
+    database
+      .select({
+        application: getTableColumns(userApplications),
+        user: getTableColumns(users)
+      })
+      .from(userApplications)
+      .innerJoin(users, eq(users.id, userApplications.userId))
+      .where(and(
+        whereClause,
+        isNull(users.deletedAt)
       ))
-      .where(isNull(users.deletedAt))
-
-    for (const user of relatedUsers) {
-      usersById.set(user.id, user)
-    }
-  }
+      .orderBy(desc(userApplications.submittedAt), asc(userApplications.createdAt))
+      .limit(query.page_size)
+      .offset((query.page - 1) * query.page_size),
+    database
+      .select({ total: count() })
+      .from(userApplications)
+      .innerJoin(users, eq(users.id, userApplications.userId))
+      .where(and(
+        whereClause,
+        isNull(users.deletedAt)
+      )),
+    database
+      .select({
+        status: userApplications.status,
+        total: count()
+      })
+      .from(userApplications)
+      .innerJoin(users, eq(users.id, userApplications.userId))
+      .where(and(
+        eq(userApplications.hackathonId, hackathonId),
+        isNull(users.deletedAt)
+      ))
+      .groupBy(userApplications.status)
+  ])
+  const applications = applicationRows.map(row => row.application)
+  const usersById = new Map<string, UserRecord>(
+    applicationRows.map(row => [row.user.id, row.user] as const)
+  )
+  const statusCounts = Object.fromEntries(
+    userApplicationStatuses.map(status => [
+      status,
+      statusCountRows.find(row => row.status === status)?.total ?? 0
+    ])
+  ) as Record<UserApplicationRecord['status'], number>
 
   const adminWithdrawalByApplicationId = await listAdminApplicationWithdrawalAvailabilityByApplicationId(
     database,
@@ -777,12 +818,16 @@ export async function listHackathonApplications(database: AppDatabase, hackathon
     applications
   )
 
-  return applications.map(application =>
-    serializeUserApplication(application, {
-      user: usersById.get(application.userId) ?? null,
-      adminWithdrawal: adminWithdrawalByApplicationId.get(application.id)
-    })
-  )
+  return {
+    data: applications.map(application =>
+      serializeUserApplication(application, {
+        user: usersById.get(application.userId) ?? null,
+        adminWithdrawal: adminWithdrawalByApplicationId.get(application.id)
+      })
+    ),
+    total: totalRows[0]?.total ?? 0,
+    statusCounts
+  }
 }
 
 export async function requireHackathonAdminApplicationContext(event: H3Event, hackathonId: string) {
