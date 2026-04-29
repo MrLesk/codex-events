@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="public/android-chrome-512x512.png" width="104" alt="Codex Hackathons logo" />
+  <img src="public/platform-mark.png" width="104" alt="Codex Hackathons platform mark" />
 </p>
 
 <h1 align="center">Codex Hackathons</h1>

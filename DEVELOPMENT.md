@@ -72,7 +72,7 @@ Auth0 bootstrap automation:
 These commands enforce required Auth0 tenant configuration:
 
 - custom domain readiness and default assignment
-- Auth0 application display name plus Universal Login branding sync (primary color, page background, logo, favicon)
+- Auth0 application display name plus Universal Login branding sync (primary color, page background, wordmark, favicon)
 - Universal Login page template sync for canonical login-link styling
 - login prompt subtitle copy
 - signup prompt consent text/partials cleared so platform consent stays app-owned at `/account/register`
@@ -87,7 +87,7 @@ If a tenant lacks the paid Universal Login page-template feature, the bootstrap 
 
 By default the script reads `NUXT_AUTH0_*` plus `AUTH0_TEST_MGMT_*`. You can override with explicit `AUTH0_*` variables (`AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_MGMT_AUDIENCE`, `AUTH0_APP_CLIENT_ID`, `AUTH0_APP_DISPLAY_NAME`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_LOGIN_URI`, `AUTH0_TERMS_URL`, `AUTH0_PRIVACY_URL`, `AUTH0_BRANDING_PRIMARY_COLOR`, `AUTH0_BRANDING_PAGE_BACKGROUND_COLOR`, `AUTH0_BRANDING_LOGO_URL`, `AUTH0_BRANDING_FAVICON_URL`).
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL`/`NUXT_AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
-When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-hackathons-wordmark.svg` for the logo and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
+When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-hackathons-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 
 If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUTH0_*`, rename them to the `NUXT_AUTH0_*` keys above.
 

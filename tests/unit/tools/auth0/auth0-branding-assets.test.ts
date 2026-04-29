@@ -3,10 +3,13 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 
 describe('auth0 branding assets', () => {
-  test('centers the canonical wordmark within the svg canvas', () => {
+  test('includes the distinct platform mark and left-aligned wordmark', () => {
     const svg = readFileSync(new URL('../../../../public/auth0/codex-hackathons-wordmark.svg', import.meta.url), 'utf8')
 
-    expect(svg).toContain('x="320"')
-    expect(svg).toContain('text-anchor="middle"')
+    expect(svg).toContain('data-platform-mark="codex-hackathons"')
+    expect(svg).toContain('<text')
+    expect(svg).toContain('x="120"')
+    expect(svg).toContain('Codex Hackathons')
+    expect(svg).not.toContain('text-anchor="middle"')
   })
 })
