@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatHackathonDate } from '~/composables/useHackathonPresentation'
+import { formatHackathonDate } from '~/domains/hackathons/presentation'
 import {
   describePrizeRedemptionRecipient,
   formatPrizeRedemptionStatus,

@@ -1,4 +1,4 @@
-import type { PublicHackathonState } from './useHackathonPresentation'
+import type { PublicHackathonState } from '~/domains/hackathons/presentation'
 
 export type UserApplicationStatus = 'submitted' | 'approved' | 'rejected' | 'withdrawn'
 export type UserSubmissionStatus = 'draft' | 'submitted' | 'withdrawn' | 'locked' | 'disqualified' | null

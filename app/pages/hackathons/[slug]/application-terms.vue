@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { PublicHackathon } from '~/composables/useHackathonPresentation'
+import {
+  formatHackathonLocation,
+  formatHackathonWindow,
+  formatMaxTeamMembers,
+  type PublicHackathon
+} from '~/domains/hackathons/presentation'
 import type {
   ParticipantApiDataResponse,
   ParticipantApplicationTermsDocument,

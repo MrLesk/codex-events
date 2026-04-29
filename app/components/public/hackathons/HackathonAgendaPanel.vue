@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { PublicHackathonAgendaItem } from '~/composables/useHackathonPresentation'
+import {
+  getAgendaItemPresentation,
+  shouldShowAgendaDayContext,
+  type PublicHackathonAgendaItem
+} from '~/domains/hackathons/presentation'
 
 const props = defineProps<{
   agendaItems: PublicHackathonAgendaItem[]

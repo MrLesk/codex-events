@@ -3,7 +3,12 @@ import type {
   PublicApiListResponse,
   PublicHackathon,
   PublicPrize
-} from '~/composables/useHackathonPresentation'
+} from '~/domains/hackathons/presentation'
+import {
+  formatHackathonDateWithWeekday,
+  formatHackathonLocation,
+  getHackathonEarliestStartAt
+} from '~/domains/hackathons/presentation'
 import type { HackathonPhotoRecord } from '#shared/hackathon-photos'
 import type { PublishedProjectEntry, WinnerEntry } from '~/utils/admin-workspace'
 

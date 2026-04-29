@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { PublicHackathon } from '~/composables/useHackathonPresentation'
+import {
+  formatHackathonDate,
+  formatTermsDocumentType,
+  type PublicHackathon
+} from '~/domains/hackathons/presentation'
 
 const props = defineProps<{
   hackathon: PublicHackathon

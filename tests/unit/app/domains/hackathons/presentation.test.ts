@@ -16,7 +16,7 @@ import {
   getHackathonEarliestStartAt,
   getAgendaItemPresentation,
   shouldShowAgendaDayContext
-} from '../../../../app/composables/useHackathonPresentation'
+} from '../../../../../app/domains/hackathons/presentation'
 
 describe('public hackathon agenda presentation helpers', () => {
   test('omits the country when city and country are identical', () => {

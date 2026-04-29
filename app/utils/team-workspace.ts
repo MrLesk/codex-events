@@ -1,4 +1,4 @@
-import type { PublicHackathon } from '../composables/useHackathonPresentation'
+import type { PublicHackathon } from '~/domains/hackathons/presentation'
 import type {
   ParticipantActor,
   ParticipantApiDataResponse,

@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { reactiveOmit } from '@vueuse/core'
 import { cn } from '~/lib/utils'
-import type { PublicHackathonState } from '~/composables/useHackathonPresentation'
+import {
+  getPublicHackathonStatePresentation,
+  resolvePublicHackathonHeaderStateClass,
+  type PublicHackathonState
+} from '~/domains/hackathons/presentation'
 
 defineOptions({
   inheritAttrs: false

@@ -3,7 +3,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
 import { Switch as UiSwitch } from '~/components/ui/switch'
-import type { PublicHackathonState } from '~/composables/useHackathonPresentation'
+import type { PublicHackathonState } from '~/domains/hackathons/presentation'
 import type {
   SubmissionTrackOption,
   TeamSubmissionActionAvailability,

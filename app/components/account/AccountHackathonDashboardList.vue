@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PublicHackathonState } from '~/composables/useHackathonPresentation'
+import type { PublicHackathonState } from '~/domains/hackathons/presentation'
 import { collapseMarkdownToPlainText } from '~/utils/hackathon-description'
 import type { HackathonState } from '~/utils/admin-workspace'
 

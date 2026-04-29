@@ -9,7 +9,7 @@ import {
   getParticipationStageColor,
   getParticipationStatusColor
 } from '~/utils/hackathon-participation'
-import { formatHackathonDateWithWeekday, formatHackathonLocation } from '~/composables/useHackathonPresentation'
+import { formatHackathonDateWithWeekday, formatHackathonLocation } from '~/domains/hackathons/presentation'
 
 const props = defineProps<{
   record: HackathonParticipationRecord

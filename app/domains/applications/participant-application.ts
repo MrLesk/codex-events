@@ -1,4 +1,4 @@
-import type { PublicHackathon, PublicHackathonState } from '~/composables/useHackathonPresentation'
+import type { PublicHackathon, PublicHackathonState } from '~/domains/hackathons/presentation'
 
 import { buildAccountRegisterHref, buildAuthLoginHref } from '#shared/auth-navigation'
 

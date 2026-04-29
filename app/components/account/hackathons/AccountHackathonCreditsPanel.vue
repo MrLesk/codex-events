@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatHackathonDate, formatHackathonTime } from '~/composables/useHackathonPresentation'
+import { formatHackathonDate, formatHackathonTime } from '~/domains/hackathons/presentation'
 import type {
   AdminHackathonCreditOffer,
   HackathonCreditApiDataResponse,

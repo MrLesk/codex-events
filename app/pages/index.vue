@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PublicApiListResponse, PublicHackathon } from '~/composables/useHackathonPresentation'
+import type { PublicApiListResponse, PublicHackathon } from '~/domains/hackathons/presentation'
 
 import HackathonCard from '~/components/public/hackathons/HackathonCard.vue'
 import { getPublicHomepageHackathonView, type PublicHomepageTab } from '~/utils/public-homepage'

@@ -4,7 +4,12 @@ import type {
   PublicApiListResponse,
   PublicHackathon,
   PublicPrize
-} from '~/composables/useHackathonPresentation'
+} from '~/domains/hackathons/presentation'
+import {
+  formatHackathonLocation,
+  formatHackathonWindow,
+  formatMaxTeamMembers
+} from '~/domains/hackathons/presentation'
 import type {
   HackathonParticipationApiDataResponse,
   HackathonParticipationRankSummary,

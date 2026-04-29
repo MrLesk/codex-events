@@ -1,4 +1,4 @@
-import type { PublicHackathonState } from '../composables/useHackathonPresentation'
+import type { PublicHackathonState } from '~/domains/hackathons/presentation'
 
 export const accountHackathonWorkspaceTabs = [
   'overview',

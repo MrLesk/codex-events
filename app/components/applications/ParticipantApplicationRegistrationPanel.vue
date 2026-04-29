@@ -2,7 +2,7 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
-import type { PublicHackathon } from '~/composables/useHackathonPresentation'
+import { formatHackathonLocation, type PublicHackathon } from '~/domains/hackathons/presentation'
 import type {
   HackathonProfileField,
   ParticipantApplicationSubmittedTransition,

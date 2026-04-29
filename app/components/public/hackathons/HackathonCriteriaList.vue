@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PublicEvaluationCriterion } from '~/composables/useHackathonPresentation'
+import type { PublicEvaluationCriterion } from '~/domains/hackathons/presentation'
 
 const props = defineProps<{
   criteria: PublicEvaluationCriterion[]

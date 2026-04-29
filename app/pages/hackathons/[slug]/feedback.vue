@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { PublicHackathon } from '~/composables/useHackathonPresentation'
+import {
+  formatHackathonLocation,
+  formatHackathonWindow,
+  formatMaxTeamMembers,
+  type PublicHackathon
+} from '~/domains/hackathons/presentation'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 import HackathonFeedbackForm from '~/components/public/hackathons/HackathonFeedbackForm.vue'

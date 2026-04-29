@@ -9,7 +9,7 @@ import type {
 import {
   formatPrizeRank,
   formatPrizeReward
-} from '~/composables/useHackathonPresentation'
+} from '~/domains/hackathons/presentation'
 import { getPublishedHackathonRosterLinks } from '~/utils/hackathon-published-roster'
 import {
   buildPrizeRedemptionPostShortlistEntries,

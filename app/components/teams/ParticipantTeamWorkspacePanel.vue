@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PublicHackathonState } from '~/composables/useHackathonPresentation'
+import type { PublicHackathonState } from '~/domains/hackathons/presentation'
 import type {
   TeamActionAvailability,
   TeamDetailRecord,

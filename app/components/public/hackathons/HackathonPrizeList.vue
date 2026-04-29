@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { PublicPrize } from '~/composables/useHackathonPresentation'
+import {
+  formatPrizeRank,
+  formatPrizeReward,
+  formatPrizeScope,
+  type PublicPrize
+} from '~/domains/hackathons/presentation'
 
 const props = withDefaults(defineProps<{
   prizes: Array<PublicPrize & {

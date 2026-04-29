@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import type { PublicHackathon } from '~/composables/useHackathonPresentation'
+import {
+  formatHackathonCompactDate,
+  formatHackathonDateWithWeekday,
+  formatHackathonLocation,
+  getHackathonEarliestStartAt,
+  type PublicHackathon
+} from '~/domains/hackathons/presentation'
 
 import HackathonStateBadge from '~/components/public/hackathons/HackathonStateBadge.vue'
 

@@ -4,7 +4,7 @@ import type { WinnerEntry } from '~/utils/admin-workspace'
 import {
   formatPrizeRank,
   formatPrizeReward
-} from '~/composables/useHackathonPresentation'
+} from '~/domains/hackathons/presentation'
 import { getPublishedHackathonRosterLinks } from '~/utils/hackathon-published-roster'
 
 const props = withDefaults(defineProps<{

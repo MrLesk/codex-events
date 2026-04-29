@@ -1,4 +1,4 @@
-import type { PublicHackathon } from './useHackathonPresentation'
+import type { PublicHackathon } from '~/domains/hackathons/presentation'
 import type {
   ParticipantApplicationRecord
 } from '~/domains/applications/participant-application'

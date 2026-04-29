@@ -1,5 +1,5 @@
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
-import type { PublicApiDataResponse } from '~/composables/useHackathonPresentation'
+import type { PublicApiDataResponse } from '~/domains/hackathons/presentation'
 
 import { accountDashboardHref, buildAuthLoginHref } from '#shared/auth-navigation'
 import {

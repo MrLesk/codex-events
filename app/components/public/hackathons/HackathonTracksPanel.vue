@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PublicHackathonTrack } from '~/composables/useHackathonPresentation'
+import type { PublicHackathonTrack } from '~/domains/hackathons/presentation'
 
 const props = defineProps<{
   tracks: PublicHackathonTrack[]
