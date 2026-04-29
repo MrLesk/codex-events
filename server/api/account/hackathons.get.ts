@@ -10,8 +10,8 @@ import {
   teams,
   userApplications
 } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 
 type UserApplicationRecord = typeof userApplications.$inferSelect
 type TeamMembershipRecord = typeof teamMembers.$inferSelect

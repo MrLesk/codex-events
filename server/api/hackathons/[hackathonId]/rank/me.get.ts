@@ -3,14 +3,14 @@ import { and, desc, eq } from 'drizzle-orm'
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { teamMembers, teams } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import {
   getVisibleHackathonOrThrow,
   routeIdParamsSchema
 } from '#server/utils/hackathon-management'
 import { getTeamCompetitionOutcome } from '#server/utils/shortlist'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 type MembershipRow = {
   teamId: string

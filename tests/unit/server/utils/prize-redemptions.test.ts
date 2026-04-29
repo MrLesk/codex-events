@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { ApiError } from '../../../../server/utils/api-error'
+import { ApiError } from '../../../../server/http/api-error'
 import { assertPrizeRedemptionRedeemable } from '../../../../server/utils/prize-redemptions'
 
 function createHackathon(state: 'winners_announced' | 'completed' | 'shortlist') {

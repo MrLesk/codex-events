@@ -1,4 +1,4 @@
-import { ApiError } from './api-error'
+import { ApiError } from '#server/http/api-error'
 
 export function assertAllowedState<T extends string>(
   currentState: T,

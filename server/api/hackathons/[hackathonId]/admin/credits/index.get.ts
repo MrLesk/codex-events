@@ -2,15 +2,15 @@ import { and, eq, getTableColumns, isNotNull } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { hackathonCreditCodes, hackathonCreditOffers, users } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiList } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiList } from '#server/http/api-response'
 import { requireHackathonAdmin, routeIdParamsSchema } from '#server/utils/hackathon-management'
 import {
   listHackathonCreditCodesForHackathon,
   listHackathonCreditOffers,
   serializeAdminHackathonCreditOffer
 } from '#server/utils/hackathon-credits'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 type HackathonCreditOfferRecord = typeof hackathonCreditOffers.$inferSelect
 type HackathonCreditCodeRecord = typeof hackathonCreditCodes.$inferSelect

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { defineApiHandler } from '../../../../server/utils/api-handler'
-import { ApiError } from '../../../../server/utils/api-error'
+import { defineApiHandler } from '../../../../server/http/api-handler'
+import { ApiError } from '../../../../server/http/api-error'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 describe('api handler error responses', () => {

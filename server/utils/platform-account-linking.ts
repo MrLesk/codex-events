@@ -18,7 +18,7 @@ import { deleteCookie, getCookie, getRequestURL, parseCookies, setCookie } from 
 
 import { accountDashboardHref, buildAccountRegisterHref, normalizeAuthReturnTo } from '#shared/auth-navigation'
 import { users } from '#server/database/schema'
-import { ApiError } from './api-error'
+import { ApiError } from '#server/http/api-error'
 
 const challengeCookieName = 'codex_platform_account_link'
 const challengeLifetimeSeconds = 10 * 60

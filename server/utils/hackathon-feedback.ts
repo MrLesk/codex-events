@@ -16,7 +16,7 @@ import type { HackathonAuthorization } from '#server/auth/authorization'
 import type { AppDatabase } from '#server/database/client'
 import type { hackathonStates } from '#server/database/schema'
 import { hackathonFeedback } from '#server/database/schema'
-import { ApiError } from './api-error'
+import { ApiError } from '#server/http/api-error'
 import { assertAllowedState } from './lifecycle-guard'
 
 export const hackathonFeedbackCommentMaxLength = 4000

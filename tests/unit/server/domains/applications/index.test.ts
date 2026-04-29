@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { ApiError } from '../../../../server/utils/api-error'
+import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertApplicationWithdrawable,
   assertInPersonAttendanceCommitment,
@@ -10,7 +10,7 @@ import {
   assertUserMeetsHackathonProfileRequirements,
   serializeUserApplication,
   serializeRegistrationDetailsJson
-} from '../../../../server/utils/applications'
+} from '../../../../../server/domains/applications'
 
 describe('application utilities', () => {
   test('serializeUserApplication includes the user profile icon version when present', () => {

@@ -4,16 +4,16 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { hackathonCreditCodes } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { ApiError } from '#server/utils/api-error'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { ApiError } from '#server/http/api-error'
+import { apiData } from '#server/http/api-response'
 import {
   creditParamsSchema,
   getHackathonCreditOfferOrThrow,
   parseSingleColumnCreditCsv
 } from '#server/utils/hackathon-credits'
 import { requireHackathonAdmin } from '#server/utils/hackathon-management'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const maxCreditCodeRowsPerInsert = 25

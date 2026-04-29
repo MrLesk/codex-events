@@ -4,8 +4,8 @@ import { z } from 'zod'
 
 import { getDatabase } from '#server/database/client'
 import { prizeEligibilitySnapshots, prizeRedemptions, submissions, users } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { ApiError } from '#server/utils/api-error'
+import { defineApiHandler } from '#server/http/api-handler'
+import { ApiError } from '#server/http/api-error'
 import {
   getPublicHackathonBySlugOrThrow,
   routeSlugParamsSchema
@@ -15,7 +15,7 @@ import { assertCompletedOutcomeVisible } from '#server/utils/shortlist'
 import {
   parseValidatedParams,
   parseValidatedQuery
-} from '#server/utils/validation'
+} from '#server/http/validation'
 
 const publishedProjectProfileIconParamsSchema = routeSlugParamsSchema.extend({
   userId: z.string().trim().min(1)

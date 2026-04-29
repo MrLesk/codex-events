@@ -1,9 +1,9 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { userApplications } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { ApiError } from '#server/utils/api-error'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { ApiError } from '#server/http/api-error'
+import { apiData } from '#server/http/api-response'
 import { lookupLumaEventGuestByEmail } from '#server/utils/application-luma-sync-queue'
 import {
   assertCurrentApplicationTermsAcceptance,
@@ -16,9 +16,9 @@ import {
   serializeRegistrationDetailsJson,
   serializeUserApplication,
   submitApplicationBodySchema
-} from '#server/utils/applications'
+} from '#server/domains/applications'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/utils/hackathon-management'
-import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

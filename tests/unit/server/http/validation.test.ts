@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest'
 import { z } from 'zod'
 
-import { ApiError } from '../../../../server/utils/api-error'
-import { validateWithSchema } from '../../../../server/utils/validation'
+import { ApiError } from '../../../../server/http/api-error'
+import { validateWithSchema } from '../../../../server/http/validation'
 
 describe('validation helpers', () => {
   const schema = z.object({

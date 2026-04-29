@@ -8,7 +8,7 @@ import { resolveHackathonAuthorization, resolveTeamAuthorization } from '#server
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import { auditLogs, hackathonTracks, submissions, teams, teamMembers, users } from '#server/database/schema'
 import type { hackathons } from '#server/database/schema'
-import { ApiError } from './api-error'
+import { ApiError } from '#server/http/api-error'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
 import { getVisibleHackathonOrThrow, requireHackathonAdmin, routeIdParamsSchema } from './hackathon-management'
 import { getActiveTeamMembers, getTeamOrThrow, getUsersByIds, serializeTeam, serializeTeamMember } from './team-formation'

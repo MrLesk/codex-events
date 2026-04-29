@@ -4,7 +4,7 @@ import { and, eq, isNull } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { hackathonRoleAssignments, judgeAssignments, teamMembers } from '#server/database/schema'
-import { ApiError } from '#server/utils/api-error'
+import { ApiError } from '#server/http/api-error'
 import {
   assertRegularPlatformAccess,
   getRequestActor,

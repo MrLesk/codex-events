@@ -4,8 +4,8 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { hackathons, prizeEligibilitySnapshots, submissions, teamMembers, teams, users } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import {
   buildHackathonOutcomeEmailQueueMessage,
   enqueueHackathonOutcomeEmailMessage
@@ -24,7 +24,7 @@ import {
   routeIdParamsSchema,
   serializeHackathon
 } from '#server/utils/hackathon-management'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 type TeamRecord = typeof teams.$inferSelect
 type TeamMemberRecord = typeof teamMembers.$inferSelect

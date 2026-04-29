@@ -4,10 +4,10 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { hackathonRoleAssignments } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import { getRoleAssignmentOrThrow, requireHackathonAdmin, roleAssignmentParamsSchema } from '#server/utils/hackathon-management'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 
-import { ApiError } from './api-error'
+import { ApiError } from '#server/http/api-error'
 import {
   detectSupportedImageContentType,
   supportedImageContentTypes,

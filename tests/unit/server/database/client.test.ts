@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 import { describe, expect, test, vi } from 'vitest'
 
-import { ApiError } from '../../../../server/utils/api-error'
+import { ApiError } from '../../../../server/http/api-error'
 import { getDatabase, resolveD1Binding, withDatabaseBatch } from '../../../../server/database/client'
 
 function createEvent(binding?: unknown): H3Event {

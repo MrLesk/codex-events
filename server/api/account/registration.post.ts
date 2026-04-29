@@ -2,17 +2,17 @@ import { z } from 'zod'
 
 import { requireAuthenticatedActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import {
   platformAccountRegistrationBodySchema,
   registerPlatformAccount
 } from '#server/utils/account-management'
-import { ApiError } from '#server/utils/api-error'
+import { ApiError } from '#server/http/api-error'
 import {
   issuePlatformAccountLinkChallenge
 } from '#server/utils/platform-account-linking'
-import { parseValidatedBody } from '#server/utils/validation'
+import { parseValidatedBody } from '#server/http/validation'
 
 const registrationRequestBodySchema = platformAccountRegistrationBodySchema.extend({
   returnTo: z.string().trim().optional()

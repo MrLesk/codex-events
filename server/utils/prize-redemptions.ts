@@ -21,7 +21,7 @@ import {
   serializePrize,
   serializePublishedHackathonRosterMember
 } from './hackathon-management'
-import { ApiError } from './api-error'
+import { ApiError } from '#server/http/api-error'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
 import { getWinnersView } from './shortlist'
 

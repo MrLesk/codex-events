@@ -5,8 +5,8 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { hackathons, prizeRedemptions, prizes } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import {
   enqueueWinnerOutcomeEmails
 } from '#server/utils/hackathon-outcome-email-queue'
@@ -26,7 +26,7 @@ import {
   assertFinalDeliberationReorderMatchesEntries,
   getFinalDeliberationView
 } from '#server/utils/shortlist'
-import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 import { assertGuard } from '#server/utils/lifecycle-guard'
 
 type WinnerPrizeSummary = ReturnType<typeof serializePrize>

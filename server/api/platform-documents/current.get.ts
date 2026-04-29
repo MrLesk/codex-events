@@ -1,6 +1,6 @@
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import { getCurrentPlatformDocuments, serializePlatformDocument } from '#server/utils/platform-documents'
 
 export default defineApiHandler(async (event) => {

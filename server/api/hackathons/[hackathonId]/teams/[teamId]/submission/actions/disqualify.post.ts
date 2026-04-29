@@ -3,10 +3,10 @@ import { eq } from 'drizzle-orm'
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { hackathons, submissions } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { ApiError } from '#server/utils/api-error'
-import { apiData } from '#server/utils/api-response'
-import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
+import { defineApiHandler } from '#server/http/api-handler'
+import { ApiError } from '#server/http/api-error'
+import { apiData } from '#server/http/api-response'
+import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 import {
   parseStoredPitchFinalistSubmissionIds,
   prunePitchPresentationProgress

@@ -1,7 +1,7 @@
 import { setHeader } from 'h3'
 
-import { defineApiHandler } from '#server/utils/api-handler'
-import { ApiError } from '#server/utils/api-error'
+import { defineApiHandler } from '#server/http/api-handler'
+import { ApiError } from '#server/http/api-error'
 import {
   createHackathonPhotoPreviewResponse,
   getHackathonPhotoObject,
@@ -13,7 +13,7 @@ import {
 import {
   parseValidatedParams,
   parseValidatedQuery
-} from '#server/utils/validation'
+} from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, photoId } = parseValidatedParams(event, hackathonPhotoParamsSchema)

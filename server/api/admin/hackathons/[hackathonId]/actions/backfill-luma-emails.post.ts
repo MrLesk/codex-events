@@ -9,17 +9,17 @@ import {
   userApplications,
   users
 } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import {
   resolveApplicationLumaSyncRuntimeConfig,
   resolveLumaEmailFromUsername
 } from '#server/utils/application-luma-sync-queue'
-import { isHackathonLumaSyncEnabled } from '#server/utils/applications'
-import { ApiError } from '#server/utils/api-error'
+import { isHackathonLumaSyncEnabled } from '#server/domains/applications'
+import { ApiError } from '#server/http/api-error'
 import { routeIdParamsSchema } from '#server/utils/hackathon-management'
 import { assertGuard } from '#server/utils/lifecycle-guard'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

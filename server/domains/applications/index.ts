@@ -25,7 +25,7 @@ import type {
   hackathonTermsDocuments,
   hackathons
 } from '#server/database/schema'
-import { ApiError } from './api-error'
+import { ApiError } from '#server/http/api-error'
 import {
   getCurrentHackathonTerms,
   getHackathonTermsDocumentOrThrow,
@@ -33,8 +33,8 @@ import {
   requireHackathonAdmin,
   routeIdParamsSchema,
   serializeHackathonTermsDocument
-} from './hackathon-management'
-import { assertAllowedState, assertGuard } from './lifecycle-guard'
+} from '#server/utils/hackathon-management'
+import { assertAllowedState, assertGuard } from '#server/utils/lifecycle-guard'
 
 export const applicationParamsSchema = routeIdParamsSchema.extend({
   applicationId: z.string().trim().min(1)

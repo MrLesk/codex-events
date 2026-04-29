@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 import type { users } from '#server/database/schema'
 
 import { getDatabase } from '#server/database/client'
-import { ApiError } from '#server/utils/api-error'
+import { ApiError } from '#server/http/api-error'
 import {
   ensurePlatformUserAuthIdentities,
   findActivePlatformUserById,

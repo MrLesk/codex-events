@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { ApiError } from '../../../../server/utils/api-error'
+import { ApiError } from '../../../../server/http/api-error'
 import {
   getRequestActor,
   getRequestLinkablePlatformAccountIdentity,

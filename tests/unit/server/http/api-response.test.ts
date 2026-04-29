@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { apiData, apiList } from '../../../../server/utils/api-response'
+import { apiData, apiList } from '../../../../server/http/api-response'
 
 describe('api response helpers', () => {
   test('wraps single-resource responses in a top-level data object', () => {

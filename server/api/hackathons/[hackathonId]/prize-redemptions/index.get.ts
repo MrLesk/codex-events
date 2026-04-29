@@ -1,8 +1,8 @@
 import { z } from 'zod'
 
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import { requireHackathonAdmin, routeIdParamsSchema } from '#server/utils/hackathon-management'
 import {
   listHackathonPrizeRedemptions,
@@ -13,7 +13,7 @@ import {
   getWinnersView,
   listBlindRankingEntries
 } from '#server/utils/shortlist'
-import { parseValidatedParams, parseValidatedQuery } from '#server/utils/validation'
+import { parseValidatedParams, parseValidatedQuery } from '#server/http/validation'
 
 const prizeRedemptionQuerySchema = z.object({
   include_rankings: z.union([z.literal('true'), z.literal('false'), z.boolean()])

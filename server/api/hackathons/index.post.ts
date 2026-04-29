@@ -5,8 +5,8 @@ import { assertPlatformAdminAccess } from '#server/auth/authorization'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { hackathons } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import {
   assertHackathonSchedule,
   assertHackathonSlugAvailable,
@@ -16,7 +16,7 @@ import {
   serializeHackathonAgendaItems,
   serializeHackathon
 } from '#server/utils/hackathon-management'
-import { parseValidatedBody } from '#server/utils/validation'
+import { parseValidatedBody } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

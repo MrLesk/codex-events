@@ -2,9 +2,9 @@ import { readMultipartFormData } from 'h3'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import { hackathonPhotos } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiList } from '#server/utils/api-response'
-import { ApiError } from '#server/utils/api-error'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiList } from '#server/http/api-response'
+import { ApiError } from '#server/http/api-error'
 import {
   assertValidHackathonPhotoPart,
   getHackathonPhotoDimensions,
@@ -14,7 +14,7 @@ import {
 } from '#server/utils/hackathon-photos'
 import { routeIdParamsSchema } from '#server/utils/hackathon-management'
 import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)

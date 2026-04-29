@@ -4,8 +4,8 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { assertPlatformAdminAccess } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
 import { auditLogs } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiList } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiList } from '#server/http/api-response'
 
 const auditLogReadLimit = 200
 

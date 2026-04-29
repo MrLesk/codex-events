@@ -3,16 +3,16 @@ import { and, eq } from 'drizzle-orm'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getD1Binding } from '#server/database/client'
 import { hackathonCreditCodes } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { ApiError } from '#server/utils/api-error'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { ApiError } from '#server/http/api-error'
+import { apiData } from '#server/http/api-response'
 import {
   creditParamsSchema,
   isHackathonCreditClaimConflict,
   requireHackathonCreditClaimAccess,
   serializeParticipantHackathonCreditOffer
 } from '#server/utils/hackathon-credits'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, creditId } = parseValidatedParams(event, creditParamsSchema)

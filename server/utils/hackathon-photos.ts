@@ -9,7 +9,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { resolveHackathonAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import { hackathonPhotos, userApplications, users } from '#server/database/schema'
-import { ApiError } from './api-error'
+import { ApiError } from '#server/http/api-error'
 import { getHackathonImagesBucket } from './hackathon-images'
 import {
   getHackathonOrThrow,

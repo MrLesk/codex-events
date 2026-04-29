@@ -2,8 +2,8 @@ import { eq } from 'drizzle-orm'
 
 import { writeAuditLog } from '#server/database/audit-log'
 import { prizeRedemptions } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import {
   assertPrizeRedemptionRedeemable,
   getCurrentWinnerTermsForHackathon,
@@ -12,7 +12,7 @@ import {
   requirePrizeRedemptionRecipientContext,
   serializePrizeRedemption
 } from '#server/utils/prize-redemptions'
-import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const { redemptionId } = parseValidatedParams(event, prizeRedemptionParamsSchema)

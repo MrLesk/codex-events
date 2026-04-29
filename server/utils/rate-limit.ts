@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 
 import { getRequestHeader, getRequestIP, setHeader } from 'h3'
 
-import { ApiError } from './api-error'
+import { ApiError } from '#server/http/api-error'
 
 export const publicContactRateLimitBindingName = 'PUBLIC_CONTACT_RATE_LIMITER'
 export const authenticatedUploadRateLimitBindingName = 'AUTHENTICATED_UPLOAD_RATE_LIMITER'

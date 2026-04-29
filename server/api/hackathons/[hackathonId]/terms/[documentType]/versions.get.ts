@@ -2,14 +2,14 @@ import { and, desc, eq } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { hackathonTermsDocuments } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiList } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiList } from '#server/http/api-response'
 import {
   requireHackathonAdmin,
   serializeHackathonTermsDocument,
   termsDocumentParamsSchema
 } from '#server/utils/hackathon-management'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, documentType } = parseValidatedParams(event, termsDocumentParamsSchema)

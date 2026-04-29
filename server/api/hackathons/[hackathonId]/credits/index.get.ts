@@ -3,8 +3,8 @@ import type {
   hackathonCreditOffers
 } from '#server/database/schema'
 
-import { apiList } from '#server/utils/api-response'
-import { defineApiHandler } from '#server/utils/api-handler'
+import { apiList } from '#server/http/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
 import {
   listHackathonCreditCodesForHackathon,
   listHackathonCreditOffers,
@@ -12,7 +12,7 @@ import {
   serializeParticipantHackathonCreditOffer
 } from '#server/utils/hackathon-credits'
 import { routeIdParamsSchema } from '#server/utils/hackathon-management'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 type HackathonCreditOfferRecord = typeof hackathonCreditOffers.$inferSelect
 type HackathonCreditCodeRecord = typeof hackathonCreditCodes.$inferSelect

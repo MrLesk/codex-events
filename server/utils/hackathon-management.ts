@@ -28,7 +28,7 @@ import {
   userApplications,
   users
 } from '#server/database/schema'
-import { ApiError } from './api-error'
+import { ApiError } from '#server/http/api-error'
 import { publicHackathonImagePath } from './hackathon-images'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
 

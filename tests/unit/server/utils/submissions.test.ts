@@ -6,7 +6,7 @@ import {
   teams,
   users
 } from '../../../../server/database/schema'
-import { ApiError } from '../../../../server/utils/api-error'
+import { ApiError } from '../../../../server/http/api-error'
 import {
   assertSubmissionBodyMatchesHackathonRequirements,
   assertHackathonAllowsSubmissionCreation,

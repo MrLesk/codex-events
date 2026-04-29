@@ -3,7 +3,7 @@ import { and, asc, desc, eq, getTableColumns, isNotNull } from 'drizzle-orm'
 import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { userApplications, users } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
+import { defineApiHandler } from '#server/http/api-handler'
 import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
@@ -13,14 +13,14 @@ import {
   buildApplicationReviewEmailQueueMessage,
   enqueueApplicationReviewEmailMessage
 } from '#server/utils/application-review-email-queue'
-import { apiData } from '#server/utils/api-response'
+import { apiData } from '#server/http/api-response'
 import {
   isHackathonLumaSyncEnabled,
   requireHackathonAdminApplicationContext,
   serializeUserApplication
-} from '#server/utils/applications'
+} from '#server/domains/applications'
 import { routeIdParamsSchema } from '#server/utils/hackathon-management'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 type UserApplicationLumaSyncStatus = typeof userApplications.$inferSelect['lumaSyncStatus']
 

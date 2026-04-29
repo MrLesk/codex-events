@@ -5,14 +5,14 @@ import { z } from 'zod'
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveHackathonAuthorization } from '#server/auth/authorization'
 import { users, userApplications } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { ApiError } from '#server/utils/api-error'
+import { defineApiHandler } from '#server/http/api-handler'
+import { ApiError } from '#server/http/api-error'
 import {
   isUserVisibleInPublishedHackathonRoster,
   requireHackathonWorkspaceAccess
 } from '#server/utils/hackathon-management'
 import { getProfileIconObject } from '#server/utils/profile-icons'
-import { parseValidatedQuery } from '#server/utils/validation'
+import { parseValidatedQuery } from '#server/http/validation'
 
 const profileIconQuerySchema = z.object({
   user: z.string().trim().min(1).optional(),

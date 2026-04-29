@@ -9,7 +9,7 @@ import {
   readPlatformAccountLinkAuthenticatedSubject,
   readPlatformAccountLinkChallenge
 } from '#server/utils/platform-account-linking'
-import { isApiError } from '#server/utils/api-error'
+import { isApiError } from '#server/http/api-error'
 import {
   ensurePlatformUserAuthIdentities,
   findPlatformUserByAuth0Subject

@@ -1,7 +1,7 @@
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiList } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiList } from '#server/http/api-response'
 import { hackathonListQuerySchema, listVisibleHackathons, serializeHackathon } from '#server/utils/hackathon-management'
-import { parseValidatedQuery } from '#server/utils/validation'
+import { parseValidatedQuery } from '#server/http/validation'
 
 type HackathonRecord = Awaited<ReturnType<typeof listVisibleHackathons>>['items'][number]
 

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import { ApiError, toApiError } from '../../../../server/utils/api-error'
+import { ApiError, toApiError } from '../../../../server/http/api-error'
 
 describe('api error helpers', () => {
   test('preserve stable API error attributes', () => {

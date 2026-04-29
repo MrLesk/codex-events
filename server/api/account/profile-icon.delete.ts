@@ -3,8 +3,8 @@ import { getDatabase } from '#server/database/client'
 import {
   updatePlatformAccountProfileIconTimestamp
 } from '#server/utils/account-management'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import { deleteProfileIconObject } from '#server/utils/profile-icons'
 
 export default defineApiHandler(async (event) => {

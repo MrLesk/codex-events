@@ -4,8 +4,8 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { hackathonCreditOffers } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import {
   creditParamsSchema,
   getHackathonCreditOfferOrThrow,
@@ -13,7 +13,7 @@ import {
   updateHackathonCreditOfferBodySchema
 } from '#server/utils/hackathon-credits'
 import { requireHackathonAdmin } from '#server/utils/hackathon-management'
-import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)

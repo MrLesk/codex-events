@@ -10,7 +10,7 @@ import {
   userApplications,
   users
 } from '#server/database/schema'
-import { isHackathonLumaSyncEnabled } from './applications'
+import { isHackathonLumaSyncEnabled } from '#server/domains/applications'
 
 export const defaultApplicationLumaSyncQueueBinding = 'APPLICATION_LUMA_SYNC_QUEUE'
 export const defaultApplicationLumaSyncQueueName = 'codex-hackathons-application-luma-sync'

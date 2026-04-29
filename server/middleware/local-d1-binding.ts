@@ -1,6 +1,6 @@
 import type { D1DatabaseBinding } from '#server/database/client'
 
-import { ApiError } from '#server/utils/api-error'
+import { ApiError } from '#server/http/api-error'
 import {
   authenticatedUploadRateLimitBindingName,
   publicContactRateLimitBindingName,

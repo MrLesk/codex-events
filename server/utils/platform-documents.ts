@@ -6,7 +6,7 @@ import {
   platformDocuments,
   userPlatformDocumentAcceptances
 } from '#server/database/schema'
-import { ApiError } from './api-error'
+import { ApiError } from '#server/http/api-error'
 
 type PlatformDocumentRecord = typeof platformDocuments.$inferSelect
 type PlatformDocumentType = (typeof platformDocumentTypes)[number]

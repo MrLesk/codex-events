@@ -8,9 +8,9 @@ import {
   userApplications,
   users
 } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
-import { isHackathonLumaAttendanceSyncEnabled } from '#server/utils/applications'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
+import { isHackathonLumaAttendanceSyncEnabled } from '#server/domains/applications'
 import {
   extractLumaAttendanceCheckInEvent,
   resolveLumaAttendanceGuestEmail,

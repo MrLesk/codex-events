@@ -1,12 +1,12 @@
 import { requirePlatformActor } from '#server/auth/actor'
 import { resolveHackathonAuthorization } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiList } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiList } from '#server/http/api-response'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/utils/hackathon-management'
 import { assertGuard } from '#server/utils/lifecycle-guard'
 import { listLeaderboardEntries, serializeLeaderboardEntry } from '#server/utils/shortlist'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   await requirePlatformActor(event)

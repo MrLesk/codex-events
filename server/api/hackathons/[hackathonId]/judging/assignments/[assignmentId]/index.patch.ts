@@ -1,8 +1,8 @@
-import { parseValidatedBody, parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 import { assertGuard } from '#server/utils/lifecycle-guard'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import {
   assertAssignmentReviewStageIsActive,
   assertJudgeAssignmentStatus,

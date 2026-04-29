@@ -1,12 +1,12 @@
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
 import {
   getTeamWithMembersOrThrow,
   serializeTeam,
   teamParamsSchema,
   requireTeamVisibilityContext
 } from '#server/utils/team-formation'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId, teamId } = parseValidatedParams(event, teamParamsSchema)

@@ -2,10 +2,10 @@ import { asc, desc, eq } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
 import { prizes } from '#server/database/schema'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiList } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiList } from '#server/http/api-response'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema, serializePrize } from '#server/utils/hackathon-management'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const { hackathonId } = parseValidatedParams(event, routeIdParamsSchema)

@@ -1,6 +1,6 @@
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiData } from '#server/utils/api-response'
-import { parseValidatedParams } from '#server/utils/validation'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
+import { parseValidatedParams } from '#server/http/validation'
 import {
   submissionParamsSchema,
   getSubmissionDisqualificationReason,

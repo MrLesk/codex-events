@@ -16,8 +16,8 @@ import {
   users
 } from '#server/database/schema'
 import type { hackathons } from '#server/database/schema'
-import { ApiError } from './api-error'
-import { requireApprovedUserForHackathon } from './applications'
+import { ApiError } from '#server/http/api-error'
+import { requireApprovedUserForHackathon } from '#server/domains/applications'
 import { assertAllowedState, assertGuard } from './lifecycle-guard'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from './hackathon-management'
 

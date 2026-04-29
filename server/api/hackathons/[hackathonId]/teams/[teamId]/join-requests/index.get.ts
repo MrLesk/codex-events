@@ -1,12 +1,12 @@
 import { requirePlatformActor } from '#server/auth/actor'
-import { defineApiHandler } from '#server/utils/api-handler'
-import { apiList } from '#server/utils/api-response'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiList } from '#server/http/api-response'
 import {
   listTeamJoinRequests,
   requireTeamAdminContext,
   teamParamsSchema
 } from '#server/utils/team-formation'
-import { parseValidatedParams } from '#server/utils/validation'
+import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   await requirePlatformActor(event)
