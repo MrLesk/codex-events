@@ -9,7 +9,7 @@ import {
   userApplications,
   users
 } from '../../../../server/database/schema'
-import { buildLumaWebhookSignatureHeader } from '../../../../server/utils/luma-webhooks'
+import { buildLumaWebhookSignatureHeader } from '../../../../server/domains/applications/luma-webhooks'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 async function seedAttendanceContext(

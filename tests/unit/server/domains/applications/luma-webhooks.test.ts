@@ -7,7 +7,7 @@ import {
   extractLumaAttendanceCheckInEvent,
   resolveLumaAttendanceGuestEmail,
   verifyLumaWebhookRequest
-} from '../../../../server/utils/luma-webhooks'
+} from '../../../../../server/domains/applications/luma-webhooks'
 
 function createEvent(options: {
   headers?: Record<string, string>

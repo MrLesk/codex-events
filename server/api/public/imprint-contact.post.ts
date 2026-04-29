@@ -1,7 +1,7 @@
 import { ApiError } from '#server/http/api-error'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
-import { publicLegalContactBodySchema, sendPublicLegalContactEmail } from '#server/utils/legal-contact'
+import { publicLegalContactBodySchema, sendPublicLegalContactEmail } from '#server/domains/platform/legal-contact'
 import { outboundEmailConfigurationMissingReason } from '#server/utils/outbound-email'
 import { assertPublicContactRateLimit } from '#server/utils/rate-limit'
 import { parseValidatedBody } from '#server/http/validation'

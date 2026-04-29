@@ -143,7 +143,7 @@ Recommendation:
 Affected paths:
 
 - `server/api/public/imprint-contact.post.ts`
-- `server/utils/legal-contact.ts`
+- `server/domains/platform/legal-contact.ts`
 - `server/api/account/profile-icon.post.ts`
 - `server/api/hackathons/[hackathonId]/images/background.post.ts`
 - `server/api/hackathons/[hackathonId]/images/banner.post.ts`

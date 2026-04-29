@@ -15,7 +15,7 @@ import {
   extractLumaAttendanceCheckInEvent,
   resolveLumaAttendanceGuestEmail,
   verifyLumaWebhookRequest
-} from '#server/utils/luma-webhooks'
+} from '#server/domains/applications/luma-webhooks'
 
 export default defineApiHandler(async (event) => {
   const rawBody = await readRawBody(event, 'utf8') ?? ''

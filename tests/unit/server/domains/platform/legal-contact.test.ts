@@ -2,8 +2,8 @@ import type { H3Event } from 'h3'
 
 import { describe, expect, test, vi } from 'vitest'
 
-import { platformSupportEmail } from '../../../../shared/platform-legal'
-import { sendPublicLegalContactEmail } from '../../../../server/utils/legal-contact'
+import { platformSupportEmail } from '../../../../../shared/platform-legal'
+import { sendPublicLegalContactEmail } from '../../../../../server/domains/platform/legal-contact'
 
 function createEvent(runtimeConfig?: Record<string, unknown>) {
   return {
