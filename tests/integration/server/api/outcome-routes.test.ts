@@ -2686,7 +2686,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
     expect(announceResponse.status).toBe(200)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/prize-redemptions')
+    const response = await harness.request('/api/hackathons/hackathon_1/prize-redemptions?include_rankings=true')
 
     expect(response.status).toBe(200)
 

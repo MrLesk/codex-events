@@ -383,7 +383,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     expect(payload.data[0]?.blindSubmission).not.toHaveProperty('teamName')
   })
 
-  test('hackathon admins can list assignments across all statuses without judge participation enabled', async () => {
+  test('hackathon admins can list active assignments without judge participation enabled', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/hackathons/:hackathonId/judging/assignments', handler: listJudgeAssignmentsHandler }
@@ -449,23 +449,17 @@ describe('TASK-3.7 judging assignment routes', () => {
         }),
         expect.objectContaining({
           id: 'assignment_2'
-        }),
-        expect.objectContaining({
-          id: 'assignment_3',
-          status: 'judge_completed'
-        }),
-        expect.objectContaining({
-          id: 'assignment_4',
-          status: 'skipped'
         })
       ]),
       meta: {
-        total: 4
+        page: 1,
+        pageSize: 100,
+        total: 2
       }
     })
   })
 
-  test('hackathon admins can list more than 100 blind assignments without hitting D1 bind limits', async () => {
+  test('hackathon admins can page through more than 100 active blind assignments without hitting D1 bind limits', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/hackathons/:hackathonId/judging/assignments', handler: listJudgeAssignmentsHandler }
@@ -480,22 +474,51 @@ describe('TASK-3.7 judging assignment routes', () => {
     await seedBaseJudgingRecords(harness)
 
     const assignedAtBase = Date.parse('2026-03-25T12:10:00.000Z')
+    const teamRows = Array.from({ length: 101 }, (_, index) => ({
+      id: `bulk_team_${index + 1}`,
+      hackathonId: 'hackathon_1',
+      name: `Bulk Team ${index + 1}`,
+      slug: `bulk-team-${index + 1}`,
+      isOpenToJoinRequests: false,
+      createdByUserId: 'team_admin',
+      createdAt: '2026-03-22T12:30:00.000Z',
+      updatedAt: '2026-03-22T12:30:00.000Z'
+    }))
+    const submissionRows = Array.from({ length: 101 }, (_, index) => ({
+      id: `bulk_submission_${index + 1}`,
+      teamId: `bulk_team_${index + 1}`,
+      status: 'locked' as const,
+      projectName: `Bulk Project ${index + 1}`,
+      summary: `Bulk summary ${index + 1}`,
+      repositoryUrl: `https://example.com/bulk-${index + 1}`,
+      demoUrl: `https://example.com/bulk-${index + 1}/demo`,
+      submittedAt: '2026-03-24T12:00:00.000Z',
+      lockedAt: '2026-03-25T12:00:00.000Z',
+      createdAt: '2026-03-24T12:00:00.000Z',
+      updatedAt: '2026-03-25T12:00:00.000Z'
+    }))
     const assignmentRows = Array.from({ length: 101 }, (_, index) => {
       const timestamp = new Date(assignedAtBase + index * 1000).toISOString()
 
       return {
         id: `assignment_${index + 1}`,
         hackathonId: 'hackathon_1',
-        submissionId: index % 2 === 0 ? 'submission_1' : 'submission_2',
+        submissionId: `bulk_submission_${index + 1}`,
         judgeUserId: index % 3 === 0 ? 'judge_a' : index % 3 === 1 ? 'judge_b' : 'judge_c',
-        blindReviewSlot: (index % 2) + 1 as 1 | 2,
-        status: 'judge_completed' as const,
+        blindReviewSlot: 1,
+        status: 'assigned' as const,
         assignedAt: timestamp,
-        startedAt: timestamp,
-        completedAt: timestamp,
         createdAt: timestamp
       }
     })
+
+    for (const rows of chunkRowsForD1(teamRows, 20)) {
+      await harness.database.insert(teams).values(rows)
+    }
+
+    for (const rows of chunkRowsForD1(submissionRows, 20)) {
+      await harness.database.insert(submissions).values(rows)
+    }
 
     for (const rows of chunkRowsForD1(assignmentRows, 9)) {
       await harness.database.insert(judgeAssignments).values(rows)
@@ -511,18 +534,35 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     }
 
-    expect(payload.data).toHaveLength(101)
+    expect(payload.data).toHaveLength(100)
     expect(payload.meta.total).toBe(101)
     expect(payload.data).toEqual(expect.arrayContaining([
       expect.objectContaining({
         id: 'assignment_1',
-        status: 'judge_completed'
+        status: 'assigned'
       }),
       expect.objectContaining({
-        id: 'assignment_101',
-        status: 'judge_completed'
+        id: 'assignment_100',
+        status: 'assigned'
       })
     ]))
+
+    const secondPageResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments?page=2&page_size=100')
+
+    expect(secondPageResponse.status).toBe(200)
+    const secondPagePayload = await secondPageResponse.json() as {
+      data: Array<Record<string, unknown>>
+      meta: {
+        total: number
+      }
+    }
+
+    expect(secondPagePayload.data).toHaveLength(1)
+    expect(secondPagePayload.meta.total).toBe(101)
+    expect(secondPagePayload.data[0]).toMatchObject({
+      id: 'assignment_99',
+      status: 'assigned'
+    })
   })
 
   test('judges list only their active pitch assignments in the open pitch view', async () => {

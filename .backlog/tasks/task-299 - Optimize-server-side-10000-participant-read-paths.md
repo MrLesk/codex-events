@@ -5,7 +5,7 @@ status: Done
 assignee:
   - Codex
 created_date: '2026-04-29 05:58'
-updated_date: '2026-04-29 07:10'
+updated_date: '2026-04-29 16:40'
 labels:
   - performance
   - database
@@ -39,6 +39,9 @@ modified_files:
   - server/utils/judging.ts
   - server/utils/shortlist.ts
   - server/utils/submissions.ts
+  - tests/integration/server/api/application-routes.test.ts
+  - tests/integration/server/api/judging-routes.test.ts
+  - tests/integration/server/api/outcome-routes.test.ts
   - tests/unit/server/utils/submissions.test.ts
 priority: high
 ---
@@ -82,6 +85,8 @@ Targeted metrics after optimization over 5 warmed samples: applications default 
 The first targeted run exposed a D1 `SQLITE_TOOBIG` failure when storing the whole completed outcome payload in one cache row. The implementation now stores a small cache generation row plus ordered per-entry payload rows, with 100 winner entries and 5300 published-project entries generated for the 10k completed state.
 
 Post-validation review added two small correctness fixes: pitch assignment summaries now expose pitch submission labels in the admin oversight UI, and the prize-redemptions `include_rankings` query only opts in for boolean true or the string `true`. Required validation was rerun after those edits and passed again with `bun run lint`, `bun run typecheck`, and `bun run test:unit` (84 files, 564 tests).
+
+CI follow-up for GitHub Actions run 25095696124: backend-checks failed only in integration tests because existing assertions expected pre-optimization unbounded application/judging responses and default prize-redemption ranking context. Updated integration expectations for paginated application reads, active-only paginated admin assignment reads, and explicit `include_rankings=true` prize-redemption detail reads. Local verification after the fix passed: `bun run lint`, `bun run typecheck`, `bun run test:unit`, and `bun run test:integration`.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

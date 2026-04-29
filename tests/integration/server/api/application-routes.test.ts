@@ -1763,7 +1763,7 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('GET /api/hackathons/:hackathonId/applications batches D1 lookups for large participant sets', async () => {
+  test('GET /api/hackathons/:hackathonId/applications returns bounded pages for large participant sets', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/hackathons/:hackathonId/applications', handler: applicationsListHandler }
@@ -1828,13 +1828,13 @@ describe('TASK-3.6 application routes', () => {
     const teamMembersFindManySpy = vi.spyOn(harness.database.query.teamMembers, 'findMany')
     const teamsFindManySpy = vi.spyOn(harness.database.query.teams, 'findMany')
     const submissionsFindManySpy = vi.spyOn(harness.database.query.submissions, 'findMany')
-    const response = await harness.request('/api/hackathons/hackathon_1/applications')
+    const response = await harness.request('/api/hackathons/hackathon_1/applications?page=1&page_size=100')
 
     expect(response.status).toBe(200)
-    expect(usersFindManySpy).toHaveBeenCalledTimes(2)
-    expect(teamMembersFindManySpy).toHaveBeenCalledTimes(4)
-    expect(teamsFindManySpy).toHaveBeenCalledTimes(2)
-    expect(submissionsFindManySpy).toHaveBeenCalledTimes(2)
+    expect(usersFindManySpy).not.toHaveBeenCalled()
+    expect(teamMembersFindManySpy).not.toHaveBeenCalled()
+    expect(teamsFindManySpy).not.toHaveBeenCalled()
+    expect(submissionsFindManySpy).not.toHaveBeenCalled()
     expect(await response.json()).toMatchObject({
       data: expect.arrayContaining([
         expect.objectContaining({
@@ -1850,20 +1850,28 @@ describe('TASK-3.6 application routes', () => {
           })
         }),
         expect.objectContaining({
-          id: 'application_120',
+          id: 'application_100',
           user: expect.objectContaining({
-            id: 'participant_120',
-            email: 'participant_120@example.com'
+            id: 'participant_100',
+            email: 'participant_100@example.com'
           }),
           adminWithdrawal: expect.objectContaining({
             isAllowed: true,
-            activeTeamId: 'team_120',
+            activeTeamId: 'team_100',
             teamAction: 'dissolve_team'
           })
         })
       ]),
       meta: {
-        total: participantCount
+        page: 1,
+        pageSize: 100,
+        total: participantCount,
+        statusCounts: {
+          submitted: participantCount,
+          approved: 0,
+          rejected: 0,
+          withdrawn: 0
+        }
       }
     })
   })
