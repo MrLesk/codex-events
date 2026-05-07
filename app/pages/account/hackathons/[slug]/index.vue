@@ -533,6 +533,16 @@ const applicationStatusSummary = computed(() =>
     ? summarizeParticipantApplicationStatus(applicationStatus.value, hackathon.value.state)
     : ''
 )
+const applicationSubmittedNoticeTitle = computed(() =>
+  applicationStatus.value === 'approved' && hackathon.value.autoApproveApplications
+    ? 'Registration approved'
+    : 'Registration submitted'
+)
+const applicationSubmittedNoticeDescription = computed(() =>
+  applicationStatus.value === 'approved' && hackathon.value.autoApproveApplications
+    ? 'Your registration was approved automatically.'
+    : 'Your registration was submitted successfully.'
+)
 const participantOutcomeNotice = computed(() =>
   participationRecord.value
     ? getHackathonParticipationOutcomeNotice(participationRecord.value)
@@ -832,8 +842,8 @@ useSeoMeta({
               data-testid="account-hackathon-application-submitted-notice"
               color="success"
               variant="soft"
-              title="Registration submitted"
-              description="Your registration was submitted successfully."
+              :title="applicationSubmittedNoticeTitle"
+              :description="applicationSubmittedNoticeDescription"
             />
 
             <AppAlert

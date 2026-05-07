@@ -24,6 +24,7 @@ export interface HackathonFormState {
   submissionClosesAt: string
   maxTeamMembers: number
   participantsLimit: number | null
+  autoApproveApplications: boolean
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number
@@ -183,6 +184,7 @@ export const hackathonConfigFormSchema: z.ZodType<HackathonFormState> = z.object
   submissionClosesAt: z.string().trim().min(1),
   maxTeamMembers: z.number().int().min(1),
   participantsLimit: z.number().int().min(1).nullable(),
+  autoApproveApplications: z.boolean(),
   blindReviewCount: z.number().int().min(0).max(2),
   pitchReviewEnabled: z.boolean(),
   blindScoreWeightPercent: z.number().int().min(0).max(100),
@@ -325,6 +327,7 @@ export function createEmptyHackathonFormState(): HackathonFormState {
     submissionClosesAt: '',
     maxTeamMembers: 4,
     participantsLimit: null,
+    autoApproveApplications: false,
     blindReviewCount: 1,
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
@@ -398,6 +401,7 @@ export function createHackathonFormState(hackathon: HackathonRecord): HackathonF
     submissionClosesAt: toDateTimeLocalValue(hackathon.submissionClosesAt),
     maxTeamMembers: hackathon.maxTeamMembers,
     participantsLimit: hackathon.participantsLimit ?? null,
+    autoApproveApplications: hackathon.autoApproveApplications,
     blindReviewCount: hackathon.blindReviewCount,
     pitchReviewEnabled: hackathon.pitchReviewEnabled,
     blindScoreWeightPercent: hackathon.blindScoreWeightPercent,

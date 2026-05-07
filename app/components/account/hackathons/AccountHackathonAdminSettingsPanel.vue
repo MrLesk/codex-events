@@ -586,6 +586,7 @@ async function saveConfiguration(configForm: HackathonFormState) {
       submissionClosesAt: fromDateTimeLocalValue(configForm.submissionClosesAt),
       maxTeamMembers: configForm.maxTeamMembers,
       participantsLimit: configForm.participantsLimit,
+      autoApproveApplications: configForm.autoApproveApplications,
       blindReviewCount: configForm.blindReviewCount,
       pitchReviewEnabled: configForm.pitchReviewEnabled,
       blindScoreWeightPercent: configForm.blindScoreWeightPercent,

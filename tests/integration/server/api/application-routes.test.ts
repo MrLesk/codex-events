@@ -55,6 +55,7 @@ async function seedApplicationContext(
     lumaEventUrl?: string | null
     lumaEventApiId?: string | null
     inPersonEvent?: boolean
+    autoApproveApplications?: boolean
   }
 ) {
   await harness.database.insert(users).values([
@@ -111,6 +112,7 @@ async function seedApplicationContext(
     submissionClosesAt: fixtureSubmissionClosesAt,
     state: 'registration_open',
     maxTeamMembers: 5,
+    autoApproveApplications: options?.autoApproveApplications ?? false,
     inPersonEvent: options?.inPersonEvent ?? false,
     requireGithubProfile: options?.requireGithubProfile ?? false,
     requireChatgptEmail: options?.requireChatgptEmail ?? false,
@@ -270,6 +272,153 @@ describe('TASK-3.6 application routes', () => {
         proofOfExecutionUrl: 'https://github.com/regular/previous-project, https://demo.example.com/regular/project'
       })
     })
+  })
+
+  test('POST /api/hackathons/:hackathonId/applications auto-approves when configured and enqueues approval side effects', async () => {
+    const reviewEmailQueueProducer = createQueueProducerStub()
+    const lumaQueueProducer = createQueueProducerStub()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      },
+      cloudflareEnv: {
+        APPLICATION_REVIEW_EMAIL_QUEUE: reviewEmailQueueProducer,
+        APPLICATION_LUMA_SYNC_QUEUE: lumaQueueProducer
+      },
+      runtimeConfig: {
+        applicationReviewEmails: {
+          queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+        },
+        luma: {
+          apiKey: 'luma_test_key',
+          queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
+        }
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      autoApproveApplications: true,
+      requireLumaEmail: true,
+      lumaEventUrl: 'https://luma.com/codex',
+      lumaEventApiId: 'evt-123'
+    })
+
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
+
+      if (url.pathname === '/v1/event/get-guest') {
+        return new Response(JSON.stringify({
+          guest: {
+            id: 'gst-123',
+            user_email: 'regular@luma.example'
+          }
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json'
+          }
+        })
+      }
+
+      throw new Error(`Unexpected fetch URL: ${url.toString()}`)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    const payload = await response.json()
+    expect(payload).toMatchObject({
+      data: {
+        userId: 'regular_user',
+        status: 'approved',
+        preApprovalStatus: null,
+        reviewedAt: expect.any(String),
+        reviewedByUserId: null,
+        lumaSyncStatus: 'not_synced'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+
+    expect(storedApplication).toMatchObject({
+      status: 'approved',
+      preApprovalStatus: null,
+      reviewedAt: storedApplication?.submittedAt,
+      reviewedByUserId: null,
+      lumaSyncStatus: 'not_synced'
+    })
+
+    expect(reviewEmailQueueProducer.send).toHaveBeenCalledTimes(1)
+    expect(reviewEmailQueueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: storedApplication?.id,
+      decision: 'approved',
+      recipientEmail: 'regular@example.com',
+      hackathonName: 'Fixture Hackathon',
+      hackathonSlug: 'fixture-hackathon'
+    }), {
+      contentType: 'json'
+    })
+    expect(lumaQueueProducer.send).toHaveBeenCalledTimes(1)
+    expect(lumaQueueProducer.send).toHaveBeenCalledWith(expect.objectContaining({
+      applicationId: storedApplication?.id,
+      decision: 'approved'
+    }), {
+      contentType: 'json'
+    })
+
+    const auditRows = await harness.database.select().from(auditLogs)
+    expect(auditRows).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        actorUserId: null,
+        entityType: 'user_application',
+        entityId: storedApplication?.id,
+        action: 'user_application.approved',
+        metadata: expect.objectContaining({
+          reviewSource: 'auto_approval'
+        })
+      }),
+      expect.objectContaining({
+        actorUserId: null,
+        entityType: 'user_application',
+        entityId: storedApplication?.id,
+        action: 'user_application.review_email_enqueued',
+        metadata: expect.objectContaining({
+          decision: 'approved',
+          reviewSource: 'auto_approval',
+          enqueue: expect.objectContaining({
+            status: 'enqueued'
+          })
+        })
+      }),
+      expect.objectContaining({
+        actorUserId: null,
+        entityType: 'user_application',
+        entityId: storedApplication?.id,
+        action: 'user_application.luma_sync_enqueued',
+        metadata: expect.objectContaining({
+          decision: 'approved',
+          reviewSource: 'auto_approval',
+          enqueue: expect.objectContaining({
+            status: 'enqueued'
+          })
+        })
+      })
+    ]))
   })
 
   test('POST /api/hackathons/:hackathonId/applications requires in-person attendance commitment when configured', async () => {

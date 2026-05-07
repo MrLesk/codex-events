@@ -17,6 +17,7 @@ import {
   serializeUserApplication,
   submitApplicationBodySchema
 } from '#server/domains/applications'
+import { finalizeUserApplicationReview } from '#server/domains/applications/review-finalization'
 import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/domains/hackathons'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
@@ -77,15 +78,19 @@ export default defineApiHandler(async (event) => {
   const submittedAt = new Date().toISOString()
   const applicationId = crypto.randomUUID()
   const lumaSyncStatus = getInitialApplicationLumaSyncStatus(hackathon)
+  const status = hackathon.autoApproveApplications ? 'approved' : 'submitted'
+  const reviewedAt = hackathon.autoApproveApplications ? submittedAt : null
 
   await database.insert(userApplications).values({
     id: applicationId,
     hackathonId,
     userId: actor.platformUser.id,
-    status: 'submitted',
+    status,
     preApprovalStatus: null,
     lumaSyncStatus,
     submittedAt,
+    reviewedAt,
+    reviewedByUserId: null,
     applicationTermsDocumentId: currentTermsDocument.id,
     applicationTermsAcceptedAt: submittedAt,
     registrationDetailsJson,
@@ -93,23 +98,46 @@ export default defineApiHandler(async (event) => {
     updatedAt: submittedAt
   })
 
-  return apiData(serializeUserApplication({
+  const applicationRecord: typeof userApplications.$inferSelect = {
     id: applicationId,
     hackathonId,
     userId: actor.platformUser.id,
-    status: 'submitted',
+    status,
     preApprovalStatus: null,
     lumaSyncStatus,
     submittedAt,
     withdrawnAt: null,
     checkedInAt: null,
-    reviewedAt: null,
+    reviewedAt,
     reviewedByUserId: null,
     applicationTermsDocumentId: currentTermsDocument.id,
     applicationTermsAcceptedAt: submittedAt,
     registrationDetailsJson,
     createdAt: submittedAt,
     updatedAt: submittedAt
+  }
+
+  if (hackathon.autoApproveApplications) {
+    const finalizedReview = await finalizeUserApplicationReview({
+      event,
+      database,
+      hackathon,
+      application: applicationRecord,
+      applicant: actor.platformUser,
+      decision: 'approved',
+      reviewedAt: submittedAt,
+      reviewedByUserId: null,
+      auditActorUserId: null,
+      source: 'auto_approval',
+      persistReview: false
+    })
+
+    applicationRecord.lumaSyncStatus = finalizedReview.lumaSyncStatus
+    applicationRecord.updatedAt = finalizedReview.updatedAt
+  }
+
+  return apiData(serializeUserApplication({
+    ...applicationRecord
   }, {
     applicationTermsDocument: currentTermsDocument
   }))

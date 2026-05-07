@@ -54,6 +54,7 @@ export interface HackathonRecord {
   state: HackathonState
   maxTeamMembers: number
   participantsLimit?: number | null
+  autoApproveApplications: boolean
   blindReviewCount: number
   pitchReviewEnabled: boolean
   blindScoreWeightPercent: number

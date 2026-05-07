@@ -48,6 +48,7 @@ function buildHackathonRecord(
     pitchPresentationsCompletedAt: null,
     maxTeamMembers: 5,
     participantsLimit: null,
+    autoApproveApplications: false,
     inPersonEvent: false,
     requireXProfile: false,
     requireLinkedinProfile: false,

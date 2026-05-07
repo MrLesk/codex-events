@@ -1,28 +1,16 @@
 import { and, asc, desc, eq, getTableColumns, isNotNull } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
-import { writeAuditLog } from '#server/database/audit-log'
 import { userApplications, users } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
-import {
-  buildApplicationLumaSyncQueueMessage,
-  enqueueApplicationLumaSyncMessage,
-  getApplicationLumaSyncFailureStatus
-} from '#server/domains/applications/luma-sync-queue'
-import {
-  buildApplicationReviewEmailQueueMessage,
-  enqueueApplicationReviewEmailMessage
-} from '#server/domains/applications/review-email-queue'
 import { apiData } from '#server/http/api-response'
 import {
-  isHackathonLumaSyncEnabled,
   requireHackathonAdminApplicationContext,
   serializeUserApplication
 } from '#server/domains/applications'
+import { finalizeUserApplicationReview } from '#server/domains/applications/review-finalization'
 import { routeIdParamsSchema } from '#server/domains/hackathons'
 import { parseValidatedParams } from '#server/http/validation'
-
-type UserApplicationLumaSyncStatus = typeof userApplications.$inferSelect['lumaSyncStatus']
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
@@ -65,7 +53,6 @@ export default defineApiHandler(async (event) => {
   const appliedApplications: ReturnType<typeof serializeUserApplication>[] = []
   let approvedCount = 0
   let rejectedCount = 0
-  const shouldSyncLuma = isHackathonLumaSyncEnabled(hackathon)
 
   for (const application of stagedApplications) {
     const decision = application.preApprovalStatus
@@ -75,94 +62,21 @@ export default defineApiHandler(async (event) => {
     }
 
     const reviewedAt = new Date().toISOString()
-    let lumaSyncStatus: UserApplicationLumaSyncStatus = shouldSyncLuma ? 'not_synced' : null
-    let updatedAt = reviewedAt
-
-    await database
-      .update(userApplications)
-      .set({
-        status: decision,
-        preApprovalStatus: null,
-        lumaSyncStatus,
-        reviewedAt,
-        reviewedByUserId: actor.platformUser.id,
-        updatedAt
-      })
-      .where(eq(userApplications.id, application.id))
-
-    await writeAuditLog(database, {
-      actorUserId: actor.platformUser.id,
-      entityType: 'user_application',
-      entityId: application.id,
-      action: decision === 'approved' ? 'user_application.approved' : 'user_application.rejected',
-      metadata: {
-        hackathonId,
-        userId: application.userId,
-        appliedFromStage: 'pre_approval'
-      }
-    })
-
     const applicant = applicantsById.get(application.userId)
-    const enqueueResult = await enqueueApplicationReviewEmailMessage(event, buildApplicationReviewEmailQueueMessage({
-      applicationId: application.id,
+
+    const finalizedReview = await finalizeUserApplicationReview({
+      event,
+      database,
+      hackathon,
+      application,
+      applicant: applicant ?? null,
       decision,
       reviewedAt,
-      recipientEmail: applicant?.email ?? null,
-      recipientDisplayName: applicant?.displayName ?? null,
-      hackathonName: hackathon.name,
-      hackathonSlug: hackathon.slug
-    }))
-
-    await writeAuditLog(database, {
-      actorUserId: actor.platformUser.id,
-      entityType: 'user_application',
-      entityId: application.id,
-      action: 'user_application.review_email_enqueued',
-      metadata: {
-        hackathonId,
-        userId: application.userId,
-        decision,
-        enqueue: enqueueResult,
-        appliedFromStage: 'pre_approval'
-      }
+      reviewedByUserId: actor.platformUser.id,
+      auditActorUserId: actor.platformUser.id,
+      source: 'pre_approval',
+      persistReview: true
     })
-
-    if (shouldSyncLuma) {
-      const lumaEnqueueResult = await enqueueApplicationLumaSyncMessage(
-        event,
-        buildApplicationLumaSyncQueueMessage({
-          applicationId: application.id,
-          decision
-        })
-      )
-
-      if (lumaEnqueueResult.status !== 'enqueued') {
-        lumaSyncStatus = getApplicationLumaSyncFailureStatus(decision)
-        updatedAt = new Date().toISOString()
-
-        await database
-          .update(userApplications)
-          .set({
-            lumaSyncStatus,
-            updatedAt
-          })
-          .where(eq(userApplications.id, application.id))
-      }
-
-      await writeAuditLog(database, {
-        actorUserId: actor.platformUser.id,
-        entityType: 'user_application',
-        entityId: application.id,
-        action: 'user_application.luma_sync_enqueued',
-        metadata: {
-          hackathonId,
-          userId: application.userId,
-          decision,
-          enqueue: lumaEnqueueResult,
-          appliedFromStage: 'pre_approval'
-        }
-      })
-    }
 
     if (decision === 'approved') {
       approvedCount += 1
@@ -174,10 +88,10 @@ export default defineApiHandler(async (event) => {
       ...application,
       status: decision,
       preApprovalStatus: null,
-      lumaSyncStatus,
+      lumaSyncStatus: finalizedReview.lumaSyncStatus,
       reviewedAt,
       reviewedByUserId: actor.platformUser.id,
-      updatedAt
+      updatedAt: finalizedReview.updatedAt
     }, {
       user: applicant ?? null
     }))

@@ -436,6 +436,23 @@ describe('participant application helpers', () => {
     expect(resolveParticipantApplicationSubmittedTransition('codex-spring')).toEqual({
       title: 'Application submitted',
       description: 'Opening your hackathon workspace so you can track your application status. This can take a moment.',
+      eyebrow: 'Application received',
+      to: {
+        path: '/account/hackathons/codex-spring',
+        query: {
+          notice: 'application_submitted'
+        }
+      }
+    })
+  })
+
+  test('resolves the auto-approved application transition into the account workspace', () => {
+    expect(resolveParticipantApplicationSubmittedTransition('codex-spring', {
+      autoApproveApplications: true
+    })).toEqual({
+      title: 'Application approved',
+      description: 'Opening your hackathon workspace so you can start team setup. This can take a moment.',
+      eyebrow: 'Application approved',
       to: {
         path: '/account/hackathons/codex-spring',
         query: {

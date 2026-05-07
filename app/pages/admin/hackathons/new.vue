@@ -49,6 +49,7 @@ async function createHackathon(form: HackathonFormState) {
         submissionClosesAt: fromDateTimeLocalValue(form.submissionClosesAt),
         maxTeamMembers: form.maxTeamMembers,
         participantsLimit: form.participantsLimit,
+        autoApproveApplications: form.autoApproveApplications,
         inPersonEvent: form.inPersonEvent,
         requireXProfile: form.requireXProfile,
         requireLinkedinProfile: form.requireLinkedinProfile,

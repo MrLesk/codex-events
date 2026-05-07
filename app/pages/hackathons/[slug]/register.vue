@@ -377,7 +377,9 @@ async function submitParticipantApplication() {
       body: applicationPayload
     })
 
-    const nextSubmissionTransition = resolveParticipantApplicationSubmittedTransition(slug.value)
+    const nextSubmissionTransition = resolveParticipantApplicationSubmittedTransition(slug.value, {
+      autoApproveApplications: hackathon.value.autoApproveApplications
+    })
 
     hasExistingApplication.value = true
     submissionTransition.value = nextSubmissionTransition

@@ -940,6 +940,18 @@ const submitConfigForm = handleSubmit(() => {
                 <div class="grid grid-cols-1 gap-3">
                   <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
                     <input
+                      v-model="form.autoApproveApplications"
+                      type="checkbox"
+                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+                    >
+                    <span class="grid gap-0.5">
+                      <span>Approve applications automatically</span>
+                      <span class="text-xs text-muted">New applications are approved immediately after required checks pass.</span>
+                    </span>
+                  </label>
+
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+                    <input
                       v-model="form.inPersonEvent"
                       type="checkbox"
                       class="size-4 rounded border-black/20 dark:border-white/[0.3]"
@@ -1316,6 +1328,18 @@ const submitConfigForm = handleSubmit(() => {
           </div>
 
           <div class="grid grid-cols-1 gap-3">
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+              <input
+                v-model="form.autoApproveApplications"
+                type="checkbox"
+                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
+              >
+              <span class="grid gap-0.5">
+                <span>Approve applications automatically</span>
+                <span class="text-xs text-muted">New applications are approved immediately after required checks pass.</span>
+              </span>
+            </label>
+
             <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.inPersonEvent"

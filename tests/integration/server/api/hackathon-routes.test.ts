@@ -3001,6 +3001,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         submissionOpensAt: '2026-03-23T12:00:00.000Z',
         submissionClosesAt: '2026-03-25T12:00:00.000Z',
         maxTeamMembers: 5,
+        autoApproveApplications: true,
         blindReviewCount: 2,
         pitchReviewEnabled: true,
         blindScoreWeightPercent: 60,
@@ -3029,6 +3030,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         lumaEventUrl: 'https://lu.ma/new-hackathon',
         lumaEventApiId: 'evt-newhackathon123',
         state: 'draft',
+        autoApproveApplications: true,
         blindReviewCount: 2,
         pitchReviewEnabled: true,
         blindScoreWeightPercent: 60,
@@ -3060,6 +3062,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       discordServerUrl: 'https://discord.gg/new-hackathon',
       lumaEventUrl: 'https://lu.ma/new-hackathon',
       lumaEventApiId: 'evt-newhackathon123',
+      autoApproveApplications: true,
       blindReviewCount: 2,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
@@ -3100,6 +3103,12 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         auth0Subject: 'auth0|admin',
         email: 'admin@example.com',
         displayName: 'Hackathon Admin'
+      },
+      {
+        id: 'participant_user',
+        auth0Subject: 'auth0|participant',
+        email: 'participant@example.com',
+        displayName: 'Participant User'
       }
     ])
     await harness.database.insert(hackathons).values({
@@ -3126,6 +3135,26 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       isInJudgePool: false,
       createdAt: '2026-03-22T12:00:00.000Z'
     })
+    await harness.database.insert(hackathonTermsDocuments).values({
+      id: 'terms_patch',
+      hackathonId: 'hackathon_patch',
+      documentType: 'application_terms',
+      version: 1,
+      title: 'Patch Application Terms',
+      content: 'Patch terms',
+      publishedAt: '2026-03-20T12:00:00.000Z'
+    })
+    await harness.database.insert(userApplications).values({
+      id: 'application_pending_patch',
+      hackathonId: 'hackathon_patch',
+      userId: 'participant_user',
+      status: 'submitted',
+      submittedAt: '2026-03-22T12:10:00.000Z',
+      applicationTermsDocumentId: 'terms_patch',
+      applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
+      createdAt: '2026-03-22T12:10:00.000Z',
+      updatedAt: '2026-03-22T12:10:00.000Z'
+    })
 
     const response = await harness.request('/api/hackathons/hackathon_patch', {
       method: 'PATCH',
@@ -3147,6 +3176,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         city: 'Berlin',
         country: 'Germany',
         maxTeamMembers: 7,
+        autoApproveApplications: true,
         blindReviewCount: 0,
         pitchReviewEnabled: true,
         blindScoreWeightPercent: 0,
@@ -3180,6 +3210,7 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         city: 'Berlin',
         country: 'Germany',
         maxTeamMembers: 7,
+        autoApproveApplications: true,
         blindReviewCount: 0,
         pitchReviewEnabled: true,
         blindScoreWeightPercent: 0,
@@ -3201,10 +3232,21 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       discordServerUrl: 'https://discord.gg/patch-hackathon',
       lumaEventUrl: 'https://lu.ma/patch-hackathon',
       lumaEventApiId: 'evt-patchhackathon123',
+      autoApproveApplications: true,
       blindReviewCount: 0,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 0,
       pitchScoreWeightPercent: 100
+    })
+
+    const pendingApplication = await harness.database.query.userApplications.findFirst({
+      where: eq(userApplications.id, 'application_pending_patch')
+    })
+
+    expect(pendingApplication).toMatchObject({
+      status: 'submitted',
+      reviewedAt: null,
+      reviewedByUserId: null
     })
   })
 

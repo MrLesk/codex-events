@@ -134,6 +134,7 @@ export const hackathons = sqliteTable(
     finalRankingSubmissionIdsJson: text('final_ranking_submission_ids_json').notNull().default('[]'),
     maxTeamMembers: integer('max_team_members').notNull(),
     participantsLimit: integer('participants_limit'),
+    autoApproveApplications: integer('auto_approve_applications', { mode: 'boolean' }).notNull().default(false),
     inPersonEvent: integer('in_person_event', { mode: 'boolean' }).notNull().default(false),
     requireXProfile: integer('require_x_profile', { mode: 'boolean' }).notNull().default(false),
     requireLinkedinProfile: integer('require_linkedin_profile', { mode: 'boolean' }).notNull().default(false),

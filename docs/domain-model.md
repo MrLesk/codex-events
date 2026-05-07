@@ -80,6 +80,7 @@ Key characteristics:
 - Each pitch-enabled hackathon persists an ordered pitch presentation lineup and can expose one currently enabled live presentation at a time during the `pitch` stage.
 - Each hackathon can define a maximum team member limit.
 - Each hackathon can optionally define a participant approval limit used as an indicative planning target during admin review.
+- Each hackathon can approve new participant applications automatically after required submission checks pass.
 - Each hackathon can optionally reference a restricted Discord server URL.
 - Each hackathon can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma email, for registration.
 - Each hackathon can require a `why this hackathon` response and proof-of-execution links in applications.
@@ -209,11 +210,14 @@ Rules:
 - A user can have at most one application per hackathon.
 - The public registration route is an application-entry flow only. Once a user has an application for a hackathon, ongoing status and participation workflow continue in the account-scoped hackathon workspace rather than in the public registration route.
 - Application approval is handled by hackathon admins.
+- When a hackathon auto-approves applications, new applications are approved immediately after all required submission checks pass.
 - A participant can withdraw their own application while they do not have an active team membership in that hackathon.
 - A hackathon admin or platform admin can manually withdraw a submitted or approved application on behalf of the participant.
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
+- Auto-approved applications enqueue the same participant-facing approval email as manually approved applications.
 - If the hackathon requires a Luma email and has a Luma event API ID, application submission verifies that the participant's saved Luma email is registered as a guest on that Luma event.
+- If the hackathon auto-approves applications and requires a Luma email with a Luma event API ID, application submission also enqueues a Luma approval sync.
 - If the hackathon requires a Luma email and has a Luma event API ID, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
 - If the hackathon requires a Luma email and has a Luma event API ID, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
 - Platform admins can run a hackathon-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.

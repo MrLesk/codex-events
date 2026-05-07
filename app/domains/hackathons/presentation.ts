@@ -63,6 +63,7 @@ export interface PublicHackathon {
   submissionClosesAt: string
   state: PublicHackathonState
   maxTeamMembers: number
+  autoApproveApplications: boolean
   inPersonEvent: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean

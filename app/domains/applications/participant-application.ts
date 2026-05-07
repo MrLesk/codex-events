@@ -453,6 +453,7 @@ export function resolveParticipantRegistrationEntry(options: {
 export interface ParticipantApplicationSubmittedTransition {
   title: string
   description: string
+  eyebrow: string
   to: {
     path: string
     query: {
@@ -462,11 +463,29 @@ export interface ParticipantApplicationSubmittedTransition {
 }
 
 export function resolveParticipantApplicationSubmittedTransition(
-  hackathonSlug: string
+  hackathonSlug: string,
+  options: {
+    autoApproveApplications?: boolean
+  } = {}
 ): ParticipantApplicationSubmittedTransition {
+  if (options.autoApproveApplications) {
+    return {
+      title: 'Application approved',
+      description: 'Opening your hackathon workspace so you can start team setup. This can take a moment.',
+      eyebrow: 'Application approved',
+      to: {
+        path: `/account/hackathons/${hackathonSlug}`,
+        query: {
+          notice: 'application_submitted'
+        }
+      }
+    }
+  }
+
   return {
     title: 'Application submitted',
     description: 'Opening your hackathon workspace so you can track your application status. This can take a moment.',
+    eyebrow: 'Application received',
     to: {
       path: `/account/hackathons/${hackathonSlug}`,
       query: {

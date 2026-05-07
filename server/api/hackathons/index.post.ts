@@ -51,6 +51,7 @@ export default defineApiHandler(async (event) => {
     submissionClosesAt: body.submissionClosesAt,
     maxTeamMembers: body.maxTeamMembers,
     participantsLimit: body.participantsLimit,
+    autoApproveApplications: body.autoApproveApplications,
     blindReviewCount: body.blindReviewCount,
     pitchReviewEnabled: body.pitchReviewEnabled,
     blindScoreWeightPercent: body.blindScoreWeightPercent,

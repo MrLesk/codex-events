@@ -101,6 +101,7 @@ describe('shared schema foundation', () => {
     expect(hackathonColumns.country.name).toBe('country')
     expect(hackathonColumns.inPersonEvent.name).toBe('in_person_event')
     expect(hackathonColumns.participantsLimit.name).toBe('participants_limit')
+    expect(hackathonColumns.autoApproveApplications.name).toBe('auto_approve_applications')
     expect(hackathonColumns.shortlistFinalistCount.name).toBe('shortlist_finalist_count')
     expect(hackathonColumns.pitchFinalistSubmissionIdsJson.name).toBe('pitch_finalist_submission_ids_json')
     expect(hackathonColumns.activePitchPresentationSubmissionId.name).toBe('active_pitch_presentation_submission_id')

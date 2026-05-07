@@ -48,7 +48,7 @@ const profileForm = defineModel<{
 })
 
 const props = defineProps<{
-  hackathon: Pick<PublicHackathon, 'slug' | 'state' | 'city' | 'country' | 'inPersonEvent' | 'requireWhyThisHackathon' | 'requireProofOfExecution'>
+  hackathon: Pick<PublicHackathon, 'slug' | 'state' | 'city' | 'country' | 'autoApproveApplications' | 'inPersonEvent' | 'requireWhyThisHackathon' | 'requireProofOfExecution'>
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
   profileFields: HackathonProfileField[]
   submissionPolicy: ParticipantApplicationSubmissionPolicy
@@ -428,7 +428,7 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
 
             <div class="space-y-2">
               <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-success-700 dark:text-success-300">
-                Application received
+                {{ submissionTransition.eyebrow }}
               </p>
               <h2 class="text-[24px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
                 {{ submissionTransition.title }}
@@ -890,7 +890,12 @@ function getProfileFieldPlaceholder(key: HackathonProfileField['key']) {
               </div>
 
               <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
-                After you apply, we will review your application. If you are approved, you can create a team or join one while team formation is open.
+                <template v-if="hackathon.autoApproveApplications">
+                  After you apply, you can create a team or join one while team formation is open.
+                </template>
+                <template v-else>
+                  After you apply, we will review your application. If you are approved, you can create a team or join one while team formation is open.
+                </template>
               </p>
             </form>
           </template>

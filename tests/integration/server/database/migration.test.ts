@@ -152,6 +152,22 @@ describe('shared database migration', () => {
     }])
   })
 
+  test('defaults hackathon auto-approval to disabled', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'creator_1', now)
+    await seedHackathon(database, 'hackathon_1', 'draft', now, 'creator_1')
+
+    const hackathonRow = await database.prepare(`
+      select auto_approve_applications
+      from hackathons
+      where id = ?
+    `).all<{ auto_approve_applications: number }>('hackathon_1')
+
+    expect(hackathonRow.results).toEqual([{
+      auto_approve_applications: 0
+    }])
+  })
+
   test('stores the Discord server URL column on hackathons with a null default', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)

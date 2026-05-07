@@ -98,6 +98,7 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     submissionClosesAt: '2026-03-24T10:00:00.000Z',
     state: 'registration_open',
     maxTeamMembers: 5,
+    autoApproveApplications: false,
     blindReviewCount: 1,
     pitchReviewEnabled: false,
     blindScoreWeightPercent: 70,
@@ -429,6 +430,7 @@ describe('domain admin form helpers', () => {
 
   test('uses canonical defaults for new hackathon form scoring fields', () => {
     expect(createEmptyHackathonFormState()).toMatchObject({
+      autoApproveApplications: false,
       blindReviewCount: 1,
       pitchReviewEnabled: false,
       blindScoreWeightPercent: 70,
@@ -444,6 +446,7 @@ describe('domain admin form helpers', () => {
       discordServerUrl: 'https://discord.gg/codex-builders',
       lumaEventUrl: 'https://lu.ma/codex-builders',
       lumaEventApiId: 'evt-123',
+      autoApproveApplications: true,
       blindReviewCount: 3,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
@@ -476,6 +479,7 @@ describe('domain admin form helpers', () => {
       lumaEventApiId: 'evt-123',
       maxTeamMembers: 5,
       participantsLimit: null,
+      autoApproveApplications: true,
       blindReviewCount: 3,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
