@@ -24,6 +24,7 @@ const adminOverviewTabLabels: Record<AdminOverviewTab, string> = {
 }
 
 const isPlatformAdmin = computed(() => workspace.actor.value?.isPlatformAdmin === true)
+const isEventOrganizer = computed(() => workspace.actor.value?.isEventOrganizer === true)
 const canCreate = computed(() => canCreateHackathon(workspace.actor.value))
 const manageableHackathons = computed(() => workspace.manageableHackathons.value)
 const activeTab = computed<AdminOverviewTab>(() =>
@@ -138,12 +139,24 @@ useSeoMeta({
                 {{
                   isPlatformAdmin
                     ? 'Run platform-wide admin work, create hackathons, and open any hackathon workspace from one place.'
-                    : 'Open the hackathons you manage and jump into their operations and settings tabs.'
+                    : isEventOrganizer
+                      ? 'Create hackathons and open the hackathons you manage from one place.'
+                      : 'Open the hackathons you manage and jump into their operations and settings tabs.'
                 }}
               </p>
             </div>
 
             <div class="flex flex-wrap items-center gap-3">
+              <AppButton
+                v-if="isPlatformAdmin"
+                to="/account/event-organizers"
+                color="neutral"
+                variant="outline"
+                class="h-auto rounded-lg px-4 py-2 text-[13px] font-medium"
+              >
+                Manage event organizers
+              </AppButton>
+
               <AppButton
                 v-if="isPlatformAdmin"
                 to="/account/platform-admins"

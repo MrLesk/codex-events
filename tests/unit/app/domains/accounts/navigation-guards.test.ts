@@ -2,14 +2,43 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 const useUser = vi.hoisted(() => vi.fn())
 const navigateTo = vi.hoisted(() => vi.fn())
+const createError = vi.hoisted(() => vi.fn((input: { statusCode: number, statusMessage: string }) =>
+  Object.assign(new Error(input.statusMessage), input)
+))
+
+function createPlatformActor(overrides: Record<string, unknown> = {}) {
+  return {
+    kind: 'platform_user',
+    hasPlatformAccount: true,
+    hasAcceptedCurrentPlatformDocuments: true,
+    sessionUser: {
+      sub: 'auth0|event-organizer'
+    },
+    platformUser: {
+      id: 'event-organizer',
+      email: 'organizer@example.com',
+      displayName: 'Event Organizer',
+      firstName: 'Event',
+      familyName: 'Organizer',
+      isPlatformAdmin: false,
+      isEventOrganizer: false
+    },
+    isPlatformAdmin: false,
+    isEventOrganizer: false,
+    hackathonRoles: [],
+    ...overrides
+  }
+}
 
 describe('navigation guards', () => {
   beforeEach(() => {
     vi.resetModules()
     useUser.mockReset()
     navigateTo.mockReset()
+    createError.mockClear()
     vi.stubGlobal('useUser', useUser as typeof useUser)
     vi.stubGlobal('navigateTo', navigateTo as typeof navigateTo)
+    vi.stubGlobal('createError', createError as typeof createError)
   })
 
   afterEach(() => {
@@ -58,6 +87,113 @@ describe('navigation guards', () => {
       external: true
     })
     expect(navigateTo).not.toHaveBeenCalled()
+  })
+
+  test('allows event organizers through the account admin guard', async () => {
+    useUser.mockReturnValue({
+      value: {
+        sub: 'auth0|event-organizer'
+      }
+    })
+
+    vi.stubGlobal('$fetch', vi.fn(async () => ({
+      data: {
+        actor: createPlatformActor({
+          isEventOrganizer: true,
+          platformUser: {
+            id: 'event-organizer',
+            email: 'organizer@example.com',
+            displayName: 'Event Organizer',
+            firstName: 'Event',
+            familyName: 'Organizer',
+            isPlatformAdmin: false,
+            isEventOrganizer: true
+          }
+        })
+      }
+    })) as never)
+
+    const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
+    const { canAccessAdminDashboard } = await import('../../../../../app/domains/hackathons/access')
+
+    await expect(ensureAccountPageAccess(
+      { fullPath: '/account/admin' } as never,
+      actor => canAccessAdminDashboard(actor),
+      'Hackathon admin access required.'
+    )).resolves.toBeUndefined()
+  })
+
+  test('allows event organizers through the hackathon creation guard', async () => {
+    useUser.mockReturnValue({
+      value: {
+        sub: 'auth0|event-organizer'
+      }
+    })
+
+    vi.stubGlobal('$fetch', vi.fn(async () => ({
+      data: {
+        actor: createPlatformActor({
+          isEventOrganizer: true,
+          platformUser: {
+            id: 'event-organizer',
+            email: 'organizer@example.com',
+            displayName: 'Event Organizer',
+            firstName: 'Event',
+            familyName: 'Organizer',
+            isPlatformAdmin: false,
+            isEventOrganizer: true
+          }
+        })
+      }
+    })) as never)
+
+    const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
+    const { canCreateHackathon } = await import('../../../../../app/domains/hackathons/access')
+
+    await expect(ensureAccountPageAccess(
+      { fullPath: '/admin/hackathons/new' } as never,
+      actor => canCreateHackathon(actor),
+      'Hackathon creator access required.'
+    )).resolves.toBeUndefined()
+  })
+
+  test('rejects regular users from the hackathon creation guard', async () => {
+    useUser.mockReturnValue({
+      value: {
+        sub: 'auth0|regular-user'
+      }
+    })
+
+    vi.stubGlobal('$fetch', vi.fn(async () => ({
+      data: {
+        actor: createPlatformActor({
+          sessionUser: {
+            sub: 'auth0|regular-user'
+          },
+          platformUser: {
+            id: 'regular-user',
+            email: 'regular@example.com',
+            displayName: 'Regular User',
+            firstName: 'Regular',
+            familyName: 'User',
+            isPlatformAdmin: false,
+            isEventOrganizer: false
+          }
+        })
+      }
+    })) as never)
+
+    const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
+    const { canCreateHackathon } = await import('../../../../../app/domains/hackathons/access')
+
+    await expect(ensureAccountPageAccess(
+      { fullPath: '/admin/hackathons/new' } as never,
+      actor => canCreateHackathon(actor),
+      'Hackathon creator access required.'
+    )).rejects.toMatchObject({
+      statusCode: 401,
+      statusMessage: 'Hackathon creator access required.'
+    })
   })
 
   test('allows judge routes for judge-enabled hackathon admins only', async () => {

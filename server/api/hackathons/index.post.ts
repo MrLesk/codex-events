@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
 
 import { requirePlatformActor } from '#server/auth/actor'
-import { assertPlatformAdminAccess } from '#server/auth/authorization'
+import { assertHackathonCreatorAccess } from '#server/auth/authorization'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getDatabase } from '#server/database/client'
 import { hackathons } from '#server/database/schema'
@@ -10,6 +10,7 @@ import { apiData } from '#server/http/api-response'
 import {
   assertHackathonSchedule,
   assertHackathonSlugAvailable,
+  createHackathonAdminAssignmentsForNewHackathon,
   createHackathonTracks,
   createHackathonBodySchema,
   listHackathonTracks,
@@ -20,7 +21,7 @@ import { parseValidatedBody } from '#server/http/validation'
 
 export default defineApiHandler(async (event) => {
   const actor = await requirePlatformActor(event)
-  assertPlatformAdminAccess(actor)
+  assertHackathonCreatorAccess(actor)
 
   const body = await parseValidatedBody(event, createHackathonBodySchema)
   const database = getDatabase(event)
@@ -75,6 +76,11 @@ export default defineApiHandler(async (event) => {
     updatedAt: createdAt
   })
 
+  await createHackathonAdminAssignmentsForNewHackathon(database, {
+    hackathonId,
+    creatorUserId: actor.platformUser.id,
+    createdAt
+  })
   await createHackathonTracks(database, hackathonId, body.tracks)
 
   await writeAuditLog(database, {

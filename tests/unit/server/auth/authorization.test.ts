@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../../../../server/http/api-error'
 import {
   assertBlindJudgeAssignmentAccess,
+  assertHackathonCreatorAccess,
   assertJudgeAssignmentAccess,
   assertHackathonAdminAccess,
   assertHackathonParticipantVisibilityAccess,
@@ -209,6 +210,32 @@ describe('hackathon authorization', () => {
       isStaff: false,
       canViewParticipantsAndTeams: false
     })).toThrow(ApiError)
+  })
+
+  test('allows hackathon creation for platform admins and event organizers only', () => {
+    expect(() => assertHackathonCreatorAccess({
+      platformUser: {
+        id: 'platform_admin',
+        isPlatformAdmin: true,
+        isEventOrganizer: false
+      }
+    } as never)).not.toThrow()
+
+    expect(() => assertHackathonCreatorAccess({
+      platformUser: {
+        id: 'event_organizer',
+        isPlatformAdmin: false,
+        isEventOrganizer: true
+      }
+    } as never)).not.toThrow()
+
+    expect(() => assertHackathonCreatorAccess({
+      platformUser: {
+        id: 'regular_user',
+        isPlatformAdmin: false,
+        isEventOrganizer: false
+      }
+    } as never)).toThrow(ApiError)
   })
 
   test('rejects missing participant visibility access', () => {

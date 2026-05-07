@@ -18,6 +18,7 @@ export interface PlatformUserProfile {
   company?: string | null
   bio?: string | null
   isPlatformAdmin: boolean
+  isEventOrganizer: boolean
   xProfileUrl?: string | null
   linkedinProfileUrl?: string | null
   githubProfileUrl?: string | null
@@ -67,6 +68,7 @@ export interface AnonymousSessionActor {
   sessionUser: null
   platformUser: null
   isPlatformAdmin: false
+  isEventOrganizer: false
   hackathonRoles: []
 }
 
@@ -79,6 +81,7 @@ export interface AuthenticatedIdentitySessionActor {
   sessionUser: SessionUserIdentity
   platformUser: null
   isPlatformAdmin: false
+  isEventOrganizer: false
   hackathonRoles: []
 }
 
@@ -90,6 +93,7 @@ export interface PlatformSessionActor {
   sessionUser: SessionUserIdentity
   platformUser: PlatformUserProfile
   isPlatformAdmin: boolean
+  isEventOrganizer: boolean
   hackathonRoles: HackathonRoleSummary[]
 }
 
@@ -110,6 +114,7 @@ export function buildAnonymousSessionActor(): AnonymousSessionActor {
     sessionUser: null,
     platformUser: null,
     isPlatformAdmin: false,
+    isEventOrganizer: false,
     hackathonRoles: []
   }
 }
@@ -124,6 +129,7 @@ export function buildAuthenticatedIdentitySessionActor(sessionUser: SessionUserI
     sessionUser,
     platformUser: null,
     isPlatformAdmin: false,
+    isEventOrganizer: false,
     hackathonRoles: []
   }
 }

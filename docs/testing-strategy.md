@@ -79,7 +79,7 @@ When backend constraints prevent complete actor-facing UI coverage, the gap must
 - End-to-end tests do not bypass login with fake tokens, mock identity payloads, or test-only authorization shortcuts.
 - Auth0 remains responsible for identity.
 - The platform database remains responsible for authorization.
-- Platform roles such as platform admin, hackathon admin, staff, and judge are never modeled as Auth0 roles for application behavior.
+- Platform roles such as platform admin, event organizer, hackathon admin, staff, and judge are never modeled as Auth0 roles for application behavior.
 
 ## Auth0 Test Tenant
 
@@ -95,9 +95,10 @@ Auth0 Management API access is used only to provision and reset Auth0-side test 
 
 ## Stable E2E Personas
 
-The platform maintains five stable Auth0 personas for role-based end-to-end coverage:
+The platform maintains six stable Auth0 personas for role-based end-to-end coverage:
 
 - `platform_admin`
+- `event_organizer`
 - `hackathon_admin`
 - `staff`
 - `judge`
@@ -119,6 +120,7 @@ End-to-end test bootstrap must also seed the platform database with:
 
 - a `User` record for each Auth0 persona
 - `is_platform_admin = true` for the platform-admin persona
+- `is_event_organizer = true` for the event-organizer persona
 - `HackathonRoleAssignment` rows for hackathon-admin, staff, and judge personas
 - any required `UserApplication`, team, submission, or hackathon fixtures needed by the scenario under test
 

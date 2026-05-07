@@ -143,7 +143,7 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Get current session actor | `GET /api/session` | authenticated user | Returns platform user identity, effective platform-admin status, and hackathon roles needed for authorization-aware clients and routing. |
+| Get current session actor | `GET /api/session` | authenticated user | Returns platform user identity, effective platform-admin status, effective event-organizer status, and hackathon roles needed for authorization-aware clients and routing. |
 
 Testing:
 - Unit: actor resolution and permission derivation rules.
@@ -211,6 +211,23 @@ Testing:
 - Integration: role enforcement, active-user filtering, promotion persistence, assignment normalization, and audit creation.
 - End-to-end: Auth0-backed platform-admin management flows.
 
+## Event Organizers
+
+Purpose:
+- Support event-organizer roster reads and event-organizer grants from the authenticated account workspace.
+
+Operations:
+
+| Operation | Method And Path | Actor | Guards And Notes |
+| --- | --- | --- | --- |
+| List current event organizers | `GET /api/event-organizers` | platform admin | Returns active platform users with `isEventOrganizer = true`. |
+| List event-organizer candidates | `GET /api/event-organizers/candidates` | platform admin | Returns active users for roster search with pagination and fuzzy search over display name, email, and user ID. |
+| Grant event organizer access | `PUT /api/event-organizers/:userId` | platform admin | Grants event-organizer access to the target active user and writes an audit record. |
+
+Testing:
+- Unit: event-organizer grant invariants and candidate ordering or filtering rules.
+- Integration: role enforcement, active-user filtering, grant persistence, and audit creation.
+
 ## Hackathons
 
 Purpose:
@@ -233,7 +250,7 @@ Operations:
 | List caller-visible hackathons | `GET /api/hackathons` | public or authenticated user | Returns hackathons visible to the caller. Authenticated admins can see draft hackathons they are allowed to manage here, and staff-visible internal hackathons are included when the caller has staff access to them. |
 | List own hackathon participation | `GET /api/hackathons/participation` | authenticated user with a platform account | Returns the caller's current and past participation records across applications, team memberships, and submissions. For hackathons in `pitch`, `pitch_review`, `final_deliberation`, `winners_announced`, or `completed`, the response also includes a self-scoped team outcome summary, including shortlist status and, after completion, awarded prizes plus final rank `X/Y`. |
 | Get caller-visible hackathon detail | `GET /api/hackathons/:hackathonId` | public or authenticated user | Returns canonical hackathon fields, including structured `agendaItems`, configured `tracks`, and current terms references for a hackathon visible to the caller. The street `address` and optional `discordServerUrl` are returned only to approved participants and to judges, staff, hackathon admins, and platform admins. Staff-visible internal hackathons are included when the caller has staff access to that hackathon. |
-| Create hackathon | `POST /api/hackathons` | platform admin | Creates a `draft` hackathon with canonical configuration, including structured `agendaItems`, optional ordered `tracks`, optional event links such as `lumaEventUrl` and the restricted `discordServerUrl`, location fields (`city`, `country`, and `address`), team size and participant limits, judging configuration (`blindReviewCount`, `pitchReviewEnabled`, `blindScoreWeightPercent`, `pitchScoreWeightPercent`, and `shortlistFinalistCount`), `inPersonEvent`, application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`, and submission-requirement toggles for `summary`, `repositoryUrl`, and `demoUrl`. |
+| Create hackathon | `POST /api/hackathons` | event organizer or platform admin | Creates a `draft` hackathon with canonical configuration, including structured `agendaItems`, optional ordered `tracks`, optional event links such as `lumaEventUrl` and the restricted `discordServerUrl`, location fields (`city`, `country`, and `address`), team size and participant limits, judging configuration (`blindReviewCount`, `pitchReviewEnabled`, `blindScoreWeightPercent`, `pitchScoreWeightPercent`, and `shortlistFinalistCount`), `inPersonEvent`, application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`, and submission-requirement toggles for `summary`, `repositoryUrl`, and `demoUrl`. Creation assigns the creator as `hackathon_admin` for the new hackathon and normalizes active platform-admin assignment coverage for the new hackathon. |
 | Update hackathon configuration | `PATCH /api/hackathons/:hackathonId` | hackathon admin or platform admin | Updates canonical configuration fields, including schedule, structured `agendaItems`, optional ordered `tracks`, images, optional event links such as `lumaEventUrl` and the restricted `discordServerUrl`, location fields (`city`, `country`, and `address`), team size and participant limits, judging configuration (`blindReviewCount`, `pitchReviewEnabled`, `blindScoreWeightPercent`, `pitchScoreWeightPercent`, and `shortlistFinalistCount`), required profile flags, `inPersonEvent`, application-requirement toggles such as `requireWhyThisHackathon` and `requireProofOfExecution`, and submission-requirement toggles for `summary`, `repositoryUrl`, and `demoUrl`. Track removals are rejected when existing submissions still reference the removed track. |
 | Open registration manually | `POST /api/hackathons/:hackathonId/actions/open-registration` | hackathon admin or platform admin | Allowed only from `draft` while the configured registration window is open. |
 | Backfill Luma emails for legacy applicants | `POST /api/admin/hackathons/:hackathonId/actions/backfill-luma-emails` | platform admin | Resolves stored legacy Luma usernames against the configured Luma event API id and writes canonical `lumaEmail` values for users in that hackathon who still need them. |
@@ -622,6 +639,7 @@ Testing:
 - Pitch-only hackathons send all eligible locked submissions directly to `pitch`.
 - Shortlist leaderboard data remains a computed blind-view surface, while the saved shortlist order and any later final-deliberation reorder persist the admin-selected ranking order used by later judging and winner workflows.
 - Granting platform-admin access also normalizes explicit `hackathon_admin` assignment coverage across existing hackathons.
+- Event organizers can create hackathons but see only hackathons where they hold scoped access.
 
 ## Test Coverage Matrix
 

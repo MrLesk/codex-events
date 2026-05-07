@@ -22,6 +22,7 @@ export default defineApiHandler(async (event) => {
         sessionUser: actor.sessionUser,
         platformUser: null,
         isPlatformAdmin: false,
+        isEventOrganizer: false,
         hackathonRoles: []
       }
     })
@@ -49,6 +50,7 @@ export default defineApiHandler(async (event) => {
         company: actor.platformUser.company,
         bio: actor.platformUser.bio,
         isPlatformAdmin: actor.platformUser.isPlatformAdmin,
+        isEventOrganizer: actor.platformUser.isEventOrganizer,
         xProfileUrl: actor.platformUser.xProfileUrl,
         linkedinProfileUrl: actor.platformUser.linkedinProfileUrl,
         githubProfileUrl: actor.platformUser.githubProfileUrl,
@@ -62,6 +64,7 @@ export default defineApiHandler(async (event) => {
         deletedAt: actor.platformUser.deletedAt
       },
       isPlatformAdmin: actor.platformUser.isPlatformAdmin,
+      isEventOrganizer: actor.platformUser.isEventOrganizer,
       hackathonRoles: roleAssignments.map((assignment: HackathonRoleAssignmentRecord) => ({
         hackathonId: assignment.hackathonId,
         role: assignment.role,

@@ -64,6 +64,7 @@ export const users = sqliteTable(
     company: text('company'),
     bio: text('bio'),
     isPlatformAdmin: integer('is_platform_admin', { mode: 'boolean' }).notNull().default(false),
+    isEventOrganizer: integer('is_event_organizer', { mode: 'boolean' }).notNull().default(false),
     xProfileUrl: text('x_profile_url'),
     linkedinProfileUrl: text('linkedin_profile_url'),
     githubProfileUrl: text('github_profile_url'),

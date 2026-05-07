@@ -12,6 +12,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 - `staff`: a user with explicit `staff` access in a hackathon, or a `hackathon_admin` whose assignment is also marked as staff
 - `judge`: a user assigned to review through a `JudgeAssignment`
 - `hackathon_admin`: a user with explicit `hackathon_admin` access in a hackathon
+- `event_organizer`: a user with `is_event_organizer = true`
 - `platform_admin`: a user with `is_platform_admin = true`
 - `prize_recipient`: a user with a `PrizeRedemption` record to complete, or an active team admin acting on a pending team-scoped redemption
 - `system`: automatic platform behavior driven by configured windows
@@ -19,6 +20,7 @@ This document defines the canonical permissions for the Codex hackathon platform
 ## Permission Inheritance
 
 - `platform_admin` includes all `hackathon_admin` permissions in every hackathon.
+- `event_organizer` grants hackathon creation access only and does not include visibility into hackathons the user does not manage.
 - `hackathon_admin` can use judge permissions only when that admin also participates in judging through a `JudgeAssignment`.
 - The automatic judge distribution pool is controlled by `HackathonRoleAssignment.is_in_judge_pool`.
 - Staff designation is controlled by `HackathonRoleAssignment.is_staff`.
@@ -32,15 +34,18 @@ This document defines the canonical permissions for the Codex hackathon platform
 
 ## Global Platform Actions
 
-| Action | User | Platform Admin |
-| --- | --- | --- |
-| Create account and authenticate | Yes | Yes |
-| Delete own account | Yes | Yes |
-| Create hackathon | No | Yes |
-| View platform admin roster | No | Yes |
-| Search active users for platform-admin management | No | Yes |
-| Grant platform admin access | No | Yes |
-| Assign hackathon admins across any hackathon | No | Yes |
+| Action | User | Event Organizer | Platform Admin |
+| --- | --- | --- | --- |
+| Create account and authenticate | Yes | Yes | Yes |
+| Delete own account | Yes | Yes | Yes |
+| Create hackathon | No | Yes | Yes |
+| View platform admin roster | No | No | Yes |
+| Search active users for platform-admin management | No | No | Yes |
+| Grant platform admin access | No | No | Yes |
+| View event organizer roster | No | No | Yes |
+| Search active users for event-organizer management | No | No | Yes |
+| Grant event organizer access | No | No | Yes |
+| Assign hackathon admins across any hackathon | No | No | Yes |
 
 ## Hackathon Lifecycle Actions
 

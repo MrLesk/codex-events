@@ -3,6 +3,7 @@ import type { PublicApiDataResponse } from '~/domains/hackathons/presentation'
 
 import { accountDashboardHref, buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
 import {
+  canAccessAdminDashboard,
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled
 } from '~/domains/hackathons/access'
@@ -116,7 +117,7 @@ export function useShellNavigation() {
   const isResolvingActor = computed(() => Boolean(user.value?.sub) && status.value === 'pending')
   const hasPlatformAccount = computed(() => actor.value.kind === 'platform_user')
   const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
-    && (actor.value.isPlatformAdmin || actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin')))
+    && canAccessAdminDashboard(actor.value))
   const hasStaffAccess = computed(() => actor.value.kind === 'platform_user'
     && actor.value.hackathonRoles.some(role => isHackathonRoleStaffEnabled(role)))
   const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
@@ -152,6 +153,10 @@ export function useShellNavigation() {
 
     if (actor.value.isPlatformAdmin) {
       chips.push('Platform admin')
+    }
+
+    if (actor.value.isEventOrganizer) {
+      chips.push('Event organizer')
     }
 
     if (actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin')) {
@@ -212,7 +217,9 @@ export function useShellNavigation() {
       items.push({
         id: 'admin-dashboard',
         label: 'Admin dashboard',
-        description: 'Hackathons you can manage and platform-wide admin work',
+        description: actor.value.isPlatformAdmin
+          ? 'Hackathons you can manage and platform-wide admin work'
+          : 'Hackathons you can manage and create',
         to: '/account/admin',
         icon: 'i-lucide-shield-check'
       })

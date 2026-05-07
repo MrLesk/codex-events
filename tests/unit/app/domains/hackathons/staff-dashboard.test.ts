@@ -37,6 +37,7 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
       company: null,
       bio: null,
       isPlatformAdmin: false,
+      isEventOrganizer: false,
       xProfileUrl: null,
       linkedinProfileUrl: null,
       githubProfileUrl: null,
@@ -50,6 +51,7 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
       deletedAt: null
     },
     isPlatformAdmin: false,
+    isEventOrganizer: false,
     hackathonRoles: [{
       hackathonId: 'hackathon-1',
       role: 'staff',
@@ -111,6 +113,7 @@ describe('filterStaffAccessibleHackathons', () => {
       sessionUser: null,
       platformUser: null,
       isPlatformAdmin: false,
+      isEventOrganizer: false,
       hackathonRoles: []
     })).toEqual([])
 
@@ -129,6 +132,7 @@ describe('filterStaffAccessibleHackathons', () => {
       },
       platformUser: null,
       isPlatformAdmin: false,
+      isEventOrganizer: false,
       hackathonRoles: []
     })).toEqual([])
   })

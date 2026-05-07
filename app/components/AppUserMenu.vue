@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger
 } from '~/components/ui/dropdown-menu'
 import {
+  canAccessAdminDashboard,
   isHackathonRoleJudgingEnabled,
   isHackathonRoleStaffEnabled
 } from '~/domains/hackathons/access'
@@ -28,7 +29,7 @@ const hasStaffAccess = computed(() => actor.value.kind === 'platform_user'
 const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
   && actor.value.hackathonRoles.some(role => isHackathonRoleJudgingEnabled(role)))
 const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
-  && (actor.value.isPlatformAdmin || actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin')))
+  && canAccessAdminDashboard(actor.value))
 </script>
 
 <template>

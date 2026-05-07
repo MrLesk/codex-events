@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { eq } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 
 import hackathonsGetHandler from '../../../../server/api/hackathons/index.get'
 import hackathonParticipationGetHandler from '../../../../server/api/hackathons/participation.get'
@@ -3069,6 +3069,16 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
       pitchScoreWeightPercent: 40
     })
 
+    const creatorAssignment = await harness.database.query.hackathonRoleAssignments.findFirst({
+      where: eq(hackathonRoleAssignments.userId, 'platform_admin')
+    })
+    expect(creatorAssignment).toMatchObject({
+      hackathonId: createdHackathon?.id,
+      role: 'hackathon_admin',
+      isInJudgePool: false,
+      isStaff: false
+    })
+
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual([
       expect.objectContaining({
@@ -3077,6 +3087,130 @@ describe('TASK-3.5 hackathon CRUD routes', () => {
         action: 'hackathon.created'
       })
     ])
+  })
+
+  test('POST /api/hackathons lets event organizers create only their own manageable hackathons', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons', handler: hackathonsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|event_organizer',
+        email: 'organizer@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'platform_admin',
+        auth0Subject: 'auth0|platform_admin',
+        email: 'platform-admin@example.com',
+        displayName: 'Platform Admin',
+        isPlatformAdmin: true
+      },
+      {
+        id: 'event_organizer',
+        auth0Subject: 'auth0|event_organizer',
+        email: 'organizer@example.com',
+        displayName: 'Event Organizer',
+        isEventOrganizer: true
+      }
+    ])
+
+    const response = await harness.request('/api/hackathons', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Organizer Hackathon',
+        slug: 'organizer-hackathon',
+        description: 'Organizer-owned hackathon',
+        agendaItems: [],
+        city: 'Vienna',
+        country: 'Austria',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z'
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        slug: 'organizer-hackathon',
+        createdByUserId: 'event_organizer'
+      }
+    })
+
+    const createdHackathon = await harness.database.query.hackathons.findFirst({
+      where: eq(hackathons.slug, 'organizer-hackathon')
+    })
+    expect(createdHackathon).toMatchObject({
+      createdByUserId: 'event_organizer'
+    })
+
+    const assignments = await harness.database.query.hackathonRoleAssignments.findMany({
+      where: eq(hackathonRoleAssignments.hackathonId, createdHackathon!.id),
+      orderBy: [asc(hackathonRoleAssignments.userId)]
+    })
+    expect(assignments).toMatchObject([
+      {
+        userId: 'event_organizer',
+        role: 'hackathon_admin',
+        isInJudgePool: false,
+        isStaff: false
+      },
+      {
+        userId: 'platform_admin',
+        role: 'hackathon_admin',
+        isInJudgePool: false,
+        isStaff: false
+      }
+    ])
+  })
+
+  test('POST /api/hackathons rejects regular platform users', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/hackathons', handler: hackathonsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'regular_user',
+      auth0Subject: 'auth0|regular_user',
+      email: 'regular@example.com',
+      displayName: 'Regular User'
+    })
+
+    const response = await harness.request('/api/hackathons', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Blocked Hackathon',
+        slug: 'blocked-hackathon',
+        description: 'Blocked hackathon',
+        city: 'Vienna',
+        country: 'Austria',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z'
+      })
+    })
+
+    expect(response.status).toBe(403)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'hackathon_creator_required'
+      }
+    })
   })
 
   test('PATCH /api/hackathons/:hackathonId updates configuration for hackathon admins', async () => {

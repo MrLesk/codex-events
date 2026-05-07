@@ -10,6 +10,7 @@ export interface HackathonRoleUserSummary {
   email: string
   displayName: string
   isPlatformAdmin: boolean
+  isEventOrganizer?: boolean
 }
 
 export interface HackathonRoleAssignment {
@@ -28,7 +29,7 @@ export function isAdminActor(actor: SessionActor | null | undefined) {
     return false
   }
 
-  if (actor.isPlatformAdmin) {
+  if (actor.isPlatformAdmin || actor.isEventOrganizer) {
     return true
   }
 
@@ -48,11 +49,19 @@ export function isHackathonRoleStaffEnabled(
 }
 
 export function canCreateHackathon(actor: SessionActor | null | undefined) {
-  return Boolean(actor?.hasPlatformAccount && actor.isPlatformAdmin)
+  return Boolean(actor?.hasPlatformAccount && (actor.isPlatformAdmin || actor.isEventOrganizer))
+}
+
+export function canAccessAdminDashboard(actor: SessionActor | null | undefined) {
+  return isAdminActor(actor)
 }
 
 export function canMutateRoleAssignments(actor: SessionActor | null | undefined) {
-  return isAdminActor(actor)
+  if (!actor?.hasPlatformAccount) {
+    return false
+  }
+
+  return actor.isPlatformAdmin || actor.hackathonRoles.some(role => role.role === 'hackathon_admin')
 }
 
 export function hasHackathonAdminAccess(actor: SessionActor | null | undefined, hackathonId: string) {

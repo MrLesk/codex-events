@@ -151,6 +151,21 @@ export function assertPlatformAdminAccess(actor: PlatformActor) {
   })
 }
 
+export function assertHackathonCreatorAccess(actor: PlatformActor) {
+  if (actor.platformUser.isPlatformAdmin || actor.platformUser.isEventOrganizer) {
+    return
+  }
+
+  throw new ApiError({
+    statusCode: 403,
+    code: 'hackathon_creator_required',
+    message: 'This operation requires platform admin or event organizer access.',
+    details: {
+      userId: actor.platformUser.id
+    }
+  })
+}
+
 export async function resolveTeamAuthorization(
   event: H3Event,
   teamId: string

@@ -488,6 +488,45 @@ export async function createHackathonTracks(
   )
 }
 
+export async function createHackathonAdminAssignmentsForNewHackathon(
+  database: AppDatabase,
+  input: {
+    hackathonId: string
+    creatorUserId: string
+    createdAt: string
+  }
+) {
+  const adminUsers = await database.query.users.findMany({
+    columns: {
+      id: true
+    },
+    where: and(
+      isNull(users.deletedAt),
+      or(
+        eq(users.isPlatformAdmin, true),
+        eq(users.id, input.creatorUserId)
+      )
+    )
+  })
+  const userIds = [...new Set(adminUsers.map(user => user.id))]
+
+  if (userIds.length === 0) {
+    return
+  }
+
+  await database.insert(hackathonRoleAssignments).values(
+    userIds.map(userId => ({
+      id: crypto.randomUUID(),
+      hackathonId: input.hackathonId,
+      userId,
+      role: 'hackathon_admin' as const,
+      isInJudgePool: false,
+      isStaff: false,
+      createdAt: input.createdAt
+    }))
+  ).onConflictDoNothing()
+}
+
 export async function assertRemovedHackathonTracksAreUnreferenced(
   database: AppDatabase,
   trackIds: string[]
@@ -1353,7 +1392,8 @@ export function serializeHackathonRoleUserSummary(user: typeof users.$inferSelec
     id: user.id,
     email: user.email,
     displayName: user.displayName,
-    isPlatformAdmin: user.isPlatformAdmin
+    isPlatformAdmin: user.isPlatformAdmin,
+    isEventOrganizer: user.isEventOrganizer
   }
 }
 

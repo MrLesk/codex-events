@@ -36,6 +36,7 @@ describe('shared schema foundation', () => {
     expect(columns.familyName.name).toBe('family_name')
     expect(columns.company.name).toBe('company')
     expect(columns.bio.name).toBe('bio')
+    expect(columns.isEventOrganizer.name).toBe('is_event_organizer')
     expect(columns.profileIconUpdatedAt.name).toBe('profile_icon_updated_at')
   })
 

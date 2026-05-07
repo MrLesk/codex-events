@@ -103,9 +103,11 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
       displayName: 'Judge One',
       firstName: 'Judge',
       familyName: 'One',
-      isPlatformAdmin: false
+      isPlatformAdmin: false,
+      isEventOrganizer: false
     },
     isPlatformAdmin: false,
+    isEventOrganizer: false,
     hackathonRoles: [{
       hackathonId: 'hackathon-1',
       role: 'judge',

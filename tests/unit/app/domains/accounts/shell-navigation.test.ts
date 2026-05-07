@@ -77,6 +77,7 @@ describe('isShellNavigationLinkActive', () => {
     expect(isShellNavigationLinkActive('/account/admin', undefined, '/account/admin')).toBe(true)
     expect(isShellNavigationLinkActive('/account/staff', undefined, '/account/staff')).toBe(true)
     expect(isShellNavigationLinkActive('/account/platform-admins', undefined, '/account/admin')).toBe(true)
+    expect(isShellNavigationLinkActive('/account/event-organizers', undefined, '/account/admin')).toBe(true)
     expect(isShellNavigationLinkActive('/account/settings', undefined, '/account/settings')).toBe(true)
   })
 

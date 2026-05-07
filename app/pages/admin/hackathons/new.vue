@@ -15,7 +15,7 @@ import {
 } from '~/domains/hackathons/admin-hackathon'
 
 definePageMeta({
-  middleware: ['require-platform-admin']
+  middleware: ['require-hackathon-creator']
 })
 
 const workspace = useAdminWorkspace()

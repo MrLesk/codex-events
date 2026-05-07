@@ -18,6 +18,8 @@ import type {
 } from '../../../../app/domains/teams/admin-team-record'
 
 import {
+  canAccessAdminDashboard,
+  canCreateHackathon,
   canMutateRoleAssignments,
   filterManageableHackathons,
   hasHackathonAdminAccess,
@@ -145,9 +147,11 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
       displayName: 'Admin User',
       firstName: 'Admin',
       familyName: 'User',
-      isPlatformAdmin: false
+      isPlatformAdmin: false,
+      isEventOrganizer: false
     },
     isPlatformAdmin: false,
+    isEventOrganizer: false,
     hackathonRoles: [{
       hackathonId: 'hackathon-1',
       role: 'hackathon_admin',
@@ -354,7 +358,8 @@ describe('domain admin access helpers', () => {
         displayName: 'Platform Admin',
         firstName: 'Platform',
         familyName: 'Admin',
-        isPlatformAdmin: true
+        isPlatformAdmin: true,
+        isEventOrganizer: false
       }
     })
     const hackathons = [
@@ -378,9 +383,35 @@ describe('domain admin access helpers', () => {
         displayName: 'Platform Admin',
         firstName: 'Platform',
         familyName: 'Admin',
-        isPlatformAdmin: true
+        isPlatformAdmin: true,
+        isEventOrganizer: false
       }
     }))).toBe(true)
+  })
+
+  test('allows event organizers to create hackathons without platform-wide visibility', () => {
+    const actor = createActor({
+      isEventOrganizer: true,
+      hackathonRoles: [],
+      platformUser: {
+        id: 'event-organizer',
+        email: 'organizer@example.com',
+        displayName: 'Event Organizer',
+        firstName: 'Event',
+        familyName: 'Organizer',
+        isPlatformAdmin: false,
+        isEventOrganizer: true
+      }
+    })
+    const hackathons = [
+      createHackathon({ id: 'hackathon-1' }),
+      createHackathon({ id: 'hackathon-2', slug: 'other-hackathon', name: 'Other Hackathon' })
+    ]
+
+    expect(canAccessAdminDashboard(actor)).toBe(true)
+    expect(canCreateHackathon(actor)).toBe(true)
+    expect(canMutateRoleAssignments(actor)).toBe(false)
+    expect(filterManageableHackathons(hackathons, actor)).toEqual([])
   })
 
   test('grants participant visibility to explicit staff without admin mutations', () => {

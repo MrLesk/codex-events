@@ -19,6 +19,7 @@ Key characteristics:
 - Can apply to hackathons.
 - Can join at most one team per hackathon.
 - Can be marked with `is_platform_admin`.
+- Can be marked with `is_event_organizer`.
 - Stores canonical `first_name` and `family_name` values used for profile management.
 - Can optionally store a company, a bio, X, LinkedIn, and GitHub profile links, a ChatGPT email, an OpenAI org ID, a Luma email, a legacy Luma username, and a profile icon uploaded from account settings.
 - Can delete their account, subject to GDPR-compliant handling.
@@ -33,8 +34,11 @@ Rules:
 - Regular platform-user access requires current accepted versions of the platform `privacy_policy` and `platform_terms` in platform data.
 - The reusable platform profile fields are managed from account settings.
 - A user with `is_platform_admin = true` is a platform admin.
+- A user with `is_event_organizer = true` is an event organizer.
 - Platform admins can create hackathons.
+- Event organizers can create hackathons.
 - Platform admins can grant platform-admin access to other active users.
+- Platform admins can grant event-organizer access to other active users.
 - Granting platform-admin access also normalizes the user's explicit `hackathon_admin` assignment coverage across every hackathon.
 - Hackathon admins and platform admins can assign staff, judges, and hackathon admins within their hackathons.
 - Platform admins implicitly have hackathon-admin permissions in every hackathon.
@@ -184,6 +188,7 @@ Rules:
 - A user has at most one explicit hackathon role per hackathon.
 - Staff can see participant and team data for the hackathon but cannot perform admin operations.
 - Every platform admin also has a `HackathonRoleAssignment` row with role `hackathon_admin` for every hackathon.
+- When an event organizer creates a hackathon, the creator receives a `HackathonRoleAssignment` row with role `hackathon_admin` for that hackathon.
 - `HackathonRoleAssignment` includes `is_in_judge_pool` to control automatic blind-review distribution and pitch-panel membership and `is_staff` to record staff designation.
 - A user with role `judge` must be in the automatic judge distribution pool and must not be marked as staff.
 - A user with role `staff` must be marked as staff and must not be in the automatic judge distribution pool.

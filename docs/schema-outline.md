@@ -24,6 +24,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `company`
 - `bio`
 - `is_platform_admin`
+- `is_event_organizer`
 - `x_profile_url`
 - `linkedin_profile_url`
 - `github_profile_url`
@@ -51,6 +52,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `luma_email` stores the canonical Luma email used for hackathon profile requirements and Luma approval-state synchronization.
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
+- `is_event_organizer` grants hackathon creation access without platform-wide admin visibility.
 - `profile_icon_updated_at` records when the current profile icon object was last replaced.
 - Platform actor resolution uses `UserAuthIdentity` records so multiple linked Auth0 subjects can resolve to the same user.
 - `luma_username` is retained only as legacy migration data for users who registered before Luma email became the canonical profile field.
@@ -261,6 +263,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - Every platform admin also has a `hackathon_admin` assignment row for each hackathon.
+- A hackathon created by an event organizer records the creator as a `hackathon_admin` assignment for that hackathon.
 - `is_in_judge_pool` controls automatic blind-review distribution and pitch-panel membership.
 - `is_staff` records staff designation for the assignment.
 - `hackathon_admin` can set `is_in_judge_pool` and `is_staff` independently.
