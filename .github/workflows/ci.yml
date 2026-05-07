@@ -109,7 +109,20 @@ jobs:
         if: ${{ env.NUXT_LUMA_API_KEY != '' }}
         env:
           LUMA_WEBHOOK_URL: https://dev.codex-hackathons.com/api/public/luma/webhooks
-        run: bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-dev-luma-webhook-secret.json
+        run: |
+          set -euo pipefail
+          if output="$(bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-dev-luma-webhook-secret.json 2>&1)"; then
+            printf '%s\n' "$output"
+            exit 0
+          fi
+
+          printf '%s\n' "$output"
+          if grep -Fq 'active Luma Plus plan' <<< "$output"; then
+            echo "::warning::Skipping dev Luma webhook reconciliation because this Luma calendar cannot use API requests without an active Luma Plus plan."
+            exit 0
+          fi
+
+          exit 1
 
       - name: Upload shared dev Worker secrets
         run: |
