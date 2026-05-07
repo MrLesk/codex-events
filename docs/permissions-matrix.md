@@ -46,6 +46,8 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Search active users for event-organizer management | No | No | Yes |
 | Grant event organizer access | No | No | Yes |
 | Assign hackathon admins across any hackathon | No | No | Yes |
+| Update platform legal settings | No | No | Yes |
+| Publish platform Privacy Policy or Platform Terms version | No | No | Yes |
 
 ## Hackathon Lifecycle Actions
 

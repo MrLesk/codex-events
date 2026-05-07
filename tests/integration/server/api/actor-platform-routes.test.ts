@@ -13,12 +13,16 @@ import sessionHandler from '../../../../server/api/session.get'
 import platformDocumentAcceptancePostHandler from '../../../../server/api/platform-document-acceptances.post'
 import platformDocumentCurrentGetHandler from '../../../../server/api/platform-documents/current.get'
 import platformDocumentVersionsGetHandler from '../../../../server/api/platform-documents/[documentType]/versions.get'
+import platformDocumentVersionsPostHandler from '../../../../server/api/platform-documents/[documentType]/versions.post'
+import platformLegalSettingsCurrentGetHandler from '../../../../server/api/platform-legal-settings/current.get'
+import platformLegalSettingsCurrentPatchHandler from '../../../../server/api/platform-legal-settings/current.patch'
 import {
   auditLogs,
   hackathons,
   hackathonRoleAssignments,
   hackathonTermsDocuments,
   platformDocuments,
+  platformLegalSettings,
   submissions,
   teamMembers,
   teams,
@@ -54,6 +58,69 @@ describe('TASK-3.5 actor-facing API routes', () => {
       Buffer.from(JSON.stringify(payload)).toString('base64url'),
       'signature'
     ].join('.')
+  }
+
+  async function seedCurrentPlatformDocuments(
+    harness: ReturnType<typeof createApiRouteTestHarness>
+  ) {
+    await harness.database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+  }
+
+  async function seedAcceptedPlatformUser(
+    harness: ReturnType<typeof createApiRouteTestHarness>,
+    input: {
+      id: string
+      auth0Subject: string
+      email: string
+      isPlatformAdmin?: boolean
+    }
+  ) {
+    await harness.database.insert(users).values({
+      id: input.id,
+      auth0Subject: input.auth0Subject,
+      email: input.email,
+      displayName: input.email,
+      isPlatformAdmin: input.isPlatformAdmin ?? false
+    })
+    await seedCurrentPlatformDocumentAcceptances(harness, input.id)
+  }
+
+  async function seedCurrentPlatformDocumentAcceptances(
+    harness: ReturnType<typeof createApiRouteTestHarness>,
+    userId: string
+  ) {
+    await seedCurrentPlatformDocuments(harness)
+    await harness.database.insert(userPlatformDocumentAcceptances).values([
+      {
+        id: `${userId}_privacy_acceptance`,
+        userId,
+        platformDocumentId: 'privacy_v1',
+        acceptedAt: '2026-03-03T00:00:00.000Z'
+      },
+      {
+        id: `${userId}_terms_acceptance`,
+        userId,
+        platformDocumentId: 'terms_v1',
+        acceptedAt: '2026-03-03T00:00:00.000Z'
+      }
+    ])
   }
 
   class InMemoryR2Bucket {
@@ -774,7 +841,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         sub: 'auth0|consent-blocked-user',
         email: 'consent-blocked@example.com',
         name: 'Consent Blocked'
-      }
+      },
+      autoAcceptCurrentPlatformDocuments: false
     })
     databases.push(harness)
 
@@ -872,6 +940,149 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
+  test('GET /api/platform-legal-settings/current returns deployment legal settings publicly', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/platform-legal-settings/current',
+          handler: platformLegalSettingsCurrentGetHandler
+        }
+      ]
+    })
+    databases.push(harness)
+
+    const missingResponse = await harness.request('/api/platform-legal-settings/current')
+
+    expect(missingResponse.status).toBe(200)
+    expect(await missingResponse.json()).toEqual({
+      data: null
+    })
+
+    await harness.database.insert(platformLegalSettings).values({
+      id: 'default',
+      operatorName: 'Example Operator',
+      operatorAddress: '1 Example Street',
+      supportEmail: 'support@example.com',
+      privacyEmail: 'privacy@example.com',
+      legalContactLanguages: 'English',
+      businessPurpose: 'Running hackathons.',
+      editorialLine: 'Hackathon information.',
+      imprintContent: 'Example imprint.'
+    })
+
+    const configuredResponse = await harness.request('/api/platform-legal-settings/current')
+
+    expect(configuredResponse.status).toBe(200)
+    expect(await configuredResponse.json()).toMatchObject({
+      data: {
+        id: 'default',
+        operatorName: 'Example Operator',
+        supportEmail: 'support@example.com',
+        privacyEmail: 'privacy@example.com',
+        imprintContent: 'Example imprint.'
+      }
+    })
+  })
+
+  test('PATCH /api/platform-legal-settings/current upserts settings for platform admins only', async () => {
+    const regularHarness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'patch',
+          path: '/api/platform-legal-settings/current',
+          handler: platformLegalSettingsCurrentPatchHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular-user',
+        email: 'regular@example.com'
+      }
+    })
+    databases.push(regularHarness)
+    await seedAcceptedPlatformUser(regularHarness, {
+      id: 'regular_user',
+      auth0Subject: 'auth0|regular-user',
+      email: 'regular@example.com'
+    })
+
+    const body = {
+      operatorName: 'Example Operator',
+      operatorAddress: '1 Example Street',
+      supportEmail: 'support@example.com',
+      privacyEmail: 'privacy@example.com',
+      legalContactLanguages: 'English',
+      businessPurpose: 'Running hackathons.',
+      editorialLine: 'Hackathon information.',
+      imprintContent: 'Example imprint.'
+    }
+
+    const forbiddenResponse = await regularHarness.request('/api/platform-legal-settings/current', {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    })
+
+    expect(forbiddenResponse.status).toBe(403)
+    expect(await forbiddenResponse.json()).toMatchObject({
+      error: {
+        code: 'platform_admin_required'
+      }
+    })
+
+    const adminHarness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'patch',
+          path: '/api/platform-legal-settings/current',
+          handler: platformLegalSettingsCurrentPatchHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform-admin',
+        email: 'admin@example.com'
+      }
+    })
+    databases.push(adminHarness)
+    await seedAcceptedPlatformUser(adminHarness, {
+      id: 'platform_admin',
+      auth0Subject: 'auth0|platform-admin',
+      email: 'admin@example.com',
+      isPlatformAdmin: true
+    })
+
+    const successResponse = await adminHarness.request('/api/platform-legal-settings/current', {
+      method: 'PATCH',
+      body: JSON.stringify(body)
+    })
+    const storedSettings = await adminHarness.database.query.platformLegalSettings.findFirst({
+      where: eq(platformLegalSettings.id, 'default')
+    })
+    const auditRows = await adminHarness.database.select().from(auditLogs)
+
+    expect(successResponse.status).toBe(200)
+    expect(await successResponse.json()).toMatchObject({
+      data: {
+        id: 'default',
+        operatorName: 'Example Operator',
+        supportEmail: 'support@example.com',
+        privacyEmail: 'privacy@example.com'
+      }
+    })
+    expect(storedSettings).toMatchObject({
+      id: 'default',
+      operatorName: 'Example Operator',
+      supportEmail: 'support@example.com'
+    })
+    expect(auditRows).toEqual([
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'platform_legal_settings',
+        entityId: 'default',
+        action: 'platform_legal_settings.created'
+      })
+    ])
+  })
+
   test('GET /api/platform-documents/:documentType/versions requires auth and lists versions descending', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -921,6 +1132,108 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
+  test('POST /api/platform-documents/:documentType/versions publishes append-only versions for platform admins only', async () => {
+    const regularHarness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/platform-documents/:documentType/versions',
+          handler: platformDocumentVersionsPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|document-regular-user',
+        email: 'document-regular@example.com'
+      }
+    })
+    databases.push(regularHarness)
+    await seedAcceptedPlatformUser(regularHarness, {
+      id: 'document_regular_user',
+      auth0Subject: 'auth0|document-regular-user',
+      email: 'document-regular@example.com'
+    })
+
+    const forbiddenResponse = await regularHarness.request('/api/platform-documents/privacy_policy/versions', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Privacy Policy v2',
+        content: 'Updated privacy'
+      })
+    })
+
+    expect(forbiddenResponse.status).toBe(403)
+    expect(await forbiddenResponse.json()).toMatchObject({
+      error: {
+        code: 'platform_admin_required'
+      }
+    })
+
+    const adminHarness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/platform-documents/:documentType/versions',
+          handler: platformDocumentVersionsPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|document-platform-admin',
+        email: 'document-admin@example.com'
+      }
+    })
+    databases.push(adminHarness)
+    await seedAcceptedPlatformUser(adminHarness, {
+      id: 'document_platform_admin',
+      auth0Subject: 'auth0|document-platform-admin',
+      email: 'document-admin@example.com',
+      isPlatformAdmin: true
+    })
+
+    const successResponse = await adminHarness.request('/api/platform-documents/privacy_policy/versions', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Privacy Policy v2',
+        content: 'Updated privacy',
+        publishedAt: '2026-05-06T12:00:00.000Z'
+      })
+    })
+    const privacyDocuments = await adminHarness.database.query.platformDocuments.findMany({
+      where: eq(platformDocuments.documentType, 'privacy_policy')
+    })
+    const auditRows = await adminHarness.database.select().from(auditLogs)
+
+    expect(successResponse.status).toBe(200)
+    expect(await successResponse.json()).toMatchObject({
+      data: {
+        documentType: 'privacy_policy',
+        version: 2,
+        title: 'Privacy Policy v2',
+        content: 'Updated privacy',
+        publishedAt: '2026-05-06T12:00:00.000Z'
+      }
+    })
+    expect(privacyDocuments).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'privacy_v1',
+        version: 1,
+        content: 'Privacy'
+      }),
+      expect.objectContaining({
+        version: 2,
+        content: 'Updated privacy'
+      })
+    ]))
+    expect(auditRows).toContainEqual(expect.objectContaining({
+      actorUserId: 'document_platform_admin',
+      entityType: 'platform_document',
+      action: 'platform_document.created',
+      metadata: {
+        documentType: 'privacy_policy',
+        version: 2
+      }
+    }))
+  })
+
   test('POST /api/platform-document-acceptances records only the current exact document version', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -929,7 +1242,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       sessionUser: {
         sub: 'auth0|user',
         email: 'user@example.com'
-      }
+      },
+      autoAcceptCurrentPlatformDocuments: false
     })
     databases.push(harness)
 
@@ -1571,7 +1885,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         sub: 'auth0|consent-patch-user',
         email: 'consent-patch@example.com',
         name: 'Consent Patch'
-      }
+      },
+      autoAcceptCurrentPlatformDocuments: false
     })
     databases.push(harness)
 
@@ -1643,6 +1958,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       openaiOrgId: 'org_display_name',
       lumaUsername: 'display-name-user'
     })
+    await seedCurrentPlatformDocumentAcceptances(harness, 'user_display_name')
 
     const response = await harness.request('/api/account', {
       method: 'PATCH',
@@ -1708,6 +2024,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       firstName: 'Account',
       familyName: 'User'
     })
+    await seedCurrentPlatformDocumentAcceptances(harness, 'user_account')
 
     const response = await harness.request('/api/account', {
       method: 'PATCH',
@@ -1794,6 +2111,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       firstName: 'Domain',
       familyName: 'User'
     })
+    await seedCurrentPlatformDocumentAcceptances(harness, 'user_domain')
 
     const response = await harness.request('/api/account', {
       method: 'PATCH',
@@ -1839,6 +2157,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       email: 'profile-icon-user@example.com',
       displayName: 'Profile Icon User'
     })
+    await seedCurrentPlatformDocumentAcceptances(harness, 'user_profile_icon')
 
     const uploadForm = new FormData()
     uploadForm.append(
@@ -2225,6 +2544,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       email: 'profile-icon-guard@example.com',
       displayName: 'Profile Icon Guard'
     })
+    await seedCurrentPlatformDocumentAcceptances(harness, 'user_profile_icon_guard')
 
     const invalidImageForm = new FormData()
     invalidImageForm.append(
@@ -2294,6 +2614,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       email: 'profile-icon-guard@example.com',
       displayName: 'Profile Icon Guard'
     })
+    await seedCurrentPlatformDocumentAcceptances(harness, 'user_profile_icon_guard')
 
     const uploadForm = new FormData()
     uploadForm.append(

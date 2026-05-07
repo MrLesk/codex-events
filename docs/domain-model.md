@@ -151,10 +151,31 @@ Current platform document types:
 Rules:
 
 - Platform registration and re-consent use platform-wide documents only.
+- The public Privacy Policy and Terms pages render the current platform document version for their document type.
 - The application-owned `/account/register` flow records exact accepted platform-document versions in product data.
 - When `/account/register` is resolving an existing-account linking flow, platform-document acceptance is deferred until the linked platform account is known.
+- Current versions of both platform documents must exist before account registration and regular platform-user consent can complete.
 - Current acceptance of both platform documents is required for regular platform-user access.
 - Platform documents are versioned.
+- Platform admins publish new platform document versions. Published versions are retained for exact-version acceptance history.
+
+### PlatformLegalSettings
+
+Deployment-owned legal notice and contact settings for the platform operator.
+
+Key characteristics:
+
+- Stores the operator name, operator address, support email, privacy email, legal contact languages, business purpose, editorial line, imprint content, and timestamps.
+- Has one current settings record per deployment.
+- Is separate from versioned platform documents.
+
+Rules:
+
+- Public imprint content and public legal-contact routing use `PlatformLegalSettings`.
+- Privacy Policy and Platform Terms contact metadata can reference the configured support and privacy email addresses.
+- Platform admins can update legal settings.
+- Updating legal settings does not create a new platform-document version and does not require renewed user consent.
+- If legal settings are not configured, public legal-contact behavior is explicitly unavailable rather than falling back to repository-owned operator details.
 
 ### HackathonTermsDocument
 

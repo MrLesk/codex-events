@@ -2,8 +2,9 @@ import type { H3Event } from 'h3'
 
 import { describe, expect, test, vi } from 'vitest'
 
-import { platformSupportEmail } from '../../../../../shared/domains/platform/legal'
 import { sendPublicLegalContactEmail } from '../../../../../server/domains/platform/legal-contact'
+
+const configuredSupportEmail = 'legal-support@example.com'
 
 function createEvent(runtimeConfig?: Record<string, unknown>) {
   return {
@@ -39,7 +40,8 @@ describe('legal contact utilities', () => {
         message: 'Hello there.',
         website: ''
       }, {
-        emailBinding: { send }
+        emailBinding: { send },
+        supportEmail: configuredSupportEmail
       })
 
       expect(result).toEqual({
@@ -69,6 +71,31 @@ describe('legal contact utilities', () => {
     })
   })
 
+  test('skips delivery when platform legal settings do not provide a support email', async () => {
+    const send = vi.fn()
+
+    const result = await sendPublicLegalContactEmail(createEvent({
+      outboundEmail: {
+        fromEmail: 'notifications@example.com',
+        fromName: 'Codex Hackathons'
+      }
+    }), {
+      name: 'Ada Lovelace',
+      email: 'ada@example.com',
+      message: 'Hello there.',
+      website: ''
+    }, {
+      emailBinding: { send },
+      supportEmail: ''
+    })
+
+    expect(result).toEqual({
+      status: 'skipped',
+      reason: 'legal_settings_missing'
+    })
+    expect(send).not.toHaveBeenCalled()
+  })
+
   test('skips delivery when the honeypot field is filled', async () => {
     const send = vi.fn()
 
@@ -83,7 +110,8 @@ describe('legal contact utilities', () => {
       message: 'Hello there.',
       website: 'https://spam.example'
     }, {
-      emailBinding: { send }
+      emailBinding: { send },
+      supportEmail: configuredSupportEmail
     })
 
     expect(result).toEqual({
@@ -109,7 +137,8 @@ describe('legal contact utilities', () => {
       message: 'Hello there.\nI have a legal question.',
       website: ''
     }, {
-      emailBinding: { send }
+      emailBinding: { send },
+      supportEmail: configuredSupportEmail
     })
 
     expect(result).toEqual({
@@ -119,7 +148,7 @@ describe('legal contact utilities', () => {
     expect(send).toHaveBeenCalledTimes(1)
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
       from: { email: 'notifications@example.com', name: 'Codex Hackathons' },
-      to: platformSupportEmail,
+      to: configuredSupportEmail,
       replyTo: 'ada@example.com',
       subject: 'Codex Hackathons contact request from Ada Lovelace',
       headers: {
@@ -147,7 +176,8 @@ describe('legal contact utilities', () => {
       message: 'Hello there.',
       website: ''
     }, {
-      emailBinding: { send }
+      emailBinding: { send },
+      supportEmail: configuredSupportEmail
     })
 
     expect(result).toEqual({

@@ -2,7 +2,8 @@ import type { H3Event } from 'h3'
 
 import { z } from 'zod'
 
-import { platformSupportEmail } from '#platform-legal'
+import { getDatabase } from '#server/database/client'
+import { getPlatformLegalSettings } from '#server/domains/platform/legal-settings'
 import {
   createOutboundEmailMetadataHeaders,
   getOutboundEmailFailureReason,
@@ -34,7 +35,7 @@ export type PublicLegalContactEmailResult = {
   providerError?: OutboundEmailProviderError | null
 } | {
   status: 'skipped'
-  reason: 'honeypot_triggered' | typeof outboundEmailConfigurationMissingReason
+  reason: 'honeypot_triggered' | 'legal_settings_missing' | typeof outboundEmailConfigurationMissingReason
 }
 
 function escapeHtml(value: string) {
@@ -91,6 +92,7 @@ export async function sendPublicLegalContactEmail(
     emailBinding?: OutboundEmailBindingLike
     cloudflareEnv?: Record<string, unknown>
     runtimeConfig?: unknown
+    supportEmail?: string | null
   }
 ): Promise<PublicLegalContactEmailResult> {
   if (input.website?.trim()) {
@@ -118,6 +120,17 @@ export async function sendPublicLegalContactEmail(
     }
   }
 
+  const supportEmail = options?.supportEmail
+    ?? (await getPlatformLegalSettings(getDatabase(event)))?.supportEmail
+    ?? null
+
+  if (!supportEmail) {
+    return {
+      status: 'skipped',
+      reason: 'legal_settings_missing'
+    }
+  }
+
   const content = buildLegalContactEmailContent(input)
   const emailKey = `legal-contact:${input.email}:${input.name}:${input.message.length}`
   let response: Awaited<ReturnType<OutboundEmailBindingLike['send']>>
@@ -125,7 +138,7 @@ export async function sendPublicLegalContactEmail(
   try {
     response = await binding.send({
       from: fromAddress,
-      to: platformSupportEmail,
+      to: supportEmail,
       replyTo: input.email,
       subject: content.subject,
       text: content.text,

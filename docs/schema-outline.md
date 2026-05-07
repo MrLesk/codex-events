@@ -306,6 +306,32 @@ It describes the intended persistent model at the level of entities, key fields,
 - Feedback submission is available only after the hackathon reaches `completed`.
 - Judges, staff, hackathon admins, and platform admins can read hackathon feedback results in the account workspace.
 
+## PlatformLegalSettings
+
+### Key Fields
+
+- `id`
+- `operator_name`
+- `operator_address`
+- `support_email`
+- `privacy_email`
+- `legal_contact_languages`
+- `business_purpose`
+- `editorial_line`
+- `imprint_content`
+- `created_at`
+- `updated_at`
+
+### Constraints
+
+- `id = default`
+
+### Notes
+
+- This singleton stores deployment-owned operator, imprint, and contact details.
+- It does not store versioned user-consent text.
+- Updating legal settings does not alter `PlatformDocument` versions or acceptance records.
+
 ## PlatformDocument
 
 ### Key Fields
@@ -840,6 +866,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `Hackathon` belongs to `User` through `created_by_user_id`
 - `HackathonRoleAssignment` belongs to `Hackathon` and `User`
 - `HackathonTrack` belongs to `Hackathon`
+- `PlatformLegalSettings` stands alone as the deployment-owned legal settings singleton
 - `PlatformDocument` stands alone as a platform-wide document
 - `UserPlatformDocumentAcceptance` belongs to `User` and `PlatformDocument`
 - `HackathonTermsDocument` belongs to `Hackathon`

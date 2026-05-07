@@ -106,6 +106,7 @@ export function isShellNavigationLinkActive(
     return currentPath === '/account/admin'
       || currentPath === '/account/platform-admins'
       || currentPath === '/account/event-organizers'
+      || currentPath === '/account/platform-legal'
       || (isAccountHackathonDetailPath(currentPath)
         && (
           accountHackathonUsesAdminNavigation

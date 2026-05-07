@@ -1,9 +1,12 @@
 import type { EventHandler, H3Event } from 'h3'
 
+import { and, eq, inArray } from 'drizzle-orm'
 import { createApp, createRouter, eventHandler, toWebHandler } from 'h3'
 import { vi } from 'vitest'
 
 import { createDatabase, setDatabase } from '../../../server/database/client'
+import { platformDocuments, userAuthIdentities, userPlatformDocumentAcceptances } from '../../../server/database/schema'
+import { getCurrentPlatformDocuments } from '../../../server/domains/platform/documents'
 import { createTestD1Database } from './fake-d1'
 import { stubAuth0Session } from './runtime'
 
@@ -64,11 +67,102 @@ export function createApiRouteTestHarness(options: {
       retryDelaySeconds?: number
     }
   }
+  autoAcceptCurrentPlatformDocuments?: boolean
 }) {
   const d1Database = createTestD1Database()
   const database = createDatabase(d1Database as never)
   const app = createApp()
   const router = createRouter()
+  const autoAcceptCurrentPlatformDocuments = options.autoAcceptCurrentPlatformDocuments ?? true
+
+  async function readCurrentSessionUser() {
+    const auth0 = useAuth0({ context: {} } as H3Event)
+    const session = await auth0.getSession() as { user?: TestSessionUser | null } | null
+
+    return session?.user?.sub ? session.user : null
+  }
+
+  async function ensureCurrentPlatformDocumentAcceptanceForSession() {
+    if (!autoAcceptCurrentPlatformDocuments) {
+      return
+    }
+
+    const sessionUser = await readCurrentSessionUser()
+
+    if (!sessionUser) {
+      return
+    }
+
+    const identity = await database.query.userAuthIdentities.findFirst({
+      where: eq(userAuthIdentities.auth0Subject, sessionUser.sub)
+    })
+
+    if (!identity) {
+      return
+    }
+
+    let currentDocuments = await getCurrentPlatformDocuments(database)
+    const now = '2026-03-03T00:00:00.000Z'
+
+    if (!currentDocuments.privacy_policy) {
+      await database.insert(platformDocuments).values({
+        id: 'test_privacy_policy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Test Privacy Policy v1',
+        content: 'Test Privacy Policy',
+        publishedAt: now,
+        createdAt: now
+      }).onConflictDoNothing()
+    }
+
+    if (!currentDocuments.platform_terms) {
+      await database.insert(platformDocuments).values({
+        id: 'test_platform_terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Test Platform Terms v1',
+        content: 'Test Platform Terms',
+        publishedAt: now,
+        createdAt: now
+      }).onConflictDoNothing()
+    }
+
+    currentDocuments = await getCurrentPlatformDocuments(database)
+
+    const requiredDocuments = [
+      currentDocuments.privacy_policy,
+      currentDocuments.platform_terms
+    ].filter((document): document is NonNullable<typeof document> => Boolean(document))
+
+    if (requiredDocuments.length !== 2) {
+      return
+    }
+
+    const documentIds = requiredDocuments.map(document => document.id)
+    const existingAcceptances = await database.query.userPlatformDocumentAcceptances.findMany({
+      where: and(
+        eq(userPlatformDocumentAcceptances.userId, identity.userId),
+        inArray(userPlatformDocumentAcceptances.platformDocumentId, documentIds)
+      )
+    })
+    const acceptedDocumentIds = new Set(
+      existingAcceptances.map(acceptance => acceptance.platformDocumentId)
+    )
+
+    for (const document of requiredDocuments) {
+      if (acceptedDocumentIds.has(document.id)) {
+        continue
+      }
+
+      await database.insert(userPlatformDocumentAcceptances).values({
+        id: `test_${identity.userId}_${document.id}_acceptance`,
+        userId: identity.userId,
+        platformDocumentId: document.id,
+        acceptedAt: now
+      }).onConflictDoNothing()
+    }
+  }
 
   stubAuth0Session(options.sessionUser ?? null)
   vi.stubGlobal('useRuntimeConfig', ((runtimeEvent: H3Event) => runtimeEvent.context.runtimeConfig) as typeof useRuntimeConfig)
@@ -159,6 +253,8 @@ export function createApiRouteTestHarness(options: {
     database,
     d1Database,
     async request(path: string, init: RequestInit = {}) {
+      await ensureCurrentPlatformDocumentAcceptanceForSession()
+
       const headers = new Headers(init.headers)
       const isFormDataBody = typeof FormData !== 'undefined' && init.body instanceof FormData
 

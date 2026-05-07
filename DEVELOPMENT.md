@@ -105,6 +105,38 @@ Local first-platform-admin bootstrap command:
 
 This operator command uses the local Wrangler D1 platform proxy, promotes the target user to platform admin in application data, backfills required hackathon-admin inheritance rows for existing hackathons, and writes an audit-log record when changes are applied.
 
+Local platform legal bootstrap command:
+
+- `bun tools/platform-legal/bootstrap.ts check --config ./legal/platform-legal.json`
+- `bun tools/platform-legal/bootstrap.ts apply --config ./legal/platform-legal.json`
+
+This operator command uses the local Wrangler D1 platform proxy to upsert deployment-owned legal settings and create the first `privacy_policy` and `platform_terms` document versions when they do not exist. It does not overwrite existing platform document versions; publish new document versions from `/account/platform-legal` when legal text changes after launch.
+
+Example `platform-legal.json`:
+
+```json
+{
+  "operatorName": "Your Organization",
+  "operatorAddress": "Street Address, City, Country",
+  "supportEmail": "support@example.com",
+  "privacyEmail": "privacy@example.com",
+  "legalContactLanguages": "English",
+  "businessPurpose": "Operate hackathon programs and participant workflows.",
+  "editorialLine": "Information about hackathons operated on this platform.",
+  "imprintContent": "## Imprint\n\nYour legally required imprint content.",
+  "documents": {
+    "privacy_policy": {
+      "title": "Privacy Policy",
+      "content": "Your current Privacy Policy content."
+    },
+    "platform_terms": {
+      "title": "Platform Terms",
+      "content": "Your current Platform Terms content."
+    }
+  }
+}
+```
+
 Shared backend foundation work also expects a D1 binding name at runtime:
 
 - `NUXT_DATABASE_BINDING` should match the D1 binding exposed to the server runtime. The canonical foundation defaults to `DB`.

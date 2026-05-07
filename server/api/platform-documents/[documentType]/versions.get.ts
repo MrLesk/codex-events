@@ -4,8 +4,11 @@ import { requireAuthenticatedActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiList } from '#server/http/api-response'
-import { platformDocumentTypeSchema } from '#server/domains/hackathons'
-import { listPlatformDocumentVersions, serializePlatformDocument } from '#server/domains/platform/documents'
+import {
+  listPlatformDocumentVersions,
+  platformDocumentTypeSchema,
+  serializePlatformDocument
+} from '#server/domains/platform/documents'
 import { parseValidatedParams } from '#server/http/validation'
 
 const paramsSchema = z.object({

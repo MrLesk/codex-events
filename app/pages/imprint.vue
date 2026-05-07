@@ -4,13 +4,6 @@ import { useForm } from 'vee-validate'
 
 import { cloneFormValues } from '~/utils/form-values'
 import { imprintContactFormSchema } from '~/domains/platform/legal-contact'
-import {
-  platformImprintContactApiPath,
-  platformImprintMarkdown,
-  platformLegalLastUpdatedLabel,
-  platformPrivacyEmail,
-  platformSupportEmail
-} from '#platform-legal'
 
 const initialContactForm = {
   name: '',
@@ -27,6 +20,7 @@ const contactState = reactive({
   error: ''
 })
 const { polite, assertive } = useAnnouncer()
+const { settings, status: settingsStatus } = usePlatformLegalSettings()
 
 const {
   errors,
@@ -81,12 +75,18 @@ function resetContactFormState() {
 }
 
 const submitContactForm = handleSubmit(async (contactForm) => {
+  if (!settings.value) {
+    contactState.error = 'The contact form is not available until the platform operator configures legal contact details.'
+    assertive(contactState.error)
+    return
+  }
+
   contactState.pending = true
   contactState.success = ''
   contactState.error = ''
 
   try {
-    await $fetch(platformImprintContactApiPath, {
+    await $fetch('/api/public/imprint-contact', {
       method: 'POST',
       body: {
         name: contactForm.name,
@@ -111,6 +111,20 @@ function startAnotherContactMessage() {
   resetContactFormState()
   contactState.success = ''
 }
+
+function formatLegalDate(value: string | undefined) {
+  if (!value) {
+    return ''
+  }
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  }).format(new Date(value))
+}
+
+const lastUpdatedLabel = computed(() => formatLegalDate(settings.value?.updatedAt))
 
 useSeoMeta({
   title: 'Legal Notice | Codex Hackathons',
@@ -142,20 +156,28 @@ useSeoMeta({
               Legal notice, operator details, and direct contact options for Codex Hackathons.
             </p>
             <div class="flex flex-wrap items-center gap-3 text-[13px] text-neutral-600 dark:text-[#A3A3A3]">
-              <span>Last updated {{ platformLegalLastUpdatedLabel }}</span>
-              <span class="hidden sm:inline">•</span>
+              <span v-if="lastUpdatedLabel">Last updated {{ lastUpdatedLabel }}</span>
+              <span
+                v-if="lastUpdatedLabel && settings?.supportEmail"
+                class="hidden sm:inline"
+              >•</span>
               <a
-                :href="`mailto:${platformSupportEmail}`"
+                v-if="settings?.supportEmail"
+                :href="`mailto:${settings.supportEmail}`"
                 class="transition-colors hover:text-highlighted dark:hover:text-white"
               >
-                {{ platformSupportEmail }}
+                {{ settings.supportEmail }}
               </a>
-              <span class="hidden sm:inline">•</span>
+              <span
+                v-if="settings?.supportEmail && settings?.privacyEmail"
+                class="hidden sm:inline"
+              >•</span>
               <a
-                :href="`mailto:${platformPrivacyEmail}`"
+                v-if="settings?.privacyEmail"
+                :href="`mailto:${settings.privacyEmail}`"
                 class="transition-colors hover:text-highlighted dark:hover:text-white"
               >
-                {{ platformPrivacyEmail }}
+                {{ settings.privacyEmail }}
               </a>
             </div>
           </div>
@@ -164,9 +186,33 @@ useSeoMeta({
     </section>
 
     <AppContainer class="relative z-10 grid max-w-[68rem] gap-6 pb-10 pt-6 sm:pb-14 lg:grid-cols-[minmax(0,1.2fr)_minmax(20rem,0.8fr)]">
+      <AppAlert
+        v-if="settingsStatus === 'pending'"
+        color="neutral"
+        variant="soft"
+        title="Loading legal notice"
+        description="Fetching the configured operator details."
+        class="lg:col-span-2"
+      />
+
+      <AppAlert
+        v-else-if="!settings"
+        color="warning"
+        variant="soft"
+        title="Legal notice unavailable"
+        description="The platform operator has not configured legal notice content for this deployment."
+        class="lg:col-span-2"
+      />
+
       <div class="space-y-6">
-        <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
-          <AppMarkdownRenderer :source="platformImprintMarkdown" />
+        <section
+          v-if="settings"
+          class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
+        >
+          <AppMarkdownRenderer
+            :source="settings.imprintContent"
+            normalize-escaped-newlines
+          />
         </section>
 
         <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
@@ -202,8 +248,16 @@ useSeoMeta({
             </p>
           </div>
 
+          <AppAlert
+            v-if="!settings"
+            color="warning"
+            variant="soft"
+            title="Contact unavailable"
+            description="The platform operator has not configured legal contact details for this deployment."
+          />
+
           <div
-            v-if="contactState.success"
+            v-else-if="contactState.success"
             class="space-y-4"
           >
             <AppAlert
@@ -323,10 +377,10 @@ useSeoMeta({
               <span class="font-medium text-highlighted dark:text-white">Prefer email?</span>
               Write directly to
               <a
-                :href="`mailto:${platformSupportEmail}`"
+                :href="`mailto:${settings.supportEmail}`"
                 class="font-medium underline underline-offset-2 transition-colors hover:text-highlighted dark:hover:text-white"
               >
-                {{ platformSupportEmail }}
+                {{ settings.supportEmail }}
               </a>.
             </div>
           </form>

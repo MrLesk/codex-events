@@ -147,7 +147,10 @@ Plan for:
 - an onboarded Cloudflare Email Service sending domain and verified sender address;
 - production and, if desired, shared development domains;
 - optional Luma API access when hackathons use Luma guest sync or attendance webhooks;
+- deployment-owned legal controller details, support and privacy contact addresses, and current Privacy Policy and Platform Terms content;
 - people who can manage platform admins, hackathon admins, judges, staff, and release access.
+
+Before launch, configure platform legal settings and publish current platform documents from the platform-admin workspace or the legal bootstrap tool. Public legal pages and account registration treat missing legal setup as unavailable rather than publishing repository-owned operator details.
 
 Environment-specific values are documented through [`.env.example`](.env.example), [`wrangler.jsonc`](wrangler.jsonc), and [`DEVELOPMENT.md`](DEVELOPMENT.md). The root README stays at the adopter level rather than listing every runtime variable.
 

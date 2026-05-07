@@ -3,7 +3,8 @@ import { describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../../../../../server/http/api-error'
 import {
   assertCurrentPlatformDocument,
-  getCurrentPlatformDocuments
+  getCurrentPlatformDocuments,
+  hasAcceptedCurrentPlatformDocuments
 } from '../../../../../server/domains/platform/documents'
 
 describe('platform document utilities', () => {
@@ -82,5 +83,31 @@ describe('platform document utilities', () => {
         createdAt: '2026-03-02T00:00:00.000Z'
       }
     )).toThrowError(ApiError)
+  })
+
+  test('treats missing required current documents as not accepted', async () => {
+    const database = {
+      query: {
+        platformDocuments: {
+          findMany: vi.fn(async () => [
+            {
+              id: 'privacy_v1',
+              documentType: 'privacy_policy',
+              version: 1,
+              title: 'Privacy Policy v1',
+              content: 'Privacy',
+              publishedAt: '2026-03-01T00:00:00.000Z',
+              createdAt: '2026-03-01T00:00:00.000Z'
+            }
+          ])
+        },
+        userPlatformDocumentAcceptances: {
+          findMany: vi.fn()
+        }
+      }
+    } as never
+
+    await expect(hasAcceptedCurrentPlatformDocuments(database, 'user_1')).resolves.toBe(false)
+    expect(database.query.userPlatformDocumentAcceptances.findMany).not.toHaveBeenCalled()
   })
 })

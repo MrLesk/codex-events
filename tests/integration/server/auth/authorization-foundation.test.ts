@@ -10,9 +10,11 @@ import {
   hackathonRoleAssignments,
   hackathons,
   judgeAssignments,
+  platformDocuments,
   submissions,
   teamMembers,
   teams,
+  userPlatformDocumentAcceptances,
   users
 } from '../../../../server/database/schema'
 import { createBackendTestEvent, fixtureTimestamp } from '../../../support/backend/runtime'
@@ -31,6 +33,44 @@ describe('backend integration foundation', () => {
       await d1Databases.pop()?.close()
     }
   })
+
+  async function seedCurrentPlatformConsent(
+    database: ReturnType<typeof createBackendTestEvent>['database'],
+    userId: string
+  ) {
+    await database.insert(platformDocuments).values([
+      {
+        id: 'privacy_v1',
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy v1',
+        content: 'Privacy',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_v1',
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms v1',
+        content: 'Terms',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+    await database.insert(userPlatformDocumentAcceptances).values([
+      {
+        id: `${userId}_privacy_acceptance`,
+        userId,
+        platformDocumentId: 'privacy_v1',
+        acceptedAt: '2026-03-03T00:00:00.000Z'
+      },
+      {
+        id: `${userId}_terms_acceptance`,
+        userId,
+        platformDocumentId: 'terms_v1',
+        acceptedAt: '2026-03-03T00:00:00.000Z'
+      }
+    ])
+  }
 
   test('resolves actors and authorization against the real Drizzle query layer', async () => {
     const { event, d1Database, database } = createBackendTestEvent({
@@ -70,6 +110,7 @@ describe('backend integration foundation', () => {
         displayName: 'Staff Persona'
       }
     ])
+    await seedCurrentPlatformConsent(database, 'user_judge')
 
     await database.insert(hackathons).values({
       id: 'hackathon_1',
@@ -205,6 +246,7 @@ describe('backend integration foundation', () => {
         displayName: 'Staff Persona'
       }
     ])
+    await seedCurrentPlatformConsent(database, 'user_staff')
 
     await database.insert(hackathons).values({
       id: 'hackathon_1',

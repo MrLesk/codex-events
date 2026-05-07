@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { platformSupportEmail } from '../../../../shared/domains/platform/legal'
+import { platformLegalSettings } from '../../../../server/database/schema'
 import imprintContactPostHandler from '../../../../server/api/public/imprint-contact.post'
 import { publicContactRateLimitBindingName } from '../../../../server/utils/rate-limit'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 
 const send = vi.fn()
+const configuredSupportEmail = 'legal-support@example.com'
 
 describe('public legal API routes', () => {
   const databases: Array<ReturnType<typeof createApiRouteTestHarness>> = []
@@ -24,6 +25,20 @@ describe('public legal API routes', () => {
       await databases.pop()?.d1Database.close()
     }
   })
+
+  async function seedLegalSettings(harness: ReturnType<typeof createApiRouteTestHarness>) {
+    await harness.database.insert(platformLegalSettings).values({
+      id: 'default',
+      operatorName: 'Example Operator',
+      operatorAddress: '1 Example Street',
+      supportEmail: configuredSupportEmail,
+      privacyEmail: 'privacy@example.com',
+      legalContactLanguages: 'English',
+      businessPurpose: 'Running hackathons.',
+      editorialLine: 'Hackathon information.',
+      imprintContent: 'Example imprint.'
+    })
+  }
 
   test('POST /api/public/imprint-contact sends a public contact request', async () => {
     send.mockResolvedValue({
@@ -48,6 +63,7 @@ describe('public legal API routes', () => {
     })
     databases.push(harness)
     await harness.d1Database.exec('select 1;')
+    await seedLegalSettings(harness)
 
     const response = await harness.request('/api/public/imprint-contact', {
       method: 'POST',
@@ -65,7 +81,7 @@ describe('public legal API routes', () => {
       }
     })
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
-      to: platformSupportEmail,
+      to: configuredSupportEmail,
       replyTo: 'ada@example.com'
     }))
   })
@@ -81,6 +97,7 @@ describe('public legal API routes', () => {
     })
     databases.push(harness)
     await harness.d1Database.exec('select 1;')
+    await seedLegalSettings(harness)
 
     const response = await harness.request('/api/public/imprint-contact', {
       method: 'POST',
@@ -98,6 +115,44 @@ describe('public legal API routes', () => {
         message: 'The contact form is not available right now. Please email support directly.'
       }
     })
+  })
+
+  test('POST /api/public/imprint-contact returns 503 when legal settings are not configured', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/public/imprint-contact', handler: imprintContactPostHandler }
+      ],
+      cloudflareEnv: {
+        EMAIL: { send },
+        [publicContactRateLimitBindingName]: createRateLimiter()
+      },
+      runtimeConfig: {
+        outboundEmail: {
+          binding: 'EMAIL',
+          fromEmail: 'notifications@example.com',
+          fromName: 'Codex Hackathons'
+        }
+      }
+    })
+    databases.push(harness)
+
+    const response = await harness.request('/api/public/imprint-contact', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Ada Lovelace',
+        email: 'ada@example.com',
+        message: 'Hello there.'
+      })
+    })
+
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'support_contact_unavailable',
+        message: 'The contact form is not available right now. Please email support directly.'
+      }
+    })
+    expect(send).not.toHaveBeenCalled()
   })
 
   test('POST /api/public/imprint-contact returns success for honeypot submissions without sending', async () => {
@@ -119,6 +174,7 @@ describe('public legal API routes', () => {
     })
     databases.push(harness)
     await harness.d1Database.exec('select 1;')
+    await seedLegalSettings(harness)
 
     const response = await harness.request('/api/public/imprint-contact', {
       method: 'POST',
@@ -157,6 +213,7 @@ describe('public legal API routes', () => {
     })
     databases.push(harness)
     await harness.d1Database.exec('select 1;')
+    await seedLegalSettings(harness)
 
     const response = await harness.request('/api/public/imprint-contact', {
       method: 'POST',

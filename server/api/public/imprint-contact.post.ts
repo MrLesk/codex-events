@@ -17,7 +17,10 @@ export default defineApiHandler(async (event) => {
     })
   }
 
-  if (result.status === 'skipped' && result.reason === outboundEmailConfigurationMissingReason) {
+  if (
+    result.status === 'skipped'
+    && (result.reason === outboundEmailConfigurationMissingReason || result.reason === 'legal_settings_missing')
+  ) {
     throw new ApiError({
       statusCode: 503,
       code: 'support_contact_unavailable',

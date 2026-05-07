@@ -1,5 +1,7 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
+import { z } from 'zod'
 
+import { writeAuditLog } from '#server/database/audit-log'
 import type { AppDatabase } from '#server/database/client'
 import {
   platformDocumentTypes,
@@ -10,6 +12,18 @@ import { ApiError } from '#server/http/api-error'
 
 type PlatformDocumentRecord = typeof platformDocuments.$inferSelect
 type PlatformDocumentType = (typeof platformDocumentTypes)[number]
+
+const isoTimestampSchema = z.string().refine(
+  value => !Number.isNaN(Date.parse(value)),
+  'Expected an ISO-8601 timestamp.'
+)
+
+export const platformDocumentTypeSchema = z.enum(platformDocumentTypes)
+export const createPlatformDocumentVersionBodySchema = z.object({
+  title: z.string().trim().min(1),
+  content: z.string().trim().min(1),
+  publishedAt: isoTimestampSchema.optional()
+})
 
 export function serializePlatformDocument(document: PlatformDocumentRecord) {
   return {
@@ -41,6 +55,55 @@ export async function getCurrentPlatformDocument(
     where: eq(platformDocuments.documentType, documentType),
     orderBy: [desc(platformDocuments.version)]
   })
+}
+
+export async function getNextPlatformDocumentVersion(
+  database: AppDatabase,
+  documentType: PlatformDocumentType
+) {
+  const latestDocument = await getCurrentPlatformDocument(database, documentType)
+
+  return latestDocument ? latestDocument.version + 1 : 1
+}
+
+export async function createPlatformDocumentVersion(
+  database: AppDatabase,
+  input: {
+    documentType: PlatformDocumentType
+    title: string
+    content: string
+    publishedAt?: string
+    actorUserId: string | null
+  }
+) {
+  const createdAt = new Date().toISOString()
+  const documentId = crypto.randomUUID()
+  const version = await getNextPlatformDocumentVersion(database, input.documentType)
+
+  await database.insert(platformDocuments).values({
+    id: documentId,
+    documentType: input.documentType,
+    version,
+    title: input.title,
+    content: input.content,
+    publishedAt: input.publishedAt ?? createdAt,
+    createdAt
+  })
+
+  await writeAuditLog(database, {
+    actorUserId: input.actorUserId,
+    entityType: 'platform_document',
+    entityId: documentId,
+    action: 'platform_document.created',
+    metadata: {
+      documentType: input.documentType,
+      version
+    }
+  })
+
+  return (await database.query.platformDocuments.findFirst({
+    where: eq(platformDocuments.id, documentId)
+  }))!
 }
 
 export async function getCurrentPlatformDocuments(database: AppDatabase) {
@@ -79,7 +142,7 @@ export async function hasAcceptedCurrentPlatformDocuments(
     .filter((document): document is PlatformDocumentRecord => Boolean(document))
 
   if (requiredDocuments.length !== platformDocumentTypes.length) {
-    return true
+    return false
   }
 
   const acceptances = await database.query.userPlatformDocumentAcceptances.findMany({

@@ -85,6 +85,7 @@ The canonical backend domains are:
 
 - `session`
 - `legal`
+- `platform-legal-settings`
 - `luma-webhooks`
 - `platform-documents`
 - `account`
@@ -118,6 +119,22 @@ Operations:
 Testing:
 - Unit: contact-form validation and delivery-result handling.
 - Integration: public request handling and provider-configuration failure behavior.
+
+## Platform Legal Settings
+
+Purpose:
+- Expose deployment-owned legal notice and contact settings used by public legal pages and the public imprint contact form.
+
+Operations:
+
+| Operation | Method And Path | Actor | Guards And Notes |
+| --- | --- | --- | --- |
+| Get current platform legal settings | `GET /api/platform-legal-settings/current` | public or authenticated user | Returns the current deployment-owned operator/contact/imprint settings, or `null` when setup is incomplete. Missing settings never fall back to repository-owned operator details. |
+| Update current platform legal settings | `PATCH /api/platform-legal-settings/current` | platform admin | Upserts the singleton legal settings record. Updating these settings does not create a new platform-document version and does not force renewed user consent. |
+
+Testing:
+- Unit: settings validation and contact-recipient resolution.
+- Integration: public read behavior, platform-admin-only writes, audit logging, and missing-settings contact behavior.
 
 ## Luma Webhooks
 
@@ -161,11 +178,12 @@ Operations:
 | --- | --- | --- | --- |
 | List current platform documents | `GET /api/platform-documents/current` | public or authenticated user | Returns the current `privacy_policy` and `platform_terms` versions used for platform registration and account flows. |
 | List platform document versions for a type | `GET /api/platform-documents/:documentType/versions` | authenticated user | Returns available published versions for the document type. |
+| Publish platform document version | `POST /api/platform-documents/:documentType/versions` | platform admin | Creates the next append-only version for `privacy_policy` or `platform_terms`. Existing versions remain unchanged for exact-version acceptance history. |
 | Record platform document acceptance | `POST /api/platform-document-acceptances` | authenticated user with a platform account | Requires the exact `PlatformDocument` version being accepted. Rejects unknown or unpublished versions. Used when an existing platform account must accept the current platform documents before normal workspace access resumes. |
 
 Testing:
-- Unit: exact-version acceptance rules.
-- Integration: document lookup and acceptance persistence.
+- Unit: exact-version acceptance rules and missing-required-document behavior.
+- Integration: document lookup, platform-admin publishing, authorization, and acceptance persistence.
 - End-to-end: persona acceptance flows that use the real authenticated session.
 
 ## Account

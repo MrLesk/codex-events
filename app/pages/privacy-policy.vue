@@ -1,9 +1,20 @@
 <script setup lang="ts">
-import {
-  platformLegalLastUpdatedLabel,
-  platformPrivacyEmail,
-  platformPrivacyPolicyMarkdown
-} from '#platform-legal'
+const { privacyPolicyDocument, status: documentsStatus } = useCurrentPlatformDocuments()
+const { settings } = usePlatformLegalSettings()
+
+function formatLegalDate(value: string | undefined) {
+  if (!value) {
+    return ''
+  }
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric'
+  }).format(new Date(value))
+}
+
+const lastUpdatedLabel = computed(() => formatLegalDate(privacyPolicyDocument.value?.publishedAt))
 
 useSeoMeta({
   title: 'Privacy Policy | Codex Hackathons',
@@ -35,13 +46,17 @@ useSeoMeta({
               This policy explains how Codex Hackathons processes personal data across account creation, hackathon participation, judging, prize workflows, and support requests.
             </p>
             <div class="flex flex-wrap items-center gap-3 text-[13px] text-neutral-600 dark:text-[#A3A3A3]">
-              <span>Last updated {{ platformLegalLastUpdatedLabel }}</span>
-              <span class="hidden sm:inline">•</span>
+              <span v-if="lastUpdatedLabel">Last updated {{ lastUpdatedLabel }}</span>
+              <span
+                v-if="lastUpdatedLabel && settings?.privacyEmail"
+                class="hidden sm:inline"
+              >•</span>
               <a
-                :href="`mailto:${platformPrivacyEmail}`"
+                v-if="settings?.privacyEmail"
+                :href="`mailto:${settings.privacyEmail}`"
                 class="transition-colors hover:text-highlighted dark:hover:text-white"
               >
-                {{ platformPrivacyEmail }}
+                {{ settings.privacyEmail }}
               </a>
             </div>
           </div>
@@ -50,8 +65,30 @@ useSeoMeta({
     </section>
 
     <AppContainer class="relative z-10 max-w-[68rem] space-y-6 pb-10 pt-6 sm:pb-14">
-      <section class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80">
-        <AppMarkdownRenderer :source="platformPrivacyPolicyMarkdown" />
+      <AppAlert
+        v-if="documentsStatus === 'pending'"
+        color="neutral"
+        variant="soft"
+        title="Loading Privacy Policy"
+        description="Fetching the current published Privacy Policy."
+      />
+
+      <AppAlert
+        v-else-if="!privacyPolicyDocument"
+        color="warning"
+        variant="soft"
+        title="Privacy Policy unavailable"
+        description="The platform operator has not published a current Privacy Policy for this deployment."
+      />
+
+      <section
+        v-if="privacyPolicyDocument"
+        class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
+      >
+        <AppMarkdownRenderer
+          :source="privacyPolicyDocument.content"
+          normalize-escaped-newlines
+        />
       </section>
     </AppContainer>
   </div>
