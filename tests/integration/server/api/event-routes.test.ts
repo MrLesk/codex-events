@@ -3261,7 +3261,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       eventType: 'meetup',
       submissionOpensAt: '2026-03-23T12:00:00.000Z',
       maxTeamMembers: 1,
-      blindReviewCount: 0,
+      blindReviewCount: 1,
       pitchReviewEnabled: false
     })
   })

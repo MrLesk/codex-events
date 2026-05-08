@@ -4,7 +4,7 @@ title: Generalize hackathons into typed events
 status: Done
 assignee: []
 created_date: '2026-05-08 06:59'
-updated_date: '2026-05-08 14:28'
+updated_date: '2026-05-08 14:41'
 labels:
   - events
   - schema
@@ -42,6 +42,8 @@ Convert the platform from a hackathon-only domain model into a generic event pla
 Implemented the event platform generalization across storage, API, authorization, UI, documentation, and tests. The primary runtime model now uses events with event_type values hackathon, meetup, and build; existing hackathon data is migrated in place to hackathon events; scoped hackathon_admin roles migrate to event_admin. Runtime routes and app navigation now use /events and /api/events with no hackathon compatibility routes. Event organizers can create all event types and receive event_admin on created events, while meetup/build events are constrained to registration/application workflows and protected from competition-only teams, submissions, judging, prizes, winners, credits, and lifecycle actions.
 
 Validation passed locally before finalization: bun run lint, bun run typecheck, bun run test:unit, and bun run test:integration. Remaining risk is in the deployed/Auth0-backed BDD path, which is being checked separately after the commit is pushed and the shared dev workflow is available.
+
+Follow-up after push CI: the shared dev deployment exposed that D1 migrations cannot rely on PRAGMA foreign_keys=OFF for parent table rebuilds with existing child rows. Migration 0050 now renames the events table in place, adds event_type with a CHECK constraint, and uses PRAGMA defer_foreign_keys for the remaining event-scoped table renames. Registration-only event creation stores DB-compatible hidden judging defaults while serializers continue to expose disabled competition settings for non-hackathon event records.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done

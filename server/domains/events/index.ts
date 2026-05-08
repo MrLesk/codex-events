@@ -1326,7 +1326,10 @@ export function serializeEvent(
   },
   tracks?: EventTrackRecord[]
 ) {
-  const pitchPresentationSubmissionIds = parseStoredSubmissionIdsJson(event.pitchFinalistSubmissionIdsJson)
+  const isCompetitionEvent = event.eventType === 'hackathon'
+  const pitchPresentationSubmissionIds = isCompetitionEvent
+    ? parseStoredSubmissionIdsJson(event.pitchFinalistSubmissionIdsJson)
+    : []
 
   return {
     id: event.id,
@@ -1350,14 +1353,14 @@ export function serializeEvent(
     maxTeamMembers: event.maxTeamMembers,
     participantsLimit: event.participantsLimit,
     autoApproveApplications: event.autoApproveApplications,
-    blindReviewCount: event.blindReviewCount,
-    pitchReviewEnabled: event.pitchReviewEnabled,
-    blindScoreWeightPercent: event.blindScoreWeightPercent,
-    pitchScoreWeightPercent: event.pitchScoreWeightPercent,
-    shortlistFinalistCount: event.shortlistFinalistCount,
+    blindReviewCount: isCompetitionEvent ? event.blindReviewCount : 0,
+    pitchReviewEnabled: isCompetitionEvent ? event.pitchReviewEnabled : false,
+    blindScoreWeightPercent: isCompetitionEvent ? event.blindScoreWeightPercent : 0,
+    pitchScoreWeightPercent: isCompetitionEvent ? event.pitchScoreWeightPercent : 0,
+    shortlistFinalistCount: isCompetitionEvent ? event.shortlistFinalistCount : 0,
     pitchPresentationSubmissionIds,
-    activePitchPresentationSubmissionId: event.activePitchPresentationSubmissionId,
-    pitchPresentationsCompletedAt: event.pitchPresentationsCompletedAt,
+    activePitchPresentationSubmissionId: isCompetitionEvent ? event.activePitchPresentationSubmissionId : null,
+    pitchPresentationsCompletedAt: isCompetitionEvent ? event.pitchPresentationsCompletedAt : null,
     inPersonEvent: event.inPersonEvent,
     requireXProfile: event.requireXProfile,
     requireLinkedinProfile: event.requireLinkedinProfile,
@@ -1366,10 +1369,10 @@ export function serializeEvent(
     requireOpenaiOrgId: event.requireOpenaiOrgId,
     requireLumaEmail: event.requireLumaEmail,
     requireWhyThisEvent: event.requireWhyThisEvent,
-    requireProofOfExecution: event.requireProofOfExecution,
-    requireSubmissionSummary: event.requireSubmissionSummary,
-    requireSubmissionRepositoryUrl: event.requireSubmissionRepositoryUrl,
-    requireSubmissionDemoUrl: event.requireSubmissionDemoUrl,
+    requireProofOfExecution: isCompetitionEvent ? event.requireProofOfExecution : false,
+    requireSubmissionSummary: isCompetitionEvent ? event.requireSubmissionSummary : false,
+    requireSubmissionRepositoryUrl: isCompetitionEvent ? event.requireSubmissionRepositoryUrl : false,
+    requireSubmissionDemoUrl: isCompetitionEvent ? event.requireSubmissionDemoUrl : false,
     currentApplicationTermsDocumentId: event.currentApplicationTermsDocumentId,
     currentWinnerTermsDocumentId: event.currentWinnerTermsDocumentId,
     createdByUserId: event.createdByUserId,
@@ -1377,7 +1380,7 @@ export function serializeEvent(
     updatedAt: event.updatedAt,
     ...(tracks
       ? {
-          tracks: tracks.map(serializeEventTrack)
+          tracks: isCompetitionEvent ? tracks.map(serializeEventTrack) : []
         }
       : {}),
     ...(currentTerms
