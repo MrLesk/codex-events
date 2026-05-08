@@ -142,6 +142,7 @@
 			"routes": [
 				{
 					"pattern": "dev.codex-events.com",
+					"zone_name": "codex-events.com",
 					"custom_domain": true
 				}
 			],
@@ -276,6 +277,7 @@
 			"routes": [
 				{
 					"pattern": "codex-events.com",
+					"zone_name": "codex-events.com",
 					"custom_domain": true
 				}
 			],

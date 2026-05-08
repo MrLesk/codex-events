@@ -4,7 +4,7 @@ title: Generalize hackathons into typed events
 status: Done
 assignee: []
 created_date: '2026-05-08 06:59'
-updated_date: '2026-05-08 14:41'
+updated_date: '2026-05-08 14:50'
 labels:
   - events
   - schema
@@ -44,6 +44,8 @@ Implemented the event platform generalization across storage, API, authorization
 Validation passed locally before finalization: bun run lint, bun run typecheck, bun run test:unit, and bun run test:integration. Remaining risk is in the deployed/Auth0-backed BDD path, which is being checked separately after the commit is pushed and the shared dev workflow is available.
 
 Follow-up after push CI: the shared dev deployment exposed that D1 migrations cannot rely on PRAGMA foreign_keys=OFF for parent table rebuilds with existing child rows. Migration 0050 now renames the events table in place, adds event_type with a CHECK constraint, and uses PRAGMA defer_foreign_keys for the remaining event-scoped table renames. Registration-only event creation stores DB-compatible hidden judging defaults while serializers continue to expose disabled competition settings for non-hackathon event records.
+
+Follow-up deploy fix: Wrangler requires an explicit zone for the shared dev and production custom-domain routes. The Worker route config now sets zone_name = codex-events.com so deployment does not fail while publishing dev.codex-events.com.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
