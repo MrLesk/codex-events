@@ -71,16 +71,16 @@ function createEvent() {
       runtimeConfig: {
         auth0: {
           accountLinkChallengeSecret: 'link-secret',
-          appBaseUrl: 'https://dev.codex-hackathons.com',
+          appBaseUrl: 'https://dev.codex-events.com',
           audience: 'https://api.example.test',
           clientId: 'client-id',
           clientSecret: 'client-secret',
           databaseConnectionName: 'Username-Password-Authentication',
-          domain: 'codex-hackathons-dev.eu.auth0.com',
-          managementAudience: 'https://codex-hackathons-dev.eu.auth0.com/api/v2/',
+          domain: 'codex-events-dev.eu.auth0.com',
+          managementAudience: 'https://codex-events-dev.eu.auth0.com/api/v2/',
           managementClientId: 'management-client-id',
           managementClientSecret: 'management-client-secret',
-          managementDomain: 'codex-hackathons-dev.eu.auth0.com',
+          managementDomain: 'codex-events-dev.eu.auth0.com',
           sessionConfiguration: {
             rolling: false
           },
@@ -138,7 +138,7 @@ describe('platform account-link Auth0 helper', () => {
     expect(ServerClient).toHaveBeenCalledWith(expect.objectContaining({
       authorizationParams: {
         audience: 'https://api.example.test',
-        redirect_uri: 'https://dev.codex-hackathons.com/auth/link/callback'
+        redirect_uri: 'https://dev.codex-events.com/auth/link/callback'
       },
       stateIdentifier: '__a0_platform_account_link_session',
       transactionIdentifier: '__a0_platform_account_link_tx'
@@ -150,7 +150,7 @@ describe('platform account-link Auth0 helper', () => {
         connection: 'Username-Password-Authentication',
         prompt: 'login',
         login_hint: 'existing-user@example.com',
-        redirect_uri: 'https://dev.codex-hackathons.com/auth/link/callback'
+        redirect_uri: 'https://dev.codex-events.com/auth/link/callback'
       }
     }, {
       event
@@ -168,7 +168,7 @@ describe('platform account-link Auth0 helper', () => {
 
     expect(ServerClient).toHaveBeenCalledTimes(1)
     expect(completeInteractiveLogin).toHaveBeenCalledWith(
-      new URL('https://dev.codex-hackathons.com/auth/link/callback?code=fixture&state=fixture'),
+      new URL('https://dev.codex-events.com/auth/link/callback?code=fixture&state=fixture'),
       { event }
     )
     expect(authenticatedSubject).toBe('auth0|existing-password-user')
@@ -187,7 +187,7 @@ describe('platform account-link Auth0 helper', () => {
           ? input.toString()
           : input.url
 
-      if (url === 'https://codex-hackathons-dev.eu.auth0.com/oauth/token') {
+      if (url === 'https://codex-events-dev.eu.auth0.com/oauth/token') {
         return new Response(JSON.stringify({
           access_token: createFixtureJwt({
             permissions: ['read:clients']

@@ -1,12 +1,12 @@
 import type { OperationalUserSummary } from '~/domains/accounts/session-actor'
 import type {
-  HackathonRecord,
+  EventRecord,
   TermsDocument
-} from '~/domains/hackathons/records'
+} from '~/domains/events/records'
 
 export interface AdminApplicationRecord {
   id: string
-  hackathonId: string
+  eventId: string
   userId: string
   status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
   preApprovalStatus?: 'approved' | 'rejected' | null
@@ -87,9 +87,9 @@ export function getApplicationAttendanceStatusColor(
 }
 
 export function shouldShowApprovedParticipantAttendanceSummary(
-  hackathon: Pick<HackathonRecord, 'requireLumaEmail' | 'lumaEventApiId'> | null | undefined
+  event: Pick<EventRecord, 'requireLumaEmail' | 'lumaEventApiId'> | null | undefined
 ) {
-  return Boolean(hackathon?.requireLumaEmail && hackathon.lumaEventApiId?.trim())
+  return Boolean(event?.requireLumaEmail && event.lumaEventApiId?.trim())
 }
 
 export function shouldShowApplicationLumaSyncStatus(

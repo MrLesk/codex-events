@@ -25,7 +25,7 @@ function createEvent(options?: {
       runtimeConfig: options?.runtimeConfig ?? {
         applicationReviewEmails: {
           queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE',
-          queueName: 'codex-hackathons-application-review-email-delivery',
+          queueName: 'codex-events-application-review-email-delivery',
           retryDelaySeconds: 120
         }
       }
@@ -46,8 +46,8 @@ function createQueueMessage(options?: {
       reviewedAt: '2026-03-27T20:00:00.000Z',
       recipientEmail: 'participant@example.com',
       recipientDisplayName: 'Ada Lovelace',
-      hackathonName: 'Codex Spring',
-      hackathonSlug: 'codex-spring'
+      eventName: 'Codex Spring',
+      eventSlug: 'codex-spring'
     }),
     ack: vi.fn(),
     retry: vi.fn()
@@ -67,8 +67,8 @@ describe('application review email queue utilities', () => {
       reviewedAt: '2026-03-27T20:00:00.000Z',
       recipientEmail: 'participant@example.com',
       recipientDisplayName: 'Ada Lovelace',
-      hackathonName: 'Codex Spring',
-      hackathonSlug: 'codex-spring'
+      eventName: 'Codex Spring',
+      eventSlug: 'codex-spring'
     }))
 
     expect(result).toEqual({
@@ -90,8 +90,8 @@ describe('application review email queue utilities', () => {
       reviewedAt: '2026-03-27T20:00:00.000Z',
       recipientEmail: 'participant@example.com',
       recipientDisplayName: null,
-      hackathonName: 'Codex Spring',
-      hackathonSlug: 'codex-spring'
+      eventName: 'Codex Spring',
+      eventSlug: 'codex-spring'
     }))
 
     expect(result).toEqual({
@@ -161,7 +161,7 @@ describe('application review email queue utilities', () => {
     }, {
       runtimeConfig: {
         applicationReviewEmails: {
-          queueName: 'codex-hackathons-application-review-email-delivery'
+          queueName: 'codex-events-application-review-email-delivery'
         }
       }
     })

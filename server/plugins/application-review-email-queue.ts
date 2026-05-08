@@ -4,7 +4,7 @@ import {
   processApplicationReviewEmailQueueBatch
 } from '#server/domains/applications/review-email-queue'
 import { defaultApplicationLumaSyncQueueName } from '#server/domains/applications/luma-sync-queue'
-import { defaultHackathonOutcomeEmailQueueName } from '#server/domains/outcomes/email-queue'
+import { defaultEventOutcomeEmailQueueName } from '#server/domains/outcomes/email-queue'
 import { classifyCloudflareQueueBatch, retryCloudflareQueueBatch } from '#server/utils/cloudflare-queue-routing'
 
 export default defineNitroPlugin((nitroApp) => {
@@ -12,7 +12,7 @@ export default defineNitroPlugin((nitroApp) => {
     const runtimeConfig = useRuntimeConfig()
     const expectedQueueName = runtimeConfig.applicationReviewEmails?.queueName?.trim() || defaultApplicationReviewEmailQueueName
     const lumaQueueName = runtimeConfig.luma?.queueName?.trim() || defaultApplicationLumaSyncQueueName
-    const outcomeQueueName = runtimeConfig.hackathonOutcomeEmails?.queueName?.trim() || defaultHackathonOutcomeEmailQueueName
+    const outcomeQueueName = runtimeConfig.eventOutcomeEmails?.queueName?.trim() || defaultEventOutcomeEmailQueueName
     const batchRoute = classifyCloudflareQueueBatch(batch.queue, expectedQueueName, [lumaQueueName, outcomeQueueName])
 
     if (batchRoute === 'ignore') {

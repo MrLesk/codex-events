@@ -6,8 +6,8 @@ import {
   serializePlatformLegalSettings
 } from '#server/domains/platform/legal-settings'
 
-export default defineApiHandler(async (event) => {
-  const settings = await getPlatformLegalSettings(getDatabase(event))
+export default defineApiHandler(async (h3Event) => {
+  const settings = await getPlatformLegalSettings(getDatabase(h3Event))
 
   return apiData(settings ? serializePlatformLegalSettings(settings) : null)
 })

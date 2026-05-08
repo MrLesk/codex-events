@@ -1,6 +1,6 @@
-export interface HackathonCreditOffer {
+export interface EventCreditOffer {
   id: string
-  hackathonId: string
+  eventId: string
   name: string
   description: string
   displayOrder: number
@@ -8,7 +8,7 @@ export interface HackathonCreditOffer {
   updatedAt: string
 }
 
-export interface ParticipantHackathonCreditOffer extends HackathonCreditOffer {
+export interface ParticipantEventCreditOffer extends EventCreditOffer {
   availableCount: number
   totalCount: number
   claimedCode: {
@@ -18,7 +18,7 @@ export interface ParticipantHackathonCreditOffer extends HackathonCreditOffer {
   } | null
 }
 
-export interface AdminHackathonCreditCodeRecord {
+export interface AdminEventCreditCodeRecord {
   id: string
   value: string
   claimedAt: string | null
@@ -30,14 +30,14 @@ export interface AdminHackathonCreditCodeRecord {
   } | null
 }
 
-export interface AdminHackathonCreditOffer extends HackathonCreditOffer {
+export interface AdminEventCreditOffer extends EventCreditOffer {
   availableCount: number
   claimedCount: number
   totalCount: number
-  codes: AdminHackathonCreditCodeRecord[]
+  codes: AdminEventCreditCodeRecord[]
 }
 
-export interface HackathonCreditApiListResponse<T> {
+export interface EventCreditApiListResponse<T> {
   data: T[]
   meta?: {
     total?: number
@@ -45,17 +45,17 @@ export interface HackathonCreditApiListResponse<T> {
   }
 }
 
-export interface HackathonCreditApiDataResponse<T> {
+export interface EventCreditApiDataResponse<T> {
   data: T
 }
 
-export interface HackathonCreditApiErrorShape {
+export interface EventCreditApiErrorShape {
   code: string
   message: string
   details?: Record<string, unknown>
 }
 
-type HackathonCreditApiFetcher = <T>(
+type EventCreditApiFetcher = <T>(
   request: string,
   options?: {
     method?: 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT' | 'DELETE' | 'CONNECT' | 'OPTIONS' | 'TRACE'
@@ -64,31 +64,31 @@ type HackathonCreditApiFetcher = <T>(
   }
 ) => Promise<T>
 
-type HackathonCreditInventoryUploadFile = Blob & Partial<{
+type EventCreditInventoryUploadFile = Blob & Partial<{
   name: string
 }>
 
-export type CreateHackathonCreditOfferWithInventoryResult
+export type CreateEventCreditOfferWithInventoryResult
   = | {
     status: 'created'
-    offer: AdminHackathonCreditOffer
+    offer: AdminEventCreditOffer
     importedCount: number
   }
   | {
     status: 'created_without_inventory'
-    offer: AdminHackathonCreditOffer
-    importError: HackathonCreditApiErrorShape
+    offer: AdminEventCreditOffer
+    importError: EventCreditApiErrorShape
   }
 
-export async function createHackathonCreditOfferWithInventory(options: {
-  apiFetch: HackathonCreditApiFetcher
-  hackathonId: string
+export async function createEventCreditOfferWithInventory(options: {
+  apiFetch: EventCreditApiFetcher
+  eventId: string
   name: string
   description: string
-  file?: HackathonCreditInventoryUploadFile | null
-}): Promise<CreateHackathonCreditOfferWithInventoryResult> {
-  const createResponse = await options.apiFetch<HackathonCreditApiDataResponse<AdminHackathonCreditOffer>>(
-    `/api/hackathons/${options.hackathonId}/credits`,
+  file?: EventCreditInventoryUploadFile | null
+}): Promise<CreateEventCreditOfferWithInventoryResult> {
+  const createResponse = await options.apiFetch<EventCreditApiDataResponse<AdminEventCreditOffer>>(
+    `/api/events/${options.eventId}/credits`,
     {
       method: 'POST',
       body: {
@@ -116,8 +116,8 @@ export async function createHackathonCreditOfferWithInventory(options: {
   )
 
   try {
-    const importResponse = await options.apiFetch<HackathonCreditApiDataResponse<{ importedCount: number }>>(
-      `/api/hackathons/${options.hackathonId}/credits/${createResponse.data.id}/import`,
+    const importResponse = await options.apiFetch<EventCreditApiDataResponse<{ importedCount: number }>>(
+      `/api/events/${options.eventId}/credits/${createResponse.data.id}/import`,
       {
         method: 'POST',
         body: formData
@@ -133,12 +133,12 @@ export async function createHackathonCreditOfferWithInventory(options: {
     return {
       status: 'created_without_inventory',
       offer: createResponse.data,
-      importError: normalizeHackathonCreditApiError(error)
+      importError: normalizeEventCreditApiError(error)
     }
   }
 }
 
-export function isHackathonCreditLink(value: string) {
+export function isEventCreditLink(value: string) {
   try {
     const url = new URL(value)
     return url.protocol === 'http:' || url.protocol === 'https:'
@@ -147,15 +147,15 @@ export function isHackathonCreditLink(value: string) {
   }
 }
 
-export function normalizeHackathonCreditApiError(error: unknown): HackathonCreditApiErrorShape {
+export function normalizeEventCreditApiError(error: unknown): EventCreditApiErrorShape {
   if (typeof error === 'object' && error !== null) {
     const maybeError = error as {
       data?: {
-        error?: HackathonCreditApiErrorShape
+        error?: EventCreditApiErrorShape
       }
       response?: {
         _data?: {
-          error?: HackathonCreditApiErrorShape
+          error?: EventCreditApiErrorShape
         }
       }
       message?: string
@@ -185,6 +185,6 @@ export function normalizeHackathonCreditApiError(error: unknown): HackathonCredi
 
   return {
     code: 'request_failed',
-    message: 'The hackathon credits request could not be completed.'
+    message: 'The event credits request could not be completed.'
   }
 }

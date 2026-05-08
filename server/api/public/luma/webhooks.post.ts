@@ -4,23 +4,23 @@ import { readRawBody } from 'h3'
 import { writeAuditLog } from '#server/database/audit-log'
 import { getD1Binding, getDatabase } from '#server/database/client'
 import {
-  hackathons,
+  events,
   userApplications,
   users
 } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
-import { isHackathonLumaAttendanceSyncEnabled } from '#server/domains/applications'
+import { isEventLumaAttendanceSyncEnabled } from '#server/domains/applications'
 import {
   extractLumaAttendanceCheckInEvent,
   resolveLumaAttendanceGuestEmail,
   verifyLumaWebhookRequest
 } from '#server/domains/applications/luma-webhooks'
 
-export default defineApiHandler(async (event) => {
-  const rawBody = await readRawBody(event, 'utf8') ?? ''
+export default defineApiHandler(async (h3Event) => {
+  const rawBody = await readRawBody(h3Event, 'utf8') ?? ''
 
-  const { webhookId } = await verifyLumaWebhookRequest(event, rawBody)
+  const { webhookId } = await verifyLumaWebhookRequest(h3Event, rawBody)
   const { envelope, attendanceEvent } = extractLumaAttendanceCheckInEvent(rawBody)
 
   if (envelope.type !== 'guest.updated' || !attendanceEvent?.checkedInAt || !attendanceEvent.eventApiId) {
@@ -29,18 +29,18 @@ export default defineApiHandler(async (event) => {
     })
   }
 
-  const database = getDatabase(event)
-  const hackathon = await database.query.hackathons.findFirst({
-    where: eq(hackathons.lumaEventApiId, attendanceEvent.eventApiId)
+  const database = getDatabase(h3Event)
+  const event = await database.query.events.findFirst({
+    where: eq(events.lumaEventApiId, attendanceEvent.eventApiId)
   })
 
-  if (!hackathon || !isHackathonLumaAttendanceSyncEnabled(hackathon)) {
+  if (!event || !isEventLumaAttendanceSyncEnabled(event)) {
     return apiData({
       status: 'acknowledged'
     })
   }
 
-  const guestEmail = await resolveLumaAttendanceGuestEmail(event, attendanceEvent)
+  const guestEmail = await resolveLumaAttendanceGuestEmail(h3Event, attendanceEvent)
 
   if (!guestEmail) {
     return apiData({
@@ -58,7 +58,7 @@ export default defineApiHandler(async (event) => {
     .from(userApplications)
     .innerJoin(users, eq(users.id, userApplications.userId))
     .where(and(
-      eq(userApplications.hackathonId, hackathon.id),
+      eq(userApplications.eventId, event.id),
       isNull(users.deletedAt),
       sql`lower(${users.lumaEmail}) = lower(${guestEmail})`
     ))
@@ -78,7 +78,7 @@ export default defineApiHandler(async (event) => {
   }
 
   const updatedAt = new Date().toISOString()
-  const updateResult = await getD1Binding(event).prepare(`
+  const updateResult = await getD1Binding(h3Event).prepare(`
     update user_applications
     set checked_in_at = ?, updated_at = ?
     where id = ?
@@ -101,7 +101,7 @@ export default defineApiHandler(async (event) => {
     entityId: matchingApplication.applicationId,
     action: 'user_application.luma_check_in_recorded',
     metadata: {
-      hackathonId: hackathon.id,
+      eventId: event.id,
       eventApiId: attendanceEvent.eventApiId,
       guestId: attendanceEvent.guestId,
       guestEmail,

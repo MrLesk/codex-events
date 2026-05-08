@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import type { PublicApiListResponse, PublicHackathon } from '~/domains/hackathons/presentation'
+import type { PublicApiListResponse, PublicEvent } from '~/domains/events/presentation'
 
-import HackathonCard from '~/components/public/hackathons/HackathonCard.vue'
-import { getPublicHomepageHackathonView, type PublicHomepageTab } from '~/domains/hackathons/public-homepage'
+import EventCard from '~/components/public/events/EventCard.vue'
+import { getPublicHomepageEventView, type PublicHomepageTab } from '~/domains/events/public-homepage'
 import { normalizeTabQueryValue } from '~/lib/query-values'
 
-const publicHackathonsPageSize = 4
+const publicEventsPageSize = 4
 const route = useRoute()
 const currentPage = ref(1)
-const hackathons = ref<PublicHackathon[]>([])
+const events = ref<PublicEvent[]>([])
 const total = ref(0)
 const isLoadingMore = ref(false)
 const loadMoreError = ref<string>()
@@ -36,15 +36,15 @@ async function selectHomepageTab(nextTab: PublicHomepageTab) {
   })
 }
 
-const { data: initialResponse, error } = await useFetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
-  key: 'public-hackathons-homepage:page-1',
+const { data: initialResponse, error } = await useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
+  key: 'public-events-homepage:page-1',
   query: {
     page: 1,
-    page_size: publicHackathonsPageSize
+    page_size: publicEventsPageSize
   }
 })
-const { data: pastCountResponse } = await useFetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
-  key: 'public-hackathons-homepage:past-count',
+const { data: pastCountResponse } = await useFetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
+  key: 'public-events-homepage:past-count',
   query: {
     page: 1,
     page_size: 1,
@@ -52,54 +52,54 @@ const { data: pastCountResponse } = await useFetch<PublicApiListResponse<PublicH
   }
 })
 
-hackathons.value = initialResponse.value?.data ?? []
-total.value = initialResponse.value?.meta?.total ?? hackathons.value.length
+events.value = initialResponse.value?.data ?? []
+total.value = initialResponse.value?.meta?.total ?? events.value.length
 const pastTotal = ref(
   pastCountResponse.value?.meta?.total
-  ?? hackathons.value.filter(hackathon => hackathon.state === 'completed').length
+  ?? events.value.filter(event => event.state === 'completed').length
 )
 
-const hasMoreHackathons = computed(() => hackathons.value.length < total.value)
-const loadedHackathonCount = computed(() => hackathons.value.length)
-const homepageHackathonView = computed(() =>
-  getPublicHomepageHackathonView(
+const hasMoreEvents = computed(() => events.value.length < total.value)
+const loadedEventCount = computed(() => events.value.length)
+const homepageEventView = computed(() =>
+  getPublicHomepageEventView(
     requestedTab.value,
     total.value,
     pastTotal.value,
-    loadedHackathonCount.value
+    loadedEventCount.value
   )
 )
-const selectedTab = computed<PublicHomepageTab>(() => homepageHackathonView.value.effectiveTab)
-const filteredHackathons = computed(() => hackathons.value.filter((hackathon) => {
-  const isPast = hackathon.state === 'completed'
+const selectedTab = computed<PublicHomepageTab>(() => homepageEventView.value.effectiveTab)
+const filteredEvents = computed(() => events.value.filter((event) => {
+  const isPast = event.state === 'completed'
 
-  return homepageHackathonView.value.effectiveTab === 'past' ? isPast : !isPast
+  return homepageEventView.value.effectiveTab === 'past' ? isPast : !isPast
 }))
 const currentFilterTotal = computed(() => {
-  if (homepageHackathonView.value.effectiveTab === 'past') {
+  if (homepageEventView.value.effectiveTab === 'past') {
     return pastTotal.value
   }
 
-  return homepageHackathonView.value.activeHackathonCount
+  return homepageEventView.value.activeEventCount
 })
 const homepageFilterCounts = computed(() => ({
-  active: homepageHackathonView.value.activeHackathonCount,
+  active: homepageEventView.value.activeEventCount,
   past: pastTotal.value
 }))
 const canLoadMoreForCurrentFilter = computed(() => {
-  if (!hasMoreHackathons.value) {
+  if (!hasMoreEvents.value) {
     return false
   }
 
-  return filteredHackathons.value.length < currentFilterTotal.value
+  return filteredEvents.value.length < currentFilterTotal.value
 })
-const visibleHackathonCount = computed(() => filteredHackathons.value.length)
+const visibleEventCount = computed(() => filteredEvents.value.length)
 const loadMoreSummary = computed(() => {
-  return `Showing ${visibleHackathonCount.value} out of ${currentFilterTotal.value} ${homepageHackathonView.value.effectiveTab} hackathons.`
+  return `Showing ${visibleEventCount.value} out of ${currentFilterTotal.value} ${homepageEventView.value.effectiveTab} events.`
 })
 
-async function loadMoreHackathons() {
-  if (isLoadingMore.value || !hasMoreHackathons.value) {
+async function loadMoreEvents() {
+  if (isLoadingMore.value || !hasMoreEvents.value) {
     return
   }
 
@@ -108,30 +108,30 @@ async function loadMoreHackathons() {
 
   try {
     const nextPage = currentPage.value + 1
-    const response = await $fetch<PublicApiListResponse<PublicHackathon>>('/api/public/hackathons', {
+    const response = await $fetch<PublicApiListResponse<PublicEvent>>('/api/public/events', {
       query: {
         page: nextPage,
-        page_size: publicHackathonsPageSize
+        page_size: publicEventsPageSize
       }
     })
 
-    const nextHackathons = response.data.filter(candidate =>
-      !hackathons.value.some(existing => existing.slug === candidate.slug)
+    const nextEvents = response.data.filter(candidate =>
+      !events.value.some(existing => existing.slug === candidate.slug)
     )
 
-    hackathons.value = [...hackathons.value, ...nextHackathons]
+    events.value = [...events.value, ...nextEvents]
     total.value = response.meta?.total ?? total.value
     currentPage.value = nextPage
   } catch {
-    loadMoreError.value = 'More public hackathons could not be loaded right now.'
+    loadMoreError.value = 'More public events could not be loaded right now.'
   } finally {
     isLoadingMore.value = false
   }
 }
 
 useSeoMeta({
-  title: 'Find a Hackathon | Codex Hackathons',
-  description: 'Browse current and past Codex community hackathons and find the ones you want to join.'
+  title: 'Find a Event | Codex Events',
+  description: 'Browse current and past Codex community events and find the ones you want to join.'
 })
 </script>
 
@@ -141,10 +141,10 @@ useSeoMeta({
       <div class="flex flex-col gap-4">
         <div class="space-y-3">
           <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-            Hackathons
+            Events
           </h1>
           <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-            Discover and join hackathon programs running across the Codex community.
+            Discover and join event programs running across the Codex community.
           </p>
         </div>
       </div>
@@ -155,14 +155,14 @@ useSeoMeta({
       color="warning"
       variant="subtle"
       icon="i-lucide-triangle-alert"
-      title="Hackathons are temporarily unavailable"
-      description="We couldn't load the latest hackathons. Please refresh the page or try again in a moment."
+      title="Events are temporarily unavailable"
+      description="We couldn't load the latest events. Please refresh the page or try again in a moment."
       class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 text-foreground dark:text-[#ECECEC]"
     />
 
     <template v-else>
       <div
-        v-if="homepageHackathonView.showFilters"
+        v-if="homepageEventView.showFilters"
         class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 flex flex-col gap-4 rounded-xl p-2"
       >
         <div class="flex min-w-0 flex-wrap items-center gap-2">
@@ -196,26 +196,26 @@ useSeoMeta({
       </div>
 
       <div
-        v-if="hackathons.length === 0"
+        v-if="events.length === 0"
         class="!border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 rounded-xl p-10 text-center"
       >
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-[#8C8C8C]">
-          0 hackathons configured
+          0 events configured
         </p>
         <p class="mt-3 text-lg font-semibold text-highlighted dark:text-white">
-          There are currently no public hackathons configured. Check again later.
+          There are currently no public events configured. Check again later.
         </p>
       </div>
 
       <div
-        v-else-if="filteredHackathons.length === 0"
+        v-else-if="filteredEvents.length === 0"
         class="!border !border-dashed !border-black/10 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 rounded-xl p-10 text-center"
       >
         <p class="text-sm font-semibold uppercase tracking-[0.18em] text-neutral-500 dark:text-[#8C8C8C]">
           No programs in this view
         </p>
         <p class="mt-3 text-lg font-semibold text-highlighted dark:text-white">
-          There are no {{ homepageHackathonView.effectiveTab }} hackathons in the currently loaded results.
+          There are no {{ homepageEventView.effectiveTab }} events in the currently loaded results.
         </p>
       </div>
 
@@ -224,14 +224,14 @@ useSeoMeta({
         class="relative space-y-16 pt-6"
       >
         <div
-          v-if="!homepageHackathonView.useSingleHackathonLayout"
+          v-if="!homepageEventView.useSingleEventLayout"
           class="absolute bottom-0 left-0 top-0 hidden w-1 bg-black/16 dark:bg-white/[0.2] lg:block"
         />
-        <HackathonCard
-          v-for="hackathon in filteredHackathons"
-          :key="hackathon.slug"
-          :hackathon="hackathon"
-          :show-timeline-rail="!homepageHackathonView.useSingleHackathonLayout"
+        <EventCard
+          v-for="event in filteredEvents"
+          :key="event.slug"
+          :event="event"
+          :show-timeline-rail="!homepageEventView.useSingleEventLayout"
         />
       </div>
     </template>
@@ -244,11 +244,11 @@ useSeoMeta({
         color="neutral"
         variant="solid"
         :loading="isLoadingMore"
-        data-testid="public-hackathons-load-more"
+        data-testid="public-events-load-more"
         class="border border-black/8 bg-default/92 text-highlighted hover:bg-default dark:border-white/[0.08] dark:bg-default/92 dark:text-white dark:hover:bg-elevated/92"
-        @click="loadMoreHackathons"
+        @click="loadMoreEvents"
       >
-        Load more hackathons
+        Load more events
       </AppButton>
 
       <p class="text-sm text-neutral-500 dark:text-[#8C8C8C]">
@@ -261,7 +261,7 @@ useSeoMeta({
       color="warning"
       variant="subtle"
       icon="i-lucide-triangle-alert"
-      title="More hackathons unavailable"
+      title="More events unavailable"
       :description="loadMoreError"
       class="!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80 text-foreground dark:text-[#ECECEC]"
     />

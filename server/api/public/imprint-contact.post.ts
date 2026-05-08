@@ -6,10 +6,10 @@ import { outboundEmailConfigurationMissingReason } from '#server/utils/outbound-
 import { assertPublicContactRateLimit } from '#server/utils/rate-limit'
 import { parseValidatedBody } from '#server/http/validation'
 
-export default defineApiHandler(async (event) => {
-  await assertPublicContactRateLimit(event)
-  const body = await parseValidatedBody(event, publicLegalContactBodySchema)
-  const result = await sendPublicLegalContactEmail(event, body)
+export default defineApiHandler(async (h3Event) => {
+  await assertPublicContactRateLimit(h3Event)
+  const body = await parseValidatedBody(h3Event, publicLegalContactBodySchema)
+  const result = await sendPublicLegalContactEmail(h3Event, body)
 
   if (result.status === 'sent' || (result.status === 'skipped' && result.reason === 'honeypot_triggered')) {
     return apiData({

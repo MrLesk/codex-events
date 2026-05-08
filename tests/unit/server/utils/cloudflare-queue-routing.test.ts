@@ -24,17 +24,17 @@ function createQueueBatch(queue: string) {
 describe('cloudflare queue routing helpers', () => {
   test('classifies known sibling queues as ignore', () => {
     expect(classifyCloudflareQueueBatch(
-      'dev-codex-hackathons-application-review-email-delivery',
-      'dev-codex-hackathons-application-luma-sync',
-      ['dev-codex-hackathons-application-review-email-delivery']
+      'dev-codex-events-application-review-email-delivery',
+      'dev-codex-events-application-luma-sync',
+      ['dev-codex-events-application-review-email-delivery']
     )).toBe('ignore')
   })
 
   test('classifies unknown queues as retry', () => {
     expect(classifyCloudflareQueueBatch(
       'unexpected-queue',
-      'dev-codex-hackathons-application-luma-sync',
-      ['dev-codex-hackathons-application-review-email-delivery']
+      'dev-codex-events-application-luma-sync',
+      ['dev-codex-events-application-review-email-delivery']
     )).toBe('retry')
   })
 

@@ -5,7 +5,7 @@ import { isShellNavigationLinkActive } from '~/domains/accounts/shell-navigation
 const props = defineProps<{
   groups: ShellNavigationGroup[]
   collapsed?: boolean
-  accountHackathonNavigationMode?: 'participant' | 'staff' | 'admin'
+  accountEventNavigationMode?: 'participant' | 'staff' | 'admin'
 }>()
 
 const route = useRoute()
@@ -41,7 +41,7 @@ const route = useRoute()
           :class="[
             'justify-start',
             isShellNavigationLinkActive(route.path, route.query.tab, item.to, {
-              accountHackathonNavigationMode: props.accountHackathonNavigationMode
+              accountEventNavigationMode: props.accountEventNavigationMode
             })
               ? 'bg-black/8 text-highlighted dark:bg-[#282828] dark:text-white'
               : 'text-neutral-700 hover:bg-black/6 hover:text-highlighted dark:text-[#ECECEC] dark:hover:bg-[#1A1A1A] dark:hover:text-white'

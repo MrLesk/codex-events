@@ -3,7 +3,7 @@ import type { JudgeAssignmentDetail } from '~/domains/judging/workspace'
 
 import JudgeAssignmentStatusBadge from './JudgeAssignmentStatusBadge.vue'
 
-import { buildAccountHackathonJudgingTabHref } from '~/domains/judging/query'
+import { buildAccountEventJudgingTabHref } from '~/domains/judging/query'
 import {
   formatJudgeIneligibilityStatus,
   formatJudgeReviewStage,
@@ -15,11 +15,11 @@ import {
 
 const props = defineProps<{
   assignment: JudgeAssignmentDetail
-  hackathonSlug: string
+  eventSlug: string
 }>()
 
 const assignmentHref = computed(() =>
-  buildAccountHackathonJudgingTabHref(props.hackathonSlug, props.assignment.id)
+  buildAccountEventJudgingTabHref(props.eventSlug, props.assignment.id)
 )
 
 const assignmentCopy = computed(() => getJudgeAssignmentInboxCardCopy(props.assignment))

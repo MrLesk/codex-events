@@ -5,12 +5,12 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import { ApiError } from '../../../../server/http/api-error'
 import {
   assertBlindJudgeAssignmentAccess,
-  assertHackathonCreatorAccess,
+  assertEventCreatorAccess,
   assertJudgeAssignmentAccess,
-  assertHackathonAdminAccess,
-  assertHackathonParticipantVisibilityAccess,
+  assertEventAdminAccess,
+  assertEventParticipantVisibilityAccess,
   assertTeamAdminAccess,
-  resolveHackathonAuthorization,
+  resolveEventAuthorization,
   resolveJudgeAssignmentAuthorization,
   resolveTeamAuthorization
 } from '../../../../server/auth/authorization'
@@ -46,7 +46,7 @@ function createEvent(sessionUser?: SessionUser | null) {
 
 function createDatabaseMock(options?: {
   user?: Record<string, unknown> | null
-  hackathonRoleAssignment?: Record<string, unknown> | null
+  eventRoleAssignment?: Record<string, unknown> | null
   teamMembership?: Record<string, unknown> | null
   judgeAssignment?: Record<string, unknown> | null
   hasAcceptedCurrentPlatformDocuments?: boolean
@@ -106,8 +106,8 @@ function createDatabaseMock(options?: {
           : []
         )
       },
-      hackathonRoleAssignments: {
-        findFirst: vi.fn(async () => options?.hackathonRoleAssignment ?? undefined)
+      eventRoleAssignments: {
+        findFirst: vi.fn(async () => options?.eventRoleAssignment ?? undefined)
       },
       teamMembers: {
         findFirst: vi.fn(async () => options?.teamMembership ?? undefined)
@@ -123,8 +123,8 @@ beforeEach(() => {
   vi.unstubAllGlobals()
 })
 
-describe('hackathon authorization', () => {
-  test('gives inherited hackathon admin access to platform admins', async () => {
+describe('event authorization', () => {
+  test('gives inherited event admin access to platform admins', async () => {
     const event = createEvent({ sub: 'auth0|admin' })
     setDatabase(event, createDatabaseMock({
       user: {
@@ -136,16 +136,16 @@ describe('hackathon authorization', () => {
       }
     }))
 
-    await expect(resolveHackathonAuthorization(event, 'hackathon_1')).resolves.toMatchObject({
+    await expect(resolveEventAuthorization(event, 'event_1')).resolves.toMatchObject({
       isPlatformAdmin: true,
-      isHackathonAdmin: true,
+      isEventAdmin: true,
       canReviewThroughAssignment: false,
       canViewParticipantsAndTeams: true,
-      explicitRole: 'hackathon_admin'
+      explicitRole: 'event_admin'
     })
   })
 
-  test('returns explicit judge permissions for non-admin hackathon judges', async () => {
+  test('returns explicit judge permissions for non-admin event judges', async () => {
     const event = createEvent({ sub: 'auth0|judge' })
     setDatabase(event, createDatabaseMock({
       user: {
@@ -155,16 +155,16 @@ describe('hackathon authorization', () => {
         displayName: 'Judge',
         isPlatformAdmin: false
       },
-      hackathonRoleAssignment: {
+      eventRoleAssignment: {
         role: 'judge',
         isInJudgePool: true
       }
     }))
 
-    await expect(resolveHackathonAuthorization(event, 'hackathon_1')).resolves.toMatchObject({
+    await expect(resolveEventAuthorization(event, 'event_1')).resolves.toMatchObject({
       isPlatformAdmin: false,
       explicitRole: 'judge',
-      isHackathonAdmin: false,
+      isEventAdmin: false,
       canReviewThroughAssignment: true,
       isInJudgePool: true,
       isStaff: false,
@@ -182,16 +182,16 @@ describe('hackathon authorization', () => {
         displayName: 'Staff',
         isPlatformAdmin: false
       },
-      hackathonRoleAssignment: {
+      eventRoleAssignment: {
         role: 'staff',
         isInJudgePool: false,
         isStaff: true
       }
     }))
 
-    await expect(resolveHackathonAuthorization(event, 'hackathon_1')).resolves.toMatchObject({
+    await expect(resolveEventAuthorization(event, 'event_1')).resolves.toMatchObject({
       explicitRole: 'staff',
-      isHackathonAdmin: false,
+      isEventAdmin: false,
       canReviewThroughAssignment: false,
       isInJudgePool: false,
       isStaff: true,
@@ -199,12 +199,12 @@ describe('hackathon authorization', () => {
     })
   })
 
-  test('rejects missing hackathon-admin access', () => {
-    expect(() => assertHackathonAdminAccess({
-      hackathonId: 'hackathon_1',
+  test('rejects missing event-admin access', () => {
+    expect(() => assertEventAdminAccess({
+      eventId: 'event_1',
       isPlatformAdmin: false,
       explicitRole: null,
-      isHackathonAdmin: false,
+      isEventAdmin: false,
       canReviewThroughAssignment: false,
       isInJudgePool: false,
       isStaff: false,
@@ -212,8 +212,8 @@ describe('hackathon authorization', () => {
     })).toThrow(ApiError)
   })
 
-  test('allows hackathon creation for platform admins and event organizers only', () => {
-    expect(() => assertHackathonCreatorAccess({
+  test('allows event creation for platform admins and event organizers only', () => {
+    expect(() => assertEventCreatorAccess({
       platformUser: {
         id: 'platform_admin',
         isPlatformAdmin: true,
@@ -221,7 +221,7 @@ describe('hackathon authorization', () => {
       }
     } as never)).not.toThrow()
 
-    expect(() => assertHackathonCreatorAccess({
+    expect(() => assertEventCreatorAccess({
       platformUser: {
         id: 'event_organizer',
         isPlatformAdmin: false,
@@ -229,7 +229,7 @@ describe('hackathon authorization', () => {
       }
     } as never)).not.toThrow()
 
-    expect(() => assertHackathonCreatorAccess({
+    expect(() => assertEventCreatorAccess({
       platformUser: {
         id: 'regular_user',
         isPlatformAdmin: false,
@@ -239,11 +239,11 @@ describe('hackathon authorization', () => {
   })
 
   test('rejects missing participant visibility access', () => {
-    expect(() => assertHackathonParticipantVisibilityAccess({
-      hackathonId: 'hackathon_1',
+    expect(() => assertEventParticipantVisibilityAccess({
+      eventId: 'event_1',
       isPlatformAdmin: false,
       explicitRole: 'judge',
-      isHackathonAdmin: false,
+      isEventAdmin: false,
       canReviewThroughAssignment: true,
       isInJudgePool: true,
       isStaff: false,
@@ -263,8 +263,8 @@ describe('hackathon authorization', () => {
       }
     }))
 
-    await expect(resolveHackathonAuthorization(event, 'hackathon_1')).resolves.toMatchObject({
-      hackathonId: 'hackathon_1',
+    await expect(resolveEventAuthorization(event, 'event_1')).resolves.toMatchObject({
+      eventId: 'event_1',
       isPlatformAdmin: false,
       canReviewThroughAssignment: false,
       canViewParticipantsAndTeams: false
@@ -318,7 +318,7 @@ describe('judge assignment authorization', () => {
       },
       judgeAssignment: {
         id: 'assignment_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         judgeUserId: 'user_judge',
         reviewStage: 'blind_review'
       }
@@ -331,7 +331,7 @@ describe('judge assignment authorization', () => {
     })
   })
 
-  test('allows hackathon admins to use blind-review access only when the assignment is theirs', async () => {
+  test('allows event admins to use blind-review access only when the assignment is theirs', async () => {
     const event = createEvent({ sub: 'auth0|admin' })
     setDatabase(event, createDatabaseMock({
       user: {
@@ -341,14 +341,14 @@ describe('judge assignment authorization', () => {
         displayName: 'Admin',
         isPlatformAdmin: false
       },
-      hackathonRoleAssignment: {
-        role: 'hackathon_admin',
+      eventRoleAssignment: {
+        role: 'event_admin',
         isInJudgePool: true,
         isStaff: false
       },
       judgeAssignment: {
         id: 'assignment_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         judgeUserId: 'user_admin',
         reviewStage: 'blind_review'
       }
@@ -371,14 +371,14 @@ describe('judge assignment authorization', () => {
         displayName: 'Admin',
         isPlatformAdmin: false
       },
-      hackathonRoleAssignment: {
-        role: 'hackathon_admin',
+      eventRoleAssignment: {
+        role: 'event_admin',
         isInJudgePool: true,
         isStaff: false
       },
       judgeAssignment: {
         id: 'assignment_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         judgeUserId: 'user_judge',
         reviewStage: 'blind_review'
       }
@@ -406,7 +406,7 @@ describe('judge assignment authorization', () => {
       },
       judgeAssignment: {
         id: 'assignment_pitch_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         judgeUserId: 'user_judge',
         reviewStage: 'pitch_review'
       }

@@ -4,29 +4,29 @@ import type { users as usersTable } from '#server/database/schema'
 import { and, asc, eq, getTableColumns } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { resolveHackathonAuthorization } from '#server/auth/authorization'
+import { resolveEventAuthorization } from '#server/auth/authorization'
 import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
-import { hackathonCreditCodes, hackathonCreditOffers, userApplications } from '#server/database/schema'
+import { eventCreditCodes, eventCreditOffers, userApplications } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
-import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/domains/hackathons'
+import { assertCompetitionEvent, getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 
-type HackathonCreditOfferRecord = typeof hackathonCreditOffers.$inferSelect
-type HackathonCreditCodeRecord = typeof hackathonCreditCodes.$inferSelect
+type EventCreditOfferRecord = typeof eventCreditOffers.$inferSelect
+type EventCreditCodeRecord = typeof eventCreditCodes.$inferSelect
 type UserRecord = typeof usersTable.$inferSelect
 
 export const creditParamsSchema = routeIdParamsSchema.extend({
   creditId: z.string().trim().min(1)
 })
 
-export const createHackathonCreditOfferBodySchema = z.object({
+export const createEventCreditOfferBodySchema = z.object({
   name: z.string().trim().min(1),
   description: z.string().trim().min(1),
   displayOrder: z.coerce.number().int().min(0).optional()
 })
 
-export const updateHackathonCreditOfferBodySchema = z.object({
+export const updateEventCreditOfferBodySchema = z.object({
   name: z.string().trim().min(1).optional(),
   description: z.string().trim().min(1).optional(),
   displayOrder: z.coerce.number().int().min(0).optional()
@@ -35,10 +35,10 @@ export const updateHackathonCreditOfferBodySchema = z.object({
   'At least one credit-offer field must be provided.'
 )
 
-export function serializeHackathonCreditOffer(offer: HackathonCreditOfferRecord) {
+export function serializeEventCreditOffer(offer: EventCreditOfferRecord) {
   return {
     id: offer.id,
-    hackathonId: offer.hackathonId,
+    eventId: offer.eventId,
     name: offer.name,
     description: offer.description,
     displayOrder: offer.displayOrder,
@@ -47,9 +47,9 @@ export function serializeHackathonCreditOffer(offer: HackathonCreditOfferRecord)
   }
 }
 
-export function serializeParticipantHackathonCreditOffer(
-  offer: HackathonCreditOfferRecord,
-  codes: HackathonCreditCodeRecord[],
+export function serializeParticipantEventCreditOffer(
+  offer: EventCreditOfferRecord,
+  codes: EventCreditCodeRecord[],
   actorUserId: string | null
 ) {
   const assignedCode = actorUserId
@@ -58,7 +58,7 @@ export function serializeParticipantHackathonCreditOffer(
   const availableCount = codes.filter(code => code.claimedByUserId === null).length
 
   return {
-    ...serializeHackathonCreditOffer(offer),
+    ...serializeEventCreditOffer(offer),
     availableCount,
     totalCount: codes.length,
     claimedCode: assignedCode
@@ -71,15 +71,15 @@ export function serializeParticipantHackathonCreditOffer(
   }
 }
 
-export function serializeAdminHackathonCreditOffer(
-  offer: HackathonCreditOfferRecord,
-  codes: HackathonCreditCodeRecord[],
+export function serializeAdminEventCreditOffer(
+  offer: EventCreditOfferRecord,
+  codes: EventCreditCodeRecord[],
   usersById: Map<string, UserRecord>
 ) {
   const availableCount = codes.filter(code => code.claimedByUserId === null).length
 
   return {
-    ...serializeHackathonCreditOffer(offer),
+    ...serializeEventCreditOffer(offer),
     availableCount,
     claimedCount: codes.length - availableCount,
     totalCount: codes.length,
@@ -103,25 +103,25 @@ export function serializeAdminHackathonCreditOffer(
   }
 }
 
-export async function getHackathonCreditOfferOrThrow(
+export async function getEventCreditOfferOrThrow(
   database: ReturnType<typeof getDatabase>,
-  hackathonId: string,
+  eventId: string,
   creditId: string
 ) {
-  const offer = await database.query.hackathonCreditOffers.findFirst({
+  const offer = await database.query.eventCreditOffers.findFirst({
     where: and(
-      eq(hackathonCreditOffers.id, creditId),
-      eq(hackathonCreditOffers.hackathonId, hackathonId)
+      eq(eventCreditOffers.id, creditId),
+      eq(eventCreditOffers.eventId, eventId)
     )
   })
 
   if (!offer) {
     throw new ApiError({
       statusCode: 404,
-      code: 'hackathon_credit_offer_not_found',
-      message: 'The requested hackathon credit offer was not found.',
+      code: 'event_credit_offer_not_found',
+      message: 'The requested event credit offer was not found.',
       details: {
-        hackathonId,
+        eventId,
         creditId
       }
     })
@@ -130,56 +130,57 @@ export async function getHackathonCreditOfferOrThrow(
   return offer
 }
 
-export async function listHackathonCreditOffers(
+export async function listEventCreditOffers(
   database: ReturnType<typeof getDatabase>,
-  hackathonId: string
+  eventId: string
 ) {
-  return await database.query.hackathonCreditOffers.findMany({
-    where: eq(hackathonCreditOffers.hackathonId, hackathonId),
-    orderBy: [asc(hackathonCreditOffers.displayOrder), asc(hackathonCreditOffers.createdAt)]
+  return await database.query.eventCreditOffers.findMany({
+    where: eq(eventCreditOffers.eventId, eventId),
+    orderBy: [asc(eventCreditOffers.displayOrder), asc(eventCreditOffers.createdAt)]
   })
 }
 
-export async function listHackathonCreditCodesForHackathon(
+export async function listEventCreditCodesForEvent(
   database: ReturnType<typeof getDatabase>,
-  hackathonId: string
+  eventId: string
 ) {
   return await database
-    .select(getTableColumns(hackathonCreditCodes))
-    .from(hackathonCreditCodes)
-    .innerJoin(hackathonCreditOffers, eq(hackathonCreditOffers.id, hackathonCreditCodes.creditOfferId))
-    .where(eq(hackathonCreditOffers.hackathonId, hackathonId))
-    .orderBy(asc(hackathonCreditCodes.createdAt), asc(hackathonCreditCodes.id))
+    .select(getTableColumns(eventCreditCodes))
+    .from(eventCreditCodes)
+    .innerJoin(eventCreditOffers, eq(eventCreditOffers.id, eventCreditCodes.creditOfferId))
+    .where(eq(eventCreditOffers.eventId, eventId))
+    .orderBy(asc(eventCreditCodes.createdAt), asc(eventCreditCodes.id))
 }
 
 async function getApprovedUserApplication(
   database: ReturnType<typeof getDatabase>,
-  hackathonId: string,
+  eventId: string,
   userId: string
 ) {
   return await database.query.userApplications.findFirst({
     where: and(
-      eq(userApplications.hackathonId, hackathonId),
+      eq(userApplications.eventId, eventId),
       eq(userApplications.userId, userId),
       eq(userApplications.status, 'approved')
     )
   })
 }
 
-export async function requireHackathonCreditsViewAccess(event: H3Event, hackathonId: string) {
-  const actor = await requirePlatformActor(event)
-  const database = getDatabase(event)
-  const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
-  const authorization = await resolveHackathonAuthorization(event, hackathonId)
-  const approvedApplication = await getApprovedUserApplication(database, hackathonId, actor.platformUser.id)
+export async function requireEventCreditsViewAccess(h3Event: H3Event, eventId: string) {
+  const actor = await requirePlatformActor(h3Event)
+  const database = getDatabase(h3Event)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
+  assertCompetitionEvent(event)
+  const authorization = await resolveEventAuthorization(h3Event, eventId)
+  const approvedApplication = await getApprovedUserApplication(database, eventId, actor.platformUser.id)
 
-  if (!authorization.isHackathonAdmin && !approvedApplication) {
+  if (!authorization.isEventAdmin && !approvedApplication) {
     throw new ApiError({
       statusCode: 403,
-      code: 'hackathon_credit_access_denied',
-      message: 'This operation requires approved participant access or hackathon admin access.',
+      code: 'event_credit_access_denied',
+      message: 'This operation requires approved participant access or event admin access.',
       details: {
-        hackathonId,
+        eventId,
         userId: actor.platformUser.id
       }
     })
@@ -188,26 +189,27 @@ export async function requireHackathonCreditsViewAccess(event: H3Event, hackatho
   return {
     actor,
     database,
-    hackathon,
+    event,
     authorization,
     approvedApplication
   }
 }
 
-export async function requireHackathonCreditClaimAccess(event: H3Event, hackathonId: string, creditId: string) {
-  const actor = await requirePlatformActor(event)
-  const database = getDatabase(event)
-  const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
-  const offer = await getHackathonCreditOfferOrThrow(database, hackathonId, creditId)
-  const approvedApplication = await getApprovedUserApplication(database, hackathonId, actor.platformUser.id)
+export async function requireEventCreditClaimAccess(h3Event: H3Event, eventId: string, creditId: string) {
+  const actor = await requirePlatformActor(h3Event)
+  const database = getDatabase(h3Event)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
+  assertCompetitionEvent(event)
+  const offer = await getEventCreditOfferOrThrow(database, eventId, creditId)
+  const approvedApplication = await getApprovedUserApplication(database, eventId, actor.platformUser.id)
 
   if (!approvedApplication) {
     throw new ApiError({
       statusCode: 403,
-      code: 'hackathon_credit_claim_denied',
-      message: 'Only approved participants can claim hackathon credits.',
+      code: 'event_credit_claim_denied',
+      message: 'Only approved participants can claim event credits.',
       details: {
-        hackathonId,
+        eventId,
         creditId,
         userId: actor.platformUser.id
       }
@@ -217,7 +219,7 @@ export async function requireHackathonCreditClaimAccess(event: H3Event, hackatho
   return {
     actor,
     database,
-    hackathon,
+    event,
     offer,
     approvedApplication
   }
@@ -240,14 +242,14 @@ export function parseSingleColumnCreditCsv(content: string) {
 
   assertGuard(rows.length > 0, {
     statusCode: 400,
-    code: 'hackathon_credit_import_empty',
+    code: 'event_credit_import_empty',
     message: 'The uploaded CSV did not contain any credit values.'
   })
 
   return rows
 }
 
-export function isHackathonCreditClaimConflict(error: unknown) {
+export function isEventCreditClaimConflict(error: unknown) {
   if (!(error instanceof Error)) {
     return false
   }

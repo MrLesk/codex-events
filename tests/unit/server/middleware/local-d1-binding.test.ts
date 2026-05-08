@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   authenticatedUploadRateLimitBindingName,
   publicContactRateLimitBindingName,
-  publicHackathonFeedbackRateLimitBindingName
+  publicEventFeedbackRateLimitBindingName
 } from '../../../../server/utils/rate-limit'
 
 const { createLocalPlatformProxy } = vi.hoisted(() => ({
@@ -34,8 +34,8 @@ function createEvent(options?: {
         profileIcons: {
           binding: 'PROFILE_ICONS'
         },
-        hackathonImages: {
-          binding: 'HACKATHON_IMAGES'
+        eventImages: {
+          binding: 'EVENT_IMAGES'
         },
         outboundEmail: {
           binding: 'EMAIL'
@@ -43,8 +43,8 @@ function createEvent(options?: {
         applicationReviewEmails: {
           queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
         },
-        hackathonOutcomeEmails: {
-          queueBinding: 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+        eventOutcomeEmails: {
+          queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE'
         },
         luma: {
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
@@ -111,7 +111,7 @@ describe('local D1 binding middleware', () => {
       put: vi.fn(),
       delete: vi.fn()
     }
-    const hackathonImagesBucket = {
+    const eventImagesBucket = {
       get: vi.fn(),
       put: vi.fn(),
       delete: vi.fn()
@@ -133,7 +133,7 @@ describe('local D1 binding middleware', () => {
     const applicationReviewEmailQueue = {
       send: vi.fn()
     }
-    const hackathonOutcomeEmailQueue = {
+    const eventOutcomeEmailQueue = {
       send: vi.fn()
     }
     const applicationLumaSyncQueue = {
@@ -142,7 +142,7 @@ describe('local D1 binding middleware', () => {
     const publicContactRateLimiter = {
       limit: vi.fn(async () => ({ success: true }))
     }
-    const publicHackathonFeedbackRateLimiter = {
+    const publicEventFeedbackRateLimiter = {
       limit: vi.fn(async () => ({ success: true }))
     }
     const authenticatedUploadRateLimiter = {
@@ -153,14 +153,14 @@ describe('local D1 binding middleware', () => {
       env: {
         DB: d1Database,
         PROFILE_ICONS: profileIconsBucket,
-        HACKATHON_IMAGES: hackathonImagesBucket,
+        EVENT_IMAGES: eventImagesBucket,
         IMAGES: imagesBinding,
         EMAIL: outboundEmailBinding,
         APPLICATION_REVIEW_EMAIL_QUEUE: applicationReviewEmailQueue,
-        HACKATHON_OUTCOME_EMAIL_QUEUE: hackathonOutcomeEmailQueue,
+        EVENT_OUTCOME_EMAIL_QUEUE: eventOutcomeEmailQueue,
         APPLICATION_LUMA_SYNC_QUEUE: applicationLumaSyncQueue,
         [publicContactRateLimitBindingName]: publicContactRateLimiter,
-        [publicHackathonFeedbackRateLimitBindingName]: publicHackathonFeedbackRateLimiter,
+        [publicEventFeedbackRateLimitBindingName]: publicEventFeedbackRateLimiter,
         [authenticatedUploadRateLimitBindingName]: authenticatedUploadRateLimiter
       }
     })
@@ -173,15 +173,15 @@ describe('local D1 binding middleware', () => {
     expect(event.context.d1Database).toBe(d1Database)
     expect(event.context.cloudflare?.env.DB).toBe(d1Database)
     expect(event.context.cloudflare?.env.PROFILE_ICONS).toBe(profileIconsBucket)
-    expect(event.context.cloudflare?.env.HACKATHON_IMAGES).toBe(hackathonImagesBucket)
+    expect(event.context.cloudflare?.env.EVENT_IMAGES).toBe(eventImagesBucket)
     expect(event.context.cloudflare?.env.IMAGES).toBe(imagesBinding)
     expect(event.context.cloudflare?.env.EMAIL).toBe(outboundEmailBinding)
     expect(event.context.cloudflare?.env.APPLICATION_REVIEW_EMAIL_QUEUE).toBe(applicationReviewEmailQueue)
-    expect(event.context.cloudflare?.env.HACKATHON_OUTCOME_EMAIL_QUEUE).toBe(hackathonOutcomeEmailQueue)
+    expect(event.context.cloudflare?.env.EVENT_OUTCOME_EMAIL_QUEUE).toBe(eventOutcomeEmailQueue)
     expect(event.context.cloudflare?.env.APPLICATION_LUMA_SYNC_QUEUE).toBe(applicationLumaSyncQueue)
     expect(event.context.cloudflare?.env[publicContactRateLimitBindingName]).toBe(publicContactRateLimiter)
-    expect(event.context.cloudflare?.env[publicHackathonFeedbackRateLimitBindingName]).toBe(
-      publicHackathonFeedbackRateLimiter
+    expect(event.context.cloudflare?.env[publicEventFeedbackRateLimitBindingName]).toBe(
+      publicEventFeedbackRateLimiter
     )
     expect(event.context.cloudflare?.env[authenticatedUploadRateLimitBindingName]).toBe(authenticatedUploadRateLimiter)
   })

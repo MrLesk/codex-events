@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ApiListResponse } from '~/lib/api'
-import type { HackathonRoleUserSummary } from '~/domains/hackathons/access'
+import type { EventRoleUserSummary } from '~/domains/events/access'
 
 import { buildApiCacheKey, getApiSubjectKey, normalizeApiError } from '~/lib/api'
 
@@ -10,7 +10,7 @@ const eventOrganizerCandidatePageSize = 20
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
 const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
-const currentOrganizers = useFetch<ApiListResponse<HackathonRoleUserSummary>>('/api/event-organizers', {
+const currentOrganizers = useFetch<ApiListResponse<EventRoleUserSummary>>('/api/event-organizers', {
   key: () => buildApiCacheKey('event-organizers', subjectKey.value),
   watch: [subjectKey]
 })
@@ -19,7 +19,7 @@ const mutationError = ref('')
 const pendingActionUserId = ref<string | null>(null)
 const candidateSearchInput = ref('')
 const appliedCandidateSearch = ref('')
-const candidateUsers = ref<HackathonRoleUserSummary[]>([])
+const candidateUsers = ref<EventRoleUserSummary[]>([])
 const candidateUsersTotal = ref(0)
 const currentCandidatePage = ref(1)
 const candidateUsersStatus = ref<LoadStatus>('pending')
@@ -57,7 +57,7 @@ function resetCandidateState() {
 }
 
 async function fetchCandidatePage(page: number) {
-  return await $fetch<ApiListResponse<HackathonRoleUserSummary>>('/api/event-organizers/candidates', {
+  return await $fetch<ApiListResponse<EventRoleUserSummary>>('/api/event-organizers/candidates', {
     query: {
       page,
       page_size: eventOrganizerCandidatePageSize,
@@ -191,15 +191,15 @@ function isPendingAction(userId: string) {
   return pendingActionUserId.value === userId
 }
 
-function isCandidateActionDisabled(user: HackathonRoleUserSummary) {
+function isCandidateActionDisabled(user: EventRoleUserSummary) {
   return user.isEventOrganizer
 }
 
-function getCandidateActionLabel(user: HackathonRoleUserSummary) {
+function getCandidateActionLabel(user: EventRoleUserSummary) {
   return user.isEventOrganizer ? 'Already event organizer' : 'Add event organizer'
 }
 
-async function addEventOrganizer(user: HackathonRoleUserSummary) {
+async function addEventOrganizer(user: EventRoleUserSummary) {
   mutationError.value = ''
   pendingActionUserId.value = user.id
 
@@ -209,7 +209,7 @@ async function addEventOrganizer(user: HackathonRoleUserSummary) {
     })
     toast.add({
       title: 'Event organizer added',
-      description: `${user.displayName} can now create hackathons and manage the hackathons they create.`,
+      description: `${user.displayName} can now create events and manage the events they create.`,
       color: 'success'
     })
     await Promise.all([
@@ -232,7 +232,7 @@ async function addEventOrganizer(user: HackathonRoleUserSummary) {
           Event organizers
         </h2>
         <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-          Review who can create hackathons without granting platform-wide admin access.
+          Review who can create events without granting platform-wide admin access.
         </p>
       </div>
     </template>
@@ -323,7 +323,7 @@ async function addEventOrganizer(user: HackathonRoleUserSummary) {
             Add event organizers
           </h3>
           <p class="text-sm text-muted">
-            Search by name, email, or user ID. Event organizers can create hackathons and manage only the hackathons they create or are assigned to.
+            Search by name, email, or user ID. Event organizers can create events and manage only the events they create or are assigned to.
           </p>
         </div>
 

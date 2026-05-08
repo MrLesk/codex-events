@@ -13,19 +13,19 @@ import {
   teamMembers,
   teams,
   users,
-  type hackathons
+  type events
 } from '#server/database/schema'
 import {
-  getCurrentHackathonTerms,
-  getHackathonOrThrow,
+  getCurrentEventTerms,
+  getEventOrThrow,
   serializePrize,
-  serializePublishedHackathonRosterMember
-} from '#server/domains/hackathons'
+  serializePublishedEventRosterMember
+} from '#server/domains/events'
 import { ApiError } from '#server/http/api-error'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { getWinnersView } from '#server/domains/outcomes'
 
-type HackathonRecord = typeof hackathons.$inferSelect
+type EventRecord = typeof events.$inferSelect
 type PrizeRecord = typeof prizes.$inferSelect
 type PrizeRedemptionRecord = typeof prizeRedemptions.$inferSelect
 
@@ -41,7 +41,7 @@ export const redeemPrizeRedemptionBodySchema = z.object({
 export function serializePrizeRedemption(
   redemption: PrizeRedemptionRecord,
   prize: PrizeRecord,
-  hackathon: HackathonRecord
+  event: EventRecord
 ) {
   return {
     id: redemption.id,
@@ -55,12 +55,12 @@ export function serializePrizeRedemption(
     createdAt: redemption.createdAt,
     updatedAt: redemption.updatedAt,
     prize: serializePrize(prize),
-    hackathon: {
-      id: hackathon.id,
-      name: hackathon.name,
-      slug: hackathon.slug,
-      state: hackathon.state,
-      currentWinnerTermsDocumentId: hackathon.currentWinnerTermsDocumentId
+    event: {
+      id: event.id,
+      name: event.name,
+      slug: event.slug,
+      state: event.state,
+      currentWinnerTermsDocumentId: event.currentWinnerTermsDocumentId
     }
   }
 }
@@ -95,18 +95,18 @@ export async function getPrizeRedemptionContextOrThrow(database: AppDatabase, re
     })
   }
 
-  const hackathon = await getHackathonOrThrow(database, prize.hackathonId)
+  const event = await getEventOrThrow(database, prize.eventId)
 
   return {
     redemption,
     prize,
-    hackathon
+    event
   }
 }
 
-export async function listHackathonPrizeRedemptions(database: AppDatabase, hackathonId: string) {
+export async function listEventPrizeRedemptions(database: AppDatabase, eventId: string) {
   const prizeList = await database.query.prizes.findMany({
-    where: eq(prizes.hackathonId, hackathonId),
+    where: eq(prizes.eventId, eventId),
     orderBy: [asc(prizes.displayOrder), asc(prizes.rankEnd), desc(prizes.rankStart), asc(prizes.createdAt)]
   })
 
@@ -118,21 +118,21 @@ export async function listHackathonPrizeRedemptions(database: AppDatabase, hacka
     .select(getTableColumns(prizeRedemptions))
     .from(prizeRedemptions)
     .innerJoin(prizes, eq(prizes.id, prizeRedemptions.prizeId))
-    .where(eq(prizes.hackathonId, hackathonId))
+    .where(eq(prizes.eventId, eventId))
     .orderBy(asc(prizeRedemptions.createdAt))
   const prizesById = new Map(prizeList.map(prize => [prize.id, prize]))
-  const hackathon = await getHackathonOrThrow(database, hackathonId)
+  const event = await getEventOrThrow(database, eventId)
 
   return redemptionRows.map(redemption => serializePrizeRedemption(
     redemption,
     prizesById.get(redemption.prizeId)!,
-    hackathon
+    event
   ))
 }
 
 export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   teamIds: string[]
 ) {
   if (teamIds.length === 0) {
@@ -155,7 +155,7 @@ export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
     .from(teamMembers)
     .innerJoin(teams, eq(teams.id, teamMembers.teamId))
     .where(and(
-      eq(teams.hackathonId, hackathonId),
+      eq(teams.eventId, eventId),
       isNull(teamMembers.leftAt)
     ))
     .orderBy(asc(teamMembers.teamId), asc(teamMembers.joinedAt)))
@@ -166,7 +166,7 @@ export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
     .innerJoin(teamMembers, eq(teamMembers.userId, users.id))
     .innerJoin(teams, eq(teams.id, teamMembers.teamId))
     .where(and(
-      eq(teams.hackathonId, hackathonId),
+      eq(teams.eventId, eventId),
       isNull(teamMembers.leftAt),
       isNull(users.deletedAt)
     ))
@@ -191,7 +191,7 @@ export async function listOperationalPrizeRedemptionTeamMembersByTeamId(
     }
 
     const teamRosterMembers = teamMembersByTeamId.get(membership.teamId) ?? []
-    const member = serializePublishedHackathonRosterMember(user)
+    const member = serializePublishedEventRosterMember(user)
 
     teamRosterMembers.push({
       id: member.id,
@@ -242,7 +242,7 @@ export async function listOwnPendingPrizeRedemptions(event: H3Event) {
   }
 
   const prizeList: PrizeRecord[] = []
-  const hackathonsById = new Map<string, HackathonRecord>()
+  const eventsById = new Map<string, EventRecord>()
 
   for (const redemption of redemptions) {
     const prize = await database.query.prizes.findFirst({
@@ -263,8 +263,8 @@ export async function listOwnPendingPrizeRedemptions(event: H3Event) {
 
     prizeList.push(prize)
 
-    if (!hackathonsById.has(prize.hackathonId)) {
-      hackathonsById.set(prize.hackathonId, await getHackathonOrThrow(database, prize.hackathonId))
+    if (!eventsById.has(prize.eventId)) {
+      eventsById.set(prize.eventId, await getEventOrThrow(database, prize.eventId))
     }
   }
 
@@ -275,7 +275,7 @@ export async function listOwnPendingPrizeRedemptions(event: H3Event) {
   return redemptions.map((redemption: PrizeRedemptionRecord) => serializePrizeRedemption(
     redemption,
     prizesById.get(redemption.prizeId)!,
-    hackathonsById.get(prizesById.get(redemption.prizeId)!.hackathonId)!
+    eventsById.get(prizesById.get(redemption.prizeId)!.eventId)!
   ))
 }
 
@@ -316,15 +316,15 @@ export async function requirePrizeRedemptionRecipientContext(event: H3Event, red
 }
 
 export function assertPrizeRedemptionRedeemable(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   redemption: PrizeRedemptionRecord,
   currentWinnerTermsDocumentId: string | null,
   body: z.infer<typeof redeemPrizeRedemptionBodySchema>
 ) {
-  assertAllowedState(hackathon.state, ['winners_announced', 'completed'], {
-    code: 'hackathon_state_invalid',
+  assertAllowedState(event.state, ['winners_announced', 'completed'], {
+    code: 'event_state_invalid',
     message: 'Prize redemption is only available after winners are announced.',
-    details: { hackathonId: hackathon.id }
+    details: { eventId: event.id }
   })
 
   assertGuard(redemption.status === 'pending', {
@@ -336,7 +336,7 @@ export function assertPrizeRedemptionRedeemable(
   assertGuard(Boolean(currentWinnerTermsDocumentId), {
     code: 'winner_terms_required',
     message: 'Prize redemption requires a current winner terms document.',
-    details: { hackathonId: hackathon.id }
+    details: { eventId: event.id }
   })
 
   assertGuard(body.winnerTermsDocumentId === currentWinnerTermsDocumentId, {
@@ -344,7 +344,7 @@ export function assertPrizeRedemptionRedeemable(
     code: 'winner_terms_version_mismatch',
     message: 'Prize redemption must accept the current winner terms version.',
     details: {
-      hackathonId: hackathon.id,
+      eventId: event.id,
       winnerTermsDocumentId: body.winnerTermsDocumentId,
       currentWinnerTermsDocumentId
     }
@@ -353,7 +353,7 @@ export function assertPrizeRedemptionRedeemable(
 
 export async function buildPrizeRedemptionRows(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   prizeList: PrizeRecord[],
   announcedAt: string,
   winners: Array<{
@@ -361,7 +361,7 @@ export async function buildPrizeRedemptionRows(
     prizes: Array<{ id: string }>
   }> | null = null
 ) {
-  const resolvedWinners = winners ?? await getWinnersView(database, hackathonId)
+  const resolvedWinners = winners ?? await getWinnersView(database, eventId)
 
   if (resolvedWinners.length === 0 || prizeList.length === 0) {
     return []
@@ -371,7 +371,7 @@ export async function buildPrizeRedemptionRows(
   const snapshots = winningTeamIds.length === 0
     ? []
     : (await database.query.prizeEligibilitySnapshots.findMany({
-        where: eq(prizeEligibilitySnapshots.hackathonId, hackathonId),
+        where: eq(prizeEligibilitySnapshots.eventId, eventId),
         orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
       })).filter(snapshot => winningTeamIds.includes(snapshot.teamId))
   const snapshotsByTeamId = new Map<string, Array<typeof snapshots[number]>>()
@@ -406,7 +406,7 @@ export async function buildPrizeRedemptionRows(
         code: 'prize_eligibility_snapshot_missing',
         message: 'Member-scoped prize redemption requires frozen prize-eligibility members.',
         details: {
-          hackathonId,
+          eventId,
           teamId: winner.teamId,
           prizeId: prize.id
         }
@@ -429,7 +429,7 @@ export async function buildPrizeRedemptionRows(
   return rows
 }
 
-export async function getCurrentWinnerTermsForHackathon(database: AppDatabase, hackathon: HackathonRecord) {
-  const currentTerms = await getCurrentHackathonTerms(database, hackathon)
+export async function getCurrentWinnerTermsForEvent(database: AppDatabase, event: EventRecord) {
+  const currentTerms = await getCurrentEventTerms(database, event)
   return currentTerms.winnerTerms
 }

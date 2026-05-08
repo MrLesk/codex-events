@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PublicHackathonState } from '~/domains/hackathons/presentation'
+import type { PublicEventState } from '~/domains/events/presentation'
 import type {
   TeamActionAvailability,
   TeamDetailRecord,
@@ -33,7 +33,7 @@ const settings = defineModel<{
 
 const props = defineProps<{
   team: TeamDetailRecord
-  hackathonState: PublicHackathonState
+  eventState: PublicEventState
   maxTeamMembers: number
   membership?: TeamMemberRecord | null
   canManageTeam?: boolean
@@ -136,7 +136,7 @@ const showMembershipActions = computed(() => props.showMembershipActions ?? true
 const showHeaderLeaveAction = computed(() =>
   shouldShowParticipantLeaveTeamAction(
     {
-      state: props.hackathonState
+      state: props.eventState
     },
     props.membership
   ) && showMembershipActions.value

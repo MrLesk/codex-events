@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type {
-  HackathonState
-} from '~/domains/hackathons/states'
+  EventState
+} from '~/domains/events/states'
 import type { WinnerEntry } from '~/domains/outcomes/published-outcomes'
 
 const props = defineProps<{
-  hackathonState: HackathonState
+  eventState: EventState
   winners: WinnerEntry[]
   winnerTermsTitle?: string | null
   isLoading?: boolean
@@ -13,7 +13,7 @@ const props = defineProps<{
 }>()
 
 const winnersVisible = computed(() =>
-  props.hackathonState === 'completed'
+  props.eventState === 'completed'
 )
 </script>
 
@@ -45,7 +45,7 @@ const winnersVisible = computed(() =>
         color="neutral"
         variant="soft"
         title="Winners are not public yet"
-        description="The completed winners showcase becomes available only after the hackathon is completed."
+        description="The completed winners showcase becomes available only after the event is completed."
       />
 
       <template v-else>

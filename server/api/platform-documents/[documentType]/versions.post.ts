@@ -17,13 +17,13 @@ const paramsSchema = z.object({
   documentType: platformDocumentTypeSchema
 })
 
-export default defineApiHandler(async (event) => {
-  const actor = await requirePlatformActor(event)
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requirePlatformActor(h3Event)
   assertPlatformAdminAccess(actor)
 
-  const { documentType } = parseValidatedParams(event, paramsSchema)
-  const body = await parseValidatedBody(event, createPlatformDocumentVersionBodySchema)
-  const document = await createPlatformDocumentVersion(getDatabase(event), {
+  const { documentType } = parseValidatedParams(h3Event, paramsSchema)
+  const body = await parseValidatedBody(h3Event, createPlatformDocumentVersionBodySchema)
+  const document = await createPlatformDocumentVersion(getDatabase(h3Event), {
     documentType,
     title: body.title,
     content: body.content,

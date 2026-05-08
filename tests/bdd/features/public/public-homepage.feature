@@ -3,5 +3,5 @@ Feature: Public homepage
 
   Scenario: Viewing the signed-out homepage
     Given I am on the public homepage
-    Then I should see the hero title "Hackathons"
+    Then I should see the hero title "Events"
     And I should see a call to action labeled "Sign in"

@@ -178,10 +178,10 @@ async function submitPlatformConsent() {
 
 useSeoMeta({
   title: () => linkOnlyMode.value
-    ? 'Connect Your Account | Codex Hackathons'
-    : 'Finish Setting Up Your Account | Codex Hackathons',
+    ? 'Connect Your Account | Codex Events'
+    : 'Finish Setting Up Your Account | Codex Events',
   description: () => linkOnlyMode.value
-    ? 'Connect this sign-in method to your existing Codex Hackathons account.'
+    ? 'Connect this sign-in method to your existing Codex Events account.'
     : 'Accept the current Privacy Policy and Terms so you can continue.'
 })
 </script>
@@ -230,7 +230,7 @@ useSeoMeta({
           color="info"
           variant="soft"
           title="Platform consent is required"
-          description="You need current platform consent before you can use account settings, register for hackathons, or enter participant workspaces."
+          description="You need current platform consent before you can use account settings, register for events, or enter participant workspaces."
         />
 
         <AppAlert
@@ -329,7 +329,7 @@ useSeoMeta({
                 Sign in to your existing account once
               </h2>
               <p class="max-w-3xl text-sm text-neutral-700 dark:text-[#A3A3A3]">
-                {{ resolvedAccountLinkState.email || 'This email address' }} already has a Codex Hackathons account. Sign in with that account&apos;s password to connect Google. After that, you can use either sign-in method.
+                {{ resolvedAccountLinkState.email || 'This email address' }} already has a Codex Events account. Sign in with that account&apos;s password to connect Google. After that, you can use either sign-in method.
               </p>
               <AppButton
                 :to="resolvedAccountLinkState.href"

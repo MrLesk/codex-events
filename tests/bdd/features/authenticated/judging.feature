@@ -1,9 +1,9 @@
 Feature: TASK-3.7 authenticated judging flows
   Authenticated platform actors can use the implemented TASK-3.7 judging API surface through real Auth0-backed sessions.
 
-  Scenario: Judge completes a blind review for the judging fixture hackathon
+  Scenario: Judge completes a blind review for the judging fixture event
     Given the saved "judge" Auth0 session state exists
-    When the saved "judge" session lists active assignments for the judging fixture hackathon
+    When the saved "judge" session lists active assignments for the judging fixture event
     Then the judging assignment list should expose the fixture blind assignment without team identity
     When the saved "judge" session starts the remembered judging assignment
     Then the remembered judging assignment should report status "judge_started"

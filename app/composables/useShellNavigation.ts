@@ -1,15 +1,15 @@
 import type { ResolvedSessionActor } from '~/composables/useSessionActor'
-import type { PublicApiDataResponse } from '~/domains/hackathons/presentation'
+import type { PublicApiDataResponse } from '~/domains/events/presentation'
 
 import { accountDashboardHref, buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
 import {
   canAccessAdminDashboard,
-  isHackathonRoleJudgingEnabled,
-  isHackathonRoleStaffEnabled
-} from '~/domains/hackathons/access'
+  isEventRoleJudgingEnabled,
+  isEventRoleStaffEnabled
+} from '~/domains/events/access'
 import {
-  isAccountHackathonDetailPath,
-  resolveShellAccountHackathonNavigationMode
+  isAccountEventDetailPath,
+  resolveShellAccountEventNavigationMode
 } from '~/domains/accounts/shell-navigation'
 
 interface ShellPrizeRedemptionsResponse {
@@ -42,20 +42,20 @@ export function useShellNavigation() {
   const returnTo = computed(() => route.fullPath || accountDashboardHref)
   const authEntryHref = computed(() => buildAuthLoginHref(returnTo.value))
   const { actor, status, refresh } = useSessionActor()
-  const currentAccountHackathonSlug = computed(() =>
-    isAccountHackathonDetailPath(route.path) ? String(route.params.slug ?? '').trim() : ''
+  const currentAccountEventSlug = computed(() =>
+    isAccountEventDetailPath(route.path) ? String(route.params.slug ?? '').trim() : ''
   )
   const {
-    data: currentAccountHackathon
+    data: currentAccountEvent
   } = useApiData<{ id: string } | null>(
-    () => `shell-account-hackathon:${currentAccountHackathonSlug.value || 'none'}`,
+    () => `shell-account-event:${currentAccountEventSlug.value || 'none'}`,
     async ({ apiFetch, signal }) => {
-      if (!currentAccountHackathonSlug.value) {
+      if (!currentAccountEventSlug.value) {
         return null
       }
 
       const response = await apiFetch<PublicApiDataResponse<{ id: string }>>(
-        `/api/hackathons/slug/${currentAccountHackathonSlug.value}`,
+        `/api/events/slug/${currentAccountEventSlug.value}`,
         {
           signal
         }
@@ -65,7 +65,7 @@ export function useShellNavigation() {
     },
     {
       default: () => null,
-      watch: [currentAccountHackathonSlug]
+      watch: [currentAccountEventSlug]
     }
   )
 
@@ -119,13 +119,13 @@ export function useShellNavigation() {
   const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
     && canAccessAdminDashboard(actor.value))
   const hasStaffAccess = computed(() => actor.value.kind === 'platform_user'
-    && actor.value.hackathonRoles.some(role => isHackathonRoleStaffEnabled(role)))
+    && actor.value.eventRoles.some(role => isEventRoleStaffEnabled(role)))
   const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
-    && actor.value.hackathonRoles.some(role => isHackathonRoleJudgingEnabled(role)))
-  const accountHackathonNavigationMode = computed(() =>
-    resolveShellAccountHackathonNavigationMode({
+    && actor.value.eventRoles.some(role => isEventRoleJudgingEnabled(role)))
+  const accountEventNavigationMode = computed(() =>
+    resolveShellAccountEventNavigationMode({
       actor: actor.value,
-      currentHackathonId: currentAccountHackathon.value?.id ?? null,
+      currentEventId: currentAccountEvent.value?.id ?? null,
       currentPath: route.path
     })
   )
@@ -159,15 +159,15 @@ export function useShellNavigation() {
       chips.push('Event organizer')
     }
 
-    if (actor.value.hackathonRoles.some(role => role.role === 'hackathon_admin')) {
-      chips.push('Hackathon admin')
+    if (actor.value.eventRoles.some(role => role.role === 'event_admin')) {
+      chips.push('Event admin')
     }
 
-    if (actor.value.hackathonRoles.some(role => isHackathonRoleStaffEnabled(role))) {
+    if (actor.value.eventRoles.some(role => isEventRoleStaffEnabled(role))) {
       chips.push('Staff')
     }
 
-    if (actor.value.hackathonRoles.some(role => isHackathonRoleJudgingEnabled(role))) {
+    if (actor.value.eventRoles.some(role => isEventRoleJudgingEnabled(role))) {
       chips.push('Judge')
     }
 
@@ -180,9 +180,9 @@ export function useShellNavigation() {
     }
 
     const items: ShellNavigationItem[] = [{
-      id: 'my-hackathons',
-      label: 'My hackathons',
-      description: 'Your active, upcoming, and past hackathons',
+      id: 'my-events',
+      label: 'My events',
+      description: 'Your active, upcoming, and past events',
       to: '/account',
       icon: 'i-lucide-flag'
     }, {
@@ -197,7 +197,7 @@ export function useShellNavigation() {
       items.push({
         id: 'judge-dashboard',
         label: 'Judge dashboard',
-        description: 'Hackathons where you are assigned as a judge',
+        description: 'Events where you are assigned as a judge',
         to: '/account/judging',
         icon: 'i-lucide-scale'
       })
@@ -207,7 +207,7 @@ export function useShellNavigation() {
       items.push({
         id: 'staff-dashboard',
         label: 'Staff dashboard',
-        description: 'Hackathons where you support staff operations',
+        description: 'Events where you support staff operations',
         to: '/account/staff',
         icon: 'i-lucide-users'
       })
@@ -218,8 +218,8 @@ export function useShellNavigation() {
         id: 'admin-dashboard',
         label: 'Admin dashboard',
         description: actor.value.isPlatformAdmin
-          ? 'Hackathons you can manage and platform-wide admin work'
-          : 'Hackathons you can manage and create',
+          ? 'Events you can manage and platform-wide admin work'
+          : 'Events you can manage and create',
         to: '/account/admin',
         icon: 'i-lucide-shield-check'
       })
@@ -240,7 +240,7 @@ export function useShellNavigation() {
     hasPrizeRecipientAccess,
     isResolvingActor,
     authEntryHref,
-    accountHackathonNavigationMode,
+    accountEventNavigationMode,
     prizeRedemptionsErrorMessage,
     refresh,
     roleChips,

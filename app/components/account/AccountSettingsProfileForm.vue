@@ -299,11 +299,11 @@ const submitProfileForm = handleSubmit(() => {
           class="size-4 text-dimmed"
         />
         <p class="text-sm font-semibold text-highlighted">
-          Hackathon profile fields
+          Event profile fields
         </p>
       </div>
       <p class="mb-4 text-xs text-muted">
-        These fields might be needed to credit Codex credits for a hackathon.
+        These fields might be needed to credit Codex credits for an event.
       </p>
 
       <div class="grid gap-4 md:grid-cols-2">

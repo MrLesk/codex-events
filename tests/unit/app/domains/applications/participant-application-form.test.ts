@@ -8,7 +8,7 @@ describe('participant registration form schema', () => {
     maxTeamMembers: 4,
     hasCurrentApplicationTerms: false,
     isInPersonEvent: false,
-    requireWhyThisHackathon: false,
+    requireWhyThisEvent: false,
     requireProofOfExecution: false
   })
 
@@ -18,7 +18,7 @@ describe('participant registration form schema', () => {
       inPersonAttendanceCommitment: false,
       teamIntent: 'unknown' as const,
       teamMemberHints: [],
-      whyThisHackathon: '',
+      whyThisEvent: '',
       proofOfExecutionUrl: '',
       profileForm: {
         firstName: 'Ada',

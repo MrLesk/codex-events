@@ -31,7 +31,7 @@ import {
 import { formatTimestamp } from '~/lib/date-formatting'
 
 const props = withDefaults(defineProps<{
-  hackathonId: string
+  eventId: string
   applications: AdminApplicationRecord[]
   view: AdminApplicationReviewView
   isLoading?: boolean
@@ -60,7 +60,7 @@ const emit = defineEmits<{
 const stagedCount = computed(() =>
   props.applications.filter(application => application.status === 'submitted' && Boolean(application.preApprovalStatus)).length
 )
-const whyThisHackathonPreviewCharacterLimit = 280
+const whyThisEventPreviewCharacterLimit = 280
 const proofLinksPreviewCount = 2
 const expandedApplicationSectionKeys = ref(new Set<string>())
 const isFailedLumaSyncAlertExpanded = ref(false)
@@ -182,30 +182,30 @@ function hasApplicantRejectionSelected(applicant: AdminApplicationReviewGroup['a
   return applicant.application.preApprovalStatus === 'rejected'
 }
 
-function getWhyThisHackathonValue(applicant: AdminApplicationReviewGroup['applicants'][number]) {
-  return applicant.registrationDetails.whyThisHackathon.trim()
+function getWhyThisEventValue(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return applicant.registrationDetails.whyThisEvent.trim()
 }
 
-function shouldShowWhyThisHackathon(applicant: AdminApplicationReviewGroup['applicants'][number]) {
-  return getWhyThisHackathonValue(applicant).length > 0
+function shouldShowWhyThisEvent(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return getWhyThisEventValue(applicant).length > 0
 }
 
-function shouldShowWhyThisHackathonToggle(applicant: AdminApplicationReviewGroup['applicants'][number]) {
-  return getWhyThisHackathonValue(applicant).length > whyThisHackathonPreviewCharacterLimit
+function shouldShowWhyThisEventToggle(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  return getWhyThisEventValue(applicant).length > whyThisEventPreviewCharacterLimit
 }
 
-function getVisibleWhyThisHackathon(applicant: AdminApplicationReviewGroup['applicants'][number]) {
-  const whyThisHackathon = getWhyThisHackathonValue(applicant)
+function getVisibleWhyThisEvent(applicant: AdminApplicationReviewGroup['applicants'][number]) {
+  const whyThisEvent = getWhyThisEventValue(applicant)
   const sectionKey = getApplicationSectionKey(applicant.application.id, 'motivation')
 
   if (
     isApplicationSectionExpanded(sectionKey)
-    || whyThisHackathon.length <= whyThisHackathonPreviewCharacterLimit
+    || whyThisEvent.length <= whyThisEventPreviewCharacterLimit
   ) {
-    return whyThisHackathon
+    return whyThisEvent
   }
 
-  return `${whyThisHackathon.slice(0, whyThisHackathonPreviewCharacterLimit).trimEnd()}…`
+  return `${whyThisEvent.slice(0, whyThisEventPreviewCharacterLimit).trimEnd()}…`
 }
 
 function getProofOfExecutionLinks(applicant: AdminApplicationReviewGroup['applicants'][number]) {
@@ -273,7 +273,7 @@ function getApplicantProfileIconHref(application: AdminApplicationRecord) {
   return buildProfileIconHref(
     application.userId,
     application.user?.profileIconUpdatedAt,
-    props.hackathonId
+    props.eventId
   )
 }
 
@@ -382,7 +382,7 @@ const reviewContent = computed(() => {
   return {
     title: props.readOnly ? 'Participant Directory' : 'Participant Review',
     description: props.readOnly
-      ? 'Browse hackathon participants and teammate hints without review actions.'
+      ? 'Browse event participants and teammate hints without review actions.'
       : 'Review incoming applications, then save once to apply decisions and trigger participant emails.'
   }
 })
@@ -391,7 +391,7 @@ const emptyState = computed(() => {
   if (props.applications.length === 0) {
     return {
       title: 'No participant records yet',
-      description: 'This hackathon does not currently have participant records to review.'
+      description: 'This event does not currently have participant records to review.'
     }
   }
 
@@ -835,7 +835,7 @@ const emptyState = computed(() => {
                   </div>
 
                   <div
-                    v-if="shouldShowWhyThisHackathon(applicant) || shouldShowProofOfExecutionLinks(applicant)"
+                    v-if="shouldShowWhyThisEvent(applicant) || shouldShowProofOfExecutionLinks(applicant)"
                     class="space-y-3"
                   >
                     <div
@@ -877,15 +877,15 @@ const emptyState = computed(() => {
                     </div>
 
                     <section
-                      v-if="shouldShowWhyThisHackathon(applicant)"
+                      v-if="shouldShowWhyThisEvent(applicant)"
                       class="rounded-lg border border-black/8 bg-black/[0.02] px-4 py-3 dark:border-white/[0.08] dark:bg-white/[0.02]"
                     >
                       <div class="flex items-start justify-between gap-3">
                         <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                          Why this hackathon
+                          Why this event
                         </p>
                         <button
-                          v-if="shouldShowWhyThisHackathonToggle(applicant)"
+                          v-if="shouldShowWhyThisEventToggle(applicant)"
                           type="button"
                           class="shrink-0 text-[12px] font-medium text-highlighted transition-colors hover:text-toned dark:text-white dark:hover:text-[#D9D9D9]"
                           @click="toggleApplicationSection(getApplicationSectionKey(applicant.application.id, 'motivation'))"
@@ -894,7 +894,7 @@ const emptyState = computed(() => {
                         </button>
                       </div>
                       <p class="mt-2 whitespace-pre-line text-sm leading-6 text-toned">
-                        {{ getVisibleWhyThisHackathon(applicant) }}
+                        {{ getVisibleWhyThisEvent(applicant) }}
                       </p>
                     </section>
                   </div>

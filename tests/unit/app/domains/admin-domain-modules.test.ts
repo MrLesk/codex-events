@@ -5,9 +5,9 @@ import type {
 } from '../../../../app/domains/accounts/session-actor'
 import type { AdminApplicationRecord } from '../../../../app/domains/applications/admin-application-record'
 import type {
-  HackathonRecord
-} from '../../../../app/domains/hackathons/records'
-import type { HackathonRoleAssignment } from '../../../../app/domains/hackathons/access'
+  EventRecord
+} from '../../../../app/domains/events/records'
+import type { EventRoleAssignment } from '../../../../app/domains/events/access'
 import type {
   NoSubmissionEntry,
   SubmissionRecord
@@ -19,24 +19,24 @@ import type {
 
 import {
   canAccessAdminDashboard,
-  canCreateHackathon,
+  canCreateEvent,
   canMutateRoleAssignments,
-  filterManageableHackathons,
-  hasHackathonAdminAccess,
-  hasHackathonJudgingAccess,
-  hasHackathonParticipantVisibilityAccess
-} from '../../../../app/domains/hackathons/access'
+  filterManageableEvents,
+  hasEventAdminAccess,
+  hasEventJudgingAccess,
+  hasEventParticipantVisibilityAccess
+} from '../../../../app/domains/events/access'
 import {
-  createEmptyHackathonFormState,
-  createHackathonFormState,
-  createHackathonSlug,
+  createEmptyEventFormState,
+  createEventFormState,
+  createEventSlug,
   fromDateTimeLocalValue,
   getNextAgendaItemDefaultTimes,
   getTermsVersionPublishErrorMessage,
   toDateTimeLocalValue
-} from '../../../../app/domains/hackathons/admin-hackathon'
-import { getHackathonOperationsPhase } from '../../../../app/domains/hackathons/states'
-import { getCurrentLifecycleControl } from '../../../../app/domains/hackathons/lifecycle-controls'
+} from '../../../../app/domains/events/admin-event'
+import { getEventOperationsPhase } from '../../../../app/domains/events/states'
+import { getCurrentLifecycleControl } from '../../../../app/domains/events/lifecycle-controls'
 import {
   formatApplicationAttendanceStatus,
   formatApplicationLumaSyncStatus,
@@ -79,9 +79,10 @@ import {
 } from '../../../../app/domains/judging/admin-oversight'
 import { getCriteriaConfigurationValidationIssues } from '../../../../app/domains/judging/criteria-config'
 
-function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRecord {
+function createEvent(overrides: Partial<EventRecord> = {}): EventRecord {
   return {
-    id: 'hackathon-1',
+    id: 'event-1',
+    eventType: 'hackathon',
     name: 'Codex Builders',
     slug: 'codex-builders',
     description: 'Canonical admin workspace fixture.',
@@ -116,7 +117,7 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     requireChatgptEmail: false,
     requireOpenaiOrgId: false,
     requireLumaEmail: false,
-    requireWhyThisHackathon: false,
+    requireWhyThisEvent: false,
     requireProofOfExecution: false,
     requireSubmissionSummary: false,
     requireSubmissionRepositoryUrl: false,
@@ -152,9 +153,9 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
     },
     isPlatformAdmin: false,
     isEventOrganizer: false,
-    hackathonRoles: [{
-      hackathonId: 'hackathon-1',
-      role: 'hackathon_admin',
+    eventRoles: [{
+      eventId: 'event-1',
+      role: 'event_admin',
       isInJudgePool: false,
       isStaff: false,
       createdAt: '2026-03-01T00:00:00.000Z'
@@ -166,7 +167,7 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
 function createApplication(overrides: Partial<AdminApplicationRecord> = {}): AdminApplicationRecord {
   return {
     id: 'application-1',
-    hackathonId: 'hackathon-1',
+    eventId: 'event-1',
     userId: 'user-1',
     status: 'submitted',
     preApprovalStatus: null,
@@ -186,7 +187,7 @@ function createApplication(overrides: Partial<AdminApplicationRecord> = {}): Adm
 function createTeamSummary(overrides: Partial<TeamSummary> = {}): TeamSummary {
   return {
     id: 'team-1',
-    hackathonId: 'hackathon-1',
+    eventId: 'event-1',
     name: 'Alpha Team',
     bio: 'A focused admin-visible team.',
     slug: 'alpha-team',
@@ -262,7 +263,7 @@ function createJudgeAssignment(
 ) {
   return {
     id: 'assignment-1',
-    hackathonId: 'hackathon-1',
+    eventId: 'event-1',
     submissionId: 'submission-1',
     judgeUserId: 'judge-1',
     reviewStage: 'blind_review',
@@ -295,10 +296,10 @@ function createJudgeAssignment(
   }
 }
 
-function createRoleAssignment(overrides: Partial<HackathonRoleAssignment> = {}): HackathonRoleAssignment {
+function createRoleAssignment(overrides: Partial<EventRoleAssignment> = {}): EventRoleAssignment {
   return {
     id: 'role-assignment-1',
-    hackathonId: 'hackathon-1',
+    eventId: 'event-1',
     userId: 'judge-1',
     role: 'judge',
     isInJudgePool: true,
@@ -323,33 +324,33 @@ function createNoSubmissionEntry(overrides: Partial<NoSubmissionEntry> = {}): No
 }
 
 describe('domain admin access helpers', () => {
-  test('groups hackathon states into the supported operations dashboard phases', () => {
-    expect(getHackathonOperationsPhase('draft')).toBeNull()
-    expect(getHackathonOperationsPhase('registration_open')).toBe('registration_open')
-    expect(getHackathonOperationsPhase('submission_open')).toBe('submission_open')
-    expect(getHackathonOperationsPhase('judging_preparation')).toBe('judging')
-    expect(getHackathonOperationsPhase('blind_review')).toBe('judging')
-    expect(getHackathonOperationsPhase('shortlist')).toBe('judging')
-    expect(getHackathonOperationsPhase('pitch')).toBe('judging')
-    expect(getHackathonOperationsPhase('pitch_review')).toBe('judging')
-    expect(getHackathonOperationsPhase('final_deliberation')).toBe('judging')
-    expect(getHackathonOperationsPhase('winners_announced')).toBe('judging')
-    expect(getHackathonOperationsPhase('completed')).toBe('completed')
+  test('groups event states into the supported operations dashboard phases', () => {
+    expect(getEventOperationsPhase('draft')).toBeNull()
+    expect(getEventOperationsPhase('registration_open')).toBe('registration_open')
+    expect(getEventOperationsPhase('submission_open')).toBe('submission_open')
+    expect(getEventOperationsPhase('judging_preparation')).toBe('judging')
+    expect(getEventOperationsPhase('blind_review')).toBe('judging')
+    expect(getEventOperationsPhase('shortlist')).toBe('judging')
+    expect(getEventOperationsPhase('pitch')).toBe('judging')
+    expect(getEventOperationsPhase('pitch_review')).toBe('judging')
+    expect(getEventOperationsPhase('final_deliberation')).toBe('judging')
+    expect(getEventOperationsPhase('winners_announced')).toBe('judging')
+    expect(getEventOperationsPhase('completed')).toBe('completed')
   })
 
-  test('filters hackathons by explicit hackathon-admin access for non-platform admins', () => {
+  test('filters events by explicit event-admin access for non-platform admins', () => {
     const actor = createActor()
-    const hackathons = [
-      createHackathon({ id: 'hackathon-1' }),
-      createHackathon({ id: 'hackathon-2', slug: 'other-hackathon', name: 'Other Hackathon' })
+    const events = [
+      createEvent({ id: 'event-1' }),
+      createEvent({ id: 'event-2', slug: 'other-event', name: 'Other Event' })
     ]
 
-    expect(filterManageableHackathons(hackathons, actor).map(hackathon => hackathon.id)).toEqual(['hackathon-1'])
-    expect(hasHackathonAdminAccess(actor, 'hackathon-1')).toBe(true)
-    expect(hasHackathonAdminAccess(actor, 'hackathon-2')).toBe(false)
+    expect(filterManageableEvents(events, actor).map(event => event.id)).toEqual(['event-1'])
+    expect(hasEventAdminAccess(actor, 'event-1')).toBe(true)
+    expect(hasEventAdminAccess(actor, 'event-2')).toBe(false)
   })
 
-  test('returns every hackathon for platform admins', () => {
+  test('returns every event for platform admins', () => {
     const actor = createActor({
       isPlatformAdmin: true,
       platformUser: {
@@ -362,18 +363,18 @@ describe('domain admin access helpers', () => {
         isEventOrganizer: false
       }
     })
-    const hackathons = [
-      createHackathon({ id: 'hackathon-1' }),
-      createHackathon({ id: 'hackathon-2', slug: 'other-hackathon', name: 'Other Hackathon' })
+    const events = [
+      createEvent({ id: 'event-1' }),
+      createEvent({ id: 'event-2', slug: 'other-event', name: 'Other Event' })
     ]
 
-    expect(filterManageableHackathons(hackathons, actor).map(hackathon => hackathon.id)).toEqual([
-      'hackathon-1',
-      'hackathon-2'
+    expect(filterManageableEvents(events, actor).map(event => event.id)).toEqual([
+      'event-1',
+      'event-2'
     ])
   })
 
-  test('allows explicit role mutations for hackathon admins and platform admins', () => {
+  test('allows explicit role mutations for event admins and platform admins', () => {
     expect(canMutateRoleAssignments(createActor())).toBe(true)
     expect(canMutateRoleAssignments(createActor({
       isPlatformAdmin: true,
@@ -389,10 +390,10 @@ describe('domain admin access helpers', () => {
     }))).toBe(true)
   })
 
-  test('allows event organizers to create hackathons without platform-wide visibility', () => {
+  test('allows event organizers to create events without platform-wide visibility', () => {
     const actor = createActor({
       isEventOrganizer: true,
-      hackathonRoles: [],
+      eventRoles: [],
       platformUser: {
         id: 'event-organizer',
         email: 'organizer@example.com',
@@ -403,21 +404,21 @@ describe('domain admin access helpers', () => {
         isEventOrganizer: true
       }
     })
-    const hackathons = [
-      createHackathon({ id: 'hackathon-1' }),
-      createHackathon({ id: 'hackathon-2', slug: 'other-hackathon', name: 'Other Hackathon' })
+    const events = [
+      createEvent({ id: 'event-1' }),
+      createEvent({ id: 'event-2', slug: 'other-event', name: 'Other Event' })
     ]
 
     expect(canAccessAdminDashboard(actor)).toBe(true)
-    expect(canCreateHackathon(actor)).toBe(true)
+    expect(canCreateEvent(actor)).toBe(true)
     expect(canMutateRoleAssignments(actor)).toBe(false)
-    expect(filterManageableHackathons(hackathons, actor)).toEqual([])
+    expect(filterManageableEvents(events, actor)).toEqual([])
   })
 
   test('grants participant visibility to explicit staff without admin mutations', () => {
     const actor = createActor({
-      hackathonRoles: [{
-        hackathonId: 'hackathon-1',
+      eventRoles: [{
+        eventId: 'event-1',
         role: 'staff',
         isInJudgePool: false,
         isStaff: true,
@@ -425,26 +426,26 @@ describe('domain admin access helpers', () => {
       }]
     })
 
-    expect(hasHackathonParticipantVisibilityAccess(actor, 'hackathon-1')).toBe(true)
-    expect(hasHackathonParticipantVisibilityAccess(actor, 'hackathon-2')).toBe(false)
-    expect(hasHackathonJudgingAccess(actor, 'hackathon-1')).toBe(false)
+    expect(hasEventParticipantVisibilityAccess(actor, 'event-1')).toBe(true)
+    expect(hasEventParticipantVisibilityAccess(actor, 'event-2')).toBe(false)
+    expect(hasEventJudgingAccess(actor, 'event-1')).toBe(false)
     expect(canMutateRoleAssignments(actor)).toBe(false)
   })
 
   test('grants judging access only when an admin assignment is judge-enabled', () => {
     const adminActor = createActor()
     const judgingAdminActor = createActor({
-      hackathonRoles: [{
-        hackathonId: 'hackathon-1',
-        role: 'hackathon_admin',
+      eventRoles: [{
+        eventId: 'event-1',
+        role: 'event_admin',
         isInJudgePool: true,
         isStaff: true,
         createdAt: '2026-03-01T00:00:00.000Z'
       }]
     })
 
-    expect(hasHackathonJudgingAccess(adminActor, 'hackathon-1')).toBe(false)
-    expect(hasHackathonJudgingAccess(judgingAdminActor, 'hackathon-1')).toBe(true)
+    expect(hasEventJudgingAccess(adminActor, 'event-1')).toBe(false)
+    expect(hasEventJudgingAccess(judgingAdminActor, 'event-1')).toBe(true)
   })
 })
 
@@ -453,14 +454,14 @@ describe('domain admin form helpers', () => {
     const isoTimestamp = '2026-03-22T10:30:00.000Z'
     const localValue = toDateTimeLocalValue(isoTimestamp)
 
-    expect(createHackathonSlug('  Codex Spring Builders 2026  ')).toBe('codex-spring-builders-2026')
-    expect(createHackathonSlug('  Spring 2026 @ Codex!  ')).toBe('spring-2026-codex')
-    expect(createHackathonSlug('MIXED_Case__Slug')).toBe('mixed-case-slug')
+    expect(createEventSlug('  Codex Spring Builders 2026  ')).toBe('codex-spring-builders-2026')
+    expect(createEventSlug('  Spring 2026 @ Codex!  ')).toBe('spring-2026-codex')
+    expect(createEventSlug('MIXED_Case__Slug')).toBe('mixed-case-slug')
     expect(fromDateTimeLocalValue(localValue)).toBe(isoTimestamp)
   })
 
-  test('uses canonical defaults for new hackathon form scoring fields', () => {
-    expect(createEmptyHackathonFormState()).toMatchObject({
+  test('uses canonical defaults for new event form scoring fields', () => {
+    expect(createEmptyEventFormState()).toMatchObject({
       autoApproveApplications: false,
       blindReviewCount: 1,
       pitchReviewEnabled: false,
@@ -469,8 +470,8 @@ describe('domain admin form helpers', () => {
     })
   })
 
-  test('maps hackathon records into editable form state', () => {
-    const hackathon = createHackathon({
+  test('maps event records into editable form state', () => {
+    const event = createEvent({
       description: '# Overview\n\n- Build something ambitious\n- Share what you learned',
       backgroundImageUrl: 'https://example.com/background.jpg',
       bannerImageUrl: 'https://example.com/banner.jpg',
@@ -494,15 +495,15 @@ describe('domain admin form helpers', () => {
       ]
     })
 
-    const formState = createHackathonFormState(hackathon)
+    const formState = createEventFormState(event)
 
     expect(formState).toMatchObject({
-      name: hackathon.name,
-      slug: hackathon.slug,
+      name: event.name,
+      slug: event.slug,
       description: '# Overview\n\n- Build something ambitious\n- Share what you learned',
-      city: hackathon.city,
-      country: hackathon.country,
-      address: hackathon.address,
+      city: event.city,
+      country: event.country,
+      address: event.address,
       backgroundImageUrl: 'https://example.com/background.jpg',
       bannerImageUrl: 'https://example.com/banner.jpg',
       discordServerUrl: 'https://discord.gg/codex-builders',
@@ -659,7 +660,7 @@ describe('domain admin form helpers', () => {
 describe('domain admin lifecycle controls', () => {
   test('blocks submission opening until registration is closed and submission window is active', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon(),
+      createEvent(),
       {
         submittedSubmissionCount: 0,
         judgePoolCount: 0,
@@ -682,7 +683,7 @@ describe('domain admin lifecycle controls', () => {
 
   test('shows a draft publish control only while the registration window is active', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({
+      createEvent({
         state: 'draft',
         registrationOpensAt: '2026-03-20T10:00:00.000Z',
         registrationClosesAt: '2026-03-22T10:00:00.000Z'
@@ -707,9 +708,35 @@ describe('domain admin lifecycle controls', () => {
     })
   })
 
+  test('uses registration-only lifecycle controls for meetup and build events', () => {
+    const control = getCurrentLifecycleControl(
+      createEvent({
+        eventType: 'meetup',
+        state: 'registration_open',
+        registrationClosesAt: '2026-03-22T10:00:00.000Z'
+      }),
+      {
+        submittedSubmissionCount: 0,
+        judgePoolCount: 0,
+        lockedSubmissionCount: 0,
+        activeAssignmentCount: 0,
+        lockedLeaderboardEntryCount: 0,
+        completedReviewCount: 0,
+        prizeCount: 0,
+        hasCurrentWinnerTerms: false
+      },
+      new Date('2026-03-22T11:00:00.000Z')
+    )
+
+    expect(control).toMatchObject({
+      key: 'complete',
+      isEnabled: true
+    })
+  })
+
   test('enables blind-review to shortlist transition only when pitch review is enabled', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({
+      createEvent({
         state: 'blind_review',
         pitchReviewEnabled: true
       }),
@@ -733,7 +760,7 @@ describe('domain admin lifecycle controls', () => {
 
   test('renames the submission-phase lifecycle action and removes judge-pool gating from stop submissions', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({
+      createEvent({
         state: 'submission_open'
       }),
       {
@@ -758,7 +785,7 @@ describe('domain admin lifecycle controls', () => {
 
   test('gates blind review on submitted work and distinct judge coverage during judging preparation', () => {
     const disabledControl = getCurrentLifecycleControl(
-      createHackathon({
+      createEvent({
         state: 'judging_preparation',
         blindReviewCount: 2,
         pitchReviewEnabled: true
@@ -782,7 +809,7 @@ describe('domain admin lifecycle controls', () => {
     })
 
     const enabledControl = getCurrentLifecycleControl(
-      createHackathon({
+      createEvent({
         state: 'judging_preparation',
         blindReviewCount: 2,
         pitchReviewEnabled: true
@@ -805,9 +832,9 @@ describe('domain admin lifecycle controls', () => {
     })
   })
 
-  test('routes pitch-only hackathons into the live pitch stage from judging preparation', () => {
+  test('routes pitch-only events into the live pitch stage from judging preparation', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({
+      createEvent({
         state: 'judging_preparation',
         blindReviewCount: 0,
         pitchReviewEnabled: true,
@@ -834,7 +861,7 @@ describe('domain admin lifecycle controls', () => {
 
   test('routes the live pitch stage into pitch review once admins are ready to assign judges', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({
+      createEvent({
         state: 'pitch',
         blindReviewCount: 0,
         pitchReviewEnabled: true,
@@ -863,7 +890,7 @@ describe('domain admin lifecycle controls', () => {
 
   test('keeps pitch review disabled until the live presentation lineup is completed', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({
+      createEvent({
         state: 'pitch',
         blindReviewCount: 0,
         pitchReviewEnabled: true,
@@ -892,9 +919,9 @@ describe('domain admin lifecycle controls', () => {
     })
   })
 
-  test('routes blind-only hackathons into final deliberation once blind review is complete', () => {
+  test('routes blind-only events into final deliberation once blind review is complete', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({
+      createEvent({
         state: 'blind_review',
         pitchReviewEnabled: false
       }),
@@ -918,7 +945,7 @@ describe('domain admin lifecycle controls', () => {
 
   test('blocks pitch-review closure until at least one pitch review is submitted', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({
+      createEvent({
         state: 'pitch_review',
         pitchReviewEnabled: true
       }),
@@ -945,7 +972,7 @@ describe('domain admin lifecycle controls', () => {
 
   test('allows pitch-review closure once at least one pitch review is submitted even if finalist coverage is partial', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({
+      createEvent({
         state: 'pitch_review',
         pitchReviewEnabled: true
       }),
@@ -970,7 +997,7 @@ describe('domain admin lifecycle controls', () => {
 
   test('blocks winner announcement when prizes exist without current winner terms', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({ state: 'final_deliberation' }),
+      createEvent({ state: 'final_deliberation' }),
       {
         submittedSubmissionCount: 3,
         judgePoolCount: 2,
@@ -992,7 +1019,7 @@ describe('domain admin lifecycle controls', () => {
 
   test('returns the completion control once winners are announced', () => {
     const control = getCurrentLifecycleControl(
-      createHackathon({ state: 'winners_announced' }),
+      createEvent({ state: 'winners_announced' }),
       {
         submittedSubmissionCount: 2,
         judgePoolCount: 1,
@@ -1421,22 +1448,22 @@ describe('domain admin operational helpers', () => {
   })
 
   test('shows attendance summary only when Luma email is required and an event API ID is configured', () => {
-    expect(shouldShowApprovedParticipantAttendanceSummary(createHackathon({
+    expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
       requireLumaEmail: true,
       lumaEventApiId: 'evt-123'
     }))).toBe(true)
 
-    expect(shouldShowApprovedParticipantAttendanceSummary(createHackathon({
+    expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
       requireLumaEmail: false,
       lumaEventApiId: 'evt-123'
     }))).toBe(false)
 
-    expect(shouldShowApprovedParticipantAttendanceSummary(createHackathon({
+    expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
       requireLumaEmail: true,
       lumaEventApiId: '   '
     }))).toBe(false)
 
-    expect(shouldShowApprovedParticipantAttendanceSummary(createHackathon({
+    expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
       requireLumaEmail: true,
       lumaEventApiId: null
     }))).toBe(false)
@@ -1472,7 +1499,7 @@ describe('domain admin operational helpers', () => {
     })
   })
 
-  test('returns no participant-limit summary when the hackathon has no configured limit', () => {
+  test('returns no participant-limit summary when the event has no configured limit', () => {
     expect(getParticipantsLimitSummary([
       createApplication({ status: 'approved' })
     ], null)).toBeNull()

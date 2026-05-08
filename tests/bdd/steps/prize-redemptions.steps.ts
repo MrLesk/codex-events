@@ -74,12 +74,12 @@ When('I open the prize redemptions page with the saved {string} session', async 
   await page.goto('/prize-redemptions')
 })
 
-Then('I should see the prize redemption task for hackathon slug {string} and prize {string}', async ({ page }, hackathonSlug: string, prizeId: string) => {
-  await expect(page.getByTestId(`prize-redemption-card-${hackathonSlug}-${prizeId}`)).toBeVisible()
+Then('I should see the prize redemption task for event slug {string} and prize {string}', async ({ page }, eventSlug: string, prizeId: string) => {
+  await expect(page.getByTestId(`prize-redemption-card-${eventSlug}-${prizeId}`)).toBeVisible()
 })
 
-When('I submit the prize redemption task for hackathon slug {string} and prize {string} as {string}', async ({ page }, hackathonSlug: string, prizeId: string, legalName: string) => {
-  const scope = page.getByTestId(`prize-redemption-card-${hackathonSlug}-${prizeId}`)
+When('I submit the prize redemption task for event slug {string} and prize {string} as {string}', async ({ page }, eventSlug: string, prizeId: string, legalName: string) => {
+  const scope = page.getByTestId(`prize-redemption-card-${eventSlug}-${prizeId}`)
   const responsePath = '/actions/redeem'
 
   await expect(scope).toBeVisible()
@@ -91,10 +91,10 @@ When('I submit the prize redemption task for hackathon slug {string} and prize {
       response.url().includes(responsePath)
       && response.ok()
     ),
-    scope.getByTestId(`prize-redemption-submit-${hackathonSlug}-${prizeId}`).click()
+    scope.getByTestId(`prize-redemption-submit-${eventSlug}-${prizeId}`).click()
   ])
 })
 
-Then('I should see the completed prize redemption for hackathon slug {string} and prize {string}', async ({ page }, hackathonSlug: string, prizeId: string) => {
-  await expect(page.getByTestId(`prize-redemption-complete-${hackathonSlug}-${prizeId}`)).toBeVisible()
+Then('I should see the completed prize redemption for event slug {string} and prize {string}', async ({ page }, eventSlug: string, prizeId: string) => {
+  await expect(page.getByTestId(`prize-redemption-complete-${eventSlug}-${prizeId}`)).toBeVisible()
 })

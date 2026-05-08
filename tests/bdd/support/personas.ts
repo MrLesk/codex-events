@@ -8,7 +8,7 @@ export const defaultLocalBddBaseUrl = 'http://localhost:3100'
 
 export const stablePersonaKeys = [
   'platform_admin',
-  'hackathon_admin',
+  'event_admin',
   'judge',
   'regular_user'
 ] as const
@@ -35,8 +35,8 @@ const bddBaseUrlEnvironmentSchema = z.object({
 const stablePersonaEnvironmentSchema = bddBaseUrlEnvironmentSchema.extend({
   E2E_PLATFORM_ADMIN_EMAIL: z.string().email(),
   E2E_PLATFORM_ADMIN_PASSWORD: z.string().min(1),
-  E2E_HACKATHON_ADMIN_EMAIL: z.string().email(),
-  E2E_HACKATHON_ADMIN_PASSWORD: z.string().min(1),
+  E2E_EVENT_ADMIN_EMAIL: z.string().email(),
+  E2E_EVENT_ADMIN_PASSWORD: z.string().min(1),
   E2E_JUDGE_EMAIL: z.string().email(),
   E2E_JUDGE_PASSWORD: z.string().min(1),
   E2E_REGULAR_USER_EMAIL: z.string().email(),
@@ -79,11 +79,11 @@ export function getStablePersonas(environment: NodeJS.ProcessEnv = process.env):
       nickname: 'platform-admin'
     },
     {
-      key: 'hackathon_admin',
-      email: config.E2E_HACKATHON_ADMIN_EMAIL,
-      password: config.E2E_HACKATHON_ADMIN_PASSWORD,
-      displayName: 'Hackathon Admin',
-      nickname: 'hackathon-admin'
+      key: 'event_admin',
+      email: config.E2E_EVENT_ADMIN_EMAIL,
+      password: config.E2E_EVENT_ADMIN_PASSWORD,
+      displayName: 'Event Admin',
+      nickname: 'event-admin'
     },
     {
       key: 'judge',

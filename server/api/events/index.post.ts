@@ -1,0 +1,108 @@
+import { eq } from 'drizzle-orm'
+
+import { requirePlatformActor } from '#server/auth/actor'
+import { assertEventCreatorAccess } from '#server/auth/authorization'
+import { writeAuditLog } from '#server/database/audit-log'
+import { getDatabase } from '#server/database/client'
+import { events } from '#server/database/schema'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
+import {
+  assertEventSchedule,
+  assertEventSlugAvailable,
+  createEventAdminAssignmentsForNewEvent,
+  createEventTracks,
+  createEventBodySchema,
+  listEventTracks,
+  serializeEventAgendaItems,
+  serializeEvent
+} from '#server/domains/events'
+import { parseValidatedBody } from '#server/http/validation'
+
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requirePlatformActor(h3Event)
+  assertEventCreatorAccess(actor)
+
+  const body = await parseValidatedBody(h3Event, createEventBodySchema)
+  const database = getDatabase(h3Event)
+
+  assertEventSchedule(body)
+  await assertEventSlugAvailable(database, body.slug)
+
+  const eventId = crypto.randomUUID()
+  const createdAt = new Date().toISOString()
+  const isHackathon = body.eventType === 'hackathon'
+  const submissionOpensAt = isHackathon ? body.submissionOpensAt! : body.registrationClosesAt
+  const submissionClosesAt = isHackathon
+    ? body.submissionClosesAt!
+    : new Date(Date.parse(body.registrationClosesAt) + 1000).toISOString()
+
+  await database.insert(events).values({
+    id: eventId,
+    eventType: body.eventType,
+    name: body.name,
+    slug: body.slug,
+    description: body.description,
+    agendaItemsJson: serializeEventAgendaItems(body.agendaItems),
+    backgroundImageUrl: body.backgroundImageUrl ?? null,
+    bannerImageUrl: body.bannerImageUrl ?? null,
+    discordServerUrl: body.discordServerUrl ?? null,
+    lumaEventUrl: body.lumaEventUrl ?? null,
+    lumaEventApiId: body.lumaEventApiId ?? null,
+    city: body.city,
+    country: body.country,
+    address: body.address,
+    registrationOpensAt: body.registrationOpensAt,
+    registrationClosesAt: body.registrationClosesAt,
+    submissionOpensAt,
+    submissionClosesAt,
+    maxTeamMembers: isHackathon ? body.maxTeamMembers : 1,
+    participantsLimit: body.participantsLimit,
+    autoApproveApplications: body.autoApproveApplications,
+    blindReviewCount: isHackathon ? body.blindReviewCount : 0,
+    pitchReviewEnabled: isHackathon ? body.pitchReviewEnabled : false,
+    blindScoreWeightPercent: isHackathon ? body.blindScoreWeightPercent : 0,
+    pitchScoreWeightPercent: isHackathon ? body.pitchScoreWeightPercent : 100,
+    shortlistFinalistCount: isHackathon ? body.shortlistFinalistCount : 1,
+    inPersonEvent: body.inPersonEvent,
+    requireXProfile: body.requireXProfile,
+    requireLinkedinProfile: body.requireLinkedinProfile,
+    requireGithubProfile: body.requireGithubProfile,
+    requireChatgptEmail: body.requireChatgptEmail,
+    requireOpenaiOrgId: body.requireOpenaiOrgId,
+    requireLumaEmail: body.requireLumaEmail,
+    requireWhyThisEvent: body.requireWhyThisEvent,
+    requireProofOfExecution: isHackathon ? body.requireProofOfExecution : false,
+    requireSubmissionSummary: isHackathon ? body.requireSubmissionSummary : false,
+    requireSubmissionRepositoryUrl: isHackathon ? body.requireSubmissionRepositoryUrl : false,
+    requireSubmissionDemoUrl: isHackathon ? body.requireSubmissionDemoUrl : false,
+    state: 'draft',
+    createdByUserId: actor.platformUser.id,
+    createdAt,
+    updatedAt: createdAt
+  })
+
+  await createEventAdminAssignmentsForNewEvent(database, {
+    eventId,
+    creatorUserId: actor.platformUser.id,
+    createdAt
+  })
+  await createEventTracks(database, eventId, isHackathon ? body.tracks : [])
+
+  await writeAuditLog(database, {
+    actorUserId: actor.platformUser.id,
+    entityType: 'event',
+    entityId: eventId,
+    action: 'event.created',
+    metadata: {
+      slug: body.slug
+    }
+  })
+
+  const createdEvent = await database.query.events.findFirst({
+    where: eq(events.id, eventId)
+  })
+  const createdTracks = await listEventTracks(database, eventId)
+
+  return apiData(serializeEvent(createdEvent!, undefined, createdTracks))
+})

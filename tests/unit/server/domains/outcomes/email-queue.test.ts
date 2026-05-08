@@ -3,10 +3,10 @@ import type { H3Event } from 'h3'
 import { describe, expect, test, vi } from 'vitest'
 
 import {
-  buildHackathonOutcomeEmailQueueMessage,
-  enqueueHackathonOutcomeEmailMessage,
-  processHackathonOutcomeEmailQueueBatch,
-  processHackathonOutcomeEmailQueueMessage
+  buildEventOutcomeEmailQueueMessage,
+  enqueueEventOutcomeEmailMessage,
+  processEventOutcomeEmailQueueBatch,
+  processEventOutcomeEmailQueueMessage
 } from '../../../../../server/domains/outcomes/email-queue'
 
 function createEvent(options?: {
@@ -19,13 +19,13 @@ function createEvent(options?: {
     context: {
       cloudflare: {
         env: options?.queueProducer
-          ? { HACKATHON_OUTCOME_EMAIL_QUEUE: options.queueProducer }
+          ? { EVENT_OUTCOME_EMAIL_QUEUE: options.queueProducer }
           : {}
       },
       runtimeConfig: options?.runtimeConfig ?? {
-        hackathonOutcomeEmails: {
-          queueBinding: 'HACKATHON_OUTCOME_EMAIL_QUEUE',
-          queueName: 'codex-hackathons-hackathon-outcome-email-delivery',
+        eventOutcomeEmails: {
+          queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE',
+          queueName: 'codex-events-event-outcome-email-delivery',
           retryDelaySeconds: 120
         }
       }
@@ -40,11 +40,11 @@ function createQueueMessage(options?: {
   return {
     id: 'msg_1',
     attempts: options?.attempts ?? 1,
-    body: options?.body ?? buildHackathonOutcomeEmailQueueMessage({
+    body: options?.body ?? buildEventOutcomeEmailQueueMessage({
       notificationType: 'winner',
-      hackathonId: 'hackathon_1',
-      hackathonName: 'Codex Spring',
-      hackathonSlug: 'codex-spring',
+      eventId: 'event_1',
+      eventName: 'Codex Spring',
+      eventSlug: 'codex-spring',
       teamId: 'team_1',
       teamName: 'North Star Builders',
       recipientUserId: 'user_1',
@@ -60,18 +60,18 @@ function createQueueMessage(options?: {
   }
 }
 
-describe('hackathon outcome email queue utilities', () => {
+describe('event outcome email queue utilities', () => {
   test('enqueue sends json payload to the configured queue binding', async () => {
     const send = vi.fn(async () => undefined)
     const event = createEvent({
       queueProducer: { send }
     })
 
-    const result = await enqueueHackathonOutcomeEmailMessage(event, buildHackathonOutcomeEmailQueueMessage({
+    const result = await enqueueEventOutcomeEmailMessage(event, buildEventOutcomeEmailQueueMessage({
       notificationType: 'shortlist',
-      hackathonId: 'hackathon_1',
-      hackathonName: 'Codex Spring',
-      hackathonSlug: 'codex-spring',
+      eventId: 'event_1',
+      eventName: 'Codex Spring',
+      eventSlug: 'codex-spring',
       teamId: 'team_1',
       teamName: 'North Star Builders',
       recipientUserId: 'user_1',
@@ -92,11 +92,11 @@ describe('hackathon outcome email queue utilities', () => {
   })
 
   test('enqueue skips when queue binding is not available', async () => {
-    const result = await enqueueHackathonOutcomeEmailMessage(createEvent(), buildHackathonOutcomeEmailQueueMessage({
+    const result = await enqueueEventOutcomeEmailMessage(createEvent(), buildEventOutcomeEmailQueueMessage({
       notificationType: 'shortlist',
-      hackathonId: 'hackathon_1',
-      hackathonName: 'Codex Spring',
-      hackathonSlug: 'codex-spring',
+      eventId: 'event_1',
+      eventName: 'Codex Spring',
+      eventSlug: 'codex-spring',
       teamId: 'team_1',
       teamName: 'North Star Builders',
       recipientUserId: 'user_1',
@@ -107,7 +107,7 @@ describe('hackathon outcome email queue utilities', () => {
 
     expect(result).toEqual({
       status: 'skipped',
-      reason: 'queue_binding_missing:HACKATHON_OUTCOME_EMAIL_QUEUE'
+      reason: 'queue_binding_missing:EVENT_OUTCOME_EMAIL_QUEUE'
     })
   })
 
@@ -123,9 +123,9 @@ describe('hackathon outcome email queue utilities', () => {
       }
     }))
 
-    const result = await processHackathonOutcomeEmailQueueMessage(message, {
+    const result = await processEventOutcomeEmailQueueMessage(message, {
       runtimeConfig: {
-        hackathonOutcomeEmails: {
+        eventOutcomeEmails: {
           retryDelaySeconds: 90
         }
       },
@@ -142,13 +142,13 @@ describe('hackathon outcome email queue utilities', () => {
 
   test('queue batch processing skips unrelated queues', async () => {
     const message = createQueueMessage()
-    const result = await processHackathonOutcomeEmailQueueBatch({
+    const result = await processEventOutcomeEmailQueueBatch({
       queue: 'different-queue',
       messages: [message]
     }, {
       runtimeConfig: {
-        hackathonOutcomeEmails: {
-          queueName: 'codex-hackathons-hackathon-outcome-email-delivery'
+        eventOutcomeEmails: {
+          queueName: 'codex-events-event-outcome-email-delivery'
         }
       }
     })

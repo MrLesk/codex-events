@@ -21,7 +21,7 @@ import {
 
 const baseTeam: TeamDetailRecord = {
   id: 'team_fixture',
-  hackathonId: 'hackathon_fixture',
+  eventId: 'event_fixture',
   name: 'Fixture Team',
   bio: 'A focused fixture team.',
   slug: 'fixture-team',
@@ -79,7 +79,7 @@ describe('team workspace helpers', () => {
       state: 'submission_open'
     }, 'approved', true)).toEqual({
       isAllowed: false,
-      reason: 'You already belong to a team in this hackathon.'
+      reason: 'You already belong to a team in this event.'
     })
 
     expect(getUpdateJoinPolicyAvailability({
@@ -170,15 +170,15 @@ describe('team workspace helpers', () => {
       workspaceMode: 'solo'
     }, {
       isAllowed: false,
-      reason: 'You can belong to only one active team per hackathon.'
+      reason: 'You can belong to only one active team per event.'
     })).toBe('Solo teams cannot be joined.')
 
     expect(formatJoinAvailabilityReason({
       workspaceMode: 'team'
     }, {
       isAllowed: false,
-      reason: 'You can belong to only one active team per hackathon.'
-    })).toBe('You can belong to only one active team per hackathon.')
+      reason: 'You can belong to only one active team per event.'
+    })).toBe('You can belong to only one active team per event.')
 
     expect(formatJoinAvailabilityReason({
       workspaceMode: 'solo'
@@ -356,7 +356,7 @@ describe('team workspace helpers', () => {
     expect(getTeamJoinRequestStatusColor('approved')).toBe('success')
   })
 
-  test('detects when a team has reached the hackathon member limit', () => {
+  test('detects when a team has reached the event member limit', () => {
     expect(hasTeamReachedMemberLimit(4, 4)).toBe(true)
     expect(hasTeamReachedMemberLimit(4, 5)).toBe(true)
     expect(hasTeamReachedMemberLimit(4, 3)).toBe(false)

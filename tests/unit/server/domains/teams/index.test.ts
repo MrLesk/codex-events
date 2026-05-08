@@ -2,14 +2,14 @@ import { afterEach, describe, expect, test } from 'vitest'
 
 import { ApiError } from '../../../../../server/http/api-error'
 import {
-  hackathons,
+  events,
   submissions,
   teamMembers,
   teams,
   users
 } from '../../../../../server/database/schema'
 import {
-  assertHackathonAllowsTeamFormation,
+  assertEventAllowsTeamFormation,
   assertJoinRequestPending,
   assertLeaveOrRemovalAllowed,
   assertTeamDiscoveryAllowed,
@@ -19,12 +19,13 @@ import {
 } from '../../../../../server/domains/teams'
 import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
 
-function createHackathon(state: 'registration_open' | 'submission_open' | 'judging_preparation') {
+function createEvent(state: 'registration_open' | 'submission_open' | 'judging_preparation') {
   return {
-    id: 'hackathon_1',
-    name: 'Fixture Hackathon',
-    slug: 'fixture-hackathon',
-    description: 'Fixture hackathon',
+    id: 'event_1',
+    eventType: 'hackathon',
+    name: 'Fixture Event',
+    slug: 'fixture-event',
+    description: 'Fixture event',
     backgroundImageUrl: null,
     bannerImageUrl: null,
     discordServerUrl: null,
@@ -63,26 +64,26 @@ describe('team formation utilities', () => {
   })
 
   test('team formation is limited to registration_open and submission_open', () => {
-    expect(() => assertHackathonAllowsTeamFormation(createHackathon('registration_open'))).not.toThrow()
-    expect(() => assertHackathonAllowsTeamFormation(createHackathon('submission_open'))).not.toThrow()
-    expect(() => assertHackathonAllowsTeamFormation(createHackathon('judging_preparation'))).toThrowError(ApiError)
+    expect(() => assertEventAllowsTeamFormation(createEvent('registration_open'))).not.toThrow()
+    expect(() => assertEventAllowsTeamFormation(createEvent('submission_open'))).not.toThrow()
+    expect(() => assertEventAllowsTeamFormation(createEvent('judging_preparation'))).toThrowError(ApiError)
   })
 
   test('team discovery allows approved users throughout the workspace and team members after approval closes', () => {
-    expect(() => assertTeamDiscoveryAllowed(createHackathon('registration_open'), {
-      isHackathonAdmin: false,
+    expect(() => assertTeamDiscoveryAllowed(createEvent('registration_open'), {
+      isEventAdmin: false,
       isTeamMember: false,
       applicationStatus: 'approved'
     })).not.toThrow()
 
-    expect(() => assertTeamDiscoveryAllowed(createHackathon('judging_preparation'), {
-      isHackathonAdmin: false,
+    expect(() => assertTeamDiscoveryAllowed(createEvent('judging_preparation'), {
+      isEventAdmin: false,
       isTeamMember: false,
       applicationStatus: 'approved'
     })).not.toThrow()
 
-    expect(() => assertTeamDiscoveryAllowed(createHackathon('judging_preparation'), {
-      isHackathonAdmin: false,
+    expect(() => assertTeamDiscoveryAllowed(createEvent('judging_preparation'), {
+      isEventAdmin: false,
       isTeamMember: true,
       applicationStatus: null
     })).not.toThrow()
@@ -101,15 +102,16 @@ describe('team formation utilities', () => {
       displayName: 'User Admin'
     })
 
-    await harness.database.insert(hackathons).values({
-      ...createHackathon('registration_open'),
-      id: 'hackathon_1',
+    await harness.database.insert(events).values({
+      ...createEvent('registration_open'),
+      id: 'event_1',
+      eventType: 'hackathon',
       createdByUserId: 'user_admin'
     })
 
     await harness.database.insert(teams).values({
       id: 'team_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Fixture Team',
       slug: 'fixture-team',
       isOpenToJoinRequests: true,
@@ -130,7 +132,7 @@ describe('team formation utilities', () => {
 
     await expect(assertLeaveOrRemovalAllowed(
       harness.database,
-      createHackathon('registration_open'),
+      createEvent('registration_open'),
       [member],
       member
     )).resolves.toEqual({
@@ -151,15 +153,16 @@ describe('team formation utilities', () => {
       displayName: 'User One'
     })
 
-    await harness.database.insert(hackathons).values({
-      ...createHackathon('registration_open'),
-      id: 'hackathon_1',
+    await harness.database.insert(events).values({
+      ...createEvent('registration_open'),
+      id: 'event_1',
+      eventType: 'hackathon',
       createdByUserId: 'user_1'
     })
 
     await harness.database.insert(teams).values({
       id: 'team_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Fixture Team',
       slug: 'fixture-team',
       isOpenToJoinRequests: true,
@@ -185,7 +188,7 @@ describe('team formation utilities', () => {
 
     await expect(assertLeaveOrRemovalAllowed(
       harness.database,
-      createHackathon('registration_open'),
+      createEvent('registration_open'),
       [member],
       member
     )).rejects.toThrowError(ApiError)
@@ -194,7 +197,7 @@ describe('team formation utilities', () => {
 
     await expect(assertLeaveOrRemovalAllowed(
       harness.database,
-      createHackathon('judging_preparation'),
+      createEvent('judging_preparation'),
       [member],
       member
     )).rejects.toThrowError(ApiError)
@@ -334,16 +337,17 @@ describe('team formation utilities', () => {
       }
     ])
 
-    await harness.database.insert(hackathons).values({
-      ...createHackathon('registration_open'),
-      id: 'hackathon_1',
+    await harness.database.insert(events).values({
+      ...createEvent('registration_open'),
+      id: 'event_1',
+      eventType: 'hackathon',
       createdByUserId: 'user_admin'
     })
 
     await harness.database.insert(teams).values([
       {
         id: 'team_solo',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Alpha Solo',
         slug: 'alpha-solo',
         workspaceMode: 'solo',
@@ -352,7 +356,7 @@ describe('team formation utilities', () => {
       },
       {
         id: 'team_open',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Beta Builders',
         slug: 'beta-builders',
         workspaceMode: 'team',
@@ -361,7 +365,7 @@ describe('team formation utilities', () => {
       },
       {
         id: 'team_closed',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Gamma Guild',
         slug: 'gamma-guild',
         workspaceMode: 'team',
@@ -370,7 +374,7 @@ describe('team formation utilities', () => {
       },
       {
         id: 'team_full',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Delta Full',
         slug: 'delta-full',
         workspaceMode: 'team',
@@ -379,7 +383,7 @@ describe('team formation utilities', () => {
       },
       {
         id: 'team_inactive',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Echo Inactive',
         slug: 'echo-inactive',
         workspaceMode: 'team',
@@ -474,8 +478,8 @@ describe('team formation utilities', () => {
 
     const result = await listVisibleTeams(
       harness.database,
-      createHackathon('registration_open'),
-      'hackathon_1',
+      createEvent('registration_open'),
+      'event_1',
       {
         page: 1,
         page_size: 10,

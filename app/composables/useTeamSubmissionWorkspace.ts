@@ -1,4 +1,4 @@
-import type { PublicHackathon } from '~/domains/hackathons/presentation'
+import type { PublicEvent } from '~/domains/events/presentation'
 import type {
   TeamSubmissionFormInput,
   TeamSubmissionRecord
@@ -23,9 +23,9 @@ function toSectionErrorMessage(error: unknown, fallback: string) {
 }
 
 export function useTeamSubmissionWorkspace(
-  hackathon: MaybeRefOrGetter<Pick<PublicHackathon, 'state'>>,
+  event: MaybeRefOrGetter<Pick<PublicEvent, 'state'>>,
   options: {
-    visibleHackathonId: MaybeRefOrGetter<string | null | undefined>
+    visibleEventId: MaybeRefOrGetter<string | null | undefined>
     team: MaybeRefOrGetter<TeamSubmissionWorkspaceTeam | null | undefined>
     canViewSubmission: MaybeRefOrGetter<boolean>
     canManageSubmission: MaybeRefOrGetter<boolean>
@@ -34,10 +34,10 @@ export function useTeamSubmissionWorkspace(
   }
 ) {
   const apiFetch = $fetch
-  const resolvedHackathon = computed(() => toValue(hackathon))
-  const resolvedHackathonId = computed(() => {
-    const hackathonId = toValue(options.visibleHackathonId)
-    return typeof hackathonId === 'string' && hackathonId.trim().length > 0 ? hackathonId : null
+  const resolvedEvent = computed(() => toValue(event))
+  const resolvedEventId = computed(() => {
+    const eventId = toValue(options.visibleEventId)
+    return typeof eventId === 'string' && eventId.trim().length > 0 ? eventId : null
   })
   const resolvedTeam = computed(() => toValue(options.team) ?? null)
   const resolvedTeamId = computed(() => {
@@ -52,11 +52,11 @@ export function useTeamSubmissionWorkspace(
   const initialSubmission = computed(() => toValue(options.initialSubmission ?? null) ?? null)
   const hasInitialSubmissionState = computed(() => Boolean(toValue(options.hasInitialSubmissionState ?? false)))
   const initialSubmissionStateKey = computed(() => {
-    if (!hasInitialSubmissionState.value || !resolvedHackathonId.value || !resolvedTeamId.value || !canViewSubmission.value) {
+    if (!hasInitialSubmissionState.value || !resolvedEventId.value || !resolvedTeamId.value || !canViewSubmission.value) {
       return null
     }
 
-    return `${resolvedHackathonId.value}:${resolvedTeamId.value}`
+    return `${resolvedEventId.value}:${resolvedTeamId.value}`
   })
   const appliedInitialSubmissionStateKey = ref<string | null>(null)
 
@@ -88,19 +88,19 @@ export function useTeamSubmissionWorkspace(
   }
 
   async function fetchCurrentSubmission(teamId: string) {
-    if (!resolvedHackathonId.value) {
-      throw new Error('The current hackathon submission route could not be resolved.')
+    if (!resolvedEventId.value) {
+      throw new Error('The current event submission route could not be resolved.')
     }
 
     const response = await apiFetch<TeamSubmissionApiDataResponse<TeamSubmissionRecord | null>>(
-      `/api/hackathons/${resolvedHackathonId.value}/teams/${teamId}/submission`
+      `/api/events/${resolvedEventId.value}/teams/${teamId}/submission`
     )
 
     return response.data
   }
 
   async function loadCurrentSubmission() {
-    if (!resolvedHackathonId.value || !resolvedTeamId.value || !canViewSubmission.value) {
+    if (!resolvedEventId.value || !resolvedTeamId.value || !canViewSubmission.value) {
       resetSubmissionState()
       return
     }
@@ -152,14 +152,14 @@ export function useTeamSubmissionWorkspace(
   }
 
   async function createSubmissionDraft(input: TeamSubmissionFormInput) {
-    if (!resolvedHackathonId.value || !resolvedTeamId.value) {
+    if (!resolvedEventId.value || !resolvedTeamId.value) {
       mutationError.value = 'The team submission route could not be resolved.'
       return null
     }
 
     const submission = await runMutation(`create-submission:${resolvedTeamId.value}`, async () => {
       const response = await apiFetch<TeamSubmissionApiDataResponse<TeamSubmissionRecord>>(
-        `/api/hackathons/${resolvedHackathonId.value}/teams/${resolvedTeamId.value}/submission`,
+        `/api/events/${resolvedEventId.value}/teams/${resolvedTeamId.value}/submission`,
         {
           method: 'POST',
           body: input
@@ -175,14 +175,14 @@ export function useTeamSubmissionWorkspace(
   }
 
   async function updateCurrentSubmission(input: TeamSubmissionFormInput) {
-    if (!resolvedHackathonId.value || !resolvedTeamId.value || !currentSubmission.value) {
+    if (!resolvedEventId.value || !resolvedTeamId.value || !currentSubmission.value) {
       mutationError.value = 'The team submission workspace is unavailable for edits.'
       return null
     }
 
     const submission = await runMutation(`update-submission:${currentSubmission.value.id}`, async () => {
       const response = await apiFetch<TeamSubmissionApiDataResponse<TeamSubmissionRecord>>(
-        `/api/hackathons/${resolvedHackathonId.value}/teams/${resolvedTeamId.value}/submission`,
+        `/api/events/${resolvedEventId.value}/teams/${resolvedTeamId.value}/submission`,
         {
           method: 'PATCH',
           body: input
@@ -198,14 +198,14 @@ export function useTeamSubmissionWorkspace(
   }
 
   async function submitCurrentSubmission() {
-    if (!resolvedHackathonId.value || !resolvedTeamId.value || !currentSubmission.value) {
+    if (!resolvedEventId.value || !resolvedTeamId.value || !currentSubmission.value) {
       mutationError.value = 'The team submission workspace is unavailable for submission.'
       return null
     }
 
     const submission = await runMutation(`submit-submission:${currentSubmission.value.id}`, async () => {
       const response = await apiFetch<TeamSubmissionApiDataResponse<TeamSubmissionRecord>>(
-        `/api/hackathons/${resolvedHackathonId.value}/teams/${resolvedTeamId.value}/submission/actions/submit`,
+        `/api/events/${resolvedEventId.value}/teams/${resolvedTeamId.value}/submission/actions/submit`,
         {
           method: 'POST'
         }
@@ -220,14 +220,14 @@ export function useTeamSubmissionWorkspace(
   }
 
   async function withdrawCurrentSubmission() {
-    if (!resolvedHackathonId.value || !resolvedTeamId.value || !currentSubmission.value) {
+    if (!resolvedEventId.value || !resolvedTeamId.value || !currentSubmission.value) {
       mutationError.value = 'The team submission workspace is unavailable for withdrawal.'
       return null
     }
 
     const submission = await runMutation(`withdraw-submission:${currentSubmission.value.id}`, async () => {
       const response = await apiFetch<TeamSubmissionApiDataResponse<TeamSubmissionRecord>>(
-        `/api/hackathons/${resolvedHackathonId.value}/teams/${resolvedTeamId.value}/submission/actions/withdraw`,
+        `/api/events/${resolvedEventId.value}/teams/${resolvedTeamId.value}/submission/actions/withdraw`,
         {
           method: 'POST'
         }
@@ -242,14 +242,14 @@ export function useTeamSubmissionWorkspace(
   }
 
   async function updateCurrentSubmissionPublicVisibility(isPubliclyVisible: boolean) {
-    if (!resolvedHackathonId.value || !resolvedTeamId.value || !currentSubmission.value) {
+    if (!resolvedEventId.value || !resolvedTeamId.value || !currentSubmission.value) {
       mutationError.value = 'The team submission workspace is unavailable for public publishing updates.'
       return null
     }
 
     const submission = await runMutation(`update-submission-public-visibility:${currentSubmission.value.id}`, async () => {
       const response = await apiFetch<TeamSubmissionApiDataResponse<TeamSubmissionRecord>>(
-        `/api/hackathons/${resolvedHackathonId.value}/teams/${resolvedTeamId.value}/submission/public-visibility`,
+        `/api/events/${resolvedEventId.value}/teams/${resolvedTeamId.value}/submission/public-visibility`,
         {
           method: 'PATCH',
           body: {
@@ -266,8 +266,8 @@ export function useTeamSubmissionWorkspace(
     return submission
   }
 
-  watch([resolvedHackathonId, resolvedTeamId, canViewSubmission], async ([hackathonId, teamId, canView]) => {
-    if (!hackathonId || !teamId || !canView) {
+  watch([resolvedEventId, resolvedTeamId, canViewSubmission], async ([eventId, teamId, canView]) => {
+    if (!eventId || !teamId || !canView) {
       resetSubmissionState()
       return
     }
@@ -292,8 +292,8 @@ export function useTeamSubmissionWorkspace(
     loadCurrentSubmission,
     mutationError,
     pendingActionKey,
-    resolvedHackathon,
-    resolvedHackathonId,
+    resolvedEvent,
+    resolvedEventId,
     resolvedTeam,
     resolvedTeamId,
     canViewSubmission,

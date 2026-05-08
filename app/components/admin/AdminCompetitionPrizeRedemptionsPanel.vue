@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { HackathonState } from '~/domains/hackathons/states'
+import type { EventState } from '~/domains/events/states'
 import type { WinnerEntry } from '~/domains/outcomes/published-outcomes'
 import type {
   PrizeRedemptionBlindRankingEntry,
@@ -10,8 +10,8 @@ import type {
 import {
   formatPrizeRank,
   formatPrizeReward
-} from '~/domains/hackathons/presentation'
-import { getPublishedHackathonRosterLinks } from '~/domains/hackathons/published-roster'
+} from '~/domains/events/presentation'
+import { getPublishedEventRosterLinks } from '~/domains/events/published-roster'
 import {
   buildPrizeRedemptionPostShortlistEntries,
   buildPrizeRedemptionOperationsView,
@@ -20,7 +20,7 @@ import {
 } from '~/domains/prize-redemptions'
 
 const props = defineProps<{
-  hackathonState: HackathonState
+  eventState: EventState
   winners: WinnerEntry[]
   redemptions: PrizeRedemptionRecord[]
   blindRankingEntries: PrizeRedemptionBlindRankingEntry[]
@@ -32,10 +32,10 @@ const props = defineProps<{
 }>()
 
 const redemptionsVisible = computed(() =>
-  ['winners_announced', 'completed'].includes(props.hackathonState)
+  ['winners_announced', 'completed'].includes(props.eventState)
 )
 const isCompleted = computed(() =>
-  props.hackathonState === 'completed'
+  props.eventState === 'completed'
 )
 const pendingCount = computed(() => props.redemptions.filter(redemption => redemption.status === 'pending').length)
 const redeemedCount = computed(() => props.redemptions.filter(redemption => redemption.status === 'redeemed').length)
@@ -134,8 +134,8 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
           variant="soft"
           :title="isCompleted ? 'No winning benefits assigned' : 'No redemption records yet'"
           :description="isCompleted
-            ? 'This completed hackathon does not currently map any final-ranked teams to configured prizes.'
-            : 'This hackathon currently has no redemption records to review.'"
+            ? 'This completed event does not currently map any final-ranked teams to configured prizes.'
+            : 'This event currently has no redemption records to review.'"
         />
 
         <div
@@ -340,11 +340,11 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
                       </div>
 
                       <div
-                        v-if="getPublishedHackathonRosterLinks(member).length > 0"
+                        v-if="getPublishedEventRosterLinks(member).length > 0"
                         class="flex flex-wrap gap-2"
                       >
                         <a
-                          v-for="link in getPublishedHackathonRosterLinks(member)"
+                          v-for="link in getPublishedEventRosterLinks(member)"
                           :key="link.key"
                           :href="link.href"
                           target="_blank"
@@ -525,11 +525,11 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
                   </div>
 
                   <div
-                    v-if="getPublishedHackathonRosterLinks(member).length > 0"
+                    v-if="getPublishedEventRosterLinks(member).length > 0"
                     class="flex flex-wrap gap-2"
                   >
                     <a
-                      v-for="link in getPublishedHackathonRosterLinks(member)"
+                      v-for="link in getPublishedEventRosterLinks(member)"
                       :key="link.key"
                       :href="link.href"
                       target="_blank"
@@ -708,11 +708,11 @@ function formatPrizeRewardSummary(prize: WinnerEntry['prizes'][number]) {
                   </div>
 
                   <div
-                    v-if="getPublishedHackathonRosterLinks(member).length > 0"
+                    v-if="getPublishedEventRosterLinks(member).length > 0"
                     class="flex flex-wrap gap-2"
                   >
                     <a
-                      v-for="link in getPublishedHackathonRosterLinks(member)"
+                      v-for="link in getPublishedEventRosterLinks(member)"
                       :key="link.key"
                       :href="link.href"
                       target="_blank"

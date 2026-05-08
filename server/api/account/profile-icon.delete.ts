@@ -7,15 +7,15 @@ import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import { deleteProfileIconObject } from '#server/domains/accounts/profile-icons'
 
-export default defineApiHandler(async (event) => {
-  const actor = await requirePlatformActor(event)
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requirePlatformActor(h3Event)
 
   if (actor.platformUser.profileIconUpdatedAt) {
-    await deleteProfileIconObject(event, actor.platformUser.id)
+    await deleteProfileIconObject(h3Event, actor.platformUser.id)
   }
 
   const user = await updatePlatformAccountProfileIconTimestamp(
-    getDatabase(event),
+    getDatabase(h3Event),
     actor.platformUser.id,
     null
   )

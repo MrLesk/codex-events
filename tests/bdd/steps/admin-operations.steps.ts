@@ -60,40 +60,40 @@ async function isDecisionButtonActive(button: ReturnType<Page['getByTestId']>, d
   return className?.includes(decisionButtonActiveClass(decision)) ?? false
 }
 
-function getCurrentHackathonId(page: Page) {
+function getCurrentEventId(page: Page) {
   const segments = new URL(page.url()).pathname.split('/').filter(Boolean)
-  return segments[segments.indexOf('hackathons') + 1] ?? ''
+  return segments[segments.indexOf('events') + 1] ?? ''
 }
 
-function resolveHackathonId(hackathonSlug: string) {
-  switch (hackathonSlug) {
-    case 'e2e-fixture-hackathon':
-      return 'hackathon_e2e_fixture'
-    case 'operations-fixture-hackathon':
-      return 'hackathon_e2e_operations_fixture'
+function resolveEventId(eventSlug: string) {
+  switch (eventSlug) {
+    case 'e2e-fixture-event':
+      return 'event_e2e_fixture'
+    case 'operations-fixture-event':
+      return 'event_e2e_operations_fixture'
     default:
-      throw new Error(`No API hackathon id mapping is configured for workspace slug "${hackathonSlug}".`)
+      throw new Error(`No API event id mapping is configured for workspace slug "${eventSlug}".`)
   }
 }
 
-function resolveHackathonSlug(hackathonId: string) {
-  switch (hackathonId) {
-    case 'hackathon_e2e_fixture':
-      return 'e2e-fixture-hackathon'
-    case 'hackathon_e2e_operations_fixture':
-      return 'operations-fixture-hackathon'
+function resolveEventSlug(eventId: string) {
+  switch (eventId) {
+    case 'event_e2e_fixture':
+      return 'e2e-fixture-event'
+    case 'event_e2e_operations_fixture':
+      return 'operations-fixture-event'
     default:
-      throw new Error(`No account-workspace slug mapping is configured for hackathon "${hackathonId}".`)
+      throw new Error(`No account-workspace slug mapping is configured for event "${eventId}".`)
   }
 }
 
 async function waitForStagedApplicationDecision(page: Page, applicationId: string, decision: 'approved' | 'rejected') {
-  const apiClient = await createAuthenticatedApiClient('hackathon_admin')
-  const hackathonId = resolveHackathonId(getCurrentHackathonId(page))
+  const apiClient = await createAuthenticatedApiClient('event_admin')
+  const eventId = resolveEventId(getCurrentEventId(page))
 
   try {
     await expect.poll(async () => {
-      const response = await apiClient.get(`/api/hackathons/${hackathonId}/applications`)
+      const response = await apiClient.get(`/api/events/${eventId}/applications`)
 
       if (!response.ok()) {
         return null
@@ -116,12 +116,12 @@ async function waitForStagedApplicationDecision(page: Page, applicationId: strin
 }
 
 async function waitForApplicationStatus(page: Page, applicationId: string, status: 'submitted' | 'approved' | 'rejected' | 'withdrawn') {
-  const apiClient = await createAuthenticatedApiClient('hackathon_admin')
-  const hackathonId = resolveHackathonId(getCurrentHackathonId(page))
+  const apiClient = await createAuthenticatedApiClient('event_admin')
+  const eventId = resolveEventId(getCurrentEventId(page))
 
   try {
     await expect.poll(async () => {
-      const response = await apiClient.get(`/api/hackathons/${hackathonId}/applications`)
+      const response = await apiClient.get(`/api/events/${eventId}/applications`)
 
       if (!response.ok()) {
         return null
@@ -177,9 +177,9 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
   }
 }
 
-When('I open the admin operations page for hackathon {string} with the saved {string} session', async ({ page }, hackathonId: string, personaKey: string) => {
+When('I open the admin operations page for event {string} with the saved {string} session', async ({ page }, eventId: string, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto(`/account/hackathons/${resolveHackathonSlug(hackathonId)}?tab=participants`)
+  await page.goto(`/account/events/${resolveEventSlug(eventId)}?tab=participants`)
 })
 
 Then('I should see the admin operations text {string}', async ({ page }, text: string) => {
@@ -214,7 +214,7 @@ When('I approve the admin application {string}', async ({ page }, applicationId:
   if (!(await isDecisionButtonActive(approveButton, 'approve'))) {
     await Promise.all([
       page.waitForResponse(response =>
-        response.url().includes(`/api/hackathons/`)
+        response.url().includes(`/api/events/`)
         && response.url().includes(`/applications/${applicationId}/actions/approve`)
         && response.ok()
       ),
@@ -228,7 +228,7 @@ When('I approve the admin application {string}', async ({ page }, applicationId:
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/`)
+      response.url().includes(`/api/events/`)
       && response.url().includes('/applications/actions/apply-staged-decisions')
       && response.ok()
     ),
@@ -242,7 +242,7 @@ When('I reject the admin application {string}', async ({ page }, applicationId: 
   if (!(await isDecisionButtonActive(rejectButton, 'reject'))) {
     await Promise.all([
       page.waitForResponse(response =>
-        response.url().includes(`/api/hackathons/`)
+        response.url().includes(`/api/events/`)
         && response.url().includes(`/applications/${applicationId}/actions/reject`)
         && response.ok()
       ),
@@ -256,7 +256,7 @@ When('I reject the admin application {string}', async ({ page }, applicationId: 
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/`)
+      response.url().includes(`/api/events/`)
       && response.url().includes('/applications/actions/apply-staged-decisions')
       && response.ok()
     ),
@@ -279,14 +279,14 @@ Then('I should not see the admin team {string}', async ({ page }, teamId: string
 
 When('I load more admin teams', async ({ page }) => {
   const loadMoreButton = page.getByTestId('admin-operations-load-more-teams')
-  const hackathonId = getCurrentHackathonId(page)
+  const eventId = getCurrentEventId(page)
 
   await expect(loadMoreButton).toBeVisible()
   await Promise.all([
     page.waitForResponse((response) => {
       const url = new URL(response.url())
 
-      return url.pathname === `/api/hackathons/${hackathonId}/teams`
+      return url.pathname === `/api/events/${eventId}/teams`
         && url.searchParams.get('page') === '2'
         && response.ok()
     }),
@@ -303,7 +303,7 @@ When('I admin-withdraw the team submission for {string} with note {string}', asy
   await team.getByPlaceholder('Requested by team due to...').fill(note)
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/`)
+      response.url().includes(`/api/events/`)
       && response.url().includes(`/teams/${teamId}/submission/actions/admin-withdraw`)
       && response.ok()
     ),
@@ -325,7 +325,7 @@ When('I disqualify the admin team submission for {string} with note {string}', a
   await team.getByPlaceholder('Competition removal reason').fill(note)
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/`)
+      response.url().includes(`/api/events/`)
       && response.url().includes(`/teams/${teamId}/submission/actions/disqualify`)
       && response.ok()
     ),

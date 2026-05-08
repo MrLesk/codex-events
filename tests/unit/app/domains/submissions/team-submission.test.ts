@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   formatTeamSubmissionStatus,
   getCreateSubmissionAvailability,
-  hasHackathonEnteredSubmissionPhase,
+  hasEventEnteredSubmissionPhase,
   getTeamSubmissionStateSummary,
   getTeamSubmissionStatusColor,
   getSubmitSubmissionAvailability,
@@ -35,15 +35,15 @@ function createSubmission(status: TeamSubmissionRecord['status']): TeamSubmissio
 
 describe('team submission helpers', () => {
   test('treats submission_open and later states as the visible participant submission phase', () => {
-    expect(hasHackathonEnteredSubmissionPhase({
+    expect(hasEventEnteredSubmissionPhase({
       state: 'registration_open'
     })).toBe(false)
 
-    expect(hasHackathonEnteredSubmissionPhase({
+    expect(hasEventEnteredSubmissionPhase({
       state: 'submission_open'
     })).toBe(true)
 
-    expect(hasHackathonEnteredSubmissionPhase({
+    expect(hasEventEnteredSubmissionPhase({
       state: 'blind_review'
     })).toBe(true)
   })
@@ -187,7 +187,7 @@ describe('team submission helpers', () => {
       state: 'final_deliberation'
     }, createSubmission('locked'), true, false)).toEqual({
       isAllowed: false,
-      reason: 'Project publishing is available only after the hackathon is completed.'
+      reason: 'Project publishing is available only after the event is completed.'
     })
 
     expect(getUpdateSubmissionPublicVisibilityAvailability({

@@ -8,11 +8,11 @@ import {
 } from '#server/domains/accounts'
 import { parseValidatedBody } from '#server/http/validation'
 
-export default defineApiHandler(async (event) => {
-  const actor = await requirePlatformActor(event)
-  const body = await parseValidatedBody(event, platformAccountProfileBodySchema)
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requirePlatformActor(h3Event)
+  const body = await parseValidatedBody(h3Event, platformAccountProfileBodySchema)
 
-  const user = await updatePlatformAccountProfile(getDatabase(event), actor.platformUser.id, body)
+  const user = await updatePlatformAccountProfile(getDatabase(h3Event), actor.platformUser.id, body)
 
   return apiData({
     user

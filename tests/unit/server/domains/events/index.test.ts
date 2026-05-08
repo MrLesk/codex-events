@@ -1,0 +1,635 @@
+import { describe, expect, test } from 'vitest'
+
+import { ApiError } from '../../../../../server/http/api-error'
+import {
+  assertEventSchedule,
+  buildEventUpdatePayload,
+  assertOpenRegistrationAllowed,
+  assertOpenSubmissionAllowed,
+  assertRoleCapabilityInvariant,
+  createEventBodySchema,
+  getPublicEventBySlugOrThrow,
+  isEventRolePublishedInRoster,
+  serializeEvent,
+  serializePublicEvent,
+  serializePublishedEventRosterMember,
+  updateEventBodySchema
+} from '../../../../../server/domains/events'
+
+function buildEventRecord(
+  overrides: Partial<Parameters<typeof serializeEvent>[0]> = {}
+): Parameters<typeof serializeEvent>[0] {
+  return {
+    id: 'event_1',
+    eventType: 'hackathon',
+    name: 'Fixture Event',
+    slug: 'fixture-event',
+    description: 'Fixture event',
+    agendaItemsJson: '[]',
+    backgroundImageUrl: null,
+    bannerImageUrl: null,
+    discordServerUrl: null,
+    lumaEventUrl: null,
+    lumaEventApiId: null,
+    city: 'Vienna',
+    country: 'Austria',
+    address: 'Fixture Address',
+    registrationOpensAt: '2026-03-20T12:00:00.000Z',
+    registrationClosesAt: '2026-03-23T12:00:00.000Z',
+    submissionOpensAt: '2026-03-23T12:00:00.000Z',
+    submissionClosesAt: '2026-03-25T12:00:00.000Z',
+    state: 'draft',
+    blindReviewCount: 1,
+    pitchReviewEnabled: false,
+    blindScoreWeightPercent: 70,
+    pitchScoreWeightPercent: 30,
+    shortlistFinalistCount: 10,
+    pitchFinalistSubmissionIdsJson: '[]',
+    activePitchPresentationSubmissionId: null,
+    pitchPresentationsCompletedAt: null,
+    maxTeamMembers: 5,
+    participantsLimit: null,
+    autoApproveApplications: false,
+    inPersonEvent: false,
+    requireXProfile: false,
+    requireLinkedinProfile: false,
+    requireGithubProfile: false,
+    requireChatgptEmail: false,
+    requireOpenaiOrgId: false,
+    requireLumaEmail: false,
+    requireWhyThisEvent: false,
+    requireProofOfExecution: false,
+    requireSubmissionSummary: false,
+    requireSubmissionRepositoryUrl: false,
+    requireSubmissionDemoUrl: false,
+    currentApplicationTermsDocumentId: null,
+    currentWinnerTermsDocumentId: null,
+    createdByUserId: 'creator_1',
+    createdAt: '2026-03-20T10:00:00.000Z',
+    updatedAt: '2026-03-20T10:00:00.000Z',
+    ...overrides
+  }
+}
+
+function collectDrizzleParamValues(node: unknown, values: string[] = []) {
+  if (!node || typeof node !== 'object') {
+    return values
+  }
+
+  if (Array.isArray(node)) {
+    node.forEach(item => collectDrizzleParamValues(item, values))
+    return values
+  }
+
+  const sqlNode = node as {
+    constructor?: { name?: string }
+    queryChunks?: unknown[]
+    value?: unknown
+  }
+
+  if (sqlNode.constructor?.name === 'Param' && typeof sqlNode.value === 'string') {
+    values.push(sqlNode.value)
+    return values
+  }
+
+  if (Array.isArray(sqlNode.queryChunks)) {
+    collectDrizzleParamValues(sqlNode.queryChunks, values)
+  }
+
+  return values
+}
+
+describe('event management utilities', () => {
+  test('enforces canonical role capability combinations', () => {
+    expect(() => assertRoleCapabilityInvariant('judge', {
+      isInJudgePool: false,
+      isStaff: false
+    })).toThrowError(ApiError)
+    expect(() => assertRoleCapabilityInvariant('judge', {
+      isInJudgePool: true,
+      isStaff: false
+    })).not.toThrow()
+
+    expect(() => assertRoleCapabilityInvariant('staff', {
+      isInJudgePool: false,
+      isStaff: false
+    })).toThrowError(ApiError)
+    expect(() => assertRoleCapabilityInvariant('staff', {
+      isInJudgePool: false,
+      isStaff: true
+    })).not.toThrow()
+
+    expect(() => assertRoleCapabilityInvariant('event_admin', {
+      isInJudgePool: false,
+      isStaff: false
+    })).not.toThrow()
+    expect(() => assertRoleCapabilityInvariant('event_admin', {
+      isInJudgePool: true,
+      isStaff: true
+    })).not.toThrow()
+  })
+
+  test('validates canonical event schedule ordering', () => {
+    expect(() => assertEventSchedule({
+      eventType: 'hackathon',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z'
+    })).not.toThrow()
+
+    expect(() => assertEventSchedule({
+      eventType: 'hackathon',
+      registrationOpensAt: '2026-03-24T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z'
+    })).toThrowError(ApiError)
+  })
+
+  test('allows registration-only event schedules without submission windows', () => {
+    expect(() => assertEventSchedule({
+      eventType: 'meetup',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z'
+    })).not.toThrow()
+  })
+
+  test('allows opening submission only after registration closes and while the submission window is open', () => {
+    const now = new Date('2026-03-23T13:00:00.000Z')
+
+    expect(() => assertOpenSubmissionAllowed({
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
+      agendaItemsJson: '[]',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      discordServerUrl: null,
+      lumaEventUrl: null,
+      lumaEventApiId: null,
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      participantsLimit: null,
+      inPersonEvent: false,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaEmail: false,
+      requireSubmissionSummary: false,
+      requireSubmissionRepositoryUrl: false,
+      requireSubmissionDemoUrl: false,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    }, now)).not.toThrow()
+
+    expect(() => assertOpenSubmissionAllowed({
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
+      agendaItemsJson: '[]',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      discordServerUrl: null,
+      lumaEventUrl: null,
+      lumaEventApiId: null,
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-24T12:00:00.000Z',
+      submissionOpensAt: '2026-03-24T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      participantsLimit: null,
+      inPersonEvent: false,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaEmail: false,
+      requireSubmissionSummary: false,
+      requireSubmissionRepositoryUrl: false,
+      requireSubmissionDemoUrl: false,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    }, now)).toThrowError(ApiError)
+  })
+
+  test('allows opening registration only from draft while the registration window is active', () => {
+    const now = new Date('2026-03-21T13:00:00.000Z')
+
+    expect(() => assertOpenRegistrationAllowed({
+      id: 'event_1',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
+      agendaItemsJson: '[]',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      discordServerUrl: null,
+      lumaEventUrl: null,
+      lumaEventApiId: null,
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'draft',
+      maxTeamMembers: 5,
+      participantsLimit: null,
+      inPersonEvent: false,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaEmail: false,
+      requireWhyThisEvent: false,
+      requireProofOfExecution: false,
+      requireSubmissionSummary: false,
+      requireSubmissionRepositoryUrl: false,
+      requireSubmissionDemoUrl: false,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    }, now)).not.toThrow()
+
+    expect(() => assertOpenRegistrationAllowed({
+      id: 'event_1',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
+      agendaItemsJson: '[]',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      discordServerUrl: null,
+      lumaEventUrl: null,
+      lumaEventApiId: null,
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-24T12:00:00.000Z',
+      registrationClosesAt: '2026-03-25T12:00:00.000Z',
+      submissionOpensAt: '2026-03-25T12:00:00.000Z',
+      submissionClosesAt: '2026-03-27T12:00:00.000Z',
+      state: 'draft',
+      maxTeamMembers: 5,
+      participantsLimit: null,
+      inPersonEvent: false,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaEmail: false,
+      requireWhyThisEvent: false,
+      requireProofOfExecution: false,
+      requireSubmissionSummary: false,
+      requireSubmissionRepositoryUrl: false,
+      requireSubmissionDemoUrl: false,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    }, now)).toThrowError(ApiError)
+  })
+
+  test('builds partial event updates from agenda-only patch bodies', () => {
+    const patch = buildEventUpdatePayload({
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
+      agendaItemsJson: '[]',
+      backgroundImageUrl: null,
+      bannerImageUrl: null,
+      discordServerUrl: null,
+      lumaEventUrl: null,
+      lumaEventApiId: null,
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 5,
+      participantsLimit: null,
+      inPersonEvent: false,
+      requireXProfile: false,
+      requireLinkedinProfile: false,
+      requireGithubProfile: false,
+      requireChatgptEmail: false,
+      requireOpenaiOrgId: false,
+      requireLumaEmail: false,
+      requireWhyThisEvent: false,
+      requireProofOfExecution: false,
+      requireSubmissionSummary: false,
+      requireSubmissionRepositoryUrl: false,
+      requireSubmissionDemoUrl: false,
+      currentApplicationTermsDocumentId: null,
+      currentWinnerTermsDocumentId: null,
+      createdByUserId: 'creator_1',
+      createdAt: '2026-03-20T10:00:00.000Z',
+      updatedAt: '2026-03-20T10:00:00.000Z'
+    }, {
+      agendaItems: [
+        {
+          id: 'agenda_item_1',
+          startsAt: '2026-03-24T09:00:00.000Z',
+          endsAt: '2026-03-24T10:00:00.000Z',
+          title: 'Kickoff',
+          details: 'Welcome and orientation.',
+          displayOrder: 1
+        }
+      ]
+    })
+
+    expect(patch).toMatchObject({
+      agendaItemsJson: JSON.stringify([
+        {
+          id: 'agenda_item_1',
+          startsAt: '2026-03-24T09:00:00.000Z',
+          endsAt: '2026-03-24T10:00:00.000Z',
+          title: 'Kickoff',
+          details: 'Welcome and orientation.',
+          displayOrder: 1
+        }
+      ])
+    })
+    expect(patch).not.toHaveProperty('agendaItems')
+    expect(patch).not.toHaveProperty('name')
+    expect(typeof patch.updatedAt).toBe('string')
+  })
+
+  test('parses configurable judging fields in create and update request schemas', () => {
+    expect(createEventBodySchema.parse({
+      eventType: 'hackathon',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
+      agendaItems: [],
+      tracks: [],
+      discordServerUrl: 'https://discord.gg/codex',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      blindReviewCount: '2',
+      pitchReviewEnabled: 'true',
+      blindScoreWeightPercent: '60',
+      pitchScoreWeightPercent: '40',
+      shortlistFinalistCount: '12'
+    })).toMatchObject({
+      eventType: 'hackathon',
+      discordServerUrl: 'https://discord.gg/codex',
+      blindReviewCount: 2,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 60,
+      pitchScoreWeightPercent: 40,
+      shortlistFinalistCount: 12
+    })
+
+    expect(updateEventBodySchema.parse({
+      discordServerUrl: 'https://discord.gg/codex',
+      blindReviewCount: '0',
+      pitchReviewEnabled: false,
+      blindScoreWeightPercent: '100',
+      pitchScoreWeightPercent: '0',
+      shortlistFinalistCount: '8'
+    })).toMatchObject({
+      discordServerUrl: 'https://discord.gg/codex',
+      blindReviewCount: 0,
+      pitchReviewEnabled: false,
+      blindScoreWeightPercent: 100,
+      pitchScoreWeightPercent: 0,
+      shortlistFinalistCount: 8
+    })
+  })
+
+  test('accepts meetup creation without hackathon-only submission fields', () => {
+    expect(createEventBodySchema.parse({
+      eventType: 'meetup',
+      name: 'Fixture Meetup',
+      slug: 'fixture-meetup',
+      description: 'Fixture meetup',
+      agendaItems: [],
+      tracks: [],
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z'
+    })).toMatchObject({
+      eventType: 'meetup',
+      tracks: []
+    })
+  })
+
+  test('requires event type on creation', () => {
+    expect(() => createEventBodySchema.parse({
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
+      agendaItems: [],
+      tracks: [],
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Fixture Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z'
+    })).toThrow()
+  })
+
+  test('rejects competition configuration patches on registration-only events', () => {
+    expect(() => buildEventUpdatePayload(buildEventRecord({
+      eventType: 'build'
+    }), {
+      tracks: [{
+        id: 'track_1',
+        name: 'Track',
+        description: 'Track description',
+        displayOrder: 1
+      }]
+    })).toThrowError(ApiError)
+  })
+
+  test('serializes configurable judging fields for internal event responses', () => {
+    expect(serializeEvent(buildEventRecord({
+      state: 'blind_review',
+      blindReviewCount: 2,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 60,
+      pitchScoreWeightPercent: 40,
+      shortlistFinalistCount: 6,
+      pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_2', 'submission_1']),
+      activePitchPresentationSubmissionId: 'submission_2',
+      pitchPresentationsCompletedAt: null
+    }))).toMatchObject({
+      state: 'blind_review',
+      blindReviewCount: 2,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 60,
+      pitchScoreWeightPercent: 40,
+      shortlistFinalistCount: 6,
+      pitchPresentationSubmissionIds: ['submission_2', 'submission_1'],
+      activePitchPresentationSubmissionId: 'submission_2',
+      pitchPresentationsCompletedAt: null
+    })
+  })
+
+  test('hides street address in public event responses', () => {
+    expect(serializePublicEvent(buildEventRecord({
+      address: 'Fixture Address'
+    }))).toMatchObject({
+      city: 'Vienna',
+      country: 'Austria',
+      address: ''
+    })
+  })
+
+  test('includes canonical judging review states in public event visibility queries', async () => {
+    let capturedWhere: unknown
+
+    const database = {
+      query: {
+        events: {
+          findFirst: async ({ where }: { where: unknown }) => {
+            capturedWhere = where
+            return buildEventRecord({
+              state: 'blind_review'
+            })
+          }
+        }
+      }
+    } as Parameters<typeof getPublicEventBySlugOrThrow>[0]
+
+    await expect(getPublicEventBySlugOrThrow(database, 'fixture-event')).resolves.toMatchObject({
+      slug: 'fixture-event',
+      state: 'blind_review'
+    })
+
+    const visibilityValues = collectDrizzleParamValues(capturedWhere)
+
+    expect(visibilityValues).toContain('blind_review')
+    expect(visibilityValues).toContain('pitch')
+    expect(visibilityValues).toContain('pitch_review')
+    expect(visibilityValues).toContain('final_deliberation')
+    expect(visibilityValues).not.toContain('judge_review')
+  })
+
+  test('derives published judge and staff rosters from canonical role assignments', () => {
+    expect(isEventRolePublishedInRoster({
+      role: 'judge',
+      isInJudgePool: true,
+      isStaff: false
+    }, 'judge')).toBe(true)
+
+    expect(isEventRolePublishedInRoster({
+      role: 'event_admin',
+      isInJudgePool: true,
+      isStaff: false
+    }, 'judge')).toBe(true)
+
+    expect(isEventRolePublishedInRoster({
+      role: 'event_admin',
+      isInJudgePool: false,
+      isStaff: true
+    }, 'staff')).toBe(true)
+
+    expect(isEventRolePublishedInRoster({
+      role: 'staff',
+      isInJudgePool: false,
+      isStaff: true
+    }, 'judge')).toBe(false)
+  })
+
+  test('serializes published roster members with full-name fallback and public profile fields only', () => {
+    expect(serializePublishedEventRosterMember({
+      id: 'user_1',
+      auth0Subject: 'auth0|user_1',
+      email: 'hidden@example.com',
+      displayName: 'Display Name',
+      firstName: 'Display',
+      familyName: 'Name',
+      company: 'Codex Labs',
+      bio: 'Builds careful systems.',
+      isPlatformAdmin: true,
+      xProfileUrl: 'https://x.com/display-name',
+      linkedinProfileUrl: 'https://linkedin.com/in/display-name',
+      githubProfileUrl: 'https://github.com/display-name',
+      chatgptEmail: 'hidden-chatgpt@example.com',
+      openaiOrgId: 'org-hidden',
+      lumaEmail: 'hidden-luma@example.com',
+      lumaUsername: 'hidden-luma',
+      profileIconUpdatedAt: '2026-03-20T12:00:00.000Z',
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-02T00:00:00.000Z',
+      deletedAt: null
+    })).toEqual({
+      id: 'user_1',
+      fullName: 'Display Name',
+      company: 'Codex Labs',
+      bio: 'Builds careful systems.',
+      xProfileUrl: 'https://x.com/display-name',
+      linkedinProfileUrl: 'https://linkedin.com/in/display-name',
+      githubProfileUrl: 'https://github.com/display-name',
+      profileIconUpdatedAt: '2026-03-20T12:00:00.000Z'
+    })
+
+    expect(serializePublishedEventRosterMember({
+      id: 'user_2',
+      auth0Subject: 'auth0|user_2',
+      email: 'fallback@example.com',
+      displayName: 'Fallback Display',
+      firstName: '',
+      familyName: '',
+      company: null,
+      bio: null,
+      isPlatformAdmin: false,
+      xProfileUrl: null,
+      linkedinProfileUrl: null,
+      githubProfileUrl: null,
+      chatgptEmail: null,
+      openaiOrgId: null,
+      lumaEmail: null,
+      lumaUsername: null,
+      profileIconUpdatedAt: null,
+      createdAt: '2026-03-01T00:00:00.000Z',
+      updatedAt: '2026-03-02T00:00:00.000Z',
+      deletedAt: null
+    }).fullName).toBe('Fallback Display')
+  })
+})

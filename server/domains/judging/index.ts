@@ -6,29 +6,29 @@ import { z } from 'zod'
 import { requirePlatformActor } from '#server/auth/actor'
 import {
   assertJudgeAssignmentAccess,
-  assertHackathonAdminAccess,
-  resolveHackathonAuthorization,
+  assertEventAdminAccess,
+  resolveEventAuthorization,
   resolveJudgeAssignmentAuthorization,
   type JudgeAssignmentAuthorization
 } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import {
   evaluationCriteria,
-  hackathonTracks,
-  hackathonRoleAssignments,
+  eventTracks,
+  eventRoleAssignments,
   judgeAssignments,
   judgeCriterionScores,
   submissions,
   teamMembers,
   teams,
   userApplications,
-  type hackathons
+  type events
 } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
-import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/domains/hackathons'
+import { assertCompetitionEvent, getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 
-type HackathonRecord = typeof hackathons.$inferSelect
+type EventRecord = typeof events.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
 type JudgeAssignmentRecord = typeof judgeAssignments.$inferSelect
 type JudgeAssignmentInsert = typeof judgeAssignments.$inferInsert
@@ -97,7 +97,7 @@ export function chunkRowsForD1<T>(rows: T[], boundParametersPerRow: number) {
 export function serializeJudgeAssignment(assignment: JudgeAssignmentRecord) {
   return {
     id: assignment.id,
-    hackathonId: assignment.hackathonId,
+    eventId: assignment.eventId,
     submissionId: assignment.submissionId,
     judgeUserId: assignment.judgeUserId,
     reviewStage: assignment.reviewStage,
@@ -149,7 +149,7 @@ function serializeBlindApplication(application: typeof userApplications.$inferSe
 export function serializeBlindSubmission(
   submission: SubmissionRecord,
   applications: Array<typeof userApplications.$inferSelect>,
-  track: typeof hackathonTracks.$inferSelect | null
+  track: typeof eventTracks.$inferSelect | null
 ) {
   return {
     id: submission.id,
@@ -174,7 +174,7 @@ export function serializeBlindSubmission(
 export function serializePitchSubmission(
   submission: SubmissionRecord,
   team: typeof teams.$inferSelect,
-  track: typeof hackathonTracks.$inferSelect | null
+  track: typeof eventTracks.$inferSelect | null
 ) {
   return {
     id: submission.id,
@@ -219,25 +219,25 @@ export type JudgeAssignmentSummary = ReturnType<typeof serializeJudgeAssignment>
 
 export async function getJudgingAssignmentSummary(
   database: AppDatabase,
-  hackathon: Pick<HackathonRecord, 'id'>
+  event: Pick<EventRecord, 'id'>
 ) {
   const [totalRows, activeRows, completedPitchRows] = await Promise.all([
     database
       .select({ total: count() })
       .from(judgeAssignments)
-      .where(eq(judgeAssignments.hackathonId, hackathon.id)),
+      .where(eq(judgeAssignments.eventId, event.id)),
     database
       .select({ total: count() })
       .from(judgeAssignments)
       .where(and(
-        eq(judgeAssignments.hackathonId, hackathon.id),
+        eq(judgeAssignments.eventId, event.id),
         inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses])
       )),
     database
       .select({ total: count() })
       .from(judgeAssignments)
       .where(and(
-        eq(judgeAssignments.hackathonId, hackathon.id),
+        eq(judgeAssignments.eventId, event.id),
         eq(judgeAssignments.reviewStage, 'pitch_review'),
         eq(judgeAssignments.status, 'judge_completed')
       ))
@@ -252,11 +252,11 @@ export async function getJudgingAssignmentSummary(
 
 export async function listActiveJudgeAssignmentSummaries(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   query: ListJudgeAssignmentsQuery = { page: 1, page_size: 100 }
 ) {
   const activeAssignmentWhere = and(
-    eq(judgeAssignments.hackathonId, hackathonId),
+    eq(judgeAssignments.eventId, eventId),
     inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses])
   )
   const [rows, totalRows] = await Promise.all([
@@ -315,7 +315,7 @@ export async function listActiveJudgeAssignmentSummaries(
           ...serializeJudgeAssignment(assignment),
           pitchSubmission: serializePitchSubmission(submissionRecord, {
             id: team.id,
-            hackathonId,
+            eventId,
             name: team.name,
             bio: null,
             slug: '',
@@ -339,26 +339,28 @@ export async function listActiveJudgeAssignmentSummaries(
 }
 
 export function assertStartJudgingPreparationAllowed(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   metrics: {
     submittedSubmissionCount: number
   },
   now: Date = new Date()
 ) {
-  assertAllowedState(hackathon.state, ['submission_open'], {
-    code: 'hackathon_state_invalid',
-    message: 'Submissions can only be stopped while the hackathon is in submission_open.',
+  assertCompetitionEvent(event)
+
+  assertAllowedState(event.state, ['submission_open'], {
+    code: 'event_state_invalid',
+    message: 'Submissions can only be stopped while the event is in submission_open.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
-  assertGuard(Date.parse(hackathon.submissionClosesAt) <= now.getTime(), {
+  assertGuard(Date.parse(event.submissionClosesAt) <= now.getTime(), {
     code: 'submission_window_still_open',
     message: 'Submissions can only be stopped after the submission window closes.',
     details: {
-      hackathonId: hackathon.id,
-      submissionClosesAt: hackathon.submissionClosesAt
+      eventId: event.id,
+      submissionClosesAt: event.submissionClosesAt
     }
   })
 
@@ -366,31 +368,33 @@ export function assertStartJudgingPreparationAllowed(
     code: 'submitted_submissions_required',
     message: 'Stopping submissions requires at least one submitted project.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 }
 
 export function assertStartJudgeReviewAllowed(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   metrics: {
     submittedSubmissionCount: number
     judgePoolCount: number
   }
 ) {
-  assertAllowedState(hackathon.state, ['judging_preparation'], {
-    code: 'hackathon_state_invalid',
-    message: 'Judge review can only start while the hackathon is in judging_preparation.',
+  assertCompetitionEvent(event)
+
+  assertAllowedState(event.state, ['judging_preparation'], {
+    code: 'event_state_invalid',
+    message: 'Judge review can only start while the event is in judging_preparation.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
-  assertGuard(hackathon.blindReviewCount > 0, {
+  assertGuard(event.blindReviewCount > 0, {
     code: 'blind_review_not_enabled',
     message: 'Blind review can only start when blind review is enabled.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
@@ -398,7 +402,7 @@ export function assertStartJudgeReviewAllowed(
     code: 'submitted_submissions_required',
     message: 'Blind review requires at least one submitted submission.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
@@ -406,46 +410,48 @@ export function assertStartJudgeReviewAllowed(
     code: 'judge_pool_required',
     message: 'Blind review requires at least one judge in the automatic judge pool.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
-  assertGuard(metrics.judgePoolCount >= hackathon.blindReviewCount, {
+  assertGuard(metrics.judgePoolCount >= event.blindReviewCount, {
     statusCode: 409,
     code: 'distinct_blind_review_judges_required',
     message: 'The automatic judge pool must include enough distinct judges for the configured blind review count.',
     details: {
-      hackathonId: hackathon.id,
-      blindReviewCount: hackathon.blindReviewCount,
+      eventId: event.id,
+      blindReviewCount: event.blindReviewCount,
       judgePoolCount: metrics.judgePoolCount
     }
   })
 }
 
 export function assertStartPitchAllowed(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   metrics: {
     competitionSubmissionCount: number
     finalistSubmissionCount: number
   }
 ) {
-  assertGuard(hackathon.pitchReviewEnabled, {
+  assertCompetitionEvent(event)
+
+  assertGuard(event.pitchReviewEnabled, {
     code: 'pitch_review_not_enabled',
     message: 'Pitch can only start when pitch review is enabled.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
-  const requiresShortlist = hackathon.blindReviewCount > 0
+  const requiresShortlist = event.blindReviewCount > 0
 
-  assertAllowedState(hackathon.state, requiresShortlist ? ['shortlist'] : ['judging_preparation'], {
-    code: 'hackathon_state_invalid',
+  assertAllowedState(event.state, requiresShortlist ? ['shortlist'] : ['judging_preparation'], {
+    code: 'event_state_invalid',
     message: requiresShortlist
       ? 'Pitch can only start from shortlist after finalists are selected.'
-      : 'Pitch can only start while the hackathon is in judging_preparation.',
+      : 'Pitch can only start while the event is in judging_preparation.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
@@ -457,44 +463,46 @@ export function assertStartPitchAllowed(
         ? 'Pitch requires at least one persisted finalist submission.'
         : 'Pitch requires at least one submitted submission.',
       details: {
-        hackathonId: hackathon.id
+        eventId: event.id
       }
     }
   )
 }
 
 export function assertStartPitchReviewAllowed(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   metrics: {
     lockedSubmissionCount: number
     finalistSubmissionCount: number
     judgePanelCount: number
   }
 ) {
-  assertGuard(hackathon.pitchReviewEnabled, {
+  assertCompetitionEvent(event)
+
+  assertGuard(event.pitchReviewEnabled, {
     code: 'pitch_review_not_enabled',
     message: 'Pitch review can only start when pitch review is enabled.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
-  assertAllowedState(hackathon.state, ['pitch'], {
-    code: 'hackathon_state_invalid',
+  assertAllowedState(event.state, ['pitch'], {
+    code: 'event_state_invalid',
     message: 'Pitch review can only start after the live pitch stage is active.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
   assertGuard(
-    hackathon.activePitchPresentationSubmissionId === null
-    && hackathon.pitchPresentationsCompletedAt !== null,
+    event.activePitchPresentationSubmissionId === null
+    && event.pitchPresentationsCompletedAt !== null,
     {
       code: 'pitch_presentations_incomplete',
       message: 'Pitch review can only start after all pitch presentations have been completed.',
       details: {
-        hackathonId: hackathon.id
+        eventId: event.id
       }
     }
   )
@@ -503,7 +511,7 @@ export function assertStartPitchReviewAllowed(
     code: 'judge_pool_required',
     message: 'Pitch review requires at least one judge in the automatic judge pool.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
@@ -513,31 +521,33 @@ export function assertStartPitchReviewAllowed(
       code: 'pitch_finalists_required',
       message: 'Pitch review requires at least one persisted finalist submission.',
       details: {
-        hackathonId: hackathon.id
+        eventId: event.id
       }
     }
   )
 }
 
 export function assertAdvancePitchPresentationAllowed(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   metrics: {
     finalistSubmissionCount: number
   }
 ) {
-  assertGuard(hackathon.pitchReviewEnabled, {
+  assertCompetitionEvent(event)
+
+  assertGuard(event.pitchReviewEnabled, {
     code: 'pitch_review_not_enabled',
     message: 'Pitch presentation control is only available when pitch review is enabled.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
-  assertAllowedState(hackathon.state, ['pitch'], {
-    code: 'hackathon_state_invalid',
+  assertAllowedState(event.state, ['pitch'], {
+    code: 'event_state_invalid',
     message: 'Pitch presentation control is only available while the live pitch stage is active.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
@@ -545,21 +555,21 @@ export function assertAdvancePitchPresentationAllowed(
     code: 'pitch_finalists_required',
     message: 'Pitch presentation control requires at least one finalist submission.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
-  assertGuard(hackathon.pitchPresentationsCompletedAt === null, {
+  assertGuard(event.pitchPresentationsCompletedAt === null, {
     code: 'pitch_presentations_already_completed',
     message: 'All pitch presentations have already been completed.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 }
 
 export function resolvePitchPresentationState(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   finalistSubmissionIds: string[]
 ) {
   const uniqueFinalistSubmissionIds = new Set(finalistSubmissionIds)
@@ -569,17 +579,17 @@ export function resolvePitchPresentationState(
     code: 'pitch_finalists_invalid',
     message: 'The stored pitch finalists are invalid.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
-  if (hackathon.pitchPresentationsCompletedAt !== null) {
-    assertGuard(hackathon.activePitchPresentationSubmissionId === null, {
+  if (event.pitchPresentationsCompletedAt !== null) {
+    assertGuard(event.activePitchPresentationSubmissionId === null, {
       statusCode: 500,
       code: 'pitch_presentation_state_invalid',
       message: 'The stored pitch presentation state is invalid.',
       details: {
-        hackathonId: hackathon.id
+        eventId: event.id
       }
     })
 
@@ -590,7 +600,7 @@ export function resolvePitchPresentationState(
     }
   }
 
-  if (!hackathon.activePitchPresentationSubmissionId) {
+  if (!event.activePitchPresentationSubmissionId) {
     return {
       currentSubmissionId: null,
       currentIndex: null,
@@ -599,7 +609,7 @@ export function resolvePitchPresentationState(
   }
 
   const currentIndex = finalistSubmissionIds.findIndex(
-    submissionId => submissionId === hackathon.activePitchPresentationSubmissionId
+    submissionId => submissionId === event.activePitchPresentationSubmissionId
   )
 
   assertGuard(currentIndex !== -1, {
@@ -607,24 +617,24 @@ export function resolvePitchPresentationState(
     code: 'pitch_presentation_state_invalid',
     message: 'The stored pitch presentation state is invalid.',
     details: {
-      hackathonId: hackathon.id,
-      submissionId: hackathon.activePitchPresentationSubmissionId
+      eventId: event.id,
+      submissionId: event.activePitchPresentationSubmissionId
     }
   })
 
   return {
-    currentSubmissionId: hackathon.activePitchPresentationSubmissionId,
+    currentSubmissionId: event.activePitchPresentationSubmissionId,
     currentIndex,
     isCompleted: false
   }
 }
 
 export function advancePitchPresentation(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   finalistSubmissionIds: string[],
   advancedAt: string
 ) {
-  const presentationState = resolvePitchPresentationState(hackathon, finalistSubmissionIds)
+  const presentationState = resolvePitchPresentationState(event, finalistSubmissionIds)
 
   if (presentationState.isCompleted) {
     throw new ApiError({
@@ -632,7 +642,7 @@ export function advancePitchPresentation(
       code: 'pitch_presentations_already_completed',
       message: 'All pitch presentations have already been completed.',
       details: {
-        hackathonId: hackathon.id
+        eventId: event.id
       }
     })
   }
@@ -660,39 +670,39 @@ export function advancePitchPresentation(
 }
 
 export function prunePitchPresentationProgress(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   previousSubmissionIds: string[],
   nextSubmissionIds: string[],
   removedSubmissionId: string,
   prunedAt: string
 ) {
-  if (hackathon.pitchPresentationsCompletedAt !== null) {
+  if (event.pitchPresentationsCompletedAt !== null) {
     return {
       activePitchPresentationSubmissionId: null,
-      pitchPresentationsCompletedAt: hackathon.pitchPresentationsCompletedAt
+      pitchPresentationsCompletedAt: event.pitchPresentationsCompletedAt
     }
   }
 
-  if (!hackathon.activePitchPresentationSubmissionId) {
+  if (!event.activePitchPresentationSubmissionId) {
     return {
       activePitchPresentationSubmissionId: null,
       pitchPresentationsCompletedAt: null
     }
   }
 
-  if (hackathon.activePitchPresentationSubmissionId !== removedSubmissionId) {
-    assertGuard(nextSubmissionIds.includes(hackathon.activePitchPresentationSubmissionId), {
+  if (event.activePitchPresentationSubmissionId !== removedSubmissionId) {
+    assertGuard(nextSubmissionIds.includes(event.activePitchPresentationSubmissionId), {
       statusCode: 500,
       code: 'pitch_presentation_state_invalid',
       message: 'The stored pitch presentation state is invalid.',
       details: {
-        hackathonId: hackathon.id,
-        submissionId: hackathon.activePitchPresentationSubmissionId
+        eventId: event.id,
+        submissionId: event.activePitchPresentationSubmissionId
       }
     })
 
     return {
-      activePitchPresentationSubmissionId: hackathon.activePitchPresentationSubmissionId,
+      activePitchPresentationSubmissionId: event.activePitchPresentationSubmissionId,
       pitchPresentationsCompletedAt: null
     }
   }
@@ -708,44 +718,44 @@ export function prunePitchPresentationProgress(
   }
 }
 
-export async function listSubmittedSubmissionsForHackathon(database: AppDatabase, hackathonId: string) {
+export async function listSubmittedSubmissionsForEvent(database: AppDatabase, eventId: string) {
   return await database
     .select(getTableColumns(submissions))
     .from(submissions)
     .innerJoin(teams, eq(teams.id, submissions.teamId))
     .where(and(
-      eq(teams.hackathonId, hackathonId),
+      eq(teams.eventId, eventId),
       eq(submissions.status, 'submitted')
     ))
     .orderBy(asc(submissions.submittedAt), asc(submissions.createdAt))
 }
 
-export async function listLockedSubmissionsForHackathon(database: AppDatabase, hackathonId: string) {
+export async function listLockedSubmissionsForEvent(database: AppDatabase, eventId: string) {
   return await database
     .select(getTableColumns(submissions))
     .from(submissions)
     .innerJoin(teams, eq(teams.id, submissions.teamId))
     .where(and(
-      eq(teams.hackathonId, hackathonId),
+      eq(teams.eventId, eventId),
       eq(submissions.status, 'locked')
     ))
     .orderBy(asc(submissions.lockedAt), asc(submissions.createdAt))
 }
 
-export async function listAutomaticJudgePoolForHackathon(database: AppDatabase, hackathonId: string) {
-  return await database.query.hackathonRoleAssignments.findMany({
+export async function listAutomaticJudgePoolForEvent(database: AppDatabase, eventId: string) {
+  return await database.query.eventRoleAssignments.findMany({
     where: and(
-      eq(hackathonRoleAssignments.hackathonId, hackathonId),
-      eq(hackathonRoleAssignments.isInJudgePool, true)
+      eq(eventRoleAssignments.eventId, eventId),
+      eq(eventRoleAssignments.isInJudgePool, true)
     ),
-    orderBy: [asc(hackathonRoleAssignments.createdAt), asc(hackathonRoleAssignments.userId)]
+    orderBy: [asc(eventRoleAssignments.createdAt), asc(eventRoleAssignments.userId)]
   })
 }
 
 export function buildInitialJudgeAssignments(
-  hackathonId: string,
+  eventId: string,
   submittedSubmissions: SubmissionRecord[],
-  judgePool: Array<typeof hackathonRoleAssignments.$inferSelect>,
+  judgePool: Array<typeof eventRoleAssignments.$inferSelect>,
   blindReviewCount: number,
   assignedAt: string
 ) {
@@ -760,8 +770,8 @@ export function buildInitialJudgeAssignments(
   }
 
   const compareJudgeLoad = (
-    left: (typeof hackathonRoleAssignments.$inferSelect),
-    right: (typeof hackathonRoleAssignments.$inferSelect)
+    left: (typeof eventRoleAssignments.$inferSelect),
+    right: (typeof eventRoleAssignments.$inferSelect)
   ) => {
     const leftLoad = loadByJudge.get(left.userId) ?? 0
     const rightLoad = loadByJudge.get(right.userId) ?? 0
@@ -787,7 +797,7 @@ export function buildInitialJudgeAssignments(
         code: 'distinct_blind_review_judges_required',
         message: 'The automatic judge pool must include enough distinct judges for the configured blind review count.',
         details: {
-          hackathonId,
+          eventId,
           submissionId: submission.id,
           blindReviewCount,
           judgePoolCount: judgePool.length
@@ -800,7 +810,7 @@ export function buildInitialJudgeAssignments(
           statusCode: 409,
           code: 'judge_pool_required',
           message: 'Blind review requires at least one judge in the automatic judge pool.',
-          details: { hackathonId }
+          details: { eventId }
         })
       }
 
@@ -809,7 +819,7 @@ export function buildInitialJudgeAssignments(
 
       return {
         id: crypto.randomUUID(),
-        hackathonId,
+        eventId,
         submissionId: submission.id,
         judgeUserId: selectedJudge.userId,
         reviewStage: 'blind_review',
@@ -823,9 +833,9 @@ export function buildInitialJudgeAssignments(
 }
 
 export function buildPitchReviewAssignments(
-  hackathonId: string,
+  eventId: string,
   finalistSubmissions: SubmissionRecord[],
-  judgePanel: Array<typeof hackathonRoleAssignments.$inferSelect>,
+  judgePanel: Array<typeof eventRoleAssignments.$inferSelect>,
   assignedAt: string
 ) {
   if (finalistSubmissions.length === 0 || judgePanel.length === 0) {
@@ -835,7 +845,7 @@ export function buildPitchReviewAssignments(
   return finalistSubmissions.flatMap(submission =>
     judgePanel.map(judge => ({
       id: crypto.randomUUID(),
-      hackathonId,
+      eventId,
       submissionId: submission.id,
       judgeUserId: judge.userId,
       reviewStage: 'pitch_review',
@@ -849,18 +859,18 @@ export function buildPitchReviewAssignments(
   )
 }
 
-export function parseStoredPitchFinalistSubmissionIds(hackathon: HackathonRecord) {
+export function parseStoredPitchFinalistSubmissionIds(event: EventRecord) {
   let parsedValue: unknown
 
   try {
-    parsedValue = JSON.parse(hackathon.pitchFinalistSubmissionIdsJson)
+    parsedValue = JSON.parse(event.pitchFinalistSubmissionIdsJson)
   } catch {
     throw new ApiError({
       statusCode: 500,
       code: 'pitch_finalists_invalid',
       message: 'The stored pitch finalists are invalid.',
       details: {
-        hackathonId: hackathon.id
+        eventId: event.id
       }
     })
   }
@@ -873,7 +883,7 @@ export function parseStoredPitchFinalistSubmissionIds(hackathon: HackathonRecord
       code: 'pitch_finalists_invalid',
       message: 'The stored pitch finalists are invalid.',
       details: {
-        hackathonId: hackathon.id
+        eventId: event.id
       }
     })
   }
@@ -882,13 +892,13 @@ export function parseStoredPitchFinalistSubmissionIds(hackathon: HackathonRecord
 }
 
 export function selectPitchReviewSubmissions(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   lockedSubmissions: SubmissionRecord[]
 ) {
-  const finalistSubmissionIds = parseStoredPitchFinalistSubmissionIds(hackathon)
+  const finalistSubmissionIds = parseStoredPitchFinalistSubmissionIds(event)
 
   if (finalistSubmissionIds.length === 0) {
-    if (hackathon.blindReviewCount === 0 && hackathon.state === 'judging_preparation') {
+    if (event.blindReviewCount === 0 && event.state === 'judging_preparation') {
       return lockedSubmissions
     }
 
@@ -901,7 +911,7 @@ export function selectPitchReviewSubmissions(
     code: 'pitch_finalists_invalid',
     message: 'The stored pitch finalists are invalid.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
@@ -915,7 +925,7 @@ export function selectPitchReviewSubmissions(
       code: 'pitch_finalists_invalid',
       message: 'The stored pitch finalists are invalid.',
       details: {
-        hackathonId: hackathon.id,
+        eventId: event.id,
         submissionId
       }
     })
@@ -926,7 +936,7 @@ export function selectPitchReviewSubmissions(
 
 export async function buildPrizeEligibilitySnapshots(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   teamIds: string[],
   snapshotAt: string
 ) {
@@ -940,7 +950,7 @@ export async function buildPrizeEligibilitySnapshots(
     .from(teamMembers)
     .innerJoin(teams, eq(teams.id, teamMembers.teamId))
     .where(and(
-      eq(teams.hackathonId, hackathonId),
+      eq(teams.eventId, eventId),
       isNull(teamMembers.leftAt)
     ))
     .orderBy(asc(teamMembers.joinedAt), asc(teamMembers.createdAt)))
@@ -948,7 +958,7 @@ export async function buildPrizeEligibilitySnapshots(
 
   return members.map(member => ({
     id: crypto.randomUUID(),
-    hackathonId,
+    eventId,
     teamId: member.teamId,
     userId: member.userId,
     snapshotAt,
@@ -981,17 +991,17 @@ export async function getBlindAssignmentDetails(
     return []
   }
 
-  const assignmentsByHackathonId = new Map<string, JudgeAssignmentRecord[]>()
+  const assignmentsByEventId = new Map<string, JudgeAssignmentRecord[]>()
 
   for (const assignment of assignments) {
-    const groupedAssignments = assignmentsByHackathonId.get(assignment.hackathonId) ?? []
+    const groupedAssignments = assignmentsByEventId.get(assignment.eventId) ?? []
     groupedAssignments.push(assignment)
-    assignmentsByHackathonId.set(assignment.hackathonId, groupedAssignments)
+    assignmentsByEventId.set(assignment.eventId, groupedAssignments)
   }
 
-  if (assignmentsByHackathonId.size > 1) {
+  if (assignmentsByEventId.size > 1) {
     const groupedDetails: BlindJudgeAssignmentDetail[] = (await Promise.all(
-      [...assignmentsByHackathonId.values()].map(groupedAssignments =>
+      [...assignmentsByEventId.values()].map(groupedAssignments =>
         getBlindAssignmentDetails(database, groupedAssignments)
       )
     )).flat()
@@ -1000,41 +1010,41 @@ export async function getBlindAssignmentDetails(
     return assignments.map(assignment => detailsByAssignmentId.get(assignment.id)!)
   }
 
-  const hackathonId = assignments[0]!.hackathonId
+  const eventId = assignments[0]!.eventId
 
   const [submissionRows, activeMembers, criteria, criterionScores, tracks, applicationRows] = await Promise.all([
     database
       .select(getTableColumns(submissions))
       .from(submissions)
       .innerJoin(teams, eq(teams.id, submissions.teamId))
-      .where(eq(teams.hackathonId, hackathonId)),
+      .where(eq(teams.eventId, eventId)),
     database
       .select(getTableColumns(teamMembers))
       .from(teamMembers)
       .innerJoin(teams, eq(teams.id, teamMembers.teamId))
       .where(and(
-        eq(teams.hackathonId, hackathonId),
+        eq(teams.eventId, eventId),
         isNull(teamMembers.leftAt)
       ))
       .orderBy(asc(teamMembers.joinedAt), asc(teamMembers.createdAt)),
     database.query.evaluationCriteria.findMany({
-      where: eq(evaluationCriteria.hackathonId, hackathonId),
-      orderBy: [asc(evaluationCriteria.hackathonId), asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)]
+      where: eq(evaluationCriteria.eventId, eventId),
+      orderBy: [asc(evaluationCriteria.eventId), asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)]
     }),
     database
       .select(getTableColumns(judgeCriterionScores))
       .from(judgeCriterionScores)
       .innerJoin(judgeAssignments, eq(judgeAssignments.id, judgeCriterionScores.judgeAssignmentId))
       .where(and(
-        eq(judgeAssignments.hackathonId, hackathonId),
+        eq(judgeAssignments.eventId, eventId),
         eq(judgeAssignments.reviewStage, 'blind_review')
       ))
       .orderBy(asc(judgeCriterionScores.createdAt)),
-    database.query.hackathonTracks.findMany({
-      where: eq(hackathonTracks.hackathonId, hackathonId)
+    database.query.eventTracks.findMany({
+      where: eq(eventTracks.eventId, eventId)
     }),
     database.query.userApplications.findMany({
-      where: eq(userApplications.hackathonId, hackathonId),
+      where: eq(userApplications.eventId, eventId),
       orderBy: [asc(userApplications.submittedAt), asc(userApplications.createdAt)]
     })
   ])
@@ -1059,10 +1069,10 @@ export async function getBlindAssignmentDetails(
     criterionScoresByAssignmentId.set(score.judgeAssignmentId, scores)
   }
 
-  const applicationsByHackathonAndUserId = new Map<string, typeof applicationRows[number]>()
+  const applicationsByEventAndUserId = new Map<string, typeof applicationRows[number]>()
 
   for (const application of applicationRows) {
-    applicationsByHackathonAndUserId.set(`${application.hackathonId}:${application.userId}`, application)
+    applicationsByEventAndUserId.set(`${application.eventId}:${application.userId}`, application)
   }
 
   return assignments.map((assignment) => {
@@ -1082,7 +1092,7 @@ export async function getBlindAssignmentDetails(
 
     const assignmentMembers = activeMembersByTeamId.get(submission.teamId) ?? []
     const applications = assignmentMembers
-      .map(member => applicationsByHackathonAndUserId.get(`${assignment.hackathonId}:${member.userId}`) ?? null)
+      .map(member => applicationsByEventAndUserId.get(`${assignment.eventId}:${member.userId}`) ?? null)
       .filter((application): application is NonNullable<typeof application> => Boolean(application))
     const assignmentScores = criterionScoresByAssignmentId.get(assignment.id) ?? []
 
@@ -1126,17 +1136,17 @@ export async function getPitchAssignmentDetails(
     return []
   }
 
-  const assignmentsByHackathonId = new Map<string, JudgeAssignmentRecord[]>()
+  const assignmentsByEventId = new Map<string, JudgeAssignmentRecord[]>()
 
   for (const assignment of assignments) {
-    const groupedAssignments = assignmentsByHackathonId.get(assignment.hackathonId) ?? []
+    const groupedAssignments = assignmentsByEventId.get(assignment.eventId) ?? []
     groupedAssignments.push(assignment)
-    assignmentsByHackathonId.set(assignment.hackathonId, groupedAssignments)
+    assignmentsByEventId.set(assignment.eventId, groupedAssignments)
   }
 
-  if (assignmentsByHackathonId.size > 1) {
+  if (assignmentsByEventId.size > 1) {
     const groupedDetails: PitchJudgeAssignmentDetail[] = (await Promise.all(
-      [...assignmentsByHackathonId.values()].map(groupedAssignments =>
+      [...assignmentsByEventId.values()].map(groupedAssignments =>
         getPitchAssignmentDetails(database, groupedAssignments)
       )
     )).flat()
@@ -1145,18 +1155,18 @@ export async function getPitchAssignmentDetails(
     return assignments.map(assignment => detailsByAssignmentId.get(assignment.id)!)
   }
 
-  const hackathonId = assignments[0]!.hackathonId
+  const eventId = assignments[0]!.eventId
   const [submissionRows, teamRows, trackRows] = await Promise.all([
     database
       .select(getTableColumns(submissions))
       .from(submissions)
       .innerJoin(teams, eq(teams.id, submissions.teamId))
-      .where(eq(teams.hackathonId, hackathonId)),
+      .where(eq(teams.eventId, eventId)),
     database.query.teams.findMany({
-      where: eq(teams.hackathonId, hackathonId)
+      where: eq(teams.eventId, eventId)
     }),
-    database.query.hackathonTracks.findMany({
-      where: eq(hackathonTracks.hackathonId, hackathonId)
+    database.query.eventTracks.findMany({
+      where: eq(eventTracks.eventId, eventId)
     })
   ])
   const submissionsById = new Map(submissionRows.map(submission => [submission.id, submission]))
@@ -1257,57 +1267,58 @@ export async function getJudgeAssignmentDetail(
 }
 
 async function getJudgeAssignmentRequestContext(
-  event: H3Event,
-  hackathonId: string,
+  h3Event: H3Event,
+  eventId: string,
   assignmentId: string
 ) {
-  const actor = await requirePlatformActor(event)
-  const database = getDatabase(event)
-  const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
-  const assignmentAuthorization = await resolveJudgeAssignmentAuthorization(event, assignmentId)
+  const actor = await requirePlatformActor(h3Event)
+  const database = getDatabase(h3Event)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
+  assertCompetitionEvent(event)
+  const assignmentAuthorization = await resolveJudgeAssignmentAuthorization(h3Event, assignmentId)
 
-  assertGuard(assignmentAuthorization.hackathonId === hackathonId, {
+  assertGuard(assignmentAuthorization.eventId === eventId, {
     statusCode: 404,
     code: 'judge_assignment_not_found',
     message: 'The requested judge assignment was not found.',
     details: {
       assignmentId,
-      hackathonId
+      eventId
     }
   })
 
   const assignment = await getJudgeAssignmentOrThrow(database, assignmentId)
-  const hackathonAuthorization = await resolveHackathonAuthorization(event, hackathonId)
+  const eventAuthorization = await resolveEventAuthorization(h3Event, eventId)
 
   return {
     actor,
     database,
-    hackathon,
+    event,
     assignment,
     assignmentAuthorization,
-    hackathonAuthorization
+    eventAuthorization
   }
 }
 
 export async function requireJudgeAssignmentContext(
   event: H3Event,
-  hackathonId: string,
+  eventId: string,
   assignmentId: string
 ) {
-  const context = await getJudgeAssignmentRequestContext(event, hackathonId, assignmentId)
+  const context = await getJudgeAssignmentRequestContext(event, eventId, assignmentId)
   assertJudgeAssignmentAccess(context.assignmentAuthorization)
   return context
 }
 
 export function assertJudgeReviewLifecycleState(
-  hackathon: HackathonRecord,
-  allowedStates: Array<HackathonRecord['state']>
+  event: EventRecord,
+  allowedStates: Array<EventRecord['state']>
 ) {
-  assertAllowedState(hackathon.state, allowedStates, {
-    code: 'hackathon_state_invalid',
-    message: 'This judging operation is not allowed in the current hackathon state.',
+  assertAllowedState(event.state, allowedStates, {
+    code: 'event_state_invalid',
+    message: 'This judging operation is not allowed in the current event state.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 }
@@ -1326,22 +1337,22 @@ export function assertJudgeAssignmentStatus(
   })
 }
 
-export function getHackathonStateForAssignmentReviewStage(
+export function getEventStateForAssignmentReviewStage(
   reviewStage: JudgeAssignmentRecord['reviewStage']
-): HackathonRecord['state'] {
+): EventRecord['state'] {
   return reviewStage === 'pitch_review' ? 'pitch_review' : 'blind_review'
 }
 
 export function assertAssignmentReviewStageIsActive(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   assignment: JudgeAssignmentRecord
 ) {
-  assertJudgeReviewLifecycleState(hackathon, [getHackathonStateForAssignmentReviewStage(assignment.reviewStage)])
+  assertJudgeReviewLifecycleState(event, [getEventStateForAssignmentReviewStage(assignment.reviewStage)])
 }
 
 export async function pickReplacementJudgeUserId(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   options?: {
     excludeJudgeUserIds?: string[]
     preferredJudgeUserId?: string
@@ -1350,7 +1361,7 @@ export async function pickReplacementJudgeUserId(
     excludeAssignmentId?: string
   }
 ) {
-  const judgePool = await listAutomaticJudgePoolForHackathon(database, hackathonId)
+  const judgePool = await listAutomaticJudgePoolForEvent(database, eventId)
   const excluded = new Set(options?.excludeJudgeUserIds ?? [])
   const eligibleJudges = judgePool.filter(judge => !excluded.has(judge.userId))
 
@@ -1360,7 +1371,7 @@ export async function pickReplacementJudgeUserId(
       code: 'eligible_replacement_judge_required',
       message: 'No eligible replacement judge is available for this assignment.',
       details: {
-        hackathonId,
+        eventId,
         excludedJudgeUserIds: [...excluded]
       }
     })
@@ -1368,7 +1379,7 @@ export async function pickReplacementJudgeUserId(
 
   const activeAssignments = await database.query.judgeAssignments.findMany({
     where: and(
-      eq(judgeAssignments.hackathonId, hackathonId),
+      eq(judgeAssignments.eventId, eventId),
       eq(judgeAssignments.reviewStage, options?.reviewStage ?? 'blind_review'),
       inArray(judgeAssignments.status, [...activeJudgeAssignmentStatuses])
     )
@@ -1397,7 +1408,7 @@ export async function pickReplacementJudgeUserId(
       code: 'eligible_replacement_judge_required',
       message: 'No eligible replacement judge is available without duplicating the blind-review judge for this submission.',
       details: {
-        hackathonId,
+        eventId,
         submissionId: options?.submissionId,
         excludedJudgeUserIds: [...excluded]
       }
@@ -1415,7 +1426,7 @@ export async function pickReplacementJudgeUserId(
       code: 'replacement_judge_invalid',
       message: 'The requested replacement judge is not in the automatic judge pool.',
       details: {
-        hackathonId,
+        eventId,
         judgeUserId: options.preferredJudgeUserId
       }
     })
@@ -1424,7 +1435,7 @@ export async function pickReplacementJudgeUserId(
       code: 'replacement_judge_invalid',
       message: 'The requested replacement judge already has another blind-review assignment for this submission.',
       details: {
-        hackathonId,
+        eventId,
         judgeUserId: options.preferredJudgeUserId,
         submissionId: options.submissionId
       }
@@ -1467,7 +1478,7 @@ export function buildReplacementAssignment(
 ) {
   return {
     id: crypto.randomUUID(),
-    hackathonId: assignment.hackathonId,
+    eventId: assignment.eventId,
     submissionId: assignment.submissionId,
     judgeUserId,
     reviewStage: assignment.reviewStage,
@@ -1499,20 +1510,20 @@ export function calculateAveragePitchScore(assignments: JudgeAssignmentRecord[])
 
 async function normalizeJudgeCriterionScores(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   body: z.infer<typeof saveJudgeAssignmentBodySchema>,
   requireComplete: boolean
 ) {
   const criteria = await database.query.evaluationCriteria.findMany({
-    where: eq(evaluationCriteria.hackathonId, hackathonId),
+    where: eq(evaluationCriteria.eventId, eventId),
     orderBy: [asc(evaluationCriteria.displayOrder), asc(evaluationCriteria.createdAt)]
   })
 
   assertGuard(criteria.length > 0, {
     code: 'evaluation_criteria_required',
-    message: 'Criterion scores cannot be recorded until evaluation criteria exist for the hackathon.',
+    message: 'Criterion scores cannot be recorded until evaluation criteria exist for the event.',
     details: {
-      hackathonId
+      eventId
     }
   })
 
@@ -1522,9 +1533,9 @@ async function normalizeJudgeCriterionScores(
   for (const criterionScore of body.criterionScores) {
     assertGuard(criteriaById.has(criterionScore.evaluationCriterionId), {
       code: 'evaluation_criterion_not_found',
-      message: 'Review scores must reference evaluation criteria from this hackathon.',
+      message: 'Review scores must reference evaluation criteria from this event.',
       details: {
-        hackathonId,
+        eventId,
         evaluationCriterionId: criterionScore.evaluationCriterionId
       }
     })
@@ -1533,7 +1544,7 @@ async function normalizeJudgeCriterionScores(
       code: 'duplicate_criterion_score',
       message: 'Each evaluation criterion can only be scored once per review.',
       details: {
-        hackathonId,
+        eventId,
         evaluationCriterionId: criterionScore.evaluationCriterionId
       }
     })
@@ -1546,7 +1557,7 @@ async function normalizeJudgeCriterionScores(
       code: 'complete_criterion_scores_required',
       message: 'A completed review must include a score for every evaluation criterion.',
       details: {
-        hackathonId,
+        eventId,
         expectedCriterionCount: criteria.length,
         providedCriterionCount: seenCriterionIds.size
       }
@@ -1558,18 +1569,18 @@ async function normalizeJudgeCriterionScores(
 
 export async function normalizeCompletionCriterionScores(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   body: z.infer<typeof completeJudgeAssignmentBodySchema>
 ) {
-  return await normalizeJudgeCriterionScores(database, hackathonId, body, true)
+  return await normalizeJudgeCriterionScores(database, eventId, body, true)
 }
 
 export async function normalizeSavedCriterionScores(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   body: z.infer<typeof saveJudgeAssignmentBodySchema>
 ) {
-  return await normalizeJudgeCriterionScores(database, hackathonId, body, false)
+  return await normalizeJudgeCriterionScores(database, eventId, body, false)
 }
 
 export async function saveJudgeCriterionScores(
@@ -1615,11 +1626,11 @@ export function normalizePitchReviewCompletion(
 
 export async function requireAdminAssignmentContext(
   event: H3Event,
-  hackathonId: string,
+  eventId: string,
   assignmentId: string
 ) {
-  const context = await getJudgeAssignmentRequestContext(event, hackathonId, assignmentId)
-  assertHackathonAdminAccess(context.hackathonAuthorization)
+  const context = await getJudgeAssignmentRequestContext(event, eventId, assignmentId)
+  assertEventAdminAccess(context.eventAuthorization)
   return context
 }
 

@@ -70,7 +70,7 @@ describe('useTeamSubmissionWorkspace', () => {
     const workspace = useTeamSubmissionWorkspace({
       state: 'submission_open'
     } as never, {
-      visibleHackathonId: 'hackathon_1',
+      visibleEventId: 'event_1',
       team: {
         id: 'team_1',
         isPersisted: true
@@ -112,7 +112,7 @@ describe('useTeamSubmissionWorkspace', () => {
     const workspace = useTeamSubmissionWorkspace({
       state: 'submission_open'
     } as never, {
-      visibleHackathonId: 'hackathon_1',
+      visibleEventId: 'event_1',
       team,
       canViewSubmission: true,
       canManageSubmission: true,
@@ -132,7 +132,7 @@ describe('useTeamSubmissionWorkspace', () => {
     await waitFor(() => workspace.currentSubmission.value?.teamId === 'team_2')
 
     expect(workspace.currentSubmissionStatus.value).toBe('success')
-    expect(apiFetch).toHaveBeenCalledWith('/api/hackathons/hackathon_1/teams/team_2/submission')
+    expect(apiFetch).toHaveBeenCalledWith('/api/events/event_1/teams/team_2/submission')
   })
 
   test('updates submission public visibility through the dedicated route', async () => {
@@ -148,7 +148,7 @@ describe('useTeamSubmissionWorkspace', () => {
     const workspace = useTeamSubmissionWorkspace({
       state: 'completed'
     } as never, {
-      visibleHackathonId: 'hackathon_1',
+      visibleEventId: 'event_1',
       team: {
         id: 'team_1',
         isPersisted: true
@@ -166,7 +166,7 @@ describe('useTeamSubmissionWorkspace', () => {
 
     await workspace.updateCurrentSubmissionPublicVisibility(true)
 
-    expect(apiFetch).toHaveBeenCalledWith('/api/hackathons/hackathon_1/teams/team_1/submission/public-visibility', {
+    expect(apiFetch).toHaveBeenCalledWith('/api/events/event_1/teams/team_1/submission/public-visibility', {
       method: 'PATCH',
       body: {
         isPubliclyVisible: true

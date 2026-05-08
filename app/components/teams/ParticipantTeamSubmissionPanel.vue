@@ -3,7 +3,7 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
 import { Switch as UiSwitch } from '~/components/ui/switch'
-import type { PublicHackathonState } from '~/domains/hackathons/presentation'
+import type { PublicEventState } from '~/domains/events/presentation'
 import type {
   SubmissionTrackOption,
   TeamSubmissionActionAvailability,
@@ -31,7 +31,7 @@ const form = defineModel<{
 
 const props = defineProps<{
   teamId: string
-  hackathonState: PublicHackathonState
+  eventState: PublicEventState
   submission: TeamSubmissionRecord | null
   status: 'idle' | 'pending' | 'success' | 'error'
   errorMessage?: string

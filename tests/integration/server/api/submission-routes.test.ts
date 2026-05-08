@@ -2,21 +2,21 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { eq } from 'drizzle-orm'
 
-import getSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/index.get'
-import createSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/index.post'
-import patchSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/index.patch'
-import patchSubmissionPublicVisibilityHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/public-visibility.patch'
-import submitSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/actions/submit.post'
-import withdrawSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/actions/withdraw.post'
-import adminWithdrawSubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/actions/admin-withdraw.post'
-import disqualifySubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/actions/disqualify.post'
-import listNoSubmissionTeamsHandler from '../../../../server/api/hackathons/[hackathonId]/no-submission-teams/index.get'
-import getSubmissionMonitorHandler from '../../../../server/api/hackathons/[hackathonId]/teams/submission-monitor.get'
+import getSubmissionHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/submission/index.get'
+import createSubmissionHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/submission/index.post'
+import patchSubmissionHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/submission/index.patch'
+import patchSubmissionPublicVisibilityHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/submission/public-visibility.patch'
+import submitSubmissionHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/submission/actions/submit.post'
+import withdrawSubmissionHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/submission/actions/withdraw.post'
+import adminWithdrawSubmissionHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/submission/actions/admin-withdraw.post'
+import disqualifySubmissionHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/submission/actions/disqualify.post'
+import listNoSubmissionTeamsHandler from '../../../../server/api/events/[eventId]/no-submission-teams/index.get'
+import getSubmissionMonitorHandler from '../../../../server/api/events/[eventId]/teams/submission-monitor.get'
 import {
   auditLogs,
-  hackathonRoleAssignments,
-  hackathonTermsDocuments,
-  hackathons,
+  eventRoleAssignments,
+  eventTermsDocuments,
+  events,
   prizeRedemptions,
   prizes,
   submissions,
@@ -31,52 +31,52 @@ function createRoutes() {
   return [
     {
       method: 'get' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/submission',
+      path: '/api/events/:eventId/teams/:teamId/submission',
       handler: getSubmissionHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/submission',
+      path: '/api/events/:eventId/teams/:teamId/submission',
       handler: createSubmissionHandler
     },
     {
       method: 'patch' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/submission',
+      path: '/api/events/:eventId/teams/:teamId/submission',
       handler: patchSubmissionHandler
     },
     {
       method: 'patch' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/submission/public-visibility',
+      path: '/api/events/:eventId/teams/:teamId/submission/public-visibility',
       handler: patchSubmissionPublicVisibilityHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/submission/actions/submit',
+      path: '/api/events/:eventId/teams/:teamId/submission/actions/submit',
       handler: submitSubmissionHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/submission/actions/withdraw',
+      path: '/api/events/:eventId/teams/:teamId/submission/actions/withdraw',
       handler: withdrawSubmissionHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/submission/actions/admin-withdraw',
+      path: '/api/events/:eventId/teams/:teamId/submission/actions/admin-withdraw',
       handler: adminWithdrawSubmissionHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/submission/actions/disqualify',
+      path: '/api/events/:eventId/teams/:teamId/submission/actions/disqualify',
       handler: disqualifySubmissionHandler
     },
     {
       method: 'get' as const,
-      path: '/api/hackathons/:hackathonId/no-submission-teams',
+      path: '/api/events/:eventId/no-submission-teams',
       handler: listNoSubmissionTeamsHandler
     },
     {
       method: 'get' as const,
-      path: '/api/hackathons/:hackathonId/teams/submission-monitor',
+      path: '/api/events/:eventId/teams/submission-monitor',
       handler: getSubmissionMonitorHandler
     }
   ]
@@ -109,10 +109,10 @@ async function seedSubmissionContext(
       isPlatformAdmin: true
     },
     {
-      id: 'hackathon_admin',
-      auth0Subject: 'auth0|hackathon_admin',
-      email: 'hackathon-admin@example.com',
-      displayName: 'Hackathon Admin'
+      id: 'event_admin',
+      auth0Subject: 'auth0|event_admin',
+      email: 'event-admin@example.com',
+      displayName: 'Event Admin'
     },
     {
       id: 'team_admin',
@@ -140,11 +140,12 @@ async function seedSubmissionContext(
     }
   ])
 
-  await harness.database.insert(hackathons).values({
-    id: 'hackathon_1',
-    name: 'Submission Hackathon',
-    slug: 'submission-hackathon',
-    description: 'Submission Hackathon',
+  await harness.database.insert(events).values({
+    id: 'event_1',
+    eventType: 'hackathon',
+    name: 'Submission Event',
+    slug: 'submission-event',
+    description: 'Submission Event',
     city: 'Vienna',
     country: 'Austria',
     address: 'Fixture Address',
@@ -163,18 +164,18 @@ async function seedSubmissionContext(
     createdByUserId: 'platform_admin'
   })
 
-  await harness.database.insert(hackathonRoleAssignments).values({
-    id: 'role_hackathon_admin',
-    hackathonId: 'hackathon_1',
-    userId: 'hackathon_admin',
-    role: 'hackathon_admin',
+  await harness.database.insert(eventRoleAssignments).values({
+    id: 'role_event_admin',
+    eventId: 'event_1',
+    userId: 'event_admin',
+    role: 'event_admin',
     isInJudgePool: false,
     createdAt: '2026-03-22T12:00:00.000Z'
   })
 
-  await harness.database.insert(hackathonTermsDocuments).values({
+  await harness.database.insert(eventTermsDocuments).values({
     id: 'terms_app_1',
-    hackathonId: 'hackathon_1',
+    eventId: 'event_1',
     documentType: 'application_terms',
     version: 1,
     title: 'Application Terms v1',
@@ -193,7 +194,7 @@ async function seedSubmissionContext(
   await harness.database.insert(teams).values([
     {
       id: 'team_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Alpha Team',
       slug: 'alpha-team',
       isOpenToJoinRequests: true,
@@ -203,7 +204,7 @@ async function seedSubmissionContext(
     },
     {
       id: 'team_2',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Beta Team',
       slug: 'beta-team',
       isOpenToJoinRequests: true,
@@ -244,12 +245,12 @@ async function seedSubmissionContext(
 function approvedApplication(id: string, userId: string) {
   return {
     id,
-    hackathonId: 'hackathon_1',
+    eventId: 'event_1',
     userId,
     status: 'approved' as const,
     submittedAt: '2026-03-22T11:00:00.000Z',
     reviewedAt: '2026-03-22T11:30:00.000Z',
-    reviewedByUserId: 'hackathon_admin',
+    reviewedByUserId: 'event_admin',
     applicationTermsDocumentId: 'terms_app_1',
     applicationTermsAcceptedAt: '2026-03-22T11:00:00.000Z',
     createdAt: '2026-03-22T11:00:00.000Z',
@@ -296,7 +297,7 @@ describe('TASK-3.7 submission routes', () => {
     harnesses.push(harness)
     await seedSubmissionContext(harness)
 
-    const createResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
+    const createResponse = await harness.request('/api/events/event_1/teams/team_1/submission', {
       method: 'POST',
       body: JSON.stringify({
         projectName: 'Alpha Project',
@@ -318,7 +319,7 @@ describe('TASK-3.7 submission routes', () => {
       }
     })
 
-    const patchResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
+    const patchResponse = await harness.request('/api/events/event_1/teams/team_1/submission', {
       method: 'PATCH',
       body: JSON.stringify({
         projectName: 'Alpha Project Revised',
@@ -339,7 +340,7 @@ describe('TASK-3.7 submission routes', () => {
       }
     })
 
-    const getResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission')
+    const getResponse = await harness.request('/api/events/event_1/teams/team_1/submission')
     expect(getResponse.status).toBe(200)
     expect(await getResponse.json()).toMatchObject({
       data: {
@@ -351,7 +352,7 @@ describe('TASK-3.7 submission routes', () => {
       }
     })
 
-    const submitResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/submit', {
+    const submitResponse = await harness.request('/api/events/event_1/teams/team_1/submission/actions/submit', {
       method: 'POST'
     })
 
@@ -387,7 +388,7 @@ describe('TASK-3.7 submission routes', () => {
       requireSubmissionDemoUrl: true
     })
 
-    const incompleteCreateResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
+    const incompleteCreateResponse = await harness.request('/api/events/event_1/teams/team_1/submission', {
       method: 'POST',
       body: JSON.stringify({
         projectName: 'Incomplete Project',
@@ -415,7 +416,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-24T12:00:00.000Z'
     })
 
-    const incompletePatchResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
+    const incompletePatchResponse = await harness.request('/api/events/event_1/teams/team_1/submission', {
       method: 'PATCH',
       body: JSON.stringify({
         projectName: 'Alpha Project',
@@ -457,7 +458,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-24T12:00:00.000Z'
     })
 
-    const submitResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/submit', {
+    const submitResponse = await harness.request('/api/events/event_1/teams/team_1/submission/actions/submit', {
       method: 'POST'
     })
 
@@ -469,7 +470,7 @@ describe('TASK-3.7 submission routes', () => {
     })
   })
 
-  test('optional submission fields can be cleared and submitted when the hackathon does not require them', async () => {
+  test('optional submission fields can be cleared and submitted when the event does not require them', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
@@ -480,7 +481,7 @@ describe('TASK-3.7 submission routes', () => {
     harnesses.push(harness)
     await seedSubmissionContext(harness)
 
-    const createResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
+    const createResponse = await harness.request('/api/events/event_1/teams/team_1/submission', {
       method: 'POST',
       body: JSON.stringify({
         projectName: 'Optional Fields Project',
@@ -500,7 +501,7 @@ describe('TASK-3.7 submission routes', () => {
       }
     })
 
-    const patchResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission', {
+    const patchResponse = await harness.request('/api/events/event_1/teams/team_1/submission', {
       method: 'PATCH',
       body: JSON.stringify({
         projectName: 'Optional Fields Project Revised',
@@ -520,7 +521,7 @@ describe('TASK-3.7 submission routes', () => {
       }
     })
 
-    const submitResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/submit', {
+    const submitResponse = await harness.request('/api/events/event_1/teams/team_1/submission/actions/submit', {
       method: 'POST'
     })
 
@@ -538,7 +539,7 @@ describe('TASK-3.7 submission routes', () => {
     })
   })
 
-  test('submission visibility is limited to team members and hackathon admins', async () => {
+  test('submission visibility is limited to team members and event admins', async () => {
     const memberHarness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
@@ -564,7 +565,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-24T12:00:00.000Z'
     })
 
-    const memberResponse = await memberHarness.request('/api/hackathons/hackathon_1/teams/team_1/submission')
+    const memberResponse = await memberHarness.request('/api/events/event_1/teams/team_1/submission')
     expect(memberResponse.status).toBe(200)
     expect(await memberResponse.json()).toMatchObject({
       data: {
@@ -597,7 +598,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-24T12:00:00.000Z'
     })
 
-    const outsiderResponse = await outsiderHarness.request('/api/hackathons/hackathon_1/teams/team_1/submission')
+    const outsiderResponse = await outsiderHarness.request('/api/events/event_1/teams/team_1/submission')
     expect(outsiderResponse.status).toBe(403)
     expect(await outsiderResponse.json()).toMatchObject({
       error: {
@@ -635,7 +636,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-25T12:00:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/public-visibility', {
+    const response = await harness.request('/api/events/event_1/teams/team_1/submission/public-visibility', {
       method: 'PATCH',
       body: JSON.stringify({
         isPubliclyVisible: true
@@ -686,7 +687,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-25T12:00:00.000Z'
     })
 
-    const preCompletionResponse = await preCompletionHarness.request('/api/hackathons/hackathon_1/teams/team_1/submission/public-visibility', {
+    const preCompletionResponse = await preCompletionHarness.request('/api/events/event_1/teams/team_1/submission/public-visibility', {
       method: 'PATCH',
       body: JSON.stringify({
         isPubliclyVisible: true
@@ -724,7 +725,7 @@ describe('TASK-3.7 submission routes', () => {
     })
     await winnerHarness.database.insert(prizes).values({
       id: 'prize_winner',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Grand Prize',
       description: 'Winner prize',
       rewardType: 'api_credits',
@@ -744,7 +745,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-26T12:00:00.000Z'
     })
 
-    const winnerResponse = await winnerHarness.request('/api/hackathons/hackathon_1/teams/team_1/submission/public-visibility', {
+    const winnerResponse = await winnerHarness.request('/api/events/event_1/teams/team_1/submission/public-visibility', {
       method: 'PATCH',
       body: JSON.stringify({
         isPubliclyVisible: true
@@ -786,7 +787,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-24T12:00:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/withdraw', {
+    const response = await harness.request('/api/events/event_1/teams/team_1/submission/actions/withdraw', {
       method: 'POST'
     })
 
@@ -807,12 +808,12 @@ describe('TASK-3.7 submission routes', () => {
     ]))
   })
 
-  test('hackathon admins can admin-withdraw only with an active team-admin request', async () => {
+  test('event admins can admin-withdraw only with an active team-admin request', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -834,7 +835,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-24T12:00:00.000Z'
     })
 
-    const invalidResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/admin-withdraw', {
+    const invalidResponse = await harness.request('/api/events/event_1/teams/team_1/submission/actions/admin-withdraw', {
       method: 'POST',
       body: JSON.stringify({
         requestedByUserId: 'team_member'
@@ -848,7 +849,7 @@ describe('TASK-3.7 submission routes', () => {
       }
     })
 
-    const validResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/admin-withdraw', {
+    const validResponse = await harness.request('/api/events/event_1/teams/team_1/submission/actions/admin-withdraw', {
       method: 'POST',
       body: JSON.stringify({
         requestedByUserId: 'team_admin',
@@ -873,12 +874,12 @@ describe('TASK-3.7 submission routes', () => {
     ]))
   })
 
-  test('hackathon admins can disqualify locked submissions during shortlist review', async () => {
+  test('event admins can disqualify locked submissions during shortlist review', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -902,7 +903,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-25T12:00:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/disqualify', {
+    const response = await harness.request('/api/events/event_1/teams/team_1/submission/actions/disqualify', {
       method: 'POST',
       body: JSON.stringify({
         reason: 'Competition removal'
@@ -923,12 +924,12 @@ describe('TASK-3.7 submission routes', () => {
     expect(storedSubmission?.status).toBe('disqualified')
   })
 
-  test('hackathon admins see the recorded disqualification reason on submission records', async () => {
+  test('event admins see the recorded disqualification reason on submission records', async () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -954,12 +955,12 @@ describe('TASK-3.7 submission routes', () => {
 
     await harness.database.insert(auditLogs).values({
       id: 'audit_submission_disqualified',
-      actorUserId: 'hackathon_admin',
+      actorUserId: 'event_admin',
       entityType: 'submission',
       entityId: 'submission_1',
       action: 'submission.disqualified',
       metadata: {
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         teamId: 'team_1',
         reason: 'Competition removal',
         previousStatus: 'locked',
@@ -968,7 +969,7 @@ describe('TASK-3.7 submission routes', () => {
       createdAt: '2026-03-26T12:00:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission')
+    const response = await harness.request('/api/events/event_1/teams/team_1/submission')
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
@@ -983,8 +984,8 @@ describe('TASK-3.7 submission routes', () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1010,12 +1011,12 @@ describe('TASK-3.7 submission routes', () => {
 
     await harness.database.insert(auditLogs).values({
       id: 'audit_submission_disqualified',
-      actorUserId: 'hackathon_admin',
+      actorUserId: 'event_admin',
       entityType: 'submission',
       entityId: 'submission_1',
       action: 'submission.disqualified',
       metadata: {
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         teamId: 'team_1',
         reason: '   ',
         previousStatus: 'locked',
@@ -1024,7 +1025,7 @@ describe('TASK-3.7 submission routes', () => {
       createdAt: '2026-03-26T12:00:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission')
+    const response = await harness.request('/api/events/event_1/teams/team_1/submission')
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
@@ -1039,8 +1040,8 @@ describe('TASK-3.7 submission routes', () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1064,7 +1065,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-24T12:00:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/disqualify', {
+    const response = await harness.request('/api/events/event_1/teams/team_1/submission/actions/disqualify', {
       method: 'POST',
       body: JSON.stringify({
         reason: 'Should fail'
@@ -1083,8 +1084,8 @@ describe('TASK-3.7 submission routes', () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1123,7 +1124,7 @@ describe('TASK-3.7 submission routes', () => {
       }
     ])
 
-    const response = await harness.request('/api/hackathons/hackathon_1/no-submission-teams')
+    const response = await harness.request('/api/events/event_1/no-submission-teams')
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
@@ -1144,8 +1145,8 @@ describe('TASK-3.7 submission routes', () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1167,7 +1168,7 @@ describe('TASK-3.7 submission routes', () => {
       updatedAt: '2026-03-24T13:00:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/submission-monitor')
+    const response = await harness.request('/api/events/event_1/teams/submission-monitor')
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
@@ -1214,8 +1215,8 @@ describe('TASK-3.7 submission routes', () => {
     const harness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1231,7 +1232,7 @@ describe('TASK-3.7 submission routes', () => {
     const bulkApplications = bulkUsers.map(user => approvedApplication(`bulk_application_${user.id}`, user.id))
     const bulkTeams = bulkUsers.map((user, index) => ({
       id: `bulk_team_${index + 1}`,
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: `Bulk Team ${index + 1}`,
       slug: `bulk-team-${index + 1}`,
       isOpenToJoinRequests: false,
@@ -1273,13 +1274,13 @@ describe('TASK-3.7 submission routes', () => {
 
     enforceD1BindParameterLimit(harness)
 
-    const monitorResponse = await harness.request('/api/hackathons/hackathon_1/teams/submission-monitor')
+    const monitorResponse = await harness.request('/api/events/event_1/teams/submission-monitor')
     expect(monitorResponse.status).toBe(200)
     const monitorBody = await monitorResponse.json()
     expect(monitorBody.data.teamDetails).toHaveLength(teamCount + 2)
     expect(monitorBody.data.teamSubmissions).toHaveLength(teamCount + 2)
 
-    const noSubmissionResponse = await harness.request('/api/hackathons/hackathon_1/no-submission-teams')
+    const noSubmissionResponse = await harness.request('/api/events/event_1/no-submission-teams')
     expect(noSubmissionResponse.status).toBe(200)
     expect((await noSubmissionResponse.json()).data).toHaveLength(teamCount + 2)
   })

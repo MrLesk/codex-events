@@ -1,6 +1,6 @@
 import type { RouteLocationNormalized } from 'vue-router'
 import type { SessionActor } from '~/domains/accounts/session-actor'
-import type { HackathonScopedRole } from '~/domains/hackathons/roles'
+import type { EventScopedRole } from '~/domains/events/roles'
 
 import { buildAuthLoginHref } from '#shared/domains/accounts/auth-navigation'
 import { resolveActorAppRedirect } from './auth-navigation'
@@ -99,9 +99,9 @@ export async function ensureAccountPageAccess(
   }
 }
 
-export async function ensureHackathonRoleForSlugRoute(
+export async function ensureEventRoleForSlugRoute(
   to: RouteLocationNormalized,
-  roles: HackathonScopedRole[]
+  roles: EventScopedRole[]
 ) {
   const navigationFetch = getNavigationFetch()
   const resolvedSession = await ensurePlatformAccountActor(to, navigationFetch)
@@ -121,39 +121,39 @@ export async function ensureHackathonRoleForSlugRoute(
   if (!slug) {
     throw createError({
       statusCode: 404,
-      statusMessage: 'Hackathon not found.'
+      statusMessage: 'Event not found.'
     })
   }
 
-  const hackathonResponse = await navigationFetch(`/api/hackathons/slug/${encodeURIComponent(slug)}`) as {
+  const eventResponse = await navigationFetch(`/api/events/slug/${encodeURIComponent(slug)}`) as {
     data?: {
       id?: string
     }
   }
 
-  const hackathonId = hackathonResponse.data?.id
+  const eventId = eventResponse.data?.id
 
-  if (!hackathonId) {
+  if (!eventId) {
     throw createError({
       statusCode: 404,
-      statusMessage: 'Hackathon not found.'
+      statusMessage: 'Event not found.'
     })
   }
 
-  const hasAllowedRole = (actor.hackathonRoles ?? []).some((assignment) => {
-    if (assignment.hackathonId !== hackathonId) {
+  const hasAllowedRole = (actor.eventRoles ?? []).some((assignment) => {
+    if (assignment.eventId !== eventId) {
       return false
     }
 
-    if (roles.includes(assignment.role as HackathonScopedRole)) {
+    if (roles.includes(assignment.role as EventScopedRole)) {
       return true
     }
 
-    if (roles.includes('judge') && assignment.role === 'hackathon_admin' && assignment.isInJudgePool) {
+    if (roles.includes('judge') && assignment.role === 'event_admin' && assignment.isInJudgePool) {
       return true
     }
 
-    if (roles.includes('staff') && assignment.role === 'hackathon_admin' && assignment.isStaff) {
+    if (roles.includes('staff') && assignment.role === 'event_admin' && assignment.isStaff) {
       return true
     }
 
@@ -164,5 +164,5 @@ export async function ensureHackathonRoleForSlugRoute(
     return
   }
 
-  throw createUnauthorizedNavigationError('This page requires additional hackathon permissions.')
+  throw createUnauthorizedNavigationError('This page requires additional event permissions.')
 }

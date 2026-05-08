@@ -5,9 +5,9 @@ import {
   assertApplicationWithdrawable,
   assertInPersonAttendanceCommitment,
   assertApplicationReviewable,
-  assertHackathonAllowsApplications,
-  isHackathonLumaAttendanceSyncEnabled,
-  assertUserMeetsHackathonProfileRequirements,
+  assertEventAllowsApplications,
+  isEventLumaAttendanceSyncEnabled,
+  assertUserMeetsEventProfileRequirements,
   serializeUserApplication,
   serializeRegistrationDetailsJson
 } from '../../../../../server/domains/applications'
@@ -16,7 +16,7 @@ describe('application utilities', () => {
   test('serializeUserApplication includes the user profile icon version when present', () => {
     expect(serializeUserApplication({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'user_1',
       status: 'submitted',
       preApprovalStatus: null,
@@ -28,7 +28,7 @@ describe('application utilities', () => {
       reviewedByUserId: null,
       applicationTermsDocumentId: 'terms_app_2',
       applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
-      registrationDetailsJson: '{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisHackathon":"","proofOfExecutionUrl":""}',
+      registrationDetailsJson: '{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisEvent":"","proofOfExecutionUrl":""}',
       createdAt: '2026-03-22T12:10:00.000Z',
       updatedAt: '2026-03-22T12:10:00.000Z'
     }, {
@@ -63,26 +63,26 @@ describe('application utilities', () => {
     })
   })
 
-  test('attendance sync only depends on whether the hackathon stores a Luma event API id', () => {
-    expect(isHackathonLumaAttendanceSyncEnabled({
+  test('attendance sync only depends on whether the event stores a Luma event API id', () => {
+    expect(isEventLumaAttendanceSyncEnabled({
       lumaEventApiId: 'evt-123'
     })).toBe(true)
 
-    expect(isHackathonLumaAttendanceSyncEnabled({
+    expect(isEventLumaAttendanceSyncEnabled({
       lumaEventApiId: '   '
     })).toBe(false)
 
-    expect(isHackathonLumaAttendanceSyncEnabled({
+    expect(isEventLumaAttendanceSyncEnabled({
       lumaEventApiId: null
     })).toBe(false)
   })
 
   test('applications can only be submitted while registration is open', () => {
-    expect(() => assertHackathonAllowsApplications({
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
-      description: 'Fixture hackathon',
+    expect(() => assertEventAllowsApplications({
+      id: 'event_1',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
       backgroundImageUrl: null,
       bannerImageUrl: null,
       city: 'Vienna',
@@ -108,11 +108,11 @@ describe('application utilities', () => {
       updatedAt: '2026-03-20T10:00:00.000Z'
     }, new Date('2026-03-21T12:00:00.000Z'))).not.toThrow()
 
-    expect(() => assertHackathonAllowsApplications({
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
-      description: 'Fixture hackathon',
+    expect(() => assertEventAllowsApplications({
+      id: 'event_1',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
       backgroundImageUrl: null,
       bannerImageUrl: null,
       city: 'Vienna',
@@ -138,11 +138,11 @@ describe('application utilities', () => {
       updatedAt: '2026-03-20T10:00:00.000Z'
     }, new Date('2026-03-21T12:00:00.000Z'))).toThrowError(ApiError)
 
-    expect(() => assertHackathonAllowsApplications({
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
-      description: 'Fixture hackathon',
+    expect(() => assertEventAllowsApplications({
+      id: 'event_1',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
       backgroundImageUrl: null,
       bannerImageUrl: null,
       city: 'Vienna',
@@ -170,7 +170,7 @@ describe('application utilities', () => {
   })
 
   test('required profile flags are enforced against the user profile', () => {
-    expect(() => assertUserMeetsHackathonProfileRequirements({
+    expect(() => assertUserMeetsEventProfileRequirements({
       id: 'user_1',
       auth0Subject: 'auth0|user_1',
       email: 'user@example.com',
@@ -185,10 +185,10 @@ describe('application utilities', () => {
       updatedAt: '2026-03-20T10:00:00.000Z',
       deletedAt: null
     }, {
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
-      description: 'Fixture hackathon',
+      id: 'event_1',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
       backgroundImageUrl: null,
       bannerImageUrl: null,
       city: 'Vienna',
@@ -215,8 +215,8 @@ describe('application utilities', () => {
     })).toThrowError(ApiError)
   })
 
-  test('luma email requirement applies whenever the hackathon requires it', () => {
-    expect(() => assertUserMeetsHackathonProfileRequirements({
+  test('luma email requirement applies whenever the event requires it', () => {
+    expect(() => assertUserMeetsEventProfileRequirements({
       id: 'user_1',
       auth0Subject: 'auth0|user_1',
       email: 'user@example.com',
@@ -234,10 +234,10 @@ describe('application utilities', () => {
       updatedAt: '2026-03-20T10:00:00.000Z',
       deletedAt: null
     }, {
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
-      description: 'Fixture hackathon',
+      id: 'event_1',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
       backgroundImageUrl: null,
       bannerImageUrl: null,
       lumaEventUrl: null,
@@ -270,7 +270,7 @@ describe('application utilities', () => {
   test('only submitted applications can be reviewed', () => {
     expect(() => assertApplicationReviewable({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'user_1',
       status: 'submitted',
       preApprovalStatus: null,
@@ -288,7 +288,7 @@ describe('application utilities', () => {
 
     expect(() => assertApplicationReviewable({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'user_1',
       status: 'approved',
       preApprovalStatus: null,
@@ -308,7 +308,7 @@ describe('application utilities', () => {
   test('only submitted or approved applications can be withdrawn', () => {
     expect(() => assertApplicationWithdrawable({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'user_1',
       status: 'submitted',
       preApprovalStatus: null,
@@ -326,7 +326,7 @@ describe('application utilities', () => {
 
     expect(() => assertApplicationWithdrawable({
       id: 'application_2',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'user_1',
       status: 'approved',
       preApprovalStatus: null,
@@ -344,7 +344,7 @@ describe('application utilities', () => {
 
     expect(() => assertApplicationWithdrawable({
       id: 'application_3',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'user_1',
       status: 'rejected',
       preApprovalStatus: null,
@@ -362,7 +362,7 @@ describe('application utilities', () => {
 
     expect(() => assertApplicationWithdrawable({
       id: 'application_4',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'user_1',
       status: 'withdrawn',
       preApprovalStatus: null,
@@ -381,10 +381,10 @@ describe('application utilities', () => {
 
   test('serializes registration details and enforces max team-member hints', () => {
     expect(serializeRegistrationDetailsJson({
-      id: 'hackathon_1',
+      id: 'event_1',
       maxTeamMembers: 2,
       inPersonEvent: true,
-      requireWhyThisHackathon: true,
+      requireWhyThisEvent: true,
       requireProofOfExecution: true
     }, {
       registrationTeamIntent: 'team',
@@ -399,7 +399,7 @@ describe('application utilities', () => {
         }
       ],
       inPersonAttendanceCommitment: true,
-      whyThisHackathon: ' I have shipped similar projects before. ',
+      whyThisEvent: ' I have shipped similar projects before. ',
       proofOfExecutionUrl: ' https://github.com/example/shipped-work, https://demo.example.com/project '
     })).toBe(JSON.stringify({
       teamIntent: 'team',
@@ -413,15 +413,15 @@ describe('application utilities', () => {
         }
       ],
       inPersonAttendanceCommitment: true,
-      whyThisHackathon: 'I have shipped similar projects before.',
+      whyThisEvent: 'I have shipped similar projects before.',
       proofOfExecutionUrl: 'https://github.com/example/shipped-work, https://demo.example.com/project'
     }))
 
     expect(() => serializeRegistrationDetailsJson({
-      id: 'hackathon_1',
+      id: 'event_1',
       maxTeamMembers: 1,
       inPersonEvent: false,
-      requireWhyThisHackathon: false,
+      requireWhyThisEvent: false,
       requireProofOfExecution: false
     }, {
       registrationTeamIntent: 'team',
@@ -436,74 +436,74 @@ describe('application utilities', () => {
         }
       ],
       inPersonAttendanceCommitment: false,
-      whyThisHackathon: '',
+      whyThisEvent: '',
       proofOfExecutionUrl: ''
     })).toThrowError(ApiError)
   })
 
-  test('enforces why-this-hackathon and proof-of-execution requirements when configured', () => {
+  test('enforces why-this-event and proof-of-execution requirements when configured', () => {
     expect(() => serializeRegistrationDetailsJson({
-      id: 'hackathon_1',
+      id: 'event_1',
       maxTeamMembers: 4,
       inPersonEvent: false,
-      requireWhyThisHackathon: true,
+      requireWhyThisEvent: true,
       requireProofOfExecution: false
     }, {
       registrationTeamIntent: 'unknown',
       registrationTeamMembers: [],
       inPersonAttendanceCommitment: false,
-      whyThisHackathon: '',
+      whyThisEvent: '',
       proofOfExecutionUrl: ''
     })).toThrowError(ApiError)
 
     expect(() => serializeRegistrationDetailsJson({
-      id: 'hackathon_1',
+      id: 'event_1',
       maxTeamMembers: 4,
       inPersonEvent: false,
-      requireWhyThisHackathon: false,
+      requireWhyThisEvent: false,
       requireProofOfExecution: true
     }, {
       registrationTeamIntent: 'unknown',
       registrationTeamMembers: [],
       inPersonAttendanceCommitment: false,
-      whyThisHackathon: '',
+      whyThisEvent: '',
       proofOfExecutionUrl: ''
     })).toThrowError(ApiError)
   })
 
   test('rejects invalid proof-of-execution links', () => {
     expect(() => serializeRegistrationDetailsJson({
-      id: 'hackathon_1',
+      id: 'event_1',
       maxTeamMembers: 4,
       inPersonEvent: false,
-      requireWhyThisHackathon: false,
+      requireWhyThisEvent: false,
       requireProofOfExecution: false
     }, {
       registrationTeamIntent: 'unknown',
       registrationTeamMembers: [],
       inPersonAttendanceCommitment: false,
-      whyThisHackathon: '',
+      whyThisEvent: '',
       proofOfExecutionUrl: 'https://github.com/example/project, ftp://example.com/project'
     })).toThrowError(ApiError)
   })
 
-  test('requires explicit in-person commitment only for in-person hackathons', () => {
+  test('requires explicit in-person commitment only for in-person events', () => {
     expect(() => assertInPersonAttendanceCommitment({
-      id: 'hackathon_1',
+      id: 'event_1',
       inPersonEvent: true
     }, {
       inPersonAttendanceCommitment: false
     })).toThrowError(ApiError)
 
     expect(() => assertInPersonAttendanceCommitment({
-      id: 'hackathon_1',
+      id: 'event_1',
       inPersonEvent: true
     }, {
       inPersonAttendanceCommitment: true
     })).not.toThrow()
 
     expect(() => assertInPersonAttendanceCommitment({
-      id: 'hackathon_1',
+      id: 'event_1',
       inPersonEvent: false
     }, {
       inPersonAttendanceCommitment: false

@@ -8,7 +8,7 @@ vi.mock('~/domains/teams/workspace', async () => await import('../../../../app/d
 function createTeamDetail(memberUserIds: string[]) {
   return {
     id: 'team_1',
-    hackathonId: 'hackathon_1',
+    eventId: 'event_1',
     name: 'North Star Team',
     bio: 'Building a focused collaboration workspace.',
     slug: 'north-star-team-1234',
@@ -91,18 +91,18 @@ describe('useTeamFormationWorkspace', () => {
       method?: string
       query?: Record<string, unknown>
     }) => {
-      if (url === '/api/hackathons/hackathon_1/applications/me') {
+      if (url === '/api/events/event_1/applications/me') {
         return {
           data: {
             id: 'application_1',
-            hackathonId: 'hackathon_1',
+            eventId: 'event_1',
             userId: 'user_admin',
             status: 'approved'
           }
         }
       }
 
-      if (url === '/api/hackathons/hackathon_1/teams' && options?.query?.slug === 'north-star-team-1234') {
+      if (url === '/api/events/event_1/teams' && options?.query?.slug === 'north-star-team-1234') {
         return {
           data: [],
           meta: {
@@ -111,12 +111,12 @@ describe('useTeamFormationWorkspace', () => {
         }
       }
 
-      if (url === '/api/hackathons/hackathon_1/teams') {
+      if (url === '/api/events/event_1/teams') {
         return {
           data: [
             {
               id: 'team_1',
-              hackathonId: 'hackathon_1',
+              eventId: 'event_1',
               name: 'North Star Team',
               bio: 'Building a focused collaboration workspace.',
               slug: 'north-star-team-1234',
@@ -140,19 +140,19 @@ describe('useTeamFormationWorkspace', () => {
         }
       }
 
-      if (url === '/api/hackathons/hackathon_1/teams/team_1') {
+      if (url === '/api/events/event_1/teams/team_1') {
         return {
           data: createTeamDetail(requestApproved ? ['user_admin', 'user_new'] : ['user_admin'])
         }
       }
 
-      if (url === '/api/hackathons/hackathon_1/teams/team_1/join-requests') {
+      if (url === '/api/events/event_1/teams/team_1/join-requests') {
         return {
           data: [createJoinRequest(requestApproved ? 'approved' : 'pending')]
         }
       }
 
-      if (url === '/api/hackathons/hackathon_1/team-join-requests/request_1/actions/approve' && options?.method === 'POST') {
+      if (url === '/api/events/event_1/team-join-requests/request_1/actions/approve' && options?.method === 'POST') {
         requestApproved = true
 
         return {
@@ -171,7 +171,7 @@ describe('useTeamFormationWorkspace', () => {
     vi.stubGlobal('useAsyncData', () => ({
       data: ref({
         id: 'application_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'user_admin',
         status: 'approved'
       }),
@@ -194,7 +194,7 @@ describe('useTeamFormationWorkspace', () => {
     const { useTeamFormationWorkspace } = await import('../../../../app/composables/useTeamFormationWorkspace')
 
     const workspace = useTeamFormationWorkspace({
-      id: 'hackathon_1',
+      id: 'event_1',
       state: 'registration_open',
       maxTeamMembers: 4
     } as never, {

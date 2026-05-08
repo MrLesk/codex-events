@@ -67,9 +67,9 @@ function buildLegalContactEmailContent(input: PublicLegalContactInput) {
   const escapedMessage = escapeHtml(input.message).replaceAll('\n', '<br />')
 
   return {
-    subject: `Codex Hackathons contact request from ${input.name}`,
+    subject: `Codex Events contact request from ${input.name}`,
     text: [
-      'A new message was submitted through the Codex Hackathons imprint contact form.',
+      'A new message was submitted through the Codex Events imprint contact form.',
       '',
       `Name: ${input.name}`,
       `Email: ${input.email}`,
@@ -78,7 +78,7 @@ function buildLegalContactEmailContent(input: PublicLegalContactInput) {
       input.message
     ].join('\n'),
     html: [
-      '<p>A new message was submitted through the Codex Hackathons imprint contact form.</p>',
+      '<p>A new message was submitted through the Codex Events imprint contact form.</p>',
       `<p><strong>Name:</strong> ${escapedName}<br /><strong>Email:</strong> ${escapedEmail}</p>`,
       `<p><strong>Message:</strong><br />${escapedMessage}</p>`
     ].join('\n')

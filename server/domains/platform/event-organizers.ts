@@ -6,8 +6,8 @@ import type { AppDatabase } from '#server/database/client'
 import { users } from '#server/database/schema'
 import {
   getActiveUserOrThrow,
-  serializeHackathonRoleUserSummary
-} from '#server/domains/hackathons'
+  serializeEventRoleUserSummary
+} from '#server/domains/events'
 
 export const listEventOrganizerCandidatesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -126,7 +126,7 @@ export async function grantEventOrganizerAccess(
   }
 
   return {
-    user: serializeHackathonRoleUserSummary(await getActiveUserOrThrow(database, targetUser.id)),
+    user: serializeEventRoleUserSummary(await getActiveUserOrThrow(database, targetUser.id)),
     userGranted,
     wroteAuditLog: userGranted
   }

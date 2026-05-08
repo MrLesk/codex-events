@@ -22,6 +22,15 @@ const preJudgeScaleMigrationSql = readdirSync(join(process.cwd(), 'drizzle'))
 
 const judgeScaleMigrationSql = readFileSync(join(process.cwd(), 'drizzle', judgeScaleMigrationFileName), 'utf8')
   .replaceAll('--> statement-breakpoint', '\n')
+const eventGeneralizationMigrationFileName = '0050_event_platform_generalization.sql'
+const preEventGeneralizationMigrationSql = readdirSync(join(process.cwd(), 'drizzle'))
+  .filter(fileName => /^\d+.*\.sql$/.test(fileName) && fileName < eventGeneralizationMigrationFileName)
+  .sort()
+  .map(fileName => readFileSync(join(process.cwd(), 'drizzle', fileName), 'utf8'))
+  .join('\n')
+  .replaceAll('--> statement-breakpoint', '\n')
+const eventGeneralizationMigrationSql = readFileSync(join(process.cwd(), 'drizzle', eventGeneralizationMigrationFileName), 'utf8')
+  .replaceAll('--> statement-breakpoint', '\n')
 
 describe('shared database migration', () => {
   let database: TestD1Database
@@ -63,23 +72,23 @@ describe('shared database migration', () => {
     await insertUser.run('user_3', 'auth0|shared-subject', 'deleted@example.com', 'Deleted User', 0, now, now, now)
   })
 
-  test('enforces a unique non-null Luma event API id across hackathons', async () => {
+  test('enforces a unique non-null Luma event API id across events', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
-    await seedHackathon(database, 'hackathon_1', 'draft', now, 'creator_1')
-    await seedHackathon(database, 'hackathon_2', 'draft', now, 'creator_1')
+    await seedEvent(database, 'event_1', 'draft', now, 'creator_1')
+    await seedEvent(database, 'event_2', 'draft', now, 'creator_1')
 
     await database.prepare(`
-      update hackathons
+      update events
       set luma_event_api_id = ?
       where id = ?
-    `).run('evt-unique123', 'hackathon_1')
+    `).run('evt-unique123', 'event_1')
 
     await expect(database.prepare(`
-      update hackathons
+      update events
       set luma_event_api_id = ?
       where id = ?
-    `).run('evt-unique123', 'hackathon_2')).rejects.toThrow()
+    `).run('evt-unique123', 'event_2')).rejects.toThrow()
   })
 
   test('creates and removes primary linked-auth-identity rows with user inserts and soft deletion', async () => {
@@ -118,12 +127,12 @@ describe('shared database migration', () => {
     expect(deletedIdentities.results).toEqual([])
   })
 
-  test('prevents more than one active team membership per hackathon', async () => {
+  test('prevents more than one active team membership per event', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'user_1', now)
-    await seedHackathon(database, 'hackathon_1', 'draft', now, 'user_1')
-    await seedTeam(database, 'team_1', 'hackathon_1', 'user_1', now)
-    await seedTeam(database, 'team_2', 'hackathon_1', 'user_1', now)
+    await seedEvent(database, 'event_1', 'draft', now, 'user_1')
+    await seedTeam(database, 'team_1', 'event_1', 'user_1', now)
+    await seedTeam(database, 'team_2', 'event_1', 'user_1', now)
 
     await database.prepare(`
       insert into team_members (id, team_id, user_id, role, joined_at, left_at, created_at)
@@ -136,50 +145,50 @@ describe('shared database migration', () => {
     `).run('member_2', 'team_2', 'user_1', 'member', now, null, now)).rejects.toThrow()
   })
 
-  test('stores the final ranking override column on hackathons with an empty default', async () => {
+  test('stores the final ranking override column on events with an empty default', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
-    await seedHackathon(database, 'hackathon_1', 'draft', now, 'creator_1')
+    await seedEvent(database, 'event_1', 'draft', now, 'creator_1')
 
-    const hackathonRow = await database.prepare(`
+    const eventRow = await database.prepare(`
       select final_ranking_submission_ids_json
-      from hackathons
+      from events
       where id = ?
-    `).all<{ final_ranking_submission_ids_json: string }>('hackathon_1')
+    `).all<{ final_ranking_submission_ids_json: string }>('event_1')
 
-    expect(hackathonRow.results).toEqual([{
+    expect(eventRow.results).toEqual([{
       final_ranking_submission_ids_json: '[]'
     }])
   })
 
-  test('defaults hackathon auto-approval to disabled', async () => {
+  test('defaults event auto-approval to disabled', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
-    await seedHackathon(database, 'hackathon_1', 'draft', now, 'creator_1')
+    await seedEvent(database, 'event_1', 'draft', now, 'creator_1')
 
-    const hackathonRow = await database.prepare(`
+    const eventRow = await database.prepare(`
       select auto_approve_applications
-      from hackathons
+      from events
       where id = ?
-    `).all<{ auto_approve_applications: number }>('hackathon_1')
+    `).all<{ auto_approve_applications: number }>('event_1')
 
-    expect(hackathonRow.results).toEqual([{
+    expect(eventRow.results).toEqual([{
       auto_approve_applications: 0
     }])
   })
 
-  test('stores the Discord server URL column on hackathons with a null default', async () => {
+  test('stores the Discord server URL column on events with a null default', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
-    await seedHackathon(database, 'hackathon_1', 'draft', now, 'creator_1')
+    await seedEvent(database, 'event_1', 'draft', now, 'creator_1')
 
-    const hackathonRow = await database.prepare(`
+    const eventRow = await database.prepare(`
       select discord_server_url
-      from hackathons
+      from events
       where id = ?
-    `).all<{ discord_server_url: string | null }>('hackathon_1')
+    `).all<{ discord_server_url: string | null }>('event_1')
 
-    expect(hackathonRow.results).toEqual([{
+    expect(eventRow.results).toEqual([{
       discord_server_url: null
     }])
   })
@@ -187,8 +196,8 @@ describe('shared database migration', () => {
   test('stores the submission public visibility column with a false default', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
-    await seedHackathon(database, 'hackathon_1', 'submission_open', now, 'creator_1')
-    await seedTeam(database, 'team_1', 'hackathon_1', 'creator_1', now)
+    await seedEvent(database, 'event_1', 'submission_open', now, 'creator_1')
+    await seedTeam(database, 'team_1', 'event_1', 'creator_1', now)
     await seedSubmission(database, 'submission_1', 'team_1', 'locked', now)
 
     const submissionRow = await database.prepare(`
@@ -202,14 +211,14 @@ describe('shared database migration', () => {
     }])
   })
 
-  test('stores anonymous hackathon feedback rows, allows not-applicable null ratings, and enforces the 1 to 5 rating range', async () => {
+  test('stores anonymous event feedback rows, allows not-applicable null ratings, and enforces the 1 to 5 rating range', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
-    await seedHackathon(database, 'hackathon_1', 'completed', now, 'creator_1')
+    await seedEvent(database, 'event_1', 'completed', now, 'creator_1')
 
     await database.prepare(`
-      insert into hackathon_feedback (
-        id, hackathon_id, food_rating, staff_rating, organization_rating, platform_rating, judges_rating,
+      insert into event_feedback (
+        id, event_id, food_rating, staff_rating, organization_rating, platform_rating, judges_rating,
         venue_rating, participants_community_rating, communication_before_rating, communication_during_rating,
         rules_fairness_rating, overall_experience_rating, schedule_pacing_rating, technical_setup_rating,
         safety_accessibility_inclusion_rating, outcomes_rating, comment, created_at
@@ -217,7 +226,7 @@ describe('shared database migration', () => {
       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       'feedback_1',
-      'hackathon_1',
+      'event_1',
       5,
       4,
       4,
@@ -238,26 +247,26 @@ describe('shared database migration', () => {
     )
 
     const feedbackRows = await database.prepare(`
-      select hackathon_id, overall_experience_rating, platform_rating, comment
-      from hackathon_feedback
+      select event_id, overall_experience_rating, platform_rating, comment
+      from event_feedback
       where id = ?
     `).all<{
-      hackathon_id: string
+      event_id: string
       overall_experience_rating: number
       platform_rating: number | null
       comment: string | null
     }>('feedback_1')
 
     expect(feedbackRows.results).toEqual([{
-      hackathon_id: 'hackathon_1',
+      event_id: 'event_1',
       overall_experience_rating: 5,
       platform_rating: null,
       comment: 'Great event overall.'
     }])
 
     await expect(database.prepare(`
-      insert into hackathon_feedback (
-        id, hackathon_id, food_rating, staff_rating, organization_rating, platform_rating, judges_rating,
+      insert into event_feedback (
+        id, event_id, food_rating, staff_rating, organization_rating, platform_rating, judges_rating,
         venue_rating, participants_community_rating, communication_before_rating, communication_during_rating,
         rules_fairness_rating, overall_experience_rating, schedule_pacing_rating, technical_setup_rating,
         safety_accessibility_inclusion_rating, outcomes_rating, comment, created_at
@@ -265,7 +274,7 @@ describe('shared database migration', () => {
       values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       'feedback_invalid',
-      'hackathon_1',
+      'event_1',
       6,
       4,
       4,
@@ -297,8 +306,8 @@ describe('shared database migration', () => {
       const now = isoTimestamp(0)
       await seedUser(migrationDatabase, 'creator_1', now)
       await seedUser(migrationDatabase, 'judge_1', now)
-      await seedHackathon(migrationDatabase, 'hackathon_1', 'pitch_review', now, 'creator_1')
-      await seedTeam(migrationDatabase, 'team_1', 'hackathon_1', 'creator_1', now)
+      await seedLegacyHackathon(migrationDatabase, 'event_1', 'pitch_review', now, 'creator_1')
+      await seedLegacyTeam(migrationDatabase, 'team_1', 'event_1', 'creator_1', now)
       await seedSubmission(migrationDatabase, 'submission_1', 'team_1', 'locked', now)
 
       await migrationDatabase.prepare(`
@@ -308,14 +317,14 @@ describe('shared database migration', () => {
         values (?, ?, ?, ?, ?, ?, ?), (?, ?, ?, ?, ?, ?, ?)
       `).run(
         'criterion_1',
-        'hackathon_1',
+        'event_1',
         'Execution',
         'Execution quality',
         50,
         1,
         now,
         'criterion_2',
-        'hackathon_1',
+        'event_1',
         'Novelty',
         'Novelty quality',
         50,
@@ -333,7 +342,7 @@ describe('shared database migration', () => {
         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         'blind_assignment_1',
-        'hackathon_1',
+        'event_1',
         'submission_1',
         'judge_1',
         'blind_review',
@@ -364,7 +373,7 @@ describe('shared database migration', () => {
         values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         'pitch_assignment_1',
-        'hackathon_1',
+        'event_1',
         'submission_1',
         'judge_1',
         'pitch_review',
@@ -449,12 +458,57 @@ describe('shared database migration', () => {
     }
   })
 
+  test('migrates hackathons and scoped admin roles into typed events', async () => {
+    const migrationDatabase = createTestD1Database({
+      applyMigrations: false
+    })
+
+    try {
+      await migrationDatabase.exec(preEventGeneralizationMigrationSql)
+
+      const now = isoTimestamp(0)
+      await seedUser(migrationDatabase, 'creator_1', now)
+      await seedLegacyHackathon(migrationDatabase, 'event_1', 'registration_open', now, 'creator_1')
+      await migrationDatabase.prepare(`
+        insert into hackathon_role_assignments (
+          id, hackathon_id, user_id, role, is_in_judge_pool, is_staff, created_at
+        )
+        values (?, ?, ?, ?, ?, ?, ?)
+      `).run('role_1', 'event_1', 'creator_1', 'hackathon_admin', 0, 0, now)
+
+      await migrationDatabase.exec(eventGeneralizationMigrationSql)
+
+      const eventRows = await migrationDatabase.prepare(`
+        select id, event_type, require_why_this_event
+        from events
+        where id = ?
+      `).all<{ id: string, event_type: string, require_why_this_event: number }>('event_1')
+      const roleRows = await migrationDatabase.prepare(`
+        select event_id, role
+        from event_role_assignments
+        where id = ?
+      `).all<{ event_id: string, role: string }>('role_1')
+
+      expect(eventRows.results).toEqual([{
+        id: 'event_1',
+        event_type: 'hackathon',
+        require_why_this_event: 0
+      }])
+      expect(roleRows.results).toEqual([{
+        event_id: 'event_1',
+        role: 'event_admin'
+      }])
+    } finally {
+      await migrationDatabase.close()
+    }
+  })
+
   test('prevents duplicate pending join requests for the same user and team', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
     await seedUser(database, 'user_1', now)
-    await seedHackathon(database, 'hackathon_1', 'registration_open', now, 'creator_1')
-    await seedTeam(database, 'team_1', 'hackathon_1', 'creator_1', now)
+    await seedEvent(database, 'event_1', 'registration_open', now, 'creator_1')
+    await seedTeam(database, 'team_1', 'event_1', 'creator_1', now)
 
     await database.prepare(`
       insert into team_join_requests (id, team_id, user_id, status, requested_at, reviewed_at, reviewed_by_user_id, created_at)
@@ -467,96 +521,96 @@ describe('shared database migration', () => {
     `).run('request_2', 'team_1', 'user_1', 'pending', now, null, null, now)).rejects.toThrow()
   })
 
-  test('prevents setting current application terms to a document from another hackathon', async () => {
+  test('prevents setting current application terms to a document from another event', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
-    await seedHackathon(database, 'hackathon_1', 'registration_open', now, 'creator_1')
-    await seedHackathon(database, 'hackathon_2', 'registration_open', now, 'creator_1')
-    await seedHackathonTermsDocument(database, {
-      documentId: 'terms_other_hackathon',
-      hackathonId: 'hackathon_2',
+    await seedEvent(database, 'event_1', 'registration_open', now, 'creator_1')
+    await seedEvent(database, 'event_2', 'registration_open', now, 'creator_1')
+    await seedEventTermsDocument(database, {
+      documentId: 'terms_other_event',
+      eventId: 'event_2',
       documentType: 'application_terms',
       now
     })
 
     await expect(database.prepare(`
-      update hackathons
+      update events
       set current_application_terms_document_id = ?
       where id = ?
-    `).run('terms_other_hackathon', 'hackathon_1')).rejects.toThrow(/hackathon_current_application_terms_document_invalid/)
+    `).run('terms_other_event', 'event_1')).rejects.toThrow(/event_current_application_terms_document_invalid/)
   })
 
   test('prevents setting current application terms to the wrong document type', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
-    await seedHackathon(database, 'hackathon_1', 'registration_open', now, 'creator_1')
-    await seedHackathonTermsDocument(database, {
+    await seedEvent(database, 'event_1', 'registration_open', now, 'creator_1')
+    await seedEventTermsDocument(database, {
       documentId: 'terms_winner_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       documentType: 'winner_terms',
       now
     })
 
     await expect(database.prepare(`
-      update hackathons
+      update events
       set current_application_terms_document_id = ?
       where id = ?
-    `).run('terms_winner_1', 'hackathon_1')).rejects.toThrow(/hackathon_current_application_terms_document_invalid/)
+    `).run('terms_winner_1', 'event_1')).rejects.toThrow(/event_current_application_terms_document_invalid/)
   })
 
   test('prevents mutating a referenced current terms document into an invalid state', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
-    await seedHackathon(database, 'hackathon_1', 'registration_open', now, 'creator_1')
-    await seedHackathonTermsDocument(database, {
+    await seedEvent(database, 'event_1', 'registration_open', now, 'creator_1')
+    await seedEventTermsDocument(database, {
       documentId: 'terms_app_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       documentType: 'application_terms',
       now
     })
 
     await database.prepare(`
-      update hackathons
+      update events
       set current_application_terms_document_id = ?
       where id = ?
-    `).run('terms_app_1', 'hackathon_1')
+    `).run('terms_app_1', 'event_1')
 
     await expect(database.prepare(`
-      update hackathon_terms_documents
+      update event_terms_documents
       set document_type = 'winner_terms'
       where id = ?
-    `).run('terms_app_1')).rejects.toThrow(/hackathon_current_application_terms_document_invalid/)
+    `).run('terms_app_1')).rejects.toThrow(/event_current_application_terms_document_invalid/)
   })
 
   test('prevents deleting a referenced current terms document', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'creator_1', now)
-    await seedHackathon(database, 'hackathon_1', 'registration_open', now, 'creator_1')
-    await seedHackathonTermsDocument(database, {
+    await seedEvent(database, 'event_1', 'registration_open', now, 'creator_1')
+    await seedEventTermsDocument(database, {
       documentId: 'terms_win_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       documentType: 'winner_terms',
       now
     })
 
     await database.prepare(`
-      update hackathons
+      update events
       set current_winner_terms_document_id = ?
       where id = ?
-    `).run('terms_win_1', 'hackathon_1')
+    `).run('terms_win_1', 'event_1')
 
     await expect(database.prepare(`
-      delete from hackathon_terms_documents
+      delete from event_terms_documents
       where id = ?
-    `).run('terms_win_1')).rejects.toThrow(/hackathon_current_winner_terms_document_invalid/)
+    `).run('terms_win_1')).rejects.toThrow(/event_current_winner_terms_document_invalid/)
   })
 
   test('prevents removing the last active admin while other active members remain on the team', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'user_1', now)
     await seedUser(database, 'user_2', now)
-    await seedHackathon(database, 'hackathon_1', 'registration_open', now, 'user_1')
-    await seedTeam(database, 'team_1', 'hackathon_1', 'user_1', now)
+    await seedEvent(database, 'event_1', 'registration_open', now, 'user_1')
+    await seedTeam(database, 'team_1', 'event_1', 'user_1', now)
 
     await database.prepare(`
       insert into team_members (id, team_id, user_id, role, joined_at, left_at, created_at)
@@ -577,8 +631,8 @@ describe('shared database migration', () => {
   test('allows dissolving a team by removing its last active admin during team formation when no active submission exists', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'user_1', now)
-    await seedHackathon(database, 'hackathon_1', 'registration_open', now, 'user_1')
-    await seedTeam(database, 'team_1', 'hackathon_1', 'user_1', now)
+    await seedEvent(database, 'event_1', 'registration_open', now, 'user_1')
+    await seedTeam(database, 'team_1', 'event_1', 'user_1', now)
 
     await database.prepare(`
       insert into team_members (id, team_id, user_id, role, joined_at, left_at, created_at)
@@ -595,8 +649,8 @@ describe('shared database migration', () => {
   test('prevents dissolving a team when the last active admin still has an active submission', async () => {
     const now = isoTimestamp(0)
     await seedUser(database, 'user_1', now)
-    await seedHackathon(database, 'hackathon_1', 'registration_open', now, 'user_1')
-    await seedTeam(database, 'team_1', 'hackathon_1', 'user_1', now)
+    await seedEvent(database, 'event_1', 'registration_open', now, 'user_1')
+    await seedTeam(database, 'team_1', 'event_1', 'user_1', now)
 
     await database.prepare(`
       insert into team_members (id, team_id, user_id, role, joined_at, left_at, created_at)
@@ -619,7 +673,7 @@ async function seedUser(database: TestD1Database, userId: string, now: string) {
   `).run(userId, `auth0|${userId}`, `${userId}@example.com`, userId, 0, now, now, null)
 }
 
-async function seedHackathon(
+async function seedLegacyHackathon(
   database: TestD1Database,
   hackathonId: string,
   state: string,
@@ -662,7 +716,51 @@ async function seedHackathon(
   )
 }
 
-async function seedTeam(
+async function seedEvent(
+  database: TestD1Database,
+  eventId: string,
+  state: string,
+  now: string,
+  createdByUserId: string
+) {
+  await database.prepare(`
+    insert into events (
+      id, event_type, name, slug, description, background_image_url, banner_image_url, city, country, address,
+      registration_opens_at, registration_closes_at, submission_opens_at, submission_closes_at,
+      state, max_team_members, require_x_profile, require_linkedin_profile, require_github_profile,
+      current_application_terms_document_id, current_winner_terms_document_id, created_by_user_id,
+      created_at, updated_at
+    )
+    values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    eventId,
+    'hackathon',
+    `Event ${eventId}`,
+    eventId,
+    'Desc',
+    null,
+    null,
+    'City',
+    'Country',
+    'Address',
+    now,
+    isoTimestamp(1),
+    isoTimestamp(2),
+    isoTimestamp(3),
+    state,
+    5,
+    0,
+    0,
+    0,
+    null,
+    null,
+    createdByUserId,
+    now,
+    now
+  )
+}
+
+async function seedLegacyTeam(
   database: TestD1Database,
   teamId: string,
   hackathonId: string,
@@ -677,23 +775,38 @@ async function seedTeam(
   `).run(teamId, hackathonId, `Team ${teamId}`, teamId, 1, createdByUserId, now, now)
 }
 
-async function seedHackathonTermsDocument(
+async function seedTeam(
+  database: TestD1Database,
+  teamId: string,
+  eventId: string,
+  createdByUserId: string,
+  now: string
+) {
+  await database.prepare(`
+    insert into teams (
+      id, event_id, name, slug, is_open_to_join_requests, created_by_user_id, created_at, updated_at
+    )
+    values (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(teamId, eventId, `Team ${teamId}`, teamId, 1, createdByUserId, now, now)
+}
+
+async function seedEventTermsDocument(
   database: TestD1Database,
   options: {
     documentId: string
-    hackathonId: string
+    eventId: string
     documentType: 'application_terms' | 'winner_terms'
     now: string
   }
 ) {
   await database.prepare(`
-    insert into hackathon_terms_documents (
-      id, hackathon_id, document_type, version, title, content, published_at, created_at
+    insert into event_terms_documents (
+      id, event_id, document_type, version, title, content, published_at, created_at
     )
     values (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     options.documentId,
-    options.hackathonId,
+    options.eventId,
     options.documentType,
     1,
     `${options.documentType} title`,

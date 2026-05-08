@@ -182,7 +182,7 @@ Then('I should see the profile settings heading', async ({ page }) => {
 
 When('I update the account profile links', async ({ page }) => {
   await page.getByLabel('Company').fill('Codex Labs')
-  await page.getByLabel('Bio').fill('Building tools for hackathon participants.')
+  await page.getByLabel('Bio').fill('Building tools for event participants.')
   await page.getByLabel('GitHub profile URL').fill('https://github.com/regular-user-updated')
   await page.getByLabel('LinkedIn profile URL').fill('https://linkedin.com/in/regular-user-updated')
   await page.getByLabel('ChatGPT email').fill('regular-user-updated@chatgpt.example')
@@ -194,7 +194,7 @@ When('I update the account profile links', async ({ page }) => {
 
 Then('the account profile should show the updated links', async ({ page }) => {
   await expect(page.getByLabel('Company')).toHaveValue('Codex Labs')
-  await expect(page.getByLabel('Bio')).toHaveValue('Building tools for hackathon participants.')
+  await expect(page.getByLabel('Bio')).toHaveValue('Building tools for event participants.')
   await expect(page.getByLabel('GitHub profile URL')).toHaveValue('https://github.com/regular-user-updated')
   await expect(page.getByLabel('LinkedIn profile URL')).toHaveValue('https://linkedin.com/in/regular-user-updated')
   await expect(page.getByLabel('ChatGPT email')).toHaveValue('regular-user-updated@chatgpt.example')

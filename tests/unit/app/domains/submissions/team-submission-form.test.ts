@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import { createTeamSubmissionFormSchema } from '../../../../../app/domains/submissions/team-submission-form'
 
 describe('team submission form schema', () => {
-  test('requires a selected track only when the hackathon has tracks', () => {
+  test('requires a selected track only when the event has tracks', () => {
     expect(createTeamSubmissionFormSchema({
       trackRequired: false,
       requireSummary: false,
@@ -31,7 +31,7 @@ describe('team submission form schema', () => {
     }).success).toBe(false)
   })
 
-  test('requires only the submission fields configured by the hackathon', () => {
+  test('requires only the submission fields configured by the event', () => {
     const result = createTeamSubmissionFormSchema({
       trackRequired: false,
       requireSummary: true,

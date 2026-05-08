@@ -15,7 +15,7 @@ const idColumn = () => text('id').primaryKey().$defaultFn(createId)
 const createdAtColumn = () => text('created_at').notNull().default(currentTimestamp)
 const updatedAtColumn = () => text('updated_at').notNull().default(currentTimestamp)
 
-export const hackathonStates = [
+export const eventStates = [
   'draft',
   'registration_open',
   'submission_open',
@@ -29,9 +29,10 @@ export const hackathonStates = [
   'completed'
 ] as const
 
-export const hackathonRoleTypes = ['hackathon_admin', 'judge', 'staff'] as const
+export const eventTypes = ['hackathon', 'meetup', 'build'] as const
+export const eventRoleTypes = ['event_admin', 'judge', 'staff'] as const
 export const platformDocumentTypes = ['privacy_policy', 'platform_terms'] as const
-export const hackathonTermsDocumentTypes = ['application_terms', 'winner_terms'] as const
+export const eventTermsDocumentTypes = ['application_terms', 'winner_terms'] as const
 export const userApplicationStatuses = ['submitted', 'approved', 'rejected', 'withdrawn'] as const
 export const userApplicationPreApprovalStatuses = ['approved', 'rejected'] as const
 export const userApplicationLumaSyncStatuses = [
@@ -50,7 +51,7 @@ export const ineligibilityStatuses = ['eligible', 'ineligible'] as const
 export const prizeRewardTypes = ['api_credits', 'subscription', 'physical', 'other'] as const
 export const prizeAwardScopes = ['team', 'member'] as const
 export const prizeRedemptionStatuses = ['pending', 'redeemed', 'failed'] as const
-export const hackathonOutcomeCacheCollections = ['winners', 'published_projects'] as const
+export const eventOutcomeCacheCollections = ['winners', 'published_projects'] as const
 
 export const users = sqliteTable(
   'users',
@@ -103,10 +104,11 @@ export const userAuthIdentities = sqliteTable(
   ]
 )
 
-export const hackathons = sqliteTable(
-  'hackathons',
+export const events = sqliteTable(
+  'events',
   {
     id: idColumn(),
+    eventType: text('event_type', { enum: eventTypes }).notNull(),
     name: text('name').notNull(),
     slug: text('slug').notNull(),
     description: text('description').notNull(),
@@ -123,7 +125,7 @@ export const hackathons = sqliteTable(
     registrationClosesAt: text('registration_closes_at').notNull(),
     submissionOpensAt: text('submission_opens_at').notNull(),
     submissionClosesAt: text('submission_closes_at').notNull(),
-    state: text('state', { enum: hackathonStates }).notNull().default('draft'),
+    state: text('state', { enum: eventStates }).notNull().default('draft'),
     blindReviewCount: integer('blind_review_count').notNull().default(1),
     pitchReviewEnabled: integer('pitch_review_enabled', { mode: 'boolean' }).notNull().default(false),
     blindScoreWeightPercent: integer('blind_score_weight_percent').notNull().default(70),
@@ -143,7 +145,7 @@ export const hackathons = sqliteTable(
     requireChatgptEmail: integer('require_chatgpt_email', { mode: 'boolean' }).notNull().default(false),
     requireOpenaiOrgId: integer('require_openai_org_id', { mode: 'boolean' }).notNull().default(false),
     requireLumaEmail: integer('require_luma_profile', { mode: 'boolean' }).notNull().default(false),
-    requireWhyThisHackathon: integer('require_why_this_hackathon', { mode: 'boolean' }).notNull().default(false),
+    requireWhyThisEvent: integer('require_why_this_event', { mode: 'boolean' }).notNull().default(false),
     requireProofOfExecution: integer('require_proof_of_execution', { mode: 'boolean' }).notNull().default(false),
     requireSubmissionSummary: integer('require_submission_summary', { mode: 'boolean' }).notNull().default(false),
     requireSubmissionRepositoryUrl: integer('require_submission_repository_url', { mode: 'boolean' }).notNull().default(false),
@@ -157,69 +159,74 @@ export const hackathons = sqliteTable(
     updatedAt: updatedAtColumn()
   },
   table => [
-    uniqueIndex('hackathons_slug_idx').on(table.slug),
-    uniqueIndex('hackathons_luma_event_api_id_idx').on(table.lumaEventApiId),
+    uniqueIndex('events_slug_idx').on(table.slug),
+    uniqueIndex('events_luma_event_api_id_idx').on(table.lumaEventApiId),
     check(
-      'hackathons_blind_review_count_check',
+      'events_blind_review_count_check',
       sql`${table.blindReviewCount} >= 0 and ${table.blindReviewCount} <= 2`
     ),
     check(
-      'hackathons_blind_score_weight_percent_check',
+      'events_blind_score_weight_percent_check',
       sql`${table.blindScoreWeightPercent} >= 0 and ${table.blindScoreWeightPercent} <= 100`
     ),
     check(
-      'hackathons_pitch_score_weight_percent_check',
+      'events_pitch_score_weight_percent_check',
       sql`${table.pitchScoreWeightPercent} >= 0 and ${table.pitchScoreWeightPercent} <= 100`
     ),
     check(
-      'hackathons_judging_stage_enabled_check',
-      sql`${table.blindReviewCount} > 0 or ${table.pitchReviewEnabled} = 1`
+      'events_judging_stage_enabled_check',
+      sql`${table.eventType} != 'hackathon' or ${table.blindReviewCount} > 0 or ${table.pitchReviewEnabled} = 1`
     ),
     check(
-      'hackathons_combined_score_weight_percent_check',
-      sql`${table.blindReviewCount} = 0
+      'events_combined_score_weight_percent_check',
+      sql`${table.eventType} != 'hackathon'
+        or ${table.blindReviewCount} = 0
         or ${table.pitchReviewEnabled} = 0
         or ${table.blindScoreWeightPercent} + ${table.pitchScoreWeightPercent} = 100`
     ),
-    check('hackathons_max_team_members_check', sql`${table.maxTeamMembers} >= 1`),
+    check('events_max_team_members_check', sql`${table.maxTeamMembers} >= 1`),
     check(
-      'hackathons_participants_limit_check',
+      'events_participants_limit_check',
       sql`${table.participantsLimit} is null or ${table.participantsLimit} >= 1`
     ),
     check(
-      'hackathons_schedule_order_check',
+      'events_schedule_order_check',
       sql`${table.registrationOpensAt} < ${table.registrationClosesAt}
         and ${table.registrationClosesAt} <= ${table.submissionOpensAt}
         and ${table.submissionOpensAt} < ${table.submissionClosesAt}`
+    ),
+    check(
+      'events_type_check',
+      sql`${table.eventType} in ('hackathon', 'meetup', 'build')`
     )
   ]
 )
 
-export const hackathonTracks = sqliteTable(
-  'hackathon_tracks',
+export const eventTracks = sqliteTable(
+  'event_tracks',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id, { onDelete: 'cascade' }),
+      .references(() => events.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description').notNull(),
     displayOrder: integer('display_order').notNull(),
     createdAt: createdAtColumn()
   },
   table => [
-    uniqueIndex('hackathon_tracks_hackathon_display_order_idx').on(table.hackathonId, table.displayOrder),
-    index('hackathon_tracks_hackathon_idx').on(table.hackathonId)
+    uniqueIndex('event_tracks_event_display_order_idx').on(table.eventId, table.displayOrder),
+    index('event_tracks_event_idx').on(table.eventId)
   ]
 )
 
-export const hackathonPhotos = sqliteTable(
-  'hackathon_photos',
+export const eventPhotos = sqliteTable(
+  'event_photos',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id, { onDelete: 'cascade' }),
+      .references(() => events.id, { onDelete: 'cascade' }),
     uploadedByUserId: text('uploaded_by_user_id')
       .notNull()
       .references(() => users.id),
@@ -231,20 +238,20 @@ export const hackathonPhotos = sqliteTable(
     createdAt: createdAtColumn()
   },
   table => [
-    index('hackathon_photos_hackathon_created_idx').on(table.hackathonId, table.createdAt),
-    index('hackathon_photos_uploaded_by_idx').on(table.uploadedByUserId),
-    check('hackathon_photos_width_check', sql`${table.width} >= 1`),
-    check('hackathon_photos_height_check', sql`${table.height} >= 1`)
+    index('event_photos_event_created_idx').on(table.eventId, table.createdAt),
+    index('event_photos_uploaded_by_idx').on(table.uploadedByUserId),
+    check('event_photos_width_check', sql`${table.width} >= 1`),
+    check('event_photos_height_check', sql`${table.height} >= 1`)
   ]
 )
 
-export const hackathonFeedback = sqliteTable(
-  'hackathon_feedback',
+export const eventFeedback = sqliteTable(
+  'event_feedback',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id, { onDelete: 'cascade' }),
+      .references(() => events.id, { onDelete: 'cascade' }),
     foodRating: integer('food_rating'),
     staffRating: integer('staff_rating'),
     organizationRating: integer('organization_rating'),
@@ -264,99 +271,99 @@ export const hackathonFeedback = sqliteTable(
     createdAt: createdAtColumn()
   },
   table => [
-    index('hackathon_feedback_hackathon_created_idx').on(table.hackathonId, table.createdAt),
+    index('event_feedback_event_created_idx').on(table.eventId, table.createdAt),
     check(
-      'hackathon_feedback_food_rating_check',
+      'event_feedback_food_rating_check',
       sql`${table.foodRating} is null or (${table.foodRating} >= 1 and ${table.foodRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_staff_rating_check',
+      'event_feedback_staff_rating_check',
       sql`${table.staffRating} is null or (${table.staffRating} >= 1 and ${table.staffRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_organization_rating_check',
+      'event_feedback_organization_rating_check',
       sql`${table.organizationRating} is null or (${table.organizationRating} >= 1 and ${table.organizationRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_platform_rating_check',
+      'event_feedback_platform_rating_check',
       sql`${table.platformRating} is null or (${table.platformRating} >= 1 and ${table.platformRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_judges_rating_check',
+      'event_feedback_judges_rating_check',
       sql`${table.judgesRating} is null or (${table.judgesRating} >= 1 and ${table.judgesRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_venue_rating_check',
+      'event_feedback_venue_rating_check',
       sql`${table.venueRating} is null or (${table.venueRating} >= 1 and ${table.venueRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_participants_community_rating_check',
+      'event_feedback_participants_community_rating_check',
       sql`${table.participantsCommunityRating} is null or (${table.participantsCommunityRating} >= 1 and ${table.participantsCommunityRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_communication_before_rating_check',
+      'event_feedback_communication_before_rating_check',
       sql`${table.communicationBeforeRating} is null or (${table.communicationBeforeRating} >= 1 and ${table.communicationBeforeRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_communication_during_rating_check',
+      'event_feedback_communication_during_rating_check',
       sql`${table.communicationDuringRating} is null or (${table.communicationDuringRating} >= 1 and ${table.communicationDuringRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_rules_fairness_rating_check',
+      'event_feedback_rules_fairness_rating_check',
       sql`${table.rulesFairnessRating} is null or (${table.rulesFairnessRating} >= 1 and ${table.rulesFairnessRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_overall_experience_rating_check',
+      'event_feedback_overall_experience_rating_check',
       sql`${table.overallExperienceRating} is null or (${table.overallExperienceRating} >= 1 and ${table.overallExperienceRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_schedule_pacing_rating_check',
+      'event_feedback_schedule_pacing_rating_check',
       sql`${table.schedulePacingRating} is null or (${table.schedulePacingRating} >= 1 and ${table.schedulePacingRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_technical_setup_rating_check',
+      'event_feedback_technical_setup_rating_check',
       sql`${table.technicalSetupRating} is null or (${table.technicalSetupRating} >= 1 and ${table.technicalSetupRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_safety_accessibility_inclusion_rating_check',
+      'event_feedback_safety_accessibility_inclusion_rating_check',
       sql`${table.safetyAccessibilityInclusionRating} is null or (${table.safetyAccessibilityInclusionRating} >= 1 and ${table.safetyAccessibilityInclusionRating} <= 5)`
     ),
     check(
-      'hackathon_feedback_outcomes_rating_check',
+      'event_feedback_outcomes_rating_check',
       sql`${table.outcomesRating} is null or (${table.outcomesRating} >= 1 and ${table.outcomesRating} <= 5)`
     )
   ]
 )
 
-export const hackathonRoleAssignments = sqliteTable(
-  'hackathon_role_assignments',
+export const eventRoleAssignments = sqliteTable(
+  'event_role_assignments',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id),
+      .references(() => events.id),
     userId: text('user_id')
       .notNull()
       .references(() => users.id),
-    role: text('role', { enum: hackathonRoleTypes }).notNull(),
+    role: text('role', { enum: eventRoleTypes }).notNull(),
     isInJudgePool: integer('is_in_judge_pool', { mode: 'boolean' }).notNull().default(false),
     isStaff: integer('is_staff', { mode: 'boolean' }).notNull().default(false),
     createdAt: createdAtColumn()
   },
   table => [
-    uniqueIndex('hackathon_role_assignments_hackathon_user_idx').on(table.hackathonId, table.userId),
-    index('hackathon_role_assignments_user_created_idx').on(table.userId, table.createdAt),
-    index('hackathon_role_assignments_hackathon_judge_pool_created_idx').on(
-      table.hackathonId,
+    uniqueIndex('event_role_assignments_event_user_idx').on(table.eventId, table.userId),
+    index('event_role_assignments_user_created_idx').on(table.userId, table.createdAt),
+    index('event_role_assignments_event_judge_pool_created_idx').on(
+      table.eventId,
       table.isInJudgePool,
       table.createdAt
     ),
     check(
-      'hackathon_role_assignments_judge_pool_check',
+      'event_role_assignments_judge_pool_check',
       sql`(${table.role} != 'judge') or ((${table.isInJudgePool} = 1) and (${table.isStaff} = 0))`
     ),
     check(
-      'hackathon_role_assignments_staff_flag_check',
+      'event_role_assignments_staff_flag_check',
       sql`(${table.role} != 'staff') or ((${table.isStaff} = 1) and (${table.isInJudgePool} = 0))`
     )
   ]
@@ -415,14 +422,14 @@ export const userPlatformDocumentAcceptances = sqliteTable(
   ]
 )
 
-export const hackathonTermsDocuments = sqliteTable(
-  'hackathon_terms_documents',
+export const eventTermsDocuments = sqliteTable(
+  'event_terms_documents',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id, { onDelete: 'cascade' }),
-    documentType: text('document_type', { enum: hackathonTermsDocumentTypes }).notNull(),
+      .references(() => events.id, { onDelete: 'cascade' }),
+    documentType: text('document_type', { enum: eventTermsDocumentTypes }).notNull(),
     version: integer('version').notNull(),
     title: text('title').notNull(),
     content: text('content').notNull(),
@@ -430,8 +437,8 @@ export const hackathonTermsDocuments = sqliteTable(
     createdAt: createdAtColumn()
   },
   table => [
-    uniqueIndex('hackathon_terms_documents_hackathon_type_version_idx').on(
-      table.hackathonId,
+    uniqueIndex('event_terms_documents_event_type_version_idx').on(
+      table.eventId,
       table.documentType,
       table.version
     )
@@ -442,9 +449,9 @@ export const userApplications = sqliteTable(
   'user_applications',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id),
+      .references(() => events.id),
     userId: text('user_id')
       .notNull()
       .references(() => users.id),
@@ -458,19 +465,19 @@ export const userApplications = sqliteTable(
     reviewedByUserId: text('reviewed_by_user_id').references(() => users.id),
     applicationTermsDocumentId: text('application_terms_document_id')
       .notNull()
-      .references(() => hackathonTermsDocuments.id),
+      .references(() => eventTermsDocuments.id),
     applicationTermsAcceptedAt: text('application_terms_accepted_at').notNull(),
     registrationDetailsJson: text('registration_details_json')
       .notNull()
-      .default('{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisHackathon":"","proofOfExecutionUrl":""}'),
+      .default('{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisEvent":"","proofOfExecutionUrl":""}'),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()
   },
   table => [
-    uniqueIndex('user_applications_hackathon_user_idx').on(table.hackathonId, table.userId),
+    uniqueIndex('user_applications_event_user_idx').on(table.eventId, table.userId),
     index('user_applications_user_submitted_idx').on(table.userId, table.submittedAt),
-    index('user_applications_hackathon_submitted_idx').on(table.hackathonId, table.submittedAt),
-    index('user_applications_hackathon_status_submitted_idx').on(table.hackathonId, table.status, table.submittedAt)
+    index('user_applications_event_submitted_idx').on(table.eventId, table.submittedAt),
+    index('user_applications_event_status_submitted_idx').on(table.eventId, table.status, table.submittedAt)
   ]
 )
 
@@ -478,9 +485,9 @@ export const teams = sqliteTable(
   'teams',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id),
+      .references(() => events.id),
     name: text('name').notNull(),
     bio: text('bio'),
     slug: text('slug').notNull(),
@@ -493,9 +500,9 @@ export const teams = sqliteTable(
     updatedAt: updatedAtColumn()
   },
   table => [
-    uniqueIndex('teams_hackathon_slug_idx').on(table.hackathonId, table.slug),
-    index('teams_hackathon_idx').on(table.hackathonId),
-    index('teams_hackathon_name_created_idx').on(table.hackathonId, table.name, table.createdAt)
+    uniqueIndex('teams_event_slug_idx').on(table.eventId, table.slug),
+    index('teams_event_idx').on(table.eventId),
+    index('teams_event_name_created_idx').on(table.eventId, table.name, table.createdAt)
   ]
 )
 
@@ -558,7 +565,7 @@ export const submissions = sqliteTable(
     teamId: text('team_id')
       .notNull()
       .references(() => teams.id),
-    trackId: text('track_id').references(() => hackathonTracks.id),
+    trackId: text('track_id').references(() => eventTracks.id),
     status: text('status', { enum: submissionStatuses }).notNull().default('draft'),
     projectName: text('project_name'),
     summary: text('summary'),
@@ -587,9 +594,9 @@ export const evaluationCriteria = sqliteTable(
   'evaluation_criteria',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id),
+      .references(() => events.id),
     name: text('name').notNull(),
     description: text('description').notNull(),
     weight: integer('weight').notNull(),
@@ -597,7 +604,7 @@ export const evaluationCriteria = sqliteTable(
     createdAt: createdAtColumn()
   },
   table => [
-    uniqueIndex('evaluation_criteria_hackathon_display_order_idx').on(table.hackathonId, table.displayOrder),
+    uniqueIndex('evaluation_criteria_event_display_order_idx').on(table.eventId, table.displayOrder),
     check('evaluation_criteria_weight_non_negative_check', sql`${table.weight} >= 0`)
   ]
 )
@@ -606,9 +613,9 @@ export const judgeAssignments = sqliteTable(
   'judge_assignments',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id),
+      .references(() => events.id),
     submissionId: text('submission_id')
       .notNull()
       .references(() => submissions.id),
@@ -640,14 +647,14 @@ export const judgeAssignments = sqliteTable(
       .on(table.submissionId, table.judgeUserId)
       .where(sql`${table.reviewStage} = 'pitch_review'`),
     index('judge_assignments_judge_idx').on(table.judgeUserId),
-    index('judge_assignments_hackathon_stage_status_judge_idx').on(
-      table.hackathonId,
+    index('judge_assignments_event_stage_status_judge_idx').on(
+      table.eventId,
       table.reviewStage,
       table.status,
       table.judgeUserId
     ),
-    index('judge_assignments_hackathon_submission_stage_status_idx').on(
-      table.hackathonId,
+    index('judge_assignments_event_submission_stage_status_idx').on(
+      table.eventId,
       table.submissionId,
       table.reviewStage,
       table.status
@@ -697,9 +704,9 @@ export const prizes = sqliteTable(
   'prizes',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id),
+      .references(() => events.id),
     name: text('name').notNull(),
     description: text('description').notNull(),
     rewardType: text('reward_type', { enum: prizeRewardTypes }).notNull(),
@@ -712,18 +719,18 @@ export const prizes = sqliteTable(
     createdAt: createdAtColumn()
   },
   table => [
-    index('prizes_hackathon_display_order_idx').on(table.hackathonId, table.displayOrder),
+    index('prizes_event_display_order_idx').on(table.eventId, table.displayOrder),
     check('prizes_rank_order_check', sql`${table.rankStart} <= ${table.rankEnd}`)
   ]
 )
 
-export const hackathonCreditOffers = sqliteTable(
-  'hackathon_credit_offers',
+export const eventCreditOffers = sqliteTable(
+  'event_credit_offers',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id, { onDelete: 'cascade' }),
+      .references(() => events.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     description: text('description').notNull(),
     displayOrder: integer('display_order').notNull().default(0),
@@ -731,29 +738,29 @@ export const hackathonCreditOffers = sqliteTable(
     updatedAt: updatedAtColumn()
   },
   table => [
-    index('hackathon_credit_offers_hackathon_display_order_idx').on(table.hackathonId, table.displayOrder)
+    index('event_credit_offers_event_display_order_idx').on(table.eventId, table.displayOrder)
   ]
 )
 
-export const hackathonCreditCodes = sqliteTable(
-  'hackathon_credit_codes',
+export const eventCreditCodes = sqliteTable(
+  'event_credit_codes',
   {
     id: idColumn(),
     creditOfferId: text('credit_offer_id')
       .notNull()
-      .references(() => hackathonCreditOffers.id, { onDelete: 'cascade' }),
+      .references(() => eventCreditOffers.id, { onDelete: 'cascade' }),
     value: text('value').notNull(),
     claimedByUserId: text('claimed_by_user_id').references(() => users.id),
     claimedAt: text('claimed_at'),
     createdAt: createdAtColumn()
   },
   table => [
-    index('hackathon_credit_codes_offer_claim_state_idx').on(
+    index('event_credit_codes_offer_claim_state_idx').on(
       table.creditOfferId,
       table.claimedByUserId,
       table.createdAt
     ),
-    uniqueIndex('hackathon_credit_codes_offer_claimed_user_idx')
+    uniqueIndex('event_credit_codes_offer_claimed_user_idx')
       .on(table.creditOfferId, table.claimedByUserId)
       .where(sql`${table.claimedByUserId} is not null`)
   ]
@@ -763,9 +770,9 @@ export const prizeEligibilitySnapshots = sqliteTable(
   'prize_eligibility_snapshots',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id),
+      .references(() => events.id),
     teamId: text('team_id')
       .notNull()
       .references(() => teams.id),
@@ -776,18 +783,18 @@ export const prizeEligibilitySnapshots = sqliteTable(
     createdAt: createdAtColumn()
   },
   table => [
-    index('prize_eligibility_snapshots_hackathon_user_team_idx').on(
-      table.hackathonId,
+    index('prize_eligibility_snapshots_event_user_team_idx').on(
+      table.eventId,
       table.userId,
       table.teamId
     ),
-    index('prize_eligibility_snapshots_hackathon_team_created_idx').on(
-      table.hackathonId,
+    index('prize_eligibility_snapshots_event_team_created_idx').on(
+      table.eventId,
       table.teamId,
       table.createdAt
     ),
-    uniqueIndex('prize_eligibility_snapshots_hackathon_team_user_idx').on(
-      table.hackathonId,
+    uniqueIndex('prize_eligibility_snapshots_event_team_user_idx').on(
+      table.eventId,
       table.teamId,
       table.userId
     )
@@ -805,7 +812,7 @@ export const prizeRedemptions = sqliteTable(
     teamId: text('team_id').references(() => teams.id),
     status: text('status', { enum: prizeRedemptionStatuses }).notNull().default('pending'),
     legalName: text('legal_name'),
-    winnerTermsDocumentId: text('winner_terms_document_id').references(() => hackathonTermsDocuments.id),
+    winnerTermsDocumentId: text('winner_terms_document_id').references(() => eventTermsDocuments.id),
     winnerTermsAcceptedAt: text('winner_terms_accepted_at'),
     redeemedAt: text('redeemed_at'),
     createdAt: createdAtColumn(),
@@ -823,43 +830,43 @@ export const prizeRedemptions = sqliteTable(
   ]
 )
 
-export const hackathonOutcomeCaches = sqliteTable(
-  'hackathon_outcome_caches',
+export const eventOutcomeCaches = sqliteTable(
+  'event_outcome_caches',
   {
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .primaryKey()
-      .references(() => hackathons.id, { onDelete: 'cascade' }),
+      .references(() => events.id, { onDelete: 'cascade' }),
     generationId: text('generation_id').notNull(),
     generatedAt: text('generated_at').notNull(),
     updatedAt: updatedAtColumn()
   },
   table => [
-    index('hackathon_outcome_caches_updated_idx').on(table.updatedAt)
+    index('event_outcome_caches_updated_idx').on(table.updatedAt)
   ]
 )
 
-export const hackathonOutcomeCacheEntries = sqliteTable(
-  'hackathon_outcome_cache_entries',
+export const eventOutcomeCacheEntries = sqliteTable(
+  'event_outcome_cache_entries',
   {
     id: idColumn(),
-    hackathonId: text('hackathon_id')
+    eventId: text('event_id')
       .notNull()
-      .references(() => hackathons.id, { onDelete: 'cascade' }),
+      .references(() => events.id, { onDelete: 'cascade' }),
     generationId: text('generation_id').notNull(),
-    collection: text('collection', { enum: hackathonOutcomeCacheCollections }).notNull(),
+    collection: text('collection', { enum: eventOutcomeCacheCollections }).notNull(),
     displayOrder: integer('display_order').notNull(),
     payloadJson: text('payload_json').notNull(),
     createdAt: createdAtColumn()
   },
   table => [
-    uniqueIndex('hackathon_outcome_cache_entries_generation_order_idx').on(
-      table.hackathonId,
+    uniqueIndex('event_outcome_cache_entries_generation_order_idx').on(
+      table.eventId,
       table.generationId,
       table.collection,
       table.displayOrder
     ),
-    index('hackathon_outcome_cache_entries_hackathon_generation_idx').on(
-      table.hackathonId,
+    index('event_outcome_cache_entries_event_generation_idx').on(
+      table.eventId,
       table.generationId
     )
   ]
@@ -887,8 +894,8 @@ export const auditLogs = sqliteTable(
     index('audit_logs_submission_disqualified_created_idx')
       .on(table.entityType, table.action, table.entityId, table.createdAt)
       .where(sql`${table.entityType} = 'submission' and ${table.action} = 'submission.disqualified'`),
-    index('audit_logs_metadata_hackathon_created_idx').on(
-      sql`json_extract(${table.metadata}, '$.hackathonId')`,
+    index('audit_logs_metadata_event_created_idx').on(
+      sql`json_extract(${table.metadata}, '$.eventId')`,
       table.createdAt
     )
   ]
@@ -897,14 +904,14 @@ export const auditLogs = sqliteTable(
 export const schema = {
   users,
   userAuthIdentities,
-  hackathons,
-  hackathonTracks,
-  hackathonFeedback,
-  hackathonRoleAssignments,
+  events,
+  eventTracks,
+  eventFeedback,
+  eventRoleAssignments,
   platformDocuments,
   platformLegalSettings,
   userPlatformDocumentAcceptances,
-  hackathonTermsDocuments,
+  eventTermsDocuments,
   userApplications,
   teams,
   teamMembers,
@@ -913,13 +920,13 @@ export const schema = {
   evaluationCriteria,
   judgeAssignments,
   judgeCriterionScores,
-  hackathonCreditOffers,
-  hackathonCreditCodes,
+  eventCreditOffers,
+  eventCreditCodes,
   prizes,
   prizeEligibilitySnapshots,
   prizeRedemptions,
-  hackathonOutcomeCaches,
-  hackathonOutcomeCacheEntries,
+  eventOutcomeCaches,
+  eventOutcomeCacheEntries,
   auditLogs
 }
 

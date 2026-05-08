@@ -1,29 +1,29 @@
 import { afterEach, describe, expect, test } from 'vitest'
 
 import {
-  hackathons,
+  events,
   submissions,
   teams,
   users
 } from '../../../../../server/database/schema'
 import { ApiError } from '../../../../../server/http/api-error'
 import {
-  assertSubmissionBodyMatchesHackathonRequirements,
-  assertHackathonAllowsSubmissionCreation,
-  assertHackathonAllowsSubmissionEditing,
+  assertSubmissionBodyMatchesEventRequirements,
+  assertEventAllowsSubmissionCreation,
+  assertEventAllowsSubmissionEditing,
   assertNoSubmissionExists,
   assertSubmissionDisqualifiable,
   assertSubmissionMutable,
   assertSubmissionSubmittable,
   assertSubmissionWithdrawable,
   buildSubmissionWritePayload,
-  getHackathonSubmissionSummary,
+  getEventSubmissionSummary,
   isNoSubmissionStatus,
   resolveValidatedSubmissionTrackId
 } from '../../../../../server/domains/submissions'
 import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
 
-function createHackathon(
+function createEvent(
   state:
     | 'registration_open'
     | 'submission_open'
@@ -37,10 +37,11 @@ function createHackathon(
     | 'completed'
 ) {
   return {
-    id: 'hackathon_1',
-    name: 'Submission Hackathon',
-    slug: 'submission-hackathon',
-    description: 'Submission Hackathon',
+    id: 'event_1',
+    eventType: 'hackathon',
+    name: 'Submission Event',
+    slug: 'submission-event',
+    description: 'Submission Event',
     discordServerUrl: null,
     city: 'Vienna',
     country: 'Austria',
@@ -95,7 +96,7 @@ function createIncompleteSubmission(status: 'draft' | 'submitted' | 'withdrawn' 
 function createDatabase(trackIds: string[] = []) {
   return {
     query: {
-      hackathonTracks: {
+      eventTracks: {
         findMany: async () => trackIds.map(id => ({ id }))
       }
     }
@@ -112,14 +113,14 @@ describe('TASK-3.7 submission helpers', () => {
   })
 
   test('submission creation remains limited to submission_open', () => {
-    expect(() => assertHackathonAllowsSubmissionCreation(createHackathon('submission_open'))).not.toThrow()
-    expect(() => assertHackathonAllowsSubmissionCreation(createHackathon('judging_preparation'))).toThrowError(ApiError)
+    expect(() => assertEventAllowsSubmissionCreation(createEvent('submission_open'))).not.toThrow()
+    expect(() => assertEventAllowsSubmissionCreation(createEvent('judging_preparation'))).toThrowError(ApiError)
   })
 
   test('submission editing remains available until judging starts', () => {
-    expect(() => assertHackathonAllowsSubmissionEditing(createHackathon('submission_open'))).not.toThrow()
-    expect(() => assertHackathonAllowsSubmissionEditing(createHackathon('judging_preparation'))).not.toThrow()
-    expect(() => assertHackathonAllowsSubmissionEditing(createHackathon('blind_review'))).toThrowError(ApiError)
+    expect(() => assertEventAllowsSubmissionEditing(createEvent('submission_open'))).not.toThrow()
+    expect(() => assertEventAllowsSubmissionEditing(createEvent('judging_preparation'))).not.toThrow()
+    expect(() => assertEventAllowsSubmissionEditing(createEvent('blind_review'))).toThrowError(ApiError)
   })
 
   test('submission creation requires the team to have no prior submission record', () => {
@@ -134,26 +135,26 @@ describe('TASK-3.7 submission helpers', () => {
 
     await expect(assertSubmissionSubmittable(
       createDatabase(),
-      createHackathon('submission_open'),
+      createEvent('submission_open'),
       createSubmission('draft')
     )).resolves.toBeUndefined()
     await expect(assertSubmissionSubmittable(
       createDatabase(),
-      createHackathon('submission_open'),
+      createEvent('submission_open'),
       createSubmission('submitted')
     )).rejects.toThrowError(ApiError)
     await expect(assertSubmissionSubmittable(
       createDatabase(),
       {
-        ...createHackathon('submission_open'),
+        ...createEvent('submission_open'),
         requireSubmissionRepositoryUrl: true
       },
       createIncompleteSubmission('draft')
     )).rejects.toThrowError(ApiError)
   })
 
-  test('submission create and update requirements follow hackathon configuration', () => {
-    expect(() => assertSubmissionBodyMatchesHackathonRequirements(createHackathon('submission_open'), {
+  test('submission create and update requirements follow event configuration', () => {
+    expect(() => assertSubmissionBodyMatchesEventRequirements(createEvent('submission_open'), {
       projectName: 'Project',
       summary: '',
       repositoryUrl: '',
@@ -161,8 +162,8 @@ describe('TASK-3.7 submission helpers', () => {
       trackId: null
     })).not.toThrow()
 
-    expect(() => assertSubmissionBodyMatchesHackathonRequirements({
-      ...createHackathon('submission_open'),
+    expect(() => assertSubmissionBodyMatchesEventRequirements({
+      ...createEvent('submission_open'),
       requireSubmissionSummary: true,
       requireSubmissionDemoUrl: true
     }, {
@@ -174,58 +175,58 @@ describe('TASK-3.7 submission helpers', () => {
     })).toThrowError(ApiError)
   })
 
-  test('submission track validation follows the configured hackathon tracks', async () => {
+  test('submission track validation follows the configured event tracks', async () => {
     await expect(resolveValidatedSubmissionTrackId(
       createDatabase(),
-      'hackathon_1',
+      'event_1',
       null
     )).resolves.toBeNull()
 
     await expect(resolveValidatedSubmissionTrackId(
       createDatabase(),
-      'hackathon_1',
+      'event_1',
       'track_1'
     )).rejects.toThrowError(ApiError)
 
     await expect(resolveValidatedSubmissionTrackId(
       createDatabase(['track_1']),
-      'hackathon_1',
+      'event_1',
       null
     )).rejects.toThrowError(ApiError)
 
     await expect(resolveValidatedSubmissionTrackId(
       createDatabase(['track_1']),
-      'hackathon_1',
+      'event_1',
       'track_2'
     )).rejects.toThrowError(ApiError)
 
     await expect(resolveValidatedSubmissionTrackId(
       createDatabase(['track_1']),
-      'hackathon_1',
+      'event_1',
       'track_1'
     )).resolves.toBe('track_1')
   })
 
   test('withdrawal is allowed until judging starts and only for draft or submitted submissions', () => {
-    expect(() => assertSubmissionWithdrawable(createHackathon('submission_open'), createSubmission('draft'))).not.toThrow()
-    expect(() => assertSubmissionWithdrawable(createHackathon('submission_open'), createSubmission('submitted'))).not.toThrow()
-    expect(() => assertSubmissionWithdrawable(createHackathon('judging_preparation'), createSubmission('submitted'))).not.toThrow()
-    expect(() => assertSubmissionWithdrawable(createHackathon('submission_open'), createSubmission('locked'))).toThrowError(ApiError)
-    expect(() => assertSubmissionWithdrawable(createHackathon('blind_review'), createSubmission('submitted'))).toThrowError(ApiError)
+    expect(() => assertSubmissionWithdrawable(createEvent('submission_open'), createSubmission('draft'))).not.toThrow()
+    expect(() => assertSubmissionWithdrawable(createEvent('submission_open'), createSubmission('submitted'))).not.toThrow()
+    expect(() => assertSubmissionWithdrawable(createEvent('judging_preparation'), createSubmission('submitted'))).not.toThrow()
+    expect(() => assertSubmissionWithdrawable(createEvent('submission_open'), createSubmission('locked'))).toThrowError(ApiError)
+    expect(() => assertSubmissionWithdrawable(createEvent('blind_review'), createSubmission('submitted'))).toThrowError(ApiError)
   })
 
   test('disqualification applies only to locked submissions during the judging and outcomes lifecycle', () => {
-    expect(() => assertSubmissionDisqualifiable(createHackathon('blind_review'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createHackathon('shortlist'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createHackathon('pitch'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createHackathon('pitch_review'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createHackathon('final_deliberation'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createHackathon('winners_announced'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createHackathon('completed'), createSubmission('locked'))).not.toThrow()
-    expect(() => assertSubmissionDisqualifiable(createHackathon('submission_open'), createSubmission('locked'))).toThrowError(ApiError)
-    expect(() => assertSubmissionDisqualifiable(createHackathon('shortlist'), createSubmission('draft'))).toThrowError(ApiError)
-    expect(() => assertSubmissionDisqualifiable(createHackathon('shortlist'), createSubmission('submitted'))).toThrowError(ApiError)
-    expect(() => assertSubmissionDisqualifiable(createHackathon('shortlist'), createSubmission('withdrawn'))).toThrowError(ApiError)
+    expect(() => assertSubmissionDisqualifiable(createEvent('blind_review'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createEvent('shortlist'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createEvent('pitch'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createEvent('pitch_review'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createEvent('final_deliberation'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createEvent('winners_announced'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createEvent('completed'), createSubmission('locked'))).not.toThrow()
+    expect(() => assertSubmissionDisqualifiable(createEvent('submission_open'), createSubmission('locked'))).toThrowError(ApiError)
+    expect(() => assertSubmissionDisqualifiable(createEvent('shortlist'), createSubmission('draft'))).toThrowError(ApiError)
+    expect(() => assertSubmissionDisqualifiable(createEvent('shortlist'), createSubmission('submitted'))).toThrowError(ApiError)
+    expect(() => assertSubmissionDisqualifiable(createEvent('shortlist'), createSubmission('withdrawn'))).toThrowError(ApiError)
 
     expect(isNoSubmissionStatus('draft')).toBe(true)
     expect(isNoSubmissionStatus('withdrawn')).toBe(true)
@@ -264,51 +265,52 @@ describe('TASK-3.7 submission helpers', () => {
       displayName: 'Platform Admin'
     })
 
-    await harness.database.insert(hackathons).values({
-      ...createHackathon('submission_open'),
-      id: 'hackathon_1',
+    await harness.database.insert(events).values({
+      ...createEvent('submission_open'),
+      id: 'event_1',
+      eventType: 'hackathon',
       createdByUserId: 'platform_admin'
     })
 
     await harness.database.insert(teams).values([
       {
         id: 'team_none',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'No Submission',
         slug: 'no-submission',
         createdByUserId: 'platform_admin'
       },
       {
         id: 'team_draft',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Draft Team',
         slug: 'draft-team',
         createdByUserId: 'platform_admin'
       },
       {
         id: 'team_submitted',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Submitted Team',
         slug: 'submitted-team',
         createdByUserId: 'platform_admin'
       },
       {
         id: 'team_locked',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Locked Team',
         slug: 'locked-team',
         createdByUserId: 'platform_admin'
       },
       {
         id: 'team_withdrawn',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Withdrawn Team',
         slug: 'withdrawn-team',
         createdByUserId: 'platform_admin'
       },
       {
         id: 'team_disqualified',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Disqualified Team',
         slug: 'disqualified-team',
         createdByUserId: 'platform_admin'
@@ -353,7 +355,7 @@ describe('TASK-3.7 submission helpers', () => {
       }
     ])
 
-    await expect(getHackathonSubmissionSummary(harness.database, 'hackathon_1')).resolves.toEqual({
+    await expect(getEventSubmissionSummary(harness.database, 'event_1')).resolves.toEqual({
       totalTeams: 6,
       noSubmissionTeamCount: 4,
       submittedOrLaterTeamCount: 2,

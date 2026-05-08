@@ -1,10 +1,10 @@
-import type { TermsDocument } from '~/domains/hackathons/records'
-import type { HackathonState } from '~/domains/hackathons/states'
+import type { TermsDocument } from '~/domains/events/records'
+import type { EventState } from '~/domains/events/states'
 import type { WinnerEntry } from '~/domains/outcomes/published-outcomes'
 
 export interface PrizeRedemptionPrize {
   id: string
-  hackathonId: string
+  eventId: string
   name: string
   description: string
   rewardType: 'api_credits' | 'subscription' | 'physical' | 'other'
@@ -17,11 +17,11 @@ export interface PrizeRedemptionPrize {
   createdAt: string
 }
 
-export interface PrizeRedemptionHackathon {
+export interface PrizeRedemptionEvent {
   id: string
   name: string
   slug: string
-  state: HackathonState
+  state: EventState
   currentWinnerTermsDocumentId: string | null
 }
 
@@ -37,7 +37,7 @@ export interface PrizeRedemptionRecord {
   createdAt: string
   updatedAt: string
   prize: PrizeRedemptionPrize
-  hackathon: PrizeRedemptionHackathon
+  event: PrizeRedemptionEvent
 }
 
 export interface PrizeRedemptionTask extends PrizeRedemptionRecord {
@@ -141,7 +141,7 @@ export function summarizePrizeRedemptionTask(redemption: PrizeRedemptionRecord) 
 
   return redemption.prize.awardScope === 'team'
     ? 'Submit the winning team’s legal recipient name and accept the exact current winner terms.'
-    : 'Submit the recipient legal name and accept the exact current winner terms for this hackathon.'
+    : 'Submit the recipient legal name and accept the exact current winner terms for this event.'
 }
 
 export function getPrizeRedemptionAvailability(task: PrizeRedemptionTask): PrizeRedemptionAvailability {
@@ -155,7 +155,7 @@ export function getPrizeRedemptionAvailability(task: PrizeRedemptionTask): Prize
   if (!task.currentWinnerTerms) {
     return {
       isEnabled: false,
-      reason: 'The current winner terms are unavailable for this hackathon.'
+      reason: 'The current winner terms are unavailable for this event.'
     }
   }
 

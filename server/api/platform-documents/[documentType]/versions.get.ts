@@ -15,11 +15,11 @@ const paramsSchema = z.object({
   documentType: platformDocumentTypeSchema
 })
 
-export default defineApiHandler(async (event) => {
-  await requireAuthenticatedActor(event)
+export default defineApiHandler(async (h3Event) => {
+  await requireAuthenticatedActor(h3Event)
 
-  const { documentType } = parseValidatedParams(event, paramsSchema)
-  const documents = await listPlatformDocumentVersions(getDatabase(event), documentType)
+  const { documentType } = parseValidatedParams(h3Event, paramsSchema)
+  const documents = await listPlatformDocumentVersions(getDatabase(h3Event), documentType)
 
   return apiList(
     documents.map(serializePlatformDocument),

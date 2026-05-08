@@ -4,7 +4,7 @@ import type {
   AccountSocialProfileUrlKey
 } from '~/domains/accounts/profile'
 import type {
-  HackathonProfileField,
+  EventProfileField,
   ParticipantRegistrationTeamIntent
 } from '~/domains/applications/participant-application'
 
@@ -38,11 +38,11 @@ function createOptionalSocialProfileUrlSchema(
 }
 
 export function buildParticipantRegistrationFormSchema(options: {
-  profileFields: HackathonProfileField[]
+  profileFields: EventProfileField[]
   maxTeamMembers: number
   hasCurrentApplicationTerms: boolean
   isInPersonEvent: boolean
-  requireWhyThisHackathon: boolean
+  requireWhyThisEvent: boolean
   requireProofOfExecution: boolean
 }) {
   return z.object({
@@ -53,7 +53,7 @@ export function buildParticipantRegistrationFormSchema(options: {
       fullName: z.string(),
       email: z.string()
     })),
-    whyThisHackathon: z.string().trim().max(4000),
+    whyThisEvent: z.string().trim().max(4000),
     proofOfExecutionUrl: createOptionalProofOfExecutionLinksSchema('Enter valid proof links. Separate multiple links with commas.'),
     profileForm: z.object({
       firstName: z.string().trim().min(1).max(120),
@@ -141,11 +141,11 @@ export function buildParticipantRegistrationFormSchema(options: {
       })
     }
 
-    if (options.requireWhyThisHackathon && input.whyThisHackathon.trim().length === 0) {
+    if (options.requireWhyThisEvent && input.whyThisEvent.trim().length === 0) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ['whyThisHackathon'],
-        message: 'Why this hackathon is required.'
+        path: ['whyThisEvent'],
+        message: 'Why this event is required.'
       })
     }
 

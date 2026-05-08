@@ -17,26 +17,26 @@ type ScenarioState = {
 }
 
 type ParticipantApplicationFixture = {
-  hackathonId: string
+  eventId: string
   applicationTermsDocumentId?: string
 }
 
 const scenarioState = new WeakMap<Page, ScenarioState>()
 
 const participantApplicationFixtures: Record<string, ParticipantApplicationFixture> = {
-  'participant-application-fixture-hackathon': {
-    hackathonId: platformFixtureIds.participantApplicationHackathonId,
+  'participant-application-fixture-event': {
+    eventId: platformFixtureIds.participantApplicationEventId,
     applicationTermsDocumentId: platformFixtureIds.participantApplicationTermsDocumentId
   },
-  'participant-profile-requirement-fixture-hackathon': {
-    hackathonId: platformFixtureIds.participantProfileRequirementHackathonId,
+  'participant-profile-requirement-fixture-event': {
+    eventId: platformFixtureIds.participantProfileRequirementEventId,
     applicationTermsDocumentId: platformFixtureIds.participantProfileRequirementTermsDocumentId
   },
-  'participant-approved-fixture-hackathon': {
-    hackathonId: platformFixtureIds.participantApprovedHackathonId
+  'participant-approved-fixture-event': {
+    eventId: platformFixtureIds.participantApprovedEventId
   },
-  'participant-rejected-fixture-hackathon': {
-    hackathonId: platformFixtureIds.participantRejectedHackathonId
+  'participant-rejected-fixture-event': {
+    eventId: platformFixtureIds.participantRejectedEventId
   }
 }
 
@@ -123,12 +123,12 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
   }
 }
 
-When('I open the participant application page for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
+When('I open the participant application page for event slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto(`/hackathons/${slug}`)
+  await page.goto(`/events/${slug}`)
 })
 
-When('the saved {string} session submits a participant application for hackathon slug {string}', async ({ page }, personaKey: string, slug: string) => {
+When('the saved {string} session submits a participant application for event slug {string}', async ({ page }, personaKey: string, slug: string) => {
   const fixture = resolveParticipantApplicationFixture(slug)
 
   if (!fixture.applicationTermsDocumentId) {
@@ -138,7 +138,7 @@ When('the saved {string} session submits a participant application for hackathon
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${fixture.hackathonId}/applications`, {
+    const response = await apiClient.post(`/api/events/${fixture.eventId}/applications`, {
       data: {
         applicationTermsDocumentId: fixture.applicationTermsDocumentId
       }
@@ -152,12 +152,12 @@ When('the saved {string} session submits a participant application for hackathon
   }
 })
 
-When('the saved {string} session loads their participant application for hackathon slug {string}', async ({ page }, personaKey: string, slug: string) => {
+When('the saved {string} session loads their participant application for event slug {string}', async ({ page }, personaKey: string, slug: string) => {
   const fixture = resolveParticipantApplicationFixture(slug)
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.get(`/api/hackathons/${fixture.hackathonId}/applications/me`)
+    const response = await apiClient.get(`/api/events/${fixture.eventId}/applications/me`)
     const state = getScenarioState(page)
     state.response = response
     state.json = await response.json()

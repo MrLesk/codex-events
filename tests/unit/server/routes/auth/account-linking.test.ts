@@ -81,11 +81,11 @@ describe('Auth0 account-link routes', () => {
       ],
       runtimeConfig: {
         auth0: {
-          appBaseUrl: 'https://dev.codex-hackathons.com',
-          managementDomain: 'codex-hackathons-dev.eu.auth0.com',
+          appBaseUrl: 'https://dev.codex-events.com',
+          managementDomain: 'codex-events-dev.eu.auth0.com',
           managementClientId: 'management-client-id',
           managementClientSecret: 'management-client-secret',
-          managementAudience: 'https://codex-hackathons-dev.eu.auth0.com/api/v2/',
+          managementAudience: 'https://codex-events-dev.eu.auth0.com/api/v2/',
           databaseConnectionName: 'Username-Password-Authentication',
           accountLinkChallengeSecret: 'link-secret'
         }
@@ -129,7 +129,7 @@ describe('Auth0 account-link routes', () => {
       body: JSON.stringify({
         privacyPolicyDocumentId: 'privacy_v1',
         platformTermsDocumentId: 'terms_v1',
-        returnTo: '/hackathons/fixture/register'
+        returnTo: '/events/fixture/register'
       })
     })
 
@@ -245,7 +245,7 @@ describe('Auth0 account-link routes', () => {
           ? input.toString()
           : input.url
 
-      if (url === 'https://codex-hackathons-dev.eu.auth0.com/oauth/token') {
+      if (url === 'https://codex-events-dev.eu.auth0.com/oauth/token') {
         return new Response(JSON.stringify({
           access_token: 'management-access-token',
           scope: 'read:users update:users'
@@ -257,7 +257,7 @@ describe('Auth0 account-link routes', () => {
         })
       }
 
-      if (url === 'https://codex-hackathons-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user') {
+      if (url === 'https://codex-events-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user') {
         expect(init?.method).toBe('GET')
         expect(init?.headers).toMatchObject({
           authorization: 'Bearer management-access-token'
@@ -278,7 +278,7 @@ describe('Auth0 account-link routes', () => {
         })
       }
 
-      if (url === 'https://codex-hackathons-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user/identities') {
+      if (url === 'https://codex-events-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user/identities') {
         expect(init?.method).toBe('POST')
         expect(init?.headers).toMatchObject({
           'authorization': 'Bearer management-access-token',
@@ -316,7 +316,7 @@ describe('Auth0 account-link routes', () => {
     expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(clearPlatformAccountLinkAuthentication).toHaveBeenCalledWith(expect.any(Object))
     expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister')
+    expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Fevents%2Ffixture%2Fregister')
     const storedGoogleIdentity = await harness.database.query.userAuthIdentities.findFirst({
       where: eq(userAuthIdentities.auth0Subject, 'google-oauth2|existing-google-user')
     })
@@ -351,6 +351,6 @@ describe('Auth0 account-link routes', () => {
     })
 
     expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister&linkingError=mismatch')
+    expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Fevents%2Ffixture%2Fregister&linkingError=mismatch')
   })
 })

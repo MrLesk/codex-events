@@ -35,9 +35,9 @@ function parsePersonaKey(personaKey: string): StablePersonaKey {
   throw new Error(`Unknown stable persona key: ${personaKey}`)
 }
 
-function getCurrentHackathonId(page: Page) {
+function getCurrentEventId(page: Page) {
   const segments = new URL(page.url()).pathname.split('/').filter(Boolean)
-  return segments[segments.indexOf('hackathons') + 1] ?? ''
+  return segments[segments.indexOf('events') + 1] ?? ''
 }
 
 async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
@@ -74,9 +74,9 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
   }
 }
 
-When('I open the admin competition page for hackathon {string} with the saved {string} session', async ({ page }, hackathonId: string, personaKey: string) => {
+When('I open the admin competition page for event {string} with the saved {string} session', async ({ page }, eventId: string, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto(`/admin/hackathons/${hackathonId}/competition`)
+  await page.goto(`/admin/events/${eventId}/competition`)
 })
 
 Then('I should see the admin competition text {string}', async ({ page }, text: string) => {
@@ -84,7 +84,7 @@ Then('I should see the admin competition text {string}', async ({ page }, text: 
 })
 
 Then('I should see the admin competition state {string}', async ({ page }, state: string) => {
-  await expect(page.getByTestId('admin-competition-hackathon-state')).toHaveText(state)
+  await expect(page.getByTestId('admin-competition-event-state')).toHaveText(state)
 })
 
 Then('I should see the competition assignment {string} assigned to judge {string}', async ({ page }, submissionId: string, judgeUserId: string) => {
@@ -95,7 +95,7 @@ Then('I should see the competition assignment {string} assigned to judge {string
 })
 
 When('I reassign the competition assignment {string} to judge {string} with note {string}', async ({ page }, submissionId: string, judgeUserId: string, note: string) => {
-  const hackathonId = getCurrentHackathonId(page)
+  const eventId = getCurrentEventId(page)
   const scope = page.getByTestId(`admin-competition-assignment-${submissionId}`)
 
   await expect(scope).toBeVisible()
@@ -104,7 +104,7 @@ When('I reassign the competition assignment {string} to judge {string} with note
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/${hackathonId}/judging/assignments/`)
+      response.url().includes(`/api/events/${eventId}/judging/assignments/`)
       && response.url().includes('/actions/reassign')
       && response.ok()
     ),
@@ -113,7 +113,7 @@ When('I reassign the competition assignment {string} to judge {string} with note
 })
 
 When('I force-skip the competition assignment {string} with note {string}', async ({ page }, submissionId: string, note: string) => {
-  const hackathonId = getCurrentHackathonId(page)
+  const eventId = getCurrentEventId(page)
   const scope = page.getByTestId(`admin-competition-assignment-${submissionId}`)
 
   await expect(scope).toBeVisible()
@@ -121,7 +121,7 @@ When('I force-skip the competition assignment {string} with note {string}', asyn
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/${hackathonId}/judging/assignments/`)
+      response.url().includes(`/api/events/${eventId}/judging/assignments/`)
       && response.url().includes('/actions/force-skip')
       && response.ok()
     ),
@@ -134,11 +134,11 @@ When('I move the competition shortlist entry {string} up', async ({ page }, subm
 })
 
 When('I save the competition shortlist order', async ({ page }) => {
-  const hackathonId = getCurrentHackathonId(page)
+  const eventId = getCurrentEventId(page)
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/${hackathonId}/shortlist/actions/select-finalists`)
+      response.url().includes(`/api/events/${eventId}/shortlist/actions/select-finalists`)
       && response.ok()
     ),
     page.getByTestId('admin-competition-shortlist-save').click()
@@ -150,26 +150,26 @@ Then('I should see the competition shortlist entry {string} at rank {string}', a
 })
 
 When('I announce competition winners', async ({ page }) => {
-  const hackathonId = getCurrentHackathonId(page)
+  const eventId = getCurrentEventId(page)
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/${hackathonId}/actions/announce-winners`)
+      response.url().includes(`/api/events/${eventId}/actions/announce-winners`)
       && response.ok()
     ),
     page.getByTestId('admin-competition-announce-winners').click()
   ])
 })
 
-When('I complete the competition hackathon', async ({ page }) => {
-  const hackathonId = getCurrentHackathonId(page)
+When('I complete the competition event', async ({ page }) => {
+  const eventId = getCurrentEventId(page)
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/${hackathonId}/actions/complete`)
+      response.url().includes(`/api/events/${eventId}/actions/complete`)
       && response.ok()
     ),
-    page.getByTestId('admin-competition-complete-hackathon').click()
+    page.getByTestId('admin-competition-complete-event').click()
   ])
 })
 

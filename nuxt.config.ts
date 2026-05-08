@@ -36,17 +36,17 @@ export default defineNuxtConfig({
     outboundEmail: {
       binding: 'EMAIL',
       fromEmail: '',
-      fromName: 'Codex Hackathons',
+      fromName: 'Codex Events',
       replyTo: ''
     },
     applicationReviewEmails: {
       queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE',
-      queueName: 'codex-hackathons-application-review-email-delivery',
+      queueName: 'codex-events-application-review-email-delivery',
       retryDelaySeconds: 120
     },
-    hackathonOutcomeEmails: {
-      queueBinding: 'HACKATHON_OUTCOME_EMAIL_QUEUE',
-      queueName: 'codex-hackathons-hackathon-outcome-email-delivery',
+    eventOutcomeEmails: {
+      queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE',
+      queueName: 'codex-events-event-outcome-email-delivery',
       retryDelaySeconds: 120
     },
     luma: {
@@ -55,7 +55,7 @@ export default defineNuxtConfig({
       profileBaseUrl: 'https://luma.com',
       webhookSecret: '',
       queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
-      queueName: 'codex-hackathons-application-luma-sync',
+      queueName: 'codex-events-application-luma-sync',
       retryDelaySeconds: 120
     },
     database: {
@@ -64,8 +64,8 @@ export default defineNuxtConfig({
     profileIcons: {
       binding: 'PROFILE_ICONS'
     },
-    hackathonImages: {
-      binding: 'HACKATHON_IMAGES',
+    eventImages: {
+      binding: 'EVENT_IMAGES',
       publicCdnBaseUrl: ''
     }
   },

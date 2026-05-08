@@ -1,17 +1,17 @@
 # Permissions Matrix
 
-This document defines the canonical permissions for the Codex hackathon platform.
+This document defines the canonical permissions for the Codex event platform.
 
 ## Actor Definitions
 
-- `user`: an authenticated platform user with no special team or hackathon authority
-- `workspace_user`: a platform user who can access a specific hackathon in `/account/hackathons/:slug` because that user has a hackathon application, an active team membership, or a hackathon role assignment for that hackathon
-- `approved_user`: a user whose `UserApplication` for a specific hackathon is approved
+- `user`: an authenticated platform user with no special team or event authority
+- `workspace_user`: a platform user who can access a specific event in `/account/events/:slug` because that user has an event application, an active Hackathon team membership, or an event role assignment for that event
+- `approved_user`: a user whose `UserApplication` for a specific event is approved
 - `team_member`: a user with an active `TeamMember` record on a team
 - `team_admin`: a `team_member` whose team role is `admin`
-- `staff`: a user with explicit `staff` access in a hackathon, or a `hackathon_admin` whose assignment is also marked as staff
-- `judge`: a user assigned to review through a `JudgeAssignment`
-- `hackathon_admin`: a user with explicit `hackathon_admin` access in a hackathon
+- `staff`: a user with explicit `staff` access in an event, or an `event_admin` whose assignment is also marked as staff
+- `judge`: a user assigned to review through a Hackathon `JudgeAssignment`
+- `event_admin`: a user with explicit `event_admin` access in an event
 - `event_organizer`: a user with `is_event_organizer = true`
 - `platform_admin`: a user with `is_platform_admin = true`
 - `prize_recipient`: a user with a `PrizeRedemption` record to complete, or an active team admin acting on a pending team-scoped redemption
@@ -19,18 +19,19 @@ This document defines the canonical permissions for the Codex hackathon platform
 
 ## Permission Inheritance
 
-- `platform_admin` includes all `hackathon_admin` permissions in every hackathon.
-- `event_organizer` grants hackathon creation access only and does not include visibility into hackathons the user does not manage.
-- `hackathon_admin` can use judge permissions only when that admin also participates in judging through a `JudgeAssignment`.
-- The automatic judge distribution pool is controlled by `HackathonRoleAssignment.is_in_judge_pool`.
-- Staff designation is controlled by `HackathonRoleAssignment.is_staff`.
+- `platform_admin` includes all `event_admin` permissions in every event.
+- `event_organizer` grants event creation access only and does not include visibility into events the user does not manage.
+- `event_admin` can use judge permissions only when that admin also participates in judging through a `JudgeAssignment`.
+- The automatic judge distribution pool is controlled by `EventRoleAssignment.is_in_judge_pool` for Hackathon events.
+- Staff designation is controlled by `EventRoleAssignment.is_staff`.
 - Non-admin `judge` and `staff` assignments are mutually exclusive.
 - A `judge` role must be in the automatic judge distribution pool and must not be marked as staff.
 - A `staff` role must be marked as staff and must not be in the automatic judge distribution pool.
-- A `hackathon_admin` assignment can independently opt into judging participation and staff designation.
+- A `event_admin` assignment can independently opt into judging participation and staff designation.
 - A user acting through a blind `JudgeAssignment` uses the blind judging view even if that user is also an admin.
 - A user acting through a pitch `JudgeAssignment` uses the open pitch judging view even if that user is also an admin.
 - Admin visibility outside a judging assignment flow is not restricted by the assignment view.
+- Team, submission, judging, shortlist, winner, prize, and credit permissions apply only to Hackathon events. Meetup and Build events expose application review, participant visibility, gallery, feedback, lifecycle completion, settings, staff, and event-admin role management.
 
 ## Global Platform Actions
 
@@ -38,69 +39,73 @@ This document defines the canonical permissions for the Codex hackathon platform
 | --- | --- | --- | --- |
 | Create account and authenticate | Yes | Yes | Yes |
 | Delete own account | Yes | Yes | Yes |
-| Create hackathon | No | Yes | Yes |
+| Create event | No | Yes | Yes |
 | View platform admin roster | No | No | Yes |
 | Search active users for platform-admin management | No | No | Yes |
 | Grant platform admin access | No | No | Yes |
 | View event organizer roster | No | No | Yes |
 | Search active users for event-organizer management | No | No | Yes |
 | Grant event organizer access | No | No | Yes |
-| Assign hackathon admins across any hackathon | No | No | Yes |
+| Assign event admins across any event | No | No | Yes |
 | Update platform legal settings | No | No | Yes |
 | Publish platform Privacy Policy or Platform Terms version | No | No | Yes |
 
-## Hackathon Lifecycle Actions
+## Event Lifecycle Actions
 
-| Action | Approved User | Staff | Judge | Hackathon Admin | Platform Admin | System |
+| Action | Approved User | Staff | Judge | Event Admin | Platform Admin | System |
 | --- | --- | --- | --- | --- | --- | --- |
 | Open registration | No | No | No | Yes | Yes | No |
-| Open submission | No | No | No | Yes | Yes | No |
-| Stop submissions | No | No | No | Yes | Yes | No |
-| Start blind review | No | No | No | Yes | Yes | No |
-| Move to shortlist | No | No | No | Yes | Yes | No |
-| Start pitch | No | No | No | Yes | Yes | No |
-| Advance pitch presentation | No | No | No | Yes | Yes | No |
-| Start pitch review | No | No | No | Yes | Yes | No |
-| Move to final deliberation | No | No | No | Yes | Yes | No |
-| Announce winners | No | No | No | Yes | Yes | No |
-| Complete hackathon | No | No | No | Yes | Yes | No |
+| Open submission | No | No | No | Yes, Hackathon only | Yes, Hackathon only | No |
+| Stop submissions | No | No | No | Yes, Hackathon only | Yes, Hackathon only | No |
+| Start blind review | No | No | No | Yes, Hackathon only | Yes, Hackathon only | No |
+| Move to shortlist | No | No | No | Yes, Hackathon only | Yes, Hackathon only | No |
+| Start pitch | No | No | No | Yes, Hackathon only | Yes, Hackathon only | No |
+| Advance pitch presentation | No | No | No | Yes, Hackathon only | Yes, Hackathon only | No |
+| Start pitch review | No | No | No | Yes, Hackathon only | Yes, Hackathon only | No |
+| Move to final deliberation | No | No | No | Yes, Hackathon only | Yes, Hackathon only | No |
+| Announce winners | No | No | No | Yes, Hackathon only | Yes, Hackathon only | No |
+| Complete event | No | No | No | Yes | Yes | No |
 
-## Hackathon Role Assignment Permissions
+## Event Role Assignment Permissions
 
-| Action | Hackathon Admin | Platform Admin |
+| Action | Event Admin | Platform Admin |
 | --- | --- | --- |
-| List explicit hackathon role assignments | Yes | Yes |
+| List explicit event role assignments | Yes | Yes |
 | Assign or replace `staff` role assignments | Yes | Yes |
 | Remove `staff` role assignments | Yes | Yes |
-| Assign or replace `judge` role assignments | Yes | Yes |
-| Remove `judge` role assignments | Yes | Yes |
-| Assign or replace `hackathon_admin` role assignments | Yes | Yes |
-| Remove `hackathon_admin` role assignments | Yes | Yes |
-| Update explicit judging participation for an admin assignment | Yes | Yes |
+| Assign or replace `judge` role assignments | Yes, Hackathon only | Yes, Hackathon only |
+| Remove `judge` role assignments | Yes, Hackathon only | Yes, Hackathon only |
+| Assign or replace `event_admin` role assignments | Yes | Yes |
+| Remove `event_admin` role assignments | Yes | Yes |
+| Update explicit judging participation for an admin assignment | Yes, Hackathon only | Yes, Hackathon only |
 | Update explicit staff designation for an admin assignment | Yes | Yes |
 
 ## Published Roster Permissions
 
-| Action | Workspace User | Staff | Judge | Hackathon Admin | Platform Admin |
+| Action | Workspace User | Staff | Judge | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- | --- |
-| View published judge roster in the account workspace | Yes | Yes | Yes | Yes | Yes |
+| View published judge roster in the account workspace | Yes, Hackathon only | Yes, Hackathon only | Yes, Hackathon only | Yes, Hackathon only | Yes, Hackathon only |
 | View published staff roster in the account workspace | Yes | Yes | Yes | Yes | Yes |
 
 ## Application Permissions
 
-| Action | User | Approved User | Staff | Hackathon Admin | Platform Admin |
+| Action | User | Approved User | Staff | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- | --- |
-| Submit `UserApplication` | Yes, if no application exists for the hackathon and the hackathon is `registration_open` | No | No | No | No |
+| Submit `UserApplication` | Yes, if no application exists for the event and the event is `registration_open` | No | No | No | No |
 | View own application | Yes | Yes | No | No | No |
-| Withdraw own application | Yes, if the application is still `submitted` and the user has no active team membership in the hackathon | Yes, if the application is `approved` and the user has no active team membership in the hackathon | No | No | No |
-| View hackathon application records | No | No | Yes | Yes | Yes |
+| Withdraw own application | Yes, if the application is still `submitted` and the user has no active team membership in the event | Yes, if the application is `approved` and the user has no active team membership in the event | No | No | No |
+| View event application records | No | No | Yes | Yes | Yes |
 | Withdraw application | No | No | No | Yes, if the application is `submitted` or `approved`; if the participant has an active team, the withdrawal can remove that membership or dissolve the team, but it cannot dissolve a team with an active draft, submitted, or locked submission | Yes, if the application is `submitted` or `approved`; if the participant has an active team, the withdrawal can remove that membership or dissolve the team, but it cannot dissolve a team with an active draft, submitted, or locked submission |
 | Approve application | No | No | No | Yes | Yes |
 | Reject application | No | No | No | Yes | Yes |
 
+For Meetup and Build events, an approved application is the participation record. Team permissions below do not apply.
+
 ## Team Permissions
 
-| Action | User | Approved User | Team Member | Team Admin | Staff | Hackathon Admin | Platform Admin |
+Team permissions apply only to Hackathon events.
+
+| Action | User | Approved User | Team Member | Team Admin | Staff | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Create team | No | Yes, during `registration_open` or `submission_open` | No | No | No | No | No |
 | Search teams | No | Yes | Yes | Yes | Yes | Yes | Yes |
@@ -115,20 +120,22 @@ This document defines the canonical permissions for the Codex hackathon platform
 | Leave team during `registration_open` or `submission_open` | No | No | Yes, only if at least one active team admin remains or the user is the last active member of a team with no active draft, submitted, or locked submission | Yes, only if at least one active team admin remains or the user is the last active member of a team with no active draft, submitted, or locked submission | No | No | No |
 | Leave team after submission closes | No | No | Yes, only if at least one active team admin remains and at least one active team member remains | Yes, only if at least one active team admin remains and at least one active team member remains | No | No | No |
 
-## Hackathon Image Permissions
+## Event Image Permissions
 
-| Action | Public User | Hackathon Admin | Platform Admin |
+| Action | Public User | Event Admin | Platform Admin |
 | --- | --- | --- | --- |
-| View uploaded public hackathon background image | Yes, only for publicly visible hackathons | Yes | Yes |
-| View uploaded public hackathon banner image | Yes, only for publicly visible hackathons | Yes | Yes |
-| Upload hackathon background image | No | Yes | Yes |
-| Remove hackathon background image | No | Yes | Yes |
-| Upload hackathon banner image | No | Yes | Yes |
-| Remove hackathon banner image | No | Yes | Yes |
+| View uploaded public event background image | Yes, only for publicly visible events | Yes | Yes |
+| View uploaded public event banner image | Yes, only for publicly visible events | Yes | Yes |
+| Upload event background image | No | Yes | Yes |
+| Remove event background image | No | Yes | Yes |
+| Upload event banner image | No | Yes | Yes |
+| Remove event banner image | No | Yes | Yes |
 
 ## Submission Permissions
 
-| Action | Team Member | Team Admin | Hackathon Admin | Platform Admin |
+Submission permissions apply only to Hackathon events.
+
+| Action | Team Member | Team Admin | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- |
 | Create submission draft | No | Yes, during `submission_open` | No | No |
 | Edit submission draft | No | Yes, during `submission_open` or `judging_preparation` until the submission is locked | No | No |
@@ -140,7 +147,9 @@ This document defines the canonical permissions for the Codex hackathon platform
 
 ## Judging Permissions
 
-| Action | Judge | Hackathon Admin | Platform Admin |
+Judging permissions apply only to Hackathon events.
+
+| Action | Judge | Event Admin | Platform Admin |
 | --- | --- | --- | --- |
 | View assigned submission in blind judging view | Yes | Yes, when acting through a `JudgeAssignment` | Yes, when acting through a `JudgeAssignment` |
 | View assigned finalist submission in pitch judging view | Yes | Yes, when acting through a `JudgeAssignment` | Yes, when acting through a `JudgeAssignment` |
@@ -155,7 +164,9 @@ This document defines the canonical permissions for the Codex hackathon platform
 
 ## Shortlist, Pitch Review, And Winners
 
-| Action | Judge | Hackathon Admin | Platform Admin |
+Shortlist, pitch review, and winner permissions apply only to Hackathon events.
+
+| Action | Judge | Event Admin | Platform Admin |
 | --- | --- | --- | --- |
 | Review blind-review scores in shortlist | Yes | Yes | Yes |
 | Set shortlist order and finalist boundary in shortlist | No | Yes | Yes |
@@ -167,73 +178,77 @@ This document defines the canonical permissions for the Codex hackathon platform
 
 ## Participant Outcome Visibility
 
-| Action | Approved User | Staff | Judge | Hackathon Admin | Platform Admin |
+| Action | Approved User | Staff | Judge | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- | --- |
 | View own shortlist status after `pitch` starts | Yes, only for the user's own finalist team | No | No | No | No |
-| View completed winners and published projects showcase in hackathon detail pages after `completed` | Yes | Yes | Yes | Yes | Yes |
+| View completed winners and published projects showcase in event detail pages after `completed` | Yes | Yes | Yes | Yes | Yes |
 
 ## Prize Redemption
 
-| Action | Prize Recipient | Hackathon Admin | Platform Admin |
+Prize redemption permissions apply only to Hackathon events.
+
+| Action | Prize Recipient | Event Admin | Platform Admin |
 | --- | --- | --- | --- |
 | Submit legal name and accept winner terms | Yes | No | No |
 | View prize redemption records | No | Yes | Yes |
 
-## Hackathon Credits
+## Event Credits
 
-| Action | Approved User | Hackathon Admin | Platform Admin |
+Event credit permissions apply only to Hackathon events.
+
+| Action | Approved User | Event Admin | Platform Admin |
 | --- | --- | --- | --- |
-| View hackathon credits in the account hackathon workspace | Yes | Yes | Yes |
+| View event credits in the account event workspace | Yes | Yes | Yes |
 | Claim an available credit from an offer | Yes | No | No |
 | View own claimed credit values | Yes | No | No |
 | View credit inventory and claim records | No | Yes | Yes |
 | Create or update credit offers | No | Yes | Yes |
 | Upload additional credit inventory to an offer | No | Yes | Yes |
 
-## Hackathon Photo Gallery
+## Event Photo Gallery
 
-| Action | Approved User | Staff | Judge | Hackathon Admin | Platform Admin |
+| Action | Approved User | Staff | Judge | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- | --- |
-| View hackathon photo gallery in the account workspace | Yes | Yes | Yes | Yes | Yes |
-| Upload hackathon gallery photos | No | Yes | Yes | Yes | Yes |
-| Update hackathon gallery public visibility | No | Yes | Yes | Yes | Yes |
-| Delete hackathon gallery photos | No | Yes | Yes | Yes | Yes |
+| View event photo gallery in the account workspace | Yes | Yes | Yes | Yes | Yes |
+| Upload event gallery photos | No | Yes | Yes | Yes | Yes |
+| Update event gallery public visibility | No | Yes | Yes | Yes | Yes |
+| Delete event gallery photos | No | Yes | Yes | Yes | Yes |
 
-## Hackathon Feedback
+## Event Feedback
 
-| Action | Public User | Staff | Judge | Hackathon Admin | Platform Admin |
+| Action | Public User | Staff | Judge | Event Admin | Platform Admin |
 | --- | --- | --- | --- | --- | --- |
-| Submit anonymous hackathon feedback | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` |
-| View hackathon feedback results in the account workspace | No | Yes | Yes | Yes | Yes |
+| Submit anonymous event feedback | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` | Yes, only after `completed` |
+| View event feedback results in the account workspace | No | Yes | Yes | Yes | Yes |
 
 ## Visibility Rules
 
 - Users can view only their own application records.
-- Staff can view hackathon-wide participant and team data.
-- Workspace users can view the published judge and staff rosters for hackathons they can access in `/account/hackathons/:slug`.
+- Staff can view event-wide participant and team data.
+- Workspace users can view the published judge and staff rosters for events they can access in `/account/events/:slug`.
 - Published judge and staff rosters expose only profile icon, full name, company, bio, and optional X, LinkedIn, and GitHub profile links.
-- Approved participants can view hackathon photo galleries for hackathons where they are approved.
-- Judges, staff, hackathon admins, and platform admins can manage hackathon photo galleries for hackathons where they hold that access.
-- Public hackathon detail pages expose a Gallery tab only when the hackathon has one or more gallery photos marked public.
-- The public hackathon feedback route is unlinked and available only after the hackathon reaches `completed`.
+- Approved participants can view event photo galleries for events where they are approved.
+- Judges, staff, event admins, and platform admins can manage event photo galleries for events where they hold that access.
+- Public event detail pages expose a Gallery tab only when the event has one or more gallery photos marked public.
+- The public event feedback route is unlinked and available only after the event reaches `completed`.
 - Participants can see shortlist status only for their own team, and only from `pitch` onward when that team advanced.
 - Winner-project visibility and opt-in published-project visibility are delayed until `completed`; before completion, public and account detail pages keep the `Prizes` surface and participant overview or workspace views do not expose completed project showcase snippets.
-- Team members can view their own team membership and submission data.
-- Team admins can view team join requests and manage team membership.
-- Judges see the blind judging view for blind assignments and the open pitch judging view for pitch assignments.
-- Hackathon admins and platform admins can view hackathon-wide operational data.
+- Hackathon team members can view their own team membership and submission data.
+- Hackathon team admins can view team join requests and manage team membership.
+- Hackathon judges see the blind judging view for blind assignments and the open pitch judging view for pitch assignments.
+- Event admins and platform admins can view event-wide operational data.
 - The completed published-projects section includes only opted-in locked non-winning submissions and remains visually separate from the winners section.
 - The participant-facing teams directory remains visible to workspace users after team formation closes, but join actions remain state-gated.
 - Approved participants can view only their own claimed credit values.
-- Hackathon admins and platform admins can view credit inventory and claim records for their hackathons.
-- Hackathon feedback results are visible only to judges, staff, hackathon admins, and platform admins.
+- Event admins and platform admins can view credit inventory and claim records for their events.
+- Event feedback results are visible only to judges, staff, event admins, and platform admins.
 
 ## Operational Notes
 
-- Team formation is allowed during `registration_open` and `submission_open`.
-- Submission creation and editing are allowed only during `submission_open`.
-- Blind review can require `0`, `1`, or `2` blind assignments per submission depending on hackathon configuration.
-- Pitch review can be enabled independently from blind review.
+- Team formation is allowed during `registration_open` and `submission_open` for Hackathon events only.
+- Submission creation and editing are allowed only during `submission_open` for Hackathon events only.
+- Blind review can require `0`, `1`, or `2` blind assignments per submission depending on Hackathon configuration.
+- Pitch review can be enabled independently from blind review for Hackathon events.
 - When pitch review is enabled, admins manually start the live `pitch` stage, advance the saved presentation lineup one team at a time, and only then manually start `pitch_review`.
 - When a blind assignment is skipped, the system creates a new active assignment for the judge with the lowest blind-review load.
 - When pitch review closes with missing votes, only submitted pitch votes are averaged into the pitch score.

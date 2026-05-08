@@ -6,8 +6,8 @@ import platformAdminCandidatesListHandler from '../../../../server/api/platform-
 import platformAdminPutHandler from '../../../../server/api/platform-admins/[userId].put'
 import {
   auditLogs,
-  hackathonRoleAssignments,
-  hackathons,
+  eventRoleAssignments,
+  events,
   users
 } from '../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
@@ -31,10 +31,10 @@ async function seedPlatformAdminContext(
       isPlatformAdmin: true
     },
     {
-      id: 'hackathon_admin',
-      auth0Subject: 'auth0|hackathon_admin',
-      email: 'hackathon-admin@example.com',
-      displayName: 'Hackathon Admin'
+      id: 'event_admin',
+      auth0Subject: 'auth0|event_admin',
+      email: 'event-admin@example.com',
+      displayName: 'Event Admin'
     },
     {
       id: 'judge_user',
@@ -58,12 +58,13 @@ async function seedPlatformAdminContext(
     }
   ])
 
-  await harness.database.insert(hackathons).values([
+  await harness.database.insert(events).values([
     {
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon 1',
-      slug: 'fixture-hackathon-1',
-      description: 'Fixture hackathon one',
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Fixture Event 1',
+      slug: 'fixture-event-1',
+      description: 'Fixture event one',
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address 1',
@@ -78,10 +79,11 @@ async function seedPlatformAdminContext(
       createdByUserId: 'platform_admin'
     },
     {
-      id: 'hackathon_2',
-      name: 'Fixture Hackathon 2',
-      slug: 'fixture-hackathon-2',
-      description: 'Fixture hackathon two',
+      id: 'event_2',
+      eventType: 'hackathon',
+      name: 'Fixture Event 2',
+      slug: 'fixture-event-2',
+      description: 'Fixture event two',
       city: 'Berlin',
       country: 'Germany',
       address: 'Fixture Address 2',
@@ -97,19 +99,19 @@ async function seedPlatformAdminContext(
     }
   ])
 
-  await harness.database.insert(hackathonRoleAssignments).values([
+  await harness.database.insert(eventRoleAssignments).values([
     {
-      id: 'role_hackathon_admin',
-      hackathonId: 'hackathon_1',
-      userId: 'hackathon_admin',
-      role: 'hackathon_admin',
+      id: 'role_event_admin',
+      eventId: 'event_1',
+      userId: 'event_admin',
+      role: 'event_admin',
       isInJudgePool: false,
       isStaff: false,
       createdAt: '2026-03-22T12:00:00.000Z'
     },
     {
       id: 'role_judge_user',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'judge_user',
       role: 'judge',
       isInJudgePool: true,
@@ -217,7 +219,7 @@ describe('platform admin routes', () => {
     })
   })
 
-  test('granting platform admin access normalizes hackathon-admin coverage and writes audit', async () => {
+  test('granting platform admin access normalizes event-admin coverage and writes audit', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'put', path: '/api/platform-admins/:userId', handler: platformAdminPutHandler }
@@ -241,8 +243,8 @@ describe('platform admin routes', () => {
           isPlatformAdmin: true
         },
         userPromoted: true,
-        createdHackathonAdminAssignments: 1,
-        updatedHackathonAdminAssignments: 1,
+        createdEventAdminAssignments: 1,
+        updatedEventAdminAssignments: 1,
         wroteAuditLog: true
       }
     })
@@ -252,20 +254,20 @@ describe('platform admin routes', () => {
     })
     expect(promotedUser?.isPlatformAdmin).toBe(true)
 
-    const assignments = await harness.database.query.hackathonRoleAssignments.findMany({
-      where: eq(hackathonRoleAssignments.userId, 'judge_user'),
-      orderBy: [asc(hackathonRoleAssignments.hackathonId)]
+    const assignments = await harness.database.query.eventRoleAssignments.findMany({
+      where: eq(eventRoleAssignments.userId, 'judge_user'),
+      orderBy: [asc(eventRoleAssignments.eventId)]
     })
     expect(assignments).toMatchObject([
       {
-        hackathonId: 'hackathon_1',
-        role: 'hackathon_admin',
+        eventId: 'event_1',
+        role: 'event_admin',
         isInJudgePool: true,
         isStaff: false
       },
       {
-        hackathonId: 'hackathon_2',
-        role: 'hackathon_admin',
+        eventId: 'event_2',
+        role: 'event_admin',
         isInJudgePool: false,
         isStaff: false
       }
@@ -281,8 +283,8 @@ describe('platform admin routes', () => {
       action: 'platform_admin.granted',
       metadata: {
         userPromoted: true,
-        createdHackathonAdminAssignments: 1,
-        updatedHackathonAdminAssignments: 1
+        createdEventAdminAssignments: 1,
+        updatedEventAdminAssignments: 1
       }
     })
   })
@@ -294,8 +296,8 @@ describe('platform admin routes', () => {
         { method: 'put', path: '/api/platform-admins/:userId', handler: platformAdminPutHandler }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)

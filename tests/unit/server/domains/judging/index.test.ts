@@ -14,7 +14,7 @@ import {
   prunePitchPresentationProgress
 } from '../../../../../server/domains/judging'
 
-function createHackathon(
+function createEvent(
   state: 'submission_open' | 'judging_preparation' | 'blind_review' | 'shortlist' | 'pitch' | 'pitch_review',
   blindReviewCount: 0 | 1 | 2 = 1,
   pitchReviewEnabled: boolean = blindReviewCount === 0,
@@ -25,10 +25,11 @@ function createHackathon(
   }> = {}
 ) {
   return {
-    id: 'hackathon_1',
-    name: 'Judging Hackathon',
-    slug: 'judging-hackathon',
-    description: 'Judging Hackathon',
+    id: 'event_1',
+    eventType: 'hackathon',
+    name: 'Judging Event',
+    slug: 'judging-event',
+    description: 'Judging Event',
     discordServerUrl: null,
     city: 'Vienna',
     country: 'Austria',
@@ -62,88 +63,88 @@ function createHackathon(
 
 describe('judging utilities', () => {
   test('stopping submissions requires a closed submission window and submitted work', () => {
-    const hackathon = createHackathon('submission_open', 1)
+    const event = createEvent('submission_open', 1)
     const afterClose = new Date('2026-03-25T12:00:00.000Z')
 
-    expect(() => assertStartJudgingPreparationAllowed(hackathon, {
+    expect(() => assertStartJudgingPreparationAllowed(event, {
       submittedSubmissionCount: 2
     }, afterClose)).not.toThrow()
 
-    expect(() => assertStartJudgingPreparationAllowed(hackathon, {
+    expect(() => assertStartJudgingPreparationAllowed(event, {
       submittedSubmissionCount: 2
     }, new Date('2026-03-25T11:59:59.000Z'))).toThrowError(ApiError)
 
-    expect(() => assertStartJudgingPreparationAllowed(hackathon, {
+    expect(() => assertStartJudgingPreparationAllowed(event, {
       submittedSubmissionCount: 0
     }, afterClose)).toThrowError(ApiError)
   })
 
   test('blind review readiness requires submitted work and enough distinct judges', () => {
-    expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 0), {
+    expect(() => assertStartJudgeReviewAllowed(createEvent('judging_preparation', 0), {
       submittedSubmissionCount: 2,
       judgePoolCount: 1
     })).toThrowError(ApiError)
 
-    expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 1), {
+    expect(() => assertStartJudgeReviewAllowed(createEvent('judging_preparation', 1), {
       submittedSubmissionCount: 2,
       judgePoolCount: 1
     })).not.toThrow()
 
-    expect(() => assertStartJudgeReviewAllowed(createHackathon('blind_review', 1), {
+    expect(() => assertStartJudgeReviewAllowed(createEvent('blind_review', 1), {
       submittedSubmissionCount: 2,
       judgePoolCount: 1
     })).toThrowError(ApiError)
 
-    expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 1), {
+    expect(() => assertStartJudgeReviewAllowed(createEvent('judging_preparation', 1), {
       submittedSubmissionCount: 0,
       judgePoolCount: 1
     })).toThrowError(ApiError)
 
-    expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 1), {
+    expect(() => assertStartJudgeReviewAllowed(createEvent('judging_preparation', 1), {
       submittedSubmissionCount: 2,
       judgePoolCount: 0
     })).toThrowError(ApiError)
 
-    expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 2), {
+    expect(() => assertStartJudgeReviewAllowed(createEvent('judging_preparation', 2), {
       submittedSubmissionCount: 2,
       judgePoolCount: 2
     })).not.toThrow()
 
-    expect(() => assertStartJudgeReviewAllowed(createHackathon('judging_preparation', 2), {
+    expect(() => assertStartJudgeReviewAllowed(createEvent('judging_preparation', 2), {
       submittedSubmissionCount: 2,
       judgePoolCount: 1
     })).toThrowError(ApiError)
   })
 
   test('pitch readiness supports pitch-only and shortlist-driven startups', () => {
-    expect(() => assertStartPitchAllowed(createHackathon('judging_preparation', 0, true), {
+    expect(() => assertStartPitchAllowed(createEvent('judging_preparation', 0, true), {
       competitionSubmissionCount: 2,
       finalistSubmissionCount: 2
     })).not.toThrow()
 
-    expect(() => assertStartPitchAllowed(createHackathon('shortlist', 1, true), {
+    expect(() => assertStartPitchAllowed(createEvent('shortlist', 1, true), {
       competitionSubmissionCount: 3,
       finalistSubmissionCount: 2
     })).not.toThrow()
 
-    expect(() => assertStartPitchAllowed(createHackathon('judging_preparation', 1, true), {
+    expect(() => assertStartPitchAllowed(createEvent('judging_preparation', 1, true), {
       competitionSubmissionCount: 3,
       finalistSubmissionCount: 2
     })).toThrowError(ApiError)
 
-    expect(() => assertStartPitchAllowed(createHackathon('shortlist', 1, false), {
+    expect(() => assertStartPitchAllowed(createEvent('shortlist', 1, false), {
       competitionSubmissionCount: 3,
       finalistSubmissionCount: 2
     })).toThrowError(ApiError)
 
-    expect(() => assertStartPitchAllowed(createHackathon('shortlist', 1, true), {
+    expect(() => assertStartPitchAllowed(createEvent('shortlist', 1, true), {
       competitionSubmissionCount: 3,
       finalistSubmissionCount: 0
     })).toThrowError(ApiError)
   })
 
   test('pitch review readiness requires the live pitch stage and an active judge panel', () => {
-    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 0, true, {
+    expect(() => assertStartPitchReviewAllowed(createEvent('pitch', 0, true, {
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
       pitchPresentationsCompletedAt: '2026-03-26T12:15:00.000Z'
     }), {
@@ -152,7 +153,7 @@ describe('judging utilities', () => {
       judgePanelCount: 2
     })).not.toThrow()
 
-    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 1, true, {
+    expect(() => assertStartPitchReviewAllowed(createEvent('pitch', 1, true, {
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
       pitchPresentationsCompletedAt: '2026-03-26T12:15:00.000Z'
     }), {
@@ -161,19 +162,19 @@ describe('judging utilities', () => {
       judgePanelCount: 2
     })).not.toThrow()
 
-    expect(() => assertStartPitchReviewAllowed(createHackathon('shortlist', 1, true), {
+    expect(() => assertStartPitchReviewAllowed(createEvent('shortlist', 1, true), {
       lockedSubmissionCount: 3,
       finalistSubmissionCount: 2,
       judgePanelCount: 2
     })).toThrowError(ApiError)
 
-    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 0, true), {
+    expect(() => assertStartPitchReviewAllowed(createEvent('pitch', 0, true), {
       lockedSubmissionCount: 2,
       finalistSubmissionCount: 2,
       judgePanelCount: 0
     })).toThrowError(ApiError)
 
-    expect(() => assertStartPitchReviewAllowed(createHackathon('pitch', 0, true, {
+    expect(() => assertStartPitchReviewAllowed(createEvent('pitch', 0, true, {
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
     }), {
       lockedSubmissionCount: 2,
@@ -183,13 +184,13 @@ describe('judging utilities', () => {
   })
 
   test('pitch presentation control only advances while the live lineup is still active', () => {
-    expect(() => assertAdvancePitchPresentationAllowed(createHackathon('pitch', 0, true, {
+    expect(() => assertAdvancePitchPresentationAllowed(createEvent('pitch', 0, true, {
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1'])
     }), {
       finalistSubmissionCount: 1
     })).not.toThrow()
 
-    expect(() => assertAdvancePitchPresentationAllowed(createHackathon('pitch', 0, true, {
+    expect(() => assertAdvancePitchPresentationAllowed(createEvent('pitch', 0, true, {
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1']),
       pitchPresentationsCompletedAt: '2026-03-26T12:15:00.000Z'
     }), {
@@ -199,7 +200,7 @@ describe('judging utilities', () => {
 
   test('pitch presentation control walks the saved lineup and marks completion after the last team', () => {
     const firstAdvance = advancePitchPresentation(
-      createHackathon('pitch', 0, true, {
+      createEvent('pitch', 0, true, {
         pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
       }),
       ['submission_1', 'submission_2'],
@@ -212,7 +213,7 @@ describe('judging utilities', () => {
     })
 
     const secondAdvance = advancePitchPresentation(
-      createHackathon('pitch', 0, true, {
+      createEvent('pitch', 0, true, {
         pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
         activePitchPresentationSubmissionId: 'submission_1'
       }),
@@ -226,7 +227,7 @@ describe('judging utilities', () => {
     })
 
     const finalAdvance = advancePitchPresentation(
-      createHackathon('pitch', 0, true, {
+      createEvent('pitch', 0, true, {
         pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
         activePitchPresentationSubmissionId: 'submission_2'
       }),
@@ -242,7 +243,7 @@ describe('judging utilities', () => {
 
   test('pruning the active pitch presenter advances to the next lineup entry', () => {
     expect(prunePitchPresentationProgress(
-      createHackathon('pitch', 0, true, {
+      createEvent('pitch', 0, true, {
         pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
         activePitchPresentationSubmissionId: 'submission_1'
       }),
@@ -256,7 +257,7 @@ describe('judging utilities', () => {
     })
 
     expect(prunePitchPresentationProgress(
-      createHackathon('pitch', 0, true, {
+      createEvent('pitch', 0, true, {
         pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1']),
         activePitchPresentationSubmissionId: 'submission_1'
       }),
@@ -272,7 +273,7 @@ describe('judging utilities', () => {
 
   test('initial judging assignments fan out two assignments per submission with distinct judges when possible', () => {
     const assignments = buildInitialJudgeAssignments(
-      'hackathon_1',
+      'event_1',
       [
         {
           id: 'submission_1',
@@ -323,7 +324,7 @@ describe('judging utilities', () => {
       [
         {
           id: 'role_judge_a',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           userId: 'judge_a',
           role: 'judge',
           isInJudgePool: true,
@@ -331,7 +332,7 @@ describe('judging utilities', () => {
         },
         {
           id: 'role_judge_b',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           userId: 'judge_b',
           role: 'judge',
           isInJudgePool: true,
@@ -370,7 +371,7 @@ describe('judging utilities', () => {
 
   test('initial judging assignments reject two-slot blind review when the pool lacks distinct judges', () => {
     expect(() => buildInitialJudgeAssignments(
-      'hackathon_1',
+      'event_1',
       [
         {
           id: 'submission_1',
@@ -391,7 +392,7 @@ describe('judging utilities', () => {
       [
         {
           id: 'role_judge_a',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           userId: 'judge_a',
           role: 'judge',
           isInJudgePool: true,
@@ -405,7 +406,7 @@ describe('judging utilities', () => {
 
   test('pitch review assignments fan out one open vote per finalist submission and panel judge', () => {
     const assignments = buildPitchReviewAssignments(
-      'hackathon_1',
+      'event_1',
       [
         {
           id: 'submission_1',
@@ -441,7 +442,7 @@ describe('judging utilities', () => {
       [
         {
           id: 'role_judge_a',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           userId: 'judge_a',
           role: 'judge',
           isInJudgePool: true,
@@ -449,7 +450,7 @@ describe('judging utilities', () => {
         },
         {
           id: 'role_judge_b',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           userId: 'judge_b',
           role: 'judge',
           isInJudgePool: true,
@@ -473,7 +474,7 @@ describe('judging utilities', () => {
     expect(calculateAveragePitchScore([
       {
         id: 'blind_assignment',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         reviewStage: 'blind_review',
@@ -495,7 +496,7 @@ describe('judging utilities', () => {
       },
       {
         id: 'pitch_assignment_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         reviewStage: 'pitch_review',
@@ -517,7 +518,7 @@ describe('judging utilities', () => {
       },
       {
         id: 'pitch_assignment_2',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_b',
         reviewStage: 'pitch_review',
@@ -539,7 +540,7 @@ describe('judging utilities', () => {
       },
       {
         id: 'pitch_assignment_3',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_c',
         reviewStage: 'pitch_review',
@@ -561,7 +562,7 @@ describe('judging utilities', () => {
       },
       {
         id: 'pitch_assignment_4',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_d',
         reviewStage: 'pitch_review',
@@ -586,7 +587,7 @@ describe('judging utilities', () => {
     expect(calculateAveragePitchScore([
       {
         id: 'pitch_assignment_missing',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         reviewStage: 'pitch_review',

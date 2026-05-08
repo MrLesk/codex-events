@@ -10,13 +10,13 @@ import {
 } from '#server/domains/platform/legal-settings'
 import { parseValidatedBody } from '#server/http/validation'
 
-export default defineApiHandler(async (event) => {
-  const actor = await requirePlatformActor(event)
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requirePlatformActor(h3Event)
   assertPlatformAdminAccess(actor)
 
-  const body = await parseValidatedBody(event, platformLegalSettingsBodySchema)
+  const body = await parseValidatedBody(h3Event, platformLegalSettingsBodySchema)
   const settings = await upsertPlatformLegalSettings(
-    getDatabase(event),
+    getDatabase(h3Event),
     body,
     actor.platformUser.id
   )

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Toaster as UiSonner } from '~/components/ui/sonner'
 
-const colorModeStorageKey = 'codex-hackathons-color-mode'
+const colorModeStorageKey = 'codex-events-color-mode'
 const colorModeBootstrapScript = `(function () {
   var root = document.documentElement;
   var colorMode = 'system';

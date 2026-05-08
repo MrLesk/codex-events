@@ -15,7 +15,7 @@ import {
   type OutboundEmailProviderError
 } from '#server/utils/outbound-email'
 
-const hackathonOutcomeEmailRuntimeConfigSchema = outboundEmailRuntimeConfigSchema.extend({
+const eventOutcomeEmailRuntimeConfigSchema = outboundEmailRuntimeConfigSchema.extend({
   auth0: z.object({
     appBaseUrl: z.string().trim().optional()
   }).optional()
@@ -23,13 +23,13 @@ const hackathonOutcomeEmailRuntimeConfigSchema = outboundEmailRuntimeConfigSchem
 
 const emailAddressSchema = z.string().trim().email()
 
-type HackathonOutcomeEmailRuntimeConfig = z.infer<typeof hackathonOutcomeEmailRuntimeConfigSchema>
+type EventOutcomeEmailRuntimeConfig = z.infer<typeof eventOutcomeEmailRuntimeConfigSchema>
 
-export interface HackathonOutcomeShortlistEmailInput {
+export interface EventOutcomeShortlistEmailInput {
   notificationType: 'shortlist'
-  hackathonId: string
-  hackathonName: string
-  hackathonSlug: string
+  eventId: string
+  eventName: string
+  eventSlug: string
   teamId: string
   teamName: string
   recipientUserId: string
@@ -38,11 +38,11 @@ export interface HackathonOutcomeShortlistEmailInput {
   announcedAt: string
 }
 
-export interface HackathonOutcomeWinnerEmailInput {
+export interface EventOutcomeWinnerEmailInput {
   notificationType: 'winner'
-  hackathonId: string
-  hackathonName: string
-  hackathonSlug: string
+  eventId: string
+  eventName: string
+  eventSlug: string
   teamId: string
   teamName: string
   recipientUserId: string
@@ -54,9 +54,9 @@ export interface HackathonOutcomeWinnerEmailInput {
   prizeNames: string[]
 }
 
-export type HackathonOutcomeEmailInput = HackathonOutcomeShortlistEmailInput | HackathonOutcomeWinnerEmailInput
+export type EventOutcomeEmailInput = EventOutcomeShortlistEmailInput | EventOutcomeWinnerEmailInput
 
-export type HackathonOutcomeEmailDeliveryResult = {
+export type EventOutcomeEmailDeliveryResult = {
   status: 'sent'
   messageId: string | null
 } | {
@@ -77,22 +77,22 @@ function escapeHtml(value: string) {
     .replaceAll('\'', '&#39;')
 }
 
-function resolveRuntimeConfig(event: H3Event): HackathonOutcomeEmailRuntimeConfig {
+function resolveRuntimeConfig(event: H3Event): EventOutcomeEmailRuntimeConfig {
   const eventRuntimeConfig = (event.context as H3Event['context'] & { runtimeConfig?: unknown }).runtimeConfig
   const runtimeConfigGetter = (globalThis as { useRuntimeConfig?: (event: H3Event) => unknown }).useRuntimeConfig
   const candidate = eventRuntimeConfig ?? runtimeConfigGetter?.(event) ?? {}
-  const parsed = hackathonOutcomeEmailRuntimeConfigSchema.safeParse(candidate)
+  const parsed = eventOutcomeEmailRuntimeConfigSchema.safeParse(candidate)
 
   return parsed.success ? parsed.data : {}
 }
 
-function resolveRuntimeConfigFromUnknown(candidate: unknown): HackathonOutcomeEmailRuntimeConfig {
-  const parsed = hackathonOutcomeEmailRuntimeConfigSchema.safeParse(candidate)
+function resolveRuntimeConfigFromUnknown(candidate: unknown): EventOutcomeEmailRuntimeConfig {
+  const parsed = eventOutcomeEmailRuntimeConfigSchema.safeParse(candidate)
 
   return parsed.success ? parsed.data : {}
 }
 
-function resolveHackathonDashboardUrl(runtimeConfig: HackathonOutcomeEmailRuntimeConfig, hackathonSlug: string) {
+function resolveEventDashboardUrl(runtimeConfig: EventOutcomeEmailRuntimeConfig, eventSlug: string) {
   const appBaseUrl = runtimeConfig.auth0?.appBaseUrl?.trim()
 
   if (!appBaseUrl) {
@@ -100,7 +100,7 @@ function resolveHackathonDashboardUrl(runtimeConfig: HackathonOutcomeEmailRuntim
   }
 
   try {
-    return new URL(`/account/hackathons/${encodeURIComponent(hackathonSlug)}`, appBaseUrl).toString()
+    return new URL(`/account/events/${encodeURIComponent(eventSlug)}`, appBaseUrl).toString()
   } catch {
     return null
   }
@@ -133,41 +133,41 @@ function formatPrizeNames(prizeNames: string[]) {
   return `${prizeNames.slice(0, -1).join(', ')}, and ${prizeNames[prizeNames.length - 1]}`
 }
 
-function buildHackathonOutcomeEmailContent(
-  input: HackathonOutcomeEmailInput,
+function buildEventOutcomeEmailContent(
+  input: EventOutcomeEmailInput,
   dashboardUrl: string | null
 ) {
   const firstName = toPreferredFirstName(input.recipientDisplayName)
   const escapedFirstName = escapeHtml(firstName)
-  const escapedHackathonName = escapeHtml(input.hackathonName)
+  const escapedEventName = escapeHtml(input.eventName)
   const escapedTeamName = escapeHtml(input.teamName)
   const linkText = dashboardUrl
     ? `You can view the latest outcome here: ${dashboardUrl}`
-    : 'You can view the latest outcome in your hackathon workspace.'
+    : 'You can view the latest outcome in your event workspace.'
   const escapedLinkText = escapeHtml(linkText)
   const dashboardAnchor = dashboardUrl
-    ? `<p><a href="${escapeHtml(dashboardUrl)}">Open your hackathon workspace</a></p>`
+    ? `<p><a href="${escapeHtml(dashboardUrl)}">Open your event workspace</a></p>`
     : ''
 
   if (input.notificationType === 'shortlist') {
     return {
-      subject: `${input.teamName} is shortlisted for ${input.hackathonName}`,
+      subject: `${input.teamName} is shortlisted for ${input.eventName}`,
       text: [
         `Hi ${firstName},`,
         '',
-        `Great news - ${input.teamName} has been shortlisted for ${input.hackathonName}.`,
+        `Great news - ${input.teamName} has been shortlisted for ${input.eventName}.`,
         'Your team advanced to the live pitch stage.',
         '',
         linkText
       ].join('\n'),
       html: [
         `<p>Hi ${escapedFirstName},</p>`,
-        `<p>Great news - <strong>${escapedTeamName}</strong> has been shortlisted for <strong>${escapedHackathonName}</strong>.</p>`,
+        `<p>Great news - <strong>${escapedTeamName}</strong> has been shortlisted for <strong>${escapedEventName}</strong>.</p>`,
         '<p>Your team advanced to the live pitch stage.</p>',
         `<p>${escapedLinkText}</p>`,
         dashboardAnchor
       ].join('\n'),
-      tagValue: 'hackathon_shortlist'
+      tagValue: 'event_shortlist'
     }
   }
 
@@ -178,7 +178,7 @@ function buildHackathonOutcomeEmailContent(
   const escapedResultLine = escapeHtml(resultLine)
 
   return {
-    subject: `Congratulations - ${input.teamName} won at ${input.hackathonName}`,
+    subject: `Congratulations - ${input.teamName} won at ${input.eventName}`,
     text: [
       `Hi ${firstName},`,
       '',
@@ -192,19 +192,19 @@ function buildHackathonOutcomeEmailContent(
       `<p>${escapedLinkText}</p>`,
       dashboardAnchor
     ].join('\n'),
-    tagValue: 'hackathon_winner'
+    tagValue: 'event_winner'
   }
 }
 
-export async function sendHackathonOutcomeEmail(
+export async function sendEventOutcomeEmail(
   event: H3Event,
-  input: HackathonOutcomeEmailInput,
+  input: EventOutcomeEmailInput,
   options?: {
     emailBinding?: OutboundEmailBindingLike
     cloudflareEnv?: Record<string, unknown>
     runtimeConfig?: unknown
   }
-): Promise<HackathonOutcomeEmailDeliveryResult> {
+): Promise<EventOutcomeEmailDeliveryResult> {
   if (input.recipientEmail?.endsWith('@deleted.invalid')) {
     return {
       status: 'skipped',
@@ -239,10 +239,10 @@ export async function sendHackathonOutcomeEmail(
     }
   }
 
-  const dashboardUrl = resolveHackathonDashboardUrl(runtimeConfig, input.hackathonSlug)
-  const content = buildHackathonOutcomeEmailContent(input, dashboardUrl)
+  const dashboardUrl = resolveEventDashboardUrl(runtimeConfig, input.eventSlug)
+  const content = buildEventOutcomeEmailContent(input, dashboardUrl)
   const replyTo = getOutboundEmailReplyTo(runtimeConfig)
-  const emailKey = `hackathon-outcome:${input.notificationType}:${input.teamId}:${input.recipientUserId}:${input.announcedAt}`
+  const emailKey = `event-outcome:${input.notificationType}:${input.teamId}:${input.recipientUserId}:${input.announcedAt}`
   let response: Awaited<ReturnType<OutboundEmailBindingLike['send']>>
 
   try {

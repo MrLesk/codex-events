@@ -3,7 +3,7 @@ import type {
   AdminJudgeAssignmentOversightGroup,
   JudgeAssignmentSummary
 } from '~/domains/judging/admin-oversight'
-import type { HackathonState } from '~/domains/hackathons/states'
+import type { EventState } from '~/domains/events/states'
 
 import {
   buildAdminJudgeAssignmentOversightGroups,
@@ -19,7 +19,7 @@ type JudgeChoice = {
 }
 
 const props = defineProps<{
-  hackathonState: HackathonState
+  eventState: EventState
   assignments: JudgeAssignmentSummary[]
   totalAssignments?: number
   judgeChoices: JudgeChoice[]
@@ -115,7 +115,7 @@ const judgeLabelsByUserId = computed<Record<string, string>>(() =>
 
 const actionableAssignments = computed(() =>
   props.assignments.filter((assignment) => {
-    const policy = getAdminJudgeAssignmentInterventionPolicy(props.hackathonState, assignment.status)
+    const policy = getAdminJudgeAssignmentInterventionPolicy(props.eventState, assignment.status)
     return policy.canReassign || policy.canForceSkip
   })
 )
@@ -140,7 +140,7 @@ const activeReassignAssignment = computed(() => {
     return null
   }
 
-  return getAdminJudgeAssignmentInterventionPolicy(props.hackathonState, assignment.status).canReassign
+  return getAdminJudgeAssignmentInterventionPolicy(props.eventState, assignment.status).canReassign
     ? assignment
     : null
 })
@@ -277,7 +277,7 @@ function submitReassignment() {
 
                   <div class="flex w-full flex-col gap-3 lg:w-auto lg:min-w-44 lg:self-center">
                     <AppButton
-                      v-if="getAdminJudgeAssignmentInterventionPolicy(hackathonState, assignment.status).canReassign"
+                      v-if="getAdminJudgeAssignmentInterventionPolicy(eventState, assignment.status).canReassign"
                       color="warning"
                       variant="soft"
                       :data-testid="`admin-competition-reassign-open-${assignment.submissionId}`"
@@ -289,7 +289,7 @@ function submitReassignment() {
                     </AppButton>
 
                     <div
-                      v-if="getAdminJudgeAssignmentInterventionPolicy(hackathonState, assignment.status).canForceSkip"
+                      v-if="getAdminJudgeAssignmentInterventionPolicy(eventState, assignment.status).canForceSkip"
                       class="grid gap-3 lg:min-w-72"
                     >
                       <label class="grid gap-2">

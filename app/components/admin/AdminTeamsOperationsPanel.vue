@@ -4,7 +4,7 @@ import type {
   AdminSubmissionDashboardFilter,
   AdminSubmissionDashboardMetrics
 } from '~/domains/submissions/admin-operations'
-import type { HackathonState } from '~/domains/hackathons/states'
+import type { EventState } from '~/domains/events/states'
 
 import { formatTimestamp } from '~/lib/date-formatting'
 import {
@@ -15,7 +15,7 @@ import {
   listActiveAdminOperationalTeamMembers
 } from '~/domains/submissions/admin-operations'
 import { formatAdminOperationalTeamProjectLabel } from '~/domains/submissions/project-labels'
-import { isHackathonStateReached } from '~/domains/hackathons/states'
+import { isEventStateReached } from '~/domains/events/states'
 
 const search = defineModel<string>('search', {
   required: true
@@ -26,7 +26,7 @@ const filter = defineModel<AdminSubmissionDashboardFilter>('filter', {
 })
 
 const props = defineProps<{
-  hackathonState: HackathonState
+  eventState: EventState
   teams: AdminOperationalTeam[]
   metrics: AdminSubmissionDashboardMetrics
   pendingActionKey?: string | null
@@ -45,7 +45,7 @@ const withdrawDrafts = reactive<Record<string, {
 }>>({})
 
 const hasEnteredSubmissionPhase = computed(() =>
-  isHackathonStateReached(props.hackathonState, 'submission_open')
+  isEventStateReached(props.eventState, 'submission_open')
 )
 
 const summaryCards = computed(() => [
@@ -171,7 +171,7 @@ function getWithdrawDraft(team: AdminOperationalTeam) {
 }
 
 function getWithdrawalPolicy(team: AdminOperationalTeam) {
-  return getAdminSubmissionInterventionPolicy(props.hackathonState, team.submissionStatus)
+  return getAdminSubmissionInterventionPolicy(props.eventState, team.submissionStatus)
 }
 
 function formatMetricValue(value: number) {

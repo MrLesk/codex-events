@@ -36,11 +36,11 @@ function parsePersonaKey(personaKey: string): StablePersonaKey {
   throw new Error(`Unknown stable persona key: ${personaKey}`)
 }
 
-When('the saved {string} session lists active assignments for the judging fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session lists active assignments for the judging fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.get(`/api/hackathons/${platformFixtureIds.judgingHackathonId}/judging/assignments`)
+    const response = await apiClient.get(`/api/events/${platformFixtureIds.judgingEventId}/judging/assignments`)
     const json = await response.json()
     const state = getScenarioState(page)
     state.response = response
@@ -83,7 +83,7 @@ When('the saved {string} session starts the remembered judging assignment', asyn
 
   try {
     const response = await apiClient.post(
-      `/api/hackathons/${platformFixtureIds.judgingHackathonId}/judging/assignments/${state.assignmentId}/actions/start`
+      `/api/events/${platformFixtureIds.judgingEventId}/judging/assignments/${state.assignmentId}/actions/start`
     )
     state.response = response
     state.json = await response.json()
@@ -113,7 +113,7 @@ When('the saved {string} session completes the remembered judging assignment wit
 
   try {
     const response = await apiClient.post(
-      `/api/hackathons/${platformFixtureIds.judgingHackathonId}/judging/assignments/${state.assignmentId}/actions/complete`,
+      `/api/events/${platformFixtureIds.judgingEventId}/judging/assignments/${state.assignmentId}/actions/complete`,
       {
         data: {
           criterionScores: [
@@ -162,7 +162,7 @@ When('the saved {string} session force-skips the started judging fixture assignm
 
   try {
     const response = await apiClient.post(
-      `/api/hackathons/${platformFixtureIds.judgingHackathonId}/judging/assignments/${platformFixtureIds.judgingStartedAssignmentId}/actions/force-skip`,
+      `/api/events/${platformFixtureIds.judgingEventId}/judging/assignments/${platformFixtureIds.judgingStartedAssignmentId}/actions/force-skip`,
       {
         data: {
           reason: 'Unavailable'

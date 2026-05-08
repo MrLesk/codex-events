@@ -8,7 +8,7 @@ import type {
 import BlindSubmissionPanel from '~/components/judging/BlindSubmissionPanel.vue'
 import JudgeReviewRubric from '~/components/judging/JudgeReviewRubric.vue'
 import PitchSubmissionPanel from '~/components/judging/PitchSubmissionPanel.vue'
-import { buildAccountHackathonJudgingTabHref } from '~/domains/judging/query'
+import { buildAccountEventJudgingTabHref } from '~/domains/judging/query'
 import {
   buildCompletionCriterionScoresPayload,
   buildSavedCriterionScoresPayload,
@@ -31,8 +31,8 @@ import {
 } from '~/domains/judging/workspace'
 
 const props = defineProps<{
-  hackathonId: string
-  hackathonSlug: string
+  eventId: string
+  eventSlug: string
   assignmentId: string
   nextReviewHref?: string | null
 }>()
@@ -43,15 +43,15 @@ const emit = defineEmits<{
 
 const scoreOptions = Array.from({ length: 5 }, (_, index) => index + 1)
 
-const normalizedHackathonId = computed(() => props.hackathonId.trim())
+const normalizedEventId = computed(() => props.eventId.trim())
 const normalizedAssignmentId = computed(() => props.assignmentId.trim())
 const judgingWorkspaceHref = computed(() =>
-  buildAccountHackathonJudgingTabHref(props.hackathonSlug)
+  buildAccountEventJudgingTabHref(props.eventSlug)
 )
 
-const workspace = useJudgeAssignmentWorkspace(normalizedHackathonId, normalizedAssignmentId)
+const workspace = useJudgeAssignmentWorkspace(normalizedEventId, normalizedAssignmentId)
 
-const hackathon = computed(() => workspace.hackathon.value)
+const event = computed(() => workspace.event.value)
 const criteria = computed(() => workspace.criteria.value)
 const assignment = ref<JudgeAssignmentDetail | null>(null)
 const blindAssignment = computed(() =>
@@ -107,13 +107,13 @@ const rubricInteractionDisabled = computed(() =>
 const rubricReadonly = computed(() => !assignment.value || assignment.value.status !== 'judge_started')
 const allowBlindScoreSelectionWhenReadonly = computed(() =>
   Boolean(
-    canAutoStartBlindReviewFromScoreSelection(assignment.value, hackathon.value?.state)
+    canAutoStartBlindReviewFromScoreSelection(assignment.value, event.value?.state)
     && !rubricInteractionDisabled.value
   )
 )
 const allowPitchVoteInputWhenReadonly = computed(() =>
   Boolean(
-    canAutoStartPitchReviewFromVoteInput(assignment.value, hackathon.value?.state)
+    canAutoStartPitchReviewFromVoteInput(assignment.value, event.value?.state)
     && !rubricInteractionDisabled.value
   )
 )
@@ -126,7 +126,7 @@ const reviewActionDisabledReason = computed(() => {
     return null
   }
 
-  return getJudgeAssignmentActionDisabledReason(assignment.value, hackathon.value?.state)
+  return getJudgeAssignmentActionDisabledReason(assignment.value, event.value?.state)
 })
 const startReviewDisabled = computed(() =>
   Boolean(
@@ -202,7 +202,7 @@ const nextActionLabel = computed(() =>
 )
 const isWorkspaceLoading = computed(() =>
   workspace.status.value === 'pending'
-  || (!workspace.error.value && (!workspace.hackathon.value || !workspace.assignment.value))
+  || (!workspace.error.value && (!workspace.event.value || !workspace.assignment.value))
 )
 
 function notifyWorkspaceUpdated() {
@@ -238,7 +238,7 @@ function updatePitchScore(score: number) {
     actionState.success = ''
 
     $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
-      `/api/hackathons/${normalizedHackathonId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/start`,
+      `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/start`,
       {
         method: 'POST'
       }
@@ -293,7 +293,7 @@ async function withActionFeedback(
 
 async function persistBlindCriterionScores(nextDrafts: CriterionScoreDraft[]) {
   const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
-    `/api/hackathons/${normalizedHackathonId.value}/judging/assignments/${normalizedAssignmentId.value}`,
+    `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}`,
     {
       method: 'PATCH',
       body: {
@@ -330,7 +330,7 @@ async function updateBlindScoreDrafts(nextDrafts: CriterionScoreDraft[]) {
 
     try {
       const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
-        `/api/hackathons/${normalizedHackathonId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/start`,
+        `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/start`,
         {
           method: 'POST'
         }
@@ -388,7 +388,7 @@ async function completeReview() {
 
     await withActionFeedback('complete', async () => {
       const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
-        `/api/hackathons/${normalizedHackathonId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/complete`,
+        `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/complete`,
         {
           method: 'POST',
           body: buildPitchReviewCompletionPayload(pitchDraft.value)
@@ -406,7 +406,7 @@ async function completeReview() {
   }
 
   if (criteria.value.length === 0) {
-    actionState.error = 'This hackathon has no evaluation criteria configured for blind review.'
+    actionState.error = 'This event has no evaluation criteria configured for blind review.'
     return
   }
 
@@ -417,7 +417,7 @@ async function completeReview() {
 
   await withActionFeedback('complete', async () => {
     const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
-      `/api/hackathons/${normalizedHackathonId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/complete`,
+      `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/complete`,
       {
         method: 'POST',
         body: {
@@ -441,7 +441,7 @@ async function skipReview() {
 
   await withActionFeedback('skip', async () => {
     await $fetch(
-      `/api/hackathons/${normalizedHackathonId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/skip`,
+      `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/skip`,
       {
         method: 'POST',
         body: {
@@ -467,7 +467,7 @@ async function markIneligible() {
 
   await withActionFeedback('ineligible', async () => {
     const response = await $fetch<ApiDataResponse<JudgeAssignmentDetail>>(
-      `/api/hackathons/${normalizedHackathonId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/mark-ineligible`,
+      `/api/events/${normalizedEventId.value}/judging/assignments/${normalizedAssignmentId.value}/actions/mark-ineligible`,
       {
         method: 'POST',
         body: {
@@ -515,7 +515,7 @@ async function markIneligible() {
     />
 
     <AppAlert
-      v-else-if="!assignment || !hackathon"
+      v-else-if="!assignment || !event"
       color="warning"
       variant="soft"
       title="Judge assignment unavailable"
@@ -537,7 +537,7 @@ async function markIneligible() {
             color="warning"
             variant="soft"
             title="No evaluation criteria configured"
-            description="This hackathon has no scoring criteria yet, so the review cannot be completed from the blind workspace."
+            description="This event has no scoring criteria yet, so the review cannot be completed from the blind workspace."
           />
 
           <JudgeReviewRubric

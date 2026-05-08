@@ -1,11 +1,11 @@
 <p align="center">
-  <img src="public/platform-mark.png" width="104" alt="Codex Hackathons platform mark" />
+  <img src="public/platform-mark.png" width="104" alt="Codex Events platform mark" />
 </p>
 
-<h1 align="center">Codex Hackathons</h1>
+<h1 align="center">Codex Events</h1>
 
 <p align="center">
-  <strong>A self-hosted hackathon workspace for teams that want clear paths from registration to results.</strong>
+  <strong>A self-hosted event workspace for teams that want clear paths from registration to results.</strong>
 </p>
 
 <p align="center">
@@ -33,14 +33,14 @@
 
 <p align="center">
   <sub>Platform overview</sub><br />
-  <img src="docs/assets/readme/generated-platform-overview.png" width="100%" alt="Codex Hackathons platform overview" />
+  <img src="docs/assets/readme/generated-platform-overview.png" width="100%" alt="Codex Events platform overview" />
 </p>
 
 ---
 
-## A Shared Workspace For Hackathons
+## A Shared Workspace For Events
 
-Codex Hackathons helps teams replace scattered forms, spreadsheets, judge sheets, event-tool exports, email threads, and one-off scripts with a shared workspace for recurring or parallel hackathons.
+Codex Events helps teams replace scattered forms, spreadsheets, judge sheets, event-tool exports, email threads, and one-off scripts with a shared workspace for recurring or parallel events.
 
 <table>
   <tr>
@@ -50,7 +50,7 @@ Codex Hackathons helps teams replace scattered forms, spreadsheets, judge sheets
     </td>
     <td width="33%">
       <strong>Reuse the same foundation</strong><br />
-      Users keep reusable platform accounts while each hackathon has its own schedule, rules, roles, terms, teams, submissions, judging, and outcomes.
+      Users keep reusable platform accounts while each event has its own schedule, rules, roles, terms, teams, submissions, judging, and outcomes.
     </td>
     <td width="33%">
       <strong>Choose where it runs</strong><br />
@@ -63,12 +63,12 @@ Codex Hackathons helps teams replace scattered forms, spreadsheets, judge sheets
 
 | Capability | How it helps |
 | --- | --- |
-| **Application-first participation** | Per-hackathon registration windows, profile requirements, application terms, approvals, participant decision emails, and optional Luma attendance integration. |
+| **Application-first participation** | Per-event registration windows, profile requirements, application terms, approvals, participant decision emails, and optional Luma attendance integration. |
 | **Built-in team workflows** | Solo participation, team creation, join requests, team admins, team limits, and account-scoped team workspaces. |
 | **Structured submissions** | Submission windows, tracks, summaries, repository links, demo links, drafts, locking, withdrawal, and disqualification handling. |
 | **Structured judging** | Blind review, judge assignment, skipped-review redistribution, shortlist management, live pitch stages, pitch review, weighted scoring, and final deliberation. |
 | **Outcomes and follow-through** | Winner announcements, prize eligibility snapshots, winner emails, winner terms, legal-name collection, prize redemption tracking, and completed public showcases. |
-| **Clear permission boundaries** | Platform admins, hackathon admins, staff, judges, approved participants, team admins, and prize recipients are separate actors with explicit platform-data permissions. |
+| **Clear permission boundaries** | Platform admins, event admins, staff, judges, approved participants, team admins, and prize recipients are separate actors with explicit platform-data permissions. |
 | **Post-event learning** | Anonymous feedback collection after completion, with results available to the operating team. |
 
 ## What The Platform Covers
@@ -81,10 +81,10 @@ Codex Hackathons helps teams replace scattered forms, spreadsheets, judge sheets
   </tr>
   <tr>
     <td valign="top">
-      Public hackathon pages, schedules, tracks, prizes, registration, account onboarding, reusable profiles, application status, team formation, submissions, galleries, credits, shortlist visibility, and completed outcomes.
+      Public event pages, schedules, tracks, prizes, registration, account onboarding, reusable profiles, application status, team formation, submissions, galleries, credits, shortlist visibility, and completed outcomes.
     </td>
     <td valign="top">
-      Platform-admin and hackathon-admin workflows, staff and judge assignments, staged application review, participant-facing emails, lifecycle transitions, event sync, durable records, and role-specific workspaces.
+      Platform-admin and event-admin workflows, staff and judge assignments, staged application review, participant-facing emails, lifecycle transitions, event sync, durable records, and role-specific workspaces.
     </td>
     <td valign="top">
       Team-owned submissions, blind and pitch scoring, finalist boundaries, final ranking, prizes, winner communications, prize redemption, public winner showcases, published projects, galleries, and feedback reporting.
@@ -96,10 +96,10 @@ Codex Hackathons helps teams replace scattered forms, spreadsheets, judge sheets
 
 ## How It Runs
 
-Codex Hackathons runs in infrastructure you choose. Auth0 handles authentication. The platform handles authorization: platform roles, hackathon roles, team roles, application state, judging assignments, prize eligibility, and event history live in platform data.
+Codex Events runs in infrastructure you choose. Auth0 handles authentication. The platform handles authorization: platform roles, event roles, team roles, application state, judging assignments, prize eligibility, and event history live in platform data.
 
 <p align="center">
-  <img src="docs/assets/readme/operating-stack.svg" width="100%" alt="Codex Hackathons operating stack" />
+  <img src="docs/assets/readme/operating-stack.svg" width="100%" alt="Codex Events operating stack" />
 </p>
 
 The canonical deployment model uses:
@@ -108,7 +108,7 @@ The canonical deployment model uses:
 | --- | --- |
 | **Cloudflare Workers** | Application hosting and server-side execution. |
 | **Cloudflare D1** | Primary relational database. |
-| **Cloudflare R2** | Profile icons, hackathon imagery, and gallery storage. |
+| **Cloudflare R2** | Profile icons, event imagery, and gallery storage. |
 | **Cloudflare Images bindings** | Protected gallery preview transformations. |
 | **Cloudflare Queues** | Asynchronous email and Luma sync jobs. |
 | **Cloudflare Email Service** | Outbound transactional email delivery. |
@@ -126,9 +126,9 @@ The repository includes automation for recurring setup and maintenance:
 
 ## Where It Fits
 
-Codex Hackathons is a good fit when your team wants to:
+Codex Events is a good fit when your team wants to:
 
-- run multiple hackathons from the same platform;
+- run multiple events from the same platform;
 - review and approve participants before they enter the workspace;
 - support solo builders and teams without separate tooling;
 - run blind judging, live pitches, or both;
@@ -146,9 +146,9 @@ Plan for:
 - an Auth0 tenant and Regular Web Application for the platform;
 - an onboarded Cloudflare Email Service sending domain and verified sender address;
 - production and, if desired, shared development domains;
-- optional Luma API access when hackathons use Luma guest sync or attendance webhooks;
+- optional Luma API access when events use Luma guest sync or attendance webhooks;
 - deployment-owned legal controller details, support and privacy contact addresses, and current Privacy Policy and Platform Terms content;
-- people who can manage platform admins, hackathon admins, judges, staff, and release access.
+- people who can manage platform admins, event admins, judges, staff, and release access.
 
 Before launch, configure platform legal settings and publish current platform documents from the platform-admin workspace or the legal bootstrap tool. Public legal pages and account registration treat missing legal setup as unavailable rather than publishing repository-owned operator details.
 
@@ -163,7 +163,7 @@ The canonical product and engineering docs live in [`docs/`](docs/README.md). St
 | Document | Purpose |
 | --- | --- |
 | [`docs/domain-model.md`](docs/domain-model.md) | Entities, relationships, permissions, and business invariants. |
-| [`docs/lifecycle-and-state-machines.md`](docs/lifecycle-and-state-machines.md) | Hackathon, application, team, submission, judging, winner, and redemption lifecycles. |
+| [`docs/lifecycle-and-state-machines.md`](docs/lifecycle-and-state-machines.md) | Event, application, team, submission, judging, winner, and redemption lifecycles. |
 | [`docs/permissions-matrix.md`](docs/permissions-matrix.md) | Actor permissions, visibility rules, and state-based action constraints. |
 | [`docs/schema-outline.md`](docs/schema-outline.md) | Canonical fields, enums, constraints, and key relationships. |
 | [`docs/api-surface.md`](docs/api-surface.md) | Backend API domains, operations, contract conventions, and validation expectations. |

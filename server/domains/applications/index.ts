@@ -9,8 +9,8 @@ import {
 } from '#proof-of-execution-links'
 import { requirePlatformActor } from '#server/auth/actor'
 import {
-  assertHackathonParticipantVisibilityAccess,
-  resolveHackathonAuthorization
+  assertEventParticipantVisibilityAccess,
+  resolveEventAuthorization
 } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import {
@@ -22,18 +22,18 @@ import {
   users
 } from '#server/database/schema'
 import type {
-  hackathonTermsDocuments,
-  hackathons
+  eventTermsDocuments,
+  events
 } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import {
-  getCurrentHackathonTerms,
-  getHackathonTermsDocumentOrThrow,
-  getVisibleHackathonOrThrow,
-  requireHackathonAdmin,
+  getCurrentEventTerms,
+  getEventTermsDocumentOrThrow,
+  getVisibleEventOrThrow,
+  requireEventAdmin,
   routeIdParamsSchema,
-  serializeHackathonTermsDocument
-} from '#server/domains/hackathons'
+  serializeEventTermsDocument
+} from '#server/domains/events'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 
 export const applicationParamsSchema = routeIdParamsSchema.extend({
@@ -58,14 +58,14 @@ export const submitApplicationBodySchema = z.object({
   registrationTeamIntent: z.enum(registrationTeamIntentValues).default('unknown'),
   registrationTeamMembers: z.array(registrationTeamMemberHintSchema).default([]),
   inPersonAttendanceCommitment: z.boolean().default(false),
-  whyThisHackathon: z.string().trim().max(4000).default(''),
+  whyThisEvent: z.string().trim().max(4000).default(''),
   proofOfExecutionUrl: z.string().trim().max(2048).default('')
 })
 
 type UserApplicationRecord = typeof userApplications.$inferSelect
 type UserRecord = typeof users.$inferSelect
-type HackathonRecord = typeof hackathons.$inferSelect
-type HackathonTermsDocumentRecord = typeof hackathonTermsDocuments.$inferSelect
+type EventRecord = typeof events.$inferSelect
+type EventTermsDocumentRecord = typeof eventTermsDocuments.$inferSelect
 type TeamRecord = typeof teams.$inferSelect
 type TeamMemberRecord = typeof teamMembers.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
@@ -221,7 +221,7 @@ function getAdminApplicationWithdrawalAvailabilityFromPlan(
 
 export async function getAdminApplicationWithdrawalPlan(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   application: UserApplicationRecord
 ): Promise<AdminApplicationWithdrawalPlan> {
   const activeMembershipRows = await database
@@ -232,7 +232,7 @@ export async function getAdminApplicationWithdrawalPlan(
     .from(teamMembers)
     .innerJoin(teams, eq(teams.id, teamMembers.teamId))
     .where(and(
-      eq(teams.hackathonId, hackathonId),
+      eq(teams.eventId, eventId),
       eq(teamMembers.userId, application.userId),
       isNull(teamMembers.leftAt)
     ))
@@ -276,7 +276,7 @@ export async function getAdminApplicationWithdrawalPlan(
 
 async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   applications: UserApplicationRecord[]
 ) {
   if (applications.length === 0) {
@@ -291,11 +291,11 @@ async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
     .from(teamMembers)
     .innerJoin(teams, eq(teams.id, teamMembers.teamId))
     .innerJoin(userApplications, and(
-      eq(userApplications.hackathonId, hackathonId),
+      eq(userApplications.eventId, eventId),
       eq(userApplications.userId, teamMembers.userId)
     ))
     .where(and(
-      eq(teams.hackathonId, hackathonId),
+      eq(teams.eventId, eventId),
       isNull(teamMembers.leftAt)
     ))
     .orderBy(asc(teamMembers.createdAt))
@@ -321,7 +321,7 @@ async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
       .from(teamMembers)
       .innerJoin(teams, eq(teams.id, teamMembers.teamId))
       .where(and(
-        eq(teams.hackathonId, hackathonId),
+        eq(teams.eventId, eventId),
         isNull(teamMembers.leftAt)
       ))
       .orderBy(asc(teamMembers.createdAt)),
@@ -330,7 +330,7 @@ async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
       .from(submissions)
       .innerJoin(teams, eq(teams.id, submissions.teamId))
       .where(and(
-        eq(teams.hackathonId, hackathonId),
+        eq(teams.eventId, eventId),
         inArray(submissions.status, ['draft', 'submitted', 'locked'])
       ))
       .orderBy(desc(submissions.createdAt))
@@ -365,46 +365,46 @@ async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
   }))
 }
 
-export function isHackathonLumaEmailRequired(
-  hackathon: Pick<HackathonRecord, 'requireLumaEmail'>
+export function isEventLumaEmailRequired(
+  event: Pick<EventRecord, 'requireLumaEmail'>
 ) {
-  return hackathon.requireLumaEmail
+  return event.requireLumaEmail
 }
 
-export function isHackathonLumaAttendanceSyncEnabled(
-  hackathon: Pick<HackathonRecord, 'lumaEventApiId'>
+export function isEventLumaAttendanceSyncEnabled(
+  event: Pick<EventRecord, 'lumaEventApiId'>
 ) {
-  return Boolean(hackathon.lumaEventApiId?.trim())
+  return Boolean(event.lumaEventApiId?.trim())
 }
 
-export function isHackathonLumaSyncEnabled(
-  hackathon: Pick<HackathonRecord, 'requireLumaEmail' | 'lumaEventApiId'>
+export function isEventLumaSyncEnabled(
+  event: Pick<EventRecord, 'requireLumaEmail' | 'lumaEventApiId'>
 ) {
-  return isHackathonLumaEmailRequired(hackathon) && isHackathonLumaAttendanceSyncEnabled(hackathon)
+  return isEventLumaEmailRequired(event) && isEventLumaAttendanceSyncEnabled(event)
 }
 
 export function getInitialApplicationLumaSyncStatus(
-  hackathon: Pick<HackathonRecord, 'requireLumaEmail' | 'lumaEventApiId'>
+  event: Pick<EventRecord, 'requireLumaEmail' | 'lumaEventApiId'>
 ) {
-  return isHackathonLumaSyncEnabled(hackathon) ? 'not_synced' as const : null
+  return isEventLumaSyncEnabled(event) ? 'not_synced' as const : null
 }
 
 export function serializeRegistrationDetailsJson(
-  hackathon: Pick<HackathonRecord, 'id' | 'maxTeamMembers' | 'inPersonEvent' | 'requireWhyThisHackathon' | 'requireProofOfExecution'>,
-  payload: Pick<SubmitApplicationBody, 'registrationTeamIntent' | 'registrationTeamMembers' | 'inPersonAttendanceCommitment' | 'whyThisHackathon' | 'proofOfExecutionUrl'>
+  event: Pick<EventRecord, 'id' | 'maxTeamMembers' | 'inPersonEvent' | 'requireWhyThisEvent' | 'requireProofOfExecution'>,
+  payload: Pick<SubmitApplicationBody, 'registrationTeamIntent' | 'registrationTeamMembers' | 'inPersonAttendanceCommitment' | 'whyThisEvent' | 'proofOfExecutionUrl'>
 ) {
-  assertGuard(payload.registrationTeamMembers.length <= hackathon.maxTeamMembers, {
+  assertGuard(payload.registrationTeamMembers.length <= event.maxTeamMembers, {
     code: 'registration_team_members_invalid',
-    message: 'The provided team-member registration hints exceed the maximum team size for this hackathon.',
+    message: 'The provided team-member registration hints exceed the maximum team size for this event.',
     details: {
-      hackathonId: hackathon.id,
-      maxTeamMembers: hackathon.maxTeamMembers
+      eventId: event.id,
+      maxTeamMembers: event.maxTeamMembers
     }
   })
 
   const normalizedTeamMembers = payload.registrationTeamIntent === 'team'
     ? payload.registrationTeamMembers
-        .slice(0, hackathon.maxTeamMembers)
+        .slice(0, event.maxTeamMembers)
         .map((member) => {
           const fullName = normalizeTeamMemberHintValue(member.fullName)
           const email = normalizeTeamMemberHintValue(member.email)
@@ -421,47 +421,47 @@ export function serializeRegistrationDetailsJson(
         .filter((member): member is { fullName?: string, email?: string } => Boolean(member))
     : []
 
-  const whyThisHackathon = normalizeTextValue(payload.whyThisHackathon)
+  const whyThisEvent = normalizeTextValue(payload.whyThisEvent)
   const proofOfExecutionUrl = normalizeProofOfExecutionUrl(payload.proofOfExecutionUrl)
 
-  assertGuard(!hackathon.requireWhyThisHackathon || whyThisHackathon.length > 0, {
-    code: 'why_this_hackathon_required',
-    message: 'A why-this-hackathon response is required for this hackathon.',
+  assertGuard(!event.requireWhyThisEvent || whyThisEvent.length > 0, {
+    code: 'why_this_event_required',
+    message: 'A why-this-event response is required for this event.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
-  assertGuard(!hackathon.requireProofOfExecution || proofOfExecutionUrl.length > 0, {
+  assertGuard(!event.requireProofOfExecution || proofOfExecutionUrl.length > 0, {
     code: 'proof_of_execution_required',
-    message: 'At least one proof-of-execution link is required for this hackathon.',
+    message: 'At least one proof-of-execution link is required for this event.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
   return JSON.stringify({
     teamIntent: payload.registrationTeamIntent,
     teamMembers: normalizedTeamMembers,
-    inPersonAttendanceCommitment: hackathon.inPersonEvent ? payload.inPersonAttendanceCommitment : false,
-    whyThisHackathon,
+    inPersonAttendanceCommitment: event.inPersonEvent ? payload.inPersonAttendanceCommitment : false,
+    whyThisEvent,
     proofOfExecutionUrl
   })
 }
 
 export function assertInPersonAttendanceCommitment(
-  hackathon: Pick<HackathonRecord, 'id' | 'inPersonEvent'>,
+  event: Pick<EventRecord, 'id' | 'inPersonEvent'>,
   payload: Pick<SubmitApplicationBody, 'inPersonAttendanceCommitment'>
 ) {
-  if (!hackathon.inPersonEvent) {
+  if (!event.inPersonEvent) {
     return
   }
 
   assertGuard(payload.inPersonAttendanceCommitment === true, {
     code: 'in_person_attendance_commitment_required',
-    message: 'In-person hackathons require explicit in-person attendance commitment before application submission.',
+    message: 'In-person events require explicit in-person attendance commitment before application submission.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 }
@@ -470,13 +470,13 @@ export function serializeUserApplication(
   application: UserApplicationRecord,
   options?: {
     user?: UserRecord | null
-    applicationTermsDocument?: HackathonTermsDocumentRecord | null
+    applicationTermsDocument?: EventTermsDocumentRecord | null
     adminWithdrawal?: AdminApplicationWithdrawalAvailability
   }
 ) {
   return {
     id: application.id,
-    hackathonId: application.hackathonId,
+    eventId: application.eventId,
     userId: application.userId,
     status: application.status,
     preApprovalStatus: application.preApprovalStatus,
@@ -510,7 +510,7 @@ export function serializeUserApplication(
       : {}),
     ...(options?.applicationTermsDocument
       ? {
-          applicationTermsDocument: serializeHackathonTermsDocument(options.applicationTermsDocument)
+          applicationTermsDocument: serializeEventTermsDocument(options.applicationTermsDocument)
         }
       : {}),
     ...(options?.adminWithdrawal
@@ -521,56 +521,56 @@ export function serializeUserApplication(
   }
 }
 
-export function assertHackathonAllowsApplications(hackathon: HackathonRecord, now = new Date()) {
-  assertAllowedState(hackathon.state, ['registration_open'], {
-    code: 'hackathon_state_invalid',
+export function assertEventAllowsApplications(event: EventRecord, now = new Date()) {
+  assertAllowedState(event.state, ['registration_open'], {
+    code: 'event_state_invalid',
     message: 'Applications can only be submitted while registration is open.',
-    details: { hackathonId: hackathon.id }
+    details: { eventId: event.id }
   })
 
   const nowTimestamp = now.getTime()
-  const registrationOpensAt = Date.parse(hackathon.registrationOpensAt)
-  const registrationClosesAt = Date.parse(hackathon.registrationClosesAt)
+  const registrationOpensAt = Date.parse(event.registrationOpensAt)
+  const registrationClosesAt = Date.parse(event.registrationClosesAt)
 
   assertGuard(nowTimestamp >= registrationOpensAt && nowTimestamp < registrationClosesAt, {
-    code: 'hackathon_state_invalid',
+    code: 'event_state_invalid',
     message: 'Applications can only be submitted while registration is open.',
-    details: { hackathonId: hackathon.id }
+    details: { eventId: event.id }
   })
 }
 
-export function assertUserMeetsHackathonProfileRequirements(user: UserRecord, hackathon: HackathonRecord) {
+export function assertUserMeetsEventProfileRequirements(user: UserRecord, event: EventRecord) {
   const missingFields = []
 
-  if (hackathon.requireXProfile && !user.xProfileUrl) {
+  if (event.requireXProfile && !user.xProfileUrl) {
     missingFields.push('xProfileUrl')
   }
 
-  if (hackathon.requireLinkedinProfile && !user.linkedinProfileUrl) {
+  if (event.requireLinkedinProfile && !user.linkedinProfileUrl) {
     missingFields.push('linkedinProfileUrl')
   }
 
-  if (hackathon.requireGithubProfile && !user.githubProfileUrl) {
+  if (event.requireGithubProfile && !user.githubProfileUrl) {
     missingFields.push('githubProfileUrl')
   }
 
-  if (hackathon.requireChatgptEmail && !user.chatgptEmail) {
+  if (event.requireChatgptEmail && !user.chatgptEmail) {
     missingFields.push('chatgptEmail')
   }
 
-  if (hackathon.requireOpenaiOrgId && !user.openaiOrgId) {
+  if (event.requireOpenaiOrgId && !user.openaiOrgId) {
     missingFields.push('openaiOrgId')
   }
 
-  if (isHackathonLumaEmailRequired(hackathon) && !user.lumaEmail) {
+  if (isEventLumaEmailRequired(event) && !user.lumaEmail) {
     missingFields.push('lumaEmail')
   }
 
   assertGuard(missingFields.length === 0, {
     code: 'required_profile_fields_missing',
-    message: 'The user profile does not satisfy the hackathon registration requirements.',
+    message: 'The user profile does not satisfy the event registration requirements.',
     details: {
-      hackathonId: hackathon.id,
+      eventId: event.id,
       missingFields
     }
   })
@@ -578,12 +578,12 @@ export function assertUserMeetsHackathonProfileRequirements(user: UserRecord, ha
 
 export async function getOwnUserApplication(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   userId: string
 ) {
   return await database.query.userApplications.findFirst({
     where: and(
-      eq(userApplications.hackathonId, hackathonId),
+      eq(userApplications.eventId, eventId),
       eq(userApplications.userId, userId)
     )
   })
@@ -591,16 +591,16 @@ export async function getOwnUserApplication(
 
 export async function assertNoExistingApplication(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   userId: string
 ) {
-  const existingApplication = await getOwnUserApplication(database, hackathonId, userId)
+  const existingApplication = await getOwnUserApplication(database, eventId, userId)
 
   assertGuard(!existingApplication, {
     code: 'user_application_exists',
-    message: 'A user can submit at most one application per hackathon.',
+    message: 'A user can submit at most one application per event.',
     details: {
-      hackathonId,
+      eventId,
       userId
     }
   })
@@ -608,18 +608,18 @@ export async function assertNoExistingApplication(
 
 export async function getCurrentApplicationTermsDocumentOrThrow(
   database: AppDatabase,
-  hackathon: HackathonRecord
+  event: EventRecord
 ) {
-  const currentTerms = await getCurrentHackathonTerms(database, hackathon)
+  const currentTerms = await getCurrentEventTerms(database, event)
   const document = currentTerms.applicationTerms
 
   if (!document) {
     throw new ApiError({
       statusCode: 409,
       code: 'application_terms_unavailable',
-      message: 'The hackathon does not currently expose application terms for acceptance.',
+      message: 'The event does not currently expose application terms for acceptance.',
       details: {
-        hackathonId: hackathon.id
+        eventId: event.id
       }
     })
   }
@@ -629,30 +629,30 @@ export async function getCurrentApplicationTermsDocumentOrThrow(
 
 export async function assertCurrentApplicationTermsAcceptance(
   database: AppDatabase,
-  hackathon: HackathonRecord,
+  event: EventRecord,
   applicationTermsDocumentId: string
 ) {
-  const document = await getHackathonTermsDocumentOrThrow(database, hackathon.id, applicationTermsDocumentId)
+  const document = await getEventTermsDocumentOrThrow(database, event.id, applicationTermsDocumentId)
 
   assertGuard(document.documentType === 'application_terms', {
-    code: 'hackathon_terms_document_type_mismatch',
-    message: 'The selected hackathon terms document does not match the application_terms document type.',
+    code: 'event_terms_document_type_mismatch',
+    message: 'The selected event terms document does not match the application_terms document type.',
     details: {
-      hackathonId: hackathon.id,
-      hackathonTermsDocumentId: document.id,
+      eventId: event.id,
+      eventTermsDocumentId: document.id,
       documentType: document.documentType
     }
   })
 
-  const currentDocument = await getCurrentApplicationTermsDocumentOrThrow(database, hackathon)
+  const currentDocument = await getCurrentApplicationTermsDocumentOrThrow(database, event)
 
   assertGuard(currentDocument.id === document.id, {
     code: 'application_terms_document_outdated',
     message: 'Application submission requires acceptance of the current application terms document.',
     details: {
-      hackathonId: hackathon.id,
-      acceptedHackathonTermsDocumentId: document.id,
-      currentHackathonTermsDocumentId: currentDocument.id,
+      eventId: event.id,
+      acceptedEventTermsDocumentId: document.id,
+      currentEventTermsDocumentId: currentDocument.id,
       currentVersion: currentDocument.version
     }
   })
@@ -662,13 +662,13 @@ export async function assertCurrentApplicationTermsAcceptance(
 
 export async function getApplicationOrThrow(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   applicationId: string
 ) {
   const application = await database.query.userApplications.findFirst({
     where: and(
       eq(userApplications.id, applicationId),
-      eq(userApplications.hackathonId, hackathonId)
+      eq(userApplications.eventId, eventId)
     )
   })
 
@@ -678,7 +678,7 @@ export async function getApplicationOrThrow(
       code: 'user_application_not_found',
       message: 'The requested user application was not found.',
       details: {
-        hackathonId,
+        eventId,
         applicationId
       }
     })
@@ -709,7 +709,7 @@ export function assertApplicationWithdrawable(application: UserApplicationRecord
 
 export async function assertNoActiveTeamMembershipForApplicationWithdrawal(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   userId: string
 ) {
   const activeMembership = await database
@@ -717,7 +717,7 @@ export async function assertNoActiveTeamMembershipForApplicationWithdrawal(
     .from(teamMembers)
     .innerJoin(teams, eq(teams.id, teamMembers.teamId))
     .where(and(
-      eq(teams.hackathonId, hackathonId),
+      eq(teams.eventId, eventId),
       eq(teamMembers.userId, userId),
       isNull(teamMembers.leftAt)
     ))
@@ -725,25 +725,25 @@ export async function assertNoActiveTeamMembershipForApplicationWithdrawal(
 
   assertGuard(activeMembership.length === 0, {
     code: 'user_application_withdrawal_blocked',
-    message: 'Leave your active team before withdrawing from this hackathon.',
+    message: 'Leave your active team before withdrawing from this event.',
     details: {
-      hackathonId,
+      eventId,
       userId
     }
   })
 }
 
-export async function requireApprovedUserForHackathon(event: H3Event, hackathonId: string) {
-  const actor = await requirePlatformActor(event)
-  const database = getDatabase(event)
-  const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
-  const application = await getOwnUserApplication(database, hackathonId, actor.platformUser.id)
+export async function requireApprovedUserForEvent(h3Event: H3Event, eventId: string) {
+  const actor = await requirePlatformActor(h3Event)
+  const database = getDatabase(h3Event)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
+  const application = await getOwnUserApplication(database, eventId, actor.platformUser.id)
 
   assertGuard(application?.status === 'approved', {
     code: 'approved_user_required',
-    message: 'This operation requires an approved application for the hackathon.',
+    message: 'This operation requires an approved application for the event.',
     details: {
-      hackathonId,
+      eventId,
       userId: actor.platformUser.id
     },
     statusCode: 403
@@ -751,18 +751,18 @@ export async function requireApprovedUserForHackathon(event: H3Event, hackathonI
 
   return {
     actor,
-    hackathon,
+    event,
     application
   }
 }
 
-export async function listHackathonApplications(
+export async function listEventApplications(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   query: ListApplicationsQuery = { page: 1, page_size: 20 }
 ) {
   const whereClause = and(
-    eq(userApplications.hackathonId, hackathonId),
+    eq(userApplications.eventId, eventId),
     query.status ? eq(userApplications.status, query.status) : undefined
   )
   const [applicationRows, totalRows, statusCountRows] = await Promise.all([
@@ -796,7 +796,7 @@ export async function listHackathonApplications(
       .from(userApplications)
       .innerJoin(users, eq(users.id, userApplications.userId))
       .where(and(
-        eq(userApplications.hackathonId, hackathonId),
+        eq(userApplications.eventId, eventId),
         isNull(users.deletedAt)
       ))
       .groupBy(userApplications.status)
@@ -814,7 +814,7 @@ export async function listHackathonApplications(
 
   const adminWithdrawalByApplicationId = await listAdminApplicationWithdrawalAvailabilityByApplicationId(
     database,
-    hackathonId,
+    eventId,
     applications
   )
 
@@ -830,25 +830,25 @@ export async function listHackathonApplications(
   }
 }
 
-export async function requireHackathonAdminApplicationContext(event: H3Event, hackathonId: string) {
-  const { hackathon, authorization } = await requireHackathonAdmin(event, hackathonId)
+export async function requireEventAdminApplicationContext(h3Event: H3Event, eventId: string) {
+  const { event, authorization } = await requireEventAdmin(h3Event, eventId)
 
   return {
-    hackathon,
+    event,
     authorization,
-    database: getDatabase(event)
+    database: getDatabase(h3Event)
   }
 }
 
-export async function requireHackathonApplicationVisibilityContext(event: H3Event, hackathonId: string) {
-  const database = getDatabase(event)
-  const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
-  const authorization = await resolveHackathonAuthorization(event, hackathonId)
+export async function requireEventApplicationVisibilityContext(h3Event: H3Event, eventId: string) {
+  const database = getDatabase(h3Event)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
+  const authorization = await resolveEventAuthorization(h3Event, eventId)
 
-  assertHackathonParticipantVisibilityAccess(authorization)
+  assertEventParticipantVisibilityAccess(authorization)
 
   return {
-    hackathon,
+    event,
     authorization,
     database
   }
@@ -856,13 +856,13 @@ export async function requireHackathonApplicationVisibilityContext(event: H3Even
 
 export async function getUserApplicationWithTermsOrThrow(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   applicationId: string
 ) {
-  const application = await getApplicationOrThrow(database, hackathonId, applicationId)
-  const applicationTermsDocument = await getHackathonTermsDocumentOrThrow(
+  const application = await getApplicationOrThrow(database, eventId, applicationId)
+  const applicationTermsDocument = await getEventTermsDocumentOrThrow(
     database,
-    hackathonId,
+    eventId,
     application.applicationTermsDocumentId
   )
 

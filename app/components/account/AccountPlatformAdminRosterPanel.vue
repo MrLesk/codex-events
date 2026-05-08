@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ApiListResponse } from '~/lib/api'
-import type { HackathonRoleUserSummary } from '~/domains/hackathons/access'
+import type { EventRoleUserSummary } from '~/domains/events/access'
 
 import { buildApiCacheKey, getApiSubjectKey, normalizeApiError } from '~/lib/api'
 
@@ -10,7 +10,7 @@ const platformAdminCandidatePageSize = 20
 type LoadStatus = 'idle' | 'pending' | 'success' | 'error'
 
 const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
-const currentAdmins = useFetch<ApiListResponse<HackathonRoleUserSummary>>('/api/platform-admins', {
+const currentAdmins = useFetch<ApiListResponse<EventRoleUserSummary>>('/api/platform-admins', {
   key: () => buildApiCacheKey('platform-admins', subjectKey.value),
   watch: [subjectKey]
 })
@@ -19,7 +19,7 @@ const mutationError = ref('')
 const pendingActionUserId = ref<string | null>(null)
 const candidateSearchInput = ref('')
 const appliedCandidateSearch = ref('')
-const candidateUsers = ref<HackathonRoleUserSummary[]>([])
+const candidateUsers = ref<EventRoleUserSummary[]>([])
 const candidateUsersTotal = ref(0)
 const currentCandidatePage = ref(1)
 const candidateUsersStatus = ref<LoadStatus>('pending')
@@ -57,7 +57,7 @@ function resetCandidateState() {
 }
 
 async function fetchCandidatePage(page: number) {
-  return await $fetch<ApiListResponse<HackathonRoleUserSummary>>('/api/platform-admins/candidates', {
+  return await $fetch<ApiListResponse<EventRoleUserSummary>>('/api/platform-admins/candidates', {
     query: {
       page,
       page_size: platformAdminCandidatePageSize,
@@ -191,15 +191,15 @@ function isPendingAction(userId: string) {
   return pendingActionUserId.value === userId
 }
 
-function isCandidateActionDisabled(user: HackathonRoleUserSummary) {
+function isCandidateActionDisabled(user: EventRoleUserSummary) {
   return user.isPlatformAdmin
 }
 
-function getCandidateActionLabel(user: HackathonRoleUserSummary) {
+function getCandidateActionLabel(user: EventRoleUserSummary) {
   return user.isPlatformAdmin ? 'Already platform admin' : 'Add platform admin'
 }
 
-async function addPlatformAdmin(user: HackathonRoleUserSummary) {
+async function addPlatformAdmin(user: EventRoleUserSummary) {
   mutationError.value = ''
   pendingActionUserId.value = user.id
 
@@ -209,7 +209,7 @@ async function addPlatformAdmin(user: HackathonRoleUserSummary) {
     })
     toast.add({
       title: 'Platform admin added',
-      description: `${user.displayName} can now manage the platform and every hackathon.`,
+      description: `${user.displayName} can now manage the platform and every event.`,
       color: 'success'
     })
     await Promise.all([
@@ -315,7 +315,7 @@ async function addPlatformAdmin(user: HackathonRoleUserSummary) {
             Add platform admins
           </h3>
           <p class="text-sm text-muted">
-            Search by name, email, or user ID. Promoting someone gives them platform-wide admin access across the existing hackathons too.
+            Search by name, email, or user ID. Promoting someone gives them platform-wide admin access across the existing events too.
           </p>
         </div>
 

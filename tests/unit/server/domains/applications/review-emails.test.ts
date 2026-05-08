@@ -20,8 +20,8 @@ describe('application review email utilities', () => {
       reviewedAt: '2026-03-27T12:00:00.000Z',
       recipientEmail: 'participant@example.com',
       recipientDisplayName: 'Ada Lovelace',
-      hackathonName: 'Codex Spring',
-      hackathonSlug: 'codex-spring'
+      eventName: 'Codex Spring',
+      eventSlug: 'codex-spring'
     })
 
     expect(result).toEqual({
@@ -38,11 +38,11 @@ describe('application review email utilities', () => {
       outboundEmail: {
         binding: 'EMAIL',
         fromEmail: 'notifications@example.com',
-        fromName: 'Codex Hackathons',
+        fromName: 'Codex Events',
         replyTo: 'support@example.com'
       },
       auth0: {
-        appBaseUrl: 'https://hackathons.example'
+        appBaseUrl: 'https://events.example'
       }
     })
 
@@ -52,8 +52,8 @@ describe('application review email utilities', () => {
       reviewedAt: '2026-03-27T12:00:00.000Z',
       recipientEmail: 'participant@example.com',
       recipientDisplayName: 'Ada Lovelace',
-      hackathonName: 'Codex Spring',
-      hackathonSlug: 'codex-spring'
+      eventName: 'Codex Spring',
+      eventSlug: 'codex-spring'
     }, {
       emailBinding: { send }
     })
@@ -64,7 +64,7 @@ describe('application review email utilities', () => {
     })
     expect(send).toHaveBeenCalledTimes(1)
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
-      from: { email: 'notifications@example.com', name: 'Codex Hackathons' },
+      from: { email: 'notifications@example.com', name: 'Codex Events' },
       to: 'participant@example.com',
       subject: 'You\'re accepted to Codex Spring',
       replyTo: 'support@example.com',
@@ -75,8 +75,8 @@ describe('application review email utilities', () => {
     }))
 
     const payload = send.mock.calls[0]?.[0]
-    expect(payload?.html).toContain('Open your hackathon dashboard')
-    expect(payload?.text).toContain('https://hackathons.example/account/hackathons/codex-spring')
+    expect(payload?.html).toContain('Open your event dashboard')
+    expect(payload?.text).toContain('https://events.example/account/events/codex-spring')
   })
 
   test('returns failed delivery status when Cloudflare reports a provider error', async () => {
@@ -98,8 +98,8 @@ describe('application review email utilities', () => {
       reviewedAt: '2026-03-27T12:00:00.000Z',
       recipientEmail: 'participant@example.com',
       recipientDisplayName: 'Ada Lovelace',
-      hackathonName: 'Codex Spring',
-      hackathonSlug: 'codex-spring'
+      eventName: 'Codex Spring',
+      eventSlug: 'codex-spring'
     }, {
       emailBinding: { send }
     })
@@ -131,8 +131,8 @@ describe('application review email utilities', () => {
       reviewedAt: '2026-03-27T12:00:00.000Z',
       recipientEmail: 'participant@example.com',
       recipientDisplayName: 'Ada Lovelace',
-      hackathonName: 'Codex Spring',
-      hackathonSlug: 'codex-spring'
+      eventName: 'Codex Spring',
+      eventSlug: 'codex-spring'
     }, {
       emailBinding: { send }
     })
@@ -159,8 +159,8 @@ describe('application review email utilities', () => {
       reviewedAt: '2026-03-27T12:00:00.000Z',
       recipientEmail: 'deleted_user_1_20260327120000000@deleted.invalid',
       recipientDisplayName: 'Deleted User',
-      hackathonName: 'Codex Spring',
-      hackathonSlug: 'codex-spring'
+      eventName: 'Codex Spring',
+      eventSlug: 'codex-spring'
     })
 
     expect(result).toEqual({

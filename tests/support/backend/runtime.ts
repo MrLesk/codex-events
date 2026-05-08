@@ -35,7 +35,7 @@ type EventContext = H3Event['context'] & {
       queueName?: string
       retryDelaySeconds?: number
     }
-    hackathonOutcomeEmails?: {
+    eventOutcomeEmails?: {
       queueBinding?: string
       queueName?: string
       retryDelaySeconds?: number

@@ -2,7 +2,7 @@ import type { OperationalUserSummary } from '~/domains/accounts/session-actor'
 
 export interface TeamSummary {
   id: string
-  hackathonId: string
+  eventId: string
   name: string
   bio: string | null
   slug: string

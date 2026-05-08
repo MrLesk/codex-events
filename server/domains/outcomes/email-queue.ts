@@ -8,28 +8,28 @@ import { writeAuditLog } from '#server/database/audit-log'
 import { prizeEligibilitySnapshots, users } from '#server/database/schema'
 import { getFinalDeliberationView } from '#server/domains/outcomes'
 import {
-  sendHackathonOutcomeEmail,
-  type HackathonOutcomeEmailDeliveryResult,
-  type HackathonOutcomeEmailInput
+  sendEventOutcomeEmail,
+  type EventOutcomeEmailDeliveryResult,
+  type EventOutcomeEmailInput
 } from './emails'
 import { isRetryableOutboundEmailProviderError } from '#server/utils/outbound-email'
 
-export const defaultHackathonOutcomeEmailQueueBinding = 'HACKATHON_OUTCOME_EMAIL_QUEUE'
-export const defaultHackathonOutcomeEmailQueueName = 'codex-hackathons-hackathon-outcome-email-delivery'
-export const defaultHackathonOutcomeEmailRetryDelaySeconds = 120
+export const defaultEventOutcomeEmailQueueBinding = 'EVENT_OUTCOME_EMAIL_QUEUE'
+export const defaultEventOutcomeEmailQueueName = 'codex-events-event-outcome-email-delivery'
+export const defaultEventOutcomeEmailRetryDelaySeconds = 120
 
-const hackathonOutcomeEmailsQueueRuntimeConfigSchema = z.object({
-  hackathonOutcomeEmails: z.object({
+const eventOutcomeEmailsQueueRuntimeConfigSchema = z.object({
+  eventOutcomeEmails: z.object({
     queueBinding: z.string().trim().optional(),
     queueName: z.string().trim().optional(),
     retryDelaySeconds: z.coerce.number().int().nonnegative().optional()
   }).optional()
 })
 
-const baseHackathonOutcomeEmailQueueMessageSchema = z.object({
-  hackathonId: z.string().trim().min(1),
-  hackathonName: z.string().trim().min(1).max(200),
-  hackathonSlug: z.string().trim().min(1).max(200),
+const baseEventOutcomeEmailQueueMessageSchema = z.object({
+  eventId: z.string().trim().min(1),
+  eventName: z.string().trim().min(1).max(200),
+  eventSlug: z.string().trim().min(1).max(200),
   teamId: z.string().trim().min(1),
   teamName: z.string().trim().min(1).max(200),
   recipientUserId: z.string().trim().min(1),
@@ -39,11 +39,11 @@ const baseHackathonOutcomeEmailQueueMessageSchema = z.object({
   enqueuedAt: z.string().trim().min(1)
 })
 
-export const hackathonOutcomeEmailQueueMessageSchema = z.discriminatedUnion('notificationType', [
-  baseHackathonOutcomeEmailQueueMessageSchema.extend({
+export const eventOutcomeEmailQueueMessageSchema = z.discriminatedUnion('notificationType', [
+  baseEventOutcomeEmailQueueMessageSchema.extend({
     notificationType: z.literal('shortlist')
   }),
-  baseHackathonOutcomeEmailQueueMessageSchema.extend({
+  baseEventOutcomeEmailQueueMessageSchema.extend({
     notificationType: z.literal('winner'),
     finalRank: z.coerce.number().int().positive(),
     rankedTeamCount: z.coerce.number().int().positive(),
@@ -51,7 +51,7 @@ export const hackathonOutcomeEmailQueueMessageSchema = z.discriminatedUnion('not
   })
 ])
 
-export type HackathonOutcomeEmailQueueMessage = z.infer<typeof hackathonOutcomeEmailQueueMessageSchema>
+export type EventOutcomeEmailQueueMessage = z.infer<typeof eventOutcomeEmailQueueMessageSchema>
 type PrizeEligibilitySnapshotRecord = typeof prizeEligibilitySnapshots.$inferSelect
 type UserRecord = typeof users.$inferSelect
 
@@ -75,9 +75,9 @@ interface QueueBatchLike<Body = unknown> {
   messages: readonly QueueMessageLike<Body>[]
 }
 
-type HackathonOutcomeEmailQueueRuntimeConfig = z.infer<typeof hackathonOutcomeEmailsQueueRuntimeConfigSchema>
+type EventOutcomeEmailQueueRuntimeConfig = z.infer<typeof eventOutcomeEmailsQueueRuntimeConfigSchema>
 
-export type HackathonOutcomeEmailEnqueueResult = {
+export type EventOutcomeEmailEnqueueResult = {
   status: 'enqueued'
 } | {
   status: 'skipped'
@@ -88,16 +88,16 @@ export type HackathonOutcomeEmailEnqueueResult = {
   errorMessage: string
 }
 
-export type HackathonOutcomeEmailQueueMessageOutcome = {
+export type EventOutcomeEmailQueueMessageOutcome = {
   messageId: string
   action: 'ack' | 'retry'
   reason: string
-  delivery: HackathonOutcomeEmailDeliveryResult | null
+  delivery: EventOutcomeEmailDeliveryResult | null
 }
 
-export function buildHackathonOutcomeEmailQueueMessage(
-  input: HackathonOutcomeEmailInput
-): HackathonOutcomeEmailQueueMessage {
+export function buildEventOutcomeEmailQueueMessage(
+  input: EventOutcomeEmailInput
+): EventOutcomeEmailQueueMessage {
   return {
     ...input,
     recipientDisplayName: input.recipientDisplayName?.trim() || null,
@@ -106,9 +106,9 @@ export function buildHackathonOutcomeEmailQueueMessage(
 }
 
 export async function enqueueWinnerOutcomeEmails(options: {
-  event: H3Event
+  h3Event: H3Event
   database: AppDatabase
-  hackathon: {
+  event: {
     id: string
     name: string
     slug: string
@@ -131,7 +131,7 @@ export async function enqueueWinnerOutcomeEmails(options: {
 
   const finalDeliberation = await getFinalDeliberationView(
     options.database,
-    options.hackathon.id
+    options.event.id
   )
   const rankedTeamCount = finalDeliberation.entries.filter(
     entry => entry.finalRank !== null
@@ -139,14 +139,14 @@ export async function enqueueWinnerOutcomeEmails(options: {
   const winningTeamIds = [...new Set(options.winners.map(winner => winner.teamId))]
   const winningTeamIdSet = new Set(winningTeamIds)
   const snapshots = (await options.database.query.prizeEligibilitySnapshots.findMany({
-    where: eq(prizeEligibilitySnapshots.hackathonId, options.hackathon.id),
+    where: eq(prizeEligibilitySnapshots.eventId, options.event.id),
     orderBy: [asc(prizeEligibilitySnapshots.createdAt)]
   })).filter(snapshot => winningTeamIdSet.has(snapshot.teamId)) as PrizeEligibilitySnapshotRecord[]
   const winnerRecipients = await options.database
     .select(getTableColumns(users))
     .from(users)
     .innerJoin(prizeEligibilitySnapshots, eq(prizeEligibilitySnapshots.userId, users.id))
-    .where(eq(prizeEligibilitySnapshots.hackathonId, options.hackathon.id)) as UserRecord[]
+    .where(eq(prizeEligibilitySnapshots.eventId, options.event.id)) as UserRecord[]
   const winnersByTeamId = new Map(
     options.winners.map(winner => [winner.teamId, winner] as const)
   )
@@ -171,13 +171,13 @@ export async function enqueueWinnerOutcomeEmails(options: {
     deliveredRecipientKeys.add(recipientKey)
 
     const recipient = usersById.get(snapshot.userId)
-    const enqueueResult = await enqueueHackathonOutcomeEmailMessage(
-      options.event,
-      buildHackathonOutcomeEmailQueueMessage({
+    const enqueueResult = await enqueueEventOutcomeEmailMessage(
+      options.h3Event,
+      buildEventOutcomeEmailQueueMessage({
         notificationType: 'winner',
-        hackathonId: options.hackathon.id,
-        hackathonName: options.hackathon.name,
-        hackathonSlug: options.hackathon.slug,
+        eventId: options.event.id,
+        eventName: options.event.name,
+        eventSlug: options.event.slug,
         teamId: winner.teamId,
         teamName: winner.teamName,
         recipientUserId: snapshot.userId,
@@ -192,9 +192,9 @@ export async function enqueueWinnerOutcomeEmails(options: {
 
     await writeAuditLog(options.database, {
       actorUserId: options.triggeredByUserId,
-      entityType: 'hackathon',
-      entityId: options.hackathon.id,
-      action: 'hackathon.winner_email_enqueued',
+      entityType: 'event',
+      entityId: options.event.id,
+      action: 'event.winner_email_enqueued',
       metadata: {
         trigger: options.trigger,
         teamId: winner.teamId,
@@ -206,31 +206,31 @@ export async function enqueueWinnerOutcomeEmails(options: {
   }
 }
 
-function resolveQueueRuntimeConfig(event: H3Event): HackathonOutcomeEmailQueueRuntimeConfig {
+function resolveQueueRuntimeConfig(event: H3Event): EventOutcomeEmailQueueRuntimeConfig {
   const eventRuntimeConfig = (event.context as H3Event['context'] & { runtimeConfig?: unknown }).runtimeConfig
   const runtimeConfigGetter = (globalThis as { useRuntimeConfig?: (event: H3Event) => unknown }).useRuntimeConfig
   const candidate = eventRuntimeConfig ?? runtimeConfigGetter?.(event) ?? {}
-  const parsed = hackathonOutcomeEmailsQueueRuntimeConfigSchema.safeParse(candidate)
+  const parsed = eventOutcomeEmailsQueueRuntimeConfigSchema.safeParse(candidate)
 
   return parsed.success ? parsed.data : {}
 }
 
-function resolveQueueRuntimeConfigFromUnknown(candidate: unknown): HackathonOutcomeEmailQueueRuntimeConfig {
-  const parsed = hackathonOutcomeEmailsQueueRuntimeConfigSchema.safeParse(candidate)
+function resolveQueueRuntimeConfigFromUnknown(candidate: unknown): EventOutcomeEmailQueueRuntimeConfig {
+  const parsed = eventOutcomeEmailsQueueRuntimeConfigSchema.safeParse(candidate)
 
   return parsed.success ? parsed.data : {}
 }
 
-function getQueueBindingName(config: HackathonOutcomeEmailQueueRuntimeConfig) {
-  return config.hackathonOutcomeEmails?.queueBinding?.trim() || defaultHackathonOutcomeEmailQueueBinding
+function getQueueBindingName(config: EventOutcomeEmailQueueRuntimeConfig) {
+  return config.eventOutcomeEmails?.queueBinding?.trim() || defaultEventOutcomeEmailQueueBinding
 }
 
-function getQueueName(config: HackathonOutcomeEmailQueueRuntimeConfig) {
-  return config.hackathonOutcomeEmails?.queueName?.trim() || defaultHackathonOutcomeEmailQueueName
+function getQueueName(config: EventOutcomeEmailQueueRuntimeConfig) {
+  return config.eventOutcomeEmails?.queueName?.trim() || defaultEventOutcomeEmailQueueName
 }
 
-function getRetryDelaySeconds(config: HackathonOutcomeEmailQueueRuntimeConfig) {
-  return config.hackathonOutcomeEmails?.retryDelaySeconds ?? defaultHackathonOutcomeEmailRetryDelaySeconds
+function getRetryDelaySeconds(config: EventOutcomeEmailQueueRuntimeConfig) {
+  return config.eventOutcomeEmails?.retryDelaySeconds ?? defaultEventOutcomeEmailRetryDelaySeconds
 }
 
 function isQueueProducerLike(value: unknown): value is QueueProducerLike {
@@ -242,7 +242,7 @@ function isQueueProducerLike(value: unknown): value is QueueProducerLike {
   return typeof candidate.send === 'function'
 }
 
-export function getHackathonOutcomeEmailQueueProducer(event: H3Event) {
+export function getEventOutcomeEmailQueueProducer(event: H3Event) {
   const config = resolveQueueRuntimeConfig(event)
   const bindingName = getQueueBindingName(config)
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
@@ -261,11 +261,11 @@ export function getHackathonOutcomeEmailQueueProducer(event: H3Event) {
   }
 }
 
-export async function enqueueHackathonOutcomeEmailMessage(
+export async function enqueueEventOutcomeEmailMessage(
   event: H3Event,
-  messageInput: HackathonOutcomeEmailQueueMessage
-): Promise<HackathonOutcomeEmailEnqueueResult> {
-  const parsedMessage = hackathonOutcomeEmailQueueMessageSchema.safeParse(messageInput)
+  messageInput: EventOutcomeEmailQueueMessage
+): Promise<EventOutcomeEmailEnqueueResult> {
+  const parsedMessage = eventOutcomeEmailQueueMessageSchema.safeParse(messageInput)
 
   if (!parsedMessage.success) {
     return {
@@ -274,7 +274,7 @@ export async function enqueueHackathonOutcomeEmailMessage(
     }
   }
 
-  const { producer, bindingName } = getHackathonOutcomeEmailQueueProducer(event)
+  const { producer, bindingName } = getEventOutcomeEmailQueueProducer(event)
 
   if (!producer) {
     return {
@@ -300,7 +300,7 @@ export async function enqueueHackathonOutcomeEmailMessage(
   }
 }
 
-function shouldRetryDeliveryFailure(delivery: HackathonOutcomeEmailDeliveryResult) {
+function shouldRetryDeliveryFailure(delivery: EventOutcomeEmailDeliveryResult) {
   if (delivery.status !== 'failed') {
     return false
   }
@@ -312,15 +312,15 @@ function shouldRetryDeliveryFailure(delivery: HackathonOutcomeEmailDeliveryResul
   return isRetryableOutboundEmailProviderError(delivery.providerError)
 }
 
-export async function processHackathonOutcomeEmailQueueMessage(
+export async function processEventOutcomeEmailQueueMessage(
   message: QueueMessageLike,
   options?: {
     runtimeConfig?: unknown
     cloudflareEnv?: Record<string, unknown>
-    sendOutcomeEmail?: typeof sendHackathonOutcomeEmail
+    sendOutcomeEmail?: typeof sendEventOutcomeEmail
   }
-): Promise<HackathonOutcomeEmailQueueMessageOutcome> {
-  const parsedMessage = hackathonOutcomeEmailQueueMessageSchema.safeParse(message.body)
+): Promise<EventOutcomeEmailQueueMessageOutcome> {
+  const parsedMessage = eventOutcomeEmailQueueMessageSchema.safeParse(message.body)
 
   if (!parsedMessage.success) {
     message.ack()
@@ -334,7 +334,7 @@ export async function processHackathonOutcomeEmailQueueMessage(
   }
 
   const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
-  const sendOutcomeEmail = options?.sendOutcomeEmail ?? sendHackathonOutcomeEmail
+  const sendOutcomeEmail = options?.sendOutcomeEmail ?? sendEventOutcomeEmail
   const delivery = await sendOutcomeEmail(
     { context: {} } as H3Event,
     parsedMessage.data,
@@ -378,13 +378,13 @@ export async function processHackathonOutcomeEmailQueueMessage(
   }
 }
 
-export async function processHackathonOutcomeEmailQueueBatch(
+export async function processEventOutcomeEmailQueueBatch(
   batch: QueueBatchLike,
   options?: {
     runtimeConfig?: unknown
     cloudflareEnv?: Record<string, unknown>
     queueName?: string
-    sendOutcomeEmail?: typeof sendHackathonOutcomeEmail
+    sendOutcomeEmail?: typeof sendEventOutcomeEmail
   }
 ) {
   const config = resolveQueueRuntimeConfigFromUnknown(options?.runtimeConfig ?? {})
@@ -398,10 +398,10 @@ export async function processHackathonOutcomeEmailQueueBatch(
     }
   }
 
-  const outcomes: HackathonOutcomeEmailQueueMessageOutcome[] = []
+  const outcomes: EventOutcomeEmailQueueMessageOutcome[] = []
 
   for (const message of batch.messages) {
-    outcomes.push(await processHackathonOutcomeEmailQueueMessage(message, {
+    outcomes.push(await processEventOutcomeEmailQueueMessage(message, {
       runtimeConfig: options?.runtimeConfig,
       cloudflareEnv: options?.cloudflareEnv,
       sendOutcomeEmail: options?.sendOutcomeEmail

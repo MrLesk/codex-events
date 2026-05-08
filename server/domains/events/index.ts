@@ -1,0 +1,1917 @@
+import type { H3Event } from 'h3'
+
+import { and, asc, count, desc, eq, exists, getTableColumns, inArray, isNull, like, or, sql } from 'drizzle-orm'
+import { z } from 'zod'
+
+import { getRequestActor, requirePlatformActor } from '#server/auth/actor'
+import {
+  assertEventAdminAccess,
+  resolveEventAuthorization
+} from '#server/auth/authorization'
+import { getDatabase, type AppDatabase } from '#server/database/client'
+import {
+  evaluationCriteria,
+  eventTracks,
+  eventRoleAssignments,
+  eventRoleTypes,
+  eventStates,
+  eventTermsDocumentTypes,
+  eventTermsDocuments,
+  eventTypes,
+  events,
+  platformDocumentTypes,
+  prizeAwardScopes,
+  prizeRewardTypes,
+  prizes,
+  submissions,
+  teamMembers,
+  teams,
+  userApplications,
+  users
+} from '#server/database/schema'
+import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
+import { ApiError } from '#server/http/api-error'
+import { publicEventImagePath } from '#server/domains/events/images'
+
+const isoTimestampSchema = z.string().refine(
+  value => !Number.isNaN(Date.parse(value)),
+  'Expected an ISO-8601 timestamp.'
+)
+
+const slugSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slugs must use lowercase letters, numbers, and hyphens only.')
+
+const nullableUrlSchema = z.string().url().nullable().optional()
+const nullableHttpUrlSchema = z.string().url()
+  .refine((value) => {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  }, 'Expected an http or https URL.')
+  .nullable()
+  .optional()
+const nullableLumaEventApiIdSchema = z.string()
+  .trim()
+  .regex(/^evt-[A-Za-z0-9]+$/, 'Expected a Luma event API ID like evt-123.')
+  .nullable()
+  .optional()
+const nullableTrimmedStringSchema = z.string().trim().min(1).nullable().optional()
+
+const roleEnumSchema = z.enum(eventRoleTypes)
+const eventTypeEnumSchema = z.enum(eventTypes)
+const stateEnumSchema = z.enum(eventStates)
+const termsDocumentTypeSchema = z.enum(eventTermsDocumentTypes)
+const prizeRewardTypeSchema = z.enum(prizeRewardTypes)
+const prizeAwardScopeSchema = z.enum(prizeAwardScopes)
+export const platformDocumentTypeSchema = z.enum(platformDocumentTypes)
+
+export const routeIdParamsSchema = z.object({
+  eventId: z.string().trim().min(1)
+})
+
+export const routeSlugParamsSchema = z.object({
+  slug: slugSchema
+})
+
+export const eventListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  page_size: z.coerce.number().int().min(1).max(100).default(20),
+  state: stateEnumSchema.optional(),
+  slug: z.string().trim().min(1).optional()
+})
+
+export const listEventRoleCandidatesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  page_size: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().trim().min(1).optional()
+})
+
+const agendaItemSchema = z.object({
+  id: z.string().trim().min(1),
+  startsAt: isoTimestampSchema,
+  endsAt: isoTimestampSchema.nullable().optional().default(null),
+  title: z.string().trim().min(1),
+  details: nullableTrimmedStringSchema.default(null),
+  displayOrder: z.coerce.number().int().min(0)
+}).superRefine((item, ctx) => {
+  if (!item.endsAt) {
+    return
+  }
+
+  const startsAt = Date.parse(item.startsAt)
+  const endsAt = Date.parse(item.endsAt)
+
+  if (endsAt < startsAt) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Agenda item end time must be on or after the start time.',
+      path: ['endsAt']
+    })
+  }
+})
+
+const agendaItemsSchema = z.array(agendaItemSchema)
+  .superRefine((items, ctx) => {
+    const ids = new Set<string>()
+
+    items.forEach((item, index) => {
+      if (!ids.has(item.id)) {
+        ids.add(item.id)
+        return
+      }
+
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Agenda item IDs must be unique.',
+        path: [index, 'id']
+      })
+    })
+  })
+
+const storedSubmissionIdsSchema = z.array(z.string().trim().min(1))
+  .default([])
+
+const trackSchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+  displayOrder: z.coerce.number().int().min(0)
+})
+
+const tracksSchema = z.array(trackSchema)
+  .superRefine((tracks, ctx) => {
+    const ids = new Set<string>()
+    const displayOrders = new Set<number>()
+
+    tracks.forEach((track, index) => {
+      if (ids.has(track.id)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Track IDs must be unique.',
+          path: [index, 'id']
+        })
+      } else {
+        ids.add(track.id)
+      }
+
+      if (displayOrders.has(track.displayOrder)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Track display order values must be unique.',
+          path: [index, 'displayOrder']
+        })
+      } else {
+        displayOrders.add(track.displayOrder)
+      }
+    })
+  })
+  .default([])
+
+const eventConfigShape = {
+  eventType: eventTypeEnumSchema,
+  name: z.string().trim().min(1),
+  slug: slugSchema,
+  description: z.string().trim().min(1),
+  agendaItems: agendaItemsSchema,
+  tracks: tracksSchema,
+  backgroundImageUrl: nullableUrlSchema,
+  bannerImageUrl: nullableUrlSchema,
+  discordServerUrl: nullableHttpUrlSchema,
+  lumaEventUrl: nullableHttpUrlSchema,
+  lumaEventApiId: nullableLumaEventApiIdSchema,
+  city: z.string().trim().min(1),
+  country: z.string().trim().min(1),
+  address: z.string().trim().min(1),
+  registrationOpensAt: isoTimestampSchema,
+  registrationClosesAt: isoTimestampSchema,
+  submissionOpensAt: isoTimestampSchema.optional(),
+  submissionClosesAt: isoTimestampSchema.optional(),
+  maxTeamMembers: z.coerce.number().int().min(1).default(4),
+  participantsLimit: z.coerce.number().int().min(1).nullable().default(null),
+  autoApproveApplications: z.coerce.boolean().default(false),
+  blindReviewCount: z.coerce.number().int().min(0).max(2).default(1),
+  pitchReviewEnabled: z.coerce.boolean().default(false),
+  blindScoreWeightPercent: z.coerce.number().int().min(0).max(100).default(70),
+  pitchScoreWeightPercent: z.coerce.number().int().min(0).max(100).default(30),
+  shortlistFinalistCount: z.coerce.number().int().min(1).default(10),
+  inPersonEvent: z.coerce.boolean().default(false),
+  requireXProfile: z.coerce.boolean().default(false),
+  requireLinkedinProfile: z.coerce.boolean().default(false),
+  requireGithubProfile: z.coerce.boolean().default(false),
+  requireChatgptEmail: z.coerce.boolean().default(false),
+  requireOpenaiOrgId: z.coerce.boolean().default(false),
+  requireLumaEmail: z.coerce.boolean().default(false),
+  requireWhyThisEvent: z.coerce.boolean().default(false),
+  requireProofOfExecution: z.coerce.boolean().default(false),
+  requireSubmissionSummary: z.coerce.boolean().default(false),
+  requireSubmissionRepositoryUrl: z.coerce.boolean().default(false),
+  requireSubmissionDemoUrl: z.coerce.boolean().default(false)
+} satisfies Record<string, z.ZodTypeAny>
+
+export const createEventBodySchema = z.object(eventConfigShape).superRefine((input, ctx) => {
+  if (input.eventType !== 'hackathon') {
+    return
+  }
+
+  if (!input.submissionOpensAt) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Submission opening time is required for hackathons.',
+      path: ['submissionOpensAt']
+    })
+  }
+
+  if (!input.submissionClosesAt) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Submission closing time is required for hackathons.',
+      path: ['submissionClosesAt']
+    })
+  }
+})
+export const updateEventBodySchema = z.object({
+  name: eventConfigShape.name.optional(),
+  slug: eventConfigShape.slug.optional(),
+  description: eventConfigShape.description.optional(),
+  agendaItems: agendaItemsSchema.optional(),
+  tracks: tracksSchema.optional(),
+  backgroundImageUrl: eventConfigShape.backgroundImageUrl.optional(),
+  bannerImageUrl: eventConfigShape.bannerImageUrl.optional(),
+  discordServerUrl: eventConfigShape.discordServerUrl.optional(),
+  lumaEventUrl: eventConfigShape.lumaEventUrl.optional(),
+  lumaEventApiId: eventConfigShape.lumaEventApiId.optional(),
+  city: eventConfigShape.city.optional(),
+  country: eventConfigShape.country.optional(),
+  address: eventConfigShape.address.optional(),
+  registrationOpensAt: eventConfigShape.registrationOpensAt.optional(),
+  registrationClosesAt: eventConfigShape.registrationClosesAt.optional(),
+  submissionOpensAt: eventConfigShape.submissionOpensAt.optional(),
+  submissionClosesAt: eventConfigShape.submissionClosesAt.optional(),
+  maxTeamMembers: eventConfigShape.maxTeamMembers.optional(),
+  participantsLimit: eventConfigShape.participantsLimit.optional(),
+  autoApproveApplications: eventConfigShape.autoApproveApplications.optional(),
+  blindReviewCount: eventConfigShape.blindReviewCount.optional(),
+  pitchReviewEnabled: eventConfigShape.pitchReviewEnabled.optional(),
+  blindScoreWeightPercent: eventConfigShape.blindScoreWeightPercent.optional(),
+  pitchScoreWeightPercent: eventConfigShape.pitchScoreWeightPercent.optional(),
+  shortlistFinalistCount: eventConfigShape.shortlistFinalistCount.optional(),
+  inPersonEvent: eventConfigShape.inPersonEvent.optional(),
+  requireXProfile: eventConfigShape.requireXProfile.optional(),
+  requireLinkedinProfile: eventConfigShape.requireLinkedinProfile.optional(),
+  requireGithubProfile: eventConfigShape.requireGithubProfile.optional(),
+  requireChatgptEmail: eventConfigShape.requireChatgptEmail.optional(),
+  requireOpenaiOrgId: eventConfigShape.requireOpenaiOrgId.optional(),
+  requireLumaEmail: eventConfigShape.requireLumaEmail.optional(),
+  requireWhyThisEvent: eventConfigShape.requireWhyThisEvent.optional(),
+  requireProofOfExecution: eventConfigShape.requireProofOfExecution.optional(),
+  requireSubmissionSummary: eventConfigShape.requireSubmissionSummary.optional(),
+  requireSubmissionRepositoryUrl: eventConfigShape.requireSubmissionRepositoryUrl.optional(),
+  requireSubmissionDemoUrl: eventConfigShape.requireSubmissionDemoUrl.optional()
+}).refine(
+  input => Object.keys(input).length > 0,
+  'At least one event configuration field must be provided.'
+)
+
+export const roleAssignmentParamsSchema = routeIdParamsSchema.extend({
+  userId: z.string().trim().min(1)
+})
+
+export const roleAssignmentUpsertBodySchema = z.object({
+  role: roleEnumSchema,
+  isInJudgePool: z.coerce.boolean().default(false),
+  isStaff: z.coerce.boolean().default(false)
+})
+
+export const roleAssignmentPatchBodySchema = z.object({
+  isInJudgePool: z.coerce.boolean().optional(),
+  isStaff: z.coerce.boolean().optional()
+}).refine(
+  input => input.isInJudgePool !== undefined || input.isStaff !== undefined,
+  'At least one role capability flag must be provided.'
+)
+
+export const termsDocumentParamsSchema = routeIdParamsSchema.extend({
+  documentType: termsDocumentTypeSchema
+})
+
+export const createTermsVersionBodySchema = z.object({
+  title: z.string().trim().min(1),
+  content: z.string().trim().min(1),
+  publishedAt: isoTimestampSchema.optional()
+})
+
+export const setCurrentTermsBodySchema = z.object({
+  eventTermsDocumentId: z.string().trim().min(1)
+})
+
+export const criterionParamsSchema = routeIdParamsSchema.extend({
+  criterionId: z.string().trim().min(1)
+})
+
+export const createEvaluationCriterionBodySchema = z.object({
+  name: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+  weight: z.coerce.number().int().min(0),
+  displayOrder: z.coerce.number().int().min(0)
+})
+
+export const updateEvaluationCriterionBodySchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  description: z.string().trim().min(1).optional(),
+  weight: z.coerce.number().int().min(0).optional(),
+  displayOrder: z.coerce.number().int().min(0).optional()
+}).refine(
+  input => Object.keys(input).length > 0,
+  'At least one evaluation criterion field must be provided.'
+)
+
+export const prizeParamsSchema = routeIdParamsSchema.extend({
+  prizeId: z.string().trim().min(1)
+})
+
+export const createPrizeBodySchema = z.object({
+  name: z.string().trim().min(1),
+  description: z.string().trim().min(1),
+  rewardType: prizeRewardTypeSchema,
+  rewardValue: z.string().trim().min(1),
+  rewardCurrency: z.string().trim().min(1).nullable().optional(),
+  awardScope: prizeAwardScopeSchema,
+  rankStart: z.coerce.number().int().min(1),
+  rankEnd: z.coerce.number().int().min(1),
+  displayOrder: z.coerce.number().int().min(0).optional()
+}).refine(
+  input => input.rankStart <= input.rankEnd,
+  'Prize rankStart must be less than or equal to rankEnd.'
+)
+
+export const updatePrizeBodySchema = z.object({
+  name: z.string().trim().min(1).optional(),
+  description: z.string().trim().min(1).optional(),
+  rewardType: prizeRewardTypeSchema.optional(),
+  rewardValue: z.string().trim().min(1).optional(),
+  rewardCurrency: z.string().trim().min(1).nullable().optional(),
+  awardScope: prizeAwardScopeSchema.optional(),
+  rankStart: z.coerce.number().int().min(1).optional(),
+  rankEnd: z.coerce.number().int().min(1).optional(),
+  displayOrder: z.coerce.number().int().min(0).optional()
+}).refine(
+  input => Object.keys(input).length > 0,
+  'At least one prize field must be provided.'
+)
+
+type EventRecord = typeof events.$inferSelect
+type EventTrackRecord = typeof eventTracks.$inferSelect
+type EventRoleAssignmentRecord = typeof eventRoleAssignments.$inferSelect
+type EventTermsDocumentRecord = typeof eventTermsDocuments.$inferSelect
+type EvaluationCriterionRecord = typeof evaluationCriteria.$inferSelect
+type PrizeRecord = typeof prizes.$inferSelect
+type UserRecord = typeof users.$inferSelect
+export type EventAgendaItem = z.infer<typeof agendaItemSchema>
+export type EventTrackInput = z.infer<typeof trackSchema>
+export type EventType = typeof eventTypes[number]
+
+const publicEventStates = [
+  'registration_open',
+  'submission_open',
+  'judging_preparation',
+  'blind_review',
+  'shortlist',
+  'pitch',
+  'pitch_review',
+  'final_deliberation',
+  'winners_announced',
+  'completed'
+] as const
+
+export const publishedEventRosterRoles = ['judge', 'staff'] as const
+export type PublishedEventRosterRole = (typeof publishedEventRosterRoles)[number]
+
+function buildPublishedEventRosterFullName(user: Pick<UserRecord, 'displayName' | 'firstName' | 'familyName'>) {
+  const fullName = `${user.firstName.trim()} ${user.familyName.trim()}`.trim()
+
+  return fullName || user.displayName
+}
+
+function comparePublishedEventRosterMembers(
+  left: ReturnType<typeof serializePublishedEventRosterMember>,
+  right: ReturnType<typeof serializePublishedEventRosterMember>
+) {
+  const fullNameOrder = left.fullName.localeCompare(right.fullName)
+
+  if (fullNameOrder !== 0) {
+    return fullNameOrder
+  }
+
+  return left.id.localeCompare(right.id)
+}
+
+export function isEventRolePublishedInRoster(
+  assignment: Pick<EventRoleAssignmentRecord, 'role' | 'isInJudgePool' | 'isStaff'>,
+  role: PublishedEventRosterRole
+) {
+  if (role === 'judge') {
+    return assignment.role === 'judge' || (assignment.role === 'event_admin' && assignment.isInJudgePool)
+  }
+
+  return assignment.role === 'staff' || (assignment.role === 'event_admin' && assignment.isStaff)
+}
+
+export function serializeEventAgendaItems(items: EventAgendaItem[]) {
+  return JSON.stringify(
+    [...items].sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
+  )
+}
+
+export function parseEventAgendaItems(value: string | null | undefined) {
+  if (!value) {
+    return []
+  }
+
+  try {
+    return agendaItemsSchema
+      .parse(JSON.parse(value))
+      .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
+  } catch {
+    return []
+  }
+}
+
+export function parseStoredSubmissionIdsJson(value: string | null | undefined) {
+  if (!value) {
+    return []
+  }
+
+  try {
+    return storedSubmissionIdsSchema.parse(JSON.parse(value))
+  } catch {
+    return []
+  }
+}
+
+function compareEventTracks(
+  left: Pick<EventTrackRecord, 'displayOrder' | 'createdAt' | 'id'>,
+  right: Pick<EventTrackRecord, 'displayOrder' | 'createdAt' | 'id'>
+) {
+  return left.displayOrder - right.displayOrder
+    || left.createdAt.localeCompare(right.createdAt)
+    || left.id.localeCompare(right.id)
+}
+
+export async function listEventTracks(database: AppDatabase, eventId: string) {
+  const tracks = await database.query.eventTracks.findMany({
+    where: eq(eventTracks.eventId, eventId),
+    orderBy: [asc(eventTracks.displayOrder), asc(eventTracks.createdAt), asc(eventTracks.id)]
+  })
+
+  return tracks.sort(compareEventTracks)
+}
+
+export function serializeEventTrack(track: EventTrackRecord) {
+  return {
+    id: track.id,
+    eventId: track.eventId,
+    name: track.name,
+    description: track.description,
+    displayOrder: track.displayOrder,
+    createdAt: track.createdAt
+  }
+}
+
+export function serializePublicEventTrack(track: EventTrackRecord) {
+  return {
+    name: track.name,
+    description: track.description,
+    displayOrder: track.displayOrder
+  }
+}
+
+export async function createEventTracks(
+  database: AppDatabase,
+  eventId: string,
+  tracks: EventTrackInput[]
+) {
+  if (tracks.length === 0) {
+    return
+  }
+
+  const createdAt = new Date().toISOString()
+
+  await database.insert(eventTracks).values(
+    [...tracks]
+      .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id))
+      .map(track => ({
+        id: track.id,
+        eventId,
+        name: track.name,
+        description: track.description,
+        displayOrder: track.displayOrder,
+        createdAt
+      }))
+  )
+}
+
+export async function createEventAdminAssignmentsForNewEvent(
+  database: AppDatabase,
+  input: {
+    eventId: string
+    creatorUserId: string
+    createdAt: string
+  }
+) {
+  const adminUsers = await database.query.users.findMany({
+    columns: {
+      id: true
+    },
+    where: and(
+      isNull(users.deletedAt),
+      or(
+        eq(users.isPlatformAdmin, true),
+        eq(users.id, input.creatorUserId)
+      )
+    )
+  })
+  const userIds = [...new Set(adminUsers.map(user => user.id))]
+
+  if (userIds.length === 0) {
+    return
+  }
+
+  await database.insert(eventRoleAssignments).values(
+    userIds.map(userId => ({
+      id: crypto.randomUUID(),
+      eventId: input.eventId,
+      userId,
+      role: 'event_admin' as const,
+      isInJudgePool: false,
+      isStaff: false,
+      createdAt: input.createdAt
+    }))
+  ).onConflictDoNothing()
+}
+
+export async function assertRemovedEventTracksAreUnreferenced(
+  database: AppDatabase,
+  trackIds: string[]
+) {
+  if (trackIds.length === 0) {
+    return
+  }
+
+  const referencedSubmission = await database.query.submissions.findFirst({
+    where: inArray(submissions.trackId, trackIds)
+  })
+
+  if (!referencedSubmission) {
+    return
+  }
+
+  throw new ApiError({
+    statusCode: 409,
+    code: 'event_track_has_submissions',
+    message: 'This track cannot be removed because existing submissions still reference it.',
+    details: {
+      trackIds
+    }
+  })
+}
+
+export async function replaceEventTracks(
+  database: AppDatabase,
+  eventId: string,
+  nextTracks: EventTrackInput[]
+) {
+  const existingTracks = await listEventTracks(database, eventId)
+  const existingTrackIds = new Set(existingTracks.map(track => track.id))
+  const nextTrackIds = new Set(nextTracks.map(track => track.id))
+  const removedTrackIds = existingTracks
+    .filter(track => !nextTrackIds.has(track.id))
+    .map(track => track.id)
+  const persistedTracks = existingTracks.filter(track => nextTrackIds.has(track.id))
+
+  for (const [index, track] of persistedTracks.entries()) {
+    await database
+      .update(eventTracks)
+      .set({
+        displayOrder: -1 - index
+      })
+      .where(eq(eventTracks.id, track.id))
+  }
+
+  const normalizedTracks = [...nextTracks]
+    .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id))
+
+  if (removedTrackIds.length > 0) {
+    await database.delete(eventTracks).where(inArray(eventTracks.id, removedTrackIds))
+  }
+
+  for (const track of normalizedTracks) {
+    if (existingTrackIds.has(track.id)) {
+      await database
+        .update(eventTracks)
+        .set({
+          name: track.name,
+          description: track.description,
+          displayOrder: track.displayOrder
+        })
+        .where(eq(eventTracks.id, track.id))
+      continue
+    }
+
+    await database.insert(eventTracks).values({
+      id: track.id,
+      eventId,
+      name: track.name,
+      description: track.description,
+      displayOrder: track.displayOrder,
+      createdAt: new Date().toISOString()
+    })
+  }
+}
+
+export async function assertEventTrackReplacementAllowed(
+  database: AppDatabase,
+  eventId: string,
+  nextTracks: EventTrackInput[]
+) {
+  const existingTracks = await listEventTracks(database, eventId)
+  const nextTrackIds = new Set(nextTracks.map(track => track.id))
+  const removedTrackIds = existingTracks
+    .filter(track => !nextTrackIds.has(track.id))
+    .map(track => track.id)
+
+  await assertRemovedEventTracksAreUnreferenced(database, removedTrackIds)
+}
+
+function buildEventListFilters(input: z.infer<typeof eventListQuerySchema>) {
+  const filters = []
+
+  if (input.state) {
+    filters.push(eq(events.state, input.state))
+  }
+
+  if (input.slug) {
+    filters.push(like(events.slug, `%${input.slug}%`))
+  }
+
+  return filters
+}
+
+function buildPublicEventVisibilityClauses() {
+  return publicEventStates.map(state => eq(events.state, state))
+}
+
+function buildPublicEventVisibilityWhere(filters: ReturnType<typeof buildEventListFilters> = []) {
+  const visibilityWhere = or(...buildPublicEventVisibilityClauses())
+
+  return filters.length > 0
+    ? and(...filters, visibilityWhere)
+    : visibilityWhere
+}
+
+function isDraftVisibleToActor(
+  actor: Awaited<ReturnType<typeof getRequestActor>>,
+  eventId: string,
+  internalEventIds: Set<string>
+) {
+  if (actor.kind !== 'platform_user') {
+    return false
+  }
+
+  if (actor.platformUser.isPlatformAdmin) {
+    return true
+  }
+
+  return internalEventIds.has(eventId)
+}
+
+export function assertRoleCapabilityInvariant(
+  role: typeof eventRoleTypes[number],
+  capabilities: {
+    isInJudgePool: boolean
+    isStaff: boolean
+  }
+) {
+  if (role === 'judge') {
+    assertGuard(capabilities.isInJudgePool && !capabilities.isStaff, {
+      code: 'judge_role_flags_invalid',
+      message: 'Judge role assignments must remain in the automatic judge pool and cannot also be staff.',
+      details: {
+        role,
+        isInJudgePool: capabilities.isInJudgePool,
+        isStaff: capabilities.isStaff
+      }
+    })
+
+    return
+  }
+
+  if (role === 'staff') {
+    assertGuard(capabilities.isStaff && !capabilities.isInJudgePool, {
+      code: 'staff_role_flags_invalid',
+      message: 'Staff role assignments must remain marked as staff and cannot also be in the judge pool.',
+      details: {
+        role,
+        isInJudgePool: capabilities.isInJudgePool,
+        isStaff: capabilities.isStaff
+      }
+    })
+  }
+}
+
+export function assertEventSchedule(input: {
+  eventType?: EventType
+  registrationOpensAt: string
+  registrationClosesAt: string
+  submissionOpensAt?: string
+  submissionClosesAt?: string
+}) {
+  const registrationOpensAt = Date.parse(input.registrationOpensAt)
+  const registrationClosesAt = Date.parse(input.registrationClosesAt)
+
+  assertGuard(
+    registrationOpensAt < registrationClosesAt,
+    {
+      code: 'event_schedule_invalid',
+      message: 'Event schedule fields must satisfy registration_open < registration_close.'
+    }
+  )
+
+  if (input.eventType && input.eventType !== 'hackathon') {
+    return
+  }
+
+  assertGuard(Boolean(input.submissionOpensAt && input.submissionClosesAt), {
+    code: 'event_schedule_invalid',
+    message: 'Hackathon events require a submission window.'
+  })
+
+  const submissionOpensAt = Date.parse(input.submissionOpensAt!)
+  const submissionClosesAt = Date.parse(input.submissionClosesAt!)
+
+  assertGuard(
+    registrationClosesAt <= submissionOpensAt
+    && submissionOpensAt < submissionClosesAt,
+    {
+      code: 'event_schedule_invalid',
+      message: 'Hackathon schedule fields must satisfy registration_close <= submission_open < submission_close.'
+    }
+  )
+}
+
+export function assertCompetitionEvent(event: Pick<EventRecord, 'id' | 'eventType'>) {
+  if (event.eventType === 'hackathon') {
+    return
+  }
+
+  throw new ApiError({
+    statusCode: 403,
+    code: 'hackathon_event_required',
+    message: 'This operation is available only for hackathon events.',
+    details: {
+      eventId: event.id,
+      eventType: event.eventType
+    }
+  })
+}
+
+export function buildEventUpdatePayload(
+  existingEvent: EventRecord,
+  patch: z.infer<typeof updateEventBodySchema>
+) {
+  const hackathonOnlyPatchFields = [
+    'tracks',
+    'submissionOpensAt',
+    'submissionClosesAt',
+    'maxTeamMembers',
+    'blindReviewCount',
+    'pitchReviewEnabled',
+    'blindScoreWeightPercent',
+    'pitchScoreWeightPercent',
+    'shortlistFinalistCount',
+    'requireProofOfExecution',
+    'requireSubmissionSummary',
+    'requireSubmissionRepositoryUrl',
+    'requireSubmissionDemoUrl'
+  ] as const
+  const providedHackathonOnlyFields = hackathonOnlyPatchFields.filter(field => field in patch)
+
+  assertGuard(existingEvent.eventType === 'hackathon' || providedHackathonOnlyFields.length === 0, {
+    code: 'hackathon_event_required',
+    message: 'Competition configuration is available only for hackathon events.',
+    details: {
+      eventId: existingEvent.id,
+      eventType: existingEvent.eventType,
+      fields: providedHackathonOnlyFields
+    },
+    statusCode: 403
+  })
+
+  const normalizedPatch: z.infer<typeof updateEventBodySchema> & { agendaItemsJson?: string } = {
+    ...patch
+  }
+
+  if (normalizedPatch.agendaItems !== undefined) {
+    normalizedPatch.agendaItemsJson = serializeEventAgendaItems(normalizedPatch.agendaItems)
+    Reflect.deleteProperty(normalizedPatch, 'agendaItems')
+  }
+
+  if (normalizedPatch.tracks !== undefined) {
+    Reflect.deleteProperty(normalizedPatch, 'tracks')
+  }
+
+  const nextSlug = patch.slug?.trim()
+
+  if (nextSlug && nextSlug !== existingEvent.slug) {
+    const previousBackgroundPath = publicEventImagePath(existingEvent.slug, 'background')
+    const previousBannerPath = publicEventImagePath(existingEvent.slug, 'banner')
+    const nextBackgroundPath = publicEventImagePath(nextSlug, 'background')
+    const nextBannerPath = publicEventImagePath(nextSlug, 'banner')
+
+    const rewriteManagedImageUrl = (
+      imageUrl: string | null | undefined,
+      previousPath: string,
+      nextPath: string
+    ) => {
+      if (!imageUrl) {
+        return imageUrl ?? null
+      }
+
+      try {
+        const parsed = new URL(imageUrl)
+
+        if (parsed.pathname !== previousPath) {
+          return imageUrl
+        }
+
+        parsed.pathname = nextPath
+        return parsed.toString()
+      } catch {
+        return imageUrl
+      }
+    }
+
+    normalizedPatch.backgroundImageUrl = rewriteManagedImageUrl(
+      normalizedPatch.backgroundImageUrl ?? existingEvent.backgroundImageUrl,
+      previousBackgroundPath,
+      nextBackgroundPath
+    )
+    normalizedPatch.bannerImageUrl = rewriteManagedImageUrl(
+      normalizedPatch.bannerImageUrl ?? existingEvent.bannerImageUrl,
+      previousBannerPath,
+      nextBannerPath
+    )
+  }
+
+  const mergedEvent = {
+    ...existingEvent,
+    ...normalizedPatch
+  }
+
+  assertEventSchedule({
+    eventType: mergedEvent.eventType,
+    registrationOpensAt: mergedEvent.registrationOpensAt,
+    registrationClosesAt: mergedEvent.registrationClosesAt,
+    submissionOpensAt: mergedEvent.submissionOpensAt,
+    submissionClosesAt: mergedEvent.submissionClosesAt
+  })
+
+  return {
+    ...normalizedPatch,
+    updatedAt: new Date().toISOString()
+  }
+}
+
+export async function getEventOrThrow(database: AppDatabase, eventId: string) {
+  const event = await database.query.events.findFirst({
+    where: eq(events.id, eventId)
+  })
+
+  if (!event) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'event_not_found',
+      message: 'The requested event was not found.',
+      details: { eventId }
+    })
+  }
+
+  return event
+}
+
+async function getActorInternalEventIds(
+  database: AppDatabase,
+  actor: Awaited<ReturnType<typeof getRequestActor>>
+) {
+  if (actor.kind !== 'platform_user' || actor.platformUser.isPlatformAdmin) {
+    return new Set<string>()
+  }
+
+  const assignments = await database.query.eventRoleAssignments.findMany({
+    columns: {
+      eventId: true
+    },
+    where: and(
+      eq(eventRoleAssignments.userId, actor.platformUser.id),
+      inArray(eventRoleAssignments.role, ['event_admin', 'staff'])
+    )
+  })
+
+  return new Set(assignments.map(assignment => assignment.eventId))
+}
+
+export async function getVisibleEventOrThrow(h3Event: H3Event, eventId: string) {
+  const database = getDatabase(h3Event)
+  const actor = await getRequestActor(h3Event)
+  const eventRecord = await getEventOrThrow(database, eventId)
+
+  if (eventRecord.state !== 'draft') {
+    return eventRecord
+  }
+
+  const internalEventIds = await getActorInternalEventIds(database, actor)
+
+  if (isDraftVisibleToActor(actor, eventId, internalEventIds)) {
+    return eventRecord
+  }
+
+  throw new ApiError({
+    statusCode: 404,
+    code: 'event_not_found',
+    message: 'The requested event was not found.',
+    details: { eventId }
+  })
+}
+
+export async function getVisibleEventBySlugOrThrow(h3Event: H3Event, slug: string) {
+  const database = getDatabase(h3Event)
+  const actor = await getRequestActor(h3Event)
+  const eventRecord = await database.query.events.findFirst({
+    where: eq(events.slug, slug)
+  })
+
+  if (!eventRecord) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'event_not_found',
+      message: 'The requested event was not found.',
+      details: { slug }
+    })
+  }
+
+  if (eventRecord.state !== 'draft') {
+    return eventRecord
+  }
+
+  const internalEventIds = await getActorInternalEventIds(database, actor)
+
+  if (isDraftVisibleToActor(actor, eventRecord.id, internalEventIds)) {
+    return eventRecord
+  }
+
+  throw new ApiError({
+    statusCode: 404,
+    code: 'event_not_found',
+    message: 'The requested event was not found.',
+    details: { slug }
+  })
+}
+
+export async function getPublicEventBySlugOrThrow(database: AppDatabase, slug: string) {
+  const event = await database.query.events.findFirst({
+    where: and(
+      eq(events.slug, slug),
+      buildPublicEventVisibilityWhere()
+    )
+  })
+
+  if (!event) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'event_not_found',
+      message: 'The requested event was not found.',
+      details: { slug }
+    })
+  }
+
+  return event
+}
+
+export async function requireEventAdmin(h3Event: H3Event, eventId: string) {
+  const event = await getEventOrThrow(getDatabase(h3Event), eventId)
+  const authorization = await resolveEventAuthorization(h3Event, eventId)
+  assertEventAdminAccess(authorization)
+  return { event, authorization }
+}
+
+export async function requireEventWorkspaceAccess(h3Event: H3Event, eventId: string) {
+  const actor = await requirePlatformActor(h3Event)
+  const database = getDatabase(h3Event)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
+
+  if (actor.platformUser.isPlatformAdmin) {
+    return {
+      actor,
+      database,
+      event
+    }
+  }
+
+  const hasApplication = await database.query.userApplications.findFirst({
+    columns: {
+      id: true
+    },
+    where: and(
+      eq(userApplications.eventId, eventId),
+      eq(userApplications.userId, actor.platformUser.id)
+    )
+  })
+
+  const hasRoleAssignment = await database.query.eventRoleAssignments.findFirst({
+    columns: {
+      id: true
+    },
+    where: and(
+      eq(eventRoleAssignments.eventId, eventId),
+      eq(eventRoleAssignments.userId, actor.platformUser.id)
+    )
+  })
+
+  const activeMembership = await database
+    .select({
+      teamId: teamMembers.teamId
+    })
+    .from(teamMembers)
+    .innerJoin(teams, eq(teams.id, teamMembers.teamId))
+    .where(and(
+      eq(teamMembers.userId, actor.platformUser.id),
+      isNull(teamMembers.leftAt),
+      eq(teams.eventId, eventId)
+    ))
+    .limit(1)
+
+  if (!hasApplication && !hasRoleAssignment && activeMembership.length === 0) {
+    throw new ApiError({
+      statusCode: 403,
+      code: 'event_workspace_access_required',
+      message: 'This operation requires access to the event workspace.',
+      details: {
+        eventId
+      }
+    })
+  }
+
+  return {
+    actor,
+    database,
+    event
+  }
+}
+
+export async function canViewRestrictedEventDetails(h3Event: H3Event, eventId: string) {
+  const actor = await getRequestActor(h3Event)
+
+  if (actor.kind !== 'platform_user') {
+    return false
+  }
+
+  if (actor.platformUser.isPlatformAdmin) {
+    return true
+  }
+
+  const authorization = await resolveEventAuthorization(h3Event, eventId)
+
+  if (authorization.explicitRole !== null) {
+    return true
+  }
+
+  const approvedApplication = await getDatabase(h3Event).query.userApplications.findFirst({
+    columns: {
+      id: true
+    },
+    where: and(
+      eq(userApplications.eventId, eventId),
+      eq(userApplications.userId, actor.platformUser.id),
+      eq(userApplications.status, 'approved')
+    )
+  })
+
+  return Boolean(approvedApplication)
+}
+
+export async function resolveVisibleEventRestrictedFields(
+  h3Event: H3Event,
+  eventRecord: Pick<EventRecord, 'id' | 'address' | 'discordServerUrl'>
+) {
+  const canViewDetails = await canViewRestrictedEventDetails(h3Event, eventRecord.id)
+  const configuredDiscordServerUrl = eventRecord.discordServerUrl?.trim()
+
+  return {
+    address: canViewDetails ? eventRecord.address : '',
+    discordServerUrl: canViewDetails && configuredDiscordServerUrl ? configuredDiscordServerUrl : null
+  }
+}
+
+export async function listPublicEvents(
+  database: AppDatabase,
+  input: z.infer<typeof eventListQuerySchema>
+) {
+  const page = input.page
+  const pageSize = input.page_size
+  const visibilityWhere = buildPublicEventVisibilityWhere(buildEventListFilters(input))
+
+  const items = await database.query.events.findMany({
+    where: visibilityWhere,
+    orderBy: [desc(events.createdAt)],
+    limit: pageSize,
+    offset: (page - 1) * pageSize
+  })
+  const totalRows = await database.select({ total: count() }).from(events).where(visibilityWhere)
+  const total = totalRows[0]?.total ?? 0
+
+  return { items, total, page, pageSize }
+}
+
+export async function listVisibleEvents(
+  event: H3Event,
+  input: z.infer<typeof eventListQuerySchema>
+) {
+  const database = getDatabase(event)
+  const actor = await getRequestActor(event)
+  const page = input.page
+  const pageSize = input.page_size
+  const filters = buildEventListFilters(input)
+
+  const baseWhere = filters.length > 0 ? and(...filters) : undefined
+
+  if (actor.kind === 'platform_user' && actor.platformUser.isPlatformAdmin) {
+    const items = await database.query.events.findMany({
+      where: baseWhere,
+      orderBy: [desc(events.createdAt)],
+      limit: pageSize,
+      offset: (page - 1) * pageSize
+    })
+    const totalRows = await database.select({ total: count() }).from(events).where(baseWhere)
+    const total = totalRows[0]?.total ?? 0
+
+    return { items, total, page, pageSize }
+  }
+
+  const internalEventVisibility = actor.kind === 'platform_user'
+    ? exists(
+        database
+          .select({ id: eventRoleAssignments.id })
+          .from(eventRoleAssignments)
+          .where(and(
+            eq(eventRoleAssignments.eventId, events.id),
+            eq(eventRoleAssignments.userId, actor.platformUser.id),
+            inArray(eventRoleAssignments.role, ['event_admin', 'staff'])
+          ))
+      )
+    : undefined
+  const visibilityClauses = [
+    ...buildPublicEventVisibilityClauses(),
+    ...(internalEventVisibility ? [internalEventVisibility] : [])
+  ]
+  const visibilityWhere = baseWhere
+    ? and(baseWhere, or(...visibilityClauses))
+    : or(...visibilityClauses)
+
+  const items = await database.query.events.findMany({
+    where: visibilityWhere,
+    orderBy: [desc(events.createdAt)],
+    limit: pageSize,
+    offset: (page - 1) * pageSize
+  })
+  const totalRows = await database.select({ total: count() }).from(events).where(visibilityWhere)
+  const total = totalRows[0]?.total ?? 0
+
+  return { items, total, page, pageSize }
+}
+
+export async function listEventRoleCandidates(
+  database: AppDatabase,
+  eventId: string,
+  input: z.infer<typeof listEventRoleCandidatesQuerySchema>
+) {
+  const filters = [isNull(users.deletedAt)]
+
+  if (input.search) {
+    filters.push(or(
+      like(users.displayName, `%${input.search}%`),
+      like(users.email, `%${input.search}%`),
+      like(users.id, `%${input.search}%`)
+    )!)
+  }
+
+  const where = and(...filters)
+  const orderBy = [
+    desc(sql<number>`case when ${users.isPlatformAdmin} then 1 else 0 end`),
+    desc(sql<number>`case when exists (
+      select 1
+      from ${eventRoleAssignments}
+      where ${eventRoleAssignments.eventId} = ${eventId}
+        and ${eventRoleAssignments.role} = 'event_admin'
+        and ${eventRoleAssignments.userId} = ${users.id}
+    ) then 1 else 0 end`),
+    asc(users.displayName),
+    asc(users.email),
+    asc(users.id)
+  ]
+
+  const items = await database
+    .select()
+    .from(users)
+    .where(where)
+    .orderBy(...orderBy)
+    .limit(input.page_size)
+    .offset((input.page - 1) * input.page_size)
+
+  const totalRows = await database
+    .select({ total: count() })
+    .from(users)
+    .where(where)
+  const total = totalRows[0]?.total ?? 0
+
+  return {
+    items,
+    total,
+    page: input.page,
+    pageSize: input.page_size
+  }
+}
+
+export async function listPublishedEventRosterMembers(
+  database: AppDatabase,
+  eventId: string,
+  role: PublishedEventRosterRole
+) {
+  const assignmentUserRows = await database
+    .select({
+      assignment: getTableColumns(eventRoleAssignments),
+      user: getTableColumns(users)
+    })
+    .from(eventRoleAssignments)
+    .innerJoin(users, eq(users.id, eventRoleAssignments.userId))
+    .where(and(
+      eq(eventRoleAssignments.eventId, eventId),
+      isNull(users.deletedAt)
+    ))
+    .orderBy(asc(eventRoleAssignments.createdAt))
+
+  return assignmentUserRows
+    .filter(row => isEventRolePublishedInRoster(row.assignment, role))
+    .map(row => row.user as UserRecord)
+    .map(serializePublishedEventRosterMember)
+    .sort(comparePublishedEventRosterMembers)
+}
+
+export async function isUserVisibleInPublishedEventRoster(
+  database: AppDatabase,
+  eventId: string,
+  userId: string
+) {
+  const assignment = await database.query.eventRoleAssignments.findFirst({
+    columns: {
+      role: true,
+      isInJudgePool: true,
+      isStaff: true
+    },
+    where: and(
+      eq(eventRoleAssignments.eventId, eventId),
+      eq(eventRoleAssignments.userId, userId)
+    )
+  })
+
+  if (!assignment) {
+    return false
+  }
+
+  return isEventRolePublishedInRoster(assignment, 'judge')
+    || isEventRolePublishedInRoster(assignment, 'staff')
+}
+
+export async function getCurrentEventTerms(
+  database: AppDatabase,
+  event: EventRecord
+) {
+  const documentIds = [
+    event.currentApplicationTermsDocumentId,
+    event.currentWinnerTermsDocumentId
+  ].filter((value): value is string => Boolean(value))
+
+  if (documentIds.length === 0) {
+    return {
+      applicationTerms: null,
+      winnerTerms: null
+    }
+  }
+
+  const documents = await database.query.eventTermsDocuments.findMany({
+    where: inArray(eventTermsDocuments.id, documentIds)
+  })
+
+  return {
+    applicationTerms: documents.find(document => document.id === event.currentApplicationTermsDocumentId) ?? null,
+    winnerTerms: documents.find(document => document.id === event.currentWinnerTermsDocumentId) ?? null
+  }
+}
+
+export function serializeEvent(
+  event: EventRecord,
+  currentTerms?: {
+    applicationTerms: EventTermsDocumentRecord | null
+    winnerTerms: EventTermsDocumentRecord | null
+  },
+  tracks?: EventTrackRecord[]
+) {
+  const pitchPresentationSubmissionIds = parseStoredSubmissionIdsJson(event.pitchFinalistSubmissionIdsJson)
+
+  return {
+    id: event.id,
+    eventType: event.eventType,
+    name: event.name,
+    slug: event.slug,
+    description: event.description,
+    agendaItems: parseEventAgendaItems(event.agendaItemsJson),
+    backgroundImageUrl: event.backgroundImageUrl,
+    bannerImageUrl: event.bannerImageUrl,
+    lumaEventUrl: event.lumaEventUrl,
+    lumaEventApiId: event.lumaEventApiId,
+    city: event.city,
+    country: event.country,
+    address: event.address,
+    registrationOpensAt: event.registrationOpensAt,
+    registrationClosesAt: event.registrationClosesAt,
+    submissionOpensAt: event.submissionOpensAt,
+    submissionClosesAt: event.submissionClosesAt,
+    state: event.state,
+    maxTeamMembers: event.maxTeamMembers,
+    participantsLimit: event.participantsLimit,
+    autoApproveApplications: event.autoApproveApplications,
+    blindReviewCount: event.blindReviewCount,
+    pitchReviewEnabled: event.pitchReviewEnabled,
+    blindScoreWeightPercent: event.blindScoreWeightPercent,
+    pitchScoreWeightPercent: event.pitchScoreWeightPercent,
+    shortlistFinalistCount: event.shortlistFinalistCount,
+    pitchPresentationSubmissionIds,
+    activePitchPresentationSubmissionId: event.activePitchPresentationSubmissionId,
+    pitchPresentationsCompletedAt: event.pitchPresentationsCompletedAt,
+    inPersonEvent: event.inPersonEvent,
+    requireXProfile: event.requireXProfile,
+    requireLinkedinProfile: event.requireLinkedinProfile,
+    requireGithubProfile: event.requireGithubProfile,
+    requireChatgptEmail: event.requireChatgptEmail,
+    requireOpenaiOrgId: event.requireOpenaiOrgId,
+    requireLumaEmail: event.requireLumaEmail,
+    requireWhyThisEvent: event.requireWhyThisEvent,
+    requireProofOfExecution: event.requireProofOfExecution,
+    requireSubmissionSummary: event.requireSubmissionSummary,
+    requireSubmissionRepositoryUrl: event.requireSubmissionRepositoryUrl,
+    requireSubmissionDemoUrl: event.requireSubmissionDemoUrl,
+    currentApplicationTermsDocumentId: event.currentApplicationTermsDocumentId,
+    currentWinnerTermsDocumentId: event.currentWinnerTermsDocumentId,
+    createdByUserId: event.createdByUserId,
+    createdAt: event.createdAt,
+    updatedAt: event.updatedAt,
+    ...(tracks
+      ? {
+          tracks: tracks.map(serializeEventTrack)
+        }
+      : {}),
+    ...(currentTerms
+      ? {
+          currentTerms: {
+            applicationTerms: currentTerms.applicationTerms ? serializeEventTermsDocument(currentTerms.applicationTerms) : null,
+            winnerTerms: currentTerms.winnerTerms ? serializeEventTermsDocument(currentTerms.winnerTerms) : null
+          }
+        }
+      : {})
+  }
+}
+
+export function serializePublicEventTermsReference(document: EventTermsDocumentRecord) {
+  return {
+    documentType: document.documentType,
+    version: document.version,
+    title: document.title,
+    publishedAt: document.publishedAt
+  }
+}
+
+export function serializePublicEvent(
+  event: EventRecord,
+  currentTerms?: {
+    applicationTerms: EventTermsDocumentRecord | null
+    winnerTerms: EventTermsDocumentRecord | null
+  },
+  tracks?: EventTrackRecord[]
+) {
+  return {
+    eventType: event.eventType,
+    name: event.name,
+    slug: event.slug,
+    description: event.description,
+    agendaItems: parseEventAgendaItems(event.agendaItemsJson),
+    backgroundImageUrl: event.backgroundImageUrl,
+    bannerImageUrl: event.bannerImageUrl,
+    lumaEventUrl: event.lumaEventUrl,
+    city: event.city,
+    country: event.country,
+    address: '',
+    registrationOpensAt: event.registrationOpensAt,
+    registrationClosesAt: event.registrationClosesAt,
+    submissionOpensAt: event.submissionOpensAt,
+    submissionClosesAt: event.submissionClosesAt,
+    state: event.state,
+    maxTeamMembers: event.maxTeamMembers,
+    participantsLimit: event.participantsLimit,
+    autoApproveApplications: event.autoApproveApplications,
+    inPersonEvent: event.inPersonEvent,
+    requireXProfile: event.requireXProfile,
+    requireLinkedinProfile: event.requireLinkedinProfile,
+    requireGithubProfile: event.requireGithubProfile,
+    requireChatgptEmail: event.requireChatgptEmail,
+    requireOpenaiOrgId: event.requireOpenaiOrgId,
+    requireLumaEmail: event.requireLumaEmail,
+    requireWhyThisEvent: event.requireWhyThisEvent,
+    requireProofOfExecution: event.requireProofOfExecution,
+    requireSubmissionSummary: event.requireSubmissionSummary,
+    requireSubmissionRepositoryUrl: event.requireSubmissionRepositoryUrl,
+    requireSubmissionDemoUrl: event.requireSubmissionDemoUrl,
+    ...(tracks
+      ? {
+          tracks: tracks.map(serializePublicEventTrack)
+        }
+      : {}),
+    ...(currentTerms
+      ? {
+          currentTerms: {
+            applicationTerms: currentTerms.applicationTerms ? serializePublicEventTermsReference(currentTerms.applicationTerms) : null,
+            winnerTerms: currentTerms.winnerTerms ? serializePublicEventTermsReference(currentTerms.winnerTerms) : null
+          }
+        }
+      : {})
+  }
+}
+
+export function serializeEventRoleAssignment(
+  assignment: EventRoleAssignmentRecord,
+  user?: typeof users.$inferSelect | null
+) {
+  return {
+    id: assignment.id,
+    eventId: assignment.eventId,
+    userId: assignment.userId,
+    role: assignment.role,
+    isInJudgePool: assignment.isInJudgePool,
+    isStaff: assignment.isStaff,
+    createdAt: assignment.createdAt,
+    ...(user
+      ? {
+          user: serializeEventRoleUserSummary(user)
+        }
+      : {})
+  }
+}
+
+export function serializeEventRoleUserSummary(user: typeof users.$inferSelect) {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    isPlatformAdmin: user.isPlatformAdmin,
+    isEventOrganizer: user.isEventOrganizer
+  }
+}
+
+export function serializePublishedEventRosterMember(user: UserRecord) {
+  return {
+    id: user.id,
+    fullName: buildPublishedEventRosterFullName(user),
+    company: user.company,
+    bio: user.bio,
+    xProfileUrl: user.xProfileUrl,
+    linkedinProfileUrl: user.linkedinProfileUrl,
+    githubProfileUrl: user.githubProfileUrl,
+    profileIconUpdatedAt: user.profileIconUpdatedAt
+  }
+}
+
+function buildPublicCompletedProjectProfileIconUrl(
+  eventSlug: string,
+  section: 'winners' | 'published-projects',
+  userId: string,
+  profileIconUpdatedAt: string | null | undefined
+) {
+  const normalizedVersion = profileIconUpdatedAt?.trim()
+
+  if (!normalizedVersion) {
+    return null
+  }
+
+  const searchParams = new URLSearchParams({
+    v: normalizedVersion
+  })
+
+  return `/api/public/events/${encodeURIComponent(eventSlug)}/${section}/${encodeURIComponent(userId)}/profile-icon?${searchParams.toString()}`
+}
+
+export function buildPublicWinnerProfileIconUrl(
+  eventSlug: string,
+  userId: string,
+  profileIconUpdatedAt: string | null | undefined
+) {
+  return buildPublicCompletedProjectProfileIconUrl(
+    eventSlug,
+    'winners',
+    userId,
+    profileIconUpdatedAt
+  )
+}
+
+export function buildPublicPublishedProjectProfileIconUrl(
+  eventSlug: string,
+  userId: string,
+  profileIconUpdatedAt: string | null | undefined
+) {
+  return buildPublicCompletedProjectProfileIconUrl(
+    eventSlug,
+    'published-projects',
+    userId,
+    profileIconUpdatedAt
+  )
+}
+
+export function serializeEventWinnerTeamMember(
+  user: UserRecord,
+  eventSlug: string
+) {
+  const member = serializePublishedEventRosterMember(user)
+
+  return {
+    id: member.id,
+    fullName: member.fullName,
+    bio: member.bio,
+    xProfileUrl: member.xProfileUrl,
+    linkedinProfileUrl: member.linkedinProfileUrl,
+    githubProfileUrl: member.githubProfileUrl,
+    profileIconUrl: buildPublicWinnerProfileIconUrl(
+      eventSlug,
+      user.id,
+      user.profileIconUpdatedAt
+    )
+  }
+}
+
+export function serializeEventPublishedProjectTeamMember(
+  user: UserRecord,
+  eventSlug: string
+) {
+  const member = serializePublishedEventRosterMember(user)
+
+  return {
+    id: member.id,
+    fullName: member.fullName,
+    bio: member.bio,
+    xProfileUrl: member.xProfileUrl,
+    linkedinProfileUrl: member.linkedinProfileUrl,
+    githubProfileUrl: member.githubProfileUrl,
+    profileIconUrl: buildPublicPublishedProjectProfileIconUrl(
+      eventSlug,
+      user.id,
+      user.profileIconUpdatedAt
+    )
+  }
+}
+
+export function serializeEventTermsDocument(document: EventTermsDocumentRecord) {
+  return {
+    id: document.id,
+    eventId: document.eventId,
+    documentType: document.documentType,
+    version: document.version,
+    title: document.title,
+    content: document.content,
+    publishedAt: document.publishedAt,
+    createdAt: document.createdAt
+  }
+}
+
+export function serializeEvaluationCriterion(criterion: EvaluationCriterionRecord) {
+  return {
+    id: criterion.id,
+    eventId: criterion.eventId,
+    name: criterion.name,
+    description: criterion.description,
+    weight: criterion.weight,
+    displayOrder: criterion.displayOrder,
+    createdAt: criterion.createdAt
+  }
+}
+
+export function serializePublicEvaluationCriterion(criterion: EvaluationCriterionRecord) {
+  return {
+    name: criterion.name,
+    description: criterion.description,
+    weight: criterion.weight,
+    displayOrder: criterion.displayOrder
+  }
+}
+
+export function serializePrize(prize: PrizeRecord) {
+  return {
+    id: prize.id,
+    eventId: prize.eventId,
+    name: prize.name,
+    description: prize.description,
+    rewardType: prize.rewardType,
+    rewardValue: prize.rewardValue,
+    rewardCurrency: prize.rewardCurrency,
+    awardScope: prize.awardScope,
+    rankStart: prize.rankStart,
+    rankEnd: prize.rankEnd,
+    displayOrder: prize.displayOrder,
+    createdAt: prize.createdAt
+  }
+}
+
+export function assertPrizeConfigurationEditable(
+  event: Pick<EventRecord, 'id' | 'state' | 'eventType'>
+) {
+  assertCompetitionEvent(event)
+
+  assertAllowedState(
+    event.state,
+    [
+      'draft',
+      'registration_open',
+      'submission_open',
+      'judging_preparation',
+      'blind_review',
+      'shortlist',
+      'pitch',
+      'pitch_review',
+      'final_deliberation'
+    ],
+    {
+      code: 'prize_configuration_locked',
+      message: 'Prize definitions are locked once winners are announced.',
+      details: {
+        eventId: event.id
+      }
+    }
+  )
+}
+
+export function serializePublicPrize(prize: PrizeRecord) {
+  return {
+    name: prize.name,
+    description: prize.description,
+    rewardType: prize.rewardType,
+    rewardValue: prize.rewardValue,
+    rewardCurrency: prize.rewardCurrency,
+    awardScope: prize.awardScope,
+    rankStart: prize.rankStart,
+    rankEnd: prize.rankEnd,
+    displayOrder: prize.displayOrder
+  }
+}
+
+export async function assertEventSlugAvailable(
+  database: AppDatabase,
+  slug: string,
+  excludingEventId?: string
+) {
+  const conflict = await database.query.events.findFirst({
+    where: eq(events.slug, slug)
+  })
+
+  if (conflict && conflict.id !== excludingEventId) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'event_slug_conflict',
+      message: 'An event with this slug already exists.',
+      details: { slug }
+    })
+  }
+}
+
+export async function assertEvaluationCriterionDisplayOrderAvailable(
+  database: AppDatabase,
+  eventId: string,
+  displayOrder: number,
+  excludingCriterionId?: string
+) {
+  const conflict = await database.query.evaluationCriteria.findFirst({
+    where: and(
+      eq(evaluationCriteria.eventId, eventId),
+      eq(evaluationCriteria.displayOrder, displayOrder)
+    )
+  })
+
+  if (conflict && conflict.id !== excludingCriterionId) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'evaluation_criterion_display_order_conflict',
+      message: 'Evaluation criterion displayOrder must be unique within the event.',
+      details: {
+        eventId,
+        displayOrder
+      }
+    })
+  }
+}
+
+export async function getNextEventTermsVersion(
+  database: AppDatabase,
+  eventId: string,
+  documentType: typeof eventTermsDocumentTypes[number]
+) {
+  const latestDocument = await database.query.eventTermsDocuments.findFirst({
+    where: and(
+      eq(eventTermsDocuments.eventId, eventId),
+      eq(eventTermsDocuments.documentType, documentType)
+    ),
+    orderBy: [desc(eventTermsDocuments.version)]
+  })
+
+  return latestDocument ? latestDocument.version + 1 : 1
+}
+
+export async function getActiveUserOrThrow(database: AppDatabase, userId: string) {
+  const user = await database.query.users.findFirst({
+    where: and(eq(users.id, userId), isNull(users.deletedAt))
+  })
+
+  if (!user) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'user_not_found',
+      message: 'The requested user was not found.',
+      details: { userId }
+    })
+  }
+
+  return user
+}
+
+export async function getRoleAssignmentOrThrow(
+  database: AppDatabase,
+  eventId: string,
+  userId: string
+) {
+  const assignment = await database.query.eventRoleAssignments.findFirst({
+    where: and(
+      eq(eventRoleAssignments.eventId, eventId),
+      eq(eventRoleAssignments.userId, userId)
+    )
+  })
+
+  if (!assignment) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'event_role_assignment_not_found',
+      message: 'The requested event role assignment was not found.',
+      details: {
+        eventId,
+        userId
+      }
+    })
+  }
+
+  return assignment
+}
+
+export async function getEventTermsDocumentOrThrow(
+  database: AppDatabase,
+  eventId: string,
+  eventTermsDocumentId: string
+) {
+  const document = await database.query.eventTermsDocuments.findFirst({
+    where: and(
+      eq(eventTermsDocuments.id, eventTermsDocumentId),
+      eq(eventTermsDocuments.eventId, eventId)
+    )
+  })
+
+  if (!document) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'event_terms_document_not_found',
+      message: 'The requested event terms document was not found.',
+      details: {
+        eventId,
+        eventTermsDocumentId
+      }
+    })
+  }
+
+  return document
+}
+
+export async function getEvaluationCriterionOrThrow(
+  database: AppDatabase,
+  eventId: string,
+  criterionId: string
+) {
+  const criterion = await database.query.evaluationCriteria.findFirst({
+    where: and(
+      eq(evaluationCriteria.id, criterionId),
+      eq(evaluationCriteria.eventId, eventId)
+    )
+  })
+
+  if (!criterion) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'evaluation_criterion_not_found',
+      message: 'The requested evaluation criterion was not found.',
+      details: {
+        eventId,
+        criterionId
+      }
+    })
+  }
+
+  return criterion
+}
+
+export async function getPrizeOrThrow(
+  database: AppDatabase,
+  eventId: string,
+  prizeId: string
+) {
+  const prize = await database.query.prizes.findFirst({
+    where: and(
+      eq(prizes.id, prizeId),
+      eq(prizes.eventId, eventId)
+    )
+  })
+
+  if (!prize) {
+    throw new ApiError({
+      statusCode: 404,
+      code: 'prize_not_found',
+      message: 'The requested prize was not found.',
+      details: {
+        eventId,
+        prizeId
+      }
+    })
+  }
+
+  return prize
+}
+
+export function assertOpenSubmissionAllowed(event: EventRecord, now = new Date()) {
+  assertCompetitionEvent(event)
+
+  assertAllowedState(event.state, ['registration_open'], {
+    code: 'event_state_invalid',
+    message: 'Submission can only be opened from registration_open.',
+    details: { eventId: event.id }
+  })
+
+  const nowTimestamp = now.getTime()
+  const registrationClosesAt = Date.parse(event.registrationClosesAt)
+  const submissionOpensAt = Date.parse(event.submissionOpensAt)
+  const submissionClosesAt = Date.parse(event.submissionClosesAt)
+
+  assertGuard(nowTimestamp >= registrationClosesAt, {
+    code: 'registration_window_still_open',
+    message: 'Submission cannot be opened before registration closes.',
+    details: { eventId: event.id }
+  })
+
+  assertGuard(nowTimestamp >= submissionOpensAt && nowTimestamp < submissionClosesAt, {
+    code: 'submission_window_closed',
+    message: 'Submission can only be opened while the configured submission window is open.',
+    details: { eventId: event.id }
+  })
+}
+
+export function assertOpenRegistrationAllowed(event: EventRecord, now = new Date()) {
+  assertAllowedState(event.state, ['draft'], {
+    code: 'event_state_invalid',
+    message: 'Registration can only be opened from draft.',
+    details: { eventId: event.id }
+  })
+
+  const nowTimestamp = now.getTime()
+  const registrationOpensAt = Date.parse(event.registrationOpensAt)
+  const registrationClosesAt = Date.parse(event.registrationClosesAt)
+
+  assertGuard(nowTimestamp >= registrationOpensAt, {
+    code: 'registration_window_not_open_yet',
+    message: 'Registration cannot be opened before the configured registration window starts.',
+    details: { eventId: event.id }
+  })
+
+  assertGuard(nowTimestamp < registrationClosesAt, {
+    code: 'registration_window_closed',
+    message: 'Registration can only be opened while the configured registration window is open.',
+    details: { eventId: event.id }
+  })
+}

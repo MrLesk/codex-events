@@ -17,8 +17,8 @@ const baseEnvironment = {
   NUXT_AUTH0_APP_BASE_URL: 'http://localhost:3000',
   E2E_PLATFORM_ADMIN_EMAIL: 'platform-admin@example.com',
   E2E_PLATFORM_ADMIN_PASSWORD: 'password-1',
-  E2E_HACKATHON_ADMIN_EMAIL: 'hackathon-admin@example.com',
-  E2E_HACKATHON_ADMIN_PASSWORD: 'password-2',
+  E2E_EVENT_ADMIN_EMAIL: 'event-admin@example.com',
+  E2E_EVENT_ADMIN_PASSWORD: 'password-2',
   E2E_JUDGE_EMAIL: 'judge@example.com',
   E2E_JUDGE_PASSWORD: 'password-3',
   E2E_REGULAR_USER_EMAIL: 'regular@example.com',
@@ -54,7 +54,7 @@ describe('stable Auth0 personas', () => {
     expect(environment.NUXT_AUTH0_APP_BASE_URL).toBe('http://localhost:3000')
     expect(personas.map(persona => persona.key)).toEqual([
       'platform_admin',
-      'hackathon_admin',
+      'event_admin',
       'judge',
       'regular_user'
     ])
@@ -69,7 +69,7 @@ describe('stable Auth0 personas', () => {
       AUTH0_TEST_MGMT_CLIENT_ID: 'client-id',
       AUTH0_TEST_MGMT_CLIENT_SECRET: 'client-secret',
       AUTH0_TEST_MGMT_AUDIENCE: 'https://example.us.auth0.com/api/v2/',
-      AUTH0_TEST_CONNECTION_NAME: 'codex-hackathons-e2e-users'
+      AUTH0_TEST_CONNECTION_NAME: 'codex-events-e2e-users'
     })).not.toThrow()
   })
 
@@ -81,11 +81,11 @@ describe('stable Auth0 personas', () => {
       AUTH0_TEST_MGMT_CLIENT_ID: 'client-id',
       AUTH0_TEST_MGMT_CLIENT_SECRET: 'client-secret',
       AUTH0_TEST_MGMT_AUDIENCE: 'https://example.us.auth0.com/api/v2/',
-      AUTH0_TEST_CONNECTION_NAME: 'codex-hackathons-e2e-users'
+      AUTH0_TEST_CONNECTION_NAME: 'codex-events-e2e-users'
     }
 
     expect(getAuth0ClientId(environment)).toBe('nuxt-client-id')
-    expect(getAuth0TestConnectionName(environment)).toBe('codex-hackathons-e2e-users')
+    expect(getAuth0TestConnectionName(environment)).toBe('codex-events-e2e-users')
   })
 
   test('writes storage state under the BDD auth artifact directory', () => {

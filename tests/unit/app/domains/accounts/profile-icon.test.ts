@@ -9,9 +9,9 @@ describe('profile icon helpers', () => {
     )
   })
 
-  test('appends the hackathon query when participant visibility context is required', () => {
-    expect(buildProfileIconHref('user_1', '2026-03-28T12:34:56.000Z', 'hackathon_1')).toBe(
-      '/api/account/profile-icon?user=user_1&v=2026-03-28T12%3A34%3A56.000Z&hackathon=hackathon_1'
+  test('appends the event query when participant visibility context is required', () => {
+    expect(buildProfileIconHref('user_1', '2026-03-28T12:34:56.000Z', 'event_1')).toBe(
+      '/api/account/profile-icon?user=user_1&v=2026-03-28T12%3A34%3A56.000Z&event=event_1'
     )
   })
 

@@ -9,18 +9,18 @@ describe('writeAuditLog', () => {
 
     const record = await writeAuditLog({ insert } as never, {
       actorUserId: 'user_1',
-      entityType: 'hackathon',
-      entityId: 'hackathon_1',
-      action: 'hackathon.updated',
+      entityType: 'event',
+      entityId: 'event_1',
+      action: 'event.updated',
       metadata: { field: 'name' }
     })
 
     expect(insert).toHaveBeenCalledTimes(1)
     expect(values).toHaveBeenCalledWith(expect.objectContaining({
       actorUserId: 'user_1',
-      entityType: 'hackathon',
-      entityId: 'hackathon_1',
-      action: 'hackathon.updated',
+      entityType: 'event',
+      entityId: 'event_1',
+      action: 'event.updated',
       metadata: { field: 'name' }
     }))
     expect(record.id).toBeTruthy()

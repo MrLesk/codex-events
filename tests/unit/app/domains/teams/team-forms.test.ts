@@ -6,7 +6,7 @@ describe('team form schemas', () => {
   test('validates and trims team profile bio fields', () => {
     const result = teamProfileFormSchema.safeParse({
       name: '  North Star Team  ',
-      bio: '  Building a focused collaboration workspace.\nAcross the full hackathon weekend.  '
+      bio: '  Building a focused collaboration workspace.\nAcross the full event weekend.  '
     })
 
     expect(result.success).toBe(true)
@@ -17,7 +17,7 @@ describe('team form schemas', () => {
 
     expect(result.data).toEqual({
       name: 'North Star Team',
-      bio: 'Building a focused collaboration workspace.\nAcross the full hackathon weekend.'
+      bio: 'Building a focused collaboration workspace.\nAcross the full event weekend.'
     })
   })
 })

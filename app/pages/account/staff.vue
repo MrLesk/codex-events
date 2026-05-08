@@ -1,55 +1,55 @@
 <script setup lang="ts">
-import AccountHackathonDashboardList from '~/components/account/AccountHackathonDashboardList.vue'
-import { formatHackathonLocation } from '~/domains/hackathons/presentation'
-import { filterStaffAccessibleHackathons } from '~/domains/hackathons/staff-dashboard'
+import AccountEventDashboardList from '~/components/account/AccountEventDashboardList.vue'
+import { formatEventLocation } from '~/domains/events/presentation'
+import { filterStaffAccessibleEvents } from '~/domains/events/staff-dashboard'
 
 definePageMeta({
   middleware: ['require-staff-dashboard']
 })
 
 const { actor, status: actorStatus } = useSessionActor()
-const hackathons = useUserHackathons()
+const events = useUserEvents()
 
-const currentStaffHackathons = computed(() =>
-  filterStaffAccessibleHackathons(hackathons.data.value?.data.current ?? [], actor.value)
+const currentStaffEvents = computed(() =>
+  filterStaffAccessibleEvents(events.data.value?.data.current ?? [], actor.value)
 )
-const pastStaffHackathons = computed(() =>
-  filterStaffAccessibleHackathons(hackathons.data.value?.data.past ?? [], actor.value)
+const pastStaffEvents = computed(() =>
+  filterStaffAccessibleEvents(events.data.value?.data.past ?? [], actor.value)
 )
-const allStaffHackathons = computed(() => [
-  ...currentStaffHackathons.value,
-  ...pastStaffHackathons.value
+const allStaffEvents = computed(() => [
+  ...currentStaffEvents.value,
+  ...pastStaffEvents.value
 ])
 const listItems = computed(() =>
-  allStaffHackathons.value.map(hackathon => ({
-    id: hackathon.id,
-    name: hackathon.name,
-    description: 'Open this hackathon to review participant applications, inspect teams, and work from the internal staff surface.',
-    state: hackathon.state,
-    registrationOpensAt: hackathon.registrationOpensAt,
-    registrationClosesAt: hackathon.registrationClosesAt,
-    to: `/account/hackathons/${hackathon.slug}?tab=participants`,
+  allStaffEvents.value.map(event => ({
+    id: event.id,
+    name: event.name,
+    description: 'Open this event to review participant applications, inspect teams, and work from the internal staff surface.',
+    state: event.state,
+    registrationOpensAt: event.registrationOpensAt,
+    registrationClosesAt: event.registrationClosesAt,
+    to: `/account/events/${event.slug}?tab=participants`,
     actionLabel: 'Open staff view',
     overline: 'Staff',
     meta: [
-      formatHackathonLocation(hackathon),
+      formatEventLocation(event),
       'Participant and team visibility'
     ]
   }))
 )
 const errorMessage = computed(() =>
-  hackathons.error.value?.statusMessage
-  ?? hackathons.error.value?.message
+  events.error.value?.statusMessage
+  ?? events.error.value?.message
   ?? ''
 )
 const isLoading = computed(() =>
   actorStatus.value === 'pending'
-  || hackathons.status.value === 'pending'
+  || events.status.value === 'pending'
 )
 
 useSeoMeta({
-  title: 'Staff Dashboard | Codex Hackathons',
-  description: 'Open the hackathons where you support staff operations and review participant activity.'
+  title: 'Staff Dashboard | Codex Events',
+  description: 'Open the events where you support staff operations and review participant activity.'
 })
 </script>
 
@@ -64,7 +64,7 @@ useSeoMeta({
                 Staff dashboard
               </h1>
               <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-                Open the hackathons where you support internal operations and move directly into participant and team visibility work.
+                Open the events where you support internal operations and move directly into participant and team visibility work.
               </p>
             </div>
           </div>
@@ -86,17 +86,17 @@ useSeoMeta({
         color="neutral"
         variant="soft"
         title="Loading staff dashboard"
-        description="Fetching the hackathons where you can review participant and team activity."
+        description="Fetching the events where you can review participant and team activity."
       />
 
       <template v-else>
         <section class="grid gap-4 sm:grid-cols-3">
           <div class="rounded-xl border border-black/8 bg-white p-4 dark:border-white/[0.08] dark:bg-[#111111]">
             <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              Staff hackathons
+              Staff events
             </p>
             <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ allStaffHackathons.length }}
+              {{ allStaffEvents.length }}
             </p>
           </div>
 
@@ -105,7 +105,7 @@ useSeoMeta({
               Current
             </p>
             <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ currentStaffHackathons.length }}
+              {{ currentStaffEvents.length }}
             </p>
           </div>
 
@@ -114,17 +114,17 @@ useSeoMeta({
               Past
             </p>
             <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ pastStaffHackathons.length }}
+              {{ pastStaffEvents.length }}
             </p>
           </div>
         </section>
 
-        <AccountHackathonDashboardList
-          title="Hackathons where you support operations"
-          description="Each hackathon opens into the Participants tab so you can review applications, participant status, and team activity without using the admin operations surface."
+        <AccountEventDashboardList
+          title="Events where you support operations"
+          description="Each event opens into the Participants tab so you can review applications, participant status, and team activity without using the admin operations surface."
           :items="listItems"
-          empty-title="No staff hackathons yet"
-          empty-description="When you are assigned staff access on a hackathon, it will appear here."
+          empty-title="No staff events yet"
+          empty-description="When you are assigned staff access on an event, it will appear here."
         />
       </template>
     </AppContainer>

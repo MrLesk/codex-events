@@ -41,9 +41,9 @@ describe('auth0 context middleware', () => {
     const { buildAuth0ClientOptions } = await loadMiddlewareModule()
 
     expect(buildAuth0ClientOptions({
-      appBaseUrl: 'https://dev.codex-hackathons.com'
+      appBaseUrl: 'https://dev.codex-events.com'
     })).toMatchObject({
-      appBaseUrl: 'https://dev.codex-hackathons.com',
+      appBaseUrl: 'https://dev.codex-events.com',
       sessionConfiguration: {
         cookie: {
           secure: true
@@ -108,7 +108,7 @@ describe('auth0 context middleware', () => {
 
     vi.stubGlobal('useRuntimeConfig', (() => ({
       auth0: {
-        appBaseUrl: 'https://dev.codex-hackathons.com'
+        appBaseUrl: 'https://dev.codex-events.com'
       }
     })) as typeof useRuntimeConfig)
 

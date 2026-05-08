@@ -1,6 +1,6 @@
 # Documentation
 
-This directory contains the canonical product and engineering documentation for the Codex hackathon platform.
+This directory contains the canonical product and engineering documentation for the Codex event platform.
 
 ## Rules
 

@@ -10,7 +10,7 @@ import {
 import { isRetryableOutboundEmailProviderError } from '#server/utils/outbound-email'
 
 export const defaultApplicationReviewEmailQueueBinding = 'APPLICATION_REVIEW_EMAIL_QUEUE'
-export const defaultApplicationReviewEmailQueueName = 'codex-hackathons-application-review-email-delivery'
+export const defaultApplicationReviewEmailQueueName = 'codex-events-application-review-email-delivery'
 export const defaultApplicationReviewEmailRetryDelaySeconds = 120
 
 const applicationReviewEmailsQueueRuntimeConfigSchema = z.object({
@@ -27,8 +27,8 @@ export const applicationReviewEmailQueueMessageSchema = z.object({
   reviewedAt: z.string().trim().min(1),
   recipientEmail: z.string().trim().email().nullable(),
   recipientDisplayName: z.string().trim().max(160).nullable().optional(),
-  hackathonName: z.string().trim().min(1).max(200),
-  hackathonSlug: z.string().trim().min(1).max(200),
+  eventName: z.string().trim().min(1).max(200),
+  eventSlug: z.string().trim().min(1).max(200),
   enqueuedAt: z.string().trim().min(1)
 })
 

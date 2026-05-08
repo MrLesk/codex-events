@@ -1,4 +1,4 @@
-import type { PublicHackathon } from '~/domains/hackathons/presentation'
+import type { PublicEvent } from '~/domains/events/presentation'
 
 import { normalizeApiError } from '~/lib/api'
 
@@ -90,46 +90,46 @@ export function getTeamSubmissionStatusColor(status: TeamSubmissionWorkspaceStat
   }
 }
 
-export function hasHackathonEnteredSubmissionPhase(hackathon: Pick<PublicHackathon, 'state'>) {
-  return hackathon.state !== 'draft' && hackathon.state !== 'registration_open'
+export function hasEventEnteredSubmissionPhase(event: Pick<PublicEvent, 'state'>) {
+  return event.state !== 'draft' && event.state !== 'registration_open'
 }
 
 export function shouldShowParticipantSubmissionWorkspace(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   hasTeamMembership: boolean
 ) {
-  return hasTeamMembership && hasHackathonEnteredSubmissionPhase(hackathon)
+  return hasTeamMembership && hasEventEnteredSubmissionPhase(event)
 }
 
 export function getTeamSubmissionStateSummary(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   submission: TeamSubmissionRecord | null | undefined
 ) {
   if (!submission) {
-    if (hackathon.state === 'submission_open') {
+    if (event.state === 'submission_open') {
       return 'This team has not started a project submission yet. Team admins can create the first draft while submission is open.'
     }
 
-    if (hackathon.state === 'registration_open') {
+    if (event.state === 'registration_open') {
       return 'This team does not have a project submission yet. Submission drafting starts only after admins open the submission phase.'
     }
 
-    return 'This team does not have an active submission record for the current hackathon lifecycle.'
+    return 'This team does not have an active submission record for the current event lifecycle.'
   }
 
   switch (submission.status) {
     case 'draft':
-      if (hackathon.state === 'submission_open') {
+      if (event.state === 'submission_open') {
         return 'This draft is private to your team. Team admins can edit it, submit it, or withdraw it while submission remains open.'
       }
 
-      if (hackathon.state === 'judging_preparation') {
+      if (event.state === 'judging_preparation') {
         return 'This draft is not yet submitted. Team admins can still edit it, submit it, or withdraw it until organizers start judging.'
       }
 
       return 'This draft never entered judging because it was not submitted before submissions were locked.'
     case 'submitted':
-      return hackathon.state === 'judging_preparation'
+      return event.state === 'judging_preparation'
         ? 'This project is submitted. Team admins can still revise it or withdraw it until organizers start judging.'
         : 'This project is submitted. Team admins can still revise it or withdraw it while submission remains open.'
     case 'withdrawn':
@@ -153,7 +153,7 @@ function requireTeamAdminAccess(canManageSubmission: boolean) {
 }
 
 export function getCreateSubmissionAvailability(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   submission: TeamSubmissionRecord | null | undefined,
   canManageSubmission: boolean
 ): TeamSubmissionActionAvailability {
@@ -170,7 +170,7 @@ export function getCreateSubmissionAvailability(
     }
   }
 
-  if (hackathon.state !== 'submission_open') {
+  if (event.state !== 'submission_open') {
     return {
       isAllowed: false,
       reason: 'The first submission draft can be created only while submission is open.'
@@ -183,7 +183,7 @@ export function getCreateSubmissionAvailability(
 }
 
 export function getUpdateSubmissionAvailability(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   submission: TeamSubmissionRecord | null | undefined,
   canManageSubmission: boolean
 ): TeamSubmissionActionAvailability {
@@ -200,7 +200,7 @@ export function getUpdateSubmissionAvailability(
     }
   }
 
-  if (hackathon.state !== 'submission_open' && hackathon.state !== 'judging_preparation') {
+  if (event.state !== 'submission_open' && event.state !== 'judging_preparation') {
     return {
       isAllowed: false,
       reason: 'Project edits are available only until judging starts.'
@@ -224,7 +224,7 @@ export function getUpdateSubmissionAvailability(
 }
 
 export function getSubmitSubmissionAvailability(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   submission: TeamSubmissionRecord | null | undefined,
   canManageSubmission: boolean
 ): TeamSubmissionActionAvailability {
@@ -241,7 +241,7 @@ export function getSubmitSubmissionAvailability(
     }
   }
 
-  if (hackathon.state !== 'submission_open' && hackathon.state !== 'judging_preparation') {
+  if (event.state !== 'submission_open' && event.state !== 'judging_preparation') {
     return {
       isAllowed: false,
       reason: 'Project submission is available only until judging starts.'
@@ -267,7 +267,7 @@ export function getSubmitSubmissionAvailability(
 }
 
 export function getWithdrawSubmissionAvailability(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   submission: TeamSubmissionRecord | null | undefined,
   canManageSubmission: boolean
 ): TeamSubmissionActionAvailability {
@@ -284,7 +284,7 @@ export function getWithdrawSubmissionAvailability(
     }
   }
 
-  if (hackathon.state !== 'submission_open' && hackathon.state !== 'judging_preparation') {
+  if (event.state !== 'submission_open' && event.state !== 'judging_preparation') {
     return {
       isAllowed: false,
       reason: 'Submissions can be withdrawn only until judging starts.'
@@ -308,7 +308,7 @@ export function getWithdrawSubmissionAvailability(
 }
 
 export function getUpdateSubmissionPublicVisibilityAvailability(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   submission: TeamSubmissionRecord | null | undefined,
   canManageSubmission: boolean,
   isWinner: boolean
@@ -326,10 +326,10 @@ export function getUpdateSubmissionPublicVisibilityAvailability(
     }
   }
 
-  if (hackathon.state !== 'completed') {
+  if (event.state !== 'completed') {
     return {
       isAllowed: false,
-      reason: 'Project publishing is available only after the hackathon is completed.'
+      reason: 'Project publishing is available only after the event is completed.'
     }
   }
 

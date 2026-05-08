@@ -70,8 +70,8 @@ function getStatusBadge(entry: TeamDirectoryEntry) {
 }
 
 const directoryDescription = computed(() => props.showOperationalTeamStates
-  ? 'Browse teams in this hackathon, including dissolved teams retained for operational context.'
-  : 'Browse the active teams in this hackathon and filter the directory by team shape or joinability.'
+  ? 'Browse teams in this event, including dissolved teams retained for operational context.'
+  : 'Browse the active teams in this event and filter the directory by team shape or joinability.'
 )
 
 function selectDirectoryFilter(nextFilter: string) {
@@ -151,7 +151,7 @@ function selectDirectoryFilter(nextFilter: string) {
         color="neutral"
         variant="soft"
         title="Loading visible teams"
-        description="The participant team directory is still resolving visible teams for this hackathon."
+        description="The participant team directory is still resolving visible teams for this event."
       />
 
       <div

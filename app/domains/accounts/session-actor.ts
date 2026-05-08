@@ -1,4 +1,4 @@
-import type { HackathonScopedRole } from '~/domains/hackathons/roles'
+import type { EventScopedRole } from '~/domains/events/roles'
 
 export interface SessionUserIdentity {
   sub: string
@@ -46,9 +46,9 @@ export interface OperationalUserSummary {
   profileIconUpdatedAt?: string | null
 }
 
-export interface HackathonRoleSummary {
-  hackathonId: string
-  role: HackathonScopedRole
+export interface EventRoleSummary {
+  eventId: string
+  role: EventScopedRole
   isInJudgePool: boolean
   isStaff: boolean
   createdAt: string
@@ -69,7 +69,7 @@ export interface AnonymousSessionActor {
   platformUser: null
   isPlatformAdmin: false
   isEventOrganizer: false
-  hackathonRoles: []
+  eventRoles: []
 }
 
 export interface AuthenticatedIdentitySessionActor {
@@ -82,7 +82,7 @@ export interface AuthenticatedIdentitySessionActor {
   platformUser: null
   isPlatformAdmin: false
   isEventOrganizer: false
-  hackathonRoles: []
+  eventRoles: []
 }
 
 export interface PlatformSessionActor {
@@ -94,7 +94,7 @@ export interface PlatformSessionActor {
   platformUser: PlatformUserProfile
   isPlatformAdmin: boolean
   isEventOrganizer: boolean
-  hackathonRoles: HackathonRoleSummary[]
+  eventRoles: EventRoleSummary[]
 }
 
 export type SessionActor = AnonymousSessionActor | AuthenticatedIdentitySessionActor | PlatformSessionActor
@@ -115,7 +115,7 @@ export function buildAnonymousSessionActor(): AnonymousSessionActor {
     platformUser: null,
     isPlatformAdmin: false,
     isEventOrganizer: false,
-    hackathonRoles: []
+    eventRoles: []
   }
 }
 
@@ -130,6 +130,6 @@ export function buildAuthenticatedIdentitySessionActor(sessionUser: SessionUserI
     platformUser: null,
     isPlatformAdmin: false,
     isEventOrganizer: false,
-    hackathonRoles: []
+    eventRoles: []
   }
 }

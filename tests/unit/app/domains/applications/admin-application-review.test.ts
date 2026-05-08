@@ -24,7 +24,7 @@ function createApplication(options: {
 }) {
   return {
     id: options.id,
-    hackathonId: 'hackathon-1',
+    eventId: 'event-1',
     userId: `user-${options.id}`,
     status: options.status ?? 'submitted',
     preApprovalStatus: options.preApprovalStatus ?? null,
@@ -39,7 +39,7 @@ function createApplication(options: {
       teamIntent: options.teamIntent ?? 'unknown',
       teamMembers: options.teamMembers ?? [],
       inPersonAttendanceCommitment: false,
-      whyThisHackathon: '',
+      whyThisEvent: '',
       proofOfExecutionUrl: ''
     }),
     createdAt: '2026-03-29T09:00:00.000Z',

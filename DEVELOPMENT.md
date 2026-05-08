@@ -1,6 +1,6 @@
 # Development
 
-This file is contributor-facing documentation for working on the `codex-hackathons` repository locally.
+This file is contributor-facing documentation for working on the `codex-events` repository locally.
 
 ## Setup
 
@@ -31,22 +31,22 @@ NUXT_AUTH0_GITHUB_CONNECTION_NAME=github
 NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET=$(openssl rand -hex 32)
 NUXT_DATABASE_BINDING=DB
 NUXT_PROFILE_ICONS_BINDING=PROFILE_ICONS
-NUXT_HACKATHON_IMAGES_BINDING=HACKATHON_IMAGES
+NUXT_EVENT_IMAGES_BINDING=EVENT_IMAGES
 NUXT_OUTBOUND_EMAIL_BINDING=EMAIL
 NUXT_OUTBOUND_EMAIL_FROM_EMAIL=info@your-platform.example
-NUXT_OUTBOUND_EMAIL_FROM_NAME=Codex Hackathons
+NUXT_OUTBOUND_EMAIL_FROM_NAME=Codex Events
 NUXT_OUTBOUND_EMAIL_REPLY_TO=support@your-platform.example
 NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING=APPLICATION_REVIEW_EMAIL_QUEUE
-NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME=codex-hackathons-application-review-email-delivery
+NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME=codex-events-application-review-email-delivery
 NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS=120
-NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING=HACKATHON_OUTCOME_EMAIL_QUEUE
-NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME=codex-hackathons-hackathon-outcome-email-delivery
-NUXT_HACKATHON_OUTCOME_EMAILS_RETRY_DELAY_SECONDS=120
+NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING=EVENT_OUTCOME_EMAIL_QUEUE
+NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME=codex-events-event-outcome-email-delivery
+NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS=120
 NUXT_LUMA_API_KEY=
 NUXT_LUMA_API_BASE_URL=https://public-api.luma.com
 NUXT_LUMA_PROFILE_BASE_URL=https://luma.com
 NUXT_LUMA_QUEUE_BINDING=APPLICATION_LUMA_SYNC_QUEUE
-NUXT_LUMA_QUEUE_NAME=codex-hackathons-application-luma-sync
+NUXT_LUMA_QUEUE_NAME=codex-events-application-luma-sync
 NUXT_LUMA_RETRY_DELAY_SECONDS=120
 NUXT_LUMA_WEBHOOK_SECRET=
 ```
@@ -60,7 +60,7 @@ Local Auth0 dashboard settings:
 
 Local Auth0 runtime notes:
 
-- `NUXT_AUTH0_DOMAIN` is the Auth0 issuer host, not the app host. For the shared dev tenant split, use `auth.dev.codex-hackathons.com` or the underlying Auth0 tenant domain, not `dev.codex-hackathons.com`.
+- `NUXT_AUTH0_DOMAIN` is the Auth0 issuer host, not the app host. For the shared dev tenant split, use `auth.dev.codex-events.com` or the underlying Auth0 tenant domain, not `dev.codex-events.com`.
 - When `NUXT_AUTH0_APP_BASE_URL=http://localhost:3000`, the app intentionally uses a non-secure Auth0 session cookie for local development so Safari can persist the login callback session on `localhost`. HTTPS environments continue to use secure cookies.
 - The Auth0-backed BDD suite uses `NUXT_AUTH0_BDD_APP_BASE_URL` when set and otherwise defaults to `http://localhost:3100`, so that `bun run test:bdd` does not have to take over the normal local dev server on port 3000.
 
@@ -87,14 +87,14 @@ If a tenant lacks the paid Universal Login page-template feature, the bootstrap 
 
 By default the script reads `NUXT_AUTH0_*` plus `AUTH0_TEST_MGMT_*`. You can override with explicit `AUTH0_*` variables (`AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_MGMT_AUDIENCE`, `AUTH0_APP_CLIENT_ID`, `AUTH0_APP_DISPLAY_NAME`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_LOGIN_URI`, `AUTH0_TERMS_URL`, `AUTH0_PRIVACY_URL`, `AUTH0_BRANDING_PRIMARY_COLOR`, `AUTH0_BRANDING_PAGE_BACKGROUND_COLOR`, `AUTH0_BRANDING_LOGO_URL`, `AUTH0_BRANDING_FAVICON_URL`).
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL`/`NUXT_AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
-When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-hackathons-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
+When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-events-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 
 If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUTH0_*`, rename them to the `NUXT_AUTH0_*` keys above.
 
 Luma webhook bootstrap automation:
 
-- `LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts check`
-- `LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json`
+- `LUMA_WEBHOOK_URL=https://dev.codex-events.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts check`
+- `LUMA_WEBHOOK_URL=https://dev.codex-events.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json`
 
 These commands reconcile the repository-managed `guest.updated` webhook for an environment and, in `apply` mode, write a `wrangler secret bulk`-compatible JSON file containing `NUXT_LUMA_WEBHOOK_SECRET`. The script reads `LUMA_API_KEY` or falls back to `NUXT_LUMA_API_KEY`, falls back to `NUXT_LUMA_API_BASE_URL` for the API host, and can derive the webhook URL from an https `NUXT_AUTH0_APP_BASE_URL` when you do not pass `LUMA_WEBHOOK_URL` explicitly.
 
@@ -103,7 +103,7 @@ Local first-platform-admin bootstrap command:
 - `bun tools/platform-admin/bootstrap.ts check --email your-admin@example.com`
 - `bun tools/platform-admin/bootstrap.ts apply --email your-admin@example.com`
 
-This operator command uses the local Wrangler D1 platform proxy, promotes the target user to platform admin in application data, backfills required hackathon-admin inheritance rows for existing hackathons, and writes an audit-log record when changes are applied.
+This operator command uses the local Wrangler D1 platform proxy, promotes the target user to platform admin in application data, backfills required event-admin inheritance rows for existing events, and writes an audit-log record when changes are applied.
 
 Local platform legal bootstrap command:
 
@@ -121,8 +121,8 @@ Example `platform-legal.json`:
   "supportEmail": "support@example.com",
   "privacyEmail": "privacy@example.com",
   "legalContactLanguages": "English",
-  "businessPurpose": "Operate hackathon programs and participant workflows.",
-  "editorialLine": "Information about hackathons operated on this platform.",
+  "businessPurpose": "Operate event programs and participant workflows.",
+  "editorialLine": "Information about events operated on this platform.",
   "imprintContent": "## Imprint\n\nYour legally required imprint content.",
   "documents": {
     "privacy_policy": {
@@ -147,14 +147,14 @@ Profile icon uploads use a Cloudflare R2 binding at runtime:
 - `NUXT_PROFILE_ICONS_BINDING` should match the R2 binding used for account profile icons. The canonical default is `PROFILE_ICONS`.
 - local development uses the repository `wrangler.jsonc` R2 bucket binding for profile icon object storage.
 
-Hackathon background and banner uploads use a dedicated Cloudflare R2 binding at runtime:
+Event background and banner uploads use a dedicated Cloudflare R2 binding at runtime:
 
-- `NUXT_HACKATHON_IMAGES_BINDING` should match the R2 binding used for hackathon background and banner image objects. The canonical default is `HACKATHON_IMAGES`.
-- local development uses the repository `wrangler.jsonc` R2 bucket binding for hackathon image object storage.
-- `NUXT_HACKATHON_IMAGES_PUBLIC_CDN_BASE_URL` should be the HTTPS custom-domain base URL for public hackathon gallery images served directly from R2 in deployed environments. The repository config uses `https://cdn.dev.codex-hackathons.com` for `dev` and `https://cdn.codex-hackathons.com` for `production`.
-- local `localhost` development can leave `NUXT_HACKATHON_IMAGES_PUBLIC_CDN_BASE_URL` unset to keep public gallery images on the local Worker routes.
+- `NUXT_EVENT_IMAGES_BINDING` should match the R2 binding used for event background and banner image objects. The canonical default is `EVENT_IMAGES`.
+- local development uses the repository `wrangler.jsonc` R2 bucket binding for event image object storage.
+- `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` should be the HTTPS custom-domain base URL for public event gallery images served directly from R2 in deployed environments. The repository config uses `https://cdn.dev.codex-events.com` for `dev` and `https://cdn.codex-events.com` for `production`.
+- local `localhost` development can leave `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` unset to keep public gallery images on the local Worker routes.
 
-Protected hackathon photo previews use a Cloudflare Images binding at runtime:
+Protected event photo previews use a Cloudflare Images binding at runtime:
 
 - `wrangler.jsonc` binds the Worker `IMAGES` binding for protected gallery preview transformations.
 - local development uses the same `IMAGES` binding through Wrangler's local platform proxy.
@@ -167,12 +167,12 @@ Outbound email delivery uses Cloudflare Email Service through the Worker `send_e
 - `NUXT_OUTBOUND_EMAIL_REPLY_TO` controls the reply destination for participant-facing notifications.
 - The sending domain must use Cloudflare DNS and be onboarded in Cloudflare Email Service before deployed email delivery works. Email Sending requires a Workers Paid plan.
 
-Application decision emails, hackathon outcome emails, and optional Luma guest-status sync use Cloudflare Queues at runtime:
+Application decision emails, event outcome emails, and optional Luma guest-status sync use Cloudflare Queues at runtime:
 
 - `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING` and `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for participant decision emails.
-- `NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING` and `NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for shortlist and winner emails.
+- `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING` and `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for shortlist and winner emails.
 - `NUXT_LUMA_QUEUE_BINDING` and `NUXT_LUMA_QUEUE_NAME` should match the producer and consumer queue configuration for Luma sync jobs.
-- `NUXT_LUMA_API_KEY` is only required when you operate hackathons that use Luma sync.
+- `NUXT_LUMA_API_KEY` is only required when you operate events that use Luma sync.
 - `NUXT_LUMA_WEBHOOK_SECRET` is the runtime signing secret for inbound Luma webhook verification and is uploaded automatically by the checked-in deploy workflows after Luma webhook reconciliation.
 
 ## Local Development
@@ -198,13 +198,13 @@ The protected example surface added in this repo is `/dashboard`.
 
 ## Shared Dev Deployment
 
-The repository `wrangler.jsonc` uses top-level bindings for local development and a separate `dev` environment for the shared Cloudflare deployment at `https://dev.codex-hackathons.com`.
+The repository `wrangler.jsonc` uses top-level bindings for local development and a separate `dev` environment for the shared Cloudflare deployment at `https://dev.codex-events.com`.
 
 The deployed dev environment uses:
 
-- application URL: `https://dev.codex-hackathons.com`
-- Auth0 custom domain: `https://auth.dev.codex-hackathons.com`
-- outbound email sender: `info@dev.codex-hackathons.com`
+- application URL: `https://dev.codex-events.com`
+- Auth0 custom domain: `https://auth.dev.codex-events.com`
+- outbound email sender: `info@dev.codex-events.com`
 
 Pushes to `main` publish the shared dev environment automatically through `.github/workflows/ci.yml` after the fast CI checks pass. The shared dev deploy and Auth0-backed BDD jobs use the GitHub Actions `dev` environment.
 
@@ -219,7 +219,7 @@ The GitHub `dev` environment must provide these secrets:
 - `NUXT_AUTH0_MANAGEMENT_CLIENT_ID`
 - `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET`
 - `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
-- `NUXT_LUMA_API_KEY` when any shared dev hackathon uses Luma sync
+- `NUXT_LUMA_API_KEY` when any shared dev event uses Luma sync
 - `AUTH0_TEST_DOMAIN`
 - `AUTH0_TEST_MGMT_CLIENT_ID`
 - `AUTH0_TEST_MGMT_CLIENT_SECRET`
@@ -227,8 +227,8 @@ The GitHub `dev` environment must provide these secrets:
 - `AUTH0_TEST_CONNECTION_NAME`
 - `E2E_PLATFORM_ADMIN_EMAIL`
 - `E2E_PLATFORM_ADMIN_PASSWORD`
-- `E2E_HACKATHON_ADMIN_EMAIL`
-- `E2E_HACKATHON_ADMIN_PASSWORD`
+- `E2E_EVENT_ADMIN_EMAIL`
+- `E2E_EVENT_ADMIN_PASSWORD`
 - `E2E_JUDGE_EMAIL`
 - `E2E_JUDGE_PASSWORD`
 - `E2E_REGULAR_USER_EMAIL`
@@ -243,7 +243,7 @@ The shared dev `CLOUDFLARE_API_TOKEN` must be able to run `wrangler queues creat
 For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run:
 
 ```bash
-LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks \
+LUMA_WEBHOOK_URL=https://dev.codex-events.com/api/public/luma/webhooks \
 bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-dev-luma-webhook-secret.json
 bun run db:migrate:dev
 bun run deploy:dev
@@ -256,9 +256,9 @@ Pull requests and non-`main` pushes do not publish the shared dev environment. T
 If Auth0 needs to be re-aligned with the deployed dev hostname split, apply the bootstrap with explicit overrides:
 
 ```bash
-AUTH0_CUSTOM_DOMAIN=auth.dev.codex-hackathons.com \
-AUTH0_APP_BASE_URL=https://dev.codex-hackathons.com \
-AUTH0_LOGIN_URI=https://dev.codex-hackathons.com/auth/login \
+AUTH0_CUSTOM_DOMAIN=auth.dev.codex-events.com \
+AUTH0_APP_BASE_URL=https://dev.codex-events.com \
+AUTH0_LOGIN_URI=https://dev.codex-events.com/auth/login \
 bun tools/auth0/auth0-bootstrap.ts apply
 ```
 
@@ -293,8 +293,8 @@ These Cloudflare tokens currently need:
 
 - account permission `Workers Scripts Write` for `wrangler secret bulk`, `wrangler queues create`, and `wrangler deploy`
 - account permission `D1 Write` for `wrangler d1 migrations apply --remote`
-- zone permission `Zone Zone Read` on `codex-hackathons.com` so `tools/auth0/auth0-custom-domain.ts` can resolve the production zone
-- zone permission `DNS Write` on `codex-hackathons.com` so `tools/auth0/auth0-custom-domain.ts` can create or update the Auth0 verification CNAME
+- zone permission `Zone Zone Read` on `codex-events.com` so `tools/auth0/auth0-custom-domain.ts` can resolve the production zone
+- zone permission `DNS Write` on `codex-events.com` so `tools/auth0/auth0-custom-domain.ts` can create or update the Auth0 verification CNAME
 
 The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` currently needs these Auth0 Management API scopes:
 
@@ -327,7 +327,7 @@ The GitHub `production` environment does not need a stored `NUXT_LUMA_WEBHOOK_SE
 For manual production recovery, reconcile the production webhook first, upload the generated secret with `wrangler secret bulk`, and then deploy:
 
 ```bash
-LUMA_WEBHOOK_URL=https://codex-hackathons.com/api/public/luma/webhooks \
+LUMA_WEBHOOK_URL=https://codex-events.com/api/public/luma/webhooks \
 bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-production-luma-webhook-secret.json
 bun run db:migrate:production
 bun run deploy:production
@@ -335,8 +335,8 @@ bun run deploy:production
 
 The workflow uses these production hostnames:
 
-- application URL: `https://codex-hackathons.com`
-- Auth0 custom domain: `https://auth.codex-hackathons.com`
+- application URL: `https://codex-events.com`
+- Auth0 custom domain: `https://auth.codex-events.com`
 
 On the first successful production release, the workflow also:
 
@@ -369,7 +369,7 @@ GitHub Actions does not run `bun run test:bdd` on every `push` or `pull_request`
 Run the local full-lifecycle 1000-participant D1 validation with:
 
 ```bash
-bun tools/load-tests/local-1000-participant-hackathon.ts
+bun tools/load-tests/local-1000-participant-event.ts
 ```
 
 The runner uses the Auth0-backed BDD origin on `http://localhost:3100`, stores isolated local D1 state under `.wrangler/state-load-1000`, keeps registration and submission open for 10 real minutes each, and writes ignored JSON/Markdown reports under `.wrangler/load-test-reports/`. Use `--smoke` for a shorter 40-participant rehearsal.
@@ -377,7 +377,7 @@ The runner uses the Auth0-backed BDD origin on `http://localhost:3100`, stores i
 For a 10000-participant performance run, use a separate local D1 state root and enable repeated API probes plus Lighthouse:
 
 ```bash
-bun tools/load-tests/local-1000-participant-hackathon.ts \
+bun tools/load-tests/local-1000-participant-event.ts \
   --participant-count 10000 \
   --state-root .wrangler/state-load-10000 \
   --perf-samples 3 \
@@ -385,7 +385,7 @@ bun tools/load-tests/local-1000-participant-hackathon.ts \
   --lighthouse
 ```
 
-The performance report includes per-endpoint timing percentiles, response sizes, failure counts, Chrome navigation metrics for the admin operations and public completed hackathon pages, optional Lighthouse scores for the public completed page, and Nuxt dev-server process snapshots. Use `--perf-samples 0` to skip repeated probes and `--no-browser-metrics` to skip Chrome navigation metrics.
+The performance report includes per-endpoint timing percentiles, response sizes, failure counts, Chrome navigation metrics for the admin operations and public completed event pages, optional Lighthouse scores for the public completed page, and Nuxt dev-server process snapshots. Use `--perf-samples 0` to skip repeated probes and `--no-browser-metrics` to skip Chrome navigation metrics.
 
 Generate the current Drizzle migration from the canonical schema with:
 
@@ -410,7 +410,7 @@ AUTH0_TEST_DOMAIN=your-tenant.auth0.com
 AUTH0_TEST_MGMT_CLIENT_ID=your-test-management-client-id
 AUTH0_TEST_MGMT_CLIENT_SECRET=your-test-management-client-secret
 AUTH0_TEST_MGMT_AUDIENCE=https://your-tenant.auth0.com/api/v2/
-AUTH0_TEST_CONNECTION_NAME=codex-hackathons-e2e-users
+AUTH0_TEST_CONNECTION_NAME=codex-events-e2e-users
 ```
 
 For platform fixture reset and authenticated browser coverage, the repository uses the local D1 binding declared in `wrangler.jsonc`. The bootstrap flow clears persisted local D1 data before recreating schema and fixtures through Cloudflare's local D1 runtime.

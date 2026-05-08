@@ -1,4 +1,4 @@
-import type { PublicHackathon } from '~/domains/hackathons/presentation'
+import type { PublicEvent } from '~/domains/events/presentation'
 import type {
   SessionActor,
   SessionUserIdentity
@@ -32,7 +32,7 @@ export interface TeamUserSummary {
 
 export interface TeamSummaryRecord {
   id: string
-  hackathonId: string
+  eventId: string
   name: string
   bio: string | null
   slug: string
@@ -162,25 +162,25 @@ export function getOwnTeamMembership(team: TeamDetailRecord | null | undefined, 
 }
 
 export function shouldShowParticipantLeaveTeamAction(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   membership: TeamMemberRecord | null | undefined
 ) {
   if (!membership) {
     return false
   }
 
-  return !['winners_announced', 'completed'].includes(hackathon.state)
+  return !['winners_announced', 'completed'].includes(event.state)
 }
 
 export function getTeamFormationAvailability(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null,
   isTeamMember: boolean
 ) {
   if (isTeamMember) {
     return {
       isOpen: true,
-      summary: 'You already have a team workspace in this hackathon.'
+      summary: 'You already have a team workspace in this event.'
     }
   }
 
@@ -190,14 +190,14 @@ export function getTeamFormationAvailability(
       summary: applicationStatus === 'submitted'
         ? 'Team formation unlocks only after your application is approved.'
         : applicationStatus === 'rejected'
-          ? 'Rejected applicants cannot create or join teams in this hackathon.'
+          ? 'Rejected applicants cannot create or join teams in this event.'
           : applicationStatus === 'withdrawn'
-            ? 'Withdrawn participants cannot create or join teams in this hackathon.'
-            : 'Team formation requires an approved application for this hackathon.'
+            ? 'Withdrawn participants cannot create or join teams in this event.'
+            : 'Team formation requires an approved application for this event.'
     }
   }
 
-  if (hackathon.state === 'registration_open' || hackathon.state === 'submission_open') {
+  if (event.state === 'registration_open' || event.state === 'submission_open') {
     return {
       isOpen: true,
       summary: 'You can participate as solo, create a team, or browse teams right now.'
@@ -206,19 +206,19 @@ export function getTeamFormationAvailability(
 
   return {
     isOpen: false,
-    summary: 'Team formation is closed for this hackathon.'
+    summary: 'Team formation is closed for this event.'
   }
 }
 
 export function getCreateTeamAvailability(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null,
   hasTeamMembership: boolean
 ): TeamActionAvailability {
   if (hasTeamMembership) {
     return {
       isAllowed: false,
-      reason: 'You already belong to a team in this hackathon.'
+      reason: 'You already belong to a team in this event.'
     }
   }
 
@@ -235,7 +235,7 @@ export function getCreateTeamAvailability(
     }
   }
 
-  if (hackathon.state !== 'registration_open' && hackathon.state !== 'submission_open') {
+  if (event.state !== 'registration_open' && event.state !== 'submission_open') {
     return {
       isAllowed: false,
       reason: 'Teams can be created only while registration or submission is open.'
@@ -248,7 +248,7 @@ export function getCreateTeamAvailability(
 }
 
 export function getUpdateJoinPolicyAvailability(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   canManageTeam: boolean
 ): TeamActionAvailability {
   if (!canManageTeam) {
@@ -258,7 +258,7 @@ export function getUpdateJoinPolicyAvailability(
     }
   }
 
-  if (hackathon.state !== 'registration_open' && hackathon.state !== 'submission_open') {
+  if (event.state !== 'registration_open' && event.state !== 'submission_open') {
     return {
       isAllowed: false,
       reason: 'Join-request settings can be updated only while registration or submission is open.'
@@ -271,7 +271,7 @@ export function getUpdateJoinPolicyAvailability(
 }
 
 export function getJoinTeamAvailability(
-  hackathon: Pick<PublicHackathon, 'state' | 'maxTeamMembers'>,
+  event: Pick<PublicEvent, 'state' | 'maxTeamMembers'>,
   team: Pick<TeamSummaryRecord, 'id' | 'isOpenToJoinRequests'>,
   options: {
     applicationStatus: 'submitted' | 'approved' | 'rejected' | 'withdrawn' | null
@@ -291,7 +291,7 @@ export function getJoinTeamAvailability(
   if (options.hasTeamMembership) {
     return {
       isAllowed: false,
-      reason: 'You can belong to only one active team per hackathon.'
+      reason: 'You can belong to only one active team per event.'
     }
   }
 
@@ -315,7 +315,7 @@ export function getJoinTeamAvailability(
     }
   }
 
-  if (hackathon.state !== 'registration_open' && hackathon.state !== 'submission_open') {
+  if (event.state !== 'registration_open' && event.state !== 'submission_open') {
     return {
       isAllowed: false,
       reason: 'Join requests are available only while registration or submission is open.'
@@ -329,10 +329,10 @@ export function getJoinTeamAvailability(
     }
   }
 
-  if (hasTeamReachedMemberLimit(hackathon.maxTeamMembers, options.activeMemberCount)) {
+  if (hasTeamReachedMemberLimit(event.maxTeamMembers, options.activeMemberCount)) {
     return {
       isAllowed: false,
-      reason: 'This team has reached the hackathon member limit.'
+      reason: 'This team has reached the event member limit.'
     }
   }
 
@@ -346,7 +346,7 @@ export function hasTeamReachedMemberLimit(maxTeamMembers: number, activeMemberCo
 }
 
 export function getLeaveTeamAvailability(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   team: TeamDetailRecord,
   membership: TeamMemberRecord | null | undefined,
   options?: {
@@ -366,7 +366,7 @@ export function getLeaveTeamAvailability(
   )
 
   if (remainingActiveMembers.length === 0) {
-    if (hackathon.state !== 'registration_open' && hackathon.state !== 'submission_open') {
+    if (event.state !== 'registration_open' && event.state !== 'submission_open') {
       return {
         isAllowed: false,
         reason: 'After submission closes, a team must retain at least one active member.'
@@ -398,7 +398,7 @@ export function getLeaveTeamAvailability(
     }
   }
 
-  if (hackathon.state !== 'registration_open' && hackathon.state !== 'submission_open') {
+  if (event.state !== 'registration_open' && event.state !== 'submission_open') {
     return {
       isAllowed: true
     }
@@ -410,7 +410,7 @@ export function getLeaveTeamAvailability(
 }
 
 export function getMemberRemovalAvailability(
-  hackathon: Pick<PublicHackathon, 'state'>,
+  event: Pick<PublicEvent, 'state'>,
   team: TeamDetailRecord,
   targetMember: TeamMemberRecord | null | undefined
 ): TeamActionAvailability {
@@ -421,7 +421,7 @@ export function getMemberRemovalAvailability(
     }
   }
 
-  return getLeaveTeamAvailability(hackathon, team, targetMember)
+  return getLeaveTeamAvailability(event, team, targetMember)
 }
 
 export function formatTeamMemberRole(role: TeamMemberRecord['role']) {

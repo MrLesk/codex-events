@@ -5,7 +5,7 @@ import {
   assertFinalDeliberationReorderAllowed,
   assertFinalDeliberationReorderMatchesEntries,
   assertFinalDeliberationViewAllowed,
-  assertHackathonCompletionAllowed,
+  assertEventCompletionAllowed,
   assertWinnersVisible,
   hasSavedShortlistSelection,
   assertSelectedFinalistsRespectOrder,
@@ -19,7 +19,7 @@ import {
   calculateFinalScore
 } from '../../../../../server/domains/outcomes'
 
-function createHackathon(
+function createEvent(
   state:
     | 'blind_review'
     | 'shortlist'
@@ -30,10 +30,11 @@ function createHackathon(
     | 'completed'
 ) {
   return {
-    id: 'hackathon_1',
-    name: 'Outcome Hackathon',
-    slug: 'outcome-hackathon',
-    description: 'Outcome Hackathon',
+    id: 'event_1',
+    eventType: 'hackathon',
+    name: 'Outcome Event',
+    slug: 'outcome-event',
+    description: 'Outcome Event',
     discordServerUrl: null,
     city: 'Vienna',
     country: 'Austria',
@@ -68,7 +69,7 @@ function createLeaderboardEntry(status: 'judge_completed' | 'judge_started' = 'j
   return {
     team: {
       id: 'team_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Alpha Team',
       slug: 'alpha-team',
       isOpenToJoinRequests: false,
@@ -102,20 +103,20 @@ function createLeaderboardEntry(status: 'judge_completed' | 'judge_started' = 'j
 
 describe('shortlist utilities', () => {
   test('start-shortlist requires blind_review and completed reviews for locked submissions', () => {
-    expect(() => assertStartShortlistAllowed(createHackathon('blind_review'), [
+    expect(() => assertStartShortlistAllowed(createEvent('blind_review'), [
       createLeaderboardEntry('judge_completed')
     ])).not.toThrow()
 
-    expect(() => assertStartShortlistAllowed(createHackathon('shortlist'), [
+    expect(() => assertStartShortlistAllowed(createEvent('shortlist'), [
       createLeaderboardEntry('judge_completed')
     ])).toThrowError(ApiError)
 
-    expect(() => assertStartShortlistAllowed(createHackathon('blind_review'), [
+    expect(() => assertStartShortlistAllowed(createEvent('blind_review'), [
       createLeaderboardEntry('judge_started')
     ])).toThrowError(ApiError)
 
     expect(() => assertStartShortlistAllowed({
-      ...createHackathon('blind_review'),
+      ...createEvent('blind_review'),
       pitchReviewEnabled: false
     }, [
       createLeaderboardEntry('judge_completed')
@@ -172,22 +173,22 @@ describe('shortlist utilities', () => {
   })
 
   test('shortlist views and finalist selection stay scoped to shortlist state', () => {
-    expect(() => assertShortlistViewAllowed(createHackathon('shortlist'))).not.toThrow()
-    expect(() => assertShortlistViewAllowed(createHackathon('winners_announced'))).toThrowError(ApiError)
+    expect(() => assertShortlistViewAllowed(createEvent('shortlist'))).not.toThrow()
+    expect(() => assertShortlistViewAllowed(createEvent('winners_announced'))).toThrowError(ApiError)
 
-    expect(() => assertSelectFinalistsAllowed(createHackathon('shortlist'))).not.toThrow()
-    expect(() => assertSelectFinalistsAllowed(createHackathon('blind_review'))).toThrowError(ApiError)
+    expect(() => assertSelectFinalistsAllowed(createEvent('shortlist'))).not.toThrow()
+    expect(() => assertSelectFinalistsAllowed(createEvent('blind_review'))).toThrowError(ApiError)
   })
 
   test('saved shortlist selection is determined by the persisted shortlist order', () => {
-    expect(hasSavedShortlistSelection(createHackathon('shortlist'))).toBe(false)
+    expect(hasSavedShortlistSelection(createEvent('shortlist'))).toBe(false)
     expect(hasSavedShortlistSelection({
-      ...createHackathon('shortlist'),
+      ...createEvent('shortlist'),
       finalRankingSubmissionIdsJson: JSON.stringify(['submission_1'])
     })).toBe(true)
   })
 
-  test('final score calculation supports blind-only, pitch-only, and combined hackathons', () => {
+  test('final score calculation supports blind-only, pitch-only, and combined events', () => {
     expect(calculateFinalScore({
       blindReviewCount: 1,
       pitchReviewEnabled: false,
@@ -231,39 +232,39 @@ describe('shortlist utilities', () => {
 
   test('final deliberation start and view guards follow the documented lifecycle', () => {
     expect(() => assertStartFinalDeliberationAllowed({
-      ...createHackathon('blind_review'),
+      ...createEvent('blind_review'),
       pitchReviewEnabled: false
     }, [
       createLeaderboardEntry('judge_completed')
     ])).not.toThrow()
 
     expect(() => assertStartFinalDeliberationAllowed({
-      ...createHackathon('blind_review'),
+      ...createEvent('blind_review'),
       pitchReviewEnabled: false
     }, [
       createLeaderboardEntry('judge_started')
     ])).toThrowError(ApiError)
 
-    expect(() => assertStartFinalDeliberationAllowed(createHackathon('blind_review'), [
+    expect(() => assertStartFinalDeliberationAllowed(createEvent('blind_review'), [
       createLeaderboardEntry('judge_completed')
     ])).toThrowError(ApiError)
 
     expect(() => assertStartFinalDeliberationAllowed(
-      createHackathon('pitch_review'),
+      createEvent('pitch_review'),
       [createLeaderboardEntry('judge_completed')],
       { completedPitchReviewCount: 1 }
     )).not.toThrow()
 
     expect(() => assertStartFinalDeliberationAllowed(
-      createHackathon('pitch_review'),
+      createEvent('pitch_review'),
       [createLeaderboardEntry('judge_completed')],
       { completedPitchReviewCount: 0 }
     )).toThrowError(ApiError)
 
-    expect(() => assertFinalDeliberationViewAllowed(createHackathon('final_deliberation'))).not.toThrow()
-    expect(() => assertFinalDeliberationReorderAllowed(createHackathon('final_deliberation'))).not.toThrow()
-    expect(() => assertFinalDeliberationViewAllowed(createHackathon('shortlist'))).toThrowError(ApiError)
-    expect(() => assertFinalDeliberationReorderAllowed(createHackathon('pitch_review'))).toThrowError(ApiError)
+    expect(() => assertFinalDeliberationViewAllowed(createEvent('final_deliberation'))).not.toThrow()
+    expect(() => assertFinalDeliberationReorderAllowed(createEvent('final_deliberation'))).not.toThrow()
+    expect(() => assertFinalDeliberationViewAllowed(createEvent('shortlist'))).toThrowError(ApiError)
+    expect(() => assertFinalDeliberationReorderAllowed(createEvent('pitch_review'))).toThrowError(ApiError)
   })
 
   test('final deliberation reorder must include every ranked submission exactly once', () => {
@@ -289,13 +290,13 @@ describe('shortlist utilities', () => {
   })
 
   test('winner announcement and completion guard the documented lifecycle states', () => {
-    expect(() => assertWinnersAnnouncementAllowed(createHackathon('final_deliberation'))).not.toThrow()
-    expect(() => assertWinnersAnnouncementAllowed(createHackathon('shortlist'))).toThrowError(ApiError)
+    expect(() => assertWinnersAnnouncementAllowed(createEvent('final_deliberation'))).not.toThrow()
+    expect(() => assertWinnersAnnouncementAllowed(createEvent('shortlist'))).toThrowError(ApiError)
 
-    expect(() => assertWinnersVisible(createHackathon('completed'))).not.toThrow()
-    expect(() => assertWinnersVisible(createHackathon('winners_announced'))).toThrowError(ApiError)
+    expect(() => assertWinnersVisible(createEvent('completed'))).not.toThrow()
+    expect(() => assertWinnersVisible(createEvent('winners_announced'))).toThrowError(ApiError)
 
-    expect(() => assertHackathonCompletionAllowed(createHackathon('winners_announced'))).not.toThrow()
-    expect(() => assertHackathonCompletionAllowed(createHackathon('shortlist'))).toThrowError(ApiError)
+    expect(() => assertEventCompletionAllowed(createEvent('winners_announced'))).not.toThrow()
+    expect(() => assertEventCompletionAllowed(createEvent('shortlist'))).toThrowError(ApiError)
   })
 })

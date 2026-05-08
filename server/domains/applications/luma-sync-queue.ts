@@ -6,14 +6,14 @@ import { z } from 'zod'
 import { writeAuditLog } from '#server/database/audit-log'
 import { createDatabase, resolveD1Binding, type AppDatabase, type D1DatabaseBinding } from '#server/database/client'
 import {
-  hackathons,
+  events,
   userApplications,
   users
 } from '#server/database/schema'
-import { isHackathonLumaSyncEnabled } from '#server/domains/applications'
+import { isEventLumaSyncEnabled } from '#server/domains/applications'
 
 export const defaultApplicationLumaSyncQueueBinding = 'APPLICATION_LUMA_SYNC_QUEUE'
-export const defaultApplicationLumaSyncQueueName = 'codex-hackathons-application-luma-sync'
+export const defaultApplicationLumaSyncQueueName = 'codex-events-application-luma-sync'
 export const defaultApplicationLumaSyncRetryDelaySeconds = 120
 export const defaultApplicationLumaSyncStartupRecoveryBatchSize = 10
 export const defaultLumaApiBaseUrl = 'https://public-api.luma.com'
@@ -118,7 +118,7 @@ function resolveFetchImpl(fetchImpl?: FetchLike): FetchLike {
 
 interface QueueDatabaseRecord {
   application: typeof userApplications.$inferSelect
-  hackathon: typeof hackathons.$inferSelect | null
+  event: typeof events.$inferSelect | null
   user: typeof users.$inferSelect | null
 }
 
@@ -693,9 +693,9 @@ async function getQueueRecord(database: AppDatabase, applicationId: string): Pro
     return null
   }
 
-  const [hackathon, user] = await Promise.all([
-    database.query.hackathons.findFirst({
-      where: eq(hackathons.id, application.hackathonId)
+  const [event, user] = await Promise.all([
+    database.query.events.findFirst({
+      where: eq(events.id, application.eventId)
     }),
     database.query.users.findFirst({
       where: eq(users.id, application.userId)
@@ -704,7 +704,7 @@ async function getQueueRecord(database: AppDatabase, applicationId: string): Pro
 
   return {
     application,
-    hackathon: hackathon ?? null,
+    event: event ?? null,
     user: user ?? null
   }
 }
@@ -871,18 +871,18 @@ export async function processApplicationLumaSyncQueueMessage(
     }
   }
 
-  const { application, hackathon, user } = queueRecord
+  const { application, event, user } = queueRecord
   const failureStatus = getApplicationLumaSyncFailureStatus(parsedMessage.data.decision)
   const successStatus = getApplicationLumaSyncSuccessStatus(parsedMessage.data.decision)
 
-  if (!hackathon || !user) {
+  if (!event || !user) {
     await recordTerminalLumaSyncOutcome(database, {
       applicationId: application.id,
       status: failureStatus,
       action: 'user_application.luma_sync_failed',
       metadata: {
         decision: parsedMessage.data.decision,
-        reason: !hackathon ? 'hackathon_missing' : 'user_missing'
+        reason: !event ? 'event_missing' : 'user_missing'
       }
     })
     message.ack()
@@ -890,11 +890,11 @@ export async function processApplicationLumaSyncQueueMessage(
     return {
       messageId: message.id,
       action: 'ack',
-      reason: !hackathon ? 'hackathon_missing' : 'user_missing'
+      reason: !event ? 'event_missing' : 'user_missing'
     }
   }
 
-  if (!isHackathonLumaSyncEnabled(hackathon)) {
+  if (!isEventLumaSyncEnabled(event)) {
     await setApplicationLumaSyncStatus(database, application.id, null)
     message.ack()
 
@@ -946,7 +946,7 @@ export async function processApplicationLumaSyncQueueMessage(
   }
 
   try {
-    const eventApiId = hackathon.lumaEventApiId!.trim()
+    const eventApiId = event.lumaEventApiId!.trim()
     const { guestId, guestEmail } = await findGuestByEmail(eventApiId, lumaEmail, {
       config,
       fetchImpl
@@ -1135,16 +1135,16 @@ export async function recoverStaleApplicationLumaSyncMessages(options?: {
     } satisfies ApplicationLumaSyncStartupRecoveryResult
   }
 
-  const relatedHackathons = await database.query.hackathons.findMany({
-    where: isNotNull(hackathons.lumaEventApiId)
+  const relatedEvents = await database.query.events.findMany({
+    where: isNotNull(events.lumaEventApiId)
   })
-  const hackathonsById = new Map(relatedHackathons.map(hackathon => [hackathon.id, hackathon]))
+  const eventsById = new Map(relatedEvents.map(event => [event.id, event]))
   const recoveredApplicationIds: string[] = []
 
   for (const application of staleApplications) {
-    const hackathon = hackathonsById.get(application.hackathonId)
+    const event = eventsById.get(application.eventId)
 
-    if (!hackathon || !isHackathonLumaSyncEnabled(hackathon)) {
+    if (!event || !isEventLumaSyncEnabled(event)) {
       continue
     }
 

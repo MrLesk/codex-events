@@ -1,15 +1,15 @@
 import { desc, eq } from 'drizzle-orm'
 
 import { requireAuthenticatedActor } from '#server/auth/actor'
-import { hackathonRoleAssignments } from '#server/database/schema'
+import { eventRoleAssignments } from '#server/database/schema'
 import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 
-type HackathonRoleAssignmentRecord = typeof hackathonRoleAssignments.$inferSelect
+type EventRoleAssignmentRecord = typeof eventRoleAssignments.$inferSelect
 
-export default defineApiHandler(async (event) => {
-  const actor = await requireAuthenticatedActor(event)
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requireAuthenticatedActor(h3Event)
 
   if (!actor.hasPlatformAccount) {
     return apiData({
@@ -23,15 +23,15 @@ export default defineApiHandler(async (event) => {
         platformUser: null,
         isPlatformAdmin: false,
         isEventOrganizer: false,
-        hackathonRoles: []
+        eventRoles: []
       }
     })
   }
 
-  const database = getDatabase(event)
-  const roleAssignments = await database.query.hackathonRoleAssignments.findMany({
-    where: eq(hackathonRoleAssignments.userId, actor.platformUser.id),
-    orderBy: [desc(hackathonRoleAssignments.createdAt)]
+  const database = getDatabase(h3Event)
+  const roleAssignments = await database.query.eventRoleAssignments.findMany({
+    where: eq(eventRoleAssignments.userId, actor.platformUser.id),
+    orderBy: [desc(eventRoleAssignments.createdAt)]
   })
 
   return apiData({
@@ -65,8 +65,8 @@ export default defineApiHandler(async (event) => {
       },
       isPlatformAdmin: actor.platformUser.isPlatformAdmin,
       isEventOrganizer: actor.platformUser.isEventOrganizer,
-      hackathonRoles: roleAssignments.map((assignment: HackathonRoleAssignmentRecord) => ({
-        hackathonId: assignment.hackathonId,
+      eventRoles: roleAssignments.map((assignment: EventRoleAssignmentRecord) => ({
+        eventId: assignment.eventId,
         role: assignment.role,
         isInJudgePool: assignment.isInJudgePool,
         isStaff: assignment.isStaff,

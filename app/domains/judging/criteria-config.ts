@@ -1,6 +1,6 @@
 export interface EvaluationCriterion {
   id: string
-  hackathonId: string
+  eventId: string
   name: string
   description: string
   weight: number

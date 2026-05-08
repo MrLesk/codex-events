@@ -4,13 +4,13 @@ import { and, asc, count, desc, eq, getTableColumns, isNull, sql } from 'drizzle
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
-import { resolveHackathonAuthorization, resolveTeamAuthorization } from '#server/auth/authorization'
+import { resolveEventAuthorization, resolveTeamAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
-import { auditLogs, hackathonTracks, submissions, teams, teamMembers, users } from '#server/database/schema'
-import type { hackathons } from '#server/database/schema'
+import { auditLogs, eventTracks, submissions, teams, teamMembers, users } from '#server/database/schema'
+import type { events } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
-import { getVisibleHackathonOrThrow, requireHackathonAdmin, routeIdParamsSchema } from '#server/domains/hackathons'
+import { assertCompetitionEvent, getVisibleEventOrThrow, requireEventAdmin, routeIdParamsSchema } from '#server/domains/events'
 import { getActiveTeamMembers, getTeamOrThrow, getUsersByIds, serializeTeam, serializeTeamMember } from '#server/domains/teams'
 
 const requiredStringSchema = z.string().trim().min(1)
@@ -22,7 +22,7 @@ function createOptionalUrlSchema(message: string) {
 }
 
 type SubmissionRequirementConfig = Pick<
-  HackathonRecord,
+  EventRecord,
   'requireSubmissionSummary' | 'requireSubmissionRepositoryUrl' | 'requireSubmissionDemoUrl'
 >
 
@@ -34,7 +34,7 @@ const submissionBodyShape = {
   trackId: z.string().trim().min(1).nullable().optional()
 } satisfies Record<string, z.ZodTypeAny>
 
-type HackathonRecord = typeof hackathons.$inferSelect
+type EventRecord = typeof events.$inferSelect
 type SubmissionRecord = typeof submissions.$inferSelect
 type SubmissionInsert = typeof submissions.$inferInsert
 
@@ -98,7 +98,7 @@ export function isNoSubmissionStatus(status: SubmissionRecord['status']) {
   return status === 'draft' || status === 'withdrawn' || status === 'disqualified'
 }
 
-export async function getHackathonSubmissionSummary(database: AppDatabase, hackathonId: string) {
+export async function getEventSubmissionSummary(database: AppDatabase, eventId: string) {
   const [summaryRow] = await database
     .select({
       totalTeams: count(teams.id),
@@ -111,7 +111,7 @@ export async function getHackathonSubmissionSummary(database: AppDatabase, hacka
     })
     .from(teams)
     .leftJoin(submissions, eq(submissions.teamId, teams.id))
-    .where(eq(teams.hackathonId, hackathonId))
+    .where(eq(teams.eventId, eventId))
   const statusCounts = {
     none: summaryRow?.none ?? 0,
     draft: summaryRow?.draft ?? 0,
@@ -132,14 +132,14 @@ export async function getHackathonSubmissionSummary(database: AppDatabase, hacka
   }
 }
 
-async function listActiveHackathonMemberUsersById(database: AppDatabase, hackathonId: string) {
+async function listActiveEventMemberUsersById(database: AppDatabase, eventId: string) {
   const relatedUsers = await database
     .select(getTableColumns(users))
     .from(users)
     .innerJoin(teamMembers, eq(teamMembers.userId, users.id))
     .innerJoin(teams, eq(teams.id, teamMembers.teamId))
     .where(and(
-      eq(teams.hackathonId, hackathonId),
+      eq(teams.eventId, eventId),
       isNull(teamMembers.leftAt),
       isNull(users.deletedAt)
     ))
@@ -220,11 +220,11 @@ function normalizeOptionalSubmissionValue(value: string | null | undefined) {
   return normalizedValue.length > 0 ? normalizedValue : null
 }
 
-export function assertSubmissionBodyMatchesHackathonRequirements(
-  hackathon: SubmissionRequirementConfig,
+export function assertSubmissionBodyMatchesEventRequirements(
+  event: SubmissionRequirementConfig,
   input: z.infer<typeof createSubmissionBodySchema> | z.infer<typeof updateSubmissionBodySchema>
 ) {
-  const validationResult = createConfiguredSubmissionValidationSchema(hackathon).safeParse(input)
+  const validationResult = createConfiguredSubmissionValidationSchema(event).safeParse(input)
 
   assertGuard(validationResult.success, {
     code: 'submission_fields_invalid',
@@ -236,22 +236,26 @@ export function assertSubmissionBodyMatchesHackathonRequirements(
   })
 }
 
-export function assertHackathonAllowsSubmissionEditing(hackathon: HackathonRecord) {
-  assertAllowedState(hackathon.state, ['submission_open', 'judging_preparation'], {
-    code: 'hackathon_state_invalid',
+export function assertEventAllowsSubmissionEditing(event: EventRecord) {
+  assertCompetitionEvent(event)
+
+  assertAllowedState(event.state, ['submission_open', 'judging_preparation'], {
+    code: 'event_state_invalid',
     message: 'Submission updates are only available until judging starts.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 }
 
-export function assertHackathonAllowsSubmissionCreation(hackathon: HackathonRecord) {
-  assertAllowedState(hackathon.state, ['submission_open'], {
-    code: 'hackathon_state_invalid',
+export function assertEventAllowsSubmissionCreation(event: EventRecord) {
+  assertCompetitionEvent(event)
+
+  assertAllowedState(event.state, ['submission_open'], {
+    code: 'event_state_invalid',
     message: 'Submission creation is only available while submission is open.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 }
@@ -276,29 +280,29 @@ export function assertSubmissionMutable(submission: SubmissionRecord) {
   })
 }
 
-async function listSubmissionTracksForHackathon(database: AppDatabase, hackathonId: string) {
-  return await database.query.hackathonTracks.findMany({
+async function listSubmissionTracksForEvent(database: AppDatabase, eventId: string) {
+  return await database.query.eventTracks.findMany({
     columns: {
       id: true
     },
-    where: eq(hackathonTracks.hackathonId, hackathonId)
+    where: eq(eventTracks.eventId, eventId)
   })
 }
 
 export async function resolveValidatedSubmissionTrackId(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   trackId: string | null | undefined
 ) {
-  const availableTracks = await listSubmissionTracksForHackathon(database, hackathonId)
+  const availableTracks = await listSubmissionTracksForEvent(database, eventId)
   const normalizedTrackId = trackId?.trim() || null
 
   if (availableTracks.length === 0) {
     assertGuard(!normalizedTrackId, {
       code: 'submission_track_invalid',
-      message: 'The selected submission track is not valid for this hackathon.',
+      message: 'The selected submission track is not valid for this event.',
       details: {
-        hackathonId,
+        eventId,
         trackId: normalizedTrackId
       },
       statusCode: 400
@@ -311,7 +315,7 @@ export async function resolveValidatedSubmissionTrackId(
     code: 'submission_track_required',
     message: 'Select a track before saving this submission.',
     details: {
-      hackathonId
+      eventId
     },
     statusCode: 400
   })
@@ -320,9 +324,9 @@ export async function resolveValidatedSubmissionTrackId(
     availableTracks.some(track => track.id === normalizedTrackId),
     {
       code: 'submission_track_invalid',
-      message: 'The selected submission track is not valid for this hackathon.',
+      message: 'The selected submission track is not valid for this event.',
       details: {
-        hackathonId,
+        eventId,
         trackId: normalizedTrackId
       },
       statusCode: 400
@@ -334,7 +338,7 @@ export async function resolveValidatedSubmissionTrackId(
 
 export async function assertSubmissionSubmittable(
   database: AppDatabase,
-  hackathon: HackathonRecord,
+  event: EventRecord,
   submission: SubmissionRecord
 ) {
   assertAllowedState(submission.status, ['draft'], {
@@ -345,7 +349,7 @@ export async function assertSubmissionSubmittable(
     }
   })
 
-  const requiredFieldResult = createConfiguredSubmissionValidationSchema(hackathon).safeParse({
+  const requiredFieldResult = createConfiguredSubmissionValidationSchema(event).safeParse({
     projectName: submission.projectName,
     summary: normalizeOptionalSubmissionValue(submission.summary) ?? '',
     repositoryUrl: normalizeOptionalSubmissionValue(submission.repositoryUrl) ?? '',
@@ -362,18 +366,20 @@ export async function assertSubmissionSubmittable(
     statusCode: 400
   })
 
-  await resolveValidatedSubmissionTrackId(database, hackathon.id, submission.trackId)
+  await resolveValidatedSubmissionTrackId(database, event.id, submission.trackId)
 }
 
 export function assertSubmissionWithdrawable(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   submission: SubmissionRecord
 ) {
-  assertAllowedState(hackathon.state, ['submission_open', 'judging_preparation'], {
-    code: 'hackathon_state_invalid',
+  assertCompetitionEvent(event)
+
+  assertAllowedState(event.state, ['submission_open', 'judging_preparation'], {
+    code: 'event_state_invalid',
     message: 'Submissions can only be withdrawn until judging starts.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
@@ -387,10 +393,12 @@ export function assertSubmissionWithdrawable(
 }
 
 export function assertSubmissionDisqualifiable(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   submission: SubmissionRecord
 ) {
-  assertAllowedState(hackathon.state, [
+  assertCompetitionEvent(event)
+
+  assertAllowedState(event.state, [
     'blind_review',
     'shortlist',
     'pitch',
@@ -399,10 +407,10 @@ export function assertSubmissionDisqualifiable(
     'winners_announced',
     'completed'
   ], {
-    code: 'hackathon_state_invalid',
+    code: 'event_state_invalid',
     message: 'Submissions can only be disqualified once judging is underway.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
@@ -416,17 +424,19 @@ export function assertSubmissionDisqualifiable(
 }
 
 export function assertSubmissionPublicVisibilityMutable(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   submission: SubmissionRecord,
   options: {
     isWinningTeam: boolean
   }
 ) {
-  assertAllowedState(hackathon.state, ['completed'], {
-    code: 'hackathon_state_invalid',
-    message: 'Project publishing is only available after the hackathon is completed.',
+  assertCompetitionEvent(event)
+
+  assertAllowedState(event.state, ['completed'], {
+    code: 'event_state_invalid',
+    message: 'Project publishing is only available after the event is completed.',
     details: {
-      hackathonId: hackathon.id
+      eventId: event.id
     }
   })
 
@@ -480,19 +490,20 @@ export function buildSubmissionWritePayload(
   return payload
 }
 
-export async function requireSubmissionVisibilityContext(event: H3Event, hackathonId: string, teamId: string) {
-  const actor = await requirePlatformActor(event)
-  const database = getDatabase(event)
-  const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
-  const team = await getTeamOrThrow(database, hackathonId, teamId)
-  const hackathonAuthorization = await resolveHackathonAuthorization(event, hackathonId)
-  const teamAuthorization = await resolveTeamAuthorization(event, teamId)
+export async function requireSubmissionVisibilityContext(h3Event: H3Event, eventId: string, teamId: string) {
+  const actor = await requirePlatformActor(h3Event)
+  const database = getDatabase(h3Event)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
+  assertCompetitionEvent(event)
+  const team = await getTeamOrThrow(database, eventId, teamId)
+  const eventAuthorization = await resolveEventAuthorization(h3Event, eventId)
+  const teamAuthorization = await resolveTeamAuthorization(h3Event, teamId)
 
-  assertGuard(hackathonAuthorization.isHackathonAdmin || teamAuthorization.isTeamMember, {
+  assertGuard(eventAuthorization.isEventAdmin || teamAuthorization.isTeamMember, {
     code: 'team_submission_access_denied',
-    message: 'This operation requires team membership or hackathon admin access.',
+    message: 'This operation requires team membership or event admin access.',
     details: {
-      hackathonId,
+      eventId,
       teamId
     },
     statusCode: 403
@@ -501,21 +512,22 @@ export async function requireSubmissionVisibilityContext(event: H3Event, hackath
   return {
     actor,
     database,
-    hackathon,
+    event,
     team,
-    hackathonAuthorization,
+    eventAuthorization,
     teamAuthorization
   }
 }
 
-export async function requireAdminSubmissionContext(event: H3Event, hackathonId: string, teamId: string) {
-  const { hackathon, authorization } = await requireHackathonAdmin(event, hackathonId)
-  const database = getDatabase(event)
-  const team = await getTeamOrThrow(database, hackathonId, teamId)
+export async function requireAdminSubmissionContext(h3Event: H3Event, eventId: string, teamId: string) {
+  const { event, authorization } = await requireEventAdmin(h3Event, eventId)
+  assertCompetitionEvent(event)
+  const database = getDatabase(h3Event)
+  const team = await getTeamOrThrow(database, eventId, teamId)
 
   return {
     database,
-    hackathon,
+    event,
     team,
     authorization
   }
@@ -546,9 +558,9 @@ export async function assertRequestedByActiveTeamAdmin(
   return membership
 }
 
-export async function listNoSubmissionTeams(database: AppDatabase, hackathonId: string) {
+export async function listNoSubmissionTeams(database: AppDatabase, eventId: string) {
   const allTeams = await database.query.teams.findMany({
-    where: eq(teams.hackathonId, hackathonId),
+    where: eq(teams.eventId, eventId),
     orderBy: [asc(teams.name), asc(teams.createdAt)]
   })
 
@@ -562,7 +574,7 @@ export async function listNoSubmissionTeams(database: AppDatabase, hackathonId: 
       .from(teamMembers)
       .innerJoin(teams, eq(teams.id, teamMembers.teamId))
       .where(and(
-        eq(teams.hackathonId, hackathonId),
+        eq(teams.eventId, eventId),
         isNull(teamMembers.leftAt)
       ))
       .orderBy(asc(teamMembers.createdAt)),
@@ -570,11 +582,11 @@ export async function listNoSubmissionTeams(database: AppDatabase, hackathonId: 
       .select(getTableColumns(submissions))
       .from(submissions)
       .innerJoin(teams, eq(teams.id, submissions.teamId))
-      .where(eq(teams.hackathonId, hackathonId))
+      .where(eq(teams.eventId, eventId))
       .orderBy(desc(submissions.createdAt))
   ])
 
-  const usersById = await listActiveHackathonMemberUsersById(database, hackathonId)
+  const usersById = await listActiveEventMemberUsersById(database, eventId)
   const membersByTeamId = new Map<string, Array<typeof allMembers[number]>>()
   const latestSubmissionByTeamId = new Map<string, SubmissionRecord>()
 
@@ -612,9 +624,9 @@ export async function listNoSubmissionTeams(database: AppDatabase, hackathonId: 
     }))
 }
 
-export async function listSubmissionMonitorTeams(database: AppDatabase, hackathonId: string) {
+export async function listSubmissionMonitorTeams(database: AppDatabase, eventId: string) {
   const allTeams = await database.query.teams.findMany({
-    where: eq(teams.hackathonId, hackathonId),
+    where: eq(teams.eventId, eventId),
     orderBy: [asc(teams.name), asc(teams.createdAt)]
   })
 
@@ -631,7 +643,7 @@ export async function listSubmissionMonitorTeams(database: AppDatabase, hackatho
       .from(teamMembers)
       .innerJoin(teams, eq(teams.id, teamMembers.teamId))
       .where(and(
-        eq(teams.hackathonId, hackathonId),
+        eq(teams.eventId, eventId),
         isNull(teamMembers.leftAt)
       ))
       .orderBy(asc(teamMembers.createdAt)),
@@ -639,7 +651,7 @@ export async function listSubmissionMonitorTeams(database: AppDatabase, hackatho
       .select(getTableColumns(submissions))
       .from(submissions)
       .innerJoin(teams, eq(teams.id, submissions.teamId))
-      .where(eq(teams.hackathonId, hackathonId))
+      .where(eq(teams.eventId, eventId))
       .orderBy(desc(submissions.createdAt))
   ])
   const disqualifiedSubmissionIds = allSubmissions
@@ -652,14 +664,14 @@ export async function listSubmissionMonitorTeams(database: AppDatabase, hackatho
         .innerJoin(submissions, eq(submissions.id, auditLogs.entityId))
         .innerJoin(teams, eq(teams.id, submissions.teamId))
         .where(and(
-          eq(teams.hackathonId, hackathonId),
+          eq(teams.eventId, eventId),
           eq(submissions.status, 'disqualified'),
           eq(auditLogs.entityType, 'submission'),
           eq(auditLogs.action, 'submission.disqualified')
         ))
         .orderBy(desc(auditLogs.createdAt))
     : []
-  const usersById = await listActiveHackathonMemberUsersById(database, hackathonId)
+  const usersById = await listActiveEventMemberUsersById(database, eventId)
   const membersByTeamId = new Map<string, Array<typeof allMembers[number]>>()
   const latestSubmissionByTeamId = new Map<string, SubmissionRecord>()
   const disqualificationReasonBySubmissionId = new Map<string, string | null>()
@@ -714,8 +726,8 @@ export async function listSubmissionMonitorTeams(database: AppDatabase, hackatho
   }
 }
 
-export async function getTeamSubmissionDetail(database: AppDatabase, hackathonId: string, teamId: string) {
-  const team = await getTeamOrThrow(database, hackathonId, teamId)
+export async function getTeamSubmissionDetail(database: AppDatabase, eventId: string, teamId: string) {
+  const team = await getTeamOrThrow(database, eventId, teamId)
   const members = await getActiveTeamMembers(database, teamId)
   const usersById = await getUsersByIds(database, members.map(member => member.userId))
   const submission = await getSubmissionForTeam(database, teamId)

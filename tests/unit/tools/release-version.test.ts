@@ -20,7 +20,7 @@ describe('release version helper', () => {
 
   test('updates package.json version without disturbing unrelated fields', () => {
     const updated = updatePackageVersion(JSON.stringify({
-      name: 'codex-hackathons',
+      name: 'codex-events',
       private: true,
       version: '0.0.0',
       scripts: {
@@ -29,7 +29,7 @@ describe('release version helper', () => {
     }), '1.8.0')
 
     expect(JSON.parse(updated)).toEqual({
-      name: 'codex-hackathons',
+      name: 'codex-events',
       private: true,
       version: '1.8.0',
       scripts: {

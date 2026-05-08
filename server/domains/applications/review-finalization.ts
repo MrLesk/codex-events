@@ -6,10 +6,10 @@ import { writeAuditLog } from '#server/database/audit-log'
 import type { AppDatabase } from '#server/database/client'
 import {
   userApplications,
-  type hackathons,
+  type events,
   type users
 } from '#server/database/schema'
-import { isHackathonLumaSyncEnabled } from '#server/domains/applications'
+import { isEventLumaSyncEnabled } from '#server/domains/applications'
 import {
   buildApplicationLumaSyncQueueMessage,
   enqueueApplicationLumaSyncMessage,
@@ -23,7 +23,7 @@ import {
 import type { ApplicationReviewDecision } from '#server/domains/applications/review-emails'
 
 type UserApplicationRecord = typeof userApplications.$inferSelect
-type HackathonRecord = typeof hackathons.$inferSelect
+type EventRecord = typeof events.$inferSelect
 type UserRecord = typeof users.$inferSelect
 
 export type ApplicationReviewSource = 'pre_approval' | 'auto_approval'
@@ -40,9 +40,9 @@ function getReviewSourceMetadata(source: ApplicationReviewSource) {
 }
 
 export async function finalizeUserApplicationReview(options: {
-  event: H3Event
+  h3Event: H3Event
   database: AppDatabase
-  hackathon: Pick<HackathonRecord, 'id' | 'name' | 'slug' | 'requireLumaEmail' | 'lumaEventApiId'>
+  event: Pick<EventRecord, 'id' | 'name' | 'slug' | 'requireLumaEmail' | 'lumaEventApiId'>
   application: UserApplicationRecord
   applicant: Pick<UserRecord, 'email' | 'displayName'> | null
   decision: ApplicationReviewDecision
@@ -53,7 +53,7 @@ export async function finalizeUserApplicationReview(options: {
   persistReview: boolean
 }) {
   const sourceMetadata = getReviewSourceMetadata(options.source)
-  let lumaSyncStatus: ApplicationLumaSyncStatus = isHackathonLumaSyncEnabled(options.hackathon) ? 'not_synced' : null
+  let lumaSyncStatus: ApplicationLumaSyncStatus = isEventLumaSyncEnabled(options.event) ? 'not_synced' : null
   let updatedAt = options.reviewedAt
 
   if (options.persistReview) {
@@ -76,22 +76,22 @@ export async function finalizeUserApplicationReview(options: {
     entityId: options.application.id,
     action: options.decision === 'approved' ? 'user_application.approved' : 'user_application.rejected',
     metadata: {
-      hackathonId: options.hackathon.id,
+      eventId: options.event.id,
       userId: options.application.userId,
       ...sourceMetadata
     }
   })
 
   const enqueueResult = await enqueueApplicationReviewEmailMessage(
-    options.event,
+    options.h3Event,
     buildApplicationReviewEmailQueueMessage({
       applicationId: options.application.id,
       decision: options.decision,
       reviewedAt: options.reviewedAt,
       recipientEmail: options.applicant?.email ?? null,
       recipientDisplayName: options.applicant?.displayName ?? null,
-      hackathonName: options.hackathon.name,
-      hackathonSlug: options.hackathon.slug
+      eventName: options.event.name,
+      eventSlug: options.event.slug
     })
   )
 
@@ -101,7 +101,7 @@ export async function finalizeUserApplicationReview(options: {
     entityId: options.application.id,
     action: 'user_application.review_email_enqueued',
     metadata: {
-      hackathonId: options.hackathon.id,
+      eventId: options.event.id,
       userId: options.application.userId,
       decision: options.decision,
       enqueue: enqueueResult,
@@ -109,9 +109,9 @@ export async function finalizeUserApplicationReview(options: {
     }
   })
 
-  if (isHackathonLumaSyncEnabled(options.hackathon)) {
+  if (isEventLumaSyncEnabled(options.event)) {
     const lumaEnqueueResult = await enqueueApplicationLumaSyncMessage(
-      options.event,
+      options.h3Event,
       buildApplicationLumaSyncQueueMessage({
         applicationId: options.application.id,
         decision: options.decision
@@ -137,7 +137,7 @@ export async function finalizeUserApplicationReview(options: {
       entityId: options.application.id,
       action: 'user_application.luma_sync_enqueued',
       metadata: {
-        hackathonId: options.hackathon.id,
+        eventId: options.event.id,
         userId: options.application.userId,
         decision: options.decision,
         enqueue: lumaEnqueueResult,

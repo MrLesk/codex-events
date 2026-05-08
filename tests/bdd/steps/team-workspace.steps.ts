@@ -64,7 +64,7 @@ async function waitForNuxtHydration(page: Page) {
 }
 
 async function waitForParticipantTeamTabToSettle(page: Page) {
-  const accountWorkspacePanel = page.getByTestId('account-hackathon-workspace-panel')
+  const accountWorkspacePanel = page.getByTestId('account-event-workspace-panel')
   const workspacePanel = page.getByTestId('participant-team-workspace-panel')
   const directoryPanel = page.getByTestId('participant-team-directory-panel')
 
@@ -114,8 +114,8 @@ async function waitForParticipantTeamTabToSettle(page: Page) {
 }
 
 async function waitForParticipantSubmissionTabToSettle(page: Page) {
-  const workspaceRoot = page.getByTestId('account-hackathon-workspace-panel')
-  const submissionRoot = page.getByTestId('account-hackathon-submission-panel')
+  const workspaceRoot = page.getByTestId('account-event-workspace-panel')
+  const submissionRoot = page.getByTestId('account-event-submission-panel')
 
   await expect(workspaceRoot).toBeVisible()
   await waitForNuxtHydration(page)
@@ -149,13 +149,13 @@ async function waitForParticipantSubmissionTabToSettle(page: Page) {
 
 async function resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug: string) {
   switch (slug) {
-    case 'participant-team-create-fixture-hackathon':
+    case 'participant-team-create-fixture-event':
       await resetParticipantTeamCreateFixtureScenarioState()
       return
-    case 'participant-team-join-fixture-hackathon':
+    case 'participant-team-join-fixture-event':
       await resetParticipantTeamJoinFixtureScenarioState()
       return
-    case 'participant-submission-create-fixture-hackathon':
+    case 'participant-submission-create-fixture-event':
       await resetParticipantSubmissionCreateFixtureScenarioState()
       return
     default:
@@ -179,7 +179,7 @@ async function recoverTeamDirectoryIfUnresolved(page: Page) {
   }
 
   await page.reload()
-  await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
+  await expect(page.getByTestId('account-event-team-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
 }
 
@@ -225,55 +225,55 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
   }
 }
 
-When('I open the participant Team tab for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
+When('I open the participant Team tab for event slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
   const parsedPersonaKey = parsePersonaKey(personaKey)
   if (parsedPersonaKey === 'regular_user') {
     await resetRegularUserParticipantAccessScenarioState()
   }
   await resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug)
   await applyStoredStateToPage(parsedPersonaKey, page)
-  await page.goto(`/account/hackathons/${slug}?tab=workspace`)
-  await expect(page.getByTestId('account-hackathon-workspace-panel')).toBeVisible()
+  await page.goto(`/account/events/${slug}?tab=workspace`)
+  await expect(page.getByTestId('account-event-workspace-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
   await recoverTeamDirectoryIfUnresolved(page)
 })
 
-When('I open the participant Teams tab for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
+When('I open the participant Teams tab for event slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
   const parsedPersonaKey = parsePersonaKey(personaKey)
   if (parsedPersonaKey === 'regular_user') {
     await resetRegularUserParticipantAccessScenarioState()
   }
   await resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug)
   await applyStoredStateToPage(parsedPersonaKey, page)
-  await page.goto(`/account/hackathons/${slug}?tab=teams`)
-  await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
+  await page.goto(`/account/events/${slug}?tab=teams`)
+  await expect(page.getByTestId('account-event-team-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
   await recoverTeamDirectoryIfUnresolved(page)
 })
 
-When('I open the participant Team tab for hackathon slug {string} and selected team slug {string} with the saved {string} session', async ({ page }, slug: string, selectedTeamSlug: string, personaKey: string) => {
+When('I open the participant Team tab for event slug {string} and selected team slug {string} with the saved {string} session', async ({ page }, slug: string, selectedTeamSlug: string, personaKey: string) => {
   const parsedPersonaKey = parsePersonaKey(personaKey)
   if (parsedPersonaKey === 'regular_user') {
     await resetRegularUserParticipantAccessScenarioState()
   }
-  if (slug === 'operations-fixture-hackathon' && selectedTeamSlug === 'beta-operations-team') {
+  if (slug === 'operations-fixture-event' && selectedTeamSlug === 'beta-operations-team') {
     await resetOperationsTeamSelectionFixtureScenarioState()
   }
   await resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug)
   await applyStoredStateToPage(parsedPersonaKey, page)
-  await page.goto(`/account/hackathons/${slug}?tab=teams&team=${encodeURIComponent(selectedTeamSlug)}`)
-  await expect(page.getByTestId('account-hackathon-team-panel')).toBeVisible()
+  await page.goto(`/account/events/${slug}?tab=teams&team=${encodeURIComponent(selectedTeamSlug)}`)
+  await expect(page.getByTestId('account-event-team-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
 })
 
-When('I open the participant Submission tab for hackathon slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
+When('I open the participant Submission tab for event slug {string} with the saved {string} session', async ({ page }, slug: string, personaKey: string) => {
   const parsedPersonaKey = parsePersonaKey(personaKey)
   if (parsedPersonaKey === 'regular_user') {
     await resetRegularUserParticipantAccessScenarioState()
   }
   await resetParticipantWorkspaceFixtureScenarioStateIfNeeded(slug)
   await applyStoredStateToPage(parsedPersonaKey, page)
-  await page.goto(`/account/hackathons/${slug}?tab=workspace`)
+  await page.goto(`/account/events/${slug}?tab=workspace`)
   await waitForParticipantSubmissionTabToSettle(page)
 })
 
@@ -284,15 +284,15 @@ Then('I should see the participant team card {string}', async ({ page }, teamNam
 })
 
 Then('the participant submission surface should not be visible', async ({ page }) => {
-  await expect(page.getByTestId('account-hackathon-submission-panel')).toHaveCount(0)
+  await expect(page.getByTestId('account-event-submission-panel')).toHaveCount(0)
 })
 
 When('I participate as solo from the participant workspace', async ({ page }) => {
-  const workspaceRoot = page.getByTestId('account-hackathon-workspace-panel')
+  const workspaceRoot = page.getByTestId('account-event-workspace-panel')
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes('/api/hackathons/')
+      response.url().includes('/api/events/')
       && response.url().includes('/teams')
       && response.request().method() === 'POST'
       && response.ok()
@@ -345,7 +345,7 @@ async function createParticipantTeamFromCurrentSurface(page: Page, uniqueTeamNam
     return
   }
 
-  const workspaceRoot = page.getByTestId('account-hackathon-workspace-panel')
+  const workspaceRoot = page.getByTestId('account-event-workspace-panel')
   const teamNameInput = workspaceRoot.getByLabel('Team name')
 
   await expect.poll(async () => {
@@ -368,7 +368,7 @@ async function createParticipantTeamFromCurrentSurface(page: Page, uniqueTeamNam
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes('/api/hackathons/')
+      response.url().includes('/api/events/')
       && response.url().includes('/teams')
       && response.request().method() === 'POST'
       && response.ok()
@@ -421,7 +421,7 @@ When('I enable join requests for the participant team', async ({ page }) => {
 
 When('I reload the participant Team tab page', async ({ page }) => {
   await page.reload()
-  await expect(page.getByTestId('account-hackathon-workspace-panel')).toBeVisible()
+  await expect(page.getByTestId('account-event-workspace-panel')).toBeVisible()
   await waitForParticipantTeamTabToSettle(page)
 })
 
@@ -476,9 +476,9 @@ When('I click the participant navigation link {string}', async ({ page }, label:
   }).click()
 })
 
-Then('I should be on the participant workspace tab for hackathon slug {string}', async ({ page }, slug: string) => {
-  await expect(page).toHaveURL(new RegExp(`/account/hackathons/${slug}\\?tab=workspace$`))
-  await expect(page.getByTestId('account-hackathon-workspace-panel')).toBeVisible()
+Then('I should be on the participant workspace tab for event slug {string}', async ({ page }, slug: string) => {
+  await expect(page).toHaveURL(new RegExp(`/account/events/${slug}\\?tab=workspace$`))
+  await expect(page.getByTestId('account-event-workspace-panel')).toBeVisible()
 })
 
 Then('the participant team directory should not be visible', async ({ page }) => {
@@ -527,7 +527,7 @@ Then('I should not see the selected participant team heading {string}', async ({
 })
 
 Then('I should not see the account workspace heading {string}', async ({ page }, heading: string) => {
-  await expect(page.getByTestId('account-hackathon-workspace-panel').getByRole('heading', {
+  await expect(page.getByTestId('account-event-workspace-panel').getByRole('heading', {
     name: heading,
     exact: true
   })).toHaveCount(0)

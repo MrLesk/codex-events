@@ -7,17 +7,17 @@ Feature: TASK-3.5 authenticated API management flows
     Then the API actor kind should be "<actorKind>"
     And the API actor platform-account flag should be "<hasPlatformAccount>"
     And the API actor platform-admin flag should be "<isPlatformAdmin>"
-    And the API actor should expose the fixture hackathon role "<hackathonRole>"
+    And the API actor should expose the fixture event role "<eventRole>"
 
     Examples:
-      | persona         | actorKind     | hasPlatformAccount | isPlatformAdmin | hackathonRole   |
+      | persona         | actorKind     | hasPlatformAccount | isPlatformAdmin | eventRole   |
       | platform_admin  | platform_user | true               | true            | none            |
-      | hackathon_admin | platform_user | true               | false           | hackathon_admin |
+      | event_admin | platform_user | true               | false           | event_admin |
       | judge           | platform_user | true               | false           | judge           |
 
-  Scenario: Hackathon admin can list fixture hackathon roles through the API
-    Given the saved "hackathon_admin" Auth0 session state exists
-    When the saved "hackathon_admin" session lists fixture hackathon roles
+  Scenario: Event admin can list fixture event roles through the API
+    Given the saved "event_admin" Auth0 session state exists
+    When the saved "event_admin" session lists fixture event roles
     Then the fixture role response should include user "user_judge" as "judge"
 
   Scenario: Platform admin can grant platform-admin access through the API
@@ -28,6 +28,6 @@ Feature: TASK-3.5 authenticated API management flows
     Then the API actor platform-admin flag should be "true"
 
   Scenario: Opening submission is blocked while registration remains open
-    Given the saved "hackathon_admin" Auth0 session state exists
-    And the saved "hackathon_admin" session opens submission for the fixture hackathon
+    Given the saved "event_admin" Auth0 session state exists
+    And the saved "event_admin" session opens submission for the fixture event
     Then the API error code should be "registration_window_still_open"

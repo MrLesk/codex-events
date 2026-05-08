@@ -37,7 +37,7 @@ export function createApiRouteTestHarness(options: {
     profileIcons?: {
       binding?: string
     }
-    hackathonImages?: {
+    eventImages?: {
       binding?: string
       publicCdnBaseUrl?: string
     }
@@ -52,7 +52,7 @@ export function createApiRouteTestHarness(options: {
       queueName?: string
       retryDelaySeconds?: number
     }
-    hackathonOutcomeEmails?: {
+    eventOutcomeEmails?: {
       queueBinding?: string
       queueName?: string
       retryDelaySeconds?: number
@@ -170,24 +170,24 @@ export function createApiRouteTestHarness(options: {
   app.use(eventHandler((event) => {
     const databaseBinding = options.runtimeConfig?.database?.binding ?? 'DB'
     const profileIconsBinding = options.runtimeConfig?.profileIcons?.binding ?? 'PROFILE_ICONS'
-    const hackathonImagesBinding = options.runtimeConfig?.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
-    const hackathonImagesPublicCdnBaseUrl = options.runtimeConfig?.hackathonImages?.publicCdnBaseUrl ?? ''
+    const eventImagesBinding = options.runtimeConfig?.eventImages?.binding ?? 'EVENT_IMAGES'
+    const eventImagesPublicCdnBaseUrl = options.runtimeConfig?.eventImages?.publicCdnBaseUrl ?? ''
     const outboundEmailBinding = options.runtimeConfig?.outboundEmail?.binding ?? 'EMAIL'
     const outboundEmailFromEmail = options.runtimeConfig?.outboundEmail?.fromEmail ?? ''
-    const outboundEmailFromName = options.runtimeConfig?.outboundEmail?.fromName ?? 'Codex Hackathons'
+    const outboundEmailFromName = options.runtimeConfig?.outboundEmail?.fromName ?? 'Codex Events'
     const outboundEmailReplyTo = options.runtimeConfig?.outboundEmail?.replyTo ?? ''
     const reviewEmailsQueueBinding = options.runtimeConfig?.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
-    const reviewEmailsQueueName = options.runtimeConfig?.applicationReviewEmails?.queueName ?? 'codex-hackathons-application-review-email-delivery'
+    const reviewEmailsQueueName = options.runtimeConfig?.applicationReviewEmails?.queueName ?? 'codex-events-application-review-email-delivery'
     const reviewEmailsRetryDelaySeconds = options.runtimeConfig?.applicationReviewEmails?.retryDelaySeconds ?? 120
-    const outcomeEmailsQueueBinding = options.runtimeConfig?.hackathonOutcomeEmails?.queueBinding ?? 'HACKATHON_OUTCOME_EMAIL_QUEUE'
-    const outcomeEmailsQueueName = options.runtimeConfig?.hackathonOutcomeEmails?.queueName ?? 'codex-hackathons-hackathon-outcome-email-delivery'
-    const outcomeEmailsRetryDelaySeconds = options.runtimeConfig?.hackathonOutcomeEmails?.retryDelaySeconds ?? 120
+    const outcomeEmailsQueueBinding = options.runtimeConfig?.eventOutcomeEmails?.queueBinding ?? 'EVENT_OUTCOME_EMAIL_QUEUE'
+    const outcomeEmailsQueueName = options.runtimeConfig?.eventOutcomeEmails?.queueName ?? 'codex-events-event-outcome-email-delivery'
+    const outcomeEmailsRetryDelaySeconds = options.runtimeConfig?.eventOutcomeEmails?.retryDelaySeconds ?? 120
     const lumaApiKey = options.runtimeConfig?.luma?.apiKey ?? ''
     const lumaApiBaseUrl = options.runtimeConfig?.luma?.apiBaseUrl ?? 'https://public-api.luma.com'
     const lumaProfileBaseUrl = options.runtimeConfig?.luma?.profileBaseUrl ?? 'https://luma.com'
     const lumaWebhookSecret = options.runtimeConfig?.luma?.webhookSecret ?? ''
     const lumaQueueBinding = options.runtimeConfig?.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
-    const lumaQueueName = options.runtimeConfig?.luma?.queueName ?? 'codex-hackathons-application-luma-sync'
+    const lumaQueueName = options.runtimeConfig?.luma?.queueName ?? 'codex-events-application-luma-sync'
     const lumaRetryDelaySeconds = options.runtimeConfig?.luma?.retryDelaySeconds ?? 120
 
     event.context.cloudflare = {
@@ -206,9 +206,9 @@ export function createApiRouteTestHarness(options: {
       profileIcons: {
         binding: profileIconsBinding
       },
-      hackathonImages: {
-        binding: hackathonImagesBinding,
-        publicCdnBaseUrl: hackathonImagesPublicCdnBaseUrl
+      eventImages: {
+        binding: eventImagesBinding,
+        publicCdnBaseUrl: eventImagesPublicCdnBaseUrl
       },
       outboundEmail: {
         binding: outboundEmailBinding,
@@ -221,7 +221,7 @@ export function createApiRouteTestHarness(options: {
         queueName: reviewEmailsQueueName,
         retryDelaySeconds: reviewEmailsRetryDelaySeconds
       },
-      hackathonOutcomeEmails: {
+      eventOutcomeEmails: {
         queueBinding: outcomeEmailsQueueBinding,
         queueName: outcomeEmailsQueueName,
         retryDelaySeconds: outcomeEmailsRetryDelaySeconds

@@ -48,8 +48,8 @@ const totalLicenseCount = computed(() => new Set(
 ).size)
 
 useSeoMeta({
-  title: 'Third-Party Notices | Codex Hackathons',
-  description: 'Review runtime open-source dependency notices and license texts for Codex Hackathons.',
+  title: 'Third-Party Notices | Codex Events',
+  description: 'Review runtime open-source dependency notices and license texts for Codex Events.',
   robots: 'noindex, follow'
 })
 </script>
@@ -66,7 +66,7 @@ useSeoMeta({
             name="i-lucide-arrow-left"
             class="size-4"
           />
-          Back to hackathons
+          Back to events
         </NuxtLink>
 
         <div class="mt-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
@@ -75,7 +75,7 @@ useSeoMeta({
               Third-Party Notices
             </h1>
             <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-              This page lists the installed runtime open-source packages used by Codex Hackathons together with their declared licenses and bundled notice material.
+              This page lists the installed runtime open-source packages used by Codex Events together with their declared licenses and bundled notice material.
             </p>
             <div class="flex flex-wrap items-center gap-3 text-[13px] text-neutral-600 dark:text-[#A3A3A3]">
               <span>Generated {{ thirdPartyNoticesGeneratedAtLabel }} UTC</span>

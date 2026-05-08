@@ -1,25 +1,25 @@
 import type { LocationQueryValue } from 'vue-router'
 import type { SessionActor } from '~/domains/accounts/session-actor'
 
-import { isHackathonRoleStaffEnabled } from '~/domains/hackathons/access'
+import { isEventRoleStaffEnabled } from '~/domains/events/access'
 import { normalizeTabQueryValue } from '~/lib/query-values'
 
 export interface ShellNavigationMatchOptions {
-  accountHackathonNavigationMode?: 'participant' | 'staff' | 'admin'
+  accountEventNavigationMode?: 'participant' | 'staff' | 'admin'
 }
 
-const accountHackathonAdminTabs = ['participants', 'submissions', 'operations', 'settings'] as const
+const accountEventAdminTabs = ['participants', 'submissions', 'operations', 'settings'] as const
 
-export function isAccountHackathonDetailPath(path: string) {
-  return path.startsWith('/account/hackathons/')
+export function isAccountEventDetailPath(path: string) {
+  return path.startsWith('/account/events/')
 }
 
-export function resolveShellAccountHackathonNavigationMode(options: {
+export function resolveShellAccountEventNavigationMode(options: {
   actor: SessionActor
-  currentHackathonId?: string | null
+  currentEventId?: string | null
   currentPath: string
 }): 'participant' | 'staff' | 'admin' {
-  if (!isAccountHackathonDetailPath(options.currentPath) || options.actor.kind !== 'platform_user') {
+  if (!isAccountEventDetailPath(options.currentPath) || options.actor.kind !== 'platform_user') {
     return 'participant'
   }
 
@@ -27,19 +27,19 @@ export function resolveShellAccountHackathonNavigationMode(options: {
     return 'admin'
   }
 
-  const currentHackathonId = options.currentHackathonId?.trim() ?? ''
+  const currentEventId = options.currentEventId?.trim() ?? ''
 
-  if (!currentHackathonId) {
+  if (!currentEventId) {
     return 'participant'
   }
 
-  return options.actor.hackathonRoles.some(role =>
-    role.role === 'hackathon_admin' && role.hackathonId === currentHackathonId
+  return options.actor.eventRoles.some(role =>
+    role.role === 'event_admin' && role.eventId === currentEventId
   )
     ? 'admin'
-    : options.actor.hackathonRoles.some(role =>
-      role.hackathonId === currentHackathonId
-      && isHackathonRoleStaffEnabled(role)
+    : options.actor.eventRoles.some(role =>
+      role.eventId === currentEventId
+      && isEventRoleStaffEnabled(role)
     )
       ? 'staff'
       : 'participant'
@@ -56,49 +56,49 @@ export function isShellNavigationLinkActive(
   }
 
   const normalizedTab = normalizeTabQueryValue(currentTab)
-  const accountHackathonUsesAdminNavigation = isAccountHackathonDetailPath(currentPath)
-    && options.accountHackathonNavigationMode === 'admin'
-  const accountHackathonUsesStaffNavigation = isAccountHackathonDetailPath(currentPath)
-    && options.accountHackathonNavigationMode === 'staff'
-  const accountHackathonUsesParticipantNavigation = isAccountHackathonDetailPath(currentPath)
-    && options.accountHackathonNavigationMode === 'participant'
+  const accountEventUsesAdminNavigation = isAccountEventDetailPath(currentPath)
+    && options.accountEventNavigationMode === 'admin'
+  const accountEventUsesStaffNavigation = isAccountEventDetailPath(currentPath)
+    && options.accountEventNavigationMode === 'staff'
+  const accountEventUsesParticipantNavigation = isAccountEventDetailPath(currentPath)
+    && options.accountEventNavigationMode === 'participant'
 
   if (targetPath === '/account') {
     if (currentPath === '/account') {
       return true
     }
 
-    if (!isAccountHackathonDetailPath(currentPath)) {
+    if (!isAccountEventDetailPath(currentPath)) {
       return false
     }
 
-    if (accountHackathonUsesAdminNavigation) {
+    if (accountEventUsesAdminNavigation) {
       return false
     }
 
-    if (accountHackathonUsesStaffNavigation) {
+    if (accountEventUsesStaffNavigation) {
       return false
     }
 
-    if (accountHackathonUsesParticipantNavigation) {
+    if (accountEventUsesParticipantNavigation) {
       return normalizedTab !== 'judging'
     }
 
-    return normalizedTab !== 'judging' && !accountHackathonAdminTabs.includes(normalizedTab as (typeof accountHackathonAdminTabs)[number])
+    return normalizedTab !== 'judging' && !accountEventAdminTabs.includes(normalizedTab as (typeof accountEventAdminTabs)[number])
   }
 
   if (targetPath === '/account/staff') {
     return currentPath === '/account/staff'
-      || (isAccountHackathonDetailPath(currentPath)
-        && !accountHackathonUsesAdminNavigation
-        && accountHackathonUsesStaffNavigation
+      || (isAccountEventDetailPath(currentPath)
+        && !accountEventUsesAdminNavigation
+        && accountEventUsesStaffNavigation
         && normalizedTab !== 'judging')
   }
 
   if (targetPath === '/account/judging') {
     return currentPath === '/account/judging'
-      || (isAccountHackathonDetailPath(currentPath)
-        && !accountHackathonUsesAdminNavigation
+      || (isAccountEventDetailPath(currentPath)
+        && !accountEventUsesAdminNavigation
         && normalizedTab === 'judging')
   }
 
@@ -107,12 +107,12 @@ export function isShellNavigationLinkActive(
       || currentPath === '/account/platform-admins'
       || currentPath === '/account/event-organizers'
       || currentPath === '/account/platform-legal'
-      || (isAccountHackathonDetailPath(currentPath)
+      || (isAccountEventDetailPath(currentPath)
         && (
-          accountHackathonUsesAdminNavigation
+          accountEventUsesAdminNavigation
           || (
-            !accountHackathonUsesParticipantNavigation
-            && accountHackathonAdminTabs.includes(normalizedTab as (typeof accountHackathonAdminTabs)[number])
+            !accountEventUsesParticipantNavigation
+            && accountEventAdminTabs.includes(normalizedTab as (typeof accountEventAdminTabs)[number])
           )
         ))
   }

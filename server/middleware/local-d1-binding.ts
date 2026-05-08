@@ -4,7 +4,7 @@ import { ApiError } from '#server/http/api-error'
 import {
   authenticatedUploadRateLimitBindingName,
   publicContactRateLimitBindingName,
-  publicHackathonFeedbackRateLimitBindingName
+  publicEventFeedbackRateLimitBindingName
 } from '#server/utils/rate-limit'
 import { createLocalPlatformProxy } from '#server/database/local-platform-proxy'
 import { defaultOutboundEmailBinding } from '#server/utils/outbound-email'
@@ -99,11 +99,11 @@ export default defineEventHandler(async (event) => {
   const runtimeConfig = useRuntimeConfig(event)
   const databaseBindingName = runtimeConfig.database?.binding ?? 'DB'
   const profileIconsBindingName = runtimeConfig.profileIcons?.binding ?? 'PROFILE_ICONS'
-  const hackathonImagesBindingName = runtimeConfig.hackathonImages?.binding ?? 'HACKATHON_IMAGES'
+  const eventImagesBindingName = runtimeConfig.eventImages?.binding ?? 'EVENT_IMAGES'
   const imagesBindingName = 'IMAGES'
   const outboundEmailBindingName = runtimeConfig.outboundEmail?.binding ?? defaultOutboundEmailBinding
   const applicationReviewEmailQueueBindingName = runtimeConfig.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
-  const hackathonOutcomeEmailQueueBindingName = runtimeConfig.hackathonOutcomeEmails?.queueBinding ?? 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+  const eventOutcomeEmailQueueBindingName = runtimeConfig.eventOutcomeEmails?.queueBinding ?? 'EVENT_OUTCOME_EMAIL_QUEUE'
   const applicationLumaSyncQueueBindingName = runtimeConfig.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
   const cloudflareEnv = event.context.cloudflare?.env as Record<string, unknown> | undefined
 
@@ -129,10 +129,10 @@ export default defineEventHandler(async (event) => {
   const proxyProfileIconsBucket = proxyEnv[profileIconsBindingName]
     ?? (profileIconsBindingName === 'PROFILE_ICONS' ? undefined : proxyEnv.PROFILE_ICONS)
   const profileIconsBucket = existingProfileIconsBucket ?? proxyProfileIconsBucket
-  const existingHackathonImagesBucket = cloudflareEnv?.[hackathonImagesBindingName]
-  const proxyHackathonImagesBucket = proxyEnv[hackathonImagesBindingName]
-    ?? (hackathonImagesBindingName === 'HACKATHON_IMAGES' ? undefined : proxyEnv.HACKATHON_IMAGES)
-  const hackathonImagesBucket = existingHackathonImagesBucket ?? proxyHackathonImagesBucket
+  const existingEventImagesBucket = cloudflareEnv?.[eventImagesBindingName]
+  const proxyEventImagesBucket = proxyEnv[eventImagesBindingName]
+    ?? (eventImagesBindingName === 'EVENT_IMAGES' ? undefined : proxyEnv.EVENT_IMAGES)
+  const eventImagesBucket = existingEventImagesBucket ?? proxyEventImagesBucket
   const existingImagesBinding = cloudflareEnv?.[imagesBindingName]
   const imagesBinding = existingImagesBinding ?? proxyEnv[imagesBindingName]
   const existingOutboundEmailBinding = cloudflareEnv?.[outboundEmailBindingName]
@@ -145,12 +145,12 @@ export default defineEventHandler(async (event) => {
       ? undefined
       : proxyEnv.APPLICATION_REVIEW_EMAIL_QUEUE)
   const applicationReviewEmailQueue = existingApplicationReviewEmailQueue ?? proxyApplicationReviewEmailQueue
-  const existingHackathonOutcomeEmailQueue = cloudflareEnv?.[hackathonOutcomeEmailQueueBindingName]
-  const proxyHackathonOutcomeEmailQueue = proxyEnv[hackathonOutcomeEmailQueueBindingName]
-    ?? (hackathonOutcomeEmailQueueBindingName === 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+  const existingEventOutcomeEmailQueue = cloudflareEnv?.[eventOutcomeEmailQueueBindingName]
+  const proxyEventOutcomeEmailQueue = proxyEnv[eventOutcomeEmailQueueBindingName]
+    ?? (eventOutcomeEmailQueueBindingName === 'EVENT_OUTCOME_EMAIL_QUEUE'
       ? undefined
-      : proxyEnv.HACKATHON_OUTCOME_EMAIL_QUEUE)
-  const hackathonOutcomeEmailQueue = existingHackathonOutcomeEmailQueue ?? proxyHackathonOutcomeEmailQueue
+      : proxyEnv.EVENT_OUTCOME_EMAIL_QUEUE)
+  const eventOutcomeEmailQueue = existingEventOutcomeEmailQueue ?? proxyEventOutcomeEmailQueue
   const existingApplicationLumaSyncQueue = cloudflareEnv?.[applicationLumaSyncQueueBindingName]
   const proxyApplicationLumaSyncQueue = proxyEnv[applicationLumaSyncQueueBindingName]
     ?? (applicationLumaSyncQueueBindingName === 'APPLICATION_LUMA_SYNC_QUEUE'
@@ -159,9 +159,9 @@ export default defineEventHandler(async (event) => {
   const applicationLumaSyncQueue = existingApplicationLumaSyncQueue ?? proxyApplicationLumaSyncQueue
   const existingPublicContactRateLimiter = cloudflareEnv?.[publicContactRateLimitBindingName]
   const publicContactRateLimiter = existingPublicContactRateLimiter ?? proxyEnv[publicContactRateLimitBindingName]
-  const existingPublicHackathonFeedbackRateLimiter = cloudflareEnv?.[publicHackathonFeedbackRateLimitBindingName]
-  const publicHackathonFeedbackRateLimiter = existingPublicHackathonFeedbackRateLimiter
-    ?? proxyEnv[publicHackathonFeedbackRateLimitBindingName]
+  const existingPublicEventFeedbackRateLimiter = cloudflareEnv?.[publicEventFeedbackRateLimitBindingName]
+  const publicEventFeedbackRateLimiter = existingPublicEventFeedbackRateLimiter
+    ?? proxyEnv[publicEventFeedbackRateLimitBindingName]
   const existingAuthenticatedUploadRateLimiter = cloudflareEnv?.[authenticatedUploadRateLimitBindingName]
   const authenticatedUploadRateLimiter = existingAuthenticatedUploadRateLimiter ?? proxyEnv[authenticatedUploadRateLimitBindingName]
 
@@ -185,8 +185,8 @@ export default defineEventHandler(async (event) => {
     event.context.cloudflare.env[profileIconsBindingName] = profileIconsBucket as never
   }
 
-  if (!event.context.cloudflare.env[hackathonImagesBindingName] && isR2BucketLike(hackathonImagesBucket)) {
-    event.context.cloudflare.env[hackathonImagesBindingName] = hackathonImagesBucket as never
+  if (!event.context.cloudflare.env[eventImagesBindingName] && isR2BucketLike(eventImagesBucket)) {
+    event.context.cloudflare.env[eventImagesBindingName] = eventImagesBucket as never
   }
 
   if (!event.context.cloudflare.env[imagesBindingName] && isImagesBindingLike(imagesBinding)) {
@@ -201,8 +201,8 @@ export default defineEventHandler(async (event) => {
     event.context.cloudflare.env[applicationReviewEmailQueueBindingName] = applicationReviewEmailQueue as never
   }
 
-  if (!event.context.cloudflare.env[hackathonOutcomeEmailQueueBindingName] && isQueueProducerLike(hackathonOutcomeEmailQueue)) {
-    event.context.cloudflare.env[hackathonOutcomeEmailQueueBindingName] = hackathonOutcomeEmailQueue as never
+  if (!event.context.cloudflare.env[eventOutcomeEmailQueueBindingName] && isQueueProducerLike(eventOutcomeEmailQueue)) {
+    event.context.cloudflare.env[eventOutcomeEmailQueueBindingName] = eventOutcomeEmailQueue as never
   }
 
   if (!event.context.cloudflare.env[applicationLumaSyncQueueBindingName] && isQueueProducerLike(applicationLumaSyncQueue)) {
@@ -214,10 +214,10 @@ export default defineEventHandler(async (event) => {
   }
 
   if (
-    !event.context.cloudflare.env[publicHackathonFeedbackRateLimitBindingName]
-    && isRateLimitBindingLike(publicHackathonFeedbackRateLimiter)
+    !event.context.cloudflare.env[publicEventFeedbackRateLimitBindingName]
+    && isRateLimitBindingLike(publicEventFeedbackRateLimiter)
   ) {
-    event.context.cloudflare.env[publicHackathonFeedbackRateLimitBindingName] = publicHackathonFeedbackRateLimiter as never
+    event.context.cloudflare.env[publicEventFeedbackRateLimitBindingName] = publicEventFeedbackRateLimiter as never
   }
 
   if (
@@ -231,9 +231,9 @@ export default defineEventHandler(async (event) => {
   profileIconContext.profileIconsBucket = isR2BucketLike(profileIconsBucket)
     ? profileIconsBucket
     : undefined
-  const hackathonImageContext = event.context as typeof event.context & { hackathonImagesBucket?: R2BucketLike }
-  hackathonImageContext.hackathonImagesBucket = isR2BucketLike(hackathonImagesBucket)
-    ? hackathonImagesBucket
+  const eventImageContext = event.context as typeof event.context & { eventImagesBucket?: R2BucketLike }
+  eventImageContext.eventImagesBucket = isR2BucketLike(eventImagesBucket)
+    ? eventImagesBucket
     : undefined
   event.context.d1Database = d1Database as D1DatabaseBinding as never
 })

@@ -1,5 +1,5 @@
 export const appShellSidebarCollapsedStateKey = 'app-shell-sidebar-collapsed'
-export const appShellSidebarCollapseStorageKey = 'codex-hackathons-sidebar-collapsed'
+export const appShellSidebarCollapseStorageKey = 'codex-events-sidebar-collapsed'
 
 export function getAppShellSidebarRailClass(collapsed: boolean) {
   return collapsed ? 'w-[68px] min-w-[68px]' : 'w-[260px] min-w-[260px]'

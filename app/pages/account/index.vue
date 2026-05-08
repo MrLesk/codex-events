@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import HackathonParticipationCard from '~/components/hackathons/HackathonParticipationCard.vue'
+import EventParticipationCard from '~/components/events/EventParticipationCard.vue'
 
 definePageMeta({
   middleware: ['require-platform-account']
 })
 
-const workspace = useHackathonParticipationWorkspace()
+const workspace = useEventParticipationWorkspace()
 
-function isUpcomingHackathon(startsAt: string) {
+function isUpcomingEvent(startsAt: string) {
   const parsedStartsAt = Date.parse(startsAt)
 
   if (Number.isNaN(parsedStartsAt)) {
@@ -20,26 +20,26 @@ function isUpcomingHackathon(startsAt: string) {
 const isLoading = computed(() =>
   workspace.status.value === 'idle' || workspace.status.value === 'pending'
 )
-const activeHackathons = computed(() =>
-  workspace.currentHackathons.value.filter(record => !isUpcomingHackathon(record.hackathon.startsAt))
+const activeEvents = computed(() =>
+  workspace.currentEvents.value.filter(record => !isUpcomingEvent(record.event.startsAt))
 )
-const upcomingHackathons = computed(() =>
-  [...workspace.currentHackathons.value]
-    .filter(record => isUpcomingHackathon(record.hackathon.startsAt))
+const upcomingEvents = computed(() =>
+  [...workspace.currentEvents.value]
+    .filter(record => isUpcomingEvent(record.event.startsAt))
     .sort((left, right) =>
-      Date.parse(left.hackathon.startsAt) - Date.parse(right.hackathon.startsAt)
+      Date.parse(left.event.startsAt) - Date.parse(right.event.startsAt)
     )
 )
-const pastHackathons = computed(() => workspace.pastHackathons.value)
-const hasHackathons = computed(() =>
-  activeHackathons.value.length > 0
-  || upcomingHackathons.value.length > 0
-  || pastHackathons.value.length > 0
+const pastEvents = computed(() => workspace.pastEvents.value)
+const hasEvents = computed(() =>
+  activeEvents.value.length > 0
+  || upcomingEvents.value.length > 0
+  || pastEvents.value.length > 0
 )
 
 useSeoMeta({
-  title: 'My Hackathons | Codex Hackathons',
-  description: 'See your current, upcoming, and past hackathons.'
+  title: 'My Events | Codex Events',
+  description: 'See your current, upcoming, and past events.'
 })
 </script>
 
@@ -49,7 +49,7 @@ useSeoMeta({
       <AppContainer class="max-w-[68rem] pb-0 pt-2 sm:pt-3">
         <div class="pb-4">
           <h1 class="text-[28px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-            My hackathons
+            My events
           </h1>
         </div>
       </AppContainer>
@@ -60,7 +60,7 @@ useSeoMeta({
         v-if="workspace.errorMessage.value"
         color="error"
         variant="soft"
-        title="My hackathons are unavailable"
+        title="My events are unavailable"
         :description="workspace.errorMessage.value"
       />
 
@@ -72,17 +72,17 @@ useSeoMeta({
       </template>
 
       <section
-        v-else-if="!hasHackathons"
+        v-else-if="!hasEvents"
         class="rounded-[1.75rem] border border-dashed border-black/10 bg-white px-6 py-16 text-center dark:border-white/[0.08] dark:bg-[#111111]"
       >
         <p class="text-[11px] font-semibold tracking-[0.18em] text-muted uppercase">
-          No hackathons yet
+          No events yet
         </p>
         <h2 class="mt-3 text-[26px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
           Your workspace is empty
         </h2>
         <p class="mx-auto mt-3 max-w-2xl text-[15px] text-neutral-600 dark:text-[#A3A3A3]">
-          Once you apply to or join a hackathon, it will appear here. Start by exploring the open hackathons on the public side of the platform.
+          Once you apply to or join an event, it will appear here. Start by exploring the open events on the public side of the platform.
         </p>
         <div class="mt-6 flex justify-center">
           <AppButton
@@ -91,14 +91,14 @@ useSeoMeta({
             variant="solid"
             class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
           >
-            Explore hackathons
+            Explore events
           </AppButton>
         </div>
       </section>
 
       <template v-else>
         <section
-          v-if="upcomingHackathons.length > 0"
+          v-if="upcomingEvents.length > 0"
           class="space-y-4"
         >
           <div class="border-b border-black/8 pb-3 dark:border-white/[0.08]">
@@ -108,16 +108,16 @@ useSeoMeta({
           </div>
 
           <div class="grid gap-5">
-            <HackathonParticipationCard
-              v-for="record in upcomingHackathons"
-              :key="record.hackathon.id"
+            <EventParticipationCard
+              v-for="record in upcomingEvents"
+              :key="record.event.id"
               :record="record"
             />
           </div>
         </section>
 
         <section
-          v-if="activeHackathons.length > 0"
+          v-if="activeEvents.length > 0"
           class="space-y-4"
         >
           <div class="border-b border-black/8 pb-3 dark:border-white/[0.08]">
@@ -127,16 +127,16 @@ useSeoMeta({
           </div>
 
           <div class="grid gap-5">
-            <HackathonParticipationCard
-              v-for="record in activeHackathons"
-              :key="record.hackathon.id"
+            <EventParticipationCard
+              v-for="record in activeEvents"
+              :key="record.event.id"
               :record="record"
             />
           </div>
         </section>
 
         <section
-          v-if="pastHackathons.length > 0"
+          v-if="pastEvents.length > 0"
           class="space-y-4"
         >
           <div class="border-b border-black/8 pb-3 dark:border-white/[0.08]">
@@ -146,9 +146,9 @@ useSeoMeta({
           </div>
 
           <div class="grid gap-5">
-            <HackathonParticipationCard
-              v-for="record in pastHackathons"
-              :key="record.hackathon.id"
+            <EventParticipationCard
+              v-for="record in pastEvents"
+              :key="record.event.id"
               :record="record"
             />
           </div>
@@ -157,10 +157,10 @@ useSeoMeta({
         <section class="rounded-[1.5rem] border border-black/8 bg-white px-6 py-8 dark:border-white/[0.08] dark:bg-[#111111]">
           <div class="max-w-2xl space-y-3">
             <h2 class="text-[24px] font-semibold tracking-[-0.02em] text-highlighted dark:text-white">
-              Find more hackathons to join
+              Find more events to join
             </h2>
             <p class="text-[15px] text-neutral-600 dark:text-[#A3A3A3]">
-              Explore the open hackathons on the public side of the platform and apply when you are ready to participate.
+              Explore the open events on the public side of the platform and apply when you are ready to participate.
             </p>
             <div class="pt-1">
               <AppButton
@@ -169,7 +169,7 @@ useSeoMeta({
                 variant="solid"
                 class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
               >
-                Explore hackathons
+                Explore events
                 <template #trailing>
                   <AppIcon
                     name="i-lucide-arrow-up-right"

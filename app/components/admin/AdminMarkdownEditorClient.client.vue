@@ -56,7 +56,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="hackathon-markdown-editor min-w-0 overflow-hidden">
+  <div class="event-markdown-editor min-w-0 overflow-hidden">
     <MdEditor
       :id="props.editorId"
       v-model="model"
@@ -75,11 +75,11 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.hackathon-markdown-editor {
+.event-markdown-editor {
   min-width: 0;
 }
 
-.hackathon-markdown-editor :deep(.md-editor) {
+.event-markdown-editor :deep(.md-editor) {
   width: 100%;
   max-width: 100%;
   border-radius: 0.875rem;
@@ -93,7 +93,7 @@ onBeforeUnmount(() => {
   --md-border-active-color: rgb(3 2 19 / 0.25);
 }
 
-.hackathon-markdown-editor :deep(.md-editor-dark) {
+.event-markdown-editor :deep(.md-editor-dark) {
   --md-color: var(--text-highlighted);
   --md-hover-color: var(--text-highlighted);
   --md-bk-color: #111111;
@@ -104,11 +104,11 @@ onBeforeUnmount(() => {
   --md-border-active-color: rgb(255 255 255 / 0.24);
 }
 
-.hackathon-markdown-editor :deep(.md-editor-toolbar-wrapper) {
+.event-markdown-editor :deep(.md-editor-toolbar-wrapper) {
   backdrop-filter: blur(12px);
 }
 
-.hackathon-markdown-editor :deep(.md-editor-preview) {
+.event-markdown-editor :deep(.md-editor-preview) {
   font-size: 15px;
   line-height: 1.75;
 }

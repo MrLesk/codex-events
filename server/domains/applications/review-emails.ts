@@ -36,8 +36,8 @@ export interface ApplicationReviewDecisionEmailInput {
   reviewedAt: string
   recipientEmail: string | null
   recipientDisplayName?: string | null
-  hackathonName: string
-  hackathonSlug: string
+  eventName: string
+  eventSlug: string
 }
 
 export type ApplicationReviewDecisionEmailDeliveryResult = {
@@ -76,7 +76,7 @@ function resolveRuntimeConfigFromUnknown(candidate: unknown): ApplicationReviewE
   return parsed.success ? parsed.data : {}
 }
 
-function resolveApplicationDashboardUrl(runtimeConfig: ApplicationReviewEmailRuntimeConfig, hackathonSlug: string) {
+function resolveApplicationDashboardUrl(runtimeConfig: ApplicationReviewEmailRuntimeConfig, eventSlug: string) {
   const appBaseUrl = runtimeConfig.auth0?.appBaseUrl?.trim()
 
   if (!appBaseUrl) {
@@ -84,7 +84,7 @@ function resolveApplicationDashboardUrl(runtimeConfig: ApplicationReviewEmailRun
   }
 
   try {
-    return new URL(`/account/hackathons/${encodeURIComponent(hackathonSlug)}`, appBaseUrl).toString()
+    return new URL(`/account/events/${encodeURIComponent(eventSlug)}`, appBaseUrl).toString()
   } catch {
     return null
   }
@@ -104,28 +104,28 @@ function toPreferredFirstName(displayName: string | null | undefined) {
 function buildApplicationReviewEmailContent(input: ApplicationReviewDecisionEmailInput, dashboardUrl: string | null) {
   const firstName = toPreferredFirstName(input.recipientDisplayName)
   const escapedFirstName = escapeHtml(firstName)
-  const escapedHackathonName = escapeHtml(input.hackathonName)
+  const escapedEventName = escapeHtml(input.eventName)
   const linkText = dashboardUrl
     ? `You can view your current status here: ${dashboardUrl}`
     : 'You can view your current status in your account dashboard.'
   const escapedLinkText = escapeHtml(linkText)
   const dashboardAnchor = dashboardUrl
-    ? `<p><a href="${escapeHtml(dashboardUrl)}">Open your hackathon dashboard</a></p>`
+    ? `<p><a href="${escapeHtml(dashboardUrl)}">Open your event dashboard</a></p>`
     : ''
 
   if (input.decision === 'approved') {
     return {
-      subject: `You're accepted to ${input.hackathonName}`,
+      subject: `You're accepted to ${input.eventName}`,
       text: [
         `Hi ${firstName},`,
         '',
-        `Great news - your application for ${input.hackathonName} has been approved.`,
+        `Great news - your application for ${input.eventName} has been approved.`,
         '',
         linkText
       ].join('\n'),
       html: [
         `<p>Hi ${escapedFirstName},</p>`,
-        `<p>Great news - your application for <strong>${escapedHackathonName}</strong> has been approved.</p>`,
+        `<p>Great news - your application for <strong>${escapedEventName}</strong> has been approved.</p>`,
         `<p>${escapedLinkText}</p>`,
         dashboardAnchor
       ].join('\n')
@@ -133,18 +133,18 @@ function buildApplicationReviewEmailContent(input: ApplicationReviewDecisionEmai
   }
 
   return {
-    subject: `Update on your ${input.hackathonName} application`,
+    subject: `Update on your ${input.eventName} application`,
     text: [
       `Hi ${firstName},`,
       '',
-      `Thanks for applying to ${input.hackathonName}.`,
+      `Thanks for applying to ${input.eventName}.`,
       'Your application was not selected this time.',
       '',
       linkText
     ].join('\n'),
     html: [
       `<p>Hi ${escapedFirstName},</p>`,
-      `<p>Thanks for applying to <strong>${escapedHackathonName}</strong>.</p>`,
+      `<p>Thanks for applying to <strong>${escapedEventName}</strong>.</p>`,
       '<p>Your application was not selected this time.</p>',
       `<p>${escapedLinkText}</p>`,
       dashboardAnchor
@@ -195,7 +195,7 @@ export async function sendApplicationReviewDecisionEmail(
     }
   }
 
-  const dashboardUrl = resolveApplicationDashboardUrl(runtimeConfig, input.hackathonSlug)
+  const dashboardUrl = resolveApplicationDashboardUrl(runtimeConfig, input.eventSlug)
   const content = buildApplicationReviewEmailContent(input, dashboardUrl)
   const replyTo = getOutboundEmailReplyTo(runtimeConfig)
   const emailKey = `application-review:${input.applicationId}:${input.decision}:${input.reviewedAt}`

@@ -1,0 +1,478 @@
+import { z } from 'zod'
+import type {
+  EventAgendaItem,
+  EventRecord,
+  EventType
+} from '~/domains/events/records'
+
+export interface EventFormState {
+  eventType: EventType
+  name: string
+  slug: string
+  discordServerUrl: string
+  lumaEventUrl: string
+  lumaEventApiId: string
+  description: string
+  agendaItems: EventFormAgendaItem[]
+  tracks: EventFormTrack[]
+  backgroundImageUrl: string
+  bannerImageUrl: string
+  city: string
+  country: string
+  address: string
+  registrationOpensAt: string
+  registrationClosesAt: string
+  submissionOpensAt: string
+  submissionClosesAt: string
+  maxTeamMembers: number
+  participantsLimit: number | null
+  autoApproveApplications: boolean
+  blindReviewCount: number
+  pitchReviewEnabled: boolean
+  blindScoreWeightPercent: number
+  pitchScoreWeightPercent: number
+  shortlistFinalistCount: number
+  inPersonEvent: boolean
+  requireXProfile: boolean
+  requireLinkedinProfile: boolean
+  requireGithubProfile: boolean
+  requireChatgptEmail: boolean
+  requireOpenaiOrgId: boolean
+  requireLumaEmail: boolean
+  requireWhyThisEvent: boolean
+  requireProofOfExecution: boolean
+  requireSubmissionSummary: boolean
+  requireSubmissionRepositoryUrl: boolean
+  requireSubmissionDemoUrl: boolean
+}
+
+export interface EventFormAgendaItem {
+  id: string
+  startsAt: string
+  endsAt: string
+  title: string
+  details: string
+  displayOrder: number
+}
+
+export interface EventFormTrack {
+  id: string
+  name: string
+  description: string
+  displayOrder: number
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const parsed = new URL(value)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function createOptionalHttpUrlSchema(message: string) {
+  return z.string().trim().refine(
+    value => value.length === 0 || isHttpUrl(value),
+    message
+  )
+}
+
+function createOptionalLumaEventApiIdSchema(message: string) {
+  return z.string().trim().refine(
+    value => value.length === 0 || /^evt-[A-Za-z0-9]+$/.test(value),
+    message
+  )
+}
+
+const requiredTextSchema = z.string().trim().min(1)
+const slugSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slugs must use lowercase letters, numbers, and hyphens only.')
+
+const agendaItemSchema = z.object({
+  id: z.string().trim().min(1),
+  startsAt: z.string().trim().min(1),
+  endsAt: z.string().trim(),
+  title: z.string().trim().min(1),
+  details: z.string(),
+  displayOrder: z.number().int().min(0)
+}).superRefine((item, context) => {
+  if (Number.isNaN(Date.parse(item.startsAt))) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['startsAt'],
+      message: 'Provide a valid agenda start date and time.'
+    })
+  }
+
+  if (item.endsAt.length > 0 && Number.isNaN(Date.parse(item.endsAt))) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['endsAt'],
+      message: 'Provide a valid agenda end date and time.'
+    })
+  }
+
+  if (item.endsAt.length === 0) {
+    return
+  }
+
+  if (Date.parse(item.endsAt) < Date.parse(item.startsAt)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['endsAt'],
+      message: 'Agenda end time must be on or after the start time.'
+    })
+  }
+})
+
+const trackSchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().trim().min(1, 'Enter a track name.'),
+  description: z.string().trim().min(1, 'Enter a track description.'),
+  displayOrder: z.number().int().min(0)
+})
+
+export const eventConfigFormSchema: z.ZodType<EventFormState> = z.object({
+  eventType: z.enum(['hackathon', 'meetup', 'build']),
+  name: requiredTextSchema,
+  slug: slugSchema,
+  discordServerUrl: createOptionalHttpUrlSchema('Enter a valid Discord server URL.'),
+  lumaEventUrl: createOptionalHttpUrlSchema('Enter a valid Luma event URL.'),
+  lumaEventApiId: createOptionalLumaEventApiIdSchema('Enter a valid Luma event API ID like evt-123.'),
+  description: requiredTextSchema,
+  agendaItems: z.array(agendaItemSchema).superRefine((items, context) => {
+    const ids = new Set<string>()
+
+    items.forEach((item, index) => {
+      if (!ids.has(item.id)) {
+        ids.add(item.id)
+        return
+      }
+
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index, 'id'],
+        message: 'Agenda item IDs must be unique.'
+      })
+    })
+  }),
+  tracks: z.array(trackSchema).superRefine((tracks, context) => {
+    const ids = new Set<string>()
+
+    tracks.forEach((track, index) => {
+      if (!ids.has(track.id)) {
+        ids.add(track.id)
+        return
+      }
+
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [index, 'id'],
+        message: 'Track IDs must be unique.'
+      })
+    })
+  }),
+  backgroundImageUrl: createOptionalHttpUrlSchema('Enter a valid background image URL.'),
+  bannerImageUrl: createOptionalHttpUrlSchema('Enter a valid banner image URL.'),
+  city: requiredTextSchema,
+  country: requiredTextSchema,
+  address: requiredTextSchema,
+  registrationOpensAt: z.string().trim().min(1),
+  registrationClosesAt: z.string().trim().min(1),
+  submissionOpensAt: z.string().trim(),
+  submissionClosesAt: z.string().trim(),
+  maxTeamMembers: z.number().int().min(1),
+  participantsLimit: z.number().int().min(1).nullable(),
+  autoApproveApplications: z.boolean(),
+  blindReviewCount: z.number().int().min(0).max(2),
+  pitchReviewEnabled: z.boolean(),
+  blindScoreWeightPercent: z.number().int().min(0).max(100),
+  pitchScoreWeightPercent: z.number().int().min(0).max(100),
+  shortlistFinalistCount: z.number().int().min(1),
+  inPersonEvent: z.boolean(),
+  requireXProfile: z.boolean(),
+  requireLinkedinProfile: z.boolean(),
+  requireGithubProfile: z.boolean(),
+  requireChatgptEmail: z.boolean(),
+  requireOpenaiOrgId: z.boolean(),
+  requireLumaEmail: z.boolean(),
+  requireWhyThisEvent: z.boolean(),
+  requireProofOfExecution: z.boolean(),
+  requireSubmissionSummary: z.boolean(),
+  requireSubmissionRepositoryUrl: z.boolean(),
+  requireSubmissionDemoUrl: z.boolean()
+}).superRefine((input, context) => {
+  const registrationOpensAt = Date.parse(input.registrationOpensAt)
+  const registrationClosesAt = Date.parse(input.registrationClosesAt)
+  const submissionOpensAt = Date.parse(input.submissionOpensAt)
+  const submissionClosesAt = Date.parse(input.submissionClosesAt)
+  const isHackathon = input.eventType === 'hackathon'
+
+  if (Number.isNaN(registrationOpensAt)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['registrationOpensAt'],
+      message: 'Provide a valid registration open date and time.'
+    })
+  }
+
+  if (Number.isNaN(registrationClosesAt)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['registrationClosesAt'],
+      message: 'Provide a valid registration close date and time.'
+    })
+  }
+
+  if (isHackathon && Number.isNaN(submissionOpensAt)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['submissionOpensAt'],
+      message: 'Provide a valid submission open date and time.'
+    })
+  }
+
+  if (isHackathon && Number.isNaN(submissionClosesAt)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['submissionClosesAt'],
+      message: 'Provide a valid submission close date and time.'
+    })
+  }
+
+  if (isHackathon && (
+    !(
+      registrationOpensAt < registrationClosesAt
+      && registrationClosesAt <= submissionOpensAt
+      && submissionOpensAt < submissionClosesAt
+    )
+  )) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['submissionClosesAt'],
+      message: 'Schedule must satisfy registration open < registration close <= submission open < submission close.'
+    })
+  }
+
+  if (isHackathon && input.blindReviewCount === 0 && !input.pitchReviewEnabled) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['blindReviewCount'],
+      message: 'Enable at least one judging stage.'
+    })
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['pitchReviewEnabled'],
+      message: 'Enable at least one judging stage.'
+    })
+  }
+
+  if (
+    isHackathon
+    && input.blindReviewCount > 0
+    && input.pitchReviewEnabled
+    && input.blindScoreWeightPercent + input.pitchScoreWeightPercent !== 100
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['blindScoreWeightPercent'],
+      message: 'Blind and pitch score weights must add up to 100.'
+    })
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['pitchScoreWeightPercent'],
+      message: 'Blind and pitch score weights must add up to 100.'
+    })
+  }
+})
+
+export function createEventSlug(name: string) {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-')
+}
+
+export function getTermsVersionPublishErrorMessage(title: string, content: string) {
+  if (title.trim().length === 0) {
+    return 'Enter a title before publishing this terms version.'
+  }
+
+  if (content.trim().length === 0) {
+    return 'Enter the terms content before publishing this terms version.'
+  }
+
+  return ''
+}
+
+export function createEmptyEventFormState(): EventFormState {
+  return {
+    eventType: 'hackathon',
+    name: '',
+    slug: '',
+    discordServerUrl: '',
+    lumaEventUrl: '',
+    lumaEventApiId: '',
+    description: '',
+    agendaItems: [],
+    tracks: [],
+    backgroundImageUrl: '',
+    bannerImageUrl: '',
+    city: '',
+    country: '',
+    address: '',
+    registrationOpensAt: '',
+    registrationClosesAt: '',
+    submissionOpensAt: '',
+    submissionClosesAt: '',
+    maxTeamMembers: 4,
+    participantsLimit: null,
+    autoApproveApplications: false,
+    blindReviewCount: 1,
+    pitchReviewEnabled: false,
+    blindScoreWeightPercent: 70,
+    pitchScoreWeightPercent: 30,
+    shortlistFinalistCount: 10,
+    inPersonEvent: false,
+    requireXProfile: false,
+    requireLinkedinProfile: false,
+    requireGithubProfile: false,
+    requireChatgptEmail: true,
+    requireOpenaiOrgId: true,
+    requireLumaEmail: true,
+    requireWhyThisEvent: false,
+    requireProofOfExecution: false,
+    requireSubmissionSummary: false,
+    requireSubmissionRepositoryUrl: false,
+    requireSubmissionDemoUrl: false
+  }
+}
+
+export function getNextAgendaItemDefaultTimes(previousItem?: EventFormAgendaItem | null) {
+  const previousEndsAt = previousItem?.endsAt?.trim() ?? ''
+
+  if (!previousEndsAt) {
+    return {
+      startsAt: '',
+      endsAt: ''
+    }
+  }
+
+  return {
+    startsAt: previousEndsAt,
+    endsAt: previousEndsAt
+  }
+}
+
+export function createEventFormState(event: EventRecord): EventFormState {
+  return {
+    eventType: event.eventType,
+    name: event.name,
+    slug: event.slug,
+    discordServerUrl: event.discordServerUrl ?? '',
+    lumaEventUrl: event.lumaEventUrl ?? '',
+    lumaEventApiId: event.lumaEventApiId ?? '',
+    description: event.description,
+    agendaItems: [...event.agendaItems]
+      .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
+      .map(item => ({
+        id: item.id,
+        startsAt: toDateTimeLocalValue(item.startsAt),
+        endsAt: toDateTimeLocalValue(item.endsAt),
+        title: item.title,
+        details: item.details ?? '',
+        displayOrder: item.displayOrder
+      })),
+    tracks: [...(event.tracks ?? [])]
+      .sort((left, right) => left.displayOrder - right.displayOrder || left.createdAt.localeCompare(right.createdAt))
+      .map(track => ({
+        id: track.id,
+        name: track.name,
+        description: track.description,
+        displayOrder: track.displayOrder
+      })),
+    backgroundImageUrl: event.backgroundImageUrl ?? '',
+    bannerImageUrl: event.bannerImageUrl ?? '',
+    city: event.city,
+    country: event.country,
+    address: event.address,
+    registrationOpensAt: toDateTimeLocalValue(event.registrationOpensAt),
+    registrationClosesAt: toDateTimeLocalValue(event.registrationClosesAt),
+    submissionOpensAt: toDateTimeLocalValue(event.submissionOpensAt),
+    submissionClosesAt: toDateTimeLocalValue(event.submissionClosesAt),
+    maxTeamMembers: event.maxTeamMembers,
+    participantsLimit: event.participantsLimit ?? null,
+    autoApproveApplications: event.autoApproveApplications,
+    blindReviewCount: event.blindReviewCount,
+    pitchReviewEnabled: event.pitchReviewEnabled,
+    blindScoreWeightPercent: event.blindScoreWeightPercent,
+    pitchScoreWeightPercent: event.pitchScoreWeightPercent,
+    shortlistFinalistCount: event.shortlistFinalistCount,
+    inPersonEvent: event.inPersonEvent,
+    requireXProfile: event.requireXProfile,
+    requireLinkedinProfile: event.requireLinkedinProfile,
+    requireGithubProfile: event.requireGithubProfile,
+    requireChatgptEmail: event.requireChatgptEmail,
+    requireOpenaiOrgId: event.requireOpenaiOrgId,
+    requireLumaEmail: event.requireLumaEmail,
+    requireWhyThisEvent: event.requireWhyThisEvent,
+    requireProofOfExecution: event.requireProofOfExecution,
+    requireSubmissionSummary: event.requireSubmissionSummary,
+    requireSubmissionRepositoryUrl: event.requireSubmissionRepositoryUrl,
+    requireSubmissionDemoUrl: event.requireSubmissionDemoUrl
+  }
+}
+
+export function toEventAgendaPayload(items: EventFormAgendaItem[]): EventAgendaItem[] {
+  return items
+    .map(item => ({
+      id: item.id,
+      startsAt: fromDateTimeLocalValue(item.startsAt),
+      endsAt: fromDateTimeLocalValue(item.endsAt) || null,
+      title: item.title.trim(),
+      details: item.details.trim() || null,
+      displayOrder: item.displayOrder
+    }))
+    .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
+}
+
+export function toEventTracksPayload(items: EventFormTrack[]) {
+  return items
+    .map(track => ({
+      id: track.id,
+      name: track.name.trim(),
+      description: track.description.trim(),
+      displayOrder: track.displayOrder
+    }))
+    .sort((left, right) => left.displayOrder - right.displayOrder || left.id.localeCompare(right.id))
+}
+
+export function toDateTimeLocalValue(value: string | null | undefined) {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ''
+  }
+
+  const local = new Date(date.getTime() - (date.getTimezoneOffset() * 60_000))
+  return local.toISOString().slice(0, 16)
+}
+
+export function fromDateTimeLocalValue(value: string) {
+  if (!value) {
+    return ''
+  }
+
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString()
+}

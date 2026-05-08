@@ -1,5 +1,5 @@
 Feature: TASK-4.3 platform account registration recovery and profile management
-  Authenticated identities can recover from account deletion by provisioning the platform account after Auth0 callback and updating profile fields used by hackathon registration.
+  Authenticated identities can recover from account deletion by provisioning the platform account after Auth0 callback and updating profile fields used by event registration.
 
   Scenario: Recreating and updating the regular user platform account
     Given the saved "regular_user" Auth0 session state exists

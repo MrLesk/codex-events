@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import AccountHackathonDashboardList from '~/components/account/AccountHackathonDashboardList.vue'
-import { formatHackathonLocation } from '~/domains/hackathons/presentation'
+import AccountEventDashboardList from '~/components/account/AccountEventDashboardList.vue'
+import { formatEventLocation } from '~/domains/events/presentation'
 import {
   adminOverviewTabs,
-  countAdminOverviewHackathonsByTab,
-  getAdminOverviewTabForHackathon,
+  countAdminOverviewEventsByTab,
+  getAdminOverviewTabForEvent,
   type AdminOverviewTab
-} from '~/domains/hackathons/admin-overview'
-import { canCreateHackathon } from '~/domains/hackathons/access'
+} from '~/domains/events/admin-overview'
+import { canCreateEvent } from '~/domains/events/access'
 import { normalizeTabQueryValue, resolveTabQueryValue } from '~/lib/query-values'
 
 definePageMeta({
@@ -25,13 +25,13 @@ const adminOverviewTabLabels: Record<AdminOverviewTab, string> = {
 
 const isPlatformAdmin = computed(() => workspace.actor.value?.isPlatformAdmin === true)
 const isEventOrganizer = computed(() => workspace.actor.value?.isEventOrganizer === true)
-const canCreate = computed(() => canCreateHackathon(workspace.actor.value))
-const manageableHackathons = computed(() => workspace.manageableHackathons.value)
+const canCreate = computed(() => canCreateEvent(workspace.actor.value))
+const manageableEvents = computed(() => workspace.manageableEvents.value)
 const activeTab = computed<AdminOverviewTab>(() =>
   resolveTabQueryValue(route.query.tab, adminOverviewTabs, 'active')
 )
 const filterCounts = computed(() =>
-  countAdminOverviewHackathonsByTab(manageableHackathons.value, adminOverviewNow)
+  countAdminOverviewEventsByTab(manageableEvents.value, adminOverviewNow)
 )
 const filterTabs = computed(() =>
   adminOverviewTabs.map(tab => ({
@@ -40,67 +40,67 @@ const filterTabs = computed(() =>
     count: filterCounts.value[tab]
   }))
 )
-const filteredHackathons = computed(() =>
-  manageableHackathons.value.filter(hackathon =>
-    getAdminOverviewTabForHackathon(hackathon, adminOverviewNow) === activeTab.value
+const filteredEvents = computed(() =>
+  manageableEvents.value.filter(event =>
+    getAdminOverviewTabForEvent(event, adminOverviewNow) === activeTab.value
   )
 )
 const listItems = computed(() =>
-  filteredHackathons.value.map(hackathon => ({
-    id: hackathon.id,
-    name: hackathon.name,
+  filteredEvents.value.map(event => ({
+    id: event.id,
+    name: event.name,
     description: isPlatformAdmin.value
-      ? 'Open this hackathon to manage operations, change settings, and work across the full internal admin surface.'
-      : 'Open this hackathon to manage operations, configure settings, and monitor the participant workflow from one shared detail surface.',
-    state: hackathon.state,
-    registrationOpensAt: hackathon.registrationOpensAt,
-    registrationClosesAt: hackathon.registrationClosesAt,
-    to: `/account/hackathons/${hackathon.slug}?tab=operations`,
+      ? 'Open this event to manage operations, change settings, and work across the full internal admin surface.'
+      : 'Open this event to manage operations, configure settings, and monitor the participant workflow from one shared detail surface.',
+    state: event.state,
+    registrationOpensAt: event.registrationOpensAt,
+    registrationClosesAt: event.registrationClosesAt,
+    to: `/account/events/${event.slug}?tab=operations`,
     actionLabel: 'Open operations',
     overline: 'Admin',
     meta: [
-      formatHackathonLocation(hackathon),
-      `${hackathon.maxTeamMembers} max/team`,
-      hackathon.slug
+      formatEventLocation(event),
+      `${event.maxTeamMembers} max/team`,
+      event.slug
     ]
   }))
 )
 const listContent = computed(() => {
   if (activeTab.value === 'upcoming') {
     return {
-      title: isPlatformAdmin.value ? 'Upcoming hackathons' : 'Upcoming hackathons you manage',
+      title: isPlatformAdmin.value ? 'Upcoming events' : 'Upcoming events you manage',
       description: isPlatformAdmin.value
-        ? 'Draft and future hackathons stay here until they move into active operations.'
-        : 'Draft and future hackathons you manage stay here until they move into active operations.',
-      emptyTitle: 'No upcoming hackathons',
+        ? 'Draft and future events stay here until they move into active operations.'
+        : 'Draft and future events you manage stay here until they move into active operations.',
+      emptyTitle: 'No upcoming events',
       emptyDescription: isPlatformAdmin.value
-        ? 'Draft and future hackathons will appear here.'
-        : 'When you manage a draft or future hackathon, it will appear here.'
+        ? 'Draft and future events will appear here.'
+        : 'When you manage a draft or future event, it will appear here.'
     }
   }
 
   if (activeTab.value === 'past') {
     return {
-      title: isPlatformAdmin.value ? 'Past hackathons' : 'Past hackathons you managed',
+      title: isPlatformAdmin.value ? 'Past events' : 'Past events you managed',
       description: isPlatformAdmin.value
-        ? 'Completed hackathons remain available for reference and follow-up work.'
-        : 'Completed hackathons you managed remain available for reference and follow-up work.',
-      emptyTitle: 'No past hackathons',
+        ? 'Completed events remain available for reference and follow-up work.'
+        : 'Completed events you managed remain available for reference and follow-up work.',
+      emptyTitle: 'No past events',
       emptyDescription: isPlatformAdmin.value
-        ? 'Completed hackathons will appear here once they are closed.'
-        : 'Completed hackathons you managed will appear here once they are closed.'
+        ? 'Completed events will appear here once they are closed.'
+        : 'Completed events you managed will appear here once they are closed.'
     }
   }
 
   return {
-    title: isPlatformAdmin.value ? 'Active hackathons' : 'Active hackathons you manage',
+    title: isPlatformAdmin.value ? 'Active events' : 'Active events you manage',
     description: isPlatformAdmin.value
       ? 'Use the shared list surface to jump into live operations, settings, judging, and outcome workflows.'
-      : 'Open the hackathons you currently manage and continue work in operations or settings.',
-    emptyTitle: 'No active hackathons',
+      : 'Open the events you currently manage and continue work in operations or settings.',
+    emptyTitle: 'No active events',
     emptyDescription: isPlatformAdmin.value
-      ? 'Active hackathons will appear here once they move out of draft and before completion.'
-      : 'When a manageable hackathon is live or in progress, it will appear here.'
+      ? 'Active events will appear here once they move out of draft and before completion.'
+      : 'When a manageable event is live or in progress, it will appear here.'
   }
 })
 
@@ -120,8 +120,8 @@ async function selectAdminOverviewTab(nextTab: AdminOverviewTab) {
 }
 
 useSeoMeta({
-  title: 'Manage Hackathons | Codex Hackathons',
-  description: 'Open the hackathons you manage and run applications, judging, and outcomes.'
+  title: 'Manage Events | Codex Events',
+  description: 'Open the events you manage and run applications, judging, and outcomes.'
 })
 </script>
 
@@ -138,10 +138,10 @@ useSeoMeta({
               <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
                 {{
                   isPlatformAdmin
-                    ? 'Run platform-wide admin work, create hackathons, and open any hackathon workspace from one place.'
+                    ? 'Run platform-wide admin work, create events, and open any event workspace from one place.'
                     : isEventOrganizer
-                      ? 'Create hackathons and open the hackathons you manage from one place.'
-                      : 'Open the hackathons you manage and jump into their operations and settings tabs.'
+                      ? 'Create events and open the events you manage from one place.'
+                      : 'Open the events you manage and jump into their operations and settings tabs.'
                 }}
               </p>
             </div>
@@ -179,12 +179,12 @@ useSeoMeta({
 
               <AppButton
                 v-if="canCreate"
-                to="/admin/hackathons/new"
+                to="/admin/events/new"
                 color="neutral"
                 variant="solid"
                 class="h-auto rounded-lg bg-black px-4 py-2 text-[13px] font-medium text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
               >
-                Create hackathon
+                Create event
                 <template #trailing>
                   <AppIcon
                     name="i-lucide-plus"
@@ -208,19 +208,19 @@ useSeoMeta({
       />
 
       <AppAlert
-        v-else-if="workspace.hackathons.error.value"
+        v-else-if="workspace.events.error.value"
         color="error"
         variant="soft"
-        title="Unable to load hackathons"
-        :description="workspace.hackathons.error.value.message"
+        title="Unable to load events"
+        :description="workspace.events.error.value.message"
       />
 
       <AppAlert
-        v-else-if="workspace.session.status.value === 'pending' || workspace.hackathons.status.value === 'pending'"
+        v-else-if="workspace.session.status.value === 'pending' || workspace.events.status.value === 'pending'"
         color="neutral"
         variant="soft"
         title="Loading admin dashboard"
-        :description="isPlatformAdmin ? 'Fetching the full admin workspace.' : 'Fetching the hackathons you can manage.'"
+        :description="isPlatformAdmin ? 'Fetching the full admin workspace.' : 'Fetching the events you can manage.'"
       />
 
       <template v-else>
@@ -244,7 +244,7 @@ useSeoMeta({
           </div>
         </section>
 
-        <AccountHackathonDashboardList
+        <AccountEventDashboardList
           :title="listContent.title"
           :description="listContent.description"
           :items="listItems"

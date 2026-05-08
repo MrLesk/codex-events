@@ -18,8 +18,8 @@ const registrationRequestBodySchema = platformAccountRegistrationBodySchema.exte
   returnTo: z.string().trim().optional()
 })
 
-export default defineApiHandler(async (event) => {
-  const actor = await requireAuthenticatedActor(event)
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requireAuthenticatedActor(h3Event)
 
   if (actor.hasPlatformAccount) {
     throw new ApiError({
@@ -29,10 +29,10 @@ export default defineApiHandler(async (event) => {
     })
   }
 
-  const body = await parseValidatedBody(event, registrationRequestBodySchema)
+  const body = await parseValidatedBody(h3Event, registrationRequestBodySchema)
 
   try {
-    const result = await registerPlatformAccount(getDatabase(event), actor, {
+    const result = await registerPlatformAccount(getDatabase(h3Event), actor, {
       privacyPolicyDocumentId: body.privacyPolicyDocumentId,
       platformTermsDocumentId: body.platformTermsDocumentId
     })
@@ -44,7 +44,7 @@ export default defineApiHandler(async (event) => {
       && error.code === 'platform_account_link_required'
       && typeof error.details?.primaryAuth0Subject === 'string'
     ) {
-      await issuePlatformAccountLinkChallenge(event, {
+      await issuePlatformAccountLinkChallenge(h3Event, {
         primaryAuth0Subject: error.details.primaryAuth0Subject,
         secondaryAuth0Subject: actor.sessionUser.sub,
         email: actor.sessionUser.email?.trim() ?? '',

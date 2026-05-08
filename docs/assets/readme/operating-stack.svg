@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="520" viewBox="0 0 1280 520" role="img" aria-labelledby="title desc">
-  <title id="title">Codex Hackathons operating stack</title>
-  <desc id="desc">A diagram showing Codex Hackathons running on Cloudflare infrastructure with Auth0 authentication and optional Luma integration.</desc>
+  <title id="title">Codex Events operating stack</title>
+  <desc id="desc">A diagram showing Codex Events running on Cloudflare infrastructure with Auth0 authentication and optional Luma integration.</desc>
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1280" y2="520" gradientUnits="userSpaceOnUse">
       <stop stop-color="#F8FAFC"/>
@@ -18,11 +18,11 @@
   <rect width="1280" height="520" rx="34" fill="url(#background)"/>
   <path d="M84 412 C248 320 313 438 464 326 C618 212 735 314 864 190 C999 62 1094 76 1190 122" fill="none" stroke="#2563EB" stroke-opacity="0.12" stroke-width="3"/>
 
-  <text x="640" y="70" text-anchor="middle" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="30" font-weight="820">Built for self-hosted hackathon programs</text>
+  <text x="640" y="70" text-anchor="middle" fill="#0F172A" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="30" font-weight="820">Built for self-hosted event programs</text>
   <text x="640" y="101" text-anchor="middle" fill="#526174" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15">Cloudflare-native runtime, Auth0 identity, platform-owned authorization, optional event sync.</text>
 
   <rect x="282" y="154" width="716" height="196" rx="30" fill="url(#core)" filter="url(#softShadow)"/>
-  <text x="640" y="215" text-anchor="middle" fill="#FFFFFF" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="31" font-weight="850">Codex Hackathons</text>
+  <text x="640" y="215" text-anchor="middle" fill="#FFFFFF" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="31" font-weight="850">Codex Events</text>
   <text x="640" y="249" text-anchor="middle" fill="#BFD3F7" font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="15">Applications, teams, submissions, judging, winners, credits, galleries, feedback</text>
 
   <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="14" font-weight="760">

@@ -23,10 +23,10 @@ export function normalizeTeamSlugQueryValue(value: LocationQueryValue | Location
   return normalized.length > 0 ? normalized : null
 }
 
-export function buildAccountHackathonTeamsTabHref(hackathonSlug: string, teamSlug?: string | null) {
-  const encodedHackathonSlug = encodeURIComponent(hackathonSlug.trim())
+export function buildAccountEventTeamsTabHref(eventSlug: string, teamSlug?: string | null) {
+  const encodedEventSlug = encodeURIComponent(eventSlug.trim())
   const normalizedTeamSlug = teamSlug?.trim().toLowerCase() ?? ''
-  const baseHref = `/account/hackathons/${encodedHackathonSlug}?tab=teams`
+  const baseHref = `/account/events/${encodedEventSlug}?tab=teams`
 
   if (!normalizedTeamSlug) {
     return baseHref
@@ -35,17 +35,17 @@ export function buildAccountHackathonTeamsTabHref(hackathonSlug: string, teamSlu
   return `${baseHref}&team=${encodeURIComponent(normalizedTeamSlug)}`
 }
 
-export function buildAccountHackathonWorkspaceTabHref(hackathonSlug: string) {
-  const encodedHackathonSlug = encodeURIComponent(hackathonSlug.trim())
-  return `/account/hackathons/${encodedHackathonSlug}?tab=workspace`
+export function buildAccountEventWorkspaceTabHref(eventSlug: string) {
+  const encodedEventSlug = encodeURIComponent(eventSlug.trim())
+  return `/account/events/${encodedEventSlug}?tab=workspace`
 }
 
-export function buildAbsoluteAccountHackathonTeamsTabHref(
+export function buildAbsoluteAccountEventTeamsTabHref(
   origin: string,
-  hackathonSlug: string,
+  eventSlug: string,
   teamSlug?: string | null
 ) {
-  return new URL(buildAccountHackathonTeamsTabHref(hackathonSlug, teamSlug), origin).toString()
+  return new URL(buildAccountEventTeamsTabHref(eventSlug, teamSlug), origin).toString()
 }
 
 export function isSharedTeamSelection(input: {

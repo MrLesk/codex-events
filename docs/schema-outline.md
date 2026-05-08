@@ -1,6 +1,6 @@
 # Schema Outline
 
-This document defines the canonical schema outline for the Codex hackathon platform.
+This document defines the canonical schema outline for the Codex event platform.
 
 It describes the intended persistent model at the level of entities, key fields, enums, constraints, and important relationships. It does not define SQL syntax.
 
@@ -49,10 +49,10 @@ It describes the intended persistent model at the level of entities, key fields,
 - `company` stores an optional single-line company or affiliation value managed from account settings.
 - `bio` stores an optional free-form profile summary managed from account settings.
 - `display_name` stores the current presentation name. It is derived from canonical name fields after profile completion and can temporarily fall back to authenticated-identity presentation data before canonical names are filled.
-- `luma_email` stores the canonical Luma email used for hackathon profile requirements and Luma approval-state synchronization.
+- `luma_email` stores the canonical Luma email used for event profile requirements and Luma approval-state synchronization.
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
-- `is_event_organizer` grants hackathon creation access without platform-wide admin visibility.
+- `is_event_organizer` grants event creation access without platform-wide admin visibility.
 - `profile_icon_updated_at` records when the current profile icon object was last replaced.
 - Platform actor resolution uses `UserAuthIdentity` records so multiple linked Auth0 subjects can resolve to the same user.
 - `luma_username` is retained only as legacy migration data for users who registered before Luma email became the canonical profile field.
@@ -77,11 +77,12 @@ It describes the intended persistent model at the level of entities, key fields,
 - Linked-login flows add additional `UserAuthIdentity` rows for the same `user_id`.
 - Soft-deleting a user removes that user's `UserAuthIdentity` rows.
 
-## Hackathon
+## Event
 
 ### Key Fields
 
 - `id`
+- `event_type`
 - `name`
 - `slug`
 - `description`
@@ -118,7 +119,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `require_chatgpt_email`
 - `require_openai_org_id`
 - `require_luma_profile`
-- `require_why_this_hackathon`
+- `require_why_this_event`
 - `require_proof_of_execution`
 - `require_submission_summary`
 - `require_submission_repository_url`
@@ -131,6 +132,10 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Enums
 
+- `event_type`
+  - `hackathon`
+  - `meetup`
+  - `build`
 - `state`
   - `draft`
   - `registration_open`
@@ -148,48 +153,52 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `slug` is unique.
 - `luma_event_api_id` is unique when present.
-- `blind_review_count` is `0`, `1`, or `2`.
-- `blind_score_weight_percent` is null or between `0` and `100`.
-- `pitch_score_weight_percent` is null or between `0` and `100`.
-- At least one judging stage is enabled: `blind_review_count > 0` or `pitch_review_enabled = true`.
-- When blind review and pitch review are both enabled, `blind_score_weight_percent + pitch_score_weight_percent = 100`.
+- For Hackathon events, `blind_review_count` is `0`, `1`, or `2`.
+- For Hackathon events, `blind_score_weight_percent` is null or between `0` and `100`.
+- For Hackathon events, `pitch_score_weight_percent` is null or between `0` and `100`.
+- For Hackathon events, at least one judging stage is enabled: `blind_review_count > 0` or `pitch_review_enabled = true`.
+- For Hackathon events, when blind review and pitch review are both enabled, `blind_score_weight_percent + pitch_score_weight_percent = 100`.
 - `max_team_members` is greater than or equal to 1.
 - `participants_limit` is null or greater than or equal to 1.
-- `registration_opens_at < registration_closes_at <= submission_opens_at < submission_closes_at`
+- For Hackathon events, `registration_opens_at < registration_closes_at <= submission_opens_at < submission_closes_at`.
+- For Meetup and Build events, `registration_opens_at < registration_closes_at`.
 
 ### Notes
 
+- `event_type` determines which workflow surfaces are available. `hackathon` enables teams, submissions, judging, prizes, credits, winner terms, and completed competition outcomes. `meetup` and `build` are registration-only events.
 - `registration_open` is manually activated by an admin while the configured registration window is open.
-- `submission_open` is manually activated by an admin within the configured submission window.
-- `blind_review_count` controls how many blind review assignments each locked submission receives.
-- `pitch_review_enabled` controls whether the hackathon uses the optional live pitch stage plus the post-pitch review stage.
-- `blind_score_weight_percent` and `pitch_score_weight_percent` default to `70` and `30` when both blind review and pitch review are enabled.
-- `shortlist_finalist_count` defaults to `10` and controls how many top-ranked blind-review submissions appear in the default finalist boundary when `shortlist` begins.
-- When only one judging stage is enabled, final score is derived entirely from that stage.
-- `pitch_finalist_submission_ids_json` stores the ordered pitch presentation lineup for pitch-enabled hackathons. In blind-plus-pitch hackathons it is selected during `shortlist`. In pitch-only hackathons it is populated from all eligible locked submissions when `pitch` starts.
+- Meetup and Build events support only `draft`, `registration_open`, and `completed`.
+- Hackathon-only lifecycle states use the same shared `state` enum but are not valid operational states for Meetup and Build events.
+- `submission_open` is manually activated by an admin within the configured submission window for Hackathon events.
+- `blind_review_count` controls how many blind review assignments each locked Hackathon submission receives.
+- `pitch_review_enabled` controls whether a Hackathon uses the optional live pitch stage plus the post-pitch review stage.
+- `blind_score_weight_percent` and `pitch_score_weight_percent` default to `70` and `30` when both blind review and pitch review are enabled for a Hackathon.
+- `shortlist_finalist_count` defaults to `10` and controls how many top-ranked blind-review submissions appear in the default finalist boundary when `shortlist` begins for a Hackathon.
+- When only one judging stage is enabled for a Hackathon, final score is derived entirely from that stage.
+- `pitch_finalist_submission_ids_json` stores the ordered pitch presentation lineup for pitch-enabled Hackathons. In blind-plus-pitch events it is selected during `shortlist`. In pitch-only events it is populated from all eligible locked submissions when `pitch` starts.
 - `active_pitch_presentation_submission_id` stores the submission currently enabled to present during the live `pitch` stage, or null when the lineup has not started or is already complete.
 - `pitch_presentations_completed_at` records when the full live pitch lineup was completed and gates the transition into `pitch_review`.
 - `final_ranking_submission_ids_json` stores the full saved shortlist order when `shortlist` is used and is later updated by any explicit final-ranking reorder recorded during `final_deliberation`.
 - `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce approval writes by itself.
 - `auto_approve_applications` controls whether newly submitted applications are approved immediately after required submission checks pass. It defaults to false and does not affect already submitted applications when changed.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
-- `require_why_this_hackathon` controls whether applications must include a non-empty `whyThisHackathon` response.
+- `require_why_this_event` controls whether applications must include a non-empty `whyThisEvent` response.
 - `require_proof_of_execution` controls whether applications must include at least one proof link in `proofOfExecutionUrl`.
-- `require_submission_summary` controls whether team submissions must include a non-empty `summary`.
-- `require_submission_repository_url` controls whether team submissions must include a valid `repository_url`.
-- `require_submission_demo_url` controls whether team submissions must include a valid `demo_url`.
-- `address` is always stored for the hackathon, but public serializers suppress it and account-scoped detail reads return it only to approved participants plus judges, staff, hackathon admins, and platform admins.
-- `discord_server_url` is optional because not every hackathon has a dedicated Discord server, and when present it is returned only in account-scoped detail reads for approved participants plus judges, staff, hackathon admins, and platform admins.
-- `luma_event_url` is optional because not every hackathon has a public Luma event page to link.
-- `luma_event_api_id` is optional because not every hackathon has a Luma event configured for approval and rejection sync.
+- `require_submission_summary` controls whether Hackathon team submissions must include a non-empty `summary`.
+- `require_submission_repository_url` controls whether Hackathon team submissions must include a valid `repository_url`.
+- `require_submission_demo_url` controls whether Hackathon team submissions must include a valid `demo_url`.
+- `address` is always stored for the event, but public serializers suppress it and account-scoped detail reads return it only to approved participants plus judges, staff, event admins, and platform admins.
+- `discord_server_url` is optional because not every event has a dedicated Discord server, and when present it is returned only in account-scoped detail reads for approved participants plus judges, staff, event admins, and platform admins.
+- `luma_event_url` is optional because not every event has a public Luma event page to link.
+- `luma_event_api_id` is optional because not every event has a Luma event configured for approval and rejection sync.
 - `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`).
 
-## HackathonTrack
+## EventTrack
 
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `name`
 - `description`
 - `display_order`
@@ -197,22 +206,22 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Constraints
 
-- `unique (hackathon_id, display_order)`
+- `unique (event_id, display_order)`
 
 ### Notes
 
-- Each track belongs to one hackathon.
+- Each track belongs to one event.
 - Tracks are ordered for admin editing and public display.
 - A track stores a participant-facing name and description.
 - Tracks do not control judge assignment in this version.
 - Track deletion is blocked once submissions reference it.
 
-## HackathonPhoto
+## EventPhoto
 
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `uploaded_by_user_id`
 - `file_name`
 - `is_publicly_visible`
@@ -228,19 +237,19 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Notes
 
-- Each row records one protected gallery photo for a hackathon.
-- Original image bytes are stored in object storage keyed by `hackathon_id` and photo `id`.
+- Each row records one protected gallery photo for an event.
+- Original image bytes are stored in object storage keyed by `event_id` and photo `id`.
 - `file_name` is optional because the upload can succeed even when the client omits a stable file name.
-- `is_publicly_visible` controls whether a gallery photo appears in the public hackathon Gallery tab.
+- `is_publicly_visible` controls whether a gallery photo appears in the public event Gallery tab.
 - Preview variants are derived at read time from the stored original image and are not stored as separate canonical rows.
-- Approved participants can read gallery rows for their hackathons, while judges, staff, hackathon admins, and platform admins can also create, delete, and mark them public.
+- Approved participants can read gallery rows for their events, while judges, staff, event admins, and platform admins can also create, delete, and mark them public.
 
-## HackathonRoleAssignment
+## EventRoleAssignment
 
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `user_id`
 - `role`
 - `is_in_judge_pool`
@@ -250,31 +259,32 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Enums
 
 - `role`
-  - `hackathon_admin`
+  - `event_admin`
   - `judge`
   - `staff`
 
 ### Constraints
 
-- `unique (hackathon_id, user_id)`
+- `unique (event_id, user_id)`
 - `role = judge` requires `is_in_judge_pool = true and is_staff = false`
 - `role = staff` requires `is_staff = true and is_in_judge_pool = false`
 
 ### Notes
 
-- Every platform admin also has a `hackathon_admin` assignment row for each hackathon.
-- A hackathon created by an event organizer records the creator as a `hackathon_admin` assignment for that hackathon.
+- Every platform admin also has a `event_admin` assignment row for each event.
+- An event created by an event organizer records the creator as a `event_admin` assignment for that event.
 - `is_in_judge_pool` controls automatic blind-review distribution and pitch-panel membership.
 - `is_staff` records staff designation for the assignment.
-- `hackathon_admin` can set `is_in_judge_pool` and `is_staff` independently.
+- `event_admin` can set `is_in_judge_pool` and `is_staff` independently.
 - Non-admin `staff` and `judge` assignments remain distinct.
+- `judge` assignments and `is_in_judge_pool = true` are valid only for Hackathon events.
 
-## HackathonFeedback
+## EventFeedback
 
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `food_rating`
 - `staff_rating`
 - `organization_rating`
@@ -299,12 +309,12 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Notes
 
-- Each row records one anonymous post-hackathon feedback submission for a hackathon.
+- Each row records one anonymous post-event feedback submission for an event.
 - Feedback rows do not reference a platform user, application, or team.
 - A null rating means the participant explicitly chose `Not applicable` for that topic.
 - `comment` is optional.
-- Feedback submission is available only after the hackathon reaches `completed`.
-- Judges, staff, hackathon admins, and platform admins can read hackathon feedback results in the account workspace.
+- Feedback submission is available only after the event reaches `completed`.
+- Judges, staff, event admins, and platform admins can read event feedback results in the account workspace.
 
 ## PlatformLegalSettings
 
@@ -371,12 +381,12 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - This stores which exact platform document version the user accepted during registration-related flows.
 
-## HackathonTermsDocument
+## EventTermsDocument
 
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `document_type`
 - `version`
 - `title`
@@ -392,14 +402,19 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Constraints
 
-- `unique (hackathon_id, document_type, version)`
+- `unique (event_id, document_type, version)`
+
+### Notes
+
+- Every event uses `application_terms`.
+- `winner_terms` is used only by Hackathon prize-redemption workflows.
 
 ## UserApplication
 
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `user_id`
 - `status`
 - `submitted_at`
@@ -434,21 +449,21 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Constraints
 
-- `unique (hackathon_id, user_id)`
+- `unique (event_id, user_id)`
 
 ### Notes
 
 - `registration_details_json` stores registration-intent hints as a JSON string payload:
   - `teamIntent`: `solo`, `team`, or `unknown`
   - `teamMembers`: free-form teammate hints captured during application (name/family-name and/or email)
-  - `inPersonAttendanceCommitment`: boolean commitment required when the hackathon has `in_person_event = true`
-  - `whyThisHackathon`: trimmed free-form motivation text
+  - `inPersonAttendanceCommitment`: boolean commitment required when the event has `in_person_event = true`
+  - `whyThisEvent`: trimmed free-form motivation text
   - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence
-- `withdrawn_at` records when the participant withdrew from the hackathon.
+- `withdrawn_at` records when the participant withdrew from the event.
 - `checked_in_at` records when a valid signed Luma guest check-in update first marked the approved participant as attended.
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
 - Applications created while `auto_approve_applications` is true are stored directly as `approved` with `reviewed_at` equal to `submitted_at` and no reviewing user.
-- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for hackathons that require a Luma email and define a `luma_event_api_id`.
+- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that require a Luma email and define a `luma_event_api_id`.
 - `checked_in_at` is sticky in this version and is not cleared by later Luma uncheck updates.
 - Withdrawal retains the application record rather than deleting it so participation history, terms acceptance, and audit context remain available.
 
@@ -457,7 +472,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `name`
 - `bio`
 - `slug`
@@ -475,7 +490,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Constraints
 
-- `unique (hackathon_id, slug)`
+- `unique (event_id, slug)`
 
 ### Notes
 
@@ -507,7 +522,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Constraints
 
-- Only one active team membership per user in the same hackathon.
+- Only one active team membership per user in the same event.
 - Only one active membership per `(team_id, user_id)`.
 - Every team that still has active members must have at least one active admin membership.
 - A team can have zero active members only when it is dissolved during `registration_open` or `submission_open` after its last active member leaves without an active draft, submitted, or locked submission.
@@ -578,11 +593,11 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - A team can also have no submission.
-- `track_id` references a `HackathonTrack` belonging to the same hackathon as the submission's team when a track is selected.
-- When a hackathon has one or more configured tracks, submissions must store exactly one valid `track_id`.
-- `summary`, `repository_url`, and `demo_url` are optional at rest and are enforced according to the owning hackathon's submission requirement flags.
+- `track_id` references a `EventTrack` belonging to the same event as the submission's team when a track is selected.
+- When a Hackathon has one or more configured tracks, submissions must store exactly one valid `track_id`.
+- `summary`, `repository_url`, and `demo_url` are optional at rest and are enforced according to the owning event's submission requirement flags.
 - Existing draft and submitted submissions remain mutable during `judging_preparation` until the submission is locked for judging.
-- `locked_at` records when blind review starts, or when `pitch` starts in a pitch-only hackathon.
+- `locked_at` records when blind review starts, or when `pitch` starts in a pitch-only event.
 - `is_publicly_visible` controls whether a locked non-winning project appears in the completed published-projects showcase after a team admin opts in.
 - A draft that is never submitted is treated as no submission for judging and dashboard purposes.
 - Submission content is managed by team admins.
@@ -592,7 +607,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `name`
 - `description`
 - `weight`
@@ -602,7 +617,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Constraints
 
 - `weight` is non-negative.
-- `display_order` is unique within a hackathon.
+- `display_order` is unique within an event.
 
 ### Notes
 
@@ -614,7 +629,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `submission_id`
 - `judge_user_id`
 - `review_stage`
@@ -694,7 +709,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `name`
 - `description`
 - `reward_type`
@@ -719,15 +734,15 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - A prize can target one rank or a rank range.
-- Different hackathons can configure different prize structures.
+- Different events can configure different prize structures.
 - Member-scoped prize eligibility is determined from the frozen prize eligibility snapshot created when submitted work is locked for judging.
 
-## HackathonCreditOffer
+## EventCreditOffer
 
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `name`
 - `description`
 - `display_order`
@@ -736,12 +751,12 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Notes
 
-- A credit offer belongs to one hackathon.
+- A credit offer belongs to one event.
 - A credit offer is separate from winner prizes.
-- A hackathon can define multiple credit offers.
-- A credit offer stores participant-facing markdown copy and ordering only. Uploaded redeemable values live on `HackathonCreditCode`.
+- A Hackathon can define multiple credit offers.
+- A credit offer stores participant-facing markdown copy and ordering only. Uploaded redeemable values live on `EventCreditCode`.
 
-## HackathonCreditCode
+## EventCreditCode
 
 ### Key Fields
 
@@ -769,7 +784,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `team_id`
 - `user_id`
 - `snapshot_at`
@@ -807,27 +822,27 @@ It describes the intended persistent model at the level of entities, key fields,
 - Some prizes may redeem per team and some per user.
 - Redemption requires legal name and acceptance of winner terms.
 
-## HackathonOutcomeCache
+## EventOutcomeCache
 
 ### Key Fields
 
-- `hackathon_id`
+- `event_id`
 - `generation_id`
 - `generated_at`
 - `updated_at`
 
 ### Notes
 
-- Each completed hackathon has at most one current outcome cache generation.
+- Each completed event has at most one current outcome cache generation.
 - The current generation points to ordered outcome cache entries.
-- The cache is refreshed when a hackathon is completed and when an eligible completed project changes public visibility.
+- The cache is refreshed when a Hackathon is completed and when an eligible completed project changes public visibility.
 
-## HackathonOutcomeCacheEntry
+## EventOutcomeCacheEntry
 
 ### Key Fields
 
 - `id`
-- `hackathon_id`
+- `event_id`
 - `generation_id`
 - `collection`
 - `display_order`
@@ -863,29 +878,29 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ## Important Relationship Summary
 
-- `Hackathon` belongs to `User` through `created_by_user_id`
-- `HackathonRoleAssignment` belongs to `Hackathon` and `User`
-- `HackathonTrack` belongs to `Hackathon`
+- `Event` belongs to `User` through `created_by_user_id`
+- `EventRoleAssignment` belongs to `Event` and `User`
+- `EventTrack` belongs to `Event`
 - `PlatformLegalSettings` stands alone as the deployment-owned legal settings singleton
 - `PlatformDocument` stands alone as a platform-wide document
 - `UserPlatformDocumentAcceptance` belongs to `User` and `PlatformDocument`
-- `HackathonTermsDocument` belongs to `Hackathon`
-- `UserApplication` belongs to `Hackathon` and `User`
-- `Team` belongs to `Hackathon`
+- `EventTermsDocument` belongs to `Event`
+- `UserApplication` belongs to `Event` and `User`
+- `Team` belongs to `Event`
 - `TeamMember` belongs to `Team` and `User`
 - `TeamJoinRequest` belongs to `Team` and `User`
 - `Submission` belongs to `Team`
-- `Submission` may reference `HackathonTrack`
-- `EvaluationCriterion` belongs to `Hackathon`
-- `JudgeAssignment` belongs to `Hackathon`, `Submission`, and `User`
+- `Submission` may reference `EventTrack`
+- `EvaluationCriterion` belongs to `Event`
+- `JudgeAssignment` belongs to `Event`, `Submission`, and `User`
 - `JudgeCriterionScore` belongs to `JudgeAssignment` and `EvaluationCriterion`
-- `HackathonCreditOffer` belongs to `Hackathon`
-- `HackathonCreditCode` belongs to `HackathonCreditOffer` and may reference the claiming `User`
-- `Prize` belongs to `Hackathon`
-- `PrizeEligibilitySnapshot` belongs to `Hackathon`, `Team`, and `User`
+- `EventCreditOffer` belongs to `Event`
+- `EventCreditCode` belongs to `EventCreditOffer` and may reference the claiming `User`
+- `Prize` belongs to `Event`
+- `PrizeEligibilitySnapshot` belongs to `Event`, `Team`, and `User`
 - `PrizeRedemption` belongs to `Prize` and may reference `User` and `Team`
-- `HackathonOutcomeCache` belongs to `Hackathon`
-- `HackathonOutcomeCacheEntry` belongs to `Hackathon` and a cache generation
+- `EventOutcomeCache` belongs to `Event`
+- `EventOutcomeCacheEntry` belongs to `Event` and a cache generation
 - `AuditLog` references the acting `User` and the affected entity
 
 ## Derived Views
@@ -900,4 +915,4 @@ These are computed from persisted data and do not require separate canonical ent
 - published judge roster
 - published staff roster
 
-Completed winners and published-project showcase payloads are generated from persisted judging and prize data, then stored as ordered `HackathonOutcomeCacheEntry` rows for repeated completed-state reads.
+Completed winners and published-project showcase payloads are generated from persisted judging and prize data, then stored as ordered `EventOutcomeCacheEntry` rows for repeated completed-state reads.

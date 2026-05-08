@@ -25,13 +25,13 @@ export function normalizeJudgeAssignmentIdQueryValue(
   return normalized.length > 0 ? normalized : null
 }
 
-export function buildAccountHackathonJudgingTabHref(
-  hackathonSlug: string,
+export function buildAccountEventJudgingTabHref(
+  eventSlug: string,
   assignmentId?: string | null
 ) {
-  const encodedHackathonSlug = encodeURIComponent(hackathonSlug.trim())
+  const encodedEventSlug = encodeURIComponent(eventSlug.trim())
   const normalizedAssignmentId = assignmentId?.trim() ?? ''
-  const baseHref = `/account/hackathons/${encodedHackathonSlug}?tab=judging`
+  const baseHref = `/account/events/${encodedEventSlug}?tab=judging`
 
   if (!normalizedAssignmentId) {
     return baseHref

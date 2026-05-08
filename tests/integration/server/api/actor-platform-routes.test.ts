@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
 import accountDeleteHandler from '../../../../server/api/account.delete'
-import accountHackathonsGetHandler from '../../../../server/api/account/hackathons.get'
+import accountEventsGetHandler from '../../../../server/api/account/events.get'
 import accountPatchHandler from '../../../../server/api/account.patch'
 import accountProfileIconDeleteHandler from '../../../../server/api/account/profile-icon.delete'
 import accountProfileIconGetHandler from '../../../../server/api/account/profile-icon.get'
@@ -18,9 +18,9 @@ import platformLegalSettingsCurrentGetHandler from '../../../../server/api/platf
 import platformLegalSettingsCurrentPatchHandler from '../../../../server/api/platform-legal-settings/current.patch'
 import {
   auditLogs,
-  hackathons,
-  hackathonRoleAssignments,
-  hackathonTermsDocuments,
+  events,
+  eventRoleAssignments,
+  eventTermsDocuments,
   platformDocuments,
   platformLegalSettings,
   submissions,
@@ -174,7 +174,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     }
   })
 
-  test('GET /api/session returns authenticated actor context and hackathon roles', async () => {
+  test('GET /api/session returns authenticated actor context and event roles', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/session', handler: sessionHandler }
@@ -193,11 +193,12 @@ describe('TASK-3.5 actor-facing API routes', () => {
       email: 'judge@example.com',
       displayName: 'Judge Persona'
     })
-    await harness.database.insert(hackathons).values({
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
-      description: 'Fixture hackathon',
+    await harness.database.insert(events).values({
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address',
@@ -210,9 +211,9 @@ describe('TASK-3.5 actor-facing API routes', () => {
       createdByUserId: 'user_judge'
     })
 
-    await harness.database.insert(hackathonRoleAssignments).values({
+    await harness.database.insert(eventRoleAssignments).values({
       id: 'role_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'user_judge',
       role: 'judge',
       isInJudgePool: true,
@@ -235,9 +236,9 @@ describe('TASK-3.5 actor-facing API routes', () => {
             bio: null,
             profileIconUpdatedAt: null
           },
-          hackathonRoles: [
+          eventRoles: [
             {
-              hackathonId: 'hackathon_1',
+              eventId: 'event_1',
               role: 'judge',
               isInJudgePool: true
             }
@@ -247,10 +248,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
-  test('GET /api/account/hackathons returns current and past hackathons for the platform user', async () => {
+  test('GET /api/account/events returns current and past events for the platform user', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'get', path: '/api/account/hackathons', handler: accountHackathonsGetHandler }
+        { method: 'get', path: '/api/account/events', handler: accountEventsGetHandler }
       ],
       sessionUser: {
         sub: 'auth0|participant',
@@ -308,11 +309,12 @@ describe('TASK-3.5 actor-facing API routes', () => {
       }
     ])
 
-    await harness.database.insert(hackathons).values([
+    await harness.database.insert(events).values([
       {
-        id: 'hackathon_current',
-        name: 'Current Hackathon',
-        slug: 'current-hackathon',
+        id: 'event_current',
+        eventType: 'hackathon',
+        name: 'Current Event',
+        slug: 'current-event',
         description: 'Current program',
         city: 'Vienna',
         country: 'Austria',
@@ -326,9 +328,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
         createdByUserId: 'creator_1'
       },
       {
-        id: 'hackathon_past',
-        name: 'Past Hackathon',
-        slug: 'past-hackathon',
+        id: 'event_past',
+        eventType: 'hackathon',
+        name: 'Past Event',
+        slug: 'past-event',
         description: 'Past program',
         city: 'London',
         country: 'United Kingdom',
@@ -343,10 +346,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
       }
     ])
 
-    await harness.database.insert(hackathonTermsDocuments).values([
+    await harness.database.insert(eventTermsDocuments).values([
       {
-        id: 'hackathon_current_terms_v1',
-        hackathonId: 'hackathon_current',
+        id: 'event_current_terms_v1',
+        eventId: 'event_current',
         documentType: 'application_terms',
         version: 1,
         title: 'Current application terms',
@@ -354,8 +357,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         publishedAt: '2026-03-18T00:00:00.000Z'
       },
       {
-        id: 'hackathon_past_terms_v1',
-        hackathonId: 'hackathon_past',
+        id: 'event_past_terms_v1',
+        eventId: 'event_past',
         documentType: 'application_terms',
         version: 1,
         title: 'Past application terms',
@@ -367,20 +370,20 @@ describe('TASK-3.5 actor-facing API routes', () => {
     await harness.database.insert(userApplications).values([
       {
         id: 'application_current',
-        hackathonId: 'hackathon_current',
+        eventId: 'event_current',
         userId: 'participant_1',
         status: 'approved',
         submittedAt: '2026-03-20T13:00:00.000Z',
-        applicationTermsDocumentId: 'hackathon_current_terms_v1',
+        applicationTermsDocumentId: 'event_current_terms_v1',
         applicationTermsAcceptedAt: '2026-03-20T13:00:00.000Z'
       },
       {
         id: 'application_past',
-        hackathonId: 'hackathon_past',
+        eventId: 'event_past',
         userId: 'participant_1',
         status: 'approved',
         submittedAt: '2026-01-10T13:00:00.000Z',
-        applicationTermsDocumentId: 'hackathon_past_terms_v1',
+        applicationTermsDocumentId: 'event_past_terms_v1',
         applicationTermsAcceptedAt: '2026-01-10T13:00:00.000Z'
       }
     ])
@@ -388,7 +391,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     await harness.database.insert(teams).values([
       {
         id: 'team_current',
-        hackathonId: 'hackathon_current',
+        eventId: 'event_current',
         name: 'Current Team',
         slug: 'current-team',
         createdByUserId: 'participant_1'
@@ -414,24 +417,24 @@ describe('TASK-3.5 actor-facing API routes', () => {
       updatedAt: '2026-03-24T11:00:00.000Z'
     })
 
-    await harness.database.insert(hackathonRoleAssignments).values({
+    await harness.database.insert(eventRoleAssignments).values({
       id: 'role_staff_current',
-      hackathonId: 'hackathon_current',
+      eventId: 'event_current',
       userId: 'participant_1',
       role: 'staff',
       isStaff: true,
       createdAt: '2026-03-20T17:00:00.000Z'
     })
 
-    const response = await harness.request('/api/account/hackathons')
+    const response = await harness.request('/api/account/events')
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: {
         current: [
           {
-            id: 'hackathon_current',
-            slug: 'current-hackathon',
+            id: 'event_current',
+            slug: 'current-event',
             applicationStatus: 'approved',
             team: {
               id: 'team_current',
@@ -444,8 +447,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         ],
         past: [
           {
-            id: 'hackathon_past',
-            slug: 'past-hackathon',
+            id: 'event_past',
+            slug: 'past-event',
             applicationStatus: 'approved',
             team: null,
             submissionStatus: null,
@@ -456,10 +459,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
-  test('GET /api/account/hackathons hides street address for non-approved participants without staff access', async () => {
+  test('GET /api/account/events hides street address for non-approved participants without staff access', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'get', path: '/api/account/hackathons', handler: accountHackathonsGetHandler }
+        { method: 'get', path: '/api/account/events', handler: accountEventsGetHandler }
       ],
       sessionUser: {
         sub: 'auth0|participant',
@@ -517,11 +520,12 @@ describe('TASK-3.5 actor-facing API routes', () => {
       }
     ])
 
-    await harness.database.insert(hackathons).values([
+    await harness.database.insert(events).values([
       {
-        id: 'hackathon_submitted',
-        name: 'Submitted Hackathon',
-        slug: 'submitted-hackathon',
+        id: 'event_submitted',
+        eventType: 'hackathon',
+        name: 'Submitted Event',
+        slug: 'submitted-event',
         description: 'Submitted program',
         city: 'Vienna',
         country: 'Austria',
@@ -535,9 +539,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
         createdByUserId: 'creator_1'
       },
       {
-        id: 'hackathon_staff',
-        name: 'Staff Hackathon',
-        slug: 'staff-hackathon',
+        id: 'event_staff',
+        eventType: 'hackathon',
+        name: 'Staff Event',
+        slug: 'staff-event',
         description: 'Staff program',
         city: 'Berlin',
         country: 'Germany',
@@ -552,9 +557,9 @@ describe('TASK-3.5 actor-facing API routes', () => {
       }
     ])
 
-    await harness.database.insert(hackathonTermsDocuments).values({
-      id: 'hackathon_submitted_terms_v1',
-      hackathonId: 'hackathon_submitted',
+    await harness.database.insert(eventTermsDocuments).values({
+      id: 'event_submitted_terms_v1',
+      eventId: 'event_submitted',
       documentType: 'application_terms',
       version: 1,
       title: 'Submitted application terms',
@@ -564,37 +569,37 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_submitted',
-      hackathonId: 'hackathon_submitted',
+      eventId: 'event_submitted',
       userId: 'participant_1',
       status: 'submitted',
       submittedAt: '2026-03-20T13:00:00.000Z',
-      applicationTermsDocumentId: 'hackathon_submitted_terms_v1',
+      applicationTermsDocumentId: 'event_submitted_terms_v1',
       applicationTermsAcceptedAt: '2026-03-20T13:00:00.000Z'
     })
 
-    await harness.database.insert(hackathonRoleAssignments).values({
+    await harness.database.insert(eventRoleAssignments).values({
       id: 'role_staff',
-      hackathonId: 'hackathon_staff',
+      eventId: 'event_staff',
       userId: 'participant_1',
       role: 'staff',
       isStaff: true,
       createdAt: '2026-03-20T17:00:00.000Z'
     })
 
-    const response = await harness.request('/api/account/hackathons')
+    const response = await harness.request('/api/account/events')
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: {
         current: expect.arrayContaining([
           expect.objectContaining({
-            slug: 'submitted-hackathon',
+            slug: 'submitted-event',
             applicationStatus: 'submitted',
             address: '',
             roles: []
           }),
           expect.objectContaining({
-            slug: 'staff-hackathon',
+            slug: 'staff-event',
             applicationStatus: null,
             address: 'Staff Address',
             roles: ['staff']
@@ -614,8 +619,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
         'sub': 'auth0|consented-user',
         'email': 'consented-user@example.com',
         'name': 'Consented User',
-        'https://codex-hackathons/consents/privacy_policy': true,
-        'https://codex-hackathons/consents/platform_terms': true
+        'https://codex-events/consents/privacy_policy': true,
+        'https://codex-events/consents/platform_terms': true
       }
     })
     databases.push(harness)
@@ -745,10 +750,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
       },
       runtimeConfig: {
         auth0: {
-          managementDomain: 'codex-hackathons-dev.eu.auth0.com',
+          managementDomain: 'codex-events-dev.eu.auth0.com',
           managementClientId: 'management-client-id',
           managementClientSecret: 'management-client-secret',
-          managementAudience: 'https://codex-hackathons-dev.eu.auth0.com/api/v2/'
+          managementAudience: 'https://codex-events-dev.eu.auth0.com/api/v2/'
         }
       }
     })
@@ -768,7 +773,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
           ? input.toString()
           : input.url
 
-      if (url === 'https://codex-hackathons-dev.eu.auth0.com/oauth/token') {
+      if (url === 'https://codex-events-dev.eu.auth0.com/oauth/token') {
         return new Response(JSON.stringify({
           access_token: createFixtureJwt({
             permissions: ['read:users']
@@ -782,7 +787,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
         })
       }
 
-      if (url === 'https://codex-hackathons-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user') {
+      if (url === 'https://codex-events-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user') {
         return new Response(JSON.stringify({
           identities: [
             {
@@ -966,8 +971,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       supportEmail: 'support@example.com',
       privacyEmail: 'privacy@example.com',
       legalContactLanguages: 'English',
-      businessPurpose: 'Running hackathons.',
-      editorialLine: 'Hackathon information.',
+      businessPurpose: 'Running events.',
+      editorialLine: 'Event information.',
       imprintContent: 'Example imprint.'
     })
 
@@ -1012,8 +1017,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       supportEmail: 'support@example.com',
       privacyEmail: 'privacy@example.com',
       legalContactLanguages: 'English',
-      businessPurpose: 'Running hackathons.',
-      editorialLine: 'Hackathon information.',
+      businessPurpose: 'Running events.',
+      editorialLine: 'Event information.',
       imprintContent: 'Example imprint.'
     }
 
@@ -1717,11 +1722,11 @@ describe('TASK-3.5 actor-facing API routes', () => {
       },
       runtimeConfig: {
         auth0: {
-          appBaseUrl: 'https://dev.codex-hackathons.com',
-          managementDomain: 'codex-hackathons-dev.eu.auth0.com',
+          appBaseUrl: 'https://dev.codex-events.com',
+          managementDomain: 'codex-events-dev.eu.auth0.com',
           managementClientId: 'management-client-id',
           managementClientSecret: 'management-client-secret',
-          managementAudience: 'https://codex-hackathons-dev.eu.auth0.com/api/v2/',
+          managementAudience: 'https://codex-events-dev.eu.auth0.com/api/v2/',
           databaseConnectionName: 'Username-Password-Authentication',
           accountLinkChallengeSecret: 'link-secret'
         }
@@ -1759,7 +1764,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       body: JSON.stringify({
         privacyPolicyDocumentId: 'privacy_v1',
         platformTermsDocumentId: 'terms_v1',
-        returnTo: '/hackathons/fixture/register'
+        returnTo: '/events/fixture/register'
       })
     })
 
@@ -1789,11 +1794,11 @@ describe('TASK-3.5 actor-facing API routes', () => {
       },
       runtimeConfig: {
         auth0: {
-          appBaseUrl: 'https://dev.codex-hackathons.com',
-          managementDomain: 'codex-hackathons-dev.eu.auth0.com',
+          appBaseUrl: 'https://dev.codex-events.com',
+          managementDomain: 'codex-events-dev.eu.auth0.com',
           managementClientId: 'management-client-id',
           managementClientSecret: 'management-client-secret',
-          managementAudience: 'https://codex-hackathons-dev.eu.auth0.com/api/v2/',
+          managementAudience: 'https://codex-events-dev.eu.auth0.com/api/v2/',
           databaseConnectionName: 'Username-Password-Authentication',
           accountLinkChallengeSecret: 'link-secret'
         }
@@ -1831,7 +1836,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       body: JSON.stringify({
         privacyPolicyDocumentId: 'privacy_v1',
         platformTermsDocumentId: 'terms_v1',
-        returnTo: '/hackathons/fixture/register'
+        returnTo: '/events/fixture/register'
       })
     })
 
@@ -2032,7 +2037,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
         firstName: 'Updated',
         familyName: 'Account User',
         company: 'Codex Labs',
-        bio: 'Building tools for hackathon participants.',
+        bio: 'Building tools for event participants.',
         xProfileUrl: 'x.com/account-user',
         linkedinProfileUrl: 'linkedin.com/in/account-user',
         githubProfileUrl: '',
@@ -2051,7 +2056,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
           firstName: 'Updated',
           familyName: 'Account User',
           company: 'Codex Labs',
-          bio: 'Building tools for hackathon participants.',
+          bio: 'Building tools for event participants.',
           xProfileUrl: 'https://x.com/account-user',
           linkedinProfileUrl: 'https://linkedin.com/in/account-user',
           githubProfileUrl: null,
@@ -2072,7 +2077,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       firstName: 'Updated',
       familyName: 'Account User',
       company: 'Codex Labs',
-      bio: 'Building tools for hackathon participants.',
+      bio: 'Building tools for event participants.',
       xProfileUrl: 'https://x.com/account-user',
       linkedinProfileUrl: 'https://linkedin.com/in/account-user',
       githubProfileUrl: null,
@@ -2226,7 +2231,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
-  test('GET /api/account/profile-icon supports hackathon-scoped participant visibility reads', async () => {
+  test('GET /api/account/profile-icon supports event-scoped participant visibility reads', async () => {
     const profileIconsBucket = new InMemoryR2Bucket()
     await profileIconsBucket.put(
       'users/user_participant_icon/profile-icon',
@@ -2243,9 +2248,9 @@ describe('TASK-3.5 actor-facing API routes', () => {
         { method: 'get', path: '/api/account/profile-icon', handler: accountProfileIconGetHandler }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon-admin-profile-icon',
-        email: 'hackathon-admin-profile-icon@example.com',
-        name: 'Hackathon Admin'
+        sub: 'auth0|event-admin-profile-icon',
+        email: 'event-admin-profile-icon@example.com',
+        name: 'Event Admin'
       },
       cloudflareEnv: {
         [profileIconBindingName]: profileIconsBucket
@@ -2260,10 +2265,10 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     await harness.database.insert(users).values([
       {
-        id: 'user_hackathon_admin_profile_icon',
-        auth0Subject: 'auth0|hackathon-admin-profile-icon',
-        email: 'hackathon-admin-profile-icon@example.com',
-        displayName: 'Hackathon Admin'
+        id: 'user_event_admin_profile_icon',
+        auth0Subject: 'auth0|event-admin-profile-icon',
+        email: 'event-admin-profile-icon@example.com',
+        displayName: 'Event Admin'
       },
       {
         id: 'user_participant_icon',
@@ -2293,23 +2298,24 @@ describe('TASK-3.5 actor-facing API routes', () => {
     ])
     await harness.database.insert(userPlatformDocumentAcceptances).values([
       {
-        id: 'acceptance_hackathon_admin_profile_icon_privacy',
-        userId: 'user_hackathon_admin_profile_icon',
+        id: 'acceptance_event_admin_profile_icon_privacy',
+        userId: 'user_event_admin_profile_icon',
         platformDocumentId: 'privacy_v1',
         acceptedAt: '2026-03-03T00:00:00.000Z'
       },
       {
-        id: 'acceptance_hackathon_admin_profile_icon_terms',
-        userId: 'user_hackathon_admin_profile_icon',
+        id: 'acceptance_event_admin_profile_icon_terms',
+        userId: 'user_event_admin_profile_icon',
         platformDocumentId: 'terms_v1',
         acceptedAt: '2026-03-03T00:00:00.000Z'
       }
     ])
-    await harness.database.insert(hackathons).values({
-      id: 'hackathon_profile_icon',
-      name: 'Profile Icon Fixture Hackathon',
-      slug: 'profile-icon-fixture-hackathon',
-      description: 'Fixture hackathon',
+    await harness.database.insert(events).values({
+      id: 'event_profile_icon',
+      eventType: 'hackathon',
+      name: 'Profile Icon Fixture Event',
+      slug: 'profile-icon-fixture-event',
+      description: 'Fixture event',
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address',
@@ -2319,36 +2325,36 @@ describe('TASK-3.5 actor-facing API routes', () => {
       submissionClosesAt: '2026-03-25T12:00:00.000Z',
       state: 'registration_open',
       maxTeamMembers: 5,
-      createdByUserId: 'user_hackathon_admin_profile_icon'
+      createdByUserId: 'user_event_admin_profile_icon'
     })
-    await harness.database.insert(hackathonTermsDocuments).values({
-      id: 'hackathon_terms_profile_icon_v1',
-      hackathonId: 'hackathon_profile_icon',
+    await harness.database.insert(eventTermsDocuments).values({
+      id: 'event_terms_profile_icon_v1',
+      eventId: 'event_profile_icon',
       documentType: 'application_terms',
       version: 1,
       title: 'Application Terms v1',
       content: 'Terms',
       publishedAt: '2026-03-03T00:00:00.000Z'
     })
-    await harness.database.insert(hackathonRoleAssignments).values({
-      id: 'role_hackathon_admin_profile_icon',
-      hackathonId: 'hackathon_profile_icon',
-      userId: 'user_hackathon_admin_profile_icon',
-      role: 'hackathon_admin',
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'role_event_admin_profile_icon',
+      eventId: 'event_profile_icon',
+      userId: 'user_event_admin_profile_icon',
+      role: 'event_admin',
       isInJudgePool: false,
       createdAt: fixtureTimestamp()
     })
     await harness.database.insert(userApplications).values({
       id: 'application_participant_profile_icon',
-      hackathonId: 'hackathon_profile_icon',
+      eventId: 'event_profile_icon',
       userId: 'user_participant_icon',
       status: 'approved',
-      applicationTermsDocumentId: 'hackathon_terms_profile_icon_v1',
+      applicationTermsDocumentId: 'event_terms_profile_icon_v1',
       applicationTermsAcceptedAt: '2026-03-03T00:00:00.000Z'
     })
 
     const iconResponse = await harness.request(
-      '/api/account/profile-icon?user=user_participant_icon&hackathon=hackathon_profile_icon'
+      '/api/account/profile-icon?user=user_participant_icon&event=event_profile_icon'
     )
 
     expect(iconResponse.status).toBe(200)
@@ -2356,12 +2362,12 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(iconResponse.headers.get('x-content-type-options')).toBe('nosniff')
     expect(new Uint8Array(await iconResponse.arrayBuffer())).toEqual(pngSignatureBytes)
 
-    const missingHackathonResponse = await harness.request('/api/account/profile-icon?user=user_participant_icon')
+    const missingEventResponse = await harness.request('/api/account/profile-icon?user=user_participant_icon')
 
-    expect(missingHackathonResponse.status).toBe(400)
-    expect(await missingHackathonResponse.json()).toMatchObject({
+    expect(missingEventResponse.status).toBe(400)
+    expect(await missingEventResponse.json()).toMatchObject({
       error: {
-        code: 'hackathon_id_required'
+        code: 'event_id_required'
       }
     })
   })
@@ -2452,11 +2458,12 @@ describe('TASK-3.5 actor-facing API routes', () => {
         acceptedAt: '2026-03-03T00:00:00.000Z'
       }
     ])
-    await harness.database.insert(hackathons).values({
-      id: 'hackathon_profile_icon',
-      name: 'Profile Icon Fixture Hackathon',
-      slug: 'profile-icon-fixture-hackathon',
-      description: 'Fixture hackathon',
+    await harness.database.insert(events).values({
+      id: 'event_profile_icon',
+      eventType: 'hackathon',
+      name: 'Profile Icon Fixture Event',
+      slug: 'profile-icon-fixture-event',
+      description: 'Fixture event',
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address',
@@ -2468,9 +2475,9 @@ describe('TASK-3.5 actor-facing API routes', () => {
       maxTeamMembers: 5,
       createdByUserId: 'user_participant_roster_viewer'
     })
-    await harness.database.insert(hackathonTermsDocuments).values({
-      id: 'hackathon_terms_profile_icon_v1',
-      hackathonId: 'hackathon_profile_icon',
+    await harness.database.insert(eventTermsDocuments).values({
+      id: 'event_terms_profile_icon_v1',
+      eventId: 'event_profile_icon',
       documentType: 'application_terms',
       version: 1,
       title: 'Application Terms v1',
@@ -2479,15 +2486,15 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
     await harness.database.insert(userApplications).values({
       id: 'application_participant_roster_viewer',
-      hackathonId: 'hackathon_profile_icon',
+      eventId: 'event_profile_icon',
       userId: 'user_participant_roster_viewer',
       status: 'submitted',
-      applicationTermsDocumentId: 'hackathon_terms_profile_icon_v1',
+      applicationTermsDocumentId: 'event_terms_profile_icon_v1',
       applicationTermsAcceptedAt: '2026-03-03T00:00:00.000Z'
     })
-    await harness.database.insert(hackathonRoleAssignments).values({
+    await harness.database.insert(eventRoleAssignments).values({
       id: 'role_judge_profile_icon',
-      hackathonId: 'hackathon_profile_icon',
+      eventId: 'event_profile_icon',
       userId: 'user_judge_icon',
       role: 'judge',
       isInJudgePool: true,
@@ -2495,7 +2502,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
 
     const iconResponse = await harness.request(
-      '/api/account/profile-icon?user=user_judge_icon&hackathon=hackathon_profile_icon'
+      '/api/account/profile-icon?user=user_judge_icon&event=event_profile_icon'
     )
 
     expect(iconResponse.status).toBe(200)
@@ -2504,7 +2511,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(new Uint8Array(await iconResponse.arrayBuffer())).toEqual(pngSignatureBytes)
 
     const hiddenIconResponse = await harness.request(
-      '/api/account/profile-icon?user=user_unrelated_icon&hackathon=hackathon_profile_icon'
+      '/api/account/profile-icon?user=user_unrelated_icon&event=event_profile_icon'
     )
 
     expect(hiddenIconResponse.status).toBe(404)
@@ -2677,11 +2684,12 @@ describe('TASK-3.5 actor-facing API routes', () => {
       isPlatformAdmin: true,
       profileIconUpdatedAt: fixtureTimestamp()
     })
-    await harness.database.insert(hackathons).values({
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon-delete',
-      description: 'Fixture hackathon',
+    await harness.database.insert(events).values({
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Fixture Event',
+      slug: 'fixture-event-delete',
+      description: 'Fixture event',
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address',
@@ -2707,11 +2715,11 @@ describe('TASK-3.5 actor-facing API routes', () => {
       platformDocumentId: 'terms_v1',
       acceptedAt: fixtureTimestamp()
     })
-    await harness.database.insert(hackathonRoleAssignments).values({
+    await harness.database.insert(eventRoleAssignments).values({
       id: 'role_delete',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'user_delete',
-      role: 'hackathon_admin',
+      role: 'event_admin',
       isInJudgePool: false,
       createdAt: fixtureTimestamp()
     })
@@ -2732,7 +2740,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
     const deletedIdentities = await harness.database.select().from(userAuthIdentities)
     const deletedAcceptances = await harness.database.select().from(userPlatformDocumentAcceptances)
-    const deletedAssignments = await harness.database.select().from(hackathonRoleAssignments)
+    const deletedAssignments = await harness.database.select().from(eventRoleAssignments)
     const auditEntries = await harness.database.select().from(auditLogs)
 
     expect(deletedUser?.deletedAt).toBeTruthy()

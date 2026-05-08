@@ -2,11 +2,11 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { eq } from 'drizzle-orm'
 
-import backfillLumaEmailsHandler from '../../../../server/api/admin/hackathons/[hackathonId]/actions/backfill-luma-emails.post'
+import backfillLumaEmailsHandler from '../../../../server/api/admin/events/[eventId]/actions/backfill-luma-emails.post'
 import {
   auditLogs,
-  hackathons,
-  hackathonTermsDocuments,
+  events,
+  eventTermsDocuments,
   userApplications,
   users
 } from '../../../../server/database/schema'
@@ -23,10 +23,10 @@ describe('admin luma backfill routes', () => {
     }
   })
 
-  test('platform admins can backfill Luma emails for legacy usernames in a hackathon with a configured Luma event API id', async () => {
+  test('platform admins can backfill Luma emails for legacy usernames in an event with a configured Luma event API id', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/admin/hackathons/:hackathonId/actions/backfill-luma-emails', handler: backfillLumaEmailsHandler }
+        { method: 'post', path: '/api/admin/events/:eventId/actions/backfill-luma-emails', handler: backfillLumaEmailsHandler }
       ],
       sessionUser: {
         sub: 'auth0|platform_admin',
@@ -65,11 +65,12 @@ describe('admin luma backfill routes', () => {
       }
     ])
 
-    await harness.database.insert(hackathons).values({
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
-      description: 'Fixture hackathon',
+    await harness.database.insert(events).values({
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address',
@@ -87,9 +88,9 @@ describe('admin luma backfill routes', () => {
       createdByUserId: 'platform_admin'
     })
 
-    await harness.database.insert(hackathonTermsDocuments).values({
+    await harness.database.insert(eventTermsDocuments).values({
       id: 'terms_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       documentType: 'application_terms',
       version: 1,
       title: 'Application Terms',
@@ -100,7 +101,7 @@ describe('admin luma backfill routes', () => {
     await harness.database.insert(userApplications).values([
       {
         id: 'application_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'legacy_user',
         status: 'submitted',
         submittedAt: '2026-03-22T12:10:00.000Z',
@@ -114,7 +115,7 @@ describe('admin luma backfill routes', () => {
       },
       {
         id: 'application_2',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'migrated_user',
         status: 'submitted',
         submittedAt: '2026-03-22T12:11:00.000Z',
@@ -165,14 +166,14 @@ describe('admin luma backfill routes', () => {
 
     vi.stubGlobal('fetch', fetchMock)
 
-    const response = await harness.request('/api/admin/hackathons/hackathon_1/actions/backfill-luma-emails', {
+    const response = await harness.request('/api/admin/events/event_1/actions/backfill-luma-emails', {
       method: 'POST'
     })
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: {
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         candidateCount: 1,
         updatedCount: 1,
         failedCount: 0,
@@ -206,9 +207,9 @@ describe('admin luma backfill routes', () => {
     expect(auditRows).toEqual(expect.arrayContaining([
       expect.objectContaining({
         actorUserId: 'platform_admin',
-        entityType: 'hackathon',
-        entityId: 'hackathon_1',
-        action: 'hackathon.luma_email_backfill_completed',
+        entityType: 'event',
+        entityId: 'event_1',
+        action: 'event.luma_email_backfill_completed',
         metadata: expect.objectContaining({
           candidateCount: 1,
           updatedCount: 1,
@@ -222,7 +223,7 @@ describe('admin luma backfill routes', () => {
   test('non-platform admins cannot backfill Luma emails', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/admin/hackathons/:hackathonId/actions/backfill-luma-emails', handler: backfillLumaEmailsHandler }
+        { method: 'post', path: '/api/admin/events/:eventId/actions/backfill-luma-emails', handler: backfillLumaEmailsHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -247,11 +248,12 @@ describe('admin luma backfill routes', () => {
       }
     ])
 
-    await harness.database.insert(hackathons).values({
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
-      description: 'Fixture hackathon',
+    await harness.database.insert(events).values({
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address',
@@ -269,7 +271,7 @@ describe('admin luma backfill routes', () => {
       createdByUserId: 'platform_admin'
     })
 
-    const response = await harness.request('/api/admin/hackathons/hackathon_1/actions/backfill-luma-emails', {
+    const response = await harness.request('/api/admin/events/event_1/actions/backfill-luma-emails', {
       method: 'POST'
     })
 

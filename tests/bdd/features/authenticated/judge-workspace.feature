@@ -25,6 +25,6 @@ Feature: TASK-4.7 judge workspace UI
     Then I should see the blind assignment title "Workspace Project Two"
     Then the opened blind assignment should show status "In review"
     When I skip the opened blind review with reason "Conflict"
-    Then I should be returned to the hackathon judging tab
-    When I reopen the judge workspace for the fixture hackathon
+    Then I should be returned to the event judging tab
+    When I reopen the judge workspace for the fixture event
     And I should not see the in-progress blind workspace assignment card

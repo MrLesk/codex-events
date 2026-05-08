@@ -15,18 +15,18 @@ jobs:
       contents: write
     environment:
       name: production
-      url: https://codex-hackathons.com
+      url: https://codex-events.com
     env:
       CI: true
       NODE_OPTIONS: --max-old-space-size=4096
-      AUTH0_DOMAIN: codex-hackathons.eu.auth0.com
-      AUTH0_APP_BASE_URL: https://codex-hackathons.com
-      AUTH0_CUSTOM_DOMAIN: auth.codex-hackathons.com
-      AUTH0_LOGIN_URI: https://codex-hackathons.com/auth/login
-      AUTH0_APP_DISPLAY_NAME: Codex Hackathons
-      AUTH0_MGMT_AUDIENCE: https://codex-hackathons.eu.auth0.com/api/v2/
-      NUXT_AUTH0_DOMAIN: auth.codex-hackathons.com
-      NUXT_AUTH0_APP_BASE_URL: https://codex-hackathons.com
+      AUTH0_DOMAIN: codex-events.eu.auth0.com
+      AUTH0_APP_BASE_URL: https://codex-events.com
+      AUTH0_CUSTOM_DOMAIN: auth.codex-events.com
+      AUTH0_LOGIN_URI: https://codex-events.com/auth/login
+      AUTH0_APP_DISPLAY_NAME: Codex Events
+      AUTH0_MGMT_AUDIENCE: https://codex-events.eu.auth0.com/api/v2/
+      NUXT_AUTH0_DOMAIN: auth.codex-events.com
+      NUXT_AUTH0_APP_BASE_URL: https://codex-events.com
       NUXT_AUTH0_CLIENT_ID: ${{ secrets.AUTH0_APP_CLIENT_ID }}
       NUXT_AUTH0_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_CLIENT_SECRET }}
       NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}
@@ -93,7 +93,7 @@ jobs:
       - name: Reconcile production Luma webhook
         if: ${{ env.NUXT_LUMA_API_KEY != '' }}
         env:
-          LUMA_WEBHOOK_URL: https://codex-hackathons.com/api/public/luma/webhooks
+          LUMA_WEBHOOK_URL: https://codex-events.com/api/public/luma/webhooks
         run: bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-production-luma-webhook-secret.json
 
       - name: Upload production Worker secrets

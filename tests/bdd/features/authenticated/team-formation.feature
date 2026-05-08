@@ -3,12 +3,12 @@ Feature: TASK-3.6 authenticated application and team formation flows
 
   Scenario: Regular user applies, is approved, and joins a judge-owned team
     Given the saved "regular_user" Auth0 session state exists
-    And the saved "hackathon_admin" Auth0 session state exists
+    And the saved "event_admin" Auth0 session state exists
     And the saved "judge" Auth0 session state exists
-    When the saved "regular_user" session submits an application for the fixture hackathon
+    When the saved "regular_user" session submits an application for the fixture event
     Then the submitted application should accept the current fixture application terms
-    When the saved "hackathon_admin" session approves the remembered application
-    Then the remembered application should be approved by "user_hackathon_admin"
+    When the saved "event_admin" session approves the remembered application
+    Then the remembered application should be approved by "user_event_admin"
     When the saved "judge" session creates an open team named "Judge Team"
     Then the remembered team should be created with admin "user_judge"
     When the saved "regular_user" session creates a join request for the remembered team

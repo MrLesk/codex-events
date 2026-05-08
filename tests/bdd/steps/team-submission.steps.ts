@@ -59,7 +59,7 @@ Then('I should see the participant submission status {string}', async ({ page },
 })
 
 Then('I should see the participant submission text {string}', async ({ page }, text: string) => {
-  await expect(page.getByTestId('account-hackathon-submission-panel').getByText(text, {
+  await expect(page.getByTestId('account-event-submission-panel').getByText(text, {
     exact: false
   }).first()).toBeVisible()
 })

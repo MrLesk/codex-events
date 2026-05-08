@@ -1,4 +1,4 @@
-import type { PublicHackathon } from '~/domains/hackathons/presentation'
+import type { PublicEvent } from '~/domains/events/presentation'
 import type {
   ParticipantApplicationRecord
 } from '~/domains/applications/participant-application'
@@ -58,7 +58,7 @@ function normalizeVisibleTeamsFilterCounts(filterCounts?: Partial<VisibleTeamsFi
 }
 
 export function useTeamFormationWorkspace(
-  hackathon: MaybeRefOrGetter<PublicHackathon & {
+  event: MaybeRefOrGetter<PublicEvent & {
     id: string
   }>,
   options?: {
@@ -67,7 +67,7 @@ export function useTeamFormationWorkspace(
 ) {
   const apiFetch = import.meta.server ? useRequestFetch() : $fetch
   const { actor, status: actorStatus } = useAccountLifecycleActor()
-  const resolvedHackathon = computed(() => toValue(hackathon))
+  const resolvedEvent = computed(() => toValue(event))
   const resolvedTeamId = computed(() => {
     const teamId = toValue(options?.teamId ?? null)
     return typeof teamId === 'string' && teamId.trim().length > 0 ? teamId : null
@@ -81,26 +81,26 @@ export function useTeamFormationWorkspace(
   const actorUserId = computed(() => typedActor.value?.kind === 'platform_user' ? typedActor.value.platformUser.id : null)
   const actorErrorMessage = computed(() => '')
 
-  const visibleHackathon = computed(() => resolvedHackathon.value)
-  const visibleHackathonId = computed(() => resolvedHackathon.value.id)
-  const visibleHackathonErrorMessage = computed(() => '')
+  const visibleEvent = computed(() => resolvedEvent.value)
+  const visibleEventId = computed(() => resolvedEvent.value.id)
+  const visibleEventErrorMessage = computed(() => '')
 
   const ownApplicationRequest = useAsyncData<ParticipantApplicationRecord | null>(
-    () => `team-workspace-own-application:${authSubject.value}:${visibleHackathonId.value ?? 'none'}`,
+    () => `team-workspace-own-application:${authSubject.value}:${visibleEventId.value ?? 'none'}`,
     async () => {
-      if (typedActor.value?.kind !== 'platform_user' || !visibleHackathonId.value) {
+      if (typedActor.value?.kind !== 'platform_user' || !visibleEventId.value) {
         return null
       }
 
       const response = await apiFetch<TeamWorkspaceApiDataResponse<ParticipantApplicationRecord | null>>(
-        `/api/hackathons/${visibleHackathonId.value}/applications/me`
+        `/api/events/${visibleEventId.value}/applications/me`
       )
 
       return response.data
     },
     {
       default: () => null,
-      watch: [typedActor, visibleHackathonId]
+      watch: [typedActor, visibleEventId]
     }
   )
 
@@ -148,7 +148,7 @@ export function useTeamFormationWorkspace(
   const hasMoreVisibleTeams = computed(() => visibleTeams.value.length < visibleTeamsTotal.value)
 
   function buildRememberedJoinRequestKey(teamId: string) {
-    return `${visibleHackathonId.value ?? 'none'}:${actorUserId.value ?? 'none'}:${teamId}`
+    return `${visibleEventId.value ?? 'none'}:${actorUserId.value ?? 'none'}:${teamId}`
   }
 
   function rememberPendingJoinRequest(teamId: string, requestId: string) {
@@ -198,12 +198,12 @@ export function useTeamFormationWorkspace(
     pageSize: number = visibleTeamsPageSize,
     options?: VisibleTeamsFilter
   ) {
-    if (!visibleHackathonId.value) {
-      throw new Error('The current hackathon team route could not be resolved.')
+    if (!visibleEventId.value) {
+      throw new Error('The current event team route could not be resolved.')
     }
 
     return await apiFetch<TeamSummaryListResponse>(
-      `/api/hackathons/${visibleHackathonId.value}/teams`,
+      `/api/events/${visibleEventId.value}/teams`,
       {
         query: {
           page,
@@ -234,7 +234,7 @@ export function useTeamFormationWorkspace(
   }
 
   async function findVisibleTeamBySlug(teamSlug: string) {
-    if (!visibleHackathonId.value || typedActor.value?.kind !== 'platform_user') {
+    if (!visibleEventId.value || typedActor.value?.kind !== 'platform_user') {
       return null
     }
 
@@ -245,7 +245,7 @@ export function useTeamFormationWorkspace(
     }
 
     const response = await apiFetch<TeamSummaryListResponse>(
-      `/api/hackathons/${visibleHackathonId.value}/teams`,
+      `/api/events/${visibleEventId.value}/teams`,
       {
         query: {
           page: 1,
@@ -259,12 +259,12 @@ export function useTeamFormationWorkspace(
   }
 
   async function fetchTeamDetail(teamId: string) {
-    if (!visibleHackathonId.value) {
-      throw new Error('The current hackathon team route could not be resolved.')
+    if (!visibleEventId.value) {
+      throw new Error('The current event team route could not be resolved.')
     }
 
     const response = await apiFetch<TeamWorkspaceApiDataResponse<TeamDetailRecord>>(
-      `/api/hackathons/${visibleHackathonId.value}/teams/${teamId}`
+      `/api/events/${visibleEventId.value}/teams/${teamId}`
     )
 
     return response.data
@@ -274,7 +274,7 @@ export function useTeamFormationWorkspace(
     loadMore?: boolean
     filter?: VisibleTeamsFilter
   }) {
-    if (!visibleHackathonId.value || typedActor.value?.kind !== 'platform_user') {
+    if (!visibleEventId.value || typedActor.value?.kind !== 'platform_user') {
       resetVisibleTeamsState()
       return
     }
@@ -351,7 +351,7 @@ export function useTeamFormationWorkspace(
   }
 
   async function loadOwnTeam() {
-    if (!visibleHackathonId.value || typedActor.value?.kind !== 'platform_user') {
+    if (!visibleEventId.value || typedActor.value?.kind !== 'platform_user') {
       resetOwnTeamState()
       return
     }
@@ -417,7 +417,7 @@ export function useTeamFormationWorkspace(
   }
 
   async function loadCurrentTeam() {
-    if (!visibleHackathonId.value || !resolvedTeamId.value || typedActor.value?.kind !== 'platform_user') {
+    if (!visibleEventId.value || !resolvedTeamId.value || typedActor.value?.kind !== 'platform_user') {
       resetCurrentTeamState()
       return
     }
@@ -446,7 +446,7 @@ export function useTeamFormationWorkspace(
   }
 
   async function loadCurrentTeamJoinRequests() {
-    if (!visibleHackathonId.value || !currentTeam.value || !isCurrentTeamAdmin.value) {
+    if (!visibleEventId.value || !currentTeam.value || !isCurrentTeamAdmin.value) {
       teamJoinRequests.value = []
       teamJoinRequestsStatus.value = 'idle'
       teamJoinRequestsErrorMessage.value = ''
@@ -458,7 +458,7 @@ export function useTeamFormationWorkspace(
 
     try {
       const response = await apiFetch<TeamWorkspaceApiListResponse<TeamJoinRequestRecord>>(
-        `/api/hackathons/${visibleHackathonId.value}/teams/${currentTeam.value.id}/join-requests`
+        `/api/events/${visibleEventId.value}/teams/${currentTeam.value.id}/join-requests`
       )
 
       teamJoinRequests.value = response.data.filter(request => request.status === 'pending')
@@ -496,14 +496,14 @@ export function useTeamFormationWorkspace(
     isOpenToJoinRequests: boolean
     workspaceMode: 'solo' | 'team'
   }) {
-    if (!visibleHackathonId.value) {
-      mutationError.value = 'The current hackathon team route could not be resolved.'
+    if (!visibleEventId.value) {
+      mutationError.value = 'The current event team route could not be resolved.'
       return null
     }
 
     const createdTeam = await runMutation('create-team', async () => {
       const response = await apiFetch<TeamWorkspaceApiDataResponse<TeamDetailRecord>>(
-        `/api/hackathons/${visibleHackathonId.value}/teams`,
+        `/api/events/${visibleEventId.value}/teams`,
         {
           method: 'POST',
           body: input
@@ -524,14 +524,14 @@ export function useTeamFormationWorkspace(
   }
 
   async function requestToJoinTeam(teamId: string) {
-    if (!visibleHackathonId.value) {
-      mutationError.value = 'The current hackathon team route could not be resolved.'
+    if (!visibleEventId.value) {
+      mutationError.value = 'The current event team route could not be resolved.'
       return null
     }
 
     const joinRequest = await runMutation(`join-team:${teamId}`, async () => {
       const response = await apiFetch<TeamWorkspaceApiDataResponse<TeamJoinRequestRecord>>(
-        `/api/hackathons/${visibleHackathonId.value}/team-join-requests`,
+        `/api/events/${visibleEventId.value}/team-join-requests`,
         {
           method: 'POST',
           body: {
@@ -548,8 +548,8 @@ export function useTeamFormationWorkspace(
   }
 
   async function cancelPendingJoinRequest(teamId: string, requestId?: string | null) {
-    if (!visibleHackathonId.value) {
-      mutationError.value = 'The current hackathon team route could not be resolved.'
+    if (!visibleEventId.value) {
+      mutationError.value = 'The current event team route could not be resolved.'
       return null
     }
 
@@ -562,7 +562,7 @@ export function useTeamFormationWorkspace(
 
     const canceledRequest = await runMutation(`cancel-join-request:${effectiveRequestId}`, async () => {
       const response = await apiFetch<TeamWorkspaceApiDataResponse<TeamJoinRequestRecord>>(
-        `/api/hackathons/${visibleHackathonId.value}/team-join-requests/${effectiveRequestId}/actions/cancel`,
+        `/api/events/${visibleEventId.value}/team-join-requests/${effectiveRequestId}/actions/cancel`,
         {
           method: 'POST'
         }
@@ -584,14 +584,14 @@ export function useTeamFormationWorkspace(
     name?: string
     bio?: string
   }) {
-    if (!visibleHackathonId.value || !currentTeam.value) {
+    if (!visibleEventId.value || !currentTeam.value) {
       mutationError.value = 'The team workspace is unavailable for profile updates.'
       return null
     }
 
     const updatedTeam = await runMutation(`update-team:${currentTeam.value.id}`, async () => {
       const response = await apiFetch<TeamWorkspaceApiDataResponse<TeamDetailRecord>>(
-        `/api/hackathons/${visibleHackathonId.value}/teams/${currentTeam.value!.id}`,
+        `/api/events/${visibleEventId.value}/teams/${currentTeam.value!.id}`,
         {
           method: 'PATCH',
           body: input
@@ -611,14 +611,14 @@ export function useTeamFormationWorkspace(
   }
 
   async function updateCurrentTeamJoinPolicy(isOpenToJoinRequests: boolean) {
-    if (!visibleHackathonId.value || !currentTeam.value) {
+    if (!visibleEventId.value || !currentTeam.value) {
       mutationError.value = 'The team workspace is unavailable for join-policy updates.'
       return null
     }
 
     const updatedTeam = await runMutation(`update-team-join-policy:${currentTeam.value.id}`, async () => {
       const response = await apiFetch<TeamWorkspaceApiDataResponse<TeamDetailRecord>>(
-        `/api/hackathons/${visibleHackathonId.value}/teams/${currentTeam.value!.id}/join-policy`,
+        `/api/events/${visibleEventId.value}/teams/${currentTeam.value!.id}/join-policy`,
         {
           method: 'PATCH',
           body: {
@@ -640,14 +640,14 @@ export function useTeamFormationWorkspace(
   }
 
   async function approveJoinRequest(requestId: string) {
-    if (!visibleHackathonId.value || !currentTeam.value) {
+    if (!visibleEventId.value || !currentTeam.value) {
       mutationError.value = 'The team workspace is unavailable for join-request review.'
       return null
     }
 
     const request = await runMutation(`approve-join-request:${requestId}`, async () => {
       const response = await apiFetch<TeamWorkspaceApiDataResponse<TeamJoinRequestRecord>>(
-        `/api/hackathons/${visibleHackathonId.value}/team-join-requests/${requestId}/actions/approve`,
+        `/api/events/${visibleEventId.value}/team-join-requests/${requestId}/actions/approve`,
         {
           method: 'POST'
         }
@@ -665,14 +665,14 @@ export function useTeamFormationWorkspace(
   }
 
   async function rejectJoinRequest(requestId: string) {
-    if (!visibleHackathonId.value || !currentTeam.value) {
+    if (!visibleEventId.value || !currentTeam.value) {
       mutationError.value = 'The team workspace is unavailable for join-request review.'
       return null
     }
 
     const request = await runMutation(`reject-join-request:${requestId}`, async () => {
       const response = await apiFetch<TeamWorkspaceApiDataResponse<TeamJoinRequestRecord>>(
-        `/api/hackathons/${visibleHackathonId.value}/team-join-requests/${requestId}/actions/reject`,
+        `/api/events/${visibleEventId.value}/team-join-requests/${requestId}/actions/reject`,
         {
           method: 'POST'
         }
@@ -686,7 +686,7 @@ export function useTeamFormationWorkspace(
   }
 
   async function leaveCurrentTeam() {
-    if (!visibleHackathonId.value || !currentTeam.value) {
+    if (!visibleEventId.value || !currentTeam.value) {
       mutationError.value = 'The team workspace is unavailable for membership changes.'
       return null
     }
@@ -699,7 +699,7 @@ export function useTeamFormationWorkspace(
         leftAt: string
         teamDissolved: boolean
       }>>(
-        `/api/hackathons/${visibleHackathonId.value}/teams/${currentTeam.value!.id}/actions/leave`,
+        `/api/events/${visibleEventId.value}/teams/${currentTeam.value!.id}/actions/leave`,
         {
           method: 'POST'
         }
@@ -717,7 +717,7 @@ export function useTeamFormationWorkspace(
   }
 
   async function removeCurrentTeamMember(userId: string) {
-    if (!visibleHackathonId.value || !currentTeam.value) {
+    if (!visibleEventId.value || !currentTeam.value) {
       mutationError.value = 'The team workspace is unavailable for membership changes.'
       return null
     }
@@ -729,7 +729,7 @@ export function useTeamFormationWorkspace(
         userId: string
         leftAt: string
       }>>(
-        `/api/hackathons/${visibleHackathonId.value}/teams/${currentTeam.value!.id}/members/${userId}/actions/remove`,
+        `/api/events/${visibleEventId.value}/teams/${currentTeam.value!.id}/members/${userId}/actions/remove`,
         {
           method: 'POST'
         }
@@ -747,7 +747,7 @@ export function useTeamFormationWorkspace(
   }
 
   async function promoteCurrentTeamMember(userId: string) {
-    if (!visibleHackathonId.value || !currentTeam.value) {
+    if (!visibleEventId.value || !currentTeam.value) {
       mutationError.value = 'The team workspace is unavailable for membership changes.'
       return null
     }
@@ -759,7 +759,7 @@ export function useTeamFormationWorkspace(
         userId: string
         role: 'admin'
       }>>(
-        `/api/hackathons/${visibleHackathonId.value}/teams/${currentTeam.value!.id}/members/${userId}/actions/make-admin`,
+        `/api/events/${visibleEventId.value}/teams/${currentTeam.value!.id}/members/${userId}/actions/make-admin`,
         {
           method: 'POST'
         }
@@ -776,11 +776,11 @@ export function useTeamFormationWorkspace(
     return result
   }
 
-  watch([visibleHackathonId, actorUserId], async ([hackathonId, userId]) => {
+  watch([visibleEventId, actorUserId], async ([eventId, userId]) => {
     resetVisibleTeamsState()
     resetOwnTeamState()
 
-    if (!hackathonId || !userId) {
+    if (!eventId || !userId) {
       return
     }
 
@@ -792,8 +792,8 @@ export function useTeamFormationWorkspace(
     immediate: true
   })
 
-  watch([visibleHackathonId, resolvedTeamId, actorUserId], async ([hackathonId, teamId, userId]) => {
-    if (!hackathonId || !teamId || !userId) {
+  watch([visibleEventId, resolvedTeamId, actorUserId], async ([eventId, teamId, userId]) => {
+    if (!eventId || !teamId || !userId) {
       resetCurrentTeamState()
       return
     }
@@ -859,17 +859,17 @@ export function useTeamFormationWorkspace(
     createTeam,
     promoteCurrentTeamMember,
     removeCurrentTeamMember,
-    resolvedHackathon,
+    resolvedEvent,
     resolvedTeamId,
     teamJoinRequests,
     teamJoinRequestsErrorMessage,
     teamJoinRequestsStatus,
     updateCurrentTeamJoinPolicy,
     updateCurrentTeamProfile,
-    visibleHackathon,
-    visibleHackathonErrorMessage,
-    visibleHackathonId,
-    visibleHackathonStatus: computed(() => {
+    visibleEvent,
+    visibleEventErrorMessage,
+    visibleEventId,
+    visibleEventStatus: computed(() => {
       if (actorStatus.value === 'idle' || actorStatus.value === 'pending') {
         return actorStatus.value
       }

@@ -1,12 +1,12 @@
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
-import type { HackathonRoleAssignment } from '~/domains/hackathons/access'
-import type { HackathonState } from '~/domains/hackathons/states'
+import type { EventRoleAssignment } from '~/domains/events/access'
+import type { EventState } from '~/domains/events/states'
 import type { SubmissionRecord } from '~/domains/submissions/admin-submission-record'
 import { formatAdminOperationalTeamProjectLabel } from '~/domains/submissions/project-labels'
 
 export interface JudgeAssignmentSummary {
   id: string
-  hackathonId: string
+  eventId: string
   submissionId: string
   judgeUserId: string
   reviewStage: 'blind_review' | 'pitch_review'
@@ -108,7 +108,7 @@ function startCase(value: string) {
 
 function getPitchReviewCoverageJudgeLabel(
   judgeUserId: string,
-  roleAssignmentsByUserId: Map<string, Pick<HackathonRoleAssignment, 'userId' | 'user'>>
+  roleAssignmentsByUserId: Map<string, Pick<EventRoleAssignment, 'userId' | 'user'>>
 ) {
   const roleAssignment = roleAssignmentsByUserId.get(judgeUserId)
   const displayName = roleAssignment?.user?.displayName?.trim()
@@ -159,7 +159,7 @@ export function buildPitchReviewCoverageEntries(options: {
     submissionStatus: SubmissionRecord['status']
   }>
   assignments: Array<Pick<JudgeAssignmentSummary, 'submissionId' | 'judgeUserId' | 'reviewStage' | 'status'>>
-  roleAssignments?: Array<Pick<HackathonRoleAssignment, 'userId' | 'user'>>
+  roleAssignments?: Array<Pick<EventRoleAssignment, 'userId' | 'user'>>
 }) {
   const finalistSubmissionIds = new Set(options.finalistSubmissionIds)
   const leaderboardEntriesBySubmissionId = new Map(
@@ -238,18 +238,18 @@ export function getJudgeAssignmentStatusColor(status: JudgeAssignmentSummary['st
 }
 
 export function getAdminJudgeAssignmentInterventionPolicy(
-  hackathonState: HackathonState,
+  eventState: EventState,
   assignmentStatus: JudgeAssignmentSummary['status']
 ): AdminJudgeAssignmentInterventionPolicy {
-  const canReassign = hackathonState === 'blind_review'
+  const canReassign = eventState === 'blind_review'
     && assignmentStatus === 'assigned'
-  const canForceSkip = hackathonState === 'blind_review'
+  const canForceSkip = eventState === 'blind_review'
     && assignmentStatus === 'judge_started'
 
   let reassignReason: string | undefined
 
   if (!canReassign) {
-    if (hackathonState !== 'blind_review') {
+    if (eventState !== 'blind_review') {
       reassignReason = 'Assignment reassignment is only available during blind review.'
     } else {
       reassignReason = 'Only unstarted assignments can be reassigned.'
@@ -259,7 +259,7 @@ export function getAdminJudgeAssignmentInterventionPolicy(
   let forceSkipReason: string | undefined
 
   if (!canForceSkip) {
-    if (hackathonState !== 'blind_review') {
+    if (eventState !== 'blind_review') {
       forceSkipReason = 'Force-skip is available only once blind review has started.'
     } else {
       forceSkipReason = 'Only started assignments can be force-skipped.'

@@ -6,10 +6,10 @@ import { ApiError } from '#server/http/api-error'
 
 export const publicContactRateLimitBindingName = 'PUBLIC_CONTACT_RATE_LIMITER'
 export const authenticatedUploadRateLimitBindingName = 'AUTHENTICATED_UPLOAD_RATE_LIMITER'
-export const publicHackathonFeedbackRateLimitBindingName = 'PUBLIC_HACKATHON_FEEDBACK_RATE_LIMITER'
+export const publicEventFeedbackRateLimitBindingName = 'PUBLIC_EVENT_FEEDBACK_RATE_LIMITER'
 export const publicContactRateLimitPeriodSeconds = 60
 export const authenticatedUploadRateLimitPeriodSeconds = 60
-export const publicHackathonFeedbackRateLimitPeriodSeconds = 60
+export const publicEventFeedbackRateLimitPeriodSeconds = 60
 
 interface RateLimitBindingLike {
   limit: (options: {
@@ -116,12 +116,12 @@ export async function assertAuthenticatedUploadRateLimit(event: H3Event, key: st
   })
 }
 
-export async function assertPublicHackathonFeedbackRateLimit(event: H3Event, key: string) {
+export async function assertPublicEventFeedbackRateLimit(event: H3Event, key: string) {
   await assertRateLimitAllowed(event, {
-    bindingName: publicHackathonFeedbackRateLimitBindingName,
+    bindingName: publicEventFeedbackRateLimitBindingName,
     key,
-    retryAfterSeconds: publicHackathonFeedbackRateLimitPeriodSeconds,
-    errorCode: 'hackathon_feedback_rate_limited',
+    retryAfterSeconds: publicEventFeedbackRateLimitPeriodSeconds,
+    errorCode: 'event_feedback_rate_limited',
     message: 'Too many feedback submissions were sent. Please wait before trying again.'
   })
 }

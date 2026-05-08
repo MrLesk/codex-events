@@ -5,14 +5,14 @@ import type { SortableEvent } from 'sortablejs'
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 
 import type {
-  HackathonRecord
-} from '~/domains/hackathons/records'
+  EventRecord
+} from '~/domains/events/records'
 import type { FinalDeliberationEntry } from '~/domains/outcomes/admin-outcomes'
 
 import { moveListItemByIndex } from '~/utils/reorder-list'
 
 const props = defineProps<{
-  hackathon: HackathonRecord
+  event: EventRecord
   entries: FinalDeliberationEntry[]
   finalRankingSubmissionIds: string[]
   isLoading?: boolean
@@ -88,11 +88,11 @@ watch([draftStateKey, hasDraftChanges], () => {
 })
 
 const scoreModelDescription = computed(() => {
-  if (props.hackathon.blindReviewCount > 0 && props.hackathon.pitchReviewEnabled) {
-    return `Combined score uses ${props.hackathon.blindScoreWeightPercent}% blind score and ${props.hackathon.pitchScoreWeightPercent}% pitch score.`
+  if (props.event.blindReviewCount > 0 && props.event.pitchReviewEnabled) {
+    return `Combined score uses ${props.event.blindScoreWeightPercent}% blind score and ${props.event.pitchScoreWeightPercent}% pitch score.`
   }
 
-  if (props.hackathon.pitchReviewEnabled) {
+  if (props.event.pitchReviewEnabled) {
     return 'Final ranking uses the average submitted pitch votes only.'
   }
 
@@ -342,7 +342,7 @@ function resetDraft() {
 
                 <div class="grid gap-3 md:grid-cols-3">
                   <div
-                    v-if="hackathon.blindReviewCount > 0"
+                    v-if="event.blindReviewCount > 0"
                     class="rounded-lg border border-black/8 bg-white/62 px-4 py-3 dark:border-white/[0.08] dark:bg-black/10"
                   >
                     <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
@@ -354,7 +354,7 @@ function resetDraft() {
                   </div>
 
                   <div
-                    v-if="hackathon.pitchReviewEnabled"
+                    v-if="event.pitchReviewEnabled"
                     class="rounded-lg border border-black/8 bg-white/62 px-4 py-3 dark:border-white/[0.08] dark:bg-black/10"
                   >
                     <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
@@ -367,7 +367,7 @@ function resetDraft() {
 
                   <div
                     class="rounded-xl border border-black/10 bg-gradient-to-br from-white via-white to-white/80 px-4 py-4 shadow-[0_18px_42px_-34px_rgba(15,23,42,0.5)] dark:border-white/[0.12] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.11),rgba(255,255,255,0.04))] dark:shadow-[0_22px_48px_-36px_rgba(0,0,0,0.75)]"
-                    :class="hackathon.blindReviewCount > 0 && hackathon.pitchReviewEnabled ? 'md:col-span-1' : 'md:col-span-2'"
+                    :class="event.blindReviewCount > 0 && event.pitchReviewEnabled ? 'md:col-span-1' : 'md:col-span-2'"
                   >
                     <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
                       Combined score

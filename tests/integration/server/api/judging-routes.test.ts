@@ -2,21 +2,21 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { eq } from 'drizzle-orm'
 
-import completeJudgeAssignmentHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/actions/complete.post'
-import forceSkipJudgeAssignmentHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/actions/force-skip.post'
-import markAssignmentIneligibleHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/actions/mark-ineligible.post'
-import reassignJudgeAssignmentHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/actions/reassign.post'
-import revertAssignmentIneligibilityHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/actions/revert-ineligibility.post'
-import skipJudgeAssignmentHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/actions/skip.post'
-import startJudgeAssignmentHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/actions/start.post'
-import patchJudgeAssignmentHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/[assignmentId]/index.patch'
-import listJudgeAssignmentsHandler from '../../../../server/api/hackathons/[hackathonId]/judging/assignments/index.get'
+import completeJudgeAssignmentHandler from '../../../../server/api/events/[eventId]/judging/assignments/[assignmentId]/actions/complete.post'
+import forceSkipJudgeAssignmentHandler from '../../../../server/api/events/[eventId]/judging/assignments/[assignmentId]/actions/force-skip.post'
+import markAssignmentIneligibleHandler from '../../../../server/api/events/[eventId]/judging/assignments/[assignmentId]/actions/mark-ineligible.post'
+import reassignJudgeAssignmentHandler from '../../../../server/api/events/[eventId]/judging/assignments/[assignmentId]/actions/reassign.post'
+import revertAssignmentIneligibilityHandler from '../../../../server/api/events/[eventId]/judging/assignments/[assignmentId]/actions/revert-ineligibility.post'
+import skipJudgeAssignmentHandler from '../../../../server/api/events/[eventId]/judging/assignments/[assignmentId]/actions/skip.post'
+import startJudgeAssignmentHandler from '../../../../server/api/events/[eventId]/judging/assignments/[assignmentId]/actions/start.post'
+import patchJudgeAssignmentHandler from '../../../../server/api/events/[eventId]/judging/assignments/[assignmentId]/index.patch'
+import listJudgeAssignmentsHandler from '../../../../server/api/events/[eventId]/judging/assignments/index.get'
 import {
   auditLogs,
   evaluationCriteria,
-  hackathonRoleAssignments,
-  hackathonTermsDocuments,
-  hackathons,
+  eventRoleAssignments,
+  eventTermsDocuments,
+  events,
   judgeAssignments,
   judgeCriterionScores,
   submissions,
@@ -60,10 +60,10 @@ describe('TASK-3.7 judging assignment routes', () => {
         isPlatformAdmin: true
       },
       {
-        id: 'hackathon_admin',
-        auth0Subject: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com',
-        displayName: 'Hackathon Admin'
+        id: 'event_admin',
+        auth0Subject: 'auth0|event_admin',
+        email: 'event-admin@example.com',
+        displayName: 'Event Admin'
       },
       {
         id: 'judge_a',
@@ -103,11 +103,12 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     ])
 
-    await harness.database.insert(hackathons).values({
-      id: 'hackathon_1',
-      name: 'Judging Hackathon',
-      slug: 'judging-hackathon',
-      description: 'Judging hackathon',
+    await harness.database.insert(events).values({
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Judging Event',
+      slug: 'judging-event',
+      description: 'Judging event',
       city: 'Vienna',
       country: 'Austria',
       address: 'Address',
@@ -123,9 +124,9 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdByUserId: 'platform_admin'
     })
 
-    await harness.database.insert(hackathonTermsDocuments).values({
+    await harness.database.insert(eventTermsDocuments).values({
       id: 'terms_application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       documentType: 'application_terms',
       version: 1,
       title: 'Application Terms',
@@ -134,18 +135,18 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdAt: '2026-03-18T12:00:00.000Z'
     })
 
-    await harness.database.insert(hackathonRoleAssignments).values([
+    await harness.database.insert(eventRoleAssignments).values([
       {
         id: 'role_admin',
-        hackathonId: 'hackathon_1',
-        userId: 'hackathon_admin',
-        role: 'hackathon_admin',
+        eventId: 'event_1',
+        userId: 'event_admin',
+        role: 'event_admin',
         isInJudgePool: false,
         createdAt: '2026-03-22T12:00:00.000Z'
       },
       {
         id: 'role_judge_a',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'judge_a',
         role: 'judge',
         isInJudgePool: true,
@@ -153,7 +154,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'role_judge_b',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'judge_b',
         role: 'judge',
         isInJudgePool: true,
@@ -161,7 +162,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'role_judge_c',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'judge_c',
         role: 'judge',
         isInJudgePool: true,
@@ -172,7 +173,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     await harness.database.insert(teams).values([
       {
         id: 'team_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Alpha Team',
         slug: 'alpha-team',
         isOpenToJoinRequests: false,
@@ -182,7 +183,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'team_2',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Beta Team',
         slug: 'beta-team',
         isOpenToJoinRequests: false,
@@ -222,12 +223,12 @@ describe('TASK-3.7 judging assignment routes', () => {
     await harness.database.insert(userApplications).values([
       {
         id: 'application_team_admin',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'team_admin',
         status: 'approved',
         submittedAt: '2026-03-20T12:00:00.000Z',
         reviewedAt: '2026-03-20T12:30:00.000Z',
-        reviewedByUserId: 'hackathon_admin',
+        reviewedByUserId: 'event_admin',
         applicationTermsDocumentId: 'terms_application_1',
         applicationTermsAcceptedAt: '2026-03-20T12:00:00.000Z',
         createdAt: '2026-03-20T12:00:00.000Z',
@@ -235,12 +236,12 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'application_team_member',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'team_member',
         status: 'approved',
         submittedAt: '2026-03-20T12:05:00.000Z',
         reviewedAt: '2026-03-20T12:30:00.000Z',
-        reviewedByUserId: 'hackathon_admin',
+        reviewedByUserId: 'event_admin',
         applicationTermsDocumentId: 'terms_application_1',
         applicationTermsAcceptedAt: '2026-03-20T12:05:00.000Z',
         createdAt: '2026-03-20T12:05:00.000Z',
@@ -248,12 +249,12 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'application_other_team_admin',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'other_team_admin',
         status: 'approved',
         submittedAt: '2026-03-20T12:10:00.000Z',
         reviewedAt: '2026-03-20T12:30:00.000Z',
-        reviewedByUserId: 'hackathon_admin',
+        reviewedByUserId: 'event_admin',
         applicationTermsDocumentId: 'terms_application_1',
         applicationTermsAcceptedAt: '2026-03-20T12:10:00.000Z',
         createdAt: '2026-03-20T12:10:00.000Z',
@@ -294,7 +295,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       await harness.database.insert(evaluationCriteria).values([
         {
           id: 'criterion_1',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           name: 'Novelty',
           description: 'Novelty description',
           weight: 50,
@@ -303,7 +304,7 @@ describe('TASK-3.7 judging assignment routes', () => {
         },
         {
           id: 'criterion_2',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           name: 'Execution',
           description: 'Execution description',
           weight: 50,
@@ -317,7 +318,7 @@ describe('TASK-3.7 judging assignment routes', () => {
   test('judges list only their active assignments in blind view', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'get', path: '/api/hackathons/:hackathonId/judging/assignments', handler: listJudgeAssignmentsHandler }
+        { method: 'get', path: '/api/events/:eventId/judging/assignments', handler: listJudgeAssignmentsHandler }
       ],
       sessionUser: {
         sub: 'auth0|judge_a',
@@ -330,7 +331,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     await harness.database.insert(judgeAssignments).values([
       {
         id: 'assignment_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         status: 'assigned',
@@ -339,7 +340,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'assignment_2',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         status: 'judge_started',
@@ -349,7 +350,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     ])
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments')
+    const response = await harness.request('/api/events/event_1/judging/assignments')
 
     expect(response.status).toBe(200)
     const payload = await response.json() as {
@@ -383,14 +384,14 @@ describe('TASK-3.7 judging assignment routes', () => {
     expect(payload.data[0]?.blindSubmission).not.toHaveProperty('teamName')
   })
 
-  test('hackathon admins can list active assignments without judge participation enabled', async () => {
+  test('event admins can list active assignments without judge participation enabled', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'get', path: '/api/hackathons/:hackathonId/judging/assignments', handler: listJudgeAssignmentsHandler }
+        { method: 'get', path: '/api/events/:eventId/judging/assignments', handler: listJudgeAssignmentsHandler }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -399,7 +400,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     await harness.database.insert(judgeAssignments).values([
       {
         id: 'assignment_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         status: 'assigned',
@@ -408,7 +409,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'assignment_2',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         status: 'judge_started',
@@ -418,7 +419,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'assignment_3',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_c',
         status: 'judge_completed',
@@ -429,7 +430,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'assignment_4',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_2',
         judgeUserId: 'judge_c',
         status: 'skipped',
@@ -440,7 +441,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     ])
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments')
+    const response = await harness.request('/api/events/event_1/judging/assignments')
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: expect.arrayContaining([
@@ -459,14 +460,14 @@ describe('TASK-3.7 judging assignment routes', () => {
     })
   })
 
-  test('hackathon admins can page through more than 100 active blind assignments without hitting D1 bind limits', async () => {
+  test('event admins can page through more than 100 active blind assignments without hitting D1 bind limits', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'get', path: '/api/hackathons/:hackathonId/judging/assignments', handler: listJudgeAssignmentsHandler }
+        { method: 'get', path: '/api/events/:eventId/judging/assignments', handler: listJudgeAssignmentsHandler }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -476,7 +477,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     const assignedAtBase = Date.parse('2026-03-25T12:10:00.000Z')
     const teamRows = Array.from({ length: 101 }, (_, index) => ({
       id: `bulk_team_${index + 1}`,
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: `Bulk Team ${index + 1}`,
       slug: `bulk-team-${index + 1}`,
       isOpenToJoinRequests: false,
@@ -502,7 +503,7 @@ describe('TASK-3.7 judging assignment routes', () => {
 
       return {
         id: `assignment_${index + 1}`,
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: `bulk_submission_${index + 1}`,
         judgeUserId: index % 3 === 0 ? 'judge_a' : index % 3 === 1 ? 'judge_b' : 'judge_c',
         blindReviewSlot: 1,
@@ -524,7 +525,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       await harness.database.insert(judgeAssignments).values(rows)
     }
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments')
+    const response = await harness.request('/api/events/event_1/judging/assignments')
 
     expect(response.status).toBe(200)
     const payload = await response.json() as {
@@ -547,7 +548,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       })
     ]))
 
-    const secondPageResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments?page=2&page_size=100')
+    const secondPageResponse = await harness.request('/api/events/event_1/judging/assignments?page=2&page_size=100')
 
     expect(secondPageResponse.status).toBe(200)
     const secondPagePayload = await secondPageResponse.json() as {
@@ -568,7 +569,7 @@ describe('TASK-3.7 judging assignment routes', () => {
   test('judges list only their active pitch assignments in the open pitch view', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'get', path: '/api/hackathons/:hackathonId/judging/assignments', handler: listJudgeAssignmentsHandler }
+        { method: 'get', path: '/api/events/:eventId/judging/assignments', handler: listJudgeAssignmentsHandler }
       ],
       sessionUser: {
         sub: 'auth0|judge_a',
@@ -584,7 +585,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     await harness.database.insert(judgeAssignments).values([
       {
         id: 'assignment_pitch_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         reviewStage: 'pitch_review',
@@ -595,7 +596,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'assignment_pitch_2',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         reviewStage: 'pitch_review',
@@ -607,7 +608,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     ])
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments')
+    const response = await harness.request('/api/events/event_1/judging/assignments')
 
     expect(response.status).toBe(200)
     const payload = await response.json() as {
@@ -641,17 +642,17 @@ describe('TASK-3.7 judging assignment routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/start',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/start',
           handler: startJudgeAssignmentHandler
         },
         {
           method: 'patch',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId',
           handler: patchJudgeAssignmentHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/complete',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/complete',
           handler: completeJudgeAssignmentHandler
         }
       ],
@@ -665,7 +666,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     await seedBaseJudgingRecords(harness, { includeCriteria: true })
     await harness.database.insert(judgeAssignments).values({
       id: 'assignment_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       submissionId: 'submission_1',
       judgeUserId: 'judge_a',
       status: 'assigned',
@@ -673,7 +674,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdAt: '2026-03-25T12:10:00.000Z'
     })
 
-    const startResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/start', {
+    const startResponse = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/start', {
       method: 'POST'
     })
 
@@ -685,7 +686,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     })
 
-    const completeResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/complete', {
+    const completeResponse = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/complete', {
       method: 'POST',
       body: JSON.stringify({
         criterionScores: [
@@ -739,12 +740,12 @@ describe('TASK-3.7 judging assignment routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/start',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/start',
           handler: startJudgeAssignmentHandler
         },
         {
           method: 'patch',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId',
           handler: patchJudgeAssignmentHandler
         }
       ],
@@ -758,7 +759,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     await seedBaseJudgingRecords(harness, { includeCriteria: true })
     await harness.database.insert(judgeAssignments).values({
       id: 'assignment_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       submissionId: 'submission_1',
       judgeUserId: 'judge_a',
       status: 'assigned',
@@ -766,13 +767,13 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdAt: '2026-03-25T12:10:00.000Z'
     })
 
-    const startResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/start', {
+    const startResponse = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/start', {
       method: 'POST'
     })
 
     expect(startResponse.status).toBe(200)
 
-    const firstSaveResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1', {
+    const firstSaveResponse = await harness.request('/api/events/event_1/judging/assignments/assignment_1', {
       method: 'PATCH',
       body: JSON.stringify({
         criterionScores: [
@@ -800,7 +801,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     })
 
-    const secondSaveResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1', {
+    const secondSaveResponse = await harness.request('/api/events/event_1/judging/assignments/assignment_1', {
       method: 'PATCH',
       body: JSON.stringify({
         criterionScores: [
@@ -863,12 +864,12 @@ describe('TASK-3.7 judging assignment routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/start',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/start',
           handler: startJudgeAssignmentHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/complete',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/complete',
           handler: completeJudgeAssignmentHandler
         }
       ],
@@ -885,7 +886,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     })
     await harness.database.insert(judgeAssignments).values({
       id: 'assignment_pitch_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       submissionId: 'submission_1',
       judgeUserId: 'judge_a',
       reviewStage: 'pitch_review',
@@ -895,7 +896,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdAt: '2026-03-26T12:10:00.000Z'
     })
 
-    const startResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_pitch_1/actions/start', {
+    const startResponse = await harness.request('/api/events/event_1/judging/assignments/assignment_pitch_1/actions/start', {
       method: 'POST'
     })
 
@@ -911,7 +912,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     })
 
-    const completeResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_pitch_1/actions/complete', {
+    const completeResponse = await harness.request('/api/events/event_1/judging/assignments/assignment_pitch_1/actions/complete', {
       method: 'POST',
       body: JSON.stringify({
         pitchScore: 5,
@@ -953,7 +954,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/skip',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/skip',
           handler: skipJudgeAssignmentHandler
         }
       ],
@@ -968,7 +969,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     await harness.database.insert(judgeAssignments).values([
       {
         id: 'assignment_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         status: 'assigned',
@@ -977,7 +978,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'assignment_existing_b',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_2',
         judgeUserId: 'judge_b',
         status: 'assigned',
@@ -986,7 +987,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     ])
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/skip', {
+    const response = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/skip', {
       method: 'POST',
       body: JSON.stringify({
         reason: 'Conflict'
@@ -1022,7 +1023,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/skip',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/skip',
           handler: skipJudgeAssignmentHandler
         }
       ],
@@ -1036,11 +1037,11 @@ describe('TASK-3.7 judging assignment routes', () => {
     await seedBaseJudgingRecords(harness, {
       blindReviewCount: 2
     })
-    await harness.database.delete(hackathonRoleAssignments).where(eq(hackathonRoleAssignments.id, 'role_judge_c'))
+    await harness.database.delete(eventRoleAssignments).where(eq(eventRoleAssignments.id, 'role_judge_c'))
     await harness.database.insert(judgeAssignments).values([
       {
         id: 'assignment_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         blindReviewSlot: 1,
@@ -1050,7 +1051,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'assignment_2',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_b',
         blindReviewSlot: 2,
@@ -1060,7 +1061,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     ])
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/skip', {
+    const response = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/skip', {
       method: 'POST',
       body: JSON.stringify({
         reason: 'Conflict'
@@ -1080,7 +1081,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/skip',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/skip',
           handler: skipJudgeAssignmentHandler
         }
       ],
@@ -1097,7 +1098,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     })
     await harness.database.insert(judgeAssignments).values({
       id: 'assignment_pitch_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       submissionId: 'submission_1',
       judgeUserId: 'judge_a',
       reviewStage: 'pitch_review',
@@ -1107,7 +1108,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdAt: '2026-03-26T12:10:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_pitch_1/actions/skip', {
+    const response = await harness.request('/api/events/event_1/judging/assignments/assignment_pitch_1/actions/skip', {
       method: 'POST',
       body: JSON.stringify({
         reason: 'Missed the live presentation'
@@ -1135,18 +1136,18 @@ describe('TASK-3.7 judging assignment routes', () => {
     })
   })
 
-  test('hackathon admins can reassign unstarted assignments during blind review', async () => {
+  test('event admins can reassign unstarted assignments during blind review', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/reassign',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/reassign',
           handler: reassignJudgeAssignmentHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1154,7 +1155,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     await seedBaseJudgingRecords(harness, { state: 'blind_review' })
     await harness.database.insert(judgeAssignments).values({
       id: 'assignment_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       submissionId: 'submission_1',
       judgeUserId: 'judge_a',
       status: 'assigned',
@@ -1162,7 +1163,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdAt: '2026-03-25T12:10:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/reassign', {
+    const response = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/reassign', {
       method: 'POST',
       body: JSON.stringify({
         judgeUserId: 'judge_b',
@@ -1182,24 +1183,24 @@ describe('TASK-3.7 judging assignment routes', () => {
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual([
       expect.objectContaining({
-        actorUserId: 'hackathon_admin',
+        actorUserId: 'event_admin',
         action: 'judge_assignment.reassigned'
       })
     ])
   })
 
-  test('hackathon admins cannot reassign unstarted assignments during judging preparation', async () => {
+  test('event admins cannot reassign unstarted assignments during judging preparation', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/reassign',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/reassign',
           handler: reassignJudgeAssignmentHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1207,7 +1208,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     await seedBaseJudgingRecords(harness, { state: 'judging_preparation' })
     await harness.database.insert(judgeAssignments).values({
       id: 'assignment_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       submissionId: 'submission_1',
       judgeUserId: 'judge_a',
       status: 'assigned',
@@ -1215,7 +1216,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdAt: '2026-03-25T12:10:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/reassign', {
+    const response = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/reassign', {
       method: 'POST',
       body: JSON.stringify({
         judgeUserId: 'judge_b',
@@ -1226,24 +1227,24 @@ describe('TASK-3.7 judging assignment routes', () => {
     expect(response.status).toBe(409)
     expect(await response.json()).toMatchObject({
       error: {
-        code: 'hackathon_state_invalid',
-        message: 'This judging operation is not allowed in the current hackathon state.'
+        code: 'event_state_invalid',
+        message: 'This judging operation is not allowed in the current event state.'
       }
     })
   })
 
-  test('hackathon admins cannot auto-reassign a blind assignment onto the judge already assigned to the other slot', async () => {
+  test('event admins cannot auto-reassign a blind assignment onto the judge already assigned to the other slot', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/reassign',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/reassign',
           handler: reassignJudgeAssignmentHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1252,11 +1253,11 @@ describe('TASK-3.7 judging assignment routes', () => {
       state: 'blind_review',
       blindReviewCount: 2
     })
-    await harness.database.delete(hackathonRoleAssignments).where(eq(hackathonRoleAssignments.id, 'role_judge_c'))
+    await harness.database.delete(eventRoleAssignments).where(eq(eventRoleAssignments.id, 'role_judge_c'))
     await harness.database.insert(judgeAssignments).values([
       {
         id: 'assignment_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_a',
         blindReviewSlot: 1,
@@ -1266,7 +1267,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       },
       {
         id: 'assignment_2',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: 'submission_1',
         judgeUserId: 'judge_b',
         blindReviewSlot: 2,
@@ -1276,7 +1277,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     ])
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/reassign', {
+    const response = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/reassign', {
       method: 'POST',
       body: JSON.stringify({
         reason: 'Availability'
@@ -1296,7 +1297,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/force-skip',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/force-skip',
           handler: forceSkipJudgeAssignmentHandler
         }
       ],
@@ -1310,7 +1311,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     await seedBaseJudgingRecords(harness)
     await harness.database.insert(judgeAssignments).values({
       id: 'assignment_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       submissionId: 'submission_1',
       judgeUserId: 'judge_a',
       status: 'judge_started',
@@ -1319,7 +1320,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdAt: '2026-03-25T12:10:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/force-skip', {
+    const response = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/force-skip', {
       method: 'POST',
       body: JSON.stringify({
         reason: 'Judge unavailable'
@@ -1350,7 +1351,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/force-skip',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/force-skip',
           handler: forceSkipJudgeAssignmentHandler
         }
       ],
@@ -1367,7 +1368,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     })
     await harness.database.insert(judgeAssignments).values({
       id: 'assignment_pitch_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       submissionId: 'submission_1',
       judgeUserId: 'judge_a',
       reviewStage: 'pitch_review',
@@ -1378,7 +1379,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdAt: '2026-03-26T12:10:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_pitch_1/actions/force-skip', {
+    const response = await harness.request('/api/events/event_1/judging/assignments/assignment_pitch_1/actions/force-skip', {
       method: 'POST',
       body: JSON.stringify({
         reason: 'Judge left the panel'
@@ -1411,12 +1412,12 @@ describe('TASK-3.7 judging assignment routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/mark-ineligible',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/mark-ineligible',
           handler: markAssignmentIneligibleHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/revert-ineligibility',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/revert-ineligibility',
           handler: revertAssignmentIneligibilityHandler
         }
       ],
@@ -1430,7 +1431,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     await seedBaseJudgingRecords(harness)
     await harness.database.insert(judgeAssignments).values({
       id: 'assignment_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       submissionId: 'submission_1',
       judgeUserId: 'platform_admin',
       status: 'judge_started',
@@ -1439,7 +1440,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdAt: '2026-03-25T12:10:00.000Z'
     })
 
-    const markResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/mark-ineligible', {
+    const markResponse = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/mark-ineligible', {
       method: 'POST',
       body: JSON.stringify({
         reason: 'Rule violation'
@@ -1455,7 +1456,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       }
     })
 
-    const revertResponse = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/revert-ineligibility', {
+    const revertResponse = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/revert-ineligibility', {
       method: 'POST'
     })
 
@@ -1474,7 +1475,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/judging/assignments/:assignmentId/actions/revert-ineligibility',
+          path: '/api/events/:eventId/judging/assignments/:assignmentId/actions/revert-ineligibility',
           handler: revertAssignmentIneligibilityHandler
         }
       ],
@@ -1491,7 +1492,7 @@ describe('TASK-3.7 judging assignment routes', () => {
     })
     await harness.database.insert(judgeAssignments).values({
       id: 'assignment_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       submissionId: 'submission_1',
       judgeUserId: 'platform_admin',
       status: 'judge_started',
@@ -1504,7 +1505,7 @@ describe('TASK-3.7 judging assignment routes', () => {
       createdAt: '2026-03-25T12:10:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/judging/assignments/assignment_1/actions/revert-ineligibility', {
+    const response = await harness.request('/api/events/event_1/judging/assignments/assignment_1/actions/revert-ineligibility', {
       method: 'POST'
     })
 

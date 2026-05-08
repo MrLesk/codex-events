@@ -12,10 +12,10 @@ const pngSignatureBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a,
 type ScenarioState = {
   response?: APIResponse
   json?: unknown
-  hackathonId?: string
-  hackathonSlug?: string
+  eventId?: string
+  eventSlug?: string
   criterionId?: string
-  hackathonTermsDocumentId?: string
+  eventTermsDocumentId?: string
   backgroundImageUrl?: string
 }
 
@@ -40,16 +40,16 @@ function parsePersonaKey(personaKey: string): StablePersonaKey {
   throw new Error(`Unknown stable persona key: ${personaKey}`)
 }
 
-When('the saved {string} session creates a managed hackathon named {string}', async ({ page }, personaKey: string, name: string) => {
+When('the saved {string} session creates a managed event named {string}', async ({ page }, personaKey: string, name: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
   const now = Date.now()
 
   try {
-    const response = await apiClient.post('/api/hackathons', {
+    const response = await apiClient.post('/api/events', {
       data: {
         name,
-        slug: `bdd-managed-hackathon-${now}`,
-        description: 'Hackathon created by TASK-3.9 Auth0-backed release-gate coverage.',
+        slug: `bdd-managed-event-${now}`,
+        description: 'Event created by TASK-3.9 Auth0-backed release-gate coverage.',
         city: 'Vienna',
         country: 'Austria',
         address: 'BDD Fixture Address',
@@ -72,35 +72,35 @@ When('the saved {string} session creates a managed hackathon named {string}', as
     const state = getScenarioState(page)
     state.response = response
     state.json = json
-    state.hackathonId = json.data?.id
-    state.hackathonSlug = json.data?.slug
+    state.eventId = json.data?.id
+    state.eventSlug = json.data?.slug
   } finally {
     await apiClient.dispose()
   }
 })
 
-Then('the remembered managed hackathon should be created in state {string}', async ({ page }, expectedState: string) => {
+Then('the remembered managed event should be created in state {string}', async ({ page }, expectedState: string) => {
   expect(getScenarioState(page).response?.ok()).toBe(true)
-  expect(getScenarioState(page).hackathonId).toBeTruthy()
+  expect(getScenarioState(page).eventId).toBeTruthy()
   expect(getScenarioState(page).json).toMatchObject({
     data: {
-      id: getScenarioState(page).hackathonId,
+      id: getScenarioState(page).eventId,
       state: expectedState
     }
   })
 })
 
-When('the saved {string} session uploads a background image for the remembered managed hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session uploads a background image for the remembered managed event', async ({ page }, personaKey: string) => {
   const state = getScenarioState(page)
 
-  if (!state.hackathonId) {
-    throw new Error('No remembered managed hackathon is available for image upload.')
+  if (!state.eventId) {
+    throw new Error('No remembered managed event is available for image upload.')
   }
 
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${state.hackathonId}/images/background`, {
+    const response = await apiClient.post(`/api/events/${state.eventId}/images/background`, {
       multipart: {
         file: {
           name: 'background.png',
@@ -122,12 +122,12 @@ When('the saved {string} session uploads a background image for the remembered m
   }
 })
 
-Then('the remembered managed hackathon should expose a managed background image URL', async ({ page }) => {
+Then('the remembered managed event should expose a managed background image URL', async ({ page }) => {
   expect(getScenarioState(page).response?.ok()).toBe(true)
-  expect(getScenarioState(page).backgroundImageUrl).toMatch(/^https?:\/\/.+\/api\/public\/hackathons\/.+\/images\/background$/)
+  expect(getScenarioState(page).backgroundImageUrl).toMatch(/^https?:\/\/.+\/api\/public\/events\/.+\/images\/background$/)
 })
 
-Then('the remembered managed hackathon background image endpoint should return the uploaded image', async ({ page }) => {
+Then('the remembered managed event background image endpoint should return the uploaded image', async ({ page }) => {
   const state = getScenarioState(page)
 
   if (!state.backgroundImageUrl) {
@@ -149,17 +149,17 @@ Then('the remembered managed hackathon background image endpoint should return t
   }
 })
 
-When('the saved {string} session adds evaluation criterion {string} with weight {int} and display order {int} to the remembered managed hackathon', async ({ page }, personaKey: string, name: string, weight: number, displayOrder: number) => {
+When('the saved {string} session adds evaluation criterion {string} with weight {int} and display order {int} to the remembered managed event', async ({ page }, personaKey: string, name: string, weight: number, displayOrder: number) => {
   const state = getScenarioState(page)
 
-  if (!state.hackathonId) {
-    throw new Error('No remembered managed hackathon is available for criterion creation.')
+  if (!state.eventId) {
+    throw new Error('No remembered managed event is available for criterion creation.')
   }
 
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${state.hackathonId}/evaluation-criteria`, {
+    const response = await apiClient.post(`/api/events/${state.eventId}/evaluation-criteria`, {
       data: {
         name,
         description: `${name} criterion for TASK-3.9 release-gate coverage.`,
@@ -180,7 +180,7 @@ When('the saved {string} session adds evaluation criterion {string} with weight 
   }
 })
 
-Then('the remembered managed hackathon criterion should be created with display order {int}', async ({ page }, displayOrder: number) => {
+Then('the remembered managed event criterion should be created with display order {int}', async ({ page }, displayOrder: number) => {
   expect(getScenarioState(page).response?.ok()).toBe(true)
   expect(getScenarioState(page).criterionId).toBeTruthy()
   expect(getScenarioState(page).json).toMatchObject({
@@ -191,18 +191,18 @@ Then('the remembered managed hackathon criterion should be created with display 
   })
 })
 
-When('the saved {string} session publishes application terms titled {string} for the remembered managed hackathon', async ({ page }, personaKey: string, title: string) => {
+When('the saved {string} session publishes application terms titled {string} for the remembered managed event', async ({ page }, personaKey: string, title: string) => {
   const state = getScenarioState(page)
 
-  if (!state.hackathonId) {
-    throw new Error('No remembered managed hackathon is available for terms creation.')
+  if (!state.eventId) {
+    throw new Error('No remembered managed event is available for terms creation.')
   }
 
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
     const response = await apiClient.post(
-      `/api/hackathons/${state.hackathonId}/terms/application_terms/versions`,
+      `/api/events/${state.eventId}/terms/application_terms/versions`,
       {
         data: {
           title,
@@ -217,39 +217,39 @@ When('the saved {string} session publishes application terms titled {string} for
     }
     state.response = response
     state.json = json
-    state.hackathonTermsDocumentId = json.data?.id
+    state.eventTermsDocumentId = json.data?.id
   } finally {
     await apiClient.dispose()
   }
 })
 
-Then('the remembered managed hackathon terms document should be {string} version {int}', async ({ page }, documentType: string, version: number) => {
+Then('the remembered managed event terms document should be {string} version {int}', async ({ page }, documentType: string, version: number) => {
   expect(getScenarioState(page).response?.ok()).toBe(true)
-  expect(getScenarioState(page).hackathonTermsDocumentId).toBeTruthy()
+  expect(getScenarioState(page).eventTermsDocumentId).toBeTruthy()
   expect(getScenarioState(page).json).toMatchObject({
     data: {
-      id: getScenarioState(page).hackathonTermsDocumentId,
+      id: getScenarioState(page).eventTermsDocumentId,
       documentType,
       version
     }
   })
 })
 
-When('the saved {string} session sets the remembered managed hackathon application terms as current', async ({ page }, personaKey: string) => {
+When('the saved {string} session sets the remembered managed event application terms as current', async ({ page }, personaKey: string) => {
   const state = getScenarioState(page)
 
-  if (!state.hackathonId || !state.hackathonTermsDocumentId) {
-    throw new Error('No remembered managed hackathon terms document is available to set current.')
+  if (!state.eventId || !state.eventTermsDocumentId) {
+    throw new Error('No remembered managed event terms document is available to set current.')
   }
 
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
     const response = await apiClient.post(
-      `/api/hackathons/${state.hackathonId}/terms/application_terms/actions/set-current`,
+      `/api/events/${state.eventId}/terms/application_terms/actions/set-current`,
       {
         data: {
-          hackathonTermsDocumentId: state.hackathonTermsDocumentId
+          eventTermsDocumentId: state.eventTermsDocumentId
         }
       }
     )
@@ -260,27 +260,27 @@ When('the saved {string} session sets the remembered managed hackathon applicati
   }
 })
 
-Then('the remembered managed hackathon should reference the remembered current application terms document', async ({ page }) => {
+Then('the remembered managed event should reference the remembered current application terms document', async ({ page }) => {
   expect(getScenarioState(page).response?.ok()).toBe(true)
   expect(getScenarioState(page).json).toMatchObject({
     data: {
-      id: getScenarioState(page).hackathonId,
-      currentApplicationTermsDocumentId: getScenarioState(page).hackathonTermsDocumentId
+      id: getScenarioState(page).eventId,
+      currentApplicationTermsDocumentId: getScenarioState(page).eventTermsDocumentId
     }
   })
 })
 
-When('the saved {string} session loads current terms for the remembered managed hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session loads current terms for the remembered managed event', async ({ page }, personaKey: string) => {
   const state = getScenarioState(page)
 
-  if (!state.hackathonId) {
-    throw new Error('No remembered managed hackathon is available for current-terms lookup.')
+  if (!state.eventId) {
+    throw new Error('No remembered managed event is available for current-terms lookup.')
   }
 
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.get(`/api/hackathons/${state.hackathonId}/terms/current`)
+    const response = await apiClient.get(`/api/events/${state.eventId}/terms/current`)
     state.response = response
     state.json = await response.json()
   } finally {
@@ -293,7 +293,7 @@ Then('the current terms response should expose the remembered current applicatio
   expect(getScenarioState(page).json).toMatchObject({
     data: {
       application_terms: {
-        id: getScenarioState(page).hackathonTermsDocumentId
+        id: getScenarioState(page).eventTermsDocumentId
       }
     }
   })

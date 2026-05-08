@@ -1,6 +1,6 @@
 import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
 import type { SessionActor } from '~/domains/accounts/session-actor'
-import type { HackathonRecord } from '~/domains/hackathons/records'
+import type { EventRecord } from '~/domains/events/records'
 import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
 import type {
   JudgeAssignmentApiDetail,
@@ -10,9 +10,9 @@ import type {
 import {
   buildJudgeWorkspaceCacheKey,
   filterAssignmentsForActor,
-  filterReviewableHackathons,
+  filterReviewableEvents,
   getJudgeWorkspaceSubjectKey,
-  listAllVisibleHackathons,
+  listAllVisibleEvents,
   normalizeJudgeAssignmentDetail,
   sortJudgeAssignments
 } from '~/domains/judging/workspace'
@@ -28,17 +28,17 @@ export function useJudgeWorkspace() {
   })
 
   const actor = computed(() => session.data.value?.data.actor ?? null)
-  const canLoadHackathons = computed(() => Boolean(actor.value?.hasPlatformAccount))
+  const canLoadEvents = computed(() => Boolean(actor.value?.hasPlatformAccount))
 
-  const hackathons = useAsyncData<HackathonRecord[]>(
-    () => buildJudgeWorkspaceCacheKey('judge-workspace-hackathons', subjectKey.value),
+  const events = useAsyncData<EventRecord[]>(
+    () => buildJudgeWorkspaceCacheKey('judge-workspace-events', subjectKey.value),
     async () => {
-      if (!canLoadHackathons.value) {
+      if (!canLoadEvents.value) {
         return []
       }
 
-      return await listAllVisibleHackathons(
-        async (page, pageSize) => await $fetch<ApiListResponse<HackathonRecord>>('/api/hackathons', {
+      return await listAllVisibleEvents(
+        async (page, pageSize) => await $fetch<ApiListResponse<EventRecord>>('/api/events', {
           query: {
             page,
             page_size: pageSize
@@ -48,14 +48,14 @@ export function useJudgeWorkspace() {
       )
     },
     {
-      watch: [subjectKey, canLoadHackathons],
+      watch: [subjectKey, canLoadEvents],
       server: false,
       default: () => []
     }
   )
 
-  const reviewableHackathons = computed(() =>
-    filterReviewableHackathons(hackathons.data.value ?? [], actor.value)
+  const reviewableEvents = computed(() =>
+    filterReviewableEvents(events.data.value ?? [], actor.value)
   )
 
   const inboxRequest = useAsyncData<JudgeInboxGroup[]>(
@@ -65,14 +65,14 @@ export function useJudgeWorkspace() {
         return []
       }
 
-      const groups = await Promise.all(reviewableHackathons.value.map(async (hackathon) => {
+      const groups = await Promise.all(reviewableEvents.value.map(async (event) => {
         const assignmentsResponse = await $fetch<ApiListResponse<JudgeAssignmentApiDetail>>(
-          `/api/hackathons/${hackathon.id}/judging/assignments`
+          `/api/events/${event.id}/judging/assignments`
         )
         const assignments = assignmentsResponse.data.map(normalizeJudgeAssignmentDetail)
 
         return {
-          hackathon,
+          event,
           assignments: sortJudgeAssignments(filterAssignmentsForActor(assignments, actor.value))
         } satisfies JudgeInboxGroup
       }))
@@ -80,14 +80,14 @@ export function useJudgeWorkspace() {
       return groups.filter(group => group.assignments.length > 0)
     },
     {
-      watch: [subjectKey, reviewableHackathons],
+      watch: [subjectKey, reviewableEvents],
       server: false,
       default: () => []
     }
   )
 
   const status = computed(() => {
-    if (session.status.value === 'pending' || hackathons.status.value === 'pending' || inboxRequest.status.value === 'pending') {
+    if (session.status.value === 'pending' || events.status.value === 'pending' || inboxRequest.status.value === 'pending') {
       return 'pending'
     }
 
@@ -96,7 +96,7 @@ export function useJudgeWorkspace() {
 
   const error = computed(() =>
     session.error.value
-    ?? hackathons.error.value
+    ?? events.error.value
     ?? inboxRequest.error.value
     ?? null
   )
@@ -104,16 +104,16 @@ export function useJudgeWorkspace() {
   async function refreshWorkspace() {
     await Promise.all([
       session.refresh(),
-      hackathons.refresh(),
+      events.refresh(),
       inboxRequest.refresh()
     ])
   }
 
   return {
     session,
-    hackathons,
+    events,
     actor,
-    reviewableHackathons,
+    reviewableEvents,
     inboxGroups: computed(() => inboxRequest.data.value ?? []),
     hasPlatformAccount: computed(() => Boolean(actor.value?.hasPlatformAccount)),
     status,
@@ -123,12 +123,12 @@ export function useJudgeWorkspace() {
 }
 
 export function useJudgeAssignmentWorkspace(
-  hackathonId: MaybeRefOrGetter<string>,
+  eventId: MaybeRefOrGetter<string>,
   assignmentId: MaybeRefOrGetter<string>
 ) {
   const authenticatedUser = useUser()
   const subjectKey = computed(() => getJudgeWorkspaceSubjectKey(authenticatedUser.value?.sub))
-  const resolvedHackathonId = computed(() => String(toValue(hackathonId)).trim())
+  const resolvedEventId = computed(() => String(toValue(eventId)).trim())
   const resolvedAssignmentId = computed(() => String(toValue(assignmentId)).trim())
 
   const session = useFetch<ApiDataResponse<{ actor: SessionActor }>>('/api/session', {
@@ -137,25 +137,25 @@ export function useJudgeAssignmentWorkspace(
     server: false
   })
 
-  const hackathon = useFetch<ApiDataResponse<HackathonRecord>>(
-    () => `/api/hackathons/${resolvedHackathonId.value}`,
+  const event = useFetch<ApiDataResponse<EventRecord>>(
+    () => `/api/events/${resolvedEventId.value}`,
     {
-      key: () => buildJudgeWorkspaceCacheKey('judge-assignment-hackathon', subjectKey.value, resolvedHackathonId.value),
-      watch: [subjectKey, resolvedHackathonId],
+      key: () => buildJudgeWorkspaceCacheKey('judge-assignment-event', subjectKey.value, resolvedEventId.value),
+      watch: [subjectKey, resolvedEventId],
       server: false
     }
   )
 
   const assignmentRequest = useFetch<ApiDataResponse<JudgeAssignmentApiDetail>>(
-    () => `/api/hackathons/${resolvedHackathonId.value}/judging/assignments/${resolvedAssignmentId.value}`,
+    () => `/api/events/${resolvedEventId.value}/judging/assignments/${resolvedAssignmentId.value}`,
     {
       key: () => buildJudgeWorkspaceCacheKey(
         'judge-assignment-detail',
         subjectKey.value,
-        resolvedHackathonId.value,
+        resolvedEventId.value,
         resolvedAssignmentId.value
       ),
-      watch: [subjectKey, resolvedHackathonId, resolvedAssignmentId],
+      watch: [subjectKey, resolvedEventId, resolvedAssignmentId],
       server: false
     }
   )
@@ -171,7 +171,7 @@ export function useJudgeAssignmentWorkspace(
     () => buildJudgeWorkspaceCacheKey(
       'judge-assignment-criteria',
       subjectKey.value,
-      resolvedHackathonId.value,
+      resolvedEventId.value,
       criteriaStage.value ?? 'none'
     ),
     async () => {
@@ -180,13 +180,13 @@ export function useJudgeAssignmentWorkspace(
       }
 
       const response = await $fetch<ApiListResponse<EvaluationCriterion>>(
-        `/api/hackathons/${resolvedHackathonId.value}/evaluation-criteria`
+        `/api/events/${resolvedEventId.value}/evaluation-criteria`
       )
 
       return response.data
     },
     {
-      watch: [subjectKey, resolvedHackathonId, criteriaStage],
+      watch: [subjectKey, resolvedEventId, criteriaStage],
       server: false,
       default: () => []
     }
@@ -195,7 +195,7 @@ export function useJudgeAssignmentWorkspace(
   const status = computed(() => {
     if (
       session.status.value === 'pending'
-      || hackathon.status.value === 'pending'
+      || event.status.value === 'pending'
       || assignmentRequest.status.value === 'pending'
       || criteria.status.value === 'pending'
     ) {
@@ -207,7 +207,7 @@ export function useJudgeAssignmentWorkspace(
 
   const error = computed(() =>
     session.error.value
-    ?? hackathon.error.value
+    ?? event.error.value
     ?? assignmentRequest.error.value
     ?? criteria.error.value
     ?? null
@@ -216,7 +216,7 @@ export function useJudgeAssignmentWorkspace(
   async function refreshAssignmentWorkspace() {
     await Promise.all([
       session.refresh(),
-      hackathon.refresh(),
+      event.refresh(),
       assignmentRequest.refresh(),
       criteria.refresh()
     ])
@@ -225,7 +225,7 @@ export function useJudgeAssignmentWorkspace(
   return {
     session,
     actor: computed(() => session.data.value?.data.actor ?? null),
-    hackathon: computed(() => hackathon.data.value?.data ?? null),
+    event: computed(() => event.data.value?.data ?? null),
     assignment,
     criteria: computed(() => criteria.data.value ?? []),
     status,

@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import AccountHackathonDashboardList from '~/components/account/AccountHackathonDashboardList.vue'
-import { formatHackathonLocation } from '~/domains/hackathons/presentation'
+import AccountEventDashboardList from '~/components/account/AccountEventDashboardList.vue'
+import { formatEventLocation } from '~/domains/events/presentation'
 import type { JudgeDashboardAssignmentSummary } from '~/domains/judging/workspace'
 
 import {
-  filterExplicitJudgeHackathons,
-  getJudgeHackathonDashboardCopy
+  filterExplicitJudgeEvents,
+  getJudgeEventDashboardCopy
 } from '~/domains/judging/workspace'
 
 definePageMeta({
@@ -14,14 +14,14 @@ definePageMeta({
 
 const workspace = useJudgeWorkspace()
 
-const explicitJudgeHackathons = computed(() =>
-  filterExplicitJudgeHackathons(workspace.hackathons.data.value ?? [], workspace.actor.value)
+const explicitJudgeEvents = computed(() =>
+  filterExplicitJudgeEvents(workspace.events.data.value ?? [], workspace.actor.value)
 )
-const assignmentSummaryByHackathonId = computed(() => {
-  const summaryByHackathonId = new Map<string, JudgeDashboardAssignmentSummary>()
+const assignmentSummaryByEventId = computed(() => {
+  const summaryByEventId = new Map<string, JudgeDashboardAssignmentSummary>()
 
   for (const group of workspace.inboxGroups.value) {
-    summaryByHackathonId.set(group.hackathon.id, {
+    summaryByEventId.set(group.event.id, {
       total: group.assignments.length,
       inReview: group.assignments.filter(assignment => assignment.status === 'judge_started').length,
       ready: group.assignments.filter(assignment => assignment.status === 'assigned').length,
@@ -31,7 +31,7 @@ const assignmentSummaryByHackathonId = computed(() => {
     })
   }
 
-  return summaryByHackathonId
+  return summaryByEventId
 })
 
 const assignmentCount = computed(() =>
@@ -44,23 +44,23 @@ const inProgressCount = computed(() =>
   )
 )
 const listItems = computed(() =>
-  explicitJudgeHackathons.value.map((hackathon) => {
-    const summary = assignmentSummaryByHackathonId.value.get(hackathon.id)
-    const dashboardCopy = getJudgeHackathonDashboardCopy(hackathon, summary)
+  explicitJudgeEvents.value.map((event) => {
+    const summary = assignmentSummaryByEventId.value.get(event.id)
+    const dashboardCopy = getJudgeEventDashboardCopy(event, summary)
 
     return {
-      id: hackathon.id,
-      name: hackathon.name,
+      id: event.id,
+      name: event.name,
       description: dashboardCopy.description,
-      state: hackathon.state,
-      registrationOpensAt: hackathon.registrationOpensAt,
-      registrationClosesAt: hackathon.registrationClosesAt,
-      to: `/account/hackathons/${hackathon.slug}?tab=judging`,
+      state: event.state,
+      registrationOpensAt: event.registrationOpensAt,
+      registrationClosesAt: event.registrationClosesAt,
+      to: `/account/events/${event.slug}?tab=judging`,
       actionLabel: dashboardCopy.actionLabel,
       overline: dashboardCopy.overline,
       meta: [
-        formatHackathonLocation(hackathon),
-        `${hackathon.maxTeamMembers} max/team`,
+        formatEventLocation(event),
+        `${event.maxTeamMembers} max/team`,
         dashboardCopy.queueMeta
       ]
     }
@@ -68,8 +68,8 @@ const listItems = computed(() =>
 )
 
 useSeoMeta({
-  title: 'My Judging | Codex Hackathons',
-  description: 'See the hackathons you are judging and continue your reviews.'
+  title: 'My Judging | Codex Events',
+  description: 'See the events you are judging and continue your reviews.'
 })
 </script>
 
@@ -84,7 +84,7 @@ useSeoMeta({
                 Judge dashboard
               </h1>
               <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-                Open the hackathons where you judge, move through anonymous blind review, and return later for finalist pitch voting when that stage is active.
+                Open the events where you judge, move through anonymous blind review, and return later for finalist pitch voting when that stage is active.
               </p>
             </div>
           </div>
@@ -106,17 +106,17 @@ useSeoMeta({
         color="neutral"
         variant="soft"
         title="Loading judge dashboard"
-        description="Fetching your assigned hackathons and active review queue."
+        description="Fetching your assigned events and active review queue."
       />
 
       <template v-else>
         <section class="grid gap-4 sm:grid-cols-3">
           <div class="rounded-xl border border-black/8 bg-white p-4 dark:border-white/[0.08] dark:bg-[#111111]">
             <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-              Judge hackathons
+              Judge events
             </p>
             <p class="mt-2 text-[30px] font-semibold leading-none tracking-[-0.03em] text-highlighted dark:text-white">
-              {{ explicitJudgeHackathons.length }}
+              {{ explicitJudgeEvents.length }}
             </p>
           </div>
 
@@ -139,12 +139,12 @@ useSeoMeta({
           </div>
         </section>
 
-        <AccountHackathonDashboardList
-          title="Hackathons you judge"
-          description="Each hackathon opens into the Judging tab, where blind assignments stay anonymous and pitch finalists reveal full project and team identity."
+        <AccountEventDashboardList
+          title="Events you judge"
+          description="Each event opens into the Judging tab, where blind assignments stay anonymous and pitch finalists reveal full project and team identity."
           :items="listItems"
           empty-title="No judge assignments yet"
-          empty-description="When you are explicitly assigned as a judge on a hackathon, it will appear here."
+          empty-description="When you are explicitly assigned as a judge on an event, it will appear here."
         />
       </template>
     </AppContainer>

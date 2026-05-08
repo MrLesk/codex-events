@@ -9,9 +9,9 @@ import { apiList } from '#server/http/api-response'
 
 const auditLogReadLimit = 200
 
-export default defineApiHandler(async (event) => {
-  const actor = await requirePlatformActor(event)
-  const database = getDatabase(event)
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requirePlatformActor(h3Event)
+  const database = getDatabase(h3Event)
 
   assertPlatformAdminAccess(actor)
 

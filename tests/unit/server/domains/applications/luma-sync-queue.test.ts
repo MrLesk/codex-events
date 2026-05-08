@@ -6,8 +6,8 @@ import { eq } from 'drizzle-orm'
 import { createDatabase } from '../../../../../server/database/client'
 import {
   auditLogs,
-  hackathonTermsDocuments,
-  hackathons,
+  eventTermsDocuments,
+  events,
   userApplications,
   users
 } from '../../../../../server/database/schema'
@@ -40,7 +40,7 @@ function createEvent(options?: {
       runtimeConfig: options?.runtimeConfig ?? {
         luma: {
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
-          queueName: 'codex-hackathons-application-luma-sync',
+          queueName: 'codex-events-application-luma-sync',
           retryDelaySeconds: 120
         }
       }
@@ -115,11 +115,12 @@ async function seedLumaSyncContext(options?: {
     }
   ])
 
-  await database.insert(hackathons).values({
-    id: 'hackathon_1',
-    name: 'Fixture Hackathon',
-    slug: 'fixture-hackathon',
-    description: 'Fixture hackathon',
+  await database.insert(events).values({
+    id: 'event_1',
+    eventType: 'hackathon',
+    name: 'Fixture Event',
+    slug: 'fixture-event',
+    description: 'Fixture event',
     city: 'Vienna',
     country: 'Austria',
     address: 'Fixture Address',
@@ -137,9 +138,9 @@ async function seedLumaSyncContext(options?: {
     createdByUserId: 'platform_admin'
   })
 
-  await database.insert(hackathonTermsDocuments).values({
+  await database.insert(eventTermsDocuments).values({
     id: 'terms_app_1',
-    hackathonId: 'hackathon_1',
+    eventId: 'event_1',
     documentType: 'application_terms',
     version: 1,
     title: 'Application Terms v1',
@@ -149,7 +150,7 @@ async function seedLumaSyncContext(options?: {
 
   await database.insert(userApplications).values({
     id: 'application_1',
-    hackathonId: 'hackathon_1',
+    eventId: 'event_1',
     userId: 'regular_user',
     status: applicationStatus,
     lumaSyncStatus: options?.lumaSyncStatus ?? 'not_synced',
@@ -301,7 +302,7 @@ describe('application luma sync queue utilities', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2)
   })
 
-  test('resolveLumaEmailFromUsername resolves the legacy Luma email from the hackathon event guest list', async () => {
+  test('resolveLumaEmailFromUsername resolves the legacy Luma email from the event event guest list', async () => {
     const fetchImpl = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url)
 
@@ -589,7 +590,7 @@ describe('application luma sync queue utilities', () => {
       runtimeConfig: {
         luma: {
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
-          queueName: 'codex-hackathons-application-luma-sync',
+          queueName: 'codex-events-application-luma-sync',
           retryDelaySeconds: 90
         }
       }
@@ -624,7 +625,7 @@ describe('application luma sync queue utilities', () => {
         metadata: expect.objectContaining({
           decision: 'approved',
           recoveryTrigger: 'startup',
-          queueName: 'codex-hackathons-application-luma-sync'
+          queueName: 'codex-events-application-luma-sync'
         })
       })
     ]))
@@ -645,7 +646,7 @@ describe('application luma sync queue utilities', () => {
       runtimeConfig: {
         luma: {
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
-          queueName: 'codex-hackathons-application-luma-sync',
+          queueName: 'codex-events-application-luma-sync',
           retryDelaySeconds: 90
         }
       }
@@ -674,7 +675,7 @@ describe('application luma sync queue utilities', () => {
         metadata: expect.objectContaining({
           decision: 'rejected',
           recoveryTrigger: 'startup',
-          queueName: 'codex-hackathons-application-luma-sync'
+          queueName: 'codex-events-application-luma-sync'
         })
       })
     ]))
@@ -692,7 +693,7 @@ describe('application luma sync queue utilities', () => {
       runtimeConfig: {
         luma: {
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
-          queueName: 'codex-hackathons-application-luma-sync',
+          queueName: 'codex-events-application-luma-sync',
           retryDelaySeconds: 90
         }
       }
@@ -719,7 +720,7 @@ describe('application luma sync queue utilities', () => {
     }, {
       runtimeConfig: {
         luma: {
-          queueName: 'codex-hackathons-application-luma-sync'
+          queueName: 'codex-events-application-luma-sync'
         }
       }
     })

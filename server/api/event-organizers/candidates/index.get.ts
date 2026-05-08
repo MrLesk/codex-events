@@ -3,22 +3,22 @@ import { assertPlatformAdminAccess } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiList } from '#server/http/api-response'
-import { serializeHackathonRoleUserSummary } from '#server/domains/hackathons'
+import { serializeEventRoleUserSummary } from '#server/domains/events'
 import {
   listEventOrganizerCandidates,
   listEventOrganizerCandidatesQuerySchema
 } from '#server/domains/platform/event-organizers'
 import { parseValidatedQuery } from '#server/http/validation'
 
-export default defineApiHandler(async (event) => {
-  const actor = await requirePlatformActor(event)
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requirePlatformActor(h3Event)
   assertPlatformAdminAccess(actor)
 
-  const query = parseValidatedQuery(event, listEventOrganizerCandidatesQuerySchema)
-  const result = await listEventOrganizerCandidates(getDatabase(event), query)
+  const query = parseValidatedQuery(h3Event, listEventOrganizerCandidatesQuerySchema)
+  const result = await listEventOrganizerCandidates(getDatabase(h3Event), query)
 
   return apiList(
-    result.items.map(user => serializeHackathonRoleUserSummary(user)),
+    result.items.map(user => serializeEventRoleUserSummary(user)),
     {
       page: result.page,
       pageSize: result.pageSize,

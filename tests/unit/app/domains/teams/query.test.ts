@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest'
 
 import {
-  buildAbsoluteAccountHackathonTeamsTabHref,
-  buildAccountHackathonTeamsTabHref,
+  buildAbsoluteAccountEventTeamsTabHref,
+  buildAccountEventTeamsTabHref,
   isSharedTeamSelection,
   normalizeTeamSlugQueryValue,
   shouldSyncSelectedTeamSlug
@@ -17,21 +17,21 @@ describe('team query helpers', () => {
   })
 
   test('builds shareable account team tab hrefs with an optional team slug', () => {
-    expect(buildAccountHackathonTeamsTabHref('codex-vienna-2026-04-18')).toBe(
-      '/account/hackathons/codex-vienna-2026-04-18?tab=teams'
+    expect(buildAccountEventTeamsTabHref('codex-vienna-2026-04-18')).toBe(
+      '/account/events/codex-vienna-2026-04-18?tab=teams'
     )
 
-    expect(buildAccountHackathonTeamsTabHref('codex-vienna-2026-04-18', 'Alpha-Team')).toBe(
-      '/account/hackathons/codex-vienna-2026-04-18?tab=teams&team=alpha-team'
+    expect(buildAccountEventTeamsTabHref('codex-vienna-2026-04-18', 'Alpha-Team')).toBe(
+      '/account/events/codex-vienna-2026-04-18?tab=teams&team=alpha-team'
     )
   })
 
   test('builds an absolute shareable account team tab href from the current origin', () => {
-    expect(buildAbsoluteAccountHackathonTeamsTabHref(
+    expect(buildAbsoluteAccountEventTeamsTabHref(
       'http://localhost:3000',
       'codex-vienna-2026-04-18',
       'Alpha-Team'
-    )).toBe('http://localhost:3000/account/hackathons/codex-vienna-2026-04-18?tab=teams&team=alpha-team')
+    )).toBe('http://localhost:3000/account/events/codex-vienna-2026-04-18?tab=teams&team=alpha-team')
   })
 
   test('treats a selected external team as a shared-team view even without an own team', () => {

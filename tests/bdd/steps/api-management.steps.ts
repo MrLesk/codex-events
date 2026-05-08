@@ -96,19 +96,19 @@ Then('the API actor platform-admin flag should be {string}', async ({ page }, is
   expect(payload.data?.actor?.isPlatformAdmin).toBe(parseBooleanString(isPlatformAdmin))
 })
 
-Then('the API actor should expose the fixture hackathon role {string}', async ({ page }, expectedRole: string) => {
+Then('the API actor should expose the fixture event role {string}', async ({ page }, expectedRole: string) => {
   const payload = getScenarioState(page).json as {
     data?: {
       actor?: {
-        hackathonRoles?: Array<{
-          hackathonId: string
+        eventRoles?: Array<{
+          eventId: string
           role: string
         }>
       }
     }
   }
-  const roles = payload.data?.actor?.hackathonRoles ?? []
-  const fixtureRole = roles.find((role: { hackathonId: string }) => role.hackathonId === platformFixtureIds.hackathonId)
+  const roles = payload.data?.actor?.eventRoles ?? []
+  const fixtureRole = roles.find((role: { eventId: string }) => role.eventId === platformFixtureIds.eventId)
 
   if (expectedRole === 'none') {
     expect(fixtureRole ?? null).toBeNull()
@@ -116,7 +116,7 @@ Then('the API actor should expose the fixture hackathon role {string}', async ({
   }
 
   expect(fixtureRole).toMatchObject({
-    hackathonId: platformFixtureIds.hackathonId,
+    eventId: platformFixtureIds.eventId,
     role: expectedRole
   })
 })
@@ -151,11 +151,11 @@ Then('the platform document acceptance response should reference the fixture pla
   })
 })
 
-When('the saved {string} session lists fixture hackathon roles', async ({ page }, personaKey: string) => {
+When('the saved {string} session lists fixture event roles', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.get(`/api/hackathons/${platformFixtureIds.hackathonId}/roles`)
+    const response = await apiClient.get(`/api/events/${platformFixtureIds.eventId}/roles`)
     getScenarioState(page).response = response
     getScenarioState(page).json = await response.json()
   } finally {
@@ -204,11 +204,11 @@ Then('the platform-admin grant response should promote user {string}', async ({ 
   })
 })
 
-When('the saved {string} session opens submission for the fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session opens submission for the fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.hackathonId}/actions/open-submission`)
+    const response = await apiClient.post(`/api/events/${platformFixtureIds.eventId}/actions/open-submission`)
     getScenarioState(page).response = response
     getScenarioState(page).json = await response.json()
   } finally {
@@ -216,7 +216,7 @@ When('the saved {string} session opens submission for the fixture hackathon', as
   }
 })
 
-Then('the fixture hackathon state should be {string}', async ({ page }, expectedState: string) => {
+Then('the fixture event state should be {string}', async ({ page }, expectedState: string) => {
   const payload = getScenarioState(page).json as {
     data?: {
       id?: string
@@ -225,7 +225,7 @@ Then('the fixture hackathon state should be {string}', async ({ page }, expected
   }
 
   expect(getScenarioState(page).response?.ok()).toBe(true)
-  expect(payload.data?.id).toBe(platformFixtureIds.hackathonId)
+  expect(payload.data?.id).toBe(platformFixtureIds.eventId)
   expect(payload.data?.state).toBe(expectedState)
 })
 
@@ -281,7 +281,7 @@ Then('the saved {string} session should resolve to an authenticated identity wit
           hasPlatformAccount: false,
           platformUser: null,
           isPlatformAdmin: false,
-          hackathonRoles: []
+          eventRoles: []
         }
       }
     })

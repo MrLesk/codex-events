@@ -1,11 +1,11 @@
 import { ensureAccountPageAccess } from '~/domains/accounts/navigation-guards'
-import { canAccessAdminDashboard } from '~/domains/hackathons/access'
+import { canAccessAdminDashboard } from '~/domains/events/access'
 
 export default defineNuxtRouteMiddleware(async (to) => {
   const redirect = await ensureAccountPageAccess(
     to,
     actor => canAccessAdminDashboard(actor),
-    'Hackathon admin access required.'
+    'Event admin access required.'
   )
 
   if (redirect) {

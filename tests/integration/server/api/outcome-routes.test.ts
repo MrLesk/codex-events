@@ -3,31 +3,31 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { eq } from 'drizzle-orm'
 
 import listPlatformAuditHandler from '../../../../server/api/audit/index.get'
-import announceWinnersHandler from '../../../../server/api/hackathons/[hackathonId]/actions/announce-winners.post'
-import completeHackathonHandler from '../../../../server/api/hackathons/[hackathonId]/actions/complete.post'
-import startFinalDeliberationHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-final-deliberation.post'
-import startPitchHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-pitch.post'
-import advancePitchPresentationHandler from '../../../../server/api/hackathons/[hackathonId]/actions/advance-pitch-presentation.post'
-import startPitchReviewHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-pitch-review.post'
-import startShortlistHandler from '../../../../server/api/hackathons/[hackathonId]/actions/start-shortlist.post'
-import listHackathonAuditHandler from '../../../../server/api/hackathons/[hackathonId]/audit/index.get'
-import listFinalDeliberationHandler from '../../../../server/api/hackathons/[hackathonId]/final-deliberation/index.get'
-import listLeaderboardHandler from '../../../../server/api/hackathons/[hackathonId]/leaderboard/index.get'
-import listHackathonPrizeRedemptionsHandler from '../../../../server/api/hackathons/[hackathonId]/prize-redemptions/index.get'
-import listPublishedProjectsHandler from '../../../../server/api/hackathons/[hackathonId]/published-projects/index.get'
-import reorderFinalDeliberationHandler from '../../../../server/api/hackathons/[hackathonId]/final-deliberation/actions/reorder.post'
-import selectFinalistsHandler from '../../../../server/api/hackathons/[hackathonId]/shortlist/actions/select-finalists.post'
-import listShortlistHandler from '../../../../server/api/hackathons/[hackathonId]/shortlist/index.get'
-import disqualifySubmissionHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/submission/actions/disqualify.post'
-import listWinnersHandler from '../../../../server/api/hackathons/[hackathonId]/winners/index.get'
+import announceWinnersHandler from '../../../../server/api/events/[eventId]/actions/announce-winners.post'
+import completeEventHandler from '../../../../server/api/events/[eventId]/actions/complete.post'
+import startFinalDeliberationHandler from '../../../../server/api/events/[eventId]/actions/start-final-deliberation.post'
+import startPitchHandler from '../../../../server/api/events/[eventId]/actions/start-pitch.post'
+import advancePitchPresentationHandler from '../../../../server/api/events/[eventId]/actions/advance-pitch-presentation.post'
+import startPitchReviewHandler from '../../../../server/api/events/[eventId]/actions/start-pitch-review.post'
+import startShortlistHandler from '../../../../server/api/events/[eventId]/actions/start-shortlist.post'
+import listEventAuditHandler from '../../../../server/api/events/[eventId]/audit/index.get'
+import listFinalDeliberationHandler from '../../../../server/api/events/[eventId]/final-deliberation/index.get'
+import listLeaderboardHandler from '../../../../server/api/events/[eventId]/leaderboard/index.get'
+import listEventPrizeRedemptionsHandler from '../../../../server/api/events/[eventId]/prize-redemptions/index.get'
+import listPublishedProjectsHandler from '../../../../server/api/events/[eventId]/published-projects/index.get'
+import reorderFinalDeliberationHandler from '../../../../server/api/events/[eventId]/final-deliberation/actions/reorder.post'
+import selectFinalistsHandler from '../../../../server/api/events/[eventId]/shortlist/actions/select-finalists.post'
+import listShortlistHandler from '../../../../server/api/events/[eventId]/shortlist/index.get'
+import disqualifySubmissionHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/submission/actions/disqualify.post'
+import listWinnersHandler from '../../../../server/api/events/[eventId]/winners/index.get'
 import redeemPrizeRedemptionHandler from '../../../../server/api/prize-redemptions/[redemptionId]/actions/redeem.post'
 import listOwnPrizeRedemptionsHandler from '../../../../server/api/prize-redemptions/me.get'
 import {
   auditLogs,
   evaluationCriteria,
-  hackathonRoleAssignments,
-  hackathonTermsDocuments,
-  hackathons,
+  eventRoleAssignments,
+  eventTermsDocuments,
+  events,
   judgeAssignments,
   judgeCriterionScores,
   prizeEligibilitySnapshots,
@@ -65,7 +65,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     }
   })
 
-  async function seedOutcomeHackathon(
+  async function seedOutcomeEvent(
     harness: ReturnType<typeof createApiRouteTestHarness>,
     options?: {
       state?: 'blind_review' | 'shortlist' | 'pitch' | 'pitch_review' | 'final_deliberation' | 'winners_announced'
@@ -96,10 +96,10 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         isPlatformAdmin: true
       },
       {
-        id: 'hackathon_admin',
-        auth0Subject: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com',
-        displayName: 'Hackathon Admin'
+        id: 'event_admin',
+        auth0Subject: 'auth0|event_admin',
+        email: 'event-admin@example.com',
+        displayName: 'Event Admin'
       },
       {
         id: 'judge_a',
@@ -131,11 +131,12 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    await harness.database.insert(hackathons).values({
-      id: 'hackathon_1',
-      name: 'Outcome Hackathon',
-      slug: 'outcome-hackathon',
-      description: 'Outcome hackathon',
+    await harness.database.insert(events).values({
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Outcome Event',
+      slug: 'outcome-event',
+      description: 'Outcome event',
       city: 'Vienna',
       country: 'Austria',
       address: 'Address',
@@ -155,9 +156,9 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       createdByUserId: 'platform_admin'
     })
 
-    await harness.database.insert(hackathonTermsDocuments).values({
+    await harness.database.insert(eventTermsDocuments).values({
       id: 'terms_winner_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       documentType: 'winner_terms',
       version: 1,
       title: 'Winner Terms',
@@ -167,24 +168,24 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
 
     await harness.database
-      .update(hackathons)
+      .update(events)
       .set({
         currentWinnerTermsDocumentId: 'terms_winner_1'
       })
-      .where(eq(hackathons.id, 'hackathon_1'))
+      .where(eq(events.id, 'event_1'))
 
-    await harness.database.insert(hackathonRoleAssignments).values([
+    await harness.database.insert(eventRoleAssignments).values([
       {
         id: 'role_admin',
-        hackathonId: 'hackathon_1',
-        userId: 'hackathon_admin',
-        role: 'hackathon_admin',
+        eventId: 'event_1',
+        userId: 'event_admin',
+        role: 'event_admin',
         isInJudgePool: false,
         createdAt: '2026-03-15T12:00:00.000Z'
       },
       {
         id: 'role_judge',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'judge_a',
         role: 'judge',
         isInJudgePool: true,
@@ -192,7 +193,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       },
       {
         id: 'role_judge_b',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'judge_b',
         role: 'judge',
         isInJudgePool: true,
@@ -203,7 +204,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     await harness.database.insert(teams).values([
       {
         id: 'team_1',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Alpha Team',
         slug: 'alpha-team',
         isOpenToJoinRequests: false,
@@ -213,7 +214,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       },
       {
         id: 'team_2',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         name: 'Beta Team',
         slug: 'beta-team',
         isOpenToJoinRequests: false,
@@ -275,7 +276,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       await harness.database.insert(evaluationCriteria).values([
         {
           id: 'criterion_1',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           name: 'Novelty',
           description: 'Novelty',
           weight: 50,
@@ -284,7 +285,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         },
         {
           id: 'criterion_2',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           name: 'Execution',
           description: 'Execution',
           weight: 50,
@@ -296,7 +297,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       await harness.database.insert(judgeAssignments).values([
         {
           id: 'assignment_1',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           submissionId: 'submission_1',
           judgeUserId: 'judge_a',
           status: 'judge_completed',
@@ -308,7 +309,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         },
         {
           id: 'assignment_2',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           submissionId: 'submission_2',
           judgeUserId: 'judge_a',
           status: 'judge_completed',
@@ -320,7 +321,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         },
         {
           id: 'assignment_3',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           submissionId: 'submission_1',
           judgeUserId: 'judge_b',
           status: 'judge_completed',
@@ -332,7 +333,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         },
         {
           id: 'assignment_4',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           submissionId: 'submission_2',
           judgeUserId: 'judge_b',
           status: 'judge_completed',
@@ -423,7 +424,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     await harness.database.insert(prizeEligibilitySnapshots).values([
       {
         id: 'snapshot_team_1_admin',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         teamId: 'team_1',
         userId: 'team_admin_one',
         snapshotAt: '2026-03-17T12:00:00.000Z',
@@ -431,7 +432,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       },
       {
         id: 'snapshot_team_2_admin',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         teamId: 'team_2',
         userId: 'team_admin_two',
         snapshotAt: '2026-03-17T12:00:00.000Z',
@@ -443,7 +444,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       await harness.database.insert(prizes).values([
         {
           id: 'prize_team_rank_1',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           name: 'Grand Prize',
           description: 'Grand prize',
           rewardType: 'api_credits',
@@ -456,7 +457,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         },
         {
           id: 'prize_member_top_2',
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           name: 'Top Two Membership',
           description: 'Top two',
           rewardType: 'subscription',
@@ -487,7 +488,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     await harness.database.insert(judgeAssignments).values(
       assignments.map(assignment => ({
         id: assignment.id,
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: assignment.submissionId,
         judgeUserId: assignment.judgeUserId,
         reviewStage: 'pitch_review',
@@ -503,57 +504,57 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     )
   }
 
-  test('admins can move a hackathon to shortlist and judges can read the computed leaderboard', async () => {
+  test('admins can move an event to shortlist and judges can read the computed leaderboard', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/start-shortlist',
+          path: '/api/events/:eventId/actions/start-shortlist',
           handler: startShortlistHandler
         },
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/leaderboard',
+          path: '/api/events/:eventId/leaderboard',
           handler: listLeaderboardHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'blind_review',
       shortlistFinalistCount: 1
     })
     await harness.database
-      .update(hackathons)
+      .update(events)
       .set({
         pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_2']),
         finalRankingSubmissionIdsJson: JSON.stringify(['submission_2', 'submission_1'])
       })
-      .where(eq(hackathons.id, 'hackathon_1'))
+      .where(eq(events.id, 'event_1'))
 
-    const moveResponse = await harness.request('/api/hackathons/hackathon_1/actions/start-shortlist', {
+    const moveResponse = await harness.request('/api/events/event_1/actions/start-shortlist', {
       method: 'POST'
     })
 
     expect(moveResponse.status).toBe(200)
     expect(await moveResponse.json()).toMatchObject({
       data: {
-        id: 'hackathon_1',
+        id: 'event_1',
         state: 'shortlist'
       }
     })
-    const updatedHackathon = await harness.database.query.hackathons.findFirst({
-      where: eq(hackathons.id, 'hackathon_1')
+    const updatedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
     })
-    expect(updatedHackathon?.pitchFinalistSubmissionIdsJson).toBe('[]')
-    expect(updatedHackathon?.finalRankingSubmissionIdsJson).toBe('[]')
+    expect(updatedEvent?.pitchFinalistSubmissionIdsJson).toBe('[]')
+    expect(updatedEvent?.finalRankingSubmissionIdsJson).toBe('[]')
 
-    const leaderboardResponse = await harness.request('/api/hackathons/hackathon_1/leaderboard')
+    const leaderboardResponse = await harness.request('/api/events/event_1/leaderboard')
 
     expect(leaderboardResponse.status).toBe(200)
     expect(await leaderboardResponse.json()).toMatchObject({
@@ -574,7 +575,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        action: 'hackathon.start_shortlist',
+        action: 'event.start_shortlist',
         metadata: expect.objectContaining({
           rankedSubmissionCount: 2
         })
@@ -587,25 +588,25 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/shortlist',
+          path: '/api/events/:eventId/shortlist',
           handler: listShortlistHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'shortlist',
       shortlistFinalistCount: 1,
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_2']),
       finalRankingSubmissionIdsJson: '[]'
     })
 
-    const shortlistResponse = await harness.request('/api/hackathons/hackathon_1/shortlist')
+    const shortlistResponse = await harness.request('/api/events/event_1/shortlist')
 
     expect(shortlistResponse.status).toBe(200)
     expect(await shortlistResponse.json()).toMatchObject({
@@ -635,23 +636,23 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/leaderboard',
+          path: '/api/events/:eventId/leaderboard',
           handler: listLeaderboardHandler
         },
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/shortlist',
+          path: '/api/events/:eventId/shortlist',
           handler: listShortlistHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'shortlist',
       shortlistFinalistCount: 1,
       pitchFinalistSubmissionIdsJson: '[]',
@@ -663,7 +664,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
 
       return {
         id: `skipped_assignment_${index + 1}`,
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         submissionId: index % 2 === 0 ? 'submission_1' : 'submission_2',
         judgeUserId: index % 2 === 0 ? 'judge_a' : 'judge_b',
         reviewStage: 'blind_review' as const,
@@ -684,8 +685,8 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     await harness.database.insert(judgeAssignments).values(skippedAssignments)
 
     const [leaderboardResponse, shortlistResponse] = await Promise.all([
-      harness.request('/api/hackathons/hackathon_1/leaderboard'),
-      harness.request('/api/hackathons/hackathon_1/shortlist')
+      harness.request('/api/events/event_1/leaderboard'),
+      harness.request('/api/events/event_1/shortlist')
     ])
 
     expect(leaderboardResponse.status).toBe(200)
@@ -732,18 +733,18 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/shortlist',
+          path: '/api/events/:eventId/shortlist',
           handler: listShortlistHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'shortlist',
       shortlistFinalistCount: 1,
       pitchFinalistSubmissionIdsJson: '[]',
@@ -757,7 +758,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       })
       .where(eq(teams.id, 'team_2'))
 
-    const shortlistResponse = await harness.request('/api/hackathons/hackathon_1/shortlist')
+    const shortlistResponse = await harness.request('/api/events/event_1/shortlist')
 
     expect(shortlistResponse.status).toBe(200)
     expect(await shortlistResponse.json()).toMatchObject({
@@ -785,30 +786,30 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/shortlist/actions/select-finalists',
+          path: '/api/events/:eventId/shortlist/actions/select-finalists',
           handler: selectFinalistsHandler
         },
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/shortlist',
+          path: '/api/events/:eventId/shortlist',
           handler: listShortlistHandler
         },
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/leaderboard',
+          path: '/api/events/:eventId/leaderboard',
           handler: listLeaderboardHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, { state: 'shortlist' })
+    await seedOutcomeEvent(harness, { state: 'shortlist' })
 
-    const selectResponse = await harness.request('/api/hackathons/hackathon_1/shortlist/actions/select-finalists', {
+    const selectResponse = await harness.request('/api/events/event_1/shortlist/actions/select-finalists', {
       method: 'POST',
       body: JSON.stringify({
         orderedSubmissionIds: ['submission_2', 'submission_1'],
@@ -837,15 +838,15 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         })
       ]
     })
-    const persistedHackathon = await harness.database.query.hackathons.findFirst({
-      where: eq(hackathons.id, 'hackathon_1')
+    const persistedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
     })
-    expect(persistedHackathon?.pitchFinalistSubmissionIdsJson).toBe(JSON.stringify(['submission_2']))
-    expect(persistedHackathon?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_2', 'submission_1']))
+    expect(persistedEvent?.pitchFinalistSubmissionIdsJson).toBe(JSON.stringify(['submission_2']))
+    expect(persistedEvent?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_2', 'submission_1']))
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        action: 'hackathon.pitch_finalists_selected',
+        action: 'event.pitch_finalists_selected',
         metadata: expect.objectContaining({
           orderedSubmissionIds: ['submission_2', 'submission_1'],
           finalistSubmissionIds: ['submission_2'],
@@ -854,7 +855,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       })
     ]))
 
-    const shortlistResponse = await harness.request('/api/hackathons/hackathon_1/shortlist')
+    const shortlistResponse = await harness.request('/api/events/event_1/shortlist')
 
     expect(shortlistResponse.status).toBe(200)
     const shortlistPayload = await shortlistResponse.json() as {
@@ -883,7 +884,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     expect(shortlistPayload.data[0]).not.toHaveProperty('teamId')
     expect(shortlistPayload.data[0]).not.toHaveProperty('teamName')
 
-    const leaderboardResponse = await harness.request('/api/hackathons/hackathon_1/leaderboard')
+    const leaderboardResponse = await harness.request('/api/events/event_1/leaderboard')
 
     expect(leaderboardResponse.status).toBe(200)
     expect(await leaderboardResponse.json()).toMatchObject({
@@ -907,44 +908,44 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/teams/:teamId/submission/actions/disqualify',
+          path: '/api/events/:eventId/teams/:teamId/submission/actions/disqualify',
           handler: disqualifySubmissionHandler
         },
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/shortlist',
+          path: '/api/events/:eventId/shortlist',
           handler: listShortlistHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/start-pitch',
+          path: '/api/events/:eventId/actions/start-pitch',
           handler: startPitchHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/advance-pitch-presentation',
+          path: '/api/events/:eventId/actions/advance-pitch-presentation',
           handler: advancePitchPresentationHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/start-pitch-review',
+          path: '/api/events/:eventId/actions/start-pitch-review',
           handler: startPitchReviewHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'shortlist',
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
       finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
     })
 
-    const disqualifyResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/submission/actions/disqualify', {
+    const disqualifyResponse = await harness.request('/api/events/event_1/teams/team_1/submission/actions/disqualify', {
       method: 'POST',
       body: JSON.stringify({
         reason: 'Rule violation'
@@ -953,13 +954,13 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
 
     expect(disqualifyResponse.status).toBe(200)
 
-    const storedHackathon = await harness.database.query.hackathons.findFirst({
-      where: eq(hackathons.id, 'hackathon_1')
+    const storedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
     })
-    expect(storedHackathon?.pitchFinalistSubmissionIdsJson).toBe(JSON.stringify(['submission_2']))
-    expect(storedHackathon?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_2']))
+    expect(storedEvent?.pitchFinalistSubmissionIdsJson).toBe(JSON.stringify(['submission_2']))
+    expect(storedEvent?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_2']))
 
-    const shortlistResponse = await harness.request('/api/hackathons/hackathon_1/shortlist')
+    const shortlistResponse = await harness.request('/api/events/event_1/shortlist')
 
     expect(shortlistResponse.status).toBe(200)
     expect(await shortlistResponse.json()).toMatchObject({
@@ -973,25 +974,25 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       ]
     })
 
-    const startPitchResponse = await harness.request('/api/hackathons/hackathon_1/actions/start-pitch', {
+    const startPitchResponse = await harness.request('/api/events/event_1/actions/start-pitch', {
       method: 'POST'
     })
 
     expect(startPitchResponse.status).toBe(200)
 
-    const firstAdvanceResponse = await harness.request('/api/hackathons/hackathon_1/actions/advance-pitch-presentation', {
+    const firstAdvanceResponse = await harness.request('/api/events/event_1/actions/advance-pitch-presentation', {
       method: 'POST'
     })
 
     expect(firstAdvanceResponse.status).toBe(200)
 
-    const secondAdvanceResponse = await harness.request('/api/hackathons/hackathon_1/actions/advance-pitch-presentation', {
+    const secondAdvanceResponse = await harness.request('/api/events/event_1/actions/advance-pitch-presentation', {
       method: 'POST'
     })
 
     expect(secondAdvanceResponse.status).toBe(200)
 
-    const startPitchReviewResponse = await harness.request('/api/hackathons/hackathon_1/actions/start-pitch-review', {
+    const startPitchReviewResponse = await harness.request('/api/events/event_1/actions/start-pitch-review', {
       method: 'POST'
     })
 
@@ -1011,26 +1012,26 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/start-pitch',
+          path: '/api/events/:eventId/actions/start-pitch',
           handler: startPitchHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       },
       cloudflareEnv: {
-        HACKATHON_OUTCOME_EMAIL_QUEUE: queueProducer
+        EVENT_OUTCOME_EMAIL_QUEUE: queueProducer
       },
       runtimeConfig: {
-        hackathonOutcomeEmails: {
-          queueBinding: 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+        eventOutcomeEmails: {
+          queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE'
         }
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'shortlist',
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1']),
       finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
@@ -1050,7 +1051,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       createdAt: '2026-03-15T12:01:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/actions/start-pitch', {
+    const response = await harness.request('/api/events/event_1/actions/start-pitch', {
       method: 'POST'
     })
 
@@ -1074,12 +1075,12 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
 
     const shortlistEmailAuditRows = (await harness.database.select().from(auditLogs))
-      .filter(entry => entry.action === 'hackathon.shortlist_email_enqueued')
+      .filter(entry => entry.action === 'event.shortlist_email_enqueued')
     expect(shortlistEmailAuditRows).toHaveLength(2)
     expect(shortlistEmailAuditRows).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        entityType: 'hackathon',
-        entityId: 'hackathon_1',
+        entityType: 'event',
+        entityId: 'event_1',
         metadata: expect.objectContaining({
           teamId: 'team_1',
           userId: 'team_admin_one',
@@ -1089,8 +1090,8 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         })
       }),
       expect.objectContaining({
-        entityType: 'hackathon',
-        entityId: 'hackathon_1',
+        entityType: 'event',
+        entityId: 'event_1',
         metadata: expect.objectContaining({
           teamId: 'team_1',
           userId: 'team_member_one',
@@ -1107,24 +1108,24 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/start-pitch',
+          path: '/api/events/:eventId/actions/start-pitch',
           handler: startPitchHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'shortlist',
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1']),
       finalRankingSubmissionIdsJson: '[]'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/actions/start-pitch', {
+    const response = await harness.request('/api/events/event_1/actions/start-pitch', {
       method: 'POST'
     })
 
@@ -1136,28 +1137,28 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
   })
 
-  test('blind-only hackathons can start final deliberation and expose blind-score breakdowns', async () => {
+  test('blind-only events can start final deliberation and expose blind-score breakdowns', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/start-final-deliberation',
+          path: '/api/events/:eventId/actions/start-final-deliberation',
           handler: startFinalDeliberationHandler
         },
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/final-deliberation',
+          path: '/api/events/:eventId/final-deliberation',
           handler: listFinalDeliberationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'blind_review',
       blindReviewCount: 2,
       pitchReviewEnabled: false,
@@ -1165,25 +1166,25 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       pitchScoreWeightPercent: 0
     })
 
-    const startResponse = await harness.request('/api/hackathons/hackathon_1/actions/start-final-deliberation', {
+    const startResponse = await harness.request('/api/events/event_1/actions/start-final-deliberation', {
       method: 'POST'
     })
 
     expect(startResponse.status).toBe(200)
     expect(await startResponse.json()).toMatchObject({
       data: {
-        id: 'hackathon_1',
+        id: 'event_1',
         state: 'final_deliberation'
       }
     })
 
-    const updatedHackathon = await harness.database.query.hackathons.findFirst({
-      where: eq(hackathons.id, 'hackathon_1')
+    const updatedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
     })
 
-    expect(updatedHackathon?.finalRankingSubmissionIdsJson).toBe('[]')
+    expect(updatedEvent?.finalRankingSubmissionIdsJson).toBe('[]')
 
-    const finalDeliberationResponse = await harness.request('/api/hackathons/hackathon_1/final-deliberation')
+    const finalDeliberationResponse = await harness.request('/api/events/event_1/final-deliberation')
 
     expect(finalDeliberationResponse.status).toBe(200)
     const finalDeliberationPayload = await finalDeliberationResponse.json() as {
@@ -1218,7 +1219,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        action: 'hackathon.start_final_deliberation'
+        action: 'event.start_final_deliberation'
       })
     ]))
   })
@@ -1228,18 +1229,18 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/leaderboard',
+          path: '/api/events/:eventId/leaderboard',
           handler: listLeaderboardHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'pitch_review',
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
     })
@@ -1274,7 +1275,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const leaderboardResponse = await harness.request('/api/hackathons/hackathon_1/leaderboard')
+    const leaderboardResponse = await harness.request('/api/events/event_1/leaderboard')
 
     expect(leaderboardResponse.status).toBe(200)
     expect(await leaderboardResponse.json()).toMatchObject({
@@ -1298,18 +1299,18 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/start-final-deliberation',
+          path: '/api/events/:eventId/actions/start-final-deliberation',
           handler: startFinalDeliberationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'pitch_review',
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
       finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
@@ -1334,7 +1335,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const response = await harness.request('/api/hackathons/hackathon_1/actions/start-final-deliberation', {
+    const response = await harness.request('/api/events/event_1/actions/start-final-deliberation', {
       method: 'POST'
     })
 
@@ -1351,18 +1352,18 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/start-final-deliberation',
+          path: '/api/events/:eventId/actions/start-final-deliberation',
           handler: startFinalDeliberationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'pitch_review',
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
       finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
@@ -1396,14 +1397,14 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const response = await harness.request('/api/hackathons/hackathon_1/actions/start-final-deliberation', {
+    const response = await harness.request('/api/events/event_1/actions/start-final-deliberation', {
       method: 'POST'
     })
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: {
-        id: 'hackathon_1',
+        id: 'event_1',
         state: 'final_deliberation'
       }
     })
@@ -1414,23 +1415,23 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/start-final-deliberation',
+          path: '/api/events/:eventId/actions/start-final-deliberation',
           handler: startFinalDeliberationHandler
         },
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/final-deliberation',
+          path: '/api/events/:eventId/final-deliberation',
           handler: listFinalDeliberationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'pitch_review',
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
       finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
@@ -1478,18 +1479,18 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const startResponse = await harness.request('/api/hackathons/hackathon_1/actions/start-final-deliberation', {
+    const startResponse = await harness.request('/api/events/event_1/actions/start-final-deliberation', {
       method: 'POST'
     })
 
     expect(startResponse.status).toBe(200)
 
-    const updatedHackathon = await harness.database.query.hackathons.findFirst({
-      where: eq(hackathons.id, 'hackathon_1')
+    const updatedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
     })
-    expect(updatedHackathon?.finalRankingSubmissionIdsJson).toBe('[]')
+    expect(updatedEvent?.finalRankingSubmissionIdsJson).toBe('[]')
 
-    const viewResponse = await harness.request('/api/hackathons/hackathon_1/final-deliberation')
+    const viewResponse = await harness.request('/api/events/event_1/final-deliberation')
 
     expect(viewResponse.status).toBe(200)
     expect(await viewResponse.json()).toMatchObject({
@@ -1511,23 +1512,23 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
   })
 
-  test('pitch-only hackathons rank leaderboard entries by pitch score', async () => {
+  test('pitch-only events rank leaderboard entries by pitch score', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/leaderboard',
+          path: '/api/events/:eventId/leaderboard',
           handler: listLeaderboardHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'pitch_review',
       blindReviewCount: 0,
       pitchReviewEnabled: true,
@@ -1577,7 +1578,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const leaderboardResponse = await harness.request('/api/hackathons/hackathon_1/leaderboard')
+    const leaderboardResponse = await harness.request('/api/events/event_1/leaderboard')
 
     expect(leaderboardResponse.status).toBe(200)
     expect(await leaderboardResponse.json()).toMatchObject({
@@ -1601,23 +1602,23 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/final-deliberation',
+          path: '/api/events/:eventId/final-deliberation',
           handler: listFinalDeliberationHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/final-deliberation/actions/reorder',
+          path: '/api/events/:eventId/final-deliberation/actions/reorder',
           handler: reorderFinalDeliberationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'final_deliberation',
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
     })
@@ -1664,7 +1665,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const viewResponse = await harness.request('/api/hackathons/hackathon_1/final-deliberation')
+    const viewResponse = await harness.request('/api/events/event_1/final-deliberation')
 
     expect(viewResponse.status).toBe(200)
     expect(await viewResponse.json()).toMatchObject({
@@ -1691,7 +1692,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     })
 
-    const reorderResponse = await harness.request('/api/hackathons/hackathon_1/final-deliberation/actions/reorder', {
+    const reorderResponse = await harness.request('/api/events/event_1/final-deliberation/actions/reorder', {
       method: 'POST',
       body: JSON.stringify({
         orderedSubmissionIds: ['submission_1', 'submission_2']
@@ -1717,15 +1718,15 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     })
 
-    const persistedHackathon = await harness.database.query.hackathons.findFirst({
-      where: eq(hackathons.id, 'hackathon_1')
+    const persistedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
     })
-    expect(persistedHackathon?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_1', 'submission_2']))
+    expect(persistedEvent?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_1', 'submission_2']))
 
     const auditEntries = await harness.database.select().from(auditLogs)
     expect(auditEntries).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        action: 'hackathon.final_ranking_reordered',
+        action: 'event.final_ranking_reordered',
         metadata: expect.objectContaining({
           orderedSubmissionIds: ['submission_1', 'submission_2'],
           rankedSubmissionCount: 2
@@ -1739,23 +1740,23 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/teams/:teamId/submission/actions/disqualify',
+          path: '/api/events/:eventId/teams/:teamId/submission/actions/disqualify',
           handler: disqualifySubmissionHandler
         },
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/final-deliberation',
+          path: '/api/events/:eventId/final-deliberation',
           handler: listFinalDeliberationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'final_deliberation',
       pitchFinalistSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
       finalRankingSubmissionIdsJson: JSON.stringify(['submission_2', 'submission_1'])
@@ -1803,7 +1804,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const disqualifyResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_2/submission/actions/disqualify', {
+    const disqualifyResponse = await harness.request('/api/events/event_1/teams/team_2/submission/actions/disqualify', {
       method: 'POST',
       body: JSON.stringify({
         reason: 'Rule violation'
@@ -1812,12 +1813,12 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
 
     expect(disqualifyResponse.status).toBe(200)
 
-    const storedHackathon = await harness.database.query.hackathons.findFirst({
-      where: eq(hackathons.id, 'hackathon_1')
+    const storedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
     })
-    expect(storedHackathon?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_1']))
+    expect(storedEvent?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_1']))
 
-    const viewResponse = await harness.request('/api/hackathons/hackathon_1/final-deliberation')
+    const viewResponse = await harness.request('/api/events/event_1/final-deliberation')
 
     expect(viewResponse.status).toBe(200)
     expect(await viewResponse.json()).toMatchObject({
@@ -1843,27 +1844,27 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/announce-winners',
+          path: '/api/events/:eventId/actions/announce-winners',
           handler: announceWinnersHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(adminHarness)
 
-    await seedOutcomeHackathon(adminHarness, { state: 'shortlist' })
+    await seedOutcomeEvent(adminHarness, { state: 'shortlist' })
 
-    const announceResponse = await adminHarness.request('/api/hackathons/hackathon_1/actions/announce-winners', {
+    const announceResponse = await adminHarness.request('/api/events/event_1/actions/announce-winners', {
       method: 'POST'
     })
 
     expect(announceResponse.status).toBe(409)
     expect(await announceResponse.json()).toMatchObject({
       error: {
-        code: 'hackathon_state_invalid',
+        code: 'event_state_invalid',
         details: expect.objectContaining({
           currentState: 'shortlist',
           allowedStates: ['final_deliberation']
@@ -1877,18 +1878,18 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/announce-winners',
+          path: '/api/events/:eventId/actions/announce-winners',
           handler: announceWinnersHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(adminHarness)
 
-    await seedOutcomeHackathon(adminHarness, { state: 'final_deliberation' })
+    await seedOutcomeEvent(adminHarness, { state: 'final_deliberation' })
     await seedPitchAssignments(adminHarness, [
       {
         id: 'pitch_assignment_1',
@@ -1922,22 +1923,22 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const announceResponse = await adminHarness.request('/api/hackathons/hackathon_1/actions/announce-winners', {
+    const announceResponse = await adminHarness.request('/api/events/event_1/actions/announce-winners', {
       method: 'POST'
     })
 
     expect(announceResponse.status).toBe(200)
     expect(await announceResponse.json()).toMatchObject({
       data: {
-        id: 'hackathon_1',
+        id: 'event_1',
         state: 'winners_announced'
       }
     })
 
-    const updatedHackathon = await adminHarness.database.query.hackathons.findFirst({
-      where: eq(hackathons.id, 'hackathon_1')
+    const updatedEvent = await adminHarness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
     })
-    expect(updatedHackathon?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_2', 'submission_1']))
+    expect(updatedEvent?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_2', 'submission_1']))
 
     const redemptionRows = await adminHarness.database.select().from(prizeRedemptions)
     expect(redemptionRows).toHaveLength(3)
@@ -1968,18 +1969,18 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/announce-winners',
+          path: '/api/events/:eventId/actions/announce-winners',
           handler: announceWinnersHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, { state: 'final_deliberation' })
+    await seedOutcomeEvent(harness, { state: 'final_deliberation' })
     await seedPitchAssignments(harness, [
       {
         id: 'manual_announce_assignment_1',
@@ -2013,7 +2014,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const announceResponse = await harness.request('/api/hackathons/hackathon_1/actions/announce-winners', {
+    const announceResponse = await harness.request('/api/events/event_1/actions/announce-winners', {
       method: 'POST',
       body: JSON.stringify({
         orderedSubmissionIds: ['submission_1', 'submission_2']
@@ -2022,10 +2023,10 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
 
     expect(announceResponse.status).toBe(200)
 
-    const updatedHackathon = await harness.database.query.hackathons.findFirst({
-      where: eq(hackathons.id, 'hackathon_1')
+    const updatedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
     })
-    expect(updatedHackathon?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_1', 'submission_2']))
+    expect(updatedEvent?.finalRankingSubmissionIdsJson).toBe(JSON.stringify(['submission_1', 'submission_2']))
 
     const redemptionRows = await harness.database.select().from(prizeRedemptions)
     expect(redemptionRows).toEqual(expect.arrayContaining([
@@ -2050,26 +2051,26 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/announce-winners',
+          path: '/api/events/:eventId/actions/announce-winners',
           handler: announceWinnersHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       },
       cloudflareEnv: {
-        HACKATHON_OUTCOME_EMAIL_QUEUE: queueProducer
+        EVENT_OUTCOME_EMAIL_QUEUE: queueProducer
       },
       runtimeConfig: {
-        hackathonOutcomeEmails: {
-          queueBinding: 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+        eventOutcomeEmails: {
+          queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE'
         }
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'final_deliberation',
       pitchReviewEnabled: false
     })
@@ -2089,14 +2090,14 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
     await harness.database.insert(prizeEligibilitySnapshots).values({
       id: 'snapshot_team_1_member',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       teamId: 'team_1',
       userId: 'team_member_one',
       snapshotAt: '2026-03-17T12:00:00.000Z',
       createdAt: '2026-03-17T12:00:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/actions/announce-winners', {
+    const response = await harness.request('/api/events/event_1/actions/announce-winners', {
       method: 'POST'
     })
 
@@ -2137,12 +2138,12 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
 
     const winnerEmailAuditRows = (await harness.database.select().from(auditLogs))
-      .filter(entry => entry.action === 'hackathon.winner_email_enqueued')
+      .filter(entry => entry.action === 'event.winner_email_enqueued')
     expect(winnerEmailAuditRows).toHaveLength(3)
     expect(winnerEmailAuditRows).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        entityType: 'hackathon',
-        entityId: 'hackathon_1',
+        entityType: 'event',
+        entityId: 'event_1',
         metadata: expect.objectContaining({
           teamId: 'team_1',
           userId: 'team_admin_one',
@@ -2153,8 +2154,8 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
         })
       }),
       expect.objectContaining({
-        entityType: 'hackathon',
-        entityId: 'hackathon_1',
+        entityType: 'event',
+        entityId: 'event_1',
         metadata: expect.objectContaining({
           teamId: 'team_1',
           userId: 'team_member_one'
@@ -2169,26 +2170,26 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/announce-winners',
+          path: '/api/events/:eventId/actions/announce-winners',
           handler: announceWinnersHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       },
       cloudflareEnv: {
-        HACKATHON_OUTCOME_EMAIL_QUEUE: queueProducer
+        EVENT_OUTCOME_EMAIL_QUEUE: queueProducer
       },
       runtimeConfig: {
-        hackathonOutcomeEmails: {
-          queueBinding: 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+        eventOutcomeEmails: {
+          queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE'
         }
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'final_deliberation',
       pitchReviewEnabled: false
     })
@@ -2204,7 +2205,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
 
       return {
         id: `snapshot_winner_member_${index + 1}`,
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         teamId: index % 2 === 0 ? 'team_1' : 'team_2',
         userId: user.id,
         snapshotAt: createdAt,
@@ -2222,14 +2223,14 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       )
     }
 
-    const response = await harness.request('/api/hackathons/hackathon_1/actions/announce-winners', {
+    const response = await harness.request('/api/events/event_1/actions/announce-winners', {
       method: 'POST'
     })
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: {
-        id: 'hackathon_1',
+        id: 'event_1',
         state: 'winners_announced'
       }
     })
@@ -2252,14 +2253,14 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/winners',
+          path: '/api/events/:eventId/winners',
           handler: listWinnersHandler
         }
       ]
     })
     harnesses.push(publicHarness)
 
-    await seedOutcomeHackathon(publicHarness, {
+    await seedOutcomeEvent(publicHarness, {
       state: 'winners_announced',
       finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
     })
@@ -2308,18 +2309,18 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const preCompletionResponse = await publicHarness.request('/api/hackathons/hackathon_1/winners')
+    const preCompletionResponse = await publicHarness.request('/api/events/event_1/winners')
 
     expect(preCompletionResponse.status).toBe(409)
 
     await publicHarness.database
-      .update(hackathons)
+      .update(events)
       .set({
         state: 'completed'
       })
-      .where(eq(hackathons.id, 'hackathon_1'))
+      .where(eq(events.id, 'event_1'))
 
-    const winnersResponse = await publicHarness.request('/api/hackathons/hackathon_1/winners')
+    const winnersResponse = await publicHarness.request('/api/events/event_1/winners')
 
     expect(winnersResponse.status).toBe(200)
 
@@ -2346,7 +2347,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
               xProfileUrl: 'https://x.com/team-admin-one',
               linkedinProfileUrl: 'https://linkedin.com/in/team-admin-one',
               githubProfileUrl: 'https://github.com/team-admin-one',
-              profileIconUrl: '/api/public/hackathons/outcome-hackathon/winners/team_admin_one/profile-icon?v=2026-03-18T13%3A00%3A00.000Z'
+              profileIconUrl: '/api/public/events/outcome-event/winners/team_admin_one/profile-icon?v=2026-03-18T13%3A00%3A00.000Z'
             })
           ])
         }),
@@ -2368,7 +2369,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       routes: [
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/published-projects',
+          path: '/api/events/:eventId/published-projects',
           handler: listPublishedProjectsHandler
         }
       ],
@@ -2379,7 +2380,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'winners_announced',
       withPrizes: false,
       finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2'])
@@ -2391,18 +2392,18 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       })
       .where(eq(submissions.id, 'submission_2'))
 
-    const preCompletionResponse = await harness.request('/api/hackathons/hackathon_1/published-projects')
+    const preCompletionResponse = await harness.request('/api/events/event_1/published-projects')
 
     expect(preCompletionResponse.status).toBe(409)
 
     await harness.database
-      .update(hackathons)
+      .update(events)
       .set({
         state: 'completed'
       })
-      .where(eq(hackathons.id, 'hackathon_1'))
+      .where(eq(events.id, 'event_1'))
 
-    const publishedProjectsResponse = await harness.request('/api/hackathons/hackathon_1/published-projects')
+    const publishedProjectsResponse = await harness.request('/api/events/event_1/published-projects')
 
     expect(publishedProjectsResponse.status).toBe(200)
     expect(await publishedProjectsResponse.json()).toMatchObject({
@@ -2418,32 +2419,32 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
   })
 
-  test('completing a hackathon enqueues winner emails for each winning team member snapshot', async () => {
+  test('completing an event enqueues winner emails for each winning team member snapshot', async () => {
     const queueProducer = createQueueProducerStub()
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/complete',
-          handler: completeHackathonHandler
+          path: '/api/events/:eventId/actions/complete',
+          handler: completeEventHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       },
       cloudflareEnv: {
-        HACKATHON_OUTCOME_EMAIL_QUEUE: queueProducer
+        EVENT_OUTCOME_EMAIL_QUEUE: queueProducer
       },
       runtimeConfig: {
-        hackathonOutcomeEmails: {
-          queueBinding: 'HACKATHON_OUTCOME_EMAIL_QUEUE'
+        eventOutcomeEmails: {
+          queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE'
         }
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, {
+    await seedOutcomeEvent(harness, {
       state: 'winners_announced',
       finalRankingSubmissionIdsJson: JSON.stringify(['submission_1', 'submission_2']),
       pitchReviewEnabled: false
@@ -2456,14 +2457,14 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
     await harness.database.insert(prizeEligibilitySnapshots).values({
       id: 'snapshot_team_1_member_complete',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       teamId: 'team_1',
       userId: 'team_member_one',
       snapshotAt: '2026-03-17T12:00:00.000Z',
       createdAt: '2026-03-17T12:00:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/actions/complete', {
+    const response = await harness.request('/api/events/event_1/actions/complete', {
       method: 'POST'
     })
 
@@ -2504,7 +2505,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
 
     const winnerEmailAuditRows = (await harness.database.select().from(auditLogs))
-      .filter(entry => entry.action === 'hackathon.winner_email_enqueued')
+      .filter(entry => entry.action === 'event.winner_email_enqueued')
     expect(winnerEmailAuditRows).toHaveLength(3)
     expect(winnerEmailAuditRows).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -2545,7 +2546,7 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, { state: 'winners_announced' })
+    await seedOutcomeEvent(harness, { state: 'winners_announced' })
     await harness.database.insert(prizeRedemptions).values([
       {
         id: 'redemption_team_scope',
@@ -2626,28 +2627,28 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
   })
 
-  test('hackathon admins can load prize redemption operations data with winner names during winners announced', async () => {
+  test('event admins can load prize redemption operations data with winner names during winners announced', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/announce-winners',
+          path: '/api/events/:eventId/actions/announce-winners',
           handler: announceWinnersHandler
         },
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/prize-redemptions',
-          handler: listHackathonPrizeRedemptionsHandler
+          path: '/api/events/:eventId/prize-redemptions',
+          handler: listEventPrizeRedemptionsHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, { state: 'final_deliberation' })
+    await seedOutcomeEvent(harness, { state: 'final_deliberation' })
     await seedPitchAssignments(harness, [
       {
         id: 'winner_names_pitch_assignment_1',
@@ -2681,12 +2682,12 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const announceResponse = await harness.request('/api/hackathons/hackathon_1/actions/announce-winners', {
+    const announceResponse = await harness.request('/api/events/event_1/actions/announce-winners', {
       method: 'POST'
     })
     expect(announceResponse.status).toBe(200)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/prize-redemptions?include_rankings=true')
+    const response = await harness.request('/api/events/event_1/prize-redemptions?include_rankings=true')
 
     expect(response.status).toBe(200)
 
@@ -2804,32 +2805,32 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
   })
 
-  test('hackathon and platform audit routes expose restricted operational audit reads', async () => {
-    const hackathonHarness = createApiRouteTestHarness({
+  test('event and platform audit routes expose restricted operational audit reads', async () => {
+    const eventHarness = createApiRouteTestHarness({
       routes: [
         {
           method: 'get',
-          path: '/api/hackathons/:hackathonId/audit',
-          handler: listHackathonAuditHandler
+          path: '/api/events/:eventId/audit',
+          handler: listEventAuditHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
-    harnesses.push(hackathonHarness)
+    harnesses.push(eventHarness)
 
-    await seedOutcomeHackathon(hackathonHarness, { state: 'winners_announced' })
-    await hackathonHarness.database.insert(auditLogs).values([
+    await seedOutcomeEvent(eventHarness, { state: 'winners_announced' })
+    await eventHarness.database.insert(auditLogs).values([
       ...Array.from({ length: 205 }, (_, index) => ({
-        id: `audit_hackathon_scope_${index}`,
-        actorUserId: index % 2 === 0 ? 'hackathon_admin' : 'platform_admin',
-        entityType: index % 2 === 0 ? 'hackathon' as const : 'account',
-        entityId: index % 2 === 0 ? 'hackathon_1' : `user_${index}`,
-        action: 'hackathon.announce_winners',
+        id: `audit_event_scope_${index}`,
+        actorUserId: index % 2 === 0 ? 'event_admin' : 'platform_admin',
+        entityType: index % 2 === 0 ? 'event' as const : 'account',
+        entityId: index % 2 === 0 ? 'event_1' : `user_${index}`,
+        action: 'event.announce_winners',
         metadata: {
-          hackathonId: 'hackathon_1'
+          eventId: 'event_1'
         },
         createdAt: new Date(Date.UTC(2026, 2, 18, 13, 0, index)).toISOString()
       })),
@@ -2844,14 +2845,14 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     ])
 
-    const hackathonAuditResponse = await hackathonHarness.request('/api/hackathons/hackathon_1/audit')
+    const eventAuditResponse = await eventHarness.request('/api/events/event_1/audit')
 
-    expect(hackathonAuditResponse.status).toBe(200)
-    const hackathonAuditPayload = await hackathonAuditResponse.json()
-    expect(hackathonAuditPayload.data).toHaveLength(200)
-    expect(hackathonAuditPayload.data[0]).toMatchObject({ id: 'audit_hackathon_scope_204' })
-    expect(hackathonAuditPayload.data.at(-1)).toMatchObject({ id: 'audit_hackathon_scope_5' })
-    expect(hackathonAuditPayload.data).not.toEqual(
+    expect(eventAuditResponse.status).toBe(200)
+    const eventAuditPayload = await eventAuditResponse.json()
+    expect(eventAuditPayload.data).toHaveLength(200)
+    expect(eventAuditPayload.data[0]).toMatchObject({ id: 'audit_event_scope_204' })
+    expect(eventAuditPayload.data.at(-1)).toMatchObject({ id: 'audit_event_scope_5' })
+    expect(eventAuditPayload.data).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ id: 'audit_platform_scope' })])
     )
 
@@ -2869,15 +2870,15 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
       }
     })
     harnesses.push(platformHarness)
-    await seedOutcomeHackathon(platformHarness, { state: 'winners_announced' })
+    await seedOutcomeEvent(platformHarness, { state: 'winners_announced' })
     await platformHarness.database.insert(auditLogs).values(
       Array.from({ length: 205 }, (_, index) => ({
         id: `platform_audit_scope_${index}`,
-        actorUserId: index % 2 === 0 ? 'platform_admin' : 'hackathon_admin',
-        entityType: index % 2 === 0 ? 'account' : 'hackathon',
-        entityId: index % 2 === 0 ? `user_${index}` : 'hackathon_1',
-        action: index % 2 === 0 ? 'account.deleted' : 'hackathon.announce_winners',
-        metadata: index % 2 === 0 ? {} : { hackathonId: 'hackathon_1' },
+        actorUserId: index % 2 === 0 ? 'platform_admin' : 'event_admin',
+        entityType: index % 2 === 0 ? 'account' : 'event',
+        entityId: index % 2 === 0 ? `user_${index}` : 'event_1',
+        action: index % 2 === 0 ? 'account.deleted' : 'event.announce_winners',
+        metadata: index % 2 === 0 ? {} : { eventId: 'event_1' },
         createdAt: new Date(Date.UTC(2026, 2, 18, 13, 0, index)).toISOString()
       }))
     )
@@ -2891,13 +2892,13 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     expect(platformAuditPayload.data.at(-1)).toMatchObject({ id: 'platform_audit_scope_5' })
   })
 
-  test('hackathons can be completed only after winners are announced', async () => {
+  test('events can be completed only after winners are announced', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/actions/complete',
-          handler: completeHackathonHandler
+          path: '/api/events/:eventId/actions/complete',
+          handler: completeEventHandler
         }
       ],
       sessionUser: {
@@ -2907,23 +2908,23 @@ describe('TASK-3.8 shortlist, winner, redemption, and audit routes', () => {
     })
     harnesses.push(harness)
 
-    await seedOutcomeHackathon(harness, { state: 'winners_announced' })
+    await seedOutcomeEvent(harness, { state: 'winners_announced' })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/actions/complete', {
+    const response = await harness.request('/api/events/event_1/actions/complete', {
       method: 'POST'
     })
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: {
-        id: 'hackathon_1',
+        id: 'event_1',
         state: 'completed'
       }
     })
 
-    const updatedHackathon = await harness.database.query.hackathons.findFirst({
-      where: eq(hackathons.id, 'hackathon_1')
+    const updatedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_1')
     })
-    expect(updatedHackathon?.state).toBe('completed')
+    expect(updatedEvent?.state).toBe('completed')
   })
 })

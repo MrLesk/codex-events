@@ -17,8 +17,8 @@ function formatLegalDate(value: string | undefined) {
 const lastUpdatedLabel = computed(() => formatLegalDate(platformTermsDocument.value?.publishedAt))
 
 useSeoMeta({
-  title: 'Terms and Conditions | Codex Hackathons',
-  description: 'Read the rules for using Codex Hackathons.'
+  title: 'Terms and Conditions | Codex Events',
+  description: 'Read the rules for using Codex Events.'
 })
 </script>
 
@@ -34,7 +34,7 @@ useSeoMeta({
             name="i-lucide-arrow-left"
             class="size-4"
           />
-          Back to hackathons
+          Back to events
         </NuxtLink>
 
         <div class="mt-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
@@ -43,7 +43,7 @@ useSeoMeta({
               Terms and Conditions
             </h1>
             <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-              These terms define the baseline rules for using the Codex Hackathons platform and explain how platform-level rules interact with hackathon-specific documents.
+              These terms define the baseline rules for using the Codex Events platform and explain how platform-level rules interact with event-specific documents.
             </p>
             <div class="flex flex-wrap items-center gap-3 text-[13px] text-neutral-600 dark:text-[#A3A3A3]">
               <span v-if="lastUpdatedLabel">Last updated {{ lastUpdatedLabel }}</span>

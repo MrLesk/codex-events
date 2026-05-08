@@ -1,14 +1,14 @@
 import type { ApiListResponse } from '~/lib/api'
 import type { SessionActor } from '~/domains/accounts/session-actor'
 import type {
-  HackathonRecord
-} from '~/domains/hackathons/records'
-import type { HackathonState } from '~/domains/hackathons/states'
+  EventRecord
+} from '~/domains/events/records'
+import type { EventState } from '~/domains/events/states'
 import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
 
 import { normalizeApiError } from '~/lib/api'
-import { isHackathonRoleJudgingEnabled } from '~/domains/hackathons/access'
-import { formatHackathonState } from '~/domains/hackathons/states'
+import { isEventRoleJudgingEnabled } from '~/domains/events/access'
+import { formatEventState } from '~/domains/events/states'
 import { formatTimestamp } from '~/lib/date-formatting'
 
 export type JudgeAssignmentStatus = 'assigned' | 'judge_started' | 'judge_completed' | 'skipped'
@@ -71,7 +71,7 @@ export interface JudgeCriterionScore {
 
 interface BaseJudgeAssignmentDetail {
   id: string
-  hackathonId: string
+  eventId: string
   submissionId: string
   judgeUserId: string
   reviewStage: JudgeReviewStage
@@ -127,7 +127,7 @@ export interface PitchJudgeAssignmentDetail extends BaseJudgeAssignmentDetail {
 export type JudgeAssignmentDetail = BlindJudgeAssignmentDetail | PitchJudgeAssignmentDetail
 
 export interface JudgeInboxGroup {
-  hackathon: HackathonRecord
+  event: EventRecord
   assignments: JudgeAssignmentDetail[]
 }
 
@@ -167,7 +167,7 @@ export interface JudgeAssignmentInboxCardCopy {
   openLabel: string
 }
 
-export interface JudgeHackathonDashboardCopy {
+export interface JudgeEventDashboardCopy {
   description: string
   actionLabel: string
   overline: string
@@ -245,7 +245,7 @@ function normalizeBaseJudgeAssignmentDetail(
 ): BaseJudgeAssignmentDetail {
   return {
     id: assignment.id,
-    hackathonId: assignment.hackathonId,
+    eventId: assignment.eventId,
     submissionId: assignment.submissionId,
     judgeUserId: assignment.judgeUserId,
     reviewStage: assignment.reviewStage,
@@ -288,8 +288,8 @@ export function normalizeJudgeAssignmentDetail(
   }
 }
 
-export function filterReviewableHackathons(
-  hackathons: HackathonRecord[],
+export function filterReviewableEvents(
+  events: EventRecord[],
   actor: SessionActor | null | undefined
 ) {
   if (!actor?.hasPlatformAccount) {
@@ -297,33 +297,33 @@ export function filterReviewableHackathons(
   }
 
   if (actor.isPlatformAdmin) {
-    return [...hackathons]
+    return [...events]
   }
 
-  const reviewableHackathonIds = new Set(
-    actor.hackathonRoles
-      .filter(role => isHackathonRoleJudgingEnabled(role))
-      .map(role => role.hackathonId)
+  const reviewableEventIds = new Set(
+    actor.eventRoles
+      .filter(role => isEventRoleJudgingEnabled(role))
+      .map(role => role.eventId)
   )
 
-  return hackathons.filter(hackathon => reviewableHackathonIds.has(hackathon.id))
+  return events.filter(event => reviewableEventIds.has(event.id))
 }
 
-export function filterExplicitJudgeHackathons(
-  hackathons: HackathonRecord[],
+export function filterExplicitJudgeEvents(
+  events: EventRecord[],
   actor: SessionActor | null | undefined
 ) {
   if (!actor?.hasPlatformAccount) {
     return []
   }
 
-  const explicitJudgeHackathonIds = new Set(
-    actor.hackathonRoles
-      .filter(role => isHackathonRoleJudgingEnabled(role))
-      .map(role => role.hackathonId)
+  const explicitJudgeEventIds = new Set(
+    actor.eventRoles
+      .filter(role => isEventRoleJudgingEnabled(role))
+      .map(role => role.eventId)
   )
 
-  return hackathons.filter(hackathon => explicitJudgeHackathonIds.has(hackathon.id))
+  return events.filter(event => explicitJudgeEventIds.has(event.id))
 }
 
 export function filterAssignmentsForActor(
@@ -337,29 +337,29 @@ export function filterAssignmentsForActor(
   return assignments.filter(assignment => assignment.judgeUserId === actor.platformUser?.id)
 }
 
-export async function listAllVisibleHackathons(
-  fetchPage: (page: number, pageSize: number) => Promise<ApiListResponse<HackathonRecord>>,
+export async function listAllVisibleEvents(
+  fetchPage: (page: number, pageSize: number) => Promise<ApiListResponse<EventRecord>>,
   pageSize: number = 100
 ) {
-  const collectedHackathons = new Map<string, HackathonRecord>()
+  const collectedEvents = new Map<string, EventRecord>()
   let page = 1
   let total: number | null = null
 
   while (true) {
     const response = await fetchPage(page, pageSize)
-    const pageHackathons = response.data
+    const pageEvents = response.data
 
-    for (const hackathon of pageHackathons) {
-      collectedHackathons.set(hackathon.id, hackathon)
+    for (const event of pageEvents) {
+      collectedEvents.set(event.id, event)
     }
 
     total = response.meta?.total ?? total
 
-    const reachedKnownTotal = total !== null && collectedHackathons.size >= total
-    const reachedLastPage = pageHackathons.length < pageSize
+    const reachedKnownTotal = total !== null && collectedEvents.size >= total
+    const reachedLastPage = pageEvents.length < pageSize
 
-    if (pageHackathons.length === 0 || reachedKnownTotal || reachedLastPage) {
-      return [...collectedHackathons.values()]
+    if (pageEvents.length === 0 || reachedKnownTotal || reachedLastPage) {
+      return [...collectedEvents.values()]
     }
 
     page += 1
@@ -437,7 +437,7 @@ function formatJudgeQueueMeta(stage: JudgeReviewStage, summary: JudgeDashboardAs
 }
 
 function resolveJudgeDashboardStage(
-  hackathon: Pick<HackathonRecord, 'state' | 'blindReviewCount' | 'pitchReviewEnabled'>,
+  event: Pick<EventRecord, 'state' | 'blindReviewCount' | 'pitchReviewEnabled'>,
   summary: Pick<JudgeDashboardAssignmentSummary, 'blind' | 'pitch'>
 ): JudgeReviewStage {
   if (summary.pitch > 0 && summary.blind === 0) {
@@ -452,14 +452,14 @@ function resolveJudgeDashboardStage(
     return 'pitch_review'
   }
 
-  if (!hackathon.pitchReviewEnabled) {
+  if (!event.pitchReviewEnabled) {
     return 'blind_review'
   }
 
-  return hackathon.state === 'pitch_review'
-    || hackathon.state === 'pitch'
-    || hackathon.state === 'shortlist'
-    || (hackathon.state === 'judging_preparation' && hackathon.blindReviewCount === 0)
+  return event.state === 'pitch_review'
+    || event.state === 'pitch'
+    || event.state === 'shortlist'
+    || (event.state === 'judging_preparation' && event.blindReviewCount === 0)
     ? 'pitch_review'
     : 'blind_review'
 }
@@ -491,10 +491,10 @@ export function getJudgeAssignmentInboxCardCopy(
   }
 }
 
-export function getJudgeHackathonDashboardCopy(
-  hackathon: Pick<HackathonRecord, 'state' | 'blindReviewCount' | 'pitchReviewEnabled'>,
+export function getJudgeEventDashboardCopy(
+  event: Pick<EventRecord, 'state' | 'blindReviewCount' | 'pitchReviewEnabled'>,
   summary?: JudgeDashboardAssignmentSummary
-): JudgeHackathonDashboardCopy {
+): JudgeEventDashboardCopy {
   const normalizedSummary: JudgeDashboardAssignmentSummary = summary ?? {
     total: 0,
     inReview: 0,
@@ -503,7 +503,7 @@ export function getJudgeHackathonDashboardCopy(
     blind: 0,
     pitch: 0
   }
-  const stage = resolveJudgeDashboardStage(hackathon, normalizedSummary)
+  const stage = resolveJudgeDashboardStage(event, normalizedSummary)
   const isMixedQueue = normalizedSummary.blind > 0 && normalizedSummary.pitch > 0
   const progressSuffix = normalizedSummary.inReview > 0
     ? `, including ${normalizedSummary.inReview} currently in progress`
@@ -529,10 +529,10 @@ export function getJudgeHackathonDashboardCopy(
     }
   }
 
-  if (hackathon.state === 'pitch') {
+  if (event.state === 'pitch') {
     return {
       description: 'Finalist teams are pitching live. Post-pitch review assignments will appear here after admins start pitch review.',
-      actionLabel: 'Open hackathon',
+      actionLabel: 'Open event',
       overline: 'Judge assigned',
       queueMeta: formatJudgeQueueMeta('pitch_review', normalizedSummary)
     }
@@ -540,9 +540,9 @@ export function getJudgeHackathonDashboardCopy(
 
   return {
     description: stage === 'blind_review'
-      ? 'You are assigned as a judge for this hackathon. Anonymous blind reviews will appear here when blind review begins.'
-      : 'You are assigned as a judge for this hackathon. Finalist pitch votes will appear here when pitch review is active.',
-    actionLabel: 'Open hackathon',
+      ? 'You are assigned as a judge for this event. Anonymous blind reviews will appear here when blind review begins.'
+      : 'You are assigned as a judge for this event. Finalist pitch votes will appear here when pitch review is active.',
+    actionLabel: 'Open event',
     overline: 'Judge assigned',
     queueMeta: formatJudgeQueueMeta(stage, normalizedSummary)
   }
@@ -562,31 +562,31 @@ export function canSkipJudgeAssignment(assignment: Pick<JudgeAssignmentDetail, '
 
 export function getJudgeAssignmentActionDisabledReason(
   assignment: Pick<JudgeAssignmentDetail, 'reviewStage'> | null | undefined,
-  hackathonState: HackathonState | null | undefined
+  eventState: EventState | null | undefined
 ) {
-  if (assignment?.reviewStage !== 'blind_review' || !hackathonState || hackathonState === 'blind_review') {
+  if (assignment?.reviewStage !== 'blind_review' || !eventState || eventState === 'blind_review') {
     return null
   }
 
-  return `Start and skip actions are available only during blind review. Current state: ${formatHackathonState(hackathonState)}.`
+  return `Start and skip actions are available only during blind review. Current state: ${formatEventState(eventState)}.`
 }
 
 export function canAutoStartBlindReviewFromScoreSelection(
   assignment: Pick<JudgeAssignmentDetail, 'reviewStage' | 'status'> | null | undefined,
-  hackathonState: HackathonState | null | undefined
+  eventState: EventState | null | undefined
 ) {
   return assignment?.reviewStage === 'blind_review'
     && assignment.status === 'assigned'
-    && !getJudgeAssignmentActionDisabledReason(assignment, hackathonState)
+    && !getJudgeAssignmentActionDisabledReason(assignment, eventState)
 }
 
 export function canAutoStartPitchReviewFromVoteInput(
   assignment: Pick<JudgeAssignmentDetail, 'reviewStage' | 'status'> | null | undefined,
-  hackathonState: HackathonState | null | undefined
+  eventState: EventState | null | undefined
 ) {
   return assignment?.reviewStage === 'pitch_review'
     && assignment.status === 'assigned'
-    && hackathonState === 'pitch_review'
+    && eventState === 'pitch_review'
 }
 
 export function getJudgeActionErrorMessage(

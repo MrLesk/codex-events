@@ -9,12 +9,12 @@ import {
 } from '#server/domains/platform/event-organizers'
 import { parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (event) => {
-  const actor = await requirePlatformActor(event)
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requirePlatformActor(h3Event)
   assertPlatformAdminAccess(actor)
 
-  const { userId } = parseValidatedParams(event, eventOrganizerUserParamsSchema)
-  const result = await grantEventOrganizerAccess(getDatabase(event), {
+  const { userId } = parseValidatedParams(h3Event, eventOrganizerUserParamsSchema)
+  const result = await grantEventOrganizerAccess(getDatabase(h3Event), {
     actorUserId: actor.platformUser.id,
     userId
   })

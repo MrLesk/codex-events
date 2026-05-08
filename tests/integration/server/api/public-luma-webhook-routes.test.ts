@@ -4,8 +4,8 @@ import { eq } from 'drizzle-orm'
 import lumaWebhooksPostHandler from '../../../../server/api/public/luma/webhooks.post'
 import {
   auditLogs,
-  hackathons,
-  hackathonTermsDocuments,
+  events,
+  eventTermsDocuments,
   userApplications,
   users
 } from '../../../../server/database/schema'
@@ -40,11 +40,12 @@ async function seedAttendanceContext(
     }
   ])
 
-  await harness.database.insert(hackathons).values({
-    id: 'hackathon_1',
-    name: 'Fixture Hackathon',
-    slug: 'fixture-hackathon',
-    description: 'Fixture hackathon',
+  await harness.database.insert(events).values({
+    id: 'event_1',
+    eventType: 'hackathon',
+    name: 'Fixture Event',
+    slug: 'fixture-event',
+    description: 'Fixture event',
     city: 'Vienna',
     country: 'Austria',
     address: 'Fixture Address',
@@ -59,9 +60,9 @@ async function seedAttendanceContext(
     createdByUserId: 'platform_admin'
   })
 
-  await harness.database.insert(hackathonTermsDocuments).values({
+  await harness.database.insert(eventTermsDocuments).values({
     id: 'terms_1',
-    hackathonId: 'hackathon_1',
+    eventId: 'event_1',
     documentType: 'application_terms',
     version: 1,
     title: 'Application Terms',
@@ -71,7 +72,7 @@ async function seedAttendanceContext(
 
   await harness.database.insert(userApplications).values({
     id: 'application_1',
-    hackathonId: 'hackathon_1',
+    eventId: 'event_1',
     userId: 'participant_user',
     status: applicationStatus,
     checkedInAt: options?.checkedInAt ?? null,
@@ -165,7 +166,7 @@ describe('public Luma webhook routes', () => {
         entityId: 'application_1',
         action: 'user_application.luma_check_in_recorded',
         metadata: expect.objectContaining({
-          hackathonId: 'hackathon_1',
+          eventId: 'event_1',
           eventApiId: 'evt-123',
           guestId: 'gst-123',
           guestEmail: 'guest@example.com',

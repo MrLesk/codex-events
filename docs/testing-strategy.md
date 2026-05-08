@@ -1,6 +1,6 @@
 # Testing Strategy
 
-This document defines the canonical testing strategy for the Codex hackathon platform.
+This document defines the canonical testing strategy for the Codex event platform.
 
 ## Testing Layers
 
@@ -53,7 +53,7 @@ This UI validation surface is intentionally role-aware and maps directly to the 
 
 | UI Area | Coverage Expectation | Current Automated Coverage |
 | --- | --- | --- |
-| Public entry | Signed-out homepage and public discovery remain covered as public browser flows. | `tests/bdd/features/public/public-homepage.feature`, `tests/bdd/features/public/hackathon-discovery.feature` |
+| Public entry | Signed-out homepage and public discovery remain covered as public browser flows. | `tests/bdd/features/public/public-homepage.feature`, `tests/bdd/features/public/event-discovery.feature` |
 | Participant account and application | The Auth0-backed auth entry, callback provisioning, participant application, team formation, and team submission remain covered through browser flows. | `tests/bdd/features/authenticated-destructive/account-management.feature`, `tests/bdd/features/authenticated/participant-application.feature`, `tests/bdd/features/authenticated/team-workspace.feature`, `tests/bdd/features/authenticated/team-submission.feature` |
 | Judge workspace | Blind judge workflow remains covered through the dedicated judge workspace feature. | `tests/bdd/features/authenticated/judge-workspace.feature` |
 | Admin workspace | Admin operations and outcome oversight remain covered through dedicated admin browser flows. | `tests/bdd/features/authenticated/admin-operations.feature`, `tests/bdd/features/authenticated/admin-competition.feature` |
@@ -79,7 +79,20 @@ When backend constraints prevent complete actor-facing UI coverage, the gap must
 - End-to-end tests do not bypass login with fake tokens, mock identity payloads, or test-only authorization shortcuts.
 - Auth0 remains responsible for identity.
 - The platform database remains responsible for authorization.
-- Platform roles such as platform admin, event organizer, hackathon admin, staff, and judge are never modeled as Auth0 roles for application behavior.
+- Platform roles such as platform admin, event organizer, event admin, staff, and judge are never modeled as Auth0 roles for application behavior.
+- Event-type behavior is tested as product behavior, not as legacy compatibility. Tests should use `/events` and `/api/events` routes only.
+- Hackathon-only workflows are tested only against `eventType = hackathon`.
+- Meetup and Build workflows are tested as registration-only events and must reject team, submission, judging, prize, winner, and credit operations.
+
+## Event Type Coverage
+
+The fast CI gate includes coverage for the event platform model:
+
+- migration tests prove existing Hackathon data is moved into `events` with `event_type = 'hackathon'`
+- migration tests prove scoped role assignments move from `hackathon_admin` to `event_admin`
+- API tests cover `POST /api/events` for Hackathon, Meetup, and Build creation
+- authorization tests cover platform admins, event organizers, scoped event admins, staff, judges, and regular users under the event model
+- UI/domain unit tests cover registration-only lifecycle controls and hidden competition tabs for Meetup and Build events
 
 ## Auth0 Test Tenant
 
@@ -99,7 +112,7 @@ The platform maintains six stable Auth0 personas for role-based end-to-end cover
 
 - `platform_admin`
 - `event_organizer`
-- `hackathon_admin`
+- `event_admin`
 - `staff`
 - `judge`
 - `regular_user`
@@ -121,8 +134,8 @@ End-to-end test bootstrap must also seed the platform database with:
 - a `User` record for each Auth0 persona
 - `is_platform_admin = true` for the platform-admin persona
 - `is_event_organizer = true` for the event-organizer persona
-- `HackathonRoleAssignment` rows for hackathon-admin, staff, and judge personas
-- any required `UserApplication`, team, submission, or hackathon fixtures needed by the scenario under test
+- `EventRoleAssignment` rows for event-admin, staff, and judge personas
+- any required `UserApplication`, team, submission, or event fixtures needed by the scenario under test
 
 The mapping between Auth0 identity and platform user is based on the Auth0 subject stored on the platform user record.
 

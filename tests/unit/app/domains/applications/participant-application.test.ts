@@ -6,19 +6,19 @@ import {
   createParticipantTeamMemberHintRows,
   formatParticipantApplicationStatus,
   getParticipantApplicationWithdrawalAvailability,
-  getHackathonApplicationAvailabilityMessage,
+  getEventApplicationAvailabilityMessage,
   getParticipantApplicationSubmissionPolicy,
   getParticipantApplicationStatusColor,
   isProofOfExecutionLinksValid,
   isParticipantApplicationSubmittedNotice,
-  listHackathonProfileFields,
+  listEventProfileFields,
   listMissingRequiredProfileFields,
   listRequiredProfileFields,
   normalizeProofOfExecutionLinks,
   normalizeParticipantTeamMemberHintsForSubmission,
   parseProofOfExecutionLinks,
   parseParticipantRegistrationDetailsJson,
-  resolvePublicHackathonPrimaryAction,
+  resolvePublicEventPrimaryAction,
   resolveParticipantApplicationSubmittedTransition,
   resolveParticipantRegistrationEntry,
   shouldShowParticipantOverviewStatusBanner,
@@ -67,7 +67,7 @@ describe('participant application helpers', () => {
     ])
   })
 
-  test('lists required profile fields for a hackathon', () => {
+  test('lists required profile fields for an event', () => {
     expect(listRequiredProfileFields({
       requireXProfile: true,
       requireLinkedinProfile: false,
@@ -82,8 +82,8 @@ describe('participant application helpers', () => {
     ])
   })
 
-  test('lists all hackathon profile fields with required flags', () => {
-    expect(listHackathonProfileFields({
+  test('lists all event profile fields with required flags', () => {
+    expect(listEventProfileFields({
       requireXProfile: true,
       requireLinkedinProfile: false,
       requireGithubProfile: true,
@@ -100,7 +100,7 @@ describe('participant application helpers', () => {
     ])
   })
 
-  test('shows and requires luma email whenever the hackathon requires it', () => {
+  test('shows and requires luma email whenever the event requires it', () => {
     expect(listRequiredProfileFields({
       requireXProfile: false,
       requireLinkedinProfile: false,
@@ -115,7 +115,7 @@ describe('participant application helpers', () => {
       }
     ])
 
-    expect(listHackathonProfileFields({
+    expect(listEventProfileFields({
       requireXProfile: false,
       requireLinkedinProfile: false,
       requireGithubProfile: false,
@@ -149,7 +149,7 @@ describe('participant application helpers', () => {
   test('syncing checkbox changes does not recurse when team member hints are unchanged', async () => {
     const termsAccepted = ref(false)
     const inPersonAttendanceCommitment = ref(false)
-    const whyThisHackathon = ref('')
+    const whyThisEvent = ref('')
     const proofOfExecutionUrl = ref('')
     const teamIntent = ref<'solo' | 'team' | 'unknown'>('unknown')
     const teamMemberHints = ref(createParticipantTeamMemberHintRows(2))
@@ -167,7 +167,7 @@ describe('participant application helpers', () => {
     const values = reactive({
       termsAccepted: termsAccepted.value,
       inPersonAttendanceCommitment: inPersonAttendanceCommitment.value,
-      whyThisHackathon: whyThisHackathon.value,
+      whyThisEvent: whyThisEvent.value,
       proofOfExecutionUrl: proofOfExecutionUrl.value,
       teamIntent: teamIntent.value,
       teamMemberHints: cloneFormValues(teamMemberHints.value),
@@ -181,7 +181,7 @@ describe('participant application helpers', () => {
       Object.assign(values, {
         termsAccepted: termsAccepted.value,
         inPersonAttendanceCommitment: inPersonAttendanceCommitment.value,
-        whyThisHackathon: whyThisHackathon.value,
+        whyThisEvent: whyThisEvent.value,
         proofOfExecutionUrl: proofOfExecutionUrl.value,
         teamIntent: teamIntent.value,
         teamMemberHints: cloneFormValues(teamMemberHints.value),
@@ -192,7 +192,7 @@ describe('participant application helpers', () => {
     watch([
       termsAccepted,
       inPersonAttendanceCommitment,
-      whyThisHackathon,
+      whyThisEvent,
       proofOfExecutionUrl,
       teamIntent,
       teamMemberHints,
@@ -215,7 +215,7 @@ describe('participant application helpers', () => {
       formToModelSyncCount += 1
       termsAccepted.value = nextValues.termsAccepted ?? false
       inPersonAttendanceCommitment.value = nextValues.inPersonAttendanceCommitment ?? false
-      whyThisHackathon.value = nextValues.whyThisHackathon ?? ''
+      whyThisEvent.value = nextValues.whyThisEvent ?? ''
       proofOfExecutionUrl.value = nextValues.proofOfExecutionUrl ?? ''
       teamIntent.value = nextValues.teamIntent ?? 'unknown'
 
@@ -257,7 +257,7 @@ describe('participant application helpers', () => {
     expect(summarizeParticipantApplicationStatus('submitted', 'registration_open')).toContain('after approval')
     expect(summarizeParticipantApplicationStatus('approved', 'registration_open')).toContain('approved to create a team')
     expect(summarizeParticipantApplicationStatus('rejected', 'registration_open')).toContain('cannot submit another application')
-    expect(summarizeParticipantApplicationStatus('withdrawn', 'registration_open')).toContain('withdrew from this hackathon')
+    expect(summarizeParticipantApplicationStatus('withdrawn', 'registration_open')).toContain('withdrew from this event')
   })
 
   test('shows the overview status banner until approval transitions into submission work', () => {
@@ -281,7 +281,7 @@ describe('participant application helpers', () => {
       hasActiveTeamMembership: true
     })).toEqual({
       isAllowed: false,
-      reason: 'Leave your active team before withdrawing from this hackathon.'
+      reason: 'Leave your active team before withdrawing from this event.'
     })
 
     expect(getParticipantApplicationWithdrawalAvailability({
@@ -293,25 +293,25 @@ describe('participant application helpers', () => {
     })
   })
 
-  test('describes whether the hackathon currently allows new applications', () => {
-    expect(getHackathonApplicationAvailabilityMessage(
+  test('describes whether the event currently allows new applications', () => {
+    expect(getEventApplicationAvailabilityMessage(
       'registration_open',
       '2026-03-20T12:00:00.000Z',
       '2026-03-23T12:00:00.000Z',
       new Date('2026-03-21T12:00:00.000Z')
-    )).toBe('Applications are open for this hackathon.')
-    expect(getHackathonApplicationAvailabilityMessage(
+    )).toBe('Applications are open for this event.')
+    expect(getEventApplicationAvailabilityMessage(
       'draft',
       '2026-03-20T12:00:00.000Z',
       '2026-03-23T12:00:00.000Z',
       new Date('2026-03-19T12:00:00.000Z')
     )).toBe('Applications are not available until registration opens.')
-    expect(getHackathonApplicationAvailabilityMessage(
+    expect(getEventApplicationAvailabilityMessage(
       'registration_open',
       '2026-03-20T12:00:00.000Z',
       '2026-03-23T12:00:00.000Z',
       new Date('2026-03-23T12:00:00.000Z')
-    )).toBe('Applications are closed for this hackathon.')
+    )).toBe('Applications are closed for this event.')
   })
 
   test('shows the public registration entry only while registration is open', () => {
@@ -339,64 +339,64 @@ describe('participant application helpers', () => {
     expect(resolveParticipantRegistrationEntry({
       actorKind: 'anonymous',
       hasAcceptedCurrentPlatformDocuments: false,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'registration_open',
+      eventSlug: 'codex-spring',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       hasExistingApplication: false,
       now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
-      to: '/auth/login?returnTo=%2Faccount%2Fregister%3FreturnTo%3D%252Fhackathons%252Fcodex-spring%252Fregister',
+      to: '/auth/login?returnTo=%2Faccount%2Fregister%3FreturnTo%3D%252Fevents%252Fcodex-spring%252Fregister',
       external: true
     })
 
     expect(resolveParticipantRegistrationEntry({
       actorKind: 'authenticated_identity',
       hasAcceptedCurrentPlatformDocuments: false,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'registration_open',
+      eventSlug: 'codex-spring',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       hasExistingApplication: false,
       now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
-      to: '/account/register?returnTo=%2Fhackathons%2Fcodex-spring%2Fregister',
+      to: '/account/register?returnTo=%2Fevents%2Fcodex-spring%2Fregister',
       external: false
     })
 
     expect(resolveParticipantRegistrationEntry({
       actorKind: 'platform_user',
       hasAcceptedCurrentPlatformDocuments: true,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'blind_review',
+      eventSlug: 'codex-spring',
+      eventState: 'blind_review',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       hasExistingApplication: false,
       now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
-      to: '/hackathons/codex-spring',
+      to: '/events/codex-spring',
       external: false
     })
 
     expect(resolveParticipantRegistrationEntry({
       actorKind: 'platform_user',
       hasAcceptedCurrentPlatformDocuments: true,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'registration_open',
+      eventSlug: 'codex-spring',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       hasExistingApplication: true,
       now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
-      to: '/account/hackathons/codex-spring',
+      to: '/account/events/codex-spring',
       external: false
     })
 
     expect(resolveParticipantRegistrationEntry({
       actorKind: 'platform_user',
       hasAcceptedCurrentPlatformDocuments: true,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'registration_open',
+      eventSlug: 'codex-spring',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       hasExistingApplication: false,
@@ -406,28 +406,28 @@ describe('participant application helpers', () => {
     expect(resolveParticipantRegistrationEntry({
       actorKind: 'platform_user',
       hasAcceptedCurrentPlatformDocuments: false,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'registration_open',
+      eventSlug: 'codex-spring',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       hasExistingApplication: false,
       now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
-      to: '/account/register?returnTo=%2Fhackathons%2Fcodex-spring%2Fregister',
+      to: '/account/register?returnTo=%2Fevents%2Fcodex-spring%2Fregister',
       external: false
     })
 
     expect(resolveParticipantRegistrationEntry({
       actorKind: 'platform_user',
       hasAcceptedCurrentPlatformDocuments: true,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'registration_open',
+      eventSlug: 'codex-spring',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       hasExistingApplication: false,
       now: new Date('2026-03-23T12:00:00.000Z')
     })).toEqual({
-      to: '/hackathons/codex-spring',
+      to: '/events/codex-spring',
       external: false
     })
   })
@@ -435,10 +435,10 @@ describe('participant application helpers', () => {
   test('resolves the application-submitted transition into the account workspace', () => {
     expect(resolveParticipantApplicationSubmittedTransition('codex-spring')).toEqual({
       title: 'Application submitted',
-      description: 'Opening your hackathon workspace so you can track your application status. This can take a moment.',
+      description: 'Opening your event workspace so you can track your application status. This can take a moment.',
       eyebrow: 'Application received',
       to: {
-        path: '/account/hackathons/codex-spring',
+        path: '/account/events/codex-spring',
         query: {
           notice: 'application_submitted'
         }
@@ -451,10 +451,10 @@ describe('participant application helpers', () => {
       autoApproveApplications: true
     })).toEqual({
       title: 'Application approved',
-      description: 'Opening your hackathon workspace so you can start team setup. This can take a moment.',
+      description: 'Opening your event workspace so you can start team setup. This can take a moment.',
       eyebrow: 'Application approved',
       to: {
-        path: '/account/hackathons/codex-spring',
+        path: '/account/events/codex-spring',
         query: {
           notice: 'application_submitted'
         }
@@ -470,98 +470,98 @@ describe('participant application helpers', () => {
   })
 
   test('keeps the public detail CTA as Register while registration is open', () => {
-    expect(resolvePublicHackathonPrimaryAction({
+    expect(resolvePublicEventPrimaryAction({
       actorKind: 'anonymous',
       hasAcceptedCurrentPlatformDocuments: false,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'registration_open',
+      eventSlug: 'codex-spring',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasHackathonWorkspaceAccess: false,
+      hasEventWorkspaceAccess: false,
       now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
       label: 'Register',
-      to: '/auth/login?returnTo=%2Faccount%2Fregister%3FreturnTo%3D%252Fhackathons%252Fcodex-spring%252Fregister',
+      to: '/auth/login?returnTo=%2Faccount%2Fregister%3FreturnTo%3D%252Fevents%252Fcodex-spring%252Fregister',
       external: true
     })
 
-    expect(resolvePublicHackathonPrimaryAction({
+    expect(resolvePublicEventPrimaryAction({
       actorKind: 'platform_user',
       hasAcceptedCurrentPlatformDocuments: true,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'registration_open',
+      eventSlug: 'codex-spring',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasHackathonWorkspaceAccess: true,
+      hasEventWorkspaceAccess: true,
       now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
       label: 'Register',
-      to: '/hackathons/codex-spring/register',
+      to: '/events/codex-spring/register',
       external: false
     })
 
-    expect(resolvePublicHackathonPrimaryAction({
+    expect(resolvePublicEventPrimaryAction({
       actorKind: 'platform_user',
       hasAcceptedCurrentPlatformDocuments: false,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'registration_open',
+      eventSlug: 'codex-spring',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasHackathonWorkspaceAccess: true,
+      hasEventWorkspaceAccess: true,
       now: new Date('2026-03-21T12:00:00.000Z')
     })).toEqual({
       label: 'Register',
-      to: '/account/register?returnTo=%2Fhackathons%2Fcodex-spring%2Fregister',
+      to: '/account/register?returnTo=%2Fevents%2Fcodex-spring%2Fregister',
       external: false
     })
   })
 
   test('shows the public detail Open workspace CTA after registration closes when account access exists', () => {
-    expect(resolvePublicHackathonPrimaryAction({
+    expect(resolvePublicEventPrimaryAction({
       actorKind: 'platform_user',
       hasAcceptedCurrentPlatformDocuments: true,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'blind_review',
+      eventSlug: 'codex-spring',
+      eventState: 'blind_review',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasHackathonWorkspaceAccess: true,
+      hasEventWorkspaceAccess: true,
       now: new Date('2026-03-24T12:00:00.000Z')
     })).toEqual({
       label: 'Open workspace',
-      to: '/account/hackathons/codex-spring',
+      to: '/account/events/codex-spring',
       external: false
     })
 
-    expect(resolvePublicHackathonPrimaryAction({
+    expect(resolvePublicEventPrimaryAction({
       actorKind: 'platform_user',
       hasAcceptedCurrentPlatformDocuments: true,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'blind_review',
+      eventSlug: 'codex-spring',
+      eventState: 'blind_review',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasHackathonWorkspaceAccess: false,
+      hasEventWorkspaceAccess: false,
       now: new Date('2026-03-24T12:00:00.000Z')
     })).toBeNull()
 
-    expect(resolvePublicHackathonPrimaryAction({
+    expect(resolvePublicEventPrimaryAction({
       actorKind: 'platform_user',
       hasAcceptedCurrentPlatformDocuments: false,
-      hackathonSlug: 'codex-spring',
-      hackathonState: 'blind_review',
+      eventSlug: 'codex-spring',
+      eventState: 'blind_review',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
-      hasHackathonWorkspaceAccess: true,
+      hasEventWorkspaceAccess: true,
       now: new Date('2026-03-24T12:00:00.000Z')
     })).toEqual({
       label: 'Open workspace',
-      to: '/account/register?returnTo=%2Faccount%2Fhackathons%2Fcodex-spring',
+      to: '/account/register?returnTo=%2Faccount%2Fevents%2Fcodex-spring',
       external: false
     })
   })
 
   test('returns registration submission policy based on lifecycle, profile, and terms acceptance', () => {
     expect(getParticipantApplicationSubmissionPolicy({
-      hackathonState: 'registration_open',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       now: new Date('2026-03-21T12:00:00.000Z'),
@@ -576,7 +576,7 @@ describe('participant application helpers', () => {
     })
 
     expect(getParticipantApplicationSubmissionPolicy({
-      hackathonState: 'submission_open',
+      eventState: 'submission_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       now: new Date('2026-03-21T12:00:00.000Z'),
@@ -588,11 +588,11 @@ describe('participant application helpers', () => {
       hasAcceptedInPersonAttendanceCommitment: false
     })).toEqual({
       isAllowed: false,
-      reason: 'Applications are closed for this hackathon.'
+      reason: 'Applications are closed for this event.'
     })
 
     expect(getParticipantApplicationSubmissionPolicy({
-      hackathonState: 'registration_open',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       now: new Date('2026-03-23T12:00:00.000Z'),
@@ -604,11 +604,11 @@ describe('participant application helpers', () => {
       hasAcceptedInPersonAttendanceCommitment: false
     })).toEqual({
       isAllowed: false,
-      reason: 'Applications are closed for this hackathon.'
+      reason: 'Applications are closed for this event.'
     })
 
     expect(getParticipantApplicationSubmissionPolicy({
-      hackathonState: 'registration_open',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       now: new Date('2026-03-21T12:00:00.000Z'),
@@ -624,7 +624,7 @@ describe('participant application helpers', () => {
     })
 
     expect(getParticipantApplicationSubmissionPolicy({
-      hackathonState: 'registration_open',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       now: new Date('2026-03-21T12:00:00.000Z'),
@@ -640,7 +640,7 @@ describe('participant application helpers', () => {
     })
 
     expect(getParticipantApplicationSubmissionPolicy({
-      hackathonState: 'registration_open',
+      eventState: 'registration_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',
       now: new Date('2026-03-21T12:00:00.000Z'),
@@ -694,7 +694,7 @@ describe('participant application helpers', () => {
           email: 'ada@example.com'
         }
       ],
-      whyThisHackathon: 'I want to build something useful.',
+      whyThisEvent: 'I want to build something useful.',
       proofOfExecutionUrl: 'https://github.com/example/project'
     }))).toEqual({
       teamIntent: 'team',
@@ -705,7 +705,7 @@ describe('participant application helpers', () => {
         }
       ],
       inPersonAttendanceCommitment: false,
-      whyThisHackathon: 'I want to build something useful.',
+      whyThisEvent: 'I want to build something useful.',
       proofOfExecutionUrl: 'https://github.com/example/project'
     })
 
@@ -713,7 +713,7 @@ describe('participant application helpers', () => {
       teamIntent: 'unknown',
       teamMembers: [],
       inPersonAttendanceCommitment: false,
-      whyThisHackathon: '',
+      whyThisEvent: '',
       proofOfExecutionUrl: ''
     })
   })

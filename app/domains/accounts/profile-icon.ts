@@ -1,11 +1,11 @@
 export function buildProfileIconHref(
   userId: string | null | undefined,
   version: string | null | undefined,
-  hackathonId?: string | null
+  eventId?: string | null
 ) {
   const normalizedUserId = userId?.trim()
   const normalizedVersion = version?.trim()
-  const normalizedHackathonId = hackathonId?.trim()
+  const normalizedEventId = eventId?.trim()
 
   if (!normalizedUserId || !normalizedVersion) {
     return undefined
@@ -16,8 +16,8 @@ export function buildProfileIconHref(
     v: normalizedVersion
   })
 
-  if (normalizedHackathonId) {
-    searchParams.set('hackathon', normalizedHackathonId)
+  if (normalizedEventId) {
+    searchParams.set('event', normalizedEventId)
   }
 
   return `/api/account/profile-icon?${searchParams.toString()}`

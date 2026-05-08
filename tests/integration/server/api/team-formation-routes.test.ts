@@ -2,24 +2,24 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { and, eq } from 'drizzle-orm'
 
-import createTeamHandler from '../../../../server/api/hackathons/[hackathonId]/teams/index.post'
-import listTeamsHandler from '../../../../server/api/hackathons/[hackathonId]/teams/index.get'
-import getTeamHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/index.get'
-import patchTeamHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/index.patch'
-import patchJoinPolicyHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/join-policy.patch'
-import leaveTeamHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/actions/leave.post'
-import makeAdminHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/members/[userId]/actions/make-admin.post'
-import removeMemberHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/members/[userId]/actions/remove.post'
-import createJoinRequestHandler from '../../../../server/api/hackathons/[hackathonId]/team-join-requests/index.post'
-import listJoinRequestsHandler from '../../../../server/api/hackathons/[hackathonId]/teams/[teamId]/join-requests/index.get'
-import cancelJoinRequestHandler from '../../../../server/api/hackathons/[hackathonId]/team-join-requests/[requestId]/actions/cancel.post'
-import approveJoinRequestHandler from '../../../../server/api/hackathons/[hackathonId]/team-join-requests/[requestId]/actions/approve.post'
-import rejectJoinRequestHandler from '../../../../server/api/hackathons/[hackathonId]/team-join-requests/[requestId]/actions/reject.post'
+import createTeamHandler from '../../../../server/api/events/[eventId]/teams/index.post'
+import listTeamsHandler from '../../../../server/api/events/[eventId]/teams/index.get'
+import getTeamHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/index.get'
+import patchTeamHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/index.patch'
+import patchJoinPolicyHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/join-policy.patch'
+import leaveTeamHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/actions/leave.post'
+import makeAdminHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/members/[userId]/actions/make-admin.post'
+import removeMemberHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/members/[userId]/actions/remove.post'
+import createJoinRequestHandler from '../../../../server/api/events/[eventId]/team-join-requests/index.post'
+import listJoinRequestsHandler from '../../../../server/api/events/[eventId]/teams/[teamId]/join-requests/index.get'
+import cancelJoinRequestHandler from '../../../../server/api/events/[eventId]/team-join-requests/[requestId]/actions/cancel.post'
+import approveJoinRequestHandler from '../../../../server/api/events/[eventId]/team-join-requests/[requestId]/actions/approve.post'
+import rejectJoinRequestHandler from '../../../../server/api/events/[eventId]/team-join-requests/[requestId]/actions/reject.post'
 import {
   auditLogs,
-  hackathonRoleAssignments,
-  hackathonTermsDocuments,
-  hackathons,
+  eventRoleAssignments,
+  eventTermsDocuments,
+  events,
   submissions,
   teamJoinRequests,
   teamMembers,
@@ -32,53 +32,53 @@ import { stubAuth0Session } from '../../../support/backend/runtime'
 
 function createRoutes() {
   return [
-    { method: 'get' as const, path: '/api/hackathons/:hackathonId/teams', handler: listTeamsHandler },
-    { method: 'post' as const, path: '/api/hackathons/:hackathonId/teams', handler: createTeamHandler },
-    { method: 'get' as const, path: '/api/hackathons/:hackathonId/teams/:teamId', handler: getTeamHandler },
-    { method: 'patch' as const, path: '/api/hackathons/:hackathonId/teams/:teamId', handler: patchTeamHandler },
+    { method: 'get' as const, path: '/api/events/:eventId/teams', handler: listTeamsHandler },
+    { method: 'post' as const, path: '/api/events/:eventId/teams', handler: createTeamHandler },
+    { method: 'get' as const, path: '/api/events/:eventId/teams/:teamId', handler: getTeamHandler },
+    { method: 'patch' as const, path: '/api/events/:eventId/teams/:teamId', handler: patchTeamHandler },
     {
       method: 'patch' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/join-policy',
+      path: '/api/events/:eventId/teams/:teamId/join-policy',
       handler: patchJoinPolicyHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/actions/leave',
+      path: '/api/events/:eventId/teams/:teamId/actions/leave',
       handler: leaveTeamHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/members/:userId/actions/make-admin',
+      path: '/api/events/:eventId/teams/:teamId/members/:userId/actions/make-admin',
       handler: makeAdminHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/members/:userId/actions/remove',
+      path: '/api/events/:eventId/teams/:teamId/members/:userId/actions/remove',
       handler: removeMemberHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/team-join-requests',
+      path: '/api/events/:eventId/team-join-requests',
       handler: createJoinRequestHandler
     },
     {
       method: 'get' as const,
-      path: '/api/hackathons/:hackathonId/teams/:teamId/join-requests',
+      path: '/api/events/:eventId/teams/:teamId/join-requests',
       handler: listJoinRequestsHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/team-join-requests/:requestId/actions/cancel',
+      path: '/api/events/:eventId/team-join-requests/:requestId/actions/cancel',
       handler: cancelJoinRequestHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/team-join-requests/:requestId/actions/approve',
+      path: '/api/events/:eventId/team-join-requests/:requestId/actions/approve',
       handler: approveJoinRequestHandler
     },
     {
       method: 'post' as const,
-      path: '/api/hackathons/:hackathonId/team-join-requests/:requestId/actions/reject',
+      path: '/api/events/:eventId/team-join-requests/:requestId/actions/reject',
       handler: rejectJoinRequestHandler
     }
   ]
@@ -104,10 +104,10 @@ async function seedTeamFormationContext(
       isPlatformAdmin: true
     },
     {
-      id: 'hackathon_admin',
-      auth0Subject: 'auth0|hackathon_admin',
-      email: 'hackathon-admin@example.com',
-      displayName: 'Hackathon Admin'
+      id: 'event_admin',
+      auth0Subject: 'auth0|event_admin',
+      email: 'event-admin@example.com',
+      displayName: 'Event Admin'
     },
     {
       id: 'team_admin',
@@ -180,11 +180,12 @@ async function seedTeamFormationContext(
       : [])
   ])
 
-  await harness.database.insert(hackathons).values({
-    id: 'hackathon_1',
-    name: 'Fixture Hackathon',
-    slug: 'fixture-hackathon',
-    description: 'Fixture hackathon',
+  await harness.database.insert(events).values({
+    id: 'event_1',
+    eventType: 'hackathon',
+    name: 'Fixture Event',
+    slug: 'fixture-event',
+    description: 'Fixture event',
     city: 'Vienna',
     country: 'Austria',
     address: 'Fixture Address',
@@ -200,12 +201,12 @@ async function seedTeamFormationContext(
     createdByUserId: 'platform_admin'
   })
 
-  await harness.database.insert(hackathonRoleAssignments).values([
+  await harness.database.insert(eventRoleAssignments).values([
     {
-      id: 'role_hackathon_admin',
-      hackathonId: 'hackathon_1',
-      userId: 'hackathon_admin',
-      role: 'hackathon_admin',
+      id: 'role_event_admin',
+      eventId: 'event_1',
+      userId: 'event_admin',
+      role: 'event_admin',
       isInJudgePool: false,
       createdAt: '2026-03-22T12:00:00.000Z'
     },
@@ -213,7 +214,7 @@ async function seedTeamFormationContext(
       ? [
           {
             id: 'role_staff_user',
-            hackathonId: 'hackathon_1',
+            eventId: 'event_1',
             userId: 'staff_user',
             role: 'staff' as const,
             isInJudgePool: false,
@@ -224,9 +225,9 @@ async function seedTeamFormationContext(
       : [])
   ])
 
-  await harness.database.insert(hackathonTermsDocuments).values({
+  await harness.database.insert(eventTermsDocuments).values({
     id: 'terms_app_1',
-    hackathonId: 'hackathon_1',
+    eventId: 'event_1',
     documentType: 'application_terms',
     version: 1,
     title: 'Application Terms v1',
@@ -246,7 +247,7 @@ async function seedTeamFormationContext(
   await harness.database.insert(teams).values([
     {
       id: 'team_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Alpha Team',
       bio: 'We build developer workflows together.',
       slug: 'alpha-team',
@@ -257,7 +258,7 @@ async function seedTeamFormationContext(
     },
     {
       id: 'team_2',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Beta Team',
       slug: 'beta-team',
       isOpenToJoinRequests: true,
@@ -340,12 +341,12 @@ async function seedTeamFormationContext(
 function approvedApplication(id: string, userId: string) {
   return {
     id,
-    hackathonId: 'hackathon_1',
+    eventId: 'event_1',
     userId,
     status: 'approved' as const,
     submittedAt: '2026-03-22T11:00:00.000Z',
     reviewedAt: '2026-03-22T11:30:00.000Z',
-    reviewedByUserId: 'hackathon_admin',
+    reviewedByUserId: 'event_admin',
     applicationTermsDocumentId: 'terms_app_1',
     applicationTermsAcceptedAt: '2026-03-22T11:00:00.000Z',
     createdAt: '2026-03-22T11:00:00.000Z',
@@ -375,7 +376,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(harness)
     await seedTeamFormationContext(harness)
 
-    const listResponse = await harness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=10')
+    const listResponse = await harness.request('/api/events/event_1/teams?page=1&page_size=10')
     expect(listResponse.status).toBe(200)
     expect(await listResponse.json()).toMatchObject({
       meta: {
@@ -390,7 +391,7 @@ describe('TASK-3.6 team formation routes', () => {
       ])
     })
 
-    const createResponse = await harness.request('/api/hackathons/hackathon_1/teams', {
+    const createResponse = await harness.request('/api/events/event_1/teams', {
       method: 'POST',
       body: JSON.stringify({
         name: 'Requester Team',
@@ -418,7 +419,7 @@ describe('TASK-3.6 team formation routes', () => {
 
     const createdTeam = await harness.database.query.teams.findFirst({
       where: and(
-        eq(teams.hackathonId, 'hackathon_1'),
+        eq(teams.eventId, 'event_1'),
         eq(teams.slug, createBody.data.slug)
       )
     })
@@ -436,7 +437,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(harness)
     await seedTeamFormationContext(harness)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=1&slug=beta-team')
+    const response = await harness.request('/api/events/event_1/teams?page=1&page_size=1&slug=beta-team')
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
@@ -466,7 +467,7 @@ describe('TASK-3.6 team formation routes', () => {
       teamOpen: false
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=10&open_to_join=true')
+    const response = await harness.request('/api/events/event_1/teams?page=1&page_size=10&open_to_join=true')
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
@@ -496,7 +497,7 @@ describe('TASK-3.6 team formation routes', () => {
       secondTeamAtCapacity: true
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=10&open_to_join=true&has_capacity=true')
+    const response = await harness.request('/api/events/event_1/teams?page=1&page_size=10&open_to_join=true&has_capacity=true')
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
@@ -525,7 +526,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(harness)
     await seedTeamFormationContext(harness)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams?page=2&page_size=1&open_to_join=true&has_capacity=true')
+    const response = await harness.request('/api/events/event_1/teams?page=2&page_size=1&open_to_join=true&has_capacity=true')
 
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
@@ -556,7 +557,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(harness)
     await seedTeamFormationContext(harness)
 
-    const createResponse = await harness.request('/api/hackathons/hackathon_1/teams', {
+    const createResponse = await harness.request('/api/events/event_1/teams', {
       method: 'POST',
       body: JSON.stringify({
         name: 'Alpha Team',
@@ -577,7 +578,7 @@ describe('TASK-3.6 team formation routes', () => {
 
     const createdTeam = await harness.database.query.teams.findFirst({
       where: and(
-        eq(teams.hackathonId, 'hackathon_1'),
+        eq(teams.eventId, 'event_1'),
         eq(teams.slug, createBody.data.slug)
       )
     })
@@ -595,7 +596,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(harness)
     await seedTeamFormationContext(harness)
 
-    const renameResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1', {
+    const renameResponse = await harness.request('/api/events/event_1/teams/team_1', {
       method: 'PATCH',
       body: JSON.stringify({
         name: 'Beta Team',
@@ -621,7 +622,7 @@ describe('TASK-3.6 team formation routes', () => {
     })
     expect(renamedTeam?.slug).toBe(renameBody.data.slug)
 
-    const policyResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/join-policy', {
+    const policyResponse = await harness.request('/api/events/event_1/teams/team_1/join-policy', {
       method: 'PATCH',
       body: JSON.stringify({
         isOpenToJoinRequests: false
@@ -648,7 +649,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(outsiderHarness)
     await seedTeamFormationContext(outsiderHarness)
 
-    const outsiderResponse = await outsiderHarness.request('/api/hackathons/hackathon_1/teams/team_1')
+    const outsiderResponse = await outsiderHarness.request('/api/events/event_1/teams/team_1')
     expect(outsiderResponse.status).toBe(200)
     const outsiderBody = await outsiderResponse.json()
     expect(outsiderBody.data.bio).toBe('We build developer workflows together.')
@@ -678,7 +679,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(memberHarness)
     await seedTeamFormationContext(memberHarness)
 
-    const memberResponse = await memberHarness.request('/api/hackathons/hackathon_1/teams/team_1')
+    const memberResponse = await memberHarness.request('/api/events/event_1/teams/team_1')
     expect(memberResponse.status).toBe(200)
     await expect(memberResponse.json()).resolves.toMatchObject({
       data: {
@@ -702,14 +703,14 @@ describe('TASK-3.6 team formation routes', () => {
     const adminHarness = createApiRouteTestHarness({
       routes: createRoutes(),
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(adminHarness)
     await seedTeamFormationContext(adminHarness)
 
-    const adminResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams/team_1')
+    const adminResponse = await adminHarness.request('/api/events/event_1/teams/team_1')
     expect(adminResponse.status).toBe(200)
     await expect(adminResponse.json()).resolves.toMatchObject({
       data: {
@@ -739,7 +740,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(harness)
     await seedTeamFormationContext(harness)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/members/team_member/actions/remove', {
+    const response = await harness.request('/api/events/event_1/teams/team_1/members/team_member/actions/remove', {
       method: 'POST'
     })
 
@@ -777,7 +778,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(harness)
     await seedTeamFormationContext(harness)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/members/team_member/actions/make-admin', {
+    const response = await harness.request('/api/events/event_1/teams/team_1/members/team_member/actions/make-admin', {
       method: 'POST'
     })
 
@@ -816,7 +817,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(harness)
     await seedTeamFormationContext(harness)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/actions/leave', {
+    const response = await harness.request('/api/events/event_1/teams/team_1/actions/leave', {
       method: 'POST'
     })
 
@@ -849,7 +850,7 @@ describe('TASK-3.6 team formation routes', () => {
       createdAt: '2026-03-22T12:30:00.000Z'
     })
 
-    const leaveResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/actions/leave', {
+    const leaveResponse = await harness.request('/api/events/event_1/teams/team_1/actions/leave', {
       method: 'POST'
     })
 
@@ -876,7 +877,7 @@ describe('TASK-3.6 team formation routes', () => {
     })
     expect(closedJoinRequest?.reviewedAt).toBeTruthy()
 
-    const listResponse = await harness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=10')
+    const listResponse = await harness.request('/api/events/event_1/teams?page=1&page_size=10')
     expect(listResponse.status).toBe(200)
     expect(await listResponse.json()).toMatchObject({
       meta: {
@@ -889,7 +890,7 @@ describe('TASK-3.6 team formation routes', () => {
       ]
     })
 
-    const joinResponse = await harness.request('/api/hackathons/hackathon_1/team-join-requests', {
+    const joinResponse = await harness.request('/api/events/event_1/team-join-requests', {
       method: 'POST',
       body: JSON.stringify({
         teamId: 'team_2'
@@ -919,7 +920,7 @@ describe('TASK-3.6 team formation routes', () => {
       teamOneSolo: true
     })
 
-    const leaveResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams/team_1/actions/leave', {
+    const leaveResponse = await adminHarness.request('/api/events/event_1/teams/team_1/actions/leave', {
       method: 'POST'
     })
     expect(leaveResponse.status).toBe(200)
@@ -929,7 +930,7 @@ describe('TASK-3.6 team formation routes', () => {
       email: 'requester@example.com'
     })
 
-    const listResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=1&slug=alpha-team')
+    const listResponse = await adminHarness.request('/api/events/event_1/teams?page=1&page_size=1&slug=alpha-team')
     expect(listResponse.status).toBe(200)
     expect(await listResponse.json()).toMatchObject({
       meta: {
@@ -938,7 +939,7 @@ describe('TASK-3.6 team formation routes', () => {
       data: []
     })
 
-    const detailResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams/team_1')
+    const detailResponse = await adminHarness.request('/api/events/event_1/teams/team_1')
     expect(detailResponse.status).toBe(404)
     expect(await detailResponse.json()).toMatchObject({
       error: {
@@ -961,7 +962,7 @@ describe('TASK-3.6 team formation routes', () => {
       teamOneSolo: true
     })
 
-    const leaveResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams/team_1/actions/leave', {
+    const leaveResponse = await adminHarness.request('/api/events/event_1/teams/team_1/actions/leave', {
       method: 'POST'
     })
     expect(leaveResponse.status).toBe(200)
@@ -971,7 +972,7 @@ describe('TASK-3.6 team formation routes', () => {
       email: 'staff-user@example.com'
     })
 
-    const listResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams?page=1&page_size=10&slug=alpha-team')
+    const listResponse = await adminHarness.request('/api/events/event_1/teams?page=1&page_size=10&slug=alpha-team')
     expect(listResponse.status).toBe(200)
     expect(await listResponse.json()).toMatchObject({
       meta: {
@@ -986,7 +987,7 @@ describe('TASK-3.6 team formation routes', () => {
       ]
     })
 
-    const detailResponse = await adminHarness.request('/api/hackathons/hackathon_1/teams/team_1')
+    const detailResponse = await adminHarness.request('/api/events/event_1/teams/team_1')
     expect(detailResponse.status).toBe(200)
     expect(await detailResponse.json()).toMatchObject({
       data: {
@@ -1008,7 +1009,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(harness)
     await seedTeamFormationContext(harness)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/members/team_admin/actions/remove', {
+    const response = await harness.request('/api/events/event_1/teams/team_1/members/team_admin/actions/remove', {
       method: 'POST'
     })
 
@@ -1032,7 +1033,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(harness)
     await seedTeamFormationContext(harness)
 
-    const selfPromotionResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/members/team_admin/actions/make-admin', {
+    const selfPromotionResponse = await harness.request('/api/events/event_1/teams/team_1/members/team_admin/actions/make-admin', {
       method: 'POST'
     })
 
@@ -1044,13 +1045,13 @@ describe('TASK-3.6 team formation routes', () => {
       }
     })
 
-    const initialPromotionResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/members/team_member/actions/make-admin', {
+    const initialPromotionResponse = await harness.request('/api/events/event_1/teams/team_1/members/team_member/actions/make-admin', {
       method: 'POST'
     })
 
     expect(initialPromotionResponse.status).toBe(200)
 
-    const existingAdminResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/members/team_member/actions/make-admin', {
+    const existingAdminResponse = await harness.request('/api/events/event_1/teams/team_1/members/team_member/actions/make-admin', {
       method: 'POST'
     })
 
@@ -1077,7 +1078,7 @@ describe('TASK-3.6 team formation routes', () => {
       teamOneActiveSubmissionStatus: 'draft'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/teams/team_1/actions/leave', {
+    const response = await harness.request('/api/events/event_1/teams/team_1/actions/leave', {
       method: 'POST'
     })
 
@@ -1101,7 +1102,7 @@ describe('TASK-3.6 team formation routes', () => {
     harnesses.push(harness)
     await seedTeamFormationContext(harness)
 
-    const createResponse = await harness.request('/api/hackathons/hackathon_1/team-join-requests', {
+    const createResponse = await harness.request('/api/events/event_1/team-join-requests', {
       method: 'POST',
       body: JSON.stringify({
         teamId: 'team_1'
@@ -1119,7 +1120,7 @@ describe('TASK-3.6 team formation routes', () => {
     })
 
     const cancelResponse = await harness.request(
-      `/api/hackathons/hackathon_1/team-join-requests/${createPayload.data.id}/actions/cancel`,
+      `/api/events/event_1/team-join-requests/${createPayload.data.id}/actions/cancel`,
       {
         method: 'POST'
       }
@@ -1154,7 +1155,7 @@ describe('TASK-3.6 team formation routes', () => {
       createdAt: '2026-03-22T12:30:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/team-join-requests/request_1/actions/approve', {
+    const response = await harness.request('/api/events/event_1/team-join-requests/request_1/actions/approve', {
       method: 'POST'
     })
 
@@ -1208,7 +1209,7 @@ describe('TASK-3.6 team formation routes', () => {
       createdAt: '2026-03-22T12:45:00.000Z'
     })
 
-    const listResponse = await harness.request('/api/hackathons/hackathon_1/teams/team_1/join-requests')
+    const listResponse = await harness.request('/api/events/event_1/teams/team_1/join-requests')
     expect(listResponse.status).toBe(200)
     expect(await listResponse.json()).toMatchObject({
       meta: {
@@ -1224,7 +1225,7 @@ describe('TASK-3.6 team formation routes', () => {
       ]
     })
 
-    const rejectResponse = await harness.request('/api/hackathons/hackathon_1/team-join-requests/request_2/actions/reject', {
+    const rejectResponse = await harness.request('/api/events/event_1/team-join-requests/request_2/actions/reject', {
       method: 'POST'
     })
 

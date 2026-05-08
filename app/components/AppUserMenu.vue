@@ -9,9 +9,9 @@ import {
 } from '~/components/ui/dropdown-menu'
 import {
   canAccessAdminDashboard,
-  isHackathonRoleJudgingEnabled,
-  isHackathonRoleStaffEnabled
-} from '~/domains/hackathons/access'
+  isEventRoleJudgingEnabled,
+  isEventRoleStaffEnabled
+} from '~/domains/events/access'
 
 const props = defineProps<{
   name?: string | null
@@ -25,9 +25,9 @@ const displayName = computed(() => props.name?.trim() || 'Developer User')
 const displayEmail = computed(() => props.email?.trim() || 'Signed in')
 const avatarAlt = computed(() => props.avatarAlt?.trim() || displayName.value)
 const hasStaffAccess = computed(() => actor.value.kind === 'platform_user'
-  && actor.value.hackathonRoles.some(role => isHackathonRoleStaffEnabled(role)))
+  && actor.value.eventRoles.some(role => isEventRoleStaffEnabled(role)))
 const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
-  && actor.value.hackathonRoles.some(role => isHackathonRoleJudgingEnabled(role)))
+  && actor.value.eventRoles.some(role => isEventRoleJudgingEnabled(role)))
 const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
   && canAccessAdminDashboard(actor.value))
 </script>
@@ -75,7 +75,7 @@ const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
               name="i-lucide-flag"
               class="size-4"
             />
-            <span>My hackathons</span>
+            <span>My events</span>
           </NuxtLink>
         </DropdownMenuItem>
 

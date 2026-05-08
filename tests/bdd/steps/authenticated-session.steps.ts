@@ -84,13 +84,13 @@ Given('the saved {string} Auth0 session state exists', async ({ page }, personaK
   expect(existsSync(storageStatePathForPersona(parsePersonaKey(personaKey)))).toBe(true)
 })
 
-When('I open my hackathons with the saved {string} session', async ({ page }, personaKey: string) => {
+When('I open my events with the saved {string} session', async ({ page }, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
   await page.goto('/account')
 })
 
-Then('I should see the my hackathons heading', async ({ page }) => {
-  await expect(page.getByRole('heading', { name: 'My hackathons' })).toBeVisible()
+Then('I should see the my events heading', async ({ page }) => {
+  await expect(page.getByRole('heading', { name: 'My events' })).toBeVisible()
 })
 
 Then('I should see the signed-in {string} email', async ({ page }, personaKey: string) => {
@@ -107,7 +107,7 @@ Then('the saved {string} session should authenticate a request context to {strin
     const response = await apiClient.get(path)
 
     expect(response.ok()).toBe(true)
-    expect(await response.text()).toContain('My hackathons')
+    expect(await response.text()).toContain('My events')
   } finally {
     await apiClient.dispose()
   }

@@ -1,4 +1,4 @@
-import type { TermsDocument } from '~/domains/hackathons/records'
+import type { TermsDocument } from '~/domains/events/records'
 import type {
   PrizeRedemptionApiDataResponse,
   PrizeRedemptionCurrentTermsResponse,
@@ -32,28 +32,28 @@ export function usePrizeRedemptionWorkspace() {
     }
   )
 
-  const visibleHackathonIds = computed(() =>
-    [...new Set(pendingRedemptionsRequest.data.value.map(redemption => redemption.hackathon.id))]
+  const visibleEventIds = computed(() =>
+    [...new Set(pendingRedemptionsRequest.data.value.map(redemption => redemption.event.id))]
       .sort((left, right) => left.localeCompare(right))
   )
 
   const currentTermsRequest = useApiData<Record<string, TermsDocument | null>>(
-    () => `prize-redemption-terms:${authSubject.value}:${visibleHackathonIds.value.join(',')}`,
+    () => `prize-redemption-terms:${authSubject.value}:${visibleEventIds.value.join(',')}`,
     async ({ apiFetch, signal }) => {
-      if (!user.value?.sub || visibleHackathonIds.value.length === 0) {
+      if (!user.value?.sub || visibleEventIds.value.length === 0) {
         return {}
       }
 
       const entries = await Promise.all(
-        visibleHackathonIds.value.map(async (hackathonId) => {
+        visibleEventIds.value.map(async (eventId) => {
           const response = await apiFetch<PrizeRedemptionApiDataResponse<PrizeRedemptionCurrentTermsResponse>>(
-            `/api/hackathons/${hackathonId}/terms/current`,
+            `/api/events/${eventId}/terms/current`,
             {
               signal
             }
           )
 
-          return [hackathonId, response.data.winner_terms ?? null] as const
+          return [eventId, response.data.winner_terms ?? null] as const
         })
       )
 
@@ -61,7 +61,7 @@ export function usePrizeRedemptionWorkspace() {
     },
     {
       default: () => ({}),
-      watch: [computed(() => user.value?.sub ?? null), visibleHackathonIds],
+      watch: [computed(() => user.value?.sub ?? null), visibleEventIds],
       server: false
     }
   )
@@ -69,7 +69,7 @@ export function usePrizeRedemptionWorkspace() {
   const tasks = computed<PrizeRedemptionTask[]>(() =>
     pendingRedemptionsRequest.data.value.map(redemption => ({
       ...redemption,
-      currentWinnerTerms: currentTermsRequest.data.value[redemption.hackathon.id] ?? null
+      currentWinnerTerms: currentTermsRequest.data.value[redemption.event.id] ?? null
     }))
   )
 
@@ -124,7 +124,7 @@ export function usePrizeRedemptionWorkspace() {
     const currentWinnerTerms = task.currentWinnerTerms
 
     if (!currentWinnerTerms) {
-      submissionErrorById[redemptionId] = 'The current winner terms are unavailable for this hackathon.'
+      submissionErrorById[redemptionId] = 'The current winner terms are unavailable for this event.'
       submissionSuccessById[redemptionId] = ''
       return null
     }

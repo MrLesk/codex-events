@@ -3,12 +3,12 @@ import { describe, expect, test } from 'vitest'
 import { ApiError } from '../../../../../server/http/api-error'
 import { assertPrizeRedemptionRedeemable } from '../../../../../server/domains/prize-redemptions'
 
-function createHackathon(state: 'winners_announced' | 'completed' | 'shortlist') {
+function createEvent(state: 'winners_announced' | 'completed' | 'shortlist') {
   return {
-    id: 'hackathon_1',
-    name: 'Outcome Hackathon',
-    slug: 'outcome-hackathon',
-    description: 'Outcome Hackathon',
+    id: 'event_1',
+    name: 'Outcome Event',
+    slug: 'outcome-event',
+    description: 'Outcome Event',
     discordServerUrl: null,
     city: 'Vienna',
     country: 'Austria',
@@ -49,7 +49,7 @@ function createRedemption(status: 'pending' | 'redeemed' = 'pending') {
 describe('prize redemption utilities', () => {
   test('redemption requires pending state after winner announcement and exact current winner terms', () => {
     expect(() => assertPrizeRedemptionRedeemable(
-      createHackathon('winners_announced'),
+      createEvent('winners_announced'),
       createRedemption('pending'),
       'terms_winner_1',
       {
@@ -59,7 +59,7 @@ describe('prize redemption utilities', () => {
     )).not.toThrow()
 
     expect(() => assertPrizeRedemptionRedeemable(
-      createHackathon('shortlist'),
+      createEvent('shortlist'),
       createRedemption('pending'),
       'terms_winner_1',
       {
@@ -69,7 +69,7 @@ describe('prize redemption utilities', () => {
     )).toThrowError(ApiError)
 
     expect(() => assertPrizeRedemptionRedeemable(
-      createHackathon('completed'),
+      createEvent('completed'),
       createRedemption('redeemed'),
       'terms_winner_1',
       {
@@ -79,7 +79,7 @@ describe('prize redemption utilities', () => {
     )).toThrowError(ApiError)
 
     expect(() => assertPrizeRedemptionRedeemable(
-      createHackathon('winners_announced'),
+      createEvent('winners_announced'),
       createRedemption('pending'),
       'terms_winner_2',
       {

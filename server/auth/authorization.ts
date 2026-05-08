@@ -3,7 +3,7 @@ import type { H3Event } from 'h3'
 import { and, eq, isNull } from 'drizzle-orm'
 
 import { getDatabase } from '#server/database/client'
-import { hackathonRoleAssignments, judgeAssignments, teamMembers } from '#server/database/schema'
+import { eventRoleAssignments, judgeAssignments, teamMembers } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 import {
   assertRegularPlatformAccess,
@@ -11,11 +11,11 @@ import {
   type PlatformActor
 } from './actor'
 
-export interface HackathonAuthorization {
-  hackathonId: string
+export interface EventAuthorization {
+  eventId: string
   isPlatformAdmin: boolean
-  explicitRole: 'hackathon_admin' | 'judge' | 'staff' | null
-  isHackathonAdmin: boolean
+  explicitRole: 'event_admin' | 'judge' | 'staff' | null
+  isEventAdmin: boolean
   canReviewThroughAssignment: boolean
   isInJudgePool: boolean
   isStaff: boolean
@@ -31,7 +31,7 @@ export interface TeamAuthorization {
 
 export interface JudgeAssignmentAuthorization {
   assignmentId: string
-  hackathonId: string
+  eventId: string
   assignedJudgeUserId: string
   actingRole: 'assigned_judge' | null
   canAccess: boolean
@@ -43,9 +43,9 @@ function requireResolvedPlatformActor(actor: Awaited<ReturnType<typeof getReques
   return actor
 }
 
-function getHackathonAuthorizationCache(event: H3Event) {
-  event.context.hackathonAuthorizationByHackathonId ??= new Map()
-  return event.context.hackathonAuthorizationByHackathonId
+function getEventAuthorizationCache(event: H3Event) {
+  event.context.eventAuthorizationByEventId ??= new Map()
+  return event.context.eventAuthorizationByEventId
 }
 
 function getTeamAuthorizationCache(event: H3Event) {
@@ -58,81 +58,81 @@ function getJudgeAssignmentAuthorizationCache(event: H3Event) {
   return event.context.judgeAssignmentAuthorizationByAssignmentId
 }
 
-export async function resolveHackathonAuthorization(
+export async function resolveEventAuthorization(
   event: H3Event,
-  hackathonId: string
-): Promise<HackathonAuthorization> {
-  const cache = getHackathonAuthorizationCache(event)
+  eventId: string
+): Promise<EventAuthorization> {
+  const cache = getEventAuthorizationCache(event)
 
-  if (!cache.has(hackathonId)) {
-    cache.set(hackathonId, (async () => {
+  if (!cache.has(eventId)) {
+    cache.set(eventId, (async () => {
       const actor = requireResolvedPlatformActor(await getRequestActor(event))
 
       if (actor.platformUser.isPlatformAdmin) {
         return {
-          hackathonId,
+          eventId,
           isPlatformAdmin: true,
-          explicitRole: 'hackathon_admin',
-          isHackathonAdmin: true,
+          explicitRole: 'event_admin',
+          isEventAdmin: true,
           canReviewThroughAssignment: false,
           isInJudgePool: false,
           isStaff: false,
           canViewParticipantsAndTeams: true
-        } satisfies HackathonAuthorization
+        } satisfies EventAuthorization
       }
 
       const database = getDatabase(event)
-      const assignment = await database.query.hackathonRoleAssignments.findFirst({
+      const assignment = await database.query.eventRoleAssignments.findFirst({
         where: and(
-          eq(hackathonRoleAssignments.hackathonId, hackathonId),
-          eq(hackathonRoleAssignments.userId, actor.platformUser.id)
+          eq(eventRoleAssignments.eventId, eventId),
+          eq(eventRoleAssignments.userId, actor.platformUser.id)
         )
       })
 
       const explicitRole = assignment?.role ?? null
-      const isHackathonAdmin = explicitRole === 'hackathon_admin'
+      const isEventAdmin = explicitRole === 'event_admin'
       const isInJudgePool = assignment?.isInJudgePool ?? false
       const isStaff = assignment?.isStaff ?? false
 
       return {
-        hackathonId,
+        eventId,
         isPlatformAdmin: false,
         explicitRole,
-        isHackathonAdmin,
-        canReviewThroughAssignment: explicitRole === 'judge' || (isHackathonAdmin && isInJudgePool),
+        isEventAdmin,
+        canReviewThroughAssignment: explicitRole === 'judge' || (isEventAdmin && isInJudgePool),
         isInJudgePool,
         isStaff,
-        canViewParticipantsAndTeams: isHackathonAdmin || isStaff
-      } satisfies HackathonAuthorization
+        canViewParticipantsAndTeams: isEventAdmin || isStaff
+      } satisfies EventAuthorization
     })())
   }
 
-  return await cache.get(hackathonId)!
+  return await cache.get(eventId)!
 }
 
-export function assertHackathonAdminAccess(authorization: HackathonAuthorization) {
-  if (authorization.isHackathonAdmin) {
+export function assertEventAdminAccess(authorization: EventAuthorization) {
+  if (authorization.isEventAdmin) {
     return
   }
 
   throw new ApiError({
     statusCode: 403,
-    code: 'hackathon_admin_required',
-    message: 'This operation requires hackathon admin access.',
-    details: { hackathonId: authorization.hackathonId }
+    code: 'event_admin_required',
+    message: 'This operation requires event admin access.',
+    details: { eventId: authorization.eventId }
   })
 }
 
-export function assertHackathonParticipantVisibilityAccess(authorization: HackathonAuthorization) {
+export function assertEventParticipantVisibilityAccess(authorization: EventAuthorization) {
   if (authorization.canViewParticipantsAndTeams) {
     return
   }
 
   throw new ApiError({
     statusCode: 403,
-    code: 'hackathon_participant_visibility_required',
-    message: 'This operation requires hackathon participant visibility access.',
-    details: { hackathonId: authorization.hackathonId }
+    code: 'event_participant_visibility_required',
+    message: 'This operation requires event participant visibility access.',
+    details: { eventId: authorization.eventId }
   })
 }
 
@@ -151,14 +151,14 @@ export function assertPlatformAdminAccess(actor: PlatformActor) {
   })
 }
 
-export function assertHackathonCreatorAccess(actor: PlatformActor) {
+export function assertEventCreatorAccess(actor: PlatformActor) {
   if (actor.platformUser.isPlatformAdmin || actor.platformUser.isEventOrganizer) {
     return
   }
 
   throw new ApiError({
     statusCode: 403,
-    code: 'hackathon_creator_required',
+    code: 'event_creator_required',
     message: 'This operation requires platform admin or event organizer access.',
     details: {
       userId: actor.platformUser.id
@@ -238,7 +238,7 @@ export async function resolveJudgeAssignmentAuthorization(
 
       return {
         assignmentId,
-        hackathonId: assignment.hackathonId,
+        eventId: assignment.eventId,
         assignedJudgeUserId: assignment.judgeUserId,
         actingRole: isAssignedJudge ? 'assigned_judge' : null,
         canAccess: isAssignedJudge,

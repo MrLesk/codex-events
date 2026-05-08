@@ -6,8 +6,8 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Event Organizers | Codex Hackathons',
-  description: 'Review the current event organizers and grant hackathon creation access.'
+  title: 'Event Organizers | Codex Events',
+  description: 'Review the current event organizers and grant event creation access.'
 })
 </script>
 
@@ -32,7 +32,7 @@ useSeoMeta({
               Event organizers
             </h1>
             <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-              Grant hackathon creation access without granting platform-wide admin visibility.
+              Grant event creation access without granting platform-wide admin visibility.
             </p>
           </div>
         </div>

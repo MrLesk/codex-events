@@ -12,8 +12,8 @@ const environment = {
   AUTH0_TEST_CONNECTION_NAME: 'Username-Password-Authentication',
   E2E_PLATFORM_ADMIN_EMAIL: 'platform-admin@example.com',
   E2E_PLATFORM_ADMIN_PASSWORD: 'password-1',
-  E2E_HACKATHON_ADMIN_EMAIL: 'hackathon-admin@example.com',
-  E2E_HACKATHON_ADMIN_PASSWORD: 'password-2',
+  E2E_EVENT_ADMIN_EMAIL: 'event-admin@example.com',
+  E2E_EVENT_ADMIN_PASSWORD: 'password-2',
   E2E_JUDGE_EMAIL: 'judge@example.com',
   E2E_JUDGE_PASSWORD: 'password-3',
   E2E_REGULAR_USER_EMAIL: 'regular-user@example.com',
@@ -29,11 +29,11 @@ const stableUsers = [
     password: environment.E2E_PLATFORM_ADMIN_PASSWORD
   },
   {
-    key: 'hackathon_admin',
-    email: environment.E2E_HACKATHON_ADMIN_EMAIL,
-    displayName: 'Hackathon Admin',
-    nickname: 'hackathon-admin',
-    password: environment.E2E_HACKATHON_ADMIN_PASSWORD
+    key: 'event_admin',
+    email: environment.E2E_EVENT_ADMIN_EMAIL,
+    displayName: 'Event Admin',
+    nickname: 'event-admin',
+    password: environment.E2E_EVENT_ADMIN_PASSWORD
   },
   {
     key: 'judge',

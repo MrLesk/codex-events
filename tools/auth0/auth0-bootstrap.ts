@@ -104,13 +104,13 @@ export class Auth0ManagementRequestError extends Error {
   }
 }
 
-const consentClaimNamespace = 'https://codex-hackathons/consents'
+const consentClaimNamespace = 'https://codex-events/consents'
 const defaultActionName = 'codex-signup-consent-claims'
 const defaultActionRuntime = 'node22'
-const defaultAuth0AppDisplayName = 'Codex Hackathons'
+const defaultAuth0AppDisplayName = 'Codex Events'
 const defaultBrandingPrimaryColor = '#030213'
 const defaultBrandingPageBackgroundColor = '#f3f3f5'
-const defaultBrandingWordmarkPath = '/auth0/codex-hackathons-wordmark.svg'
+const defaultBrandingWordmarkPath = '/auth0/codex-events-wordmark.svg'
 const defaultLocalBddAppBaseUrl = 'http://localhost:3100'
 const termsConsentCheckboxId = 'ulp-terms-of-service'
 const privacyConsentCheckboxId = 'ulp-privacy-policy'
@@ -481,7 +481,7 @@ function buildExpectedConsentText() {
 export function buildExpectedLoginCustomText(config: TenantConfig) {
   return {
     [loginPromptKey]: {
-      description: `Sign in to access your hackathons, applications, submissions, and judging workspace in ${config.appDisplayName}.`
+      description: `Sign in to access your events, applications, submissions, and judging workspace in ${config.appDisplayName}.`
     }
   } as const
 }
@@ -509,11 +509,11 @@ function hasRequiredLoginText(
 function buildExpectedResetPasswordCustomText(config: TenantConfig) {
   return {
     'reset-password-success': {
-      buttonText: 'Back to Codex Hackathons',
+      buttonText: 'Back to Codex Events',
       description: `Your password has been changed successfully. Continue at ${config.loginUri}.`
     },
     'reset-password-error': {
-      backToLoginLinkText: 'Back to Codex Hackathons',
+      backToLoginLinkText: 'Back to Codex Events',
       descriptionExpired: `This link has expired. Return to ${config.loginUri} and select "Forgot Your Password" to request a new email.`,
       descriptionGeneric: `There was a problem processing this request. Return to ${config.loginUri} and request a new password reset email.`,
       descriptionUsed: `This link has already been used. Return to ${config.loginUri} and request a new password reset email.`,
@@ -537,9 +537,9 @@ function hasRequiredResetPasswordText(
   const descriptionGeneric = normalizeMultiline(error.descriptionGeneric)
   const descriptionUsed = normalizeMultiline(error.descriptionUsed)
 
-  return buttonText === 'Back to Codex Hackathons'
+  return buttonText === 'Back to Codex Events'
     && description.includes(config.loginUri)
-    && backToLoginLinkText === 'Back to Codex Hackathons'
+    && backToLoginLinkText === 'Back to Codex Events'
     && descriptionExpired.includes(config.loginUri)
     && descriptionGeneric.includes(config.loginUri)
     && descriptionUsed.includes(config.loginUri)
@@ -1027,7 +1027,7 @@ async function ensureUniversalLoginPageTemplate(config: TenantConfig, token: str
   }
 
   if (normalizeMultiline(currentBody) !== normalizeMultiline(expectedBody)) {
-    failures.push('Auth0 Universal Login page template does not match the canonical Codex Hackathons template.')
+    failures.push('Auth0 Universal Login page template does not match the canonical Codex Events template.')
   }
 }
 
@@ -1053,7 +1053,7 @@ async function ensureLoginCustomText(config: TenantConfig, token: string, mode: 
   }
 
   if (!hasRequiredLoginText(current, config)) {
-    failures.push('Auth0 login prompt copy is missing the canonical Codex Hackathons subtitle.')
+    failures.push('Auth0 login prompt copy is missing the canonical Codex Events subtitle.')
   }
 }
 

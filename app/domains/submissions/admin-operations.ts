@@ -1,4 +1,4 @@
-import type { HackathonState } from '~/domains/hackathons/states'
+import type { EventState } from '~/domains/events/states'
 import type {
   AdminSubmissionStatus,
   NoSubmissionEntry,
@@ -273,18 +273,18 @@ export function filterAdminOperationalTeams(
 }
 
 export function getAdminSubmissionInterventionPolicy(
-  hackathonState: HackathonState,
+  eventState: EventState,
   submissionStatus: AdminSubmissionStatus
 ): AdminSubmissionInterventionPolicy {
-  const canAdminWithdraw = ['submission_open', 'judging_preparation'].includes(hackathonState)
+  const canAdminWithdraw = ['submission_open', 'judging_preparation'].includes(eventState)
     && (submissionStatus === 'draft' || submissionStatus === 'submitted')
-  const canDisqualify = ['blind_review', 'shortlist', 'pitch', 'pitch_review', 'final_deliberation', 'winners_announced', 'completed'].includes(hackathonState)
+  const canDisqualify = ['blind_review', 'shortlist', 'pitch', 'pitch_review', 'final_deliberation', 'winners_announced', 'completed'].includes(eventState)
     && submissionStatus === 'locked'
 
   let adminWithdrawReason: string | undefined
 
   if (!canAdminWithdraw) {
-    if (!['submission_open', 'judging_preparation'].includes(hackathonState)) {
+    if (!['submission_open', 'judging_preparation'].includes(eventState)) {
       adminWithdrawReason = 'Admin withdrawal is available only until judging starts.'
     } else {
       adminWithdrawReason = 'Only draft or submitted work can be admin-withdrawn.'
@@ -294,7 +294,7 @@ export function getAdminSubmissionInterventionPolicy(
   let disqualifyReason: string | undefined
 
   if (!canDisqualify) {
-    if (!['blind_review', 'shortlist', 'pitch', 'pitch_review', 'final_deliberation', 'winners_announced', 'completed'].includes(hackathonState)) {
+    if (!['blind_review', 'shortlist', 'pitch', 'pitch_review', 'final_deliberation', 'winners_announced', 'completed'].includes(eventState)) {
       disqualifyReason = 'Disqualification begins only once judging begins.'
     } else {
       disqualifyReason = 'Only locked submissions can be disqualified.'

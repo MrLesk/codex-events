@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
-  buildAccountHackathonJudgingTabHref,
+  buildAccountEventJudgingTabHref,
   normalizeJudgeAssignmentIdQueryValue
 } from '../../../../../app/domains/judging/query'
 
@@ -14,12 +14,12 @@ describe('judging query helpers', () => {
   })
 
   test('builds account judging tab hrefs with an optional assignment id', () => {
-    expect(buildAccountHackathonJudgingTabHref('codex-vienna-2026-04-18')).toBe(
-      '/account/hackathons/codex-vienna-2026-04-18?tab=judging'
+    expect(buildAccountEventJudgingTabHref('codex-vienna-2026-04-18')).toBe(
+      '/account/events/codex-vienna-2026-04-18?tab=judging'
     )
 
-    expect(buildAccountHackathonJudgingTabHref('codex-vienna-2026-04-18', 'assignment_123')).toBe(
-      '/account/hackathons/codex-vienna-2026-04-18?tab=judging&assignment=assignment_123'
+    expect(buildAccountEventJudgingTabHref('codex-vienna-2026-04-18', 'assignment_123')).toBe(
+      '/account/events/codex-vienna-2026-04-18?tab=judging&assignment=assignment_123'
     )
   })
 })

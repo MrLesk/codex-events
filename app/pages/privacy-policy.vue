@@ -17,8 +17,8 @@ function formatLegalDate(value: string | undefined) {
 const lastUpdatedLabel = computed(() => formatLegalDate(privacyPolicyDocument.value?.publishedAt))
 
 useSeoMeta({
-  title: 'Privacy Policy | Codex Hackathons',
-  description: 'Read how Codex Hackathons handles personal data.'
+  title: 'Privacy Policy | Codex Events',
+  description: 'Read how Codex Events handles personal data.'
 })
 </script>
 
@@ -34,7 +34,7 @@ useSeoMeta({
             name="i-lucide-arrow-left"
             class="size-4"
           />
-          Back to hackathons
+          Back to events
         </NuxtLink>
 
         <div class="mt-3 border-b border-black/8 pb-4 dark:border-white/[0.08]">
@@ -43,7 +43,7 @@ useSeoMeta({
               Privacy Policy
             </h1>
             <p class="text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-              This policy explains how Codex Hackathons processes personal data across account creation, hackathon participation, judging, prize workflows, and support requests.
+              This policy explains how Codex Events processes personal data across account creation, event participation, judging, prize workflows, and support requests.
             </p>
             <div class="flex flex-wrap items-center gap-3 text-[13px] text-neutral-600 dark:text-[#A3A3A3]">
               <span v-if="lastUpdatedLabel">Last updated {{ lastUpdatedLabel }}</span>

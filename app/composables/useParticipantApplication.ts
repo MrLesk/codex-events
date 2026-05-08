@@ -1,4 +1,4 @@
-import type { PublicHackathon } from '~/domains/hackathons/presentation'
+import type { PublicEvent } from '~/domains/events/presentation'
 import type {
   ParticipantActor,
   ParticipantApiDataResponse,
@@ -6,7 +6,7 @@ import type {
   ParticipantCurrentTermsResponse,
   ParticipantRegistrationTeamIntent,
   ParticipantSessionUser,
-  VisibleHackathonRecord
+  VisibleEventRecord
 } from '~/domains/applications/participant-application'
 
 import {
@@ -16,13 +16,13 @@ import {
   normalizeParticipantApiError
 } from '~/domains/applications/participant-application'
 
-async function getVisibleHackathonBySlug(
+async function getVisibleEventBySlug(
   slug: string,
   apiFetch: ReturnType<typeof useRequestFetch>,
   signal?: AbortSignal
 ) {
-  const response = await apiFetch<ParticipantApiDataResponse<VisibleHackathonRecord>>(
-    `/api/hackathons/slug/${encodeURIComponent(slug)}`,
+  const response = await apiFetch<ParticipantApiDataResponse<VisibleEventRecord>>(
+    `/api/events/slug/${encodeURIComponent(slug)}`,
     {
       signal
     }
@@ -42,12 +42,12 @@ function toFallbackSessionUser(user: ReturnType<typeof useUser>['value']): Parti
 }
 
 export function useParticipantApplication(
-  hackathon: MaybeRefOrGetter<PublicHackathon>,
+  event: MaybeRefOrGetter<PublicEvent>,
   slug: MaybeRefOrGetter<string>
 ) {
   const apiFetch = $fetch
   const user = useUser()
-  const resolvedHackathon = computed(() => toValue(hackathon))
+  const resolvedEvent = computed(() => toValue(event))
   const resolvedSlug = computed(() => toValue(slug))
   const authSubject = computed(() => user.value?.sub ?? 'anonymous')
 
@@ -94,14 +94,14 @@ export function useParticipantApplication(
     return normalizeParticipantApiError(actorRequest.error.value).message
   })
 
-  const visibleHackathonRequest = useApiData<VisibleHackathonRecord | null>(
-    () => `participant-application-visible-hackathon:${authSubject.value}:${resolvedSlug.value}`,
+  const visibleEventRequest = useApiData<VisibleEventRecord | null>(
+    () => `participant-application-visible-event:${authSubject.value}:${resolvedSlug.value}`,
     async ({ apiFetch, signal }) => {
       if (actor.value?.kind !== 'platform_user') {
         return null
       }
 
-      return await getVisibleHackathonBySlug(resolvedSlug.value, apiFetch, signal)
+      return await getVisibleEventBySlug(resolvedSlug.value, apiFetch, signal)
     },
     {
       default: () => null,
@@ -110,25 +110,25 @@ export function useParticipantApplication(
     }
   )
 
-  const visibleHackathon = computed(() => visibleHackathonRequest.data.value)
-  const visibleHackathonId = computed(() => visibleHackathon.value?.id ?? null)
-  const visibleHackathonErrorMessage = computed(() => {
-    if (!visibleHackathonRequest.error.value) {
+  const visibleEvent = computed(() => visibleEventRequest.data.value)
+  const visibleEventId = computed(() => visibleEvent.value?.id ?? null)
+  const visibleEventErrorMessage = computed(() => {
+    if (!visibleEventRequest.error.value) {
       return ''
     }
 
-    return normalizeParticipantApiError(visibleHackathonRequest.error.value).message
+    return normalizeParticipantApiError(visibleEventRequest.error.value).message
   })
 
   const ownApplicationRequest = useApiData<ParticipantApplicationRecord | null>(
-    () => `participant-application-own:${authSubject.value}:${visibleHackathonId.value ?? 'none'}`,
+    () => `participant-application-own:${authSubject.value}:${visibleEventId.value ?? 'none'}`,
     async ({ apiFetch, signal }) => {
-      if (actor.value?.kind !== 'platform_user' || !visibleHackathonId.value) {
+      if (actor.value?.kind !== 'platform_user' || !visibleEventId.value) {
         return null
       }
 
       const response = await apiFetch<ParticipantApiDataResponse<ParticipantApplicationRecord | null>>(
-        `/api/hackathons/${visibleHackathonId.value}/applications/me`,
+        `/api/events/${visibleEventId.value}/applications/me`,
         {
           signal
         }
@@ -138,7 +138,7 @@ export function useParticipantApplication(
     },
     {
       default: () => null,
-      watch: [actor, visibleHackathonId],
+      watch: [actor, visibleEventId],
       server: false
     }
   )
@@ -153,19 +153,19 @@ export function useParticipantApplication(
   })
 
   const currentTermsRequest = useApiData<ParticipantCurrentTermsResponse | null>(
-    () => `participant-application-terms:${authSubject.value}:${visibleHackathonId.value ?? 'none'}`,
+    () => `participant-application-terms:${authSubject.value}:${visibleEventId.value ?? 'none'}`,
     async ({ apiFetch, signal }) => {
       if (
         actor.value?.kind !== 'platform_user'
-        || !visibleHackathonId.value
+        || !visibleEventId.value
         || ownApplication.value
-        || resolvedHackathon.value.state !== 'registration_open'
+        || resolvedEvent.value.state !== 'registration_open'
       ) {
         return null
       }
 
       const response = await apiFetch<ParticipantApiDataResponse<ParticipantCurrentTermsResponse>>(
-        `/api/hackathons/${visibleHackathonId.value}/terms/current`,
+        `/api/events/${visibleEventId.value}/terms/current`,
         {
           signal
         }
@@ -175,7 +175,7 @@ export function useParticipantApplication(
     },
     {
       default: () => null,
-      watch: [actor, visibleHackathonId, ownApplication, computed(() => resolvedHackathon.value.state)],
+      watch: [actor, visibleEventId, ownApplication, computed(() => resolvedEvent.value.state)],
       server: false
     }
   )
@@ -194,7 +194,7 @@ export function useParticipantApplication(
       return []
     }
 
-    return listMissingRequiredProfileFields(resolvedHackathon.value, actor.value.platformUser)
+    return listMissingRequiredProfileFields(resolvedEvent.value, actor.value.platformUser)
   })
 
   const submissionError = ref('')
@@ -209,11 +209,11 @@ export function useParticipantApplication(
       email: string | null
     }>
     inPersonAttendanceCommitment?: boolean
-    whyThisHackathon?: string
+    whyThisEvent?: string
     proofOfExecutionUrl?: string
   }) {
-    if (!visibleHackathonId.value) {
-      submissionError.value = 'The current hackathon application route could not be resolved.'
+    if (!visibleEventId.value) {
+      submissionError.value = 'The current event application route could not be resolved.'
       submissionSuccess.value = ''
       return false
     }
@@ -223,7 +223,7 @@ export function useParticipantApplication(
     submissionSuccess.value = ''
 
     try {
-      await apiFetch(`/api/hackathons/${visibleHackathonId.value}/applications`, {
+      await apiFetch(`/api/events/${visibleEventId.value}/applications`, {
         method: 'POST',
         body: {
           applicationTermsDocumentId: options.applicationTermsDocumentId,
@@ -232,8 +232,8 @@ export function useParticipantApplication(
           ...(typeof options.inPersonAttendanceCommitment === 'boolean'
             ? { inPersonAttendanceCommitment: options.inPersonAttendanceCommitment }
             : {}),
-          ...(typeof options.whyThisHackathon === 'string'
-            ? { whyThisHackathon: options.whyThisHackathon }
+          ...(typeof options.whyThisEvent === 'string'
+            ? { whyThisEvent: options.whyThisEvent }
             : {}),
           ...(typeof options.proofOfExecutionUrl === 'string'
             ? { proofOfExecutionUrl: options.proofOfExecutionUrl }
@@ -267,9 +267,9 @@ export function useParticipantApplication(
     submissionSuccess,
     isSubmitting,
     submitApplication,
-    visibleHackathon,
-    visibleHackathonErrorMessage,
-    visibleHackathonId,
-    visibleHackathonStatus: computed(() => visibleHackathonRequest.status.value)
+    visibleEvent,
+    visibleEventErrorMessage,
+    visibleEventId,
+    visibleEventStatus: computed(() => visibleEventRequest.status.value)
   }
 }

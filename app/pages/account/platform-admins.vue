@@ -6,7 +6,7 @@ definePageMeta({
 })
 
 useSeoMeta({
-  title: 'Platform Admins | Codex Hackathons',
+  title: 'Platform Admins | Codex Events',
   description: 'Review the current platform admins and grant platform-wide admin access.'
 })
 </script>

@@ -26,7 +26,7 @@ function createTask(overrides?: Partial<PrizeRedemptionTask>): PrizeRedemptionTa
     updatedAt: '2026-03-23T12:00:00.000Z',
     prize: {
       id: 'prize_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Fixture Prize',
       description: 'Fixture prize description',
       rewardType: 'api_credits',
@@ -38,16 +38,16 @@ function createTask(overrides?: Partial<PrizeRedemptionTask>): PrizeRedemptionTa
       displayOrder: 0,
       createdAt: '2026-03-23T12:00:00.000Z'
     },
-    hackathon: {
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
+    event: {
+      id: 'event_1',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
       state: 'winners_announced',
       currentWinnerTermsDocumentId: 'terms_winner_1'
     },
     currentWinnerTerms: {
       id: 'terms_winner_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       documentType: 'winner_terms',
       version: 2,
       title: 'Winner Terms',
@@ -125,7 +125,7 @@ describe('prize-redemption workspace helpers', () => {
       currentWinnerTerms: null
     }))).toEqual({
       isEnabled: false,
-      reason: 'The current winner terms are unavailable for this hackathon.'
+      reason: 'The current winner terms are unavailable for this event.'
     })
   })
 

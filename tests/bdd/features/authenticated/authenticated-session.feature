@@ -3,13 +3,13 @@ Feature: Authenticated session foundation
 
   Scenario Outline: Reusing a saved Auth0 session
     Given the saved "<persona>" Auth0 session state exists
-    When I open my hackathons with the saved "<persona>" session
-    Then I should see the my hackathons heading
+    When I open my events with the saved "<persona>" session
+    Then I should see the my events heading
     And the saved "<persona>" session should authenticate a request context to "/account"
 
     Examples:
       | persona         |
       | platform_admin  |
-      | hackathon_admin |
+      | event_admin |
       | judge           |
       | regular_user    |

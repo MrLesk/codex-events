@@ -4,7 +4,7 @@ import { z } from 'zod'
 import type { AuthenticatedIdentityActor } from '#server/auth/actor'
 import type { AppDatabase } from '#server/database/client'
 import {
-  hackathonRoleAssignments,
+  eventRoleAssignments,
   platformDocuments,
   userAuthIdentities,
   userPlatformDocumentAcceptances,
@@ -521,8 +521,8 @@ export async function deletePlatformAccount(
       .delete(userPlatformDocumentAcceptances)
       .where(eq(userPlatformDocumentAcceptances.userId, actor.userId)),
     database
-      .delete(hackathonRoleAssignments)
-      .where(eq(hackathonRoleAssignments.userId, actor.userId)),
+      .delete(eventRoleAssignments)
+      .where(eq(eventRoleAssignments.userId, actor.userId)),
     buildAuditLogInsert(database, {
       actorUserId: actor.userId,
       entityType: 'user',

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { MonitorIcon, MoonIcon, SunMediumIcon } from 'lucide-vue-next'
 
-const colorModeStorageKey = 'codex-hackathons-color-mode'
+const colorModeStorageKey = 'codex-events-color-mode'
 type ColorMode = 'dark' | 'light' | 'system'
 
 const colorModeSequence: ColorMode[] = ['dark', 'light', 'system']

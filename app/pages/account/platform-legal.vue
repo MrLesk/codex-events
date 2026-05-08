@@ -181,7 +181,7 @@ async function publishPlatformDocument(documentType: PlatformDocumentRecord['doc
 }
 
 useSeoMeta({
-  title: 'Platform Legal Settings | Codex Hackathons',
+  title: 'Platform Legal Settings | Codex Events',
   description: 'Configure public legal pages and platform consent documents.'
 })
 </script>

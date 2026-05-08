@@ -2,12 +2,12 @@
 import type {
   AdminOperationalTeam
 } from '~/domains/submissions/admin-operations'
-import type { HackathonState } from '~/domains/hackathons/states'
+import type { EventState } from '~/domains/events/states'
 
 import { getAdminSubmissionInterventionPolicy } from '~/domains/submissions/admin-operations'
 
 const props = defineProps<{
-  hackathonState: HackathonState
+  eventState: EventState
   teams: AdminOperationalTeam[]
   isLoading?: boolean
   errorMessage?: string
@@ -40,7 +40,7 @@ function getDraft(team: AdminOperationalTeam) {
 }
 
 const disqualifiableTeams = computed(() =>
-  props.teams.filter(team => getAdminSubmissionInterventionPolicy(props.hackathonState, team.submissionStatus).canDisqualify)
+  props.teams.filter(team => getAdminSubmissionInterventionPolicy(props.eventState, team.submissionStatus).canDisqualify)
 )
 
 const interventionsAlert = computed(() => {

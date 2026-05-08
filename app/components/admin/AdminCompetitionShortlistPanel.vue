@@ -5,8 +5,8 @@ import type { SortableEvent } from 'sortablejs'
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
 
 import type {
-  HackathonState
-} from '~/domains/hackathons/states'
+  EventState
+} from '~/domains/events/states'
 import type {
   ShortlistEntry
 } from '~/domains/outcomes/admin-outcomes'
@@ -14,7 +14,7 @@ import type {
 import { moveListItemByIndex } from '~/utils/reorder-list'
 
 const props = defineProps<{
-  hackathonState: HackathonState
+  eventState: EventState
   shortlist: ShortlistEntry[]
   isShortlistLoading?: boolean
   shortlistErrorMessage?: string
@@ -84,7 +84,7 @@ const draftOrderedSubmissionIds = computed(() => [
 ])
 
 const canManageShortlist = computed(() =>
-  props.hackathonState === 'shortlist'
+  props.eventState === 'shortlist'
 )
 
 const draftStateKey = computed(() =>

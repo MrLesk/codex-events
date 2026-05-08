@@ -150,8 +150,8 @@ export async function run() {
     })
     const before = await assessPlatformAdminGrantState(database, targetUser.id)
     const isCompliantBefore = before.userIsPlatformAdmin
-      && before.missingHackathonAdminAssignmentHackathonIds.length === 0
-      && before.nonAdminHackathonAssignments.length === 0
+      && before.missingEventAdminAssignmentEventIds.length === 0
+      && before.nonAdminEventAssignments.length === 0
 
     if (scriptArgs.mode === 'check') {
       const summary = {
@@ -182,8 +182,8 @@ export async function run() {
 
     const after = await assessPlatformAdminGrantState(database, targetUser.id)
     const isCompliantAfter = after.userIsPlatformAdmin
-      && after.missingHackathonAdminAssignmentHackathonIds.length === 0
-      && after.nonAdminHackathonAssignments.length === 0
+      && after.missingEventAdminAssignmentEventIds.length === 0
+      && after.nonAdminEventAssignments.length === 0
 
     const summary = {
       mode: scriptArgs.mode,

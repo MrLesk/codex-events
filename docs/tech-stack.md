@@ -1,6 +1,6 @@
 # Tech Stack
 
-This document defines the canonical technology stack for the Codex hackathon platform.
+This document defines the canonical technology stack for the Codex event platform.
 
 ## Application Stack
 
@@ -13,8 +13,8 @@ This document defines the canonical technology stack for the Codex hackathon pla
 - `Playwright` for end-to-end testing
 - `Cloudflare Workers` for application hosting and server-side execution
 - `Cloudflare D1` for the primary relational database
-- `Cloudflare R2` for file storage, including account profile icons, hackathon background/banner images, and public hackathon gallery image delivery through custom domains
-- `Cloudflare Images` bindings for protected hackathon photo preview transformations
+- `Cloudflare R2` for file storage, including account profile icons, event background/banner images, and public event gallery image delivery through custom domains
+- `Cloudflare Images` bindings for protected event photo preview transformations
 - `Cloudflare Queues` for asynchronous jobs
 - `Cloudflare Cron Triggers` for scheduled platform tasks
 - `Cloudflare Email Service` for outbound transactional email delivery
@@ -23,5 +23,5 @@ This document defines the canonical technology stack for the Codex hackathon pla
 ## Architecture Notes
 
 - Auth0 is responsible for authentication and identity.
-- Application authorization remains in the platform database through hackathon roles, team roles, approvals, and related business rules.
+- Application authorization remains in the platform database through event roles, team roles, approvals, and related business rules.
 - `Cloudflare D1` is the primary relational database.

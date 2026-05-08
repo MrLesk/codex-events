@@ -6,7 +6,7 @@ import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import {
   assertPrizeRedemptionRedeemable,
-  getCurrentWinnerTermsForHackathon,
+  getCurrentWinnerTermsForEvent,
   prizeRedemptionParamsSchema,
   redeemPrizeRedemptionBodySchema,
   requirePrizeRedemptionRecipientContext,
@@ -14,19 +14,19 @@ import {
 } from '#server/domains/prize-redemptions'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
-export default defineApiHandler(async (event) => {
-  const { redemptionId } = parseValidatedParams(event, prizeRedemptionParamsSchema)
-  const body = await parseValidatedBody(event, redeemPrizeRedemptionBodySchema)
+export default defineApiHandler(async (h3Event) => {
+  const { redemptionId } = parseValidatedParams(h3Event, prizeRedemptionParamsSchema)
+  const body = await parseValidatedBody(h3Event, redeemPrizeRedemptionBodySchema)
   const {
     actor,
     database,
     redemption,
     prize,
-    hackathon
-  } = await requirePrizeRedemptionRecipientContext(event, redemptionId)
-  const currentWinnerTerms = await getCurrentWinnerTermsForHackathon(database, hackathon)
+    event
+  } = await requirePrizeRedemptionRecipientContext(h3Event, redemptionId)
+  const currentWinnerTerms = await getCurrentWinnerTermsForEvent(database, event)
 
-  assertPrizeRedemptionRedeemable(hackathon, redemption, currentWinnerTerms?.id ?? null, body)
+  assertPrizeRedemptionRedeemable(event, redemption, currentWinnerTerms?.id ?? null, body)
 
   const redeemedAt = new Date().toISOString()
 
@@ -49,7 +49,7 @@ export default defineApiHandler(async (event) => {
     entityId: redemption.id,
     action: 'prize_redemption.redeemed',
     metadata: {
-      hackathonId: hackathon.id,
+      eventId: event.id,
       prizeId: prize.id,
       teamId: redemption.teamId,
       winnerTermsDocumentId: body.winnerTermsDocumentId
@@ -65,5 +65,5 @@ export default defineApiHandler(async (event) => {
     redeemedAt,
     status: 'redeemed',
     updatedAt: redeemedAt
-  }, prize, hackathon))
+  }, prize, event))
 })

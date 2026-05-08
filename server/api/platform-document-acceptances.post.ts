@@ -11,12 +11,12 @@ const bodySchema = z.object({
   platformDocumentId: z.string().trim().min(1)
 })
 
-export default defineApiHandler(async (event) => {
-  const actor = await requirePlatformAccountActor(event)
-  const body = await parseValidatedBody(event, bodySchema)
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requirePlatformAccountActor(h3Event)
+  const body = await parseValidatedBody(h3Event, bodySchema)
 
   const { acceptance, document } = await recordPlatformDocumentAcceptance(
-    getDatabase(event),
+    getDatabase(h3Event),
     actor.platformUser.id,
     {
       platformDocumentId: body.platformDocumentId

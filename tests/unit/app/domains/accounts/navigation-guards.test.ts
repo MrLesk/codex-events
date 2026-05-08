@@ -25,7 +25,7 @@ function createPlatformActor(overrides: Record<string, unknown> = {}) {
     },
     isPlatformAdmin: false,
     isEventOrganizer: false,
-    hackathonRoles: [],
+    eventRoles: [],
     ...overrides
   }
 }
@@ -114,16 +114,16 @@ describe('navigation guards', () => {
     })) as never)
 
     const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
-    const { canAccessAdminDashboard } = await import('../../../../../app/domains/hackathons/access')
+    const { canAccessAdminDashboard } = await import('../../../../../app/domains/events/access')
 
     await expect(ensureAccountPageAccess(
       { fullPath: '/account/admin' } as never,
       actor => canAccessAdminDashboard(actor),
-      'Hackathon admin access required.'
+      'Event admin access required.'
     )).resolves.toBeUndefined()
   })
 
-  test('allows event organizers through the hackathon creation guard', async () => {
+  test('allows event organizers through the event creation guard', async () => {
     useUser.mockReturnValue({
       value: {
         sub: 'auth0|event-organizer'
@@ -148,16 +148,16 @@ describe('navigation guards', () => {
     })) as never)
 
     const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
-    const { canCreateHackathon } = await import('../../../../../app/domains/hackathons/access')
+    const { canCreateEvent } = await import('../../../../../app/domains/events/access')
 
     await expect(ensureAccountPageAccess(
-      { fullPath: '/admin/hackathons/new' } as never,
-      actor => canCreateHackathon(actor),
-      'Hackathon creator access required.'
+      { fullPath: '/admin/events/new' } as never,
+      actor => canCreateEvent(actor),
+      'Event creator access required.'
     )).resolves.toBeUndefined()
   })
 
-  test('rejects regular users from the hackathon creation guard', async () => {
+  test('rejects regular users from the event creation guard', async () => {
     useUser.mockReturnValue({
       value: {
         sub: 'auth0|regular-user'
@@ -184,19 +184,19 @@ describe('navigation guards', () => {
     })) as never)
 
     const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
-    const { canCreateHackathon } = await import('../../../../../app/domains/hackathons/access')
+    const { canCreateEvent } = await import('../../../../../app/domains/events/access')
 
     await expect(ensureAccountPageAccess(
-      { fullPath: '/admin/hackathons/new' } as never,
-      actor => canCreateHackathon(actor),
-      'Hackathon creator access required.'
+      { fullPath: '/admin/events/new' } as never,
+      actor => canCreateEvent(actor),
+      'Event creator access required.'
     )).rejects.toMatchObject({
       statusCode: 401,
-      statusMessage: 'Hackathon creator access required.'
+      statusMessage: 'Event creator access required.'
     })
   })
 
-  test('allows judge routes for judge-enabled hackathon admins only', async () => {
+  test('allows judge routes for judge-enabled event admins only', async () => {
     useUser.mockReturnValue({
       value: {
         sub: 'auth0|admin-judge'
@@ -211,9 +211,9 @@ describe('navigation guards', () => {
             hasPlatformAccount: true,
             hasAcceptedCurrentPlatformDocuments: true,
             isPlatformAdmin: false,
-            hackathonRoles: [{
-              hackathonId: 'hackathon-1',
-              role: 'hackathon_admin',
+            eventRoles: [{
+              eventId: 'event-1',
+              role: 'event_admin',
               isInJudgePool: true,
               isStaff: true,
               createdAt: '2026-03-01T00:00:00.000Z'
@@ -223,16 +223,16 @@ describe('navigation guards', () => {
       })
       .mockResolvedValueOnce({
         data: {
-          id: 'hackathon-1'
+          id: 'event-1'
         }
       })
 
     vi.stubGlobal('$fetch', navigationFetch as never)
 
-    const { ensureHackathonRoleForSlugRoute } = await import('../../../../../app/domains/accounts/navigation-guards')
+    const { ensureEventRoleForSlugRoute } = await import('../../../../../app/domains/accounts/navigation-guards')
 
-    await expect(ensureHackathonRoleForSlugRoute({
-      fullPath: '/hackathons/codex/judging',
+    await expect(ensureEventRoleForSlugRoute({
+      fullPath: '/events/codex/judging',
       params: {
         slug: 'codex'
       }
@@ -240,10 +240,10 @@ describe('navigation guards', () => {
 
     expect(navigationFetch).toHaveBeenCalledTimes(2)
     expect(navigationFetch).toHaveBeenNthCalledWith(1, '/api/session')
-    expect(navigationFetch).toHaveBeenNthCalledWith(2, '/api/hackathons/slug/codex')
+    expect(navigationFetch).toHaveBeenNthCalledWith(2, '/api/events/slug/codex')
   })
 
-  test('allows staff routes for staff-enabled hackathon admins only', async () => {
+  test('allows staff routes for staff-enabled event admins only', async () => {
     useUser.mockReturnValue({
       value: {
         sub: 'auth0|admin-staff'
@@ -258,9 +258,9 @@ describe('navigation guards', () => {
             hasPlatformAccount: true,
             hasAcceptedCurrentPlatformDocuments: true,
             isPlatformAdmin: false,
-            hackathonRoles: [{
-              hackathonId: 'hackathon-1',
-              role: 'hackathon_admin',
+            eventRoles: [{
+              eventId: 'event-1',
+              role: 'event_admin',
               isInJudgePool: false,
               isStaff: true,
               createdAt: '2026-03-01T00:00:00.000Z'
@@ -270,16 +270,16 @@ describe('navigation guards', () => {
       })
       .mockResolvedValueOnce({
         data: {
-          id: 'hackathon-1'
+          id: 'event-1'
         }
       })
 
     vi.stubGlobal('$fetch', navigationFetch as never)
 
-    const { ensureHackathonRoleForSlugRoute } = await import('../../../../../app/domains/accounts/navigation-guards')
+    const { ensureEventRoleForSlugRoute } = await import('../../../../../app/domains/accounts/navigation-guards')
 
-    await expect(ensureHackathonRoleForSlugRoute({
-      fullPath: '/hackathons/codex/staff',
+    await expect(ensureEventRoleForSlugRoute({
+      fullPath: '/events/codex/staff',
       params: {
         slug: 'codex'
       }
@@ -287,6 +287,6 @@ describe('navigation guards', () => {
 
     expect(navigationFetch).toHaveBeenCalledTimes(2)
     expect(navigationFetch).toHaveBeenNthCalledWith(1, '/api/session')
-    expect(navigationFetch).toHaveBeenNthCalledWith(2, '/api/hackathons/slug/codex')
+    expect(navigationFetch).toHaveBeenNthCalledWith(2, '/api/events/slug/codex')
   })
 })

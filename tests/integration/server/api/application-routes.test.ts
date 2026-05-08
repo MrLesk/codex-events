@@ -2,19 +2,19 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { and, eq } from 'drizzle-orm'
 
-import applicationsListHandler from '../../../../server/api/hackathons/[hackathonId]/applications/index.get'
-import applicationsPostHandler from '../../../../server/api/hackathons/[hackathonId]/applications/index.post'
-import ownApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/me.get'
-import withdrawOwnApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/me/actions/withdraw.post'
-import approveApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/[applicationId]/actions/approve.post'
-import adminWithdrawApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/[applicationId]/actions/withdraw.post'
-import applyStagedDecisionsHandler from '../../../../server/api/hackathons/[hackathonId]/applications/actions/apply-staged-decisions.post'
-import rejectApplicationHandler from '../../../../server/api/hackathons/[hackathonId]/applications/[applicationId]/actions/reject.post'
+import applicationsListHandler from '../../../../server/api/events/[eventId]/applications/index.get'
+import applicationsPostHandler from '../../../../server/api/events/[eventId]/applications/index.post'
+import ownApplicationHandler from '../../../../server/api/events/[eventId]/applications/me.get'
+import withdrawOwnApplicationHandler from '../../../../server/api/events/[eventId]/applications/me/actions/withdraw.post'
+import approveApplicationHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/approve.post'
+import adminWithdrawApplicationHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/withdraw.post'
+import applyStagedDecisionsHandler from '../../../../server/api/events/[eventId]/applications/actions/apply-staged-decisions.post'
+import rejectApplicationHandler from '../../../../server/api/events/[eventId]/applications/[applicationId]/actions/reject.post'
 import {
   auditLogs,
-  hackathonRoleAssignments,
-  hackathonTermsDocuments,
-  hackathons,
+  eventRoleAssignments,
+  eventTermsDocuments,
+  events,
   submissions,
   teamJoinRequests,
   teamMembers,
@@ -50,7 +50,7 @@ async function seedApplicationContext(
     requireChatgptEmail?: boolean
     requireOpenaiOrgId?: boolean
     requireLumaEmail?: boolean
-    requireWhyThisHackathon?: boolean
+    requireWhyThisEvent?: boolean
     requireProofOfExecution?: boolean
     lumaEventUrl?: string | null
     lumaEventApiId?: string | null
@@ -67,10 +67,10 @@ async function seedApplicationContext(
       isPlatformAdmin: true
     },
     {
-      id: 'hackathon_admin',
-      auth0Subject: 'auth0|hackathon_admin',
-      email: 'hackathon-admin@example.com',
-      displayName: 'Hackathon Admin'
+      id: 'event_admin',
+      auth0Subject: 'auth0|event_admin',
+      email: 'event-admin@example.com',
+      displayName: 'Event Admin'
     },
     {
       id: 'staff_user',
@@ -98,11 +98,12 @@ async function seedApplicationContext(
     }
   ])
 
-  await harness.database.insert(hackathons).values({
-    id: 'hackathon_1',
-    name: 'Fixture Hackathon',
-    slug: 'fixture-hackathon',
-    description: 'Fixture hackathon',
+  await harness.database.insert(events).values({
+    id: 'event_1',
+    eventType: 'hackathon',
+    name: 'Fixture Event',
+    slug: 'fixture-event',
+    description: 'Fixture event',
     city: 'Vienna',
     country: 'Austria',
     address: 'Fixture Address',
@@ -118,7 +119,7 @@ async function seedApplicationContext(
     requireChatgptEmail: options?.requireChatgptEmail ?? false,
     requireOpenaiOrgId: options?.requireOpenaiOrgId ?? false,
     requireLumaEmail: options?.requireLumaEmail ?? false,
-    requireWhyThisHackathon: options?.requireWhyThisHackathon ?? false,
+    requireWhyThisEvent: options?.requireWhyThisEvent ?? false,
     requireProofOfExecution: options?.requireProofOfExecution ?? false,
     lumaEventUrl: options?.lumaEventUrl ?? null,
     lumaEventApiId: options?.lumaEventApiId ?? null,
@@ -127,19 +128,19 @@ async function seedApplicationContext(
     createdByUserId: 'platform_admin'
   })
 
-  await harness.database.insert(hackathonRoleAssignments).values([
+  await harness.database.insert(eventRoleAssignments).values([
     {
-      id: 'role_hackathon_admin',
-      hackathonId: 'hackathon_1',
-      userId: 'hackathon_admin',
-      role: 'hackathon_admin',
+      id: 'role_event_admin',
+      eventId: 'event_1',
+      userId: 'event_admin',
+      role: 'event_admin',
       isInJudgePool: false,
       isStaff: false,
       createdAt: '2026-03-22T12:00:00.000Z'
     },
     {
       id: 'role_staff',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'staff_user',
       role: 'staff',
       isInJudgePool: false,
@@ -148,10 +149,10 @@ async function seedApplicationContext(
     }
   ])
 
-  await harness.database.insert(hackathonTermsDocuments).values([
+  await harness.database.insert(eventTermsDocuments).values([
     {
       id: 'terms_app_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       documentType: 'application_terms',
       version: 1,
       title: 'Application Terms v1',
@@ -160,7 +161,7 @@ async function seedApplicationContext(
     },
     {
       id: 'terms_app_2',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       documentType: 'application_terms',
       version: 2,
       title: 'Application Terms v2',
@@ -170,11 +171,11 @@ async function seedApplicationContext(
   ])
 
   await harness.database
-    .update(hackathons)
+    .update(events)
     .set({
       currentApplicationTermsDocumentId: 'terms_app_2'
     })
-    .where(eq(hackathons.id, 'hackathon_1'))
+    .where(eq(events.id, 'event_1'))
 }
 
 describe('TASK-3.6 application routes', () => {
@@ -188,10 +189,10 @@ describe('TASK-3.6 application routes', () => {
     }
   })
 
-  test('POST /api/hackathons/:hackathonId/applications enforces current terms and records the submission', async () => {
+  test('POST /api/events/:eventId/applications enforces current terms and records the submission', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -201,7 +202,7 @@ describe('TASK-3.6 application routes', () => {
     harnesses.push(harness)
     await seedApplicationContext(harness)
 
-    const outdatedResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const outdatedResponse = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_1'
@@ -215,7 +216,7 @@ describe('TASK-3.6 application routes', () => {
       }
     })
 
-    const successResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const successResponse = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2',
@@ -230,7 +231,7 @@ describe('TASK-3.6 application routes', () => {
             email: null
           }
         ],
-        whyThisHackathon: 'I want to build a practical project with other builders.',
+        whyThisEvent: 'I want to build a practical project with other builders.',
         proofOfExecutionUrl: 'https://github.com/regular/previous-project, https://demo.example.com/regular/project'
       })
     })
@@ -248,7 +249,7 @@ describe('TASK-3.6 application routes', () => {
 
     const storedApplication = await harness.database.query.userApplications.findFirst({
       where: and(
-        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.eventId, 'event_1'),
         eq(userApplications.userId, 'regular_user')
       )
     })
@@ -268,18 +269,18 @@ describe('TASK-3.6 application routes', () => {
           }
         ],
         inPersonAttendanceCommitment: false,
-        whyThisHackathon: 'I want to build a practical project with other builders.',
+        whyThisEvent: 'I want to build a practical project with other builders.',
         proofOfExecutionUrl: 'https://github.com/regular/previous-project, https://demo.example.com/regular/project'
       })
     })
   })
 
-  test('POST /api/hackathons/:hackathonId/applications auto-approves when configured and enqueues approval side effects', async () => {
+  test('POST /api/events/:eventId/applications auto-approves when configured and enqueues approval side effects', async () => {
     const reviewEmailQueueProducer = createQueueProducerStub()
     const lumaQueueProducer = createQueueProducerStub()
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -328,7 +329,7 @@ describe('TASK-3.6 application routes', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const response = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2'
@@ -350,7 +351,7 @@ describe('TASK-3.6 application routes', () => {
 
     const storedApplication = await harness.database.query.userApplications.findFirst({
       where: and(
-        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.eventId, 'event_1'),
         eq(userApplications.userId, 'regular_user')
       )
     })
@@ -368,8 +369,8 @@ describe('TASK-3.6 application routes', () => {
       applicationId: storedApplication?.id,
       decision: 'approved',
       recipientEmail: 'regular@example.com',
-      hackathonName: 'Fixture Hackathon',
-      hackathonSlug: 'fixture-hackathon'
+      eventName: 'Fixture Event',
+      eventSlug: 'fixture-event'
     }), {
       contentType: 'json'
     })
@@ -421,10 +422,10 @@ describe('TASK-3.6 application routes', () => {
     ]))
   })
 
-  test('POST /api/hackathons/:hackathonId/applications requires in-person attendance commitment when configured', async () => {
+  test('POST /api/events/:eventId/applications requires in-person attendance commitment when configured', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -436,7 +437,7 @@ describe('TASK-3.6 application routes', () => {
       inPersonEvent: true
     })
 
-    const missingCommitmentResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const missingCommitmentResponse = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2'
@@ -450,7 +451,7 @@ describe('TASK-3.6 application routes', () => {
       }
     })
 
-    const committedResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const committedResponse = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2',
@@ -462,7 +463,7 @@ describe('TASK-3.6 application routes', () => {
 
     const storedApplication = await harness.database.query.userApplications.findFirst({
       where: and(
-        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.eventId, 'event_1'),
         eq(userApplications.userId, 'regular_user')
       )
     })
@@ -471,15 +472,15 @@ describe('TASK-3.6 application routes', () => {
       teamIntent: 'unknown',
       teamMembers: [],
       inPersonAttendanceCommitment: true,
-      whyThisHackathon: '',
+      whyThisEvent: '',
       proofOfExecutionUrl: ''
     }))
   })
 
-  test('POST /api/hackathons/:hackathonId/applications enforces why-this-hackathon and proof-of-execution requirements when configured', async () => {
+  test('POST /api/events/:eventId/applications enforces why-this-event and proof-of-execution requirements when configured', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -488,11 +489,11 @@ describe('TASK-3.6 application routes', () => {
     })
     harnesses.push(harness)
     await seedApplicationContext(harness, {
-      requireWhyThisHackathon: true,
+      requireWhyThisEvent: true,
       requireProofOfExecution: true
     })
 
-    const missingResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const missingResponse = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2'
@@ -502,15 +503,15 @@ describe('TASK-3.6 application routes', () => {
     expect(missingResponse.status).toBe(409)
     expect(await missingResponse.json()).toMatchObject({
       error: {
-        code: 'why_this_hackathon_required'
+        code: 'why_this_event_required'
       }
     })
 
-    const missingProofResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const missingProofResponse = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2',
-        whyThisHackathon: 'I want to collaborate and build.'
+        whyThisEvent: 'I want to collaborate and build.'
       })
     })
 
@@ -521,11 +522,11 @@ describe('TASK-3.6 application routes', () => {
       }
     })
 
-    const successResponse = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const successResponse = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2',
-        whyThisHackathon: 'I want to collaborate and build.',
+        whyThisEvent: 'I want to collaborate and build.',
         proofOfExecutionUrl: 'https://github.com/regular/shipped-work, https://demo.example.com/regular/work'
       })
     })
@@ -534,7 +535,7 @@ describe('TASK-3.6 application routes', () => {
 
     const storedApplication = await harness.database.query.userApplications.findFirst({
       where: and(
-        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.eventId, 'event_1'),
         eq(userApplications.userId, 'regular_user')
       )
     })
@@ -543,15 +544,15 @@ describe('TASK-3.6 application routes', () => {
       teamIntent: 'unknown',
       teamMembers: [],
       inPersonAttendanceCommitment: false,
-      whyThisHackathon: 'I want to collaborate and build.',
+      whyThisEvent: 'I want to collaborate and build.',
       proofOfExecutionUrl: 'https://github.com/regular/shipped-work, https://demo.example.com/regular/work'
     }))
   })
 
-  test('POST /api/hackathons/:hackathonId/applications rejects invalid proof-of-execution links', async () => {
+  test('POST /api/events/:eventId/applications rejects invalid proof-of-execution links', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -561,7 +562,7 @@ describe('TASK-3.6 application routes', () => {
     harnesses.push(harness)
     await seedApplicationContext(harness)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const response = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2',
@@ -577,10 +578,10 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('POST /api/hackathons/:hackathonId/applications rejects users missing required profile fields', async () => {
+  test('POST /api/events/:eventId/applications rejects users missing required profile fields', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|missing_profile',
@@ -592,7 +593,7 @@ describe('TASK-3.6 application routes', () => {
       requireGithubProfile: true
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const response = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2'
@@ -610,10 +611,10 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('POST /api/hackathons/:hackathonId/applications rejects registration team-member hints beyond max team members', async () => {
+  test('POST /api/events/:eventId/applications rejects registration team-member hints beyond max team members', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -623,7 +624,7 @@ describe('TASK-3.6 application routes', () => {
     harnesses.push(harness)
     await seedApplicationContext(harness)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const response = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2',
@@ -643,10 +644,10 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('POST /api/hackathons/:hackathonId/applications rejects users missing a required luma email', async () => {
+  test('POST /api/events/:eventId/applications rejects users missing a required luma email', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|missing_profile',
@@ -658,7 +659,7 @@ describe('TASK-3.6 application routes', () => {
       requireLumaEmail: true
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const response = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2'
@@ -676,10 +677,10 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('POST /api/hackathons/:hackathonId/applications rejects Luma emails that are not registered for the event', async () => {
+  test('POST /api/events/:eventId/applications rejects Luma emails that are not registered for the event', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -716,7 +717,7 @@ describe('TASK-3.6 application routes', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const response = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2'
@@ -727,13 +728,13 @@ describe('TASK-3.6 application routes', () => {
     expect(await response.json()).toMatchObject({
       error: {
         code: 'luma_registration_required',
-        message: 'Luma registration is mandatory for this hackathon, and we could not find any guest with the Luma email you entered.'
+        message: 'Luma registration is mandatory for this event, and we could not find any guest with the Luma email you entered.'
       }
     })
 
     const storedApplication = await harness.database.query.userApplications.findFirst({
       where: and(
-        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.eventId, 'event_1'),
         eq(userApplications.userId, 'regular_user')
       )
     })
@@ -741,10 +742,10 @@ describe('TASK-3.6 application routes', () => {
     expect(storedApplication).toBeUndefined()
   })
 
-  test('POST /api/hackathons/:hackathonId/applications does not arm Luma sync when no Luma event API id is configured', async () => {
+  test('POST /api/events/:eventId/applications does not arm Luma sync when no Luma event API id is configured', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -758,7 +759,7 @@ describe('TASK-3.6 application routes', () => {
       lumaEventApiId: null
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const response = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2'
@@ -774,10 +775,10 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('POST /api/hackathons/:hackathonId/applications stores not_synced for Luma-enabled hackathons', async () => {
+  test('POST /api/events/:eventId/applications stores not_synced for Luma-enabled events', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -817,7 +818,7 @@ describe('TASK-3.6 application routes', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const response = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2'
@@ -834,7 +835,7 @@ describe('TASK-3.6 application routes', () => {
 
     const storedApplication = await harness.database.query.userApplications.findFirst({
       where: and(
-        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.eventId, 'event_1'),
         eq(userApplications.userId, 'regular_user')
       )
     })
@@ -843,10 +844,10 @@ describe('TASK-3.6 application routes', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
-  test('POST /api/hackathons/:hackathonId/applications allows submission when the Luma lookup temporarily fails', async () => {
+  test('POST /api/events/:eventId/applications allows submission when the Luma lookup temporarily fails', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -869,7 +870,7 @@ describe('TASK-3.6 application routes', () => {
     const fetchMock = vi.fn(async () => new Response('rate limit', { status: 429 }))
     vi.stubGlobal('fetch', fetchMock)
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const response = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2'
@@ -885,17 +886,17 @@ describe('TASK-3.6 application routes', () => {
     })
 
     expect(consoleError).toHaveBeenCalledWith('Luma registration validation skipped after lookup failure.', {
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       reason: 'luma_request_retryable_status'
     })
     consoleError.mockRestore()
   })
 
-  test('POST /api/hackathons/:hackathonId/applications rejects users missing a required ChatGPT email and OpenAI org ID', async () => {
+  test('POST /api/events/:eventId/applications rejects users missing a required ChatGPT email and OpenAI org ID', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/hackathons/:hackathonId/applications', handler: applicationsPostHandler }
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
       ],
       sessionUser: {
         sub: 'auth0|missing_profile',
@@ -908,7 +909,7 @@ describe('TASK-3.6 application routes', () => {
       requireOpenaiOrgId: true
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications', {
+    const response = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
       body: JSON.stringify({
         applicationTermsDocumentId: 'terms_app_2'
@@ -926,10 +927,10 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('GET /api/hackathons/:hackathonId/applications/me returns the caller application or null', async () => {
+  test('GET /api/events/:eventId/applications/me returns the caller application or null', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'get', path: '/api/hackathons/:hackathonId/applications/me', handler: ownApplicationHandler }
+        { method: 'get', path: '/api/events/:eventId/applications/me', handler: ownApplicationHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -939,7 +940,7 @@ describe('TASK-3.6 application routes', () => {
     harnesses.push(harness)
     await seedApplicationContext(harness)
 
-    const emptyResponse = await harness.request('/api/hackathons/hackathon_1/applications/me')
+    const emptyResponse = await harness.request('/api/events/event_1/applications/me')
     expect(emptyResponse.status).toBe(200)
     expect(await emptyResponse.json()).toMatchObject({
       data: null
@@ -947,7 +948,7 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'submitted',
       submittedAt: '2026-03-22T12:10:00.000Z',
@@ -957,7 +958,7 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:10:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/me')
+    const response = await harness.request('/api/events/event_1/applications/me')
     expect(response.status).toBe(200)
     expect(await response.json()).toMatchObject({
       data: {
@@ -970,12 +971,12 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('POST /api/hackathons/:hackathonId/applications/me/actions/withdraw transitions the caller application and writes an audit record', async () => {
+  test('POST /api/events/:eventId/applications/me/actions/withdraw transitions the caller application and writes an audit record', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/me/actions/withdraw',
+          path: '/api/events/:eventId/applications/me/actions/withdraw',
           handler: withdrawOwnApplicationHandler
         }
       ],
@@ -989,7 +990,7 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'submitted',
       preApprovalStatus: 'approved',
@@ -1000,7 +1001,7 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:10:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/me/actions/withdraw', {
+    const response = await harness.request('/api/events/event_1/applications/me/actions/withdraw', {
       method: 'POST'
     })
 
@@ -1016,7 +1017,7 @@ describe('TASK-3.6 application routes', () => {
 
     const storedApplication = await harness.database.query.userApplications.findFirst({
       where: and(
-        eq(userApplications.hackathonId, 'hackathon_1'),
+        eq(userApplications.eventId, 'event_1'),
         eq(userApplications.userId, 'regular_user')
       )
     })
@@ -1040,12 +1041,12 @@ describe('TASK-3.6 application routes', () => {
     ]))
   })
 
-  test('POST /api/hackathons/:hackathonId/applications/me/actions/withdraw is blocked while the caller still has an active team', async () => {
+  test('POST /api/events/:eventId/applications/me/actions/withdraw is blocked while the caller still has an active team', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/me/actions/withdraw',
+          path: '/api/events/:eventId/applications/me/actions/withdraw',
           handler: withdrawOwnApplicationHandler
         }
       ],
@@ -1059,12 +1060,12 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'approved',
       submittedAt: '2026-03-22T12:10:00.000Z',
       reviewedAt: '2026-03-22T12:20:00.000Z',
-      reviewedByUserId: 'hackathon_admin',
+      reviewedByUserId: 'event_admin',
       applicationTermsDocumentId: 'terms_app_2',
       applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
       createdAt: '2026-03-22T12:10:00.000Z',
@@ -1072,7 +1073,7 @@ describe('TASK-3.6 application routes', () => {
     })
     await harness.database.insert(teams).values({
       id: 'team_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Active Team',
       slug: 'active-team',
       isOpenToJoinRequests: true,
@@ -1090,7 +1091,7 @@ describe('TASK-3.6 application routes', () => {
       createdAt: '2026-03-22T12:30:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/me/actions/withdraw', {
+    const response = await harness.request('/api/events/event_1/applications/me/actions/withdraw', {
       method: 'POST'
     })
 
@@ -1111,13 +1112,13 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
-  test('POST /api/hackathons/:hackathonId/applications/me/actions/withdraw enqueues Luma rejection for Luma-enabled hackathons', async () => {
+  test('POST /api/events/:eventId/applications/me/actions/withdraw enqueues Luma rejection for Luma-enabled events', async () => {
     const lumaQueueProducer = createQueueProducerStub()
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/me/actions/withdraw',
+          path: '/api/events/:eventId/applications/me/actions/withdraw',
           handler: withdrawOwnApplicationHandler
         }
       ],
@@ -1143,20 +1144,20 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'approved',
       lumaSyncStatus: 'approve_synced',
       submittedAt: '2026-03-22T12:10:00.000Z',
       reviewedAt: '2026-03-22T12:20:00.000Z',
-      reviewedByUserId: 'hackathon_admin',
+      reviewedByUserId: 'event_admin',
       applicationTermsDocumentId: 'terms_app_2',
       applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
       createdAt: '2026-03-22T12:10:00.000Z',
       updatedAt: '2026-03-22T12:20:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/me/actions/withdraw', {
+    const response = await harness.request('/api/events/event_1/applications/me/actions/withdraw', {
       method: 'POST'
     })
 
@@ -1203,12 +1204,12 @@ describe('TASK-3.6 application routes', () => {
     ]))
   })
 
-  test('POST /api/hackathons/:hackathonId/applications/me/actions/withdraw marks Luma sync as failed when the Luma queue binding is unavailable', async () => {
+  test('POST /api/events/:eventId/applications/me/actions/withdraw marks Luma sync as failed when the Luma queue binding is unavailable', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/me/actions/withdraw',
+          path: '/api/events/:eventId/applications/me/actions/withdraw',
           handler: withdrawOwnApplicationHandler
         }
       ],
@@ -1231,20 +1232,20 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'approved',
       lumaSyncStatus: 'approve_synced',
       submittedAt: '2026-03-22T12:10:00.000Z',
       reviewedAt: '2026-03-22T12:20:00.000Z',
-      reviewedByUserId: 'hackathon_admin',
+      reviewedByUserId: 'event_admin',
       applicationTermsDocumentId: 'terms_app_2',
       applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
       createdAt: '2026-03-22T12:10:00.000Z',
       updatedAt: '2026-03-22T12:20:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/me/actions/withdraw', {
+    const response = await harness.request('/api/events/event_1/applications/me/actions/withdraw', {
       method: 'POST'
     })
 
@@ -1283,18 +1284,18 @@ describe('TASK-3.6 application routes', () => {
     ]))
   })
 
-  test('POST /api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw removes the participant from a team that remains valid', async () => {
+  test('POST /api/events/:eventId/applications/:applicationId/actions/withdraw removes the participant from a team that remains valid', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw',
+          path: '/api/events/:eventId/applications/:applicationId/actions/withdraw',
           handler: adminWithdrawApplicationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1302,12 +1303,12 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'approved',
       submittedAt: '2026-03-22T12:10:00.000Z',
       reviewedAt: '2026-03-22T12:20:00.000Z',
-      reviewedByUserId: 'hackathon_admin',
+      reviewedByUserId: 'event_admin',
       applicationTermsDocumentId: 'terms_app_2',
       applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
       createdAt: '2026-03-22T12:10:00.000Z',
@@ -1315,7 +1316,7 @@ describe('TASK-3.6 application routes', () => {
     })
     await harness.database.insert(teams).values({
       id: 'team_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Active Team',
       slug: 'active-team',
       isOpenToJoinRequests: true,
@@ -1344,7 +1345,7 @@ describe('TASK-3.6 application routes', () => {
       }
     ])
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/withdraw', {
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/withdraw', {
       method: 'POST'
     })
 
@@ -1375,18 +1376,18 @@ describe('TASK-3.6 application routes', () => {
     expect(remainingAdminMembership?.leftAt).toBeNull()
   })
 
-  test('POST /api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw dismantles a solo team and closes pending join requests', async () => {
+  test('POST /api/events/:eventId/applications/:applicationId/actions/withdraw dismantles a solo team and closes pending join requests', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw',
+          path: '/api/events/:eventId/applications/:applicationId/actions/withdraw',
           handler: adminWithdrawApplicationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1394,12 +1395,12 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'approved',
       submittedAt: '2026-03-22T12:10:00.000Z',
       reviewedAt: '2026-03-22T12:20:00.000Z',
-      reviewedByUserId: 'hackathon_admin',
+      reviewedByUserId: 'event_admin',
       applicationTermsDocumentId: 'terms_app_2',
       applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
       createdAt: '2026-03-22T12:10:00.000Z',
@@ -1407,7 +1408,7 @@ describe('TASK-3.6 application routes', () => {
     })
     await harness.database.insert(teams).values({
       id: 'team_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Solo Team',
       slug: 'solo-team',
       isOpenToJoinRequests: true,
@@ -1435,7 +1436,7 @@ describe('TASK-3.6 application routes', () => {
       createdAt: '2026-03-22T12:35:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/withdraw', {
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/withdraw', {
       method: 'POST'
     })
 
@@ -1457,7 +1458,7 @@ describe('TASK-3.6 application routes', () => {
     })
     expect(closedJoinRequest).toMatchObject({
       status: 'rejected',
-      reviewedByUserId: 'hackathon_admin'
+      reviewedByUserId: 'event_admin'
     })
 
     const auditRows = await harness.database.query.auditLogs.findMany({
@@ -1472,18 +1473,18 @@ describe('TASK-3.6 application routes', () => {
     ]))
   })
 
-  test('POST /api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw dismantles a team when the participant is the last active admin and no submission exists', async () => {
+  test('POST /api/events/:eventId/applications/:applicationId/actions/withdraw dismantles a team when the participant is the last active admin and no submission exists', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw',
+          path: '/api/events/:eventId/applications/:applicationId/actions/withdraw',
           handler: adminWithdrawApplicationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1491,12 +1492,12 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'approved',
       submittedAt: '2026-03-22T12:10:00.000Z',
       reviewedAt: '2026-03-22T12:20:00.000Z',
-      reviewedByUserId: 'hackathon_admin',
+      reviewedByUserId: 'event_admin',
       applicationTermsDocumentId: 'terms_app_2',
       applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
       createdAt: '2026-03-22T12:10:00.000Z',
@@ -1504,7 +1505,7 @@ describe('TASK-3.6 application routes', () => {
     })
     await harness.database.insert(teams).values({
       id: 'team_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Team Without Backup Admin',
       slug: 'team-without-backup-admin',
       isOpenToJoinRequests: true,
@@ -1533,7 +1534,7 @@ describe('TASK-3.6 application routes', () => {
       }
     ])
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/withdraw', {
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/withdraw', {
       method: 'POST'
     })
 
@@ -1555,18 +1556,18 @@ describe('TASK-3.6 application routes', () => {
     ]))
   })
 
-  test('POST /api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw is blocked when dismantling the team would affect an active submission', async () => {
+  test('POST /api/events/:eventId/applications/:applicationId/actions/withdraw is blocked when dismantling the team would affect an active submission', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw',
+          path: '/api/events/:eventId/applications/:applicationId/actions/withdraw',
           handler: adminWithdrawApplicationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1574,12 +1575,12 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'approved',
       submittedAt: '2026-03-22T12:10:00.000Z',
       reviewedAt: '2026-03-22T12:20:00.000Z',
-      reviewedByUserId: 'hackathon_admin',
+      reviewedByUserId: 'event_admin',
       applicationTermsDocumentId: 'terms_app_2',
       applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
       createdAt: '2026-03-22T12:10:00.000Z',
@@ -1587,7 +1588,7 @@ describe('TASK-3.6 application routes', () => {
     })
     await harness.database.insert(teams).values({
       id: 'team_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Blocked Team',
       slug: 'blocked-team',
       isOpenToJoinRequests: true,
@@ -1621,7 +1622,7 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:40:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/withdraw', {
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/withdraw', {
       method: 'POST'
     })
 
@@ -1646,19 +1647,19 @@ describe('TASK-3.6 application routes', () => {
     expect(storedMembership?.leftAt).toBeNull()
   })
 
-  test('POST /api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw enqueues Luma rejection for admin-managed withdrawals', async () => {
+  test('POST /api/events/:eventId/applications/:applicationId/actions/withdraw enqueues Luma rejection for admin-managed withdrawals', async () => {
     const lumaQueueProducer = createQueueProducerStub()
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/withdraw',
+          path: '/api/events/:eventId/applications/:applicationId/actions/withdraw',
           handler: adminWithdrawApplicationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       },
       cloudflareEnv: {
         APPLICATION_LUMA_SYNC_QUEUE: lumaQueueProducer
@@ -1678,20 +1679,20 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'approved',
       lumaSyncStatus: 'approve_synced',
       submittedAt: '2026-03-22T12:10:00.000Z',
       reviewedAt: '2026-03-22T12:20:00.000Z',
-      reviewedByUserId: 'hackathon_admin',
+      reviewedByUserId: 'event_admin',
       applicationTermsDocumentId: 'terms_app_2',
       applicationTermsAcceptedAt: '2026-03-22T12:10:00.000Z',
       createdAt: '2026-03-22T12:10:00.000Z',
       updatedAt: '2026-03-22T12:20:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/withdraw', {
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/withdraw', {
       method: 'POST'
     })
 
@@ -1730,21 +1731,21 @@ describe('TASK-3.6 application routes', () => {
     const queueProducer = createQueueProducerStub()
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'get', path: '/api/hackathons/:hackathonId/applications', handler: applicationsListHandler },
+        { method: 'get', path: '/api/events/:eventId/applications', handler: applicationsListHandler },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/approve',
+          path: '/api/events/:eventId/applications/:applicationId/actions/approve',
           handler: approveApplicationHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/actions/apply-staged-decisions',
+          path: '/api/events/:eventId/applications/actions/apply-staged-decisions',
           handler: applyStagedDecisionsHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       },
       cloudflareEnv: {
         APPLICATION_REVIEW_EMAIL_QUEUE: queueProducer
@@ -1766,7 +1767,7 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'submitted',
       submittedAt: '2026-03-22T12:10:00.000Z',
@@ -1776,7 +1777,7 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:10:00.000Z'
     })
 
-    const listResponse = await harness.request('/api/hackathons/hackathon_1/applications')
+    const listResponse = await harness.request('/api/events/event_1/applications')
     expect(listResponse.status).toBe(200)
     const listPayload = await listResponse.json()
     expect(listPayload.meta).toMatchObject({
@@ -1792,7 +1793,7 @@ describe('TASK-3.6 application routes', () => {
       })
     ]))
 
-    const approveResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/approve', {
+    const approveResponse = await harness.request('/api/events/event_1/applications/application_1/actions/approve', {
       method: 'POST'
     })
     expect(approveResponse.status).toBe(200)
@@ -1806,7 +1807,7 @@ describe('TASK-3.6 application routes', () => {
     })
     expect(queueProducer.send).toHaveBeenCalledTimes(0)
 
-    const applyResponse = await harness.request('/api/hackathons/hackathon_1/applications/actions/apply-staged-decisions', {
+    const applyResponse = await harness.request('/api/events/event_1/applications/actions/apply-staged-decisions', {
       method: 'POST'
     })
     expect(applyResponse.status).toBe(200)
@@ -1848,8 +1849,8 @@ describe('TASK-3.6 application routes', () => {
       applicationId: 'application_1',
       decision: 'approved',
       recipientEmail: 'regular@example.com',
-      hackathonName: 'Fixture Hackathon',
-      hackathonSlug: 'fixture-hackathon'
+      eventName: 'Fixture Event',
+      eventSlug: 'fixture-event'
     }), {
       contentType: 'json'
     })
@@ -1858,10 +1859,10 @@ describe('TASK-3.6 application routes', () => {
   test('staff can list applications but cannot stage review decisions', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'get', path: '/api/hackathons/:hackathonId/applications', handler: applicationsListHandler },
+        { method: 'get', path: '/api/events/:eventId/applications', handler: applicationsListHandler },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/approve',
+          path: '/api/events/:eventId/applications/:applicationId/actions/approve',
           handler: approveApplicationHandler
         }
       ],
@@ -1875,7 +1876,7 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'submitted',
       submittedAt: '2026-03-22T12:10:00.000Z',
@@ -1885,7 +1886,7 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:10:00.000Z'
     })
 
-    const listResponse = await harness.request('/api/hackathons/hackathon_1/applications')
+    const listResponse = await harness.request('/api/events/event_1/applications')
     expect(listResponse.status).toBe(200)
     expect(await listResponse.json()).toMatchObject({
       data: [
@@ -1901,25 +1902,25 @@ describe('TASK-3.6 application routes', () => {
       }
     })
 
-    const approveResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/approve', {
+    const approveResponse = await harness.request('/api/events/event_1/applications/application_1/actions/approve', {
       method: 'POST'
     })
     expect(approveResponse.status).toBe(403)
     expect(await approveResponse.json()).toMatchObject({
       error: {
-        code: 'hackathon_admin_required'
+        code: 'event_admin_required'
       }
     })
   })
 
-  test('GET /api/hackathons/:hackathonId/applications returns bounded pages for large participant sets', async () => {
+  test('GET /api/events/:eventId/applications returns bounded pages for large participant sets', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'get', path: '/api/hackathons/:hackathonId/applications', handler: applicationsListHandler }
+        { method: 'get', path: '/api/events/:eventId/applications', handler: applicationsListHandler }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -1934,7 +1935,7 @@ describe('TASK-3.6 application routes', () => {
     }))
     const participantApplications = Array.from({ length: participantCount }, (_, index) => ({
       id: `application_${index + 1}`,
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: `participant_${index + 1}`,
       status: 'submitted' as const,
       submittedAt: `2026-03-${String(28 - Math.floor(index / 10)).padStart(2, '0')}T12:${String(index % 60).padStart(2, '0')}:00.000Z`,
@@ -1945,7 +1946,7 @@ describe('TASK-3.6 application routes', () => {
     }))
     const participantTeams = Array.from({ length: participantCount }, (_, index) => ({
       id: `team_${index + 1}`,
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: `Team ${index + 1}`,
       slug: `team-${index + 1}`,
       createdByUserId: `participant_${index + 1}`
@@ -1977,7 +1978,7 @@ describe('TASK-3.6 application routes', () => {
     const teamMembersFindManySpy = vi.spyOn(harness.database.query.teamMembers, 'findMany')
     const teamsFindManySpy = vi.spyOn(harness.database.query.teams, 'findMany')
     const submissionsFindManySpy = vi.spyOn(harness.database.query.submissions, 'findMany')
-    const response = await harness.request('/api/hackathons/hackathon_1/applications?page=1&page_size=100')
+    const response = await harness.request('/api/events/event_1/applications?page=1&page_size=100')
 
     expect(response.status).toBe(200)
     expect(usersFindManySpy).not.toHaveBeenCalled()
@@ -2030,13 +2031,13 @@ describe('TASK-3.6 application routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/approve',
+          path: '/api/events/:eventId/applications/:applicationId/actions/approve',
           handler: approveApplicationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -2044,7 +2045,7 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'submitted',
       submittedAt: '2026-03-22T12:10:00.000Z',
@@ -2054,7 +2055,7 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:10:00.000Z'
     })
 
-    const firstResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/approve', {
+    const firstResponse = await harness.request('/api/events/event_1/applications/application_1/actions/approve', {
       method: 'POST'
     })
     expect(firstResponse.status).toBe(200)
@@ -2065,7 +2066,7 @@ describe('TASK-3.6 application routes', () => {
       }
     })
 
-    const secondResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/approve', {
+    const secondResponse = await harness.request('/api/events/event_1/applications/application_1/actions/approve', {
       method: 'POST'
     })
     expect(secondResponse.status).toBe(200)
@@ -2105,12 +2106,12 @@ describe('TASK-3.6 application routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/reject',
+          path: '/api/events/:eventId/applications/:applicationId/actions/reject',
           handler: rejectApplicationHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/actions/apply-staged-decisions',
+          path: '/api/events/:eventId/applications/actions/apply-staged-decisions',
           handler: applyStagedDecisionsHandler
         }
       ],
@@ -2132,7 +2133,7 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'submitted',
       submittedAt: '2026-03-22T12:10:00.000Z',
@@ -2142,7 +2143,7 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:10:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/reject', {
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/reject', {
       method: 'POST'
     })
 
@@ -2157,7 +2158,7 @@ describe('TASK-3.6 application routes', () => {
     })
     expect(queueProducer.send).toHaveBeenCalledTimes(0)
 
-    const applyResponse = await harness.request('/api/hackathons/hackathon_1/applications/actions/apply-staged-decisions', {
+    const applyResponse = await harness.request('/api/events/event_1/applications/actions/apply-staged-decisions', {
       method: 'POST'
     })
     expect(applyResponse.status).toBe(200)
@@ -2186,18 +2187,18 @@ describe('TASK-3.6 application routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/approve',
+          path: '/api/events/:eventId/applications/:applicationId/actions/approve',
           handler: approveApplicationHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/actions/apply-staged-decisions',
+          path: '/api/events/:eventId/applications/actions/apply-staged-decisions',
           handler: applyStagedDecisionsHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       },
       cloudflareEnv: {
         APPLICATION_REVIEW_EMAIL_QUEUE: reviewEmailQueueProducer,
@@ -2221,7 +2222,7 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'submitted',
       submittedAt: '2026-03-22T12:10:00.000Z',
@@ -2231,12 +2232,12 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:10:00.000Z'
     })
 
-    const approveResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/approve', {
+    const approveResponse = await harness.request('/api/events/event_1/applications/application_1/actions/approve', {
       method: 'POST'
     })
     expect(approveResponse.status).toBe(200)
 
-    const applyResponse = await harness.request('/api/hackathons/hackathon_1/applications/actions/apply-staged-decisions', {
+    const applyResponse = await harness.request('/api/events/event_1/applications/actions/apply-staged-decisions', {
       method: 'POST'
     })
     expect(applyResponse.status).toBe(200)
@@ -2290,7 +2291,7 @@ describe('TASK-3.6 application routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/reject',
+          path: '/api/events/:eventId/applications/:applicationId/actions/reject',
           handler: rejectApplicationHandler
         }
       ],
@@ -2304,7 +2305,7 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'submitted',
       submittedAt: '2026-03-22T12:10:00.000Z',
@@ -2314,7 +2315,7 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:10:00.000Z'
     })
 
-    const firstResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/reject', {
+    const firstResponse = await harness.request('/api/events/event_1/applications/application_1/actions/reject', {
       method: 'POST'
     })
     expect(firstResponse.status).toBe(200)
@@ -2325,7 +2326,7 @@ describe('TASK-3.6 application routes', () => {
       }
     })
 
-    const secondResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/reject', {
+    const secondResponse = await harness.request('/api/events/event_1/applications/application_1/actions/reject', {
       method: 'POST'
     })
     expect(secondResponse.status).toBe(200)
@@ -2365,12 +2366,12 @@ describe('TASK-3.6 application routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/reject',
+          path: '/api/events/:eventId/applications/:applicationId/actions/reject',
           handler: rejectApplicationHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/actions/apply-staged-decisions',
+          path: '/api/events/:eventId/applications/actions/apply-staged-decisions',
           handler: applyStagedDecisionsHandler
         }
       ],
@@ -2392,7 +2393,7 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'submitted',
       submittedAt: '2026-03-22T12:10:00.000Z',
@@ -2402,14 +2403,14 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:10:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/reject', {
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/reject', {
       method: 'POST'
     })
 
     expect(response.status).toBe(200)
     expect(queueProducer.send).toHaveBeenCalledTimes(0)
 
-    const applyResponse = await harness.request('/api/hackathons/hackathon_1/applications/actions/apply-staged-decisions', {
+    const applyResponse = await harness.request('/api/events/event_1/applications/actions/apply-staged-decisions', {
       method: 'POST'
     })
     expect(applyResponse.status).toBe(200)
@@ -2438,12 +2439,12 @@ describe('TASK-3.6 application routes', () => {
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/reject',
+          path: '/api/events/:eventId/applications/:applicationId/actions/reject',
           handler: rejectApplicationHandler
         },
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/actions/apply-staged-decisions',
+          path: '/api/events/:eventId/applications/actions/apply-staged-decisions',
           handler: applyStagedDecisionsHandler
         }
       ],
@@ -2472,7 +2473,7 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'submitted',
       submittedAt: '2026-03-22T12:10:00.000Z',
@@ -2482,12 +2483,12 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:10:00.000Z'
     })
 
-    const rejectResponse = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/reject', {
+    const rejectResponse = await harness.request('/api/events/event_1/applications/application_1/actions/reject', {
       method: 'POST'
     })
     expect(rejectResponse.status).toBe(200)
 
-    const applyResponse = await harness.request('/api/hackathons/hackathon_1/applications/actions/apply-staged-decisions', {
+    const applyResponse = await harness.request('/api/events/event_1/applications/actions/apply-staged-decisions', {
       method: 'POST'
     })
     expect(applyResponse.status).toBe(200)
@@ -2528,18 +2529,18 @@ describe('TASK-3.6 application routes', () => {
     ]))
   })
 
-  test('hackathon admins can stage rejection for submitted applications', async () => {
+  test('event admins can stage rejection for submitted applications', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         {
           method: 'post',
-          path: '/api/hackathons/:hackathonId/applications/:applicationId/actions/reject',
+          path: '/api/events/:eventId/applications/:applicationId/actions/reject',
           handler: rejectApplicationHandler
         }
       ],
       sessionUser: {
-        sub: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com'
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
       }
     })
     harnesses.push(harness)
@@ -2547,7 +2548,7 @@ describe('TASK-3.6 application routes', () => {
 
     await harness.database.insert(userApplications).values({
       id: 'application_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'regular_user',
       status: 'submitted',
       submittedAt: '2026-03-22T12:10:00.000Z',
@@ -2557,7 +2558,7 @@ describe('TASK-3.6 application routes', () => {
       updatedAt: '2026-03-22T12:10:00.000Z'
     })
 
-    const response = await harness.request('/api/hackathons/hackathon_1/applications/application_1/actions/reject', {
+    const response = await harness.request('/api/events/event_1/applications/application_1/actions/reject', {
       method: 'POST'
     })
 

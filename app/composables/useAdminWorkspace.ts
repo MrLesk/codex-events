@@ -1,10 +1,10 @@
 import type { Ref } from 'vue'
 import type { SessionActor } from '~/domains/accounts/session-actor'
 import type {
-  HackathonRecord,
+  EventRecord,
   TermsDocument
-} from '~/domains/hackathons/records'
-import type { HackathonRoleAssignment } from '~/domains/hackathons/access'
+} from '~/domains/events/records'
+import type { EventRoleAssignment } from '~/domains/events/access'
 import type { JudgeAssignmentSummary } from '~/domains/judging/admin-oversight'
 import type { EvaluationCriterion } from '~/domains/judging/criteria-config'
 import type {
@@ -16,22 +16,22 @@ import type { ApiDataResponse, ApiListResponse } from '~/lib/api'
 
 import { buildApiCacheKey, getApiSubjectKey, listAllPaginatedItems } from '~/lib/api'
 import {
-  filterManageableHackathons,
-  hasHackathonAdminAccess
-} from '~/domains/hackathons/access'
+  filterManageableEvents,
+  hasEventAdminAccess
+} from '~/domains/events/access'
 
 interface AdminWorkspaceOptions {
-  loadHackathons?: MaybeRefOrGetter<boolean>
+  loadEvents?: MaybeRefOrGetter<boolean>
 }
 
-interface AdminHackathonSettingsWorkspaceOptions {
+interface AdminEventSettingsWorkspaceOptions {
   loadCriteria?: MaybeRefOrGetter<boolean>
   loadPrizes?: MaybeRefOrGetter<boolean>
   loadTerms?: MaybeRefOrGetter<boolean>
   loadRoleAssignments?: MaybeRefOrGetter<boolean>
 }
 
-interface AdminHackathonOperationsWorkspaceOptions {
+interface AdminEventOperationsWorkspaceOptions {
   loadLifecycleData?: MaybeRefOrGetter<boolean>
 }
 
@@ -57,7 +57,7 @@ function refreshWhenEnabled(request: RefreshableAsyncRequest, enabled: Ref<boole
 export function useAdminWorkspace(options: AdminWorkspaceOptions = {}) {
   const authenticatedUser = useUser()
   const subjectKey = computed(() => getApiSubjectKey(authenticatedUser.value?.sub))
-  const loadHackathons = resolveLoadFlag(options.loadHackathons)
+  const loadEvents = resolveLoadFlag(options.loadEvents)
 
   const session = useFetch<ApiDataResponse<{ actor: SessionActor }>>('/api/session', {
     key: () => buildApiCacheKey('admin-workspace-session', subjectKey.value),
@@ -66,23 +66,23 @@ export function useAdminWorkspace(options: AdminWorkspaceOptions = {}) {
 
   const actor = computed(() => session.data.value?.data.actor ?? null)
 
-  const hackathons = useFetch<ApiListResponse<HackathonRecord>>('/api/hackathons?page=1&page_size=100', {
-    key: () => buildApiCacheKey('admin-workspace-hackathons', subjectKey.value),
+  const events = useFetch<ApiListResponse<EventRecord>>('/api/events?page=1&page_size=100', {
+    key: () => buildApiCacheKey('admin-workspace-events', subjectKey.value),
     watch: [subjectKey],
-    immediate: loadHackathons.value
+    immediate: loadEvents.value
   })
-  refreshWhenEnabled(hackathons, loadHackathons)
+  refreshWhenEnabled(events, loadEvents)
 
-  const manageableHackathons = computed(() => {
-    const items = hackathons.data.value?.data ?? []
-    return filterManageableHackathons(items, actor.value)
+  const manageableEvents = computed(() => {
+    const items = events.data.value?.data ?? []
+    return filterManageableEvents(items, actor.value)
   })
 
   async function refreshRoot() {
     await session.refresh()
 
-    if (loadHackathons.value) {
-      await hackathons.refresh()
+    if (loadEvents.value) {
+      await events.refresh()
     }
   }
 
@@ -90,99 +90,108 @@ export function useAdminWorkspace(options: AdminWorkspaceOptions = {}) {
     session,
     actor,
     subjectKey,
-    hackathons,
-    manageableHackathons,
+    events,
+    manageableEvents,
     refreshRoot
   }
 }
 
-function useAdminHackathonBase(hackathonId: MaybeRefOrGetter<string>) {
-  const resolvedHackathonId = computed(() => toValue(hackathonId))
+function useAdminEventBase(eventId: MaybeRefOrGetter<string>) {
+  const resolvedEventId = computed(() => toValue(eventId))
   const adminWorkspace = useAdminWorkspace({
-    loadHackathons: false
+    loadEvents: false
   })
 
-  const hackathon = useFetch<ApiDataResponse<HackathonRecord>>(
-    () => `/api/hackathons/${resolvedHackathonId.value}`,
+  const event = useFetch<ApiDataResponse<EventRecord>>(
+    () => `/api/events/${resolvedEventId.value}`,
     {
-      key: () => buildApiCacheKey('admin-hackathon', adminWorkspace.subjectKey.value, resolvedHackathonId.value),
-      watch: [adminWorkspace.subjectKey, resolvedHackathonId]
+      key: () => buildApiCacheKey('admin-event', adminWorkspace.subjectKey.value, resolvedEventId.value),
+      watch: [adminWorkspace.subjectKey, resolvedEventId]
     }
   )
 
-  const currentHackathon = computed(() => hackathon.data.value?.data ?? null)
-  const canManageCurrentHackathon = computed(() => {
-    if (!currentHackathon.value) {
+  const currentEvent = computed(() => event.data.value?.data ?? null)
+  const canManageCurrentEvent = computed(() => {
+    if (!currentEvent.value) {
       return false
     }
 
-    return hasHackathonAdminAccess(adminWorkspace.actor.value, currentHackathon.value.id)
+    return hasEventAdminAccess(adminWorkspace.actor.value, currentEvent.value.id)
   })
 
   return {
     ...adminWorkspace,
-    resolvedHackathonId,
-    hackathon,
-    currentHackathon,
-    canManageCurrentHackathon
+    resolvedEventId,
+    event,
+    currentEvent,
+    canManageCurrentEvent
   }
 }
 
-export function useAdminHackathonSettingsWorkspace(
-  hackathonId: MaybeRefOrGetter<string>,
-  options: AdminHackathonSettingsWorkspaceOptions = {}
+export function useAdminEventSettingsWorkspace(
+  eventId: MaybeRefOrGetter<string>,
+  options: AdminEventSettingsWorkspaceOptions = {}
 ) {
-  const adminHackathon = useAdminHackathonBase(hackathonId)
+  const adminEvent = useAdminEventBase(eventId)
   const loadCriteria = resolveLoadFlag(options.loadCriteria)
   const loadPrizes = resolveLoadFlag(options.loadPrizes)
   const loadTerms = resolveLoadFlag(options.loadTerms)
   const loadRoleAssignments = resolveLoadFlag(options.loadRoleAssignments)
+  const loadCompetitionCriteria = computed(() =>
+    loadCriteria.value && adminEvent.currentEvent.value?.eventType === 'hackathon'
+  )
+  const loadCompetitionPrizes = computed(() =>
+    loadPrizes.value && adminEvent.currentEvent.value?.eventType === 'hackathon'
+  )
+  const loadWinnerTerms = computed(() =>
+    loadTerms.value && adminEvent.currentEvent.value?.eventType === 'hackathon'
+  )
 
   const criteria = useFetch<ApiListResponse<EvaluationCriterion>>(
-    () => `/api/hackathons/${adminHackathon.resolvedHackathonId.value}/evaluation-criteria`,
+    () => `/api/events/${adminEvent.resolvedEventId.value}/evaluation-criteria`,
     {
-      key: () => buildApiCacheKey('admin-hackathon-criteria', adminHackathon.subjectKey.value, adminHackathon.resolvedHackathonId.value),
-      watch: [adminHackathon.subjectKey, adminHackathon.resolvedHackathonId],
-      immediate: loadCriteria.value
+      key: () => buildApiCacheKey('admin-event-criteria', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
+      watch: [adminEvent.subjectKey, adminEvent.resolvedEventId],
+      immediate: loadCompetitionCriteria.value
     }
   )
-  refreshWhenEnabled(criteria, loadCriteria)
+  refreshWhenEnabled(criteria, loadCompetitionCriteria)
 
   const prizes = useFetch<ApiListResponse<PrizeDefinition>>(
-    () => `/api/hackathons/${adminHackathon.resolvedHackathonId.value}/prizes`,
+    () => `/api/events/${adminEvent.resolvedEventId.value}/prizes`,
     {
-      key: () => buildApiCacheKey('admin-hackathon-prizes', adminHackathon.subjectKey.value, adminHackathon.resolvedHackathonId.value),
-      watch: [adminHackathon.subjectKey, adminHackathon.resolvedHackathonId],
-      immediate: loadPrizes.value
+      key: () => buildApiCacheKey('admin-event-prizes', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
+      watch: [adminEvent.subjectKey, adminEvent.resolvedEventId],
+      immediate: loadCompetitionPrizes.value
     }
   )
-  refreshWhenEnabled(prizes, loadPrizes)
+  refreshWhenEnabled(prizes, loadCompetitionPrizes)
 
   const applicationTermsVersions = useFetch<ApiListResponse<TermsDocument>>(
-    () => `/api/hackathons/${adminHackathon.resolvedHackathonId.value}/terms/application_terms/versions`,
+    () => `/api/events/${adminEvent.resolvedEventId.value}/terms/application_terms/versions`,
     {
-      key: () => buildApiCacheKey('admin-hackathon-application-terms', adminHackathon.subjectKey.value, adminHackathon.resolvedHackathonId.value),
-      watch: [adminHackathon.subjectKey, adminHackathon.resolvedHackathonId],
+      key: () => buildApiCacheKey('admin-event-application-terms', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
+      watch: [adminEvent.subjectKey, adminEvent.resolvedEventId],
       immediate: loadTerms.value
     }
   )
   refreshWhenEnabled(applicationTermsVersions, loadTerms)
 
   const winnerTermsVersions = useFetch<ApiListResponse<TermsDocument>>(
-    () => `/api/hackathons/${adminHackathon.resolvedHackathonId.value}/terms/winner_terms/versions`,
+    () => `/api/events/${adminEvent.resolvedEventId.value}/terms/winner_terms/versions`,
     {
-      key: () => buildApiCacheKey('admin-hackathon-winner-terms', adminHackathon.subjectKey.value, adminHackathon.resolvedHackathonId.value),
-      watch: [adminHackathon.subjectKey, adminHackathon.resolvedHackathonId],
-      immediate: loadTerms.value
+      key: () => buildApiCacheKey('admin-event-winner-terms', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
+      watch: [adminEvent.subjectKey, adminEvent.resolvedEventId],
+      immediate: loadWinnerTerms.value
     }
   )
-  refreshWhenEnabled(winnerTermsVersions, loadTerms)
+  refreshWhenEnabled(winnerTermsVersions, loadWinnerTerms)
 
-  const roleAssignments = useFetch<ApiListResponse<HackathonRoleAssignment>>(
-    () => `/api/hackathons/${adminHackathon.resolvedHackathonId.value}/roles`,
+  const roleAssignments = useFetch<ApiListResponse<EventRoleAssignment>>(
+    () => `/api/events/${adminEvent.resolvedEventId.value}/roles`,
     {
-      key: () => buildApiCacheKey('admin-hackathon-roles', adminHackathon.subjectKey.value, adminHackathon.resolvedHackathonId.value),
-      watch: [adminHackathon.subjectKey, adminHackathon.resolvedHackathonId],
+      key: () => buildApiCacheKey('admin-event-roles', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
+      watch: [adminEvent.subjectKey, adminEvent.resolvedEventId],
       immediate: loadRoleAssignments.value
     }
   )
@@ -190,15 +199,15 @@ export function useAdminHackathonSettingsWorkspace(
 
   async function refreshWorkspace() {
     const requests: Array<Promise<unknown>> = [
-      adminHackathon.refreshRoot(),
-      adminHackathon.hackathon.refresh()
+      adminEvent.refreshRoot(),
+      adminEvent.event.refresh()
     ]
 
-    if (loadCriteria.value) {
+    if (loadCompetitionCriteria.value) {
       requests.push(criteria.refresh())
     }
 
-    if (loadPrizes.value) {
+    if (loadCompetitionPrizes.value) {
       requests.push(prizes.refresh())
     }
 
@@ -206,7 +215,7 @@ export function useAdminHackathonSettingsWorkspace(
       requests.push(applicationTermsVersions.refresh())
     }
 
-    if (loadTerms.value) {
+    if (loadWinnerTerms.value) {
       requests.push(winnerTermsVersions.refresh())
     }
 
@@ -218,7 +227,7 @@ export function useAdminHackathonSettingsWorkspace(
   }
 
   return {
-    ...adminHackathon,
+    ...adminEvent,
     criteria,
     prizes,
     applicationTermsVersions,
@@ -228,39 +237,42 @@ export function useAdminHackathonSettingsWorkspace(
   }
 }
 
-export function useAdminHackathonOperationsWorkspace(
-  hackathonId: MaybeRefOrGetter<string>,
-  options: AdminHackathonOperationsWorkspaceOptions = {}
+export function useAdminEventOperationsWorkspace(
+  eventId: MaybeRefOrGetter<string>,
+  options: AdminEventOperationsWorkspaceOptions = {}
 ) {
-  const adminHackathon = useAdminHackathonBase(hackathonId)
+  const adminEvent = useAdminEventBase(eventId)
   const apiFetch = import.meta.server ? useRequestFetch() : $fetch
   const loadLifecycleData = resolveLoadFlag(options.loadLifecycleData)
+  const loadCompetitionData = computed(() =>
+    loadLifecycleData.value && adminEvent.currentEvent.value?.eventType === 'hackathon'
+  )
 
   const prizes = useFetch<ApiListResponse<PrizeDefinition>>(
-    () => `/api/hackathons/${adminHackathon.resolvedHackathonId.value}/prizes`,
+    () => `/api/events/${adminEvent.resolvedEventId.value}/prizes`,
     {
-      key: () => buildApiCacheKey('admin-hackathon-prizes', adminHackathon.subjectKey.value, adminHackathon.resolvedHackathonId.value),
-      watch: [adminHackathon.subjectKey, adminHackathon.resolvedHackathonId],
-      immediate: loadLifecycleData.value
+      key: () => buildApiCacheKey('admin-event-prizes', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
+      watch: [adminEvent.subjectKey, adminEvent.resolvedEventId],
+      immediate: loadCompetitionData.value
     }
   )
-  refreshWhenEnabled(prizes, loadLifecycleData)
+  refreshWhenEnabled(prizes, loadCompetitionData)
 
-  const roleAssignments = useFetch<ApiListResponse<HackathonRoleAssignment>>(
-    () => `/api/hackathons/${adminHackathon.resolvedHackathonId.value}/roles`,
+  const roleAssignments = useFetch<ApiListResponse<EventRoleAssignment>>(
+    () => `/api/events/${adminEvent.resolvedEventId.value}/roles`,
     {
-      key: () => buildApiCacheKey('admin-hackathon-roles', adminHackathon.subjectKey.value, adminHackathon.resolvedHackathonId.value),
-      watch: [adminHackathon.subjectKey, adminHackathon.resolvedHackathonId],
-      immediate: loadLifecycleData.value
+      key: () => buildApiCacheKey('admin-event-roles', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
+      watch: [adminEvent.subjectKey, adminEvent.resolvedEventId],
+      immediate: loadCompetitionData.value
     }
   )
-  refreshWhenEnabled(roleAssignments, loadLifecycleData)
+  refreshWhenEnabled(roleAssignments, loadCompetitionData)
 
   const teams = useAsyncData<TeamSummary[]>(
-    () => buildApiCacheKey('admin-hackathon-teams', adminHackathon.subjectKey.value, adminHackathon.resolvedHackathonId.value),
+    () => buildApiCacheKey('admin-event-teams', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
     async () => await listAllPaginatedItems(
       async (page, pageSize) => await apiFetch<ApiListResponse<TeamSummary>>(
-        `/api/hackathons/${adminHackathon.resolvedHackathonId.value}/teams`,
+        `/api/events/${adminEvent.resolvedEventId.value}/teams`,
         {
           query: {
             page,
@@ -271,40 +283,40 @@ export function useAdminHackathonOperationsWorkspace(
       100
     ),
     {
-      watch: [adminHackathon.subjectKey, adminHackathon.resolvedHackathonId],
+      watch: [adminEvent.subjectKey, adminEvent.resolvedEventId],
       default: () => [],
-      immediate: loadLifecycleData.value
+      immediate: loadCompetitionData.value
     }
   )
-  refreshWhenEnabled(teams, loadLifecycleData)
+  refreshWhenEnabled(teams, loadCompetitionData)
 
   const assignments = useFetch<ApiListResponse<JudgeAssignmentSummary>>(
-    () => `/api/hackathons/${adminHackathon.resolvedHackathonId.value}/judging/assignments`,
+    () => `/api/events/${adminEvent.resolvedEventId.value}/judging/assignments`,
     {
-      key: () => buildApiCacheKey('admin-hackathon-assignments', adminHackathon.subjectKey.value, adminHackathon.resolvedHackathonId.value),
-      watch: [adminHackathon.subjectKey, adminHackathon.resolvedHackathonId],
-      immediate: loadLifecycleData.value
+      key: () => buildApiCacheKey('admin-event-assignments', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
+      watch: [adminEvent.subjectKey, adminEvent.resolvedEventId],
+      immediate: loadCompetitionData.value
     }
   )
-  refreshWhenEnabled(assignments, loadLifecycleData)
+  refreshWhenEnabled(assignments, loadCompetitionData)
 
   const leaderboard = useFetch<ApiListResponse<LeaderboardEntry>>(
-    () => `/api/hackathons/${adminHackathon.resolvedHackathonId.value}/leaderboard`,
+    () => `/api/events/${adminEvent.resolvedEventId.value}/leaderboard`,
     {
-      key: () => buildApiCacheKey('admin-hackathon-leaderboard', adminHackathon.subjectKey.value, adminHackathon.resolvedHackathonId.value),
-      watch: [adminHackathon.subjectKey, adminHackathon.resolvedHackathonId],
-      immediate: loadLifecycleData.value
+      key: () => buildApiCacheKey('admin-event-leaderboard', adminEvent.subjectKey.value, adminEvent.resolvedEventId.value),
+      watch: [adminEvent.subjectKey, adminEvent.resolvedEventId],
+      immediate: loadCompetitionData.value
     }
   )
-  refreshWhenEnabled(leaderboard, loadLifecycleData)
+  refreshWhenEnabled(leaderboard, loadCompetitionData)
 
   async function refreshWorkspace() {
     const requests: Array<Promise<unknown>> = [
-      adminHackathon.refreshRoot(),
-      adminHackathon.hackathon.refresh()
+      adminEvent.refreshRoot(),
+      adminEvent.event.refresh()
     ]
 
-    if (loadLifecycleData.value) {
+    if (loadCompetitionData.value) {
       requests.push(
         prizes.refresh(),
         roleAssignments.refresh(),
@@ -318,7 +330,7 @@ export function useAdminHackathonOperationsWorkspace(
   }
 
   return {
-    ...adminHackathon,
+    ...adminEvent,
     prizes,
     roleAssignments,
     teams,

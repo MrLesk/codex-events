@@ -15,11 +15,11 @@ This document records measured `EXPLAIN QUERY PLAN` output for representative re
 
 ## Measured Findings
 
-### Account hackathons
+### Account events
 
 #### account-applications-by-user
 
-- Owner: `server/api/account/hackathons.get.ts`
+- Owner: `server/api/account/events.get.ts`
 - Purpose: Find caller applications ordered by most recent submission.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
@@ -34,7 +34,7 @@ order by submitted_at desc
 
 #### account-active-memberships-by-user
 
-- Owner: `server/api/account/hackathons.get.ts`
+- Owner: `server/api/account/events.get.ts`
 - Purpose: Find active team memberships for the caller.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
@@ -50,22 +50,22 @@ order by joined_at desc
 
 #### account-role-assignments-by-user
 
-- Owner: `server/api/account/hackathons.get.ts`
-- Purpose: Find hackathon role assignments for the caller.
+- Owner: `server/api/account/events.get.ts`
+- Purpose: Find event role assignments for the caller.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
-  - `SEARCH hackathon_role_assignments USING INDEX hackathon_role_assignments_user_created_idx (user_id=?)`
+  - `SEARCH event_role_assignments USING INDEX event_role_assignments_user_created_idx (user_id=?)`
 - Representative SQL:
 ```sql
 select *
-from hackathon_role_assignments
+from event_role_assignments
 where user_id = 'user_1'
 order by created_at desc
 ```
 
 #### account-submissions-by-team
 
-- Owner: `server/api/account/hackathons.get.ts`
+- Owner: `server/api/account/events.get.ts`
 - Purpose: Load candidate submissions for the caller team set.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
@@ -81,19 +81,19 @@ order by updated_at desc
 
 ### Admin applications
 
-#### admin-applications-by-hackathon
+#### admin-applications-by-event
 
 - Owner: `server/domains/applications/index.ts`
-- Purpose: List hackathon applications for the admin review screen.
+- Purpose: List event applications for the admin review screen.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
-  - `SEARCH user_applications USING INDEX user_applications_hackathon_submitted_idx (hackathon_id=?)`
+  - `SEARCH user_applications USING INDEX user_applications_event_submitted_idx (event_id=?)`
   - `USE TEMP B-TREE FOR LAST TERM OF ORDER BY`
 - Representative SQL:
 ```sql
 select *
 from user_applications
-where hackathon_id = 'hack_1'
+where event_id = 'hack_1'
 order by submitted_at desc, created_at asc
 ```
 
@@ -101,21 +101,21 @@ order by submitted_at desc, created_at asc
 
 #### judging-assignments-admin-list
 
-- Owner: `server/api/hackathons/[hackathonId]/judging/assignments/index.get.ts`
-- Purpose: List all assignments for hackathon admin and platform admin views.
+- Owner: `server/api/events/[eventId]/judging/assignments/index.get.ts`
+- Purpose: List all assignments for event admin and platform admin views.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
-  - `SEARCH judge_assignments USING INDEX judge_assignments_hackathon_stage_status_judge_idx (hackathon_id=?)`
+  - `SEARCH judge_assignments USING INDEX judge_assignments_event_stage_status_judge_idx (event_id=?)`
 - Representative SQL:
 ```sql
 select *
 from judge_assignments
-where hackathon_id = 'hack_1'
+where event_id = 'hack_1'
 ```
 
 #### judging-assignments-judge-list
 
-- Owner: `server/api/hackathons/[hackathonId]/judging/assignments/index.get.ts`
+- Owner: `server/api/events/[eventId]/judging/assignments/index.get.ts`
 - Purpose: List active assignments for one judge across review stages.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
@@ -124,41 +124,41 @@ where hackathon_id = 'hack_1'
 ```sql
 select *
 from judge_assignments
-where hackathon_id = 'hack_1'
+where event_id = 'hack_1'
   and judge_user_id = 'judge_1'
   and status in ('assigned', 'judge_started')
 ```
 
-#### judging-blind-applications-by-hackathon-and-user
+#### judging-blind-applications-by-event-and-user
 
 - Owner: `server/domains/judging/index.ts`
 - Purpose: Load applications for the team members attached to blind-review assignments.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
-  - `SEARCH user_applications USING INDEX user_applications_hackathon_user_idx (hackathon_id=? AND user_id=?)`
+  - `SEARCH user_applications USING INDEX user_applications_event_user_idx (event_id=? AND user_id=?)`
   - `USE TEMP B-TREE FOR ORDER BY`
 - Representative SQL:
 ```sql
 select *
 from user_applications
-where hackathon_id in ('hack_1', 'hack_2')
+where event_id in ('hack_1', 'hack_2')
   and user_id in ('user_1', 'user_2', 'user_3')
 order by submitted_at asc, created_at asc
 ```
 
-### Public hackathon detail
+### Public event detail
 
-#### public-hackathon-by-slug
+#### public-event-by-slug
 
-- Owner: `server/domains/hackathons/index.ts`
-- Purpose: Resolve a public hackathon by slug while enforcing public visibility states.
+- Owner: `server/domains/events/index.ts`
+- Purpose: Resolve a public event by slug while enforcing public visibility states.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
-  - `SEARCH hackathons USING INDEX hackathons_slug_idx (slug=?)`
+  - `SEARCH events USING INDEX events_slug_idx (slug=?)`
 - Representative SQL:
 ```sql
 select *
-from hackathons
+from events
 where slug = 'public-slug'
   and (
     state = 'registration_open'
@@ -176,48 +176,48 @@ where slug = 'public-slug'
 
 #### public-current-terms-by-id
 
-- Owner: `server/domains/hackathons/index.ts`
-- Purpose: Load the current hackathon terms documents by exact id.
+- Owner: `server/domains/events/index.ts`
+- Purpose: Load the current event terms documents by exact id.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
-  - `SEARCH hackathon_terms_documents USING INDEX sqlite_autoindex_hackathon_terms_documents_1 (id=?)`
+  - `SEARCH event_terms_documents USING INDEX sqlite_autoindex_event_terms_documents_1 (id=?)`
 - Representative SQL:
 ```sql
 select *
-from hackathon_terms_documents
+from event_terms_documents
 where id in ('terms_1', 'terms_2')
 ```
 
-#### public-tracks-by-hackathon
+#### public-tracks-by-event
 
-- Owner: `server/domains/hackathons/index.ts`
-- Purpose: List hackathon tracks for public detail rendering.
+- Owner: `server/domains/events/index.ts`
+- Purpose: List event tracks for public detail rendering.
 - Measured finding: Measured indexed lookup or ordered index walk with no temp sort.
 - Plan details:
-  - `SEARCH hackathon_tracks USING INDEX hackathon_tracks_hackathon_display_order_idx (hackathon_id=?)`
+  - `SEARCH event_tracks USING INDEX event_tracks_event_display_order_idx (event_id=?)`
 - Representative SQL:
 ```sql
 select *
-from hackathon_tracks
-where hackathon_id = 'hack_1'
+from event_tracks
+where event_id = 'hack_1'
 order by display_order asc, created_at asc, id asc
 ```
 
 ### Public projects and winners
 
-#### public-outcome-teams-by-hackathon
+#### public-outcome-teams-by-event
 
 - Owner: `server/domains/outcomes/index.ts`
-- Purpose: Load all teams that belong to the completed-outcome hackathon.
+- Purpose: Load all teams that belong to the completed-outcome event.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
-  - `SEARCH teams USING INDEX teams_hackathon_idx (hackathon_id=?)`
+  - `SEARCH teams USING INDEX teams_event_idx (event_id=?)`
   - `USE TEMP B-TREE FOR ORDER BY`
 - Representative SQL:
 ```sql
 select *
 from teams
-where hackathon_id = 'hack_1'
+where event_id = 'hack_1'
 order by created_at asc, name asc
 ```
 
@@ -275,13 +275,13 @@ order by created_at asc
 - Purpose: Load frozen winner roster membership snapshots for the outcome team set.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
-  - `SEARCH prize_eligibility_snapshots USING INDEX prize_eligibility_snapshots_hackathon_team_user_idx (hackathon_id=? AND team_id=?)`
+  - `SEARCH prize_eligibility_snapshots USING INDEX prize_eligibility_snapshots_event_team_user_idx (event_id=? AND team_id=?)`
   - `USE TEMP B-TREE FOR LAST TERM OF ORDER BY`
 - Representative SQL:
 ```sql
 select *
 from prize_eligibility_snapshots
-where hackathon_id = 'hack_1'
+where event_id = 'hack_1'
   and team_id in ('team_1', 'team_2', 'team_3')
 order by team_id asc, created_at asc
 ```
@@ -303,27 +303,27 @@ order by created_at desc
 limit 200
 ```
 
-#### hackathon-audit-latest
+#### event-audit-latest
 
-- Owner: `server/api/hackathons/[hackathonId]/audit/index.get.ts`
-- Purpose: Load the latest hackathon-scoped audit entries via entity and metadata filters.
+- Owner: `server/api/events/[eventId]/audit/index.get.ts`
+- Purpose: Load the latest event-scoped audit entries via entity and metadata filters.
 - Measured finding: Measured temp sort on the current schema.
 - Plan details:
   - `MULTI-INDEX OR`
   - `INDEX 1`
   - `SEARCH audit_logs USING INDEX audit_logs_entity_created_idx (entity_type=? AND entity_id=?)`
   - `INDEX 2`
-  - `SEARCH audit_logs USING INDEX audit_logs_metadata_hackathon_created_idx (<expr>=?)`
+  - `SEARCH audit_logs USING INDEX audit_logs_metadata_event_created_idx (<expr>=?)`
   - `USE TEMP B-TREE FOR ORDER BY`
 - Representative SQL:
 ```sql
 select *
 from audit_logs
 where (
-    entity_type = 'hackathon'
+    entity_type = 'event'
     and entity_id = 'hack_1'
   )
-  or json_extract(metadata, '$.hackathonId') = 'hack_1'
+  or json_extract(metadata, '$.eventId') = 'hack_1'
 order by created_at desc
 limit 200
 ```
@@ -371,13 +371,13 @@ order by created_at asc
 
 ## Recommendations
 
-- `account-submissions-by-team` (`server/api/account/hackathons.get.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `admin-applications-by-hackathon` (`server/domains/applications/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `judging-blind-applications-by-hackathon-and-user` (`server/domains/judging/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `public-outcome-teams-by-hackathon` (`server/domains/outcomes/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `account-submissions-by-team` (`server/api/account/events.get.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `admin-applications-by-event` (`server/domains/applications/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `judging-blind-applications-by-event-and-user` (`server/domains/judging/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `public-outcome-teams-by-event` (`server/domains/outcomes/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
 - `public-outcome-submissions-by-team` (`server/domains/outcomes/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
 - `public-outcome-assignments-by-submission` (`server/domains/outcomes/index.ts`): follow up with the owning query path because the measured plan shows a full scan plus temp sort. Only add an index or rewrite after validating that this path is still release-critical.
 - `public-outcome-criterion-scores-by-assignment` (`server/domains/outcomes/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
 - `public-outcome-prize-eligibility-by-team` (`server/domains/outcomes/index.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
-- `hackathon-audit-latest` (`server/api/hackathons/[hackathonId]/audit/index.get.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
+- `event-audit-latest` (`server/api/events/[eventId]/audit/index.get.ts`): follow up with the owning query path because the measured plan shows a temp sort. Only add an index or rewrite after validating that this path is still release-critical.
 - `prize-redemption-pending-visible` (`server/domains/prize-redemptions/index.ts`): follow up with the owning query path because the measured plan shows a full scan plus temp sort. Only add an index or rewrite after validating that this path is still release-critical.

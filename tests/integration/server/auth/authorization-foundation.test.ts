@@ -2,13 +2,13 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { getRequestActor } from '../../../../server/auth/actor'
 import {
-  resolveHackathonAuthorization,
+  resolveEventAuthorization,
   resolveJudgeAssignmentAuthorization,
   resolveTeamAuthorization
 } from '../../../../server/auth/authorization'
 import {
-  hackathonRoleAssignments,
-  hackathons,
+  eventRoleAssignments,
+  events,
   judgeAssignments,
   platformDocuments,
   submissions,
@@ -98,10 +98,10 @@ describe('backend integration foundation', () => {
         displayName: 'Judge Persona'
       },
       {
-        id: 'user_hackathon_admin',
-        auth0Subject: 'auth0|hackathon_admin',
-        email: 'hackathon-admin@example.com',
-        displayName: 'Hackathon Admin'
+        id: 'user_event_admin',
+        auth0Subject: 'auth0|event_admin',
+        email: 'event-admin@example.com',
+        displayName: 'Event Admin'
       },
       {
         id: 'user_staff',
@@ -112,11 +112,12 @@ describe('backend integration foundation', () => {
     ])
     await seedCurrentPlatformConsent(database, 'user_judge')
 
-    await database.insert(hackathons).values({
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
-      description: 'Fixture hackathon',
+    await database.insert(events).values({
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address',
@@ -129,19 +130,19 @@ describe('backend integration foundation', () => {
       createdByUserId: 'user_platform_admin'
     })
 
-    await database.insert(hackathonRoleAssignments).values([
+    await database.insert(eventRoleAssignments).values([
       {
         id: 'role_admin',
-        hackathonId: 'hackathon_1',
-        userId: 'user_hackathon_admin',
-        role: 'hackathon_admin',
+        eventId: 'event_1',
+        userId: 'user_event_admin',
+        role: 'event_admin',
         isInJudgePool: false,
         isStaff: false,
         createdAt: now
       },
       {
         id: 'role_judge',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'user_judge',
         role: 'judge',
         isInJudgePool: true,
@@ -150,7 +151,7 @@ describe('backend integration foundation', () => {
       },
       {
         id: 'role_staff',
-        hackathonId: 'hackathon_1',
+        eventId: 'event_1',
         userId: 'user_staff',
         role: 'staff',
         isInJudgePool: false,
@@ -161,7 +162,7 @@ describe('backend integration foundation', () => {
 
     await database.insert(teams).values({
       id: 'team_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'Team One',
       slug: 'team-one',
       createdByUserId: 'user_judge'
@@ -186,7 +187,7 @@ describe('backend integration foundation', () => {
 
     await database.insert(judgeAssignments).values({
       id: 'assignment_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       submissionId: 'submission_1',
       judgeUserId: 'user_judge',
       status: 'assigned',
@@ -194,7 +195,7 @@ describe('backend integration foundation', () => {
     })
 
     const actor = await getRequestActor(event)
-    const hackathonAuthorization = await resolveHackathonAuthorization(event, 'hackathon_1')
+    const eventAuthorization = await resolveEventAuthorization(event, 'event_1')
     const teamAuthorization = await resolveTeamAuthorization(event, 'team_1')
     const assignmentAuthorization = await resolveJudgeAssignmentAuthorization(event, 'assignment_1')
 
@@ -204,7 +205,7 @@ describe('backend integration foundation', () => {
         id: 'user_judge'
       }
     })
-    expect(hackathonAuthorization).toMatchObject({
+    expect(eventAuthorization).toMatchObject({
       explicitRole: 'judge',
       canReviewThroughAssignment: true,
       isInJudgePool: true,
@@ -248,11 +249,12 @@ describe('backend integration foundation', () => {
     ])
     await seedCurrentPlatformConsent(database, 'user_staff')
 
-    await database.insert(hackathons).values({
-      id: 'hackathon_1',
-      name: 'Fixture Hackathon',
-      slug: 'fixture-hackathon',
-      description: 'Fixture hackathon',
+    await database.insert(events).values({
+      id: 'event_1',
+      eventType: 'hackathon',
+      name: 'Fixture Event',
+      slug: 'fixture-event',
+      description: 'Fixture event',
       city: 'Vienna',
       country: 'Austria',
       address: 'Fixture Address',
@@ -265,9 +267,9 @@ describe('backend integration foundation', () => {
       createdByUserId: 'user_platform_admin'
     })
 
-    await database.insert(hackathonRoleAssignments).values({
+    await database.insert(eventRoleAssignments).values({
       id: 'role_staff',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       userId: 'user_staff',
       role: 'staff',
       isInJudgePool: false,
@@ -275,9 +277,9 @@ describe('backend integration foundation', () => {
       createdAt: now
     })
 
-    await expect(resolveHackathonAuthorization(event, 'hackathon_1')).resolves.toMatchObject({
+    await expect(resolveEventAuthorization(event, 'event_1')).resolves.toMatchObject({
       explicitRole: 'staff',
-      isHackathonAdmin: false,
+      isEventAdmin: false,
       canReviewThroughAssignment: false,
       isInJudgePool: false,
       isStaff: true,

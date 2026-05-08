@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { formatHackathonDate } from '~/domains/hackathons/presentation'
+import { formatEventDate } from '~/domains/events/presentation'
 import {
   describePrizeRedemptionRecipient,
   formatPrizeRedemptionStatus,
@@ -43,7 +43,7 @@ async function submitPrizeRedemption(redemptionId: string) {
 }
 
 useSeoMeta({
-  title: 'Claim Your Prizes | Codex Hackathons',
+  title: 'Claim Your Prizes | Codex Events',
   description: 'Submit the details needed to receive any prizes you have won.'
 })
 </script>
@@ -52,12 +52,12 @@ useSeoMeta({
   <AppContainer class="space-y-8 py-10 lg:py-14">
     <PageSection
       title="Prize redemptions"
-      description="Complete pending winner-facing prize redemption tasks with the exact current winner terms for each hackathon."
+      description="Complete pending winner-facing prize redemption tasks with the exact current winner terms for each event."
     >
       <template #links>
         <AppButton
           to="/account"
-          label="Return to my hackathons"
+          label="Return to my events"
           color="neutral"
           variant="soft"
           icon="i-lucide-arrow-left"
@@ -87,7 +87,7 @@ useSeoMeta({
       color="neutral"
       variant="soft"
       title="Loading prize redemptions"
-      description="Resolving pending redemption tasks and the exact current winner terms for each hackathon."
+      description="Resolving pending redemption tasks and the exact current winner terms for each event."
     />
 
     <template v-else>
@@ -98,7 +98,7 @@ useSeoMeta({
         <article
           v-for="redemption in workspace.recentlyRedeemed.value"
           :key="redemption.id"
-          :data-testid="`prize-redemption-complete-${redemption.hackathon.slug}-${redemption.prize.id}`"
+          :data-testid="`prize-redemption-complete-${redemption.event.slug}-${redemption.prize.id}`"
           class="rounded-[1.75rem] border border-success/30 bg-success/10 px-6 py-6 shadow-[0_24px_54px_-42px_rgba(16,110,66,0.55)]"
         >
           <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -110,7 +110,7 @@ useSeoMeta({
                 {{ redemption.prize.name }}
               </h2>
               <p class="text-sm text-toned">
-                {{ redemption.hackathon.name }}
+                {{ redemption.event.name }}
               </p>
             </div>
 
@@ -141,21 +141,21 @@ useSeoMeta({
         <article
           v-for="task in workspace.tasks.value"
           :key="task.id"
-          :data-testid="`prize-redemption-card-${task.hackathon.slug}-${task.prize.id}`"
+          :data-testid="`prize-redemption-card-${task.event.slug}-${task.prize.id}`"
           class="rounded-[1.9rem] border border-default/75 bg-elevated/90 px-6 py-6 shadow-[0_32px_72px_-52px_rgba(15,20,34,0.6)]"
         >
           <div class="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
             <div class="space-y-5 xl:max-w-[22rem]">
               <div class="space-y-2">
                 <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
-                  {{ task.hackathon.name }}
+                  {{ task.event.name }}
                 </p>
                 <div class="flex flex-wrap items-center gap-3">
                   <h2 class="text-2xl font-semibold text-highlighted">
                     {{ task.prize.name }}
                   </h2>
                   <AppBadge
-                    :data-testid="`prize-redemption-status-${task.hackathon.slug}-${task.prize.id}`"
+                    :data-testid="`prize-redemption-status-${task.event.slug}-${task.prize.id}`"
                     :color="getPrizeRedemptionStatusColor(task.status)"
                     variant="soft"
                   >
@@ -200,10 +200,10 @@ useSeoMeta({
                   </h3>
                   <p class="text-sm text-toned">
                     <template v-if="task.currentWinnerTerms">
-                      Version {{ task.currentWinnerTerms.version }} published {{ formatHackathonDate(task.currentWinnerTerms.publishedAt) }}.
+                      Version {{ task.currentWinnerTerms.version }} published {{ formatEventDate(task.currentWinnerTerms.publishedAt) }}.
                     </template>
                     <template v-else>
-                      The current winner terms could not be resolved for this hackathon.
+                      The current winner terms could not be resolved for this event.
                     </template>
                   </p>
                 </div>
@@ -259,7 +259,7 @@ useSeoMeta({
 
                   <div class="flex flex-wrap items-center gap-3">
                     <AppButton
-                      :data-testid="`prize-redemption-submit-${task.hackathon.slug}-${task.prize.id}`"
+                      :data-testid="`prize-redemption-submit-${task.event.slug}-${task.prize.id}`"
                       color="primary"
                       :loading="workspace.submittingById[task.id]"
                       :disabled="!availabilityById[task.id]?.isEnabled || workspace.submittingById[task.id]"

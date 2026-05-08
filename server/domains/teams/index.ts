@@ -4,7 +4,7 @@ import { and, asc, count, eq, getTableColumns, inArray, isNull, like, or, sql } 
 import { z } from 'zod'
 
 import { requirePlatformActor } from '#server/auth/actor'
-import { assertTeamAdminAccess, resolveHackathonAuthorization, resolveTeamAuthorization } from '#server/auth/authorization'
+import { assertTeamAdminAccess, resolveEventAuthorization, resolveTeamAuthorization } from '#server/auth/authorization'
 import { getDatabase, type AppDatabase } from '#server/database/client'
 import {
   submissions,
@@ -15,11 +15,11 @@ import {
   userApplications,
   users
 } from '#server/database/schema'
-import type { hackathons } from '#server/database/schema'
+import type { events } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
-import { requireApprovedUserForHackathon } from '#server/domains/applications'
+import { requireApprovedUserForEvent } from '#server/domains/applications'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
-import { getVisibleHackathonOrThrow, routeIdParamsSchema } from '#server/domains/hackathons'
+import { assertCompetitionEvent, getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 
 const teamNameSchema = z.string().trim().min(1)
 const teamBioSchema = z.string().trim().max(4000)
@@ -76,7 +76,7 @@ export const visibleTeamDirectoryFilterValues = ['all', 'open_to_join', 'solo', 
 export type VisibleTeamDirectoryFilter = typeof visibleTeamDirectoryFilterValues[number]
 export type VisibleTeamDirectoryFilterCounts = Record<VisibleTeamDirectoryFilter, number>
 
-type HackathonRecord = typeof hackathons.$inferSelect
+type EventRecord = typeof events.$inferSelect
 type TeamRecord = typeof teams.$inferSelect
 type TeamMemberRecord = typeof teamMembers.$inferSelect
 type TeamJoinRequestRecord = typeof teamJoinRequests.$inferSelect
@@ -97,14 +97,14 @@ function createTeamSlugSuffix() {
   return ((randomBytes[0] ?? 0) % 10_000).toString().padStart(4, '0')
 }
 
-export async function resolveAvailableTeamSlug(database: AppDatabase, hackathonId: string, name: string) {
+export async function resolveAvailableTeamSlug(database: AppDatabase, eventId: string, name: string) {
   const baseSlug = createTeamSlug(name)
 
   assertGuard(baseSlug.length > 0, {
     code: 'team_slug_invalid',
     message: 'Team names must include at least one letter or number.',
     details: {
-      hackathonId,
+      eventId,
       name
     },
     statusCode: 400
@@ -114,7 +114,7 @@ export async function resolveAvailableTeamSlug(database: AppDatabase, hackathonI
     const candidateSlug = `${baseSlug}-${createTeamSlugSuffix()}`
     const existingTeam = await database.query.teams.findFirst({
       where: and(
-        eq(teams.hackathonId, hackathonId),
+        eq(teams.eventId, eventId),
         eq(teams.slug, candidateSlug)
       )
     })
@@ -125,18 +125,20 @@ export async function resolveAvailableTeamSlug(database: AppDatabase, hackathonI
   }
 }
 
-export function assertHackathonAllowsTeamFormation(hackathon: HackathonRecord) {
-  assertAllowedState(hackathon.state, ['registration_open', 'submission_open'], {
-    code: 'hackathon_state_invalid',
+export function assertEventAllowsTeamFormation(event: EventRecord) {
+  assertCompetitionEvent(event)
+
+  assertAllowedState(event.state, ['registration_open', 'submission_open'], {
+    code: 'event_state_invalid',
     message: 'Team formation is only available while registration or submission is open.',
     details: {
-      hackathonId: hackathon.id,
-      state: hackathon.state
+      eventId: event.id,
+      state: event.state
     }
   })
 }
 
-export function isTeamFormationState(state: HackathonRecord['state']) {
+export function isTeamFormationState(state: EventRecord['state']) {
   return state === 'registration_open' || state === 'submission_open'
 }
 
@@ -188,7 +190,7 @@ export function serializeTeam(
 ) {
   return {
     id: team.id,
-    hackathonId: team.hackathonId,
+    eventId: team.eventId,
     name: team.name,
     bio: team.bio,
     slug: team.slug,
@@ -276,11 +278,11 @@ function chunkValues<T>(values: T[], size: number) {
   return chunks
 }
 
-export async function getTeamOrThrow(database: AppDatabase, hackathonId: string, teamId: string) {
+export async function getTeamOrThrow(database: AppDatabase, eventId: string, teamId: string) {
   const team = await database.query.teams.findFirst({
     where: and(
       eq(teams.id, teamId),
-      eq(teams.hackathonId, hackathonId)
+      eq(teams.eventId, eventId)
     )
   })
 
@@ -290,7 +292,7 @@ export async function getTeamOrThrow(database: AppDatabase, hackathonId: string,
       code: 'team_not_found',
       message: 'The requested team was not found.',
       details: {
-        hackathonId,
+        eventId,
         teamId
       }
     })
@@ -361,9 +363,9 @@ export async function getActiveTeamMemberOrThrow(database: AppDatabase, teamId: 
   return member
 }
 
-export async function getOwnActiveTeamMembershipForHackathon(
+export async function getOwnActiveTeamMembershipForEvent(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   userId: string
 ) {
   const [membership] = await database
@@ -371,7 +373,7 @@ export async function getOwnActiveTeamMembershipForHackathon(
     .from(teamMembers)
     .innerJoin(teams, eq(teams.id, teamMembers.teamId))
     .where(and(
-      eq(teams.hackathonId, hackathonId),
+      eq(teams.eventId, eventId),
       eq(teamMembers.userId, userId),
       isNull(teamMembers.leftAt)
     ))
@@ -380,18 +382,18 @@ export async function getOwnActiveTeamMembershipForHackathon(
   return membership ?? null
 }
 
-export async function assertNoActiveTeamMembershipForHackathon(
+export async function assertNoActiveTeamMembershipForEvent(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   userId: string
 ) {
-  const membership = await getOwnActiveTeamMembershipForHackathon(database, hackathonId, userId)
+  const membership = await getOwnActiveTeamMembershipForEvent(database, eventId, userId)
 
   assertGuard(!membership, {
     code: 'team_membership_exists',
-    message: 'A user can belong to at most one active team per hackathon.',
+    message: 'A user can belong to at most one active team per event.',
     details: {
-      hackathonId,
+      eventId,
       userId
     }
   })
@@ -399,12 +401,12 @@ export async function assertNoActiveTeamMembershipForHackathon(
 
 export async function getOwnApplicationStatus(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   userId: string
 ) {
   const application = await database.query.userApplications.findFirst({
     where: and(
-      eq(userApplications.hackathonId, hackathonId),
+      eq(userApplications.eventId, eventId),
       eq(userApplications.userId, userId)
     )
   })
@@ -414,14 +416,14 @@ export async function getOwnApplicationStatus(
 
 export async function listVisibleTeams(
   database: AppDatabase,
-  hackathon: HackathonRecord,
-  hackathonId: string,
+  event: EventRecord,
+  eventId: string,
   query: z.infer<typeof listTeamsQuerySchema>,
   options?: {
     includeInactiveTeams?: boolean
   }
 ) {
-  const filters = [eq(teams.hackathonId, hackathonId)]
+  const filters = [eq(teams.eventId, eventId)]
 
   if (query.slug) {
     filters.push(eq(teams.slug, query.slug))
@@ -453,11 +455,11 @@ export async function listVisibleTeams(
     typeof query.open_to_join === 'boolean' ? eq(teams.isOpenToJoinRequests, query.open_to_join) : undefined,
     typeof query.has_capacity === 'boolean'
       ? (query.has_capacity
-          ? sql`${activeMemberCountSql} < ${hackathon.maxTeamMembers}`
-          : sql`${activeMemberCountSql} >= ${hackathon.maxTeamMembers}`)
+          ? sql`${activeMemberCountSql} < ${event.maxTeamMembers}`
+          : sql`${activeMemberCountSql} >= ${event.maxTeamMembers}`)
       : undefined,
     query.member_count === 'multi_person' ? sql`${activeMemberCountSql} > 1` : undefined,
-    query.member_count === 'full' ? sql`${activeMemberCountSql} >= ${hackathon.maxTeamMembers}` : undefined
+    query.member_count === 'full' ? sql`${activeMemberCountSql} >= ${event.maxTeamMembers}` : undefined
   )
 
   const pagedTeams = await database
@@ -481,10 +483,10 @@ export async function listVisibleTeams(
   const [filterCountRow] = await database
     .select({
       all: count(),
-      open_to_join: sql<number>`coalesce(sum(case when ${teams.isOpenToJoinRequests} = 1 and ${activeMemberCountSql} < ${hackathon.maxTeamMembers} then 1 else 0 end), 0)`,
+      open_to_join: sql<number>`coalesce(sum(case when ${teams.isOpenToJoinRequests} = 1 and ${activeMemberCountSql} < ${event.maxTeamMembers} then 1 else 0 end), 0)`,
       solo: sql<number>`coalesce(sum(case when ${teams.workspaceMode} = 'solo' then 1 else 0 end), 0)`,
       multi_person: sql<number>`coalesce(sum(case when ${teams.workspaceMode} = 'team' then 1 else 0 end), 0)`,
-      full: sql<number>`coalesce(sum(case when ${activeMemberCountSql} >= ${hackathon.maxTeamMembers} then 1 else 0 end), 0)`
+      full: sql<number>`coalesce(sum(case when ${activeMemberCountSql} >= ${event.maxTeamMembers} then 1 else 0 end), 0)`
     })
     .from(teams)
     .leftJoin(activeMemberCounts, eq(teams.id, activeMemberCounts.teamId))
@@ -509,14 +511,14 @@ export async function listVisibleTeams(
 
 export async function getTeamWithMembersOrThrow(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   teamId: string,
   options?: {
     includeSensitiveUserFields?: boolean
     allowInactiveTeam?: boolean
   }
 ) {
-  const team = await getTeamOrThrow(database, hackathonId, teamId)
+  const team = await getTeamOrThrow(database, eventId, teamId)
   const members = await getActiveTeamMembers(database, team.id)
 
   if (!options?.allowInactiveTeam && isTeamDissolved(members)) {
@@ -525,7 +527,7 @@ export async function getTeamWithMembersOrThrow(
       code: 'team_not_found',
       message: 'The requested team was not found.',
       details: {
-        hackathonId,
+        eventId,
         teamId
       }
     })
@@ -555,18 +557,18 @@ export function assertTeamOpenToJoinRequests(team: TeamRecord) {
 
 export async function assertTeamHasCapacity(
   database: AppDatabase,
-  hackathon: HackathonRecord,
+  event: EventRecord,
   teamId: string
 ) {
   const members = await getActiveTeamMembers(database, teamId)
 
-  assertGuard(members.length < hackathon.maxTeamMembers, {
+  assertGuard(members.length < event.maxTeamMembers, {
     code: 'team_capacity_reached',
-    message: 'The team has reached the maximum member limit for the hackathon.',
+    message: 'The team has reached the maximum member limit for the event.',
     details: {
       teamId,
-      hackathonId: hackathon.id,
-      maxTeamMembers: hackathon.maxTeamMembers
+      eventId: event.id,
+      maxTeamMembers: event.maxTeamMembers
     }
   })
 
@@ -604,7 +606,7 @@ export async function getPendingJoinRequestForUser(
 
 export async function getJoinRequestOrThrow(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   requestId: string
 ) {
   const request = await database.query.teamJoinRequests.findFirst({
@@ -617,13 +619,13 @@ export async function getJoinRequestOrThrow(
       code: 'team_join_request_not_found',
       message: 'The requested team join request was not found.',
       details: {
-        hackathonId,
+        eventId,
         requestId
       }
     })
   }
 
-  await getTeamOrThrow(database, hackathonId, request.teamId)
+  await getTeamOrThrow(database, eventId, request.teamId)
 
   return request
 }
@@ -639,14 +641,14 @@ export function assertJoinRequestPending(request: TeamJoinRequestRecord) {
 }
 
 export function assertTeamDiscoveryAllowed(
-  hackathon: HackathonRecord,
+  event: EventRecord,
   options: {
-    isHackathonAdmin: boolean
+    isEventAdmin: boolean
     isTeamMember: boolean
     applicationStatus: Awaited<ReturnType<typeof getOwnApplicationStatus>>
   }
 ) {
-  if (options.isHackathonAdmin || options.isTeamMember) {
+  if (options.isEventAdmin || options.isTeamMember) {
     return
   }
 
@@ -654,10 +656,10 @@ export function assertTeamDiscoveryAllowed(
     options.applicationStatus === 'approved',
     {
       code: 'team_visibility_forbidden',
-      message: 'This operation requires approved participation or team membership in the hackathon.',
+      message: 'This operation requires approved participation or team membership in the event.',
       details: {
-        hackathonId: hackathon.id,
-        state: hackathon.state
+        eventId: event.id,
+        state: event.state
       },
       statusCode: 403
     }
@@ -682,18 +684,18 @@ export async function listTeamJoinRequests(database: AppDatabase, teamId: string
   }))
 }
 
-export async function assertRequestingUserApprovedForHackathon(
+export async function assertRequestingUserApprovedForEvent(
   database: AppDatabase,
-  hackathonId: string,
+  eventId: string,
   userId: string
 ) {
-  const status = await getOwnApplicationStatus(database, hackathonId, userId)
+  const status = await getOwnApplicationStatus(database, eventId, userId)
 
   assertGuard(status === 'approved', {
     code: 'approved_user_required',
-    message: 'This operation requires an approved application for the hackathon.',
+    message: 'This operation requires an approved application for the event.',
     details: {
-      hackathonId,
+      eventId,
       userId
     },
     statusCode: 403
@@ -702,7 +704,7 @@ export async function assertRequestingUserApprovedForHackathon(
 
 export async function assertLeaveOrRemovalAllowed(
   database: AppDatabase,
-  hackathon: HackathonRecord,
+  event: EventRecord,
   members: TeamMemberRecord[],
   targetMember: TeamMemberRecord
 ) {
@@ -712,12 +714,12 @@ export async function assertLeaveOrRemovalAllowed(
   )
 
   if (remainingActiveMembers.length === 0) {
-    assertGuard(['registration_open', 'submission_open'].includes(hackathon.state), {
+    assertGuard(['registration_open', 'submission_open'].includes(event.state), {
       code: 'team_member_required',
       message: 'Teams must retain at least one active member after submission closes.',
       details: {
         teamId: targetMember.teamId,
-        hackathonId: hackathon.id
+        eventId: event.id
       }
     })
 
@@ -728,7 +730,7 @@ export async function assertLeaveOrRemovalAllowed(
       message: 'You cannot leave the last active member of a team that still has an active submission.',
       details: {
         teamId: targetMember.teamId,
-        hackathonId: hackathon.id,
+        eventId: event.id,
         submissionId: activeSubmission?.id ?? null,
         submissionStatus: activeSubmission?.status ?? null
       }
@@ -758,21 +760,22 @@ export async function assertLeaveOrRemovalAllowed(
   }
 }
 
-export async function requireTeamVisibilityContext(event: H3Event, hackathonId: string) {
-  const actor = await requirePlatformActor(event)
-  const database = getDatabase(event)
-  const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
-  const hackathonAuthorization = await resolveHackathonAuthorization(event, hackathonId)
+export async function requireTeamVisibilityContext(h3Event: H3Event, eventId: string) {
+  const actor = await requirePlatformActor(h3Event)
+  const database = getDatabase(h3Event)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
+  assertCompetitionEvent(event)
+  const eventAuthorization = await resolveEventAuthorization(h3Event, eventId)
 
-  if (hackathonAuthorization.canViewParticipantsAndTeams) {
-    return { actor, database, hackathon, hackathonAuthorization }
+  if (eventAuthorization.canViewParticipantsAndTeams) {
+    return { actor, database, event, eventAuthorization }
   }
 
-  const applicationStatus = await getOwnApplicationStatus(database, hackathonId, actor.platformUser.id)
-  const membership = await getOwnActiveTeamMembershipForHackathon(database, hackathonId, actor.platformUser.id)
+  const applicationStatus = await getOwnApplicationStatus(database, eventId, actor.platformUser.id)
+  const membership = await getOwnActiveTeamMembershipForEvent(database, eventId, actor.platformUser.id)
 
-  assertTeamDiscoveryAllowed(hackathon, {
-    isHackathonAdmin: hackathonAuthorization.isHackathonAdmin,
+  assertTeamDiscoveryAllowed(event, {
+    isEventAdmin: eventAuthorization.isEventAdmin,
     isTeamMember: Boolean(membership),
     applicationStatus
   })
@@ -780,36 +783,37 @@ export async function requireTeamVisibilityContext(event: H3Event, hackathonId: 
   return {
     actor,
     database,
-    hackathon,
-    hackathonAuthorization,
+    event,
+    eventAuthorization,
     applicationStatus,
     membership
   }
 }
 
-export async function requireTeamFormationApprovedContext(event: H3Event, hackathonId: string) {
-  const { actor, hackathon, application } = await requireApprovedUserForHackathon(event, hackathonId)
-  assertHackathonAllowsTeamFormation(hackathon)
+export async function requireTeamFormationApprovedContext(h3Event: H3Event, eventId: string) {
+  const { actor, event, application } = await requireApprovedUserForEvent(h3Event, eventId)
+  assertEventAllowsTeamFormation(event)
 
   return {
     actor,
-    hackathon,
+    event,
     application,
-    database: getDatabase(event)
+    database: getDatabase(h3Event)
   }
 }
 
-export async function requireTeamAdminContext(event: H3Event, hackathonId: string, teamId: string) {
-  const database = getDatabase(event)
-  const hackathon = await getVisibleHackathonOrThrow(event, hackathonId)
-  const team = await getTeamOrThrow(database, hackathonId, teamId)
-  const teamAuthorization = await resolveTeamAuthorization(event, teamId)
+export async function requireTeamAdminContext(h3Event: H3Event, eventId: string, teamId: string) {
+  const database = getDatabase(h3Event)
+  const event = await getVisibleEventOrThrow(h3Event, eventId)
+  assertCompetitionEvent(event)
+  const team = await getTeamOrThrow(database, eventId, teamId)
+  const teamAuthorization = await resolveTeamAuthorization(h3Event, teamId)
 
   assertTeamAdminAccess(teamAuthorization)
 
   return {
     database,
-    hackathon,
+    event,
     team,
     teamAuthorization
   }

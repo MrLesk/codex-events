@@ -34,8 +34,8 @@ describe('public legal API routes', () => {
       supportEmail: configuredSupportEmail,
       privacyEmail: 'privacy@example.com',
       legalContactLanguages: 'English',
-      businessPurpose: 'Running hackathons.',
-      editorialLine: 'Hackathon information.',
+      businessPurpose: 'Running events.',
+      editorialLine: 'Event information.',
       imprintContent: 'Example imprint.'
     })
   }
@@ -57,7 +57,7 @@ describe('public legal API routes', () => {
         outboundEmail: {
           binding: 'EMAIL',
           fromEmail: 'notifications@example.com',
-          fromName: 'Codex Hackathons'
+          fromName: 'Codex Events'
         }
       }
     })
@@ -130,7 +130,7 @@ describe('public legal API routes', () => {
         outboundEmail: {
           binding: 'EMAIL',
           fromEmail: 'notifications@example.com',
-          fromName: 'Codex Hackathons'
+          fromName: 'Codex Events'
         }
       }
     })
@@ -168,7 +168,7 @@ describe('public legal API routes', () => {
         outboundEmail: {
           binding: 'EMAIL',
           fromEmail: 'notifications@example.com',
-          fromName: 'Codex Hackathons'
+          fromName: 'Codex Events'
         }
       }
     })
@@ -207,7 +207,7 @@ describe('public legal API routes', () => {
         outboundEmail: {
           binding: 'EMAIL',
           fromEmail: 'notifications@example.com',
-          fromName: 'Codex Hackathons'
+          fromName: 'Codex Events'
         }
       }
     })

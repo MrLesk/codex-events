@@ -4,7 +4,7 @@ import AppShellHeader from '~/components/shell/AppShellHeader.vue'
 import AppShellSidebar from '~/components/shell/AppShellSidebar.vue'
 import { accountRegisterHref } from '#shared/domains/accounts/auth-navigation'
 
-const { actor, accountHackathonNavigationMode, hasPlatformAccount, sidebarGroups } = useShellNavigation()
+const { actor, accountEventNavigationMode, hasPlatformAccount, sidebarGroups } = useShellNavigation()
 const route = useRoute()
 
 const showWorkspaceSidebar = computed(() =>
@@ -23,7 +23,7 @@ const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_ide
           v-if="showWorkspaceSidebar"
           class="hidden lg:block"
           :groups="sidebarGroups"
-          :account-hackathon-navigation-mode="accountHackathonNavigationMode"
+          :account-event-navigation-mode="accountEventNavigationMode"
         />
 
         <main class="min-w-0 flex-1 pb-10 lg:pb-14">

@@ -45,7 +45,7 @@ I did not find a confirmed authorization bypass in the admin, judging, submissio
 
 Affected paths:
 
-- `server/api/hackathons/[hackathonId]/teams/[teamId]/index.get.ts`
+- `server/api/events/[eventId]/teams/[teamId]/index.get.ts`
 - `server/domains/teams/index.ts`
 - `app/components/teams/ParticipantTeamMembershipPanel.vue`
 
@@ -58,12 +58,12 @@ What happens:
 
 Why this matters:
 
-- Any approved participant can enumerate other teams and collect personally identifying or semi-sensitive profile data across the hackathon.
+- Any approved participant can enumerate other teams and collect personally identifying or semi-sensitive profile data across the event.
 - `openaiOrgId` and `chatgptEmail` are especially hard to justify in a participant-visible team directory.
 
 Recommendation:
 
-- Restrict team detail to active team members and hackathon admins.
+- Restrict team detail to active team members and event admins.
 - If non-members must see a team page, return a redacted shape for non-members.
 - Remove `chatgptEmail`, `openaiOrgId`, `lumaUsername`, and member email from participant-visible team APIs unless the product explicitly requires them.
 
@@ -145,8 +145,8 @@ Affected paths:
 - `server/api/public/imprint-contact.post.ts`
 - `server/domains/platform/legal-contact.ts`
 - `server/api/account/profile-icon.post.ts`
-- `server/api/hackathons/[hackathonId]/images/background.post.ts`
-- `server/api/hackathons/[hackathonId]/images/banner.post.ts`
+- `server/api/events/[eventId]/images/background.post.ts`
+- `server/api/events/[eventId]/images/banner.post.ts`
 - `wrangler.jsonc`
 
 What happens:
@@ -171,10 +171,10 @@ Recommendation:
 Affected paths:
 
 - `server/domains/accounts/profile-icons.ts`
-- `server/domains/hackathons/images.ts`
+- `server/domains/events/images.ts`
 - `server/api/account/profile-icon.get.ts`
-- `server/api/public/hackathons/[slug]/images/background.get.ts`
-- `server/api/public/hackathons/[slug]/images/banner.get.ts`
+- `server/api/public/events/[slug]/images/background.get.ts`
+- `server/api/public/events/[slug]/images/banner.get.ts`
 
 What happens:
 
@@ -187,7 +187,7 @@ Why this matters:
 
 - A client can upload arbitrary bytes while claiming `image/png` or `image/jpeg`.
 - The browser usually respects image content types, but serving attacker-controlled bytes as trusted image content is avoidable risk.
-- This matters more for publicly served hackathon images than for private profile icons.
+- This matters more for publicly served event images than for private profile icons.
 
 Recommendation:
 

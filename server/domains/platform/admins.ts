@@ -4,13 +4,13 @@ import { z } from 'zod'
 import { buildAuditLogInsert } from '#server/database/audit-log'
 import type { AppDatabase } from '#server/database/client'
 import {
-  hackathonRoleAssignments,
+  eventRoleAssignments,
   users
 } from '#server/database/schema'
 import {
   getActiveUserOrThrow,
-  serializeHackathonRoleUserSummary
-} from '#server/domains/hackathons'
+  serializeEventRoleUserSummary
+} from '#server/domains/events'
 
 export const listPlatformAdminCandidatesQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -24,11 +24,11 @@ export const platformAdminUserParamsSchema = z.object({
 
 interface PlatformAdminGrantState {
   userIsPlatformAdmin: boolean
-  missingHackathonAdminAssignmentHackathonIds: string[]
-  nonAdminHackathonAssignments: Array<{
+  missingEventAdminAssignmentEventIds: string[]
+  nonAdminEventAssignments: Array<{
     assignmentId: string
-    hackathonId: string
-    role: typeof hackathonRoleAssignments.$inferSelect.role
+    eventId: string
+    role: typeof eventRoleAssignments.$inferSelect.role
     isInJudgePool: boolean
     isStaff: boolean
   }>
@@ -100,17 +100,17 @@ export async function assessPlatformAdminGrantState(
   database: AppDatabase,
   userId: string
 ): Promise<PlatformAdminGrantState> {
-  const [hackathonRows, assignmentRows, user] = await Promise.all([
-    database.query.hackathons.findMany({
+  const [eventRows, assignmentRows, user] = await Promise.all([
+    database.query.events.findMany({
       columns: {
         id: true
       }
     }),
-    database.query.hackathonRoleAssignments.findMany({
-      where: eq(hackathonRoleAssignments.userId, userId),
+    database.query.eventRoleAssignments.findMany({
+      where: eq(eventRoleAssignments.userId, userId),
       columns: {
         id: true,
-        hackathonId: true,
+        eventId: true,
         role: true,
         isInJudgePool: true,
         isStaff: true
@@ -128,25 +128,25 @@ export async function assessPlatformAdminGrantState(
     await getActiveUserOrThrow(database, userId)
   }
 
-  const assignmentByHackathonId = new Map(
-    assignmentRows.map(assignment => [assignment.hackathonId, assignment] as const)
+  const assignmentByEventId = new Map(
+    assignmentRows.map(assignment => [assignment.eventId, assignment] as const)
   )
 
-  const missingHackathonAdminAssignmentHackathonIds: string[] = []
-  const nonAdminHackathonAssignments: PlatformAdminGrantState['nonAdminHackathonAssignments'] = []
+  const missingEventAdminAssignmentEventIds: string[] = []
+  const nonAdminEventAssignments: PlatformAdminGrantState['nonAdminEventAssignments'] = []
 
-  for (const hackathon of hackathonRows) {
-    const assignment = assignmentByHackathonId.get(hackathon.id)
+  for (const event of eventRows) {
+    const assignment = assignmentByEventId.get(event.id)
 
     if (!assignment) {
-      missingHackathonAdminAssignmentHackathonIds.push(hackathon.id)
+      missingEventAdminAssignmentEventIds.push(event.id)
       continue
     }
 
-    if (assignment.role !== 'hackathon_admin') {
-      nonAdminHackathonAssignments.push({
+    if (assignment.role !== 'event_admin') {
+      nonAdminEventAssignments.push({
         assignmentId: assignment.id,
-        hackathonId: assignment.hackathonId,
+        eventId: assignment.eventId,
         role: assignment.role,
         isInJudgePool: assignment.isInJudgePool,
         isStaff: assignment.isStaff
@@ -156,8 +156,8 @@ export async function assessPlatformAdminGrantState(
 
   return {
     userIsPlatformAdmin: user?.isPlatformAdmin ?? false,
-    missingHackathonAdminAssignmentHackathonIds,
-    nonAdminHackathonAssignments
+    missingEventAdminAssignmentEventIds,
+    nonAdminEventAssignments
   }
 }
 
@@ -175,8 +175,8 @@ export async function grantPlatformAdminAccess(
   const executedAt = input.executedAt ?? new Date().toISOString()
   const action = input.action ?? 'platform_admin.granted'
   let userPromoted = false
-  let createdHackathonAdminAssignments = 0
-  let updatedHackathonAdminAssignments = 0
+  let createdEventAdminAssignments = 0
+  let updatedEventAdminAssignments = 0
   const updates = []
 
   if (!before.userIsPlatformAdmin) {
@@ -192,14 +192,14 @@ export async function grantPlatformAdminAccess(
     )
   }
 
-  for (const hackathonId of before.missingHackathonAdminAssignmentHackathonIds) {
-    createdHackathonAdminAssignments += 1
+  for (const eventId of before.missingEventAdminAssignmentEventIds) {
+    createdEventAdminAssignments += 1
     updates.push(
-      database.insert(hackathonRoleAssignments).values({
+      database.insert(eventRoleAssignments).values({
         id: crypto.randomUUID(),
-        hackathonId,
+        eventId,
         userId: targetUser.id,
-        role: 'hackathon_admin',
+        role: 'event_admin',
         isInJudgePool: false,
         isStaff: false,
         createdAt: executedAt
@@ -207,21 +207,21 @@ export async function grantPlatformAdminAccess(
     )
   }
 
-  for (const assignment of before.nonAdminHackathonAssignments) {
-    updatedHackathonAdminAssignments += 1
+  for (const assignment of before.nonAdminEventAssignments) {
+    updatedEventAdminAssignments += 1
     updates.push(
       database
-        .update(hackathonRoleAssignments)
+        .update(eventRoleAssignments)
         .set({
-          role: 'hackathon_admin'
+          role: 'event_admin'
         })
-        .where(eq(hackathonRoleAssignments.id, assignment.assignmentId))
+        .where(eq(eventRoleAssignments.id, assignment.assignmentId))
     )
   }
 
   const appliedChanges = userPromoted
-    || createdHackathonAdminAssignments > 0
-    || updatedHackathonAdminAssignments > 0
+    || createdEventAdminAssignments > 0
+    || updatedEventAdminAssignments > 0
 
   if (appliedChanges) {
     updates.push(
@@ -234,8 +234,8 @@ export async function grantPlatformAdminAccess(
           email: targetUser.email,
           auth0Subject: targetUser.auth0Subject,
           userPromoted,
-          createdHackathonAdminAssignments,
-          updatedHackathonAdminAssignments
+          createdEventAdminAssignments,
+          updatedEventAdminAssignments
         },
         createdAt: executedAt
       }).query
@@ -249,10 +249,10 @@ export async function grantPlatformAdminAccess(
   }
 
   return {
-    user: serializeHackathonRoleUserSummary(await getActiveUserOrThrow(database, targetUser.id)),
+    user: serializeEventRoleUserSummary(await getActiveUserOrThrow(database, targetUser.id)),
     userPromoted,
-    createdHackathonAdminAssignments,
-    updatedHackathonAdminAssignments,
+    createdEventAdminAssignments,
+    updatedEventAdminAssignments,
     wroteAuditLog: appliedChanges
   }
 }

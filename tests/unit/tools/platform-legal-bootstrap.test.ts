@@ -72,8 +72,8 @@ describe('platform legal bootstrap script config', () => {
         supportEmail: 'support@example.com',
         privacyEmail: 'privacy@example.com',
         legalContactLanguages: 'English',
-        businessPurpose: 'Running hackathons.',
-        editorialLine: 'Hackathon information.',
+        businessPurpose: 'Running events.',
+        editorialLine: 'Event information.',
         imprintContent: 'Example imprint.',
         documents: {
           privacy_policy: {

@@ -1,16 +1,16 @@
 import { describe, expect, test, vi } from 'vitest'
 
 import {
-  createHackathonCreditOfferWithInventory,
-  isHackathonCreditLink,
-  normalizeHackathonCreditApiError
+  createEventCreditOfferWithInventory,
+  isEventCreditLink,
+  normalizeEventCreditApiError
 } from '../../../../../app/domains/credits'
 
-describe('hackathon credit helpers', () => {
+describe('event credit helpers', () => {
   function createOfferFixture() {
     return {
       id: 'credit_offer_1',
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'OpenAI credits',
       description: 'Redeem the code on the provider site.',
       displayOrder: 1,
@@ -24,10 +24,10 @@ describe('hackathon credit helpers', () => {
   }
 
   test('identifies http and https credit values as links', () => {
-    expect(isHackathonCreditLink('https://redeem.example/token')).toBe(true)
-    expect(isHackathonCreditLink('http://redeem.example/token')).toBe(true)
-    expect(isHackathonCreditLink('CODE-123')).toBe(false)
-    expect(isHackathonCreditLink('ftp://redeem.example/token')).toBe(false)
+    expect(isEventCreditLink('https://redeem.example/token')).toBe(true)
+    expect(isEventCreditLink('http://redeem.example/token')).toBe(true)
+    expect(isEventCreditLink('CODE-123')).toBe(false)
+    expect(isEventCreditLink('ftp://redeem.example/token')).toBe(false)
   })
 
   test('creates an offer without importing inventory when no file is provided', async () => {
@@ -36,15 +36,15 @@ describe('hackathon credit helpers', () => {
       data: offer
     })
 
-    const result = await createHackathonCreditOfferWithInventory({
+    const result = await createEventCreditOfferWithInventory({
       apiFetch,
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'OpenAI credits',
       description: 'Redeem the code on the provider site.'
     })
 
     expect(apiFetch).toHaveBeenCalledTimes(1)
-    expect(apiFetch).toHaveBeenCalledWith('/api/hackathons/hackathon_1/credits', {
+    expect(apiFetch).toHaveBeenCalledWith('/api/events/event_1/credits', {
       method: 'POST',
       body: {
         name: 'OpenAI credits',
@@ -73,16 +73,16 @@ describe('hackathon credit helpers', () => {
         }
       })
 
-    const result = await createHackathonCreditOfferWithInventory({
+    const result = await createEventCreditOfferWithInventory({
       apiFetch,
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'OpenAI credits',
       description: 'Redeem the code on the provider site.',
       file
     })
 
     expect(apiFetch).toHaveBeenCalledTimes(2)
-    expect(apiFetch).toHaveBeenNthCalledWith(2, '/api/hackathons/hackathon_1/credits/credit_offer_1/import', {
+    expect(apiFetch).toHaveBeenNthCalledWith(2, '/api/events/event_1/credits/credit_offer_1/import', {
       method: 'POST',
       body: expect.any(FormData)
     })
@@ -108,15 +108,15 @@ describe('hackathon credit helpers', () => {
       .mockRejectedValueOnce({
         data: {
           error: {
-            code: 'hackathon_credit_import_empty',
+            code: 'event_credit_import_empty',
             message: 'The uploaded CSV did not contain any credit values.'
           }
         }
       })
 
-    const result = await createHackathonCreditOfferWithInventory({
+    const result = await createEventCreditOfferWithInventory({
       apiFetch,
-      hackathonId: 'hackathon_1',
+      eventId: 'event_1',
       name: 'OpenAI credits',
       description: 'Redeem the code on the provider site.',
       file
@@ -126,26 +126,26 @@ describe('hackathon credit helpers', () => {
       status: 'created_without_inventory',
       offer,
       importError: {
-        code: 'hackathon_credit_import_empty',
+        code: 'event_credit_import_empty',
         message: 'The uploaded CSV did not contain any credit values.'
       }
     })
   })
 
   test('normalizes structured and unstructured API errors', () => {
-    expect(normalizeHackathonCreditApiError({
+    expect(normalizeEventCreditApiError({
       data: {
         error: {
-          code: 'hackathon_credit_sold_out',
+          code: 'event_credit_sold_out',
           message: 'No credits remain for this offer.'
         }
       }
     })).toEqual({
-      code: 'hackathon_credit_sold_out',
+      code: 'event_credit_sold_out',
       message: 'No credits remain for this offer.'
     })
 
-    expect(normalizeHackathonCreditApiError(new Error('Request failed'))).toEqual({
+    expect(normalizeEventCreditApiError(new Error('Request failed'))).toEqual({
       code: 'request_failed',
       message: 'Request failed'
     })

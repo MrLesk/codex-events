@@ -1,6 +1,6 @@
 export interface PrizeDefinition {
   id: string
-  hackathonId: string
+  eventId: string
   name: string
   description: string
   rewardType: 'api_credits' | 'subscription' | 'physical' | 'other'

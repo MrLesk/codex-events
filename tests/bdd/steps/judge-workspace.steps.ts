@@ -10,7 +10,7 @@ import {
 import { stablePersonaKeys, storageStatePathForPersona, type StablePersonaKey } from '../support/personas.ts'
 
 const { When, Then } = createBdd()
-const judgeWorkspaceHackathonSlug = 'e2e-judge-workspace-fixture-hackathon'
+const judgeWorkspaceEventSlug = 'e2e-judge-workspace-fixture-event'
 
 type StoredState = {
   cookies?: Array<{
@@ -85,7 +85,7 @@ function getAssignmentCard(page: Page, assignmentId: string) {
 When('I open the judge workspace with the saved {string} session', async ({ page }, personaKey: string) => {
   await resetJudgeWorkspaceFixtureScenarioState()
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto(`/account/hackathons/${judgeWorkspaceHackathonSlug}?tab=judging`)
+  await page.goto(`/account/events/${judgeWorkspaceEventSlug}?tab=judging`)
   await waitForJudgeWorkspaceInbox(page)
 })
 
@@ -126,7 +126,7 @@ When('I open the fixture blind workspace assignment', async ({ page }) => {
 
   await expect(card).toBeVisible()
   await card.click()
-  await expect(page).toHaveURL(new RegExp(`/account/hackathons/${judgeWorkspaceHackathonSlug}\\?tab=judging&assignment=`))
+  await expect(page).toHaveURL(new RegExp(`/account/events/${judgeWorkspaceEventSlug}\\?tab=judging&assignment=`))
 })
 
 When('I open the in-progress blind workspace assignment', async ({ page }) => {
@@ -134,7 +134,7 @@ When('I open the in-progress blind workspace assignment', async ({ page }) => {
 
   await expect(card).toBeVisible()
   await card.click()
-  await expect(page).toHaveURL(new RegExp(`/account/hackathons/${judgeWorkspaceHackathonSlug}\\?tab=judging&assignment=`))
+  await expect(page).toHaveURL(new RegExp(`/account/events/${judgeWorkspaceEventSlug}\\?tab=judging&assignment=`))
 })
 
 Then('I should see the blind assignment title {string}', async ({ page }, title: string) => {
@@ -144,11 +144,11 @@ Then('I should see the blind assignment title {string}', async ({ page }, title:
 When('I start the opened blind review', async ({ page }) => {
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/${platformFixtureIds.judgeWorkspaceHackathonId}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}/actions/start`)
+      response.url().includes(`/api/events/${platformFixtureIds.judgeWorkspaceEventId}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}/actions/start`)
       && response.ok()
     ),
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/${platformFixtureIds.judgeWorkspaceHackathonId}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}`)
+      response.url().includes(`/api/events/${platformFixtureIds.judgeWorkspaceEventId}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}`)
       && response.request().method() === 'PATCH'
       && response.ok()
     ),
@@ -171,7 +171,7 @@ When('I complete the opened blind review with workspace fixture scores', async (
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/${platformFixtureIds.judgeWorkspaceHackathonId}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}/actions/complete`)
+      response.url().includes(`/api/events/${platformFixtureIds.judgeWorkspaceEventId}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}/actions/complete`)
       && response.ok()
     ),
     page.getByTestId('judge-complete-review').click()
@@ -183,7 +183,7 @@ When('I mark the opened blind assignment ineligible with reason {string}', async
 
   await Promise.all([
     page.waitForResponse(response =>
-      response.url().includes(`/api/hackathons/${platformFixtureIds.judgeWorkspaceHackathonId}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}/actions/mark-ineligible`)
+      response.url().includes(`/api/events/${platformFixtureIds.judgeWorkspaceEventId}/judging/assignments/${platformFixtureIds.judgeWorkspaceAssignmentId}/actions/mark-ineligible`)
       && response.ok()
     ),
     page.getByTestId('judge-mark-ineligible').click()
@@ -204,17 +204,17 @@ When('I skip the opened blind review with reason {string}', async ({ page }, rea
   await page.getByTestId('judge-skip-reason').fill(reason)
 
   await Promise.all([
-    page.waitForURL(`**/account/hackathons/${judgeWorkspaceHackathonSlug}?tab=judging`),
+    page.waitForURL(`**/account/events/${judgeWorkspaceEventSlug}?tab=judging`),
     page.getByTestId('judge-skip-review').click()
   ])
 })
 
-Then('I should be returned to the hackathon judging tab', async ({ page }) => {
-  await expect(page).toHaveURL(new RegExp(`/account/hackathons/${judgeWorkspaceHackathonSlug}\\?tab=judging$`))
+Then('I should be returned to the event judging tab', async ({ page }) => {
+  await expect(page).toHaveURL(new RegExp(`/account/events/${judgeWorkspaceEventSlug}\\?tab=judging$`))
   await expect(page.getByRole('tab', { name: 'Judging', exact: true })).toHaveAttribute('aria-selected', 'true')
 })
 
-When('I reopen the judge workspace for the fixture hackathon', async ({ page }) => {
-  await page.goto(`/account/hackathons/${judgeWorkspaceHackathonSlug}?tab=judging`)
+When('I reopen the judge workspace for the fixture event', async ({ page }) => {
+  await page.goto(`/account/events/${judgeWorkspaceEventSlug}?tab=judging`)
   await waitForJudgeWorkspaceInbox(page)
 })

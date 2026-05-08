@@ -1,0 +1,73 @@
+import { eq } from 'drizzle-orm'
+
+import { requirePlatformActor } from '#server/auth/actor'
+import { writeAuditLog } from '#server/database/audit-log'
+import { getDatabase } from '#server/database/client'
+import { events } from '#server/database/schema'
+import { defineApiHandler } from '#server/http/api-handler'
+import { apiData } from '#server/http/api-response'
+import {
+  advancePitchPresentation,
+  assertAdvancePitchPresentationAllowed,
+  listLockedSubmissionsForEvent,
+  resolvePitchPresentationState,
+  selectPitchReviewSubmissions
+} from '#server/domains/judging'
+import {
+  requireEventAdmin,
+  routeIdParamsSchema,
+  serializeEvent
+} from '#server/domains/events'
+import { parseValidatedParams } from '#server/http/validation'
+
+export default defineApiHandler(async (h3Event) => {
+  const actor = await requirePlatformActor(h3Event)
+  const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
+  const database = getDatabase(h3Event)
+  const { event } = await requireEventAdmin(h3Event, eventId)
+  const lockedSubmissions = await listLockedSubmissionsForEvent(database, eventId)
+  const finalistSubmissions = selectPitchReviewSubmissions(event, lockedSubmissions)
+
+  assertAdvancePitchPresentationAllowed(event, {
+    finalistSubmissionCount: finalistSubmissions.length
+  })
+
+  const finalistSubmissionIds = finalistSubmissions.map(submission => submission.id)
+  const previousPresentationState = resolvePitchPresentationState(event, finalistSubmissionIds)
+  const advancedAt = new Date().toISOString()
+  const nextPresentationState = advancePitchPresentation(event, finalistSubmissionIds, advancedAt)
+
+  await database
+    .update(events)
+    .set({
+      activePitchPresentationSubmissionId: nextPresentationState.activePitchPresentationSubmissionId,
+      pitchPresentationsCompletedAt: nextPresentationState.pitchPresentationsCompletedAt,
+      updatedAt: advancedAt
+    })
+    .where(eq(events.id, eventId))
+
+  await writeAuditLog(database, {
+    actorUserId: actor.platformUser.id,
+    entityType: 'event',
+    entityId: eventId,
+    action: 'event.advance_pitch_presentation',
+    metadata: {
+      previousSubmissionId: previousPresentationState.currentSubmissionId,
+      nextSubmissionId: nextPresentationState.activePitchPresentationSubmissionId,
+      previousPresentationIndex: previousPresentationState.currentIndex,
+      nextPresentationIndex: nextPresentationState.activePitchPresentationSubmissionId
+        ? finalistSubmissionIds.findIndex(
+            submissionId => submissionId === nextPresentationState.activePitchPresentationSubmissionId
+          )
+        : null,
+      presentationCount: finalistSubmissionIds.length,
+      presentationsCompletedAt: nextPresentationState.pitchPresentationsCompletedAt
+    }
+  })
+
+  const updatedEvent = await database.query.events.findFirst({
+    where: eq(events.id, eventId)
+  })
+
+  return apiData(serializeEvent(updatedEvent!))
+})

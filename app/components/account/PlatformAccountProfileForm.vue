@@ -27,7 +27,7 @@ withDefaults(defineProps<{
   pending: false,
   error: '',
   submitLabel: 'Save profile',
-  footerMessage: 'Empty fields are stored as absent values, which means hackathons that require a specific profile field will block application submission until you add it.'
+  footerMessage: 'Empty fields are stored as absent values, which means events that require a specific profile field will block application submission until you add it.'
 })
 
 const emit = defineEmits<{

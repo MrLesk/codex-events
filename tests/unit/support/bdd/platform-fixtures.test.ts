@@ -12,12 +12,12 @@ const personas = [
     auth0Subject: 'auth0|platform-admin'
   },
   {
-    key: 'hackathon_admin',
-    email: 'hackathon-admin@example.com',
+    key: 'event_admin',
+    email: 'event-admin@example.com',
     password: 'password-2',
-    displayName: 'Hackathon Admin',
-    nickname: 'hackathon-admin',
-    auth0Subject: 'auth0|hackathon-admin'
+    displayName: 'Event Admin',
+    nickname: 'event-admin',
+    auth0Subject: 'auth0|event-admin'
   },
   {
     key: 'judge',
@@ -43,8 +43,8 @@ describe('platform fixture reset sql', () => {
 
     expect(sql).toContain('delete from users')
     expect(sql).toContain('insert into users')
-    expect(sql).toContain('insert into hackathons')
-    expect(sql).toContain('insert into hackathon_role_assignments')
+    expect(sql).toContain('insert into events')
+    expect(sql).toContain('insert into event_role_assignments')
     expect(sql).toContain('registration_open')
     expect(sql).toContain('blind_review')
     expect(sql).toContain('blind_review_count = 2')
@@ -55,7 +55,7 @@ describe('platform fixture reset sql', () => {
     expect(sql).toContain('\'team_participant_solo_fixture\'')
     expect(sql).toContain('\'solo\'')
     expect(sql).not.toContain('judge_review')
-    expect(sql).toContain('draft-managed-hackathon')
+    expect(sql).toContain('draft-managed-event')
     expect(sql).toContain('https://luma.com/a4i7qtbo')
     expect(sql).toContain('set luma_event_url')
   })

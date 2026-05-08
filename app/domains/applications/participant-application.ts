@@ -1,4 +1,4 @@
-import type { PublicHackathon, PublicHackathonState } from '~/domains/hackathons/presentation'
+import type { PublicEvent, PublicEventState } from '~/domains/events/presentation'
 import type {
   ApiDataResponse,
   ApiErrorShape,
@@ -29,7 +29,7 @@ export type ParticipantActor = SessionActor
 
 export interface ParticipantApplicationTermsDocument {
   id: string
-  hackathonId: string
+  eventId: string
   documentType: 'application_terms' | 'winner_terms'
   version: number
   title: string
@@ -51,13 +51,13 @@ export interface ParticipantRegistrationDetails {
   teamIntent: ParticipantRegistrationTeamIntent
   teamMembers: ParticipantRegistrationTeamMemberHint[]
   inPersonAttendanceCommitment: boolean
-  whyThisHackathon: string
+  whyThisEvent: string
   proofOfExecutionUrl: string
 }
 
 export interface ParticipantApplicationRecord {
   id: string
-  hackathonId: string
+  eventId: string
   userId: string
   status: 'submitted' | 'approved' | 'rejected' | 'withdrawn'
   submittedAt: string
@@ -72,7 +72,7 @@ export interface ParticipantApplicationRecord {
   applicationTermsDocument?: ParticipantApplicationTermsDocument
 }
 
-export interface VisibleHackathonRecord extends PublicHackathon {
+export interface VisibleEventRecord extends PublicEvent {
   id: string
 }
 
@@ -94,7 +94,7 @@ export interface RequiredProfileField {
   label: string
 }
 
-export interface HackathonProfileField extends RequiredProfileField {
+export interface EventProfileField extends RequiredProfileField {
   required: boolean
   visible: boolean
 }
@@ -102,73 +102,73 @@ export interface HackathonProfileField extends RequiredProfileField {
 const requiredProfileFieldRules: Array<{
   key: RequiredProfileField['key']
   label: RequiredProfileField['label']
-  isRequired: (hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>) => boolean
-  isVisible: (hackathon: Pick<PublicHackathon, 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>) => boolean
+  isRequired: (event: Pick<PublicEvent, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>) => boolean
+  isVisible: (event: Pick<PublicEvent, 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>) => boolean
   hasValue: (platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaEmail'>) => boolean
 }> = [
   {
     key: 'xProfileUrl',
     label: 'X profile URL',
-    isRequired: hackathon => hackathon.requireXProfile,
+    isRequired: event => event.requireXProfile,
     isVisible: () => true,
     hasValue: platformUser => Boolean(platformUser.xProfileUrl)
   },
   {
     key: 'linkedinProfileUrl',
     label: 'LinkedIn profile URL',
-    isRequired: hackathon => hackathon.requireLinkedinProfile,
+    isRequired: event => event.requireLinkedinProfile,
     isVisible: () => true,
     hasValue: platformUser => Boolean(platformUser.linkedinProfileUrl)
   },
   {
     key: 'githubProfileUrl',
     label: 'GitHub profile URL',
-    isRequired: hackathon => hackathon.requireGithubProfile,
+    isRequired: event => event.requireGithubProfile,
     isVisible: () => true,
     hasValue: platformUser => Boolean(platformUser.githubProfileUrl)
   },
   {
     key: 'chatgptEmail',
     label: 'ChatGPT email',
-    isRequired: hackathon => hackathon.requireChatgptEmail,
-    isVisible: hackathon => hackathon.requireChatgptEmail,
+    isRequired: event => event.requireChatgptEmail,
+    isVisible: event => event.requireChatgptEmail,
     hasValue: platformUser => Boolean(platformUser.chatgptEmail)
   },
   {
     key: 'openaiOrgId',
     label: 'OpenAI org ID',
-    isRequired: hackathon => hackathon.requireOpenaiOrgId,
-    isVisible: hackathon => hackathon.requireOpenaiOrgId,
+    isRequired: event => event.requireOpenaiOrgId,
+    isVisible: event => event.requireOpenaiOrgId,
     hasValue: platformUser => Boolean(platformUser.openaiOrgId)
   },
   {
     key: 'lumaEmail',
     label: 'Luma email',
-    isRequired: hackathon => hackathon.requireLumaEmail,
-    isVisible: hackathon => hackathon.requireLumaEmail,
+    isRequired: event => event.requireLumaEmail,
+    isVisible: event => event.requireLumaEmail,
     hasValue: platformUser => Boolean(platformUser.lumaEmail)
   }
 ]
 
 export function listRequiredProfileFields(
-  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>
+  event: Pick<PublicEvent, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>
 ) {
   return requiredProfileFieldRules
-    .filter(rule => rule.isVisible(hackathon) && rule.isRequired(hackathon))
+    .filter(rule => rule.isVisible(event) && rule.isRequired(event))
     .map(rule => ({
       key: rule.key,
       label: rule.label
     }))
 }
 
-export function listHackathonProfileFields(
-  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>
-): HackathonProfileField[] {
+export function listEventProfileFields(
+  event: Pick<PublicEvent, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>
+): EventProfileField[] {
   return requiredProfileFieldRules.map(rule => ({
     key: rule.key,
     label: rule.label,
-    required: rule.isRequired(hackathon),
-    visible: rule.isVisible(hackathon)
+    required: rule.isRequired(event),
+    visible: rule.isVisible(event)
   }))
 }
 
@@ -178,11 +178,11 @@ export const buildAnonymousParticipantActor = buildAnonymousSessionActor
 export const buildAuthenticatedIdentityParticipantActor = buildAuthenticatedIdentitySessionActor
 
 export function listMissingRequiredProfileFields(
-  hackathon: Pick<PublicHackathon, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>,
+  event: Pick<PublicEvent, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>,
   platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaEmail'>
 ) {
   return requiredProfileFieldRules
-    .filter(rule => rule.isVisible(hackathon) && rule.isRequired(hackathon) && !rule.hasValue(platformUser))
+    .filter(rule => rule.isVisible(event) && rule.isRequired(event) && !rule.hasValue(platformUser))
     .map(rule => ({
       key: rule.key,
       label: rule.label
@@ -217,25 +217,25 @@ export function getParticipantApplicationStatusColor(status: ParticipantApplicat
 
 export function summarizeParticipantApplicationStatus(
   status: ParticipantApplicationRecord['status'],
-  hackathonState: PublicHackathonState
+  eventState: PublicEventState
 ) {
   switch (status) {
     case 'submitted':
       return 'Your application is under review. Team setup and project submission will appear here after approval.'
     case 'approved':
-      return hackathonState === 'registration_open' || hackathonState === 'submission_open'
-        ? 'You are approved to create a team or request to join an open team in this hackathon.'
-        : 'You are approved for this hackathon. Team actions now depend on the current hackathon lifecycle state.'
+      return eventState === 'registration_open' || eventState === 'submission_open'
+        ? 'You are approved to create a team or request to join an open team in this event.'
+        : 'You are approved for this event. Team actions now depend on the current event lifecycle state.'
     case 'rejected':
-      return 'This application was rejected. You cannot submit another application to the same hackathon.'
+      return 'This application was rejected. You cannot submit another application to the same event.'
     case 'withdrawn':
-      return 'You withdrew from this hackathon. You are no longer eligible to participate or attend in person through this application.'
+      return 'You withdrew from this event. You are no longer eligible to participate or attend in person through this application.'
   }
 }
 
 export function shouldShowParticipantOverviewStatusBanner(
   status: ParticipantApplicationRecord['status'] | null,
-  hackathonState: PublicHackathonState
+  eventState: PublicEventState
 ) {
   if (!status) {
     return false
@@ -245,7 +245,7 @@ export function shouldShowParticipantOverviewStatusBanner(
     return true
   }
 
-  return hackathonState === 'registration_open'
+  return eventState === 'registration_open'
 }
 
 export function getParticipantApplicationWithdrawalAvailability(options: {
@@ -255,14 +255,14 @@ export function getParticipantApplicationWithdrawalAvailability(options: {
   if (!options.applicationStatus) {
     return {
       isAllowed: false,
-      reason: 'No application is available to withdraw for this hackathon.'
+      reason: 'No application is available to withdraw for this event.'
     }
   }
 
   if (options.hasActiveTeamMembership) {
     return {
       isAllowed: false,
-      reason: 'Leave your active team before withdrawing from this hackathon.'
+      reason: 'Leave your active team before withdrawing from this event.'
     }
   }
 
@@ -285,8 +285,8 @@ export function getParticipantApplicationWithdrawalAvailability(options: {
   }
 }
 
-export function isHackathonRegistrationOpen(
-  state: PublicHackathonState,
+export function isEventRegistrationOpen(
+  state: PublicEventState,
   registrationOpensAt: string,
   registrationClosesAt: string,
   now = new Date()
@@ -302,53 +302,53 @@ export function isHackathonRegistrationOpen(
   return nowTimestamp >= registrationOpensAtTimestamp && nowTimestamp < registrationClosesAtTimestamp
 }
 
-export function getHackathonApplicationAvailabilityMessage(
-  state: PublicHackathonState,
+export function getEventApplicationAvailabilityMessage(
+  state: PublicEventState,
   registrationOpensAt: string,
   registrationClosesAt: string,
   now = new Date()
 ) {
-  if (isHackathonRegistrationOpen(state, registrationOpensAt, registrationClosesAt, now)) {
-    return 'Applications are open for this hackathon.'
+  if (isEventRegistrationOpen(state, registrationOpensAt, registrationClosesAt, now)) {
+    return 'Applications are open for this event.'
   }
 
   if (state === 'draft' || now.getTime() < Date.parse(registrationOpensAt)) {
     return 'Applications are not available until registration opens.'
   }
 
-  return 'Applications are closed for this hackathon.'
+  return 'Applications are closed for this event.'
 }
 
 export function shouldShowPublicRegistrationEntry(
-  state: PublicHackathonState,
+  state: PublicEventState,
   registrationOpensAt: string,
   registrationClosesAt: string,
   now = new Date()
 ) {
-  return isHackathonRegistrationOpen(state, registrationOpensAt, registrationClosesAt, now)
+  return isEventRegistrationOpen(state, registrationOpensAt, registrationClosesAt, now)
 }
 
-export interface PublicHackathonPrimaryAction {
+export interface PublicEventPrimaryAction {
   label: 'Register' | 'Open workspace'
   to: string
   external: boolean
 }
 
-export function resolvePublicHackathonPrimaryAction(options: {
+export function resolvePublicEventPrimaryAction(options: {
   actorKind: ParticipantActor['kind']
   hasAcceptedCurrentPlatformDocuments?: boolean
-  hackathonSlug: string
-  hackathonState: PublicHackathonState
+  eventSlug: string
+  eventState: PublicEventState
   registrationOpensAt: string
   registrationClosesAt: string
-  hasHackathonWorkspaceAccess: boolean
+  hasEventWorkspaceAccess: boolean
   now?: Date
-}): PublicHackathonPrimaryAction | null {
-  const registerHref = `/hackathons/${options.hackathonSlug}/register`
+}): PublicEventPrimaryAction | null {
+  const registerHref = `/events/${options.eventSlug}/register`
   const registerCompletionHref = buildAccountRegisterHref(registerHref)
 
   if (shouldShowPublicRegistrationEntry(
-    options.hackathonState,
+    options.eventState,
     options.registrationOpensAt,
     options.registrationClosesAt,
     options.now
@@ -379,21 +379,21 @@ export function resolvePublicHackathonPrimaryAction(options: {
     }
   }
 
-  if (!options.hasHackathonWorkspaceAccess) {
+  if (!options.hasEventWorkspaceAccess) {
     return null
   }
 
   if (options.actorKind === 'platform_user' && !options.hasAcceptedCurrentPlatformDocuments) {
     return {
       label: 'Open workspace',
-      to: buildAccountRegisterHref(`/account/hackathons/${options.hackathonSlug}`),
+      to: buildAccountRegisterHref(`/account/events/${options.eventSlug}`),
       external: false
     }
   }
 
   return {
     label: 'Open workspace',
-    to: `/account/hackathons/${options.hackathonSlug}`,
+    to: `/account/events/${options.eventSlug}`,
     external: false
   }
 }
@@ -401,31 +401,31 @@ export function resolvePublicHackathonPrimaryAction(options: {
 export function resolveParticipantRegistrationEntry(options: {
   actorKind: ParticipantActor['kind']
   hasAcceptedCurrentPlatformDocuments?: boolean
-  hackathonSlug: string
-  hackathonState: PublicHackathonState
+  eventSlug: string
+  eventState: PublicEventState
   registrationOpensAt: string
   registrationClosesAt: string
   hasExistingApplication: boolean
   now?: Date
 }) {
-  const registerHref = `/hackathons/${options.hackathonSlug}/register`
+  const registerHref = `/events/${options.eventSlug}/register`
   const registerCompletionHref = buildAccountRegisterHref(registerHref)
 
   if (options.hasExistingApplication) {
     return {
-      to: `/account/hackathons/${options.hackathonSlug}`,
+      to: `/account/events/${options.eventSlug}`,
       external: false
     }
   }
 
   if (!shouldShowPublicRegistrationEntry(
-    options.hackathonState,
+    options.eventState,
     options.registrationOpensAt,
     options.registrationClosesAt,
     options.now
   )) {
     return {
-      to: `/hackathons/${options.hackathonSlug}`,
+      to: `/events/${options.eventSlug}`,
       external: false
     }
   }
@@ -463,7 +463,7 @@ export interface ParticipantApplicationSubmittedTransition {
 }
 
 export function resolveParticipantApplicationSubmittedTransition(
-  hackathonSlug: string,
+  eventSlug: string,
   options: {
     autoApproveApplications?: boolean
   } = {}
@@ -471,10 +471,10 @@ export function resolveParticipantApplicationSubmittedTransition(
   if (options.autoApproveApplications) {
     return {
       title: 'Application approved',
-      description: 'Opening your hackathon workspace so you can start team setup. This can take a moment.',
+      description: 'Opening your event workspace so you can start team setup. This can take a moment.',
       eyebrow: 'Application approved',
       to: {
-        path: `/account/hackathons/${hackathonSlug}`,
+        path: `/account/events/${eventSlug}`,
         query: {
           notice: 'application_submitted'
         }
@@ -484,10 +484,10 @@ export function resolveParticipantApplicationSubmittedTransition(
 
   return {
     title: 'Application submitted',
-    description: 'Opening your hackathon workspace so you can track your application status. This can take a moment.',
+    description: 'Opening your event workspace so you can track your application status. This can take a moment.',
     eyebrow: 'Application received',
     to: {
-      path: `/account/hackathons/${hackathonSlug}`,
+      path: `/account/events/${eventSlug}`,
       query: {
         notice: 'application_submitted'
       }
@@ -540,7 +540,7 @@ export function parseParticipantRegistrationDetailsJson(value: string | null | u
       teamIntent: 'unknown',
       teamMembers: [],
       inPersonAttendanceCommitment: false,
-      whyThisHackathon: '',
+      whyThisEvent: '',
       proofOfExecutionUrl: ''
     }
   }
@@ -568,8 +568,8 @@ export function parseParticipantRegistrationDetailsJson(value: string | null | u
     const inPersonAttendanceCommitment = typeof parsed.inPersonAttendanceCommitment === 'boolean'
       ? parsed.inPersonAttendanceCommitment
       : false
-    const whyThisHackathon = typeof parsed.whyThisHackathon === 'string'
-      ? parsed.whyThisHackathon
+    const whyThisEvent = typeof parsed.whyThisEvent === 'string'
+      ? parsed.whyThisEvent
       : ''
     const proofOfExecutionUrl = typeof parsed.proofOfExecutionUrl === 'string'
       ? parsed.proofOfExecutionUrl
@@ -579,7 +579,7 @@ export function parseParticipantRegistrationDetailsJson(value: string | null | u
       teamIntent,
       teamMembers,
       inPersonAttendanceCommitment,
-      whyThisHackathon,
+      whyThisEvent,
       proofOfExecutionUrl
     }
   } catch {
@@ -587,7 +587,7 @@ export function parseParticipantRegistrationDetailsJson(value: string | null | u
       teamIntent: 'unknown',
       teamMembers: [],
       inPersonAttendanceCommitment: false,
-      whyThisHackathon: '',
+      whyThisEvent: '',
       proofOfExecutionUrl: ''
     }
   }
@@ -611,7 +611,7 @@ export interface ParticipantApplicationSubmissionPolicy {
 }
 
 export function getParticipantApplicationSubmissionPolicy(options: {
-  hackathonState: PublicHackathonState
+  eventState: PublicEventState
   registrationOpensAt: string
   registrationClosesAt: string
   now?: Date
@@ -622,16 +622,16 @@ export function getParticipantApplicationSubmissionPolicy(options: {
   requiresInPersonAttendanceCommitment: boolean
   hasAcceptedInPersonAttendanceCommitment: boolean
 }): ParticipantApplicationSubmissionPolicy {
-  if (!isHackathonRegistrationOpen(
-    options.hackathonState,
+  if (!isEventRegistrationOpen(
+    options.eventState,
     options.registrationOpensAt,
     options.registrationClosesAt,
     options.now
   )) {
     return {
       isAllowed: false,
-      reason: getHackathonApplicationAvailabilityMessage(
-        options.hackathonState,
+      reason: getEventApplicationAvailabilityMessage(
+        options.eventState,
         options.registrationOpensAt,
         options.registrationClosesAt,
         options.now
@@ -649,21 +649,21 @@ export function getParticipantApplicationSubmissionPolicy(options: {
   if (options.applicationStatus === 'approved') {
     return {
       isAllowed: false,
-      reason: 'Your application is already approved for this hackathon.'
+      reason: 'Your application is already approved for this event.'
     }
   }
 
   if (options.applicationStatus === 'rejected') {
     return {
       isAllowed: false,
-      reason: 'Rejected applicants cannot submit another application to the same hackathon.'
+      reason: 'Rejected applicants cannot submit another application to the same event.'
     }
   }
 
   if (options.applicationStatus === 'withdrawn') {
     return {
       isAllowed: false,
-      reason: 'Withdrawn participants cannot submit another application to the same hackathon.'
+      reason: 'Withdrawn participants cannot submit another application to the same event.'
     }
   }
 
@@ -677,7 +677,7 @@ export function getParticipantApplicationSubmissionPolicy(options: {
   if (!options.hasCurrentApplicationTerms) {
     return {
       isAllowed: false,
-      reason: 'The current application terms are unavailable for this hackathon.'
+      reason: 'The current application terms are unavailable for this event.'
     }
   }
 

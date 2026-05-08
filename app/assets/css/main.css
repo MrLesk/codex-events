@@ -272,30 +272,30 @@
     scrollbar-gutter: stable;
   }
 
-  .account-hackathon-tab-list {
+  .account-event-tab-list {
     scrollbar-color: rgba(64, 64, 64, 0.45) transparent;
     scrollbar-width: thin;
   }
 
-  .account-hackathon-tab-list::-webkit-scrollbar {
+  .account-event-tab-list::-webkit-scrollbar {
     height: 0.5rem;
     background: transparent;
   }
 
-  .account-hackathon-tab-list::-webkit-scrollbar-track {
+  .account-event-tab-list::-webkit-scrollbar-track {
     background: transparent;
   }
 
-  .account-hackathon-tab-list::-webkit-scrollbar-thumb {
+  .account-event-tab-list::-webkit-scrollbar-thumb {
     border-radius: 9999px;
     background-color: rgba(64, 64, 64, 0.45);
   }
 
-  .dark .account-hackathon-tab-list {
+  .dark .account-event-tab-list {
     scrollbar-color: rgba(212, 212, 212, 0.38) transparent;
   }
 
-  .dark .account-hackathon-tab-list::-webkit-scrollbar-thumb {
+  .dark .account-event-tab-list::-webkit-scrollbar-thumb {
     background-color: rgba(212, 212, 212, 0.38);
   }
 

@@ -27,7 +27,7 @@ describe('legal contact utilities', () => {
     runtimeConfigHolder.useRuntimeConfig = () => ({
       outboundEmail: {
         fromEmail: 'notifications@example.com',
-        fromName: 'Codex Hackathons'
+        fromName: 'Codex Events'
       }
     })
 
@@ -77,7 +77,7 @@ describe('legal contact utilities', () => {
     const result = await sendPublicLegalContactEmail(createEvent({
       outboundEmail: {
         fromEmail: 'notifications@example.com',
-        fromName: 'Codex Hackathons'
+        fromName: 'Codex Events'
       }
     }), {
       name: 'Ada Lovelace',
@@ -102,7 +102,7 @@ describe('legal contact utilities', () => {
     const result = await sendPublicLegalContactEmail(createEvent({
       outboundEmail: {
         fromEmail: 'notifications@example.com',
-        fromName: 'Codex Hackathons'
+        fromName: 'Codex Events'
       }
     }), {
       name: 'Ada Lovelace',
@@ -129,7 +129,7 @@ describe('legal contact utilities', () => {
     const result = await sendPublicLegalContactEmail(createEvent({
       outboundEmail: {
         fromEmail: 'notifications@example.com',
-        fromName: 'Codex Hackathons'
+        fromName: 'Codex Events'
       }
     }), {
       name: 'Ada Lovelace',
@@ -147,10 +147,10 @@ describe('legal contact utilities', () => {
     })
     expect(send).toHaveBeenCalledTimes(1)
     expect(send).toHaveBeenCalledWith(expect.objectContaining({
-      from: { email: 'notifications@example.com', name: 'Codex Hackathons' },
+      from: { email: 'notifications@example.com', name: 'Codex Events' },
       to: configuredSupportEmail,
       replyTo: 'ada@example.com',
-      subject: 'Codex Hackathons contact request from Ada Lovelace',
+      subject: 'Codex Events contact request from Ada Lovelace',
       headers: {
         'X-Codex-Notification-Type': 'legal_contact',
         'X-Codex-Email-Key': expect.stringContaining('legal-contact:ada@example.com:Ada Lovelace:')

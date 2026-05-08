@@ -15,7 +15,7 @@ type ScenarioState = {
   applicationId?: string
   teamId?: string
   joinRequestId?: string
-  hackathonId?: string
+  eventId?: string
 }
 
 const scenarioState = new WeakMap<Page, ScenarioState>()
@@ -39,12 +39,12 @@ function parsePersonaKey(personaKey: string): StablePersonaKey {
   throw new Error(`Unknown stable persona key: ${personaKey}`)
 }
 
-When('the saved {string} session submits an application for the fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session submits an application for the fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
-  const hackathonId = platformFixtureIds.apiTeamFormationHackathonId
+  const eventId = platformFixtureIds.apiTeamFormationEventId
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${hackathonId}/applications`, {
+    const response = await apiClient.post(`/api/events/${eventId}/applications`, {
       data: {
         applicationTermsDocumentId: platformFixtureIds.apiTeamFormationApplicationTermsDocumentId
       }
@@ -54,7 +54,7 @@ When('the saved {string} session submits an application for the fixture hackatho
     state.response = response
     state.json = json
     state.applicationId = (json as { data?: { id?: string } }).data?.id
-    state.hackathonId = hackathonId
+    state.eventId = eventId
   } finally {
     await apiClient.dispose()
   }
@@ -86,7 +86,7 @@ When('the saved {string} session approves the remembered application', async ({ 
 
   try {
     const stageResponse = await apiClient.post(
-      `/api/hackathons/${state.hackathonId}/applications/${state.applicationId}/actions/approve`
+      `/api/events/${state.eventId}/applications/${state.applicationId}/actions/approve`
     )
     if (!stageResponse.ok()) {
       state.response = stageResponse
@@ -95,7 +95,7 @@ When('the saved {string} session approves the remembered application', async ({ 
     }
 
     const applyResponse = await apiClient.post(
-      `/api/hackathons/${state.hackathonId}/applications/actions/apply-staged-decisions`
+      `/api/events/${state.eventId}/applications/actions/apply-staged-decisions`
     )
     state.response = applyResponse
     state.json = await applyResponse.json()
@@ -122,10 +122,10 @@ Then('the remembered application should be approved by {string}', async ({ page 
 When('the saved {string} session creates an open team named {string}', async ({ page }, personaKey: string, teamName: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
   const state = getScenarioState(page)
-  const hackathonId = state.hackathonId ?? platformFixtureIds.apiSoloTeamHackathonId
+  const eventId = state.eventId ?? platformFixtureIds.apiSoloTeamEventId
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${hackathonId}/teams`, {
+    const response = await apiClient.post(`/api/events/${eventId}/teams`, {
       data: {
         name: teamName,
         isOpenToJoinRequests: true
@@ -135,7 +135,7 @@ When('the saved {string} session creates an open team named {string}', async ({ 
     state.response = response
     state.json = json
     state.teamId = (json as { data?: { id?: string } }).data?.id
-    state.hackathonId = hackathonId
+    state.eventId = eventId
   } finally {
     await apiClient.dispose()
   }
@@ -172,7 +172,7 @@ When('the saved {string} session creates a join request for the remembered team'
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${state.hackathonId}/team-join-requests`, {
+    const response = await apiClient.post(`/api/events/${state.eventId}/team-join-requests`, {
       data: {
         teamId: state.teamId
       }
@@ -209,7 +209,7 @@ When('the saved {string} session approves the remembered join request', async ({
 
   try {
     const response = await apiClient.post(
-      `/api/hackathons/${state.hackathonId}/team-join-requests/${state.joinRequestId}/actions/approve`
+      `/api/events/${state.eventId}/team-join-requests/${state.joinRequestId}/actions/approve`
     )
     state.response = response
     state.json = await response.json()
@@ -239,7 +239,7 @@ When('the saved {string} session loads the remembered team detail', async ({ pag
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.get(`/api/hackathons/${state.hackathonId}/teams/${state.teamId}`)
+    const response = await apiClient.get(`/api/events/${state.eventId}/teams/${state.teamId}`)
     state.response = response
     state.json = await response.json()
   } finally {
@@ -276,7 +276,7 @@ When('the saved {string} session leaves the remembered team', async ({ page }, p
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${state.hackathonId}/teams/${state.teamId}/actions/leave`)
+    const response = await apiClient.post(`/api/events/${state.eventId}/teams/${state.teamId}/actions/leave`)
     state.response = response
     state.json = await response.json()
   } finally {

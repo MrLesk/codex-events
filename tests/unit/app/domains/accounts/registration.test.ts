@@ -40,7 +40,7 @@ describe('account registration helpers', () => {
   test('returns link-specific copy for link-only mode', () => {
     expect(getAccountRegistrationIntro(true)).toEqual({
       title: 'Connect your existing account',
-      description: 'Sign in to your existing Codex Hackathons account once to connect this login method.'
+      description: 'Sign in to your existing Codex Events account once to connect this login method.'
     })
   })
 

@@ -26,18 +26,18 @@ interface ScenarioResult {
 const outputPath = resolve(process.cwd(), 'docs/database-query-plan-audit.md')
 
 const scenarios: Scenario[] = [{
-  area: 'Account hackathons',
+  area: 'Account events',
   key: 'account-applications-by-user',
-  owner: 'server/api/account/hackathons.get.ts',
+  owner: 'server/api/account/events.get.ts',
   purpose: 'Find caller applications ordered by most recent submission.',
   sql: `select *
 from user_applications
 where user_id = 'user_1'
 order by submitted_at desc`
 }, {
-  area: 'Account hackathons',
+  area: 'Account events',
   key: 'account-active-memberships-by-user',
-  owner: 'server/api/account/hackathons.get.ts',
+  owner: 'server/api/account/events.get.ts',
   purpose: 'Find active team memberships for the caller.',
   sql: `select *
 from team_members
@@ -45,18 +45,18 @@ where user_id = 'user_1'
   and left_at is null
 order by joined_at desc`
 }, {
-  area: 'Account hackathons',
+  area: 'Account events',
   key: 'account-role-assignments-by-user',
-  owner: 'server/api/account/hackathons.get.ts',
-  purpose: 'Find hackathon role assignments for the caller.',
+  owner: 'server/api/account/events.get.ts',
+  purpose: 'Find event role assignments for the caller.',
   sql: `select *
-from hackathon_role_assignments
+from event_role_assignments
 where user_id = 'user_1'
 order by created_at desc`
 }, {
-  area: 'Account hackathons',
+  area: 'Account events',
   key: 'account-submissions-by-team',
-  owner: 'server/api/account/hackathons.get.ts',
+  owner: 'server/api/account/events.get.ts',
   purpose: 'Load candidate submissions for the caller team set.',
   sql: `select *
 from submissions
@@ -64,48 +64,48 @@ where team_id in ('team_1', 'team_2', 'team_3')
 order by updated_at desc`
 }, {
   area: 'Admin applications',
-  key: 'admin-applications-by-hackathon',
+  key: 'admin-applications-by-event',
   owner: 'server/domains/applications/index.ts',
-  purpose: 'List hackathon applications for the admin review screen.',
+  purpose: 'List event applications for the admin review screen.',
   sql: `select *
 from user_applications
-where hackathon_id = 'hack_1'
+where event_id = 'hack_1'
 order by submitted_at desc, created_at asc`
 }, {
   area: 'Judging assignments',
   key: 'judging-assignments-admin-list',
-  owner: 'server/api/hackathons/[hackathonId]/judging/assignments/index.get.ts',
-  purpose: 'List all assignments for hackathon admin and platform admin views.',
+  owner: 'server/api/events/[eventId]/judging/assignments/index.get.ts',
+  purpose: 'List all assignments for event admin and platform admin views.',
   sql: `select *
 from judge_assignments
-where hackathon_id = 'hack_1'`
+where event_id = 'hack_1'`
 }, {
   area: 'Judging assignments',
   key: 'judging-assignments-judge-list',
-  owner: 'server/api/hackathons/[hackathonId]/judging/assignments/index.get.ts',
+  owner: 'server/api/events/[eventId]/judging/assignments/index.get.ts',
   purpose: 'List active assignments for one judge across review stages.',
   sql: `select *
 from judge_assignments
-where hackathon_id = 'hack_1'
+where event_id = 'hack_1'
   and judge_user_id = 'judge_1'
   and status in ('assigned', 'judge_started')`
 }, {
   area: 'Judging assignments',
-  key: 'judging-blind-applications-by-hackathon-and-user',
+  key: 'judging-blind-applications-by-event-and-user',
   owner: 'server/domains/judging/index.ts',
   purpose: 'Load applications for the team members attached to blind-review assignments.',
   sql: `select *
 from user_applications
-where hackathon_id in ('hack_1', 'hack_2')
+where event_id in ('hack_1', 'hack_2')
   and user_id in ('user_1', 'user_2', 'user_3')
 order by submitted_at asc, created_at asc`
 }, {
-  area: 'Public hackathon detail',
-  key: 'public-hackathon-by-slug',
-  owner: 'server/domains/hackathons/index.ts',
-  purpose: 'Resolve a public hackathon by slug while enforcing public visibility states.',
+  area: 'Public event detail',
+  key: 'public-event-by-slug',
+  owner: 'server/domains/events/index.ts',
+  purpose: 'Resolve a public event by slug while enforcing public visibility states.',
   sql: `select *
-from hackathons
+from events
 where slug = 'public-slug'
   and (
     state = 'registration_open'
@@ -120,30 +120,30 @@ where slug = 'public-slug'
     or state = 'completed'
   )`
 }, {
-  area: 'Public hackathon detail',
+  area: 'Public event detail',
   key: 'public-current-terms-by-id',
-  owner: 'server/domains/hackathons/index.ts',
-  purpose: 'Load the current hackathon terms documents by exact id.',
+  owner: 'server/domains/events/index.ts',
+  purpose: 'Load the current event terms documents by exact id.',
   sql: `select *
-from hackathon_terms_documents
+from event_terms_documents
 where id in ('terms_1', 'terms_2')`
 }, {
-  area: 'Public hackathon detail',
-  key: 'public-tracks-by-hackathon',
-  owner: 'server/domains/hackathons/index.ts',
-  purpose: 'List hackathon tracks for public detail rendering.',
+  area: 'Public event detail',
+  key: 'public-tracks-by-event',
+  owner: 'server/domains/events/index.ts',
+  purpose: 'List event tracks for public detail rendering.',
   sql: `select *
-from hackathon_tracks
-where hackathon_id = 'hack_1'
+from event_tracks
+where event_id = 'hack_1'
 order by display_order asc, created_at asc, id asc`
 }, {
   area: 'Public projects and winners',
-  key: 'public-outcome-teams-by-hackathon',
+  key: 'public-outcome-teams-by-event',
   owner: 'server/domains/outcomes/index.ts',
-  purpose: 'Load all teams that belong to the completed-outcome hackathon.',
+  purpose: 'Load all teams that belong to the completed-outcome event.',
   sql: `select *
 from teams
-where hackathon_id = 'hack_1'
+where event_id = 'hack_1'
 order by created_at asc, name asc`
 }, {
   area: 'Public projects and winners',
@@ -179,7 +179,7 @@ order by created_at asc`
   purpose: 'Load frozen winner roster membership snapshots for the outcome team set.',
   sql: `select *
 from prize_eligibility_snapshots
-where hackathon_id = 'hack_1'
+where event_id = 'hack_1'
   and team_id in ('team_1', 'team_2', 'team_3')
 order by team_id asc, created_at asc`
 }, {
@@ -193,16 +193,16 @@ order by created_at desc
 limit 200`
 }, {
   area: 'Audit logs',
-  key: 'hackathon-audit-latest',
-  owner: 'server/api/hackathons/[hackathonId]/audit/index.get.ts',
-  purpose: 'Load the latest hackathon-scoped audit entries via entity and metadata filters.',
+  key: 'event-audit-latest',
+  owner: 'server/api/events/[eventId]/audit/index.get.ts',
+  purpose: 'Load the latest event-scoped audit entries via entity and metadata filters.',
   sql: `select *
 from audit_logs
 where (
-    entity_type = 'hackathon'
+    entity_type = 'event'
     and entity_id = 'hack_1'
   )
-  or json_extract(metadata, '$.hackathonId') = 'hack_1'
+  or json_extract(metadata, '$.eventId') = 'hack_1'
 order by created_at desc
 limit 200`
 }, {

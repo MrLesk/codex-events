@@ -1,7 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 
 import type { SessionActor } from '../../../../../app/domains/accounts/session-actor'
-import type { HackathonRecord } from '../../../../../app/domains/hackathons/records'
+import type { EventRecord } from '../../../../../app/domains/events/records'
 import type { EvaluationCriterion } from '../../../../../app/domains/judging/criteria-config'
 import type {
   JudgeAssignmentApiDetail,
@@ -23,24 +23,24 @@ import {
   createCriterionScoreDrafts,
   createPitchScoreDraft,
   filterAssignmentsForActor,
-  filterExplicitJudgeHackathons,
-  filterReviewableHackathons,
+  filterExplicitJudgeEvents,
+  filterReviewableEvents,
   formatJudgeTimestamp,
   getJudgeActionErrorMessage,
   getJudgeAssignmentActionDisabledReason,
   getJudgeAssignmentInboxCardCopy,
-  getJudgeHackathonDashboardCopy,
+  getJudgeEventDashboardCopy,
   getJudgeWorkspaceSubjectKey,
   hasIncompleteCriterionScores,
   hasIncompletePitchScore,
-  listAllVisibleHackathons,
+  listAllVisibleEvents,
   normalizeJudgeAssignmentDetail,
   sortJudgeAssignments
 } from '../../../../../app/domains/judging/workspace'
 
-function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRecord {
+function createEvent(overrides: Partial<EventRecord> = {}): EventRecord {
   return {
-    id: 'hackathon-1',
+    id: 'event-1',
     name: 'Codex Judges',
     slug: 'codex-judges',
     description: 'Judge workspace fixture.',
@@ -72,7 +72,7 @@ function createHackathon(overrides: Partial<HackathonRecord> = {}): HackathonRec
     requireChatgptEmail: false,
     requireOpenaiOrgId: false,
     requireLumaEmail: false,
-    requireWhyThisHackathon: false,
+    requireWhyThisEvent: false,
     requireProofOfExecution: false,
     requireSubmissionSummary: false,
     requireSubmissionRepositoryUrl: false,
@@ -108,8 +108,8 @@ function createActor(overrides: Partial<SessionActor> = {}): SessionActor {
     },
     isPlatformAdmin: false,
     isEventOrganizer: false,
-    hackathonRoles: [{
-      hackathonId: 'hackathon-1',
+    eventRoles: [{
+      eventId: 'event-1',
       role: 'judge',
       isInJudgePool: true,
       isStaff: false,
@@ -124,7 +124,7 @@ function createBlindAssignment(
 ): BlindJudgeAssignmentDetail {
   return {
     id: 'assignment-blind-1',
-    hackathonId: 'hackathon-1',
+    eventId: 'event-1',
     submissionId: 'submission-1',
     judgeUserId: 'judge-1',
     reviewStage: 'blind_review',
@@ -169,7 +169,7 @@ function createPitchAssignment(
 ): PitchJudgeAssignmentDetail {
   return {
     id: 'assignment-pitch-1',
-    hackathonId: 'hackathon-1',
+    eventId: 'event-1',
     submissionId: 'submission-1',
     judgeUserId: 'judge-1',
     reviewStage: 'pitch_review',
@@ -206,7 +206,7 @@ function createPitchAssignment(
 function createCriterion(overrides: Partial<EvaluationCriterion> = {}): EvaluationCriterion {
   return {
     id: 'criterion-1',
-    hackathonId: 'hackathon-1',
+    eventId: 'event-1',
     name: 'Novelty',
     description: 'How original the project is.',
     weight: 5,
@@ -263,64 +263,64 @@ describe('judging-workspace filters', () => {
     expect(formatJudgeTimestamp(null)).toBe('Not recorded')
   })
 
-  test('limits reviewable hackathons to judge-enabled roles for non-platform admins', () => {
+  test('limits reviewable events to judge-enabled roles for non-platform admins', () => {
     const actor = createActor({
-      hackathonRoles: [
+      eventRoles: [
         {
-          hackathonId: 'hackathon-1',
+          eventId: 'event-1',
           role: 'judge',
           isInJudgePool: true,
           isStaff: false,
           createdAt: '2026-03-01T00:00:00.000Z'
         },
         {
-          hackathonId: 'hackathon-2',
-          role: 'hackathon_admin',
+          eventId: 'event-2',
+          role: 'event_admin',
           isInJudgePool: true,
           isStaff: false,
           createdAt: '2026-03-01T00:00:00.000Z'
         }
       ]
     })
-    const hackathons = [
-      createHackathon({ id: 'hackathon-1' }),
-      createHackathon({ id: 'hackathon-2', slug: 'admin-hackathon', name: 'Admin Hackathon' }),
-      createHackathon({ id: 'hackathon-3', slug: 'hidden-hackathon', name: 'Hidden Hackathon' })
+    const events = [
+      createEvent({ id: 'event-1' }),
+      createEvent({ id: 'event-2', slug: 'admin-event', name: 'Admin Event' }),
+      createEvent({ id: 'event-3', slug: 'hidden-event', name: 'Hidden Event' })
     ]
 
-    expect(filterReviewableHackathons(hackathons, actor).map(hackathon => hackathon.id)).toEqual([
-      'hackathon-1',
-      'hackathon-2'
+    expect(filterReviewableEvents(events, actor).map(event => event.id)).toEqual([
+      'event-1',
+      'event-2'
     ])
   })
 
   test('includes judge-enabled admin assignments in the judging workspace', () => {
     const actor = createActor({
-      hackathonRoles: [
+      eventRoles: [
         {
-          hackathonId: 'hackathon-1',
+          eventId: 'event-1',
           role: 'judge',
           isInJudgePool: true,
           isStaff: false,
           createdAt: '2026-03-01T00:00:00.000Z'
         },
         {
-          hackathonId: 'hackathon-2',
-          role: 'hackathon_admin',
+          eventId: 'event-2',
+          role: 'event_admin',
           isInJudgePool: true,
           isStaff: true,
           createdAt: '2026-03-01T00:00:00.000Z'
         }
       ]
     })
-    const hackathons = [
-      createHackathon({ id: 'hackathon-1' }),
-      createHackathon({ id: 'hackathon-2', slug: 'admin-hackathon', name: 'Admin Hackathon' })
+    const events = [
+      createEvent({ id: 'event-1' }),
+      createEvent({ id: 'event-2', slug: 'admin-event', name: 'Admin Event' })
     ]
 
-    expect(filterExplicitJudgeHackathons(hackathons, actor).map(hackathon => hackathon.id)).toEqual([
-      'hackathon-1',
-      'hackathon-2'
+    expect(filterExplicitJudgeEvents(events, actor).map(event => event.id)).toEqual([
+      'event-1',
+      'event-2'
     ])
   })
 
@@ -334,15 +334,15 @@ describe('judging-workspace filters', () => {
     expect(filterAssignmentsForActor(assignments, actor).map(assignment => assignment.id)).toEqual(['assignment-1'])
   })
 
-  test('loads every visible hackathon page before the inbox filters reviewable roles', async () => {
+  test('loads every visible event page before the inbox filters reviewable roles', async () => {
     const fetchPage = vi.fn(async (page: number, pageSize: number) => {
       expect(pageSize).toBe(2)
 
       if (page === 1) {
         return {
           data: [
-            createHackathon({ id: 'hackathon-1' }),
-            createHackathon({ id: 'hackathon-2', slug: 'hackathon-2', name: 'Hackathon 2' })
+            createEvent({ id: 'event-1' }),
+            createEvent({ id: 'event-2', slug: 'event-2', name: 'Event 2' })
           ],
           meta: {
             total: 3
@@ -352,7 +352,7 @@ describe('judging-workspace filters', () => {
 
       return {
         data: [
-          createHackathon({ id: 'hackathon-3', slug: 'hackathon-3', name: 'Hackathon 3' })
+          createEvent({ id: 'event-3', slug: 'event-3', name: 'Event 3' })
         ],
         meta: {
           total: 3
@@ -360,10 +360,10 @@ describe('judging-workspace filters', () => {
       }
     })
 
-    await expect(listAllVisibleHackathons(fetchPage, 2)).resolves.toEqual([
-      expect.objectContaining({ id: 'hackathon-1' }),
-      expect.objectContaining({ id: 'hackathon-2' }),
-      expect.objectContaining({ id: 'hackathon-3' })
+    await expect(listAllVisibleEvents(fetchPage, 2)).resolves.toEqual([
+      expect.objectContaining({ id: 'event-1' }),
+      expect.objectContaining({ id: 'event-2' }),
+      expect.objectContaining({ id: 'event-3' })
     ])
     expect(fetchPage).toHaveBeenNthCalledWith(1, 1, 2)
     expect(fetchPage).toHaveBeenNthCalledWith(2, 2, 2)
@@ -401,7 +401,7 @@ describe('judging-workspace copy', () => {
   })
 
   test('describes active blind queues without using idle queue copy', () => {
-    const copy = getJudgeHackathonDashboardCopy(createHackathon(), {
+    const copy = getJudgeEventDashboardCopy(createEvent(), {
       total: 2,
       inReview: 2,
       ready: 0,
@@ -419,21 +419,21 @@ describe('judging-workspace copy', () => {
   })
 
   test('uses finalist-facing dashboard copy when pitch review is the next judge stage', () => {
-    const copy = getJudgeHackathonDashboardCopy(createHackathon({
+    const copy = getJudgeEventDashboardCopy(createEvent({
       state: 'shortlist',
       pitchReviewEnabled: true
     }))
 
     expect(copy).toMatchObject({
-      description: 'You are assigned as a judge for this hackathon. Finalist pitch votes will appear here when pitch review is active.',
-      actionLabel: 'Open hackathon',
+      description: 'You are assigned as a judge for this event. Finalist pitch votes will appear here when pitch review is active.',
+      actionLabel: 'Open event',
       overline: 'Judge assigned',
       queueMeta: 'No active pitch queue yet'
     })
   })
 
   test('explains that judges are waiting for post-pitch review assignments during the live pitch stage', () => {
-    const copy = getJudgeHackathonDashboardCopy(createHackathon({
+    const copy = getJudgeEventDashboardCopy(createEvent({
       state: 'pitch',
       blindReviewCount: 0,
       pitchReviewEnabled: true
@@ -441,7 +441,7 @@ describe('judging-workspace copy', () => {
 
     expect(copy).toMatchObject({
       description: 'Finalist teams are pitching live. Post-pitch review assignments will appear here after admins start pitch review.',
-      actionLabel: 'Open hackathon',
+      actionLabel: 'Open event',
       overline: 'Judge assigned',
       queueMeta: 'No active pitch queue yet'
     })
@@ -543,12 +543,12 @@ describe('judging-workspace actions', () => {
       response: {
         _data: {
           error: {
-            code: 'hackathon_state_invalid',
-            message: 'This judging operation is not allowed in the current hackathon state.'
+            code: 'event_state_invalid',
+            message: 'This judging operation is not allowed in the current event state.'
           }
         }
       }
-    })).toBe('This judging operation is not allowed in the current hackathon state.')
+    })).toBe('This judging operation is not allowed in the current event state.')
     expect(getJudgeActionErrorMessage(null)).toBe('The judge action could not be completed.')
   })
 
@@ -729,8 +729,8 @@ describe('judging-workspace cache keys', () => {
   test('normalizes subjects and cache key parts', () => {
     expect(getJudgeWorkspaceSubjectKey('  auth0|judge  ')).toBe('auth0|judge')
     expect(getJudgeWorkspaceSubjectKey('')).toBe('anonymous')
-    expect(buildJudgeWorkspaceCacheKey('judge-workspace', 'auth0|judge', 'hackathon-1')).toBe(
-      'judge-workspace:auth0|judge:hackathon-1'
+    expect(buildJudgeWorkspaceCacheKey('judge-workspace', 'auth0|judge', 'event-1')).toBe(
+      'judge-workspace:auth0|judge:event-1'
     )
   })
 })

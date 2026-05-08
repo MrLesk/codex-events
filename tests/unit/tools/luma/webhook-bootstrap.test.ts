@@ -24,7 +24,7 @@ function createWebhookRecord(overrides: Partial<{
   return {
     api_id: overrides.id ?? 'wh_1',
     id: overrides.id ?? 'wh_1',
-    url: overrides.url ?? 'https://dev.codex-hackathons.com/api/public/luma/webhooks',
+    url: overrides.url ?? 'https://dev.codex-events.com/api/public/luma/webhooks',
     event_types: overrides.event_types ?? ['guest.updated'],
     status: overrides.status ?? 'active',
     secret: overrides.secret ?? 'whsec_test_secret',
@@ -53,12 +53,12 @@ describe('luma webhook bootstrap config', () => {
   test('infers the webhook url from an https app base url', () => {
     expect(resolveConfig({
       NUXT_LUMA_API_KEY: 'luma_api_key',
-      NUXT_AUTH0_APP_BASE_URL: 'https://dev.codex-hackathons.com',
+      NUXT_AUTH0_APP_BASE_URL: 'https://dev.codex-events.com',
       NUXT_LUMA_API_BASE_URL: 'https://public-api.luma.com'
     })).toEqual({
       apiKey: 'luma_api_key',
       apiBaseUrl: 'https://public-api.luma.com',
-      webhookUrl: 'https://dev.codex-hackathons.com/api/public/luma/webhooks'
+      webhookUrl: 'https://dev.codex-events.com/api/public/luma/webhooks'
     })
   })
 
@@ -72,7 +72,7 @@ describe('luma webhook bootstrap config', () => {
 
 describe('luma webhook drift detection', () => {
   test('flags missing managed webhooks', () => {
-    expect(analyzeWebhookDrift([], 'https://dev.codex-hackathons.com/api/public/luma/webhooks')).toEqual({
+    expect(analyzeWebhookDrift([], 'https://dev.codex-events.com/api/public/luma/webhooks')).toEqual({
       compliant: false,
       status: 'missing',
       managedWebhookId: null,
@@ -83,7 +83,7 @@ describe('luma webhook drift detection', () => {
   })
 
   test('flags mismatched event types and duplicate exact-url hooks', () => {
-    const targetUrl = 'https://dev.codex-hackathons.com/api/public/luma/webhooks'
+    const targetUrl = 'https://dev.codex-events.com/api/public/luma/webhooks'
     const drift = analyzeWebhookDrift([
       {
         id: 'wh_1',
@@ -143,7 +143,7 @@ describe('luma webhook bootstrap execution', () => {
     const summary = await checkManagedWebhookState({
       apiKey: 'luma_api_key',
       apiBaseUrl: 'https://public-api.luma.com',
-      webhookUrl: 'https://dev.codex-hackathons.com/api/public/luma/webhooks'
+      webhookUrl: 'https://dev.codex-events.com/api/public/luma/webhooks'
     }, {
       fetchImpl
     })
@@ -151,7 +151,7 @@ describe('luma webhook bootstrap execution', () => {
     expect(summary).toEqual({
       mode: 'check',
       compliant: true,
-      webhookUrl: 'https://dev.codex-hackathons.com/api/public/luma/webhooks',
+      webhookUrl: 'https://dev.codex-events.com/api/public/luma/webhooks',
       managedWebhookId: 'wh_2',
       managedWebhookIds: ['wh_2'],
       duplicateWebhookIds: [],
@@ -189,7 +189,7 @@ describe('luma webhook bootstrap execution', () => {
       const summary = await applyManagedWebhookState({
         apiKey: 'luma_api_key',
         apiBaseUrl: 'https://public-api.luma.com',
-        webhookUrl: 'https://dev.codex-hackathons.com/api/public/luma/webhooks'
+        webhookUrl: 'https://dev.codex-events.com/api/public/luma/webhooks'
       }, {
         fetchImpl,
         secretBulkPath
@@ -198,7 +198,7 @@ describe('luma webhook bootstrap execution', () => {
       expect(summary).toEqual({
         mode: 'apply',
         compliant: true,
-        webhookUrl: 'https://dev.codex-hackathons.com/api/public/luma/webhooks',
+        webhookUrl: 'https://dev.codex-events.com/api/public/luma/webhooks',
         managedWebhookId: 'wh_created',
         actions: ['create'],
         secretBulkPathWritten: secretBulkPath
@@ -208,7 +208,7 @@ describe('luma webhook bootstrap execution', () => {
       expect(String(fetchImpl.mock.calls[1]?.[0])).toBe('https://public-api.luma.com/v1/webhooks/create')
       expect(createRequest?.method).toBe('POST')
       expect(createRequest?.body).toBe(JSON.stringify({
-        url: 'https://dev.codex-hackathons.com/api/public/luma/webhooks',
+        url: 'https://dev.codex-events.com/api/public/luma/webhooks',
         event_types: ['guest.updated']
       }))
       expect(String(fetchImpl.mock.calls[2]?.[0])).toBe('https://public-api.luma.com/v1/webhooks/get?id=wh_created')
@@ -221,7 +221,7 @@ describe('luma webhook bootstrap execution', () => {
   })
 
   test('updates the canonical webhook and deletes duplicate exact-url hooks', async () => {
-    const targetUrl = 'https://dev.codex-hackathons.com/api/public/luma/webhooks'
+    const targetUrl = 'https://dev.codex-events.com/api/public/luma/webhooks'
     const fetchImpl = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(createJsonResponse({

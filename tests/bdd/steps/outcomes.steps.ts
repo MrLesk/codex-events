@@ -61,7 +61,7 @@ When('the saved {string} session selects outcomes finalists to prefer submission
 
   try {
     const response = await apiClient.post(
-      `/api/hackathons/${platformFixtureIds.outcomesHackathonId}/shortlist/actions/select-finalists`,
+      `/api/events/${platformFixtureIds.outcomesEventId}/shortlist/actions/select-finalists`,
       {
         data: {
           orderedSubmissionIds: [
@@ -113,11 +113,11 @@ Then('the outcomes shortlist should remain blind to team identity', async ({ pag
   expect(payload.data?.[0]).not.toHaveProperty('teamName')
 })
 
-When('the saved {string} session starts pitch review for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session starts pitch review for the outcomes fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/actions/start-pitch-review`)
+    const response = await apiClient.post(`/api/events/${platformFixtureIds.outcomesEventId}/actions/start-pitch-review`)
     const state = getScenarioState(page)
     state.response = response
     state.json = await response.json()
@@ -126,11 +126,11 @@ When('the saved {string} session starts pitch review for the outcomes fixture ha
   }
 })
 
-When('the saved {string} session starts pitch for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session starts pitch for the outcomes fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/actions/start-pitch`)
+    const response = await apiClient.post(`/api/events/${platformFixtureIds.outcomesEventId}/actions/start-pitch`)
     const state = getScenarioState(page)
     state.response = response
     state.json = await response.json()
@@ -139,21 +139,21 @@ When('the saved {string} session starts pitch for the outcomes fixture hackathon
   }
 })
 
-Then('the outcomes fixture hackathon state should be {string}', async ({ page }, expectedState: string) => {
+Then('the outcomes fixture event state should be {string}', async ({ page }, expectedState: string) => {
   expect(getScenarioState(page).response?.ok()).toBe(true)
   expect(getScenarioState(page).json).toMatchObject({
     data: {
-      id: platformFixtureIds.outcomesHackathonId,
+      id: platformFixtureIds.outcomesEventId,
       state: expectedState
     }
   })
 })
 
-When('the saved {string} session loads the active pitch assignments for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session loads the active pitch assignments for the outcomes fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.get(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/judging/assignments`)
+    const response = await apiClient.get(`/api/events/${platformFixtureIds.outcomesEventId}/judging/assignments`)
     const json = await response.json() as {
       data?: ActivePitchAssignment[]
     }
@@ -208,11 +208,11 @@ When('the saved {string} session completes the remembered outcomes pitch assignm
       }
 
       await apiClient.post(
-        `/api/hackathons/${platformFixtureIds.outcomesHackathonId}/judging/assignments/${assignment.id}/actions/start`
+        `/api/events/${platformFixtureIds.outcomesEventId}/judging/assignments/${assignment.id}/actions/start`
       )
 
       const response = await apiClient.post(
-        `/api/hackathons/${platformFixtureIds.outcomesHackathonId}/judging/assignments/${assignment.id}/actions/complete`,
+        `/api/events/${platformFixtureIds.outcomesEventId}/judging/assignments/${assignment.id}/actions/complete`,
         {
           data: {
             pitchScore: pitchReview.score,
@@ -241,11 +241,11 @@ Then('the outcomes fixture should expose two remaining active pitch assignments'
   )).toBe(true)
 })
 
-When('the saved {string} session starts final deliberation for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session starts final deliberation for the outcomes fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/actions/start-final-deliberation`)
+    const response = await apiClient.post(`/api/events/${platformFixtureIds.outcomesEventId}/actions/start-final-deliberation`)
     const state = getScenarioState(page)
     state.response = response
     state.json = await response.json()
@@ -254,11 +254,11 @@ When('the saved {string} session starts final deliberation for the outcomes fixt
   }
 })
 
-When('the saved {string} session lists final deliberation for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session lists final deliberation for the outcomes fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.get(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/final-deliberation`)
+    const response = await apiClient.get(`/api/events/${platformFixtureIds.outcomesEventId}/final-deliberation`)
     const state = getScenarioState(page)
     state.response = response
     state.json = await response.json()
@@ -299,7 +299,7 @@ When('the saved {string} session reorders the outcomes final ranking to prefer s
 
   try {
     const response = await apiClient.post(
-      `/api/hackathons/${platformFixtureIds.outcomesHackathonId}/final-deliberation/actions/reorder`,
+      `/api/events/${platformFixtureIds.outcomesEventId}/final-deliberation/actions/reorder`,
       {
         data: {
           orderedSubmissionIds: [
@@ -341,11 +341,11 @@ Then('the outcomes final deliberation should rank submission one first and submi
   })
 })
 
-When('the saved {string} session announces winners for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session announces winners for the outcomes fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/actions/announce-winners`)
+    const response = await apiClient.post(`/api/events/${platformFixtureIds.outcomesEventId}/actions/announce-winners`)
     const state = getScenarioState(page)
     state.response = response
     state.json = await response.json()
@@ -354,11 +354,11 @@ When('the saved {string} session announces winners for the outcomes fixture hack
   }
 })
 
-When('the saved {string} session completes the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session completes the outcomes fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.post(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/actions/complete`)
+    const response = await apiClient.post(`/api/events/${platformFixtureIds.outcomesEventId}/actions/complete`)
     const state = getScenarioState(page)
     state.response = response
     state.json = await response.json()
@@ -367,11 +367,11 @@ When('the saved {string} session completes the outcomes fixture hackathon', asyn
   }
 })
 
-When('the saved {string} session lists winners for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session lists winners for the outcomes fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.get(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/winners`)
+    const response = await apiClient.get(`/api/events/${platformFixtureIds.outcomesEventId}/winners`)
     const state = getScenarioState(page)
     state.response = response
     state.json = await response.json()
@@ -396,7 +396,7 @@ Then('the outcomes fixture winners should rank team one first and team two secon
   })
 })
 
-When('the saved {string} session lists pending prize redemptions for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session lists pending prize redemptions for the outcomes fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
@@ -408,7 +408,7 @@ When('the saved {string} session lists pending prize redemptions for the outcome
         prize?: {
           id?: string
         }
-        hackathon?: {
+        event?: {
           id?: string
         }
       }>
@@ -417,7 +417,7 @@ When('the saved {string} session lists pending prize redemptions for the outcome
     state.response = response
     state.json = json
     state.redemptionId = json.data?.find(redemption =>
-      redemption.hackathon?.id === platformFixtureIds.outcomesHackathonId
+      redemption.event?.id === platformFixtureIds.outcomesEventId
       && redemption.teamId === 'team_outcomes_fixture_one'
       && redemption.prize?.id === platformFixtureIds.outcomesTeamRedemptionPrizeId
     )?.id
@@ -435,7 +435,7 @@ Then('the remembered outcomes prize redemption should target team {string} and p
       prize?: {
         id?: string
       }
-      hackathon?: {
+      event?: {
         id?: string
       }
     }>
@@ -451,8 +451,8 @@ Then('the remembered outcomes prize redemption should target team {string} and p
       prize: expect.objectContaining({
         id: prizeId
       }),
-      hackathon: expect.objectContaining({
-        id: platformFixtureIds.outcomesHackathonId
+      event: expect.objectContaining({
+        id: platformFixtureIds.outcomesEventId
       })
     })
   ]))
@@ -503,11 +503,11 @@ Then('the redeemed outcomes prize redemption should accept the current outcomes 
   })
 })
 
-When('the saved {string} session lists audit logs for the outcomes fixture hackathon', async ({ page }, personaKey: string) => {
+When('the saved {string} session lists audit logs for the outcomes fixture event', async ({ page }, personaKey: string) => {
   const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
 
   try {
-    const response = await apiClient.get(`/api/hackathons/${platformFixtureIds.outcomesHackathonId}/audit`)
+    const response = await apiClient.get(`/api/events/${platformFixtureIds.outcomesEventId}/audit`)
     const state = getScenarioState(page)
     state.response = response
     state.json = await response.json()
@@ -516,7 +516,7 @@ When('the saved {string} session lists audit logs for the outcomes fixture hacka
   }
 })
 
-Then('the outcomes fixture hackathon audit should include actions {string}', async ({ page }, actions: string) => {
+Then('the outcomes fixture event audit should include actions {string}', async ({ page }, actions: string) => {
   const payload = getScenarioState(page).json as {
     data?: Array<{
       action?: string

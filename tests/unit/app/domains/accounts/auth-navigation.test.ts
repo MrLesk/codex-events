@@ -17,9 +17,9 @@ describe('auth navigation helpers', () => {
   })
 
   test('builds account settings route with return target', () => {
-    expect(buildAccountSettingsHref('/hackathons/fixture')).toBe('/account/settings?returnTo=%2Fhackathons%2Ffixture')
+    expect(buildAccountSettingsHref('/events/fixture')).toBe('/account/settings?returnTo=%2Fevents%2Ffixture')
     expect(buildAccountSettingsHref('/account')).toBe('/account/settings?returnTo=%2Faccount')
-    expect(buildAccountRegisterHref('/hackathons/fixture/register')).toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister')
+    expect(buildAccountRegisterHref('/events/fixture/register')).toBe('/account/register?returnTo=%2Fevents%2Ffixture%2Fregister')
   })
 
   test('falls back to the account dashboard when the return target is empty', () => {
@@ -55,13 +55,13 @@ describe('auth navigation helpers', () => {
     expect(resolveActorAppRedirect({
       kind: 'authenticated_identity',
       hasAcceptedCurrentPlatformDocuments: false
-    }, `${accountRegisterHref}?returnTo=%2Fhackathons%2Ffixture%2Fregister`))
-      .toBe('/account/register?returnTo=%2Fhackathons%2Ffixture%2Fregister')
+    }, `${accountRegisterHref}?returnTo=%2Fevents%2Ffixture%2Fregister`))
+      .toBe('/account/register?returnTo=%2Fevents%2Ffixture%2Fregister')
 
     expect(resolveActorAppRedirect({
       kind: 'platform_user',
       hasAcceptedCurrentPlatformDocuments: true
-    }, `${accountRegisterHref}?returnTo=%2Fhackathons%2Ffixture%2Fregister`))
-      .toBe('/hackathons/fixture/register')
+    }, `${accountRegisterHref}?returnTo=%2Fevents%2Ffixture%2Fregister`))
+      .toBe('/events/fixture/register')
   })
 })

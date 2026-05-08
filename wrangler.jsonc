@@ -1,6 +1,6 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
-	"name": "codex-hackathons-local",
+	"name": "codex-events-local",
 	"compatibility_date": "2026-03-23",
 	"compatibility_flags": [
 		"nodejs_compat",
@@ -24,7 +24,7 @@
 			}
 		},
 		{
-			"name": "PUBLIC_HACKATHON_FEEDBACK_RATE_LIMITER",
+			"name": "PUBLIC_EVENT_FEEDBACK_RATE_LIMITER",
 			"namespace_id": "1003",
 			"simple": {
 				"limit": 1,
@@ -35,7 +35,7 @@
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "codex-hackathons-local",
+			"database_name": "codex-events-local",
 			"database_id": "00000000-0000-0000-0000-000000000001",
 			"migrations_dir": "drizzle"
 		}
@@ -43,11 +43,11 @@
 	"r2_buckets": [
 		{
 			"binding": "PROFILE_ICONS",
-			"bucket_name": "codex-hackathons-local-profile-icons"
+			"bucket_name": "codex-events-local-profile-icons"
 		},
 		{
-			"binding": "HACKATHON_IMAGES",
-			"bucket_name": "codex-hackathons-local-hackathon-images"
+			"binding": "EVENT_IMAGES",
+			"bucket_name": "codex-events-local-event-images"
 		}
 	],
 	"images": {
@@ -57,7 +57,7 @@
 		{
 			"name": "EMAIL",
 			"allowed_sender_addresses": [
-				"info@codex-hackathons.com"
+				"info@codex-events.com"
 			]
 		}
 	],
@@ -65,34 +65,34 @@
 		"producers": [
 			{
 				"binding": "APPLICATION_REVIEW_EMAIL_QUEUE",
-				"queue": "codex-hackathons-application-review-email-delivery"
+				"queue": "codex-events-application-review-email-delivery"
 			},
 			{
-				"binding": "HACKATHON_OUTCOME_EMAIL_QUEUE",
-				"queue": "codex-hackathons-hackathon-outcome-email-delivery"
+				"binding": "EVENT_OUTCOME_EMAIL_QUEUE",
+				"queue": "codex-events-event-outcome-email-delivery"
 			},
 			{
 				"binding": "APPLICATION_LUMA_SYNC_QUEUE",
-				"queue": "codex-hackathons-application-luma-sync"
+				"queue": "codex-events-application-luma-sync"
 			}
 		],
 		"consumers": [
 			{
-				"queue": "codex-hackathons-application-review-email-delivery",
+				"queue": "codex-events-application-review-email-delivery",
 				"max_batch_size": 10,
 				"max_batch_timeout": 5,
 				"max_retries": 10,
 				"retry_delay": 120
 			},
 			{
-				"queue": "codex-hackathons-hackathon-outcome-email-delivery",
+				"queue": "codex-events-event-outcome-email-delivery",
 				"max_batch_size": 10,
 				"max_batch_timeout": 5,
 				"max_retries": 10,
 				"retry_delay": 120
 			},
 			{
-				"queue": "codex-hackathons-application-luma-sync",
+				"queue": "codex-events-application-luma-sync",
 				"max_batch_size": 10,
 				"max_batch_timeout": 5,
 				"max_retries": 10,
@@ -102,7 +102,7 @@
 	},
 	"env": {
 		"dev": {
-			"name": "codex-hackathons-dev",
+			"name": "codex-events-dev",
 			"main": ".output/server/index.mjs",
 			"workers_dev": true,
 			"preview_urls": false,
@@ -127,7 +127,7 @@
 					}
 				},
 				{
-					"name": "PUBLIC_HACKATHON_FEEDBACK_RATE_LIMITER",
+					"name": "PUBLIC_EVENT_FEEDBACK_RATE_LIMITER",
 					"namespace_id": "2003",
 					"simple": {
 						"limit": 1,
@@ -141,35 +141,35 @@
 			},
 			"routes": [
 				{
-					"pattern": "dev.codex-hackathons.com",
+					"pattern": "dev.codex-events.com",
 					"custom_domain": true
 				}
 			],
 				"vars": {
-					"NUXT_AUTH0_DOMAIN": "auth.dev.codex-hackathons.com",
-					"NUXT_AUTH0_APP_BASE_URL": "https://dev.codex-hackathons.com",
-					"NUXT_HACKATHON_IMAGES_PUBLIC_CDN_BASE_URL": "https://cdn.dev.codex-hackathons.com",
-					"NUXT_AUTH0_MANAGEMENT_DOMAIN": "codex-hackathons-dev.eu.auth0.com",
-					"NUXT_AUTH0_MANAGEMENT_AUDIENCE": "https://codex-hackathons-dev.eu.auth0.com/api/v2/",
-					"NUXT_AUTH0_DATABASE_CONNECTION_NAME": "codex-hackathons-e2e-users",
+					"NUXT_AUTH0_DOMAIN": "auth.dev.codex-events.com",
+					"NUXT_AUTH0_APP_BASE_URL": "https://dev.codex-events.com",
+					"NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL": "https://cdn.dev.codex-events.com",
+					"NUXT_AUTH0_MANAGEMENT_DOMAIN": "codex-events-dev.eu.auth0.com",
+					"NUXT_AUTH0_MANAGEMENT_AUDIENCE": "https://codex-events-dev.eu.auth0.com/api/v2/",
+					"NUXT_AUTH0_DATABASE_CONNECTION_NAME": "codex-events-e2e-users",
 					"NUXT_OUTBOUND_EMAIL_BINDING": "EMAIL",
-					"NUXT_OUTBOUND_EMAIL_FROM_EMAIL": "info@dev.codex-hackathons.com",
-					"NUXT_OUTBOUND_EMAIL_FROM_NAME": "Codex Hackathons",
-					"NUXT_OUTBOUND_EMAIL_REPLY_TO": "support@codex-hackathons.com",
+					"NUXT_OUTBOUND_EMAIL_FROM_EMAIL": "info@dev.codex-events.com",
+					"NUXT_OUTBOUND_EMAIL_FROM_NAME": "Codex Events",
+					"NUXT_OUTBOUND_EMAIL_REPLY_TO": "support@codex-events.com",
 					"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING": "APPLICATION_REVIEW_EMAIL_QUEUE",
-					"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "dev-codex-hackathons-application-review-email-delivery",
+					"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "dev-codex-events-application-review-email-delivery",
 					"NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS": "120",
-					"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING": "HACKATHON_OUTCOME_EMAIL_QUEUE",
-					"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME": "dev-codex-hackathons-hackathon-outcome-email-delivery",
-					"NUXT_HACKATHON_OUTCOME_EMAILS_RETRY_DELAY_SECONDS": "120",
+					"NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING": "EVENT_OUTCOME_EMAIL_QUEUE",
+					"NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME": "dev-codex-events-event-outcome-email-delivery",
+					"NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS": "120",
 					"NUXT_LUMA_QUEUE_BINDING": "APPLICATION_LUMA_SYNC_QUEUE",
-					"NUXT_LUMA_QUEUE_NAME": "dev-codex-hackathons-application-luma-sync",
+					"NUXT_LUMA_QUEUE_NAME": "dev-codex-events-application-luma-sync",
 					"NUXT_LUMA_RETRY_DELAY_SECONDS": "120"
 			},
 			"d1_databases": [
 				{
 					"binding": "DB",
-					"database_name": "dev-codex-hackathons",
+					"database_name": "dev-codex-events",
 					"database_id": "53a5509d-097e-4fa5-bcc9-7a9c1cc0040e",
 					"migrations_dir": "drizzle"
 				}
@@ -177,11 +177,11 @@
 			"r2_buckets": [
 				{
 					"binding": "PROFILE_ICONS",
-					"bucket_name": "dev-codex-hackathons-profile-icons"
+					"bucket_name": "dev-codex-events-profile-icons"
 				},
 				{
-					"binding": "HACKATHON_IMAGES",
-					"bucket_name": "dev-codex-hackathons-hackathon-images"
+					"binding": "EVENT_IMAGES",
+					"bucket_name": "dev-codex-events-event-images"
 				}
 			],
 			"images": {
@@ -191,7 +191,7 @@
 				{
 					"name": "EMAIL",
 					"allowed_sender_addresses": [
-						"info@dev.codex-hackathons.com"
+						"info@dev.codex-events.com"
 					]
 				}
 			],
@@ -199,34 +199,34 @@
 				"producers": [
 					{
 						"binding": "APPLICATION_REVIEW_EMAIL_QUEUE",
-						"queue": "dev-codex-hackathons-application-review-email-delivery"
+						"queue": "dev-codex-events-application-review-email-delivery"
 					},
 					{
-						"binding": "HACKATHON_OUTCOME_EMAIL_QUEUE",
-						"queue": "dev-codex-hackathons-hackathon-outcome-email-delivery"
+						"binding": "EVENT_OUTCOME_EMAIL_QUEUE",
+						"queue": "dev-codex-events-event-outcome-email-delivery"
 					},
 					{
 						"binding": "APPLICATION_LUMA_SYNC_QUEUE",
-						"queue": "dev-codex-hackathons-application-luma-sync"
+						"queue": "dev-codex-events-application-luma-sync"
 					}
 				],
 				"consumers": [
 					{
-						"queue": "dev-codex-hackathons-application-review-email-delivery",
+						"queue": "dev-codex-events-application-review-email-delivery",
 						"max_batch_size": 10,
 						"max_batch_timeout": 5,
 						"max_retries": 10,
 						"retry_delay": 120
 					},
 					{
-						"queue": "dev-codex-hackathons-hackathon-outcome-email-delivery",
+						"queue": "dev-codex-events-event-outcome-email-delivery",
 						"max_batch_size": 10,
 						"max_batch_timeout": 5,
 						"max_retries": 10,
 						"retry_delay": 120
 					},
 					{
-						"queue": "dev-codex-hackathons-application-luma-sync",
+						"queue": "dev-codex-events-application-luma-sync",
 						"max_batch_size": 10,
 						"max_batch_timeout": 5,
 						"max_retries": 10,
@@ -236,7 +236,7 @@
 			}
 		},
 		"production": {
-			"name": "codex-hackathons",
+			"name": "codex-events",
 			"main": ".output/server/index.mjs",
 			"workers_dev": false,
 			"preview_urls": false,
@@ -261,7 +261,7 @@
 					}
 				},
 				{
-					"name": "PUBLIC_HACKATHON_FEEDBACK_RATE_LIMITER",
+					"name": "PUBLIC_EVENT_FEEDBACK_RATE_LIMITER",
 					"namespace_id": "3003",
 					"simple": {
 						"limit": 1,
@@ -275,35 +275,35 @@
 			},
 			"routes": [
 				{
-					"pattern": "codex-hackathons.com",
+					"pattern": "codex-events.com",
 					"custom_domain": true
 				}
 			],
 				"vars": {
-					"NUXT_AUTH0_DOMAIN": "auth.codex-hackathons.com",
-					"NUXT_AUTH0_APP_BASE_URL": "https://codex-hackathons.com",
-					"NUXT_HACKATHON_IMAGES_PUBLIC_CDN_BASE_URL": "https://cdn.codex-hackathons.com",
-					"NUXT_AUTH0_MANAGEMENT_DOMAIN": "codex-hackathons.eu.auth0.com",
-					"NUXT_AUTH0_MANAGEMENT_AUDIENCE": "https://codex-hackathons.eu.auth0.com/api/v2/",
+					"NUXT_AUTH0_DOMAIN": "auth.codex-events.com",
+					"NUXT_AUTH0_APP_BASE_URL": "https://codex-events.com",
+					"NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL": "https://cdn.codex-events.com",
+					"NUXT_AUTH0_MANAGEMENT_DOMAIN": "codex-events.eu.auth0.com",
+					"NUXT_AUTH0_MANAGEMENT_AUDIENCE": "https://codex-events.eu.auth0.com/api/v2/",
 					"NUXT_AUTH0_DATABASE_CONNECTION_NAME": "Username-Password-Authentication",
 					"NUXT_OUTBOUND_EMAIL_BINDING": "EMAIL",
-					"NUXT_OUTBOUND_EMAIL_FROM_EMAIL": "info@codex-hackathons.com",
-					"NUXT_OUTBOUND_EMAIL_FROM_NAME": "Codex Hackathons",
-					"NUXT_OUTBOUND_EMAIL_REPLY_TO": "support@codex-hackathons.com",
+					"NUXT_OUTBOUND_EMAIL_FROM_EMAIL": "info@codex-events.com",
+					"NUXT_OUTBOUND_EMAIL_FROM_NAME": "Codex Events",
+					"NUXT_OUTBOUND_EMAIL_REPLY_TO": "support@codex-events.com",
 					"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING": "APPLICATION_REVIEW_EMAIL_QUEUE",
-					"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "codex-hackathons-application-review-email-delivery",
+					"NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME": "codex-events-application-review-email-delivery",
 					"NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS": "120",
-					"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_BINDING": "HACKATHON_OUTCOME_EMAIL_QUEUE",
-					"NUXT_HACKATHON_OUTCOME_EMAILS_QUEUE_NAME": "codex-hackathons-hackathon-outcome-email-delivery",
-					"NUXT_HACKATHON_OUTCOME_EMAILS_RETRY_DELAY_SECONDS": "120",
+					"NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING": "EVENT_OUTCOME_EMAIL_QUEUE",
+					"NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME": "codex-events-event-outcome-email-delivery",
+					"NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS": "120",
 					"NUXT_LUMA_QUEUE_BINDING": "APPLICATION_LUMA_SYNC_QUEUE",
-					"NUXT_LUMA_QUEUE_NAME": "codex-hackathons-application-luma-sync",
+					"NUXT_LUMA_QUEUE_NAME": "codex-events-application-luma-sync",
 					"NUXT_LUMA_RETRY_DELAY_SECONDS": "120"
 			},
 			"d1_databases": [
 				{
 					"binding": "DB",
-					"database_name": "codex-hackathons",
+					"database_name": "codex-events",
 					"database_id": "4a138b1e-0267-47c4-8124-ab75cb530e28",
 					"migrations_dir": "drizzle"
 				}
@@ -311,11 +311,11 @@
 			"r2_buckets": [
 				{
 					"binding": "PROFILE_ICONS",
-					"bucket_name": "codex-hackathons-profile-icons"
+					"bucket_name": "codex-events-profile-icons"
 				},
 				{
-					"binding": "HACKATHON_IMAGES",
-					"bucket_name": "codex-hackathons-hackathon-images"
+					"binding": "EVENT_IMAGES",
+					"bucket_name": "codex-events-event-images"
 				}
 			],
 			"images": {
@@ -325,7 +325,7 @@
 				{
 					"name": "EMAIL",
 					"allowed_sender_addresses": [
-						"info@codex-hackathons.com"
+						"info@codex-events.com"
 					]
 				}
 			],
@@ -333,34 +333,34 @@
 				"producers": [
 					{
 						"binding": "APPLICATION_REVIEW_EMAIL_QUEUE",
-						"queue": "codex-hackathons-application-review-email-delivery"
+						"queue": "codex-events-application-review-email-delivery"
 					},
 					{
-						"binding": "HACKATHON_OUTCOME_EMAIL_QUEUE",
-						"queue": "codex-hackathons-hackathon-outcome-email-delivery"
+						"binding": "EVENT_OUTCOME_EMAIL_QUEUE",
+						"queue": "codex-events-event-outcome-email-delivery"
 					},
 					{
 						"binding": "APPLICATION_LUMA_SYNC_QUEUE",
-						"queue": "codex-hackathons-application-luma-sync"
+						"queue": "codex-events-application-luma-sync"
 					}
 				],
 				"consumers": [
 					{
-						"queue": "codex-hackathons-application-review-email-delivery",
+						"queue": "codex-events-application-review-email-delivery",
 						"max_batch_size": 10,
 						"max_batch_timeout": 5,
 						"max_retries": 10,
 						"retry_delay": 120
 					},
 					{
-						"queue": "codex-hackathons-hackathon-outcome-email-delivery",
+						"queue": "codex-events-event-outcome-email-delivery",
 						"max_batch_size": 10,
 						"max_batch_timeout": 5,
 						"max_retries": 10,
 						"retry_delay": 120
 					},
 					{
-						"queue": "codex-hackathons-application-luma-sync",
+						"queue": "codex-events-application-luma-sync",
 						"max_batch_size": 10,
 						"max_batch_timeout": 5,
 						"max_retries": 10,
