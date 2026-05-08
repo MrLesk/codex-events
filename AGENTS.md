@@ -135,6 +135,65 @@ Rule of thumb:
   - What information do they need before acting?
   - What implementation detail can be safely omitted?
 
+## Audience Translation Rule
+
+Keep private reasoning separate from visible output.
+
+Before writing or editing any user-facing copy, UI label, heading, empty state,
+README section, landing-page text, or canonical documentation, identify two
+layers:
+
+- Internal intent: what the team or agent is trying to achieve, prove, model,
+  or validate.
+- Audience-facing expression: what the target reader or user should actually
+  see.
+
+Never publish the internal intent directly unless the audience is explicitly an
+internal contributor reading implementation notes.
+
+Examples of internal intent that must usually be translated:
+
+- "external validation"
+- "technical credibility"
+- "onboarding flow"
+- "activation"
+- "happy path"
+- "edge case"
+- "admin lifecycle"
+- "canonical state"
+- "MVP scope"
+- "assumptions"
+- "current direction"
+- "migration strategy"
+- "proof of value"
+
+Translate intent into audience-native language, evidence, actions, or outcomes.
+Good visible copy names the thing the user recognizes, the action they can take,
+or the outcome they care about. Bad visible copy names the reason the team
+wanted the copy to exist.
+
+Before finalizing, scan headings, buttons, helper text, empty states, README
+sections, and docs intros. If a phrase sounds like a planning note, product
+strategy label, schema concept, or agent reasoning artifact, rewrite it from the
+reader's point of view.
+
+Use this test:
+
+- Would the target actor naturally say this phrase?
+- Would this phrase make sense without knowing our implementation or planning
+  conversation?
+- Is this evidence/action/outcome, or is it a label for what we hoped to
+  communicate?
+
+For this project, do not expose organizer/platform implementation language to
+participants or judges. A participant joins a hackathon, submits a project,
+checks requirements, and sees judging results. They do not need to see concepts
+like lifecycle state, canonical workflow, review pipeline, or internal scoring
+model unless those concepts are part of the visible rules.
+
+When in doubt, keep the precise internal term in code, schema, specs, or task
+notes, and use audience-native wording in the visible surface.
+
 <!-- BACKLOG.MD MCP GUIDELINES START -->
 
 <CRITICAL_INSTRUCTION>
