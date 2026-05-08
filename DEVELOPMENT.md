@@ -60,7 +60,7 @@ Local Auth0 dashboard settings:
 
 Local Auth0 runtime notes:
 
-- `NUXT_AUTH0_DOMAIN` is the Auth0 issuer host, not the app host. For the shared dev tenant split, use `auth.dev.codex-events.com` or the underlying Auth0 tenant domain, not `dev.codex-events.com`.
+- `NUXT_AUTH0_DOMAIN` is the Auth0 issuer host, not the app host. For the shared dev tenant split, use `auth.dev.codex-hackathons.com` or the underlying Auth0 tenant domain, not `dev.codex-hackathons.com`.
 - When `NUXT_AUTH0_APP_BASE_URL=http://localhost:3000`, the app intentionally uses a non-secure Auth0 session cookie for local development so Safari can persist the login callback session on `localhost`. HTTPS environments continue to use secure cookies.
 - The Auth0-backed BDD suite uses `NUXT_AUTH0_BDD_APP_BASE_URL` when set and otherwise defaults to `http://localhost:3100`, so that `bun run test:bdd` does not have to take over the normal local dev server on port 3000.
 
@@ -93,8 +93,8 @@ If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUT
 
 Luma webhook bootstrap automation:
 
-- `LUMA_WEBHOOK_URL=https://dev.codex-events.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts check`
-- `LUMA_WEBHOOK_URL=https://dev.codex-events.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json`
+- `LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts check`
+- `LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json`
 
 These commands reconcile the repository-managed `guest.updated` webhook for an environment and, in `apply` mode, write a `wrangler secret bulk`-compatible JSON file containing `NUXT_LUMA_WEBHOOK_SECRET`. The script reads `LUMA_API_KEY` or falls back to `NUXT_LUMA_API_KEY`, falls back to `NUXT_LUMA_API_BASE_URL` for the API host, and can derive the webhook URL from an https `NUXT_AUTH0_APP_BASE_URL` when you do not pass `LUMA_WEBHOOK_URL` explicitly.
 
@@ -151,7 +151,7 @@ Event background and banner uploads use a dedicated Cloudflare R2 binding at run
 
 - `NUXT_EVENT_IMAGES_BINDING` should match the R2 binding used for event background and banner image objects. The canonical default is `EVENT_IMAGES`.
 - local development uses the repository `wrangler.jsonc` R2 bucket binding for event image object storage.
-- `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` should be the HTTPS custom-domain base URL for public event gallery images served directly from R2 in deployed environments. The repository config uses `https://cdn.dev.codex-events.com` for `dev` and `https://cdn.codex-events.com` for `production`.
+- `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` should be the HTTPS custom-domain base URL for public event gallery images served directly from R2 in deployed environments. The repository config uses `https://cdn.dev.codex-hackathons.com` for `dev` and `https://cdn.codex-hackathons.com` for `production`.
 - local `localhost` development can leave `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` unset to keep public gallery images on the local Worker routes.
 
 Protected event photo previews use a Cloudflare Images binding at runtime:
@@ -198,13 +198,13 @@ The protected example surface added in this repo is `/dashboard`.
 
 ## Shared Dev Deployment
 
-The repository `wrangler.jsonc` uses top-level bindings for local development and a separate `dev` environment for the shared Cloudflare deployment at `https://dev.codex-events.com`.
+The repository `wrangler.jsonc` uses top-level bindings for local development and a separate `dev` environment for the shared Cloudflare deployment at `https://dev.codex-hackathons.com`.
 
 The deployed dev environment uses:
 
-- application URL: `https://dev.codex-events.com`
-- Auth0 custom domain: `https://auth.dev.codex-events.com`
-- outbound email sender: `info@dev.codex-events.com`
+- application URL: `https://dev.codex-hackathons.com`
+- Auth0 custom domain: `https://auth.dev.codex-hackathons.com`
+- outbound email sender: `info@dev.codex-hackathons.com`
 
 Pushes to `main` publish the shared dev environment automatically through `.github/workflows/ci.yml` after the fast CI checks pass. The shared dev deploy and Auth0-backed BDD jobs use the GitHub Actions `dev` environment.
 
@@ -243,7 +243,7 @@ The shared dev `CLOUDFLARE_API_TOKEN` must be able to run `wrangler queues creat
 For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run:
 
 ```bash
-LUMA_WEBHOOK_URL=https://dev.codex-events.com/api/public/luma/webhooks \
+LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks \
 bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-dev-luma-webhook-secret.json
 bun run db:migrate:dev
 bun run deploy:dev
@@ -256,9 +256,9 @@ Pull requests and non-`main` pushes do not publish the shared dev environment. T
 If Auth0 needs to be re-aligned with the deployed dev hostname split, apply the bootstrap with explicit overrides:
 
 ```bash
-AUTH0_CUSTOM_DOMAIN=auth.dev.codex-events.com \
-AUTH0_APP_BASE_URL=https://dev.codex-events.com \
-AUTH0_LOGIN_URI=https://dev.codex-events.com/auth/login \
+AUTH0_CUSTOM_DOMAIN=auth.dev.codex-hackathons.com \
+AUTH0_APP_BASE_URL=https://dev.codex-hackathons.com \
+AUTH0_LOGIN_URI=https://dev.codex-hackathons.com/auth/login \
 bun tools/auth0/auth0-bootstrap.ts apply
 ```
 
@@ -293,8 +293,8 @@ These Cloudflare tokens currently need:
 
 - account permission `Workers Scripts Write` for `wrangler secret bulk`, `wrangler queues create`, and `wrangler deploy`
 - account permission `D1 Write` for `wrangler d1 migrations apply --remote`
-- zone permission `Zone Zone Read` on `codex-events.com` so `tools/auth0/auth0-custom-domain.ts` can resolve the production zone
-- zone permission `DNS Write` on `codex-events.com` so `tools/auth0/auth0-custom-domain.ts` can create or update the Auth0 verification CNAME
+- zone permission `Zone Zone Read` on `codex-hackathons.com` so `tools/auth0/auth0-custom-domain.ts` can resolve the production zone
+- zone permission `DNS Write` on `codex-hackathons.com` so `tools/auth0/auth0-custom-domain.ts` can create or update the Auth0 verification CNAME
 
 The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` currently needs these Auth0 Management API scopes:
 
@@ -327,7 +327,7 @@ The GitHub `production` environment does not need a stored `NUXT_LUMA_WEBHOOK_SE
 For manual production recovery, reconcile the production webhook first, upload the generated secret with `wrangler secret bulk`, and then deploy:
 
 ```bash
-LUMA_WEBHOOK_URL=https://codex-events.com/api/public/luma/webhooks \
+LUMA_WEBHOOK_URL=https://codex-hackathons.com/api/public/luma/webhooks \
 bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-production-luma-webhook-secret.json
 bun run db:migrate:production
 bun run deploy:production
@@ -335,8 +335,8 @@ bun run deploy:production
 
 The workflow uses these production hostnames:
 
-- application URL: `https://codex-events.com`
-- Auth0 custom domain: `https://auth.codex-events.com`
+- application URL: `https://codex-hackathons.com`
+- Auth0 custom domain: `https://auth.codex-hackathons.com`
 
 On the first successful production release, the workflow also:
 
@@ -410,7 +410,7 @@ AUTH0_TEST_DOMAIN=your-tenant.auth0.com
 AUTH0_TEST_MGMT_CLIENT_ID=your-test-management-client-id
 AUTH0_TEST_MGMT_CLIENT_SECRET=your-test-management-client-secret
 AUTH0_TEST_MGMT_AUDIENCE=https://your-tenant.auth0.com/api/v2/
-AUTH0_TEST_CONNECTION_NAME=codex-events-e2e-users
+AUTH0_TEST_CONNECTION_NAME=codex-hackathons-e2e-users
 ```
 
 For platform fixture reset and authenticated browser coverage, the repository uses the local D1 binding declared in `wrangler.jsonc`. The bootstrap flow clears persisted local D1 data before recreating schema and fixtures through Cloudflare's local D1 runtime.

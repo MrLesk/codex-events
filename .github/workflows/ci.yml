@@ -58,7 +58,7 @@ jobs:
       cancel-in-progress: true
     environment:
       name: dev
-      url: https://dev.codex-events.com
+      url: https://dev.codex-hackathons.com
     env:
       CI: true
       NODE_OPTIONS: --max-old-space-size=4096
@@ -108,7 +108,7 @@ jobs:
       - name: Reconcile shared dev Luma webhook
         if: ${{ env.NUXT_LUMA_API_KEY != '' }}
         env:
-          LUMA_WEBHOOK_URL: https://dev.codex-events.com/api/public/luma/webhooks
+          LUMA_WEBHOOK_URL: https://dev.codex-hackathons.com/api/public/luma/webhooks
         run: |
           set -euo pipefail
           if output="$(bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-dev-luma-webhook-secret.json 2>&1)"; then
@@ -166,7 +166,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: dev
-      url: https://dev.codex-events.com
+      url: https://dev.codex-hackathons.com
     env:
       CI: true
       NUXT_AUTH0_DOMAIN: ${{ secrets.NUXT_AUTH0_DOMAIN }}
