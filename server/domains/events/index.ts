@@ -790,7 +790,6 @@ export function buildEventUpdatePayload(
     'blindScoreWeightPercent',
     'pitchScoreWeightPercent',
     'shortlistFinalistCount',
-    'requireProofOfExecution',
     'requireSubmissionSummary',
     'requireSubmissionRepositoryUrl',
     'requireSubmissionDemoUrl'
@@ -1369,7 +1368,7 @@ export function serializeEvent(
     requireOpenaiOrgId: event.requireOpenaiOrgId,
     requireLumaEmail: event.requireLumaEmail,
     requireWhyThisEvent: event.requireWhyThisEvent,
-    requireProofOfExecution: isCompetitionEvent ? event.requireProofOfExecution : false,
+    requireProofOfExecution: event.requireProofOfExecution,
     requireSubmissionSummary: isCompetitionEvent ? event.requireSubmissionSummary : false,
     requireSubmissionRepositoryUrl: isCompetitionEvent ? event.requireSubmissionRepositoryUrl : false,
     requireSubmissionDemoUrl: isCompetitionEvent ? event.requireSubmissionDemoUrl : false,

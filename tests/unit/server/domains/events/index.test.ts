@@ -486,6 +486,28 @@ describe('event management utilities', () => {
     })).toThrowError(ApiError)
   })
 
+  test('allows common application requirement patches on registration-only events', () => {
+    expect(buildEventUpdatePayload(buildEventRecord({
+      eventType: 'meetup'
+    }), {
+      autoApproveApplications: true,
+      inPersonEvent: true,
+      requireChatgptEmail: true,
+      requireOpenaiOrgId: true,
+      requireLumaEmail: true,
+      requireWhyThisEvent: true,
+      requireProofOfExecution: true
+    })).toMatchObject({
+      autoApproveApplications: true,
+      inPersonEvent: true,
+      requireChatgptEmail: true,
+      requireOpenaiOrgId: true,
+      requireLumaEmail: true,
+      requireWhyThisEvent: true,
+      requireProofOfExecution: true
+    })
+  })
+
   test('serializes configurable judging fields for internal event responses', () => {
     expect(serializeEvent(buildEventRecord({
       state: 'blind_review',
@@ -507,6 +529,21 @@ describe('event management utilities', () => {
       pitchPresentationSubmissionIds: ['submission_2', 'submission_1'],
       activePitchPresentationSubmissionId: 'submission_2',
       pitchPresentationsCompletedAt: null
+    })
+  })
+
+  test('serializes common application requirements for registration-only events', () => {
+    expect(serializeEvent(buildEventRecord({
+      eventType: 'build',
+      requireProofOfExecution: true,
+      requireSubmissionSummary: true,
+      requireSubmissionRepositoryUrl: true,
+      requireSubmissionDemoUrl: true
+    }))).toMatchObject({
+      requireProofOfExecution: true,
+      requireSubmissionSummary: false,
+      requireSubmissionRepositoryUrl: false,
+      requireSubmissionDemoUrl: false
     })
   })
 

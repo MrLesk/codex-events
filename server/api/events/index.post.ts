@@ -72,7 +72,7 @@ export default defineApiHandler(async (h3Event) => {
     requireOpenaiOrgId: body.requireOpenaiOrgId,
     requireLumaEmail: body.requireLumaEmail,
     requireWhyThisEvent: body.requireWhyThisEvent,
-    requireProofOfExecution: isHackathon ? body.requireProofOfExecution : false,
+    requireProofOfExecution: body.requireProofOfExecution,
     requireSubmissionSummary: isHackathon ? body.requireSubmissionSummary : false,
     requireSubmissionRepositoryUrl: isHackathon ? body.requireSubmissionRepositoryUrl : false,
     requireSubmissionDemoUrl: isHackathon ? body.requireSubmissionDemoUrl : false,

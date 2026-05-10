@@ -60,7 +60,7 @@ async function createEvent(form: EventFormState) {
         requireOpenaiOrgId: form.requireOpenaiOrgId,
         requireLumaEmail: form.requireLumaEmail,
         requireWhyThisEvent: form.requireWhyThisEvent,
-        requireProofOfExecution: isHackathon ? form.requireProofOfExecution : false,
+        requireProofOfExecution: form.requireProofOfExecution,
         requireSubmissionSummary: isHackathon ? form.requireSubmissionSummary : false,
         requireSubmissionRepositoryUrl: isHackathon ? form.requireSubmissionRepositoryUrl : false,
         requireSubmissionDemoUrl: isHackathon ? form.requireSubmissionDemoUrl : false

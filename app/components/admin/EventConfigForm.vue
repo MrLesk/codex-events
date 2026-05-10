@@ -1033,10 +1033,7 @@ const submitConfigForm = handleSubmit(() => {
                     Require "Why this event" answer
                   </label>
 
-                  <label
-                    v-if="isHackathon"
-                    class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]"
-                  >
+                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
                     <input
                       v-model="form.requireProofOfExecution"
                       type="checkbox"
@@ -1388,10 +1385,7 @@ const submitConfigForm = handleSubmit(() => {
           </div>
 
           <div class="grid grid-cols-1 gap-3">
-            <label
-              v-if="isHackathon"
-              class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]"
-            >
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.autoApproveApplications"
                 type="checkbox"
@@ -1403,10 +1397,7 @@ const submitConfigForm = handleSubmit(() => {
               </span>
             </label>
 
-            <label
-              v-if="isHackathon"
-              class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]"
-            >
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.inPersonEvent"
                 type="checkbox"
@@ -1415,10 +1406,7 @@ const submitConfigForm = handleSubmit(() => {
               In-person event
             </label>
 
-            <label
-              v-if="isHackathon"
-              class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]"
-            >
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.requireChatgptEmail"
                 type="checkbox"
@@ -1427,10 +1415,7 @@ const submitConfigForm = handleSubmit(() => {
               Require ChatGPT email
             </label>
 
-            <label
-              v-if="isHackathon"
-              class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]"
-            >
+            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
               <input
                 v-model="form.requireOpenaiOrgId"
                 type="checkbox"
@@ -1466,7 +1451,10 @@ const submitConfigForm = handleSubmit(() => {
               Require proof-of-execution links
             </label>
 
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+            <label
+              v-if="isHackathon"
+              class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]"
+            >
               <input
                 v-model="form.requireSubmissionSummary"
                 type="checkbox"
@@ -1475,7 +1463,10 @@ const submitConfigForm = handleSubmit(() => {
               Require submission summary
             </label>
 
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+            <label
+              v-if="isHackathon"
+              class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]"
+            >
               <input
                 v-model="form.requireSubmissionRepositoryUrl"
                 type="checkbox"
@@ -1484,7 +1475,10 @@ const submitConfigForm = handleSubmit(() => {
               Require repository URL
             </label>
 
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
+            <label
+              v-if="isHackathon"
+              class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]"
+            >
               <input
                 v-model="form.requireSubmissionDemoUrl"
                 type="checkbox"

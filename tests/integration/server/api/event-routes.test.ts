@@ -3234,7 +3234,13 @@ describe('TASK-3.5 event CRUD routes', () => {
         registrationOpensAt: '2026-03-20T12:00:00.000Z',
         registrationClosesAt: '2026-03-23T12:00:00.000Z',
         participantsLimit: 80,
-        autoApproveApplications: true
+        autoApproveApplications: true,
+        inPersonEvent: true,
+        requireChatgptEmail: true,
+        requireOpenaiOrgId: true,
+        requireLumaEmail: true,
+        requireWhyThisEvent: true,
+        requireProofOfExecution: true
       })
     })
 
@@ -3244,9 +3250,15 @@ describe('TASK-3.5 event CRUD routes', () => {
         eventType: 'meetup',
         slug: 'community-meetup',
         maxTeamMembers: 1,
+        autoApproveApplications: true,
+        inPersonEvent: true,
+        requireChatgptEmail: true,
+        requireOpenaiOrgId: true,
+        requireLumaEmail: true,
+        requireWhyThisEvent: true,
+        requireProofOfExecution: true,
         blindReviewCount: 0,
         pitchReviewEnabled: false,
-        requireProofOfExecution: false,
         requireSubmissionSummary: false,
         requireSubmissionRepositoryUrl: false,
         requireSubmissionDemoUrl: false
@@ -3261,6 +3273,13 @@ describe('TASK-3.5 event CRUD routes', () => {
       eventType: 'meetup',
       submissionOpensAt: '2026-03-23T12:00:00.000Z',
       maxTeamMembers: 1,
+      autoApproveApplications: true,
+      inPersonEvent: true,
+      requireChatgptEmail: true,
+      requireOpenaiOrgId: true,
+      requireLumaEmail: true,
+      requireWhyThisEvent: true,
+      requireProofOfExecution: true,
       blindReviewCount: 1,
       pitchReviewEnabled: false
     })
