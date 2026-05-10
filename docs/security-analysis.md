@@ -90,30 +90,18 @@ Recommendation:
 - Upgrade to a Nuxt/Nitro stack that pulls in a patched `h3`.
 - Re-run `bun audit` after the upgrade and confirm `h3 >= 1.15.9`.
 
-### 3. Medium: Platform account registration does not require `email_verified`
+### 3. Platform account registration requires `email_verified`
 
 Affected paths:
 
 - `server/domains/accounts/index.ts`
 - `tests/integration/server/api/actor-platform-routes.test.ts`
 
-What happens:
+Current control:
 
 - Registration requires that an Auth0 identity exposes an email address.
-- Registration does not require `actor.sessionUser.email_verified === true`.
-- The existing tests explicitly model unverified identities as blocked only for existing-email conflicts, not for brand-new account creation.
-
-Why this matters:
-
-- The platform uses email as a core identity boundary.
-- If the Auth0 tenant allows sign-in or signup before email verification, an unverified identity can become a canonical platform user.
-- This becomes more sensitive because operator workflows and account-linking logic also key off email.
-
-Recommendation:
-
-- Enforce verified email before platform account creation.
-- Consider also requiring verified email for regular platform access, not just registration.
-- If the intended guarantee is "Auth0 tenant settings always enforce verified email first", document that invariant and assert it server-side anyway.
+- Registration requires `actor.sessionUser.email_verified === true` before creating a platform user, linked identity, platform-document acceptance, or account-registration audit entry.
+- Unverified or missing verification claims are rejected before account-linking challenges are issued.
 
 ### 4. Medium: Internal exceptions are returned to clients verbatim
 

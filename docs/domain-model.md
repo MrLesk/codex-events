@@ -35,6 +35,7 @@ Key characteristics:
 Rules:
 
 - Platform account provisioning happens only after the authenticated user accepts the current platform `privacy_policy` and `platform_terms` in the app-owned account-registration flow.
+- Platform account registration requires an authenticated identity with an email address and an `email_verified` claim of `true`.
 - Platform account registration can create the user before canonical `first_name` and `family_name` are filled. Those fields are completed through later profile or application flows.
 - A platform user stores one primary Auth0 subject on the user record and can have additional linked Auth0 identities recorded separately.
 - When an authenticated social identity must be linked to an existing platform account, the pre-link identity does not record platform-document acceptance. After linking, the existing platform account either proceeds immediately if current acceptance already exists or completes current platform consent through `/account/register`.

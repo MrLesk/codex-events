@@ -1326,6 +1326,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       sessionUser: {
         sub: 'auth0|new-user',
         email: 'new-user@example.com',
+        email_verified: true,
         name: 'New User'
       }
     })
@@ -1445,6 +1446,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       sessionUser: {
         sub: 'github|new-github-user',
         email: 'new-github-user@example.com',
+        email_verified: true,
         nickname: 'new-github-user',
         name: 'New GitHub User'
       }
@@ -1517,7 +1519,8 @@ describe('TASK-3.5 actor-facing API routes', () => {
       ],
       sessionUser: {
         sub: 'auth0|email-only-user',
-        email: 'email-only-user@example.com'
+        email: 'email-only-user@example.com',
+        email_verified: true
       }
     })
     databases.push(harness)
@@ -1625,6 +1628,73 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(createdUser).toBeUndefined()
   })
 
+  test('POST /api/account/registration rejects identities with unverified or missing email verification before writes', async () => {
+    const cases = [
+      {
+        auth0Subject: 'auth0|unverified-email-user',
+        emailVerified: false
+      },
+      {
+        auth0Subject: 'auth0|missing-email-verification-user',
+        emailVerified: undefined
+      }
+    ]
+
+    for (const testCase of cases) {
+      const harness = createApiRouteTestHarness({
+        routes: [
+          { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler }
+        ],
+        sessionUser: {
+          sub: testCase.auth0Subject,
+          email: `${testCase.auth0Subject.split('|')[1]}@example.com`,
+          ...(testCase.emailVerified === undefined ? {} : { email_verified: testCase.emailVerified }),
+          name: 'Unverified User'
+        }
+      })
+      databases.push(harness)
+
+      await harness.database.insert(platformDocuments).values([
+        {
+          id: 'privacy_v1',
+          documentType: 'privacy_policy',
+          version: 1,
+          title: 'Privacy Policy v1',
+          content: 'Privacy',
+          publishedAt: '2026-03-01T00:00:00.000Z'
+        },
+        {
+          id: 'terms_v1',
+          documentType: 'platform_terms',
+          version: 1,
+          title: 'Platform Terms v1',
+          content: 'Terms',
+          publishedAt: '2026-03-02T00:00:00.000Z'
+        }
+      ])
+
+      const response = await harness.request('/api/account/registration', {
+        method: 'POST',
+        body: JSON.stringify({
+          privacyPolicyDocumentId: 'privacy_v1',
+          platformTermsDocumentId: 'terms_v1'
+        })
+      })
+
+      expect(response.status).toBe(409)
+      expect(await response.json()).toMatchObject({
+        error: {
+          code: 'identity_email_unverified',
+          message: 'Verify your email address with your sign-in provider before creating a platform account.'
+        }
+      })
+      expect(await harness.database.select().from(users)).toHaveLength(0)
+      expect(await harness.database.select().from(userAuthIdentities)).toHaveLength(0)
+      expect(await harness.database.select().from(userPlatformDocumentAcceptances)).toHaveLength(0)
+      expect(await harness.database.select().from(auditLogs)).toHaveLength(0)
+    }
+  })
+
   test('POST /api/account/registration rejects outdated or mismatched platform document ids', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -1633,6 +1703,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       sessionUser: {
         sub: 'auth0|registration-guard-user',
         email: 'registration-guard@example.com',
+        email_verified: true,
         name: 'Registration Guard'
       }
     })
@@ -1843,13 +1914,14 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(response.status).toBe(409)
     expect(await response.json()).toMatchObject({
       error: {
-        code: 'platform_account_email_conflict',
-        details: {
-          email: 'existing-user@example.com'
-        }
+        code: 'identity_email_unverified',
+        message: 'Verify your email address with your sign-in provider before creating a platform account.'
       }
     })
     expect(response.headers.get('set-cookie')).toBeNull()
+    expect(await harness.database.select().from(userAuthIdentities)).toHaveLength(1)
+    expect(await harness.database.select().from(userPlatformDocumentAcceptances)).toHaveLength(0)
+    expect(await harness.database.select().from(auditLogs)).toHaveLength(0)
   })
 
   test('PATCH /api/account rejects authenticated identities without a platform account', async () => {

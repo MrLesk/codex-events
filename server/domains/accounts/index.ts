@@ -284,6 +284,12 @@ async function assertPlatformAccountRegistrationAllowed(
     message: 'The authenticated identity does not expose an email address required for platform account registration.'
   })
 
+  assertGuard(actor.sessionUser.email_verified === true, {
+    statusCode: 409,
+    code: 'identity_email_unverified',
+    message: 'Verify your email address with your sign-in provider before creating a platform account.'
+  })
+
   const existingEmail = await database.query.users.findFirst({
     where: and(
       eq(users.email, email!),
