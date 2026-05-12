@@ -1,10 +1,10 @@
 # AGENTS.md
 
-This repository is the canonical design and implementation workspace for the Codex hackathon platform.
+This repository is the canonical design and implementation workspace for the Codex Events platform.
 
 ## Project Context
 
-- The platform is used by the Codex Community team to manage multiple hackathons in parallel.
+- The platform is used by the Codex Community team to manage multiple events in parallel.
 - The product is still being designed. Existing starter-template code is not authoritative for product behavior.
 - The `docs/` directory is the source of truth for product rules, domain definitions, workflows, and constraints.
 
@@ -19,7 +19,7 @@ When adding new docs, place them in `docs/` and link them from `docs/README.md`.
 
 ## Root Repository Docs
 
-- The root `README.md` is public-facing documentation for people evaluating, cloning, configuring, and running `codex-hackathons` on their own Cloudflare instances.
+- The root `README.md` is public-facing documentation for people evaluating, cloning, configuring, and running `codex-events` on their own Cloudflare instances.
 - Write the root `README.md` from the point of view of an operator or adopter of the platform, not from the point of view of a contributor to this repository.
 - The root `README.md` should focus on platform capabilities, deployment/runtime configuration, and links to canonical product docs.
 - Contributor workflow, local setup, validation commands, and test-running instructions belong in `DEVELOPMENT.md`, not in the root `README.md`.

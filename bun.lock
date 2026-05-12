@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "codex-hackathons",
+      "name": "codex-events",
       "dependencies": {
         "@auth0/auth0-nuxt": "1.1.0",
         "@iconify-json/lucide": "1.2.103",
