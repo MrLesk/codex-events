@@ -124,6 +124,8 @@ The repository includes automation for recurring setup and maintenance:
 - Cloudflare queue, secret, migration, and deployment workflows.
 - A GitHub Release driven production deployment workflow.
 
+The checked-in `wrangler.jsonc` is limited to local/adopter-safe defaults. Remote dev and production deployments generate ignored Wrangler configs from `DEPLOY_DEV_BASE_DOMAIN` or `DEPLOY_PRODUCTION_BASE_DOMAIN`, explicit Cloudflare resource names and IDs, and the app's existing `NUXT_*` runtime variables.
+
 ## Where It Fits
 
 Codex Events is a good fit when your team wants to:
@@ -152,7 +154,7 @@ Plan for:
 
 Before launch, configure platform legal settings and publish current platform documents from the platform-admin workspace or the legal bootstrap tool. Public legal pages and account registration treat missing legal setup as unavailable rather than publishing repository-owned operator details.
 
-Environment-specific values are documented through [`.env.example`](.env.example), [`wrangler.jsonc`](wrangler.jsonc), and [`DEVELOPMENT.md`](DEVELOPMENT.md). The root README stays at the adopter level rather than listing every runtime variable.
+Environment-specific values are documented through [`.env.example`](.env.example), [`wrangler.jsonc`](wrangler.jsonc), and [`DEVELOPMENT.md`](DEVELOPMENT.md). `wrangler.jsonc` covers local bindings; remote deployment config is generated under `.wrangler/generated/` by the deploy scripts. The root README stays at the adopter level rather than listing every runtime variable.
 
 ---
 

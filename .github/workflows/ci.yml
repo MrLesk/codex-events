@@ -58,10 +58,38 @@ jobs:
       cancel-in-progress: true
     environment:
       name: dev
-      url: https://dev.codex-hackathons.com
+      url: https://${{ vars.DEPLOY_DEV_BASE_DOMAIN }}
     env:
       CI: true
       NODE_OPTIONS: --max-old-space-size=4096
+      DEPLOY_DEV_BASE_DOMAIN: ${{ vars.DEPLOY_DEV_BASE_DOMAIN }}
+      DEPLOY_ZONE_NAME: ${{ vars.DEPLOY_ZONE_NAME }}
+      DEPLOY_WORKER_NAME: ${{ vars.DEPLOY_WORKER_NAME }}
+      DEPLOY_D1_DATABASE_NAME: ${{ vars.DEPLOY_D1_DATABASE_NAME }}
+      DEPLOY_D1_DATABASE_ID: ${{ vars.DEPLOY_D1_DATABASE_ID }}
+      DEPLOY_PROFILE_ICONS_BUCKET: ${{ vars.DEPLOY_PROFILE_ICONS_BUCKET }}
+      DEPLOY_EVENT_IMAGES_BUCKET: ${{ vars.DEPLOY_EVENT_IMAGES_BUCKET }}
+      DEPLOY_APPLICATION_REVIEW_EMAIL_QUEUE: ${{ vars.DEPLOY_APPLICATION_REVIEW_EMAIL_QUEUE }}
+      DEPLOY_EVENT_OUTCOME_EMAIL_QUEUE: ${{ vars.DEPLOY_EVENT_OUTCOME_EMAIL_QUEUE }}
+      DEPLOY_LUMA_SYNC_QUEUE: ${{ vars.DEPLOY_LUMA_SYNC_QUEUE }}
+      DEPLOY_AUTH0_CUSTOM_DOMAIN: ${{ vars.DEPLOY_AUTH0_CUSTOM_DOMAIN }}
+      DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL: ${{ vars.DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL }}
+      DEPLOY_LUMA_WEBHOOK_URL: ${{ vars.DEPLOY_LUMA_WEBHOOK_URL }}
+      LUMA_WEBHOOK_URL: ${{ vars.DEPLOY_LUMA_WEBHOOK_URL }}
+      NUXT_AUTH0_APP_BASE_URL: https://${{ vars.DEPLOY_DEV_BASE_DOMAIN }}
+      NUXT_AUTH0_MANAGEMENT_DOMAIN: ${{ vars.NUXT_AUTH0_MANAGEMENT_DOMAIN }}
+      NUXT_AUTH0_MANAGEMENT_AUDIENCE: ${{ vars.NUXT_AUTH0_MANAGEMENT_AUDIENCE }}
+      NUXT_AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME }}
+      NUXT_OUTBOUND_EMAIL_BINDING: ${{ vars.NUXT_OUTBOUND_EMAIL_BINDING }}
+      NUXT_OUTBOUND_EMAIL_FROM_EMAIL: ${{ vars.NUXT_OUTBOUND_EMAIL_FROM_EMAIL }}
+      NUXT_OUTBOUND_EMAIL_FROM_NAME: ${{ vars.NUXT_OUTBOUND_EMAIL_FROM_NAME }}
+      NUXT_OUTBOUND_EMAIL_REPLY_TO: ${{ vars.NUXT_OUTBOUND_EMAIL_REPLY_TO }}
+      NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING: ${{ vars.NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING }}
+      NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS: ${{ vars.NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS }}
+      NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING: ${{ vars.NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING }}
+      NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS: ${{ vars.NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS }}
+      NUXT_LUMA_QUEUE_BINDING: ${{ vars.NUXT_LUMA_QUEUE_BINDING }}
+      NUXT_LUMA_RETRY_DELAY_SECONDS: ${{ vars.NUXT_LUMA_RETRY_DELAY_SECONDS }}
       NUXT_AUTH0_CLIENT_ID: ${{ secrets.NUXT_AUTH0_CLIENT_ID }}
       NUXT_AUTH0_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_CLIENT_SECRET }}
       NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}
@@ -96,19 +124,18 @@ jobs:
       - name: Ensure shared dev Cloudflare Queues
         run: |
           set -euo pipefail
+          bun run deploy:config:dev
           while IFS= read -r queue_name; do
             [ -n "$queue_name" ] || continue
-            if bunx wrangler queues info "$queue_name" --env dev --config wrangler.jsonc >/dev/null 2>&1; then
+            if bunx wrangler queues info "$queue_name" --config .wrangler/generated/dev.jsonc >/dev/null 2>&1; then
               echo "Queue ${queue_name} already exists."
             else
-              bunx wrangler queues create "$queue_name" --env dev --config wrangler.jsonc
+              bunx wrangler queues create "$queue_name" --config .wrangler/generated/dev.jsonc
             fi
-          done < <(jq -r '.env.dev.queues.producers[].queue' wrangler.jsonc)
+          done < <(jq -r '.queues.producers[].queue' .wrangler/generated/dev.jsonc)
 
       - name: Reconcile shared dev Luma webhook
         if: ${{ env.NUXT_LUMA_API_KEY != '' }}
-        env:
-          LUMA_WEBHOOK_URL: https://dev.codex-hackathons.com/api/public/luma/webhooks
         run: |
           set -euo pipefail
           if output="$(bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-dev-luma-webhook-secret.json 2>&1)"; then
@@ -151,7 +178,7 @@ jobs:
               .wrangler-dev-luma-webhook-secret.json > .wrangler-dev-secrets.merged.json
             mv .wrangler-dev-secrets.merged.json .wrangler-dev-secrets.json
           fi
-          bunx wrangler secret bulk .wrangler-dev-secrets.json --env dev --config wrangler.jsonc
+          bunx wrangler secret bulk .wrangler-dev-secrets.json --config .wrangler/generated/dev.jsonc
           rm -f .wrangler-dev-secrets.json .wrangler-dev-luma-webhook-secret.json
 
       - name: Apply shared dev D1 migrations
@@ -166,7 +193,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: dev
-      url: https://dev.codex-hackathons.com
+      url: https://${{ vars.DEPLOY_DEV_BASE_DOMAIN }}
     env:
       CI: true
       NUXT_AUTH0_DOMAIN: ${{ secrets.NUXT_AUTH0_DOMAIN }}

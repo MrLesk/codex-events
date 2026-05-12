@@ -15,18 +15,45 @@ jobs:
       contents: write
     environment:
       name: production
-      url: https://codex-hackathons.com
+      url: https://${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}
     env:
       CI: true
       NODE_OPTIONS: --max-old-space-size=4096
-      AUTH0_DOMAIN: codex-hackathons.eu.auth0.com
-      AUTH0_APP_BASE_URL: https://codex-hackathons.com
-      AUTH0_CUSTOM_DOMAIN: auth.codex-hackathons.com
-      AUTH0_LOGIN_URI: https://codex-hackathons.com/auth/login
-      AUTH0_APP_DISPLAY_NAME: Codex Events
-      AUTH0_MGMT_AUDIENCE: https://codex-hackathons.eu.auth0.com/api/v2/
-      NUXT_AUTH0_DOMAIN: auth.codex-hackathons.com
-      NUXT_AUTH0_APP_BASE_URL: https://codex-hackathons.com
+      DEPLOY_PRODUCTION_BASE_DOMAIN: ${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}
+      DEPLOY_ZONE_NAME: ${{ vars.DEPLOY_ZONE_NAME }}
+      DEPLOY_WORKER_NAME: ${{ vars.DEPLOY_WORKER_NAME }}
+      DEPLOY_D1_DATABASE_NAME: ${{ vars.DEPLOY_D1_DATABASE_NAME }}
+      DEPLOY_D1_DATABASE_ID: ${{ vars.DEPLOY_D1_DATABASE_ID }}
+      DEPLOY_PROFILE_ICONS_BUCKET: ${{ vars.DEPLOY_PROFILE_ICONS_BUCKET }}
+      DEPLOY_EVENT_IMAGES_BUCKET: ${{ vars.DEPLOY_EVENT_IMAGES_BUCKET }}
+      DEPLOY_APPLICATION_REVIEW_EMAIL_QUEUE: ${{ vars.DEPLOY_APPLICATION_REVIEW_EMAIL_QUEUE }}
+      DEPLOY_EVENT_OUTCOME_EMAIL_QUEUE: ${{ vars.DEPLOY_EVENT_OUTCOME_EMAIL_QUEUE }}
+      DEPLOY_LUMA_SYNC_QUEUE: ${{ vars.DEPLOY_LUMA_SYNC_QUEUE }}
+      DEPLOY_AUTH0_CUSTOM_DOMAIN: ${{ vars.DEPLOY_AUTH0_CUSTOM_DOMAIN }}
+      DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL: ${{ vars.DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL }}
+      DEPLOY_LUMA_WEBHOOK_URL: ${{ vars.DEPLOY_LUMA_WEBHOOK_URL }}
+      LUMA_WEBHOOK_URL: ${{ vars.DEPLOY_LUMA_WEBHOOK_URL }}
+      AUTH0_DOMAIN: ${{ vars.NUXT_AUTH0_MANAGEMENT_DOMAIN }}
+      AUTH0_APP_BASE_URL: https://${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}
+      AUTH0_CUSTOM_DOMAIN: ${{ vars.DEPLOY_AUTH0_CUSTOM_DOMAIN || format('auth.{0}', vars.DEPLOY_PRODUCTION_BASE_DOMAIN) }}
+      AUTH0_LOGIN_URI: https://${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}/auth/login
+      AUTH0_APP_DISPLAY_NAME: ${{ vars.AUTH0_APP_DISPLAY_NAME || 'Codex Events' }}
+      AUTH0_MGMT_AUDIENCE: ${{ vars.NUXT_AUTH0_MANAGEMENT_AUDIENCE || format('https://{0}/api/v2/', vars.NUXT_AUTH0_MANAGEMENT_DOMAIN) }}
+      NUXT_AUTH0_DOMAIN: ${{ vars.DEPLOY_AUTH0_CUSTOM_DOMAIN || format('auth.{0}', vars.DEPLOY_PRODUCTION_BASE_DOMAIN) }}
+      NUXT_AUTH0_APP_BASE_URL: https://${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}
+      NUXT_AUTH0_MANAGEMENT_DOMAIN: ${{ vars.NUXT_AUTH0_MANAGEMENT_DOMAIN }}
+      NUXT_AUTH0_MANAGEMENT_AUDIENCE: ${{ vars.NUXT_AUTH0_MANAGEMENT_AUDIENCE }}
+      NUXT_AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME }}
+      NUXT_OUTBOUND_EMAIL_BINDING: ${{ vars.NUXT_OUTBOUND_EMAIL_BINDING }}
+      NUXT_OUTBOUND_EMAIL_FROM_EMAIL: ${{ vars.NUXT_OUTBOUND_EMAIL_FROM_EMAIL }}
+      NUXT_OUTBOUND_EMAIL_FROM_NAME: ${{ vars.NUXT_OUTBOUND_EMAIL_FROM_NAME }}
+      NUXT_OUTBOUND_EMAIL_REPLY_TO: ${{ vars.NUXT_OUTBOUND_EMAIL_REPLY_TO }}
+      NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING: ${{ vars.NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING }}
+      NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS: ${{ vars.NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS }}
+      NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING: ${{ vars.NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING }}
+      NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS: ${{ vars.NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS }}
+      NUXT_LUMA_QUEUE_BINDING: ${{ vars.NUXT_LUMA_QUEUE_BINDING }}
+      NUXT_LUMA_RETRY_DELAY_SECONDS: ${{ vars.NUXT_LUMA_RETRY_DELAY_SECONDS }}
       NUXT_AUTH0_CLIENT_ID: ${{ secrets.AUTH0_APP_CLIENT_ID }}
       NUXT_AUTH0_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_CLIENT_SECRET }}
       NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}
@@ -81,19 +108,18 @@ jobs:
       - name: Ensure production Cloudflare Queues
         run: |
           set -euo pipefail
+          bun run deploy:config:production
           while IFS= read -r queue_name; do
             [ -n "$queue_name" ] || continue
-            if bunx wrangler queues info "$queue_name" --env production --config wrangler.jsonc >/dev/null 2>&1; then
+            if bunx wrangler queues info "$queue_name" --config .wrangler/generated/production.jsonc >/dev/null 2>&1; then
               echo "Queue ${queue_name} already exists."
             else
-              bunx wrangler queues create "$queue_name" --env production --config wrangler.jsonc
+              bunx wrangler queues create "$queue_name" --config .wrangler/generated/production.jsonc
             fi
-          done < <(jq -r '.env.production.queues.producers[].queue' wrangler.jsonc)
+          done < <(jq -r '.queues.producers[].queue' .wrangler/generated/production.jsonc)
 
       - name: Reconcile production Luma webhook
         if: ${{ env.NUXT_LUMA_API_KEY != '' }}
-        env:
-          LUMA_WEBHOOK_URL: https://codex-hackathons.com/api/public/luma/webhooks
         run: bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-production-luma-webhook-secret.json
 
       - name: Upload production Worker secrets
@@ -123,7 +149,7 @@ jobs:
               .wrangler-production-luma-webhook-secret.json > .wrangler-production-secrets.merged.json
             mv .wrangler-production-secrets.merged.json .wrangler-production-secrets.json
           fi
-          bunx wrangler secret bulk .wrangler-production-secrets.json --env production --config wrangler.jsonc
+          bunx wrangler secret bulk .wrangler-production-secrets.json --config .wrangler/generated/production.jsonc
           rm -f .wrangler-production-secrets.json .wrangler-production-luma-webhook-secret.json
 
       - name: Apply production Auth0 configuration

@@ -1,20 +1,11 @@
 import { describe, expect, test } from 'vitest'
 
 import {
-  buildZoneCandidates,
   requiresDnsUpdate,
   resolveVerificationDnsRecord
 } from '../../../tools/auth0/auth0-custom-domain'
 
 describe('auth0 custom domain helpers', () => {
-  test('builds Cloudflare zone candidates from the full hostname down to the apex', () => {
-    expect(buildZoneCandidates('auth.dev.codex-events.com')).toEqual([
-      'auth.dev.codex-events.com',
-      'dev.codex-events.com',
-      'codex-events.com'
-    ])
-  })
-
   test('extracts the Auth0-managed-cert verification CNAME record', () => {
     expect(resolveVerificationDnsRecord({
       custom_domain_id: 'cd_123',

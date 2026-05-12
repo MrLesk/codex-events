@@ -55,6 +55,7 @@ interface Auth0CustomDomainConfig {
   managementClientSecret: string
   managementAudience: string
   customDomain: string
+  zoneName: string
   cloudflareApiToken: string
   waitTimeoutMs: number
   pollIntervalMs: number
@@ -98,18 +99,6 @@ function normalizeTenantDomain(value: string) {
 
 function normalizeHostname(value: string) {
   return value.trim().replace(/\.+$/, '').toLowerCase()
-}
-
-export function buildZoneCandidates(hostname: string) {
-  const normalizedHostname = normalizeHostname(hostname)
-  const labels = normalizedHostname.split('.')
-  const candidates: string[] = []
-
-  for (let index = 0; index <= labels.length - 2; index += 1) {
-    candidates.push(labels.slice(index).join('.'))
-  }
-
-  return [...new Set(candidates)]
 }
 
 export function resolveVerificationDnsRecord(customDomain: Auth0CustomDomain): DesiredDnsRecord {
@@ -160,6 +149,7 @@ function loadConfig(): Auth0CustomDomainConfig {
     managementClientSecret: requireEnv('AUTH0_MGMT_CLIENT_SECRET'),
     managementAudience: requireEnv('AUTH0_MGMT_AUDIENCE'),
     customDomain: normalizeHostname(requireEnv('AUTH0_CUSTOM_DOMAIN')),
+    zoneName: normalizeHostname(requireEnv('DEPLOY_ZONE_NAME')),
     cloudflareApiToken: requireEnv('CLOUDFLARE_API_TOKEN'),
     waitTimeoutMs: parseSecondsEnv('AUTH0_CUSTOM_DOMAIN_WAIT_SECONDS', 600),
     pollIntervalMs: parseSecondsEnv('AUTH0_CUSTOM_DOMAIN_POLL_SECONDS', 15)
@@ -287,20 +277,18 @@ async function cloudflareRequest<Result>(
 }
 
 async function resolveZone(config: Auth0CustomDomainConfig) {
-  for (const zoneCandidate of buildZoneCandidates(config.customDomain)) {
-    const zones = await cloudflareRequest<CloudflareZone[]>(
-      config,
-      `/zones?name=${encodeURIComponent(zoneCandidate)}`,
-      { method: 'GET' }
-    )
-    const matchingZone = zones.find(zone => normalizeHostname(zone.name) === zoneCandidate)
+  const zones = await cloudflareRequest<CloudflareZone[]>(
+    config,
+    `/zones?name=${encodeURIComponent(config.zoneName)}`,
+    { method: 'GET' }
+  )
+  const matchingZone = zones.find(zone => normalizeHostname(zone.name) === config.zoneName)
 
-    if (matchingZone) {
-      return matchingZone
-    }
+  if (matchingZone) {
+    return matchingZone
   }
 
-  throw new Error(`No Cloudflare zone matched ${config.customDomain}.`)
+  throw new Error(`No Cloudflare zone matched ${config.zoneName}.`)
 }
 
 async function getExistingDnsRecord(config: Auth0CustomDomainConfig, zoneId: string, recordName: string) {

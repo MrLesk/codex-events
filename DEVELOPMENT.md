@@ -60,7 +60,7 @@ Local Auth0 dashboard settings:
 
 Local Auth0 runtime notes:
 
-- `NUXT_AUTH0_DOMAIN` is the Auth0 issuer host, not the app host. For the shared dev tenant split, use `auth.dev.codex-hackathons.com` or the underlying Auth0 tenant domain, not `dev.codex-hackathons.com`.
+- `NUXT_AUTH0_DOMAIN` is the Auth0 issuer host, not the app host. For deployed environments, use the Auth0 custom domain or tenant domain for that deployment, not the application hostname.
 - When `NUXT_AUTH0_APP_BASE_URL=http://localhost:3000`, the app intentionally uses a non-secure Auth0 session cookie for local development so Safari can persist the login callback session on `localhost`. HTTPS environments continue to use secure cookies.
 - The Auth0-backed BDD suite uses `NUXT_AUTH0_BDD_APP_BASE_URL` when set and otherwise defaults to `http://localhost:3100`, so that `bun run test:bdd` does not have to take over the normal local dev server on port 3000.
 
@@ -93,8 +93,8 @@ If you already have legacy Auth0 variables such as `NUXT_PUBLIC_AUTH0_*` or `AUT
 
 Luma webhook bootstrap automation:
 
-- `LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts check`
-- `LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json`
+- `NUXT_AUTH0_APP_BASE_URL=https://your-platform.example bun tools/luma/webhook-bootstrap.ts check`
+- `NUXT_AUTH0_APP_BASE_URL=https://your-platform.example bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json`
 
 These commands reconcile the repository-managed `guest.updated` webhook for an environment and, in `apply` mode, write a `wrangler secret bulk`-compatible JSON file containing `NUXT_LUMA_WEBHOOK_SECRET`. The script reads `LUMA_API_KEY` or falls back to `NUXT_LUMA_API_KEY`, falls back to `NUXT_LUMA_API_BASE_URL` for the API host, and can derive the webhook URL from an https `NUXT_AUTH0_APP_BASE_URL` when you do not pass `LUMA_WEBHOOK_URL` explicitly.
 
@@ -151,7 +151,7 @@ Event background and banner uploads use a dedicated Cloudflare R2 binding at run
 
 - `NUXT_EVENT_IMAGES_BINDING` should match the R2 binding used for event background and banner image objects. The canonical default is `EVENT_IMAGES`.
 - local development uses the repository `wrangler.jsonc` R2 bucket binding for event image object storage.
-- `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` should be the HTTPS custom-domain base URL for public event gallery images served directly from R2 in deployed environments. The repository config uses `https://cdn.dev.codex-hackathons.com` for `dev` and `https://cdn.codex-hackathons.com` for `production`.
+- `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` should be the HTTPS custom-domain base URL for public event gallery images served directly from R2 in deployed environments. Generated remote deployment config derives this from the selected base domain unless `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` is set.
 - local `localhost` development can leave `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` unset to keep public gallery images on the local Worker routes.
 
 Protected event photo previews use a Cloudflare Images binding at runtime:
@@ -196,17 +196,98 @@ The built-in Auth0 Nuxt routes are mounted at:
 
 The protected example surface added in this repo is `/dashboard`.
 
-## Shared Dev Deployment
+## Remote Deployments
 
-The repository `wrangler.jsonc` uses top-level bindings for local development and a separate `dev` environment for the shared Cloudflare deployment at `https://dev.codex-hackathons.com`.
+The tracked `wrangler.jsonc` is local/adopter-safe and does not contain remote Cloudflare environments. Remote dev and production deployments generate ignored Wrangler config files from operator-owned environment values:
 
-The deployed dev environment uses:
+```bash
+bun tools/deploy/generate-wrangler-config.ts dev
+bun tools/deploy/generate-wrangler-config.ts production
+```
 
-- application URL: `https://dev.codex-hackathons.com`
-- Auth0 custom domain: `https://auth.dev.codex-hackathons.com`
-- outbound email sender: `info@dev.codex-hackathons.com`
+The generated files are written under `.wrangler/generated/` and are used by:
 
-Pushes to `main` publish the shared dev environment automatically through `.github/workflows/ci.yml` after the fast CI checks pass. The shared dev deploy and Auth0-backed BDD jobs use the GitHub Actions `dev` environment.
+- `bun run db:migrate:dev`
+- `bun run db:migrate:production`
+- `bun run deploy:dev`
+- `bun run deploy:production`
+
+Deployment hostnames are derived from per-environment base domains:
+
+- dev uses `DEPLOY_DEV_BASE_DOMAIN`
+- production uses `DEPLOY_PRODUCTION_BASE_DOMAIN`
+
+For the selected target, the generator derives:
+
+- application URL: `https://<base-domain>`
+- Cloudflare route pattern: `<base-domain>`
+- Auth0 custom domain: `auth.<base-domain>`
+- event image CDN URL: `https://cdn.<base-domain>`
+- Luma webhook URL: `https://<base-domain>/api/public/luma/webhooks`
+
+Keep `DEPLOY_ZONE_NAME` explicit because the Cloudflare DNS zone cannot always be inferred from a deployment hostname. Use these override variables only when the default derived hostnames are not correct for an environment:
+
+- `DEPLOY_AUTH0_CUSTOM_DOMAIN`
+- `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL`
+- `DEPLOY_LUMA_WEBHOOK_URL`
+
+Each remote environment must provide deployment metadata:
+
+- `DEPLOY_ZONE_NAME`
+- `DEPLOY_WORKER_NAME`
+- `DEPLOY_D1_DATABASE_NAME`
+- `DEPLOY_D1_DATABASE_ID`
+- `DEPLOY_PROFILE_ICONS_BUCKET`
+- `DEPLOY_EVENT_IMAGES_BUCKET`
+- `DEPLOY_APPLICATION_REVIEW_EMAIL_QUEUE`
+- `DEPLOY_EVENT_OUTCOME_EMAIL_QUEUE`
+- `DEPLOY_LUMA_SYNC_QUEUE`
+
+The existing app runtime variables remain the interface for Auth0, outbound email, queue binding names, retry delays, and optional Luma access. The generator copies those values into the generated Wrangler `vars` block and fails fast when a required deploy value is missing.
+
+The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, and `wrangler deploy`.
+
+For manual deployment, export the target environment values and run:
+
+```bash
+bun run db:migrate:dev
+bun run deploy:dev
+```
+
+or:
+
+```bash
+bun run db:migrate:production
+bun run deploy:production
+```
+
+When Luma sync is enabled, the workflow or operator should reconcile the webhook before uploading Worker secrets:
+
+```bash
+bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json
+```
+
+`LUMA_WEBHOOK_URL` is optional when `NUXT_AUTH0_APP_BASE_URL` is an HTTPS URL; the script derives the webhook URL from that app base URL.
+
+## GitHub Deployments
+
+Pushes to `main` publish the dev environment through `.github/workflows/ci.yml` after the fast CI checks pass. Production publishes from GitHub Releases through `.github/workflows/release-production.yml`.
+
+The GitHub `dev` and `production` environments should store deployment metadata as environment variables and credentials as secrets. Required environment variables mirror the remote deployment metadata above, plus the runtime values that are not secrets:
+
+- `NUXT_AUTH0_MANAGEMENT_DOMAIN`
+- `NUXT_AUTH0_MANAGEMENT_AUDIENCE` when it does not follow `https://<management-domain>/api/v2/`
+- `NUXT_AUTH0_DATABASE_CONNECTION_NAME`
+- `NUXT_OUTBOUND_EMAIL_BINDING`
+- `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
+- `NUXT_OUTBOUND_EMAIL_FROM_NAME`
+- `NUXT_OUTBOUND_EMAIL_REPLY_TO`
+- `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING`
+- `NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS`
+- `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING`
+- `NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS`
+- `NUXT_LUMA_QUEUE_BINDING`
+- `NUXT_LUMA_RETRY_DELAY_SECONDS`
 
 The GitHub `dev` environment must provide these secrets:
 
@@ -215,11 +296,11 @@ The GitHub `dev` environment must provide these secrets:
 - `NUXT_AUTH0_CLIENT_ID`
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_AUTH0_SESSION_SECRET`
-- `NUXT_AUTH0_AUDIENCE` when the shared dev Auth0 application uses a non-empty audience
+- `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
 - `NUXT_AUTH0_MANAGEMENT_CLIENT_ID`
 - `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET`
 - `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
-- `NUXT_LUMA_API_KEY` when any shared dev event uses Luma sync
+- `NUXT_LUMA_API_KEY` when any dev event uses Luma sync
 - `AUTH0_TEST_DOMAIN`
 - `AUTH0_TEST_MGMT_CLIENT_ID`
 - `AUTH0_TEST_MGMT_CLIENT_SECRET`
@@ -234,45 +315,7 @@ The GitHub `dev` environment must provide these secrets:
 - `E2E_REGULAR_USER_EMAIL`
 - `E2E_REGULAR_USER_PASSWORD`
 
-The deploy workflow creates or reuses the Cloudflare Queues declared for the `dev` environment in `wrangler.jsonc`, reconciles the managed shared-dev Luma webhook when `NUXT_LUMA_API_KEY` is present, uploads the shared dev Worker secrets from the GitHub `dev` environment plus the generated `NUXT_LUMA_WEBHOOK_SECRET`, applies the remote dev D1 migrations, and then deploys the Worker. The checked-in dev `wrangler.jsonc` supplies the shared dev Auth0 management domain, management audience, and password connection name as plaintext vars.
-
-The GitHub `dev` environment does not need a stored `NUXT_LUMA_WEBHOOK_SECRET`; the workflow derives it from Luma on each deploy.
-
-The shared dev `CLOUDFLARE_API_TOKEN` must be able to run `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, and `wrangler deploy`.
-
-For manual recovery or out-of-band releases, export `CLOUDFLARE_MGMT_TOKEN` and run:
-
-```bash
-LUMA_WEBHOOK_URL=https://dev.codex-hackathons.com/api/public/luma/webhooks \
-bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-dev-luma-webhook-secret.json
-bun run db:migrate:dev
-bun run deploy:dev
-```
-
-If you use the manual path, upload the generated `.wrangler-dev-luma-webhook-secret.json` contents with `wrangler secret bulk` before `bun run deploy:dev`, or rerun the checked-in workflow to republish the secret automatically.
-
-Pull requests and non-`main` pushes do not publish the shared dev environment. The Auth0-backed BDD workflow also reads its CI secrets from the GitHub `dev` environment.
-
-If Auth0 needs to be re-aligned with the deployed dev hostname split, apply the bootstrap with explicit overrides:
-
-```bash
-AUTH0_CUSTOM_DOMAIN=auth.dev.codex-hackathons.com \
-AUTH0_APP_BASE_URL=https://dev.codex-hackathons.com \
-AUTH0_LOGIN_URI=https://dev.codex-hackathons.com/auth/login \
-bun tools/auth0/auth0-bootstrap.ts apply
-```
-
-## Production Release Pipeline
-
-Production publishes from GitHub Releases through `.github/workflows/release-production.yml`.
-
-The workflow starts when you manually publish a GitHub Release. The release tag is the canonical version source for that run:
-
-- `v1.2.3` becomes package version `1.2.3`
-- the workflow assumes the tagged commit on `main` already passed CI, then migrates and deploys production from that tagged commit
-- after a successful release it commits the matching `package.json` version back to `main`
-
-The GitHub `production` environment must provide these secrets before the workflow can run:
+The GitHub `production` environment must provide these secrets before a release can run:
 
 - `AUTH0_APP_CLIENT_ID`
 - `AUTH0_MGMT_CLIENT_ID`
@@ -282,19 +325,14 @@ The GitHub `production` environment must provide these secrets before the workfl
 - `NUXT_AUTH0_AUDIENCE`
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_AUTH0_SESSION_SECRET`
-- `NUXT_LUMA_API_KEY`
+- `NUXT_LUMA_API_KEY` when production events use Luma sync
 
-Least-privilege external credential requirements for the current production workflow:
+The generated Wrangler config supplies deploy-time Cloudflare bindings and non-secret runtime vars. GitHub workflows upload Worker secrets from the relevant GitHub environment plus the generated `NUXT_LUMA_WEBHOOK_SECRET` when Luma reconciliation runs. GitHub environments do not need a stored `NUXT_LUMA_WEBHOOK_SECRET`.
 
-- `CLOUDFLARE_API_TOKEN`
-- `CLOUDFLARE_MGMT_TOKEN` when you run the same recovery commands locally
+Cloudflare tokens used by production Auth0 custom-domain automation also need:
 
-These Cloudflare tokens currently need:
-
-- account permission `Workers Scripts Write` for `wrangler secret bulk`, `wrangler queues create`, and `wrangler deploy`
-- account permission `D1 Write` for `wrangler d1 migrations apply --remote`
-- zone permission `Zone Zone Read` on `codex-hackathons.com` so `tools/auth0/auth0-custom-domain.ts` can resolve the production zone
-- zone permission `DNS Write` on `codex-hackathons.com` so `tools/auth0/auth0-custom-domain.ts` can create or update the Auth0 verification CNAME
+- zone permission `Zone Zone Read` on `DEPLOY_ZONE_NAME`
+- zone permission `DNS Write` on `DEPLOY_ZONE_NAME`
 
 The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` currently needs these Auth0 Management API scopes:
 
@@ -320,23 +358,7 @@ The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CL
 
 The `read:users` and `update:users` scopes are required by the runtime account-linking flow. The app reads linked Auth0 identities to reconcile cross-device sessions and posts to Auth0's user identities endpoint when a verified social login must be connected to an existing password-backed platform account.
 
-`AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. Outbound email delivery uses the Cloudflare Email Service `send_email` binding configured in `wrangler.jsonc`; the production sending domain must be onboarded in Cloudflare Email Service before release. The release workflow creates or reuses the Cloudflare Queues declared for the `production` environment in `wrangler.jsonc`, reconciles the managed production Luma webhook when `NUXT_LUMA_API_KEY` is present, uploads Worker secrets plus the generated `NUXT_LUMA_WEBHOOK_SECRET`, applies migrations, and deploys the Worker.
-
-The GitHub `production` environment does not need a stored `NUXT_LUMA_WEBHOOK_SECRET`; the workflow derives it from Luma on each release.
-
-For manual production recovery, reconcile the production webhook first, upload the generated secret with `wrangler secret bulk`, and then deploy:
-
-```bash
-LUMA_WEBHOOK_URL=https://codex-hackathons.com/api/public/luma/webhooks \
-bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-production-luma-webhook-secret.json
-bun run db:migrate:production
-bun run deploy:production
-```
-
-The workflow uses these production hostnames:
-
-- application URL: `https://codex-hackathons.com`
-- Auth0 custom domain: `https://auth.codex-hackathons.com`
+`AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. Outbound email delivery uses the Cloudflare Email Service `send_email` binding configured in the generated Wrangler config; the production sending domain must be onboarded in Cloudflare Email Service before release.
 
 On the first successful production release, the workflow also:
 
