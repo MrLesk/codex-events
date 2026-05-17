@@ -21,6 +21,8 @@
   |
   <a href="docs/tech-stack.md">Stack</a>
   |
+  <a href="OPERATOR.md">Operator Guide</a>
+  |
   <a href="DEVELOPMENT.md">Development</a>
 </p>
 
@@ -154,7 +156,7 @@ Plan for:
 
 Before launch, configure platform legal settings and publish current platform documents from the platform-admin workspace or the legal bootstrap tool. Public legal pages and account registration treat missing legal setup as unavailable rather than publishing repository-owned operator details.
 
-Environment-specific values are documented through [`.env.example`](.env.example), [`wrangler.jsonc`](wrangler.jsonc), and [`DEVELOPMENT.md`](DEVELOPMENT.md). `wrangler.jsonc` covers local bindings; remote deployment config is generated under `.wrangler/generated/` by the deploy scripts. The root README stays at the adopter level rather than listing every runtime variable.
+Production deployment variables and operator setup are documented in [`OPERATOR.md`](OPERATOR.md). Environment-specific examples are also available in [`.env.example`](.env.example) and [`wrangler.jsonc`](wrangler.jsonc). `wrangler.jsonc` covers local bindings; remote deployment config is generated under `.wrangler/generated/` by the deploy scripts.
 
 ---
 
@@ -172,4 +174,4 @@ The canonical product and engineering docs live in [`docs/`](docs/README.md). St
 | [`docs/tech-stack.md`](docs/tech-stack.md) | Application stack and infrastructure choices. |
 | [`docs/testing-strategy.md`](docs/testing-strategy.md) | Validation layers and Auth0-backed end-to-end strategy. |
 
-For repository contributors, local development, test commands, and release mechanics, use [`DEVELOPMENT.md`](DEVELOPMENT.md).
+For teams running the platform, use [`OPERATOR.md`](OPERATOR.md). For repository contributors, local development, test commands, and release mechanics, use [`DEVELOPMENT.md`](DEVELOPMENT.md).
