@@ -311,6 +311,7 @@ useSeoMeta({
             <AppFormField
               name="platform-legal-contact-languages"
               label="Legal contact languages"
+              description="Languages accepted for legal and DSA communications, for example German and English."
             >
               <AppInput
                 v-model="legalSettingsForm.legalContactLanguages"
@@ -322,10 +323,11 @@ useSeoMeta({
             <AppFormField
               name="platform-business-purpose"
               label="Business purpose"
+              description="Short public description of what this platform operates."
             >
-              <AppInput
+              <AppTextarea
                 v-model="legalSettingsForm.businessPurpose"
-                type="text"
+                rows="3"
                 required
               />
             </AppFormField>
@@ -334,6 +336,7 @@ useSeoMeta({
           <AppFormField
             name="platform-editorial-line"
             label="Editorial line"
+            description="Short public summary of the information published through this platform."
           >
             <AppTextarea
               v-model="legalSettingsForm.editorialLine"
@@ -347,6 +350,7 @@ useSeoMeta({
             name="platform-imprint-content"
             editor-id="platform-imprint-content"
             label="Imprint content"
+            description="Full public legal notice shown on the imprint page. Include operator details, address, contact points, DSA contact information, and any jurisdiction-required notices."
             placeholder="Enter the public imprint content for this deployment."
             required
           />
