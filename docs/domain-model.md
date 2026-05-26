@@ -47,8 +47,11 @@ Rules:
 - Platform admins can create events.
 - Event organizers can create events.
 - Platform admins can grant platform-admin access to other active users.
+- Platform admins can remove platform-admin access from active users.
 - Platform admins can grant event-organizer access to other active users.
+- Platform admins can remove event-organizer access from active users.
 - Granting platform-admin access also normalizes the user's explicit `event_admin` assignment coverage across every event.
+- Removing platform-admin access clears only the user's platform-admin status and does not remove existing `EventRoleAssignment` rows.
 - Event admins and platform admins can assign staff and event admins within their events.
 - Event admins and platform admins can assign judges within Hackathon events.
 - Platform admins implicitly have event-admin permissions in every event.

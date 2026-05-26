@@ -222,6 +222,38 @@ async function addPlatformAdmin(user: EventRoleUserSummary) {
     pendingActionUserId.value = null
   }
 }
+
+async function removePlatformAdmin(user: EventRoleUserSummary) {
+  const confirmed = window.confirm(
+    `Remove platform admin access for ${user.displayName}? Their event-specific access will stay in place.`
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  mutationError.value = ''
+  pendingActionUserId.value = user.id
+
+  try {
+    await $fetch(`/api/platform-admins/${user.id}`, {
+      method: 'DELETE'
+    })
+    toast.add({
+      title: 'Platform admin removed',
+      description: `${user.displayName} no longer has platform-wide admin access. Event-specific access was left unchanged.`,
+      color: 'success'
+    })
+    await Promise.all([
+      currentAdmins.refresh(),
+      loadCandidateUsers()
+    ])
+  } catch (error) {
+    mutationError.value = normalizeApiError(error).message
+  } finally {
+    pendingActionUserId.value = null
+  }
+}
 </script>
 
 <template>
@@ -298,6 +330,17 @@ async function addPlatformAdmin(user: EventRoleUserSummary) {
                 {{ user.email }}
               </p>
             </div>
+
+            <AppButton
+              size="sm"
+              color="error"
+              variant="soft"
+              class="shrink-0 self-start md:self-auto"
+              :loading="isPendingAction(user.id)"
+              @click="removePlatformAdmin(user)"
+            >
+              Remove access
+            </AppButton>
           </div>
         </div>
 

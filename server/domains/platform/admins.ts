@@ -256,3 +256,53 @@ export async function grantPlatformAdminAccess(
     wroteAuditLog: appliedChanges
   }
 }
+
+export async function revokePlatformAdminAccess(
+  database: AppDatabase,
+  input: {
+    actorUserId: string | null
+    userId: string
+    executedAt?: string
+  }
+) {
+  const targetUser = await getActiveUserOrThrow(database, input.userId)
+  const executedAt = input.executedAt ?? new Date().toISOString()
+  const userRevoked = targetUser.isPlatformAdmin
+  const updates = []
+
+  if (userRevoked) {
+    updates.push(
+      database
+        .update(users)
+        .set({
+          isPlatformAdmin: false,
+          updatedAt: executedAt
+        })
+        .where(eq(users.id, targetUser.id))
+    )
+    updates.push(
+      buildAuditLogInsert(database, {
+        actorUserId: input.actorUserId,
+        entityType: 'user',
+        entityId: targetUser.id,
+        action: 'platform_admin.revoked',
+        metadata: {
+          email: targetUser.email,
+          auth0Subject: targetUser.auth0Subject,
+          userRevoked
+        },
+        createdAt: executedAt
+      }).query
+    )
+
+    await database.batch(
+      updates as [typeof updates[number], ...Array<typeof updates[number]>]
+    )
+  }
+
+  return {
+    user: serializeEventRoleUserSummary(await getActiveUserOrThrow(database, targetUser.id)),
+    userRevoked,
+    wroteAuditLog: userRevoked
+  }
+}

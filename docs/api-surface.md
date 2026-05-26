@@ -223,10 +223,11 @@ Operations:
 | List current platform admins | `GET /api/platform-admins` | platform admin | Returns active platform users with `isPlatformAdmin = true`. |
 | List platform-admin candidates | `GET /api/platform-admins/candidates` | platform admin | Returns active users for roster search with pagination and fuzzy search over display name, email, and user ID. |
 | Grant platform admin access | `PUT /api/platform-admins/:userId` | platform admin | Grants platform-admin access to the target active user. Promotion also normalizes explicit `event_admin` assignment coverage across every existing event and writes an audit record. |
+| Remove platform admin access | `DELETE /api/platform-admins/:userId` | platform admin | Removes platform-admin access from the target active user and writes an audit record when access is revoked. Existing event role assignments remain unchanged. |
 
 Testing:
-- Unit: platform-admin grant invariants and candidate ordering or filtering rules.
-- Integration: role enforcement, active-user filtering, promotion persistence, assignment normalization, and audit creation.
+- Unit: platform-admin grant and removal invariants and candidate ordering or filtering rules.
+- Integration: role enforcement, active-user filtering, promotion and removal persistence, assignment normalization, preserved event role assignments on removal, and audit creation.
 - End-to-end: Auth0-backed platform-admin management flows.
 
 ## Event Organizers
@@ -241,10 +242,11 @@ Operations:
 | List current event organizers | `GET /api/event-organizers` | platform admin | Returns active platform users with `isEventOrganizer = true`. |
 | List event-organizer candidates | `GET /api/event-organizers/candidates` | platform admin | Returns active users for roster search with pagination and fuzzy search over display name, email, and user ID. |
 | Grant event organizer access | `PUT /api/event-organizers/:userId` | platform admin | Grants event-organizer access to the target active user and writes an audit record. |
+| Remove event organizer access | `DELETE /api/event-organizers/:userId` | platform admin | Removes event-organizer access from the target active user and writes an audit record when access is revoked. |
 
 Testing:
-- Unit: event-organizer grant invariants and candidate ordering or filtering rules.
-- Integration: role enforcement, active-user filtering, grant persistence, and audit creation.
+- Unit: event-organizer grant and removal invariants and candidate ordering or filtering rules.
+- Integration: role enforcement, active-user filtering, grant and removal persistence, and audit creation.
 
 ## Events
 

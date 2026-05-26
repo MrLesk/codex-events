@@ -43,9 +43,11 @@ This document defines the canonical permissions for the Codex event platform.
 | View platform admin roster | No | No | Yes |
 | Search active users for platform-admin management | No | No | Yes |
 | Grant platform admin access | No | No | Yes |
+| Remove platform admin access | No | No | Yes |
 | View event organizer roster | No | No | Yes |
 | Search active users for event-organizer management | No | No | Yes |
 | Grant event organizer access | No | No | Yes |
+| Remove event organizer access | No | No | Yes |
 | Assign event admins across any event | No | No | Yes |
 | Update platform legal settings | No | No | Yes |
 | Publish platform Privacy Policy or Platform Terms version | No | No | Yes |

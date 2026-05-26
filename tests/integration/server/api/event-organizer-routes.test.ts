@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm'
 import eventOrganizerListHandler from '../../../../server/api/event-organizers/index.get'
 import eventOrganizerCandidatesListHandler from '../../../../server/api/event-organizers/candidates/index.get'
 import eventOrganizerPutHandler from '../../../../server/api/event-organizers/[userId].put'
+import eventOrganizerDeleteHandler from '../../../../server/api/event-organizers/[userId].delete'
 import {
   auditLogs,
   users
@@ -53,7 +54,8 @@ describe('event organizer routes', () => {
       routes: [
         { method: 'get', path: '/api/event-organizers', handler: eventOrganizerListHandler },
         { method: 'get', path: '/api/event-organizers/candidates', handler: eventOrganizerCandidatesListHandler },
-        { method: 'put', path: '/api/event-organizers/:userId', handler: eventOrganizerPutHandler }
+        { method: 'put', path: '/api/event-organizers/:userId', handler: eventOrganizerPutHandler },
+        { method: 'delete', path: '/api/event-organizers/:userId', handler: eventOrganizerDeleteHandler }
       ],
       sessionUser: {
         sub: 'auth0|platform_admin',
@@ -115,25 +117,69 @@ describe('event organizer routes', () => {
     })
     expect(grantedUser?.isEventOrganizer).toBe(true)
 
-    const auditRecord = await harness.database.query.auditLogs.findFirst({
-      where: eq(auditLogs.entityId, 'regular_user')
+    const revokeResponse = await harness.request('/api/event-organizers/regular_user', {
+      method: 'DELETE'
     })
-    expect(auditRecord).toMatchObject({
-      actorUserId: 'platform_admin',
-      entityType: 'user',
-      entityId: 'regular_user',
-      action: 'event_organizer.granted',
-      metadata: {
-        userGranted: true
+    expect(revokeResponse.status).toBe(200)
+    expect(await revokeResponse.json()).toMatchObject({
+      data: {
+        user: {
+          id: 'regular_user',
+          isEventOrganizer: false
+        },
+        userRevoked: true,
+        wroteAuditLog: true
       }
     })
+
+    const revokedUser = await harness.database.query.users.findFirst({
+      where: eq(users.id, 'regular_user')
+    })
+    expect(revokedUser?.isEventOrganizer).toBe(false)
+
+    const noOpRevokeResponse = await harness.request('/api/event-organizers/regular_user', {
+      method: 'DELETE'
+    })
+    expect(noOpRevokeResponse.status).toBe(200)
+    expect(await noOpRevokeResponse.json()).toMatchObject({
+      data: {
+        userRevoked: false,
+        wroteAuditLog: false
+      }
+    })
+
+    const auditRecords = await harness.database.query.auditLogs.findMany({
+      where: eq(auditLogs.entityId, 'regular_user')
+    })
+    expect(auditRecords).toHaveLength(2)
+    expect(auditRecords).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'user',
+        entityId: 'regular_user',
+        action: 'event_organizer.granted',
+        metadata: expect.objectContaining({
+          userGranted: true
+        })
+      }),
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'user',
+        entityId: 'regular_user',
+        action: 'event_organizer.revoked',
+        metadata: expect.objectContaining({
+          userRevoked: true
+        })
+      })
+    ]))
   })
 
   test('non-platform admins cannot manage event organizers', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/event-organizers', handler: eventOrganizerListHandler },
-        { method: 'put', path: '/api/event-organizers/:userId', handler: eventOrganizerPutHandler }
+        { method: 'put', path: '/api/event-organizers/:userId', handler: eventOrganizerPutHandler },
+        { method: 'delete', path: '/api/event-organizers/:userId', handler: eventOrganizerDeleteHandler }
       ],
       sessionUser: {
         sub: 'auth0|regular_user',
@@ -156,6 +202,16 @@ describe('event organizer routes', () => {
     })
     expect(grantResponse.status).toBe(403)
     expect(await grantResponse.json()).toMatchObject({
+      error: {
+        code: 'platform_admin_required'
+      }
+    })
+
+    const revokeResponse = await harness.request('/api/event-organizers/event_organizer', {
+      method: 'DELETE'
+    })
+    expect(revokeResponse.status).toBe(403)
+    expect(await revokeResponse.json()).toMatchObject({
       error: {
         code: 'platform_admin_required'
       }

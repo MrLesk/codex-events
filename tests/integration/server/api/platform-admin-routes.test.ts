@@ -4,6 +4,7 @@ import { asc, eq } from 'drizzle-orm'
 import platformAdminListHandler from '../../../../server/api/platform-admins/index.get'
 import platformAdminCandidatesListHandler from '../../../../server/api/platform-admins/candidates/index.get'
 import platformAdminPutHandler from '../../../../server/api/platform-admins/[userId].put'
+import platformAdminDeleteHandler from '../../../../server/api/platform-admins/[userId].delete'
 import {
   auditLogs,
   eventRoleAssignments,
@@ -222,7 +223,8 @@ describe('platform admin routes', () => {
   test('granting platform admin access normalizes event-admin coverage and writes audit', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'put', path: '/api/platform-admins/:userId', handler: platformAdminPutHandler }
+        { method: 'put', path: '/api/platform-admins/:userId', handler: platformAdminPutHandler },
+        { method: 'delete', path: '/api/platform-admins/:userId', handler: platformAdminDeleteHandler }
       ],
       sessionUser: {
         sub: 'auth0|platform_admin',
@@ -273,27 +275,90 @@ describe('platform admin routes', () => {
       }
     ])
 
-    const auditRecord = await harness.database.query.auditLogs.findFirst({
-      where: eq(auditLogs.entityId, 'judge_user')
+    const revokeResponse = await harness.request('/api/platform-admins/judge_user', {
+      method: 'DELETE'
     })
-    expect(auditRecord).toMatchObject({
-      actorUserId: 'platform_admin',
-      entityType: 'user',
-      entityId: 'judge_user',
-      action: 'platform_admin.granted',
-      metadata: {
-        userPromoted: true,
-        createdEventAdminAssignments: 1,
-        updatedEventAdminAssignments: 1
+    expect(revokeResponse.status).toBe(200)
+    expect(await revokeResponse.json()).toMatchObject({
+      data: {
+        user: {
+          id: 'judge_user',
+          isPlatformAdmin: false
+        },
+        userRevoked: true,
+        wroteAuditLog: true
       }
     })
+
+    const revokedUser = await harness.database.query.users.findFirst({
+      where: eq(users.id, 'judge_user')
+    })
+    expect(revokedUser?.isPlatformAdmin).toBe(false)
+
+    const preservedAssignments = await harness.database.query.eventRoleAssignments.findMany({
+      where: eq(eventRoleAssignments.userId, 'judge_user'),
+      orderBy: [asc(eventRoleAssignments.eventId)]
+    })
+    expect(preservedAssignments).toMatchObject([
+      {
+        eventId: 'event_1',
+        role: 'event_admin',
+        isInJudgePool: true,
+        isStaff: false
+      },
+      {
+        eventId: 'event_2',
+        role: 'event_admin',
+        isInJudgePool: false,
+        isStaff: false
+      }
+    ])
+
+    const noOpRevokeResponse = await harness.request('/api/platform-admins/judge_user', {
+      method: 'DELETE'
+    })
+    expect(noOpRevokeResponse.status).toBe(200)
+    expect(await noOpRevokeResponse.json()).toMatchObject({
+      data: {
+        userRevoked: false,
+        wroteAuditLog: false
+      }
+    })
+
+    const auditRecords = await harness.database.query.auditLogs.findMany({
+      where: eq(auditLogs.entityId, 'judge_user')
+    })
+    expect(auditRecords).toHaveLength(2)
+    expect(auditRecords).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'user',
+        entityId: 'judge_user',
+        action: 'platform_admin.granted',
+        metadata: expect.objectContaining({
+          userPromoted: true,
+          createdEventAdminAssignments: 1,
+          updatedEventAdminAssignments: 1
+        })
+      }),
+      expect.objectContaining({
+        actorUserId: 'platform_admin',
+        entityType: 'user',
+        entityId: 'judge_user',
+        action: 'platform_admin.revoked',
+        metadata: expect.objectContaining({
+          userRevoked: true
+        })
+      })
+    ]))
   })
 
   test('non-platform admins cannot manage platform admins', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/platform-admins', handler: platformAdminListHandler },
-        { method: 'put', path: '/api/platform-admins/:userId', handler: platformAdminPutHandler }
+        { method: 'put', path: '/api/platform-admins/:userId', handler: platformAdminPutHandler },
+        { method: 'delete', path: '/api/platform-admins/:userId', handler: platformAdminDeleteHandler }
       ],
       sessionUser: {
         sub: 'auth0|event_admin',
@@ -316,6 +381,16 @@ describe('platform admin routes', () => {
     })
     expect(grantResponse.status).toBe(403)
     expect(await grantResponse.json()).toMatchObject({
+      error: {
+        code: 'platform_admin_required'
+      }
+    })
+
+    const revokeResponse = await harness.request('/api/platform-admins/platform_admin_two', {
+      method: 'DELETE'
+    })
+    expect(revokeResponse.status).toBe(403)
+    expect(await revokeResponse.json()).toMatchObject({
       error: {
         code: 'platform_admin_required'
       }

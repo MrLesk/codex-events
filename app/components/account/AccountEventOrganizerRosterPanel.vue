@@ -222,6 +222,38 @@ async function addEventOrganizer(user: EventRoleUserSummary) {
     pendingActionUserId.value = null
   }
 }
+
+async function removeEventOrganizer(user: EventRoleUserSummary) {
+  const confirmed = window.confirm(`Remove event organizer access for ${user.displayName}?`)
+
+  if (!confirmed) {
+    return
+  }
+
+  mutationError.value = ''
+  pendingActionUserId.value = user.id
+
+  try {
+    await $fetch(`/api/event-organizers/${user.id}`, {
+      method: 'DELETE'
+    })
+    toast.add({
+      title: 'Event organizer removed',
+      description: user.isPlatformAdmin
+        ? `${user.displayName} still has platform admin access.`
+        : `${user.displayName} can no longer create events as an event organizer.`,
+      color: 'success'
+    })
+    await Promise.all([
+      currentOrganizers.refresh(),
+      loadCandidateUsers()
+    ])
+  } catch (error) {
+    mutationError.value = normalizeApiError(error).message
+  } finally {
+    pendingActionUserId.value = null
+  }
+}
 </script>
 
 <template>
@@ -306,6 +338,17 @@ async function addEventOrganizer(user: EventRoleUserSummary) {
                 {{ user.email }}
               </p>
             </div>
+
+            <AppButton
+              size="sm"
+              color="error"
+              variant="soft"
+              class="shrink-0 self-start md:self-auto"
+              :loading="isPendingAction(user.id)"
+              @click="removeEventOrganizer(user)"
+            >
+              Remove access
+            </AppButton>
           </div>
         </div>
 
