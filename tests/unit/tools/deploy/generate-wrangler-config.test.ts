@@ -60,7 +60,8 @@ describe('deploy Wrangler config generator', () => {
     })
     expect(config.d1_databases[0]).toMatchObject({
       database_name: 'events-db',
-      database_id: '11111111-1111-4111-8111-111111111111'
+      database_id: '11111111-1111-4111-8111-111111111111',
+      migrations_dir: '../../drizzle'
     })
   })
 

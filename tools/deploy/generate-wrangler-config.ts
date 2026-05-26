@@ -359,7 +359,7 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
         binding: 'DB',
         database_name: input.d1DatabaseName,
         database_id: input.d1DatabaseId,
-        migrations_dir: 'drizzle'
+        migrations_dir: '../../drizzle'
       }
     ],
     r2_buckets: [
