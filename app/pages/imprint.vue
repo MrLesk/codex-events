@@ -168,17 +168,6 @@ useSeoMeta({
               >
                 {{ settings.supportEmail }}
               </a>
-              <span
-                v-if="settings?.supportEmail && settings?.privacyEmail"
-                class="hidden sm:inline"
-              >•</span>
-              <a
-                v-if="settings?.privacyEmail"
-                :href="`mailto:${settings.privacyEmail}`"
-                class="transition-colors hover:text-highlighted dark:hover:text-white"
-              >
-                {{ settings.privacyEmail }}
-              </a>
             </div>
           </div>
         </div>
@@ -191,7 +180,7 @@ useSeoMeta({
         color="neutral"
         variant="soft"
         title="Loading legal notice"
-        description="Fetching the configured operator details."
+        description="Fetching the configured legal notice."
         class="lg:col-span-2"
       />
 

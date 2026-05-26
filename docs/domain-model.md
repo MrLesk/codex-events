@@ -187,14 +187,15 @@ Deployment-owned legal notice and contact settings for the platform operator.
 
 Key characteristics:
 
-- Stores the operator name, operator address, support email, privacy email, legal contact languages, business purpose, editorial line, imprint content, and timestamps.
+- Stores the support email, imprint content, and timestamps.
 - Has one current settings record per deployment.
 - Is separate from versioned platform documents.
 
 Rules:
 
 - Public imprint content and public legal-contact routing use `PlatformLegalSettings`.
-- Privacy Policy and Platform Terms contact metadata can reference the configured support and privacy email addresses.
+- Operator details, legal notice text, privacy contact details, DSA contact points, platform purpose, editorial focus, and jurisdiction-specific disclosures belong in the imprint content.
+- Privacy Policy and Platform Terms pages render their current `PlatformDocument` content and do not read legal settings metadata.
 - Platform admins can update legal settings.
 - Updating legal settings does not create a new platform-document version and does not require renewed user consent.
 - If legal settings are not configured, public legal-contact behavior is explicitly unavailable rather than falling back to repository-owned operator details.

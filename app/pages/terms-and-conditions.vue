@@ -1,6 +1,5 @@
 <script setup lang="ts">
 const { platformTermsDocument, status: documentsStatus } = useCurrentPlatformDocuments()
-const { settings } = usePlatformLegalSettings()
 
 function formatLegalDate(value: string | undefined) {
   if (!value) {
@@ -47,17 +46,6 @@ useSeoMeta({
             </p>
             <div class="flex flex-wrap items-center gap-3 text-[13px] text-neutral-600 dark:text-[#A3A3A3]">
               <span v-if="lastUpdatedLabel">Last updated {{ lastUpdatedLabel }}</span>
-              <span
-                v-if="lastUpdatedLabel && settings?.supportEmail"
-                class="hidden sm:inline"
-              >•</span>
-              <a
-                v-if="settings?.supportEmail"
-                :href="`mailto:${settings.supportEmail}`"
-                class="transition-colors hover:text-highlighted dark:hover:text-white"
-              >
-                {{ settings.supportEmail }}
-              </a>
             </div>
           </div>
         </div>

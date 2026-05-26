@@ -116,14 +116,8 @@ Example `platform-legal.json`:
 
 ```json
 {
-  "operatorName": "Your Organization",
-  "operatorAddress": "Street Address, City, Country",
   "supportEmail": "support@example.com",
-  "privacyEmail": "privacy@example.com",
-  "legalContactLanguages": "English",
-  "businessPurpose": "Operate event programs and participant workflows.",
-  "editorialLine": "Information about events operated on this platform.",
-  "imprintContent": "## Imprint\n\nYour legally required imprint content.",
+  "imprintContent": "## Operator\n\nYour Organization\nStreet Address, City, Country\n\n## Contact\n\n- Support, legal, and privacy contact: support@example.com\n- Languages accepted for legal and DSA communications: English\n\n## Platform purpose\n\nOperate event programs and participant workflows.\n\n## Editorial focus\n\nInformation about events operated on this platform.\n\n## Legal notice\n\nYour jurisdiction-specific imprint disclosures.",
   "documents": {
     "privacy_policy": {
       "title": "Privacy Policy",

@@ -29,13 +29,7 @@ describe('public legal API routes', () => {
   async function seedLegalSettings(harness: ReturnType<typeof createApiRouteTestHarness>) {
     await harness.database.insert(platformLegalSettings).values({
       id: 'default',
-      operatorName: 'Example Operator',
-      operatorAddress: '1 Example Street',
       supportEmail: configuredSupportEmail,
-      privacyEmail: 'privacy@example.com',
-      legalContactLanguages: 'English',
-      businessPurpose: 'Running events.',
-      editorialLine: 'Event information.',
       imprintContent: 'Example imprint.'
     })
   }

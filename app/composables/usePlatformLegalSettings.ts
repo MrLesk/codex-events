@@ -1,12 +1,6 @@
 export interface PlatformLegalSettingsRecord {
   id: string
-  operatorName: string
-  operatorAddress: string
   supportEmail: string
-  privacyEmail: string
-  legalContactLanguages: string
-  businessPurpose: string
-  editorialLine: string
   imprintContent: string
   createdAt: string
   updatedAt: string

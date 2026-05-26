@@ -389,13 +389,7 @@ export const platformLegalSettings = sqliteTable(
   'platform_legal_settings',
   {
     id: text('id').primaryKey(),
-    operatorName: text('operator_name').notNull(),
-    operatorAddress: text('operator_address').notNull(),
     supportEmail: text('support_email').notNull(),
-    privacyEmail: text('privacy_email').notNull(),
-    legalContactLanguages: text('legal_contact_languages').notNull(),
-    businessPurpose: text('business_purpose').notNull(),
-    editorialLine: text('editorial_line').notNull(),
     imprintContent: text('imprint_content').notNull(),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()

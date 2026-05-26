@@ -123,13 +123,13 @@ Testing:
 ## Platform Legal Settings
 
 Purpose:
-- Expose deployment-owned legal notice and contact settings used by public legal pages and the public imprint contact form.
+- Expose deployment-owned imprint content and the support inbox used by the public imprint contact form.
 
 Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Get current platform legal settings | `GET /api/platform-legal-settings/current` | public or authenticated user | Returns the current deployment-owned operator/contact/imprint settings, or `null` when setup is incomplete. Missing settings never fall back to repository-owned operator details. |
+| Get current platform legal settings | `GET /api/platform-legal-settings/current` | public or authenticated user | Returns the current deployment-owned support email and imprint content, or `null` when setup is incomplete. Missing settings never fall back to repository-owned operator details. |
 | Update current platform legal settings | `PATCH /api/platform-legal-settings/current` | platform admin | Upserts the singleton legal settings record. Updating these settings does not create a new platform-document version and does not force renewed user consent. |
 
 Testing:

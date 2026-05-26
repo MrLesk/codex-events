@@ -966,13 +966,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
 
     await harness.database.insert(platformLegalSettings).values({
       id: 'default',
-      operatorName: 'Example Operator',
-      operatorAddress: '1 Example Street',
       supportEmail: 'support@example.com',
-      privacyEmail: 'privacy@example.com',
-      legalContactLanguages: 'English',
-      businessPurpose: 'Running events.',
-      editorialLine: 'Event information.',
       imprintContent: 'Example imprint.'
     })
 
@@ -982,9 +976,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(await configuredResponse.json()).toMatchObject({
       data: {
         id: 'default',
-        operatorName: 'Example Operator',
         supportEmail: 'support@example.com',
-        privacyEmail: 'privacy@example.com',
         imprintContent: 'Example imprint.'
       }
     })
@@ -1012,13 +1004,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
 
     const body = {
-      operatorName: 'Example Operator',
-      operatorAddress: '1 Example Street',
       supportEmail: 'support@example.com',
-      privacyEmail: 'privacy@example.com',
-      legalContactLanguages: 'English',
-      businessPurpose: 'Running events.',
-      editorialLine: 'Event information.',
       imprintContent: 'Example imprint.'
     }
 
@@ -1055,6 +1041,21 @@ describe('TASK-3.5 actor-facing API routes', () => {
       isPlatformAdmin: true
     })
 
+    const obsoleteContractResponse = await adminHarness.request('/api/platform-legal-settings/current', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        ...body,
+        privacyEmail: 'privacy@example.com'
+      })
+    })
+
+    expect(obsoleteContractResponse.status).toBe(400)
+    expect(await obsoleteContractResponse.json()).toMatchObject({
+      error: {
+        code: 'invalid_request'
+      }
+    })
+
     const successResponse = await adminHarness.request('/api/platform-legal-settings/current', {
       method: 'PATCH',
       body: JSON.stringify(body)
@@ -1068,15 +1069,14 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(await successResponse.json()).toMatchObject({
       data: {
         id: 'default',
-        operatorName: 'Example Operator',
         supportEmail: 'support@example.com',
-        privacyEmail: 'privacy@example.com'
+        imprintContent: 'Example imprint.'
       }
     })
     expect(storedSettings).toMatchObject({
       id: 'default',
-      operatorName: 'Example Operator',
-      supportEmail: 'support@example.com'
+      supportEmail: 'support@example.com',
+      imprintContent: 'Example imprint.'
     })
     expect(auditRows).toEqual([
       expect.objectContaining({

@@ -321,13 +321,7 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Key Fields
 
 - `id`
-- `operator_name`
-- `operator_address`
 - `support_email`
-- `privacy_email`
-- `legal_contact_languages`
-- `business_purpose`
-- `editorial_line`
 - `imprint_content`
 - `created_at`
 - `updated_at`
@@ -338,7 +332,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Notes
 
-- This singleton stores deployment-owned operator, imprint, and contact details.
+- This singleton stores the deployment-owned support inbox and public imprint body.
 - It does not store versioned user-consent text.
 - Updating legal settings does not alter `PlatformDocument` versions or acceptance records.
 

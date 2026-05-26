@@ -121,34 +121,34 @@ Open the production D1 database in Cloudflare and run this SQL with your operato
 ```sql
 INSERT INTO platform_legal_settings (
   id,
-  operator_name,
-  operator_address,
   support_email,
-  privacy_email,
-  legal_contact_languages,
-  business_purpose,
-  editorial_line,
   imprint_content
 ) VALUES (
   'default',
-  'Your Organization',
-  'Street Address, City, Country',
   'support@example.com',
-  'privacy@example.com',
-  'English',
-  'Operate event programs and participant workflows.',
-  'Information about events operated on this platform.',
-  '## Imprint
+  '## Operator
 
-Your legally required imprint content.'
+Your Organization
+Street Address, City, Country
+
+## Contact
+
+- Support, legal, and privacy contact: support@example.com
+- Languages accepted for legal and DSA communications: English
+
+## Platform purpose
+
+Operate event programs and participant workflows.
+
+## Editorial focus
+
+Information about events operated on this platform.
+
+## Legal notice
+
+Your jurisdiction-specific imprint disclosures.'
 ) ON CONFLICT(id) DO UPDATE SET
-  operator_name = excluded.operator_name,
-  operator_address = excluded.operator_address,
   support_email = excluded.support_email,
-  privacy_email = excluded.privacy_email,
-  legal_contact_languages = excluded.legal_contact_languages,
-  business_purpose = excluded.business_purpose,
-  editorial_line = excluded.editorial_line,
   imprint_content = excluded.imprint_content,
   updated_at = CURRENT_TIMESTAMP;
 

@@ -24,13 +24,7 @@ const {
 } = useCurrentPlatformDocuments()
 
 const legalSettingsForm = reactive({
-  operatorName: '',
-  operatorAddress: '',
   supportEmail: '',
-  privacyEmail: '',
-  legalContactLanguages: '',
-  businessPurpose: '',
-  editorialLine: '',
   imprintContent: ''
 })
 const privacyPolicyDraft = ref('')
@@ -51,13 +45,7 @@ watch(settings, (nextSettings) => {
     return
   }
 
-  legalSettingsForm.operatorName = nextSettings.operatorName
-  legalSettingsForm.operatorAddress = nextSettings.operatorAddress
   legalSettingsForm.supportEmail = nextSettings.supportEmail
-  legalSettingsForm.privacyEmail = nextSettings.privacyEmail
-  legalSettingsForm.legalContactLanguages = nextSettings.legalContactLanguages
-  legalSettingsForm.businessPurpose = nextSettings.businessPurpose
-  legalSettingsForm.editorialLine = nextSettings.editorialLine
   legalSettingsForm.imprintContent = nextSettings.imprintContent
 }, {
   immediate: true
@@ -128,7 +116,7 @@ async function saveLegalSettings() {
     await refreshSettings()
     toast.add({
       title: 'Legal settings saved',
-      description: 'Public imprint and contact details now use the latest settings.',
+      description: 'The public imprint and contact form now use the latest settings.',
       color: 'success'
     })
   } catch (error) {
@@ -207,7 +195,7 @@ useSeoMeta({
               Platform legal settings
             </h1>
             <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-              Configure the operator-owned legal notice, contact details, and current platform consent documents for this deployment.
+              Manage the public imprint, support contact, and current platform consent documents for this deployment.
             </p>
           </div>
         </div>
@@ -236,7 +224,7 @@ useSeoMeta({
         color="warning"
         variant="soft"
         title="Legal settings are not configured"
-        description="Public imprint and legal contact details remain unavailable until these settings are saved."
+        description="The public imprint and contact form remain unavailable until these settings are saved."
       />
 
       <AppAlert
@@ -251,10 +239,10 @@ useSeoMeta({
         <template #header>
           <div class="space-y-1">
             <h2 class="text-lg font-semibold text-highlighted">
-              Operator and imprint
+              Imprint and contact
             </h2>
             <p class="text-sm text-muted">
-              These settings power the public imprint and contact form. Saving them does not create a new consent version.
+              Set the email that receives messages from the public imprint form and the legal notice shown on the imprint page. Saving this does not create a new consent version.
             </p>
           </div>
         </template>
@@ -263,97 +251,25 @@ useSeoMeta({
           class="space-y-5"
           @submit.prevent="saveLegalSettings"
         >
-          <div class="grid gap-4 md:grid-cols-2">
-            <AppFormField
-              name="platform-operator-name"
-              label="Operator name"
-            >
-              <AppInput
-                v-model="legalSettingsForm.operatorName"
-                type="text"
-                required
-              />
-            </AppFormField>
-
-            <AppFormField
-              name="platform-operator-address"
-              label="Operator address"
-            >
-              <AppInput
-                v-model="legalSettingsForm.operatorAddress"
-                type="text"
-                required
-              />
-            </AppFormField>
-
-            <AppFormField
-              name="platform-support-email"
-              label="Support email"
-            >
-              <AppInput
-                v-model="legalSettingsForm.supportEmail"
-                type="email"
-                required
-              />
-            </AppFormField>
-
-            <AppFormField
-              name="platform-privacy-email"
-              label="Privacy email"
-            >
-              <AppInput
-                v-model="legalSettingsForm.privacyEmail"
-                type="email"
-                required
-              />
-            </AppFormField>
-          </div>
-
           <AppFormField
-            name="platform-legal-contact-languages"
-            label="Legal contact languages"
-            description="Languages accepted for legal and DSA communications, for example German and English."
+            name="platform-support-email"
+            label="Support email"
+            description="Receives messages from the public imprint contact form. Use an inbox monitored by the platform operator."
           >
             <AppInput
-              v-model="legalSettingsForm.legalContactLanguages"
-              type="text"
+              v-model="legalSettingsForm.supportEmail"
+              type="email"
               required
             />
           </AppFormField>
-
-          <div class="grid gap-4 md:grid-cols-2">
-            <AppFormField
-              name="platform-business-purpose"
-              label="Business purpose"
-              description="Short public description of what this platform operates."
-            >
-              <AppTextarea
-                v-model="legalSettingsForm.businessPurpose"
-                rows="3"
-                required
-              />
-            </AppFormField>
-
-            <AppFormField
-              name="platform-editorial-line"
-              label="Editorial line"
-              description="Short public summary of the information published through this platform."
-            >
-              <AppTextarea
-                v-model="legalSettingsForm.editorialLine"
-                rows="3"
-                required
-              />
-            </AppFormField>
-          </div>
 
           <LazyAdminMarkdownEditorField
             v-model="legalSettingsForm.imprintContent"
             name="platform-imprint-content"
             editor-id="platform-imprint-content"
             label="Imprint content"
-            description="Full public legal notice shown on the imprint page. Include operator details, address, contact points, DSA contact information, and any jurisdiction-required notices."
-            placeholder="Enter the public imprint content for this deployment."
+            description="Public legal notice shown on the imprint page. Include operator details, address, legal and privacy contact details, DSA contact points, platform purpose, editorial focus, and jurisdiction-specific disclosures."
+            placeholder="Enter the public legal notice for this deployment."
             required
           />
 

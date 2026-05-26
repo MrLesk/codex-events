@@ -67,13 +67,7 @@ describe('platform legal bootstrap script config', () => {
 
     try {
       await writeFile(configPath, JSON.stringify({
-        operatorName: 'Example Operator',
-        operatorAddress: '1 Example Street',
         supportEmail: 'support@example.com',
-        privacyEmail: 'privacy@example.com',
-        legalContactLanguages: 'English',
-        businessPurpose: 'Running events.',
-        editorialLine: 'Event information.',
         imprintContent: 'Example imprint.',
         documents: {
           privacy_policy: {
@@ -88,8 +82,8 @@ describe('platform legal bootstrap script config', () => {
       }))
 
       expect(readPlatformLegalBootstrapConfig(configPath)).toMatchObject({
-        operatorName: 'Example Operator',
         supportEmail: 'support@example.com',
+        imprintContent: 'Example imprint.',
         documents: {
           privacy_policy: {
             title: 'Privacy Policy',

@@ -25,13 +25,7 @@ describe('usePlatformLegalSettings', () => {
   test('derives the current platform legal settings from async data state', async () => {
     const settings = {
       id: 'default',
-      operatorName: 'Example Operator',
-      operatorAddress: '1 Example Street',
       supportEmail: 'support@example.com',
-      privacyEmail: 'privacy@example.com',
-      legalContactLanguages: 'English',
-      businessPurpose: 'Running events.',
-      editorialLine: 'Event information.',
       imprintContent: 'Example imprint.',
       createdAt: '2026-05-06T12:00:00.000Z',
       updatedAt: '2026-05-06T12:00:00.000Z'
