@@ -43,6 +43,8 @@ describe('deploy Wrangler config generator', () => {
     expect(input.eventImagesPublicCdnBaseUrl).toBe('https://cdn.dev.example.com')
     expect(input.lumaWebhookUrl).toBe('https://dev.example.com/api/public/luma/webhooks')
     expect(config.name).toBe('events-worker')
+    expect(config.main).toBe('../../.output/server/index.mjs')
+    expect(config.assets.directory).toBe('../../.output/public')
     expect(config.routes).toEqual([
       {
         pattern: 'dev.example.com',

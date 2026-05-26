@@ -285,7 +285,7 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
   return {
     $schema: '../../node_modules/wrangler/config-schema.json',
     name: input.workerName,
-    main: '.output/server/index.mjs',
+    main: '../../.output/server/index.mjs',
     compatibility_date: '2026-03-23',
     compatibility_flags: [
       'nodejs_compat',
@@ -324,7 +324,7 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
     ],
     assets: {
       binding: 'ASSETS',
-      directory: '.output/public'
+      directory: '../../.output/public'
     },
     routes: [
       {
