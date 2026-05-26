@@ -218,10 +218,20 @@ export function useShellNavigation() {
         id: 'admin-dashboard',
         label: 'Admin dashboard',
         description: actor.value.isPlatformAdmin
-          ? 'Events you can manage and platform-wide admin work'
+          ? 'Events you can manage'
           : 'Events you can manage and create',
         to: '/account/admin',
         icon: 'i-lucide-shield-check'
+      })
+    }
+
+    if (actor.value.isPlatformAdmin) {
+      items.push({
+        id: 'platform-settings',
+        label: 'Platform settings',
+        description: 'Legal settings and platform-wide access',
+        to: '/account/platform-settings',
+        icon: 'i-lucide-settings'
       })
     }
 

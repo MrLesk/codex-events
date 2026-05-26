@@ -30,6 +30,8 @@ const hasJudgeAccess = computed(() => actor.value.kind === 'platform_user'
   && actor.value.eventRoles.some(role => isEventRoleJudgingEnabled(role)))
 const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
   && canAccessAdminDashboard(actor.value))
+const hasPlatformSettingsAccess = computed(() => actor.value.kind === 'platform_user'
+  && actor.value.isPlatformAdmin)
 </script>
 
 <template>
@@ -143,6 +145,23 @@ const hasAdminAccess = computed(() => actor.value.kind === 'platform_user'
               class="size-4"
             />
             <span>Admin dashboard</span>
+          </NuxtLink>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          v-if="hasPlatformSettingsAccess"
+          as-child
+          class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
+        >
+          <NuxtLink
+            to="/account/platform-settings"
+            class="flex w-full items-center gap-2"
+          >
+            <AppIcon
+              name="i-lucide-settings"
+              class="size-4"
+            />
+            <span>Platform settings</span>
           </NuxtLink>
         </DropdownMenuItem>
 

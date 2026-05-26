@@ -123,6 +123,78 @@ describe('navigation guards', () => {
     )).resolves.toBeUndefined()
   })
 
+  test('allows platform admins through the platform settings guard', async () => {
+    useUser.mockReturnValue({
+      value: {
+        sub: 'auth0|platform-admin'
+      }
+    })
+
+    vi.stubGlobal('$fetch', vi.fn(async () => ({
+      data: {
+        actor: createPlatformActor({
+          sessionUser: {
+            sub: 'auth0|platform-admin'
+          },
+          isPlatformAdmin: true,
+          platformUser: {
+            id: 'platform-admin',
+            email: 'platform-admin@example.com',
+            displayName: 'Platform Admin',
+            firstName: 'Platform',
+            familyName: 'Admin',
+            isPlatformAdmin: true,
+            isEventOrganizer: false
+          }
+        })
+      }
+    })) as never)
+
+    const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
+
+    await expect(ensureAccountPageAccess(
+      { fullPath: '/account/platform-settings' } as never,
+      actor => actor.isPlatformAdmin,
+      'Platform admin access required.'
+    )).resolves.toBeUndefined()
+  })
+
+  test('rejects non-platform admins from the platform settings guard', async () => {
+    useUser.mockReturnValue({
+      value: {
+        sub: 'auth0|event-organizer'
+      }
+    })
+
+    vi.stubGlobal('$fetch', vi.fn(async () => ({
+      data: {
+        actor: createPlatformActor({
+          isEventOrganizer: true,
+          platformUser: {
+            id: 'event-organizer',
+            email: 'organizer@example.com',
+            displayName: 'Event Organizer',
+            firstName: 'Event',
+            familyName: 'Organizer',
+            isPlatformAdmin: false,
+            isEventOrganizer: true
+          }
+        })
+      }
+    })) as never)
+
+    const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
+
+    await expect(ensureAccountPageAccess(
+      { fullPath: '/account/platform-settings' } as never,
+      actor => actor.isPlatformAdmin,
+      'Platform admin access required.'
+    )).rejects.toMatchObject({
+      statusCode: 401,
+      statusMessage: 'Platform admin access required.'
+    })
+  })
+
   test('allows event organizers through the event creation guard', async () => {
     useUser.mockReturnValue({
       value: {

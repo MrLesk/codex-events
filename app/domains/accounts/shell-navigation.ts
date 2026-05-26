@@ -104,9 +104,6 @@ export function isShellNavigationLinkActive(
 
   if (targetPath === '/account/admin') {
     return currentPath === '/account/admin'
-      || currentPath === '/account/platform-admins'
-      || currentPath === '/account/event-organizers'
-      || currentPath === '/account/platform-legal'
       || (isAccountEventDetailPath(currentPath)
         && (
           accountEventUsesAdminNavigation
@@ -115,6 +112,10 @@ export function isShellNavigationLinkActive(
             && accountEventAdminTabs.includes(normalizedTab as (typeof accountEventAdminTabs)[number])
           )
         ))
+  }
+
+  if (targetPath === '/account/platform-settings') {
+    return currentPath === '/account/platform-settings'
   }
 
   return currentPath === targetPath || currentPath.startsWith(`${targetPath}/`)

@@ -148,36 +148,6 @@ useSeoMeta({
 
             <div class="flex flex-wrap items-center gap-3">
               <AppButton
-                v-if="isPlatformAdmin"
-                to="/account/platform-legal"
-                color="neutral"
-                variant="outline"
-                class="h-auto rounded-lg px-4 py-2 text-[13px] font-medium"
-              >
-                Legal settings
-              </AppButton>
-
-              <AppButton
-                v-if="isPlatformAdmin"
-                to="/account/event-organizers"
-                color="neutral"
-                variant="outline"
-                class="h-auto rounded-lg px-4 py-2 text-[13px] font-medium"
-              >
-                Manage event organizers
-              </AppButton>
-
-              <AppButton
-                v-if="isPlatformAdmin"
-                to="/account/platform-admins"
-                color="neutral"
-                variant="outline"
-                class="h-auto rounded-lg px-4 py-2 text-[13px] font-medium"
-              >
-                Manage platform admins
-              </AppButton>
-
-              <AppButton
                 v-if="canCreate"
                 to="/admin/events/new"
                 color="neutral"
