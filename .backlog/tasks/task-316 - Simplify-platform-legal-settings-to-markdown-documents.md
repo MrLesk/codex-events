@@ -1,10 +1,10 @@
 ---
 id: TASK-316
 title: Simplify platform legal settings to markdown documents
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-05-26 20:23'
-updated_date: '2026-05-26 20:41'
+updated_date: '2026-05-26 20:55'
 labels: []
 dependencies: []
 modified_files:
@@ -37,26 +37,30 @@ Collapse platform legal settings into the two fields that have distinct runtime 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Platform legal settings contain only `supportEmail`, `imprintContent`, and timestamps; `operatorName`, `operatorAddress`, `privacyEmail`, `legalContactLanguages`, `businessPurpose`, and `editorialLine` are removed from the runtime contract instead of hidden behind UI fallbacks.
-- [ ] #2 The platform legal admin page presents a focused support email field and three markdown editing surfaces: Imprint, Privacy Policy, and Platform Terms. The Imprint editor copy makes clear that operator details, legal notice text, privacy contact details, DSA contact points, platform purpose, and jurisdiction-specific disclosures belong in the markdown body.
-- [ ] #3 The public imprint page renders configured imprint markdown exactly once and uses `supportEmail` for the contact form and support contact affordances; it does not render duplicated structured imprint metadata or a separate privacy email field.
-- [ ] #4 Privacy Policy and Platform Terms pages keep using their versioned platform document content and no longer depend on structured privacy-contact metadata from platform legal settings.
-- [ ] #5 A forward-only migration updates `platform_legal_settings` to the simplified shape and preserves existing content by folding removed structured values into `imprintContent` before dropping old columns, with no runtime compatibility fallback or dual-read path after migration.
-- [ ] #6 Platform legal bootstrap config, API schemas, composables, docs, and tests are updated to the simplified contract; obsolete examples and SQL snippets no longer mention the removed fields.
-- [ ] #7 The dev D1 database is updated after deployment so `/imprint`, `/privacy-policy`, `/terms-and-conditions`, and `/api/platform-legal-settings/current` return the simplified, non-duplicated content shape.
-- [ ] #8 Validation passes locally before commit: `bun run lint`, `bun run typecheck`, and `bun run test:unit`.
+- [x] #1 Platform legal settings contain only `supportEmail`, `imprintContent`, and timestamps; `operatorName`, `operatorAddress`, `privacyEmail`, `legalContactLanguages`, `businessPurpose`, and `editorialLine` are removed from the runtime contract instead of hidden behind UI fallbacks.
+- [x] #2 The platform legal admin page presents a focused support email field and three markdown editing surfaces: Imprint, Privacy Policy, and Platform Terms. The Imprint editor copy makes clear that operator details, legal notice text, privacy contact details, DSA contact points, platform purpose, and jurisdiction-specific disclosures belong in the markdown body.
+- [x] #3 The public imprint page renders configured imprint markdown exactly once and uses `supportEmail` for the contact form and support contact affordances; it does not render duplicated structured imprint metadata or a separate privacy email field.
+- [x] #4 Privacy Policy and Platform Terms pages keep using their versioned platform document content and no longer depend on structured privacy-contact metadata from platform legal settings.
+- [x] #5 A forward-only migration updates `platform_legal_settings` to the simplified shape and preserves existing content by folding removed structured values into `imprintContent` before dropping old columns, with no runtime compatibility fallback or dual-read path after migration.
+- [x] #6 Platform legal bootstrap config, API schemas, composables, docs, and tests are updated to the simplified contract; obsolete examples and SQL snippets no longer mention the removed fields.
+- [x] #7 The dev D1 database is updated after deployment so `/imprint`, `/privacy-policy`, `/terms-and-conditions`, and `/api/platform-legal-settings/current` return the simplified, non-duplicated content shape.
+- [x] #8 Validation passes locally before commit: `bun run lint`, `bun run typecheck`, and `bun run test:unit`.
 <!-- AC:END -->
 
+## Final Summary
 
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Simplified platform legal settings to the canonical runtime shape: `supportEmail`, `imprintContent`, and timestamps. Removed structured imprint-only fields and the separate `privacyEmail` from schema, API serialization/upsert, composable types, admin UI, public legal page metadata, docs, examples, and tests. Added a forward-only D1 migration that folds removed values into imprint markdown before dropping old columns, and fixed the migration for D1 by using `instr(...)` instead of complex `LIKE` patterns. Validation passed locally (`bun run lint`, `bun run typecheck`, `bun run test:unit`), targeted platform legal unit/integration tests passed, GitHub CI/deploy-dev passed on commit `530e501`, and dev D1 was updated/verified for the simplified content shape.
+<!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Canonical docs were updated or confirmed unchanged
-- [ ] #2 Code behavior matches canonical docs
-- [ ] #3 Relevant validation commands pass
-- [ ] #4 Tests were added or updated when behavior changed
-- [ ] #5 Test gaps are documented when automation is not practical
-- [ ] #6 Config and developer workflow docs were updated when setup changed
-- [ ] #7 Auth and permissions changes follow the documented platform model
-- [ ] #8 Risks and follow ups are recorded in the task summary
+- [x] #1 Canonical docs were updated or confirmed unchanged
+- [x] #2 Code behavior matches canonical docs
+- [x] #3 Relevant validation commands pass
+- [x] #4 Tests were added or updated when behavior changed
+- [x] #5 Test gaps are documented when automation is not practical
+- [x] #6 Config and developer workflow docs were updated when setup changed
+- [x] #7 Auth and permissions changes follow the documented platform model
+- [x] #8 Risks and follow ups are recorded in the task summary
 <!-- DOD:END -->
