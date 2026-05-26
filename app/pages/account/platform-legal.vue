@@ -307,19 +307,21 @@ useSeoMeta({
                 required
               />
             </AppFormField>
+          </div>
 
-            <AppFormField
-              name="platform-legal-contact-languages"
-              label="Legal contact languages"
-              description="Languages accepted for legal and DSA communications, for example German and English."
-            >
-              <AppInput
-                v-model="legalSettingsForm.legalContactLanguages"
-                type="text"
-                required
-              />
-            </AppFormField>
+          <AppFormField
+            name="platform-legal-contact-languages"
+            label="Legal contact languages"
+            description="Languages accepted for legal and DSA communications, for example German and English."
+          >
+            <AppInput
+              v-model="legalSettingsForm.legalContactLanguages"
+              type="text"
+              required
+            />
+          </AppFormField>
 
+          <div class="grid gap-4 md:grid-cols-2">
             <AppFormField
               name="platform-business-purpose"
               label="Business purpose"
@@ -331,19 +333,19 @@ useSeoMeta({
                 required
               />
             </AppFormField>
-          </div>
 
-          <AppFormField
-            name="platform-editorial-line"
-            label="Editorial line"
-            description="Short public summary of the information published through this platform."
-          >
-            <AppTextarea
-              v-model="legalSettingsForm.editorialLine"
-              rows="3"
-              required
-            />
-          </AppFormField>
+            <AppFormField
+              name="platform-editorial-line"
+              label="Editorial line"
+              description="Short public summary of the information published through this platform."
+            >
+              <AppTextarea
+                v-model="legalSettingsForm.editorialLine"
+                rows="3"
+                required
+              />
+            </AppFormField>
+          </div>
 
           <LazyAdminMarkdownEditorField
             v-model="legalSettingsForm.imprintContent"
