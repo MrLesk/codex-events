@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS `__new_platform_legal_settings`;
+
 CREATE TABLE `__new_platform_legal_settings` (
   `id` text PRIMARY KEY NOT NULL,
   `support_email` text NOT NULL,
@@ -19,13 +21,13 @@ SELECT
   `support_email`,
   trim(
     CASE
-      WHEN `imprint_content` LIKE '%' || `operator_name` || '%'
-        AND `imprint_content` LIKE '%' || `operator_address` || '%'
-        AND `imprint_content` LIKE '%' || `support_email` || '%'
-        AND `imprint_content` LIKE '%' || `privacy_email` || '%'
-        AND `imprint_content` LIKE '%' || `legal_contact_languages` || '%'
-        AND `imprint_content` LIKE '%' || `business_purpose` || '%'
-        AND `imprint_content` LIKE '%' || `editorial_line` || '%'
+      WHEN instr(`imprint_content`, `operator_name`) > 0
+        AND instr(`imprint_content`, `operator_address`) > 0
+        AND instr(`imprint_content`, `support_email`) > 0
+        AND instr(`imprint_content`, `privacy_email`) > 0
+        AND instr(`imprint_content`, `legal_contact_languages`) > 0
+        AND instr(`imprint_content`, `business_purpose`) > 0
+        AND instr(`imprint_content`, `editorial_line`) > 0
         THEN `imprint_content`
       ELSE trim(
         '## Operator' || char(10) || char(10) ||
