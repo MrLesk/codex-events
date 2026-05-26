@@ -53,22 +53,39 @@ Grant the Auth0 Management API application these scopes:
 
 Create a GitHub environment named `production`.
 
-Set these environment variables:
+Set these environment variables.
+
+Application hostname:
 
 | Variable | Value |
 | --- | --- |
 | `DEPLOY_PRODUCTION_BASE_DOMAIN` | Production hostname, for example `events.example.com` |
-| `DEPLOY_ZONE_NAME` | Cloudflare DNS zone name |
-| `DEPLOY_WORKER_NAME` | Cloudflare Worker name |
-| `DEPLOY_D1_DATABASE_NAME` | D1 database name |
-| `DEPLOY_D1_DATABASE_ID` | D1 database ID |
-| `DEPLOY_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket name |
-| `DEPLOY_EVENT_IMAGES_BUCKET` | Event-images R2 bucket name |
-| `DEPLOY_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name |
-| `DEPLOY_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue name |
-| `DEPLOY_LUMA_SYNC_QUEUE` | Luma sync queue name |
+
+Cloudflare resource metadata:
+
+| Variable | Value |
+| --- | --- |
+| `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name |
+| `DEPLOY_CF_WORKER_NAME` | Cloudflare Worker name |
+| `DEPLOY_CF_D1_DATABASE_NAME` | D1 database name |
+| `DEPLOY_CF_D1_DATABASE_ID` | D1 database ID |
+| `DEPLOY_CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket name |
+| `DEPLOY_CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket name |
+| `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name |
+| `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue name |
+| `DEPLOY_CF_LUMA_SYNC_QUEUE` | Luma sync queue name |
+
+Auth0 runtime settings:
+
+| Variable | Value |
+| --- | --- |
 | `NUXT_AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant host, without `https://` |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name |
+
+Cloudflare Email Service runtime settings:
+
+| Variable | Value |
+| --- | --- |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified Cloudflare Email Service sender |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to email address |
 

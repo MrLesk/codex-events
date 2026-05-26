@@ -10,15 +10,15 @@ function createEnvironment(overrides: Record<string, string | undefined> = {}) {
   return {
     DEPLOY_DEV_BASE_DOMAIN: 'dev.example.com',
     DEPLOY_PRODUCTION_BASE_DOMAIN: 'events.example.com',
-    DEPLOY_ZONE_NAME: 'example.com',
-    DEPLOY_WORKER_NAME: 'events-worker',
-    DEPLOY_D1_DATABASE_NAME: 'events-db',
-    DEPLOY_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
-    DEPLOY_PROFILE_ICONS_BUCKET: 'events-profile-icons',
-    DEPLOY_EVENT_IMAGES_BUCKET: 'events-event-images',
-    DEPLOY_APPLICATION_REVIEW_EMAIL_QUEUE: 'events-application-review-email-delivery',
-    DEPLOY_EVENT_OUTCOME_EMAIL_QUEUE: 'events-event-outcome-email-delivery',
-    DEPLOY_LUMA_SYNC_QUEUE: 'events-application-luma-sync',
+    DEPLOY_CF_ZONE_NAME: 'example.com',
+    DEPLOY_CF_WORKER_NAME: 'events-worker',
+    DEPLOY_CF_D1_DATABASE_NAME: 'events-db',
+    DEPLOY_CF_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
+    DEPLOY_CF_PROFILE_ICONS_BUCKET: 'events-profile-icons',
+    DEPLOY_CF_EVENT_IMAGES_BUCKET: 'events-event-images',
+    DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE: 'events-application-review-email-delivery',
+    DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE: 'events-event-outcome-email-delivery',
+    DEPLOY_CF_LUMA_SYNC_QUEUE: 'events-application-luma-sync',
     NUXT_AUTH0_MANAGEMENT_DOMAIN: 'tenant.eu.auth0.com',
     NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
     NUXT_OUTBOUND_EMAIL_FROM_EMAIL: 'notifications@example.com',
@@ -85,8 +85,8 @@ describe('deploy Wrangler config generator', () => {
     }))).toThrow('DEPLOY_DEV_BASE_DOMAIN is required')
 
     expect(() => resolveDeployConfigInput('production', createEnvironment({
-      DEPLOY_D1_DATABASE_ID: ''
-    }))).toThrow('DEPLOY_D1_DATABASE_ID is required')
+      DEPLOY_CF_D1_DATABASE_ID: ''
+    }))).toThrow('DEPLOY_CF_D1_DATABASE_ID is required')
   })
 
   test('honors explicit domain overrides', () => {

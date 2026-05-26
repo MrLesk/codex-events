@@ -149,7 +149,7 @@ function loadConfig(): Auth0CustomDomainConfig {
     managementClientSecret: requireEnv('AUTH0_MGMT_CLIENT_SECRET'),
     managementAudience: requireEnv('AUTH0_MGMT_AUDIENCE'),
     customDomain: normalizeHostname(requireEnv('AUTH0_CUSTOM_DOMAIN')),
-    zoneName: normalizeHostname(requireEnv('DEPLOY_ZONE_NAME')),
+    zoneName: normalizeHostname(requireEnv('DEPLOY_CF_ZONE_NAME')),
     cloudflareApiToken: requireEnv('CLOUDFLARE_API_TOKEN'),
     waitTimeoutMs: parseSecondsEnv('AUTH0_CUSTOM_DOMAIN_WAIT_SECONDS', 600),
     pollIntervalMs: parseSecondsEnv('AUTH0_CUSTOM_DOMAIN_POLL_SECONDS', 15)

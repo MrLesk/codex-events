@@ -126,7 +126,7 @@ The repository includes automation for recurring setup and maintenance:
 - Cloudflare queue, secret, migration, and deployment workflows.
 - A GitHub Release driven production deployment workflow.
 
-The checked-in `wrangler.jsonc` is limited to local/adopter-safe defaults. Remote dev and production deployments generate ignored Wrangler configs from `DEPLOY_DEV_BASE_DOMAIN` or `DEPLOY_PRODUCTION_BASE_DOMAIN`, explicit Cloudflare resource names and IDs, and the app's existing `NUXT_*` runtime variables.
+The checked-in `wrangler.jsonc` is limited to local/adopter-safe defaults. Remote dev and production deployments generate ignored Wrangler configs from `DEPLOY_DEV_BASE_DOMAIN` or `DEPLOY_PRODUCTION_BASE_DOMAIN`, explicit `DEPLOY_CF_*` Cloudflare resource names and IDs, and the app's existing `NUXT_*` runtime variables.
 
 ## Where It Fits
 

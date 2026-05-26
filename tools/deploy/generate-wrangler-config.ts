@@ -245,12 +245,12 @@ export function resolveDeployConfigInput(
     auth0CustomDomain,
     eventImagesPublicCdnBaseUrl,
     lumaWebhookUrl,
-    zoneName: readRequiredEnvironmentValue(environment, 'DEPLOY_ZONE_NAME'),
-    workerName: readRequiredEnvironmentValue(environment, 'DEPLOY_WORKER_NAME'),
-    d1DatabaseName: readRequiredEnvironmentValue(environment, 'DEPLOY_D1_DATABASE_NAME'),
-    d1DatabaseId: readRequiredEnvironmentValue(environment, 'DEPLOY_D1_DATABASE_ID'),
-    profileIconsBucket: readRequiredEnvironmentValue(environment, 'DEPLOY_PROFILE_ICONS_BUCKET'),
-    eventImagesBucket: readRequiredEnvironmentValue(environment, 'DEPLOY_EVENT_IMAGES_BUCKET'),
+    zoneName: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_ZONE_NAME'),
+    workerName: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_WORKER_NAME'),
+    d1DatabaseName: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_D1_DATABASE_NAME'),
+    d1DatabaseId: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_D1_DATABASE_ID'),
+    profileIconsBucket: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_PROFILE_ICONS_BUCKET'),
+    eventImagesBucket: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_EVENT_IMAGES_BUCKET'),
     outboundEmailBinding: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_BINDING') || 'EMAIL',
     outboundEmailFromEmail: readRequiredEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_EMAIL'),
     outboundEmailFromName: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_NAME') || 'Codex Events',
@@ -260,19 +260,19 @@ export function resolveDeployConfigInput(
     auth0DatabaseConnectionName: readRequiredEnvironmentValue(environment, 'NUXT_AUTH0_DATABASE_CONNECTION_NAME'),
     applicationReviewEmails: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING',
-      queueEnvName: 'DEPLOY_APPLICATION_REVIEW_EMAIL_QUEUE',
+      queueEnvName: 'DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE',
       retryDelayEnvName: 'NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS',
       defaultBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
     }),
     eventOutcomeEmails: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING',
-      queueEnvName: 'DEPLOY_EVENT_OUTCOME_EMAIL_QUEUE',
+      queueEnvName: 'DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE',
       retryDelayEnvName: 'NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS',
       defaultBinding: 'EVENT_OUTCOME_EMAIL_QUEUE'
     }),
     lumaSync: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_LUMA_QUEUE_BINDING',
-      queueEnvName: 'DEPLOY_LUMA_SYNC_QUEUE',
+      queueEnvName: 'DEPLOY_CF_LUMA_SYNC_QUEUE',
       retryDelayEnvName: 'NUXT_LUMA_RETRY_DELAY_SECONDS',
       defaultBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
     })

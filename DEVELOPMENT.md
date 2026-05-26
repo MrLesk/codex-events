@@ -225,23 +225,23 @@ For the selected target, the generator derives:
 - event image CDN URL: `https://cdn.<base-domain>`
 - Luma webhook URL: `https://<base-domain>/api/public/luma/webhooks`
 
-Keep `DEPLOY_ZONE_NAME` explicit because the Cloudflare DNS zone cannot always be inferred from a deployment hostname. Use these override variables only when the default derived hostnames are not correct for an environment:
+Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot always be inferred from a deployment hostname. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. Use these override variables only when the default derived hostnames are not correct for an environment:
 
 - `DEPLOY_AUTH0_CUSTOM_DOMAIN`
 - `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL`
 - `DEPLOY_LUMA_WEBHOOK_URL`
 
-Each remote environment must provide deployment metadata:
+Each remote environment must provide Cloudflare resource metadata:
 
-- `DEPLOY_ZONE_NAME`
-- `DEPLOY_WORKER_NAME`
-- `DEPLOY_D1_DATABASE_NAME`
-- `DEPLOY_D1_DATABASE_ID`
-- `DEPLOY_PROFILE_ICONS_BUCKET`
-- `DEPLOY_EVENT_IMAGES_BUCKET`
-- `DEPLOY_APPLICATION_REVIEW_EMAIL_QUEUE`
-- `DEPLOY_EVENT_OUTCOME_EMAIL_QUEUE`
-- `DEPLOY_LUMA_SYNC_QUEUE`
+- `DEPLOY_CF_ZONE_NAME`
+- `DEPLOY_CF_WORKER_NAME`
+- `DEPLOY_CF_D1_DATABASE_NAME`
+- `DEPLOY_CF_D1_DATABASE_ID`
+- `DEPLOY_CF_PROFILE_ICONS_BUCKET`
+- `DEPLOY_CF_EVENT_IMAGES_BUCKET`
+- `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE`
+- `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE`
+- `DEPLOY_CF_LUMA_SYNC_QUEUE`
 
 The existing app runtime variables remain the interface for Auth0, outbound email, queue binding names, retry delays, and optional Luma access. The generator copies those values into the generated Wrangler `vars` block and fails fast when a required deploy value is missing.
 
@@ -273,11 +273,35 @@ bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webh
 
 Pushes to `main` publish the dev environment through `.github/workflows/ci.yml` after the fast CI checks pass. Production publishes from GitHub Releases through `.github/workflows/release-production.yml`.
 
-The GitHub `dev` and `production` environments should store deployment metadata as environment variables and credentials as secrets. Required environment variables mirror the remote deployment metadata above, plus the runtime values that are not secrets:
+The GitHub `dev` and `production` environments should store deployment metadata as environment variables and credentials as secrets. Push-based dev deployment is optional for forks and unconfigured environments: if `DEPLOY_DEV_BASE_DOMAIN` is empty, the deploy job exits cleanly before reading the rest of the deployment metadata.
+
+Use these environment variable groups:
+
+App hostnames:
+
+- `DEPLOY_DEV_BASE_DOMAIN` for the shared dev environment
+- `DEPLOY_PRODUCTION_BASE_DOMAIN` for production
+
+Cloudflare resource metadata:
+
+- `DEPLOY_CF_ZONE_NAME`
+- `DEPLOY_CF_WORKER_NAME`
+- `DEPLOY_CF_D1_DATABASE_NAME`
+- `DEPLOY_CF_D1_DATABASE_ID`
+- `DEPLOY_CF_PROFILE_ICONS_BUCKET`
+- `DEPLOY_CF_EVENT_IMAGES_BUCKET`
+- `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE`
+- `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE`
+- `DEPLOY_CF_LUMA_SYNC_QUEUE`
+
+Auth0 runtime settings:
 
 - `NUXT_AUTH0_MANAGEMENT_DOMAIN`
 - `NUXT_AUTH0_MANAGEMENT_AUDIENCE` when it does not follow `https://<management-domain>/api/v2/`
 - `NUXT_AUTH0_DATABASE_CONNECTION_NAME`
+
+Cloudflare Email Service and Queues runtime settings:
+
 - `NUXT_OUTBOUND_EMAIL_BINDING`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
 - `NUXT_OUTBOUND_EMAIL_FROM_NAME`
@@ -288,6 +312,12 @@ The GitHub `dev` and `production` environments should store deployment metadata 
 - `NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS`
 - `NUXT_LUMA_QUEUE_BINDING`
 - `NUXT_LUMA_RETRY_DELAY_SECONDS`
+
+Optional deployment URL overrides:
+
+- `DEPLOY_AUTH0_CUSTOM_DOMAIN`
+- `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL`
+- `DEPLOY_LUMA_WEBHOOK_URL`
 
 The GitHub `dev` environment must provide these secrets:
 
@@ -331,8 +361,8 @@ The generated Wrangler config supplies deploy-time Cloudflare bindings and non-s
 
 Cloudflare tokens used by production Auth0 custom-domain automation also need:
 
-- zone permission `Zone Zone Read` on `DEPLOY_ZONE_NAME`
-- zone permission `DNS Write` on `DEPLOY_ZONE_NAME`
+- zone permission `Zone Zone Read` on `DEPLOY_CF_ZONE_NAME`
+- zone permission `DNS Write` on `DEPLOY_CF_ZONE_NAME`
 
 The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` currently needs these Auth0 Management API scopes:
 
