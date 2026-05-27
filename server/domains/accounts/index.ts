@@ -303,10 +303,9 @@ async function assertPlatformAccountRegistrationAllowed(
     throw new ApiError({
       statusCode: 409,
       code: 'platform_account_link_required',
-      message: 'A platform account already exists for this email address. Sign in to your existing account to link this login method.',
+      message: 'A platform account already exists for this email address. Sign out, then sign in with your existing account.',
       details: {
-        email: linkableIdentity.email,
-        primaryAuth0Subject: linkableIdentity.primaryAuth0Subject
+        email: linkableIdentity.email
       }
     })
   }

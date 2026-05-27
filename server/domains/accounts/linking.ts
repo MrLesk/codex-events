@@ -14,25 +14,27 @@ import {
   StatelessStateStore
 } from '@auth0/auth0-server-js'
 import { and, eq, isNull } from 'drizzle-orm'
-import { deleteCookie, getCookie, getRequestURL, parseCookies, setCookie } from 'h3'
+import { deleteCookie, getCookie, getQuery, getRequestURL, parseCookies, setCookie } from 'h3'
 
-import { accountDashboardHref, buildAccountRegisterHref, normalizeAuthReturnTo } from '#shared/domains/accounts/auth-navigation'
+import { buildAccountRegisterHref } from '#shared/domains/accounts/auth-navigation'
 import { users } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
 
 const challengeCookieName = 'codex_platform_account_link'
 const challengeLifetimeSeconds = 10 * 60
+const actionResultLifetimeSeconds = 60
 const linkSessionIdentifier = '__a0_platform_account_link_session'
 const linkTransactionIdentifier = '__a0_platform_account_link_tx'
-const requiredLinkManagementScope = 'update:users'
-const requiredLinkedIdentityReadManagementScope = 'read:users'
+const accountLinkClaimNamespace = 'https://codex-events/account_linking'
+export const linkedAuth0SubjectsClaim = `${accountLinkClaimNamespace}/auth0_subjects`
 const textEncoder = new TextEncoder()
 
 export interface PlatformAccountLinkChallenge {
   primaryAuth0Subject: string
   secondaryAuth0Subject: string
   email: string
-  returnTo: string
+  actionState: string
+  continueUri: string
   expiresAt: string
 }
 
@@ -54,23 +56,10 @@ interface PlatformAccountLinkLoginConfig extends PlatformAccountLinkConfig {
   sessionConfiguration?: SessionConfiguration
 }
 
-interface PlatformAccountLinkManagementConfig {
-  managementDomain: string
-  managementClientId: string
-  managementClientSecret: string
-  managementAudience: string
-}
-
 interface PlatformAccountLinkChallengeResult {
   ok: boolean
   reason?: PlatformAccountLinkChallengeStatus
   challenge?: PlatformAccountLinkChallenge
-}
-
-export interface PlatformAccountLinkState {
-  required: true
-  email: string
-  linkLoginHref: '/auth/link/login'
 }
 
 export interface LinkablePlatformAccountIdentity {
@@ -79,15 +68,17 @@ export interface LinkablePlatformAccountIdentity {
   primaryAuth0Subject: string
 }
 
+interface PlatformAccountLinkActionPayload {
+  primaryAuth0Subject: string
+  secondaryAuth0Subject: string
+  email: string
+  continueUri: string
+}
+
 interface PlatformAccountLinkSessionLike {
   user?: {
     sub?: string | null
   } | null
-}
-
-interface Auth0IdentityRecord {
-  provider?: unknown
-  user_id?: unknown
 }
 
 interface PlatformAccountLinkAuth0StoreOptions {
@@ -176,92 +167,6 @@ function base64UrlToBytes(value: string) {
   return bytes
 }
 
-function normalizeDomain(domain: string) {
-  return domain.startsWith('http://') || domain.startsWith('https://')
-    ? domain
-    : `https://${domain}`
-}
-
-function splitScopeString(value: string | undefined) {
-  return (value ?? '')
-    .split(/\s+/)
-    .map(scope => scope.trim())
-    .filter(Boolean)
-}
-
-function readJwtScopeClaims(accessToken: string) {
-  const parts = accessToken.split('.')
-
-  if (parts.length !== 3) {
-    return {
-      permissions: [] as string[],
-      scope: ''
-    }
-  }
-
-  try {
-    const encodedPayload = parts[1] ?? ''
-    const payload = JSON.parse(new TextDecoder().decode(base64UrlToBytes(encodedPayload))) as {
-      permissions?: unknown
-      scope?: unknown
-    }
-
-    return {
-      permissions: Array.isArray(payload.permissions)
-        ? payload.permissions.filter((permission): permission is string => typeof permission === 'string')
-        : [],
-      scope: typeof payload.scope === 'string' ? payload.scope : ''
-    }
-  } catch {
-    return {
-      permissions: [] as string[],
-      scope: ''
-    }
-  }
-}
-
-function readGrantedManagementScopes(accessToken: string, responseScope?: string) {
-  const jwtClaims = readJwtScopeClaims(accessToken)
-
-  return new Set([
-    ...splitScopeString(responseScope),
-    ...splitScopeString(jwtClaims.scope),
-    ...jwtClaims.permissions
-  ])
-}
-
-function assertManagementScope(
-  accessToken: string,
-  responseScope: string | undefined,
-  requiredScope: string,
-  missingScopeMessage: string
-) {
-  const grantedScopes = readGrantedManagementScopes(accessToken, responseScope)
-
-  if (!grantedScopes.has(requiredScope)) {
-    throw buildAccountLinkError(missingScopeMessage)
-  }
-}
-
-function serializeAuth0IdentityRecordSubject(identity: Auth0IdentityRecord) {
-  return typeof identity.provider === 'string'
-    && typeof identity.user_id === 'string'
-    && identity.provider.trim()
-    && identity.user_id.trim()
-    ? `${identity.provider.trim()}|${identity.user_id.trim()}`
-    : null
-}
-
-function parseAuth0IdentitySubjects(identities: unknown) {
-  if (!Array.isArray(identities)) {
-    return []
-  }
-
-  return identities
-    .map(identity => serializeAuth0IdentityRecordSubject(identity as Auth0IdentityRecord))
-    .filter((subject): subject is string => Boolean(subject))
-}
-
 function buildAccountLinkError(message: string) {
   return new ApiError({
     statusCode: 500,
@@ -284,9 +189,12 @@ function readBaseConfig(event: H3Event): PlatformAccountLinkConfig {
 }
 
 function readLoginConfig(event: H3Event): PlatformAccountLinkLoginConfig {
+  const runtimeAuth0Config = useRuntimeConfig(event).auth0 as Record<string, string | SessionConfiguration | undefined>
+  const auth0ClientOptions = (event.context as RequestScopedPlatformAccountLinkAuth0Context).auth0ClientOptions
   const auth0Config = (
-    (event.context as RequestScopedPlatformAccountLinkAuth0Context).auth0ClientOptions
-    ?? useRuntimeConfig(event).auth0
+    auth0ClientOptions
+      ? { ...runtimeAuth0Config, ...auth0ClientOptions }
+      : runtimeAuth0Config
   ) as Record<string, string | SessionConfiguration | undefined>
   const appBaseUrl = typeof auth0Config.appBaseUrl === 'string' ? auth0Config.appBaseUrl.trim() : ''
   const databaseConnectionName = typeof auth0Config.databaseConnectionName === 'string'
@@ -313,24 +221,6 @@ function readLoginConfig(event: H3Event): PlatformAccountLinkLoginConfig {
     sessionConfiguration: typeof auth0Config.sessionConfiguration === 'object' && auth0Config.sessionConfiguration
       ? auth0Config.sessionConfiguration as SessionConfiguration
       : undefined
-  }
-}
-
-function readManagementConfig(event: H3Event): PlatformAccountLinkManagementConfig {
-  const auth0Config = useRuntimeConfig(event).auth0 as Record<string, string | undefined>
-  const managementDomain = auth0Config.managementDomain?.trim() ?? ''
-  const managementClientId = auth0Config.managementClientId?.trim() ?? ''
-  const managementClientSecret = auth0Config.managementClientSecret?.trim() ?? ''
-
-  if (!managementDomain || !managementClientId || !managementClientSecret) {
-    throw buildAccountLinkError('Account linking is not configured correctly yet. Sign in with your existing password instead.')
-  }
-
-  return {
-    managementDomain,
-    managementClientId,
-    managementClientSecret,
-    managementAudience: auth0Config.managementAudience?.trim() || `${normalizeDomain(managementDomain)}/api/v2/`
   }
 }
 
@@ -361,6 +251,66 @@ async function verifyChallengePayload(payload: string, signature: string, secret
   )
 }
 
+function encodeJsonToBase64Url(value: unknown) {
+  return bytesToBase64Url(textEncoder.encode(JSON.stringify(value)))
+}
+
+function decodeBase64UrlJson(value: string) {
+  return JSON.parse(new TextDecoder().decode(base64UrlToBytes(value))) as Record<string, unknown>
+}
+
+async function signJwt(payload: Record<string, unknown>, secret: string) {
+  const header = encodeJsonToBase64Url({
+    alg: 'HS256',
+    typ: 'JWT'
+  })
+  const encodedPayload = encodeJsonToBase64Url(payload)
+  const signingInput = `${header}.${encodedPayload}`
+  const signature = await signChallengePayload(signingInput, secret)
+
+  return `${signingInput}.${signature}`
+}
+
+async function verifyJwtPayload(token: string, secret: string) {
+  const parts = token.split('.')
+
+  if (parts.length !== 3) {
+    throw buildAccountLinkError('The account-linking request could not be verified.')
+  }
+
+  const [encodedHeader, encodedPayload, signature] = parts
+
+  if (!encodedHeader || !encodedPayload || !signature) {
+    throw buildAccountLinkError('The account-linking request could not be verified.')
+  }
+
+  let header: Record<string, unknown>
+  let payload: Record<string, unknown>
+
+  try {
+    header = decodeBase64UrlJson(encodedHeader)
+    payload = decodeBase64UrlJson(encodedPayload)
+  } catch {
+    throw buildAccountLinkError('The account-linking request could not be verified.')
+  }
+
+  if (header.alg !== 'HS256') {
+    throw buildAccountLinkError('The account-linking request could not be verified.')
+  }
+
+  const isValid = await verifyChallengePayload(`${encodedHeader}.${encodedPayload}`, signature, secret)
+
+  if (!isValid) {
+    throw buildAccountLinkError('The account-linking request could not be verified.')
+  }
+
+  if (typeof payload.exp !== 'number' || payload.exp * 1000 <= Date.now()) {
+    throw buildAccountLinkError('The account-linking request expired.')
+  }
+
+  return payload
+}
+
 function serializeChallenge(challenge: PlatformAccountLinkChallenge) {
   return bytesToBase64Url(textEncoder.encode(JSON.stringify(challenge)))
 }
@@ -374,7 +324,8 @@ function deserializeChallenge(value: string): PlatformAccountLinkChallenge | nul
       typeof parsed.primaryAuth0Subject !== 'string'
       || typeof parsed.secondaryAuth0Subject !== 'string'
       || typeof parsed.email !== 'string'
-      || typeof parsed.returnTo !== 'string'
+      || typeof parsed.actionState !== 'string'
+      || typeof parsed.continueUri !== 'string'
       || typeof parsed.expiresAt !== 'string'
     ) {
       return null
@@ -384,7 +335,8 @@ function deserializeChallenge(value: string): PlatformAccountLinkChallenge | nul
       primaryAuth0Subject: parsed.primaryAuth0Subject,
       secondaryAuth0Subject: parsed.secondaryAuth0Subject,
       email: parsed.email,
-      returnTo: normalizeAuthReturnTo(parsed.returnTo, accountDashboardHref),
+      actionState: parsed.actionState,
+      continueUri: parsed.continueUri,
       expiresAt: parsed.expiresAt
     }
   } catch {
@@ -470,14 +422,6 @@ export function isVerifiedSocialIdentityLinkCandidate(options: {
     && options.existingPlatformAuth0Subject.startsWith('auth0|')
 }
 
-export function serializePlatformAccountLinkState(candidate: LinkablePlatformAccountIdentity): PlatformAccountLinkState {
-  return {
-    required: true,
-    email: candidate.email,
-    linkLoginHref: '/auth/link/login'
-  }
-}
-
 export async function findLinkablePlatformAccountIdentity(
   database: AppDatabase,
   sessionUser: {
@@ -517,26 +461,14 @@ export async function findLinkablePlatformAccountIdentity(
   } satisfies LinkablePlatformAccountIdentity
 }
 
-export function parseAuth0IdentitySubject(subject: string) {
-  const separatorIndex = subject.indexOf('|')
-
-  if (separatorIndex <= 0 || separatorIndex === subject.length - 1) {
-    return null
-  }
-
-  return {
-    provider: subject.slice(0, separatorIndex),
-    userId: subject.slice(separatorIndex + 1)
-  }
-}
-
 export async function issuePlatformAccountLinkChallenge(
   event: H3Event,
   input: {
     primaryAuth0Subject: string
     secondaryAuth0Subject: string
     email: string
-    returnTo: string | null | undefined
+    actionState: string
+    continueUri: string
   }
 ) {
   const config = readBaseConfig(event)
@@ -544,7 +476,8 @@ export async function issuePlatformAccountLinkChallenge(
     primaryAuth0Subject: input.primaryAuth0Subject,
     secondaryAuth0Subject: input.secondaryAuth0Subject,
     email: input.email,
-    returnTo: normalizeAuthReturnTo(input.returnTo, accountDashboardHref),
+    actionState: input.actionState,
+    continueUri: input.continueUri,
     expiresAt: new Date(Date.now() + challengeLifetimeSeconds * 1000).toISOString()
   }
   const payload = serializeChallenge(challenge)
@@ -553,6 +486,72 @@ export async function issuePlatformAccountLinkChallenge(
   setCookie(event, challengeCookieName, `${payload}.${signature}`, buildCookieOptions(event))
 
   return challenge
+}
+
+function readRequiredString(value: unknown) {
+  return typeof value === 'string' ? value.trim() : ''
+}
+
+function normalizeContinueUri(value: string) {
+  let url: URL
+
+  try {
+    url = new URL(value)
+  } catch {
+    throw buildAccountLinkError('The account-linking continuation target is invalid.')
+  }
+
+  if (url.protocol !== 'https:' || url.pathname !== '/continue') {
+    throw buildAccountLinkError('The account-linking continuation target is invalid.')
+  }
+
+  return url.toString()
+}
+
+async function readPlatformAccountLinkActionPayload(event: H3Event): Promise<PlatformAccountLinkActionPayload> {
+  const config = readBaseConfig(event)
+  const query = getQuery(event)
+  const sessionToken = readRequiredString(query.session_token)
+  const actionState = readRequiredString(query.state)
+
+  if (!sessionToken || !actionState) {
+    throw buildAccountLinkError('The account-linking request is missing required Auth0 state.')
+  }
+
+  const payload = await verifyJwtPayload(sessionToken, config.challengeSecret)
+  const primaryAuth0Subject = readRequiredString(payload.primary_user_id)
+  const secondaryAuth0Subject = readRequiredString(payload.secondary_user_id)
+  const email = readRequiredString(payload.primary_email)
+  const continueUri = normalizeContinueUri(readRequiredString(payload.continue_uri))
+  const tokenSubject = readRequiredString(payload.sub)
+
+  if (
+    !primaryAuth0Subject
+    || !secondaryAuth0Subject
+    || !email
+    || !continueUri
+    || tokenSubject !== secondaryAuth0Subject
+  ) {
+    throw buildAccountLinkError('The account-linking request could not be verified.')
+  }
+
+  return {
+    primaryAuth0Subject,
+    secondaryAuth0Subject,
+    email,
+    continueUri
+  }
+}
+
+export async function issuePlatformAccountLinkActionChallenge(event: H3Event) {
+  const query = getQuery(event)
+  const actionState = readRequiredString(query.state)
+  const payload = await readPlatformAccountLinkActionPayload(event)
+
+  return await issuePlatformAccountLinkChallenge(event, {
+    ...payload,
+    actionState
+  })
 }
 
 export async function readPlatformAccountLinkChallenge(event: H3Event): Promise<PlatformAccountLinkChallengeResult> {
@@ -652,121 +651,64 @@ export function buildPlatformAccountLinkRedirect(returnTo: string | null | undef
   return `${url.pathname}${url.search}`
 }
 
-async function getManagementAccessToken(
-  config: PlatformAccountLinkManagementConfig,
+function escapeHtmlAttribute(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+}
+
+async function buildPlatformAccountLinkActionResultToken(
+  event: H3Event,
+  challenge: PlatformAccountLinkChallenge,
   options: {
-    requiredScope: string
-    missingScopeMessage: string
+    ok: boolean
+    reason?: PlatformAccountLinkErrorReason
   }
 ) {
-  const response = await fetch(`${normalizeDomain(config.managementDomain)}/oauth/token`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify({
-      grant_type: 'client_credentials',
-      client_id: config.managementClientId,
-      client_secret: config.managementClientSecret,
-      audience: config.managementAudience
-    })
-  })
-
-  if (!response.ok) {
-    const reason = await response.text()
-    throw buildAccountLinkError(`Auth0 management token request failed: ${reason}`)
+  const config = readBaseConfig(event)
+  const issuedAt = Math.floor(Date.now() / 1000)
+  const payload = {
+    sub: challenge.secondaryAuth0Subject,
+    iss: readLoginConfig(event).appBaseUrl,
+    aud: challenge.continueUri,
+    iat: issuedAt,
+    exp: issuedAt + actionResultLifetimeSeconds,
+    state: challenge.actionState,
+    result: options.ok ? 'link_verified' : 'link_failed',
+    error: options.reason,
+    primary_user_id: challenge.primaryAuth0Subject,
+    secondary_user_id: challenge.secondaryAuth0Subject
   }
 
-  const payload = await response.json() as { access_token?: string, scope?: string }
-
-  if (!payload.access_token) {
-    throw buildAccountLinkError('Auth0 management token response did not include an access token.')
-  }
-
-  assertManagementScope(
-    payload.access_token,
-    payload.scope,
-    options.requiredScope,
-    options.missingScopeMessage
-  )
-
-  return payload.access_token
+  return await signJwt(payload, config.challengeSecret)
 }
 
-export async function listPlatformAccountIdentitySubjects(
+export async function buildPlatformAccountLinkActionContinueResponse(
   event: H3Event,
-  primaryAuth0Subject: string
+  challenge: PlatformAccountLinkChallenge,
+  options: {
+    ok: boolean
+    reason?: PlatformAccountLinkErrorReason
+  }
 ) {
-  const config = readManagementConfig(event)
-  const token = await getManagementAccessToken(config, {
-    requiredScope: requiredLinkedIdentityReadManagementScope,
-    missingScopeMessage: 'Auth0 management token is missing the read:users scope required to reconcile linked account identities.'
-  })
-  const response = await fetch(
-    `${normalizeDomain(config.managementDomain)}/api/v2/users/${encodeURIComponent(primaryAuth0Subject)}`,
-    {
-      method: 'GET',
-      headers: {
-        authorization: `Bearer ${token}`
-      }
-    }
-  )
+  const sessionToken = await buildPlatformAccountLinkActionResultToken(event, challenge, options)
 
-  if (!response.ok) {
-    const reason = await response.text()
-    throw buildAccountLinkError(`Auth0 linked identity read request failed: ${reason}`)
-  }
-
-  const payload = await response.json() as { identities?: unknown }
-
-  return Array.from(new Set([
-    primaryAuth0Subject,
-    ...parseAuth0IdentitySubjects(payload.identities)
-  ]))
-}
-
-export async function linkPlatformAccountIdentity(
-  event: H3Event,
-  primaryAuth0Subject: string,
-  secondaryAuth0Subject: string
-) {
-  const config = readManagementConfig(event)
-  const secondaryIdentity = parseAuth0IdentitySubject(secondaryAuth0Subject)
-
-  if (!secondaryIdentity) {
-    throw buildAccountLinkError('The login identity could not be linked because its Auth0 identifier is invalid.')
-  }
-
-  const token = await getManagementAccessToken(config, {
-    requiredScope: requiredLinkManagementScope,
-    missingScopeMessage: 'Auth0 management token is missing the update:users scope required for account linking.'
-  })
-  const response = await fetch(
-    `${normalizeDomain(config.managementDomain)}/api/v2/users/${encodeURIComponent(primaryAuth0Subject)}/identities`,
-    {
-      method: 'POST',
-      headers: {
-        'authorization': `Bearer ${token}`,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        provider: secondaryIdentity.provider,
-        user_id: secondaryIdentity.userId
-      })
-    }
-  )
-
-  if (!response.ok) {
-    const reason = await response.text()
-    throw buildAccountLinkError(`Auth0 identity link request failed: ${reason}`)
-  }
-
-  const payload = await response.json() as unknown
-
-  return Array.from(new Set([
-    primaryAuth0Subject,
-    ...parseAuth0IdentitySubjects(payload)
-  ]))
+  return [
+    '<!doctype html>',
+    '<html>',
+    '  <head><meta charset="utf-8"><title>Continue sign-in</title></head>',
+    '  <body>',
+    `    <form method="post" action="${escapeHtmlAttribute(challenge.continueUri)}">`,
+    `      <input type="hidden" name="state" value="${escapeHtmlAttribute(challenge.actionState)}">`,
+    `      <input type="hidden" name="session_token" value="${escapeHtmlAttribute(sessionToken)}">`,
+    '      <button type="submit">Continue</button>',
+    '    </form>',
+    '    <script>document.forms[0].submit();</script>',
+    '  </body>',
+    '</html>'
+  ].join('\n')
 }
 
 export function getPlatformAccountLinkDatabaseConnectionName(event: H3Event) {

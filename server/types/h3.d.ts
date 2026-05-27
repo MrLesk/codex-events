@@ -5,14 +5,12 @@ import type {
   JudgeAssignmentAuthorization,
   TeamAuthorization
 } from '#server/auth/authorization'
-import type { LinkablePlatformAccountIdentity } from '#server/domains/accounts/linking'
 
 declare module 'h3' {
   interface H3EventContext {
     appDb?: AppDatabase
     d1Database?: D1DatabaseBinding
     requestActor?: RequestActor | Promise<RequestActor>
-    linkablePlatformAccountIdentity?: Promise<LinkablePlatformAccountIdentity | null>
     eventAuthorizationByEventId?: Map<string, Promise<EventAuthorization>>
     teamAuthorizationByTeamId?: Map<string, Promise<TeamAuthorization>>
     judgeAssignmentAuthorizationByAssignmentId?: Map<string, Promise<JudgeAssignmentAuthorization>>

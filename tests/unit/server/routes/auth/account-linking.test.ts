@@ -1,8 +1,6 @@
-import { eq } from 'drizzle-orm'
+import { createHmac } from 'node:crypto'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import accountRegistrationPostHandler from '../../../../../server/api/account/registration.post'
-import { platformDocuments, userAuthIdentities, users } from '../../../../../server/database/schema'
 import { createApiRouteTestHarness } from '../../../../support/backend/api-route'
 
 const {
@@ -16,6 +14,27 @@ const {
   readPlatformAccountLinkAuthenticatedSubject: vi.fn(),
   clearPlatformAccountLinkAuthentication: vi.fn(async () => {})
 }))
+
+function createActionRedirectToken() {
+  const header = Buffer.from(JSON.stringify({
+    alg: 'HS256',
+    typ: 'JWT'
+  })).toString('base64url')
+  const payload = Buffer.from(JSON.stringify({
+    sub: 'google-oauth2|existing-google-user',
+    exp: Math.floor(Date.now() / 1000) + 300,
+    primary_user_id: 'auth0|existing-password-user',
+    primary_email: 'existing-user@example.com',
+    secondary_user_id: 'google-oauth2|existing-google-user',
+    secondary_email: 'existing-user@example.com',
+    continue_uri: 'https://codex-events-dev.eu.auth0.com/continue'
+  })).toString('base64url')
+  const signature = createHmac('sha256', 'link-secret')
+    .update(`${header}.${payload}`)
+    .digest('base64url')
+
+  return `${header}.${payload}.${signature}`
+}
 
 vi.mock('../../../../../server/domains/accounts/linking', async () => {
   const actual = await vi.importActual<typeof import('../../../../../server/domains/accounts/linking')>(
@@ -74,7 +93,6 @@ describe('Auth0 account-link routes', () => {
     } = await loadHandlers()
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler },
         { method: 'get', path: '/auth/link/login', handler: authLinkLoginHandler },
         { method: 'get', path: '/auth/link/callback', handler: authLinkCallbackHandler },
         { method: 'get', path: '/auth/link/complete', handler: authLinkCompleteHandler }
@@ -82,10 +100,10 @@ describe('Auth0 account-link routes', () => {
       runtimeConfig: {
         auth0: {
           appBaseUrl: 'https://dev.codex-events.com',
-          managementDomain: 'codex-events-dev.eu.auth0.com',
-          managementClientId: 'management-client-id',
-          managementClientSecret: 'management-client-secret',
-          managementAudience: 'https://codex-events-dev.eu.auth0.com/api/v2/',
+          domain: 'codex-events-dev.eu.auth0.com',
+          clientId: 'client-id',
+          clientSecret: 'client-secret',
+          sessionSecret: 'session-secret',
           databaseConnectionName: 'Username-Password-Authentication',
           accountLinkChallengeSecret: 'link-secret'
         }
@@ -96,95 +114,19 @@ describe('Auth0 account-link routes', () => {
     return harness
   }
 
-  async function seedExistingPlatformAccount(harness: ReturnType<typeof createApiRouteTestHarness>) {
-    await harness.database.insert(users).values({
-      id: 'existing_platform_user',
-      auth0Subject: 'auth0|existing-password-user',
-      email: 'existing-user@example.com',
-      displayName: 'Existing User'
-    })
-    await harness.database.insert(platformDocuments).values([
-      {
-        id: 'privacy_v1',
-        documentType: 'privacy_policy',
-        version: 1,
-        title: 'Privacy Policy v1',
-        content: 'Privacy',
-        publishedAt: '2026-03-01T00:00:00.000Z'
-      },
-      {
-        id: 'terms_v1',
-        documentType: 'platform_terms',
-        version: 1,
-        title: 'Platform Terms v1',
-        content: 'Terms',
-        publishedAt: '2026-03-02T00:00:00.000Z'
-      }
-    ])
-  }
-
   async function createLinkChallengeCookie(harness: ReturnType<typeof createApiRouteTestHarness>) {
-    const response = await harness.request('/api/account/registration', {
-      method: 'POST',
-      body: JSON.stringify({
-        privacyPolicyDocumentId: 'privacy_v1',
-        platformTermsDocumentId: 'terms_v1',
-        returnTo: '/events/fixture/register'
-      })
-    })
+    startPlatformAccountLinkAuthentication.mockResolvedValue(new URL('https://auth.example.test/authorize'))
+    const response = await harness.request(`/auth/link/login?state=auth0-action-state&session_token=${encodeURIComponent(createActionRedirectToken())}`)
 
-    expect(response.status).toBe(409)
+    expect(response.status).toBe(302)
     return response.headers.get('set-cookie')?.split(';', 1)[0] ?? ''
   }
 
-  test('GET /auth/link/login starts explicit password reauthentication from a valid challenge', async () => {
+  test('GET /auth/link/login starts explicit password reauthentication from a valid Auth0 Action redirect', async () => {
     const harness = await createLinkHarness()
-    await seedExistingPlatformAccount(harness)
-
-    vi.stubGlobal('useAuth0', vi.fn(() => ({
-      getSession: vi.fn(async () => ({
-        user: {
-          sub: 'google-oauth2|existing-google-user',
-          email: 'existing-user@example.com',
-          email_verified: true,
-          name: 'Existing User'
-        }
-      }))
-    })))
     startPlatformAccountLinkAuthentication.mockResolvedValue(new URL('https://auth.example.test/authorize'))
 
-    const cookie = await createLinkChallengeCookie(harness)
-    const response = await harness.request('/auth/link/login', {
-      headers: {
-        cookie
-      }
-    })
-
-    expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('https://auth.example.test/authorize')
-    expect(startPlatformAccountLinkAuthentication).toHaveBeenCalledWith(
-      expect.any(Object),
-      'existing-user@example.com'
-    )
-  })
-
-  test('GET /auth/link/login bootstraps a challenge from the authenticated social identity when no cookie exists', async () => {
-    const harness = await createLinkHarness()
-    await seedExistingPlatformAccount(harness)
-
-    vi.stubGlobal('useAuth0', vi.fn(() => ({
-      getSession: vi.fn(async () => ({
-        user: {
-          sub: 'google-oauth2|existing-google-user',
-          email: 'existing-user@example.com',
-          email_verified: true,
-          name: 'Existing User'
-        }
-      }))
-    })))
-    startPlatformAccountLinkAuthentication.mockResolvedValue(new URL('https://auth.example.test/authorize'))
-
-    const response = await harness.request('/auth/link/login')
+    const response = await harness.request(`/auth/link/login?state=auth0-action-state&session_token=${encodeURIComponent(createActionRedirectToken())}`)
 
     expect(response.status).toBe(302)
     expect(response.headers.get('location')).toBe('https://auth.example.test/authorize')
@@ -195,9 +137,16 @@ describe('Auth0 account-link routes', () => {
     )
   })
 
+  test('GET /auth/link/login rejects a missing Auth0 Action redirect token', async () => {
+    const harness = await createLinkHarness()
+    const response = await harness.request('/auth/link/login')
+
+    expect(response.status).toBe(302)
+    expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Faccount&linkingError=invalid')
+  })
+
   test('GET /auth/link/callback completes link authentication and defers identity verification to a fresh request', async () => {
     const harness = await createLinkHarness()
-    await seedExistingPlatformAccount(harness)
 
     completePlatformAccountLinkAuthentication.mockResolvedValue(undefined)
     vi.stubGlobal('useAuth0', vi.fn(() => ({
@@ -223,9 +172,8 @@ describe('Auth0 account-link routes', () => {
     expect(response.headers.get('location')).toBe('/auth/link/complete')
   })
 
-  test('GET /auth/link/complete links the social identity after isolated password-account verification', async () => {
+  test('GET /auth/link/complete returns an Auth0 Action continuation form after isolated password-account verification', async () => {
     const harness = await createLinkHarness()
-    await seedExistingPlatformAccount(harness)
 
     vi.stubGlobal('useAuth0', vi.fn(() => ({
       getSession: vi.fn(async () => ({
@@ -238,72 +186,6 @@ describe('Auth0 account-link routes', () => {
       }))
     })))
     readPlatformAccountLinkAuthenticatedSubject.mockResolvedValue('auth0|existing-password-user')
-    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url
-
-      if (url === 'https://codex-events-dev.eu.auth0.com/oauth/token') {
-        return new Response(JSON.stringify({
-          access_token: 'management-access-token',
-          scope: 'read:users update:users'
-        }), {
-          status: 200,
-          headers: {
-            'content-type': 'application/json'
-          }
-        })
-      }
-
-      if (url === 'https://codex-events-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user') {
-        expect(init?.method).toBe('GET')
-        expect(init?.headers).toMatchObject({
-          authorization: 'Bearer management-access-token'
-        })
-
-        return new Response(JSON.stringify({
-          identities: [
-            {
-              provider: 'auth0',
-              user_id: 'existing-password-user'
-            }
-          ]
-        }), {
-          status: 200,
-          headers: {
-            'content-type': 'application/json'
-          }
-        })
-      }
-
-      if (url === 'https://codex-events-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user/identities') {
-        expect(init?.method).toBe('POST')
-        expect(init?.headers).toMatchObject({
-          'authorization': 'Bearer management-access-token',
-          'content-type': 'application/json'
-        })
-        expect(JSON.parse(String(init?.body))).toEqual({
-          provider: 'google-oauth2',
-          user_id: 'existing-google-user'
-        })
-
-        return new Response(JSON.stringify([
-          {
-            provider: 'auth0',
-            user_id: 'existing-password-user'
-          },
-          {
-            provider: 'google-oauth2',
-            user_id: 'existing-google-user'
-          }
-        ]), { status: 201 })
-      }
-
-      return new Response('not found', { status: 404 })
-    })
-    vi.stubGlobal('fetch', fetchMock)
 
     const cookie = await createLinkChallengeCookie(harness)
     const response = await harness.request('/auth/link/complete', {
@@ -313,23 +195,13 @@ describe('Auth0 account-link routes', () => {
     })
 
     expect(readPlatformAccountLinkAuthenticatedSubject).toHaveBeenCalledWith(expect.any(Object))
-    expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(clearPlatformAccountLinkAuthentication).toHaveBeenCalledWith(expect.any(Object))
-    expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Fevents%2Ffixture%2Fregister')
-    const storedGoogleIdentity = await harness.database.query.userAuthIdentities.findFirst({
-      where: eq(userAuthIdentities.auth0Subject, 'google-oauth2|existing-google-user')
-    })
-
-    expect(storedGoogleIdentity).toMatchObject({
-      userId: 'existing_platform_user',
-      auth0Subject: 'google-oauth2|existing-google-user'
-    })
+    expect(response.status).toBe(200)
+    await expect(response.text()).resolves.toContain('action="https://codex-events-dev.eu.auth0.com/continue"')
   })
 
-  test('GET /auth/link/complete redirects with mismatch when isolated verification resolves to a different password account', async () => {
+  test('GET /auth/link/complete returns a failed Auth0 Action continuation when isolated verification resolves to a different password account', async () => {
     const harness = await createLinkHarness()
-    await seedExistingPlatformAccount(harness)
 
     vi.stubGlobal('useAuth0', vi.fn(() => ({
       getSession: vi.fn(async () => ({
@@ -350,7 +222,7 @@ describe('Auth0 account-link routes', () => {
       }
     })
 
-    expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('/account/register?returnTo=%2Fevents%2Ffixture%2Fregister&linkingError=mismatch')
+    expect(response.status).toBe(200)
+    await expect(response.text()).resolves.toContain('name="session_token"')
   })
 })

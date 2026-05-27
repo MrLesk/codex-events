@@ -5,15 +5,10 @@ import { getDatabase } from '#server/database/client'
 import { ApiError } from '#server/http/api-error'
 import {
   ensurePlatformUserAuthIdentities,
-  findActivePlatformUserById,
   findPlatformUserByAuth0Subject
 } from '#server/domains/accounts/auth-identities'
 import {
-  findLinkablePlatformAccountIdentity,
-  listPlatformAccountIdentitySubjects,
-  serializePlatformAccountLinkState,
-  type LinkablePlatformAccountIdentity,
-  type PlatformAccountLinkState
+  linkedAuth0SubjectsClaim
 } from '#server/domains/accounts/linking'
 import { hasAcceptedCurrentPlatformDocuments } from '#server/domains/platform/documents'
 
@@ -25,6 +20,7 @@ interface SessionUserProfile {
   nickname?: string | null
   picture?: string | null
   githubProfileUrl?: string | null
+  linkedAuth0Subjects?: string[]
   [key: string]: unknown
 }
 
@@ -48,7 +44,6 @@ export interface AuthenticatedIdentityActor {
   isAuthenticated: true
   hasPlatformAccount: false
   hasAcceptedCurrentPlatformDocuments: false
-  accountLink: PlatformAccountLinkState | null
   sessionUser: SessionUserProfile
   platformUser: null
 }
@@ -100,6 +95,12 @@ function readSessionUser(session: SessionLike | null | undefined): SessionUserPr
     return null
   }
 
+  const linkedAuth0Subjects = Array.isArray(session.user[linkedAuth0SubjectsClaim])
+    ? session.user[linkedAuth0SubjectsClaim]
+        .filter((subject): subject is string => typeof subject === 'string')
+        .map(subject => subject.trim())
+        .filter(Boolean)
+    : []
   const githubProfileUrl = session.user.sub.startsWith('github|')
     ? buildGitHubProfileUrl(session.user.nickname ?? null)
     : null
@@ -111,7 +112,8 @@ function readSessionUser(session: SessionLike | null | undefined): SessionUserPr
     name: session.user.name ?? null,
     nickname: session.user.nickname ?? null,
     picture: session.user.picture ?? null,
-    githubProfileUrl
+    githubProfileUrl,
+    linkedAuth0Subjects
   }
 }
 
@@ -126,30 +128,14 @@ async function findPlatformUserBySubject(event: H3Event, auth0Subject: string) {
   return await findPlatformUserByAuth0Subject(getDatabase(event), auth0Subject)
 }
 
-export async function getRequestLinkablePlatformAccountIdentity(
-  event: H3Event,
-  sessionUser: SessionUserProfile
-): Promise<LinkablePlatformAccountIdentity | null> {
-  event.context.linkablePlatformAccountIdentity ??= findLinkablePlatformAccountIdentity(
-    getDatabase(event),
-    sessionUser
-  )
-
-  return await event.context.linkablePlatformAccountIdentity
-}
-
 function buildAuthenticatedIdentityActor(
-  sessionUser: SessionUserProfile,
-  options?: {
-    accountLink?: PlatformAccountLinkState | null
-  }
+  sessionUser: SessionUserProfile
 ): AuthenticatedIdentityActor {
   return {
     kind: 'authenticated_identity',
     isAuthenticated: true,
     hasPlatformAccount: false,
     hasAcceptedCurrentPlatformDocuments: false,
-    accountLink: options?.accountLink ?? null,
     sessionUser,
     platformUser: null
   }
@@ -173,45 +159,29 @@ async function buildPlatformActor(
   }
 }
 
-async function reconcileLinkedPlatformAccountIdentity(
-  event: H3Event,
-  database: ReturnType<typeof getDatabase>,
-  sessionUser: SessionUserProfile,
-  accountLinkCandidate: LinkablePlatformAccountIdentity | null
-) {
-  if (!accountLinkCandidate) {
-    return null
-  }
-
-  try {
-    const linkedAuth0Subjects = await listPlatformAccountIdentitySubjects(
-      event,
-      accountLinkCandidate.primaryAuth0Subject
-    )
-
-    if (!linkedAuth0Subjects.includes(sessionUser.sub)) {
-      return null
-    }
-
-    await ensurePlatformUserAuthIdentities(database, {
-      userId: accountLinkCandidate.userId,
-      auth0Subjects: linkedAuth0Subjects
-    })
-
-    return await findActivePlatformUserById(database, accountLinkCandidate.userId)
-  } catch (error) {
-    console.error('Platform linked-identity reconciliation failed', {
-      currentAuth0Subject: sessionUser.sub,
-      primaryAuth0Subject: accountLinkCandidate.primaryAuth0Subject,
-      error
-    })
-
-    return null
-  }
-}
-
 export function setRequestActor(event: H3Event, actor: RequestActor | Promise<RequestActor>) {
   event.context.requestActor = actor
+}
+
+async function recordSessionLinkedPlatformAccountIdentities(
+  database: ReturnType<typeof getDatabase>,
+  sessionUser: SessionUserProfile,
+  platformUser: PlatformUserRecord
+) {
+  const auth0Subjects = Array.from(new Set([
+    platformUser.auth0Subject,
+    sessionUser.sub,
+    ...(sessionUser.linkedAuth0Subjects ?? [])
+  ].map(subject => subject.trim()).filter(Boolean)))
+
+  if (auth0Subjects.length <= 1) {
+    return
+  }
+
+  await ensurePlatformUserAuthIdentities(database, {
+    userId: platformUser.id,
+    auth0Subjects
+  })
 }
 
 export async function resolveRequestActor(event: H3Event): Promise<RequestActor> {
@@ -232,24 +202,11 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
   const platformUser = await findPlatformUserBySubject(event, sessionUser.sub)
 
   if (platformUser) {
+    await recordSessionLinkedPlatformAccountIdentities(database, sessionUser, platformUser)
     return await buildPlatformActor(database, sessionUser, platformUser)
   }
 
-  const accountLinkCandidate = await getRequestLinkablePlatformAccountIdentity(event, sessionUser)
-  const reconciledPlatformUser = await reconcileLinkedPlatformAccountIdentity(
-    event,
-    database,
-    sessionUser,
-    accountLinkCandidate
-  )
-
-  if (reconciledPlatformUser) {
-    return await buildPlatformActor(database, sessionUser, reconciledPlatformUser)
-  }
-
-  return buildAuthenticatedIdentityActor(sessionUser, {
-    accountLink: accountLinkCandidate ? serializePlatformAccountLinkState(accountLinkCandidate) : null
-  })
+  return buildAuthenticatedIdentityActor(sessionUser)
 }
 
 export async function getRequestActor(event: H3Event): Promise<RequestActor> {

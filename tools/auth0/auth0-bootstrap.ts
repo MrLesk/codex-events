@@ -11,6 +11,8 @@ interface TenantConfig {
   appDisplayName: string
   appBaseUrl: string
   bddAppBaseUrl: string
+  databaseConnectionName: string
+  accountLinkChallengeSecret: string
   loginUri: string
   customDomain: string
   termsUrl: string
@@ -68,6 +70,11 @@ interface Auth0ActionVersion {
   id: string
   code?: string
   runtime?: string
+  secrets?: Auth0ActionSecret[]
+}
+
+interface Auth0ActionSecret {
+  name?: string
 }
 
 interface Auth0ActionSummary {
@@ -75,6 +82,7 @@ interface Auth0ActionSummary {
   name: string
   runtime?: string
   code?: string
+  secrets?: Auth0ActionSecret[]
   deployed_version?: Auth0ActionVersion | null
   current_version?: Auth0ActionVersion | null
   all_changes_deployed?: boolean
@@ -105,7 +113,8 @@ export class Auth0ManagementRequestError extends Error {
 }
 
 const consentClaimNamespace = 'https://codex-events/consents'
-const defaultActionName = 'codex-signup-consent-claims'
+const accountLinkClaimNamespace = 'https://codex-events/account_linking'
+const defaultActionName = 'codex-post-login'
 const defaultActionRuntime = 'node22'
 const defaultAuth0AppDisplayName = 'Codex Events'
 const defaultBrandingPrimaryColor = '#030213'
@@ -167,7 +176,24 @@ export function buildUniversalLoginPageTemplate(config: TenantConfig) {
   ].join('\n')
 }
 
-const consentActionCode = `exports.onExecutePostLogin = async (event, api) => {
+const postLoginActionCode = `const consentClaimNamespace = '${consentClaimNamespace}';
+const accountLinkClaimNamespace = '${accountLinkClaimNamespace}';
+const accountLinkTokenParameterName = 'session_token';
+
+exports.onExecutePostLogin = async (event, api) => {
+  if (await redirectForAccountLink(event, api)) {
+    return;
+  }
+
+  recordConsentClaims(event, api);
+};
+
+exports.onContinuePostLogin = async (event, api) => {
+  await completeAccountLink(event, api);
+  recordConsentClaims(event, api);
+};
+
+function recordConsentClaims(event, api) {
   const claimNamespace = '${consentClaimNamespace}';
   const metadata = (event.user.app_metadata && event.user.app_metadata.codex_consents) || {};
   const hasRecordedConsent = Boolean(metadata.privacy_policy_accepted_at && metadata.platform_terms_accepted_at);
@@ -198,7 +224,213 @@ const consentActionCode = `exports.onExecutePostLogin = async (event, api) => {
 
   api.idToken.setCustomClaim(\`\${claimNamespace}/privacy_policy\`, true);
   api.idToken.setCustomClaim(\`\${claimNamespace}/platform_terms\`, true);
-};
+}
+
+async function redirectForAccountLink(event, api) {
+  if (!shouldEvaluateAccountLink(event)) {
+    return false;
+  }
+
+  const primaryUser = await findPrimaryDatabaseUser(event);
+
+  if (!primaryUser) {
+    return false;
+  }
+
+  if (identityIncludesSubject(primaryUser.identities, event.user.user_id)) {
+    api.authentication.setPrimaryUser(primaryUser.user_id);
+    api.idToken.setCustomClaim(accountLinkClaimNamespace + '/auth0_subjects', [
+      primaryUser.user_id,
+      event.user.user_id
+    ]);
+    return false;
+  }
+
+  const appBaseUrl = requireSecret(event, 'APP_BASE_URL').replace(/\\/+$/, '');
+  const token = api.redirect.encodeToken({
+    secret: requireSecret(event, 'ACCOUNT_LINK_CHALLENGE_SECRET'),
+    expiresInSeconds: 300,
+    payload: {
+      primary_user_id: primaryUser.user_id,
+      primary_email: primaryUser.email,
+      secondary_user_id: event.user.user_id,
+      secondary_email: event.user.email,
+      continue_uri: 'https://' + event.request.hostname + '/continue'
+    }
+  });
+
+  api.redirect.sendUserTo(appBaseUrl + '/auth/link/login', {
+    query: {
+      [accountLinkTokenParameterName]: token
+    }
+  });
+
+  return true;
+}
+
+async function completeAccountLink(event, api) {
+  const payload = api.redirect.validateToken({
+    secret: requireSecret(event, 'ACCOUNT_LINK_CHALLENGE_SECRET'),
+    tokenParameterName: accountLinkTokenParameterName
+  });
+
+  if (payload.result !== 'link_verified') {
+    api.access.deny('account_linking_failed');
+    return;
+  }
+
+  if (payload.secondary_user_id !== event.user.user_id) {
+    api.access.deny('account_linking_subject_mismatch');
+    return;
+  }
+
+  const linkedSubjects = await linkUserIdentities(event, payload.primary_user_id, payload.secondary_user_id);
+
+  api.authentication.setPrimaryUser(payload.primary_user_id);
+  api.idToken.setCustomClaim(accountLinkClaimNamespace + '/auth0_subjects', linkedSubjects);
+}
+
+function shouldEvaluateAccountLink(event) {
+  const configuredClientId = requireSecret(event, 'APP_CLIENT_ID');
+
+  return event.client
+    && event.client.client_id === configuredClientId
+    && event.user
+    && typeof event.user.user_id === 'string'
+    && !event.user.user_id.startsWith('auth0|')
+    && typeof event.user.email === 'string'
+    && event.user.email_verified === true;
+}
+
+async function findPrimaryDatabaseUser(event) {
+  const users = await managementRequest(event, '/api/v2/users-by-email?email=' + encodeURIComponent(event.user.email), {
+    method: 'GET'
+  });
+  const databaseConnectionName = requireSecret(event, 'DATABASE_CONNECTION_NAME');
+
+  return users.find((user) => {
+    if (!user || user.user_id === event.user.user_id || user.email_verified !== true) {
+      return false;
+    }
+
+    return Array.isArray(user.identities)
+      && user.identities.some((identity) => identity.provider === 'auth0' && identity.connection === databaseConnectionName);
+  }) || null;
+}
+
+async function linkUserIdentities(event, primaryUserId, secondaryUserId) {
+  const secondaryIdentity = parseAuth0Subject(secondaryUserId);
+
+  if (!secondaryIdentity) {
+    throw new Error('Invalid secondary Auth0 identity.');
+  }
+
+  const identities = await managementRequest(
+    event,
+    '/api/v2/users/' + encodeURIComponent(primaryUserId) + '/identities',
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        provider: secondaryIdentity.provider,
+        user_id: secondaryIdentity.userId
+      })
+    }
+  );
+
+  return Array.from(new Set([
+    primaryUserId,
+    ...serializeIdentitySubjects(identities)
+  ]));
+}
+
+function parseAuth0Subject(subject) {
+  const separatorIndex = typeof subject === 'string' ? subject.indexOf('|') : -1;
+
+  if (separatorIndex <= 0 || separatorIndex === subject.length - 1) {
+    return null;
+  }
+
+  return {
+    provider: subject.slice(0, separatorIndex),
+    userId: subject.slice(separatorIndex + 1)
+  };
+}
+
+function identityIncludesSubject(identities, subject) {
+  const parsedSubject = parseAuth0Subject(subject);
+
+  return Boolean(parsedSubject)
+    && Array.isArray(identities)
+    && identities.some((identity) => identity.provider === parsedSubject.provider && identity.user_id === parsedSubject.userId);
+}
+
+function serializeIdentitySubjects(identities) {
+  if (!Array.isArray(identities)) {
+    return [];
+  }
+
+  return identities
+    .filter((identity) => typeof identity.provider === 'string' && typeof identity.user_id === 'string')
+    .map((identity) => identity.provider + '|' + identity.user_id);
+}
+
+async function managementRequest(event, path, init) {
+  const token = await getManagementToken(event);
+  const response = await fetch(normalizeDomain(requireSecret(event, 'MANAGEMENT_API_DOMAIN')) + path, {
+    ...init,
+    headers: {
+      authorization: 'Bearer ' + token,
+      'content-type': 'application/json',
+      ...(init.headers || {})
+    }
+  });
+  const responseText = await response.text();
+
+  if (!response.ok) {
+    throw new Error('Auth0 Management API request failed: ' + response.status + ' ' + responseText);
+  }
+
+  return responseText ? JSON.parse(responseText) : null;
+}
+
+async function getManagementToken(event) {
+  const managementDomain = normalizeDomain(requireSecret(event, 'MANAGEMENT_API_DOMAIN'));
+  const response = await fetch(managementDomain + '/oauth/token', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      grant_type: 'client_credentials',
+      client_id: requireSecret(event, 'MANAGEMENT_API_CLIENT_ID'),
+      client_secret: requireSecret(event, 'MANAGEMENT_API_CLIENT_SECRET'),
+      audience: managementDomain + '/api/v2/'
+    })
+  });
+  const payload = await response.json();
+
+  if (!response.ok || !payload.access_token) {
+    throw new Error('Auth0 Management API token request failed.');
+  }
+
+  return payload.access_token;
+}
+
+function normalizeDomain(domain) {
+  return domain.startsWith('http://') || domain.startsWith('https://')
+    ? domain.replace(/\\/+$/, '')
+    : 'https://' + domain.replace(/\\/+$/, '');
+}
+
+function requireSecret(event, name) {
+  const value = event.secrets && event.secrets[name];
+
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error('Missing Auth0 Action secret: ' + name);
+  }
+
+  return value.trim();
+}
 `
 
 function getUsageMessage() {
@@ -208,17 +440,18 @@ Environment variables:
 - AUTH0_MANAGEMENT_DOMAIN
 - AUTH0_MGMT_CLIENT_ID
 - AUTH0_MGMT_CLIENT_SECRET
-- AUTH0_MANAGEMENT_AUDIENCE (default: https://<AUTH0_MANAGEMENT_DOMAIN>/api/v2/)
-- AUTH0_APP_CLIENT_ID (fallback: NUXT_AUTH0_CLIENT_ID)
+- AUTH0_APP_CLIENT_ID
 - AUTH0_APP_DISPLAY_NAME (default: ${defaultAuth0AppDisplayName})
-- AUTH0_APP_BASE_URL (fallback: NUXT_AUTH0_APP_BASE_URL)
-- AUTH0_BDD_APP_BASE_URL (fallback: NUXT_AUTH0_BDD_APP_BASE_URL; defaults to ${defaultLocalBddAppBaseUrl} for localhost app configs)
+- AUTH0_APP_BASE_URL
+- AUTH0_BDD_APP_BASE_URL (defaults to ${defaultLocalBddAppBaseUrl} for localhost app configs)
 - AUTH0_LOGIN_URI (required when AUTH0_APP_BASE_URL is not https; must be https)
-- AUTH0_CUSTOM_DOMAIN (fallback: NUXT_AUTH0_DOMAIN)
+- AUTH0_CUSTOM_DOMAIN
+- AUTH0_DATABASE_CONNECTION_NAME
+- AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET
 - AUTH0_TERMS_URL (default: <AUTH0_APP_BASE_URL>/terms-and-conditions)
 - AUTH0_PRIVACY_URL (default: <AUTH0_APP_BASE_URL>/privacy-policy)
-- AUTH0_CONSENT_ACTION_NAME (default: ${defaultActionName})
-- AUTH0_CONSENT_ACTION_RUNTIME (default: ${defaultActionRuntime})
+- AUTH0_POST_LOGIN_ACTION_NAME (default: ${defaultActionName})
+- AUTH0_POST_LOGIN_ACTION_RUNTIME (default: ${defaultActionRuntime})
 - AUTH0_BRANDING_PRIMARY_COLOR (default: ${defaultBrandingPrimaryColor})
 - AUTH0_BRANDING_PAGE_BACKGROUND_COLOR (default: ${defaultBrandingPageBackgroundColor})
 - AUTH0_BRANDING_LOGO_URL (default: <AUTH0_APP_BASE_URL>${defaultBrandingWordmarkPath} when AUTH0_APP_BASE_URL is https)
@@ -388,7 +621,7 @@ function buildPublicAssetUrl(appBaseUrl: string, path: string) {
 }
 
 function resolveBddAppBaseUrl(environment: NodeJS.ProcessEnv, appBaseUrl: string) {
-  const explicitBddAppBaseUrl = firstDefinedValue(environment.AUTH0_BDD_APP_BASE_URL, environment.NUXT_AUTH0_BDD_APP_BASE_URL)
+  const explicitBddAppBaseUrl = firstDefinedValue(environment.AUTH0_BDD_APP_BASE_URL)
 
   if (explicitBddAppBaseUrl) {
     return normalizeUrlString(explicitBddAppBaseUrl)
@@ -407,8 +640,8 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     'AUTH0_MANAGEMENT_DOMAIN'
   )
   const appBaseUrl = requireConfigField(
-    firstDefinedValue(environment.AUTH0_APP_BASE_URL, environment.NUXT_AUTH0_APP_BASE_URL),
-    'AUTH0_APP_BASE_URL (or NUXT_AUTH0_APP_BASE_URL)'
+    environment.AUTH0_APP_BASE_URL?.trim() ?? '',
+    'AUTH0_APP_BASE_URL'
   )
 
   const normalizedAppBaseUrl = normalizeUrlString(appBaseUrl)
@@ -434,17 +667,22 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
       environment.AUTH0_MGMT_CLIENT_SECRET,
       'AUTH0_MGMT_CLIENT_SECRET'
     ),
-    managementAudience: firstDefinedValue(
-      environment.AUTH0_MANAGEMENT_AUDIENCE,
-      defaultManagementAudience
-    ),
+    managementAudience: defaultManagementAudience,
     appClientId: requireConfigField(
-      firstDefinedValue(environment.AUTH0_APP_CLIENT_ID, environment.NUXT_AUTH0_CLIENT_ID),
-      'AUTH0_APP_CLIENT_ID (or NUXT_AUTH0_CLIENT_ID)'
+      environment.AUTH0_APP_CLIENT_ID?.trim() ?? '',
+      'AUTH0_APP_CLIENT_ID'
     ),
     appDisplayName: firstDefinedValue(environment.AUTH0_APP_DISPLAY_NAME, defaultAuth0AppDisplayName),
     appBaseUrl: normalizedAppBaseUrl,
     bddAppBaseUrl: normalizedBddAppBaseUrl,
+    databaseConnectionName: requireConfigField(
+      environment.AUTH0_DATABASE_CONNECTION_NAME?.trim() ?? '',
+      'AUTH0_DATABASE_CONNECTION_NAME'
+    ),
+    accountLinkChallengeSecret: requireConfigField(
+      environment.AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET?.trim() ?? '',
+      'AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET'
+    ),
     loginUri: normalizeHttpsUrlString(
       requireConfigField(
         firstDefinedValue(environment.AUTH0_LOGIN_URI, inferredLoginUri),
@@ -453,13 +691,13 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
       'AUTH0_LOGIN_URI (or inferred AUTH0_APP_BASE_URL/auth/login)'
     ),
     customDomain: requireConfigField(
-      firstDefinedValue(environment.AUTH0_CUSTOM_DOMAIN, environment.NUXT_AUTH0_DOMAIN),
-      'AUTH0_CUSTOM_DOMAIN (or NUXT_AUTH0_DOMAIN)'
+      environment.AUTH0_CUSTOM_DOMAIN?.trim() ?? '',
+      'AUTH0_CUSTOM_DOMAIN'
     ),
     termsUrl: normalizeUrlString(firstDefinedValue(environment.AUTH0_TERMS_URL, `${normalizedAppBaseUrl}/terms-and-conditions`)),
     privacyUrl: normalizeUrlString(firstDefinedValue(environment.AUTH0_PRIVACY_URL, `${normalizedAppBaseUrl}/privacy-policy`)),
-    actionName: firstDefinedValue(environment.AUTH0_CONSENT_ACTION_NAME, defaultActionName),
-    actionRuntime: firstDefinedValue(environment.AUTH0_CONSENT_ACTION_RUNTIME, defaultActionRuntime),
+    actionName: firstDefinedValue(environment.AUTH0_POST_LOGIN_ACTION_NAME, defaultActionName),
+    actionRuntime: firstDefinedValue(environment.AUTH0_POST_LOGIN_ACTION_RUNTIME, defaultActionRuntime),
     brandingPrimaryColor: normalizeOptionalHexColor(
       firstDefinedValue(environment.AUTH0_BRANDING_PRIMARY_COLOR, defaultBrandingPrimaryColor),
       'AUTH0_BRANDING_PRIMARY_COLOR'
@@ -1161,9 +1399,53 @@ async function listActions(config: TenantConfig, token: string) {
   return payload.actions ?? []
 }
 
+export function buildPostLoginActionSecrets(config: TenantConfig) {
+  return [
+    {
+      name: 'APP_BASE_URL',
+      value: config.appBaseUrl
+    },
+    {
+      name: 'APP_CLIENT_ID',
+      value: config.appClientId
+    },
+    {
+      name: 'DATABASE_CONNECTION_NAME',
+      value: config.databaseConnectionName
+    },
+    {
+      name: 'ACCOUNT_LINK_CHALLENGE_SECRET',
+      value: config.accountLinkChallengeSecret
+    },
+    {
+      name: 'MANAGEMENT_API_DOMAIN',
+      value: config.tenantDomain
+    },
+    {
+      name: 'MANAGEMENT_API_CLIENT_ID',
+      value: config.managementClientId
+    },
+    {
+      name: 'MANAGEMENT_API_CLIENT_SECRET',
+      value: config.managementClientSecret
+    }
+  ]
+}
+
+function hasRequiredActionSecretNames(action: Auth0ActionSummary, config: TenantConfig) {
+  const secretNames = new Set([
+    ...(action.secrets ?? []),
+    ...(action.current_version?.secrets ?? []),
+    ...(action.deployed_version?.secrets ?? [])
+  ].map(secret => secret.name).filter(Boolean))
+
+  return buildPostLoginActionSecrets(config).every(secret => secretNames.has(secret.name))
+}
+
 async function ensureAction(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
   let actions = await listActions(config, token)
   let action = actions.find(candidate => candidate.name === config.actionName)
+  const expectedSecrets = buildPostLoginActionSecrets(config)
 
   if (!action && mode === 'apply') {
     const response = await auth0ManagementRequest(config, token, '/api/v2/actions/actions', {
@@ -1172,7 +1454,8 @@ async function ensureAction(config: TenantConfig, token: string, mode: CommandMo
         name: config.actionName,
         supported_triggers: [{ id: 'post-login', version: 'v3' }],
         runtime: config.actionRuntime,
-        code: consentActionCode
+        code: postLoginActionCode,
+        secrets: expectedSecrets
       })
     })
     action = await response.json() as Auth0ActionSummary
@@ -1184,20 +1467,18 @@ async function ensureAction(config: TenantConfig, token: string, mode: CommandMo
     return null
   }
 
-  const expectedCode = normalizeMultiline(consentActionCode)
-  const runtimeMatches = normalizeMultiline(action.runtime) === normalizeMultiline(config.actionRuntime)
-  const currentVersionMatches = normalizeMultiline(action.current_version?.code) === expectedCode
-  const needsUpdate = !runtimeMatches || !currentVersionMatches
+  const expectedCode = normalizeMultiline(postLoginActionCode)
 
-  if (mode === 'apply' && needsUpdate) {
+  if (mode === 'apply') {
     await auth0ManagementRequest(config, token, `/api/v2/actions/actions/${encodeURIComponent(action.id)}`, {
       method: 'PATCH',
       body: JSON.stringify({
         runtime: config.actionRuntime,
-        code: consentActionCode
+        code: postLoginActionCode,
+        secrets: expectedSecrets
       })
     })
-    console.log(`Applied: updated Auth0 action ${config.actionName} code/runtime.`)
+    console.log(`Applied: synced Auth0 action ${config.actionName} code/runtime/secrets.`)
     actions = await listActions(config, token)
     action = actions.find(candidate => candidate.name === config.actionName)
   }
@@ -1229,11 +1510,15 @@ async function ensureAction(config: TenantConfig, token: string, mode: CommandMo
   const refreshedDeployedCode = normalizeMultiline(refreshedAction.deployed_version?.code)
 
   if (refreshedDeployedCode !== expectedCode) {
-    failures.push(`Auth0 action ${config.actionName} deployed code does not match expected canonical consent logic.`)
+    failures.push(`Auth0 action ${config.actionName} deployed code does not match expected canonical post-login logic.`)
   }
 
   if (normalizeMultiline(refreshedAction.runtime) !== normalizeMultiline(config.actionRuntime)) {
     failures.push(`Auth0 action ${config.actionName} runtime is ${refreshedAction.runtime ?? 'unknown'}, expected ${config.actionRuntime}.`)
+  }
+
+  if (!hasRequiredActionSecretNames(refreshedAction, config)) {
+    failures.push(`Auth0 action ${config.actionName} is missing one or more required Action secrets.`)
   }
 
   return refreshedAction

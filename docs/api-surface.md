@@ -195,7 +195,7 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Create platform account after terms acceptance | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record, allows canonical `firstName` and `familyName` to remain blank until later profile completion, and records acceptance of the current required platform documents. The frontend-owned completion route is `/account/register`. When the authenticated identity must be linked to an existing platform account instead, the route returns the link-required outcome before any platform-document acceptance is recorded for the pre-link identity. |
+| Create platform account after terms acceptance | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record, allows canonical `firstName` and `familyName` to remain blank until later profile completion, and records acceptance of the current required platform documents. The frontend-owned completion route is `/account/register`. If an unlinked same-email identity reaches this route, the route rejects the request before platform-document acceptance is recorded. |
 | Update own platform account profile | `PATCH /api/account` | authenticated user with a platform account and current platform-document acceptance | Updates canonical `firstName` and `familyName` plus optional profile fields such as `company`, `bio`, X, LinkedIn, and GitHub profile links, an optional ChatGPT email, an optional OpenAI org ID, and an optional Luma email. |
 | Get profile icon | `GET /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Returns the uploaded profile icon object for the caller. When `user` and `event` query parameters are provided, this route can also return the uploaded profile icon for another user who is visible to the caller through event-scoped participant visibility or the published judge or staff rosters for that event. |
 | Upload or replace own profile icon | `POST /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Accepts multipart upload for a single profile icon image and replaces any prior icon object. |
@@ -208,8 +208,8 @@ Testing:
 - End-to-end: authenticated account-registration completion, profile management including profile icon updates, and account deletion flows.
 
 Operational notes:
-- `/api/session` can expose a link-required hint for an authenticated identity whose verified social login matches an existing password-backed platform account.
-- When `/account/register` is in a link-required state, the UI can bypass the platform-document review UI and send the user directly into existing-account reauthentication. After linking, current platform-document acceptance is evaluated on the linked platform account.
+- Same-email Auth0 account linking is initiated by the Auth0 post-login Action before the app session is issued.
+- `/auth/link/login`, `/auth/link/callback`, and `/auth/link/complete` are Auth0 Action continuation routes. They verify the Action redirect token, require a fresh sign-in to the existing database account, and return the signed result to Auth0 so Auth0 can link identities and issue the app session for the primary identity.
 
 ## Platform Admins
 

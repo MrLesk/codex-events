@@ -101,7 +101,7 @@ Current control:
 
 - Registration requires that an Auth0 identity exposes an email address.
 - Registration requires `actor.sessionUser.email_verified === true` before creating a platform user, linked identity, platform-document acceptance, or account-registration audit entry.
-- Unverified or missing verification claims are rejected before account-linking challenges are issued.
+- Unverified or missing verification claims are rejected before Auth0 account-linking redirects are accepted.
 
 ### 4. Medium: Internal exceptions are returned to clients verbatim
 

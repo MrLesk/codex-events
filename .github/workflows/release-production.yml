@@ -39,15 +39,17 @@ jobs:
       # Auth0 bootstrap settings.
       AUTH0_MANAGEMENT_DOMAIN: ${{ vars.AUTH0_MANAGEMENT_DOMAIN }}
       AUTH0_APP_BASE_URL: https://${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}
-      AUTH0_CUSTOM_DOMAIN: ${{ vars.DEPLOY_AUTH0_CUSTOM_DOMAIN || format('auth.{0}', vars.DEPLOY_PRODUCTION_BASE_DOMAIN) }}
+      AUTH0_CUSTOM_DOMAIN: ${{ vars.DEPLOY_AUTH0_CUSTOM_DOMAIN }}
       AUTH0_LOGIN_URI: https://${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}/auth/login
       AUTH0_APP_DISPLAY_NAME: ${{ vars.AUTH0_APP_DISPLAY_NAME || 'Codex Events' }}
-      AUTH0_MANAGEMENT_AUDIENCE: ${{ vars.AUTH0_MANAGEMENT_AUDIENCE || format('https://{0}/api/v2/', vars.AUTH0_MANAGEMENT_DOMAIN) }}
+      AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME }}
+      AUTH0_APP_CLIENT_ID: ${{ secrets.AUTH0_APP_CLIENT_ID }}
+      AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
+      AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+      AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ${{ secrets.NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET }}
       # Auth0 runtime settings.
-      NUXT_AUTH0_DOMAIN: ${{ vars.DEPLOY_AUTH0_CUSTOM_DOMAIN || format('auth.{0}', vars.DEPLOY_PRODUCTION_BASE_DOMAIN) }}
+      NUXT_AUTH0_DOMAIN: ${{ vars.DEPLOY_AUTH0_CUSTOM_DOMAIN }}
       NUXT_AUTH0_APP_BASE_URL: https://${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}
-      NUXT_AUTH0_MANAGEMENT_DOMAIN: ${{ vars.AUTH0_MANAGEMENT_DOMAIN }}
-      NUXT_AUTH0_MANAGEMENT_AUDIENCE: ${{ vars.AUTH0_MANAGEMENT_AUDIENCE }}
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME }}
       # Cloudflare Email Service and Queues runtime settings.
       NUXT_OUTBOUND_EMAIL_BINDING: ${{ vars.NUXT_OUTBOUND_EMAIL_BINDING }}
@@ -65,8 +67,6 @@ jobs:
       NUXT_AUTH0_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_CLIENT_SECRET }}
       NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}
       NUXT_AUTH0_AUDIENCE: ${{ secrets.NUXT_AUTH0_AUDIENCE }}
-      NUXT_AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
-      NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
       NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ${{ secrets.NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET }}
       NUXT_LUMA_API_KEY: ${{ secrets.NUXT_LUMA_API_KEY }}
       # Cloudflare credentials.
@@ -137,8 +137,6 @@ jobs:
             --arg auth0ClientSecret "$NUXT_AUTH0_CLIENT_SECRET" \
             --arg auth0SessionSecret "$NUXT_AUTH0_SESSION_SECRET" \
             --arg auth0Audience "$NUXT_AUTH0_AUDIENCE" \
-            --arg auth0ManagementClientId "$NUXT_AUTH0_MANAGEMENT_CLIENT_ID" \
-            --arg auth0ManagementClientSecret "$NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET" \
             --arg accountLinkChallengeSecret "$NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET" \
             --arg lumaApiKey "$NUXT_LUMA_API_KEY" \
             '{
@@ -146,8 +144,6 @@ jobs:
               NUXT_AUTH0_CLIENT_SECRET: $auth0ClientSecret,
               NUXT_AUTH0_SESSION_SECRET: $auth0SessionSecret,
               NUXT_AUTH0_AUDIENCE: $auth0Audience,
-              NUXT_AUTH0_MANAGEMENT_CLIENT_ID: $auth0ManagementClientId,
-              NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: $auth0ManagementClientSecret,
               NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: $accountLinkChallengeSecret,
               NUXT_LUMA_API_KEY: $lumaApiKey
             }' > .wrangler-production-secrets.json
@@ -161,10 +157,6 @@ jobs:
           rm -f .wrangler-production-secrets.json .wrangler-production-luma-webhook-secret.json
 
       - name: Apply production Auth0 configuration
-        env:
-          AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
-          AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
-          AUTH0_APP_CLIENT_ID: ${{ secrets.AUTH0_APP_CLIENT_ID }}
         run: bun tools/auth0/auth0-bootstrap.ts apply
 
       - name: Apply production D1 migrations

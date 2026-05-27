@@ -32,8 +32,6 @@ interface ResolvedDeployConfigInput {
   outboundEmailFromEmail: string
   outboundEmailFromName: string
   outboundEmailReplyTo: string
-  auth0ManagementDomain: string
-  auth0ManagementAudience: string
   auth0DatabaseConnectionName: string
   applicationReviewEmails: QueueConfig
   eventOutcomeEmails: QueueConfig
@@ -222,7 +220,7 @@ export function resolveDeployConfigInput(
   )
   const appBaseUrl = `https://${baseDomain}`
   const auth0CustomDomain = normalizeHostname(
-    readOptionalEnvironmentValue(environment, 'DEPLOY_AUTH0_CUSTOM_DOMAIN') || `auth.${baseDomain}`,
+    readRequiredEnvironmentValue(environment, 'DEPLOY_AUTH0_CUSTOM_DOMAIN'),
     'DEPLOY_AUTH0_CUSTOM_DOMAIN'
   )
   const eventImagesPublicCdnBaseUrl = normalizeHttpsUrl(
@@ -233,11 +231,6 @@ export function resolveDeployConfigInput(
     readOptionalEnvironmentValue(environment, 'DEPLOY_LUMA_WEBHOOK_URL') || `${appBaseUrl}/api/public/luma/webhooks`,
     'DEPLOY_LUMA_WEBHOOK_URL'
   )
-  const auth0ManagementDomain = normalizeHostname(
-    readRequiredEnvironmentValue(environment, 'NUXT_AUTH0_MANAGEMENT_DOMAIN'),
-    'NUXT_AUTH0_MANAGEMENT_DOMAIN'
-  )
-
   return {
     target,
     baseDomain,
@@ -255,8 +248,6 @@ export function resolveDeployConfigInput(
     outboundEmailFromEmail: readRequiredEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_EMAIL'),
     outboundEmailFromName: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_NAME') || 'Codex Events',
     outboundEmailReplyTo: readRequiredEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_REPLY_TO'),
-    auth0ManagementDomain,
-    auth0ManagementAudience: readOptionalEnvironmentValue(environment, 'NUXT_AUTH0_MANAGEMENT_AUDIENCE') || `https://${auth0ManagementDomain}/api/v2/`,
     auth0DatabaseConnectionName: readRequiredEnvironmentValue(environment, 'NUXT_AUTH0_DATABASE_CONNECTION_NAME'),
     applicationReviewEmails: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING',
@@ -337,8 +328,6 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
       NUXT_AUTH0_DOMAIN: input.auth0CustomDomain,
       NUXT_AUTH0_APP_BASE_URL: input.appBaseUrl,
       NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL: input.eventImagesPublicCdnBaseUrl,
-      NUXT_AUTH0_MANAGEMENT_DOMAIN: input.auth0ManagementDomain,
-      NUXT_AUTH0_MANAGEMENT_AUDIENCE: input.auth0ManagementAudience,
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: input.auth0DatabaseConnectionName,
       NUXT_OUTBOUND_EMAIL_BINDING: input.outboundEmailBinding,
       NUXT_OUTBOUND_EMAIL_FROM_EMAIL: input.outboundEmailFromEmail,

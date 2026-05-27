@@ -19,10 +19,6 @@ function normalizeDomain(domain: string) {
     : `https://${domain}`
 }
 
-function resolveManagementAudience(config: ReturnType<typeof loadProvisioningEnvironment>) {
-  return config.AUTH0_MANAGEMENT_AUDIENCE ?? `${normalizeDomain(config.AUTH0_MANAGEMENT_DOMAIN)}/api/v2/`
-}
-
 function sleep(milliseconds: number) {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
@@ -48,7 +44,7 @@ async function getManagementAccessToken(environment: NodeJS.ProcessEnv = process
       grant_type: 'client_credentials',
       client_id: config.AUTH0_MGMT_CLIENT_ID,
       client_secret: config.AUTH0_MGMT_CLIENT_SECRET,
-      audience: resolveManagementAudience(config)
+      audience: `${normalizeDomain(config.AUTH0_MANAGEMENT_DOMAIN)}/api/v2/`
     })
   })
 

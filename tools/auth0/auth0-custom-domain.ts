@@ -147,7 +147,7 @@ function loadConfig(): Auth0CustomDomainConfig {
     tenantDomain: normalizeTenantDomain(requireEnv('AUTH0_MANAGEMENT_DOMAIN')),
     managementClientId: requireEnv('AUTH0_MGMT_CLIENT_ID'),
     managementClientSecret: requireEnv('AUTH0_MGMT_CLIENT_SECRET'),
-    managementAudience: requireEnv('AUTH0_MANAGEMENT_AUDIENCE'),
+    managementAudience: `${normalizeTenantDomain(requireEnv('AUTH0_MANAGEMENT_DOMAIN'))}/api/v2/`,
     customDomain: normalizeHostname(requireEnv('AUTH0_CUSTOM_DOMAIN')),
     zoneName: normalizeHostname(requireEnv('DEPLOY_CF_ZONE_NAME')),
     cloudflareApiToken: requireEnv('CLOUDFLARE_API_TOKEN'),

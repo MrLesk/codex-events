@@ -6,11 +6,6 @@ import { z } from 'zod'
 
 export const defaultLocalBddBaseUrl = 'http://localhost:3100'
 
-const optionalUrlEnvironmentValueSchema = z.preprocess(
-  value => typeof value === 'string' && value.trim() === '' ? undefined : value,
-  z.string().url().optional()
-)
-
 export const stablePersonaKeys = [
   'platform_admin',
   'event_admin',
@@ -53,8 +48,7 @@ const provisioningEnvironmentSchema = stablePersonaEnvironmentSchema.extend({
   NUXT_AUTH0_DATABASE_CONNECTION_NAME: z.string().min(1),
   AUTH0_MANAGEMENT_DOMAIN: z.string().min(1),
   AUTH0_MGMT_CLIENT_ID: z.string().min(1),
-  AUTH0_MGMT_CLIENT_SECRET: z.string().min(1),
-  AUTH0_MANAGEMENT_AUDIENCE: optionalUrlEnvironmentValueSchema
+  AUTH0_MGMT_CLIENT_SECRET: z.string().min(1)
 })
 
 export type StablePersonaEnvironment = z.infer<typeof stablePersonaEnvironmentSchema>

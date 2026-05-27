@@ -19,7 +19,7 @@ function createEnvironment(overrides: Record<string, string | undefined> = {}) {
     DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE: 'events-application-review-email-delivery',
     DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE: 'events-event-outcome-email-delivery',
     DEPLOY_CF_LUMA_SYNC_QUEUE: 'events-application-luma-sync',
-    NUXT_AUTH0_MANAGEMENT_DOMAIN: 'tenant.eu.auth0.com',
+    DEPLOY_AUTH0_CUSTOM_DOMAIN: 'auth.dev.example.com',
     NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
     NUXT_OUTBOUND_EMAIL_FROM_EMAIL: 'notifications@example.com',
     NUXT_OUTBOUND_EMAIL_REPLY_TO: 'support@example.com',
@@ -73,7 +73,7 @@ describe('deploy Wrangler config generator', () => {
 
     expect(input.appBaseUrl).toBe('https://events.example.com')
     expect(config.routes[0]?.pattern).toBe('events.example.com')
-    expect(config.vars.NUXT_AUTH0_DOMAIN).toBe('auth.events.example.com')
+    expect(config.vars.NUXT_AUTH0_DOMAIN).toBe('auth.dev.example.com')
     expect(config.vars.NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL).toBe('https://cdn.events.example.com')
     expect(config.ratelimits.map(rateLimit => rateLimit.namespace_id)).toEqual([
       '3001',

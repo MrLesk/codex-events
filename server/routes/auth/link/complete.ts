@@ -1,30 +1,21 @@
-import { defineEventHandler, sendRedirect } from 'h3'
+import { defineEventHandler, sendRedirect, setResponseHeader } from 'h3'
 
-import { getDatabase } from '#server/database/client'
 import {
+  buildPlatformAccountLinkActionContinueResponse,
   buildPlatformAccountLinkRedirect,
   clearPlatformAccountLinkAuthentication,
   clearPlatformAccountLinkChallenge,
-  linkPlatformAccountIdentity,
   readPlatformAccountLinkAuthenticatedSubject,
   readPlatformAccountLinkChallenge
 } from '#server/domains/accounts/linking'
-import { isApiError } from '#server/http/api-error'
-import {
-  ensurePlatformUserAuthIdentities,
-  findPlatformUserByAuth0Subject
-} from '#server/domains/accounts/auth-identities'
 
 export default defineEventHandler(async (event) => {
   const challengeResult = await readPlatformAccountLinkChallenge(event)
-  const fallbackReturnTo = challengeResult.ok && challengeResult.challenge
-    ? challengeResult.challenge.returnTo
-    : null
 
   if (!challengeResult.ok || !challengeResult.challenge) {
     await clearPlatformAccountLinkAuthentication(event)
     clearPlatformAccountLinkChallenge(event)
-    return sendRedirect(event, buildPlatformAccountLinkRedirect(fallbackReturnTo, challengeResult.reason === 'expired' ? 'expired' : 'invalid'))
+    return sendRedirect(event, buildPlatformAccountLinkRedirect(null, challengeResult.reason === 'expired' ? 'expired' : 'invalid'))
   }
 
   const authenticatedSubject = await readPlatformAccountLinkAuthenticatedSubject(event)
@@ -32,46 +23,17 @@ export default defineEventHandler(async (event) => {
   if (!authenticatedSubject || authenticatedSubject !== challengeResult.challenge.primaryAuth0Subject) {
     await clearPlatformAccountLinkAuthentication(event)
     clearPlatformAccountLinkChallenge(event)
-    return sendRedirect(event, buildPlatformAccountLinkRedirect(challengeResult.challenge.returnTo, 'mismatch'))
-  }
-
-  try {
-    const linkedAuth0Subjects = await linkPlatformAccountIdentity(
-      event,
-      challengeResult.challenge.primaryAuth0Subject,
-      challengeResult.challenge.secondaryAuth0Subject
-    )
-    const database = getDatabase(event)
-    const platformUser = await findPlatformUserByAuth0Subject(
-      database,
-      challengeResult.challenge.primaryAuth0Subject
-    )
-
-    if (!platformUser) {
-      throw new Error('The linked platform user could not be resolved after Auth0 account linking.')
-    }
-
-    await ensurePlatformUserAuthIdentities(database, {
-      userId: platformUser.id,
-      auth0Subjects: linkedAuth0Subjects
+    setResponseHeader(event, 'content-type', 'text/html; charset=utf-8')
+    return await buildPlatformAccountLinkActionContinueResponse(event, challengeResult.challenge, {
+      ok: false,
+      reason: 'mismatch'
     })
-  } catch (error) {
-    console.error('Platform account linking failed', {
-      primaryAuth0Subject: challengeResult.challenge.primaryAuth0Subject,
-      secondaryAuth0Subject: challengeResult.challenge.secondaryAuth0Subject,
-      error: isApiError(error)
-        ? {
-            code: error.code,
-            message: error.message
-          }
-        : error
-    })
-    await clearPlatformAccountLinkAuthentication(event)
-    clearPlatformAccountLinkChallenge(event)
-    return sendRedirect(event, buildPlatformAccountLinkRedirect(challengeResult.challenge.returnTo, 'failed'))
   }
 
   await clearPlatformAccountLinkAuthentication(event)
   clearPlatformAccountLinkChallenge(event)
-  return sendRedirect(event, buildPlatformAccountLinkRedirect(challengeResult.challenge.returnTo))
+  setResponseHeader(event, 'content-type', 'text/html; charset=utf-8')
+  return await buildPlatformAccountLinkActionContinueResponse(event, challengeResult.challenge, {
+    ok: true
+  })
 })

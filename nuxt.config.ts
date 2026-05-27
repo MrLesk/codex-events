@@ -26,10 +26,6 @@ export default defineNuxtConfig({
       sessionSecret: '',
       appBaseUrl: 'http://localhost:3000',
       audience: '',
-      managementDomain: '',
-      managementClientId: '',
-      managementClientSecret: '',
-      managementAudience: '',
       databaseConnectionName: '',
       accountLinkChallengeSecret: ''
     },

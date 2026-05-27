@@ -54,12 +54,6 @@ export interface EventRoleSummary {
   createdAt: string
 }
 
-export interface SessionActorAccountLink {
-  required: true
-  email: string
-  linkLoginHref: '/auth/link/login'
-}
-
 export interface AnonymousSessionActor {
   kind: 'anonymous'
   isAuthenticated: false
@@ -77,7 +71,6 @@ export interface AuthenticatedIdentitySessionActor {
   isAuthenticated: true
   hasPlatformAccount: false
   hasAcceptedCurrentPlatformDocuments: false
-  accountLink: SessionActorAccountLink | null
   sessionUser: SessionUserIdentity
   platformUser: null
   isPlatformAdmin: false
@@ -125,7 +118,6 @@ export function buildAuthenticatedIdentitySessionActor(sessionUser: SessionUserI
     isAuthenticated: true,
     hasPlatformAccount: false,
     hasAcceptedCurrentPlatformDocuments: false,
-    accountLink: null,
     sessionUser,
     platformUser: null,
     isPlatformAdmin: false,

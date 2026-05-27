@@ -22,12 +22,7 @@ NUXT_AUTH0_SESSION_SECRET=$(openssl rand -hex 64)
 NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
 NUXT_AUTH0_BDD_APP_BASE_URL=http://localhost:3100
 NUXT_AUTH0_AUDIENCE=
-NUXT_AUTH0_MANAGEMENT_DOMAIN=your-tenant.auth0.com
-NUXT_AUTH0_MANAGEMENT_CLIENT_ID=your-management-client-id
-NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET=your-management-client-secret
-NUXT_AUTH0_MANAGEMENT_AUDIENCE=https://your-tenant.auth0.com/api/v2/
 NUXT_AUTH0_DATABASE_CONNECTION_NAME=Username-Password-Authentication
-NUXT_AUTH0_GITHUB_CONNECTION_NAME=github
 NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET=$(openssl rand -hex 32)
 NUXT_DATABASE_BINDING=DB
 NUXT_PROFILE_ICONS_BINDING=PROFILE_ICONS
@@ -56,7 +51,6 @@ Local Auth0 dashboard settings:
 - Allowed Callback URLs: `http://localhost:3000/auth/callback, http://localhost:3000/auth/link/callback, http://localhost:3000/auth/bdd-callback, http://localhost:3100/auth/callback, http://localhost:3100/auth/link/callback, http://localhost:3100/auth/bdd-callback`
 - Allowed Logout URLs: `http://localhost:3000, http://localhost:3100`
 - If you enable GitHub social login, create an Auth0 GitHub social connection for the same application and configure the GitHub OAuth app callback URL as `https://<your-auth0-domain>/login/callback`.
-- `NUXT_AUTH0_GITHUB_CONNECTION_NAME` must match the Auth0 GitHub connection name when you rename it from the default `github`.
 
 Local Auth0 runtime notes:
 
@@ -76,17 +70,17 @@ These commands enforce required Auth0 tenant configuration:
 - Universal Login page template sync for canonical login-link styling
 - login prompt subtitle copy
 - signup prompt consent text/partials cleared so platform consent stays app-owned at `/account/register`
-- post-login Action deployment and trigger binding
+- post-login Action deployment and trigger binding for consent claims and Auth0 account linking
 - required callback/logout/origin URL inclusion on the Auth0 application
 - default login URI (`initiate_login_uri`) for password-reset return routing
 - tenant default redirection URI fallback (`default_redirection_uri`) for reset-password error states
-- required callback inclusion for the explicit account-linking reauthentication flow at `/auth/link/callback`
+- required callback inclusion for the account-linking ownership check at `/auth/link/callback`
 
 The checked-in Auth0 bootstrap automation does not currently create or manage the GitHub social connection. Configure that connection in Auth0 separately when you want `/auth/login/github` enabled in a deployment.
 If a tenant lacks the paid Universal Login page-template feature, the bootstrap now warns and skips page-template-dependent login prompt customization instead of failing outright. Custom domains, branding, client URLs, and Actions remain required and still fail on drift or API errors.
 
-By default the script reads `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, and app defaults from `NUXT_AUTH0_*`. Set `AUTH0_MANAGEMENT_AUDIENCE` when it does not follow `https://<AUTH0_MANAGEMENT_DOMAIN>/api/v2/`. You can override app naming, URLs, and branding with explicit `AUTH0_*` variables (`AUTH0_APP_CLIENT_ID`, `AUTH0_APP_DISPLAY_NAME`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_LOGIN_URI`, `AUTH0_TERMS_URL`, `AUTH0_PRIVACY_URL`, `AUTH0_BRANDING_PRIMARY_COLOR`, `AUTH0_BRANDING_PAGE_BACKGROUND_COLOR`, `AUTH0_BRANDING_LOGO_URL`, `AUTH0_BRANDING_FAVICON_URL`).
-`AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL`/`NUXT_AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
+The script reads explicit `AUTH0_*` variables only: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_APP_CLIENT_ID`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_DATABASE_CONNECTION_NAME`, and `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` are required.
+`AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
 When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-events-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 
 For app runtime variables, rename legacy `NUXT_PUBLIC_AUTH0_*` keys to the `NUXT_AUTH0_*` keys above. Use `AUTH0_*` only for tenant automation and GitHub environment-level Auth0 settings.
@@ -215,13 +209,11 @@ For the selected target, the generator derives:
 
 - application URL: `https://<base-domain>`
 - Cloudflare route pattern: `<base-domain>`
-- Auth0 custom domain: `auth.<base-domain>`
 - event image CDN URL: `https://cdn.<base-domain>`
 - Luma webhook URL: `https://<base-domain>/api/public/luma/webhooks`
 
-Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot always be inferred from a deployment hostname. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. Use these override variables only when the default derived hostnames are not correct for an environment:
+Keep `DEPLOY_CF_ZONE_NAME` and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the Cloudflare DNS zone and Auth0 login hostname cannot always be inferred from a deployment hostname. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. Use these override variables only when the default derived hostnames are not correct for an environment:
 
-- `DEPLOY_AUTH0_CUSTOM_DOMAIN`
 - `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL`
 - `DEPLOY_LUMA_WEBHOOK_URL`
 
@@ -288,10 +280,10 @@ Cloudflare resource metadata:
 - `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE`
 - `DEPLOY_CF_LUMA_SYNC_QUEUE`
 
-Auth0 management settings:
+Auth0 tenant automation settings:
 
 - `AUTH0_MANAGEMENT_DOMAIN`
-- `AUTH0_MANAGEMENT_AUDIENCE` when it does not follow `https://<AUTH0_MANAGEMENT_DOMAIN>/api/v2/`
+- `AUTH0_APP_DISPLAY_NAME`
 
 Auth0 runtime settings:
 
@@ -310,7 +302,7 @@ Cloudflare Email Service and Queues runtime settings:
 - `NUXT_LUMA_QUEUE_BINDING`
 - `NUXT_LUMA_RETRY_DELAY_SECONDS`
 
-Optional deployment URL overrides:
+Deployment URL settings:
 
 - `DEPLOY_AUTH0_CUSTOM_DOMAIN`
 - `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL`
@@ -324,15 +316,14 @@ The GitHub `dev` environment must provide these secrets:
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_AUTH0_SESSION_SECRET`
 - `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
-- `NUXT_AUTH0_MANAGEMENT_CLIENT_ID`
-- `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET`
+- `AUTH0_MGMT_CLIENT_ID`
+- `AUTH0_MGMT_CLIENT_SECRET`
 - `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
 - `NUXT_LUMA_API_KEY` when any dev event uses Luma sync
 
 The GitHub `bdd` environment must provide these variables:
 
 - `AUTH0_MANAGEMENT_DOMAIN`
-- `AUTH0_MANAGEMENT_AUDIENCE` when it does not follow `https://<AUTH0_MANAGEMENT_DOMAIN>/api/v2/`
 - `NUXT_AUTH0_DATABASE_CONNECTION_NAME`
 
 The GitHub `bdd` environment must provide these secrets:
@@ -363,6 +354,7 @@ The GitHub `production` environment must provide these secrets before a release 
 - `NUXT_AUTH0_AUDIENCE`
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_AUTH0_SESSION_SECRET`
+- `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
 - `NUXT_LUMA_API_KEY` when production events use Luma sync
 
 The generated Wrangler config supplies deploy-time Cloudflare bindings and non-secret runtime vars. GitHub workflows upload Worker secrets from the relevant GitHub environment plus the generated `NUXT_LUMA_WEBHOOK_SECRET` when Luma reconciliation runs. GitHub environments do not need a stored `NUXT_LUMA_WEBHOOK_SECRET`.
@@ -394,7 +386,7 @@ The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CL
 - `update:triggers`
 - `update:users`
 
-The `read:users` and `update:users` scopes are required by the runtime account-linking flow. The app reads linked Auth0 identities to reconcile cross-device sessions and posts to Auth0's user identities endpoint when a verified social login must be connected to an existing password-backed platform account.
+The `read:users` and `update:users` scopes are required by the Auth0 post-login Action for account linking. The app runtime does not use Auth0 Management API credentials.
 
 `AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. Outbound email delivery uses the Cloudflare Email Service `send_email` binding configured in the generated Wrangler config; the production sending domain must be onboarded in Cloudflare Email Service before release.
 
@@ -469,7 +461,6 @@ Authenticated end-to-end coverage also requires the Auth0 tenant automation vari
 AUTH0_MANAGEMENT_DOMAIN=your-tenant.auth0.com
 AUTH0_MGMT_CLIENT_ID=your-management-client-id
 AUTH0_MGMT_CLIENT_SECRET=your-management-client-secret
-AUTH0_MANAGEMENT_AUDIENCE=https://your-tenant.auth0.com/api/v2/
 NUXT_AUTH0_DATABASE_CONNECTION_NAME=codex-events-e2e-users
 ```
 

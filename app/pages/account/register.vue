@@ -5,7 +5,6 @@ import { normalizeApiError } from '~/lib/api'
 import {
   getAccountRegistrationSubmitErrorMessage,
   getAccountRegistrationIntro,
-  isAccountRegistrationLinkOnlyMode,
   missingIdentityEmailMessage
 } from '~/domains/accounts/registration'
 import { accountDashboardHref, normalizeAuthReturnTo } from '#shared/domains/accounts/auth-navigation'
@@ -30,11 +29,6 @@ const {
 const privacyAccepted = ref(false)
 const termsAccepted = ref(false)
 const submitAttempted = ref(false)
-const accountLinkState = reactive({
-  required: false,
-  email: '',
-  href: '/auth/link/login'
-})
 const submitState = reactive({
   pending: false,
   error: ''
@@ -69,34 +63,9 @@ const isReadyToSubmit = computed(() =>
   && privacyAccepted.value
   && termsAccepted.value
 )
-const linkOnlyMode = computed(() => isAccountRegistrationLinkOnlyMode(actor.value, accountLinkState.required))
-const accountRegistrationIntro = computed(() => getAccountRegistrationIntro(linkOnlyMode.value))
-const resolvedAccountLinkState = computed(() => {
-  if (accountLinkState.required) {
-    return {
-      required: true,
-      email: accountLinkState.email,
-      href: accountLinkState.href
-    }
-  }
-
-  if (actor.value.kind === 'authenticated_identity' && actor.value.accountLink?.required) {
-    return {
-      required: true,
-      email: actor.value.accountLink.email,
-      href: actor.value.accountLink.linkLoginHref
-    }
-  }
-
-  return {
-    required: false,
-    email: '',
-    href: '/auth/link/login'
-  }
-})
+const accountRegistrationIntro = computed(() => getAccountRegistrationIntro())
 const identityEmailUnavailable = computed(() =>
   actor.value.kind === 'authenticated_identity'
-  && !resolvedAccountLinkState.value.required
   && !actor.value.sessionUser.email?.trim()
 )
 
@@ -112,9 +81,6 @@ if (
 async function submitPlatformConsent() {
   submitAttempted.value = true
   submitState.error = ''
-  accountLinkState.required = false
-  accountLinkState.email = ''
-  accountLinkState.href = '/auth/link/login'
 
   if (!isReadyToSubmit.value || !privacyPolicyDocument.value || !platformTermsDocument.value) {
     return
@@ -159,17 +125,6 @@ async function submitPlatformConsent() {
   } catch (error) {
     const apiError = normalizeApiError(error)
 
-    if (apiError.code === 'platform_account_link_required') {
-      accountLinkState.required = true
-      accountLinkState.email = typeof apiError.details?.email === 'string'
-        ? apiError.details.email
-        : ''
-      accountLinkState.href = typeof apiError.details?.linkLoginHref === 'string'
-        ? apiError.details.linkLoginHref
-        : '/auth/link/login'
-      return
-    }
-
     submitState.error = getAccountRegistrationSubmitErrorMessage(apiError)
   } finally {
     submitState.pending = false
@@ -177,12 +132,8 @@ async function submitPlatformConsent() {
 }
 
 useSeoMeta({
-  title: () => linkOnlyMode.value
-    ? 'Connect Your Account | Codex Events'
-    : 'Finish Setting Up Your Account | Codex Events',
-  description: () => linkOnlyMode.value
-    ? 'Connect this sign-in method to your existing Codex Events account.'
-    : 'Accept the current Privacy Policy and Terms so you can continue.'
+  title: 'Finish Setting Up Your Account | Codex Events',
+  description: 'Accept the current Privacy Policy and Terms so you can continue.'
 })
 </script>
 
@@ -205,7 +156,7 @@ useSeoMeta({
 
     <AppContainer class="max-w-[68rem] space-y-6 pt-6">
       <AppAlert
-        v-if="status === 'pending' || (!linkOnlyMode && documentsStatus === 'pending')"
+        v-if="status === 'pending' || documentsStatus === 'pending'"
         color="neutral"
         variant="soft"
         title="Loading account registration"
@@ -213,7 +164,7 @@ useSeoMeta({
       />
 
       <AppAlert
-        v-else-if="!linkOnlyMode && (!documents?.privacy_policy || !documents?.platform_terms)"
+        v-else-if="!documents?.privacy_policy || !documents?.platform_terms"
         color="warning"
         variant="soft"
         title="Platform documents unavailable"
@@ -226,7 +177,6 @@ useSeoMeta({
         @submit.prevent="submitPlatformConsent"
       >
         <AppAlert
-          v-if="!linkOnlyMode"
           color="info"
           variant="soft"
           title="Platform consent is required"
@@ -250,7 +200,6 @@ useSeoMeta({
         />
 
         <section
-          v-if="!linkOnlyMode"
           class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
         >
           <div class="space-y-4">
@@ -285,7 +234,6 @@ useSeoMeta({
         </section>
 
         <section
-          v-if="!linkOnlyMode"
           class="rounded-xl border border-black/8 bg-[#F7F7F8]/80 p-6 dark:border-white/[0.08] dark:bg-[#111111]/80"
         >
           <div class="space-y-4">
@@ -320,26 +268,6 @@ useSeoMeta({
         </section>
 
         <div class="space-y-4">
-          <section
-            v-if="resolvedAccountLinkState.required"
-            class="rounded-xl border border-primary/15 bg-primary/6 p-6"
-          >
-            <div class="space-y-3">
-              <h2 class="text-[18px] font-semibold text-highlighted dark:text-white">
-                Sign in to your existing account once
-              </h2>
-              <p class="max-w-3xl text-sm text-neutral-700 dark:text-[#A3A3A3]">
-                {{ resolvedAccountLinkState.email || 'This email address' }} already has a Codex Events account. Sign in with that account&apos;s password to connect Google. After that, you can use either sign-in method.
-              </p>
-              <AppButton
-                :to="resolvedAccountLinkState.href"
-                external
-                label="Sign In To Existing Account"
-                size="lg"
-              />
-            </div>
-          </section>
-
           <AppAlert
             v-if="submitState.error"
             color="error"
@@ -348,10 +276,7 @@ useSeoMeta({
             :description="submitState.error"
           />
 
-          <div
-            v-if="!linkOnlyMode"
-            class="flex justify-end"
-          >
+          <div class="flex justify-end">
             <AppButton
               type="submit"
               color="neutral"

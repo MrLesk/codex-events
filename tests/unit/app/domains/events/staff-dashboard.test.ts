@@ -124,7 +124,6 @@ describe('filterStaffAccessibleEvents', () => {
       isAuthenticated: true,
       hasPlatformAccount: false,
       hasAcceptedCurrentPlatformDocuments: false,
-      accountLink: null,
       sessionUser: {
         sub: 'auth0|identity',
         email: 'identity@example.com',

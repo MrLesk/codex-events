@@ -31,6 +31,7 @@ import {
   userPlatformDocumentAcceptances,
   users
 } from '../../../../server/database/schema'
+import { linkedAuth0SubjectsClaim } from '../../../../server/domains/accounts/linking'
 import { authenticatedUploadRateLimitBindingName } from '../../../../server/utils/rate-limit'
 import { fixtureTimestamp } from '../../../support/backend/runtime'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
@@ -50,14 +51,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
     return {
       limit: vi.fn(async () => ({ success }))
     }
-  }
-
-  function createFixtureJwt(payload: Record<string, unknown>) {
-    return [
-      Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url'),
-      Buffer.from(JSON.stringify(payload)).toString('base64url'),
-      'signature'
-    ].join('.')
   }
 
   async function seedCurrentPlatformDocuments(
@@ -667,7 +660,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(auditEntries).toHaveLength(0)
   })
 
-  test('GET /api/session exposes same-email account-link metadata for verified social identities', async () => {
+  test('GET /api/session does not expose app-runtime account-link metadata for verified social identities', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/session', handler: sessionHandler }
@@ -696,11 +689,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
         actor: {
           kind: 'authenticated_identity',
           hasPlatformAccount: false,
-          accountLink: {
-            required: true,
-            email: 'existing-user@example.com',
-            linkLoginHref: '/auth/link/login'
-          },
           platformUser: null
         }
       }
@@ -737,24 +725,20 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
-  test('GET /api/session reconciles a linked social identity through Auth0 and stores the missing identity row', async () => {
+  test('GET /api/session records linked social identities from the Auth0 Action claim', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
         { method: 'get', path: '/api/session', handler: sessionHandler }
       ],
       sessionUser: {
-        sub: 'google-oauth2|existing-google-user',
+        sub: 'auth0|existing-password-user',
         email: 'existing-user@example.com',
         email_verified: true,
-        name: 'Existing User'
-      },
-      runtimeConfig: {
-        auth0: {
-          managementDomain: 'codex-events-dev.eu.auth0.com',
-          managementClientId: 'management-client-id',
-          managementClientSecret: 'management-client-secret',
-          managementAudience: 'https://codex-events-dev.eu.auth0.com/api/v2/'
-        }
+        name: 'Existing User',
+        [linkedAuth0SubjectsClaim]: [
+          'auth0|existing-password-user',
+          'google-oauth2|existing-google-user'
+        ]
       }
     })
     databases.push(harness)
@@ -765,52 +749,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
       email: 'existing-user@example.com',
       displayName: 'Existing User'
     })
-
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url
-
-      if (url === 'https://codex-events-dev.eu.auth0.com/oauth/token') {
-        return new Response(JSON.stringify({
-          access_token: createFixtureJwt({
-            permissions: ['read:users']
-          }),
-          scope: 'read:users'
-        }), {
-          status: 200,
-          headers: {
-            'content-type': 'application/json'
-          }
-        })
-      }
-
-      if (url === 'https://codex-events-dev.eu.auth0.com/api/v2/users/auth0%7Cexisting-password-user') {
-        return new Response(JSON.stringify({
-          identities: [
-            {
-              provider: 'auth0',
-              user_id: 'existing-password-user'
-            },
-            {
-              provider: 'google-oauth2',
-              user_id: 'existing-google-user'
-            }
-          ]
-        }), {
-          status: 200,
-          headers: {
-            'content-type': 'application/json'
-          }
-        })
-      }
-
-      return new Response('not found', { status: 404 })
-    })
-
-    vi.stubGlobal('fetch', fetchMock)
 
     const response = await harness.request('/api/session')
     const storedGoogleIdentity = await harness.database.query.userAuthIdentities.findFirst({
@@ -834,7 +772,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
       userId: 'existing_platform_user',
       auth0Subject: 'google-oauth2|existing-google-user'
     })
-    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   test('GET /api/session marks a platform account consent-blocked when current required platform documents are not accepted', async () => {
@@ -1794,10 +1731,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
       runtimeConfig: {
         auth0: {
           appBaseUrl: 'https://dev.codex-events.com',
-          managementDomain: 'codex-events-dev.eu.auth0.com',
-          managementClientId: 'management-client-id',
-          managementClientSecret: 'management-client-secret',
-          managementAudience: 'https://codex-events-dev.eu.auth0.com/api/v2/',
           databaseConnectionName: 'Username-Password-Authentication',
           accountLinkChallengeSecret: 'link-secret'
         }
@@ -1844,12 +1777,11 @@ describe('TASK-3.5 actor-facing API routes', () => {
       error: {
         code: 'platform_account_link_required',
         details: {
-          email: 'existing-user@example.com',
-          linkLoginHref: '/auth/link/login'
+          email: 'existing-user@example.com'
         }
       }
     })
-    expect(response.headers.get('set-cookie')).toContain('codex_platform_account_link=')
+    expect(response.headers.get('set-cookie')).toBeNull()
   })
 
   test('POST /api/account/registration keeps unverified social identities blocked on existing platform account email conflicts', async () => {
@@ -1866,10 +1798,6 @@ describe('TASK-3.5 actor-facing API routes', () => {
       runtimeConfig: {
         auth0: {
           appBaseUrl: 'https://dev.codex-events.com',
-          managementDomain: 'codex-events-dev.eu.auth0.com',
-          managementClientId: 'management-client-id',
-          managementClientSecret: 'management-client-secret',
-          managementAudience: 'https://codex-events-dev.eu.auth0.com/api/v2/',
           databaseConnectionName: 'Username-Password-Authentication',
           accountLinkChallengeSecret: 'link-secret'
         }

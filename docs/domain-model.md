@@ -38,7 +38,7 @@ Rules:
 - Platform account registration requires an authenticated identity with an email address and an `email_verified` claim of `true`.
 - Platform account registration can create the user before canonical `first_name` and `family_name` are filled. Those fields are completed through later profile or application flows.
 - A platform user stores one primary Auth0 subject on the user record and can have additional linked Auth0 identities recorded separately.
-- When an authenticated social identity must be linked to an existing platform account, the pre-link identity does not record platform-document acceptance. After linking, the existing platform account either proceeds immediately if current acceptance already exists or completes current platform consent through `/account/register`.
+- When Auth0 links an authenticated social identity to an existing platform account, the pre-link identity does not record platform-document acceptance. After linking, Auth0 issues the session for the primary identity and the existing platform account either proceeds immediately if current acceptance already exists or completes current platform consent through `/account/register`.
 - Regular platform-user actor resolution uses the linked Auth0 identity records rather than only the primary Auth0 subject stored on the user row.
 - Regular platform-user access requires current accepted versions of the platform `privacy_policy` and `platform_terms` in platform data.
 - The reusable platform profile fields are managed from account settings.
@@ -178,7 +178,7 @@ Rules:
 - Platform registration and re-consent use platform-wide documents only.
 - The public Privacy Policy and Terms pages render the current platform document version for their document type.
 - The application-owned `/account/register` flow records exact accepted platform-document versions in product data.
-- When `/account/register` is resolving an existing-account linking flow, platform-document acceptance is deferred until the linked platform account is known.
+- When Auth0 account linking resolves an existing platform account, platform-document acceptance is evaluated on the linked platform account.
 - Current versions of both platform documents must exist before account registration and regular platform-user consent can complete.
 - Current acceptance of both platform documents is required for regular platform-user access.
 - Platform documents are versioned.

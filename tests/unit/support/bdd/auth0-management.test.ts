@@ -9,7 +9,6 @@ const environment = {
   AUTH0_MANAGEMENT_DOMAIN: 'example.us.auth0.com',
   AUTH0_MGMT_CLIENT_ID: 'client-id',
   AUTH0_MGMT_CLIENT_SECRET: 'client-secret',
-  AUTH0_MANAGEMENT_AUDIENCE: 'https://example.us.auth0.com/api/v2/',
   E2E_PLATFORM_ADMIN_EMAIL: 'platform-admin@example.com',
   E2E_PLATFORM_ADMIN_PASSWORD: 'password-1',
   E2E_EVENT_ADMIN_EMAIL: 'event-admin@example.com',

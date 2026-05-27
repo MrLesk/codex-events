@@ -77,10 +77,6 @@ function createEvent() {
           clientSecret: 'client-secret',
           databaseConnectionName: 'Username-Password-Authentication',
           domain: 'codex-events-dev.eu.auth0.com',
-          managementAudience: 'https://codex-events-dev.eu.auth0.com/api/v2/',
-          managementClientId: 'management-client-id',
-          managementClientSecret: 'management-client-secret',
-          managementDomain: 'codex-events-dev.eu.auth0.com',
           sessionConfiguration: {
             rolling: false
           },
@@ -89,14 +85,6 @@ function createEvent() {
       }
     }
   } as H3Event
-}
-
-function createFixtureJwt(payload: Record<string, unknown>) {
-  return [
-    Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url'),
-    Buffer.from(JSON.stringify(payload)).toString('base64url'),
-    'signature'
-  ].join('.')
 }
 
 describe('platform account-link Auth0 helper', () => {
@@ -177,43 +165,24 @@ describe('platform account-link Auth0 helper', () => {
     expect(transactionStoreDelete).toHaveBeenCalledWith('__a0_platform_account_link_tx', { event })
   })
 
-  test('fails early when the Auth0 management token lacks update:users for account linking', async () => {
+  test('builds an Auth0 Action continuation form after primary-account verification', async () => {
     const event = createEvent()
     const linking = await import('../../../../../server/domains/accounts/linking')
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = typeof input === 'string'
-        ? input
-        : input instanceof URL
-          ? input.toString()
-          : input.url
 
-      if (url === 'https://codex-events-dev.eu.auth0.com/oauth/token') {
-        return new Response(JSON.stringify({
-          access_token: createFixtureJwt({
-            permissions: ['read:clients']
-          }),
-          scope: 'read:clients'
-        }), {
-          status: 200,
-          headers: {
-            'content-type': 'application/json'
-          }
-        })
-      }
-
-      return new Response('not found', { status: 404 })
+    const responseHtml = await linking.buildPlatformAccountLinkActionContinueResponse(event, {
+      primaryAuth0Subject: 'auth0|existing-password-user',
+      secondaryAuth0Subject: 'google-oauth2|existing-google-user',
+      email: 'existing-user@example.com',
+      actionState: 'auth0-action-state',
+      continueUri: 'https://codex-events-dev.eu.auth0.com/continue',
+      expiresAt: new Date(Date.now() + 60_000).toISOString()
+    }, {
+      ok: true
     })
 
-    vi.stubGlobal('fetch', fetchMock)
-
-    await expect(linking.linkPlatformAccountIdentity(
-      event,
-      'auth0|existing-password-user',
-      'google-oauth2|existing-google-user'
-    )).rejects.toMatchObject({
-      code: 'platform_account_linking_unavailable',
-      message: 'Auth0 management token is missing the update:users scope required for account linking.'
-    })
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(responseHtml).toContain('method="post"')
+    expect(responseHtml).toContain('action="https://codex-events-dev.eu.auth0.com/continue"')
+    expect(responseHtml).toContain('name="state" value="auth0-action-state"')
+    expect(responseHtml).toContain('name="session_token"')
   })
 })

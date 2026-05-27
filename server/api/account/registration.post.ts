@@ -9,9 +9,6 @@ import {
   registerPlatformAccount
 } from '#server/domains/accounts'
 import { ApiError } from '#server/http/api-error'
-import {
-  issuePlatformAccountLinkChallenge
-} from '#server/domains/accounts/linking'
 import { parseValidatedBody } from '#server/http/validation'
 
 const registrationRequestBodySchema = platformAccountRegistrationBodySchema.extend({
@@ -31,37 +28,10 @@ export default defineApiHandler(async (h3Event) => {
 
   const body = await parseValidatedBody(h3Event, registrationRequestBodySchema)
 
-  try {
-    const result = await registerPlatformAccount(getDatabase(h3Event), actor, {
-      privacyPolicyDocumentId: body.privacyPolicyDocumentId,
-      platformTermsDocumentId: body.platformTermsDocumentId
-    })
+  const result = await registerPlatformAccount(getDatabase(h3Event), actor, {
+    privacyPolicyDocumentId: body.privacyPolicyDocumentId,
+    platformTermsDocumentId: body.platformTermsDocumentId
+  })
 
-    return apiData(result)
-  } catch (error) {
-    if (
-      error instanceof ApiError
-      && error.code === 'platform_account_link_required'
-      && typeof error.details?.primaryAuth0Subject === 'string'
-    ) {
-      await issuePlatformAccountLinkChallenge(h3Event, {
-        primaryAuth0Subject: error.details.primaryAuth0Subject,
-        secondaryAuth0Subject: actor.sessionUser.sub,
-        email: actor.sessionUser.email?.trim() ?? '',
-        returnTo: body.returnTo
-      })
-
-      throw new ApiError({
-        statusCode: 409,
-        code: 'platform_account_link_required',
-        message: error.message,
-        details: {
-          email: actor.sessionUser.email?.trim() ?? '',
-          linkLoginHref: '/auth/link/login'
-        }
-      })
-    }
-
-    throw error
-  }
+  return apiData(result)
 })

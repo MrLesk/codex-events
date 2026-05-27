@@ -61,6 +61,12 @@ Application hostname:
 | --- | --- |
 | `DEPLOY_PRODUCTION_BASE_DOMAIN` | Production hostname, for example `events.example.com` |
 
+Deployment URL settings:
+
+| Variable | Value |
+| --- | --- |
+| `DEPLOY_AUTH0_CUSTOM_DOMAIN` | Auth0 custom domain host, without `https://` |
+
 Cloudflare resource metadata:
 
 | Variable | Value |
@@ -80,7 +86,6 @@ Auth0 settings:
 | Variable | Value |
 | --- | --- |
 | `AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant host, without `https://` |
-| `AUTH0_MANAGEMENT_AUDIENCE` | Optional Auth0 Management API audience when it does not follow `https://<AUTH0_MANAGEMENT_DOMAIN>/api/v2/` |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name |
 
 Cloudflare Email Service runtime settings:
