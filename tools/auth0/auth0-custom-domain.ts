@@ -144,10 +144,10 @@ export function requiresDnsUpdate(record: CloudflareDnsRecord | null, desiredRec
 
 function loadConfig(): Auth0CustomDomainConfig {
   return {
-    tenantDomain: normalizeTenantDomain(requireEnv('AUTH0_DOMAIN')),
+    tenantDomain: normalizeTenantDomain(requireEnv('AUTH0_MANAGEMENT_DOMAIN')),
     managementClientId: requireEnv('AUTH0_MGMT_CLIENT_ID'),
     managementClientSecret: requireEnv('AUTH0_MGMT_CLIENT_SECRET'),
-    managementAudience: requireEnv('AUTH0_MGMT_AUDIENCE'),
+    managementAudience: requireEnv('AUTH0_MANAGEMENT_AUDIENCE'),
     customDomain: normalizeHostname(requireEnv('AUTH0_CUSTOM_DOMAIN')),
     zoneName: normalizeHostname(requireEnv('DEPLOY_CF_ZONE_NAME')),
     cloudflareApiToken: requireEnv('CLOUDFLARE_API_TOKEN'),

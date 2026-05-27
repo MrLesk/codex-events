@@ -24,7 +24,7 @@ function createFixtureJwt(payload: Record<string, unknown>) {
 describe('auth0 bootstrap config', () => {
   test('infers the dedicated local BDD app base url for localhost development', () => {
     const config = resolveConfig({
-      AUTH0_DOMAIN: 'codex-events-dev.eu.auth0.com',
+      AUTH0_MANAGEMENT_DOMAIN: 'codex-events-dev.eu.auth0.com',
       AUTH0_MGMT_CLIENT_ID: 'management-client-id',
       AUTH0_MGMT_CLIENT_SECRET: 'management-client-secret',
       AUTH0_APP_CLIENT_ID: 'app-client-id',
@@ -39,7 +39,7 @@ describe('auth0 bootstrap config', () => {
 
   test('infers the canonical branding defaults from an https app base url', () => {
     const config = resolveConfig({
-      AUTH0_DOMAIN: 'codex-events-dev.eu.auth0.com',
+      AUTH0_MANAGEMENT_DOMAIN: 'codex-events-dev.eu.auth0.com',
       AUTH0_MGMT_CLIENT_ID: 'management-client-id',
       AUTH0_MGMT_CLIENT_SECRET: 'management-client-secret',
       AUTH0_APP_CLIENT_ID: 'app-client-id',
@@ -58,7 +58,7 @@ describe('auth0 bootstrap config', () => {
 
   test('preserves explicit branding overrides', () => {
     const config = resolveConfig({
-      AUTH0_DOMAIN: 'codex-events-dev.eu.auth0.com',
+      AUTH0_MANAGEMENT_DOMAIN: 'codex-events-dev.eu.auth0.com',
       AUTH0_MGMT_CLIENT_ID: 'management-client-id',
       AUTH0_MGMT_CLIENT_SECRET: 'management-client-secret',
       AUTH0_APP_CLIENT_ID: 'app-client-id',
@@ -108,7 +108,7 @@ describe('auth0 bootstrap config', () => {
 
   test('builds canonical login prompt subtitle copy from config', () => {
     const config = resolveConfig({
-      AUTH0_DOMAIN: 'codex-events-dev.eu.auth0.com',
+      AUTH0_MANAGEMENT_DOMAIN: 'codex-events-dev.eu.auth0.com',
       AUTH0_MGMT_CLIENT_ID: 'management-client-id',
       AUTH0_MGMT_CLIENT_SECRET: 'management-client-secret',
       AUTH0_APP_CLIENT_ID: 'app-client-id',
@@ -126,7 +126,7 @@ describe('auth0 bootstrap config', () => {
 
   test('builds canonical Universal Login template with theme-colored links', () => {
     const config = resolveConfig({
-      AUTH0_DOMAIN: 'codex-events-dev.eu.auth0.com',
+      AUTH0_MANAGEMENT_DOMAIN: 'codex-events-dev.eu.auth0.com',
       AUTH0_MGMT_CLIENT_ID: 'management-client-id',
       AUTH0_MGMT_CLIENT_SECRET: 'management-client-secret',
       AUTH0_APP_CLIENT_ID: 'app-client-id',

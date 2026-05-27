@@ -66,10 +66,10 @@ describe('stable Auth0 personas', () => {
       ...baseEnvironment,
       NUXT_AUTH0_CLIENT_ID: 'nuxt-client-id',
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'codex-events-e2e-users',
-      AUTH0_DOMAIN: 'example.us.auth0.com',
+      AUTH0_MANAGEMENT_DOMAIN: 'example.us.auth0.com',
       AUTH0_MGMT_CLIENT_ID: 'client-id',
       AUTH0_MGMT_CLIENT_SECRET: 'client-secret',
-      AUTH0_MGMT_AUDIENCE: ''
+      AUTH0_MANAGEMENT_AUDIENCE: ''
     })).not.toThrow()
   })
 
@@ -78,10 +78,10 @@ describe('stable Auth0 personas', () => {
       ...baseEnvironment,
       NUXT_AUTH0_CLIENT_ID: 'nuxt-client-id',
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'codex-events-e2e-users',
-      AUTH0_DOMAIN: 'example.us.auth0.com',
+      AUTH0_MANAGEMENT_DOMAIN: 'example.us.auth0.com',
       AUTH0_MGMT_CLIENT_ID: 'client-id',
       AUTH0_MGMT_CLIENT_SECRET: 'client-secret',
-      AUTH0_MGMT_AUDIENCE: 'https://example.us.auth0.com/api/v2/'
+      AUTH0_MANAGEMENT_AUDIENCE: 'https://example.us.auth0.com/api/v2/'
     }
 
     expect(getAuth0ClientId(environment)).toBe('nuxt-client-id')

@@ -51,10 +51,10 @@ const stablePersonaEnvironmentSchema = bddBaseUrlEnvironmentSchema.extend({
 const provisioningEnvironmentSchema = stablePersonaEnvironmentSchema.extend({
   NUXT_AUTH0_CLIENT_ID: z.string().min(1),
   NUXT_AUTH0_DATABASE_CONNECTION_NAME: z.string().min(1),
-  AUTH0_DOMAIN: z.string().min(1),
+  AUTH0_MANAGEMENT_DOMAIN: z.string().min(1),
   AUTH0_MGMT_CLIENT_ID: z.string().min(1),
   AUTH0_MGMT_CLIENT_SECRET: z.string().min(1),
-  AUTH0_MGMT_AUDIENCE: optionalUrlEnvironmentValueSchema
+  AUTH0_MANAGEMENT_AUDIENCE: optionalUrlEnvironmentValueSchema
 })
 
 export type StablePersonaEnvironment = z.infer<typeof stablePersonaEnvironmentSchema>

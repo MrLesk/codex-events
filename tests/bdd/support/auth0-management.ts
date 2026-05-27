@@ -20,7 +20,7 @@ function normalizeDomain(domain: string) {
 }
 
 function resolveManagementAudience(config: ReturnType<typeof loadProvisioningEnvironment>) {
-  return config.AUTH0_MGMT_AUDIENCE ?? `${normalizeDomain(config.AUTH0_DOMAIN)}/api/v2/`
+  return config.AUTH0_MANAGEMENT_AUDIENCE ?? `${normalizeDomain(config.AUTH0_MANAGEMENT_DOMAIN)}/api/v2/`
 }
 
 function sleep(milliseconds: number) {
@@ -39,7 +39,7 @@ function resolveRetryDelay(response: Response, attempt: number) {
 
 async function getManagementAccessToken(environment: NodeJS.ProcessEnv = process.env) {
   const config = loadProvisioningEnvironment(environment)
-  const response = await fetch(`${normalizeDomain(config.AUTH0_DOMAIN)}/oauth/token`, {
+  const response = await fetch(`${normalizeDomain(config.AUTH0_MANAGEMENT_DOMAIN)}/oauth/token`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json'
@@ -73,7 +73,7 @@ async function auth0ManagementRequest(
 ) {
   const config = loadProvisioningEnvironment(environment)
   for (let attempt = 0; attempt < 5; attempt++) {
-    const response = await fetch(`${normalizeDomain(config.AUTH0_DOMAIN)}${path}`, {
+    const response = await fetch(`${normalizeDomain(config.AUTH0_MANAGEMENT_DOMAIN)}${path}`, {
       ...init,
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -113,7 +113,7 @@ async function clearUserBlocks(userId: string, environment: NodeJS.ProcessEnv, a
   const basePath = `/api/v2/user-blocks/${encodeURIComponent(userId)}`
   const config = loadProvisioningEnvironment(environment)
   for (let attempt = 0; attempt < 5; attempt++) {
-    const response = await fetch(`${normalizeDomain(config.AUTH0_DOMAIN)}${basePath}`, {
+    const response = await fetch(`${normalizeDomain(config.AUTH0_MANAGEMENT_DOMAIN)}${basePath}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${accessToken}`,

@@ -85,7 +85,7 @@ These commands enforce required Auth0 tenant configuration:
 The checked-in Auth0 bootstrap automation does not currently create or manage the GitHub social connection. Configure that connection in Auth0 separately when you want `/auth/login/github` enabled in a deployment.
 If a tenant lacks the paid Universal Login page-template feature, the bootstrap now warns and skips page-template-dependent login prompt customization instead of failing outright. Custom domains, branding, client URLs, and Actions remain required and still fail on drift or API errors.
 
-By default the script reads `AUTH0_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, and app defaults from `NUXT_AUTH0_*`. Set `AUTH0_MGMT_AUDIENCE` when it does not follow `https://<AUTH0_DOMAIN>/api/v2/`. You can override app naming, URLs, and branding with explicit `AUTH0_*` variables (`AUTH0_APP_CLIENT_ID`, `AUTH0_APP_DISPLAY_NAME`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_LOGIN_URI`, `AUTH0_TERMS_URL`, `AUTH0_PRIVACY_URL`, `AUTH0_BRANDING_PRIMARY_COLOR`, `AUTH0_BRANDING_PAGE_BACKGROUND_COLOR`, `AUTH0_BRANDING_LOGO_URL`, `AUTH0_BRANDING_FAVICON_URL`).
+By default the script reads `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, and app defaults from `NUXT_AUTH0_*`. Set `AUTH0_MANAGEMENT_AUDIENCE` when it does not follow `https://<AUTH0_MANAGEMENT_DOMAIN>/api/v2/`. You can override app naming, URLs, and branding with explicit `AUTH0_*` variables (`AUTH0_APP_CLIENT_ID`, `AUTH0_APP_DISPLAY_NAME`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_LOGIN_URI`, `AUTH0_TERMS_URL`, `AUTH0_PRIVACY_URL`, `AUTH0_BRANDING_PRIMARY_COLOR`, `AUTH0_BRANDING_PAGE_BACKGROUND_COLOR`, `AUTH0_BRANDING_LOGO_URL`, `AUTH0_BRANDING_FAVICON_URL`).
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL`/`NUXT_AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
 When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-events-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 
@@ -288,10 +288,10 @@ Cloudflare resource metadata:
 - `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE`
 - `DEPLOY_CF_LUMA_SYNC_QUEUE`
 
-Auth0 tenant settings:
+Auth0 management settings:
 
-- `AUTH0_DOMAIN`
-- `AUTH0_MGMT_AUDIENCE` when it does not follow `https://<AUTH0_DOMAIN>/api/v2/`
+- `AUTH0_MANAGEMENT_DOMAIN`
+- `AUTH0_MANAGEMENT_AUDIENCE` when it does not follow `https://<AUTH0_MANAGEMENT_DOMAIN>/api/v2/`
 
 Auth0 runtime settings:
 
@@ -324,10 +324,26 @@ The GitHub `dev` environment must provide these secrets:
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_AUTH0_SESSION_SECRET`
 - `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
-- `AUTH0_MGMT_CLIENT_ID`
-- `AUTH0_MGMT_CLIENT_SECRET`
+- `NUXT_AUTH0_MANAGEMENT_CLIENT_ID`
+- `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET`
 - `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
 - `NUXT_LUMA_API_KEY` when any dev event uses Luma sync
+
+The GitHub `bdd` environment must provide these variables:
+
+- `AUTH0_MANAGEMENT_DOMAIN`
+- `AUTH0_MANAGEMENT_AUDIENCE` when it does not follow `https://<AUTH0_MANAGEMENT_DOMAIN>/api/v2/`
+- `NUXT_AUTH0_DATABASE_CONNECTION_NAME`
+
+The GitHub `bdd` environment must provide these secrets:
+
+- `NUXT_AUTH0_DOMAIN`
+- `NUXT_AUTH0_CLIENT_ID`
+- `NUXT_AUTH0_CLIENT_SECRET`
+- `NUXT_AUTH0_SESSION_SECRET`
+- `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
+- `AUTH0_MGMT_CLIENT_ID`
+- `AUTH0_MGMT_CLIENT_SECRET`
 - `E2E_PLATFORM_ADMIN_EMAIL`
 - `E2E_PLATFORM_ADMIN_PASSWORD`
 - `E2E_EVENT_ADMIN_EMAIL`
@@ -450,10 +466,10 @@ The repository uses `Playwright` with `playwright-bdd`, so end-to-end coverage i
 Authenticated end-to-end coverage also requires the Auth0 tenant automation variables from `.env.example`, including:
 
 ```bash
-AUTH0_DOMAIN=your-tenant.auth0.com
+AUTH0_MANAGEMENT_DOMAIN=your-tenant.auth0.com
 AUTH0_MGMT_CLIENT_ID=your-management-client-id
 AUTH0_MGMT_CLIENT_SECRET=your-management-client-secret
-AUTH0_MGMT_AUDIENCE=https://your-tenant.auth0.com/api/v2/
+AUTH0_MANAGEMENT_AUDIENCE=https://your-tenant.auth0.com/api/v2/
 NUXT_AUTH0_DATABASE_CONNECTION_NAME=codex-events-e2e-users
 ```
 

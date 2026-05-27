@@ -79,7 +79,8 @@ Auth0 settings:
 
 | Variable | Value |
 | --- | --- |
-| `AUTH0_DOMAIN` | Auth0 tenant host, without `https://` |
+| `AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant host, without `https://` |
+| `AUTH0_MANAGEMENT_AUDIENCE` | Optional Auth0 Management API audience when it does not follow `https://<AUTH0_MANAGEMENT_DOMAIN>/api/v2/` |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name |
 
 Cloudflare Email Service runtime settings:
