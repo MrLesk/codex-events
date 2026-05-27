@@ -81,8 +81,8 @@ jobs:
       LUMA_WEBHOOK_URL: ${{ vars.DEPLOY_LUMA_WEBHOOK_URL }}
       # Auth0 runtime settings.
       NUXT_AUTH0_APP_BASE_URL: https://${{ vars.DEPLOY_DEV_BASE_DOMAIN }}
-      NUXT_AUTH0_MANAGEMENT_DOMAIN: ${{ vars.NUXT_AUTH0_MANAGEMENT_DOMAIN }}
-      NUXT_AUTH0_MANAGEMENT_AUDIENCE: ${{ vars.NUXT_AUTH0_MANAGEMENT_AUDIENCE }}
+      NUXT_AUTH0_MANAGEMENT_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
+      NUXT_AUTH0_MANAGEMENT_AUDIENCE: ${{ vars.AUTH0_MGMT_AUDIENCE }}
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME }}
       # Cloudflare Email Service and Queues runtime settings.
       NUXT_OUTBOUND_EMAIL_BINDING: ${{ vars.NUXT_OUTBOUND_EMAIL_BINDING }}
@@ -100,8 +100,8 @@ jobs:
       NUXT_AUTH0_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_CLIENT_SECRET }}
       NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}
       NUXT_AUTH0_AUDIENCE: ${{ secrets.NUXT_AUTH0_AUDIENCE }}
-      NUXT_AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.NUXT_AUTH0_MANAGEMENT_CLIENT_ID }}
-      NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET }}
+      NUXT_AUTH0_MANAGEMENT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
+      NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
       NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ${{ secrets.NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET }}
       NUXT_LUMA_API_KEY: ${{ secrets.NUXT_LUMA_API_KEY }}
       # Cloudflare credentials.
@@ -229,12 +229,12 @@ jobs:
       NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}
       NUXT_AUTH0_APP_BASE_URL: http://localhost:3000
       NUXT_AUTH0_AUDIENCE: ${{ secrets.NUXT_AUTH0_AUDIENCE }}
+      NUXT_AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME }}
       NUXT_DATABASE_BINDING: DB
-      AUTH0_TEST_DOMAIN: ${{ secrets.AUTH0_TEST_DOMAIN }}
-      AUTH0_TEST_MGMT_CLIENT_ID: ${{ secrets.AUTH0_TEST_MGMT_CLIENT_ID }}
-      AUTH0_TEST_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_TEST_MGMT_CLIENT_SECRET }}
-      AUTH0_TEST_MGMT_AUDIENCE: ${{ secrets.AUTH0_TEST_MGMT_AUDIENCE }}
-      AUTH0_TEST_CONNECTION_NAME: ${{ secrets.AUTH0_TEST_CONNECTION_NAME }}
+      AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
+      AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
+      AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
+      AUTH0_MGMT_AUDIENCE: ${{ vars.AUTH0_MGMT_AUDIENCE }}
       E2E_PLATFORM_ADMIN_EMAIL: ${{ secrets.E2E_PLATFORM_ADMIN_EMAIL }}
       E2E_PLATFORM_ADMIN_PASSWORD: ${{ secrets.E2E_PLATFORM_ADMIN_PASSWORD }}
       E2E_EVENT_ADMIN_EMAIL: ${{ secrets.E2E_EVENT_ADMIN_EMAIL }}
@@ -245,15 +245,54 @@ jobs:
       E2E_REGULAR_USER_PASSWORD: ${{ secrets.E2E_REGULAR_USER_PASSWORD }}
 
     steps:
+      - name: Check Auth0-backed BDD configuration
+        id: auth0_bdd_config
+        run: |
+          set -euo pipefail
+          missing=()
+          for name in \
+            NUXT_AUTH0_DOMAIN \
+            NUXT_AUTH0_CLIENT_ID \
+            NUXT_AUTH0_CLIENT_SECRET \
+            NUXT_AUTH0_SESSION_SECRET \
+            NUXT_AUTH0_DATABASE_CONNECTION_NAME \
+            AUTH0_DOMAIN \
+            AUTH0_MGMT_CLIENT_ID \
+            AUTH0_MGMT_CLIENT_SECRET \
+            E2E_PLATFORM_ADMIN_EMAIL \
+            E2E_PLATFORM_ADMIN_PASSWORD \
+            E2E_EVENT_ADMIN_EMAIL \
+            E2E_EVENT_ADMIN_PASSWORD \
+            E2E_JUDGE_EMAIL \
+            E2E_JUDGE_PASSWORD \
+            E2E_REGULAR_USER_EMAIL \
+            E2E_REGULAR_USER_PASSWORD
+          do
+            if [ -z "${!name:-}" ]; then
+              missing+=("$name")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'enabled=false\n' >> "$GITHUB_OUTPUT"
+            printf '::notice::Auth0-backed BDD suite skipped because required environment values are missing: %s.\n' "$(IFS=', '; echo "${missing[*]}")"
+            exit 0
+          fi
+
+          printf 'enabled=true\n' >> "$GITHUB_OUTPUT"
+
       - name: Checkout
+        if: ${{ steps.auth0_bdd_config.outputs.enabled == 'true' }}
         uses: actions/checkout@v6.0.2
 
       - name: Install bun
+        if: ${{ steps.auth0_bdd_config.outputs.enabled == 'true' }}
         uses: oven-sh/setup-bun@v2.2.0
         with:
           bun-version: 1.3.11
 
       - name: Cache Bun install cache
+        if: ${{ steps.auth0_bdd_config.outputs.enabled == 'true' }}
         uses: actions/cache@v5.0.4
         with:
           path: ~/.bun/install/cache

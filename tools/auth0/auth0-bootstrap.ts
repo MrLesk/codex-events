@@ -205,10 +205,10 @@ function getUsageMessage() {
   return `Usage: bun tools/auth0/auth0-bootstrap.ts <apply|check>
 
 Environment variables:
-- AUTH0_DOMAIN (fallback: AUTH0_TEST_DOMAIN)
-- AUTH0_MGMT_CLIENT_ID (fallback: AUTH0_TEST_MGMT_CLIENT_ID)
-- AUTH0_MGMT_CLIENT_SECRET (fallback: AUTH0_TEST_MGMT_CLIENT_SECRET)
-- AUTH0_MGMT_AUDIENCE (fallback: AUTH0_TEST_MGMT_AUDIENCE or https://<AUTH0_DOMAIN>/api/v2/)
+- AUTH0_DOMAIN
+- AUTH0_MGMT_CLIENT_ID
+- AUTH0_MGMT_CLIENT_SECRET
+- AUTH0_MGMT_AUDIENCE (default: https://<AUTH0_DOMAIN>/api/v2/)
 - AUTH0_APP_CLIENT_ID (fallback: NUXT_AUTH0_CLIENT_ID)
 - AUTH0_APP_DISPLAY_NAME (default: ${defaultAuth0AppDisplayName})
 - AUTH0_APP_BASE_URL (fallback: NUXT_AUTH0_APP_BASE_URL)
@@ -403,8 +403,8 @@ function resolveBddAppBaseUrl(environment: NodeJS.ProcessEnv, appBaseUrl: string
 
 export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
   const tenantDomain = requireConfigField(
-    firstDefinedValue(environment.AUTH0_DOMAIN, environment.AUTH0_TEST_DOMAIN),
-    'AUTH0_DOMAIN (or AUTH0_TEST_DOMAIN)'
+    environment.AUTH0_DOMAIN,
+    'AUTH0_DOMAIN'
   )
   const appBaseUrl = requireConfigField(
     firstDefinedValue(environment.AUTH0_APP_BASE_URL, environment.NUXT_AUTH0_APP_BASE_URL),
@@ -427,16 +427,15 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
   return {
     tenantDomain,
     managementClientId: requireConfigField(
-      firstDefinedValue(environment.AUTH0_MGMT_CLIENT_ID, environment.AUTH0_TEST_MGMT_CLIENT_ID),
-      'AUTH0_MGMT_CLIENT_ID (or AUTH0_TEST_MGMT_CLIENT_ID)'
+      environment.AUTH0_MGMT_CLIENT_ID,
+      'AUTH0_MGMT_CLIENT_ID'
     ),
     managementClientSecret: requireConfigField(
-      firstDefinedValue(environment.AUTH0_MGMT_CLIENT_SECRET, environment.AUTH0_TEST_MGMT_CLIENT_SECRET),
-      'AUTH0_MGMT_CLIENT_SECRET (or AUTH0_TEST_MGMT_CLIENT_SECRET)'
+      environment.AUTH0_MGMT_CLIENT_SECRET,
+      'AUTH0_MGMT_CLIENT_SECRET'
     ),
     managementAudience: firstDefinedValue(
       environment.AUTH0_MGMT_AUDIENCE,
-      environment.AUTH0_TEST_MGMT_AUDIENCE,
       defaultManagementAudience
     ),
     appClientId: requireConfigField(

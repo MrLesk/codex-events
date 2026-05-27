@@ -6,6 +6,11 @@ import { z } from 'zod'
 
 export const defaultLocalBddBaseUrl = 'http://localhost:3100'
 
+const optionalUrlEnvironmentValueSchema = z.preprocess(
+  value => typeof value === 'string' && value.trim() === '' ? undefined : value,
+  z.string().url().optional()
+)
+
 export const stablePersonaKeys = [
   'platform_admin',
   'event_admin',
@@ -45,11 +50,11 @@ const stablePersonaEnvironmentSchema = bddBaseUrlEnvironmentSchema.extend({
 
 const provisioningEnvironmentSchema = stablePersonaEnvironmentSchema.extend({
   NUXT_AUTH0_CLIENT_ID: z.string().min(1),
-  AUTH0_TEST_DOMAIN: z.string().min(1),
-  AUTH0_TEST_MGMT_CLIENT_ID: z.string().min(1),
-  AUTH0_TEST_MGMT_CLIENT_SECRET: z.string().min(1),
-  AUTH0_TEST_MGMT_AUDIENCE: z.string().url(),
-  AUTH0_TEST_CONNECTION_NAME: z.string().min(1)
+  NUXT_AUTH0_DATABASE_CONNECTION_NAME: z.string().min(1),
+  AUTH0_DOMAIN: z.string().min(1),
+  AUTH0_MGMT_CLIENT_ID: z.string().min(1),
+  AUTH0_MGMT_CLIENT_SECRET: z.string().min(1),
+  AUTH0_MGMT_AUDIENCE: optionalUrlEnvironmentValueSchema
 })
 
 export type StablePersonaEnvironment = z.infer<typeof stablePersonaEnvironmentSchema>
@@ -107,8 +112,8 @@ export function getBaseUrl(environment: NodeJS.ProcessEnv = process.env) {
   return config.NUXT_AUTH0_BDD_APP_BASE_URL ?? defaultLocalBddBaseUrl
 }
 
-export function getAuth0TestConnectionName(environment: NodeJS.ProcessEnv = process.env) {
-  return loadProvisioningEnvironment(environment).AUTH0_TEST_CONNECTION_NAME
+export function getAuth0ConnectionName(environment: NodeJS.ProcessEnv = process.env) {
+  return loadProvisioningEnvironment(environment).NUXT_AUTH0_DATABASE_CONNECTION_NAME
 }
 
 export function getAuth0ClientId(environment: NodeJS.ProcessEnv = process.env) {

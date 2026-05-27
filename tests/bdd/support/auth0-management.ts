@@ -19,6 +19,10 @@ function normalizeDomain(domain: string) {
     : `https://${domain}`
 }
 
+function resolveManagementAudience(config: ReturnType<typeof loadProvisioningEnvironment>) {
+  return config.AUTH0_MGMT_AUDIENCE ?? `${normalizeDomain(config.AUTH0_DOMAIN)}/api/v2/`
+}
+
 function sleep(milliseconds: number) {
   return new Promise(resolve => setTimeout(resolve, milliseconds))
 }
@@ -35,16 +39,16 @@ function resolveRetryDelay(response: Response, attempt: number) {
 
 async function getManagementAccessToken(environment: NodeJS.ProcessEnv = process.env) {
   const config = loadProvisioningEnvironment(environment)
-  const response = await fetch(`${normalizeDomain(config.AUTH0_TEST_DOMAIN)}/oauth/token`, {
+  const response = await fetch(`${normalizeDomain(config.AUTH0_DOMAIN)}/oauth/token`, {
     method: 'POST',
     headers: {
       'content-type': 'application/json'
     },
     body: JSON.stringify({
       grant_type: 'client_credentials',
-      client_id: config.AUTH0_TEST_MGMT_CLIENT_ID,
-      client_secret: config.AUTH0_TEST_MGMT_CLIENT_SECRET,
-      audience: config.AUTH0_TEST_MGMT_AUDIENCE
+      client_id: config.AUTH0_MGMT_CLIENT_ID,
+      client_secret: config.AUTH0_MGMT_CLIENT_SECRET,
+      audience: resolveManagementAudience(config)
     })
   })
 
@@ -69,7 +73,7 @@ async function auth0ManagementRequest(
 ) {
   const config = loadProvisioningEnvironment(environment)
   for (let attempt = 0; attempt < 5; attempt++) {
-    const response = await fetch(`${normalizeDomain(config.AUTH0_TEST_DOMAIN)}${path}`, {
+    const response = await fetch(`${normalizeDomain(config.AUTH0_DOMAIN)}${path}`, {
       ...init,
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -109,7 +113,7 @@ async function clearUserBlocks(userId: string, environment: NodeJS.ProcessEnv, a
   const basePath = `/api/v2/user-blocks/${encodeURIComponent(userId)}`
   const config = loadProvisioningEnvironment(environment)
   for (let attempt = 0; attempt < 5; attempt++) {
-    const response = await fetch(`${normalizeDomain(config.AUTH0_TEST_DOMAIN)}${basePath}`, {
+    const response = await fetch(`${normalizeDomain(config.AUTH0_DOMAIN)}${basePath}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -138,14 +142,14 @@ async function createUser(
 ) {
   const config = loadProvisioningEnvironment(environment)
 
-  if (!config.AUTH0_TEST_CONNECTION_NAME) {
-    throw new Error('AUTH0_TEST_CONNECTION_NAME is required to create missing Auth0 personas.')
+  if (!config.NUXT_AUTH0_DATABASE_CONNECTION_NAME) {
+    throw new Error('NUXT_AUTH0_DATABASE_CONNECTION_NAME is required to create missing Auth0 personas.')
   }
 
   const response = await auth0ManagementRequest('/api/v2/users', {
     method: 'POST',
     body: JSON.stringify({
-      connection: config.AUTH0_TEST_CONNECTION_NAME,
+      connection: config.NUXT_AUTH0_DATABASE_CONNECTION_NAME,
       email: persona.email,
       password: persona.password,
       name: persona.displayName,
@@ -171,7 +175,7 @@ function userMatchesPersona(
     && user.nickname === persona.nickname
     && user.blocked === false
     && Boolean(user.last_password_reset)
-    && user.identities?.[0]?.connection === config.AUTH0_TEST_CONNECTION_NAME
+    && user.identities?.[0]?.connection === config.NUXT_AUTH0_DATABASE_CONNECTION_NAME
 }
 
 async function updateUserProfile(
@@ -200,10 +204,10 @@ async function updateUserPassword(
   accessToken: string
 ) {
   const config = loadProvisioningEnvironment(environment)
-  const resolvedConnectionName = connectionName ?? config.AUTH0_TEST_CONNECTION_NAME
+  const resolvedConnectionName = connectionName ?? config.NUXT_AUTH0_DATABASE_CONNECTION_NAME
 
   if (!resolvedConnectionName) {
-    throw new Error('AUTH0_TEST_CONNECTION_NAME is required when an existing Auth0 persona does not expose a connection name.')
+    throw new Error('NUXT_AUTH0_DATABASE_CONNECTION_NAME is required when an existing Auth0 persona does not expose a connection name.')
   }
 
   const response = await auth0ManagementRequest(`/api/v2/users/${encodeURIComponent(userId)}`, {

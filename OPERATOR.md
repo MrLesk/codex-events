@@ -75,11 +75,11 @@ Cloudflare resource metadata:
 | `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue name |
 | `DEPLOY_CF_LUMA_SYNC_QUEUE` | Luma sync queue name |
 
-Auth0 runtime settings:
+Auth0 settings:
 
 | Variable | Value |
 | --- | --- |
-| `NUXT_AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant host, without `https://` |
+| `AUTH0_DOMAIN` | Auth0 tenant host, without `https://` |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name |
 
 Cloudflare Email Service runtime settings:

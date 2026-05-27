@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   defaultLocalBddBaseUrl,
   getAuth0ClientId,
-  getAuth0TestConnectionName,
+  getAuth0ConnectionName,
   getBaseUrl,
   getStablePersonas,
   loadBddBaseUrlEnvironment,
@@ -60,16 +60,16 @@ describe('stable Auth0 personas', () => {
     ])
   })
 
-  test('requires provisioning inputs for Auth0 and the Auth0 test connection', () => {
+  test('requires provisioning inputs for Auth0 and the Auth0 connection', () => {
     expect(() => loadProvisioningEnvironment(baseEnvironment)).toThrow()
     expect(() => loadProvisioningEnvironment({
       ...baseEnvironment,
       NUXT_AUTH0_CLIENT_ID: 'nuxt-client-id',
-      AUTH0_TEST_DOMAIN: 'example.us.auth0.com',
-      AUTH0_TEST_MGMT_CLIENT_ID: 'client-id',
-      AUTH0_TEST_MGMT_CLIENT_SECRET: 'client-secret',
-      AUTH0_TEST_MGMT_AUDIENCE: 'https://example.us.auth0.com/api/v2/',
-      AUTH0_TEST_CONNECTION_NAME: 'codex-events-e2e-users'
+      NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'codex-events-e2e-users',
+      AUTH0_DOMAIN: 'example.us.auth0.com',
+      AUTH0_MGMT_CLIENT_ID: 'client-id',
+      AUTH0_MGMT_CLIENT_SECRET: 'client-secret',
+      AUTH0_MGMT_AUDIENCE: ''
     })).not.toThrow()
   })
 
@@ -77,15 +77,15 @@ describe('stable Auth0 personas', () => {
     const environment = {
       ...baseEnvironment,
       NUXT_AUTH0_CLIENT_ID: 'nuxt-client-id',
-      AUTH0_TEST_DOMAIN: 'example.us.auth0.com',
-      AUTH0_TEST_MGMT_CLIENT_ID: 'client-id',
-      AUTH0_TEST_MGMT_CLIENT_SECRET: 'client-secret',
-      AUTH0_TEST_MGMT_AUDIENCE: 'https://example.us.auth0.com/api/v2/',
-      AUTH0_TEST_CONNECTION_NAME: 'codex-events-e2e-users'
+      NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'codex-events-e2e-users',
+      AUTH0_DOMAIN: 'example.us.auth0.com',
+      AUTH0_MGMT_CLIENT_ID: 'client-id',
+      AUTH0_MGMT_CLIENT_SECRET: 'client-secret',
+      AUTH0_MGMT_AUDIENCE: 'https://example.us.auth0.com/api/v2/'
     }
 
     expect(getAuth0ClientId(environment)).toBe('nuxt-client-id')
-    expect(getAuth0TestConnectionName(environment)).toBe('codex-events-e2e-users')
+    expect(getAuth0ConnectionName(environment)).toBe('codex-events-e2e-users')
   })
 
   test('writes storage state under the BDD auth artifact directory', () => {

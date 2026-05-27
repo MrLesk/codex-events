@@ -5,11 +5,11 @@ import { ensureStableAuth0Personas } from '../../../bdd/support/auth0-management
 const environment = {
   NUXT_AUTH0_APP_BASE_URL: 'http://localhost:3000',
   NUXT_AUTH0_CLIENT_ID: 'nuxt-client-id',
-  AUTH0_TEST_DOMAIN: 'example.us.auth0.com',
-  AUTH0_TEST_MGMT_CLIENT_ID: 'client-id',
-  AUTH0_TEST_MGMT_CLIENT_SECRET: 'client-secret',
-  AUTH0_TEST_MGMT_AUDIENCE: 'https://example.us.auth0.com/api/v2/',
-  AUTH0_TEST_CONNECTION_NAME: 'Username-Password-Authentication',
+  NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
+  AUTH0_DOMAIN: 'example.us.auth0.com',
+  AUTH0_MGMT_CLIENT_ID: 'client-id',
+  AUTH0_MGMT_CLIENT_SECRET: 'client-secret',
+  AUTH0_MGMT_AUDIENCE: 'https://example.us.auth0.com/api/v2/',
   E2E_PLATFORM_ADMIN_EMAIL: 'platform-admin@example.com',
   E2E_PLATFORM_ADMIN_PASSWORD: 'password-1',
   E2E_EVENT_ADMIN_EMAIL: 'event-admin@example.com',
@@ -79,7 +79,7 @@ describe('stable Auth0 persona reconciliation', () => {
       fetchMock.mockResolvedValueOnce(jsonResponse([{
         user_id: `auth0|${user.key}`,
         email: user.email,
-        identities: [{ connection: environment.AUTH0_TEST_CONNECTION_NAME }]
+        identities: [{ connection: environment.NUXT_AUTH0_DATABASE_CONNECTION_NAME }]
       }]))
       fetchMock.mockResolvedValueOnce(jsonResponse({
         user_id: `auth0|${user.key}`,
@@ -130,7 +130,7 @@ describe('stable Auth0 persona reconciliation', () => {
         blocked: false
       })
       expect(JSON.parse(String(passwordPatch?.body))).toEqual({
-        connection: environment.AUTH0_TEST_CONNECTION_NAME,
+        connection: environment.NUXT_AUTH0_DATABASE_CONNECTION_NAME,
         password: user.password
       })
       expect(String(blockClear)).toContain(`/api/v2/user-blocks/${encodeURIComponent(userId)}`)

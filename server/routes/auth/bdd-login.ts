@@ -1,12 +1,12 @@
 export default defineEventHandler(async (event) => {
   const auth0 = useAuth0(event)
   const runtimeConfig = useRuntimeConfig(event)
-  const connection = process.env.AUTH0_TEST_CONNECTION_NAME
+  const connection = runtimeConfig.auth0.databaseConnectionName
 
   if (!connection) {
     throw createError({
       status: 500,
-      statusText: 'AUTH0_TEST_CONNECTION_NAME is required for BDD Auth0 login.'
+      statusText: 'NUXT_AUTH0_DATABASE_CONNECTION_NAME is required for BDD Auth0 login.'
     })
   }
 
