@@ -162,7 +162,7 @@ describe('deploy Queue consumer reconciliation', () => {
 
   test('continues when the Worker consumer is already missing', async () => {
     const { calls, runner } = createRunner([
-      new Error('Consumer not found'),
+      new Error('No worker consumer \'dev-codex-events\' exists for queue dev-codex-events-application-review-email-delivery'),
       '',
       new Error('Queue does not have a consumer'),
       '',

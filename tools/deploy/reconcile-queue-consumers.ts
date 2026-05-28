@@ -51,7 +51,7 @@ async function runCommand(command: string, args: string[]): Promise<CommandResul
 
 function isMissingConsumerError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error)
-  return /not found|does not exist|doesn't exist|does not have a consumer|no consumer/i.test(message)
+  return /not found|does not exist|doesn't exist|does not have a consumer|no consumer|no worker consumer\b.*\bexists/i.test(message)
 }
 
 function buildRemoveConsumerArgs(queue: string, workerName: string, configPath: string) {

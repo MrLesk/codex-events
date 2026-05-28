@@ -5,7 +5,7 @@ status: Done
 assignee:
   - Codex
 created_date: '2026-05-28 21:38'
-updated_date: '2026-05-28 21:43'
+updated_date: '2026-05-28 21:49'
 labels:
   - deploy
   - cloudflare
@@ -54,6 +54,10 @@ Make queue consumer setup idempotent for remote deploys. Wrangler deploy current
 
 <!-- SECTION:NOTES:BEGIN -->
 Validation passed locally: `bunx vitest run tests/unit/tools/deploy/generate-wrangler-config.test.ts tests/unit/tools/deploy/reconcile-queue-consumers.test.ts`, `git diff --check`, `bun run lint`, `bun run typecheck`, and `bun run test:unit`.
+
+The pushed CI run `26604046951` reached `Reconcile shared dev Queue consumers` and failed because Wrangler reports a missing consumer as `No worker consumer 'dev-codex-events' exists for queue ...`; the reconcile helper needs to treat that wording as a missing-consumer response.
+
+Updated the missing-consumer matcher to include Wrangler's `No worker consumer ... exists for queue ...` wording and added that exact shape to the reconcile unit test. Validation passed after the update: `git diff --check`, `bun run lint`, `bun run typecheck`, and `bun run test:unit`.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
@@ -63,14 +67,18 @@ Summary:
 - Removed Queue consumers from generated Wrangler deploy config so `wrangler deploy` no longer tries to create them.
 - Added a post-deploy Queue consumer reconciliation helper and wired dev/production workflows to run it after Worker deploy.
 - Updated operator and development docs with the inactive-consumer caveat and required Wrangler consumer commands.
-- Added focused unit coverage for generated consumer settings and reconcile remove/add behavior.
+- Added focused unit coverage for generated consumer settings and reconcile remove/add behavior, including Wrangler's `No worker consumer ... exists` missing-consumer response.
 
 Tests:
 - `bunx vitest run tests/unit/tools/deploy/generate-wrangler-config.test.ts tests/unit/tools/deploy/reconcile-queue-consumers.test.ts`
+- `bunx vitest run tests/unit/tools/deploy/reconcile-queue-consumers.test.ts`
 - `git diff --check`
 - `bun run lint`
 - `bun run typecheck`
 - `bun run test:unit`
+
+Remote CI:
+- Run `26604046951` confirmed the Worker deploy now succeeds and the remaining failure was the missing-consumer wording fixed in the follow-up commit.
 
 Risks and follow-ups:
 - The reconcile step removes the configured Worker consumer. If a queue is occupied by a different Worker consumer, Cloudflare will still reject the add and an operator should remove that conflicting consumer intentionally.
