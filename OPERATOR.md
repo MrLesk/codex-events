@@ -51,7 +51,28 @@ Save these values:
 | Cloudflare API token | Token value |
 
 The release workflow creates the configured Cloudflare Queues if they do not already exist.
-The Cloudflare API token must be able to deploy Workers, update Worker secrets and routes, manage D1, R2, and Queues, and edit DNS records in the target zone.
+
+Create a custom Cloudflare API token with these permissions. Add `Read` plus the write-capable access level, `Edit` or `Write`, where both are listed; Cloudflare edit access does not consistently include read access.
+
+| Scope | Resource | Access |
+| --- | --- | --- |
+| Account | Workers Scripts | Read |
+| Account | Workers Scripts | Edit |
+| Account | D1 | Read |
+| Account | D1 | Edit |
+| Account | Workers R2 Storage | Read |
+| Account | Workers R2 Storage | Edit |
+| Account | Queues | Read |
+| Account | Queues | Edit |
+| Account | Cloudflare Images | Read |
+| Account | Cloudflare Images | Edit |
+| Zone | Zone | Read |
+| Zone | Workers Routes | Read |
+| Zone | Workers Routes | Edit |
+| Zone | DNS | Read |
+| Zone | DNS | Edit |
+
+Scope the account permissions to the Cloudflare account that owns the Worker, D1 database, R2 buckets, Images binding, and Queues. Scope the zone permissions to `DEPLOY_CF_ZONE_NAME`.
 
 ## 2. Create Auth0 Resources
 

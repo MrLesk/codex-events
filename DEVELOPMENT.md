@@ -237,7 +237,7 @@ Each remote environment must provide:
 
 The existing app runtime variables remain the override interface for Auth0, outbound email, queue binding names, retry delays, and optional Luma access. The generator copies those values into the generated Wrangler `vars` block and fails fast when a required deploy value is missing.
 
-The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, and `wrangler deploy`.
+The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, and `wrangler deploy`. Configure the token with the Cloudflare account and zone permissions listed in `OPERATOR.md`; include both read and edit/write access where both are listed.
 
 For manual deployment, export the target environment values and run:
 
@@ -368,10 +368,7 @@ The GitHub `production` environment must provide these secrets before a release 
 
 The generated Wrangler config supplies deploy-time Cloudflare bindings and non-secret runtime vars. GitHub workflows upload Worker secrets from the relevant GitHub environment plus the generated `NUXT_LUMA_WEBHOOK_SECRET` when Luma reconciliation runs. GitHub environments do not need a stored `NUXT_LUMA_WEBHOOK_SECRET`.
 
-Cloudflare tokens used by production Auth0 custom-domain automation also need:
-
-- zone permission `Zone Zone Read` on `DEPLOY_CF_ZONE_NAME`
-- zone permission `DNS Write` on `DEPLOY_CF_ZONE_NAME`
+Cloudflare tokens used by production Auth0 custom-domain automation also need the zone permissions listed in `OPERATOR.md` for `DEPLOY_CF_ZONE_NAME`.
 
 The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` currently needs these Auth0 Management API scopes:
 
