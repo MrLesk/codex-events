@@ -7,12 +7,19 @@ export const deployTargets = ['dev', 'production'] as const
 
 export type DeployTarget = (typeof deployTargets)[number]
 
-type EnvironmentValues = Record<string, string | undefined>
+export type EnvironmentValues = Record<string, string | undefined>
 
 interface QueueConfig {
   binding: string
   queue: string
   retryDelaySeconds: number
+}
+
+interface ResolvedDeployResourceNames {
+  environmentName: string
+  resourcePrefix: string
+  resourceBaseName: string
+  d1DatabaseName: string
 }
 
 interface ResolvedDeployConfigInput {
@@ -256,13 +263,32 @@ export function getGeneratedWranglerConfigPath(target: DeployTarget) {
   return outputPathsByTarget[target]
 }
 
+export function resolveDeployResourceNames(
+  target: DeployTarget,
+  environment: EnvironmentValues
+): ResolvedDeployResourceNames {
+  const environmentName = resolveDeployEnvironmentName(target, environment)
+  const resourcePrefix = resolveDeployResourcePrefix(environment)
+  const resourceBaseName = buildDefaultResourceName(environmentName, resourcePrefix)
+
+  return {
+    environmentName,
+    resourcePrefix,
+    resourceBaseName,
+    d1DatabaseName: resolveResourceName(environment, 'DEPLOY_CF_D1_DATABASE_NAME', resourceBaseName)
+  }
+}
+
 export function resolveDeployConfigInput(
   target: DeployTarget,
   environment: EnvironmentValues
 ): ResolvedDeployConfigInput {
-  const environmentName = resolveDeployEnvironmentName(target, environment)
-  const resourcePrefix = resolveDeployResourcePrefix(environment)
-  const resourceBaseName = buildDefaultResourceName(environmentName, resourcePrefix)
+  const {
+    environmentName,
+    resourcePrefix,
+    resourceBaseName,
+    d1DatabaseName
+  } = resolveDeployResourceNames(target, environment)
   const baseDomain = normalizeHostname(
     readRequiredEnvironmentValue(environment, 'DEPLOY_BASE_DOMAIN'),
     'DEPLOY_BASE_DOMAIN'
@@ -291,8 +317,8 @@ export function resolveDeployConfigInput(
     lumaWebhookUrl,
     zoneName: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_ZONE_NAME'),
     workerName: resolveResourceName(environment, 'DEPLOY_CF_WORKER_NAME', resourceBaseName),
-    d1DatabaseName: resolveResourceName(environment, 'DEPLOY_CF_D1_DATABASE_NAME', resourceBaseName),
-    d1DatabaseId: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_D1_DATABASE_ID'),
+    d1DatabaseName,
+    d1DatabaseId: readRequiredEnvironmentValue(environment, 'DEPLOY_RESOLVED_D1_DATABASE_ID'),
     profileIconsBucket: resolveResourceName(environment, 'DEPLOY_CF_PROFILE_ICONS_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'profile-icons')),
     eventImagesBucket: resolveResourceName(environment, 'DEPLOY_CF_EVENT_IMAGES_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'event-images')),
     outboundEmailBinding: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_BINDING') || 'EMAIL',

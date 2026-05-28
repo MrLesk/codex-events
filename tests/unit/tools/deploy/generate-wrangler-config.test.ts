@@ -3,14 +3,15 @@ import { describe, expect, test } from 'vitest'
 import {
   buildDeployWranglerConfig,
   parseDeployTarget,
-  resolveDeployConfigInput
+  resolveDeployConfigInput,
+  resolveDeployResourceNames
 } from '../../../../tools/deploy/generate-wrangler-config'
 
 function createEnvironment(overrides: Record<string, string | undefined> = {}) {
   return {
     DEPLOY_BASE_DOMAIN: 'events.example.com',
     DEPLOY_CF_ZONE_NAME: 'example.com',
-    DEPLOY_CF_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
+    DEPLOY_RESOLVED_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
     DEPLOY_AUTH0_CUSTOM_DOMAIN: 'auth.example.com',
     NUXT_OUTBOUND_EMAIL_FROM_EMAIL: 'notifications@example.com',
     NUXT_OUTBOUND_EMAIL_REPLY_TO: 'support@example.com',
@@ -101,8 +102,18 @@ describe('deploy Wrangler config generator', () => {
     }))).toThrow('DEPLOY_BASE_DOMAIN is required')
 
     expect(() => resolveDeployConfigInput('production', createEnvironment({
-      DEPLOY_CF_D1_DATABASE_ID: ''
-    }))).toThrow('DEPLOY_CF_D1_DATABASE_ID is required')
+      DEPLOY_RESOLVED_D1_DATABASE_ID: ''
+    }))).toThrow('DEPLOY_RESOLVED_D1_DATABASE_ID is required')
+  })
+
+  test('resolves the D1 database name without requiring a database ID', () => {
+    expect(resolveDeployResourceNames('dev', {
+      DEPLOY_RESOLVED_D1_DATABASE_ID: ''
+    }).d1DatabaseName).toBe('dev-codex-events')
+
+    expect(resolveDeployResourceNames('production', {
+      DEPLOY_CF_D1_DATABASE_NAME: 'existing-database'
+    }).d1DatabaseName).toBe('existing-database')
   })
 
   test('honors explicit domain and resource overrides', () => {

@@ -211,7 +211,7 @@ For the selected target, the generator derives:
 
 `DEPLOY_ENV_NAME` defaults to `dev` for the dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Production resources use the resource prefix directly; other environments use `<DEPLOY_ENV_NAME>-<DEPLOY_RESOURCE_PREFIX>`.
 
-Keep `DEPLOY_CF_ZONE_NAME`, `DEPLOY_CF_D1_DATABASE_ID`, and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the Cloudflare DNS zone, D1 UUID, and Auth0 login hostname cannot be inferred safely from a deployment hostname. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
+Keep `DEPLOY_CF_ZONE_NAME` and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the Cloudflare DNS zone and Auth0 login hostname cannot be inferred safely from a deployment hostname. The deploy workflow creates or finds the D1 database by its resolved name, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
 
 - `DEPLOY_CF_WORKER_NAME`
 - `DEPLOY_CF_D1_DATABASE_NAME`
@@ -230,14 +230,13 @@ Each remote environment must provide:
 
 - `DEPLOY_BASE_DOMAIN`
 - `DEPLOY_CF_ZONE_NAME`
-- `DEPLOY_CF_D1_DATABASE_ID`
 - `DEPLOY_AUTH0_CUSTOM_DOMAIN`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
 - `NUXT_OUTBOUND_EMAIL_REPLY_TO`
 
 The existing app runtime variables remain the override interface for Auth0, outbound email, queue binding names, retry delays, and optional Luma access. The generator copies those values into the generated Wrangler `vars` block and fails fast when a required deploy value is missing.
 
-The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, and `wrangler deploy`. Configure the token with the Cloudflare account and zone permissions listed in `OPERATOR.md`; include both read and edit/write access where both are listed.
+The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler d1 list`, `wrangler d1 create`, `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, and `wrangler deploy`. Configure the token with the Cloudflare account and zone permissions listed in `OPERATOR.md`; include both read and edit/write access where both are listed.
 
 For manual deployment, export the target environment values and run:
 
@@ -273,7 +272,6 @@ Required deployment settings:
 
 - `DEPLOY_BASE_DOMAIN`
 - `DEPLOY_CF_ZONE_NAME`
-- `DEPLOY_CF_D1_DATABASE_ID`
 - `DEPLOY_AUTH0_CUSTOM_DOMAIN`
 - `AUTH0_MANAGEMENT_DOMAIN`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`

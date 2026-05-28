@@ -28,7 +28,7 @@ Do not create a GitHub variable named `AUTH0_DOMAIN`. This project uses `DEPLOY_
 In the Cloudflare account that will host the platform:
 
 1. Add the domain to Cloudflare DNS and wait until the zone is active.
-2. Create a D1 database.
+2. Choose the D1 database name. The deployment workflow creates the database if it does not already exist.
 3. Create an R2 bucket for profile icons.
 4. Create an R2 bucket for event images.
 5. Connect the event-images R2 bucket to a public custom domain when the deployment serves public gallery images directly from R2.
@@ -41,8 +41,7 @@ Save these values:
 | --- | --- |
 | Cloudflare account ID | `0123456789abcdef0123456789abcdef` |
 | DNS zone name | `example.com` |
-| D1 database name | `codex-events-production` |
-| D1 database ID | Cloudflare D1 database UUID |
+| D1 database name | `codex-events` |
 | Profile-icons R2 bucket name | `codex-events-profile-icons` |
 | Event-images R2 bucket name | `codex-events-event-images` |
 | Event-images public custom domain | `media.example.com` |
@@ -174,7 +173,6 @@ Required Cloudflare metadata:
 | Variable | Value |
 | --- | --- |
 | `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name |
-| `DEPLOY_CF_D1_DATABASE_ID` | D1 database ID |
 
 Deployment defaults:
 
@@ -188,7 +186,7 @@ Optional Cloudflare resource name overrides:
 | Variable | Value |
 | --- | --- |
 | `DEPLOY_CF_WORKER_NAME` | Cloudflare Worker name |
-| `DEPLOY_CF_D1_DATABASE_NAME` | D1 database name |
+| `DEPLOY_CF_D1_DATABASE_NAME` | D1 database name. The workflow creates this database if it does not already exist |
 | `DEPLOY_CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket name |
 | `DEPLOY_CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket name |
 | `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name |
