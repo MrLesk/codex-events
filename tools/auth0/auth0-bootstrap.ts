@@ -117,6 +117,7 @@ const accountLinkClaimNamespace = 'https://codex-events/account_linking'
 const defaultActionName = 'codex-post-login'
 const defaultActionRuntime = 'node22'
 const defaultAuth0AppDisplayName = 'Codex Events'
+const defaultAuth0DatabaseConnectionName = 'Username-Password-Authentication'
 const defaultBrandingPrimaryColor = '#030213'
 const defaultBrandingPageBackgroundColor = '#f3f3f5'
 const defaultBrandingWordmarkPath = '/auth0/codex-events-wordmark.svg'
@@ -446,7 +447,7 @@ Environment variables:
 - AUTH0_BDD_APP_BASE_URL (defaults to ${defaultLocalBddAppBaseUrl} for localhost app configs)
 - AUTH0_LOGIN_URI (required when AUTH0_APP_BASE_URL is not https; must be https)
 - AUTH0_CUSTOM_DOMAIN
-- AUTH0_DATABASE_CONNECTION_NAME
+- AUTH0_DATABASE_CONNECTION_NAME (default: ${defaultAuth0DatabaseConnectionName})
 - AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET
 - AUTH0_TERMS_URL (default: <AUTH0_APP_BASE_URL>/terms-and-conditions)
 - AUTH0_PRIVACY_URL (default: <AUTH0_APP_BASE_URL>/privacy-policy)
@@ -675,10 +676,7 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     appDisplayName: firstDefinedValue(environment.AUTH0_APP_DISPLAY_NAME, defaultAuth0AppDisplayName),
     appBaseUrl: normalizedAppBaseUrl,
     bddAppBaseUrl: normalizedBddAppBaseUrl,
-    databaseConnectionName: requireConfigField(
-      environment.AUTH0_DATABASE_CONNECTION_NAME?.trim() ?? '',
-      'AUTH0_DATABASE_CONNECTION_NAME'
-    ),
+    databaseConnectionName: firstDefinedValue(environment.AUTH0_DATABASE_CONNECTION_NAME, defaultAuth0DatabaseConnectionName),
     accountLinkChallengeSecret: requireConfigField(
       environment.AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET?.trim() ?? '',
       'AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET'

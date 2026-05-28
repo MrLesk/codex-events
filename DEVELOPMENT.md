@@ -79,7 +79,7 @@ These commands enforce required Auth0 tenant configuration:
 The checked-in Auth0 bootstrap automation does not currently create or manage the GitHub social connection. Configure that connection in Auth0 separately when you want `/auth/login/github` enabled in a deployment.
 If a tenant lacks the paid Universal Login page-template feature, the bootstrap now warns and skips page-template-dependent login prompt customization instead of failing outright. Custom domains, branding, client URLs, and Actions remain required and still fail on drift or API errors.
 
-The script reads explicit `AUTH0_*` variables only: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_APP_CLIENT_ID`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, `AUTH0_DATABASE_CONNECTION_NAME`, and `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` are required.
+The script reads explicit `AUTH0_*` variables only: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_APP_CLIENT_ID`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, and `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` are required. `AUTH0_DATABASE_CONNECTION_NAME` defaults to `Username-Password-Authentication`.
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
 When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-events-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 
@@ -139,7 +139,7 @@ Event background and banner uploads use a dedicated Cloudflare R2 binding at run
 
 - `NUXT_EVENT_IMAGES_BINDING` should match the R2 binding used for event background and banner image objects. The canonical default is `EVENT_IMAGES`.
 - local development uses the repository `wrangler.jsonc` R2 bucket binding for event image object storage.
-- `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` should be the HTTPS custom-domain base URL for public event gallery images served directly from R2 in deployed environments. Generated remote deployment config derives this from the selected base domain unless `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` is set.
+- `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` should be the HTTPS custom-domain base URL for public event gallery images served directly from R2 in deployed environments. Generated remote deployment config leaves this empty unless `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` is set.
 - local `localhost` development can leave `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` unset to keep public gallery images on the local Worker routes.
 
 Protected event photo previews use a Cloudflare Images binding at runtime:
@@ -200,36 +200,42 @@ The generated files are written under `.wrangler/generated/` and are used by:
 - `bun run deploy:dev`
 - `bun run deploy:production`
 
-Deployment hostnames are derived from per-environment base domains:
-
-- dev uses `DEPLOY_DEV_BASE_DOMAIN`
-- production uses `DEPLOY_PRODUCTION_BASE_DOMAIN`
+Each environment provides its own `DEPLOY_BASE_DOMAIN`. The generator never derives `dev.*`, `prod.*`, or any other hostname from an environment name.
 
 For the selected target, the generator derives:
 
 - application URL: `https://<base-domain>`
 - Cloudflare route pattern: `<base-domain>`
-- event image CDN URL: `https://cdn.<base-domain>`
 - Luma webhook URL: `https://<base-domain>/api/public/luma/webhooks`
+- resource names from `DEPLOY_ENV_NAME` and `DEPLOY_RESOURCE_PREFIX`
 
-Keep `DEPLOY_CF_ZONE_NAME` and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the Cloudflare DNS zone and Auth0 login hostname cannot always be inferred from a deployment hostname. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. Use these override variables only when the default derived hostnames are not correct for an environment:
+`DEPLOY_ENV_NAME` defaults to `dev` for the dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Production resources use the resource prefix directly; other environments use `<DEPLOY_ENV_NAME>-<DEPLOY_RESOURCE_PREFIX>`.
 
-- `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL`
-- `DEPLOY_LUMA_WEBHOOK_URL`
+Keep `DEPLOY_CF_ZONE_NAME`, `DEPLOY_CF_D1_DATABASE_ID`, and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the Cloudflare DNS zone, D1 UUID, and Auth0 login hostname cannot be inferred safely from a deployment hostname. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
 
-Each remote environment must provide Cloudflare resource metadata:
-
-- `DEPLOY_CF_ZONE_NAME`
 - `DEPLOY_CF_WORKER_NAME`
 - `DEPLOY_CF_D1_DATABASE_NAME`
-- `DEPLOY_CF_D1_DATABASE_ID`
 - `DEPLOY_CF_PROFILE_ICONS_BUCKET`
 - `DEPLOY_CF_EVENT_IMAGES_BUCKET`
 - `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE`
 - `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE`
 - `DEPLOY_CF_LUMA_SYNC_QUEUE`
 
-The existing app runtime variables remain the interface for Auth0, outbound email, queue binding names, retry delays, and optional Luma access. The generator copies those values into the generated Wrangler `vars` block and fails fast when a required deploy value is missing.
+These URL variables are optional overrides:
+
+- `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL`
+- `DEPLOY_LUMA_WEBHOOK_URL`
+
+Each remote environment must provide:
+
+- `DEPLOY_BASE_DOMAIN`
+- `DEPLOY_CF_ZONE_NAME`
+- `DEPLOY_CF_D1_DATABASE_ID`
+- `DEPLOY_AUTH0_CUSTOM_DOMAIN`
+- `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
+- `NUXT_OUTBOUND_EMAIL_REPLY_TO`
+
+The existing app runtime variables remain the override interface for Auth0, outbound email, queue binding names, retry delays, and optional Luma access. The generator copies those values into the generated Wrangler `vars` block and fails fast when a required deploy value is missing.
 
 The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, and `wrangler deploy`.
 
@@ -259,21 +265,26 @@ bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webh
 
 Pushes to `main` publish the dev environment through `.github/workflows/ci.yml` after the fast CI checks pass. Production publishes from GitHub Releases through `.github/workflows/release-production.yml`.
 
-The GitHub `dev` and `production` environments should store deployment metadata as environment variables and credentials as secrets. Push-based dev deployment is optional for forks and unconfigured environments: if `DEPLOY_DEV_BASE_DOMAIN` is empty, the deploy job exits cleanly before reading the rest of the deployment metadata.
+The GitHub `dev` and `production` environments should store only environment-local deployment metadata as variables and credentials as secrets. Push-based dev deployment is optional for forks and unconfigured environments: if `DEPLOY_BASE_DOMAIN` is empty, the deploy job exits cleanly before reading the rest of the deployment metadata.
 
 Use these environment variable groups:
 
-App hostnames:
+Required deployment settings:
 
-- `DEPLOY_DEV_BASE_DOMAIN` for the shared dev environment
-- `DEPLOY_PRODUCTION_BASE_DOMAIN` for production
-
-Cloudflare resource metadata:
-
+- `DEPLOY_BASE_DOMAIN`
 - `DEPLOY_CF_ZONE_NAME`
+- `DEPLOY_CF_D1_DATABASE_ID`
+- `DEPLOY_AUTH0_CUSTOM_DOMAIN`
+- `AUTH0_MANAGEMENT_DOMAIN`
+- `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
+- `NUXT_OUTBOUND_EMAIL_REPLY_TO`
+
+Deployment defaults and optional resource-name overrides:
+
+- `DEPLOY_ENV_NAME`
+- `DEPLOY_RESOURCE_PREFIX`
 - `DEPLOY_CF_WORKER_NAME`
 - `DEPLOY_CF_D1_DATABASE_NAME`
-- `DEPLOY_CF_D1_DATABASE_ID`
 - `DEPLOY_CF_PROFILE_ICONS_BUCKET`
 - `DEPLOY_CF_EVENT_IMAGES_BUCKET`
 - `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE`
@@ -282,12 +293,11 @@ Cloudflare resource metadata:
 
 Auth0 tenant automation settings:
 
-- `AUTH0_MANAGEMENT_DOMAIN`
 - `AUTH0_APP_DISPLAY_NAME`
 
 Auth0 runtime settings:
 
-- `NUXT_AUTH0_DATABASE_CONNECTION_NAME`
+- `NUXT_AUTH0_DATABASE_CONNECTION_NAME` when the Auth0 database connection is not `Username-Password-Authentication`
 
 Cloudflare Email Service and Queues runtime settings:
 
@@ -304,7 +314,6 @@ Cloudflare Email Service and Queues runtime settings:
 
 Deployment URL settings:
 
-- `DEPLOY_AUTH0_CUSTOM_DOMAIN`
 - `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL`
 - `DEPLOY_LUMA_WEBHOOK_URL`
 
@@ -351,7 +360,7 @@ The GitHub `production` environment must provide these secrets before a release 
 - `AUTH0_MGMT_CLIENT_SECRET`
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
-- `NUXT_AUTH0_AUDIENCE`
+- `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_AUTH0_SESSION_SECRET`
 - `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`

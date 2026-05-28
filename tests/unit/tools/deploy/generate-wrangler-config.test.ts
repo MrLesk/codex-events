@@ -8,19 +8,10 @@ import {
 
 function createEnvironment(overrides: Record<string, string | undefined> = {}) {
   return {
-    DEPLOY_DEV_BASE_DOMAIN: 'dev.example.com',
-    DEPLOY_PRODUCTION_BASE_DOMAIN: 'events.example.com',
+    DEPLOY_BASE_DOMAIN: 'events.example.com',
     DEPLOY_CF_ZONE_NAME: 'example.com',
-    DEPLOY_CF_WORKER_NAME: 'events-worker',
-    DEPLOY_CF_D1_DATABASE_NAME: 'events-db',
     DEPLOY_CF_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
-    DEPLOY_CF_PROFILE_ICONS_BUCKET: 'events-profile-icons',
-    DEPLOY_CF_EVENT_IMAGES_BUCKET: 'events-event-images',
-    DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE: 'events-application-review-email-delivery',
-    DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE: 'events-event-outcome-email-delivery',
-    DEPLOY_CF_LUMA_SYNC_QUEUE: 'events-application-luma-sync',
-    DEPLOY_AUTH0_CUSTOM_DOMAIN: 'auth.dev.example.com',
-    NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
+    DEPLOY_AUTH0_CUSTOM_DOMAIN: 'auth.example.com',
     NUXT_OUTBOUND_EMAIL_FROM_EMAIL: 'notifications@example.com',
     NUXT_OUTBOUND_EMAIL_REPLY_TO: 'support@example.com',
     ...overrides
@@ -34,15 +25,20 @@ describe('deploy Wrangler config generator', () => {
     expect(() => parseDeployTarget('staging')).toThrow('Usage:')
   })
 
-  test('generates dev config from DEPLOY_DEV_BASE_DOMAIN', () => {
-    const input = resolveDeployConfigInput('dev', createEnvironment())
+  test('generates dev config from environment-local domain and derived resource names', () => {
+    const input = resolveDeployConfigInput('dev', createEnvironment({
+      DEPLOY_BASE_DOMAIN: 'dev.example.com',
+      DEPLOY_AUTH0_CUSTOM_DOMAIN: 'auth.dev.example.com'
+    }))
     const config = buildDeployWranglerConfig(input)
 
+    expect(input.environmentName).toBe('dev')
+    expect(input.resourcePrefix).toBe('codex-events')
     expect(input.appBaseUrl).toBe('https://dev.example.com')
     expect(input.auth0CustomDomain).toBe('auth.dev.example.com')
-    expect(input.eventImagesPublicCdnBaseUrl).toBe('https://cdn.dev.example.com')
+    expect(input.eventImagesPublicCdnBaseUrl).toBe('')
     expect(input.lumaWebhookUrl).toBe('https://dev.example.com/api/public/luma/webhooks')
-    expect(config.name).toBe('events-worker')
+    expect(config.name).toBe('dev-codex-events')
     expect(config.main).toBe('../../.output/server/index.mjs')
     expect(config.assets.directory).toBe('../../.output/public')
     expect(config.routes).toEqual([
@@ -55,26 +51,43 @@ describe('deploy Wrangler config generator', () => {
     expect(config.vars).toMatchObject({
       NUXT_AUTH0_DOMAIN: 'auth.dev.example.com',
       NUXT_AUTH0_APP_BASE_URL: 'https://dev.example.com',
-      NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL: 'https://cdn.dev.example.com',
-      NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME: 'events-application-review-email-delivery',
-      NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME: 'events-event-outcome-email-delivery',
-      NUXT_LUMA_QUEUE_NAME: 'events-application-luma-sync'
+      NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL: '',
+      NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
+      NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME: 'dev-codex-events-application-review-email-delivery',
+      NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME: 'dev-codex-events-event-outcome-email-delivery',
+      NUXT_LUMA_QUEUE_NAME: 'dev-codex-events-application-luma-sync'
     })
     expect(config.d1_databases[0]).toMatchObject({
-      database_name: 'events-db',
+      database_name: 'dev-codex-events',
       database_id: '11111111-1111-4111-8111-111111111111',
       migrations_dir: '../../drizzle'
     })
+    expect(config.r2_buckets).toEqual([
+      {
+        binding: 'PROFILE_ICONS',
+        bucket_name: 'dev-codex-events-profile-icons'
+      },
+      {
+        binding: 'EVENT_IMAGES',
+        bucket_name: 'dev-codex-events-event-images'
+      }
+    ])
   })
 
-  test('generates production config from DEPLOY_PRODUCTION_BASE_DOMAIN', () => {
+  test('generates production config from environment-local domain and prod resource defaults', () => {
     const input = resolveDeployConfigInput('production', createEnvironment())
     const config = buildDeployWranglerConfig(input)
 
+    expect(input.environmentName).toBe('prod')
     expect(input.appBaseUrl).toBe('https://events.example.com')
+    expect(config.name).toBe('codex-events')
     expect(config.routes[0]?.pattern).toBe('events.example.com')
-    expect(config.vars.NUXT_AUTH0_DOMAIN).toBe('auth.dev.example.com')
-    expect(config.vars.NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL).toBe('https://cdn.events.example.com')
+    expect(config.vars.NUXT_AUTH0_DOMAIN).toBe('auth.example.com')
+    expect(config.d1_databases[0]?.database_name).toBe('codex-events')
+    expect(config.r2_buckets.map(bucket => bucket.bucket_name)).toEqual([
+      'codex-events-profile-icons',
+      'codex-events-event-images'
+    ])
     expect(config.ratelimits.map(rateLimit => rateLimit.namespace_id)).toEqual([
       '3001',
       '3002',
@@ -82,25 +95,45 @@ describe('deploy Wrangler config generator', () => {
     ])
   })
 
-  test('requires target-specific base domain and shared deploy metadata', () => {
+  test('requires environment-local base domain and non-derived metadata', () => {
     expect(() => resolveDeployConfigInput('dev', createEnvironment({
-      DEPLOY_DEV_BASE_DOMAIN: ''
-    }))).toThrow('DEPLOY_DEV_BASE_DOMAIN is required')
+      DEPLOY_BASE_DOMAIN: ''
+    }))).toThrow('DEPLOY_BASE_DOMAIN is required')
 
     expect(() => resolveDeployConfigInput('production', createEnvironment({
       DEPLOY_CF_D1_DATABASE_ID: ''
     }))).toThrow('DEPLOY_CF_D1_DATABASE_ID is required')
   })
 
-  test('honors explicit domain overrides', () => {
+  test('honors explicit domain and resource overrides', () => {
     const input = resolveDeployConfigInput('production', createEnvironment({
+      DEPLOY_ENV_NAME: 'preview',
+      DEPLOY_RESOURCE_PREFIX: 'custom-events',
       DEPLOY_AUTH0_CUSTOM_DOMAIN: 'login.example.com',
       DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL: 'https://media.example.com/assets/',
-      DEPLOY_LUMA_WEBHOOK_URL: 'https://hooks.example.com/luma/'
+      DEPLOY_LUMA_WEBHOOK_URL: 'https://hooks.example.com/luma/',
+      DEPLOY_CF_WORKER_NAME: 'custom-worker',
+      DEPLOY_CF_D1_DATABASE_NAME: 'custom-d1',
+      DEPLOY_CF_PROFILE_ICONS_BUCKET: 'custom-profile-icons',
+      DEPLOY_CF_EVENT_IMAGES_BUCKET: 'custom-event-images',
+      DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE: 'custom-application-review',
+      DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE: 'custom-event-outcome',
+      DEPLOY_CF_LUMA_SYNC_QUEUE: 'custom-luma-sync',
+      NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'custom-users'
     }))
 
+    expect(input.environmentName).toBe('preview')
+    expect(input.resourcePrefix).toBe('custom-events')
     expect(input.auth0CustomDomain).toBe('login.example.com')
     expect(input.eventImagesPublicCdnBaseUrl).toBe('https://media.example.com/assets')
     expect(input.lumaWebhookUrl).toBe('https://hooks.example.com/luma')
+    expect(input.workerName).toBe('custom-worker')
+    expect(input.d1DatabaseName).toBe('custom-d1')
+    expect(input.profileIconsBucket).toBe('custom-profile-icons')
+    expect(input.eventImagesBucket).toBe('custom-event-images')
+    expect(input.applicationReviewEmails.queue).toBe('custom-application-review')
+    expect(input.eventOutcomeEmails.queue).toBe('custom-event-outcome')
+    expect(input.lumaSync.queue).toBe('custom-luma-sync')
+    expect(input.auth0DatabaseConnectionName).toBe('custom-users')
   })
 })

@@ -15,13 +15,15 @@ jobs:
       contents: write
     environment:
       name: production
-      url: https://${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}
+      url: https://${{ vars.DEPLOY_BASE_DOMAIN }}
     env:
       CI: true
       NODE_OPTIONS: --max-old-space-size=4096
-      # Deployment hostnames.
-      DEPLOY_PRODUCTION_BASE_DOMAIN: ${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}
-      # Cloudflare resource metadata.
+      # Deployment defaults.
+      DEPLOY_ENV_NAME: ${{ vars.DEPLOY_ENV_NAME }}
+      DEPLOY_RESOURCE_PREFIX: ${{ vars.DEPLOY_RESOURCE_PREFIX }}
+      DEPLOY_BASE_DOMAIN: ${{ vars.DEPLOY_BASE_DOMAIN }}
+      # Cloudflare resource metadata overrides.
       DEPLOY_CF_ZONE_NAME: ${{ vars.DEPLOY_CF_ZONE_NAME }}
       DEPLOY_CF_WORKER_NAME: ${{ vars.DEPLOY_CF_WORKER_NAME }}
       DEPLOY_CF_D1_DATABASE_NAME: ${{ vars.DEPLOY_CF_D1_DATABASE_NAME }}
@@ -38,19 +40,19 @@ jobs:
       LUMA_WEBHOOK_URL: ${{ vars.DEPLOY_LUMA_WEBHOOK_URL }}
       # Auth0 bootstrap settings.
       AUTH0_MANAGEMENT_DOMAIN: ${{ vars.AUTH0_MANAGEMENT_DOMAIN }}
-      AUTH0_APP_BASE_URL: https://${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}
+      AUTH0_APP_BASE_URL: https://${{ vars.DEPLOY_BASE_DOMAIN }}
       AUTH0_CUSTOM_DOMAIN: ${{ vars.DEPLOY_AUTH0_CUSTOM_DOMAIN }}
-      AUTH0_LOGIN_URI: https://${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}/auth/login
+      AUTH0_LOGIN_URI: https://${{ vars.DEPLOY_BASE_DOMAIN }}/auth/login
       AUTH0_APP_DISPLAY_NAME: ${{ vars.AUTH0_APP_DISPLAY_NAME || 'Codex Events' }}
-      AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME }}
+      AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME || 'Username-Password-Authentication' }}
       AUTH0_APP_CLIENT_ID: ${{ secrets.AUTH0_APP_CLIENT_ID }}
       AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
       AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
       AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ${{ secrets.NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET }}
       # Auth0 runtime settings.
       NUXT_AUTH0_DOMAIN: ${{ vars.DEPLOY_AUTH0_CUSTOM_DOMAIN }}
-      NUXT_AUTH0_APP_BASE_URL: https://${{ vars.DEPLOY_PRODUCTION_BASE_DOMAIN }}
-      NUXT_AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME }}
+      NUXT_AUTH0_APP_BASE_URL: https://${{ vars.DEPLOY_BASE_DOMAIN }}
+      NUXT_AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME || 'Username-Password-Authentication' }}
       # Cloudflare Email Service and Queues runtime settings.
       NUXT_OUTBOUND_EMAIL_BINDING: ${{ vars.NUXT_OUTBOUND_EMAIL_BINDING }}
       NUXT_OUTBOUND_EMAIL_FROM_EMAIL: ${{ vars.NUXT_OUTBOUND_EMAIL_FROM_EMAIL }}

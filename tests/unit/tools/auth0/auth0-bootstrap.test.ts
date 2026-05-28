@@ -51,12 +51,21 @@ describe('auth0 bootstrap config', () => {
     const config = resolveConfig(createAuth0BootstrapEnvironment())
 
     expect(config.appDisplayName).toBe('Codex Events')
+    expect(config.databaseConnectionName).toBe('Username-Password-Authentication')
     expect(config.bddAppBaseUrl).toBe('')
     expect(config.loginUri).toBe('https://dev.codex-events.com/auth/login')
     expect(config.brandingPrimaryColor).toBe('#030213')
     expect(config.brandingPageBackgroundColor).toBe('#f3f3f5')
     expect(config.brandingLogoUrl).toBe('https://dev.codex-events.com/auth0/codex-events-wordmark.svg')
     expect(config.brandingFaviconUrl).toBe('https://dev.codex-events.com/favicon.ico')
+  })
+
+  test('defaults the Auth0 database connection name when it is not set', () => {
+    const config = resolveConfig(createAuth0BootstrapEnvironment({
+      AUTH0_DATABASE_CONNECTION_NAME: ''
+    }))
+
+    expect(config.databaseConnectionName).toBe('Username-Password-Authentication')
   })
 
   test('preserves explicit branding overrides', () => {

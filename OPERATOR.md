@@ -19,7 +19,7 @@ Example hostnames used below:
 | --- | --- |
 | Production app | `events.example.com` |
 | Auth0 login domain | `auth.example.com` |
-| Event image CDN | `cdn.events.example.com` |
+| Event image CDN | `media.example.com` |
 
 Do not create a GitHub variable named `AUTH0_DOMAIN`. This project uses `DEPLOY_AUTH0_CUSTOM_DOMAIN` for the Auth0 login hostname and `AUTH0_MANAGEMENT_DOMAIN` for the Auth0 tenant/API hostname.
 
@@ -31,7 +31,7 @@ In the Cloudflare account that will host the platform:
 2. Create a D1 database.
 3. Create an R2 bucket for profile icons.
 4. Create an R2 bucket for event images.
-5. Connect the event-images R2 bucket to a public custom domain. The default is `cdn.<production app hostname>`.
+5. Connect the event-images R2 bucket to a public custom domain when the deployment serves public gallery images directly from R2.
 6. Configure Cloudflare Email Service and verify the sender address used by the platform.
 7. Create a Cloudflare API token for the production deploy workflow.
 
@@ -45,7 +45,7 @@ Save these values:
 | D1 database ID | Cloudflare D1 database UUID |
 | Profile-icons R2 bucket name | `codex-events-profile-icons` |
 | Event-images R2 bucket name | `codex-events-event-images` |
-| Event-images public custom domain | `cdn.events.example.com` |
+| Event-images public custom domain | `media.example.com` |
 | Verified sender email | `events@example.com` |
 | Reply-to email | `support@example.com` |
 | Cloudflare API token | Token value |
@@ -90,7 +90,7 @@ Save:
 
 The release workflow configures the required callback URLs, logout URLs, web origins, login URI, Universal Login branding, signup prompt behavior, and post-login Action for this application.
 
-Create or choose the database connection used for username/password sign-in. Save the connection name as `NUXT_AUTH0_DATABASE_CONNECTION_NAME`.
+Create or choose the database connection used for username/password sign-in. Save the connection name as `NUXT_AUTH0_DATABASE_CONNECTION_NAME` when it is not the default connection name.
 
 Example:
 
@@ -145,17 +145,29 @@ Application hostnames:
 
 | Variable | Value |
 | --- | --- |
-| `DEPLOY_PRODUCTION_BASE_DOMAIN` | Production app hostname, for example `events.example.com` |
+| `DEPLOY_BASE_DOMAIN` | Production app hostname, for example `events.example.com` |
 | `DEPLOY_AUTH0_CUSTOM_DOMAIN` | Auth0 login hostname, for example `auth.example.com` |
 
-Cloudflare resource metadata:
+Required Cloudflare metadata:
 
 | Variable | Value |
 | --- | --- |
 | `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name |
+| `DEPLOY_CF_D1_DATABASE_ID` | D1 database ID |
+
+Deployment defaults:
+
+| Variable | Value |
+| --- | --- |
+| `DEPLOY_ENV_NAME` | Environment name used in generated resource names. Defaults to `prod` for production |
+| `DEPLOY_RESOURCE_PREFIX` | Resource name prefix. Defaults to `codex-events` |
+
+Optional Cloudflare resource name overrides:
+
+| Variable | Value |
+| --- | --- |
 | `DEPLOY_CF_WORKER_NAME` | Cloudflare Worker name |
 | `DEPLOY_CF_D1_DATABASE_NAME` | D1 database name |
-| `DEPLOY_CF_D1_DATABASE_ID` | D1 database ID |
 | `DEPLOY_CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket name |
 | `DEPLOY_CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket name |
 | `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name |
@@ -167,7 +179,7 @@ Auth0 settings:
 | Variable | Value |
 | --- | --- |
 | `AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant hostname, for example `your-tenant.eu.auth0.com` |
-| `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name |
+| `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name. Defaults to `Username-Password-Authentication` |
 
 Cloudflare Email Service runtime settings:
 
@@ -182,8 +194,8 @@ Optional display and URL settings:
 | --- | --- |
 | `AUTH0_APP_DISPLAY_NAME` | Display name shown in Auth0-hosted login copy. Defaults to `Codex Events` |
 | `NUXT_OUTBOUND_EMAIL_FROM_NAME` | Sender display name. Defaults to `Codex Events` |
-| `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` | Override for event image public CDN URL. Defaults to `https://cdn.<DEPLOY_PRODUCTION_BASE_DOMAIN>` |
-| `DEPLOY_LUMA_WEBHOOK_URL` | Override for the Luma webhook URL. Defaults to `https://<DEPLOY_PRODUCTION_BASE_DOMAIN>/api/public/luma/webhooks` |
+| `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` | Event image public CDN URL. Leave empty to serve public event gallery images through Worker routes |
+| `DEPLOY_LUMA_WEBHOOK_URL` | Override for the Luma webhook URL. Defaults to `https://<DEPLOY_BASE_DOMAIN>/api/public/luma/webhooks` |
 
 Set these production environment secrets:
 
@@ -209,7 +221,7 @@ Set these secrets only when the deployment uses them:
 
 Create a GitHub environment named `dev` only if pushes to `main` should deploy a shared dev instance.
 
-The dev environment uses the same variable groups as production, except the app hostname variable is `DEPLOY_DEV_BASE_DOMAIN` instead of `DEPLOY_PRODUCTION_BASE_DOMAIN`.
+The dev environment uses the same variable groups as production. Set `DEPLOY_BASE_DOMAIN` to the dev app hostname for that environment, and set `DEPLOY_ENV_NAME=dev` only when you want to override the dev workflow default.
 
 The dev environment secrets mirror production, except the Auth0 application client ID secret is named `NUXT_AUTH0_CLIENT_ID`.
 
@@ -330,7 +342,7 @@ Use the platform admin workspace to:
 
 Check:
 
-- `https://<DEPLOY_PRODUCTION_BASE_DOMAIN>` loads.
+- `https://<DEPLOY_BASE_DOMAIN>` loads.
 - `/privacy-policy` shows your Privacy Policy.
 - `/terms-and-conditions` shows your Platform Terms.
 - `/imprint` shows your operator information.

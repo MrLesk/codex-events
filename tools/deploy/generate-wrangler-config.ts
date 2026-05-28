@@ -17,6 +17,8 @@ interface QueueConfig {
 
 interface ResolvedDeployConfigInput {
   target: DeployTarget
+  environmentName: string
+  resourcePrefix: string
   baseDomain: string
   appBaseUrl: string
   auth0CustomDomain: string
@@ -104,10 +106,14 @@ const outputPathsByTarget: Record<DeployTarget, string> = {
   production: '.wrangler/generated/production.jsonc'
 }
 
-const baseDomainEnvByTarget: Record<DeployTarget, string> = {
-  dev: 'DEPLOY_DEV_BASE_DOMAIN',
-  production: 'DEPLOY_PRODUCTION_BASE_DOMAIN'
+const defaultDeployEnvironmentNameByTarget: Record<DeployTarget, string> = {
+  dev: 'dev',
+  production: 'prod'
 }
+
+const defaultDeployResourcePrefix = 'codex-events'
+const productionDeployEnvironmentName = 'prod'
+const defaultAuth0DatabaseConnectionName = 'Username-Password-Authentication'
 
 const rateLimitNamespaceIdsByTarget: Record<DeployTarget, {
   publicContact: string
@@ -169,6 +175,16 @@ function normalizeHttpsUrl(value: string, name: string) {
   return `${parsed.origin}${parsed.pathname.replace(/\/$/, '')}${parsed.search}${parsed.hash}`
 }
 
+function normalizeResourceName(value: string, name: string) {
+  const normalized = value.trim().toLowerCase()
+
+  if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(normalized)) {
+    throw new Error(`${name} must contain only lowercase letters, numbers, and hyphens, and must not start or end with a hyphen.`)
+  }
+
+  return normalized
+}
+
 function readRetryDelaySeconds(environment: EnvironmentValues, name: string) {
   const rawValue = readOptionalEnvironmentValue(environment, name)
 
@@ -190,12 +206,42 @@ function resolveQueueConfig(environment: EnvironmentValues, options: {
   queueEnvName: string
   retryDelayEnvName: string
   defaultBinding: string
+  defaultQueue: string
 }) {
   return {
     binding: readOptionalEnvironmentValue(environment, options.bindingEnvName) || options.defaultBinding,
-    queue: readRequiredEnvironmentValue(environment, options.queueEnvName),
+    queue: readOptionalEnvironmentValue(environment, options.queueEnvName) || options.defaultQueue,
     retryDelaySeconds: readRetryDelaySeconds(environment, options.retryDelayEnvName)
   } satisfies QueueConfig
+}
+
+function resolveDeployEnvironmentName(target: DeployTarget, environment: EnvironmentValues) {
+  return normalizeResourceName(
+    readOptionalEnvironmentValue(environment, 'DEPLOY_ENV_NAME') || defaultDeployEnvironmentNameByTarget[target],
+    'DEPLOY_ENV_NAME'
+  )
+}
+
+function resolveDeployResourcePrefix(environment: EnvironmentValues) {
+  return normalizeResourceName(
+    readOptionalEnvironmentValue(environment, 'DEPLOY_RESOURCE_PREFIX') || defaultDeployResourcePrefix,
+    'DEPLOY_RESOURCE_PREFIX'
+  )
+}
+
+function buildDefaultResourceName(environmentName: string, resourcePrefix: string, suffix?: string) {
+  const baseName = environmentName === productionDeployEnvironmentName
+    ? resourcePrefix
+    : `${environmentName}-${resourcePrefix}`
+
+  return suffix ? `${baseName}-${suffix}` : baseName
+}
+
+function resolveResourceName(environment: EnvironmentValues, name: string, defaultValue: string) {
+  return normalizeResourceName(
+    readOptionalEnvironmentValue(environment, name) || defaultValue,
+    name
+  )
 }
 
 export function parseDeployTarget(value: string | undefined): DeployTarget {
@@ -214,58 +260,66 @@ export function resolveDeployConfigInput(
   target: DeployTarget,
   environment: EnvironmentValues
 ): ResolvedDeployConfigInput {
+  const environmentName = resolveDeployEnvironmentName(target, environment)
+  const resourcePrefix = resolveDeployResourcePrefix(environment)
+  const resourceBaseName = buildDefaultResourceName(environmentName, resourcePrefix)
   const baseDomain = normalizeHostname(
-    readRequiredEnvironmentValue(environment, baseDomainEnvByTarget[target]),
-    baseDomainEnvByTarget[target]
+    readRequiredEnvironmentValue(environment, 'DEPLOY_BASE_DOMAIN'),
+    'DEPLOY_BASE_DOMAIN'
   )
   const appBaseUrl = `https://${baseDomain}`
   const auth0CustomDomain = normalizeHostname(
     readRequiredEnvironmentValue(environment, 'DEPLOY_AUTH0_CUSTOM_DOMAIN'),
     'DEPLOY_AUTH0_CUSTOM_DOMAIN'
   )
-  const eventImagesPublicCdnBaseUrl = normalizeHttpsUrl(
-    readOptionalEnvironmentValue(environment, 'DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL') || `https://cdn.${baseDomain}`,
-    'DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL'
-  )
+  const explicitEventImagesPublicCdnBaseUrl = readOptionalEnvironmentValue(environment, 'DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL')
+  const eventImagesPublicCdnBaseUrl = explicitEventImagesPublicCdnBaseUrl
+    ? normalizeHttpsUrl(explicitEventImagesPublicCdnBaseUrl, 'DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL')
+    : ''
   const lumaWebhookUrl = normalizeHttpsUrl(
     readOptionalEnvironmentValue(environment, 'DEPLOY_LUMA_WEBHOOK_URL') || `${appBaseUrl}/api/public/luma/webhooks`,
     'DEPLOY_LUMA_WEBHOOK_URL'
   )
   return {
     target,
+    environmentName,
+    resourcePrefix,
     baseDomain,
     appBaseUrl,
     auth0CustomDomain,
     eventImagesPublicCdnBaseUrl,
     lumaWebhookUrl,
     zoneName: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_ZONE_NAME'),
-    workerName: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_WORKER_NAME'),
-    d1DatabaseName: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_D1_DATABASE_NAME'),
+    workerName: resolveResourceName(environment, 'DEPLOY_CF_WORKER_NAME', resourceBaseName),
+    d1DatabaseName: resolveResourceName(environment, 'DEPLOY_CF_D1_DATABASE_NAME', resourceBaseName),
     d1DatabaseId: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_D1_DATABASE_ID'),
-    profileIconsBucket: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_PROFILE_ICONS_BUCKET'),
-    eventImagesBucket: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_EVENT_IMAGES_BUCKET'),
+    profileIconsBucket: resolveResourceName(environment, 'DEPLOY_CF_PROFILE_ICONS_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'profile-icons')),
+    eventImagesBucket: resolveResourceName(environment, 'DEPLOY_CF_EVENT_IMAGES_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'event-images')),
     outboundEmailBinding: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_BINDING') || 'EMAIL',
     outboundEmailFromEmail: readRequiredEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_EMAIL'),
     outboundEmailFromName: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_NAME') || 'Codex Events',
     outboundEmailReplyTo: readRequiredEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_REPLY_TO'),
-    auth0DatabaseConnectionName: readRequiredEnvironmentValue(environment, 'NUXT_AUTH0_DATABASE_CONNECTION_NAME'),
+    auth0DatabaseConnectionName: readOptionalEnvironmentValue(environment, 'NUXT_AUTH0_DATABASE_CONNECTION_NAME') || defaultAuth0DatabaseConnectionName,
     applicationReviewEmails: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING',
       queueEnvName: 'DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE',
       retryDelayEnvName: 'NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS',
-      defaultBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
+      defaultBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE',
+      defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'application-review-email-delivery')
     }),
     eventOutcomeEmails: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING',
       queueEnvName: 'DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE',
       retryDelayEnvName: 'NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS',
-      defaultBinding: 'EVENT_OUTCOME_EMAIL_QUEUE'
+      defaultBinding: 'EVENT_OUTCOME_EMAIL_QUEUE',
+      defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'event-outcome-email-delivery')
     }),
     lumaSync: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_LUMA_QUEUE_BINDING',
       queueEnvName: 'DEPLOY_CF_LUMA_SYNC_QUEUE',
       retryDelayEnvName: 'NUXT_LUMA_RETRY_DELAY_SECONDS',
-      defaultBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
+      defaultBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
+      defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'application-luma-sync')
     })
   }
 }
