@@ -15,6 +15,14 @@ interface QueueConfig {
   retryDelaySeconds: number
 }
 
+export interface QueueConsumerConfig {
+  queue: string
+  max_batch_size: number
+  max_batch_timeout: number
+  max_retries: number
+  retry_delay: number
+}
+
 interface ResolvedDeployResourceNames {
   environmentName: string
   resourcePrefix: string
@@ -22,7 +30,7 @@ interface ResolvedDeployResourceNames {
   d1DatabaseName: string
 }
 
-interface ResolvedDeployConfigInput {
+export interface ResolvedDeployConfigInput {
   target: DeployTarget
   environmentName: string
   resourcePrefix: string
@@ -98,13 +106,7 @@ export interface GeneratedDeployWranglerConfig {
       binding: string
       queue: string
     }>
-    consumers: Array<{
-      queue: string
-      max_batch_size: number
-      max_batch_timeout: number
-      max_retries: number
-      retry_delay: number
-    }>
+    consumers: QueueConsumerConfig[]
   }
 }
 
@@ -467,31 +469,35 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
           queue: input.lumaSync.queue
         }
       ],
-      consumers: [
-        {
-          queue: input.applicationReviewEmails.queue,
-          max_batch_size: 10,
-          max_batch_timeout: 5,
-          max_retries: 10,
-          retry_delay: input.applicationReviewEmails.retryDelaySeconds
-        },
-        {
-          queue: input.eventOutcomeEmails.queue,
-          max_batch_size: 10,
-          max_batch_timeout: 5,
-          max_retries: 10,
-          retry_delay: input.eventOutcomeEmails.retryDelaySeconds
-        },
-        {
-          queue: input.lumaSync.queue,
-          max_batch_size: 10,
-          max_batch_timeout: 5,
-          max_retries: 10,
-          retry_delay: input.lumaSync.retryDelaySeconds
-        }
-      ]
+      consumers: []
     }
   }
+}
+
+export function buildDeployQueueConsumerConfigs(input: ResolvedDeployConfigInput): QueueConsumerConfig[] {
+  return [
+    {
+      queue: input.applicationReviewEmails.queue,
+      max_batch_size: 10,
+      max_batch_timeout: 5,
+      max_retries: 10,
+      retry_delay: input.applicationReviewEmails.retryDelaySeconds
+    },
+    {
+      queue: input.eventOutcomeEmails.queue,
+      max_batch_size: 10,
+      max_batch_timeout: 5,
+      max_retries: 10,
+      retry_delay: input.eventOutcomeEmails.retryDelaySeconds
+    },
+    {
+      queue: input.lumaSync.queue,
+      max_batch_size: 10,
+      max_batch_timeout: 5,
+      max_retries: 10,
+      retry_delay: input.lumaSync.retryDelaySeconds
+    }
+  ]
 }
 
 export async function writeDeployWranglerConfig(target: DeployTarget, environment: EnvironmentValues = process.env) {

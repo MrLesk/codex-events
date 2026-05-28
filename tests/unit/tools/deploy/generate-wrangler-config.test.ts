@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  buildDeployQueueConsumerConfigs,
   buildDeployWranglerConfig,
   parseDeployTarget,
   resolveDeployConfigInput,
@@ -71,6 +72,41 @@ describe('deploy Wrangler config generator', () => {
       {
         binding: 'EVENT_IMAGES',
         bucket_name: 'dev-codex-events-event-images'
+      }
+    ])
+    expect(config.queues.consumers).toEqual([])
+  })
+
+  test('builds desired Queue consumer settings from deploy config input', () => {
+    const input = resolveDeployConfigInput('dev', createEnvironment({
+      DEPLOY_BASE_DOMAIN: 'dev.example.com',
+      DEPLOY_AUTH0_CUSTOM_DOMAIN: 'auth.dev.example.com',
+      NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS: '60',
+      NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS: '90',
+      NUXT_LUMA_RETRY_DELAY_SECONDS: '180'
+    }))
+
+    expect(buildDeployQueueConsumerConfigs(input)).toEqual([
+      {
+        queue: 'dev-codex-events-application-review-email-delivery',
+        max_batch_size: 10,
+        max_batch_timeout: 5,
+        max_retries: 10,
+        retry_delay: 60
+      },
+      {
+        queue: 'dev-codex-events-event-outcome-email-delivery',
+        max_batch_size: 10,
+        max_batch_timeout: 5,
+        max_retries: 10,
+        retry_delay: 90
+      },
+      {
+        queue: 'dev-codex-events-application-luma-sync',
+        max_batch_size: 10,
+        max_batch_timeout: 5,
+        max_retries: 10,
+        retry_delay: 180
       }
     ])
   })

@@ -222,9 +222,13 @@ jobs:
         if: ${{ steps.dev_deploy_config.outputs.enabled == 'true' }}
         run: bun run db:migrate:dev
 
-      - name: Deploy shared dev environment
+      - name: Deploy shared dev Worker
         if: ${{ steps.dev_deploy_config.outputs.enabled == 'true' }}
-        run: bun run deploy:dev
+        run: bun run deploy:worker:dev
+
+      - name: Reconcile shared dev Queue consumers
+        if: ${{ steps.dev_deploy_config.outputs.enabled == 'true' }}
+        run: bun run deploy:queue-consumers:dev
 
   auth0-bdd-suite:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}

@@ -167,7 +167,10 @@ jobs:
         run: bun run db:migrate:production
 
       - name: Deploy production Worker
-        run: bun run deploy:production
+        run: bun run deploy:worker:production
+
+      - name: Reconcile production Queue consumers
+        run: bun run deploy:queue-consumers:production
 
       - name: Commit package version back to main
         env:

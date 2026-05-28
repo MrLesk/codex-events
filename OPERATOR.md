@@ -49,7 +49,7 @@ Save these values:
 | Reply-to email | `support@example.com` |
 | Cloudflare API token | Token value |
 
-The release workflow creates the configured Cloudflare Queues if they do not already exist.
+The release workflow creates the configured Cloudflare Queues if they do not already exist. It attaches Queue consumers after the Worker deploys. Inactive Worker consumers in Cloudflare still occupy the queue's single Worker-consumer slot, so the workflow removes this Worker from each queue before adding it back with the configured retry settings.
 
 Create a custom Cloudflare API token with these permissions. Add `Read` plus the write-capable access level, `Edit` or `Write`, where both are listed; Cloudflare edit access does not consistently include read access.
 
@@ -260,7 +260,8 @@ The `release-production` workflow:
 4. uploads Worker secrets;
 5. applies Auth0 application, branding, URL, and Action configuration;
 6. runs production D1 migrations;
-7. deploys the Cloudflare Worker.
+7. deploys the Cloudflare Worker;
+8. reconciles the Worker Queue consumers.
 
 If Auth0 rejects custom-domain creation because the tenant needs billing verification, add the required billing information in Auth0 and rerun the release workflow.
 
