@@ -2,7 +2,9 @@ import { describe, expect, test } from 'vitest'
 
 import {
   reconcileDeployQueueConsumers,
-  type CommandRunner
+  type CommandRunner,
+  type ExistingQueueConsumer,
+  type QueueConsumerApi
 } from '../../../../tools/deploy/reconcile-queue-consumers'
 
 function createEnvironment(overrides: Record<string, string | undefined> = {}) {
@@ -40,34 +42,100 @@ function createRunner(results: Array<string | Error> = []) {
   }
 }
 
+function createConsumerApi(options: {
+  consumersByQueue?: Record<string, ExistingQueueConsumer[]>
+  deleteError?: Error
+} = {}) {
+  const calls: Array<{
+    action: 'list' | 'delete'
+    queueName: string
+    consumerId?: string
+  }> = []
+  const consumerApi: QueueConsumerApi = {
+    async listConsumers(queueName) {
+      calls.push({
+        action: 'list',
+        queueName
+      })
+
+      return options.consumersByQueue?.[queueName] ?? []
+    },
+    async deleteConsumer(queueName, consumerId) {
+      calls.push({
+        action: 'delete',
+        queueName,
+        consumerId
+      })
+
+      if (options.deleteError) {
+        throw options.deleteError
+      }
+    }
+  }
+
+  return {
+    calls,
+    consumerApi
+  }
+}
+
 describe('deploy Queue consumer reconciliation', () => {
   test('removes and recreates desired Worker consumers', async () => {
     const { calls, runner } = createRunner()
+    const { calls: apiCalls, consumerApi } = createConsumerApi({
+      consumersByQueue: {
+        'dev-codex-events-application-review-email-delivery': [
+          {
+            consumerId: 'stale-review-consumer',
+            scriptName: 'codex-hackathons-dev',
+            type: 'worker'
+          }
+        ],
+        'dev-codex-events-application-luma-sync': [
+          {
+            consumerId: 'stale-luma-consumer'
+          }
+        ]
+      }
+    })
 
     await expect(reconcileDeployQueueConsumers({
       target: 'dev',
       environment: createEnvironment({
         NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS: '60'
       }),
-      runner
+      runner,
+      consumerApi
     })).resolves.toMatchObject({
       workerName: 'dev-codex-events'
     })
 
-    expect(calls).toEqual([
+    expect(apiCalls).toEqual([
       {
-        command: 'bunx',
-        args: [
-          'wrangler',
-          'queues',
-          'consumer',
-          'remove',
-          'dev-codex-events-application-review-email-delivery',
-          'dev-codex-events',
-          '--config',
-          '.wrangler/generated/dev.jsonc'
-        ]
+        action: 'list',
+        queueName: 'dev-codex-events-application-review-email-delivery'
       },
+      {
+        action: 'delete',
+        queueName: 'dev-codex-events-application-review-email-delivery',
+        consumerId: 'stale-review-consumer'
+      },
+      {
+        action: 'list',
+        queueName: 'dev-codex-events-event-outcome-email-delivery'
+      },
+      {
+        action: 'list',
+        queueName: 'dev-codex-events-application-luma-sync'
+      },
+      {
+        action: 'delete',
+        queueName: 'dev-codex-events-application-luma-sync',
+        consumerId: 'stale-luma-consumer'
+      }
+    ])
+
+    expect(calls).toEqual([
       {
         command: 'bunx',
         args: [
@@ -95,19 +163,6 @@ describe('deploy Queue consumer reconciliation', () => {
           'wrangler',
           'queues',
           'consumer',
-          'remove',
-          'dev-codex-events-event-outcome-email-delivery',
-          'dev-codex-events',
-          '--config',
-          '.wrangler/generated/dev.jsonc'
-        ]
-      },
-      {
-        command: 'bunx',
-        args: [
-          'wrangler',
-          'queues',
-          'consumer',
           'add',
           'dev-codex-events-event-outcome-email-delivery',
           'dev-codex-events',
@@ -119,19 +174,6 @@ describe('deploy Queue consumer reconciliation', () => {
           '10',
           '--retry-delay-secs',
           '120',
-          '--config',
-          '.wrangler/generated/dev.jsonc'
-        ]
-      },
-      {
-        command: 'bunx',
-        args: [
-          'wrangler',
-          'queues',
-          'consumer',
-          'remove',
-          'dev-codex-events-application-luma-sync',
-          'dev-codex-events',
           '--config',
           '.wrangler/generated/dev.jsonc'
         ]
@@ -160,26 +202,35 @@ describe('deploy Queue consumer reconciliation', () => {
     ])
   })
 
-  test('continues when the Worker consumer is already missing', async () => {
-    const { calls, runner } = createRunner([
-      new Error('No worker consumer \'dev-codex-events\' exists for queue dev-codex-events-application-review-email-delivery'),
-      '',
-      new Error('Queue does not have a consumer'),
-      '',
-      new Error('consumer does not exist'),
-      ''
-    ])
+  test('continues when queues have no existing consumers', async () => {
+    const { calls, runner } = createRunner()
+    const { calls: apiCalls, consumerApi } = createConsumerApi()
 
     await expect(reconcileDeployQueueConsumers({
       target: 'dev',
       environment: createEnvironment(),
-      runner
+      runner,
+      consumerApi
     })).resolves.toMatchObject({
       workerName: 'dev-codex-events'
     })
 
-    expect(calls).toHaveLength(6)
-    expect(calls[1]?.args.slice(0, 5)).toEqual([
+    expect(apiCalls).toEqual([
+      {
+        action: 'list',
+        queueName: 'dev-codex-events-application-review-email-delivery'
+      },
+      {
+        action: 'list',
+        queueName: 'dev-codex-events-event-outcome-email-delivery'
+      },
+      {
+        action: 'list',
+        queueName: 'dev-codex-events-application-luma-sync'
+      }
+    ])
+    expect(calls).toHaveLength(3)
+    expect(calls[0]?.args.slice(0, 5)).toEqual([
       'wrangler',
       'queues',
       'consumer',
@@ -188,31 +239,37 @@ describe('deploy Queue consumer reconciliation', () => {
     ])
   })
 
-  test('fails without adding when removing an existing consumer fails unexpectedly', async () => {
-    const { calls, runner } = createRunner([
-      new Error('Cloudflare API token is missing Queues Edit permission')
-    ])
+  test('fails without adding when deleting an existing consumer fails unexpectedly', async () => {
+    const { calls, runner } = createRunner()
+    const { calls: apiCalls, consumerApi } = createConsumerApi({
+      consumersByQueue: {
+        'dev-codex-events-application-review-email-delivery': [
+          {
+            consumerId: 'stale-review-consumer'
+          }
+        ]
+      },
+      deleteError: new Error('Cloudflare API token is missing Queues Edit permission')
+    })
 
     await expect(reconcileDeployQueueConsumers({
       target: 'dev',
       environment: createEnvironment(),
-      runner
+      runner,
+      consumerApi
     })).rejects.toThrow('Queues Edit permission')
 
-    expect(calls).toEqual([
+    expect(apiCalls).toEqual([
       {
-        command: 'bunx',
-        args: [
-          'wrangler',
-          'queues',
-          'consumer',
-          'remove',
-          'dev-codex-events-application-review-email-delivery',
-          'dev-codex-events',
-          '--config',
-          '.wrangler/generated/dev.jsonc'
-        ]
+        action: 'list',
+        queueName: 'dev-codex-events-application-review-email-delivery'
+      },
+      {
+        action: 'delete',
+        queueName: 'dev-codex-events-application-review-email-delivery',
+        consumerId: 'stale-review-consumer'
       }
     ])
+    expect(calls).toEqual([])
   })
 })

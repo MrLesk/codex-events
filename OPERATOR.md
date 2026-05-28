@@ -49,7 +49,7 @@ Save these values:
 | Reply-to email | `support@example.com` |
 | Cloudflare API token | Token value |
 
-The release workflow creates the configured Cloudflare Queues if they do not already exist. It attaches Queue consumers after the Worker deploys. Inactive Worker consumers in Cloudflare still occupy the queue's single Worker-consumer slot, so the workflow removes this Worker from each queue before adding it back with the configured retry settings.
+The release workflow creates the configured Cloudflare Queues if they do not already exist. It attaches Queue consumers after the Worker deploys. Inactive Worker consumers in Cloudflare still occupy the queue's single Worker-consumer slot, so the workflow removes existing consumers from each environment-owned queue before adding the deployed Worker back with the configured retry settings.
 
 Create a custom Cloudflare API token with these permissions. Add `Read` plus the write-capable access level, `Edit` or `Write`, where both are listed; Cloudflare edit access does not consistently include read access.
 

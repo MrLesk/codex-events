@@ -236,9 +236,9 @@ Each remote environment must provide:
 
 The existing app runtime variables remain the override interface for Auth0, outbound email, queue binding names, retry delays, and optional Luma access. The generator copies those values into the generated Wrangler `vars` block and fails fast when a required deploy value is missing.
 
-The generated Wrangler config binds Queue producers only. Remote workflows deploy the Worker first, then reconcile Queue consumers by removing this Worker from each queue and adding it back with the desired batch and retry settings. Cloudflare keeps inactive Worker consumers in the single-consumer slot until they are removed, so consumer attachment is intentionally separate from `wrangler deploy`.
+The generated Wrangler config binds Queue producers only. Remote workflows deploy the Worker first, then reconcile Queue consumers by deleting existing consumers from each environment-owned queue through the Cloudflare Queues API and adding the Worker back with the desired batch and retry settings. Cloudflare keeps inactive Worker consumers in the single-consumer slot until they are removed, so consumer attachment is intentionally separate from `wrangler deploy`.
 
-The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler d1 list`, `wrangler d1 create`, `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, `wrangler deploy`, `wrangler queues consumer remove`, and `wrangler queues consumer add`. Configure the token with the Cloudflare account and zone permissions listed in `OPERATOR.md`; include both read and edit/write access where both are listed.
+The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler d1 list`, `wrangler d1 create`, `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, `wrangler deploy`, and `wrangler queues consumer add`. It must also be able to list and delete Queue consumers through the Cloudflare Queues API. Configure the token with the Cloudflare account and zone permissions listed in `OPERATOR.md`; include both read and edit/write access where both are listed.
 
 For manual deployment, export the target environment values and run:
 

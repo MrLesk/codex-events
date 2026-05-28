@@ -22,6 +22,37 @@ interface CommandResult {
 
 export type CommandRunner = (command: string, args: string[]) => Promise<CommandResult>
 
+export interface ExistingQueueConsumer {
+  consumerId: string
+  scriptName?: string
+  type?: string
+}
+
+export interface QueueConsumerApi {
+  listConsumers: (queueName: string) => Promise<ExistingQueueConsumer[]>
+  deleteConsumer: (queueName: string, consumerId: string) => Promise<void>
+}
+
+interface CloudflareApiEnvelope<T> {
+  success?: boolean
+  result?: T
+  errors?: Array<{
+    code?: number
+    message?: string
+  }>
+}
+
+interface CloudflareQueue {
+  queue_id?: string
+  queue_name?: string
+}
+
+interface CloudflareQueueConsumer {
+  consumer_id?: string
+  script_name?: string
+  type?: string
+}
+
 async function runCommand(command: string, args: string[]): Promise<CommandResult> {
   try {
     const result = await execFileAsync(command, args, {
@@ -49,22 +80,99 @@ async function runCommand(command: string, args: string[]): Promise<CommandResul
   }
 }
 
-function isMissingConsumerError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error)
-  return /not found|does not exist|doesn't exist|does not have a consumer|no consumer|no worker consumer\b.*\bexists/i.test(message)
+function readRequiredEnvironmentValue(environment: EnvironmentValues, name: string) {
+  const value = environment[name]?.trim()
+
+  if (!value) {
+    throw new Error(`${name} is required to reconcile Queue consumers.`)
+  }
+
+  return value
 }
 
-function buildRemoveConsumerArgs(queue: string, workerName: string, configPath: string) {
-  return [
-    'wrangler',
-    'queues',
-    'consumer',
-    'remove',
-    queue,
-    workerName,
-    '--config',
-    configPath
-  ]
+function describeCloudflareApiErrors(errors: CloudflareApiEnvelope<unknown>['errors']) {
+  return errors?.map(error => [
+    error.message,
+    error.code ? `code: ${error.code}` : ''
+  ].filter(Boolean).join(' ')).filter(Boolean).join('; ') || 'Unknown Cloudflare API error.'
+}
+
+async function requestCloudflareApi<T>(
+  environment: EnvironmentValues,
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
+  const accountId = readRequiredEnvironmentValue(environment, 'CLOUDFLARE_ACCOUNT_ID')
+  const apiToken = readRequiredEnvironmentValue(environment, 'CLOUDFLARE_API_TOKEN')
+  const headers = new Headers(init.headers)
+  headers.set('Authorization', `Bearer ${apiToken}`)
+  headers.set('Content-Type', 'application/json')
+  const response = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}${path}`, {
+    ...init,
+    headers
+  })
+  const payload = await response.json().catch(() => null) as CloudflareApiEnvelope<T> | null
+
+  if (!response.ok || payload?.success === false) {
+    throw new Error(describeCloudflareApiErrors(payload?.errors))
+  }
+
+  if (!payload || !('result' in payload)) {
+    throw new Error('Cloudflare API response did not include a result.')
+  }
+
+  return payload.result as T
+}
+
+function createCloudflareQueueConsumerApi(environment: EnvironmentValues): QueueConsumerApi {
+  const queueIdsByName = new Map<string, string>()
+
+  async function resolveQueueId(queueName: string) {
+    const cachedQueueId = queueIdsByName.get(queueName)
+
+    if (cachedQueueId) {
+      return cachedQueueId
+    }
+
+    const queues = await requestCloudflareApi<CloudflareQueue[]>(environment, '/queues?per_page=100')
+    const queue = queues.find(candidate => candidate.queue_name === queueName)
+
+    if (!queue?.queue_id) {
+      throw new Error(`Cloudflare Queue "${queueName}" was not found.`)
+    }
+
+    queueIdsByName.set(queueName, queue.queue_id)
+
+    return queue.queue_id
+  }
+
+  return {
+    async listConsumers(queueName) {
+      const queueId = await resolveQueueId(queueName)
+      const consumers = await requestCloudflareApi<CloudflareQueueConsumer[]>(
+        environment,
+        `/queues/${queueId}/consumers`
+      )
+
+      return consumers.map((consumer) => {
+        if (!consumer.consumer_id) {
+          throw new Error(`Cloudflare Queue "${queueName}" returned a consumer without an ID.`)
+        }
+
+        return {
+          consumerId: consumer.consumer_id,
+          scriptName: consumer.script_name,
+          type: consumer.type
+        } satisfies ExistingQueueConsumer
+      })
+    },
+    async deleteConsumer(queueName, consumerId) {
+      const queueId = await resolveQueueId(queueName)
+      await requestCloudflareApi(environment, `/queues/${queueId}/consumers/${consumerId}`, {
+        method: 'DELETE'
+      })
+    }
+  }
 }
 
 function buildAddConsumerArgs(consumer: QueueConsumerConfig, workerName: string, configPath: string) {
@@ -92,20 +200,18 @@ export async function reconcileDeployQueueConsumers(options: {
   target: DeployTarget
   environment?: EnvironmentValues
   runner?: CommandRunner
+  consumerApi?: QueueConsumerApi
 }) {
   const environment = options.environment ?? process.env
   const runner = options.runner ?? runCommand
+  const consumerApi = options.consumerApi ?? createCloudflareQueueConsumerApi(environment)
   const input = resolveDeployConfigInput(options.target, environment)
   const configPath = getGeneratedWranglerConfigPath(options.target)
   const consumers = buildDeployQueueConsumerConfigs(input)
 
   for (const consumer of consumers) {
-    try {
-      await runner('bunx', buildRemoveConsumerArgs(consumer.queue, input.workerName, configPath))
-    } catch (error) {
-      if (!isMissingConsumerError(error)) {
-        throw error
-      }
+    for (const existingConsumer of await consumerApi.listConsumers(consumer.queue)) {
+      await consumerApi.deleteConsumer(consumer.queue, existingConsumer.consumerId)
     }
 
     await runner('bunx', buildAddConsumerArgs(consumer, input.workerName, configPath))
