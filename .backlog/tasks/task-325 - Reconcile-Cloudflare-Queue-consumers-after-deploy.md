@@ -5,7 +5,7 @@ status: Done
 assignee:
   - Codex
 created_date: '2026-05-28 21:38'
-updated_date: '2026-05-28 21:57'
+updated_date: '2026-05-28 22:03'
 labels:
   - deploy
   - cloudflare
@@ -60,6 +60,8 @@ The pushed CI run `26604046951` reached `Reconcile shared dev Queue consumers` a
 Updated the missing-consumer matcher to include Wrangler's `No worker consumer ... exists for queue ...` wording and added that exact shape to the reconcile unit test. Validation passed after the update: `git diff --check`, `bun run lint`, `bun run typecheck`, and `bun run test:unit`.
 
 The second pushed CI run `26604318143` reached the add step and failed with Cloudflare code `11004`: the queue already had a different consumer after the configured Worker consumer was absent. Updated reconciliation to list existing Queue consumers via the Cloudflare Queues API, delete them from each environment-owned queue, then add the desired Worker consumer with Wrangler. Validation passed again: `git diff --check`, `bun run lint`, `bun run typecheck`, and `bun run test:unit`.
+
+The third pushed CI run `26604698237` passed end-to-end. The dev deploy job completed both `Deploy shared dev Worker` and `Reconcile shared dev Queue consumers`, confirming the Cloudflare Queue consumer reconciliation works against the stale inactive consumer state.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
@@ -83,6 +85,7 @@ Tests:
 Remote CI:
 - Run `26604046951` confirmed the Worker deploy now succeeds and exposed the first missing-consumer wording.
 - Run `26604318143` confirmed the queue was occupied by a different stale consumer, which is addressed by deleting listed consumers through the Cloudflare Queues API before adding the Worker consumer.
+- Run `26604698237` passed end-to-end, including `Deploy shared dev Worker` and `Reconcile shared dev Queue consumers`.
 
 Risks and follow-ups:
 - The reconcile step treats the configured queues as environment-owned and deletes existing consumers on those queues before attaching the deployed Worker.
