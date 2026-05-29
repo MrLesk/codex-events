@@ -21,8 +21,6 @@ Example hostnames used below:
 | Auth0 login domain | `auth.example.com` |
 | Event image CDN | `media.example.com` |
 
-Do not create a GitHub variable named `AUTH0_DOMAIN`. This project uses `DEPLOY_AUTH0_CUSTOM_DOMAIN` for the Auth0 login hostname and `AUTH0_MANAGEMENT_DOMAIN` for the Auth0 tenant/API hostname.
-
 ## 1. Create Cloudflare Resources
 
 In the Cloudflare account that will host the platform:
@@ -49,7 +47,7 @@ Save these values:
 | Reply-to email | `support@example.com` |
 | Cloudflare API token | Token value |
 
-The release workflow creates the configured Cloudflare Queues if they do not already exist. It attaches Queue consumers after the Worker deploys. Inactive Worker consumers in Cloudflare still occupy the queue's single Worker-consumer slot, so the workflow removes existing consumers from each environment-owned queue before adding the deployed Worker back with the configured retry settings.
+The release workflow creates the configured Cloudflare Queues if they do not already exist, deploys the Worker, and attaches the required Queue consumers.
 
 Create a custom Cloudflare API token with these permissions. Add `Read` plus the write-capable access level, `Edit` or `Write`, where both are listed; Cloudflare edit access does not consistently include read access.
 
@@ -93,7 +91,7 @@ Example:
 auth.example.com
 ```
 
-The production release workflow runs the Auth0 custom-domain bootstrap. It creates or verifies the Auth0 custom domain, writes the required Cloudflare DNS CNAME record as DNS-only, waits for Auth0 verification, and then uses that hostname for login.
+The production release workflow configures the Auth0 custom domain, writes the required Cloudflare DNS CNAME record as DNS-only, waits for Auth0 verification, and then uses that hostname for login.
 
 If the custom domain already exists, use the same hostname in `DEPLOY_AUTH0_CUSTOM_DOMAIN`. In Cloudflare DNS, the Auth0 CNAME must stay DNS-only, not proxied.
 
@@ -240,13 +238,11 @@ Set these secrets only when the deployment uses them:
 
 Create a GitHub environment named `dev` only if pushes to `main` should deploy a shared dev instance.
 
-The dev environment uses the same variable groups as production. Set `DEPLOY_BASE_DOMAIN` to the dev app hostname for that environment, and set `DEPLOY_ENV_NAME=dev` only when you want to override the dev workflow default.
+For dev, use environment-specific values for the same variable and secret groups as production. Set `DEPLOY_BASE_DOMAIN` to the dev app hostname, and set `DEPLOY_ENV_NAME=dev` only when you want to override the dev workflow default.
 
-The dev environment secrets mirror production, except the Auth0 application client ID secret is named `NUXT_AUTH0_CLIENT_ID`.
+Store the dev Auth0 Regular Web Application client ID in `NUXT_AUTH0_CLIENT_ID`.
 
 Use a separate Auth0 tenant or application for dev when you want to keep dev users, callback URLs, Actions, and database connections separate from production.
-
-BDD test automation uses a separate GitHub environment named `bdd`; configure it from `DEVELOPMENT.md` only when running Auth0-backed BDD tests in CI.
 
 ## 7. Deploy Production
 

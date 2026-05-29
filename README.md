@@ -104,7 +104,7 @@ Codex Events runs in infrastructure you choose. Auth0 handles authentication. Th
   <img src="docs/assets/readme/operating-stack.svg" width="100%" alt="Codex Events operating stack" />
 </p>
 
-The canonical deployment model uses:
+The platform deployment uses:
 
 | Layer | Role |
 | --- | --- |
@@ -120,13 +120,13 @@ The canonical deployment model uses:
 
 The repository includes automation for recurring setup and maintenance:
 
-- Auth0 tenant drift checks and bootstrap commands for required app URLs, branding, custom domains, Actions, and account-linking callbacks.
-- First-platform-admin bootstrap commands.
-- Luma webhook reconciliation for environments that enable Luma sync.
+- Auth0 setup for required app URLs, branding, custom domains, Actions, and account-linking callbacks.
+- First platform-admin setup.
+- Luma webhook setup for environments that enable Luma sync.
 - Cloudflare queue, secret, migration, and deployment workflows.
 - A GitHub Release driven production deployment workflow.
 
-The checked-in `wrangler.jsonc` is limited to local/adopter-safe defaults. Remote dev and production deployments generate ignored Wrangler configs from each environment's `DEPLOY_BASE_DOMAIN`, deployment resource-name defaults or overrides, required Cloudflare IDs, and the app's existing `NUXT_*` runtime variables.
+Remote dev and production deployments are generated from environment-specific deployment variables, Cloudflare IDs, and runtime settings. Local Cloudflare bindings are documented in `wrangler.jsonc`.
 
 ## Where It Fits
 
@@ -154,9 +154,9 @@ Plan for:
 - deployment-owned legal controller details, support and privacy contact addresses, and current Privacy Policy and Platform Terms content;
 - people who can manage platform admins, event admins, judges, staff, and release access.
 
-Before launch, configure platform legal settings and publish current platform documents from the platform-admin workspace or the legal bootstrap tool. Public legal pages and account registration treat missing legal setup as unavailable rather than publishing repository-owned operator details.
+Before launch, configure platform legal settings and publish current platform documents from the platform-admin workspace or legal setup tooling. Public legal pages and account registration require those settings to be present.
 
-Production deployment variables and operator setup are documented in [`OPERATOR.md`](OPERATOR.md). Environment-specific examples are also available in [`.env.example`](.env.example) and [`wrangler.jsonc`](wrangler.jsonc). `wrangler.jsonc` covers local bindings; remote deployment config is generated under `.wrangler/generated/` by the deploy scripts.
+Production deployment variables and operator setup are documented in [`OPERATOR.md`](OPERATOR.md). Environment-specific examples are available in [`.env.example`](.env.example), and local Cloudflare bindings are shown in [`wrangler.jsonc`](wrangler.jsonc).
 
 ---
 
