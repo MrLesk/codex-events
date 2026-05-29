@@ -2,6 +2,7 @@
 import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
+import type { PlatformLegalSettingsRecord } from '~/composables/usePlatformLegalSettings'
 import { cloneFormValues } from '~/utils/form-values'
 import { imprintContactFormSchema } from '~/domains/platform/legal-contact'
 
@@ -20,7 +21,17 @@ const contactState = reactive({
   error: ''
 })
 const { polite, assertive } = useAnnouncer()
-const { settings, status: settingsStatus } = usePlatformLegalSettings()
+const {
+  data: settingsData,
+  status: settingsStatus
+} = await useApiResponse<PlatformLegalSettingsRecord | null>(
+  'current-platform-legal-settings',
+  '/api/platform-legal-settings/current',
+  {
+    default: () => null
+  }
+)
+const settings = computed(() => settingsData.value ?? null)
 
 const {
   errors,
