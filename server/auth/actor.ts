@@ -7,6 +7,7 @@ import {
   ensurePlatformUserAuthIdentities,
   findPlatformUserByAuth0Subject
 } from '#server/domains/accounts/auth-identities'
+import { grantConfiguredFirstPlatformAdminAccess } from '#server/domains/platform/admins'
 import {
   linkedAuth0SubjectsClaim
 } from '#server/domains/accounts/linking'
@@ -203,7 +204,12 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
 
   if (platformUser) {
     await recordSessionLinkedPlatformAccountIdentities(database, sessionUser, platformUser)
-    return await buildPlatformActor(database, sessionUser, platformUser)
+    const effectivePlatformUser = await grantConfiguredFirstPlatformAdminAccess(database, {
+      user: platformUser,
+      configuredEmail: useRuntimeConfig(event).firstPlatformAdminEmail
+    })
+
+    return await buildPlatformActor(database, sessionUser, effectivePlatformUser)
   }
 
   return buildAuthenticatedIdentityActor(sessionUser)

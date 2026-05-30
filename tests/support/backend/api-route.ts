@@ -30,6 +30,7 @@ export function createApiRouteTestHarness(options: {
   sessionUser?: TestSessionUser | null
   cloudflareEnv?: Record<string, unknown>
   runtimeConfig?: {
+    firstPlatformAdminEmail?: string
     auth0?: Record<string, unknown>
     database?: {
       binding?: string
@@ -195,6 +196,7 @@ export function createApiRouteTestHarness(options: {
       }
     } as never
     event.context.runtimeConfig = {
+      firstPlatformAdminEmail: options.runtimeConfig?.firstPlatformAdminEmail ?? '',
       auth0: {
         ...(options.runtimeConfig?.auth0 ?? {})
       },

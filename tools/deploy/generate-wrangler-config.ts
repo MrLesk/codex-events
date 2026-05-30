@@ -39,6 +39,7 @@ export interface ResolvedDeployConfigInput {
   baseDomain: string
   appBaseUrl: string
   auth0CustomDomain: string
+  firstPlatformAdminEmail: string
   lumaWebhookUrl: string
   zoneName: string
   workerName: string
@@ -317,6 +318,7 @@ export function resolveDeployConfigInput(
     baseDomain,
     appBaseUrl,
     auth0CustomDomain,
+    firstPlatformAdminEmail: readOptionalEnvironmentValue(environment, 'NUXT_FIRST_PLATFORM_ADMIN_EMAIL'),
     lumaWebhookUrl,
     zoneName: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_ZONE_NAME'),
     workerName: resolveResourceName(environment, 'DEPLOY_CF_WORKER_NAME', resourceBaseName),
@@ -411,6 +413,7 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
       NUXT_AUTH0_DOMAIN: input.auth0CustomDomain,
       NUXT_AUTH0_APP_BASE_URL: input.appBaseUrl,
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: input.auth0DatabaseConnectionName,
+      NUXT_FIRST_PLATFORM_ADMIN_EMAIL: input.firstPlatformAdminEmail,
       NUXT_OUTBOUND_EMAIL_BINDING: input.outboundEmailBinding,
       NUXT_OUTBOUND_EMAIL_FROM_EMAIL: input.outboundEmailFromEmail,
       NUXT_OUTBOUND_EMAIL_FROM_NAME: input.outboundEmailFromName,

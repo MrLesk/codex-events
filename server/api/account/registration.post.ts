@@ -27,10 +27,13 @@ export default defineApiHandler(async (h3Event) => {
   }
 
   const body = await parseValidatedBody(h3Event, registrationRequestBodySchema)
+  const runtimeConfig = useRuntimeConfig(h3Event)
 
   const result = await registerPlatformAccount(getDatabase(h3Event), actor, {
     privacyPolicyDocumentId: body.privacyPolicyDocumentId,
     platformTermsDocumentId: body.platformTermsDocumentId
+  }, {
+    firstPlatformAdminEmail: runtimeConfig.firstPlatformAdminEmail
   })
 
   return apiData(result)

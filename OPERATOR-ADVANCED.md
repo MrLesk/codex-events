@@ -58,6 +58,12 @@ Auth0 and display settings:
 | `AUTH0_APP_DISPLAY_NAME` | Display name shown in Auth0-hosted login copy. Defaults to `Codex Events` |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name. Defaults to `Username-Password-Authentication` |
 
+Platform bootstrap setting:
+
+| Variable | Value |
+| --- | --- |
+| `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | Email address to promote automatically when no active platform admin exists |
+
 Cloudflare Email Service settings:
 
 | Variable | Value |
@@ -106,6 +112,7 @@ Required dev variables:
 | `DEPLOY_BASE_DOMAIN` | Dev app hostname |
 | `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name |
 | `AUTH0_MANAGEMENT_DOMAIN` | Dev Auth0 tenant hostname |
+| `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | First platform admin email for the dev instance |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified dev sender address |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to email address |
 

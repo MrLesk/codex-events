@@ -24,6 +24,7 @@ NUXT_AUTH0_BDD_APP_BASE_URL=http://localhost:3100
 NUXT_AUTH0_AUDIENCE=
 NUXT_AUTH0_DATABASE_CONNECTION_NAME=Username-Password-Authentication
 NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET=$(openssl rand -hex 32)
+NUXT_FIRST_PLATFORM_ADMIN_EMAIL=
 NUXT_DATABASE_BINDING=DB
 NUXT_PROFILE_ICONS_BINDING=PROFILE_ICONS
 NUXT_EVENT_IMAGES_BINDING=EVENT_IMAGES
@@ -98,6 +99,7 @@ Local first-platform-admin bootstrap command:
 - `bun tools/platform-admin/bootstrap.ts apply --email your-admin@example.com`
 
 This operator command uses the local Wrangler D1 platform proxy, promotes the target user to platform admin in application data, backfills required event-admin inheritance rows for existing events, and writes an audit-log record when changes are applied.
+For deployed environments, set `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` instead. When the matching platform account exists and no active platform admins exist, the app grants platform-admin access through the same audited domain path.
 
 Local platform legal bootstrap command:
 
@@ -294,6 +296,10 @@ Auth0 tenant automation settings:
 Auth0 runtime settings:
 
 - `NUXT_AUTH0_DATABASE_CONNECTION_NAME` when the Auth0 database connection is not `Username-Password-Authentication`
+
+Platform bootstrap setting:
+
+- `NUXT_FIRST_PLATFORM_ADMIN_EMAIL`
 
 Cloudflare Email Service and Queues runtime settings:
 

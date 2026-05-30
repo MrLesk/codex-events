@@ -150,6 +150,7 @@ Add these production environment variables:
 | `DEPLOY_BASE_DOMAIN` | Production app hostname | `events.example.com` |
 | `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name from step 1 | `example.com` |
 | `AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant domain from step 2 | `your-tenant.eu.auth0.com` |
+| `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | Email address for the first platform admin | `admin@example.com` |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified Cloudflare Email sender from step 1 | `events@example.com` |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to address for outbound email | `support@example.com` |
 
@@ -271,24 +272,13 @@ INSERT OR IGNORE INTO platform_documents (
 
 ## 8. Create The First Platform Admin
 
-Open the production site and sign in with the account that should become the first platform admin.
+Open the production site and sign in with the email address configured in `NUXT_FIRST_PLATFORM_ADMIN_EMAIL`.
 
-After the account registration finishes, open the production D1 database in Cloudflare and run:
-
-```sql
-UPDATE users
-SET
-  is_platform_admin = 1,
-  updated_at = CURRENT_TIMESTAMP
-WHERE lower(email) = lower('admin@example.com')
-  AND deleted_at IS NULL;
-```
-
-Replace `admin@example.com` with the first admin's email address.
+After the account registration finishes, the application grants platform-admin access automatically when no active platform admin exists. The grant uses the same audited platform-admin path as the in-app admin roster.
 
 ## 9. Finish Setup In The App
 
-Sign in as the first platform admin.
+Open the account workspace as the first platform admin.
 
 Use the platform admin workspace to:
 

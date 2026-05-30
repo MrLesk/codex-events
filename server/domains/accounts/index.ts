@@ -13,6 +13,7 @@ import {
 import { buildAuditLogInsert, writeAuditLog } from '#server/database/audit-log'
 import { ApiError } from '#server/http/api-error'
 import { assertGuard } from '#server/domains/lifecycle-guard'
+import { grantConfiguredFirstPlatformAdminAccess } from '#server/domains/platform/admins'
 import { assertCurrentPlatformDocument, getCurrentPlatformDocument } from '#server/domains/platform/documents'
 import { findPlatformUserByAuth0Subject } from './auth-identities'
 import { findLinkablePlatformAccountIdentity } from './linking'
@@ -322,7 +323,10 @@ async function assertPlatformAccountRegistrationAllowed(
 export async function registerPlatformAccount(
   database: AppDatabase,
   actor: AuthenticatedIdentityActor,
-  input: PlatformAccountRegistrationInput
+  input: PlatformAccountRegistrationInput,
+  options?: {
+    firstPlatformAdminEmail?: string | null
+  }
 ) {
   await assertPlatformAccountRegistrationAllowed(database, actor)
 
@@ -363,8 +367,13 @@ export async function registerPlatformAccount(
     }).query
   ])
 
+  const platformUser = await grantConfiguredFirstPlatformAdminAccess(database, {
+    user: userRecord,
+    configuredEmail: options?.firstPlatformAdminEmail
+  })
+
   return {
-    user: serializePlatformUser(userRecord),
+    user: serializePlatformUser(platformUser),
     acceptedDocumentIds: {
       privacyPolicyDocumentId: privacyPolicyDocument.id,
       platformTermsDocumentId: platformTermsDocument.id

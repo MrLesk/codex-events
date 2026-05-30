@@ -50,6 +50,7 @@ jobs:
       NUXT_AUTH0_DOMAIN: ${{ vars.DEPLOY_AUTH0_CUSTOM_DOMAIN || format('auth.{0}', vars.DEPLOY_BASE_DOMAIN) }}
       NUXT_AUTH0_APP_BASE_URL: https://${{ vars.DEPLOY_BASE_DOMAIN }}
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME || 'Username-Password-Authentication' }}
+      NUXT_FIRST_PLATFORM_ADMIN_EMAIL: ${{ vars.NUXT_FIRST_PLATFORM_ADMIN_EMAIL }}
       # Cloudflare Email Service and Queues runtime settings.
       NUXT_OUTBOUND_EMAIL_BINDING: ${{ vars.NUXT_OUTBOUND_EMAIL_BINDING }}
       NUXT_OUTBOUND_EMAIL_FROM_EMAIL: ${{ vars.NUXT_OUTBOUND_EMAIL_FROM_EMAIL }}

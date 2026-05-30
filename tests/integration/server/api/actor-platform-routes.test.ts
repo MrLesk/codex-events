@@ -660,6 +660,111 @@ describe('TASK-3.5 actor-facing API routes', () => {
     expect(auditEntries).toHaveLength(0)
   })
 
+  test('GET /api/session promotes the configured first platform admin when no active admin exists', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      runtimeConfig: {
+        firstPlatformAdminEmail: 'First-Admin@Example.com'
+      },
+      sessionUser: {
+        sub: 'auth0|first-admin',
+        email: 'first-admin@example.com',
+        email_verified: true,
+        name: 'First Admin'
+      }
+    })
+    databases.push(harness)
+
+    await seedAcceptedPlatformUser(harness, {
+      id: 'first_admin',
+      auth0Subject: 'auth0|first-admin',
+      email: 'first-admin@example.com'
+    })
+
+    const response = await harness.request('/api/session')
+    const promotedUser = await harness.database.query.users.findFirst({
+      where: eq(users.id, 'first_admin')
+    })
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        actor: {
+          kind: 'platform_user',
+          isPlatformAdmin: true,
+          platformUser: {
+            id: 'first_admin',
+            isPlatformAdmin: true
+          }
+        }
+      }
+    })
+    expect(promotedUser?.isPlatformAdmin).toBe(true)
+    expect(auditEntries).toEqual([
+      expect.objectContaining({
+        actorUserId: null,
+        entityType: 'user',
+        entityId: 'first_admin',
+        action: 'platform_admin.first_bootstrap_granted'
+      })
+    ])
+  })
+
+  test('GET /api/session leaves the configured email unchanged when another platform admin exists', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      runtimeConfig: {
+        firstPlatformAdminEmail: 'first-admin@example.com'
+      },
+      sessionUser: {
+        sub: 'auth0|first-admin',
+        email: 'first-admin@example.com',
+        email_verified: true,
+        name: 'First Admin'
+      }
+    })
+    databases.push(harness)
+
+    await seedAcceptedPlatformUser(harness, {
+      id: 'first_admin',
+      auth0Subject: 'auth0|first-admin',
+      email: 'first-admin@example.com'
+    })
+    await harness.database.insert(users).values({
+      id: 'existing_admin',
+      auth0Subject: 'auth0|existing-admin',
+      email: 'existing-admin@example.com',
+      displayName: 'Existing Admin',
+      isPlatformAdmin: true
+    })
+
+    const response = await harness.request('/api/session')
+    const configuredUser = await harness.database.query.users.findFirst({
+      where: eq(users.id, 'first_admin')
+    })
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        actor: {
+          isPlatformAdmin: false,
+          platformUser: {
+            id: 'first_admin',
+            isPlatformAdmin: false
+          }
+        }
+      }
+    })
+    expect(configuredUser?.isPlatformAdmin).toBe(false)
+    expect(auditEntries).toHaveLength(0)
+  })
+
   test('GET /api/session does not expose app-runtime account-link metadata for verified social identities', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -1372,6 +1477,64 @@ describe('TASK-3.5 actor-facing API routes', () => {
         }
       }
     })
+  })
+
+  test('POST /api/account/registration grants the configured first platform admin', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler }
+      ],
+      runtimeConfig: {
+        firstPlatformAdminEmail: 'First-Admin@Example.com'
+      },
+      sessionUser: {
+        sub: 'auth0|new-first-admin',
+        email: 'first-admin@example.com',
+        email_verified: true,
+        name: 'First Admin'
+      }
+    })
+    databases.push(harness)
+
+    await seedCurrentPlatformDocuments(harness)
+
+    const response = await harness.request('/api/account/registration', {
+      method: 'POST',
+      body: JSON.stringify({
+        privacyPolicyDocumentId: 'privacy_v1',
+        platformTermsDocumentId: 'terms_v1'
+      })
+    })
+    const createdUser = await harness.database.query.users.findFirst({
+      where: eq(users.auth0Subject, 'auth0|new-first-admin')
+    })
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        user: {
+          email: 'first-admin@example.com',
+          isPlatformAdmin: true
+        }
+      }
+    })
+    expect(createdUser?.isPlatformAdmin).toBe(true)
+    expect(auditEntries).toHaveLength(2)
+    expect(auditEntries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        actorUserId: createdUser?.id,
+        entityType: 'user',
+        entityId: createdUser?.id,
+        action: 'account.registered'
+      }),
+      expect.objectContaining({
+        actorUserId: null,
+        entityType: 'user',
+        entityId: createdUser?.id,
+        action: 'platform_admin.first_bootstrap_granted'
+      })
+    ]))
   })
 
   test('POST /api/account/registration stores the GitHub profile URL for GitHub-backed sessions', async () => {

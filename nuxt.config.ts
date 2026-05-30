@@ -19,6 +19,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
+    firstPlatformAdminEmail: '',
     auth0: {
       domain: '',
       clientId: '',

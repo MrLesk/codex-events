@@ -34,6 +34,54 @@ interface PlatformAdminGrantState {
   }>
 }
 
+type PlatformUserRecord = typeof users.$inferSelect
+
+function normalizeEmail(value: string | null | undefined) {
+  return value?.trim().toLowerCase() ?? ''
+}
+
+async function hasActivePlatformAdmins(database: AppDatabase) {
+  const rows = await database
+    .select({ total: count() })
+    .from(users)
+    .where(and(
+      eq(users.isPlatformAdmin, true),
+      isNull(users.deletedAt)
+    ))
+
+  return (rows[0]?.total ?? 0) > 0
+}
+
+export async function grantConfiguredFirstPlatformAdminAccess(
+  database: AppDatabase,
+  input: {
+    user: PlatformUserRecord
+    configuredEmail: string | null | undefined
+  }
+) {
+  const configuredEmail = normalizeEmail(input.configuredEmail)
+
+  if (
+    !configuredEmail
+    || input.user.isPlatformAdmin
+    || normalizeEmail(input.user.email) !== configuredEmail
+  ) {
+    return input.user
+  }
+
+  if (await hasActivePlatformAdmins(database)) {
+    return input.user
+  }
+
+  await grantPlatformAdminAccess(database, {
+    actorUserId: null,
+    userId: input.user.id,
+    action: 'platform_admin.first_bootstrap_granted'
+  })
+
+  return await getActiveUserOrThrow(database, input.user.id)
+}
+
 export async function listPlatformAdmins(database: AppDatabase) {
   const items = await database.query.users.findMany({
     where: and(

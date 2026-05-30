@@ -28,7 +28,8 @@ describe('deploy Wrangler config generator', () => {
 
   test('generates dev config from environment-local domain and derived resource names', () => {
     const input = resolveDeployConfigInput('dev', createEnvironment({
-      DEPLOY_BASE_DOMAIN: 'dev.example.com'
+      DEPLOY_BASE_DOMAIN: 'dev.example.com',
+      NUXT_FIRST_PLATFORM_ADMIN_EMAIL: 'admin@example.com'
     }))
     const config = buildDeployWranglerConfig(input)
 
@@ -51,6 +52,7 @@ describe('deploy Wrangler config generator', () => {
       NUXT_AUTH0_DOMAIN: 'auth.dev.example.com',
       NUXT_AUTH0_APP_BASE_URL: 'https://dev.example.com',
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
+      NUXT_FIRST_PLATFORM_ADMIN_EMAIL: 'admin@example.com',
       NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME: 'codex-events-dev-application-review-email-delivery',
       NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME: 'codex-events-dev-event-outcome-email-delivery',
       NUXT_LUMA_QUEUE_NAME: 'codex-events-dev-application-luma-sync'
