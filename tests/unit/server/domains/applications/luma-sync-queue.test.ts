@@ -40,7 +40,7 @@ function createEvent(options?: {
       runtimeConfig: options?.runtimeConfig ?? {
         luma: {
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
-          queueName: 'codex-events-application-luma-sync',
+          queueName: 'codex-events-dev-application-luma-sync',
           retryDelaySeconds: 120
         }
       }
@@ -590,7 +590,7 @@ describe('application luma sync queue utilities', () => {
       runtimeConfig: {
         luma: {
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
-          queueName: 'codex-events-application-luma-sync',
+          queueName: 'codex-events-dev-application-luma-sync',
           retryDelaySeconds: 90
         }
       }
@@ -625,7 +625,7 @@ describe('application luma sync queue utilities', () => {
         metadata: expect.objectContaining({
           decision: 'approved',
           recoveryTrigger: 'startup',
-          queueName: 'codex-events-application-luma-sync'
+          queueName: 'codex-events-dev-application-luma-sync'
         })
       })
     ]))
@@ -646,7 +646,7 @@ describe('application luma sync queue utilities', () => {
       runtimeConfig: {
         luma: {
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
-          queueName: 'codex-events-application-luma-sync',
+          queueName: 'codex-events-dev-application-luma-sync',
           retryDelaySeconds: 90
         }
       }
@@ -675,7 +675,7 @@ describe('application luma sync queue utilities', () => {
         metadata: expect.objectContaining({
           decision: 'rejected',
           recoveryTrigger: 'startup',
-          queueName: 'codex-events-application-luma-sync'
+          queueName: 'codex-events-dev-application-luma-sync'
         })
       })
     ]))
@@ -693,7 +693,7 @@ describe('application luma sync queue utilities', () => {
       runtimeConfig: {
         luma: {
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
-          queueName: 'codex-events-application-luma-sync',
+          queueName: 'codex-events-dev-application-luma-sync',
           retryDelaySeconds: 90
         }
       }
@@ -720,7 +720,7 @@ describe('application luma sync queue utilities', () => {
     }, {
       runtimeConfig: {
         luma: {
-          queueName: 'codex-events-application-luma-sync'
+          queueName: 'codex-events-dev-application-luma-sync'
         }
       }
     })

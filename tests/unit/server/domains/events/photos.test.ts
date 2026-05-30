@@ -27,11 +27,6 @@ function createEvent(cloudflareEnv: Record<string, unknown>) {
     context: {
       cloudflare: {
         env: cloudflareEnv
-      },
-      runtimeConfig: {
-        eventImages: {
-          publicCdnBaseUrl: ''
-        }
       }
     }
   } as H3Event
@@ -44,50 +39,12 @@ describe('event photo utilities', () => {
       '/api/events/event_1/photos/photo_1/image?variant=preview&v=2026-04-19T10%3A00%3A00.000Z'
     )
     expect(buildPublicEventPhotoImageUrl(
-      createEvent({}),
-      'event_1',
       'codex-vienna',
       'photo_1',
       'original',
       '2026-04-19T10:00:00.000Z'
     )).toBe(
       '/api/public/events/codex-vienna/photos/photo_1/image?variant=original&v=2026-04-19T10%3A00%3A00.000Z'
-    )
-  })
-
-  test('builds CDN-backed public photo URLs when a public CDN base URL is configured', () => {
-    const event = {
-      context: {
-        cloudflare: {
-          env: {}
-        },
-        runtimeConfig: {
-          eventImages: {
-            publicCdnBaseUrl: 'https://cdn.dev.codex-events.com'
-          }
-        }
-      }
-    } as H3Event
-
-    expect(buildPublicEventPhotoImageUrl(
-      event,
-      'event_1',
-      'codex-vienna',
-      'photo_1',
-      'preview',
-      '2026-04-19T10:00:00.000Z'
-    )).toBe(
-      'https://cdn.dev.codex-events.com/cdn-cgi/image/width=720,height=720,fit=scale-down,format=webp,quality=82/events/event_1/photos/photo_1'
-    )
-    expect(buildPublicEventPhotoImageUrl(
-      event,
-      'event_1',
-      'codex-vienna',
-      'photo_1',
-      'original',
-      '2026-04-19T10:00:00.000Z'
-    )).toBe(
-      'https://cdn.dev.codex-events.com/events/event_1/photos/photo_1'
     )
   })
 

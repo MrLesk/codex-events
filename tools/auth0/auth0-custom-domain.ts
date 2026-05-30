@@ -211,7 +211,7 @@ async function auth0Request<Result>(
     && responseText.includes('verified credit card on file')
   ) {
     throw new Error(
-      'Auth0 blocked custom-domain creation because the tenant does not have a verified billing method. Add billing in Auth0, then rerun the release.'
+      'Auth0 blocked custom-domain creation because the tenant does not have a verified billing method. Add billing in Auth0, then rerun the deployment workflow.'
     )
   }
 

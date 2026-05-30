@@ -15,15 +15,15 @@ For the selected target, the generator derives:
 - Luma webhook URL: `https://<DEPLOY_BASE_DOMAIN>/api/public/luma/webhooks`
 - resource names from `DEPLOY_ENV_NAME` and `DEPLOY_RESOURCE_PREFIX`
 
-`DEPLOY_ENV_NAME` defaults to `dev` for the shared dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Production resources use the resource prefix directly; non-production environments use `<DEPLOY_ENV_NAME>-<DEPLOY_RESOURCE_PREFIX>`.
+`DEPLOY_ENV_NAME` defaults to `dev` for the shared dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
 
 Examples:
 
 | Target | `DEPLOY_ENV_NAME` | `DEPLOY_RESOURCE_PREFIX` | Worker and D1 default |
 | --- | --- | --- | --- |
-| Production | `prod` | `codex-events` | `codex-events` |
-| Dev | `dev` | `codex-events` | `dev-codex-events` |
-| Preview | `preview` | `codex-events` | `preview-codex-events` |
+| Production | `prod` | `codex-events` | `codex-events-prod` |
+| Dev | `dev` | `codex-events` | `codex-events-dev` |
+| Preview | `preview` | `codex-events` | `codex-events-preview` |
 
 Keep `DEPLOY_CF_ZONE_NAME` and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the Cloudflare DNS zone and Auth0 login hostname cannot be inferred safely from a deployment hostname.
 
@@ -75,11 +75,10 @@ Queue settings:
 | `NUXT_LUMA_QUEUE_BINDING` | Worker binding for Luma sync jobs. Defaults to `APPLICATION_LUMA_SYNC_QUEUE` |
 | `NUXT_LUMA_RETRY_DELAY_SECONDS` | Retry delay for Luma sync jobs. Defaults to `120` |
 
-Deployment URL settings:
+Deployment URL override:
 
 | Variable | Value |
 | --- | --- |
-| `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` | Event image public CDN URL. Leave empty to serve public event gallery images through Worker routes |
 | `DEPLOY_LUMA_WEBHOOK_URL` | Override for the Luma webhook URL. Defaults to `https://<DEPLOY_BASE_DOMAIN>/api/public/luma/webhooks` |
 
 Optional secrets:
@@ -88,20 +87,6 @@ Optional secrets:
 | --- | --- |
 | `NUXT_AUTH0_AUDIENCE` | Auth0 API audience when the application requests one |
 | `NUXT_LUMA_API_KEY` | Luma API key when events use Luma sync |
-
-## Queue Consumer Reconciliation
-
-The generated Wrangler config binds Queue producers only. Remote workflows deploy the Worker first, then reconcile Queue consumers.
-
-The reconcile step treats the configured queues as environment-owned:
-
-1. list existing consumers through the Cloudflare Queues API;
-2. delete existing consumers from each configured queue;
-3. add the deployed Worker consumer back with the configured batch and retry settings.
-
-Cloudflare keeps inactive Worker consumers in the single-consumer slot until they are removed, so consumer attachment is intentionally separate from `wrangler deploy`.
-
-Do not manually attach a different Worker or pull consumer to the environment-owned queues unless you also change the deployment configuration to stop managing that queue.
 
 ## Shared Dev Environment
 
@@ -123,6 +108,8 @@ Required dev variables:
 | `AUTH0_MANAGEMENT_DOMAIN` | Dev Auth0 tenant hostname |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified dev sender address |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to email address |
+
+The shared dev deploy workflow configures `DEPLOY_AUTH0_CUSTOM_DOMAIN`, writes the required Cloudflare DNS CNAME record as DNS-only, and waits for Auth0 verification before applying Auth0 application settings.
 
 Required dev secrets:
 

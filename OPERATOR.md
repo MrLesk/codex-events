@@ -21,7 +21,6 @@ Example hostnames used below:
 | --- | --- |
 | Production app | `events.example.com` |
 | Auth0 login domain | `auth.example.com` |
-| Event image CDN | `media.example.com` |
 
 ## 1. Create Cloudflare Resources
 
@@ -46,31 +45,17 @@ Cloudflare edit access does not consistently include read access, so keep both a
 
 Scope the account permissions to the Cloudflare account that owns the Worker, D1 database, R2 buckets, Images binding, and Queues. Scope the zone permissions to the DNS zone name you use in `DEPLOY_CF_ZONE_NAME`.
 
-Keep these values for the GitHub `production` environment in step 5:
+The production workflow creates the D1 database, R2 buckets, and Cloudflare Queues when they do not already exist. The default resource name format is `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment, including production. These optional GitHub environment variables control the Cloudflare resource names; omit them to use the defaults:
 
-| Value | GitHub setting | Example |
+| GitHub variable | Cloudflare resource | Default production value |
 | --- | --- | --- |
-| Cloudflare account ID | `CLOUDFLARE_ACCOUNT_ID` secret | `0123456789abcdef0123456789abcdef` |
-| Cloudflare API token | `CLOUDFLARE_API_TOKEN` secret | Token value |
-| DNS zone name | `DEPLOY_CF_ZONE_NAME` variable | `example.com` |
-| Verified sender email | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` variable | `events@example.com` |
-| Reply-to email | `NUXT_OUTBOUND_EMAIL_REPLY_TO` variable | `support@example.com` |
-
-The production workflow creates the D1 database, R2 buckets, and Cloudflare Queues when they do not already exist. With the default settings, production uses these Cloudflare resource names:
-
-| Resource | Default name |
-| --- | --- |
-| Worker | `codex-events` |
-| D1 database | `codex-events` |
-| Profile-icons R2 bucket | `codex-events-profile-icons` |
-| Event-images R2 bucket | `codex-events-event-images` |
-| Application decision email queue | `codex-events-application-review-email-delivery` |
-| Event outcome email queue | `codex-events-event-outcome-email-delivery` |
-| Luma sync queue | `codex-events-application-luma-sync` |
-
-Connect the event-images R2 bucket to a public custom domain only when the deployment serves public gallery images directly from R2. The default setup can serve public event images through Worker routes.
-
-The release workflow deploys the Worker and attaches the required Queue consumers. Inactive Worker consumers in Cloudflare still occupy a queue's single Worker-consumer slot, so the workflow removes existing consumers from each environment-owned queue before adding the deployed Worker back with the configured retry settings.
+| `DEPLOY_CF_WORKER_NAME` | Worker | `codex-events-prod` |
+| `DEPLOY_CF_D1_DATABASE_NAME` | D1 database | `codex-events-prod` |
+| `DEPLOY_CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket | `codex-events-prod-profile-icons` |
+| `DEPLOY_CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket | `codex-events-prod-event-images` |
+| `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue | `codex-events-prod-application-review-email-delivery` |
+| `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue | `codex-events-prod-event-outcome-email-delivery` |
+| `DEPLOY_CF_LUMA_SYNC_QUEUE` | Luma sync queue | `codex-events-prod-application-luma-sync` |
 
 ## 2. Create Auth0 Resources
 
@@ -92,7 +77,7 @@ Example:
 auth.example.com
 ```
 
-The production release workflow configures the Auth0 custom domain, writes the required Cloudflare DNS CNAME record as DNS-only, waits for Auth0 verification, and then uses that hostname for login.
+The dev and production deploy workflows configure the Auth0 custom domain, write the required Cloudflare DNS CNAME record as DNS-only, wait for Auth0 verification, and then use that hostname for login.
 
 If the custom domain already exists, use the same hostname in `DEPLOY_AUTH0_CUSTOM_DOMAIN`. In Cloudflare DNS, the Auth0 CNAME must stay DNS-only, not proxied.
 
@@ -158,44 +143,44 @@ These credentials are used by GitHub Actions and Auth0 Actions setup. They are n
 
 In GitHub, create an environment named `production`.
 
-Set these production environment variables:
+Add these production environment variables:
 
-| Variable | Value |
-| --- | --- |
-| `DEPLOY_BASE_DOMAIN` | Production app hostname, for example `events.example.com` |
-| `DEPLOY_AUTH0_CUSTOM_DOMAIN` | Auth0 login hostname, for example `auth.example.com` |
-| `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name |
-| `AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant hostname, for example `your-tenant.eu.auth0.com` |
-| `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified Cloudflare Email Service sender |
-| `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to email address |
+| Variable | Source | Example |
+| --- | --- | --- |
+| `DEPLOY_BASE_DOMAIN` | Production app hostname | `events.example.com` |
+| `DEPLOY_AUTH0_CUSTOM_DOMAIN` | Auth0 login hostname from step 2 | `auth.example.com` |
+| `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name from step 1 | `example.com` |
+| `AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant domain from step 2 | `your-tenant.eu.auth0.com` |
+| `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified Cloudflare Email sender from step 1 | `events@example.com` |
+| `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to address for outbound email | `support@example.com` |
 
 If the Auth0 database connection is not named `Username-Password-Authentication`, also set:
 
-| Variable | Value |
-| --- | --- |
-| `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name |
+| Variable | Source | Example |
+| --- | --- | --- |
+| `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection from step 3 | `Username-Password-Authentication` |
 
-Set these production environment secrets:
+Add these production environment secrets:
 
-| Secret | Value |
-| --- | --- |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API token |
-| `AUTH0_APP_CLIENT_ID` | Auth0 Regular Web Application client ID |
-| `AUTH0_MGMT_CLIENT_ID` | Auth0 Management API application client ID |
-| `AUTH0_MGMT_CLIENT_SECRET` | Auth0 Management API application client secret |
-| `NUXT_AUTH0_CLIENT_SECRET` | Auth0 Regular Web Application client secret |
-| `NUXT_AUTH0_SESSION_SECRET` | Output of `openssl rand -hex 64` |
-| `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` | Output of `openssl rand -hex 32` |
+| Secret | Source | Example |
+| --- | --- | --- |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID from step 1 | `0123456789abcdef0123456789abcdef` |
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token from step 1 | Token value |
+| `AUTH0_APP_CLIENT_ID` | Auth0 Regular Web Application client ID from step 3 | Client ID |
+| `AUTH0_MGMT_CLIENT_ID` | Auth0 Management API application client ID from step 4 | Client ID |
+| `AUTH0_MGMT_CLIENT_SECRET` | Auth0 Management API application client secret from step 4 | Client secret |
+| `NUXT_AUTH0_CLIENT_SECRET` | Auth0 Regular Web Application client secret from step 3 | Client secret |
+| `NUXT_AUTH0_SESSION_SECRET` | Output of `openssl rand -hex 64` | Generated secret |
+| `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` | Output of `openssl rand -hex 32` | Generated secret |
 
 Set these secrets only when the deployment uses them:
 
-| Secret | Value |
-| --- | --- |
-| `NUXT_AUTH0_AUDIENCE` | Auth0 API audience when the application requests one |
-| `NUXT_LUMA_API_KEY` | Luma API key when events use Luma sync |
+| Secret | Source | Example |
+| --- | --- | --- |
+| `NUXT_AUTH0_AUDIENCE` | Auth0 API audience when the application requests one | Audience URL |
+| `NUXT_LUMA_API_KEY` | Luma API key when events use Luma sync | API key |
 
-For resource-name overrides, custom sender display names, public R2 CDN URLs, shared dev, or BDD configuration, use [OPERATOR-ADVANCED.md](OPERATOR-ADVANCED.md).
+For resource-name overrides, custom sender display names, shared dev, or BDD configuration, use [OPERATOR-ADVANCED.md](OPERATOR-ADVANCED.md).
 
 ## 6. Deploy Production
 

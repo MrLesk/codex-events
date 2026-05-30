@@ -3593,8 +3593,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       },
       runtimeConfig: {
         eventImages: {
-          binding: eventImagesBindingName,
-          publicCdnBaseUrl: 'https://cdn.dev.codex-events.com'
+          binding: eventImagesBindingName
         }
       }
     })
@@ -3761,8 +3760,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       },
       runtimeConfig: {
         eventImages: {
-          binding: eventImagesBindingName,
-          publicCdnBaseUrl: 'https://cdn.dev.codex-events.com'
+          binding: eventImagesBindingName
         }
       }
     })
@@ -3925,8 +3923,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       },
       runtimeConfig: {
         eventImages: {
-          binding: eventImagesBindingName,
-          publicCdnBaseUrl: 'https://cdn.dev.codex-events.com'
+          binding: eventImagesBindingName
         }
       }
     })
@@ -4078,8 +4075,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       },
       runtimeConfig: {
         eventImages: {
-          binding: eventImagesBindingName,
-          publicCdnBaseUrl: 'https://cdn.dev.codex-events.com'
+          binding: eventImagesBindingName
         }
       }
     })
@@ -4163,8 +4159,7 @@ describe('TASK-3.5 event CRUD routes', () => {
       },
       runtimeConfig: {
         eventImages: {
-          binding: eventImagesBindingName,
-          publicCdnBaseUrl: 'https://cdn.dev.codex-events.com'
+          binding: eventImagesBindingName
         }
       }
     })
@@ -4242,8 +4237,8 @@ describe('TASK-3.5 event CRUD routes', () => {
           isPubliclyVisible: true,
           uploadedByUserId: null,
           uploadedBy: null,
-          previewUrl: 'https://cdn.dev.codex-events.com/cdn-cgi/image/width=720,height=720,fit=scale-down,format=webp,quality=82/events/event_public_gallery/photos/photo_public',
-          originalUrl: 'https://cdn.dev.codex-events.com/events/event_public_gallery/photos/photo_public'
+          previewUrl: '/api/public/events/public-gallery-event/photos/photo_public/image?variant=preview&v=2026-04-01T12%3A00%3A00.000Z',
+          originalUrl: '/api/public/events/public-gallery-event/photos/photo_public/image?variant=original&v=2026-04-01T12%3A00%3A00.000Z'
         }
       ]
     })

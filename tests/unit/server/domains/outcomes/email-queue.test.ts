@@ -25,7 +25,7 @@ function createEvent(options?: {
       runtimeConfig: options?.runtimeConfig ?? {
         eventOutcomeEmails: {
           queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE',
-          queueName: 'codex-events-event-outcome-email-delivery',
+          queueName: 'codex-events-dev-event-outcome-email-delivery',
           retryDelaySeconds: 120
         }
       }
@@ -148,7 +148,7 @@ describe('event outcome email queue utilities', () => {
     }, {
       runtimeConfig: {
         eventOutcomeEmails: {
-          queueName: 'codex-events-event-outcome-email-delivery'
+          queueName: 'codex-events-dev-event-outcome-email-delivery'
         }
       }
     })

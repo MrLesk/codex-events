@@ -42,15 +42,15 @@ function createRunner(results: Array<string | Error>) {
 
 describe('deploy R2 bucket provisioning', () => {
   test('parses Wrangler R2 bucket info output', () => {
-    expect(parseR2BucketInfoOutput(r2InfoOutput('codex-events-profile-icons'))).toEqual({
-      name: 'codex-events-profile-icons'
+    expect(parseR2BucketInfoOutput(r2InfoOutput('codex-events-prod-profile-icons'))).toEqual({
+      name: 'codex-events-prod-profile-icons'
     })
   })
 
   test('returns existing R2 buckets by resolved names', async () => {
     const { calls, runner } = createRunner([
-      r2InfoOutput('dev-codex-events-profile-icons'),
-      r2InfoOutput('dev-codex-events-event-images')
+      r2InfoOutput('codex-events-dev-profile-icons'),
+      r2InfoOutput('codex-events-dev-event-images')
     ])
 
     await expect(ensureDeployR2Buckets({
@@ -60,12 +60,12 @@ describe('deploy R2 bucket provisioning', () => {
     })).resolves.toEqual([
       {
         binding: 'PROFILE_ICONS',
-        bucketName: 'dev-codex-events-profile-icons',
+        bucketName: 'codex-events-dev-profile-icons',
         created: false
       },
       {
         binding: 'EVENT_IMAGES',
-        bucketName: 'dev-codex-events-event-images',
+        bucketName: 'codex-events-dev-event-images',
         created: false
       }
     ])
@@ -73,11 +73,11 @@ describe('deploy R2 bucket provisioning', () => {
     expect(calls).toEqual([
       {
         command: 'bunx',
-        args: ['wrangler', 'r2', 'bucket', 'info', 'dev-codex-events-profile-icons', '--json']
+        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-dev-profile-icons', '--json']
       },
       {
         command: 'bunx',
-        args: ['wrangler', 'r2', 'bucket', 'info', 'dev-codex-events-event-images', '--json']
+        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-dev-event-images', '--json']
       }
     ])
   })
@@ -88,8 +88,8 @@ describe('deploy R2 bucket provisioning', () => {
       new Error('bucket not found'),
       '',
       '',
-      r2InfoOutput('codex-events-profile-icons'),
-      r2InfoOutput('codex-events-event-images')
+      r2InfoOutput('codex-events-prod-profile-icons'),
+      r2InfoOutput('codex-events-prod-event-images')
     ])
 
     await expect(ensureDeployR2Buckets({
@@ -99,12 +99,12 @@ describe('deploy R2 bucket provisioning', () => {
     })).resolves.toEqual([
       {
         binding: 'PROFILE_ICONS',
-        bucketName: 'codex-events-profile-icons',
+        bucketName: 'codex-events-prod-profile-icons',
         created: true
       },
       {
         binding: 'EVENT_IMAGES',
-        bucketName: 'codex-events-event-images',
+        bucketName: 'codex-events-prod-event-images',
         created: true
       }
     ])
@@ -112,27 +112,27 @@ describe('deploy R2 bucket provisioning', () => {
     expect(calls).toEqual([
       {
         command: 'bunx',
-        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-profile-icons', '--json']
+        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-prod-profile-icons', '--json']
       },
       {
         command: 'bunx',
-        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-event-images', '--json']
+        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-prod-event-images', '--json']
       },
       {
         command: 'bunx',
-        args: ['wrangler', 'r2', 'bucket', 'create', 'codex-events-profile-icons']
+        args: ['wrangler', 'r2', 'bucket', 'create', 'codex-events-prod-profile-icons']
       },
       {
         command: 'bunx',
-        args: ['wrangler', 'r2', 'bucket', 'create', 'codex-events-event-images']
+        args: ['wrangler', 'r2', 'bucket', 'create', 'codex-events-prod-event-images']
       },
       {
         command: 'bunx',
-        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-profile-icons', '--json']
+        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-prod-profile-icons', '--json']
       },
       {
         command: 'bunx',
-        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-event-images', '--json']
+        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-prod-event-images', '--json']
       }
     ])
   })
@@ -167,9 +167,9 @@ describe('deploy R2 bucket provisioning', () => {
   test('handles a concurrent create that succeeds in another deploy job', async () => {
     const { calls, runner } = createRunner([
       new Error('bucket not found'),
-      r2InfoOutput('dev-codex-events-event-images'),
+      r2InfoOutput('codex-events-dev-event-images'),
       new Error('bucket already exists'),
-      r2InfoOutput('dev-codex-events-profile-icons')
+      r2InfoOutput('codex-events-dev-profile-icons')
     ])
 
     await expect(ensureDeployR2Buckets({
@@ -179,12 +179,12 @@ describe('deploy R2 bucket provisioning', () => {
     })).resolves.toEqual([
       {
         binding: 'PROFILE_ICONS',
-        bucketName: 'dev-codex-events-profile-icons',
+        bucketName: 'codex-events-dev-profile-icons',
         created: false
       },
       {
         binding: 'EVENT_IMAGES',
-        bucketName: 'dev-codex-events-event-images',
+        bucketName: 'codex-events-dev-event-images',
         created: false
       }
     ])
@@ -195,7 +195,7 @@ describe('deploy R2 bucket provisioning', () => {
   test('rejects unexpected bucket info output', async () => {
     const { runner } = createRunner([
       '{}',
-      r2InfoOutput('dev-codex-events-event-images')
+      r2InfoOutput('codex-events-dev-event-images')
     ])
 
     await expect(ensureDeployR2Buckets({

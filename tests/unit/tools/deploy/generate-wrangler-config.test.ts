@@ -38,9 +38,8 @@ describe('deploy Wrangler config generator', () => {
     expect(input.resourcePrefix).toBe('codex-events')
     expect(input.appBaseUrl).toBe('https://dev.example.com')
     expect(input.auth0CustomDomain).toBe('auth.dev.example.com')
-    expect(input.eventImagesPublicCdnBaseUrl).toBe('')
     expect(input.lumaWebhookUrl).toBe('https://dev.example.com/api/public/luma/webhooks')
-    expect(config.name).toBe('dev-codex-events')
+    expect(config.name).toBe('codex-events-dev')
     expect(config.main).toBe('../../.output/server/index.mjs')
     expect(config.assets.directory).toBe('../../.output/public')
     expect(config.routes).toEqual([
@@ -53,25 +52,24 @@ describe('deploy Wrangler config generator', () => {
     expect(config.vars).toMatchObject({
       NUXT_AUTH0_DOMAIN: 'auth.dev.example.com',
       NUXT_AUTH0_APP_BASE_URL: 'https://dev.example.com',
-      NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL: '',
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
-      NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME: 'dev-codex-events-application-review-email-delivery',
-      NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME: 'dev-codex-events-event-outcome-email-delivery',
-      NUXT_LUMA_QUEUE_NAME: 'dev-codex-events-application-luma-sync'
+      NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME: 'codex-events-dev-application-review-email-delivery',
+      NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME: 'codex-events-dev-event-outcome-email-delivery',
+      NUXT_LUMA_QUEUE_NAME: 'codex-events-dev-application-luma-sync'
     })
     expect(config.d1_databases[0]).toMatchObject({
-      database_name: 'dev-codex-events',
+      database_name: 'codex-events-dev',
       database_id: '11111111-1111-4111-8111-111111111111',
       migrations_dir: '../../drizzle'
     })
     expect(config.r2_buckets).toEqual([
       {
         binding: 'PROFILE_ICONS',
-        bucket_name: 'dev-codex-events-profile-icons'
+        bucket_name: 'codex-events-dev-profile-icons'
       },
       {
         binding: 'EVENT_IMAGES',
-        bucket_name: 'dev-codex-events-event-images'
+        bucket_name: 'codex-events-dev-event-images'
       }
     ])
     expect(config.queues.consumers).toEqual([])
@@ -88,21 +86,21 @@ describe('deploy Wrangler config generator', () => {
 
     expect(buildDeployQueueConsumerConfigs(input)).toEqual([
       {
-        queue: 'dev-codex-events-application-review-email-delivery',
+        queue: 'codex-events-dev-application-review-email-delivery',
         max_batch_size: 10,
         max_batch_timeout: 5,
         max_retries: 10,
         retry_delay: 60
       },
       {
-        queue: 'dev-codex-events-event-outcome-email-delivery',
+        queue: 'codex-events-dev-event-outcome-email-delivery',
         max_batch_size: 10,
         max_batch_timeout: 5,
         max_retries: 10,
         retry_delay: 90
       },
       {
-        queue: 'dev-codex-events-application-luma-sync',
+        queue: 'codex-events-dev-application-luma-sync',
         max_batch_size: 10,
         max_batch_timeout: 5,
         max_retries: 10,
@@ -117,13 +115,13 @@ describe('deploy Wrangler config generator', () => {
 
     expect(input.environmentName).toBe('prod')
     expect(input.appBaseUrl).toBe('https://events.example.com')
-    expect(config.name).toBe('codex-events')
+    expect(config.name).toBe('codex-events-prod')
     expect(config.routes[0]?.pattern).toBe('events.example.com')
     expect(config.vars.NUXT_AUTH0_DOMAIN).toBe('auth.example.com')
-    expect(config.d1_databases[0]?.database_name).toBe('codex-events')
+    expect(config.d1_databases[0]?.database_name).toBe('codex-events-prod')
     expect(config.r2_buckets.map(bucket => bucket.bucket_name)).toEqual([
-      'codex-events-profile-icons',
-      'codex-events-event-images'
+      'codex-events-prod-profile-icons',
+      'codex-events-prod-event-images'
     ])
     expect(config.ratelimits.map(rateLimit => rateLimit.namespace_id)).toEqual([
       '3001',
@@ -146,17 +144,26 @@ describe('deploy Wrangler config generator', () => {
     expect(resolveDeployResourceNames('dev', {
       DEPLOY_RESOLVED_D1_DATABASE_ID: ''
     })).toMatchObject({
-      d1DatabaseName: 'dev-codex-events',
-      profileIconsBucket: 'dev-codex-events-profile-icons',
-      eventImagesBucket: 'dev-codex-events-event-images'
+      d1DatabaseName: 'codex-events-dev',
+      profileIconsBucket: 'codex-events-dev-profile-icons',
+      eventImagesBucket: 'codex-events-dev-event-images'
     })
 
     expect(resolveDeployResourceNames('production', {
       DEPLOY_CF_D1_DATABASE_NAME: 'existing-database'
     })).toMatchObject({
       d1DatabaseName: 'existing-database',
-      profileIconsBucket: 'codex-events-profile-icons',
-      eventImagesBucket: 'codex-events-event-images'
+      profileIconsBucket: 'codex-events-prod-profile-icons',
+      eventImagesBucket: 'codex-events-prod-event-images'
+    })
+
+    expect(resolveDeployResourceNames('production', {
+      DEPLOY_ENV_NAME: 'preview',
+      DEPLOY_RESOURCE_PREFIX: 'custom-events'
+    })).toMatchObject({
+      d1DatabaseName: 'custom-events-preview',
+      profileIconsBucket: 'custom-events-preview-profile-icons',
+      eventImagesBucket: 'custom-events-preview-event-images'
     })
   })
 
@@ -165,7 +172,6 @@ describe('deploy Wrangler config generator', () => {
       DEPLOY_ENV_NAME: 'preview',
       DEPLOY_RESOURCE_PREFIX: 'custom-events',
       DEPLOY_AUTH0_CUSTOM_DOMAIN: 'login.example.com',
-      DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL: 'https://media.example.com/assets/',
       DEPLOY_LUMA_WEBHOOK_URL: 'https://hooks.example.com/luma/',
       DEPLOY_CF_WORKER_NAME: 'custom-worker',
       DEPLOY_CF_D1_DATABASE_NAME: 'custom-d1',
@@ -180,7 +186,6 @@ describe('deploy Wrangler config generator', () => {
     expect(input.environmentName).toBe('preview')
     expect(input.resourcePrefix).toBe('custom-events')
     expect(input.auth0CustomDomain).toBe('login.example.com')
-    expect(input.eventImagesPublicCdnBaseUrl).toBe('https://media.example.com/assets')
     expect(input.lumaWebhookUrl).toBe('https://hooks.example.com/luma')
     expect(input.workerName).toBe('custom-worker')
     expect(input.d1DatabaseName).toBe('custom-d1')

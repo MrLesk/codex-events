@@ -32,16 +32,16 @@ NUXT_OUTBOUND_EMAIL_FROM_EMAIL=info@your-platform.example
 NUXT_OUTBOUND_EMAIL_FROM_NAME=Codex Events
 NUXT_OUTBOUND_EMAIL_REPLY_TO=support@your-platform.example
 NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING=APPLICATION_REVIEW_EMAIL_QUEUE
-NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME=codex-events-application-review-email-delivery
+NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME=codex-events-dev-application-review-email-delivery
 NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS=120
 NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING=EVENT_OUTCOME_EMAIL_QUEUE
-NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME=codex-events-event-outcome-email-delivery
+NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME=codex-events-dev-event-outcome-email-delivery
 NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS=120
 NUXT_LUMA_API_KEY=
 NUXT_LUMA_API_BASE_URL=https://public-api.luma.com
 NUXT_LUMA_PROFILE_BASE_URL=https://luma.com
 NUXT_LUMA_QUEUE_BINDING=APPLICATION_LUMA_SYNC_QUEUE
-NUXT_LUMA_QUEUE_NAME=codex-events-application-luma-sync
+NUXT_LUMA_QUEUE_NAME=codex-events-dev-application-luma-sync
 NUXT_LUMA_RETRY_DELAY_SECONDS=120
 NUXT_LUMA_WEBHOOK_SECRET=
 ```
@@ -139,8 +139,6 @@ Event background and banner uploads use a dedicated Cloudflare R2 binding at run
 
 - `NUXT_EVENT_IMAGES_BINDING` should match the R2 binding used for event background and banner image objects. The canonical default is `EVENT_IMAGES`.
 - local development uses the repository `wrangler.jsonc` R2 bucket binding for event image object storage.
-- `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` should be the HTTPS custom-domain base URL for public event gallery images served directly from R2 in deployed environments. Generated remote deployment config leaves this empty unless `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` is set.
-- local `localhost` development can leave `NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` unset to keep public gallery images on the local Worker routes.
 
 Protected event photo previews use a Cloudflare Images binding at runtime:
 
@@ -209,7 +207,7 @@ For the selected target, the generator derives:
 - Luma webhook URL: `https://<base-domain>/api/public/luma/webhooks`
 - resource names from `DEPLOY_ENV_NAME` and `DEPLOY_RESOURCE_PREFIX`
 
-`DEPLOY_ENV_NAME` defaults to `dev` for the dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Production resources use the resource prefix directly; other environments use `<DEPLOY_ENV_NAME>-<DEPLOY_RESOURCE_PREFIX>`.
+`DEPLOY_ENV_NAME` defaults to `dev` for the dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
 
 Keep `DEPLOY_CF_ZONE_NAME` and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the Cloudflare DNS zone and Auth0 login hostname cannot be inferred safely from a deployment hostname. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
 
@@ -221,9 +219,8 @@ Keep `DEPLOY_CF_ZONE_NAME` and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the
 - `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE`
 - `DEPLOY_CF_LUMA_SYNC_QUEUE`
 
-These URL variables are optional overrides:
+This URL variable is an optional override:
 
-- `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL`
 - `DEPLOY_LUMA_WEBHOOK_URL`
 
 Each remote environment must provide:
@@ -312,9 +309,8 @@ Cloudflare Email Service and Queues runtime settings:
 - `NUXT_LUMA_QUEUE_BINDING`
 - `NUXT_LUMA_RETRY_DELAY_SECONDS`
 
-Deployment URL settings:
+Deployment URL setting:
 
-- `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL`
 - `DEPLOY_LUMA_WEBHOOK_URL`
 
 The GitHub `dev` environment must provide these secrets:
@@ -368,7 +364,7 @@ The GitHub `production` environment must provide these secrets before a release 
 
 The generated Wrangler config supplies deploy-time Cloudflare bindings and non-secret runtime vars. GitHub workflows upload Worker secrets from the relevant GitHub environment plus the generated `NUXT_LUMA_WEBHOOK_SECRET` when Luma reconciliation runs. GitHub environments do not need a stored `NUXT_LUMA_WEBHOOK_SECRET`.
 
-Cloudflare tokens used by production Auth0 custom-domain automation also need the zone permissions listed in `OPERATOR.md` for `DEPLOY_CF_ZONE_NAME`.
+Cloudflare tokens used by Auth0 custom-domain automation also need the zone permissions listed in `OPERATOR.md` for `DEPLOY_CF_ZONE_NAME`.
 
 The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` currently needs these Auth0 Management API scopes:
 
@@ -402,7 +398,7 @@ On the first successful production release, the workflow also:
 - creates or updates the required Cloudflare DNS-only CNAME verification record
 - waits for Auth0 verification and certificate provisioning before applying the rest of the tenant bootstrap
 
-If Auth0 returns `operation_not_supported` with a verified-billing-method message while creating the custom domain, add billing information in the production Auth0 tenant and rerun the release. The release cannot finish the custom-domain setup until Auth0 allows custom-domain creation for that tenant.
+If Auth0 returns `operation_not_supported` with a verified-billing-method message while creating the custom domain, add billing information in the target Auth0 tenant and rerun the deployment workflow. The workflow cannot finish the custom-domain setup until Auth0 allows custom-domain creation for that tenant.
 
 ## Validation
 

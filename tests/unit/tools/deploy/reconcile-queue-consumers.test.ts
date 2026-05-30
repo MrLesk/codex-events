@@ -84,14 +84,14 @@ describe('deploy Queue consumer reconciliation', () => {
     const { calls, runner } = createRunner()
     const { calls: apiCalls, consumerApi } = createConsumerApi({
       consumersByQueue: {
-        'dev-codex-events-application-review-email-delivery': [
+        'codex-events-dev-application-review-email-delivery': [
           {
             consumerId: 'stale-review-consumer',
             scriptName: 'codex-hackathons-dev',
             type: 'worker'
           }
         ],
-        'dev-codex-events-application-luma-sync': [
+        'codex-events-dev-application-luma-sync': [
           {
             consumerId: 'stale-luma-consumer'
           }
@@ -107,30 +107,30 @@ describe('deploy Queue consumer reconciliation', () => {
       runner,
       consumerApi
     })).resolves.toMatchObject({
-      workerName: 'dev-codex-events'
+      workerName: 'codex-events-dev'
     })
 
     expect(apiCalls).toEqual([
       {
         action: 'list',
-        queueName: 'dev-codex-events-application-review-email-delivery'
+        queueName: 'codex-events-dev-application-review-email-delivery'
       },
       {
         action: 'delete',
-        queueName: 'dev-codex-events-application-review-email-delivery',
+        queueName: 'codex-events-dev-application-review-email-delivery',
         consumerId: 'stale-review-consumer'
       },
       {
         action: 'list',
-        queueName: 'dev-codex-events-event-outcome-email-delivery'
+        queueName: 'codex-events-dev-event-outcome-email-delivery'
       },
       {
         action: 'list',
-        queueName: 'dev-codex-events-application-luma-sync'
+        queueName: 'codex-events-dev-application-luma-sync'
       },
       {
         action: 'delete',
-        queueName: 'dev-codex-events-application-luma-sync',
+        queueName: 'codex-events-dev-application-luma-sync',
         consumerId: 'stale-luma-consumer'
       }
     ])
@@ -143,8 +143,8 @@ describe('deploy Queue consumer reconciliation', () => {
           'queues',
           'consumer',
           'add',
-          'dev-codex-events-application-review-email-delivery',
-          'dev-codex-events',
+          'codex-events-dev-application-review-email-delivery',
+          'codex-events-dev',
           '--batch-size',
           '10',
           '--batch-timeout',
@@ -164,8 +164,8 @@ describe('deploy Queue consumer reconciliation', () => {
           'queues',
           'consumer',
           'add',
-          'dev-codex-events-event-outcome-email-delivery',
-          'dev-codex-events',
+          'codex-events-dev-event-outcome-email-delivery',
+          'codex-events-dev',
           '--batch-size',
           '10',
           '--batch-timeout',
@@ -185,8 +185,8 @@ describe('deploy Queue consumer reconciliation', () => {
           'queues',
           'consumer',
           'add',
-          'dev-codex-events-application-luma-sync',
-          'dev-codex-events',
+          'codex-events-dev-application-luma-sync',
+          'codex-events-dev',
           '--batch-size',
           '10',
           '--batch-timeout',
@@ -212,21 +212,21 @@ describe('deploy Queue consumer reconciliation', () => {
       runner,
       consumerApi
     })).resolves.toMatchObject({
-      workerName: 'dev-codex-events'
+      workerName: 'codex-events-dev'
     })
 
     expect(apiCalls).toEqual([
       {
         action: 'list',
-        queueName: 'dev-codex-events-application-review-email-delivery'
+        queueName: 'codex-events-dev-application-review-email-delivery'
       },
       {
         action: 'list',
-        queueName: 'dev-codex-events-event-outcome-email-delivery'
+        queueName: 'codex-events-dev-event-outcome-email-delivery'
       },
       {
         action: 'list',
-        queueName: 'dev-codex-events-application-luma-sync'
+        queueName: 'codex-events-dev-application-luma-sync'
       }
     ])
     expect(calls).toHaveLength(3)
@@ -235,7 +235,7 @@ describe('deploy Queue consumer reconciliation', () => {
       'queues',
       'consumer',
       'add',
-      'dev-codex-events-application-review-email-delivery'
+      'codex-events-dev-application-review-email-delivery'
     ])
   })
 
@@ -243,7 +243,7 @@ describe('deploy Queue consumer reconciliation', () => {
     const { calls, runner } = createRunner()
     const { calls: apiCalls, consumerApi } = createConsumerApi({
       consumersByQueue: {
-        'dev-codex-events-application-review-email-delivery': [
+        'codex-events-dev-application-review-email-delivery': [
           {
             consumerId: 'stale-review-consumer'
           }
@@ -262,11 +262,11 @@ describe('deploy Queue consumer reconciliation', () => {
     expect(apiCalls).toEqual([
       {
         action: 'list',
-        queueName: 'dev-codex-events-application-review-email-delivery'
+        queueName: 'codex-events-dev-application-review-email-delivery'
       },
       {
         action: 'delete',
-        queueName: 'dev-codex-events-application-review-email-delivery',
+        queueName: 'codex-events-dev-application-review-email-delivery',
         consumerId: 'stale-review-consumer'
       }
     ])

@@ -39,7 +39,6 @@ export function createApiRouteTestHarness(options: {
     }
     eventImages?: {
       binding?: string
-      publicCdnBaseUrl?: string
     }
     outboundEmail?: {
       binding?: string
@@ -171,23 +170,22 @@ export function createApiRouteTestHarness(options: {
     const databaseBinding = options.runtimeConfig?.database?.binding ?? 'DB'
     const profileIconsBinding = options.runtimeConfig?.profileIcons?.binding ?? 'PROFILE_ICONS'
     const eventImagesBinding = options.runtimeConfig?.eventImages?.binding ?? 'EVENT_IMAGES'
-    const eventImagesPublicCdnBaseUrl = options.runtimeConfig?.eventImages?.publicCdnBaseUrl ?? ''
     const outboundEmailBinding = options.runtimeConfig?.outboundEmail?.binding ?? 'EMAIL'
     const outboundEmailFromEmail = options.runtimeConfig?.outboundEmail?.fromEmail ?? ''
     const outboundEmailFromName = options.runtimeConfig?.outboundEmail?.fromName ?? 'Codex Events'
     const outboundEmailReplyTo = options.runtimeConfig?.outboundEmail?.replyTo ?? ''
     const reviewEmailsQueueBinding = options.runtimeConfig?.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
-    const reviewEmailsQueueName = options.runtimeConfig?.applicationReviewEmails?.queueName ?? 'codex-events-application-review-email-delivery'
+    const reviewEmailsQueueName = options.runtimeConfig?.applicationReviewEmails?.queueName ?? 'codex-events-dev-application-review-email-delivery'
     const reviewEmailsRetryDelaySeconds = options.runtimeConfig?.applicationReviewEmails?.retryDelaySeconds ?? 120
     const outcomeEmailsQueueBinding = options.runtimeConfig?.eventOutcomeEmails?.queueBinding ?? 'EVENT_OUTCOME_EMAIL_QUEUE'
-    const outcomeEmailsQueueName = options.runtimeConfig?.eventOutcomeEmails?.queueName ?? 'codex-events-event-outcome-email-delivery'
+    const outcomeEmailsQueueName = options.runtimeConfig?.eventOutcomeEmails?.queueName ?? 'codex-events-dev-event-outcome-email-delivery'
     const outcomeEmailsRetryDelaySeconds = options.runtimeConfig?.eventOutcomeEmails?.retryDelaySeconds ?? 120
     const lumaApiKey = options.runtimeConfig?.luma?.apiKey ?? ''
     const lumaApiBaseUrl = options.runtimeConfig?.luma?.apiBaseUrl ?? 'https://public-api.luma.com'
     const lumaProfileBaseUrl = options.runtimeConfig?.luma?.profileBaseUrl ?? 'https://luma.com'
     const lumaWebhookSecret = options.runtimeConfig?.luma?.webhookSecret ?? ''
     const lumaQueueBinding = options.runtimeConfig?.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
-    const lumaQueueName = options.runtimeConfig?.luma?.queueName ?? 'codex-events-application-luma-sync'
+    const lumaQueueName = options.runtimeConfig?.luma?.queueName ?? 'codex-events-dev-application-luma-sync'
     const lumaRetryDelaySeconds = options.runtimeConfig?.luma?.retryDelaySeconds ?? 120
 
     event.context.cloudflare = {
@@ -207,8 +205,7 @@ export function createApiRouteTestHarness(options: {
         binding: profileIconsBinding
       },
       eventImages: {
-        binding: eventImagesBinding,
-        publicCdnBaseUrl: eventImagesPublicCdnBaseUrl
+        binding: eventImagesBinding
       },
       outboundEmail: {
         binding: outboundEmailBinding,

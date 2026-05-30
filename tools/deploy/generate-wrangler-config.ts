@@ -39,7 +39,6 @@ export interface ResolvedDeployConfigInput {
   baseDomain: string
   appBaseUrl: string
   auth0CustomDomain: string
-  eventImagesPublicCdnBaseUrl: string
   lumaWebhookUrl: string
   zoneName: string
   workerName: string
@@ -123,7 +122,6 @@ const defaultDeployEnvironmentNameByTarget: Record<DeployTarget, string> = {
 }
 
 const defaultDeployResourcePrefix = 'codex-events'
-const productionDeployEnvironmentName = 'prod'
 const defaultAuth0DatabaseConnectionName = 'Username-Password-Authentication'
 
 const rateLimitNamespaceIdsByTarget: Record<DeployTarget, {
@@ -241,9 +239,7 @@ function resolveDeployResourcePrefix(environment: EnvironmentValues) {
 }
 
 function buildDefaultResourceName(environmentName: string, resourcePrefix: string, suffix?: string) {
-  const baseName = environmentName === productionDeployEnvironmentName
-    ? resourcePrefix
-    : `${environmentName}-${resourcePrefix}`
+  const baseName = `${resourcePrefix}-${environmentName}`
 
   return suffix ? `${baseName}-${suffix}` : baseName
 }
@@ -306,10 +302,6 @@ export function resolveDeployConfigInput(
     readRequiredEnvironmentValue(environment, 'DEPLOY_AUTH0_CUSTOM_DOMAIN'),
     'DEPLOY_AUTH0_CUSTOM_DOMAIN'
   )
-  const explicitEventImagesPublicCdnBaseUrl = readOptionalEnvironmentValue(environment, 'DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL')
-  const eventImagesPublicCdnBaseUrl = explicitEventImagesPublicCdnBaseUrl
-    ? normalizeHttpsUrl(explicitEventImagesPublicCdnBaseUrl, 'DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL')
-    : ''
   const lumaWebhookUrl = normalizeHttpsUrl(
     readOptionalEnvironmentValue(environment, 'DEPLOY_LUMA_WEBHOOK_URL') || `${appBaseUrl}/api/public/luma/webhooks`,
     'DEPLOY_LUMA_WEBHOOK_URL'
@@ -321,7 +313,6 @@ export function resolveDeployConfigInput(
     baseDomain,
     appBaseUrl,
     auth0CustomDomain,
-    eventImagesPublicCdnBaseUrl,
     lumaWebhookUrl,
     zoneName: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_ZONE_NAME'),
     workerName: resolveResourceName(environment, 'DEPLOY_CF_WORKER_NAME', resourceBaseName),
@@ -415,7 +406,6 @@ export function buildDeployWranglerConfig(input: ResolvedDeployConfigInput): Gen
     vars: {
       NUXT_AUTH0_DOMAIN: input.auth0CustomDomain,
       NUXT_AUTH0_APP_BASE_URL: input.appBaseUrl,
-      NUXT_EVENT_IMAGES_PUBLIC_CDN_BASE_URL: input.eventImagesPublicCdnBaseUrl,
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: input.auth0DatabaseConnectionName,
       NUXT_OUTBOUND_EMAIL_BINDING: input.outboundEmailBinding,
       NUXT_OUTBOUND_EMAIL_FROM_EMAIL: input.outboundEmailFromEmail,

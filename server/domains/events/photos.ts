@@ -38,18 +38,6 @@ export const updateEventPhotoPublicVisibilityBodySchema = z.object({
   isPubliclyVisible: z.coerce.boolean()
 })
 
-const publicEventPhotoPreviewTransformOptions = 'width=720,height=720,fit=scale-down,format=webp,quality=82'
-
-type RuntimeConfigShape = {
-  eventImages?: {
-    publicCdnBaseUrl?: string
-  }
-}
-
-type EventPhotoContextShape = H3Event['context'] & {
-  runtimeConfig?: RuntimeConfigShape
-}
-
 interface ImagesInfoResultLike {
   width: number
   height: number
@@ -116,22 +104,6 @@ export function eventPhotoObjectKey(eventId: string, photoId: string) {
   return `events/${eventId}/photos/${photoId}`
 }
 
-function eventPhotoObjectPath(eventId: string, photoId: string) {
-  return `/${eventPhotoObjectKey(
-    encodeURIComponent(eventId),
-    encodeURIComponent(photoId)
-  )}`
-}
-
-function resolveEventImagesPublicCdnBaseUrl(event: H3Event) {
-  const eventRuntimeConfig = (event.context as EventPhotoContextShape).runtimeConfig
-  const runtimeConfigGetter = (globalThis as { useRuntimeConfig?: (event: H3Event) => RuntimeConfigShape }).useRuntimeConfig
-  const configuredBaseUrl = eventRuntimeConfig?.eventImages?.publicCdnBaseUrl
-    ?? runtimeConfigGetter?.(event)?.eventImages?.publicCdnBaseUrl
-
-  return configuredBaseUrl?.trim() ?? ''
-}
-
 export function buildEventPhotoImageUrl(
   eventId: string,
   photoId: string,
@@ -147,28 +119,11 @@ export function buildEventPhotoImageUrl(
 }
 
 export function buildPublicEventPhotoImageUrl(
-  event: H3Event,
-  eventId: string,
   slug: string,
   photoId: string,
   variant: EventPhotoImageVariant,
   version: string
 ) {
-  const publicCdnBaseUrl = resolveEventImagesPublicCdnBaseUrl(event)
-
-  if (publicCdnBaseUrl) {
-    const objectPath = eventPhotoObjectPath(eventId, photoId)
-
-    if (variant === 'preview') {
-      return new URL(
-        `/cdn-cgi/image/${publicEventPhotoPreviewTransformOptions}${objectPath}`,
-        publicCdnBaseUrl
-      ).toString()
-    }
-
-    return new URL(objectPath, publicCdnBaseUrl).toString()
-  }
-
   const params = new URLSearchParams({
     variant,
     v: version
@@ -389,7 +344,6 @@ export async function listEventPhotoRecords(database: AppDatabase, eventId: stri
 }
 
 export async function listPublicEventPhotoRecords(
-  event: H3Event,
   database: AppDatabase,
   eventId: string,
   slug: string
@@ -404,8 +358,6 @@ export async function listPublicEventPhotoRecords(
 
   return photos.map(photo => serializeEventPhotoRecord(photo, {
     imagePathBuilder: (photoId, variant, version) => buildPublicEventPhotoImageUrl(
-      event,
-      eventId,
       slug,
       photoId,
       variant,

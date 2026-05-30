@@ -12,7 +12,7 @@ export default defineApiHandler(async (h3Event) => {
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
-  const photos = await listPublicEventPhotoRecords(h3Event, database, event.id, event.slug)
+  const photos = await listPublicEventPhotoRecords(database, event.id, event.slug)
 
   return apiList(photos, {
     total: photos.length
