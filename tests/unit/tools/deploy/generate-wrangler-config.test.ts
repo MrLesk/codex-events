@@ -13,7 +13,6 @@ function createEnvironment(overrides: Record<string, string | undefined> = {}) {
     DEPLOY_BASE_DOMAIN: 'events.example.com',
     DEPLOY_CF_ZONE_NAME: 'example.com',
     DEPLOY_RESOLVED_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
-    DEPLOY_AUTH0_CUSTOM_DOMAIN: 'auth.example.com',
     NUXT_OUTBOUND_EMAIL_FROM_EMAIL: 'notifications@example.com',
     NUXT_OUTBOUND_EMAIL_REPLY_TO: 'support@example.com',
     ...overrides
@@ -29,8 +28,7 @@ describe('deploy Wrangler config generator', () => {
 
   test('generates dev config from environment-local domain and derived resource names', () => {
     const input = resolveDeployConfigInput('dev', createEnvironment({
-      DEPLOY_BASE_DOMAIN: 'dev.example.com',
-      DEPLOY_AUTH0_CUSTOM_DOMAIN: 'auth.dev.example.com'
+      DEPLOY_BASE_DOMAIN: 'dev.example.com'
     }))
     const config = buildDeployWranglerConfig(input)
 
@@ -117,7 +115,7 @@ describe('deploy Wrangler config generator', () => {
     expect(input.appBaseUrl).toBe('https://events.example.com')
     expect(config.name).toBe('codex-events-prod')
     expect(config.routes[0]?.pattern).toBe('events.example.com')
-    expect(config.vars.NUXT_AUTH0_DOMAIN).toBe('auth.example.com')
+    expect(config.vars.NUXT_AUTH0_DOMAIN).toBe('auth.events.example.com')
     expect(config.d1_databases[0]?.database_name).toBe('codex-events-prod')
     expect(config.r2_buckets.map(bucket => bucket.bucket_name)).toEqual([
       'codex-events-prod-profile-icons',

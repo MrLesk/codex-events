@@ -98,7 +98,30 @@ function normalizeTenantDomain(value: string) {
 }
 
 function normalizeHostname(value: string) {
-  return value.trim().replace(/\.+$/, '').toLowerCase()
+  const trimmed = value.trim().replace(/\.+$/, '')
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return new URL(trimmed).hostname.toLowerCase()
+  }
+
+  return trimmed.toLowerCase()
+}
+
+export function resolveAuth0CustomDomain(environment: Record<string, string | undefined>) {
+  const explicitDomain = environment.AUTH0_CUSTOM_DOMAIN?.trim()
+    || environment.DEPLOY_AUTH0_CUSTOM_DOMAIN?.trim()
+
+  if (explicitDomain) {
+    return normalizeHostname(explicitDomain)
+  }
+
+  const baseDomain = environment.DEPLOY_BASE_DOMAIN?.trim()
+
+  if (!baseDomain) {
+    throw new Error('Missing required environment variable AUTH0_CUSTOM_DOMAIN, DEPLOY_AUTH0_CUSTOM_DOMAIN, or DEPLOY_BASE_DOMAIN.')
+  }
+
+  return normalizeHostname(`auth.${normalizeHostname(baseDomain)}`)
 }
 
 export function resolveVerificationDnsRecord(customDomain: Auth0CustomDomain): DesiredDnsRecord {
@@ -148,7 +171,7 @@ function loadConfig(): Auth0CustomDomainConfig {
     managementClientId: requireEnv('AUTH0_MGMT_CLIENT_ID'),
     managementClientSecret: requireEnv('AUTH0_MGMT_CLIENT_SECRET'),
     managementAudience: `${normalizeTenantDomain(requireEnv('AUTH0_MANAGEMENT_DOMAIN'))}/api/v2/`,
-    customDomain: normalizeHostname(requireEnv('AUTH0_CUSTOM_DOMAIN')),
+    customDomain: resolveAuth0CustomDomain(process.env),
     zoneName: normalizeHostname(requireEnv('DEPLOY_CF_ZONE_NAME')),
     cloudflareApiToken: requireEnv('CLOUDFLARE_API_TOKEN'),
     waitTimeoutMs: parseSecondsEnv('AUTH0_CUSTOM_DOMAIN_WAIT_SECONDS', 600),

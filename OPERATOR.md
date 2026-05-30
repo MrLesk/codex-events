@@ -20,7 +20,7 @@ Example hostnames used below:
 | Purpose | Example |
 | --- | --- |
 | Production app | `events.example.com` |
-| Auth0 login domain | `auth.example.com` |
+| Auth0 login domain | `auth.events.example.com` |
 
 ## 1. Create Cloudflare Resources
 
@@ -69,17 +69,17 @@ Example:
 your-tenant.eu.auth0.com
 ```
 
-Choose the Auth0 login hostname for the platform and save it as `DEPLOY_AUTH0_CUSTOM_DOMAIN`.
+The default Auth0 login hostname is `auth.<DEPLOY_BASE_DOMAIN>`.
 
 Example:
 
 ```text
-auth.example.com
+auth.events.example.com
 ```
 
 The dev and production deploy workflows configure the Auth0 custom domain, write the required Cloudflare DNS CNAME record as DNS-only, wait for Auth0 verification, and then use that hostname for login.
 
-If the custom domain already exists, use the same hostname in `DEPLOY_AUTH0_CUSTOM_DOMAIN`. In Cloudflare DNS, the Auth0 CNAME must stay DNS-only, not proxied.
+Set `DEPLOY_AUTH0_CUSTOM_DOMAIN` only when the login hostname is not `auth.<DEPLOY_BASE_DOMAIN>`. If the custom domain already exists, keep using the same hostname. In Cloudflare DNS, the Auth0 CNAME must stay DNS-only, not proxied.
 
 ## 3. Configure The Auth0 Application
 
@@ -148,11 +148,16 @@ Add these production environment variables:
 | Variable | Source | Example |
 | --- | --- | --- |
 | `DEPLOY_BASE_DOMAIN` | Production app hostname | `events.example.com` |
-| `DEPLOY_AUTH0_CUSTOM_DOMAIN` | Auth0 login hostname from step 2 | `auth.example.com` |
 | `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name from step 1 | `example.com` |
 | `AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant domain from step 2 | `your-tenant.eu.auth0.com` |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified Cloudflare Email sender from step 1 | `events@example.com` |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to address for outbound email | `support@example.com` |
+
+If the Auth0 login hostname is not `auth.<DEPLOY_BASE_DOMAIN>`, also set:
+
+| Variable | Source | Example |
+| --- | --- | --- |
+| `DEPLOY_AUTH0_CUSTOM_DOMAIN` | Auth0 login hostname override | `auth.example.com` |
 
 If the Auth0 database connection is not named `Username-Password-Authentication`, also set:
 
@@ -301,7 +306,7 @@ Check:
 - `/privacy-policy` shows your Privacy Policy.
 - `/terms-and-conditions` shows your Platform Terms.
 - `/imprint` shows your operator information.
-- `/auth/login` opens Auth0 on `https://<DEPLOY_AUTH0_CUSTOM_DOMAIN>`.
+- `/auth/login` opens Auth0 on `https://auth.<DEPLOY_BASE_DOMAIN>` or the configured `DEPLOY_AUTH0_CUSTOM_DOMAIN`.
 - The first platform admin can access `/account/platform-admins`.
 - The first platform admin can create an event.
 

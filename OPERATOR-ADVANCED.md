@@ -25,7 +25,7 @@ Examples:
 | Dev | `dev` | `codex-events` | `codex-events-dev` |
 | Preview | `preview` | `codex-events` | `codex-events-preview` |
 
-Keep `DEPLOY_CF_ZONE_NAME` and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the Cloudflare DNS zone and Auth0 login hostname cannot be inferred safely from a deployment hostname.
+Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `DEPLOY_AUTH0_CUSTOM_DOMAIN` is optional and defaults to `auth.<DEPLOY_BASE_DOMAIN>`.
 
 ## Advanced Production Variables
 
@@ -54,6 +54,7 @@ Auth0 and display settings:
 
 | Variable | Value |
 | --- | --- |
+| `DEPLOY_AUTH0_CUSTOM_DOMAIN` | Auth0 login hostname override. Defaults to `auth.<DEPLOY_BASE_DOMAIN>` |
 | `AUTH0_APP_DISPLAY_NAME` | Display name shown in Auth0-hosted login copy. Defaults to `Codex Events` |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name. Defaults to `Username-Password-Authentication` |
 
@@ -103,13 +104,12 @@ Required dev variables:
 | Variable | Value |
 | --- | --- |
 | `DEPLOY_BASE_DOMAIN` | Dev app hostname |
-| `DEPLOY_AUTH0_CUSTOM_DOMAIN` | Dev Auth0 login hostname |
 | `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name |
 | `AUTH0_MANAGEMENT_DOMAIN` | Dev Auth0 tenant hostname |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified dev sender address |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to email address |
 
-The shared dev deploy workflow configures `DEPLOY_AUTH0_CUSTOM_DOMAIN`, writes the required Cloudflare DNS CNAME record as DNS-only, and waits for Auth0 verification before applying Auth0 application settings.
+The shared dev deploy workflow configures `auth.<DEPLOY_BASE_DOMAIN>` by default, writes the required Cloudflare DNS CNAME record as DNS-only, and waits for Auth0 verification before applying Auth0 application settings. Set `DEPLOY_AUTH0_CUSTOM_DOMAIN` only when the dev login hostname should be different.
 
 Required dev secrets:
 

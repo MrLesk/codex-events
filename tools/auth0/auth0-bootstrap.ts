@@ -446,7 +446,7 @@ Environment variables:
 - AUTH0_APP_BASE_URL
 - AUTH0_BDD_APP_BASE_URL (defaults to ${defaultLocalBddAppBaseUrl} for localhost app configs)
 - AUTH0_LOGIN_URI (required when AUTH0_APP_BASE_URL is not https; must be https)
-- AUTH0_CUSTOM_DOMAIN
+- AUTH0_CUSTOM_DOMAIN (default: auth.<AUTH0_APP_BASE_URL host> when AUTH0_APP_BASE_URL is https)
 - AUTH0_DATABASE_CONNECTION_NAME (default: ${defaultAuth0DatabaseConnectionName})
 - AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET
 - AUTH0_TERMS_URL (default: <AUTH0_APP_BASE_URL>/terms-and-conditions)
@@ -609,6 +609,35 @@ function firstDefinedValue(...values: Array<string | undefined>) {
   return ''
 }
 
+function normalizeHostnameString(value: string) {
+  const trimmed = value.trim().replace(/\.+$/, '')
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return new URL(trimmed).hostname.toLowerCase()
+  }
+
+  return trimmed.toLowerCase()
+}
+
+function resolveAuth0CustomDomain(environment: Record<string, string | undefined>, normalizedAppBaseUrl: string) {
+  const explicitDomain = firstDefinedValue(
+    environment.AUTH0_CUSTOM_DOMAIN,
+    environment.DEPLOY_AUTH0_CUSTOM_DOMAIN
+  )
+
+  if (explicitDomain) {
+    return normalizeHostnameString(explicitDomain)
+  }
+
+  const appBaseUrl = new URL(normalizedAppBaseUrl)
+
+  if (appBaseUrl.protocol !== 'https:') {
+    throw new Error('AUTH0_CUSTOM_DOMAIN is required when AUTH0_APP_BASE_URL is not an https URL.')
+  }
+
+  return normalizeHostnameString(`auth.${appBaseUrl.hostname}`)
+}
+
 function requireConfigField(value: string, name: string) {
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`)
@@ -689,8 +718,8 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
       'AUTH0_LOGIN_URI (or inferred AUTH0_APP_BASE_URL/auth/login)'
     ),
     customDomain: requireConfigField(
-      environment.AUTH0_CUSTOM_DOMAIN?.trim() ?? '',
-      'AUTH0_CUSTOM_DOMAIN'
+      resolveAuth0CustomDomain(environment, normalizedAppBaseUrl),
+      'AUTH0_CUSTOM_DOMAIN (or auth.<AUTH0_APP_BASE_URL host> when AUTH0_APP_BASE_URL is https)'
     ),
     termsUrl: normalizeUrlString(firstDefinedValue(environment.AUTH0_TERMS_URL, `${normalizedAppBaseUrl}/terms-and-conditions`)),
     privacyUrl: normalizeUrlString(firstDefinedValue(environment.AUTH0_PRIVACY_URL, `${normalizedAppBaseUrl}/privacy-policy`)),

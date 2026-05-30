@@ -251,6 +251,10 @@ function resolveResourceName(environment: EnvironmentValues, name: string, defau
   )
 }
 
+function buildDefaultAuth0CustomDomain(baseDomain: string) {
+  return `auth.${baseDomain}`
+}
+
 export function parseDeployTarget(value: string | undefined): DeployTarget {
   if (value === 'dev' || value === 'production') {
     return value
@@ -299,7 +303,7 @@ export function resolveDeployConfigInput(
   )
   const appBaseUrl = `https://${baseDomain}`
   const auth0CustomDomain = normalizeHostname(
-    readRequiredEnvironmentValue(environment, 'DEPLOY_AUTH0_CUSTOM_DOMAIN'),
+    readOptionalEnvironmentValue(environment, 'DEPLOY_AUTH0_CUSTOM_DOMAIN') || buildDefaultAuth0CustomDomain(baseDomain),
     'DEPLOY_AUTH0_CUSTOM_DOMAIN'
   )
   const lumaWebhookUrl = normalizeHttpsUrl(

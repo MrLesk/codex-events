@@ -79,7 +79,7 @@ These commands enforce required Auth0 tenant configuration:
 The checked-in Auth0 bootstrap automation does not currently create or manage the GitHub social connection. Configure that connection in Auth0 separately when you want `/auth/login/github` enabled in a deployment.
 If a tenant lacks the paid Universal Login page-template feature, the bootstrap now warns and skips page-template-dependent login prompt customization instead of failing outright. Custom domains, branding, client URLs, and Actions remain required and still fail on drift or API errors.
 
-The script reads explicit `AUTH0_*` variables only: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_APP_CLIENT_ID`, `AUTH0_CUSTOM_DOMAIN`, `AUTH0_APP_BASE_URL`, and `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` are required. `AUTH0_DATABASE_CONNECTION_NAME` defaults to `Username-Password-Authentication`.
+The script reads explicit `AUTH0_*` variables only: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_APP_CLIENT_ID`, `AUTH0_APP_BASE_URL`, and `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` are required. `AUTH0_CUSTOM_DOMAIN` defaults to `auth.<AUTH0_APP_BASE_URL host>` when `AUTH0_APP_BASE_URL` is HTTPS. `AUTH0_DATABASE_CONNECTION_NAME` defaults to `Username-Password-Authentication`.
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
 When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-events-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 
@@ -209,7 +209,7 @@ For the selected target, the generator derives:
 
 `DEPLOY_ENV_NAME` defaults to `dev` for the dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
 
-Keep `DEPLOY_CF_ZONE_NAME` and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the Cloudflare DNS zone and Auth0 login hostname cannot be inferred safely from a deployment hostname. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
+Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `DEPLOY_AUTH0_CUSTOM_DOMAIN` is an optional override and defaults to `auth.<DEPLOY_BASE_DOMAIN>`. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
 
 - `DEPLOY_CF_WORKER_NAME`
 - `DEPLOY_CF_D1_DATABASE_NAME`
@@ -227,7 +227,6 @@ Each remote environment must provide:
 
 - `DEPLOY_BASE_DOMAIN`
 - `DEPLOY_CF_ZONE_NAME`
-- `DEPLOY_AUTH0_CUSTOM_DOMAIN`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
 - `NUXT_OUTBOUND_EMAIL_REPLY_TO`
 
@@ -271,7 +270,6 @@ Required deployment settings:
 
 - `DEPLOY_BASE_DOMAIN`
 - `DEPLOY_CF_ZONE_NAME`
-- `DEPLOY_AUTH0_CUSTOM_DOMAIN`
 - `AUTH0_MANAGEMENT_DOMAIN`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
 - `NUXT_OUTBOUND_EMAIL_REPLY_TO`
@@ -291,6 +289,7 @@ Deployment defaults and optional resource-name overrides:
 Auth0 tenant automation settings:
 
 - `AUTH0_APP_DISPLAY_NAME`
+- `DEPLOY_AUTH0_CUSTOM_DOMAIN` when the Auth0 login hostname is not `auth.<DEPLOY_BASE_DOMAIN>`
 
 Auth0 runtime settings:
 
