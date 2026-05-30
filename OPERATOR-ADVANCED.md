@@ -44,8 +44,8 @@ Cloudflare resource name overrides:
 | --- | --- |
 | `DEPLOY_CF_WORKER_NAME` | Cloudflare Worker name |
 | `DEPLOY_CF_D1_DATABASE_NAME` | D1 database name. The workflow creates this database if it does not already exist |
-| `DEPLOY_CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket name |
-| `DEPLOY_CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket name |
+| `DEPLOY_CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket name. The workflow creates this bucket if it does not already exist |
+| `DEPLOY_CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket name. The workflow creates this bucket if it does not already exist |
 | `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name |
 | `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue name |
 | `DEPLOY_CF_LUMA_SYNC_QUEUE` | Luma sync queue name |

@@ -211,7 +211,7 @@ For the selected target, the generator derives:
 
 `DEPLOY_ENV_NAME` defaults to `dev` for the dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Production resources use the resource prefix directly; other environments use `<DEPLOY_ENV_NAME>-<DEPLOY_RESOURCE_PREFIX>`.
 
-Keep `DEPLOY_CF_ZONE_NAME` and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the Cloudflare DNS zone and Auth0 login hostname cannot be inferred safely from a deployment hostname. The deploy workflow creates or finds the D1 database by its resolved name, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
+Keep `DEPLOY_CF_ZONE_NAME` and `DEPLOY_AUTH0_CUSTOM_DOMAIN` explicit because the Cloudflare DNS zone and Auth0 login hostname cannot be inferred safely from a deployment hostname. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
 
 - `DEPLOY_CF_WORKER_NAME`
 - `DEPLOY_CF_D1_DATABASE_NAME`
@@ -238,7 +238,7 @@ The existing app runtime variables remain the override interface for Auth0, outb
 
 The generated Wrangler config binds Queue producers only. Remote workflows deploy the Worker first, then reconcile Queue consumers by deleting existing consumers from each environment-owned queue through the Cloudflare Queues API and adding the Worker back with the desired batch and retry settings. Cloudflare keeps inactive Worker consumers in the single-consumer slot until they are removed, so consumer attachment is intentionally separate from `wrangler deploy`.
 
-The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler d1 list`, `wrangler d1 create`, `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, `wrangler deploy`, and `wrangler queues consumer add`. It must also be able to list and delete Queue consumers through the Cloudflare Queues API. Configure the token with the Cloudflare account and zone permissions listed in `OPERATOR.md`; include both read and edit/write access where both are listed.
+The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler d1 list`, `wrangler d1 create`, `wrangler r2 bucket info`, `wrangler r2 bucket create`, `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, `wrangler deploy`, and `wrangler queues consumer add`. It must also be able to list and delete Queue consumers through the Cloudflare Queues API. Configure the token with the Cloudflare account and zone permissions listed in `OPERATOR.md`; include both read and edit/write access where both are listed.
 
 For manual deployment, export the target environment values and run:
 

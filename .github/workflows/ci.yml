@@ -156,6 +156,10 @@ jobs:
         if: ${{ steps.dev_deploy_config.outputs.enabled == 'true' }}
         run: bun tools/deploy/ensure-d1-database.ts dev
 
+      - name: Ensure shared dev R2 buckets
+        if: ${{ steps.dev_deploy_config.outputs.enabled == 'true' }}
+        run: bun tools/deploy/ensure-r2-buckets.ts dev
+
       - name: Ensure shared dev Cloudflare Queues
         if: ${{ steps.dev_deploy_config.outputs.enabled == 'true' }}
         run: |

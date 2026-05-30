@@ -145,11 +145,19 @@ describe('deploy Wrangler config generator', () => {
   test('resolves the D1 database name without requiring a database ID', () => {
     expect(resolveDeployResourceNames('dev', {
       DEPLOY_RESOLVED_D1_DATABASE_ID: ''
-    }).d1DatabaseName).toBe('dev-codex-events')
+    })).toMatchObject({
+      d1DatabaseName: 'dev-codex-events',
+      profileIconsBucket: 'dev-codex-events-profile-icons',
+      eventImagesBucket: 'dev-codex-events-event-images'
+    })
 
     expect(resolveDeployResourceNames('production', {
       DEPLOY_CF_D1_DATABASE_NAME: 'existing-database'
-    }).d1DatabaseName).toBe('existing-database')
+    })).toMatchObject({
+      d1DatabaseName: 'existing-database',
+      profileIconsBucket: 'codex-events-profile-icons',
+      eventImagesBucket: 'codex-events-event-images'
+    })
   })
 
   test('honors explicit domain and resource overrides', () => {

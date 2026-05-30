@@ -28,12 +28,10 @@ Example hostnames used below:
 In the Cloudflare account that will host the platform:
 
 1. Add the domain to Cloudflare DNS and wait until the zone is active.
-2. Create an R2 bucket named `codex-events-profile-icons`.
-3. Create an R2 bucket named `codex-events-event-images`.
-4. Configure Cloudflare Email Service and verify the sender address used by the platform.
-5. Create a Cloudflare API token for the production deploy workflow.
+2. Configure Cloudflare Email Service and verify the sender address used by the platform.
+3. Create a Cloudflare API token for the production deploy workflow.
 
-The production workflow creates the D1 database and Cloudflare Queues when they do not already exist. With the default settings, production uses these Cloudflare resource names:
+The production workflow creates the D1 database, R2 buckets, and Cloudflare Queues when they do not already exist. With the default settings, production uses these Cloudflare resource names:
 
 | Resource | Default name |
 | --- | --- |
@@ -213,13 +211,14 @@ Publish a GitHub Release from the commit you want to deploy.
 The `release-production` workflow:
 
 1. configures the Auth0 custom domain and Cloudflare DNS verification record;
-2. generates the production Wrangler config;
-3. creates required Cloudflare Queues;
-4. uploads Worker secrets;
-5. applies Auth0 application, branding, URL, and Action configuration;
-6. runs production D1 migrations;
-7. deploys the Cloudflare Worker;
-8. reconciles the Worker Queue consumers.
+2. creates or finds the production D1 database;
+3. creates or finds the production R2 buckets;
+4. creates required Cloudflare Queues;
+5. uploads Worker secrets;
+6. applies Auth0 application, branding, URL, and Action configuration;
+7. runs production D1 migrations;
+8. deploys the Cloudflare Worker;
+9. reconciles the Worker Queue consumers.
 
 If Auth0 rejects custom-domain creation because the tenant needs billing verification, add the required billing information in Auth0 and rerun the release workflow.
 

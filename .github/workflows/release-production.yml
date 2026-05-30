@@ -117,6 +117,9 @@ jobs:
       - name: Ensure production D1 database
         run: bun tools/deploy/ensure-d1-database.ts production
 
+      - name: Ensure production R2 buckets
+        run: bun tools/deploy/ensure-r2-buckets.ts production
+
       - name: Ensure production Cloudflare Queues
         run: |
           set -euo pipefail

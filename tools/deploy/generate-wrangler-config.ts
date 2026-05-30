@@ -28,6 +28,8 @@ interface ResolvedDeployResourceNames {
   resourcePrefix: string
   resourceBaseName: string
   d1DatabaseName: string
+  profileIconsBucket: string
+  eventImagesBucket: string
 }
 
 export interface ResolvedDeployConfigInput {
@@ -277,7 +279,9 @@ export function resolveDeployResourceNames(
     environmentName,
     resourcePrefix,
     resourceBaseName,
-    d1DatabaseName: resolveResourceName(environment, 'DEPLOY_CF_D1_DATABASE_NAME', resourceBaseName)
+    d1DatabaseName: resolveResourceName(environment, 'DEPLOY_CF_D1_DATABASE_NAME', resourceBaseName),
+    profileIconsBucket: resolveResourceName(environment, 'DEPLOY_CF_PROFILE_ICONS_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'profile-icons')),
+    eventImagesBucket: resolveResourceName(environment, 'DEPLOY_CF_EVENT_IMAGES_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'event-images'))
   }
 }
 
@@ -289,7 +293,9 @@ export function resolveDeployConfigInput(
     environmentName,
     resourcePrefix,
     resourceBaseName,
-    d1DatabaseName
+    d1DatabaseName,
+    profileIconsBucket,
+    eventImagesBucket
   } = resolveDeployResourceNames(target, environment)
   const baseDomain = normalizeHostname(
     readRequiredEnvironmentValue(environment, 'DEPLOY_BASE_DOMAIN'),
@@ -321,8 +327,8 @@ export function resolveDeployConfigInput(
     workerName: resolveResourceName(environment, 'DEPLOY_CF_WORKER_NAME', resourceBaseName),
     d1DatabaseName,
     d1DatabaseId: readRequiredEnvironmentValue(environment, 'DEPLOY_RESOLVED_D1_DATABASE_ID'),
-    profileIconsBucket: resolveResourceName(environment, 'DEPLOY_CF_PROFILE_ICONS_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'profile-icons')),
-    eventImagesBucket: resolveResourceName(environment, 'DEPLOY_CF_EVENT_IMAGES_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'event-images')),
+    profileIconsBucket,
+    eventImagesBucket,
     outboundEmailBinding: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_BINDING') || 'EMAIL',
     outboundEmailFromEmail: readRequiredEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_EMAIL'),
     outboundEmailFromName: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_NAME') || 'Codex Events',
