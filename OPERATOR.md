@@ -31,7 +31,7 @@ In the Cloudflare account that will host the platform:
 2. Configure Cloudflare Email Sending/Routing Service for that domain.
 3. Create a custom Cloudflare API token for the production deploy workflow with the permissions listed below.
 
-Use these permissions for the API token from step 3. When a row lists both `Read` and `Edit`, grant both; Cloudflare edit access does not consistently include read access.
+Cloudflare edit access does not consistently include read access, so keep both access levels where shown.
 
 | Scope | Resource | Access |
 | --- | --- | --- |
