@@ -29,7 +29,7 @@ In the Cloudflare account that will host the platform:
 
 1. Add the domain to Cloudflare DNS and wait until the zone is active.
 2. Configure Cloudflare Email Service and verify the sender address used by the platform.
-3. Create a Cloudflare API token for the production deploy workflow.
+3. Create a custom Cloudflare API token for the production deploy workflow with the permissions listed below.
 
 The production workflow creates the D1 database, R2 buckets, and Cloudflare Queues when they do not already exist. With the default settings, production uses these Cloudflare resource names:
 
@@ -57,7 +57,7 @@ Connect the event-images R2 bucket to a public custom domain only when the deplo
 
 The release workflow deploys the Worker and attaches the required Queue consumers. Inactive Worker consumers in Cloudflare still occupy a queue's single Worker-consumer slot, so the workflow removes existing consumers from each environment-owned queue before adding the deployed Worker back with the configured retry settings.
 
-Create a custom Cloudflare API token with these permissions. Add `Read` plus the write-capable access level, `Edit` or `Write`, where both are listed; Cloudflare edit access does not consistently include read access.
+Use these permissions for the API token from step 3. Add `Read` plus the write-capable access level, `Edit` or `Write`, where both are listed; Cloudflare edit access does not consistently include read access.
 
 | Scope | Resource | Access |
 | --- | --- | --- |
