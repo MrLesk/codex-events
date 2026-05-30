@@ -28,34 +28,8 @@ Example hostnames used below:
 In the Cloudflare account that will host the platform:
 
 1. Add the domain to Cloudflare DNS and wait until the zone is active.
-2. Configure Cloudflare Email Service and verify the sender address used by the platform.
+2. Configure Cloudflare Email Sending/Routing Service for that domain.
 3. Create a custom Cloudflare API token for the production deploy workflow with the permissions listed below.
-
-The production workflow creates the D1 database, R2 buckets, and Cloudflare Queues when they do not already exist. With the default settings, production uses these Cloudflare resource names:
-
-| Resource | Default name |
-| --- | --- |
-| Worker | `codex-events` |
-| D1 database | `codex-events` |
-| Profile-icons R2 bucket | `codex-events-profile-icons` |
-| Event-images R2 bucket | `codex-events-event-images` |
-| Application decision email queue | `codex-events-application-review-email-delivery` |
-| Event outcome email queue | `codex-events-event-outcome-email-delivery` |
-| Luma sync queue | `codex-events-application-luma-sync` |
-
-Save these values:
-
-| Value | Example |
-| --- | --- |
-| Cloudflare account ID | `0123456789abcdef0123456789abcdef` |
-| DNS zone name | `example.com` |
-| Verified sender email | `events@example.com` |
-| Reply-to email | `support@example.com` |
-| Cloudflare API token | Token value |
-
-Connect the event-images R2 bucket to a public custom domain only when the deployment serves public gallery images directly from R2. The default setup can serve public event images through Worker routes.
-
-The release workflow deploys the Worker and attaches the required Queue consumers. Inactive Worker consumers in Cloudflare still occupy a queue's single Worker-consumer slot, so the workflow removes existing consumers from each environment-owned queue before adding the deployed Worker back with the configured retry settings.
 
 Use these permissions for the API token from step 3. Add `Read` plus the write-capable access level, `Edit` or `Write`, where both are listed; Cloudflare edit access does not consistently include read access.
 
@@ -78,6 +52,32 @@ Use these permissions for the API token from step 3. Add `Read` plus the write-c
 | Zone | DNS | Edit |
 
 Scope the account permissions to the Cloudflare account that owns the Worker, D1 database, R2 buckets, Images binding, and Queues. Scope the zone permissions to the DNS zone name you use in `DEPLOY_CF_ZONE_NAME`.
+
+Keep these values for the GitHub `production` environment in step 5:
+
+| Value | GitHub setting | Example |
+| --- | --- | --- |
+| Cloudflare account ID | `CLOUDFLARE_ACCOUNT_ID` secret | `0123456789abcdef0123456789abcdef` |
+| Cloudflare API token | `CLOUDFLARE_API_TOKEN` secret | Token value |
+| DNS zone name | `DEPLOY_CF_ZONE_NAME` variable | `example.com` |
+| Verified sender email | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` variable | `events@example.com` |
+| Reply-to email | `NUXT_OUTBOUND_EMAIL_REPLY_TO` variable | `support@example.com` |
+
+The production workflow creates the D1 database, R2 buckets, and Cloudflare Queues when they do not already exist. With the default settings, production uses these Cloudflare resource names:
+
+| Resource | Default name |
+| --- | --- |
+| Worker | `codex-events` |
+| D1 database | `codex-events` |
+| Profile-icons R2 bucket | `codex-events-profile-icons` |
+| Event-images R2 bucket | `codex-events-event-images` |
+| Application decision email queue | `codex-events-application-review-email-delivery` |
+| Event outcome email queue | `codex-events-event-outcome-email-delivery` |
+| Luma sync queue | `codex-events-application-luma-sync` |
+
+Connect the event-images R2 bucket to a public custom domain only when the deployment serves public gallery images directly from R2. The default setup can serve public event images through Worker routes.
+
+The release workflow deploys the Worker and attaches the required Queue consumers. Inactive Worker consumers in Cloudflare still occupy a queue's single Worker-consumer slot, so the workflow removes existing consumers from each environment-owned queue before adding the deployed Worker back with the configured retry settings.
 
 ## 2. Create Auth0 Resources
 
