@@ -79,7 +79,7 @@ These commands enforce required Auth0 tenant configuration:
 The checked-in Auth0 bootstrap automation does not currently create or manage the GitHub social connection. Configure that connection in Auth0 separately when you want `/auth/login/github` enabled in a deployment.
 If a tenant lacks the paid Universal Login page-template feature, the bootstrap now warns and skips page-template-dependent login prompt customization instead of failing outright. Custom domains, branding, client URLs, and Actions remain required and still fail on drift or API errors.
 
-The script reads explicit `AUTH0_*` variables only: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `AUTH0_APP_CLIENT_ID`, `AUTH0_APP_BASE_URL`, and `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` are required. `AUTH0_CUSTOM_DOMAIN` defaults to `auth.<AUTH0_APP_BASE_URL host>` when `AUTH0_APP_BASE_URL` is HTTPS. `AUTH0_DATABASE_CONNECTION_NAME` defaults to `Username-Password-Authentication`.
+The script reads explicit tenant automation variables: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `NUXT_AUTH0_CLIENT_ID`, `AUTH0_APP_BASE_URL`, and `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` are required. `AUTH0_CUSTOM_DOMAIN` defaults to `auth.<AUTH0_APP_BASE_URL host>` when `AUTH0_APP_BASE_URL` is HTTPS. `AUTH0_DATABASE_CONNECTION_NAME` defaults to `Username-Password-Authentication`.
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
 When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-events-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 
@@ -350,7 +350,7 @@ The GitHub `bdd` environment must provide these secrets:
 
 The GitHub `production` environment must provide these secrets before a release can run:
 
-- `AUTH0_APP_CLIENT_ID`
+- `NUXT_AUTH0_CLIENT_ID`
 - `AUTH0_MGMT_CLIENT_ID`
 - `AUTH0_MGMT_CLIENT_SECRET`
 - `CLOUDFLARE_ACCOUNT_ID`
@@ -389,7 +389,7 @@ The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CL
 
 The `read:users` and `update:users` scopes are required by the Auth0 post-login Action for account linking. The app runtime does not use Auth0 Management API credentials.
 
-`AUTH0_APP_CLIENT_ID` is only an application identifier, not a management credential. Outbound email delivery uses the Cloudflare Email Service `send_email` binding configured in the generated Wrangler config; the production sending domain must be onboarded in Cloudflare Email Service before release.
+`NUXT_AUTH0_CLIENT_ID` is only an application identifier, not a management credential. Outbound email delivery uses the Cloudflare Email Service `send_email` binding configured in the generated Wrangler config; the production sending domain must be onboarded in Cloudflare Email Service before release.
 
 On the first successful production release, the workflow also:
 

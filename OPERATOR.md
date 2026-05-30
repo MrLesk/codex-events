@@ -89,7 +89,7 @@ Save:
 
 | Value | GitHub secret |
 | --- | --- |
-| Application client ID | `AUTH0_APP_CLIENT_ID` |
+| Application client ID | `NUXT_AUTH0_CLIENT_ID` |
 | Application client secret | `NUXT_AUTH0_CLIENT_SECRET` |
 
 The release workflow configures the required callback URLs, logout URLs, web origins, login URI, Universal Login branding, signup prompt behavior, and post-login Action for this application.
@@ -171,7 +171,7 @@ Add these production environment secrets:
 | --- | --- | --- |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID from step 1 | `0123456789abcdef0123456789abcdef` |
 | `CLOUDFLARE_API_TOKEN` | Cloudflare API token from step 1 | Token value |
-| `AUTH0_APP_CLIENT_ID` | Auth0 Regular Web Application client ID from step 3 | Client ID |
+| `NUXT_AUTH0_CLIENT_ID` | Auth0 Regular Web Application client ID from step 3 | Client ID |
 | `AUTH0_MGMT_CLIENT_ID` | Auth0 Management API application client ID from step 4 | Client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | Auth0 Management API application client secret from step 4 | Client secret |
 | `NUXT_AUTH0_CLIENT_SECRET` | Auth0 Regular Web Application client secret from step 3 | Client secret |

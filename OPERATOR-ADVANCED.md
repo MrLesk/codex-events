@@ -95,7 +95,7 @@ Create a GitHub environment named `dev` only if pushes to `main` should deploy a
 
 Use environment-specific values for the same variable and secret groups as production. Set `DEPLOY_BASE_DOMAIN` to the dev app hostname. The dev workflow defaults `DEPLOY_ENV_NAME` to `dev`; set it only when you need a different resource prefix.
 
-For dev, store the Auth0 Regular Web Application client ID in `NUXT_AUTH0_CLIENT_ID`. Production uses `AUTH0_APP_CLIENT_ID`.
+Use `NUXT_AUTH0_CLIENT_ID` for the Auth0 Regular Web Application client ID in every GitHub environment.
 
 Use a separate Auth0 tenant or application for dev when you want to keep dev users, callback URLs, Actions, and database connections separate from production.
 

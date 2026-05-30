@@ -27,7 +27,7 @@ function createAuth0BootstrapEnvironment(overrides: Record<string, string> = {})
     AUTH0_MANAGEMENT_DOMAIN: 'codex-events-dev.eu.auth0.com',
     AUTH0_MGMT_CLIENT_ID: 'management-client-id',
     AUTH0_MGMT_CLIENT_SECRET: 'management-client-secret',
-    AUTH0_APP_CLIENT_ID: 'app-client-id',
+    NUXT_AUTH0_CLIENT_ID: 'app-client-id',
     AUTH0_APP_BASE_URL: 'https://dev.codex-events.com',
     AUTH0_CUSTOM_DOMAIN: 'auth.dev.codex-events.com',
     AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',

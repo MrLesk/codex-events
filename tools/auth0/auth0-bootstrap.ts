@@ -441,7 +441,7 @@ Environment variables:
 - AUTH0_MANAGEMENT_DOMAIN
 - AUTH0_MGMT_CLIENT_ID
 - AUTH0_MGMT_CLIENT_SECRET
-- AUTH0_APP_CLIENT_ID
+- NUXT_AUTH0_CLIENT_ID
 - AUTH0_APP_DISPLAY_NAME (default: ${defaultAuth0AppDisplayName})
 - AUTH0_APP_BASE_URL
 - AUTH0_BDD_APP_BASE_URL (defaults to ${defaultLocalBddAppBaseUrl} for localhost app configs)
@@ -699,8 +699,8 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     ),
     managementAudience: defaultManagementAudience,
     appClientId: requireConfigField(
-      environment.AUTH0_APP_CLIENT_ID?.trim() ?? '',
-      'AUTH0_APP_CLIENT_ID'
+      environment.NUXT_AUTH0_CLIENT_ID?.trim() ?? '',
+      'NUXT_AUTH0_CLIENT_ID'
     ),
     appDisplayName: firstDefinedValue(environment.AUTH0_APP_DISPLAY_NAME, defaultAuth0AppDisplayName),
     appBaseUrl: normalizedAppBaseUrl,
