@@ -31,25 +31,18 @@ In the Cloudflare account that will host the platform:
 2. Configure Cloudflare Email Sending/Routing Service for that domain.
 3. Create a custom Cloudflare API token for the production deploy workflow with the permissions listed below.
 
-Use these permissions for the API token from step 3. Add `Read` plus the write-capable access level, `Edit` or `Write`, where both are listed; Cloudflare edit access does not consistently include read access.
+Use these permissions for the API token from step 3. When a row lists both `Read` and `Edit`, grant both; Cloudflare edit access does not consistently include read access.
 
 | Scope | Resource | Access |
 | --- | --- | --- |
-| Account | Workers Scripts | Read |
-| Account | Workers Scripts | Edit |
-| Account | D1 | Read |
-| Account | D1 | Edit |
-| Account | Workers R2 Storage | Read |
-| Account | Workers R2 Storage | Edit |
-| Account | Queues | Read |
-| Account | Queues | Edit |
-| Account | Cloudflare Images | Read |
-| Account | Cloudflare Images | Edit |
+| Account | Workers Scripts | Read, Edit |
+| Account | D1 | Read, Edit |
+| Account | Workers R2 Storage | Read, Edit |
+| Account | Queues | Read, Edit |
+| Account | Cloudflare Images | Read, Edit |
 | Zone | Zone | Read |
-| Zone | Workers Routes | Read |
-| Zone | Workers Routes | Edit |
-| Zone | DNS | Read |
-| Zone | DNS | Edit |
+| Zone | Workers Routes | Read, Edit |
+| Zone | DNS | Read, Edit |
 
 Scope the account permissions to the Cloudflare account that owns the Worker, D1 database, R2 buckets, Images binding, and Queues. Scope the zone permissions to the DNS zone name you use in `DEPLOY_CF_ZONE_NAME`.
 
