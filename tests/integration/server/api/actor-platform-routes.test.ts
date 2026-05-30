@@ -1281,6 +1281,85 @@ describe('TASK-3.5 actor-facing API routes', () => {
     }))
   })
 
+  test('platform legal setup APIs allow an unconsented platform admin to publish first-run content', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'patch',
+          path: '/api/platform-legal-settings/current',
+          handler: platformLegalSettingsCurrentPatchHandler
+        },
+        {
+          method: 'post',
+          path: '/api/platform-documents/:documentType/versions',
+          handler: platformDocumentVersionsPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|first-run-admin',
+        email: 'first-run-admin@example.com'
+      },
+      autoAcceptCurrentPlatformDocuments: false
+    })
+    databases.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'first_run_admin',
+      auth0Subject: 'auth0|first-run-admin',
+      email: 'first-run-admin@example.com',
+      displayName: 'First Run Admin',
+      isPlatformAdmin: true
+    })
+
+    const settingsResponse = await harness.request('/api/platform-legal-settings/current', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        supportEmail: 'support@example.com',
+        imprintContent: 'Example imprint.'
+      })
+    })
+    const privacyResponse = await harness.request('/api/platform-documents/privacy_policy/versions', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Privacy Policy',
+        content: 'Initial privacy policy.'
+      })
+    })
+    const termsResponse = await harness.request('/api/platform-documents/platform_terms/versions', {
+      method: 'POST',
+      body: JSON.stringify({
+        title: 'Platform Terms',
+        content: 'Initial platform terms.'
+      })
+    })
+    const settings = await harness.database.query.platformLegalSettings.findFirst({
+      where: eq(platformLegalSettings.id, 'default')
+    })
+    const documents = await harness.database.query.platformDocuments.findMany()
+    const acceptances = await harness.database.select().from(userPlatformDocumentAcceptances)
+
+    expect(settingsResponse.status).toBe(200)
+    expect(privacyResponse.status).toBe(200)
+    expect(termsResponse.status).toBe(200)
+    expect(settings).toMatchObject({
+      supportEmail: 'support@example.com',
+      imprintContent: 'Example imprint.'
+    })
+    expect(documents).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        documentType: 'privacy_policy',
+        version: 1,
+        title: 'Privacy Policy'
+      }),
+      expect.objectContaining({
+        documentType: 'platform_terms',
+        version: 1,
+        title: 'Platform Terms'
+      })
+    ]))
+    expect(acceptances).toHaveLength(0)
+  })
+
   test('POST /api/platform-document-acceptances records only the current exact document version', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
@@ -1535,6 +1614,112 @@ describe('TASK-3.5 actor-facing API routes', () => {
         action: 'platform_admin.first_bootstrap_granted'
       })
     ]))
+  })
+
+  test('POST /api/account/registration lets the configured first platform admin create a setup account before legal documents exist', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler }
+      ],
+      runtimeConfig: {
+        firstPlatformAdminEmail: 'First-Admin@Example.com'
+      },
+      sessionUser: {
+        sub: 'auth0|setup-first-admin',
+        email: 'first-admin@example.com',
+        email_verified: true,
+        name: 'First Admin'
+      },
+      autoAcceptCurrentPlatformDocuments: false
+    })
+    databases.push(harness)
+
+    const response = await harness.request('/api/account/registration', {
+      method: 'POST',
+      body: JSON.stringify({})
+    })
+    const createdUser = await harness.database.query.users.findFirst({
+      where: eq(users.auth0Subject, 'auth0|setup-first-admin')
+    })
+    const createdPrimaryIdentity = await harness.database.query.userAuthIdentities.findFirst({
+      where: eq(userAuthIdentities.auth0Subject, 'auth0|setup-first-admin')
+    })
+    const acceptances = await harness.database.select().from(userPlatformDocumentAcceptances)
+    const platformDocumentRows = await harness.database.select().from(platformDocuments)
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        user: {
+          email: 'first-admin@example.com',
+          isPlatformAdmin: true
+        },
+        acceptedDocumentIds: {
+          privacyPolicyDocumentId: null,
+          platformTermsDocumentId: null
+        }
+      }
+    })
+    expect(createdUser?.isPlatformAdmin).toBe(true)
+    expect(createdPrimaryIdentity).toMatchObject({
+      userId: createdUser?.id,
+      auth0Subject: 'auth0|setup-first-admin'
+    })
+    expect(acceptances).toHaveLength(0)
+    expect(platformDocumentRows).toHaveLength(0)
+    expect(auditEntries).toHaveLength(2)
+    expect(auditEntries).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        actorUserId: createdUser?.id,
+        entityType: 'user',
+        entityId: createdUser?.id,
+        action: 'account.registered'
+      }),
+      expect.objectContaining({
+        actorUserId: null,
+        entityType: 'user',
+        entityId: createdUser?.id,
+        action: 'platform_admin.first_bootstrap_granted'
+      })
+    ]))
+  })
+
+  test('POST /api/account/registration rejects regular setup before legal documents exist', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/account/registration', handler: accountRegistrationPostHandler }
+      ],
+      runtimeConfig: {
+        firstPlatformAdminEmail: 'first-admin@example.com'
+      },
+      sessionUser: {
+        sub: 'auth0|regular-before-documents',
+        email: 'regular-before-documents@example.com',
+        email_verified: true,
+        name: 'Regular User'
+      },
+      autoAcceptCurrentPlatformDocuments: false
+    })
+    databases.push(harness)
+
+    const response = await harness.request('/api/account/registration', {
+      method: 'POST',
+      body: JSON.stringify({})
+    })
+    const createdUser = await harness.database.query.users.findFirst({
+      where: eq(users.auth0Subject, 'auth0|regular-before-documents')
+    })
+    const auditEntries = await harness.database.select().from(auditLogs)
+
+    expect(response.status).toBe(409)
+    expect(await response.json()).toMatchObject({
+      error: {
+        code: 'platform_documents_required'
+      }
+    })
+    expect(createdUser).toBeUndefined()
+    expect(auditEntries).toHaveLength(0)
   })
 
   test('POST /api/account/registration stores the GitHub profile URL for GitHub-backed sessions', async () => {

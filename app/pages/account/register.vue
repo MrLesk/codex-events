@@ -20,12 +20,12 @@ const returnTo = computed(() => normalizeAuthReturnTo(
 ))
 const { actor, status, refresh } = useAccountLifecycleActor()
 const {
-  documents,
   privacyPolicyDocument,
   platformTermsDocument,
   status: documentsStatus
 } = useCurrentPlatformDocuments()
 
+const platformLegalSettingsHref = '/account/platform-settings?tab=legal'
 const privacyAccepted = ref(false)
 const termsAccepted = ref(false)
 const submitAttempted = ref(false)
@@ -57,13 +57,24 @@ const linkingError = computed<ApiErrorShape | null>(() => {
   }
 })
 
+const platformDocumentsUnavailable = computed(() =>
+  !privacyPolicyDocument.value || !platformTermsDocument.value
+)
+const canOpenLegalSettingsForSetup = computed(() =>
+  actor.value.kind === 'platform_user' && actor.value.isPlatformAdmin
+)
 const isReadyToSubmit = computed(() =>
-  Boolean(privacyPolicyDocument.value)
-  && Boolean(platformTermsDocument.value)
+  !platformDocumentsUnavailable.value
   && privacyAccepted.value
   && termsAccepted.value
 )
-const accountRegistrationIntro = computed(() => getAccountRegistrationIntro())
+const accountRegistrationIntro = computed(() => platformDocumentsUnavailable.value
+  ? {
+      title: 'Finish account registration',
+      description: 'Platform legal content must be published before regular account registration can continue.'
+    }
+  : getAccountRegistrationIntro()
+)
 const identityEmailUnavailable = computed(() =>
   actor.value.kind === 'authenticated_identity'
   && !actor.value.sessionUser.email?.trim()
@@ -78,9 +89,50 @@ if (
   await navigateTo(returnTo.value, { replace: true })
 }
 
+async function submitInitialPlatformSetupAccount() {
+  if (canOpenLegalSettingsForSetup.value) {
+    await navigateTo(platformLegalSettingsHref)
+    return
+  }
+
+  if (actor.value.kind !== 'authenticated_identity') {
+    return
+  }
+
+  if (identityEmailUnavailable.value) {
+    submitState.error = missingIdentityEmailMessage
+    return
+  }
+
+  submitState.pending = true
+
+  try {
+    await $fetch('/api/account/registration', {
+      method: 'POST',
+      body: {
+        returnTo: platformLegalSettingsHref
+      }
+    })
+
+    await refresh()
+    await navigateTo(platformLegalSettingsHref, { replace: true })
+  } catch (error) {
+    const apiError = normalizeApiError(error)
+
+    submitState.error = getAccountRegistrationSubmitErrorMessage(apiError)
+  } finally {
+    submitState.pending = false
+  }
+}
+
 async function submitPlatformConsent() {
   submitAttempted.value = true
   submitState.error = ''
+
+  if (platformDocumentsUnavailable.value) {
+    await submitInitialPlatformSetupAccount()
+    return
+  }
 
   if (!isReadyToSubmit.value || !privacyPolicyDocument.value || !platformTermsDocument.value) {
     return
@@ -163,13 +215,65 @@ useSeoMeta({
         description="Resolving your account state and the current platform documents."
       />
 
-      <AppAlert
-        v-else-if="!documents?.privacy_policy || !documents?.platform_terms"
-        color="warning"
-        variant="soft"
-        title="Platform documents unavailable"
-        description="The current Privacy Policy or Platform Terms could not be loaded right now."
-      />
+      <form
+        v-else-if="platformDocumentsUnavailable"
+        class="space-y-4"
+        @submit.prevent="submitPlatformConsent"
+      >
+        <AppAlert
+          color="warning"
+          variant="soft"
+          title="Legal content required"
+          description="The platform needs legal settings, a Privacy Policy, and Platform Terms before regular account registration can continue."
+        />
+
+        <AppAlert
+          v-if="identityEmailUnavailable"
+          color="warning"
+          variant="soft"
+          title="Email address required"
+          :description="missingIdentityEmailMessage"
+        />
+
+        <AppAlert
+          v-if="actor.kind === 'platform_user' && !canOpenLegalSettingsForSetup"
+          color="warning"
+          variant="soft"
+          title="Platform admin setup required"
+          description="A platform admin needs to publish the current Privacy Policy and Platform Terms before you can continue."
+        />
+
+        <AppAlert
+          v-if="submitState.error"
+          color="error"
+          variant="soft"
+          title="Setup could not be completed"
+          :description="submitState.error"
+        />
+
+        <div class="space-y-3">
+          <p
+            v-if="actor.kind === 'authenticated_identity'"
+            class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
+          >
+            Create the setup account only with the email configured as the first platform admin.
+          </p>
+
+          <div class="flex justify-end">
+            <AppButton
+              v-if="actor.kind === 'authenticated_identity' || canOpenLegalSettingsForSetup"
+              type="submit"
+              color="neutral"
+              variant="solid"
+              :loading="submitState.pending"
+              :disabled="submitState.pending || identityEmailUnavailable"
+              class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+            >
+              {{ canOpenLegalSettingsForSetup ? 'Open legal settings' : 'Create setup account' }}
+            </AppButton>
+          </div>
+        </div>
+      </form>
 
       <form
         v-else

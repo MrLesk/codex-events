@@ -206,75 +206,25 @@ The `release-production` workflow:
 
 If Auth0 rejects custom-domain creation because the tenant needs billing verification, add the required billing information in Auth0 and rerun the release workflow.
 
-## 7. Add Platform Legal Content
+## 7. Create The First Platform Admin
 
-Open the production D1 database in Cloudflare and run this SQL with your operator details and legal text:
+Open `https://<DEPLOY_BASE_DOMAIN>/account/platform-settings?tab=legal` and sign in with the email address configured in `NUXT_FIRST_PLATFORM_ADMIN_EMAIL`.
 
-```sql
-INSERT INTO platform_legal_settings (
-  id,
-  support_email,
-  imprint_content
-) VALUES (
-  'default',
-  'support@example.com',
-  '## Operator
+When the deployment has no current Privacy Policy or Platform Terms yet, account registration shows the legal-content setup state. Create the setup account there. The application grants platform-admin access automatically when no active platform admin exists.
 
-Your Organization
-Street Address, City, Country
+The setup account can access the platform settings legal tab before accepting platform documents. Other account and event workflows remain blocked until the current Privacy Policy and Platform Terms are published and accepted.
 
-## Contact
+## 8. Add Platform Legal Content
 
-- Support, legal, and privacy contact: support@example.com
-- Languages accepted for legal and DSA communications: English
+In Platform settings, use the Legal settings tab to:
 
-## Platform purpose
+1. Save the support email and imprint content.
+2. Publish the Privacy Policy.
+3. Publish the Platform Terms.
 
-Operate event programs and participant workflows.
+The imprint content should include the platform operator details, postal address, legal and privacy contact information, accepted contact languages, platform purpose, editorial focus, and jurisdiction-specific disclosures.
 
-## Editorial focus
-
-Information about events operated on this platform.
-
-## Legal notice
-
-Your jurisdiction-specific imprint disclosures.'
-) ON CONFLICT(id) DO UPDATE SET
-  support_email = excluded.support_email,
-  imprint_content = excluded.imprint_content,
-  updated_at = CURRENT_TIMESTAMP;
-
-INSERT OR IGNORE INTO platform_documents (
-  id,
-  document_type,
-  version,
-  title,
-  content,
-  published_at
-) VALUES
-  (
-    'privacy-policy-v1',
-    'privacy_policy',
-    1,
-    'Privacy Policy',
-    'Your current Privacy Policy content.',
-    CURRENT_TIMESTAMP
-  ),
-  (
-    'platform-terms-v1',
-    'platform_terms',
-    1,
-    'Platform Terms',
-    'Your current Platform Terms content.',
-    CURRENT_TIMESTAMP
-  );
-```
-
-## 8. Create The First Platform Admin
-
-Open the production site and sign in with the email address configured in `NUXT_FIRST_PLATFORM_ADMIN_EMAIL`.
-
-After the account registration finishes, the application grants platform-admin access automatically when no active platform admin exists. The grant uses the same audited platform-admin path as the in-app admin roster.
+After both platform documents are published, accept the current Privacy Policy and Platform Terms when the account workflow prompts for consent.
 
 ## 9. Finish Setup In The App
 
@@ -282,11 +232,10 @@ Open the account workspace as the first platform admin.
 
 Use the platform admin workspace to:
 
-1. Review legal settings and published platform documents.
-2. Add more platform admins.
-3. Add event organizers.
-4. Create the first event.
-5. Configure event terms, schedule, registration, judging, prizes, and staff.
+1. Add more platform admins.
+2. Add event organizers.
+3. Create the first event.
+4. Configure event terms, schedule, registration, judging, prizes, and staff.
 
 ## 10. Verify Production
 
@@ -297,7 +246,7 @@ Check:
 - `/terms-and-conditions` shows your Platform Terms.
 - `/imprint` shows your operator information.
 - `/auth/login` opens Auth0 on `https://auth.<DEPLOY_BASE_DOMAIN>` or the configured `DEPLOY_AUTH0_CUSTOM_DOMAIN`.
-- The first platform admin can access `/account/platform-admins`.
+- The first platform admin can access `/account/platform-settings?tab=platform-admins`.
 - The first platform admin can create an event.
 
 ## References

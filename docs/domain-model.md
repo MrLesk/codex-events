@@ -179,7 +179,9 @@ Rules:
 - The public Privacy Policy and Terms pages render the current platform document version for their document type.
 - The application-owned `/account/register` flow records exact accepted platform-document versions in product data.
 - When Auth0 account linking resolves an existing platform account, platform-document acceptance is evaluated on the linked platform account.
-- Current versions of both platform documents must exist before account registration and regular platform-user consent can complete.
+- Current versions of both platform documents must exist before regular account registration and regular platform-user consent can complete.
+- The configured first platform admin can create the initial platform account before current platform documents exist so they can publish legal settings, the Privacy Policy, and Platform Terms from platform settings.
+- The initial setup account still requires current platform-document acceptance before regular account and event workflows are available.
 - Current acceptance of both platform documents is required for regular platform-user access.
 - Platform documents are versioned.
 - Platform admins publish new platform document versions. Published versions are retained for exact-version acceptance history.
@@ -200,6 +202,7 @@ Rules:
 - Operator details, legal notice text, privacy contact details, DSA contact points, platform purpose, editorial focus, and jurisdiction-specific disclosures belong in the imprint content.
 - Privacy Policy and Platform Terms pages render their current `PlatformDocument` content and do not read legal settings metadata.
 - Platform admins can update legal settings.
+- Platform admins can update legal settings during first-run setup before current platform documents exist or have been accepted.
 - Updating legal settings does not create a new platform-document version and does not require renewed user consent.
 - If legal settings are not configured, public legal-contact behavior is explicitly unavailable rather than falling back to repository-owned operator details.
 

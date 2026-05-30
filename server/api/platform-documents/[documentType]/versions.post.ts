@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { requirePlatformActor } from '#server/auth/actor'
+import { requirePlatformAccountActor } from '#server/auth/actor'
 import { assertPlatformAdminAccess } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
 import {
@@ -18,7 +18,7 @@ const paramsSchema = z.object({
 })
 
 export default defineApiHandler(async (h3Event) => {
-  const actor = await requirePlatformActor(h3Event)
+  const actor = await requirePlatformAccountActor(h3Event)
   assertPlatformAdminAccess(actor)
 
   const { documentType } = parseValidatedParams(h3Event, paramsSchema)

@@ -51,6 +51,34 @@ describe('auth navigation helpers', () => {
     }, '/account')).toBe(accountDashboardHref)
   })
 
+  test('allows unconsented platform admins to reach the legal setup tab only', () => {
+    expect(resolveActorAppRedirect({
+      kind: 'platform_user',
+      hasAcceptedCurrentPlatformDocuments: false,
+      isPlatformAdmin: true
+    }, '/account/platform-settings')).toBe('/account/platform-settings')
+
+    expect(resolveActorAppRedirect({
+      kind: 'platform_user',
+      hasAcceptedCurrentPlatformDocuments: false,
+      isPlatformAdmin: true
+    }, '/account/platform-settings?tab=legal')).toBe('/account/platform-settings?tab=legal')
+
+    expect(resolveActorAppRedirect({
+      kind: 'platform_user',
+      hasAcceptedCurrentPlatformDocuments: false,
+      isPlatformAdmin: true
+    }, '/account/platform-settings?tab=platform-admins'))
+      .toBe('/account/register?returnTo=%2Faccount%2Fplatform-settings%3Ftab%3Dplatform-admins')
+
+    expect(resolveActorAppRedirect({
+      kind: 'platform_user',
+      hasAcceptedCurrentPlatformDocuments: false,
+      isPlatformAdmin: false
+    }, '/account/platform-settings?tab=legal'))
+      .toBe('/account/register?returnTo=%2Faccount%2Fplatform-settings%3Ftab%3Dlegal')
+  })
+
   test('keeps incomplete actors on the account-registration route and redirects complete actors out of it', () => {
     expect(resolveActorAppRedirect({
       kind: 'authenticated_identity',

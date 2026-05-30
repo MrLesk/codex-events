@@ -1,4 +1,4 @@
-import { requirePlatformActor } from '#server/auth/actor'
+import { requirePlatformAccountActor } from '#server/auth/actor'
 import { assertPlatformAdminAccess } from '#server/auth/authorization'
 import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
@@ -11,7 +11,7 @@ import {
 import { parseValidatedBody } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
-  const actor = await requirePlatformActor(h3Event)
+  const actor = await requirePlatformAccountActor(h3Event)
   assertPlatformAdminAccess(actor)
 
   const body = await parseValidatedBody(h3Event, platformLegalSettingsBodySchema)

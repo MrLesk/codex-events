@@ -40,7 +40,17 @@ function normalizeEmail(value: string | null | undefined) {
   return value?.trim().toLowerCase() ?? ''
 }
 
-async function hasActivePlatformAdmins(database: AppDatabase) {
+export function matchesConfiguredFirstPlatformAdminEmail(
+  userEmail: string | null | undefined,
+  configuredEmail: string | null | undefined
+) {
+  const normalizedConfiguredEmail = normalizeEmail(configuredEmail)
+
+  return Boolean(normalizedConfiguredEmail)
+    && normalizeEmail(userEmail) === normalizedConfiguredEmail
+}
+
+export async function hasActivePlatformAdmins(database: AppDatabase) {
   const rows = await database
     .select({ total: count() })
     .from(users)
@@ -59,12 +69,9 @@ export async function grantConfiguredFirstPlatformAdminAccess(
     configuredEmail: string | null | undefined
   }
 ) {
-  const configuredEmail = normalizeEmail(input.configuredEmail)
-
   if (
-    !configuredEmail
-    || input.user.isPlatformAdmin
-    || normalizeEmail(input.user.email) !== configuredEmail
+    input.user.isPlatformAdmin
+    || !matchesConfiguredFirstPlatformAdminEmail(input.user.email, input.configuredEmail)
   ) {
     return input.user
   }

@@ -130,7 +130,7 @@ Operations:
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
 | Get current platform legal settings | `GET /api/platform-legal-settings/current` | public or authenticated user | Returns the current deployment-owned support email and imprint content, or `null` when setup is incomplete. Missing settings never fall back to repository-owned operator details. |
-| Update current platform legal settings | `PATCH /api/platform-legal-settings/current` | platform admin | Upserts the singleton legal settings record. Updating these settings does not create a new platform-document version and does not force renewed user consent. |
+| Update current platform legal settings | `PATCH /api/platform-legal-settings/current` | platform admin | Upserts the singleton legal settings record. Updating these settings does not create a new platform-document version and does not force renewed user consent. A platform admin can use this route during first-run setup before current platform documents exist or have been accepted. |
 
 Testing:
 - Unit: settings validation and contact-recipient resolution.
@@ -178,7 +178,7 @@ Operations:
 | --- | --- | --- | --- |
 | List current platform documents | `GET /api/platform-documents/current` | public or authenticated user | Returns the current `privacy_policy` and `platform_terms` versions used for platform registration and account flows. |
 | List platform document versions for a type | `GET /api/platform-documents/:documentType/versions` | authenticated user | Returns available published versions for the document type. |
-| Publish platform document version | `POST /api/platform-documents/:documentType/versions` | platform admin | Creates the next append-only version for `privacy_policy` or `platform_terms`. Existing versions remain unchanged for exact-version acceptance history. |
+| Publish platform document version | `POST /api/platform-documents/:documentType/versions` | platform admin | Creates the next append-only version for `privacy_policy` or `platform_terms`. Existing versions remain unchanged for exact-version acceptance history. A platform admin can use this route during first-run setup before current platform documents exist or have been accepted. |
 | Record platform document acceptance | `POST /api/platform-document-acceptances` | authenticated user with a platform account | Requires the exact `PlatformDocument` version being accepted. Rejects unknown or unpublished versions. Used when an existing platform account must accept the current platform documents before normal workspace access resumes. |
 
 Testing:
@@ -195,7 +195,7 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Create platform account after terms acceptance | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record, allows canonical `firstName` and `familyName` to remain blank until later profile completion, and records acceptance of the current required platform documents. The frontend-owned completion route is `/account/register`. If an unlinked same-email identity reaches this route, the route rejects the request before platform-document acceptance is recorded. |
+| Create platform account after terms acceptance | `POST /api/account/registration` | authenticated Auth0 user without a platform account | Creates the platform `User` record, allows canonical `firstName` and `familyName` to remain blank until later profile completion, and records acceptance of the current required platform documents. The frontend-owned completion route is `/account/register`. If no current platform documents exist yet, the configured first platform admin can create the initial setup account without document acceptance only when no active platform admin exists. That account can publish legal settings and platform documents from platform settings, but regular account and event workflows still require current platform-document acceptance. If an unlinked same-email identity reaches this route, the route rejects the request before platform-document acceptance is recorded. |
 | Update own platform account profile | `PATCH /api/account` | authenticated user with a platform account and current platform-document acceptance | Updates canonical `firstName` and `familyName` plus optional profile fields such as `company`, `bio`, X, LinkedIn, and GitHub profile links, an optional ChatGPT email, an optional OpenAI org ID, and an optional Luma email. |
 | Get profile icon | `GET /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Returns the uploaded profile icon object for the caller. When `user` and `event` query parameters are provided, this route can also return the uploaded profile icon for another user who is visible to the caller through event-scoped participant visibility or the published judge or staff rosters for that event. |
 | Upload or replace own profile icon | `POST /api/account/profile-icon` | authenticated user with a platform account and current platform-document acceptance | Accepts multipart upload for a single profile icon image and replaces any prior icon object. |

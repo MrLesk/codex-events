@@ -159,6 +159,43 @@ describe('navigation guards', () => {
     )).resolves.toBeUndefined()
   })
 
+  test('allows unconsented platform admins through the platform settings legal tab', async () => {
+    useUser.mockReturnValue({
+      value: {
+        sub: 'auth0|platform-admin'
+      }
+    })
+
+    vi.stubGlobal('$fetch', vi.fn(async () => ({
+      data: {
+        actor: createPlatformActor({
+          hasAcceptedCurrentPlatformDocuments: false,
+          sessionUser: {
+            sub: 'auth0|platform-admin'
+          },
+          isPlatformAdmin: true,
+          platformUser: {
+            id: 'platform-admin',
+            email: 'platform-admin@example.com',
+            displayName: 'Platform Admin',
+            firstName: 'Platform',
+            familyName: 'Admin',
+            isPlatformAdmin: true,
+            isEventOrganizer: false
+          }
+        })
+      }
+    })) as never)
+
+    const { ensureAccountPageAccess } = await import('../../../../../app/domains/accounts/navigation-guards')
+
+    await expect(ensureAccountPageAccess(
+      { fullPath: '/account/platform-settings?tab=legal' } as never,
+      actor => actor.isPlatformAdmin,
+      'Platform admin access required.'
+    )).resolves.toBeUndefined()
+  })
+
   test('rejects non-platform admins from the platform settings guard', async () => {
     useUser.mockReturnValue({
       value: {

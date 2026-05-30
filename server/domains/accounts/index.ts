@@ -13,8 +13,16 @@ import {
 import { buildAuditLogInsert, writeAuditLog } from '#server/database/audit-log'
 import { ApiError } from '#server/http/api-error'
 import { assertGuard } from '#server/domains/lifecycle-guard'
-import { grantConfiguredFirstPlatformAdminAccess } from '#server/domains/platform/admins'
-import { assertCurrentPlatformDocument, getCurrentPlatformDocument } from '#server/domains/platform/documents'
+import {
+  grantConfiguredFirstPlatformAdminAccess,
+  hasActivePlatformAdmins,
+  matchesConfiguredFirstPlatformAdminEmail
+} from '#server/domains/platform/admins'
+import {
+  assertCurrentPlatformDocument,
+  getCurrentPlatformDocument,
+  getCurrentPlatformDocuments
+} from '#server/domains/platform/documents'
 import { findPlatformUserByAuth0Subject } from './auth-identities'
 import { findLinkablePlatformAccountIdentity } from './linking'
 
@@ -51,8 +59,8 @@ const optionalEmailSchema = z
   .optional()
 
 export const platformAccountRegistrationBodySchema = z.object({
-  privacyPolicyDocumentId: z.string().trim().min(1),
-  platformTermsDocumentId: z.string().trim().min(1)
+  privacyPolicyDocumentId: z.string().trim().min(1).optional(),
+  platformTermsDocumentId: z.string().trim().min(1).optional()
 })
 
 export const platformAccountProfileBodySchema = z.object({
@@ -266,6 +274,64 @@ async function requirePlatformDocumentById(
   return document
 }
 
+async function canCreateFirstPlatformAdminSetupAccount(
+  database: AppDatabase,
+  actor: AuthenticatedIdentityActor,
+  configuredEmail: string | null | undefined
+) {
+  return matchesConfiguredFirstPlatformAdminEmail(actor.sessionUser.email, configuredEmail)
+    && !(await hasActivePlatformAdmins(database))
+}
+
+async function resolveRegistrationPlatformDocuments(
+  database: AppDatabase,
+  actor: AuthenticatedIdentityActor,
+  input: PlatformAccountRegistrationInput,
+  configuredEmail: string | null | undefined
+) {
+  const hasPrivacyPolicyDocumentId = Boolean(input.privacyPolicyDocumentId)
+  const hasPlatformTermsDocumentId = Boolean(input.platformTermsDocumentId)
+
+  if (hasPrivacyPolicyDocumentId && hasPlatformTermsDocumentId) {
+    const [privacyPolicyDocument, platformTermsDocument] = await Promise.all([
+      requirePlatformDocumentById(database, input.privacyPolicyDocumentId!, 'privacy_policy'),
+      requirePlatformDocumentById(database, input.platformTermsDocumentId!, 'platform_terms')
+    ])
+
+    return {
+      privacyPolicyDocument,
+      platformTermsDocument
+    }
+  }
+
+  if (hasPrivacyPolicyDocumentId || hasPlatformTermsDocumentId) {
+    throw new ApiError({
+      statusCode: 400,
+      code: 'platform_document_acceptance_required',
+      message: 'Accept both the current Privacy Policy and Platform Terms before creating a platform account.'
+    })
+  }
+
+  const currentDocuments = await getCurrentPlatformDocuments(database)
+
+  if (
+    (!currentDocuments.privacy_policy || !currentDocuments.platform_terms)
+    && await canCreateFirstPlatformAdminSetupAccount(database, actor, configuredEmail)
+  ) {
+    return null
+  }
+
+  throw new ApiError({
+    statusCode: currentDocuments.privacy_policy && currentDocuments.platform_terms ? 400 : 409,
+    code: currentDocuments.privacy_policy && currentDocuments.platform_terms
+      ? 'platform_document_acceptance_required'
+      : 'platform_documents_required',
+    message: currentDocuments.privacy_policy && currentDocuments.platform_terms
+      ? 'Accept both the current Privacy Policy and Platform Terms before creating a platform account.'
+      : 'Publish the current Privacy Policy and Platform Terms before regular account registration can continue.'
+  })
+}
+
 async function assertPlatformAccountRegistrationAllowed(
   database: AppDatabase,
   actor: AuthenticatedIdentityActor
@@ -330,42 +396,55 @@ export async function registerPlatformAccount(
 ) {
   await assertPlatformAccountRegistrationAllowed(database, actor)
 
-  const [privacyPolicyDocument, platformTermsDocument] = await Promise.all([
-    requirePlatformDocumentById(database, input.privacyPolicyDocumentId, 'privacy_policy'),
-    requirePlatformDocumentById(database, input.platformTermsDocumentId, 'platform_terms')
-  ])
+  const registrationDocuments = await resolveRegistrationPlatformDocuments(
+    database,
+    actor,
+    input,
+    options?.firstPlatformAdminEmail
+  )
 
   const createdAt = new Date().toISOString()
   const userRecord = buildPlatformAccountInsert(actor, createdAt)
-  const acceptanceRows = [
-    {
-      id: crypto.randomUUID(),
-      userId: userRecord.id,
-      platformDocumentId: privacyPolicyDocument.id,
-      acceptedAt: createdAt
-    },
-    {
-      id: crypto.randomUUID(),
-      userId: userRecord.id,
-      platformDocumentId: platformTermsDocument.id,
-      acceptedAt: createdAt
-    }
-  ] satisfies Array<typeof userPlatformDocumentAcceptances.$inferInsert>
+  const accountRegisteredAudit = buildAuditLogInsert(database, {
+    actorUserId: userRecord.id,
+    entityType: 'user',
+    entityId: userRecord.id,
+    action: 'account.registered',
+    metadata: registrationDocuments
+      ? {
+          privacyPolicyDocumentId: registrationDocuments.privacyPolicyDocument.id,
+          platformTermsDocumentId: registrationDocuments.platformTermsDocument.id
+        }
+      : {}
+  })
 
-  await database.batch([
-    database.insert(users).values(userRecord),
-    database.insert(userPlatformDocumentAcceptances).values(acceptanceRows),
-    buildAuditLogInsert(database, {
-      actorUserId: userRecord.id,
-      entityType: 'user',
-      entityId: userRecord.id,
-      action: 'account.registered',
-      metadata: {
-        privacyPolicyDocumentId: privacyPolicyDocument.id,
-        platformTermsDocumentId: platformTermsDocument.id
+  if (registrationDocuments) {
+    const acceptanceRows = [
+      {
+        id: crypto.randomUUID(),
+        userId: userRecord.id,
+        platformDocumentId: registrationDocuments.privacyPolicyDocument.id,
+        acceptedAt: createdAt
+      },
+      {
+        id: crypto.randomUUID(),
+        userId: userRecord.id,
+        platformDocumentId: registrationDocuments.platformTermsDocument.id,
+        acceptedAt: createdAt
       }
-    }).query
-  ])
+    ] satisfies Array<typeof userPlatformDocumentAcceptances.$inferInsert>
+
+    await database.batch([
+      database.insert(users).values(userRecord),
+      database.insert(userPlatformDocumentAcceptances).values(acceptanceRows),
+      accountRegisteredAudit.query
+    ])
+  } else {
+    await database.batch([
+      database.insert(users).values(userRecord),
+      accountRegisteredAudit.query
+    ])
+  }
 
   const platformUser = await grantConfiguredFirstPlatformAdminAccess(database, {
     user: userRecord,
@@ -375,8 +454,8 @@ export async function registerPlatformAccount(
   return {
     user: serializePlatformUser(platformUser),
     acceptedDocumentIds: {
-      privacyPolicyDocumentId: privacyPolicyDocument.id,
-      platformTermsDocumentId: platformTermsDocument.id
+      privacyPolicyDocumentId: registrationDocuments?.privacyPolicyDocument.id ?? null,
+      platformTermsDocumentId: registrationDocuments?.platformTermsDocument.id ?? null
     }
   }
 }
