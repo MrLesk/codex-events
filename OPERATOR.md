@@ -1,6 +1,8 @@
 # Operator Guide
 
-Use this guide to deploy Codex Events from a clean Cloudflare, Auth0, and GitHub setup.
+Use this guide to deploy Codex Events from a clean Cloudflare, Auth0, and GitHub setup with the default production resource names.
+
+For custom resource names, shared dev deployments, BDD environments, optional Luma settings, and runtime tuning, use [OPERATOR-ADVANCED.md](OPERATOR-ADVANCED.md).
 
 ## Prerequisites
 
@@ -26,12 +28,22 @@ Example hostnames used below:
 In the Cloudflare account that will host the platform:
 
 1. Add the domain to Cloudflare DNS and wait until the zone is active.
-2. Choose the D1 database name. The deployment workflow creates the database if it does not already exist.
-3. Create an R2 bucket for profile icons.
-4. Create an R2 bucket for event images.
-5. Connect the event-images R2 bucket to a public custom domain when the deployment serves public gallery images directly from R2.
-6. Configure Cloudflare Email Service and verify the sender address used by the platform.
-7. Create a Cloudflare API token for the production deploy workflow.
+2. Create an R2 bucket named `codex-events-profile-icons`.
+3. Create an R2 bucket named `codex-events-event-images`.
+4. Configure Cloudflare Email Service and verify the sender address used by the platform.
+5. Create a Cloudflare API token for the production deploy workflow.
+
+The production workflow creates the D1 database and Cloudflare Queues when they do not already exist. With the default settings, production uses these Cloudflare resource names:
+
+| Resource | Default name |
+| --- | --- |
+| Worker | `codex-events` |
+| D1 database | `codex-events` |
+| Profile-icons R2 bucket | `codex-events-profile-icons` |
+| Event-images R2 bucket | `codex-events-event-images` |
+| Application decision email queue | `codex-events-application-review-email-delivery` |
+| Event outcome email queue | `codex-events-event-outcome-email-delivery` |
+| Luma sync queue | `codex-events-application-luma-sync` |
 
 Save these values:
 
@@ -39,15 +51,13 @@ Save these values:
 | --- | --- |
 | Cloudflare account ID | `0123456789abcdef0123456789abcdef` |
 | DNS zone name | `example.com` |
-| D1 database name | `codex-events` |
-| Profile-icons R2 bucket name | `codex-events-profile-icons` |
-| Event-images R2 bucket name | `codex-events-event-images` |
-| Event-images public custom domain | `media.example.com` |
 | Verified sender email | `events@example.com` |
 | Reply-to email | `support@example.com` |
 | Cloudflare API token | Token value |
 
-The release workflow creates the configured Cloudflare Queues if they do not already exist, deploys the Worker, and attaches the required Queue consumers.
+Connect the event-images R2 bucket to a public custom domain only when the deployment serves public gallery images directly from R2. The default setup can serve public event images through Worker routes.
+
+The release workflow deploys the Worker and attaches the required Queue consumers. Inactive Worker consumers in Cloudflare still occupy a queue's single Worker-consumer slot, so the workflow removes existing consumers from each environment-owned queue before adding the deployed Worker back with the configured retry settings.
 
 Create a custom Cloudflare API token with these permissions. Add `Read` plus the write-capable access level, `Edit` or `Write`, where both are listed; Cloudflare edit access does not consistently include read access.
 
@@ -69,7 +79,7 @@ Create a custom Cloudflare API token with these permissions. Add `Read` plus the
 | Zone | DNS | Read |
 | Zone | DNS | Edit |
 
-Scope the account permissions to the Cloudflare account that owns the Worker, D1 database, R2 buckets, Images binding, and Queues. Scope the zone permissions to `DEPLOY_CF_ZONE_NAME`.
+Scope the account permissions to the Cloudflare account that owns the Worker, D1 database, R2 buckets, Images binding, and Queues. Scope the zone permissions to the DNS zone name you use in `DEPLOY_CF_ZONE_NAME`.
 
 ## 2. Create Auth0 Resources
 
@@ -157,62 +167,22 @@ These credentials are used by GitHub Actions and Auth0 Actions setup. They are n
 
 In GitHub, create an environment named `production`.
 
-Set these production environment variables.
-
-Application hostnames:
+Set these production environment variables:
 
 | Variable | Value |
 | --- | --- |
 | `DEPLOY_BASE_DOMAIN` | Production app hostname, for example `events.example.com` |
 | `DEPLOY_AUTH0_CUSTOM_DOMAIN` | Auth0 login hostname, for example `auth.example.com` |
-
-Required Cloudflare metadata:
-
-| Variable | Value |
-| --- | --- |
 | `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name |
-
-Deployment defaults:
-
-| Variable | Value |
-| --- | --- |
-| `DEPLOY_ENV_NAME` | Environment name used in generated resource names. Defaults to `prod` for production |
-| `DEPLOY_RESOURCE_PREFIX` | Resource name prefix. Defaults to `codex-events` |
-
-Optional Cloudflare resource name overrides:
-
-| Variable | Value |
-| --- | --- |
-| `DEPLOY_CF_WORKER_NAME` | Cloudflare Worker name |
-| `DEPLOY_CF_D1_DATABASE_NAME` | D1 database name. The workflow creates this database if it does not already exist |
-| `DEPLOY_CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket name |
-| `DEPLOY_CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket name |
-| `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name |
-| `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue name |
-| `DEPLOY_CF_LUMA_SYNC_QUEUE` | Luma sync queue name |
-
-Auth0 settings:
-
-| Variable | Value |
-| --- | --- |
 | `AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant hostname, for example `your-tenant.eu.auth0.com` |
-| `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name. Defaults to `Username-Password-Authentication` |
-
-Cloudflare Email Service runtime settings:
-
-| Variable | Value |
-| --- | --- |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified Cloudflare Email Service sender |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to email address |
 
-Optional display and URL settings:
+If the Auth0 database connection is not named `Username-Password-Authentication`, also set:
 
 | Variable | Value |
 | --- | --- |
-| `AUTH0_APP_DISPLAY_NAME` | Display name shown in Auth0-hosted login copy. Defaults to `Codex Events` |
-| `NUXT_OUTBOUND_EMAIL_FROM_NAME` | Sender display name. Defaults to `Codex Events` |
-| `DEPLOY_EVENT_IMAGES_PUBLIC_CDN_BASE_URL` | Event image public CDN URL. Leave empty to serve public event gallery images through Worker routes |
-| `DEPLOY_LUMA_WEBHOOK_URL` | Override for the Luma webhook URL. Defaults to `https://<DEPLOY_BASE_DOMAIN>/api/public/luma/webhooks` |
+| `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name |
 
 Set these production environment secrets:
 
@@ -234,17 +204,9 @@ Set these secrets only when the deployment uses them:
 | `NUXT_AUTH0_AUDIENCE` | Auth0 API audience when the application requests one |
 | `NUXT_LUMA_API_KEY` | Luma API key when events use Luma sync |
 
-## 6. Optional Shared Dev Environment
+For resource-name overrides, custom sender display names, public R2 CDN URLs, shared dev, or BDD configuration, use [OPERATOR-ADVANCED.md](OPERATOR-ADVANCED.md).
 
-Create a GitHub environment named `dev` only if pushes to `main` should deploy a shared dev instance.
-
-For dev, use environment-specific values for the same variable and secret groups as production. Set `DEPLOY_BASE_DOMAIN` to the dev app hostname, and set `DEPLOY_ENV_NAME=dev` only when you want to override the dev workflow default.
-
-Store the dev Auth0 Regular Web Application client ID in `NUXT_AUTH0_CLIENT_ID`.
-
-Use a separate Auth0 tenant or application for dev when you want to keep dev users, callback URLs, Actions, and database connections separate from production.
-
-## 7. Deploy Production
+## 6. Deploy Production
 
 Publish a GitHub Release from the commit you want to deploy.
 
@@ -261,7 +223,7 @@ The `release-production` workflow:
 
 If Auth0 rejects custom-domain creation because the tenant needs billing verification, add the required billing information in Auth0 and rerun the release workflow.
 
-## 8. Add Platform Legal Content
+## 7. Add Platform Legal Content
 
 Open the production D1 database in Cloudflare and run this SQL with your operator details and legal text:
 
@@ -325,7 +287,7 @@ INSERT OR IGNORE INTO platform_documents (
   );
 ```
 
-## 9. Create The First Platform Admin
+## 8. Create The First Platform Admin
 
 Open the production site and sign in with the account that should become the first platform admin.
 
@@ -342,7 +304,7 @@ WHERE lower(email) = lower('admin@example.com')
 
 Replace `admin@example.com` with the first admin's email address.
 
-## 10. Finish Setup In The App
+## 9. Finish Setup In The App
 
 Sign in as the first platform admin.
 
@@ -354,7 +316,7 @@ Use the platform admin workspace to:
 4. Create the first event.
 5. Configure event terms, schedule, registration, judging, prizes, and staff.
 
-## 11. Verify Production
+## 10. Verify Production
 
 Check:
 

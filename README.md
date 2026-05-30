@@ -156,7 +156,7 @@ Plan for:
 
 Before launch, configure platform legal settings and publish current platform documents from the platform-admin workspace or legal setup tooling. Public legal pages and account registration require those settings to be present.
 
-Production deployment variables and operator setup are documented in [`OPERATOR.md`](OPERATOR.md). Environment-specific examples are available in [`.env.example`](.env.example), and local Cloudflare bindings are shown in [`wrangler.jsonc`](wrangler.jsonc).
+Production setup is documented in [`OPERATOR.md`](OPERATOR.md). Advanced deployment overrides, shared dev, BDD, and tuning settings are documented in [`OPERATOR-ADVANCED.md`](OPERATOR-ADVANCED.md). Environment-specific examples are available in [`.env.example`](.env.example), and local Cloudflare bindings are shown in [`wrangler.jsonc`](wrangler.jsonc).
 
 ---
 
@@ -174,4 +174,4 @@ The canonical product and engineering docs live in [`docs/`](docs/README.md). St
 | [`docs/tech-stack.md`](docs/tech-stack.md) | Application stack and infrastructure choices. |
 | [`docs/testing-strategy.md`](docs/testing-strategy.md) | Validation layers and Auth0-backed end-to-end strategy. |
 
-For teams running the platform, use [`OPERATOR.md`](OPERATOR.md). For repository contributors, local development, test commands, and release mechanics, use [`DEVELOPMENT.md`](DEVELOPMENT.md).
+For teams running the platform, start with [`OPERATOR.md`](OPERATOR.md) and use [`OPERATOR-ADVANCED.md`](OPERATOR-ADVANCED.md) only when customizing deployment behavior. For repository contributors, local development, test commands, and release mechanics, use [`DEVELOPMENT.md`](DEVELOPMENT.md).
