@@ -6,6 +6,7 @@ import {
   getAccountRegistrationMissingDocumentsCopy,
   getAccountRegistrationSubmitErrorMessage,
   getAccountRegistrationIntro,
+  getUnverifiedIdentityEmailMessage,
   missingIdentityEmailMessage
 } from '~/domains/accounts/registration'
 import { accountDashboardHref, normalizeAuthReturnTo } from '#shared/domains/accounts/auth-navigation'
@@ -88,6 +89,19 @@ const identityEmailUnavailable = computed(() =>
   actor.value.kind === 'authenticated_identity'
   && !actor.value.sessionUser.email?.trim()
 )
+const identityEmailUnverified = computed(() =>
+  actor.value.kind === 'authenticated_identity'
+  && Boolean(actor.value.sessionUser.email?.trim())
+  && actor.value.sessionUser.email_verified !== true
+)
+const identityEmailVerificationMessage = computed(() =>
+  actor.value.kind === 'authenticated_identity' && actor.value.sessionUser.email?.trim()
+    ? getUnverifiedIdentityEmailMessage(actor.value.sessionUser.email.trim())
+    : ''
+)
+const accountRegistrationBlocked = computed(() =>
+  identityEmailUnavailable.value || identityEmailUnverified.value
+)
 
 if (
   status.value !== 'pending'
@@ -113,6 +127,10 @@ async function submitInitialPlatformSetupAccount() {
 
   if (identityEmailUnavailable.value) {
     submitState.error = missingIdentityEmailMessage
+    return
+  }
+
+  if (identityEmailUnverified.value) {
     return
   }
 
@@ -152,6 +170,10 @@ async function submitPlatformConsent() {
 
   if (identityEmailUnavailable.value) {
     submitState.error = missingIdentityEmailMessage
+    return
+  }
+
+  if (identityEmailUnverified.value) {
     return
   }
 
@@ -227,6 +249,18 @@ useSeoMeta({
         description="Resolving your account state and the current platform documents."
       />
 
+      <section
+        v-else-if="identityEmailUnverified"
+        class="space-y-4"
+      >
+        <AppAlert
+          color="info"
+          variant="soft"
+          title="Confirm your email to finish registration"
+          :description="identityEmailVerificationMessage"
+        />
+      </section>
+
       <form
         v-else-if="platformDocumentsUnavailable"
         class="space-y-4"
@@ -278,7 +312,7 @@ useSeoMeta({
               color="neutral"
               variant="solid"
               :loading="submitState.pending"
-              :disabled="submitState.pending || identityEmailUnavailable"
+              :disabled="submitState.pending || accountRegistrationBlocked"
               class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
             >
               {{ missingDocumentsCopy.submitButtonLabel }}
@@ -398,7 +432,7 @@ useSeoMeta({
               color="neutral"
               variant="solid"
               :loading="submitState.pending"
-              :disabled="submitState.pending || identityEmailUnavailable"
+              :disabled="submitState.pending || accountRegistrationBlocked"
               class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
             >
               Continue

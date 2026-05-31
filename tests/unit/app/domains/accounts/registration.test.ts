@@ -4,8 +4,10 @@ import {
   getAccountRegistrationMissingDocumentsCopy,
   getAccountRegistrationSubmitErrorMessage,
   getAccountRegistrationIntro,
+  getUnverifiedIdentityEmailMessage,
   missingIdentityEmailMessage
 } from '../../../../../app/domains/accounts/registration'
+import { buildAuthenticatedIdentitySessionActor } from '../../../../../app/domains/accounts/session-actor'
 
 describe('account registration helpers', () => {
   test('returns account-registration copy', () => {
@@ -74,6 +76,27 @@ describe('account registration helpers', () => {
       code: 'identity_email_unavailable',
       message: 'The authenticated identity does not expose an email address required for platform account registration.'
     })).toBe(missingIdentityEmailMessage)
+  })
+
+  test('returns a clear message for an unverified identity email', () => {
+    expect(getUnverifiedIdentityEmailMessage('user@example.com'))
+      .toBe('Thanks for signing up. Confirm user@example.com from the verification email, then return to this page to finish creating your account.')
+
+    expect(getAccountRegistrationSubmitErrorMessage({
+      code: 'identity_email_unverified',
+      message: 'Verify your email address with your sign-in provider before creating a platform account.'
+    })).toBe('Confirm your email address before creating your account.')
+  })
+
+  test('preserves identity email verification state on authenticated session actors', () => {
+    expect(buildAuthenticatedIdentitySessionActor({
+      sub: 'auth0|unverified',
+      email: 'user@example.com',
+      email_verified: false
+    }).sessionUser).toMatchObject({
+      email: 'user@example.com',
+      email_verified: false
+    })
   })
 
   test('falls back to the API error message for other account registration failures', () => {

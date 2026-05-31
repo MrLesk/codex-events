@@ -3,6 +3,7 @@ import type { EventScopedRole } from '~/domains/events/roles'
 export interface SessionUserIdentity {
   sub: string
   email?: string | null
+  email_verified?: boolean | null
   name?: string | null
   nickname?: string | null
   picture?: string | null

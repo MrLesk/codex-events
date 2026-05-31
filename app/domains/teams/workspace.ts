@@ -143,6 +143,7 @@ export function createTeamWorkspaceFallbackActor(user: ReturnType<typeof useUser
   return buildAuthenticatedIdentitySessionActor({
     sub: user.sub,
     email: user.email ?? null,
+    email_verified: typeof user.email_verified === 'boolean' ? user.email_verified : null,
     name: user.name ?? null,
     nickname: user.nickname ?? null,
     picture: user.picture ?? null

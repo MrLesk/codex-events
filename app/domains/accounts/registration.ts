@@ -12,6 +12,10 @@ interface AccountRegistrationMissingDocumentsOptions {
 
 export const missingIdentityEmailMessage = 'This sign-in method did not share an email address. Codex Events needs an email address to create your account. Sign in with a login method that shares your email address, then try again.'
 
+export function getUnverifiedIdentityEmailMessage(email: string) {
+  return `Thanks for signing up. Confirm ${email} from the verification email, then return to this page to finish creating your account.`
+}
+
 export function getAccountRegistrationIntro() {
   return {
     title: 'Finish account registration',
@@ -72,6 +76,10 @@ export function getAccountRegistrationMissingDocumentsCopy(
 export function getAccountRegistrationSubmitErrorMessage(error: AccountRegistrationErrorLike | null | undefined) {
   if (error?.code === 'identity_email_unavailable') {
     return missingIdentityEmailMessage
+  }
+
+  if (error?.code === 'identity_email_unverified') {
+    return 'Confirm your email address before creating your account.'
   }
 
   const message = error?.message?.trim()
