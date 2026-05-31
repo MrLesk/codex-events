@@ -140,7 +140,7 @@ const trackSchema = z.object({
   displayOrder: z.coerce.number().int().min(0)
 })
 
-const tracksSchema = z.array(trackSchema)
+const tracksInputSchema = z.array(trackSchema)
   .superRefine((tracks, ctx) => {
     const ids = new Set<string>()
     const displayOrders = new Set<number>()
@@ -167,7 +167,20 @@ const tracksSchema = z.array(trackSchema)
       }
     })
   })
+
+const tracksSchema = tracksInputSchema
   .default([])
+
+const maxTeamMembersSchema = z.coerce.number().int().min(1)
+const participantsLimitSchema = z.coerce.number().int().min(1).nullable()
+const autoApproveApplicationsSchema = z.coerce.boolean()
+const blindReviewCountSchema = z.coerce.number().int().min(0).max(2)
+const pitchReviewEnabledSchema = z.coerce.boolean()
+const blindScoreWeightPercentSchema = z.coerce.number().int().min(0).max(100)
+const pitchScoreWeightPercentSchema = z.coerce.number().int().min(0).max(100)
+const shortlistFinalistCountSchema = z.coerce.number().int().min(1)
+const inPersonEventSchema = z.coerce.boolean()
+const profileRequirementSchema = z.coerce.boolean()
 
 const eventConfigShape = {
   eventType: eventTypeEnumSchema,
@@ -188,26 +201,26 @@ const eventConfigShape = {
   registrationClosesAt: isoTimestampSchema,
   submissionOpensAt: isoTimestampSchema.optional(),
   submissionClosesAt: isoTimestampSchema.optional(),
-  maxTeamMembers: z.coerce.number().int().min(1).default(4),
-  participantsLimit: z.coerce.number().int().min(1).nullable().default(null),
-  autoApproveApplications: z.coerce.boolean().default(false),
-  blindReviewCount: z.coerce.number().int().min(0).max(2).default(1),
-  pitchReviewEnabled: z.coerce.boolean().default(false),
-  blindScoreWeightPercent: z.coerce.number().int().min(0).max(100).default(70),
-  pitchScoreWeightPercent: z.coerce.number().int().min(0).max(100).default(30),
-  shortlistFinalistCount: z.coerce.number().int().min(1).default(10),
-  inPersonEvent: z.coerce.boolean().default(false),
-  requireXProfile: z.coerce.boolean().default(false),
-  requireLinkedinProfile: z.coerce.boolean().default(false),
-  requireGithubProfile: z.coerce.boolean().default(false),
-  requireChatgptEmail: z.coerce.boolean().default(false),
-  requireOpenaiOrgId: z.coerce.boolean().default(false),
-  requireLumaEmail: z.coerce.boolean().default(false),
-  requireWhyThisEvent: z.coerce.boolean().default(false),
-  requireProofOfExecution: z.coerce.boolean().default(false),
-  requireSubmissionSummary: z.coerce.boolean().default(false),
-  requireSubmissionRepositoryUrl: z.coerce.boolean().default(false),
-  requireSubmissionDemoUrl: z.coerce.boolean().default(false)
+  maxTeamMembers: maxTeamMembersSchema.default(4),
+  participantsLimit: participantsLimitSchema.default(null),
+  autoApproveApplications: autoApproveApplicationsSchema.default(false),
+  blindReviewCount: blindReviewCountSchema.default(1),
+  pitchReviewEnabled: pitchReviewEnabledSchema.default(false),
+  blindScoreWeightPercent: blindScoreWeightPercentSchema.default(70),
+  pitchScoreWeightPercent: pitchScoreWeightPercentSchema.default(30),
+  shortlistFinalistCount: shortlistFinalistCountSchema.default(10),
+  inPersonEvent: inPersonEventSchema.default(false),
+  requireXProfile: profileRequirementSchema.default(false),
+  requireLinkedinProfile: profileRequirementSchema.default(false),
+  requireGithubProfile: profileRequirementSchema.default(false),
+  requireChatgptEmail: profileRequirementSchema.default(false),
+  requireOpenaiOrgId: profileRequirementSchema.default(false),
+  requireLumaEmail: profileRequirementSchema.default(false),
+  requireWhyThisEvent: profileRequirementSchema.default(false),
+  requireProofOfExecution: profileRequirementSchema.default(false),
+  requireSubmissionSummary: profileRequirementSchema.default(false),
+  requireSubmissionRepositoryUrl: profileRequirementSchema.default(false),
+  requireSubmissionDemoUrl: profileRequirementSchema.default(false)
 } satisfies Record<string, z.ZodTypeAny>
 
 export const createEventBodySchema = z.object(eventConfigShape).superRefine((input, ctx) => {
@@ -236,7 +249,7 @@ export const updateEventBodySchema = z.object({
   slug: eventConfigShape.slug.optional(),
   description: eventConfigShape.description.optional(),
   agendaItems: agendaItemsSchema.optional(),
-  tracks: tracksSchema.optional(),
+  tracks: tracksInputSchema.optional(),
   backgroundImageUrl: eventConfigShape.backgroundImageUrl.optional(),
   bannerImageUrl: eventConfigShape.bannerImageUrl.optional(),
   discordServerUrl: eventConfigShape.discordServerUrl.optional(),
@@ -249,26 +262,26 @@ export const updateEventBodySchema = z.object({
   registrationClosesAt: eventConfigShape.registrationClosesAt.optional(),
   submissionOpensAt: eventConfigShape.submissionOpensAt.optional(),
   submissionClosesAt: eventConfigShape.submissionClosesAt.optional(),
-  maxTeamMembers: eventConfigShape.maxTeamMembers.optional(),
-  participantsLimit: eventConfigShape.participantsLimit.optional(),
-  autoApproveApplications: eventConfigShape.autoApproveApplications.optional(),
-  blindReviewCount: eventConfigShape.blindReviewCount.optional(),
-  pitchReviewEnabled: eventConfigShape.pitchReviewEnabled.optional(),
-  blindScoreWeightPercent: eventConfigShape.blindScoreWeightPercent.optional(),
-  pitchScoreWeightPercent: eventConfigShape.pitchScoreWeightPercent.optional(),
-  shortlistFinalistCount: eventConfigShape.shortlistFinalistCount.optional(),
-  inPersonEvent: eventConfigShape.inPersonEvent.optional(),
-  requireXProfile: eventConfigShape.requireXProfile.optional(),
-  requireLinkedinProfile: eventConfigShape.requireLinkedinProfile.optional(),
-  requireGithubProfile: eventConfigShape.requireGithubProfile.optional(),
-  requireChatgptEmail: eventConfigShape.requireChatgptEmail.optional(),
-  requireOpenaiOrgId: eventConfigShape.requireOpenaiOrgId.optional(),
-  requireLumaEmail: eventConfigShape.requireLumaEmail.optional(),
-  requireWhyThisEvent: eventConfigShape.requireWhyThisEvent.optional(),
-  requireProofOfExecution: eventConfigShape.requireProofOfExecution.optional(),
-  requireSubmissionSummary: eventConfigShape.requireSubmissionSummary.optional(),
-  requireSubmissionRepositoryUrl: eventConfigShape.requireSubmissionRepositoryUrl.optional(),
-  requireSubmissionDemoUrl: eventConfigShape.requireSubmissionDemoUrl.optional()
+  maxTeamMembers: maxTeamMembersSchema.optional(),
+  participantsLimit: participantsLimitSchema.optional(),
+  autoApproveApplications: autoApproveApplicationsSchema.optional(),
+  blindReviewCount: blindReviewCountSchema.optional(),
+  pitchReviewEnabled: pitchReviewEnabledSchema.optional(),
+  blindScoreWeightPercent: blindScoreWeightPercentSchema.optional(),
+  pitchScoreWeightPercent: pitchScoreWeightPercentSchema.optional(),
+  shortlistFinalistCount: shortlistFinalistCountSchema.optional(),
+  inPersonEvent: inPersonEventSchema.optional(),
+  requireXProfile: profileRequirementSchema.optional(),
+  requireLinkedinProfile: profileRequirementSchema.optional(),
+  requireGithubProfile: profileRequirementSchema.optional(),
+  requireChatgptEmail: profileRequirementSchema.optional(),
+  requireOpenaiOrgId: profileRequirementSchema.optional(),
+  requireLumaEmail: profileRequirementSchema.optional(),
+  requireWhyThisEvent: profileRequirementSchema.optional(),
+  requireProofOfExecution: profileRequirementSchema.optional(),
+  requireSubmissionSummary: profileRequirementSchema.optional(),
+  requireSubmissionRepositoryUrl: profileRequirementSchema.optional(),
+  requireSubmissionDemoUrl: profileRequirementSchema.optional()
 }).refine(
   input => Object.keys(input).length > 0,
   'At least one event configuration field must be provided.'

@@ -439,6 +439,22 @@ describe('event management utilities', () => {
     })
   })
 
+  test('does not materialize create defaults in update request schemas', () => {
+    const patch = updateEventBodySchema.parse({
+      address: 'Updated Address'
+    })
+
+    expect(patch).toEqual({
+      address: 'Updated Address'
+    })
+    expect(patch).not.toHaveProperty('tracks')
+    expect(patch).not.toHaveProperty('participantsLimit')
+    expect(patch).not.toHaveProperty('maxTeamMembers')
+    expect(patch).not.toHaveProperty('autoApproveApplications')
+    expect(patch).not.toHaveProperty('inPersonEvent')
+    expect(patch).not.toHaveProperty('requireChatgptEmail')
+  })
+
   test('accepts meetup creation without hackathon-only submission fields', () => {
     expect(createEventBodySchema.parse({
       eventType: 'meetup',

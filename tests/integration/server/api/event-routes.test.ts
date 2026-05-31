@@ -3615,6 +3615,33 @@ describe('TASK-3.5 event CRUD routes', () => {
       shortlistFinalistCount: 10
     })
     expect(tracks).toHaveLength(1)
+
+    const detailsResponse = await harness.request('/api/events/event_meetup_patch', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        address: 'Updated Address'
+      })
+    })
+
+    expect(detailsResponse.status).toBe(200)
+    expect(await detailsResponse.json()).toMatchObject({
+      data: {
+        participantsLimit: 80,
+        address: 'Updated Address'
+      }
+    })
+
+    const detailsUpdatedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_meetup_patch')
+    })
+
+    expect(detailsUpdatedEvent).toMatchObject({
+      participantsLimit: 80,
+      autoApproveApplications: false,
+      inPersonEvent: false,
+      requireChatgptEmail: false,
+      address: 'Updated Address'
+    })
   })
 
   test('PATCH /api/events/:eventId rewrites managed image URLs when slug changes', async () => {
