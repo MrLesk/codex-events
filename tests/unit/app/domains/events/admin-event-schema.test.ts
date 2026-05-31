@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 
 import {
+  buildEventConfigurationPatch,
   createEmptyEventFormState,
   eventConfigFormSchema,
   eventDetailsFormSchema
@@ -128,6 +129,49 @@ describe('event config form schema', () => {
     expect(result.data.tracks).toEqual([])
     expect(result.data.maxTeamMembers).toBe(1)
     expect(result.data.pitchReviewEnabled).toBe(false)
+  })
+
+  test('omits competition fields from registration-only configuration patches', () => {
+    const patch = buildEventConfigurationPatch({
+      ...createValidEventFormState(),
+      eventType: 'meetup',
+      tracks: [
+        {
+          id: 'track-1',
+          name: 'Track',
+          description: 'Track description',
+          displayOrder: 1
+        }
+      ],
+      maxTeamMembers: 9,
+      participantsLimit: 80,
+      blindReviewCount: 2,
+      pitchReviewEnabled: true,
+      blindScoreWeightPercent: 60,
+      pitchScoreWeightPercent: 40,
+      shortlistFinalistCount: 12,
+      requireProofOfExecution: true,
+      requireSubmissionSummary: true,
+      requireSubmissionRepositoryUrl: true,
+      requireSubmissionDemoUrl: true
+    }, 'meetup')
+
+    expect(patch).toMatchObject({
+      participantsLimit: 80,
+      requireProofOfExecution: true
+    })
+    expect(patch).not.toHaveProperty('tracks')
+    expect(patch).not.toHaveProperty('submissionOpensAt')
+    expect(patch).not.toHaveProperty('submissionClosesAt')
+    expect(patch).not.toHaveProperty('maxTeamMembers')
+    expect(patch).not.toHaveProperty('blindReviewCount')
+    expect(patch).not.toHaveProperty('pitchReviewEnabled')
+    expect(patch).not.toHaveProperty('blindScoreWeightPercent')
+    expect(patch).not.toHaveProperty('pitchScoreWeightPercent')
+    expect(patch).not.toHaveProperty('shortlistFinalistCount')
+    expect(patch).not.toHaveProperty('requireSubmissionSummary')
+    expect(patch).not.toHaveProperty('requireSubmissionRepositoryUrl')
+    expect(patch).not.toHaveProperty('requireSubmissionDemoUrl')
   })
 
   test('rejects invalid hackathon tracks', () => {

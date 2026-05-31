@@ -485,6 +485,52 @@ export function createEventFormState(event: EventRecord): EventFormState {
   }
 }
 
+export function buildEventConfigurationPatch(configForm: EventFormState, eventType: EventType) {
+  const isHackathon = eventType === 'hackathon'
+
+  return {
+    name: configForm.name,
+    slug: configForm.slug,
+    discordServerUrl: configForm.discordServerUrl.trim() || null,
+    lumaEventUrl: configForm.lumaEventUrl.trim() || null,
+    lumaEventApiId: configForm.lumaEventApiId.trim() || null,
+    description: configForm.description,
+    agendaItems: toEventAgendaPayload(configForm.agendaItems),
+    city: configForm.city,
+    country: configForm.country,
+    address: configForm.address,
+    registrationOpensAt: fromDateTimeLocalValue(configForm.registrationOpensAt),
+    registrationClosesAt: fromDateTimeLocalValue(configForm.registrationClosesAt),
+    participantsLimit: configForm.participantsLimit,
+    autoApproveApplications: configForm.autoApproveApplications,
+    inPersonEvent: configForm.inPersonEvent,
+    requireXProfile: configForm.requireXProfile,
+    requireLinkedinProfile: configForm.requireLinkedinProfile,
+    requireGithubProfile: configForm.requireGithubProfile,
+    requireChatgptEmail: configForm.requireChatgptEmail,
+    requireOpenaiOrgId: configForm.requireOpenaiOrgId,
+    requireLumaEmail: configForm.requireLumaEmail,
+    requireWhyThisEvent: configForm.requireWhyThisEvent,
+    requireProofOfExecution: configForm.requireProofOfExecution,
+    ...(isHackathon
+      ? {
+          tracks: toEventTracksPayload(configForm.tracks),
+          submissionOpensAt: fromDateTimeLocalValue(configForm.submissionOpensAt),
+          submissionClosesAt: fromDateTimeLocalValue(configForm.submissionClosesAt),
+          maxTeamMembers: configForm.maxTeamMembers,
+          blindReviewCount: configForm.blindReviewCount,
+          pitchReviewEnabled: configForm.pitchReviewEnabled,
+          blindScoreWeightPercent: configForm.blindScoreWeightPercent,
+          pitchScoreWeightPercent: configForm.pitchScoreWeightPercent,
+          shortlistFinalistCount: configForm.shortlistFinalistCount,
+          requireSubmissionSummary: configForm.requireSubmissionSummary,
+          requireSubmissionRepositoryUrl: configForm.requireSubmissionRepositoryUrl,
+          requireSubmissionDemoUrl: configForm.requireSubmissionDemoUrl
+        }
+      : {})
+  }
+}
+
 export function toEventAgendaPayload(items: EventFormAgendaItem[]): EventAgendaItem[] {
   return items
     .map(item => ({

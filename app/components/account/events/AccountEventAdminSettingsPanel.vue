@@ -20,10 +20,9 @@ import { normalizeApiError } from '~/lib/api'
 import { moveListItemByIndex } from '~/utils/reorder-list'
 
 import {
-  fromDateTimeLocalValue,
+  buildEventConfigurationPatch,
   getTermsVersionPublishErrorMessage,
-  toEventAgendaPayload,
-  toEventTracksPayload
+  toEventAgendaPayload
 } from '~/domains/events/admin-event'
 import {
   isEventRoleJudgingEnabled,
@@ -554,7 +553,6 @@ async function saveConfiguration(configForm: EventFormState) {
   if (!currentEvent.value) {
     return
   }
-  const isHackathon = currentEvent.value.eventType === 'hackathon'
 
   if (props.programSettingsMode === 'details') {
     await patchConfiguration(
@@ -570,50 +568,8 @@ async function saveConfiguration(configForm: EventFormState) {
     return
   }
 
-  const patch = {
-    name: configForm.name,
-    slug: configForm.slug,
-    discordServerUrl: configForm.discordServerUrl.trim() || null,
-    lumaEventUrl: configForm.lumaEventUrl.trim() || null,
-    lumaEventApiId: configForm.lumaEventApiId.trim() || null,
-    description: configForm.description,
-    agendaItems: toEventAgendaPayload(configForm.agendaItems),
-    city: configForm.city,
-    country: configForm.country,
-    address: configForm.address,
-    registrationOpensAt: fromDateTimeLocalValue(configForm.registrationOpensAt),
-    registrationClosesAt: fromDateTimeLocalValue(configForm.registrationClosesAt),
-    participantsLimit: configForm.participantsLimit,
-    autoApproveApplications: configForm.autoApproveApplications,
-    inPersonEvent: configForm.inPersonEvent,
-    requireXProfile: configForm.requireXProfile,
-    requireLinkedinProfile: configForm.requireLinkedinProfile,
-    requireGithubProfile: configForm.requireGithubProfile,
-    requireChatgptEmail: configForm.requireChatgptEmail,
-    requireOpenaiOrgId: configForm.requireOpenaiOrgId,
-    requireLumaEmail: configForm.requireLumaEmail,
-    requireWhyThisEvent: configForm.requireWhyThisEvent,
-    ...(isHackathon
-      ? {
-          tracks: toEventTracksPayload(configForm.tracks),
-          submissionOpensAt: fromDateTimeLocalValue(configForm.submissionOpensAt),
-          submissionClosesAt: fromDateTimeLocalValue(configForm.submissionClosesAt),
-          maxTeamMembers: configForm.maxTeamMembers,
-          blindReviewCount: configForm.blindReviewCount,
-          pitchReviewEnabled: configForm.pitchReviewEnabled,
-          blindScoreWeightPercent: configForm.blindScoreWeightPercent,
-          pitchScoreWeightPercent: configForm.pitchScoreWeightPercent,
-          shortlistFinalistCount: configForm.shortlistFinalistCount,
-          requireProofOfExecution: configForm.requireProofOfExecution,
-          requireSubmissionSummary: configForm.requireSubmissionSummary,
-          requireSubmissionRepositoryUrl: configForm.requireSubmissionRepositoryUrl,
-          requireSubmissionDemoUrl: configForm.requireSubmissionDemoUrl
-        }
-      : {})
-  }
-
   await patchConfiguration(
-    patch,
+    buildEventConfigurationPatch(configForm, currentEvent.value.eventType),
     programSettingsCopy.value.successTitle,
     programSettingsCopy.value.successDescription
   )

@@ -508,6 +508,16 @@ describe('event management utilities', () => {
     })
   })
 
+  test('allows participant limit patches on registration-only events', () => {
+    expect(buildEventUpdatePayload(buildEventRecord({
+      eventType: 'meetup'
+    }), {
+      participantsLimit: 80
+    })).toMatchObject({
+      participantsLimit: 80
+    })
+  })
+
   test('serializes configurable judging fields for internal event responses', () => {
     expect(serializeEvent(buildEventRecord({
       state: 'blind_review',
