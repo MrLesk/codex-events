@@ -153,7 +153,53 @@ const trackSchema = z.object({
   displayOrder: z.number().int().min(0)
 })
 
-export const eventConfigFormSchema: z.ZodType<EventFormState> = z.object({
+const tracksFormSchema = z.array(trackSchema).superRefine((tracks, context) => {
+  const ids = new Set<string>()
+
+  tracks.forEach((track, index) => {
+    if (!ids.has(track.id)) {
+      ids.add(track.id)
+      return
+    }
+
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [index, 'id'],
+      message: 'Track IDs must be unique.'
+    })
+  })
+})
+
+function normalizeEventConfigFormInput(candidate: unknown) {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    return candidate
+  }
+
+  const input = candidate as Record<string, unknown>
+
+  if (input.eventType === 'hackathon') {
+    return candidate
+  }
+
+  return {
+    ...input,
+    tracks: [],
+    submissionOpensAt: '',
+    submissionClosesAt: '',
+    maxTeamMembers: 1,
+    blindReviewCount: 1,
+    pitchReviewEnabled: false,
+    blindScoreWeightPercent: 100,
+    pitchScoreWeightPercent: 0,
+    shortlistFinalistCount: 1,
+    requireProofOfExecution: false,
+    requireSubmissionSummary: false,
+    requireSubmissionRepositoryUrl: false,
+    requireSubmissionDemoUrl: false
+  }
+}
+
+const eventConfigFormBaseSchema = z.object({
   eventType: z.enum(['hackathon', 'meetup', 'build']),
   name: requiredTextSchema,
   slug: slugSchema,
@@ -162,22 +208,7 @@ export const eventConfigFormSchema: z.ZodType<EventFormState> = z.object({
   lumaEventApiId: createOptionalLumaEventApiIdSchema('Enter a valid Luma event API ID like evt-123.'),
   description: requiredTextSchema,
   agendaItems: agendaItemsFormSchema,
-  tracks: z.array(trackSchema).superRefine((tracks, context) => {
-    const ids = new Set<string>()
-
-    tracks.forEach((track, index) => {
-      if (!ids.has(track.id)) {
-        ids.add(track.id)
-        return
-      }
-
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [index, 'id'],
-        message: 'Track IDs must be unique.'
-      })
-    })
-  }),
+  tracks: tracksFormSchema,
   backgroundImageUrl: createOptionalHttpUrlSchema('Enter a valid background image URL.'),
   bannerImageUrl: createOptionalHttpUrlSchema('Enter a valid banner image URL.'),
   city: requiredTextSchema,
@@ -291,6 +322,11 @@ export const eventConfigFormSchema: z.ZodType<EventFormState> = z.object({
     })
   }
 })
+
+export const eventConfigFormSchema: z.ZodType<EventFormState> = z.preprocess(
+  normalizeEventConfigFormInput,
+  eventConfigFormBaseSchema
+) as z.ZodType<EventFormState>
 
 export const eventDetailsFormSchema = z.object({
   agendaItems: agendaItemsFormSchema,

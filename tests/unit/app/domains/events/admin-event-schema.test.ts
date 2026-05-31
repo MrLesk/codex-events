@@ -93,6 +93,65 @@ describe('event config form schema', () => {
     expect(result.success).toBe(true)
   })
 
+  test('ignores hidden hackathon fields for non-hackathon events', () => {
+    const result = eventConfigFormSchema.safeParse({
+      ...createValidEventFormState(),
+      eventType: 'meetup',
+      tracks: [
+        {
+          id: 'track-1',
+          name: '',
+          description: '',
+          displayOrder: 1
+        }
+      ],
+      submissionOpensAt: undefined,
+      submissionClosesAt: undefined,
+      maxTeamMembers: undefined,
+      blindReviewCount: undefined,
+      pitchReviewEnabled: undefined,
+      blindScoreWeightPercent: undefined,
+      pitchScoreWeightPercent: undefined,
+      shortlistFinalistCount: undefined,
+      requireProofOfExecution: undefined,
+      requireSubmissionSummary: undefined,
+      requireSubmissionRepositoryUrl: undefined,
+      requireSubmissionDemoUrl: undefined
+    })
+
+    expect(result.success).toBe(true)
+
+    if (!result.success) {
+      return
+    }
+
+    expect(result.data.tracks).toEqual([])
+    expect(result.data.maxTeamMembers).toBe(1)
+    expect(result.data.pitchReviewEnabled).toBe(false)
+  })
+
+  test('rejects invalid hackathon tracks', () => {
+    const result = eventConfigFormSchema.safeParse({
+      ...createValidEventFormState(),
+      tracks: [
+        {
+          id: 'track-1',
+          name: '',
+          description: 'Projects focused on autonomous workflows.',
+          displayOrder: 1
+        }
+      ]
+    })
+
+    expect(result.success).toBe(false)
+
+    if (result.success) {
+      return
+    }
+
+    expect(result.error.flatten().fieldErrors.tracks).toEqual(['Enter a track name.'])
+  })
+
   test('requires at least one judging stage', () => {
     const result = eventConfigFormSchema.safeParse({
       ...createValidEventFormState(),
