@@ -117,6 +117,11 @@ let sortableConstructor: SortableConstructor | null = null
 
 const currentEvent = computed(() => workspace.currentEvent.value)
 const isCompetitionEvent = computed(() => currentEvent.value?.eventType === 'hackathon')
+const settingsOverviewGridClass = computed(() =>
+  isCompetitionEvent.value
+    ? 'md:grid-cols-[minmax(0,1.45fr)_repeat(2,minmax(0,1fr))] xl:grid-cols-[minmax(0,1.45fr)_repeat(3,minmax(0,1fr))]'
+    : 'md:grid-cols-[minmax(0,1.45fr)_repeat(2,minmax(0,1fr))]'
+)
 const actor = computed(() => workspace.actor.value)
 const canManage = computed(() => workspace.canManageCurrentEvent.value)
 const programSettingsCopy = computed(() => getEventProgramSettingsCopy(props.programSettingsMode))
@@ -1059,16 +1064,23 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
     <template v-else-if="currentEvent">
       <section
         v-if="showSettingsOverview"
-        class="grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+        class="grid gap-4"
+        :class="settingsOverviewGridClass"
       >
-        <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
+        <div class="min-w-0 rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
           <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
             Created by
           </p>
-          <p class="mt-2 text-xl font-semibold text-highlighted">
+          <p
+            class="mt-2 min-w-0 truncate text-xl font-semibold text-highlighted"
+            :title="creatorLabel"
+          >
             {{ creatorLabel }}
           </p>
-          <p class="mt-1 text-sm text-muted">
+          <p
+            class="mt-1 min-w-0 truncate text-sm text-muted"
+            :title="creatorMeta"
+          >
             {{ creatorMeta }}
           </p>
         </div>
