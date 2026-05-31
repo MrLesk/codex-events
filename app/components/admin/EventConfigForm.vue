@@ -12,6 +12,7 @@ import type { EventProgramSettingsMode } from '~/domains/events/program-settings
 
 import {
   createEventSlug,
+  eventDetailsFormSchema,
   getAgendaItemEndAfterStartChange,
   getNextAgendaItemDefaultTimes,
   eventConfigFormSchema
@@ -81,6 +82,12 @@ const trackListElement = ref<HTMLElement | null>(null)
 let agendaSortable: SortableInstance | null = null
 let trackSortable: SortableInstance | null = null
 let sortableConstructor: SortableConstructor | null = null
+
+const validationSchema = computed(() =>
+  formMode.value === 'details'
+    ? eventDetailsFormSchema
+    : eventConfigFormSchema
+)
 
 const participantsLimitInput = computed({
   get: () => form.value.participantsLimit?.toString() ?? '',
@@ -326,7 +333,7 @@ const {
   setValues,
   handleSubmit
 } = useForm({
-  validationSchema: toTypedSchema(eventConfigFormSchema),
+  validationSchema: computed(() => toTypedSchema(validationSchema.value)),
   initialValues: cloneFormValues(form.value)
 })
 

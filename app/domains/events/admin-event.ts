@@ -129,6 +129,23 @@ const agendaItemSchema = z.object({
   }
 })
 
+const agendaItemsFormSchema = z.array(agendaItemSchema).superRefine((items, context) => {
+  const ids = new Set<string>()
+
+  items.forEach((item, index) => {
+    if (!ids.has(item.id)) {
+      ids.add(item.id)
+      return
+    }
+
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [index, 'id'],
+      message: 'Agenda item IDs must be unique.'
+    })
+  })
+})
+
 const trackSchema = z.object({
   id: z.string().trim().min(1),
   name: z.string().trim().min(1, 'Enter a track name.'),
@@ -144,22 +161,7 @@ export const eventConfigFormSchema: z.ZodType<EventFormState> = z.object({
   lumaEventUrl: createOptionalHttpUrlSchema('Enter a valid Luma event URL.'),
   lumaEventApiId: createOptionalLumaEventApiIdSchema('Enter a valid Luma event API ID like evt-123.'),
   description: requiredTextSchema,
-  agendaItems: z.array(agendaItemSchema).superRefine((items, context) => {
-    const ids = new Set<string>()
-
-    items.forEach((item, index) => {
-      if (!ids.has(item.id)) {
-        ids.add(item.id)
-        return
-      }
-
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: [index, 'id'],
-        message: 'Agenda item IDs must be unique.'
-      })
-    })
-  }),
+  agendaItems: agendaItemsFormSchema,
   tracks: z.array(trackSchema).superRefine((tracks, context) => {
     const ids = new Set<string>()
 
@@ -288,6 +290,13 @@ export const eventConfigFormSchema: z.ZodType<EventFormState> = z.object({
       message: 'Blind and pitch score weights must add up to 100.'
     })
   }
+})
+
+export const eventDetailsFormSchema = z.object({
+  agendaItems: agendaItemsFormSchema,
+  city: requiredTextSchema,
+  country: requiredTextSchema,
+  address: requiredTextSchema
 })
 
 export function createEventSlug(name: string) {
