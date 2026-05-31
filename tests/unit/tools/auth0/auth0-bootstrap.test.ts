@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   Auth0ManagementRequestError,
   assertManagementAccessTokenScopes,
+  buildDefaultBrandingTheme,
   buildRequiredClientUrls,
   buildClearedSignupPartials,
   buildExpectedLoginCustomText,
@@ -185,7 +186,7 @@ describe('auth0 bootstrap config', () => {
     expect(template).toContain('{%- auth0:widget -%}')
   })
 
-  test('detects missing Auth0 default branding theme responses as skippable', () => {
+  test('detects missing Auth0 default branding theme responses for the create path', () => {
     const error = new Auth0ManagementRequestError(
       '/api/v2/branding/themes/default',
       404,
@@ -193,6 +194,50 @@ describe('auth0 bootstrap config', () => {
     )
 
     expect(isAuth0DefaultBrandingThemeUnavailable(error)).toBe(true)
+  })
+
+  test('builds a complete default Auth0 branding theme create payload', () => {
+    const config = resolveConfig(createAuth0BootstrapEnvironment())
+
+    expect(buildDefaultBrandingTheme(config)).toMatchObject({
+      borders: {
+        button_border_radius: 6,
+        button_border_weight: 1,
+        buttons_style: 'rounded',
+        input_border_radius: 6,
+        input_border_weight: 1,
+        inputs_style: 'rounded',
+        show_widget_shadow: true,
+        widget_border_weight: 0,
+        widget_corner_radius: 8
+      },
+      colors: {
+        primary_button: '#030213',
+        primary_button_label: '#ffffff',
+        links_focused_components: '#030213',
+        base_focus_color: '#030213',
+        base_hover_color: '#030213',
+        captcha_widget_theme: 'auto'
+      },
+      displayName: 'Codex Events',
+      fonts: {
+        font_url: '',
+        links_style: 'normal',
+        reference_text_size: 16
+      },
+      page_background: {
+        background_color: '#f3f3f5',
+        background_image_url: '',
+        page_layout: 'center'
+      },
+      widget: {
+        header_text_alignment: 'center',
+        logo_height: 50,
+        logo_position: 'center',
+        logo_url: 'https://test.codex-events.com/auth0/codex-events-wordmark.svg',
+        social_buttons_layout: 'bottom'
+      }
+    })
   })
 
   test('clears only the hosted signup consent partial while preserving other prompt partials', () => {

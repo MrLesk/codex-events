@@ -618,6 +618,72 @@ export function resolvePrimaryButtonLabelColor(primaryColor: string) {
     : lightButtonLabelColor
 }
 
+export function buildDefaultBrandingTheme(config: TenantConfig) {
+  const primaryColor = config.brandingPrimaryColor || defaultBrandingPrimaryColor
+  const primaryButtonLabelColor = config.brandingPrimaryButtonLabelColor || resolvePrimaryButtonLabelColor(primaryColor)
+  const pageBackgroundColor = config.brandingPageBackgroundColor || defaultBrandingPageBackgroundColor
+
+  return {
+    borders: {
+      button_border_radius: 6,
+      button_border_weight: 1,
+      buttons_style: 'rounded',
+      input_border_radius: 6,
+      input_border_weight: 1,
+      inputs_style: 'rounded',
+      show_widget_shadow: true,
+      widget_border_weight: 0,
+      widget_corner_radius: 8
+    },
+    colors: {
+      body_text: '#1e212a',
+      error: '#d03c38',
+      header: primaryColor,
+      icons: '#65676e',
+      input_background: '#ffffff',
+      input_border: '#c9cace',
+      input_filled_text: '#030213',
+      input_labels_placeholders: '#65676e',
+      links_focused_components: primaryColor,
+      primary_button: primaryColor,
+      primary_button_label: primaryButtonLabelColor,
+      secondary_button_border: '#c9cace',
+      secondary_button_label: '#030213',
+      success: '#13a688',
+      widget_background: '#ffffff',
+      widget_border: '#c9cace',
+      base_focus_color: primaryColor,
+      base_hover_color: primaryColor,
+      captcha_widget_theme: 'auto',
+      read_only_background: '#f3f3f5'
+    },
+    displayName: config.appDisplayName,
+    fonts: {
+      body_text: { bold: false, size: 87.5 },
+      buttons_text: { bold: true, size: 87.5 },
+      font_url: '',
+      input_labels: { bold: false, size: 87.5 },
+      links: { bold: false, size: 87.5 },
+      links_style: 'normal',
+      reference_text_size: 16,
+      subtitle: { bold: false, size: 87.5 },
+      title: { bold: true, size: 112.5 }
+    },
+    page_background: {
+      background_color: pageBackgroundColor,
+      background_image_url: '',
+      page_layout: 'center'
+    },
+    widget: {
+      header_text_alignment: 'center',
+      logo_height: 50,
+      logo_position: config.brandingLogoUrl ? 'center' : 'none',
+      logo_url: config.brandingLogoUrl,
+      social_buttons_layout: 'bottom'
+    }
+  }
+}
+
 function normalizeUrlForComparison(value: string | undefined) {
   const trimmed = (value ?? '').trim()
   if (!trimmed) {
@@ -1326,6 +1392,13 @@ async function getDefaultBrandingTheme(config: TenantConfig, token: string) {
   }
 }
 
+async function createDefaultBrandingTheme(config: TenantConfig, token: string) {
+  await auth0ManagementRequest(config, token, '/api/v2/branding/themes', {
+    method: 'POST',
+    body: JSON.stringify(buildDefaultBrandingTheme(config))
+  })
+}
+
 async function ensureDefaultBrandingTheme(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
   const expectedPrimaryButton = normalizeColorForComparison(config.brandingPrimaryColor)
   const expectedPrimaryButtonLabel = normalizeColorForComparison(config.brandingPrimaryButtonLabelColor)
@@ -1337,8 +1410,19 @@ async function ensureDefaultBrandingTheme(config: TenantConfig, token: string, m
   let theme = await getDefaultBrandingTheme(config, token)
 
   if (!theme) {
-    console.warn('Warning: skipping Auth0 default branding theme button color sync because this tenant has no materialized default branding theme.')
-    return
+    if (mode === 'check') {
+      failures.push('Auth0 default branding theme is missing; run the Auth0 bootstrap in apply mode to create it.')
+      return
+    }
+
+    await createDefaultBrandingTheme(config, token)
+    console.log('Applied: created Auth0 default branding theme.')
+    theme = await getDefaultBrandingTheme(config, token)
+
+    if (!theme) {
+      failures.push('Auth0 default branding theme is still missing after creation.')
+      return
+    }
   }
 
   const primaryButtonNeedsPatch = normalizeColorForComparison(theme.colors?.primary_button) !== expectedPrimaryButton
