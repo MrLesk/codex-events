@@ -227,15 +227,15 @@ function resolveQueueConfig(environment: EnvironmentValues, options: {
 
 function resolveDeployEnvironmentName(target: DeployTarget, environment: EnvironmentValues) {
   return normalizeResourceName(
-    readOptionalEnvironmentValue(environment, 'DEPLOY_ENV_NAME') || defaultDeployEnvironmentNameByTarget[target],
-    'DEPLOY_ENV_NAME'
+    readOptionalEnvironmentValue(environment, 'ENV_NAME') || defaultDeployEnvironmentNameByTarget[target],
+    'ENV_NAME'
   )
 }
 
 function resolveDeployResourcePrefix(environment: EnvironmentValues) {
   return normalizeResourceName(
-    readOptionalEnvironmentValue(environment, 'DEPLOY_RESOURCE_PREFIX') || defaultDeployResourcePrefix,
-    'DEPLOY_RESOURCE_PREFIX'
+    readOptionalEnvironmentValue(environment, 'RESOURCE_PREFIX') || defaultDeployResourcePrefix,
+    'RESOURCE_PREFIX'
   )
 }
 
@@ -280,9 +280,9 @@ export function resolveDeployResourceNames(
     environmentName,
     resourcePrefix,
     resourceBaseName,
-    d1DatabaseName: resolveResourceName(environment, 'DEPLOY_CF_D1_DATABASE_NAME', resourceBaseName),
-    profileIconsBucket: resolveResourceName(environment, 'DEPLOY_CF_PROFILE_ICONS_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'profile-icons')),
-    eventImagesBucket: resolveResourceName(environment, 'DEPLOY_CF_EVENT_IMAGES_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'event-images'))
+    d1DatabaseName: resolveResourceName(environment, 'CF_D1_DATABASE_NAME', resourceBaseName),
+    profileIconsBucket: resolveResourceName(environment, 'CF_PROFILE_ICONS_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'profile-icons')),
+    eventImagesBucket: resolveResourceName(environment, 'CF_EVENT_IMAGES_BUCKET', buildDefaultResourceName(environmentName, resourcePrefix, 'event-images'))
   }
 }
 
@@ -308,8 +308,8 @@ export function resolveDeployConfigInput(
     'AUTH0_CUSTOM_DOMAIN'
   )
   const lumaWebhookUrl = normalizeHttpsUrl(
-    readOptionalEnvironmentValue(environment, 'DEPLOY_LUMA_WEBHOOK_URL') || `${appBaseUrl}/api/public/luma/webhooks`,
-    'DEPLOY_LUMA_WEBHOOK_URL'
+    readOptionalEnvironmentValue(environment, 'LUMA_WEBHOOK_URL') || `${appBaseUrl}/api/public/luma/webhooks`,
+    'LUMA_WEBHOOK_URL'
   )
   return {
     target,
@@ -321,9 +321,9 @@ export function resolveDeployConfigInput(
     firstPlatformAdminEmail: readOptionalEnvironmentValue(environment, 'NUXT_FIRST_PLATFORM_ADMIN_EMAIL'),
     lumaWebhookUrl,
     zoneName: readRequiredEnvironmentValue(environment, 'CF_ZONE_NAME'),
-    workerName: resolveResourceName(environment, 'DEPLOY_CF_WORKER_NAME', resourceBaseName),
+    workerName: resolveResourceName(environment, 'CF_WORKER_NAME', resourceBaseName),
     d1DatabaseName,
-    d1DatabaseId: readRequiredEnvironmentValue(environment, 'DEPLOY_RESOLVED_D1_DATABASE_ID'),
+    d1DatabaseId: readRequiredEnvironmentValue(environment, 'RESOLVED_D1_DATABASE_ID'),
     profileIconsBucket,
     eventImagesBucket,
     outboundEmailBinding: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_BINDING') || 'EMAIL',
@@ -333,21 +333,21 @@ export function resolveDeployConfigInput(
     auth0DatabaseConnectionName: readOptionalEnvironmentValue(environment, 'NUXT_AUTH0_DATABASE_CONNECTION_NAME') || defaultAuth0DatabaseConnectionName,
     applicationReviewEmails: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING',
-      queueEnvName: 'DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE',
+      queueEnvName: 'CF_APPLICATION_REVIEW_EMAIL_QUEUE',
       retryDelayEnvName: 'NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS',
       defaultBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE',
       defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'application-review-email-delivery')
     }),
     eventOutcomeEmails: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING',
-      queueEnvName: 'DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE',
+      queueEnvName: 'CF_EVENT_OUTCOME_EMAIL_QUEUE',
       retryDelayEnvName: 'NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS',
       defaultBinding: 'EVENT_OUTCOME_EMAIL_QUEUE',
       defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'event-outcome-email-delivery')
     }),
     lumaSync: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_LUMA_QUEUE_BINDING',
-      queueEnvName: 'DEPLOY_CF_LUMA_SYNC_QUEUE',
+      queueEnvName: 'CF_LUMA_SYNC_QUEUE',
       retryDelayEnvName: 'NUXT_LUMA_RETRY_DELAY_SECONDS',
       defaultBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
       defaultQueue: buildDefaultResourceName(environmentName, resourcePrefix, 'application-luma-sync')

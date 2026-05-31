@@ -214,23 +214,23 @@ For the selected target, the generator derives:
 - application URL: `https://<base-domain>`
 - Cloudflare route pattern: `<base-domain>`
 - Luma webhook URL: `https://<base-domain>/api/public/luma/webhooks`
-- resource names from `DEPLOY_ENV_NAME` and `DEPLOY_RESOURCE_PREFIX`
+- resource names from `ENV_NAME` and `RESOURCE_PREFIX`
 
-`DEPLOY_ENV_NAME` defaults to `test` for the test target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
+`ENV_NAME` defaults to `test` for the test target and `prod` for the production target. `RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<RESOURCE_PREFIX>-<ENV_NAME>` for every environment.
 
-Keep `CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `AUTH0_CUSTOM_DOMAIN` is an optional override and defaults to `auth.<BASE_DOMAIN>`. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
+Keep `CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `AUTH0_CUSTOM_DOMAIN` is an optional override and defaults to `auth.<BASE_DOMAIN>`. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
 
-- `DEPLOY_CF_WORKER_NAME`
-- `DEPLOY_CF_D1_DATABASE_NAME`
-- `DEPLOY_CF_PROFILE_ICONS_BUCKET`
-- `DEPLOY_CF_EVENT_IMAGES_BUCKET`
-- `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE`
-- `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE`
-- `DEPLOY_CF_LUMA_SYNC_QUEUE`
+- `CF_WORKER_NAME`
+- `CF_D1_DATABASE_NAME`
+- `CF_PROFILE_ICONS_BUCKET`
+- `CF_EVENT_IMAGES_BUCKET`
+- `CF_APPLICATION_REVIEW_EMAIL_QUEUE`
+- `CF_EVENT_OUTCOME_EMAIL_QUEUE`
+- `CF_LUMA_SYNC_QUEUE`
 
 This URL variable is an optional override:
 
-- `DEPLOY_LUMA_WEBHOOK_URL`
+- `LUMA_WEBHOOK_URL`
 
 Each remote environment must provide:
 
@@ -285,15 +285,15 @@ Required deployment settings:
 
 Deployment defaults and optional resource-name overrides:
 
-- `DEPLOY_ENV_NAME`
-- `DEPLOY_RESOURCE_PREFIX`
-- `DEPLOY_CF_WORKER_NAME`
-- `DEPLOY_CF_D1_DATABASE_NAME`
-- `DEPLOY_CF_PROFILE_ICONS_BUCKET`
-- `DEPLOY_CF_EVENT_IMAGES_BUCKET`
-- `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE`
-- `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE`
-- `DEPLOY_CF_LUMA_SYNC_QUEUE`
+- `ENV_NAME`
+- `RESOURCE_PREFIX`
+- `CF_WORKER_NAME`
+- `CF_D1_DATABASE_NAME`
+- `CF_PROFILE_ICONS_BUCKET`
+- `CF_EVENT_IMAGES_BUCKET`
+- `CF_APPLICATION_REVIEW_EMAIL_QUEUE`
+- `CF_EVENT_OUTCOME_EMAIL_QUEUE`
+- `CF_LUMA_SYNC_QUEUE`
 
 Auth0 tenant automation settings:
 
@@ -323,7 +323,7 @@ Cloudflare Email Service and Queues runtime settings:
 
 Deployment URL setting:
 
-- `DEPLOY_LUMA_WEBHOOK_URL`
+- `LUMA_WEBHOOK_URL`
 
 The GitHub `test` environment must provide these secrets:
 

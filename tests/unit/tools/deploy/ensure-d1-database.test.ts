@@ -146,7 +146,7 @@ describe('deploy D1 database provisioning', () => {
     await expect(ensureDeployD1Database({
       target: 'production',
       environment: {
-        DEPLOY_CF_D1_DATABASE_NAME: 'custom-d1'
+        CF_D1_DATABASE_NAME: 'custom-d1'
       },
       runner
     })).resolves.toMatchObject({
@@ -196,7 +196,7 @@ describe('deploy D1 database provisioning', () => {
     })
 
     await expect(readFile(githubEnv, 'utf8')).resolves.toBe(
-      `DEPLOY_RESOLVED_D1_DATABASE_ID=${existingDatabaseId}\n`
+      `RESOLVED_D1_DATABASE_ID=${existingDatabaseId}\n`
     )
     await expect(readFile(githubOutput, 'utf8')).resolves.toBe(
       `d1_database_id=${existingDatabaseId}\nd1_database_name=codex-events-test\n`

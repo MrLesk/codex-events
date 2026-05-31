@@ -240,17 +240,17 @@ Check:
 
 ## Default Production Resource Names
 
-The default resource name format is `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment, including production. These optional GitHub environment variables control the Cloudflare resource names; omit them to use the defaults:
+The default resource name format is `<RESOURCE_PREFIX>-<ENV_NAME>` for every environment, including production. These optional GitHub environment variables control the Cloudflare resource names; omit them to use the defaults:
 
 | GitHub variable | Cloudflare resource | Default production value |
 | --- | --- | --- |
-| `DEPLOY_CF_WORKER_NAME` | Worker | `codex-events-prod` |
-| `DEPLOY_CF_D1_DATABASE_NAME` | D1 database | `codex-events-prod` |
-| `DEPLOY_CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket | `codex-events-prod-profile-icons` |
-| `DEPLOY_CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket | `codex-events-prod-event-images` |
-| `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue | `codex-events-prod-application-review-email-delivery` |
-| `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue | `codex-events-prod-event-outcome-email-delivery` |
-| `DEPLOY_CF_LUMA_SYNC_QUEUE` | Luma sync queue | `codex-events-prod-application-luma-sync` |
+| `CF_WORKER_NAME` | Worker | `codex-events-prod` |
+| `CF_D1_DATABASE_NAME` | D1 database | `codex-events-prod` |
+| `CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket | `codex-events-prod-profile-icons` |
+| `CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket | `codex-events-prod-event-images` |
+| `CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue | `codex-events-prod-application-review-email-delivery` |
+| `CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue | `codex-events-prod-event-outcome-email-delivery` |
+| `CF_LUMA_SYNC_QUEUE` | Luma sync queue | `codex-events-prod-application-luma-sync` |
 
 ## References
 

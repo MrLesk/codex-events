@@ -146,8 +146,8 @@ describe('deploy R2 bucket provisioning', () => {
     await expect(ensureDeployR2Buckets({
       target: 'production',
       environment: {
-        DEPLOY_CF_PROFILE_ICONS_BUCKET: 'custom-profile-icons',
-        DEPLOY_CF_EVENT_IMAGES_BUCKET: 'custom-event-images'
+        CF_PROFILE_ICONS_BUCKET: 'custom-profile-icons',
+        CF_EVENT_IMAGES_BUCKET: 'custom-event-images'
       },
       runner
     })).resolves.toEqual([

@@ -12,7 +12,7 @@ function createEnvironment(overrides: Record<string, string | undefined> = {}) {
   return {
     BASE_DOMAIN: 'events.example.com',
     CF_ZONE_NAME: 'example.com',
-    DEPLOY_RESOLVED_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
+    RESOLVED_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
     NUXT_OUTBOUND_EMAIL_FROM_EMAIL: 'notifications@example.com',
     NUXT_OUTBOUND_EMAIL_REPLY_TO: 'support@example.com',
     ...overrides
@@ -136,13 +136,13 @@ describe('deploy Wrangler config generator', () => {
     }))).toThrow('BASE_DOMAIN is required')
 
     expect(() => resolveDeployConfigInput('production', createEnvironment({
-      DEPLOY_RESOLVED_D1_DATABASE_ID: ''
-    }))).toThrow('DEPLOY_RESOLVED_D1_DATABASE_ID is required')
+      RESOLVED_D1_DATABASE_ID: ''
+    }))).toThrow('RESOLVED_D1_DATABASE_ID is required')
   })
 
   test('resolves the D1 database name without requiring a database ID', () => {
     expect(resolveDeployResourceNames('test', {
-      DEPLOY_RESOLVED_D1_DATABASE_ID: ''
+      RESOLVED_D1_DATABASE_ID: ''
     })).toMatchObject({
       d1DatabaseName: 'codex-events-test',
       profileIconsBucket: 'codex-events-test-profile-icons',
@@ -150,7 +150,7 @@ describe('deploy Wrangler config generator', () => {
     })
 
     expect(resolveDeployResourceNames('production', {
-      DEPLOY_CF_D1_DATABASE_NAME: 'existing-database'
+      CF_D1_DATABASE_NAME: 'existing-database'
     })).toMatchObject({
       d1DatabaseName: 'existing-database',
       profileIconsBucket: 'codex-events-prod-profile-icons',
@@ -158,8 +158,8 @@ describe('deploy Wrangler config generator', () => {
     })
 
     expect(resolveDeployResourceNames('production', {
-      DEPLOY_ENV_NAME: 'preview',
-      DEPLOY_RESOURCE_PREFIX: 'custom-events'
+      ENV_NAME: 'preview',
+      RESOURCE_PREFIX: 'custom-events'
     })).toMatchObject({
       d1DatabaseName: 'custom-events-preview',
       profileIconsBucket: 'custom-events-preview-profile-icons',
@@ -169,17 +169,17 @@ describe('deploy Wrangler config generator', () => {
 
   test('honors explicit domain and resource overrides', () => {
     const input = resolveDeployConfigInput('production', createEnvironment({
-      DEPLOY_ENV_NAME: 'preview',
-      DEPLOY_RESOURCE_PREFIX: 'custom-events',
+      ENV_NAME: 'preview',
+      RESOURCE_PREFIX: 'custom-events',
       AUTH0_CUSTOM_DOMAIN: 'login.example.com',
-      DEPLOY_LUMA_WEBHOOK_URL: 'https://hooks.example.com/luma/',
-      DEPLOY_CF_WORKER_NAME: 'custom-worker',
-      DEPLOY_CF_D1_DATABASE_NAME: 'custom-d1',
-      DEPLOY_CF_PROFILE_ICONS_BUCKET: 'custom-profile-icons',
-      DEPLOY_CF_EVENT_IMAGES_BUCKET: 'custom-event-images',
-      DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE: 'custom-application-review',
-      DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE: 'custom-event-outcome',
-      DEPLOY_CF_LUMA_SYNC_QUEUE: 'custom-luma-sync',
+      LUMA_WEBHOOK_URL: 'https://hooks.example.com/luma/',
+      CF_WORKER_NAME: 'custom-worker',
+      CF_D1_DATABASE_NAME: 'custom-d1',
+      CF_PROFILE_ICONS_BUCKET: 'custom-profile-icons',
+      CF_EVENT_IMAGES_BUCKET: 'custom-event-images',
+      CF_APPLICATION_REVIEW_EMAIL_QUEUE: 'custom-application-review',
+      CF_EVENT_OUTCOME_EMAIL_QUEUE: 'custom-event-outcome',
+      CF_LUMA_SYNC_QUEUE: 'custom-luma-sync',
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'custom-users'
     }))
 

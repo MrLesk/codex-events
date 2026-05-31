@@ -169,12 +169,12 @@ export async function writeGitHubD1DatabaseOutputs(
   database: EnsuredD1Database,
   environment: EnvironmentValues = process.env
 ) {
-  assertGitHubValue('DEPLOY_RESOLVED_D1_DATABASE_ID', database.databaseId)
+  assertGitHubValue('RESOLVED_D1_DATABASE_ID', database.databaseId)
   assertGitHubValue('d1_database_id', database.databaseId)
   assertGitHubValue('d1_database_name', database.databaseName)
 
   if (environment.GITHUB_ENV) {
-    await appendFile(environment.GITHUB_ENV, `DEPLOY_RESOLVED_D1_DATABASE_ID=${database.databaseId}\n`, 'utf8')
+    await appendFile(environment.GITHUB_ENV, `RESOLVED_D1_DATABASE_ID=${database.databaseId}\n`, 'utf8')
   }
 
   if (environment.GITHUB_OUTPUT) {

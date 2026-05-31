@@ -13,13 +13,13 @@ For the selected target, the generator derives:
 - application URL: `https://<BASE_DOMAIN>`
 - Cloudflare route pattern: `<BASE_DOMAIN>`
 - Luma webhook URL: `https://<BASE_DOMAIN>/api/public/luma/webhooks`
-- resource names from `DEPLOY_ENV_NAME` and `DEPLOY_RESOURCE_PREFIX`
+- resource names from `ENV_NAME` and `RESOURCE_PREFIX`
 
-`DEPLOY_ENV_NAME` defaults to `test` for the test target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
+`ENV_NAME` defaults to `test` for the test target and `prod` for the production target. `RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<RESOURCE_PREFIX>-<ENV_NAME>` for every environment.
 
 Examples:
 
-| Target | `DEPLOY_ENV_NAME` | `DEPLOY_RESOURCE_PREFIX` | Worker and D1 default |
+| Target | `ENV_NAME` | `RESOURCE_PREFIX` | Worker and D1 default |
 | --- | --- | --- | --- |
 | Production | `prod` | `codex-events` | `codex-events-prod` |
 | Test | `test` | `codex-events` | `codex-events-test` |
@@ -35,20 +35,20 @@ Deployment defaults:
 
 | Variable | Value |
 | --- | --- |
-| `DEPLOY_ENV_NAME` | Environment name used in generated resource names. Defaults to `prod` for production |
-| `DEPLOY_RESOURCE_PREFIX` | Resource name prefix. Defaults to `codex-events` |
+| `ENV_NAME` | Environment name used in generated resource names. Defaults to `prod` for production |
+| `RESOURCE_PREFIX` | Resource name prefix. Defaults to `codex-events` |
 
 Cloudflare resource name overrides:
 
 | Variable | Value |
 | --- | --- |
-| `DEPLOY_CF_WORKER_NAME` | Cloudflare Worker name |
-| `DEPLOY_CF_D1_DATABASE_NAME` | D1 database name. The workflow creates this database if it does not already exist |
-| `DEPLOY_CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket name. The workflow creates this bucket if it does not already exist |
-| `DEPLOY_CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket name. The workflow creates this bucket if it does not already exist |
-| `DEPLOY_CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name |
-| `DEPLOY_CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue name |
-| `DEPLOY_CF_LUMA_SYNC_QUEUE` | Luma sync queue name |
+| `CF_WORKER_NAME` | Cloudflare Worker name |
+| `CF_D1_DATABASE_NAME` | D1 database name. The workflow creates this database if it does not already exist |
+| `CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket name. The workflow creates this bucket if it does not already exist |
+| `CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket name. The workflow creates this bucket if it does not already exist |
+| `CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name |
+| `CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue name |
+| `CF_LUMA_SYNC_QUEUE` | Luma sync queue name |
 
 Auth0 and display settings:
 
@@ -86,7 +86,7 @@ Deployment URL override:
 
 | Variable | Value |
 | --- | --- |
-| `DEPLOY_LUMA_WEBHOOK_URL` | Override for the Luma webhook URL. Defaults to `https://<BASE_DOMAIN>/api/public/luma/webhooks` |
+| `LUMA_WEBHOOK_URL` | Override for the Luma webhook URL. Defaults to `https://<BASE_DOMAIN>/api/public/luma/webhooks` |
 
 Optional secrets:
 
@@ -101,7 +101,7 @@ Optional secrets:
 
 Create a GitHub environment named `test` only if pushes to `main` should deploy a test instance.
 
-Use environment-specific values for the same variable and secret groups as production. Set `BASE_DOMAIN` to the test app hostname. The test workflow defaults `DEPLOY_ENV_NAME` to `test`; set it only when you need a different resource prefix.
+Use environment-specific values for the same variable and secret groups as production. Set `BASE_DOMAIN` to the test app hostname. The test workflow defaults `ENV_NAME` to `test`; set it only when you need a different resource prefix.
 
 Use `NUXT_AUTH0_CLIENT_ID` for the Auth0 Regular Web Application client ID in every GitHub environment.
 
