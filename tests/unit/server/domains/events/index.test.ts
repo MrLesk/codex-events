@@ -518,17 +518,17 @@ describe('event management utilities', () => {
     })
   })
 
-  test('ignores unchanged competition fields on registration-only event patches', () => {
+  test('ignores scalar competition fields on registration-only event patches', () => {
     const event = buildEventRecord({
       eventType: 'meetup',
       submissionOpensAt: '2026-03-23T12:00:00.000Z',
       submissionClosesAt: '2026-03-23T12:00:01.000Z',
-      maxTeamMembers: 1,
+      maxTeamMembers: 5,
       blindReviewCount: 1,
       pitchReviewEnabled: false,
-      blindScoreWeightPercent: 100,
-      pitchScoreWeightPercent: 0,
-      shortlistFinalistCount: 1,
+      blindScoreWeightPercent: 70,
+      pitchScoreWeightPercent: 30,
+      shortlistFinalistCount: 10,
       requireSubmissionSummary: false,
       requireSubmissionRepositoryUrl: false,
       requireSubmissionDemoUrl: false
@@ -537,17 +537,17 @@ describe('event management utilities', () => {
     const patch = buildEventUpdatePayload(event, {
       participantsLimit: 80,
       tracks: [],
-      submissionOpensAt: event.submissionOpensAt,
-      submissionClosesAt: event.submissionClosesAt,
-      maxTeamMembers: event.maxTeamMembers,
+      submissionOpensAt: '2026-03-24T12:00:00.000Z',
+      submissionClosesAt: '2026-03-24T12:00:01.000Z',
+      maxTeamMembers: 1,
       blindReviewCount: event.blindReviewCount,
       pitchReviewEnabled: event.pitchReviewEnabled,
-      blindScoreWeightPercent: event.blindScoreWeightPercent,
-      pitchScoreWeightPercent: event.pitchScoreWeightPercent,
-      shortlistFinalistCount: event.shortlistFinalistCount,
-      requireSubmissionSummary: event.requireSubmissionSummary,
-      requireSubmissionRepositoryUrl: event.requireSubmissionRepositoryUrl,
-      requireSubmissionDemoUrl: event.requireSubmissionDemoUrl
+      blindScoreWeightPercent: 100,
+      pitchScoreWeightPercent: 0,
+      shortlistFinalistCount: 1,
+      requireSubmissionSummary: true,
+      requireSubmissionRepositoryUrl: true,
+      requireSubmissionDemoUrl: true
     })
 
     expect(patch).toMatchObject({
@@ -559,13 +559,18 @@ describe('event management utilities', () => {
     expect(patch).not.toHaveProperty('requireSubmissionSummary')
   })
 
-  test('rejects changed competition fields on registration-only event patches', () => {
+  test('rejects non-empty tracks on registration-only event patches', () => {
     expect(() => buildEventUpdatePayload(buildEventRecord({
       eventType: 'meetup',
       maxTeamMembers: 1
     }), {
       participantsLimit: 80,
-      maxTeamMembers: 2
+      tracks: [{
+        id: 'track_1',
+        name: 'Track',
+        description: 'Track description',
+        displayOrder: 1
+      }]
     })).toThrowError(ApiError)
   })
 

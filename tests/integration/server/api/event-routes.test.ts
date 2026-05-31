@@ -3541,13 +3541,13 @@ describe('TASK-3.5 event CRUD routes', () => {
       submissionOpensAt: '2026-03-23T12:00:00.000Z',
       submissionClosesAt: '2026-03-23T12:00:01.000Z',
       state: 'registration_open',
-      maxTeamMembers: 1,
+      maxTeamMembers: 5,
       participantsLimit: null,
       blindReviewCount: 1,
       pitchReviewEnabled: false,
-      blindScoreWeightPercent: 100,
-      pitchScoreWeightPercent: 0,
-      shortlistFinalistCount: 1,
+      blindScoreWeightPercent: 70,
+      pitchScoreWeightPercent: 30,
+      shortlistFinalistCount: 10,
       requireSubmissionSummary: false,
       requireSubmissionRepositoryUrl: false,
       requireSubmissionDemoUrl: false,
@@ -3575,8 +3575,8 @@ describe('TASK-3.5 event CRUD routes', () => {
       body: JSON.stringify({
         participantsLimit: 80,
         tracks: [],
-        submissionOpensAt: '2026-03-23T12:00:00.000Z',
-        submissionClosesAt: '2026-03-23T12:00:01.000Z',
+        submissionOpensAt: '2026-03-24T12:00:00.000Z',
+        submissionClosesAt: '2026-03-24T12:00:01.000Z',
         maxTeamMembers: 1,
         blindReviewCount: 1,
         pitchReviewEnabled: false,
@@ -3594,14 +3594,24 @@ describe('TASK-3.5 event CRUD routes', () => {
       data: {
         eventType: 'meetup',
         participantsLimit: 80,
-        maxTeamMembers: 1
+        maxTeamMembers: 5
       }
     })
 
+    const updatedEvent = await harness.database.query.events.findFirst({
+      where: eq(events.id, 'event_meetup_patch')
+    })
     const tracks = await harness.database.query.eventTracks.findMany({
       where: eq(eventTracks.eventId, 'event_meetup_patch')
     })
 
+    expect(updatedEvent).toMatchObject({
+      participantsLimit: 80,
+      maxTeamMembers: 5,
+      blindScoreWeightPercent: 70,
+      pitchScoreWeightPercent: 30,
+      shortlistFinalistCount: 10
+    })
     expect(tracks).toHaveLength(1)
   })
 
