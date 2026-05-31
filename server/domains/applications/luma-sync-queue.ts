@@ -13,7 +13,7 @@ import {
 import { isEventLumaSyncEnabled } from '#server/domains/applications'
 
 export const defaultApplicationLumaSyncQueueBinding = 'APPLICATION_LUMA_SYNC_QUEUE'
-export const defaultApplicationLumaSyncQueueName = 'codex-events-test-application-luma-sync'
+export const defaultApplicationLumaSyncQueueName = 'codex-events-dev-application-luma-sync'
 export const defaultApplicationLumaSyncRetryDelaySeconds = 120
 export const defaultApplicationLumaSyncStartupRecoveryBatchSize = 10
 export const defaultLumaApiBaseUrl = 'https://public-api.luma.com'

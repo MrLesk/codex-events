@@ -10,7 +10,7 @@ import {
 import { isRetryableOutboundEmailProviderError } from '#server/utils/outbound-email'
 
 export const defaultApplicationReviewEmailQueueBinding = 'APPLICATION_REVIEW_EMAIL_QUEUE'
-export const defaultApplicationReviewEmailQueueName = 'codex-events-test-application-review-email-delivery'
+export const defaultApplicationReviewEmailQueueName = 'codex-events-dev-application-review-email-delivery'
 export const defaultApplicationReviewEmailRetryDelaySeconds = 120
 
 const applicationReviewEmailsQueueRuntimeConfigSchema = z.object({

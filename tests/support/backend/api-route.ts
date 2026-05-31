@@ -176,17 +176,17 @@ export function createApiRouteTestHarness(options: {
     const outboundEmailFromName = options.runtimeConfig?.outboundEmail?.fromName ?? 'Codex Events'
     const outboundEmailReplyTo = options.runtimeConfig?.outboundEmail?.replyTo ?? ''
     const reviewEmailsQueueBinding = options.runtimeConfig?.applicationReviewEmails?.queueBinding ?? 'APPLICATION_REVIEW_EMAIL_QUEUE'
-    const reviewEmailsQueueName = options.runtimeConfig?.applicationReviewEmails?.queueName ?? 'codex-events-test-application-review-email-delivery'
+    const reviewEmailsQueueName = options.runtimeConfig?.applicationReviewEmails?.queueName ?? 'codex-events-dev-application-review-email-delivery'
     const reviewEmailsRetryDelaySeconds = options.runtimeConfig?.applicationReviewEmails?.retryDelaySeconds ?? 120
     const outcomeEmailsQueueBinding = options.runtimeConfig?.eventOutcomeEmails?.queueBinding ?? 'EVENT_OUTCOME_EMAIL_QUEUE'
-    const outcomeEmailsQueueName = options.runtimeConfig?.eventOutcomeEmails?.queueName ?? 'codex-events-test-event-outcome-email-delivery'
+    const outcomeEmailsQueueName = options.runtimeConfig?.eventOutcomeEmails?.queueName ?? 'codex-events-dev-event-outcome-email-delivery'
     const outcomeEmailsRetryDelaySeconds = options.runtimeConfig?.eventOutcomeEmails?.retryDelaySeconds ?? 120
     const lumaApiKey = options.runtimeConfig?.luma?.apiKey ?? ''
     const lumaApiBaseUrl = options.runtimeConfig?.luma?.apiBaseUrl ?? 'https://public-api.luma.com'
     const lumaProfileBaseUrl = options.runtimeConfig?.luma?.profileBaseUrl ?? 'https://luma.com'
     const lumaWebhookSecret = options.runtimeConfig?.luma?.webhookSecret ?? ''
     const lumaQueueBinding = options.runtimeConfig?.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
-    const lumaQueueName = options.runtimeConfig?.luma?.queueName ?? 'codex-events-test-application-luma-sync'
+    const lumaQueueName = options.runtimeConfig?.luma?.queueName ?? 'codex-events-dev-application-luma-sync'
     const lumaRetryDelaySeconds = options.runtimeConfig?.luma?.retryDelaySeconds ?? 120
 
     event.context.cloudflare = {
