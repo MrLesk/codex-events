@@ -126,7 +126,7 @@ The repository includes automation for recurring setup and maintenance:
 - Cloudflare queue, secret, migration, and deployment workflows.
 - A GitHub Release driven production deployment workflow.
 
-Remote dev and production deployments are generated from environment-specific deployment variables, Cloudflare IDs, and runtime settings. Local Cloudflare bindings are documented in `wrangler.jsonc`.
+Remote test and production deployments are generated from environment-specific deployment variables, Cloudflare IDs, and runtime settings. Local Cloudflare bindings are documented in `wrangler.jsonc`.
 
 ## Where It Fits
 
@@ -149,14 +149,14 @@ Plan for:
 - a Cloudflare account with Workers, D1, R2, Images, Queues, Cron Triggers, DNS, Email Sending on a Workers Paid plan, and appropriate API tokens;
 - an Auth0 tenant and Regular Web Application for the platform;
 - an onboarded Cloudflare Email Service sending domain and verified sender address;
-- production and, if desired, shared development domains;
+- production and, if desired, test domains;
 - optional Luma API access when events use Luma guest sync or attendance webhooks;
 - deployment-owned legal controller details, support and privacy contact addresses, and current Privacy Policy and Platform Terms content;
 - people who can manage platform admins, event admins, judges, staff, and release access.
 
 Before launch, configure platform legal settings and publish current platform documents from the platform-admin workspace or legal setup tooling. Public legal pages and account registration require those settings to be present.
 
-Production setup is documented in [`OPERATOR.md`](OPERATOR.md). Advanced deployment overrides, shared dev, BDD, and tuning settings are documented in [`OPERATOR-ADVANCED.md`](OPERATOR-ADVANCED.md). Environment-specific examples are available in [`.env.example`](.env.example), and local Cloudflare bindings are shown in [`wrangler.jsonc`](wrangler.jsonc).
+Production setup is documented in [`OPERATOR.md`](OPERATOR.md). Advanced deployment overrides, the optional test environment, BDD, and tuning settings are documented in [`OPERATOR-ADVANCED.md`](OPERATOR-ADVANCED.md). Environment-specific examples are available in [`.env.example`](.env.example), and local Cloudflare bindings are shown in [`wrangler.jsonc`](wrangler.jsonc).
 
 ---
 

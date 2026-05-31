@@ -38,12 +38,12 @@ export default defineNuxtConfig({
     },
     applicationReviewEmails: {
       queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE',
-      queueName: 'codex-events-dev-application-review-email-delivery',
+      queueName: 'codex-events-test-application-review-email-delivery',
       retryDelaySeconds: 120
     },
     eventOutcomeEmails: {
       queueBinding: 'EVENT_OUTCOME_EMAIL_QUEUE',
-      queueName: 'codex-events-dev-event-outcome-email-delivery',
+      queueName: 'codex-events-test-event-outcome-email-delivery',
       retryDelaySeconds: 120
     },
     luma: {
@@ -52,7 +52,7 @@ export default defineNuxtConfig({
       profileBaseUrl: 'https://luma.com',
       webhookSecret: '',
       queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
-      queueName: 'codex-events-dev-application-luma-sync',
+      queueName: 'codex-events-test-application-luma-sync',
       retryDelaySeconds: 120
     },
     database: {

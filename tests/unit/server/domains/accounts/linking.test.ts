@@ -71,12 +71,12 @@ function createEvent() {
       runtimeConfig: {
         auth0: {
           accountLinkChallengeSecret: 'link-secret',
-          appBaseUrl: 'https://dev.codex-events.com',
+          appBaseUrl: 'https://test.codex-events.com',
           audience: 'https://api.example.test',
           clientId: 'client-id',
           clientSecret: 'client-secret',
           databaseConnectionName: 'Username-Password-Authentication',
-          domain: 'codex-events-dev.eu.auth0.com',
+          domain: 'codex-events-test.eu.auth0.com',
           sessionConfiguration: {
             rolling: false
           },
@@ -126,7 +126,7 @@ describe('platform account-link Auth0 helper', () => {
     expect(ServerClient).toHaveBeenCalledWith(expect.objectContaining({
       authorizationParams: {
         audience: 'https://api.example.test',
-        redirect_uri: 'https://dev.codex-events.com/auth/link/callback'
+        redirect_uri: 'https://test.codex-events.com/auth/link/callback'
       },
       stateIdentifier: '__a0_platform_account_link_session',
       transactionIdentifier: '__a0_platform_account_link_tx'
@@ -138,7 +138,7 @@ describe('platform account-link Auth0 helper', () => {
         connection: 'Username-Password-Authentication',
         prompt: 'login',
         login_hint: 'existing-user@example.com',
-        redirect_uri: 'https://dev.codex-events.com/auth/link/callback'
+        redirect_uri: 'https://test.codex-events.com/auth/link/callback'
       }
     }, {
       event
@@ -156,7 +156,7 @@ describe('platform account-link Auth0 helper', () => {
 
     expect(ServerClient).toHaveBeenCalledTimes(1)
     expect(completeInteractiveLogin).toHaveBeenCalledWith(
-      new URL('https://dev.codex-events.com/auth/link/callback?code=fixture&state=fixture'),
+      new URL('https://test.codex-events.com/auth/link/callback?code=fixture&state=fixture'),
       { event }
     )
     expect(authenticatedSubject).toBe('auth0|existing-password-user')
@@ -174,14 +174,14 @@ describe('platform account-link Auth0 helper', () => {
       secondaryAuth0Subject: 'google-oauth2|existing-google-user',
       email: 'existing-user@example.com',
       actionState: 'auth0-action-state',
-      continueUri: 'https://codex-events-dev.eu.auth0.com/continue',
+      continueUri: 'https://codex-events-test.eu.auth0.com/continue',
       expiresAt: new Date(Date.now() + 60_000).toISOString()
     }, {
       ok: true
     })
 
     expect(responseHtml).toContain('method="post"')
-    expect(responseHtml).toContain('action="https://codex-events-dev.eu.auth0.com/continue"')
+    expect(responseHtml).toContain('action="https://codex-events-test.eu.auth0.com/continue"')
     expect(responseHtml).toContain('name="state" value="auth0-action-state"')
     expect(responseHtml).toContain('name="session_token"')
   })

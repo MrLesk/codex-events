@@ -15,7 +15,7 @@ import {
 import { isRetryableOutboundEmailProviderError } from '#server/utils/outbound-email'
 
 export const defaultEventOutcomeEmailQueueBinding = 'EVENT_OUTCOME_EMAIL_QUEUE'
-export const defaultEventOutcomeEmailQueueName = 'codex-events-dev-event-outcome-email-delivery'
+export const defaultEventOutcomeEmailQueueName = 'codex-events-test-event-outcome-email-delivery'
 export const defaultEventOutcomeEmailRetryDelaySeconds = 120
 
 const eventOutcomeEmailsQueueRuntimeConfigSchema = z.object({

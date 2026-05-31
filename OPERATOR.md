@@ -2,7 +2,7 @@
 
 Use this guide to deploy Codex Events from a clean Cloudflare, Auth0, and GitHub setup with the default production resource names.
 
-For custom resource names, shared dev deployments, BDD environments, optional Luma settings, and runtime tuning, use [OPERATOR-ADVANCED.md](OPERATOR-ADVANCED.md).
+For custom resource names, test deployments, BDD environments, optional Luma settings, and runtime tuning, use [OPERATOR-ADVANCED.md](OPERATOR-ADVANCED.md).
 
 ## Prerequisites
 
@@ -66,7 +66,7 @@ Example:
 auth.events.example.com
 ```
 
-The dev and production deploy workflows configure the Auth0 custom domain, write the required Cloudflare DNS CNAME record as DNS-only, wait for Auth0 verification, and then use that hostname for login.
+The test and production deploy workflows configure the Auth0 custom domain, write the required Cloudflare DNS CNAME record as DNS-only, wait for Auth0 verification, and then use that hostname for login.
 
 Set `AUTH0_CUSTOM_DOMAIN` only when the login hostname is not `auth.<BASE_DOMAIN>`. If the custom domain already exists, keep using the same hostname. In Cloudflare DNS, the Auth0 CNAME must stay DNS-only, not proxied.
 
@@ -175,7 +175,7 @@ Set these secrets only when the deployment uses them:
 | `NUXT_AUTH0_AUDIENCE` | Auth0 API audience when the application requests one | Audience URL |
 | `NUXT_LUMA_API_KEY` | Luma API key when events use Luma sync | API key |
 
-For resource-name overrides, custom sender display names, shared dev, or BDD configuration, use [OPERATOR-ADVANCED.md](OPERATOR-ADVANCED.md).
+For resource-name overrides, custom sender display names, test deployments, or BDD configuration, use [OPERATOR-ADVANCED.md](OPERATOR-ADVANCED.md).
 
 ## 6. Deploy Production
 

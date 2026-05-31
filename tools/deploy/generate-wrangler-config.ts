@@ -3,7 +3,7 @@ import 'dotenv/config'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
-export const deployTargets = ['dev', 'production'] as const
+export const deployTargets = ['test', 'production'] as const
 
 export type DeployTarget = (typeof deployTargets)[number]
 
@@ -113,12 +113,12 @@ export interface GeneratedDeployWranglerConfig {
 }
 
 const outputPathsByTarget: Record<DeployTarget, string> = {
-  dev: '.wrangler/generated/dev.jsonc',
+  test: '.wrangler/generated/test.jsonc',
   production: '.wrangler/generated/production.jsonc'
 }
 
 const defaultDeployEnvironmentNameByTarget: Record<DeployTarget, string> = {
-  dev: 'dev',
+  test: 'test',
   production: 'prod'
 }
 
@@ -130,7 +130,7 @@ const rateLimitNamespaceIdsByTarget: Record<DeployTarget, {
   authenticatedUpload: string
   publicEventFeedback: string
 }> = {
-  dev: {
+  test: {
     publicContact: '2001',
     authenticatedUpload: '2002',
     publicEventFeedback: '2003'
@@ -257,11 +257,11 @@ function buildDefaultAuth0CustomDomain(baseDomain: string) {
 }
 
 export function parseDeployTarget(value: string | undefined): DeployTarget {
-  if (value === 'dev' || value === 'production') {
+  if (value === 'test' || value === 'production') {
     return value
   }
 
-  throw new Error('Usage: bun tools/deploy/generate-wrangler-config.ts <dev|production>')
+  throw new Error('Usage: bun tools/deploy/generate-wrangler-config.ts <test|production>')
 }
 
 export function getGeneratedWranglerConfigPath(target: DeployTarget) {

@@ -21,64 +21,64 @@ function createEnvironment(overrides: Record<string, string | undefined> = {}) {
 
 describe('deploy Wrangler config generator', () => {
   test('parses explicit deployment targets', () => {
-    expect(parseDeployTarget('dev')).toBe('dev')
+    expect(parseDeployTarget('test')).toBe('test')
     expect(parseDeployTarget('production')).toBe('production')
     expect(() => parseDeployTarget('staging')).toThrow('Usage:')
   })
 
-  test('generates dev config from environment-local domain and derived resource names', () => {
-    const input = resolveDeployConfigInput('dev', createEnvironment({
-      BASE_DOMAIN: 'dev.example.com',
+  test('generates test config from environment-local domain and derived resource names', () => {
+    const input = resolveDeployConfigInput('test', createEnvironment({
+      BASE_DOMAIN: 'test.example.com',
       NUXT_FIRST_PLATFORM_ADMIN_EMAIL: 'admin@example.com'
     }))
     const config = buildDeployWranglerConfig(input)
 
-    expect(input.environmentName).toBe('dev')
+    expect(input.environmentName).toBe('test')
     expect(input.resourcePrefix).toBe('codex-events')
-    expect(input.appBaseUrl).toBe('https://dev.example.com')
-    expect(input.auth0CustomDomain).toBe('auth.dev.example.com')
-    expect(input.lumaWebhookUrl).toBe('https://dev.example.com/api/public/luma/webhooks')
-    expect(config.name).toBe('codex-events-dev')
+    expect(input.appBaseUrl).toBe('https://test.example.com')
+    expect(input.auth0CustomDomain).toBe('auth.test.example.com')
+    expect(input.lumaWebhookUrl).toBe('https://test.example.com/api/public/luma/webhooks')
+    expect(config.name).toBe('codex-events-test')
     expect(config.main).toBe('../../.output/server/index.mjs')
     expect(config.assets.directory).toBe('../../.output/public')
     expect(config.routes).toEqual([
       {
-        pattern: 'dev.example.com',
+        pattern: 'test.example.com',
         zone_name: 'example.com',
         custom_domain: true
       }
     ])
     expect(config.vars).toMatchObject({
-      NUXT_AUTH0_DOMAIN: 'auth.dev.example.com',
-      NUXT_AUTH0_APP_BASE_URL: 'https://dev.example.com',
+      NUXT_AUTH0_DOMAIN: 'auth.test.example.com',
+      NUXT_AUTH0_APP_BASE_URL: 'https://test.example.com',
       NUXT_AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
       NUXT_FIRST_PLATFORM_ADMIN_EMAIL: 'admin@example.com',
-      NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME: 'codex-events-dev-application-review-email-delivery',
-      NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME: 'codex-events-dev-event-outcome-email-delivery',
-      NUXT_LUMA_QUEUE_NAME: 'codex-events-dev-application-luma-sync'
+      NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME: 'codex-events-test-application-review-email-delivery',
+      NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME: 'codex-events-test-event-outcome-email-delivery',
+      NUXT_LUMA_QUEUE_NAME: 'codex-events-test-application-luma-sync'
     })
     expect(config.d1_databases[0]).toMatchObject({
-      database_name: 'codex-events-dev',
+      database_name: 'codex-events-test',
       database_id: '11111111-1111-4111-8111-111111111111',
       migrations_dir: '../../drizzle'
     })
     expect(config.r2_buckets).toEqual([
       {
         binding: 'PROFILE_ICONS',
-        bucket_name: 'codex-events-dev-profile-icons'
+        bucket_name: 'codex-events-test-profile-icons'
       },
       {
         binding: 'EVENT_IMAGES',
-        bucket_name: 'codex-events-dev-event-images'
+        bucket_name: 'codex-events-test-event-images'
       }
     ])
     expect(config.queues.consumers).toEqual([])
   })
 
   test('builds desired Queue consumer settings from deploy config input', () => {
-    const input = resolveDeployConfigInput('dev', createEnvironment({
-      BASE_DOMAIN: 'dev.example.com',
-      AUTH0_CUSTOM_DOMAIN: 'auth.dev.example.com',
+    const input = resolveDeployConfigInput('test', createEnvironment({
+      BASE_DOMAIN: 'test.example.com',
+      AUTH0_CUSTOM_DOMAIN: 'auth.test.example.com',
       NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS: '60',
       NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS: '90',
       NUXT_LUMA_RETRY_DELAY_SECONDS: '180'
@@ -86,21 +86,21 @@ describe('deploy Wrangler config generator', () => {
 
     expect(buildDeployQueueConsumerConfigs(input)).toEqual([
       {
-        queue: 'codex-events-dev-application-review-email-delivery',
+        queue: 'codex-events-test-application-review-email-delivery',
         max_batch_size: 10,
         max_batch_timeout: 5,
         max_retries: 10,
         retry_delay: 60
       },
       {
-        queue: 'codex-events-dev-event-outcome-email-delivery',
+        queue: 'codex-events-test-event-outcome-email-delivery',
         max_batch_size: 10,
         max_batch_timeout: 5,
         max_retries: 10,
         retry_delay: 90
       },
       {
-        queue: 'codex-events-dev-application-luma-sync',
+        queue: 'codex-events-test-application-luma-sync',
         max_batch_size: 10,
         max_batch_timeout: 5,
         max_retries: 10,
@@ -131,7 +131,7 @@ describe('deploy Wrangler config generator', () => {
   })
 
   test('requires environment-local base domain and non-derived metadata', () => {
-    expect(() => resolveDeployConfigInput('dev', createEnvironment({
+    expect(() => resolveDeployConfigInput('test', createEnvironment({
       BASE_DOMAIN: ''
     }))).toThrow('BASE_DOMAIN is required')
 
@@ -141,12 +141,12 @@ describe('deploy Wrangler config generator', () => {
   })
 
   test('resolves the D1 database name without requiring a database ID', () => {
-    expect(resolveDeployResourceNames('dev', {
+    expect(resolveDeployResourceNames('test', {
       DEPLOY_RESOLVED_D1_DATABASE_ID: ''
     })).toMatchObject({
-      d1DatabaseName: 'codex-events-dev',
-      profileIconsBucket: 'codex-events-dev-profile-icons',
-      eventImagesBucket: 'codex-events-dev-event-images'
+      d1DatabaseName: 'codex-events-test',
+      profileIconsBucket: 'codex-events-test-profile-icons',
+      eventImagesBucket: 'codex-events-test-event-images'
     })
 
     expect(resolveDeployResourceNames('production', {

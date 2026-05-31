@@ -25,13 +25,13 @@ function createFixtureJwt(payload: Record<string, unknown>) {
 
 function createAuth0BootstrapEnvironment(overrides: Record<string, string> = {}) {
   return {
-    AUTH0_MANAGEMENT_DOMAIN: 'codex-events-dev.eu.auth0.com',
+    AUTH0_MANAGEMENT_DOMAIN: 'codex-events-test.eu.auth0.com',
     AUTH0_MGMT_CLIENT_ID: 'management-client-id',
     AUTH0_MGMT_CLIENT_SECRET: 'management-client-secret',
     NUXT_AUTH0_CLIENT_ID: 'app-client-id',
     NUXT_AUTH0_CLIENT_SECRET: 'app-client-secret',
-    AUTH0_APP_BASE_URL: 'https://dev.codex-events.com',
-    AUTH0_CUSTOM_DOMAIN: 'auth.dev.codex-events.com',
+    AUTH0_APP_BASE_URL: 'https://test.codex-events.com',
+    AUTH0_CUSTOM_DOMAIN: 'auth.test.codex-events.com',
     AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
     AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: 'link-secret',
     ...overrides
@@ -42,7 +42,7 @@ describe('auth0 bootstrap config', () => {
   test('infers the dedicated local BDD app base url for localhost development', () => {
     const config = resolveConfig(createAuth0BootstrapEnvironment({
       AUTH0_APP_BASE_URL: 'http://localhost:3000',
-      AUTH0_LOGIN_URI: 'https://dev.codex-events.com/auth/login'
+      AUTH0_LOGIN_URI: 'https://test.codex-events.com/auth/login'
     }))
 
     expect(config.appBaseUrl).toBe('http://localhost:3000')
@@ -55,11 +55,11 @@ describe('auth0 bootstrap config', () => {
     expect(config.appDisplayName).toBe('Codex Events')
     expect(config.databaseConnectionName).toBe('Username-Password-Authentication')
     expect(config.bddAppBaseUrl).toBe('')
-    expect(config.loginUri).toBe('https://dev.codex-events.com/auth/login')
+    expect(config.loginUri).toBe('https://test.codex-events.com/auth/login')
     expect(config.brandingPrimaryColor).toBe('#030213')
     expect(config.brandingPageBackgroundColor).toBe('#f3f3f5')
-    expect(config.brandingLogoUrl).toBe('https://dev.codex-events.com/auth0/codex-events-wordmark.svg')
-    expect(config.brandingFaviconUrl).toBe('https://dev.codex-events.com/favicon.ico')
+    expect(config.brandingLogoUrl).toBe('https://test.codex-events.com/auth0/codex-events-wordmark.svg')
+    expect(config.brandingFaviconUrl).toBe('https://test.codex-events.com/favicon.ico')
   })
 
   test('defaults the Auth0 custom domain from the app base url host', () => {
@@ -67,7 +67,7 @@ describe('auth0 bootstrap config', () => {
       AUTH0_CUSTOM_DOMAIN: ''
     }))
 
-    expect(config.customDomain).toBe('auth.dev.codex-events.com')
+    expect(config.customDomain).toBe('auth.test.codex-events.com')
   })
 
   test('defaults the Auth0 database connection name when it is not set', () => {
@@ -81,7 +81,7 @@ describe('auth0 bootstrap config', () => {
   test('preserves explicit branding overrides', () => {
     const config = resolveConfig(createAuth0BootstrapEnvironment({
       AUTH0_APP_DISPLAY_NAME: 'Codex Community',
-      AUTH0_LOGIN_URI: 'https://dev.codex-events.com/custom-login',
+      AUTH0_LOGIN_URI: 'https://test.codex-events.com/custom-login',
       AUTH0_BRANDING_PRIMARY_COLOR: '#111111',
       AUTH0_BRANDING_PAGE_BACKGROUND_COLOR: '#fafafa',
       AUTH0_BRANDING_LOGO_URL: 'https://cdn.example.com/codex.svg',
@@ -89,7 +89,7 @@ describe('auth0 bootstrap config', () => {
     }))
 
     expect(config.appDisplayName).toBe('Codex Community')
-    expect(config.loginUri).toBe('https://dev.codex-events.com/custom-login')
+    expect(config.loginUri).toBe('https://test.codex-events.com/custom-login')
     expect(config.brandingPrimaryColor).toBe('#111111')
     expect(config.brandingPageBackgroundColor).toBe('#fafafa')
     expect(config.brandingLogoUrl).toBe('https://cdn.example.com/codex.svg')

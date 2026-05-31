@@ -9,8 +9,8 @@ import {
 describe('auth0 custom domain helpers', () => {
   test('defaults the Auth0 custom domain from the deploy base domain', () => {
     expect(resolveAuth0CustomDomain({
-      BASE_DOMAIN: 'dev.codex-events.com'
-    })).toBe('auth.dev.codex-events.com')
+      BASE_DOMAIN: 'test.codex-events.com'
+    })).toBe('auth.test.codex-events.com')
 
     expect(resolveAuth0CustomDomain({
       BASE_DOMAIN: 'https://events.codex-events.com'
@@ -20,7 +20,7 @@ describe('auth0 custom domain helpers', () => {
   test('preserves an explicit Auth0 custom domain override', () => {
     expect(resolveAuth0CustomDomain({
       AUTH0_CUSTOM_DOMAIN: 'login.codex-events.com',
-      BASE_DOMAIN: 'dev.codex-events.com'
+      BASE_DOMAIN: 'test.codex-events.com'
     })).toBe('login.codex-events.com')
   })
 

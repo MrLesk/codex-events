@@ -49,23 +49,23 @@ describe('deploy R2 bucket provisioning', () => {
 
   test('returns existing R2 buckets by resolved names', async () => {
     const { calls, runner } = createRunner([
-      r2InfoOutput('codex-events-dev-profile-icons'),
-      r2InfoOutput('codex-events-dev-event-images')
+      r2InfoOutput('codex-events-test-profile-icons'),
+      r2InfoOutput('codex-events-test-event-images')
     ])
 
     await expect(ensureDeployR2Buckets({
-      target: 'dev',
+      target: 'test',
       environment: {},
       runner
     })).resolves.toEqual([
       {
         binding: 'PROFILE_ICONS',
-        bucketName: 'codex-events-dev-profile-icons',
+        bucketName: 'codex-events-test-profile-icons',
         created: false
       },
       {
         binding: 'EVENT_IMAGES',
-        bucketName: 'codex-events-dev-event-images',
+        bucketName: 'codex-events-test-event-images',
         created: false
       }
     ])
@@ -73,11 +73,11 @@ describe('deploy R2 bucket provisioning', () => {
     expect(calls).toEqual([
       {
         command: 'bunx',
-        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-dev-profile-icons', '--json']
+        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-test-profile-icons', '--json']
       },
       {
         command: 'bunx',
-        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-dev-event-images', '--json']
+        args: ['wrangler', 'r2', 'bucket', 'info', 'codex-events-test-event-images', '--json']
       }
     ])
   })
@@ -167,24 +167,24 @@ describe('deploy R2 bucket provisioning', () => {
   test('handles a concurrent create that succeeds in another deploy job', async () => {
     const { calls, runner } = createRunner([
       new Error('bucket not found'),
-      r2InfoOutput('codex-events-dev-event-images'),
+      r2InfoOutput('codex-events-test-event-images'),
       new Error('bucket already exists'),
-      r2InfoOutput('codex-events-dev-profile-icons')
+      r2InfoOutput('codex-events-test-profile-icons')
     ])
 
     await expect(ensureDeployR2Buckets({
-      target: 'dev',
+      target: 'test',
       environment: {},
       runner
     })).resolves.toEqual([
       {
         binding: 'PROFILE_ICONS',
-        bucketName: 'codex-events-dev-profile-icons',
+        bucketName: 'codex-events-test-profile-icons',
         created: false
       },
       {
         binding: 'EVENT_IMAGES',
-        bucketName: 'codex-events-dev-event-images',
+        bucketName: 'codex-events-test-event-images',
         created: false
       }
     ])
@@ -195,11 +195,11 @@ describe('deploy R2 bucket provisioning', () => {
   test('rejects unexpected bucket info output', async () => {
     const { runner } = createRunner([
       '{}',
-      r2InfoOutput('codex-events-dev-event-images')
+      r2InfoOutput('codex-events-test-event-images')
     ])
 
     await expect(ensureDeployR2Buckets({
-      target: 'dev',
+      target: 'test',
       environment: {},
       runner
     })).rejects.toThrow('unexpected bucket record')

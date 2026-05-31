@@ -2078,7 +2078,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       },
       runtimeConfig: {
         auth0: {
-          appBaseUrl: 'https://dev.codex-events.com',
+          appBaseUrl: 'https://test.codex-events.com',
           databaseConnectionName: 'Username-Password-Authentication',
           accountLinkChallengeSecret: 'link-secret'
         }
@@ -2145,7 +2145,7 @@ describe('TASK-3.5 actor-facing API routes', () => {
       },
       runtimeConfig: {
         auth0: {
-          appBaseUrl: 'https://dev.codex-events.com',
+          appBaseUrl: 'https://test.codex-events.com',
           databaseConnectionName: 'Username-Password-Authentication',
           accountLinkChallengeSecret: 'link-secret'
         }

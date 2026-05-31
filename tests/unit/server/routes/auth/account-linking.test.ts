@@ -27,7 +27,7 @@ function createActionRedirectToken() {
     primary_email: 'existing-user@example.com',
     secondary_user_id: 'google-oauth2|existing-google-user',
     secondary_email: 'existing-user@example.com',
-    continue_uri: 'https://codex-events-dev.eu.auth0.com/continue'
+    continue_uri: 'https://codex-events-test.eu.auth0.com/continue'
   })).toString('base64url')
   const signature = createHmac('sha256', 'link-secret')
     .update(`${header}.${payload}`)
@@ -99,8 +99,8 @@ describe('Auth0 account-link routes', () => {
       ],
       runtimeConfig: {
         auth0: {
-          appBaseUrl: 'https://dev.codex-events.com',
-          domain: 'codex-events-dev.eu.auth0.com',
+          appBaseUrl: 'https://test.codex-events.com',
+          domain: 'codex-events-test.eu.auth0.com',
           clientId: 'client-id',
           clientSecret: 'client-secret',
           sessionSecret: 'session-secret',
@@ -197,7 +197,7 @@ describe('Auth0 account-link routes', () => {
     expect(readPlatformAccountLinkAuthenticatedSubject).toHaveBeenCalledWith(expect.any(Object))
     expect(clearPlatformAccountLinkAuthentication).toHaveBeenCalledWith(expect.any(Object))
     expect(response.status).toBe(200)
-    await expect(response.text()).resolves.toContain('action="https://codex-events-dev.eu.auth0.com/continue"')
+    await expect(response.text()).resolves.toContain('action="https://codex-events-test.eu.auth0.com/continue"')
   })
 
   test('GET /auth/link/complete returns a failed Auth0 Action continuation when isolated verification resolves to a different password account', async () => {

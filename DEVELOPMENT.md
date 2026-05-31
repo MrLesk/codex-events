@@ -33,16 +33,16 @@ NUXT_OUTBOUND_EMAIL_FROM_EMAIL=info@your-platform.example
 NUXT_OUTBOUND_EMAIL_FROM_NAME=Codex Events
 NUXT_OUTBOUND_EMAIL_REPLY_TO=support@your-platform.example
 NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING=APPLICATION_REVIEW_EMAIL_QUEUE
-NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME=codex-events-dev-application-review-email-delivery
+NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME=codex-events-test-application-review-email-delivery
 NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS=120
 NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING=EVENT_OUTCOME_EMAIL_QUEUE
-NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME=codex-events-dev-event-outcome-email-delivery
+NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME=codex-events-test-event-outcome-email-delivery
 NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS=120
 NUXT_LUMA_API_KEY=
 NUXT_LUMA_API_BASE_URL=https://public-api.luma.com
 NUXT_LUMA_PROFILE_BASE_URL=https://luma.com
 NUXT_LUMA_QUEUE_BINDING=APPLICATION_LUMA_SYNC_QUEUE
-NUXT_LUMA_QUEUE_NAME=codex-events-dev-application-luma-sync
+NUXT_LUMA_QUEUE_NAME=codex-events-test-application-luma-sync
 NUXT_LUMA_RETRY_DELAY_SECONDS=120
 NUXT_LUMA_WEBHOOK_SECRET=
 ```
@@ -193,21 +193,21 @@ The protected example surface added in this repo is `/dashboard`.
 
 ## Remote Deployments
 
-The tracked `wrangler.jsonc` is local/adopter-safe and does not contain remote Cloudflare environments. Remote dev and production deployments generate ignored Wrangler config files from operator-owned environment values:
+The tracked `wrangler.jsonc` is local/adopter-safe and does not contain remote Cloudflare environments. Remote test and production deployments generate ignored Wrangler config files from operator-owned environment values:
 
 ```bash
-bun tools/deploy/generate-wrangler-config.ts dev
+bun tools/deploy/generate-wrangler-config.ts test
 bun tools/deploy/generate-wrangler-config.ts production
 ```
 
 The generated files are written under `.wrangler/generated/` and are used by:
 
-- `bun run db:migrate:dev`
+- `bun run db:migrate:test`
 - `bun run db:migrate:production`
-- `bun run deploy:dev`
+- `bun run deploy:test`
 - `bun run deploy:production`
 
-Each environment provides its own `BASE_DOMAIN`. The generator never derives `dev.*`, `prod.*`, or any other hostname from an environment name.
+Each environment provides its own `BASE_DOMAIN`. The generator never derives `test.*`, `prod.*`, or any other hostname from an environment name.
 
 For the selected target, the generator derives:
 
@@ -216,7 +216,7 @@ For the selected target, the generator derives:
 - Luma webhook URL: `https://<base-domain>/api/public/luma/webhooks`
 - resource names from `DEPLOY_ENV_NAME` and `DEPLOY_RESOURCE_PREFIX`
 
-`DEPLOY_ENV_NAME` defaults to `dev` for the dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
+`DEPLOY_ENV_NAME` defaults to `test` for the test target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
 
 Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `AUTH0_CUSTOM_DOMAIN` is an optional override and defaults to `auth.<BASE_DOMAIN>`. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
 
@@ -248,8 +248,8 @@ The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler d1 list`, `wrang
 For manual deployment, export the target environment values and run:
 
 ```bash
-bun run db:migrate:dev
-bun run deploy:dev
+bun run db:migrate:test
+bun run deploy:test
 ```
 
 or:
@@ -269,9 +269,9 @@ bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webh
 
 ## GitHub Deployments
 
-Pushes to `main` publish the dev environment through `.github/workflows/main.yml` after the fast checks pass. Production publishes from GitHub Releases through `.github/workflows/deploy-production.yml`.
+Pushes to `main` publish the test environment through `.github/workflows/main.yml` after the fast checks pass. Production publishes from GitHub Releases through `.github/workflows/deploy-production.yml`.
 
-The GitHub `dev` and `production` environments should store only environment-local deployment metadata as variables and credentials as secrets. Push-based dev deployment is optional for forks and unconfigured environments: if `BASE_DOMAIN` is empty, the deploy job exits cleanly before reading the rest of the deployment metadata.
+The GitHub `test` and `production` environments should store only environment-local deployment metadata as variables and credentials as secrets. Push-based test deployment is optional for forks and unconfigured environments: if `BASE_DOMAIN` is empty, the deploy job exits cleanly before reading the rest of the deployment metadata.
 
 Use these environment variable groups:
 
@@ -325,7 +325,7 @@ Deployment URL setting:
 
 - `DEPLOY_LUMA_WEBHOOK_URL`
 
-The GitHub `dev` environment must provide these secrets:
+The GitHub `test` environment must provide these secrets:
 
 - `CLOUDFLARE_ACCOUNT_ID`
 - `CLOUDFLARE_API_TOKEN`
@@ -334,7 +334,7 @@ The GitHub `dev` environment must provide these secrets:
 - `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
 - `AUTH0_MGMT_CLIENT_ID`
 - `AUTH0_MGMT_CLIENT_SECRET`
-- `NUXT_LUMA_API_KEY` when any dev event uses Luma sync
+- `NUXT_LUMA_API_KEY` when any test event uses Luma sync
 
 The GitHub `bdd` environment must provide these variables:
 
@@ -479,7 +479,7 @@ The repository now treats D1 targets as four distinct environments:
 
 - local app development D1
 - local Auth0-backed BDD D1
-- remote dev D1
+- remote test D1
 - remote production D1
 
 Install the Playwright browser for local runs:

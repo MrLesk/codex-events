@@ -1,12 +1,12 @@
 # Advanced Operator Reference
 
-Use this reference when a deployment needs custom resource names, shared dev environments, BDD test automation, optional Luma settings, or runtime tuning. For a default production deployment, start with [OPERATOR.md](OPERATOR.md).
+Use this reference when a deployment needs custom resource names, test environments, BDD test automation, optional Luma settings, or runtime tuning. For a default production deployment, start with [OPERATOR.md](OPERATOR.md).
 
 ## Deployment Defaults
 
 Remote deployments generate ignored Wrangler config files from each GitHub environment's values.
 
-Each environment provides its own `BASE_DOMAIN`. The generator never derives `dev.*`, `prod.*`, or any other hostname from an environment name.
+Each environment provides its own `BASE_DOMAIN`. The generator never derives `test.*`, `prod.*`, or any other hostname from an environment name.
 
 For the selected target, the generator derives:
 
@@ -15,14 +15,14 @@ For the selected target, the generator derives:
 - Luma webhook URL: `https://<BASE_DOMAIN>/api/public/luma/webhooks`
 - resource names from `DEPLOY_ENV_NAME` and `DEPLOY_RESOURCE_PREFIX`
 
-`DEPLOY_ENV_NAME` defaults to `dev` for the shared dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
+`DEPLOY_ENV_NAME` defaults to `test` for the test target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
 
 Examples:
 
 | Target | `DEPLOY_ENV_NAME` | `DEPLOY_RESOURCE_PREFIX` | Worker and D1 default |
 | --- | --- | --- | --- |
 | Production | `prod` | `codex-events` | `codex-events-prod` |
-| Dev | `dev` | `codex-events` | `codex-events-dev` |
+| Test | `test` | `codex-events` | `codex-events-test` |
 | Preview | `preview` | `codex-events` | `codex-events-preview` |
 
 Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `AUTH0_CUSTOM_DOMAIN` is optional and defaults to `auth.<BASE_DOMAIN>`.
@@ -97,41 +97,41 @@ Optional secrets:
 | `NUXT_AUTH0_AUDIENCE` | Auth0 API audience when the application requests one |
 | `NUXT_LUMA_API_KEY` | Luma API key when events use Luma sync |
 
-## Shared Dev Environment
+## Test Environment
 
-Create a GitHub environment named `dev` only if pushes to `main` should deploy a shared dev instance.
+Create a GitHub environment named `test` only if pushes to `main` should deploy a test instance.
 
-Use environment-specific values for the same variable and secret groups as production. Set `BASE_DOMAIN` to the dev app hostname. The dev workflow defaults `DEPLOY_ENV_NAME` to `dev`; set it only when you need a different resource prefix.
+Use environment-specific values for the same variable and secret groups as production. Set `BASE_DOMAIN` to the test app hostname. The test workflow defaults `DEPLOY_ENV_NAME` to `test`; set it only when you need a different resource prefix.
 
 Use `NUXT_AUTH0_CLIENT_ID` for the Auth0 Regular Web Application client ID in every GitHub environment.
 
-Use a separate Auth0 tenant or application for dev when you want to keep dev users, callback URLs, Actions, and database connections separate from production.
+Use a separate Auth0 tenant or application for test when you want to keep test users, callback URLs, Actions, and database connections separate from production.
 
-Required dev variables:
+Required test variables:
 
 | Variable | Value |
 | --- | --- |
-| `BASE_DOMAIN` | Dev app hostname |
+| `BASE_DOMAIN` | Test app hostname |
 | `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name |
-| `AUTH0_MANAGEMENT_DOMAIN` | Dev Auth0 tenant hostname |
-| `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | First platform admin email for the dev instance |
-| `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified dev sender address |
+| `AUTH0_MANAGEMENT_DOMAIN` | Test Auth0 tenant hostname |
+| `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | First platform admin email for the test instance |
+| `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified test sender address |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to email address |
 
-The shared dev deploy workflow configures `auth.<BASE_DOMAIN>` by default, writes the required Cloudflare DNS CNAME record as DNS-only, and waits for Auth0 verification before applying Auth0 application settings. Set `AUTH0_CUSTOM_DOMAIN` only when the dev login hostname should be different.
+The test deploy workflow configures `auth.<BASE_DOMAIN>` by default, writes the required Cloudflare DNS CNAME record as DNS-only, and waits for Auth0 verification before applying Auth0 application settings. Set `AUTH0_CUSTOM_DOMAIN` only when the test login hostname should be different.
 
-Required dev secrets:
+Required test secrets:
 
 | Secret | Value |
 | --- | --- |
 | `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID |
 | `CLOUDFLARE_API_TOKEN` | Cloudflare API token |
-| `NUXT_AUTH0_CLIENT_ID` | Dev Auth0 Regular Web Application client ID |
-| `NUXT_AUTH0_CLIENT_SECRET` | Dev Auth0 Regular Web Application client secret |
+| `NUXT_AUTH0_CLIENT_ID` | Test Auth0 Regular Web Application client ID |
+| `NUXT_AUTH0_CLIENT_SECRET` | Test Auth0 Regular Web Application client secret |
 | `AUTH0_MGMT_CLIENT_ID` | Auth0 Management API application client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | Auth0 Management API application client secret |
 
-The shared dev workflow derives the Auth0 session and account-link challenge secrets from `NUXT_AUTH0_CLIENT_SECRET` when explicit override secrets are omitted. Set `NUXT_AUTH0_AUDIENCE` only when the dev Auth0 application uses a non-empty audience. Set `NUXT_LUMA_API_KEY` only when dev events use Luma sync.
+The test workflow derives the Auth0 session and account-link challenge secrets from `NUXT_AUTH0_CLIENT_SECRET` when explicit override secrets are omitted. Set `NUXT_AUTH0_AUDIENCE` only when the test Auth0 application uses a non-empty audience. Set `NUXT_LUMA_API_KEY` only when test events use Luma sync.
 
 ## BDD Environment
 
@@ -169,8 +169,8 @@ The BDD workflow derives `NUXT_AUTH0_SESSION_SECRET` from `NUXT_AUTH0_CLIENT_SEC
 For manual remote deployment, export the target environment values and run:
 
 ```bash
-bun run db:migrate:dev
-bun run deploy:dev
+bun run db:migrate:test
+bun run deploy:test
 ```
 
 or:

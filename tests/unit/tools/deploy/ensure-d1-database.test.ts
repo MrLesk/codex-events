@@ -71,18 +71,18 @@ describe('deploy D1 database provisioning', () => {
     const { calls, runner } = createRunner([
       d1ListOutput([
         {
-          name: 'codex-events-dev',
+          name: 'codex-events-test',
           uuid: existingDatabaseId
         }
       ])
     ])
 
     await expect(ensureDeployD1Database({
-      target: 'dev',
+      target: 'test',
       environment: {},
       runner
     })).resolves.toEqual({
-      databaseName: 'codex-events-dev',
+      databaseName: 'codex-events-test',
       databaseId: existingDatabaseId,
       created: false
     })
@@ -101,18 +101,18 @@ describe('deploy D1 database provisioning', () => {
       '',
       d1ListOutput([
         {
-          name: 'codex-events-dev',
+          name: 'codex-events-test',
           uuid: createdDatabaseId
         }
       ])
     ])
 
     await expect(ensureDeployD1Database({
-      target: 'dev',
+      target: 'test',
       environment: {},
       runner
     })).resolves.toEqual({
-      databaseName: 'codex-events-dev',
+      databaseName: 'codex-events-test',
       databaseId: createdDatabaseId,
       created: true
     })
@@ -124,7 +124,7 @@ describe('deploy D1 database provisioning', () => {
       },
       {
         command: 'bunx',
-        args: ['wrangler', 'd1', 'create', 'codex-events-dev']
+        args: ['wrangler', 'd1', 'create', 'codex-events-test']
       },
       {
         command: 'bunx',
@@ -161,18 +161,18 @@ describe('deploy D1 database provisioning', () => {
       new Error('database already exists'),
       d1ListOutput([
         {
-          name: 'codex-events-dev',
+          name: 'codex-events-test',
           uuid: existingDatabaseId
         }
       ])
     ])
 
     await expect(ensureDeployD1Database({
-      target: 'dev',
+      target: 'test',
       environment: {},
       runner
     })).resolves.toEqual({
-      databaseName: 'codex-events-dev',
+      databaseName: 'codex-events-test',
       databaseId: existingDatabaseId,
       created: false
     })
@@ -187,7 +187,7 @@ describe('deploy D1 database provisioning', () => {
     const githubEnv = join(directory, 'env')
     const githubOutput = join(directory, 'output')
     await writeGitHubD1DatabaseOutputs({
-      databaseName: 'codex-events-dev',
+      databaseName: 'codex-events-test',
       databaseId: existingDatabaseId,
       created: false
     }, {
@@ -199,7 +199,7 @@ describe('deploy D1 database provisioning', () => {
       `DEPLOY_RESOLVED_D1_DATABASE_ID=${existingDatabaseId}\n`
     )
     await expect(readFile(githubOutput, 'utf8')).resolves.toBe(
-      `d1_database_id=${existingDatabaseId}\nd1_database_name=codex-events-dev\n`
+      `d1_database_id=${existingDatabaseId}\nd1_database_name=codex-events-test\n`
     )
   })
 })

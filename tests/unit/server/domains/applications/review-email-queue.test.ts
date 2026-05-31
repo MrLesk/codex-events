@@ -25,7 +25,7 @@ function createEvent(options?: {
       runtimeConfig: options?.runtimeConfig ?? {
         applicationReviewEmails: {
           queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE',
-          queueName: 'codex-events-dev-application-review-email-delivery',
+          queueName: 'codex-events-test-application-review-email-delivery',
           retryDelaySeconds: 120
         }
       }
@@ -161,7 +161,7 @@ describe('application review email queue utilities', () => {
     }, {
       runtimeConfig: {
         applicationReviewEmails: {
-          queueName: 'codex-events-dev-application-review-email-delivery'
+          queueName: 'codex-events-test-application-review-email-delivery'
         }
       }
     })
