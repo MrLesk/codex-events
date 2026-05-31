@@ -370,6 +370,17 @@ export function getNextAgendaItemDefaultTimes(previousItem?: EventFormAgendaItem
   }
 }
 
+export function getAgendaItemEndAfterStartChange(startsAt: string, endsAt: string) {
+  const startsAtTime = Date.parse(startsAt)
+  const endsAtTime = Date.parse(endsAt)
+
+  if (Number.isNaN(startsAtTime) || Number.isNaN(endsAtTime) || endsAtTime >= startsAtTime) {
+    return endsAt
+  }
+
+  return startsAt
+}
+
 export function createEventFormState(event: EventRecord): EventFormState {
   return {
     eventType: event.eventType,

@@ -12,6 +12,7 @@ import type { EventProgramSettingsMode } from '~/domains/events/program-settings
 
 import {
   createEventSlug,
+  getAgendaItemEndAfterStartChange,
   getNextAgendaItemDefaultTimes,
   eventConfigFormSchema
 } from '~/domains/events/admin-event'
@@ -146,6 +147,13 @@ function addAgendaItem() {
     details: '',
     displayOrder: nextAgendaDisplayOrder()
   })
+}
+
+function updateAgendaItemStart(item: AgendaFormItem, startsAt: string | undefined) {
+  const nextStartsAt = startsAt ?? ''
+
+  item.startsAt = nextStartsAt
+  item.endsAt = getAgendaItemEndAfterStartChange(nextStartsAt, item.endsAt)
 }
 
 function addTrack() {
@@ -748,9 +756,10 @@ const submitConfigForm = handleSubmit(() => {
                       <label class="grid gap-2">
                         <span class="text-xs font-medium text-toned">Starts at</span>
                         <AppDateTimeInput
-                          v-model="item.startsAt"
+                          :model-value="item.startsAt"
                           picker-aria-label="Choose agenda start date and time"
                           required
+                          @update:model-value="updateAgendaItemStart(item, $event)"
                         />
                       </label>
 

@@ -31,6 +31,7 @@ import {
   createEventFormState,
   createEventSlug,
   fromDateTimeLocalValue,
+  getAgendaItemEndAfterStartChange,
   getNextAgendaItemDefaultTimes,
   getTermsVersionPublishErrorMessage,
   toDateTimeLocalValue
@@ -564,6 +565,14 @@ describe('domain admin form helpers', () => {
       startsAt: '',
       endsAt: ''
     })
+  })
+
+  test('moves agenda end time forward when a new start time passes it', () => {
+    expect(getAgendaItemEndAfterStartChange('2026-03-22T13:00', '2026-03-22T12:00'))
+      .toBe('2026-03-22T13:00')
+    expect(getAgendaItemEndAfterStartChange('2026-03-22T13:00', '2026-03-22T13:30'))
+      .toBe('2026-03-22T13:30')
+    expect(getAgendaItemEndAfterStartChange('2026-03-22T13:00', '')).toBe('')
   })
 
   test('requires a title before publishing a terms version', () => {
