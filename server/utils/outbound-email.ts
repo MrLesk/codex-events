@@ -78,7 +78,7 @@ export function getOutboundEmailFromAddress(runtimeConfig: OutboundEmailRuntimeC
 }
 
 export function getOutboundEmailReplyTo(runtimeConfig: OutboundEmailRuntimeConfig) {
-  return runtimeConfig.outboundEmail?.replyTo?.trim() || null
+  return runtimeConfig.outboundEmail?.replyTo?.trim() || runtimeConfig.outboundEmail?.fromEmail?.trim() || null
 }
 
 function isOutboundEmailBindingLike(value: unknown): value is OutboundEmailBindingLike {

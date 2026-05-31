@@ -311,6 +311,7 @@ export function resolveDeployConfigInput(
     readOptionalEnvironmentValue(environment, 'LUMA_WEBHOOK_URL') || `${appBaseUrl}/api/public/luma/webhooks`,
     'LUMA_WEBHOOK_URL'
   )
+  const outboundEmailFromEmail = readRequiredEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_EMAIL')
   return {
     target,
     environmentName,
@@ -327,9 +328,9 @@ export function resolveDeployConfigInput(
     profileIconsBucket,
     eventImagesBucket,
     outboundEmailBinding: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_BINDING') || 'EMAIL',
-    outboundEmailFromEmail: readRequiredEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_EMAIL'),
+    outboundEmailFromEmail,
     outboundEmailFromName: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_NAME') || 'Codex Events',
-    outboundEmailReplyTo: readRequiredEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_REPLY_TO'),
+    outboundEmailReplyTo: readOptionalEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_REPLY_TO') || outboundEmailFromEmail,
     auth0DatabaseConnectionName: readOptionalEnvironmentValue(environment, 'NUXT_AUTH0_DATABASE_CONNECTION_NAME') || defaultAuth0DatabaseConnectionName,
     applicationReviewEmails: resolveQueueConfig(environment, {
       bindingEnvName: 'NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING',

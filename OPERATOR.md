@@ -115,7 +115,6 @@ Variable names follow a convention worth knowing:
 | `AUTH0_MANAGEMENT_DOMAIN` | Auth0 | The tenant domain from section 3.1, e.g. `your-tenant.eu.auth0.com` |
 | `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | - | Email of the person who will be the first platform admin |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Cloudflare | The sender address you verified in Cloudflare Email (section 2) |
-| `NUXT_OUTBOUND_EMAIL_REPLY_TO` | - | Reply-to address for outbound email |
 
 Add these only when they apply:
 
@@ -123,6 +122,7 @@ Add these only when they apply:
 | --- | --- | --- |
 | `AUTH0_CUSTOM_DOMAIN` | Auth0 | Only if your login hostname is not `auth.<BASE_DOMAIN>`, e.g. `auth.example.com` |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 | Only if your database connection is not named `Username-Password-Authentication` |
+| `NUXT_OUTBOUND_EMAIL_REPLY_TO` | - | Only if replies should go to a different address than `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` |
 
 ### Required secrets
 
@@ -319,7 +319,6 @@ Required test variables:
 | `AUTH0_MANAGEMENT_DOMAIN` | Test Auth0 tenant hostname |
 | `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | First platform admin email for test |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified test sender address |
-| `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to email address |
 
 Required test secrets:
 

@@ -31,7 +31,7 @@ NUXT_EVENT_IMAGES_BINDING=EVENT_IMAGES
 NUXT_OUTBOUND_EMAIL_BINDING=EMAIL
 NUXT_OUTBOUND_EMAIL_FROM_EMAIL=info@your-platform.example
 NUXT_OUTBOUND_EMAIL_FROM_NAME=Codex Events
-NUXT_OUTBOUND_EMAIL_REPLY_TO=support@your-platform.example
+NUXT_OUTBOUND_EMAIL_REPLY_TO=
 NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING=APPLICATION_REVIEW_EMAIL_QUEUE
 NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME=codex-events-dev-application-review-email-delivery
 NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS=120
@@ -159,7 +159,7 @@ Outbound email delivery uses Cloudflare Email Service through the Worker `send_e
 - `NUXT_OUTBOUND_EMAIL_BINDING` should match the `send_email` binding name in `wrangler.jsonc`.
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` must be a sender address on an Email Service onboarded domain and must be allowed by the binding's `allowed_sender_addresses`.
 - `NUXT_OUTBOUND_EMAIL_FROM_NAME` controls the sender display name.
-- `NUXT_OUTBOUND_EMAIL_REPLY_TO` controls the reply destination for participant-facing notifications.
+- `NUXT_OUTBOUND_EMAIL_REPLY_TO` optionally controls the reply destination for participant-facing notifications. When it is empty, replies go to `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`.
 - The sending domain must use Cloudflare DNS and be onboarded in Cloudflare Email Service before deployed email delivery works. Email Sending requires a Workers Paid plan.
 
 Application decision emails, event outcome emails, and optional Luma guest-status sync use Cloudflare Queues at runtime:
@@ -237,7 +237,6 @@ Each remote environment must provide:
 - `BASE_DOMAIN`
 - `CF_ZONE_NAME`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
-- `NUXT_OUTBOUND_EMAIL_REPLY_TO`
 
 The existing app runtime variables remain the override interface for Auth0, outbound email, queue binding names, retry delays, and optional Luma access. The generator copies those values into the generated Wrangler `vars` block and fails fast when a required deploy value is missing.
 
@@ -283,7 +282,6 @@ Required deployment settings:
 - `CF_ZONE_NAME`
 - `AUTH0_MANAGEMENT_DOMAIN`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
-- `NUXT_OUTBOUND_EMAIL_REPLY_TO`
 
 Deployment defaults and optional resource-name overrides:
 
@@ -315,7 +313,7 @@ Cloudflare Email Service and Queues runtime settings:
 - `NUXT_OUTBOUND_EMAIL_BINDING`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
 - `NUXT_OUTBOUND_EMAIL_FROM_NAME`
-- `NUXT_OUTBOUND_EMAIL_REPLY_TO`
+- `NUXT_OUTBOUND_EMAIL_REPLY_TO` when replies should go somewhere other than `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
 - `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING`
 - `NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS`
 - `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING`

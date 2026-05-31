@@ -130,6 +130,17 @@ describe('deploy Wrangler config generator', () => {
     ])
   })
 
+  test('uses the outbound from email as reply-to when no reply-to override is configured', () => {
+    const input = resolveDeployConfigInput('test', createEnvironment({
+      NUXT_OUTBOUND_EMAIL_FROM_EMAIL: 'notifications@example.com',
+      NUXT_OUTBOUND_EMAIL_REPLY_TO: ''
+    }))
+    const config = buildDeployWranglerConfig(input)
+
+    expect(input.outboundEmailReplyTo).toBe('notifications@example.com')
+    expect(config.vars.NUXT_OUTBOUND_EMAIL_REPLY_TO).toBe('notifications@example.com')
+  })
+
   test('requires environment-local base domain and non-derived metadata', () => {
     expect(() => resolveDeployConfigInput('test', createEnvironment({
       BASE_DOMAIN: ''
