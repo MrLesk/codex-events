@@ -45,7 +45,7 @@ Each environment has its own app hostname; the Auth0 login screen defaults to th
 In the Cloudflare account that will host the platform:
 
 1. Add the domain to Cloudflare DNS and wait until the zone is active.
-2. Configure Cloudflare Email Sending/Routing Service for that domain, and note the sender address you will send from.
+2. Onboard the sending domain to Cloudflare Email Service (**Email Service → Onboard Domain** in the dashboard); Cloudflare adds the required SPF, DKIM, and DMARC records for you. Once the domain is verified you can send from any address on it — you don't configure individual sender addresses.
 
 You do not set up the D1 database, R2 buckets, or Queues yourself — the deploy workflow creates them when they do not already exist. The Cloudflare API token is created later, in the GitHub step (section 4), where it is pasted straight in.
 
@@ -110,11 +110,11 @@ Variable names follow a convention worth knowing:
 
 | Key | Platform | Where to find it |
 | --- | --- | --- |
-| `BASE_DOMAIN` | - | The hostname the app runs on, e.g. `events.example.com` |
 | `CF_ZONE_NAME` | Cloudflare | Your Cloudflare DNS zone — usually the parent domain, e.g. `example.com` |
+| `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Cloudflare | Any address on the domain you onboarded to Cloudflare Email (section 2) — you choose it |
 | `AUTH0_MANAGEMENT_DOMAIN` | Auth0 | The tenant domain from section 3.1, e.g. `your-tenant.eu.auth0.com` |
+| `BASE_DOMAIN` | - | The hostname the app runs on, e.g. `events.example.com` |
 | `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | - | Email of the person who will be the first platform admin |
-| `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Cloudflare | The sender address you verified in Cloudflare Email (section 2) |
 
 Add these only when they apply:
 
@@ -149,16 +149,16 @@ Create a custom Cloudflare API token for the deploy workflow, then paste it into
 
 Cloudflare edit access does not consistently include read access, so keep both levels where shown.
 
-| Scope | Resource | Access |
-| --- | --- | --- |
-| Account | Workers Scripts | Read, Edit |
-| Account | D1 | Read, Edit |
-| Account | Workers R2 Storage | Read, Edit |
-| Account | Queues | Read, Edit |
-| Account | Cloudflare Images | Read, Edit |
-| Zone | Zone | Read |
-| Zone | Workers Routes | Read, Edit |
-| Zone | DNS | Read, Edit |
+| Scope | Resource | Access | Why |
+| --- | --- | --- | --- |
+| Account | Workers Scripts | Read, Edit | Deploy the Worker and upload its secrets |
+| Account | D1 | Read, Edit | Create the D1 database and run migrations |
+| Account | Workers R2 Storage | Read, Edit | Create the R2 buckets for profile and event images |
+| Account | Queues | Read, Edit | Create the email and Luma queues and attach the Worker as their consumer |
+| Account | Cloudflare Images | Read, Edit | Enable the Cloudflare Images binding for protected gallery previews |
+| Zone | Zone | Read | Look up the zone for the route and DNS record |
+| Zone | Workers Routes | Read, Edit | Route your domain to the Worker |
+| Zone | DNS | Read, Edit | Write the Auth0 custom-domain verification record |
 
 Scope the zone permissions to the DNS zone you used for `CF_ZONE_NAME`.
 
