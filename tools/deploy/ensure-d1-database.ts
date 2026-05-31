@@ -1,8 +1,6 @@
 import 'dotenv/config'
 
-import { execFile } from 'node:child_process'
 import { appendFile } from 'node:fs/promises'
-import { promisify } from 'node:util'
 
 import {
   parseDeployTarget,
@@ -10,15 +8,9 @@ import {
   type DeployTarget,
   type EnvironmentValues
 } from './generate-wrangler-config'
+import { createWranglerCommandRunner, type CommandRunner } from './wrangler-command'
 
-const execFileAsync = promisify(execFile)
-
-interface CommandResult {
-  stdout: string
-  stderr: string
-}
-
-export type CommandRunner = (command: string, args: string[]) => Promise<CommandResult>
+export type { CommandRunner } from './wrangler-command'
 
 export interface D1Database {
   name: string
@@ -29,33 +21,6 @@ export interface EnsuredD1Database {
   databaseName: string
   databaseId: string
   created: boolean
-}
-
-async function runCommand(command: string, args: string[]): Promise<CommandResult> {
-  try {
-    const result = await execFileAsync(command, args, {
-      env: process.env,
-      maxBuffer: 10 * 1024 * 1024
-    })
-
-    return {
-      stdout: String(result.stdout),
-      stderr: String(result.stderr)
-    }
-  } catch (error) {
-    if (error && typeof error === 'object') {
-      const output = [
-        'stdout' in error ? String(error.stdout ?? '').trim() : '',
-        'stderr' in error ? String(error.stderr ?? '').trim() : ''
-      ].filter(Boolean).join('\n')
-
-      if (output) {
-        throw new Error(output)
-      }
-    }
-
-    throw error
-  }
 }
 
 function assertGitHubValue(name: string, value: string) {
@@ -124,7 +89,7 @@ export async function ensureDeployD1Database(options: {
   runner?: CommandRunner
 }): Promise<EnsuredD1Database> {
   const environment = options.environment ?? process.env
-  const runner = options.runner ?? runCommand
+  const runner = options.runner ?? createWranglerCommandRunner(environment)
   const databaseName = resolveDeployResourceNames(options.target, environment).d1DatabaseName
   const existingDatabase = findD1DatabaseByName(await listD1Databases(runner), databaseName)
 

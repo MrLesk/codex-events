@@ -1,8 +1,5 @@
 import 'dotenv/config'
 
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
-
 import {
   buildDeployQueueConsumerConfigs,
   getGeneratedWranglerConfigPath,
@@ -12,15 +9,9 @@ import {
   type EnvironmentValues,
   type QueueConsumerConfig
 } from './generate-wrangler-config'
+import { createWranglerCommandRunner, type CommandRunner } from './wrangler-command'
 
-const execFileAsync = promisify(execFile)
-
-interface CommandResult {
-  stdout: string
-  stderr: string
-}
-
-export type CommandRunner = (command: string, args: string[]) => Promise<CommandResult>
+export type { CommandRunner } from './wrangler-command'
 
 export interface ExistingQueueConsumer {
   consumerId: string
@@ -51,33 +42,6 @@ interface CloudflareQueueConsumer {
   consumer_id?: string
   script_name?: string
   type?: string
-}
-
-async function runCommand(command: string, args: string[]): Promise<CommandResult> {
-  try {
-    const result = await execFileAsync(command, args, {
-      env: process.env,
-      maxBuffer: 10 * 1024 * 1024
-    })
-
-    return {
-      stdout: String(result.stdout),
-      stderr: String(result.stderr)
-    }
-  } catch (error) {
-    if (error && typeof error === 'object') {
-      const output = [
-        'stdout' in error ? String(error.stdout ?? '').trim() : '',
-        'stderr' in error ? String(error.stderr ?? '').trim() : ''
-      ].filter(Boolean).join('\n')
-
-      if (output) {
-        throw new Error(output)
-      }
-    }
-
-    throw error
-  }
 }
 
 function readRequiredEnvironmentValue(environment: EnvironmentValues, name: string) {
@@ -203,7 +167,7 @@ export async function reconcileDeployQueueConsumers(options: {
   consumerApi?: QueueConsumerApi
 }) {
   const environment = options.environment ?? process.env
-  const runner = options.runner ?? runCommand
+  const runner = options.runner ?? createWranglerCommandRunner(environment)
   const consumerApi = options.consumerApi ?? createCloudflareQueueConsumerApi(environment)
   const input = resolveDeployConfigInput(options.target, environment)
   const configPath = getGeneratedWranglerConfigPath(options.target)
