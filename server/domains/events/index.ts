@@ -794,15 +794,25 @@ export function buildEventUpdatePayload(
     'requireSubmissionRepositoryUrl',
     'requireSubmissionDemoUrl'
   ] as const
-  const providedHackathonOnlyFields = hackathonOnlyPatchFields.filter(field => field in patch)
+  const changedHackathonOnlyFields = hackathonOnlyPatchFields.filter((field) => {
+    if (!(field in patch)) {
+      return false
+    }
 
-  assertGuard(existingEvent.eventType === 'hackathon' || providedHackathonOnlyFields.length === 0, {
+    if (field === 'tracks') {
+      return patch.tracks !== undefined && patch.tracks.length > 0
+    }
+
+    return patch[field] !== existingEvent[field]
+  })
+
+  assertGuard(existingEvent.eventType === 'hackathon' || changedHackathonOnlyFields.length === 0, {
     code: 'hackathon_event_required',
     message: 'Competition configuration is available only for hackathon events.',
     details: {
       eventId: existingEvent.id,
       eventType: existingEvent.eventType,
-      fields: providedHackathonOnlyFields
+      fields: changedHackathonOnlyFields
     },
     statusCode: 403
   })
@@ -818,6 +828,12 @@ export function buildEventUpdatePayload(
 
   if (normalizedPatch.tracks !== undefined) {
     Reflect.deleteProperty(normalizedPatch, 'tracks')
+  }
+
+  if (existingEvent.eventType !== 'hackathon') {
+    hackathonOnlyPatchFields.forEach((field) => {
+      Reflect.deleteProperty(normalizedPatch, field)
+    })
   }
 
   const nextSlug = patch.slug?.trim()

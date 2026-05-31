@@ -518,6 +518,57 @@ describe('event management utilities', () => {
     })
   })
 
+  test('ignores unchanged competition fields on registration-only event patches', () => {
+    const event = buildEventRecord({
+      eventType: 'meetup',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-23T12:00:01.000Z',
+      maxTeamMembers: 1,
+      blindReviewCount: 1,
+      pitchReviewEnabled: false,
+      blindScoreWeightPercent: 100,
+      pitchScoreWeightPercent: 0,
+      shortlistFinalistCount: 1,
+      requireSubmissionSummary: false,
+      requireSubmissionRepositoryUrl: false,
+      requireSubmissionDemoUrl: false
+    })
+
+    const patch = buildEventUpdatePayload(event, {
+      participantsLimit: 80,
+      tracks: [],
+      submissionOpensAt: event.submissionOpensAt,
+      submissionClosesAt: event.submissionClosesAt,
+      maxTeamMembers: event.maxTeamMembers,
+      blindReviewCount: event.blindReviewCount,
+      pitchReviewEnabled: event.pitchReviewEnabled,
+      blindScoreWeightPercent: event.blindScoreWeightPercent,
+      pitchScoreWeightPercent: event.pitchScoreWeightPercent,
+      shortlistFinalistCount: event.shortlistFinalistCount,
+      requireSubmissionSummary: event.requireSubmissionSummary,
+      requireSubmissionRepositoryUrl: event.requireSubmissionRepositoryUrl,
+      requireSubmissionDemoUrl: event.requireSubmissionDemoUrl
+    })
+
+    expect(patch).toMatchObject({
+      participantsLimit: 80
+    })
+    expect(patch).not.toHaveProperty('tracks')
+    expect(patch).not.toHaveProperty('maxTeamMembers')
+    expect(patch).not.toHaveProperty('blindReviewCount')
+    expect(patch).not.toHaveProperty('requireSubmissionSummary')
+  })
+
+  test('rejects changed competition fields on registration-only event patches', () => {
+    expect(() => buildEventUpdatePayload(buildEventRecord({
+      eventType: 'meetup',
+      maxTeamMembers: 1
+    }), {
+      participantsLimit: 80,
+      maxTeamMembers: 2
+    })).toThrowError(ApiError)
+  })
+
   test('serializes configurable judging fields for internal event responses', () => {
     expect(serializeEvent(buildEventRecord({
       state: 'blind_review',

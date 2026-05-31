@@ -29,8 +29,10 @@ export default defineApiHandler(async (h3Event) => {
     await assertEventSlugAvailable(database, body.slug, event.id)
   }
 
-  if (body.tracks) {
-    await assertEventTrackReplacementAllowed(database, eventId, body.tracks)
+  const replacementTracks = event.eventType === 'hackathon' ? body.tracks : undefined
+
+  if (replacementTracks !== undefined) {
+    await assertEventTrackReplacementAllowed(database, eventId, replacementTracks)
   }
 
   const patch = buildEventUpdatePayload(event, body)
@@ -40,8 +42,8 @@ export default defineApiHandler(async (h3Event) => {
     .set(patch)
     .where(eq(events.id, eventId))
 
-  if (body.tracks) {
-    await replaceEventTracks(database, eventId, body.tracks)
+  if (replacementTracks !== undefined) {
+    await replaceEventTracks(database, eventId, replacementTracks)
   }
 
   await writeAuditLog(database, {

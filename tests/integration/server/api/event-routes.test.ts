@@ -50,6 +50,7 @@ import {
   eventPhotos,
   eventRoleAssignments,
   eventTermsDocuments,
+  eventTracks,
   events,
   judgeAssignments,
   judgeCriterionScores,
@@ -3498,6 +3499,110 @@ describe('TASK-3.5 event CRUD routes', () => {
       reviewedAt: null,
       reviewedByUserId: null
     })
+  })
+
+  test('PATCH /api/events/:eventId saves participant limits for registration-only events with hidden defaults', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'patch', path: '/api/events/:eventId', handler: eventPatchHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|admin',
+        email: 'admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'event_admin',
+        auth0Subject: 'auth0|admin',
+        email: 'admin@example.com',
+        displayName: 'Event Admin'
+      }
+    ])
+    await harness.database.insert(events).values({
+      id: 'event_meetup_patch',
+      eventType: 'meetup',
+      name: 'Patch Meetup',
+      slug: 'patch-meetup',
+      description: 'Registration-only event',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Old Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-23T12:00:01.000Z',
+      state: 'registration_open',
+      maxTeamMembers: 1,
+      participantsLimit: null,
+      blindReviewCount: 1,
+      pitchReviewEnabled: false,
+      blindScoreWeightPercent: 100,
+      pitchScoreWeightPercent: 0,
+      shortlistFinalistCount: 1,
+      requireSubmissionSummary: false,
+      requireSubmissionRepositoryUrl: false,
+      requireSubmissionDemoUrl: false,
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(eventTracks).values({
+      id: 'meetup_track_should_remain',
+      eventId: 'event_meetup_patch',
+      name: 'Hidden Track',
+      description: 'Legacy hidden track',
+      displayOrder: 1,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'role_admin_meetup_patch',
+      eventId: 'event_meetup_patch',
+      userId: 'event_admin',
+      role: 'event_admin',
+      isInJudgePool: false,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+
+    const response = await harness.request('/api/events/event_meetup_patch', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        participantsLimit: 80,
+        tracks: [],
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-23T12:00:01.000Z',
+        maxTeamMembers: 1,
+        blindReviewCount: 1,
+        pitchReviewEnabled: false,
+        blindScoreWeightPercent: 100,
+        pitchScoreWeightPercent: 0,
+        shortlistFinalistCount: 1,
+        requireSubmissionSummary: false,
+        requireSubmissionRepositoryUrl: false,
+        requireSubmissionDemoUrl: false
+      })
+    })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        eventType: 'meetup',
+        participantsLimit: 80,
+        maxTeamMembers: 1
+      }
+    })
+
+    const tracks = await harness.database.query.eventTracks.findMany({
+      where: eq(eventTracks.eventId, 'event_meetup_patch')
+    })
+
+    expect(tracks).toHaveLength(1)
   })
 
   test('PATCH /api/events/:eventId rewrites managed image URLs when slug changes', async () => {
