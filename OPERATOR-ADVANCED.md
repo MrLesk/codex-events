@@ -92,6 +92,8 @@ Optional secrets:
 
 | Secret | Value |
 | --- | --- |
+| `NUXT_AUTH0_SESSION_SECRET` | Override for the generated Auth0 session secret. Defaults to a stable value derived from `NUXT_AUTH0_CLIENT_SECRET` |
+| `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` | Override for the generated account-link challenge secret shared by the Worker and Auth0 Action. Defaults to a stable value derived from `NUXT_AUTH0_CLIENT_SECRET` |
 | `NUXT_AUTH0_AUDIENCE` | Auth0 API audience when the application requests one |
 | `NUXT_LUMA_API_KEY` | Luma API key when events use Luma sync |
 
@@ -126,12 +128,10 @@ Required dev secrets:
 | `CLOUDFLARE_API_TOKEN` | Cloudflare API token |
 | `NUXT_AUTH0_CLIENT_ID` | Dev Auth0 Regular Web Application client ID |
 | `NUXT_AUTH0_CLIENT_SECRET` | Dev Auth0 Regular Web Application client secret |
-| `NUXT_AUTH0_SESSION_SECRET` | Output of `openssl rand -hex 64` |
-| `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` | Output of `openssl rand -hex 32` |
 | `AUTH0_MGMT_CLIENT_ID` | Auth0 Management API application client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | Auth0 Management API application client secret |
 
-Set `NUXT_AUTH0_AUDIENCE` only when the dev Auth0 application uses a non-empty audience. Set `NUXT_LUMA_API_KEY` only when dev events use Luma sync.
+The shared dev workflow derives the Auth0 session and account-link challenge secrets from `NUXT_AUTH0_CLIENT_SECRET` when explicit override secrets are omitted. Set `NUXT_AUTH0_AUDIENCE` only when the dev Auth0 application uses a non-empty audience. Set `NUXT_LUMA_API_KEY` only when dev events use Luma sync.
 
 ## BDD Environment
 
@@ -151,7 +151,6 @@ Required BDD secrets:
 | `NUXT_AUTH0_DOMAIN` | Auth0 login hostname used by the BDD app |
 | `NUXT_AUTH0_CLIENT_ID` | BDD Auth0 Regular Web Application client ID |
 | `NUXT_AUTH0_CLIENT_SECRET` | BDD Auth0 Regular Web Application client secret |
-| `NUXT_AUTH0_SESSION_SECRET` | Output of `openssl rand -hex 64` |
 | `AUTH0_MGMT_CLIENT_ID` | Auth0 Management API application client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | Auth0 Management API application client secret |
 | `E2E_PLATFORM_ADMIN_EMAIL` | Stable platform-admin persona email |
@@ -163,7 +162,7 @@ Required BDD secrets:
 | `E2E_REGULAR_USER_EMAIL` | Stable regular-user persona email |
 | `E2E_REGULAR_USER_PASSWORD` | Stable regular-user persona password |
 
-Set `NUXT_AUTH0_AUDIENCE` only when the BDD Auth0 application uses a non-empty audience.
+The BDD workflow derives `NUXT_AUTH0_SESSION_SECRET` from `NUXT_AUTH0_CLIENT_SECRET` when the explicit secret is omitted. Set `NUXT_AUTH0_AUDIENCE` only when the BDD Auth0 application uses a non-empty audience.
 
 ## Manual Deployment Commands
 

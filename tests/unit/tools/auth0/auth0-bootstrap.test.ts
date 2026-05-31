@@ -13,6 +13,7 @@ import {
   resolveConfig,
   runOptionalPaidAuth0LoginCustomization
 } from '../../../../tools/auth0/auth0-bootstrap'
+import { deriveAuth0GeneratedSecret } from '../../../../tools/auth0/generated-secrets'
 
 function createFixtureJwt(payload: Record<string, unknown>) {
   return [
@@ -28,6 +29,7 @@ function createAuth0BootstrapEnvironment(overrides: Record<string, string> = {})
     AUTH0_MGMT_CLIENT_ID: 'management-client-id',
     AUTH0_MGMT_CLIENT_SECRET: 'management-client-secret',
     NUXT_AUTH0_CLIENT_ID: 'app-client-id',
+    NUXT_AUTH0_CLIENT_SECRET: 'app-client-secret',
     AUTH0_APP_BASE_URL: 'https://dev.codex-events.com',
     AUTH0_CUSTOM_DOMAIN: 'auth.dev.codex-events.com',
     AUTH0_DATABASE_CONNECTION_NAME: 'Username-Password-Authentication',
@@ -144,6 +146,23 @@ describe('auth0 bootstrap config', () => {
       'MANAGEMENT_API_CLIENT_ID',
       'MANAGEMENT_API_CLIENT_SECRET'
     ])
+  })
+
+  test('derives the account-link challenge secret from the Auth0 app client secret when omitted', () => {
+    const config = resolveConfig(createAuth0BootstrapEnvironment({
+      AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ''
+    }))
+
+    expect(config.accountLinkChallengeSecret).toBe(
+      deriveAuth0GeneratedSecret('app-client-secret', 'account-link-challenge')
+    )
+  })
+
+  test('rejects mismatched account-link challenge secret overrides', () => {
+    expect(() => resolveConfig(createAuth0BootstrapEnvironment({
+      AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: 'action-secret',
+      NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: 'runtime-secret'
+    }))).toThrow('must match')
   })
 
   test('builds canonical Universal Login template with theme-colored links', () => {

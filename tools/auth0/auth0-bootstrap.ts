@@ -1,5 +1,7 @@
 import 'dotenv/config'
 
+import { resolveAuth0AccountLinkChallengeSecret } from './generated-secrets'
+
 type CommandMode = 'apply' | 'check'
 
 interface TenantConfig {
@@ -442,13 +444,14 @@ Environment variables:
 - AUTH0_MGMT_CLIENT_ID
 - AUTH0_MGMT_CLIENT_SECRET
 - NUXT_AUTH0_CLIENT_ID
+- NUXT_AUTH0_CLIENT_SECRET (required when AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET is omitted)
 - AUTH0_APP_DISPLAY_NAME (default: ${defaultAuth0AppDisplayName})
 - AUTH0_APP_BASE_URL
 - AUTH0_BDD_APP_BASE_URL (defaults to ${defaultLocalBddAppBaseUrl} for localhost app configs)
 - AUTH0_LOGIN_URI (required when AUTH0_APP_BASE_URL is not https; must be https)
 - AUTH0_CUSTOM_DOMAIN (default: auth.<AUTH0_APP_BASE_URL host> when AUTH0_APP_BASE_URL is https)
 - AUTH0_DATABASE_CONNECTION_NAME (default: ${defaultAuth0DatabaseConnectionName})
-- AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET
+- AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET (optional; defaults from NUXT_AUTH0_CLIENT_SECRET)
 - AUTH0_TERMS_URL (default: <AUTH0_APP_BASE_URL>/terms-and-conditions)
 - AUTH0_PRIVACY_URL (default: <AUTH0_APP_BASE_URL>/privacy-policy)
 - AUTH0_POST_LOGIN_ACTION_NAME (default: ${defaultActionName})
@@ -703,10 +706,7 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     appBaseUrl: normalizedAppBaseUrl,
     bddAppBaseUrl: normalizedBddAppBaseUrl,
     databaseConnectionName: firstDefinedValue(environment.AUTH0_DATABASE_CONNECTION_NAME, defaultAuth0DatabaseConnectionName),
-    accountLinkChallengeSecret: requireConfigField(
-      environment.AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET?.trim() ?? '',
-      'AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET'
-    ),
+    accountLinkChallengeSecret: resolveAuth0AccountLinkChallengeSecret(environment),
     loginUri: normalizeHttpsUrlString(
       requireConfigField(
         firstDefinedValue(environment.AUTH0_LOGIN_URI, inferredLoginUri),

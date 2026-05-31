@@ -44,7 +44,6 @@ jobs:
       AUTH0_DATABASE_CONNECTION_NAME: ${{ vars.NUXT_AUTH0_DATABASE_CONNECTION_NAME || 'Username-Password-Authentication' }}
       AUTH0_MGMT_CLIENT_ID: ${{ secrets.AUTH0_MGMT_CLIENT_ID }}
       AUTH0_MGMT_CLIENT_SECRET: ${{ secrets.AUTH0_MGMT_CLIENT_SECRET }}
-      AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ${{ secrets.NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET }}
       # Auth0 runtime settings.
       NUXT_AUTH0_DOMAIN: ${{ vars.AUTH0_CUSTOM_DOMAIN || format('auth.{0}', vars.BASE_DOMAIN) }}
       NUXT_AUTH0_APP_BASE_URL: https://${{ vars.BASE_DOMAIN }}
@@ -137,27 +136,7 @@ jobs:
 
       - name: Upload production Worker secrets
         run: |
-          jq -n \
-            --arg auth0ClientId "$NUXT_AUTH0_CLIENT_ID" \
-            --arg auth0ClientSecret "$NUXT_AUTH0_CLIENT_SECRET" \
-            --arg auth0SessionSecret "$NUXT_AUTH0_SESSION_SECRET" \
-            --arg auth0Audience "$NUXT_AUTH0_AUDIENCE" \
-            --arg accountLinkChallengeSecret "$NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET" \
-            --arg lumaApiKey "$NUXT_LUMA_API_KEY" \
-            '{
-              NUXT_AUTH0_CLIENT_ID: $auth0ClientId,
-              NUXT_AUTH0_CLIENT_SECRET: $auth0ClientSecret,
-              NUXT_AUTH0_SESSION_SECRET: $auth0SessionSecret,
-              NUXT_AUTH0_AUDIENCE: $auth0Audience,
-              NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: $accountLinkChallengeSecret,
-              NUXT_LUMA_API_KEY: $lumaApiKey
-            }' > .wrangler-production-secrets.json
-          if [ -f .wrangler-production-luma-webhook-secret.json ]; then
-            jq -s '.[0] * .[1]' \
-              .wrangler-production-secrets.json \
-              .wrangler-production-luma-webhook-secret.json > .wrangler-production-secrets.merged.json
-            mv .wrangler-production-secrets.merged.json .wrangler-production-secrets.json
-          fi
+          bun tools/deploy/write-worker-secrets.ts .wrangler-production-secrets.json --merge .wrangler-production-luma-webhook-secret.json
           bunx wrangler secret bulk .wrangler-production-secrets.json --config .wrangler/generated/production.jsonc
           rm -f .wrangler-production-secrets.json .wrangler-production-luma-webhook-secret.json
 

@@ -18,12 +18,12 @@ Required Auth0 runtime variables:
 NUXT_AUTH0_DOMAIN=your-tenant.auth0.com
 NUXT_AUTH0_CLIENT_ID=your-auth0-client-id
 NUXT_AUTH0_CLIENT_SECRET=your-auth0-client-secret
-NUXT_AUTH0_SESSION_SECRET=$(openssl rand -hex 64)
+NUXT_AUTH0_SESSION_SECRET=replace-with-generated-session-secret
 NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
 NUXT_AUTH0_BDD_APP_BASE_URL=http://localhost:3100
 NUXT_AUTH0_AUDIENCE=
 NUXT_AUTH0_DATABASE_CONNECTION_NAME=Username-Password-Authentication
-NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET=$(openssl rand -hex 32)
+NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET=replace-with-generated-account-link-secret
 NUXT_FIRST_PLATFORM_ADMIN_EMAIL=
 NUXT_DATABASE_BINDING=DB
 NUXT_PROFILE_ICONS_BINDING=PROFILE_ICONS
@@ -45,6 +45,13 @@ NUXT_LUMA_QUEUE_BINDING=APPLICATION_LUMA_SYNC_QUEUE
 NUXT_LUMA_QUEUE_NAME=codex-events-dev-application-luma-sync
 NUXT_LUMA_RETRY_DELAY_SECONDS=120
 NUXT_LUMA_WEBHOOK_SECRET=
+```
+
+Generate local-only Auth0 secret values with Bun:
+
+```bash
+bun -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(64).toString('hex'))"
+bun -e "import { randomBytes } from 'node:crypto'; console.log(randomBytes(32).toString('hex'))"
 ```
 
 Local Auth0 dashboard settings:
@@ -80,7 +87,7 @@ These commands enforce required Auth0 tenant configuration:
 The checked-in Auth0 bootstrap automation does not currently create or manage the GitHub social connection. Configure that connection in Auth0 separately when you want `/auth/login/github` enabled in a deployment.
 If a tenant lacks the paid Universal Login page-template feature, the bootstrap now warns and skips page-template-dependent login prompt customization instead of failing outright. Custom domains, branding, client URLs, and Actions remain required and still fail on drift or API errors.
 
-The script reads explicit tenant automation variables: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `NUXT_AUTH0_CLIENT_ID`, `AUTH0_APP_BASE_URL`, and `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` are required. `AUTH0_CUSTOM_DOMAIN` defaults to `auth.<AUTH0_APP_BASE_URL host>` when `AUTH0_APP_BASE_URL` is HTTPS. `AUTH0_DATABASE_CONNECTION_NAME` defaults to `Username-Password-Authentication`.
+The script reads explicit tenant automation variables: `AUTH0_MANAGEMENT_DOMAIN`, `AUTH0_MGMT_CLIENT_ID`, `AUTH0_MGMT_CLIENT_SECRET`, `NUXT_AUTH0_CLIENT_ID`, and `AUTH0_APP_BASE_URL` are required. `AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` defaults to the same generated value as `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` when it is omitted. `AUTH0_CUSTOM_DOMAIN` defaults to `auth.<AUTH0_APP_BASE_URL host>` when `AUTH0_APP_BASE_URL` is HTTPS. `AUTH0_DATABASE_CONNECTION_NAME` defaults to `Username-Password-Authentication`.
 `AUTH0_LOGIN_URI` is mandatory whenever `AUTH0_APP_BASE_URL` is not HTTPS, and must always be an HTTPS URL.
 When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-events-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 
@@ -324,11 +331,9 @@ The GitHub `dev` environment must provide these secrets:
 - `CLOUDFLARE_API_TOKEN`
 - `NUXT_AUTH0_CLIENT_ID`
 - `NUXT_AUTH0_CLIENT_SECRET`
-- `NUXT_AUTH0_SESSION_SECRET`
 - `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
 - `AUTH0_MGMT_CLIENT_ID`
 - `AUTH0_MGMT_CLIENT_SECRET`
-- `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
 - `NUXT_LUMA_API_KEY` when any dev event uses Luma sync
 
 The GitHub `bdd` environment must provide these variables:
@@ -341,7 +346,6 @@ The GitHub `bdd` environment must provide these secrets:
 - `NUXT_AUTH0_DOMAIN`
 - `NUXT_AUTH0_CLIENT_ID`
 - `NUXT_AUTH0_CLIENT_SECRET`
-- `NUXT_AUTH0_SESSION_SECRET`
 - `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
 - `AUTH0_MGMT_CLIENT_ID`
 - `AUTH0_MGMT_CLIENT_SECRET`
@@ -363,11 +367,9 @@ The GitHub `production` environment must provide these secrets before a release 
 - `CLOUDFLARE_API_TOKEN`
 - `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
 - `NUXT_AUTH0_CLIENT_SECRET`
-- `NUXT_AUTH0_SESSION_SECRET`
-- `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`
 - `NUXT_LUMA_API_KEY` when production events use Luma sync
 
-The generated Wrangler config supplies deploy-time Cloudflare bindings and non-secret runtime vars. GitHub workflows upload Worker secrets from the relevant GitHub environment plus the generated `NUXT_LUMA_WEBHOOK_SECRET` when Luma reconciliation runs. GitHub environments do not need a stored `NUXT_LUMA_WEBHOOK_SECRET`.
+The generated Wrangler config supplies deploy-time Cloudflare bindings and non-secret runtime vars. GitHub workflows upload Worker secrets from the relevant GitHub environment plus generated defaults for `NUXT_AUTH0_SESSION_SECRET` and `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` when explicit override secrets are omitted. They also upload the generated `NUXT_LUMA_WEBHOOK_SECRET` when Luma reconciliation runs. GitHub environments do not need a stored `NUXT_LUMA_WEBHOOK_SECRET`.
 
 Cloudflare tokens used by Auth0 custom-domain automation also need the zone permissions listed in `OPERATOR.md` for `DEPLOY_CF_ZONE_NAME`.
 

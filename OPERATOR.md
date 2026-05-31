@@ -12,8 +12,7 @@ You need:
 - a Cloudflare account with an active DNS zone for the platform domain and a Workers plan suitable for production traffic;
 - a domain managed by Cloudflare DNS. The domain can be registered somewhere else;
 - Cloudflare access to Workers, D1, R2, Images, Queues, Cron Triggers, DNS, and Email Service;
-- an Auth0 account. The Auth0 free plan is enough for the application flow, but Auth0 may require billing verification before it creates a custom domain;
-- local access to `openssl` or another secure random secret generator.
+- an Auth0 account. The Auth0 free plan is enough for the application flow, but Auth0 may require billing verification before it creates a custom domain.
 
 Example hostnames used below:
 
@@ -166,8 +165,8 @@ Add these production environment secrets:
 | `AUTH0_MGMT_CLIENT_ID` | Auth0 Management API application client ID from step 4 | Client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | Auth0 Management API application client secret from step 4 | Client secret |
 | `NUXT_AUTH0_CLIENT_SECRET` | Auth0 Regular Web Application client secret from step 3 | Client secret |
-| `NUXT_AUTH0_SESSION_SECRET` | Output of `openssl rand -hex 64` | Generated secret |
-| `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` | Output of `openssl rand -hex 32` | Generated secret |
+
+The deploy workflow derives and uploads `NUXT_AUTH0_SESSION_SECRET` and `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` automatically from `NUXT_AUTH0_CLIENT_SECRET`. Set explicit values only when you need controlled secret rotation; see [OPERATOR-ADVANCED.md](OPERATOR-ADVANCED.md).
 
 Set these secrets only when the deployment uses them:
 
