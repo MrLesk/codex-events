@@ -1,4 +1,4 @@
-name: release-production
+name: deploy-production
 
 on:
   release:
@@ -6,10 +6,10 @@ on:
       - published
 
 jobs:
-  release-production:
+  deploy-production:
     runs-on: ubuntu-latest
     concurrency:
-      group: release-production
+      group: deploy-production
       cancel-in-progress: false
     permissions:
       contents: write

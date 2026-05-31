@@ -181,7 +181,7 @@ For resource-name overrides, custom sender display names, shared dev, or BDD con
 
 Publish a GitHub Release from the commit you want to deploy.
 
-The `release-production` workflow:
+The `deploy-production` workflow:
 
 1. configures the Auth0 custom domain and Cloudflare DNS verification record;
 2. creates or finds the production D1 database;
