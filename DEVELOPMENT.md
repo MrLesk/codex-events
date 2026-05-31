@@ -269,7 +269,7 @@ bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webh
 
 ## GitHub Deployments
 
-Pushes to `main` publish the test environment through `.github/workflows/main.yml` after the fast checks pass. Production publishes from GitHub Releases through `.github/workflows/deploy-production.yml`.
+Pushes to `main` publish the test environment through `.github/workflows/deploy-test.yml` after the fast checks pass. Production publishes from GitHub Releases through `.github/workflows/deploy-production.yml`.
 
 The GitHub `test` and `production` environments should store only environment-local deployment metadata as variables and credentials as secrets. Push-based test deployment is optional for forks and unconfigured environments: if `BASE_DOMAIN` is empty, the deploy job exits cleanly before reading the rest of the deployment metadata.
 
@@ -513,4 +513,4 @@ The authenticated Playwright setup project writes reusable session-state artifac
 
 The authenticated BDD suite now covers the backend workflow surface delivered by `TASK-3.5` through `TASK-3.9` and the Milestone 1 UI flows delivered by `TASK-4.*`, including actor/session reads, public discovery, admin configuration, application and team formation, submissions, judging, shortlist and winners, prize redemption, audit access, and destructive account deletion.
 
-Keep `.github/workflows/main.yml`, this document, and `docs/testing-strategy.md` aligned when the required validation surfaces change.
+Keep `.github/workflows/deploy-test.yml`, this document, and `docs/testing-strategy.md` aligned when the required validation surfaces change.
