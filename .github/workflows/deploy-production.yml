@@ -24,7 +24,7 @@ jobs:
       DEPLOY_RESOURCE_PREFIX: ${{ vars.DEPLOY_RESOURCE_PREFIX }}
       BASE_DOMAIN: ${{ vars.BASE_DOMAIN }}
       # Cloudflare resource metadata overrides.
-      DEPLOY_CF_ZONE_NAME: ${{ vars.DEPLOY_CF_ZONE_NAME }}
+      CF_ZONE_NAME: ${{ vars.CF_ZONE_NAME }}
       DEPLOY_CF_WORKER_NAME: ${{ vars.DEPLOY_CF_WORKER_NAME }}
       DEPLOY_CF_D1_DATABASE_NAME: ${{ vars.DEPLOY_CF_D1_DATABASE_NAME }}
       DEPLOY_CF_PROFILE_ICONS_BUCKET: ${{ vars.DEPLOY_CF_PROFILE_ICONS_BUCKET }}

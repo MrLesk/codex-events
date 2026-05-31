@@ -218,7 +218,7 @@ For the selected target, the generator derives:
 
 `DEPLOY_ENV_NAME` defaults to `test` for the test target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
 
-Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `AUTH0_CUSTOM_DOMAIN` is an optional override and defaults to `auth.<BASE_DOMAIN>`. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
+Keep `CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `AUTH0_CUSTOM_DOMAIN` is an optional override and defaults to `auth.<BASE_DOMAIN>`. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
 
 - `DEPLOY_CF_WORKER_NAME`
 - `DEPLOY_CF_D1_DATABASE_NAME`
@@ -235,7 +235,7 @@ This URL variable is an optional override:
 Each remote environment must provide:
 
 - `BASE_DOMAIN`
-- `DEPLOY_CF_ZONE_NAME`
+- `CF_ZONE_NAME`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
 - `NUXT_OUTBOUND_EMAIL_REPLY_TO`
 
@@ -278,7 +278,7 @@ Use these environment variable groups:
 Required deployment settings:
 
 - `BASE_DOMAIN`
-- `DEPLOY_CF_ZONE_NAME`
+- `CF_ZONE_NAME`
 - `AUTH0_MANAGEMENT_DOMAIN`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
 - `NUXT_OUTBOUND_EMAIL_REPLY_TO`
@@ -371,7 +371,7 @@ The GitHub `production` environment must provide these secrets before a release 
 
 The generated Wrangler config supplies deploy-time Cloudflare bindings and non-secret runtime vars. GitHub workflows upload Worker secrets from the relevant GitHub environment plus generated defaults for `NUXT_AUTH0_SESSION_SECRET` and `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` when explicit override secrets are omitted. They also upload the generated `NUXT_LUMA_WEBHOOK_SECRET` when Luma reconciliation runs. GitHub environments do not need a stored `NUXT_LUMA_WEBHOOK_SECRET`.
 
-Cloudflare tokens used by Auth0 custom-domain automation also need the zone permissions listed in `OPERATOR.md` for `DEPLOY_CF_ZONE_NAME`.
+Cloudflare tokens used by Auth0 custom-domain automation also need the zone permissions listed in `OPERATOR.md` for `CF_ZONE_NAME`.
 
 The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` currently needs these Auth0 Management API scopes:
 

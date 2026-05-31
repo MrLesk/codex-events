@@ -320,7 +320,7 @@ export function resolveDeployConfigInput(
     auth0CustomDomain,
     firstPlatformAdminEmail: readOptionalEnvironmentValue(environment, 'NUXT_FIRST_PLATFORM_ADMIN_EMAIL'),
     lumaWebhookUrl,
-    zoneName: readRequiredEnvironmentValue(environment, 'DEPLOY_CF_ZONE_NAME'),
+    zoneName: readRequiredEnvironmentValue(environment, 'CF_ZONE_NAME'),
     workerName: resolveResourceName(environment, 'DEPLOY_CF_WORKER_NAME', resourceBaseName),
     d1DatabaseName,
     d1DatabaseId: readRequiredEnvironmentValue(environment, 'DEPLOY_RESOLVED_D1_DATABASE_ID'),

@@ -25,7 +25,7 @@ Examples:
 | Test | `test` | `codex-events` | `codex-events-test` |
 | Preview | `preview` | `codex-events` | `codex-events-preview` |
 
-Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `AUTH0_CUSTOM_DOMAIN` is optional and defaults to `auth.<BASE_DOMAIN>`.
+Keep `CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `AUTH0_CUSTOM_DOMAIN` is optional and defaults to `auth.<BASE_DOMAIN>`.
 
 ## Advanced Production Variables
 
@@ -112,7 +112,7 @@ Required test variables:
 | Variable | Value |
 | --- | --- |
 | `BASE_DOMAIN` | Test app hostname |
-| `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name |
+| `CF_ZONE_NAME` | Cloudflare DNS zone name |
 | `AUTH0_MANAGEMENT_DOMAIN` | Test Auth0 tenant hostname |
 | `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | First platform admin email for the test instance |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified test sender address |

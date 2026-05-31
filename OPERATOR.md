@@ -42,7 +42,7 @@ Cloudflare edit access does not consistently include read access, so keep both a
 | Zone | Workers Routes | Read, Edit |
 | Zone | DNS | Read, Edit |
 
-Scope the account permissions to the Cloudflare account that owns the Worker, D1 database, R2 buckets, Images binding, and Queues. Scope the zone permissions to the DNS zone name you use in `DEPLOY_CF_ZONE_NAME`.
+Scope the account permissions to the Cloudflare account that owns the Worker, D1 database, R2 buckets, Images binding, and Queues. Scope the zone permissions to the DNS zone name you use in `CF_ZONE_NAME`.
 
 The production workflow creates the D1 database, R2 buckets, and Cloudflare Queues when they do not already exist.
 
@@ -137,7 +137,7 @@ Add these production environment variables:
 | Variable | Source | Example |
 | --- | --- | --- |
 | `BASE_DOMAIN` | Production app hostname | `events.example.com` |
-| `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name from step 1 | `example.com` |
+| `CF_ZONE_NAME` | Cloudflare DNS zone name from step 1 | `example.com` |
 | `AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant domain from step 2 | `your-tenant.eu.auth0.com` |
 | `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | Email address for the first platform admin | `admin@example.com` |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified Cloudflare Email sender from step 1 | `events@example.com` |
