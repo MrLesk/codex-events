@@ -59,7 +59,7 @@ Example:
 your-tenant.eu.auth0.com
 ```
 
-The default Auth0 login hostname is `auth.<DEPLOY_BASE_DOMAIN>`.
+The default Auth0 login hostname is `auth.<BASE_DOMAIN>`.
 
 Example:
 
@@ -69,7 +69,7 @@ auth.events.example.com
 
 The dev and production deploy workflows configure the Auth0 custom domain, write the required Cloudflare DNS CNAME record as DNS-only, wait for Auth0 verification, and then use that hostname for login.
 
-Set `DEPLOY_AUTH0_CUSTOM_DOMAIN` only when the login hostname is not `auth.<DEPLOY_BASE_DOMAIN>`. If the custom domain already exists, keep using the same hostname. In Cloudflare DNS, the Auth0 CNAME must stay DNS-only, not proxied.
+Set `AUTH0_CUSTOM_DOMAIN` only when the login hostname is not `auth.<BASE_DOMAIN>`. If the custom domain already exists, keep using the same hostname. In Cloudflare DNS, the Auth0 CNAME must stay DNS-only, not proxied.
 
 ## 3. Configure The Auth0 Application
 
@@ -137,18 +137,18 @@ Add these production environment variables:
 
 | Variable | Source | Example |
 | --- | --- | --- |
-| `DEPLOY_BASE_DOMAIN` | Production app hostname | `events.example.com` |
+| `BASE_DOMAIN` | Production app hostname | `events.example.com` |
 | `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name from step 1 | `example.com` |
 | `AUTH0_MANAGEMENT_DOMAIN` | Auth0 tenant domain from step 2 | `your-tenant.eu.auth0.com` |
 | `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | Email address for the first platform admin | `admin@example.com` |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified Cloudflare Email sender from step 1 | `events@example.com` |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to address for outbound email | `support@example.com` |
 
-If the Auth0 login hostname is not `auth.<DEPLOY_BASE_DOMAIN>`, also set:
+If the Auth0 login hostname is not `auth.<BASE_DOMAIN>`, also set:
 
 | Variable | Source | Example |
 | --- | --- | --- |
-| `DEPLOY_AUTH0_CUSTOM_DOMAIN` | Auth0 login hostname override | `auth.example.com` |
+| `AUTH0_CUSTOM_DOMAIN` | Auth0 login hostname override | `auth.example.com` |
 
 If the Auth0 database connection is not named `Username-Password-Authentication`, also set:
 
@@ -198,7 +198,7 @@ If Auth0 rejects custom-domain creation because the tenant needs billing verific
 
 ## 7. Create The First Platform Admin
 
-Open `https://<DEPLOY_BASE_DOMAIN>/account/platform-settings?tab=legal` and sign in with the email address configured in `NUXT_FIRST_PLATFORM_ADMIN_EMAIL`.
+Open `https://<BASE_DOMAIN>/account/platform-settings?tab=legal` and sign in with the email address configured in `NUXT_FIRST_PLATFORM_ADMIN_EMAIL`.
 
 When the deployment has no current Privacy Policy or Platform Terms yet, account registration shows the legal-content setup state. Create the setup account there. The application grants platform-admin access automatically when no active platform admin exists.
 
@@ -231,11 +231,11 @@ Use the platform admin workspace to:
 
 Check:
 
-- `https://<DEPLOY_BASE_DOMAIN>` loads.
+- `https://<BASE_DOMAIN>` loads.
 - `/privacy-policy` shows your Privacy Policy.
 - `/terms-and-conditions` shows your Platform Terms.
 - `/imprint` shows your operator information.
-- `/auth/login` opens Auth0 on `https://auth.<DEPLOY_BASE_DOMAIN>` or the configured `DEPLOY_AUTH0_CUSTOM_DOMAIN`.
+- `/auth/login` opens Auth0 on `https://auth.<BASE_DOMAIN>` or the configured `AUTH0_CUSTOM_DOMAIN`.
 - The first platform admin can access `/account/platform-settings?tab=platform-admins`.
 - The first platform admin can create an event.
 

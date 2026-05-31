@@ -10,7 +10,7 @@ import {
 
 function createEnvironment(overrides: Record<string, string | undefined> = {}) {
   return {
-    DEPLOY_BASE_DOMAIN: 'events.example.com',
+    BASE_DOMAIN: 'events.example.com',
     DEPLOY_CF_ZONE_NAME: 'example.com',
     DEPLOY_RESOLVED_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
     NUXT_OUTBOUND_EMAIL_FROM_EMAIL: 'notifications@example.com',
@@ -28,7 +28,7 @@ describe('deploy Wrangler config generator', () => {
 
   test('generates dev config from environment-local domain and derived resource names', () => {
     const input = resolveDeployConfigInput('dev', createEnvironment({
-      DEPLOY_BASE_DOMAIN: 'dev.example.com',
+      BASE_DOMAIN: 'dev.example.com',
       NUXT_FIRST_PLATFORM_ADMIN_EMAIL: 'admin@example.com'
     }))
     const config = buildDeployWranglerConfig(input)
@@ -77,8 +77,8 @@ describe('deploy Wrangler config generator', () => {
 
   test('builds desired Queue consumer settings from deploy config input', () => {
     const input = resolveDeployConfigInput('dev', createEnvironment({
-      DEPLOY_BASE_DOMAIN: 'dev.example.com',
-      DEPLOY_AUTH0_CUSTOM_DOMAIN: 'auth.dev.example.com',
+      BASE_DOMAIN: 'dev.example.com',
+      AUTH0_CUSTOM_DOMAIN: 'auth.dev.example.com',
       NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS: '60',
       NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS: '90',
       NUXT_LUMA_RETRY_DELAY_SECONDS: '180'
@@ -132,8 +132,8 @@ describe('deploy Wrangler config generator', () => {
 
   test('requires environment-local base domain and non-derived metadata', () => {
     expect(() => resolveDeployConfigInput('dev', createEnvironment({
-      DEPLOY_BASE_DOMAIN: ''
-    }))).toThrow('DEPLOY_BASE_DOMAIN is required')
+      BASE_DOMAIN: ''
+    }))).toThrow('BASE_DOMAIN is required')
 
     expect(() => resolveDeployConfigInput('production', createEnvironment({
       DEPLOY_RESOLVED_D1_DATABASE_ID: ''
@@ -171,7 +171,7 @@ describe('deploy Wrangler config generator', () => {
     const input = resolveDeployConfigInput('production', createEnvironment({
       DEPLOY_ENV_NAME: 'preview',
       DEPLOY_RESOURCE_PREFIX: 'custom-events',
-      DEPLOY_AUTH0_CUSTOM_DOMAIN: 'login.example.com',
+      AUTH0_CUSTOM_DOMAIN: 'login.example.com',
       DEPLOY_LUMA_WEBHOOK_URL: 'https://hooks.example.com/luma/',
       DEPLOY_CF_WORKER_NAME: 'custom-worker',
       DEPLOY_CF_D1_DATABASE_NAME: 'custom-d1',

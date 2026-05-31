@@ -200,7 +200,7 @@ The generated files are written under `.wrangler/generated/` and are used by:
 - `bun run deploy:dev`
 - `bun run deploy:production`
 
-Each environment provides its own `DEPLOY_BASE_DOMAIN`. The generator never derives `dev.*`, `prod.*`, or any other hostname from an environment name.
+Each environment provides its own `BASE_DOMAIN`. The generator never derives `dev.*`, `prod.*`, or any other hostname from an environment name.
 
 For the selected target, the generator derives:
 
@@ -211,7 +211,7 @@ For the selected target, the generator derives:
 
 `DEPLOY_ENV_NAME` defaults to `dev` for the dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
 
-Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `DEPLOY_AUTH0_CUSTOM_DOMAIN` is an optional override and defaults to `auth.<DEPLOY_BASE_DOMAIN>`. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
+Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `AUTH0_CUSTOM_DOMAIN` is an optional override and defaults to `auth.<BASE_DOMAIN>`. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `DEPLOY_CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
 
 - `DEPLOY_CF_WORKER_NAME`
 - `DEPLOY_CF_D1_DATABASE_NAME`
@@ -227,7 +227,7 @@ This URL variable is an optional override:
 
 Each remote environment must provide:
 
-- `DEPLOY_BASE_DOMAIN`
+- `BASE_DOMAIN`
 - `DEPLOY_CF_ZONE_NAME`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
 - `NUXT_OUTBOUND_EMAIL_REPLY_TO`
@@ -264,13 +264,13 @@ bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webh
 
 Pushes to `main` publish the dev environment through `.github/workflows/ci.yml` after the fast CI checks pass. Production publishes from GitHub Releases through `.github/workflows/release-production.yml`.
 
-The GitHub `dev` and `production` environments should store only environment-local deployment metadata as variables and credentials as secrets. Push-based dev deployment is optional for forks and unconfigured environments: if `DEPLOY_BASE_DOMAIN` is empty, the deploy job exits cleanly before reading the rest of the deployment metadata.
+The GitHub `dev` and `production` environments should store only environment-local deployment metadata as variables and credentials as secrets. Push-based dev deployment is optional for forks and unconfigured environments: if `BASE_DOMAIN` is empty, the deploy job exits cleanly before reading the rest of the deployment metadata.
 
 Use these environment variable groups:
 
 Required deployment settings:
 
-- `DEPLOY_BASE_DOMAIN`
+- `BASE_DOMAIN`
 - `DEPLOY_CF_ZONE_NAME`
 - `AUTH0_MANAGEMENT_DOMAIN`
 - `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
@@ -291,7 +291,7 @@ Deployment defaults and optional resource-name overrides:
 Auth0 tenant automation settings:
 
 - `AUTH0_APP_DISPLAY_NAME`
-- `DEPLOY_AUTH0_CUSTOM_DOMAIN` when the Auth0 login hostname is not `auth.<DEPLOY_BASE_DOMAIN>`
+- `AUTH0_CUSTOM_DOMAIN` when the Auth0 login hostname is not `auth.<BASE_DOMAIN>`
 
 Auth0 runtime settings:
 

@@ -620,10 +620,7 @@ function normalizeHostnameString(value: string) {
 }
 
 function resolveAuth0CustomDomain(environment: Record<string, string | undefined>, normalizedAppBaseUrl: string) {
-  const explicitDomain = firstDefinedValue(
-    environment.AUTH0_CUSTOM_DOMAIN,
-    environment.DEPLOY_AUTH0_CUSTOM_DOMAIN
-  )
+  const explicitDomain = firstDefinedValue(environment.AUTH0_CUSTOM_DOMAIN)
 
   if (explicitDomain) {
     return normalizeHostnameString(explicitDomain)

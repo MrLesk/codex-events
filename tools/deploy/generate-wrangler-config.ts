@@ -299,13 +299,13 @@ export function resolveDeployConfigInput(
     eventImagesBucket
   } = resolveDeployResourceNames(target, environment)
   const baseDomain = normalizeHostname(
-    readRequiredEnvironmentValue(environment, 'DEPLOY_BASE_DOMAIN'),
-    'DEPLOY_BASE_DOMAIN'
+    readRequiredEnvironmentValue(environment, 'BASE_DOMAIN'),
+    'BASE_DOMAIN'
   )
   const appBaseUrl = `https://${baseDomain}`
   const auth0CustomDomain = normalizeHostname(
-    readOptionalEnvironmentValue(environment, 'DEPLOY_AUTH0_CUSTOM_DOMAIN') || buildDefaultAuth0CustomDomain(baseDomain),
-    'DEPLOY_AUTH0_CUSTOM_DOMAIN'
+    readOptionalEnvironmentValue(environment, 'AUTH0_CUSTOM_DOMAIN') || buildDefaultAuth0CustomDomain(baseDomain),
+    'AUTH0_CUSTOM_DOMAIN'
   )
   const lumaWebhookUrl = normalizeHttpsUrl(
     readOptionalEnvironmentValue(environment, 'DEPLOY_LUMA_WEBHOOK_URL') || `${appBaseUrl}/api/public/luma/webhooks`,

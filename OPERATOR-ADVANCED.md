@@ -6,13 +6,13 @@ Use this reference when a deployment needs custom resource names, shared dev env
 
 Remote deployments generate ignored Wrangler config files from each GitHub environment's values.
 
-Each environment provides its own `DEPLOY_BASE_DOMAIN`. The generator never derives `dev.*`, `prod.*`, or any other hostname from an environment name.
+Each environment provides its own `BASE_DOMAIN`. The generator never derives `dev.*`, `prod.*`, or any other hostname from an environment name.
 
 For the selected target, the generator derives:
 
-- application URL: `https://<DEPLOY_BASE_DOMAIN>`
-- Cloudflare route pattern: `<DEPLOY_BASE_DOMAIN>`
-- Luma webhook URL: `https://<DEPLOY_BASE_DOMAIN>/api/public/luma/webhooks`
+- application URL: `https://<BASE_DOMAIN>`
+- Cloudflare route pattern: `<BASE_DOMAIN>`
+- Luma webhook URL: `https://<BASE_DOMAIN>/api/public/luma/webhooks`
 - resource names from `DEPLOY_ENV_NAME` and `DEPLOY_RESOURCE_PREFIX`
 
 `DEPLOY_ENV_NAME` defaults to `dev` for the shared dev target and `prod` for the production target. `DEPLOY_RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<DEPLOY_RESOURCE_PREFIX>-<DEPLOY_ENV_NAME>` for every environment.
@@ -25,7 +25,7 @@ Examples:
 | Dev | `dev` | `codex-events` | `codex-events-dev` |
 | Preview | `preview` | `codex-events` | `codex-events-preview` |
 
-Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `DEPLOY_AUTH0_CUSTOM_DOMAIN` is optional and defaults to `auth.<DEPLOY_BASE_DOMAIN>`.
+Keep `DEPLOY_CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `AUTH0_CUSTOM_DOMAIN` is optional and defaults to `auth.<BASE_DOMAIN>`.
 
 ## Advanced Production Variables
 
@@ -54,7 +54,7 @@ Auth0 and display settings:
 
 | Variable | Value |
 | --- | --- |
-| `DEPLOY_AUTH0_CUSTOM_DOMAIN` | Auth0 login hostname override. Defaults to `auth.<DEPLOY_BASE_DOMAIN>` |
+| `AUTH0_CUSTOM_DOMAIN` | Auth0 login hostname override. Defaults to `auth.<BASE_DOMAIN>` |
 | `AUTH0_APP_DISPLAY_NAME` | Display name shown in Auth0-hosted login copy. Defaults to `Codex Events` |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name. Defaults to `Username-Password-Authentication` |
 
@@ -86,7 +86,7 @@ Deployment URL override:
 
 | Variable | Value |
 | --- | --- |
-| `DEPLOY_LUMA_WEBHOOK_URL` | Override for the Luma webhook URL. Defaults to `https://<DEPLOY_BASE_DOMAIN>/api/public/luma/webhooks` |
+| `DEPLOY_LUMA_WEBHOOK_URL` | Override for the Luma webhook URL. Defaults to `https://<BASE_DOMAIN>/api/public/luma/webhooks` |
 
 Optional secrets:
 
@@ -99,7 +99,7 @@ Optional secrets:
 
 Create a GitHub environment named `dev` only if pushes to `main` should deploy a shared dev instance.
 
-Use environment-specific values for the same variable and secret groups as production. Set `DEPLOY_BASE_DOMAIN` to the dev app hostname. The dev workflow defaults `DEPLOY_ENV_NAME` to `dev`; set it only when you need a different resource prefix.
+Use environment-specific values for the same variable and secret groups as production. Set `BASE_DOMAIN` to the dev app hostname. The dev workflow defaults `DEPLOY_ENV_NAME` to `dev`; set it only when you need a different resource prefix.
 
 Use `NUXT_AUTH0_CLIENT_ID` for the Auth0 Regular Web Application client ID in every GitHub environment.
 
@@ -109,14 +109,14 @@ Required dev variables:
 
 | Variable | Value |
 | --- | --- |
-| `DEPLOY_BASE_DOMAIN` | Dev app hostname |
+| `BASE_DOMAIN` | Dev app hostname |
 | `DEPLOY_CF_ZONE_NAME` | Cloudflare DNS zone name |
 | `AUTH0_MANAGEMENT_DOMAIN` | Dev Auth0 tenant hostname |
 | `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | First platform admin email for the dev instance |
 | `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified dev sender address |
 | `NUXT_OUTBOUND_EMAIL_REPLY_TO` | Reply-to email address |
 
-The shared dev deploy workflow configures `auth.<DEPLOY_BASE_DOMAIN>` by default, writes the required Cloudflare DNS CNAME record as DNS-only, and waits for Auth0 verification before applying Auth0 application settings. Set `DEPLOY_AUTH0_CUSTOM_DOMAIN` only when the dev login hostname should be different.
+The shared dev deploy workflow configures `auth.<BASE_DOMAIN>` by default, writes the required Cloudflare DNS CNAME record as DNS-only, and waits for Auth0 verification before applying Auth0 application settings. Set `AUTH0_CUSTOM_DOMAIN` only when the dev login hostname should be different.
 
 Required dev secrets:
 

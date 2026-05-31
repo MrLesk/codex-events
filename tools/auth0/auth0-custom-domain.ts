@@ -109,16 +109,15 @@ function normalizeHostname(value: string) {
 
 export function resolveAuth0CustomDomain(environment: Record<string, string | undefined>) {
   const explicitDomain = environment.AUTH0_CUSTOM_DOMAIN?.trim()
-    || environment.DEPLOY_AUTH0_CUSTOM_DOMAIN?.trim()
 
   if (explicitDomain) {
     return normalizeHostname(explicitDomain)
   }
 
-  const baseDomain = environment.DEPLOY_BASE_DOMAIN?.trim()
+  const baseDomain = environment.BASE_DOMAIN?.trim()
 
   if (!baseDomain) {
-    throw new Error('Missing required environment variable AUTH0_CUSTOM_DOMAIN, DEPLOY_AUTH0_CUSTOM_DOMAIN, or DEPLOY_BASE_DOMAIN.')
+    throw new Error('Missing required environment variable AUTH0_CUSTOM_DOMAIN or BASE_DOMAIN.')
   }
 
   return normalizeHostname(`auth.${normalizeHostname(baseDomain)}`)

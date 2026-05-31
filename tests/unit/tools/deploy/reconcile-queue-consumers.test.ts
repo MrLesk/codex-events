@@ -9,10 +9,10 @@ import {
 
 function createEnvironment(overrides: Record<string, string | undefined> = {}) {
   return {
-    DEPLOY_BASE_DOMAIN: 'dev.example.com',
+    BASE_DOMAIN: 'dev.example.com',
     DEPLOY_CF_ZONE_NAME: 'example.com',
     DEPLOY_RESOLVED_D1_DATABASE_ID: '11111111-1111-4111-8111-111111111111',
-    DEPLOY_AUTH0_CUSTOM_DOMAIN: 'auth.dev.example.com',
+    AUTH0_CUSTOM_DOMAIN: 'auth.dev.example.com',
     NUXT_OUTBOUND_EMAIL_FROM_EMAIL: 'notifications@example.com',
     NUXT_OUTBOUND_EMAIL_REPLY_TO: 'support@example.com',
     ...overrides
