@@ -113,6 +113,15 @@ It describes the intended persistent model at the level of entities, key fields,
 - `participants_limit`
 - `auto_approve_applications`
 - `in_person_event`
+- `application_x_profile_visible`
+- `application_linkedin_profile_visible`
+- `application_github_profile_visible`
+- `application_chatgpt_email_visible`
+- `application_openai_org_id_visible`
+- `application_luma_email_visible`
+- `application_why_this_event_visible`
+- `application_proof_of_execution_visible`
+- `application_team_intent_visible`
 - `require_x_profile`
 - `require_linkedin_profile`
 - `require_github_profile`
@@ -121,6 +130,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `require_luma_profile`
 - `require_why_this_event`
 - `require_proof_of_execution`
+- `require_team_intent`
 - `require_submission_summary`
 - `require_submission_repository_url`
 - `require_submission_demo_url`
@@ -182,8 +192,10 @@ It describes the intended persistent model at the level of entities, key fields,
 - `participants_limit` is an indicative planning target surfaced in admin approval workflows and does not enforce approval writes by itself.
 - `auto_approve_applications` controls whether newly submitted applications are approved immediately after required submission checks pass. It defaults to false and does not affect already submitted applications when changed.
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
-- `require_why_this_event` controls whether applications must include a non-empty `whyThisEvent` response.
-- `require_proof_of_execution` controls whether applications must include at least one proof link in `proofOfExecutionUrl`.
+- Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
+- `require_x_profile`, `require_linkedin_profile`, `require_github_profile`, `require_chatgpt_email`, `require_openai_org_id`, `require_luma_profile`, `require_why_this_event`, `require_proof_of_execution`, and `require_team_intent` control whether the corresponding visible field is required.
+- A field cannot be required while its matching `application_*_visible` column is false.
+- Application field configuration can be updated after applications exist. The current configuration applies when a participant views or submits the form and does not rewrite older `registration_details_json` payloads.
 - `require_submission_summary` controls whether Hackathon team submissions must include a non-empty `summary`.
 - `require_submission_repository_url` controls whether Hackathon team submissions must include a valid `repository_url`.
 - `require_submission_demo_url` controls whether Hackathon team submissions must include a valid `demo_url`.
@@ -450,16 +462,16 @@ It describes the intended persistent model at the level of entities, key fields,
 ### Notes
 
 - `registration_details_json` stores registration-intent hints as a JSON string payload:
-  - `teamIntent`: `solo`, `team`, or `unknown`
-  - `teamMembers`: free-form teammate hints captured during application (name/family-name and/or email)
+  - `teamIntent`: `solo`, `team`, or `unknown`; stored as `unknown` when participation mode is hidden
+  - `teamMembers`: free-form teammate hints captured during application (name/family-name and/or email) when participation mode is visible and `teamIntent = team`
   - `inPersonAttendanceCommitment`: boolean commitment required when the event has `in_person_event = true`
-  - `whyThisEvent`: trimmed free-form motivation text
-  - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence
+  - `whyThisEvent`: trimmed free-form motivation text when visible
+  - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence when visible
 - `withdrawn_at` records when the participant withdrew from the event.
 - `checked_in_at` records when a valid signed Luma guest check-in update first marked the approved participant as attended.
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
 - Applications created while `auto_approve_applications` is true are stored directly as `approved` with `reviewed_at` equal to `submitted_at` and no reviewing user.
-- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that require a Luma email and define a `luma_event_api_id`.
+- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that show and require a Luma email and define a `luma_event_api_id`.
 - `checked_in_at` is sticky in this version and is not cleared by later Luma uncheck updates.
 - `application_terms_document_id` and `application_terms_accepted_at` are null when the event has no current application terms at submission time.
 - Withdrawal retains the application record rather than deleting it so participation history, event-terms acceptance when present, and audit context remain available.

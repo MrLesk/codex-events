@@ -42,9 +42,18 @@ export function buildParticipantRegistrationFormSchema(options: {
   maxTeamMembers: number
   hasCurrentApplicationTerms: boolean
   isInPersonEvent: boolean
+  showWhyThisEvent: boolean
   requireWhyThisEvent: boolean
+  showProofOfExecution: boolean
   requireProofOfExecution: boolean
+  showTeamIntent: boolean
+  requireTeamIntent: boolean
 }) {
+  const visibleProfileKeys = new Set(options.profileFields
+    .filter(field => field.visible)
+    .map(field => field.key))
+  const isProfileFieldVisible = (key: EventProfileField['key']) => visibleProfileKeys.has(key)
+
   return z.object({
     termsAccepted: z.boolean(),
     inPersonAttendanceCommitment: z.boolean(),
@@ -53,32 +62,44 @@ export function buildParticipantRegistrationFormSchema(options: {
       fullName: z.string(),
       email: z.string()
     })),
-    whyThisEvent: z.string().trim().max(4000),
-    proofOfExecutionUrl: createOptionalProofOfExecutionLinksSchema('Enter valid proof links. Separate multiple links with commas.'),
+    whyThisEvent: options.showWhyThisEvent
+      ? z.string().trim().max(4000)
+      : z.string(),
+    proofOfExecutionUrl: options.showProofOfExecution
+      ? createOptionalProofOfExecutionLinksSchema('Enter valid proof links. Separate multiple links with commas.')
+      : z.string(),
     profileForm: z.object({
       firstName: z.string().trim().min(1).max(120),
       familyName: z.string().trim().min(1).max(120),
-      xProfileUrl: createOptionalSocialProfileUrlSchema(
-        'xProfileUrl',
-        'Enter a valid X profile URL.',
-        'Use an x.com or twitter.com profile URL.'
-      ),
-      linkedinProfileUrl: createOptionalSocialProfileUrlSchema(
-        'linkedinProfileUrl',
-        'Enter a valid LinkedIn profile URL.',
-        'Use a linkedin.com profile URL.'
-      ),
-      githubProfileUrl: createOptionalSocialProfileUrlSchema(
-        'githubProfileUrl',
-        'Enter a valid GitHub profile URL.',
-        'Use a github.com profile URL.'
-      ),
-      chatgptEmail: optionalEmailSchema,
-      openaiOrgId: z.string().trim().max(120).refine(
-        value => value.length === 0 || isOpenAiOrgIdFormatValid(value),
-        'Use an OpenAI org ID like org_123abc.'
-      ),
-      lumaEmail: optionalEmailSchema
+      xProfileUrl: isProfileFieldVisible('xProfileUrl')
+        ? createOptionalSocialProfileUrlSchema(
+            'xProfileUrl',
+            'Enter a valid X profile URL.',
+            'Use an x.com or twitter.com profile URL.'
+          )
+        : z.string(),
+      linkedinProfileUrl: isProfileFieldVisible('linkedinProfileUrl')
+        ? createOptionalSocialProfileUrlSchema(
+            'linkedinProfileUrl',
+            'Enter a valid LinkedIn profile URL.',
+            'Use a linkedin.com profile URL.'
+          )
+        : z.string(),
+      githubProfileUrl: isProfileFieldVisible('githubProfileUrl')
+        ? createOptionalSocialProfileUrlSchema(
+            'githubProfileUrl',
+            'Enter a valid GitHub profile URL.',
+            'Use a github.com profile URL.'
+          )
+        : z.string(),
+      chatgptEmail: isProfileFieldVisible('chatgptEmail') ? optionalEmailSchema : z.string(),
+      openaiOrgId: isProfileFieldVisible('openaiOrgId')
+        ? z.string().trim().max(120).refine(
+            value => value.length === 0 || isOpenAiOrgIdFormatValid(value),
+            'Use an OpenAI org ID like org_123abc.'
+          )
+        : z.string(),
+      lumaEmail: isProfileFieldVisible('lumaEmail') ? optionalEmailSchema : z.string()
     })
   }).superRefine((input, context) => {
     if (options.hasCurrentApplicationTerms && !input.termsAccepted) {
@@ -97,9 +118,17 @@ export function buildParticipantRegistrationFormSchema(options: {
       })
     }
 
-    const maxHints = Math.max(0, options.maxTeamMembers - 1)
+    if (options.showTeamIntent && options.requireTeamIntent && input.teamIntent === 'unknown') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['teamIntent'],
+        message: 'Choose how you plan to participate.'
+      })
+    }
 
-    if (input.teamMemberHints.length > maxHints) {
+    const maxHints = options.showTeamIntent ? Math.max(0, options.maxTeamMembers - 1) : 0
+
+    if (options.showTeamIntent && input.teamMemberHints.length > maxHints) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['teamMemberHints'],
@@ -107,24 +136,26 @@ export function buildParticipantRegistrationFormSchema(options: {
       })
     }
 
-    input.teamMemberHints.forEach((member, index) => {
-      const email = member.email.trim()
+    if (options.showTeamIntent) {
+      input.teamMemberHints.forEach((member, index) => {
+        const email = member.email.trim()
 
-      if (email.length === 0) {
-        return
-      }
+        if (email.length === 0) {
+          return
+        }
 
-      if (!z.string().email().safeParse(email).success) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['teamMemberHints', index, 'email'],
-          message: 'Enter a valid email address.'
-        })
-      }
-    })
+        if (!z.string().email().safeParse(email).success) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['teamMemberHints', index, 'email'],
+            message: 'Enter a valid email address.'
+          })
+        }
+      })
+    }
 
     for (const field of options.profileFields) {
-      if (!field.required) {
+      if (!field.visible || !field.required) {
         continue
       }
 
@@ -141,7 +172,7 @@ export function buildParticipantRegistrationFormSchema(options: {
       })
     }
 
-    if (options.requireWhyThisEvent && input.whyThisEvent.trim().length === 0) {
+    if (options.showWhyThisEvent && options.requireWhyThisEvent && input.whyThisEvent.trim().length === 0) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['whyThisEvent'],
@@ -149,7 +180,7 @@ export function buildParticipantRegistrationFormSchema(options: {
       })
     }
 
-    if (options.requireProofOfExecution && input.proofOfExecutionUrl.trim().length === 0) {
+    if (options.showProofOfExecution && options.requireProofOfExecution && input.proofOfExecutionUrl.trim().length === 0) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['proofOfExecutionUrl'],

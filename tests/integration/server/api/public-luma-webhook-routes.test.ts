@@ -55,6 +55,7 @@ async function seedAttendanceContext(
     submissionClosesAt: '2026-03-25T12:00:00.000Z',
     state: 'registration_open',
     maxTeamMembers: 5,
+    applicationLumaEmailVisible: true,
     requireLumaEmail: true,
     lumaEventApiId: options?.eventApiId ?? 'evt-123',
     createdByUserId: 'platform_admin'

@@ -89,6 +89,7 @@ const registrationTeamIntent = ref<'solo' | 'team' | 'unknown'>('unknown')
 const registrationTeamMembers = ref<ParticipantRegistrationTeamMemberHint[]>([])
 const profileFields = computed(() => listEventProfileFields(event.value))
 const visibleProfileFields = computed(() => profileFields.value.filter(field => field.visible))
+const visibleProfileFieldKeys = computed(() => new Set(visibleProfileFields.value.map(field => field.key)))
 const detailSummary = computed(() => [
   formatEventWindow(event.value.registrationOpensAt, event.value.submissionClosesAt),
   formatEventLocation(event.value),
@@ -336,18 +337,38 @@ async function submitParticipantApplication() {
   isSavingProfile.value = true
 
   try {
+    const accountPatch: Record<string, unknown> = {
+      firstName: profileForm.firstName,
+      familyName: profileForm.familyName
+    }
+
+    if (visibleProfileFieldKeys.value.has('xProfileUrl')) {
+      accountPatch.xProfileUrl = normalizeAccountProfileUrl(profileForm.xProfileUrl)
+    }
+
+    if (visibleProfileFieldKeys.value.has('linkedinProfileUrl')) {
+      accountPatch.linkedinProfileUrl = normalizeAccountProfileUrl(profileForm.linkedinProfileUrl)
+    }
+
+    if (visibleProfileFieldKeys.value.has('githubProfileUrl')) {
+      accountPatch.githubProfileUrl = normalizeAccountProfileUrl(profileForm.githubProfileUrl)
+    }
+
+    if (visibleProfileFieldKeys.value.has('chatgptEmail')) {
+      accountPatch.chatgptEmail = profileForm.chatgptEmail
+    }
+
+    if (visibleProfileFieldKeys.value.has('openaiOrgId')) {
+      accountPatch.openaiOrgId = profileForm.openaiOrgId
+    }
+
+    if (visibleProfileFieldKeys.value.has('lumaEmail')) {
+      accountPatch.lumaEmail = profileForm.lumaEmail
+    }
+
     await $fetch('/api/account', {
       method: 'PATCH',
-      body: {
-        firstName: profileForm.firstName,
-        familyName: profileForm.familyName,
-        xProfileUrl: normalizeAccountProfileUrl(profileForm.xProfileUrl),
-        linkedinProfileUrl: normalizeAccountProfileUrl(profileForm.linkedinProfileUrl),
-        githubProfileUrl: normalizeAccountProfileUrl(profileForm.githubProfileUrl),
-        chatgptEmail: profileForm.chatgptEmail,
-        openaiOrgId: profileForm.openaiOrgId,
-        lumaEmail: profileForm.lumaEmail
-      }
+      body: accountPatch
     })
   } catch (error) {
     profileSaveError.value = normalizeParticipantApiError(error).message
@@ -357,15 +378,7 @@ async function submitParticipantApplication() {
   }
 
   try {
-    const applicationPayload: Record<string, unknown> = {
-      whyThisEvent: whyThisEvent.value,
-      proofOfExecutionUrl: proofOfExecutionUrl.value,
-      registrationTeamIntent: registrationTeamIntent.value,
-      registrationTeamMembers: normalizeParticipantTeamMemberHintsForSubmission(
-        registrationTeamMembers.value,
-        event.value.maxTeamMembers
-      )
-    }
+    const applicationPayload: Record<string, unknown> = {}
 
     if (currentApplicationTerms.value) {
       applicationPayload.applicationTermsDocumentId = currentApplicationTerms.value.id
@@ -373,6 +386,22 @@ async function submitParticipantApplication() {
 
     if (event.value.inPersonEvent) {
       applicationPayload.inPersonAttendanceCommitment = inPersonAttendanceCommitment.value
+    }
+
+    if (event.value.applicationWhyThisEventVisible) {
+      applicationPayload.whyThisEvent = whyThisEvent.value
+    }
+
+    if (event.value.applicationProofOfExecutionVisible) {
+      applicationPayload.proofOfExecutionUrl = proofOfExecutionUrl.value
+    }
+
+    if (event.value.applicationTeamIntentVisible) {
+      applicationPayload.registrationTeamIntent = registrationTeamIntent.value
+      applicationPayload.registrationTeamMembers = normalizeParticipantTeamMemberHintsForSubmission(
+        registrationTeamMembers.value,
+        event.value.maxTeamMembers
+      )
     }
 
     await $fetch(`/api/events/${visibleEventId.value}/applications`, {

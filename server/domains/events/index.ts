@@ -180,7 +180,100 @@ const blindScoreWeightPercentSchema = z.coerce.number().int().min(0).max(100)
 const pitchScoreWeightPercentSchema = z.coerce.number().int().min(0).max(100)
 const shortlistFinalistCountSchema = z.coerce.number().int().min(1)
 const inPersonEventSchema = z.coerce.boolean()
+const applicationFieldVisibilitySchema = z.coerce.boolean()
 const profileRequirementSchema = z.coerce.boolean()
+
+const hackathonApplicationFieldDefaults = {
+  applicationXProfileVisible: true,
+  applicationLinkedinProfileVisible: true,
+  applicationGithubProfileVisible: true,
+  applicationChatgptEmailVisible: true,
+  applicationOpenaiOrgIdVisible: true,
+  applicationLumaEmailVisible: true,
+  applicationWhyThisEventVisible: true,
+  applicationProofOfExecutionVisible: true,
+  applicationTeamIntentVisible: true,
+  requireXProfile: false,
+  requireLinkedinProfile: false,
+  requireGithubProfile: false,
+  requireChatgptEmail: true,
+  requireOpenaiOrgId: true,
+  requireLumaEmail: true,
+  requireWhyThisEvent: false,
+  requireProofOfExecution: false,
+  requireTeamIntent: false
+} as const
+
+const registrationOnlyApplicationFieldDefaults = {
+  applicationXProfileVisible: false,
+  applicationLinkedinProfileVisible: false,
+  applicationGithubProfileVisible: false,
+  applicationChatgptEmailVisible: false,
+  applicationOpenaiOrgIdVisible: false,
+  applicationLumaEmailVisible: false,
+  applicationWhyThisEventVisible: false,
+  applicationProofOfExecutionVisible: false,
+  applicationTeamIntentVisible: false,
+  requireXProfile: false,
+  requireLinkedinProfile: false,
+  requireGithubProfile: false,
+  requireChatgptEmail: false,
+  requireOpenaiOrgId: false,
+  requireLumaEmail: false,
+  requireWhyThisEvent: false,
+  requireProofOfExecution: false,
+  requireTeamIntent: false
+} as const
+
+const applicationFieldRequirementPairs = [
+  ['applicationXProfileVisible', 'requireXProfile', 'X profile'],
+  ['applicationLinkedinProfileVisible', 'requireLinkedinProfile', 'LinkedIn profile'],
+  ['applicationGithubProfileVisible', 'requireGithubProfile', 'GitHub profile'],
+  ['applicationChatgptEmailVisible', 'requireChatgptEmail', 'ChatGPT email'],
+  ['applicationOpenaiOrgIdVisible', 'requireOpenaiOrgId', 'OpenAI org ID'],
+  ['applicationLumaEmailVisible', 'requireLumaEmail', 'Luma email'],
+  ['applicationWhyThisEventVisible', 'requireWhyThisEvent', 'Why this event'],
+  ['applicationProofOfExecutionVisible', 'requireProofOfExecution', 'Proof-of-execution links'],
+  ['applicationTeamIntentVisible', 'requireTeamIntent', 'Participation mode']
+] as const
+
+function getApplicationFieldDefaults(eventType: typeof eventTypes[number] | unknown) {
+  return eventType === 'hackathon'
+    ? hackathonApplicationFieldDefaults
+    : registrationOnlyApplicationFieldDefaults
+}
+
+function normalizeCreateEventConfigInput(candidate: unknown) {
+  if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) {
+    return candidate
+  }
+
+  const input = candidate as Record<string, unknown>
+  const normalized = { ...input }
+  const defaults = getApplicationFieldDefaults(input.eventType)
+
+  for (const [key, value] of Object.entries(defaults)) {
+    if (normalized[key] === undefined) {
+      normalized[key] = value
+    }
+  }
+
+  return normalized
+}
+
+function addApplicationFieldConfigurationIssues(
+  input: Record<string, unknown>,
+  addIssue: (path: string[], message: string) => void
+) {
+  for (const [visibleKey, requiredKey, label] of applicationFieldRequirementPairs) {
+    if (input[requiredKey] === true && input[visibleKey] === false) {
+      addIssue(
+        [requiredKey],
+        `${label} cannot be required while hidden from the application form.`
+      )
+    }
+  }
+}
 
 const eventConfigShape = {
   eventType: eventTypeEnumSchema,
@@ -210,6 +303,15 @@ const eventConfigShape = {
   pitchScoreWeightPercent: pitchScoreWeightPercentSchema.default(30),
   shortlistFinalistCount: shortlistFinalistCountSchema.default(10),
   inPersonEvent: inPersonEventSchema.default(false),
+  applicationXProfileVisible: applicationFieldVisibilitySchema.default(true),
+  applicationLinkedinProfileVisible: applicationFieldVisibilitySchema.default(true),
+  applicationGithubProfileVisible: applicationFieldVisibilitySchema.default(true),
+  applicationChatgptEmailVisible: applicationFieldVisibilitySchema.default(false),
+  applicationOpenaiOrgIdVisible: applicationFieldVisibilitySchema.default(false),
+  applicationLumaEmailVisible: applicationFieldVisibilitySchema.default(false),
+  applicationWhyThisEventVisible: applicationFieldVisibilitySchema.default(true),
+  applicationProofOfExecutionVisible: applicationFieldVisibilitySchema.default(true),
+  applicationTeamIntentVisible: applicationFieldVisibilitySchema.default(true),
   requireXProfile: profileRequirementSchema.default(false),
   requireLinkedinProfile: profileRequirementSchema.default(false),
   requireGithubProfile: profileRequirementSchema.default(false),
@@ -218,32 +320,45 @@ const eventConfigShape = {
   requireLumaEmail: profileRequirementSchema.default(false),
   requireWhyThisEvent: profileRequirementSchema.default(false),
   requireProofOfExecution: profileRequirementSchema.default(false),
+  requireTeamIntent: profileRequirementSchema.default(false),
   requireSubmissionSummary: profileRequirementSchema.default(false),
   requireSubmissionRepositoryUrl: profileRequirementSchema.default(false),
   requireSubmissionDemoUrl: profileRequirementSchema.default(false)
 } satisfies Record<string, z.ZodTypeAny>
 
-export const createEventBodySchema = z.object(eventConfigShape).superRefine((input, ctx) => {
-  if (input.eventType !== 'hackathon') {
-    return
-  }
-
-  if (!input.submissionOpensAt) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Submission opening time is required for hackathons.',
-      path: ['submissionOpensAt']
+export const createEventBodySchema = z.preprocess(
+  normalizeCreateEventConfigInput,
+  z.object(eventConfigShape).superRefine((input, ctx) => {
+    addApplicationFieldConfigurationIssues(input as Record<string, unknown>, (path, message) => {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message,
+        path
+      })
     })
-  }
 
-  if (!input.submissionClosesAt) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Submission closing time is required for hackathons.',
-      path: ['submissionClosesAt']
-    })
-  }
-})
+    if (input.eventType !== 'hackathon') {
+      return
+    }
+
+    if (!input.submissionOpensAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Submission opening time is required for hackathons.',
+        path: ['submissionOpensAt']
+      })
+    }
+
+    if (!input.submissionClosesAt) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Submission closing time is required for hackathons.',
+        path: ['submissionClosesAt']
+      })
+    }
+  })
+)
+
 export const updateEventBodySchema = z.object({
   name: eventConfigShape.name.optional(),
   slug: eventConfigShape.slug.optional(),
@@ -271,6 +386,15 @@ export const updateEventBodySchema = z.object({
   pitchScoreWeightPercent: pitchScoreWeightPercentSchema.optional(),
   shortlistFinalistCount: shortlistFinalistCountSchema.optional(),
   inPersonEvent: inPersonEventSchema.optional(),
+  applicationXProfileVisible: applicationFieldVisibilitySchema.optional(),
+  applicationLinkedinProfileVisible: applicationFieldVisibilitySchema.optional(),
+  applicationGithubProfileVisible: applicationFieldVisibilitySchema.optional(),
+  applicationChatgptEmailVisible: applicationFieldVisibilitySchema.optional(),
+  applicationOpenaiOrgIdVisible: applicationFieldVisibilitySchema.optional(),
+  applicationLumaEmailVisible: applicationFieldVisibilitySchema.optional(),
+  applicationWhyThisEventVisible: applicationFieldVisibilitySchema.optional(),
+  applicationProofOfExecutionVisible: applicationFieldVisibilitySchema.optional(),
+  applicationTeamIntentVisible: applicationFieldVisibilitySchema.optional(),
   requireXProfile: profileRequirementSchema.optional(),
   requireLinkedinProfile: profileRequirementSchema.optional(),
   requireGithubProfile: profileRequirementSchema.optional(),
@@ -279,9 +403,18 @@ export const updateEventBodySchema = z.object({
   requireLumaEmail: profileRequirementSchema.optional(),
   requireWhyThisEvent: profileRequirementSchema.optional(),
   requireProofOfExecution: profileRequirementSchema.optional(),
+  requireTeamIntent: profileRequirementSchema.optional(),
   requireSubmissionSummary: profileRequirementSchema.optional(),
   requireSubmissionRepositoryUrl: profileRequirementSchema.optional(),
   requireSubmissionDemoUrl: profileRequirementSchema.optional()
+}).superRefine((input, ctx) => {
+  addApplicationFieldConfigurationIssues(input as Record<string, unknown>, (path, message) => {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message,
+      path
+    })
+  })
 }).refine(
   input => Object.keys(input).length > 0,
   'At least one event configuration field must be provided.'
@@ -773,6 +906,27 @@ export function assertEventSchedule(input: {
   )
 }
 
+export function assertEventApplicationFieldConfiguration(
+  input: Record<string, unknown>,
+  eventId?: string
+) {
+  const invalidFields = applicationFieldRequirementPairs
+    .filter(([visibleKey, requiredKey]) => input[requiredKey] === true && input[visibleKey] === false)
+    .map(([, requiredKey, label]) => ({
+      field: requiredKey,
+      label
+    }))
+
+  assertGuard(invalidFields.length === 0, {
+    code: 'application_field_configuration_invalid',
+    message: 'Application fields cannot be required while hidden from the application form.',
+    details: {
+      ...(eventId ? { eventId } : {}),
+      fields: invalidFields
+    }
+  })
+}
+
 export function assertCompetitionEvent(event: Pick<EventRecord, 'id' | 'eventType'>) {
   if (event.eventType === 'hackathon') {
     return
@@ -896,6 +1050,7 @@ export function buildEventUpdatePayload(
     submissionOpensAt: mergedEvent.submissionOpensAt,
     submissionClosesAt: mergedEvent.submissionClosesAt
   })
+  assertEventApplicationFieldConfiguration(mergedEvent, existingEvent.id)
 
   return {
     ...normalizedPatch,
@@ -1382,6 +1537,15 @@ export function serializeEvent(
     activePitchPresentationSubmissionId: isCompetitionEvent ? event.activePitchPresentationSubmissionId : null,
     pitchPresentationsCompletedAt: isCompetitionEvent ? event.pitchPresentationsCompletedAt : null,
     inPersonEvent: event.inPersonEvent,
+    applicationXProfileVisible: event.applicationXProfileVisible,
+    applicationLinkedinProfileVisible: event.applicationLinkedinProfileVisible,
+    applicationGithubProfileVisible: event.applicationGithubProfileVisible,
+    applicationChatgptEmailVisible: event.applicationChatgptEmailVisible,
+    applicationOpenaiOrgIdVisible: event.applicationOpenaiOrgIdVisible,
+    applicationLumaEmailVisible: event.applicationLumaEmailVisible,
+    applicationWhyThisEventVisible: event.applicationWhyThisEventVisible,
+    applicationProofOfExecutionVisible: event.applicationProofOfExecutionVisible,
+    applicationTeamIntentVisible: event.applicationTeamIntentVisible,
     requireXProfile: event.requireXProfile,
     requireLinkedinProfile: event.requireLinkedinProfile,
     requireGithubProfile: event.requireGithubProfile,
@@ -1390,6 +1554,7 @@ export function serializeEvent(
     requireLumaEmail: event.requireLumaEmail,
     requireWhyThisEvent: event.requireWhyThisEvent,
     requireProofOfExecution: event.requireProofOfExecution,
+    requireTeamIntent: event.requireTeamIntent,
     requireSubmissionSummary: isCompetitionEvent ? event.requireSubmissionSummary : false,
     requireSubmissionRepositoryUrl: isCompetitionEvent ? event.requireSubmissionRepositoryUrl : false,
     requireSubmissionDemoUrl: isCompetitionEvent ? event.requireSubmissionDemoUrl : false,
@@ -1452,6 +1617,15 @@ export function serializePublicEvent(
     participantsLimit: event.participantsLimit,
     autoApproveApplications: event.autoApproveApplications,
     inPersonEvent: event.inPersonEvent,
+    applicationXProfileVisible: event.applicationXProfileVisible,
+    applicationLinkedinProfileVisible: event.applicationLinkedinProfileVisible,
+    applicationGithubProfileVisible: event.applicationGithubProfileVisible,
+    applicationChatgptEmailVisible: event.applicationChatgptEmailVisible,
+    applicationOpenaiOrgIdVisible: event.applicationOpenaiOrgIdVisible,
+    applicationLumaEmailVisible: event.applicationLumaEmailVisible,
+    applicationWhyThisEventVisible: event.applicationWhyThisEventVisible,
+    applicationProofOfExecutionVisible: event.applicationProofOfExecutionVisible,
+    applicationTeamIntentVisible: event.applicationTeamIntentVisible,
     requireXProfile: event.requireXProfile,
     requireLinkedinProfile: event.requireLinkedinProfile,
     requireGithubProfile: event.requireGithubProfile,
@@ -1460,6 +1634,7 @@ export function serializePublicEvent(
     requireLumaEmail: event.requireLumaEmail,
     requireWhyThisEvent: event.requireWhyThisEvent,
     requireProofOfExecution: event.requireProofOfExecution,
+    requireTeamIntent: event.requireTeamIntent,
     requireSubmissionSummary: event.requireSubmissionSummary,
     requireSubmissionRepositoryUrl: event.requireSubmissionRepositoryUrl,
     requireSubmissionDemoUrl: event.requireSubmissionDemoUrl,

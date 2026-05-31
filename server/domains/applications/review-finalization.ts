@@ -42,7 +42,7 @@ function getReviewSourceMetadata(source: ApplicationReviewSource) {
 export async function finalizeUserApplicationReview(options: {
   h3Event: H3Event
   database: AppDatabase
-  event: Pick<EventRecord, 'id' | 'name' | 'slug' | 'requireLumaEmail' | 'lumaEventApiId'>
+  event: Pick<EventRecord, 'id' | 'name' | 'slug' | 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId'>
   application: UserApplicationRecord
   applicant: Pick<UserRecord, 'email' | 'displayName'> | null
   decision: ApplicationReviewDecision

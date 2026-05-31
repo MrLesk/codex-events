@@ -67,6 +67,15 @@ export interface PublicEvent {
   maxTeamMembers: number
   autoApproveApplications: boolean
   inPersonEvent: boolean
+  applicationXProfileVisible: boolean
+  applicationLinkedinProfileVisible: boolean
+  applicationGithubProfileVisible: boolean
+  applicationChatgptEmailVisible: boolean
+  applicationOpenaiOrgIdVisible: boolean
+  applicationLumaEmailVisible: boolean
+  applicationWhyThisEventVisible: boolean
+  applicationProofOfExecutionVisible: boolean
+  applicationTeamIntentVisible: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean
@@ -75,6 +84,7 @@ export interface PublicEvent {
   requireLumaEmail: boolean
   requireWhyThisEvent: boolean
   requireProofOfExecution: boolean
+  requireTeamIntent: boolean
   requireSubmissionSummary: boolean
   requireSubmissionRepositoryUrl: boolean
   requireSubmissionDemoUrl: boolean
@@ -490,30 +500,30 @@ export function describeWindowStatus(
   return state === 'draft' || state === 'registration_open' ? 'Upcoming' : 'Closed'
 }
 
-export function listRequiredProfiles(event: Pick<PublicEvent, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>) {
+export function listRequiredProfiles(event: Pick<PublicEvent, 'applicationXProfileVisible' | 'applicationLinkedinProfileVisible' | 'applicationGithubProfileVisible' | 'applicationChatgptEmailVisible' | 'applicationOpenaiOrgIdVisible' | 'applicationLumaEmailVisible' | 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>) {
   const profiles: string[] = []
 
-  if (event.requireXProfile) {
+  if (event.applicationXProfileVisible && event.requireXProfile) {
     profiles.push('X')
   }
 
-  if (event.requireLinkedinProfile) {
+  if (event.applicationLinkedinProfileVisible && event.requireLinkedinProfile) {
     profiles.push('LinkedIn')
   }
 
-  if (event.requireGithubProfile) {
+  if (event.applicationGithubProfileVisible && event.requireGithubProfile) {
     profiles.push('GitHub')
   }
 
-  if (event.requireChatgptEmail) {
+  if (event.applicationChatgptEmailVisible && event.requireChatgptEmail) {
     profiles.push('ChatGPT email')
   }
 
-  if (event.requireOpenaiOrgId) {
+  if (event.applicationOpenaiOrgIdVisible && event.requireOpenaiOrgId) {
     profiles.push('OpenAI org ID')
   }
 
-  if (event.requireLumaEmail) {
+  if (event.applicationLumaEmailVisible && event.requireLumaEmail) {
     profiles.push('Luma email')
   }
 

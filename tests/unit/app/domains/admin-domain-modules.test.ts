@@ -112,6 +112,15 @@ function createEvent(overrides: Partial<EventRecord> = {}): EventRecord {
     activePitchPresentationSubmissionId: null,
     pitchPresentationsCompletedAt: null,
     inPersonEvent: false,
+    applicationXProfileVisible: true,
+    applicationLinkedinProfileVisible: true,
+    applicationGithubProfileVisible: true,
+    applicationChatgptEmailVisible: false,
+    applicationOpenaiOrgIdVisible: false,
+    applicationLumaEmailVisible: false,
+    applicationWhyThisEventVisible: true,
+    applicationProofOfExecutionVisible: true,
+    applicationTeamIntentVisible: true,
     requireXProfile: false,
     requireLinkedinProfile: true,
     requireGithubProfile: true,
@@ -120,6 +129,7 @@ function createEvent(overrides: Partial<EventRecord> = {}): EventRecord {
     requireLumaEmail: false,
     requireWhyThisEvent: false,
     requireProofOfExecution: false,
+    requireTeamIntent: false,
     requireSubmissionSummary: false,
     requireSubmissionRepositoryUrl: false,
     requireSubmissionDemoUrl: false,
@@ -1459,6 +1469,7 @@ describe('domain admin operational helpers', () => {
 
   test('shows attendance summary only when Luma email is required and an event API ID is configured', () => {
     expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
+      applicationLumaEmailVisible: true,
       requireLumaEmail: true,
       lumaEventApiId: 'evt-123'
     }))).toBe(true)

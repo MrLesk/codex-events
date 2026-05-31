@@ -67,6 +67,15 @@ export interface EventRecord {
   activePitchPresentationSubmissionId: string | null
   pitchPresentationsCompletedAt: string | null
   inPersonEvent: boolean
+  applicationXProfileVisible: boolean
+  applicationLinkedinProfileVisible: boolean
+  applicationGithubProfileVisible: boolean
+  applicationChatgptEmailVisible: boolean
+  applicationOpenaiOrgIdVisible: boolean
+  applicationLumaEmailVisible: boolean
+  applicationWhyThisEventVisible: boolean
+  applicationProofOfExecutionVisible: boolean
+  applicationTeamIntentVisible: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean
@@ -75,6 +84,7 @@ export interface EventRecord {
   requireLumaEmail: boolean
   requireWhyThisEvent: boolean
   requireProofOfExecution: boolean
+  requireTeamIntent: boolean
   requireSubmissionSummary: boolean
   requireSubmissionRepositoryUrl: boolean
   requireSubmissionDemoUrl: boolean

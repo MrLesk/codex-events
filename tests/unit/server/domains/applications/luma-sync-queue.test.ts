@@ -88,6 +88,7 @@ async function seedLumaSyncContext(options?: {
   lumaSyncStatus?: typeof userApplications.$inferSelect['lumaSyncStatus']
   lumaEmail?: string | null
   lumaUsername?: string | null
+  applicationLumaEmailVisible?: boolean
   requireLumaEmail?: boolean
   lumaEventUrl?: string | null
   lumaEventApiId?: string | null
@@ -130,6 +131,7 @@ async function seedLumaSyncContext(options?: {
     submissionClosesAt: '2026-03-25T12:00:00.000Z',
     state: 'registration_open',
     maxTeamMembers: 5,
+    applicationLumaEmailVisible: options?.applicationLumaEmailVisible ?? true,
     requireLumaEmail: options?.requireLumaEmail ?? true,
     lumaEventUrl: options?.lumaEventUrl ?? 'https://luma.com/codex',
     lumaEventApiId: options?.lumaEventApiId ?? 'evt-123',

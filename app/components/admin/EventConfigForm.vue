@@ -5,12 +5,14 @@ import { toTypedSchema } from '@vee-validate/zod'
 import { useForm } from 'vee-validate'
 
 import AdminEditorRowShell from '~/components/admin/AdminEditorRowShell.vue'
+import EventConfigApplicationFieldsTable from '~/components/admin/EventConfigApplicationFieldsTable.vue'
 import EventConfigProgramIdentitySection from '~/components/admin/EventConfigProgramIdentitySection.vue'
 
 import type { EventFormState } from '~/domains/events/admin-event'
 import type { EventProgramSettingsMode } from '~/domains/events/program-settings'
 
 import {
+  applyEventTypeApplicationFieldDefaults,
   createEventSlug,
   eventDetailsFormSchema,
   getAgendaItemEndAfterStartChange,
@@ -344,6 +346,14 @@ watch(() => form.value, (nextForm) => {
 }, {
   deep: true,
   immediate: true
+})
+
+watch(() => form.value.eventType, (nextEventType, previousEventType) => {
+  if (!showEventTypeField.value || !previousEventType || nextEventType === previousEventType) {
+    return
+  }
+
+  applyEventTypeApplicationFieldDefaults(form.value, nextEventType)
 })
 
 watch(() => form.value.name, (nextName) => {
@@ -1015,50 +1025,7 @@ const submitConfigForm = handleSubmit(() => {
                     In-person event
                   </label>
 
-                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                    <input
-                      v-model="form.requireChatgptEmail"
-                      type="checkbox"
-                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-                    >
-                    Require ChatGPT email
-                  </label>
-
-                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                    <input
-                      v-model="form.requireOpenaiOrgId"
-                      type="checkbox"
-                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-                    >
-                    Require OpenAI org ID
-                  </label>
-
-                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                    <input
-                      v-model="form.requireLumaEmail"
-                      type="checkbox"
-                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-                    >
-                    Require Luma email
-                  </label>
-
-                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                    <input
-                      v-model="form.requireWhyThisEvent"
-                      type="checkbox"
-                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-                    >
-                    Require "Why this event" answer
-                  </label>
-
-                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                    <input
-                      v-model="form.requireProofOfExecution"
-                      type="checkbox"
-                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-                    >
-                    Require proof-of-execution links
-                  </label>
+                  <EventConfigApplicationFieldsTable v-model:form="form" />
 
                   <label
                     v-if="isHackathon"
@@ -1094,33 +1061,6 @@ const submitConfigForm = handleSubmit(() => {
                       class="size-4 rounded border-black/20 dark:border-white/[0.3]"
                     >
                     Require demo URL
-                  </label>
-
-                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                    <input
-                      v-model="form.requireLinkedinProfile"
-                      type="checkbox"
-                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-                    >
-                    Require LinkedIn profile
-                  </label>
-
-                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                    <input
-                      v-model="form.requireGithubProfile"
-                      type="checkbox"
-                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-                    >
-                    Require GitHub profile
-                  </label>
-
-                  <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-                    <input
-                      v-model="form.requireXProfile"
-                      type="checkbox"
-                      class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-                    >
-                    Require X profile
                   </label>
                 </div>
               </div>
@@ -1440,50 +1380,7 @@ const submitConfigForm = handleSubmit(() => {
               In-person event
             </label>
 
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.requireChatgptEmail"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Require ChatGPT email
-            </label>
-
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.requireOpenaiOrgId"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Require OpenAI org ID
-            </label>
-
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.requireLumaEmail"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Require Luma email
-            </label>
-
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.requireWhyThisEvent"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Require "Why this event" answer
-            </label>
-
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.requireProofOfExecution"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Require proof-of-execution links
-            </label>
+            <EventConfigApplicationFieldsTable v-model:form="form" />
 
             <label
               v-if="isHackathon"
@@ -1519,33 +1416,6 @@ const submitConfigForm = handleSubmit(() => {
                 class="size-4 rounded border-black/20 dark:border-white/[0.3]"
               >
               Require demo URL
-            </label>
-
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.requireLinkedinProfile"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Require LinkedIn profile
-            </label>
-
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.requireGithubProfile"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Require GitHub profile
-            </label>
-
-            <label class="flex items-center gap-3 rounded-lg border border-black/8 px-4 py-3 text-sm text-toned dark:border-white/[0.08]">
-              <input
-                v-model="form.requireXProfile"
-                type="checkbox"
-                class="size-4 rounded border-black/20 dark:border-white/[0.3]"
-              >
-              Require X profile
             </label>
           </div>
         </div>

@@ -8,8 +8,12 @@ describe('participant registration form schema', () => {
     maxTeamMembers: 4,
     hasCurrentApplicationTerms: false,
     isInPersonEvent: false,
+    showWhyThisEvent: true,
     requireWhyThisEvent: false,
-    requireProofOfExecution: false
+    showProofOfExecution: true,
+    requireProofOfExecution: false,
+    showTeamIntent: true,
+    requireTeamIntent: false
   })
 
   function createValidRegistrationFormState() {
@@ -49,8 +53,12 @@ describe('participant registration form schema', () => {
       maxTeamMembers: 4,
       hasCurrentApplicationTerms: true,
       isInPersonEvent: false,
+      showWhyThisEvent: true,
       requireWhyThisEvent: false,
-      requireProofOfExecution: false
+      showProofOfExecution: true,
+      requireProofOfExecution: false,
+      showTeamIntent: true,
+      requireTeamIntent: false
     })
     const withTermsResult = withTermsSchema.safeParse(createValidRegistrationFormState())
 
@@ -70,6 +78,59 @@ describe('participant registration form schema', () => {
     expect(result.success).toBe(false)
     expect(result.error?.flatten().fieldErrors.proofOfExecutionUrl).toEqual([
       'Enter valid proof links. Separate multiple links with commas.'
+    ])
+  })
+
+  test('ignores hidden proof links and hidden profile fields', () => {
+    const schema = buildParticipantRegistrationFormSchema({
+      profileFields: [
+        {
+          key: 'githubProfileUrl',
+          label: 'GitHub profile URL',
+          visible: false,
+          required: false
+        }
+      ],
+      maxTeamMembers: 4,
+      hasCurrentApplicationTerms: false,
+      isInPersonEvent: false,
+      showWhyThisEvent: false,
+      requireWhyThisEvent: false,
+      showProofOfExecution: false,
+      requireProofOfExecution: false,
+      showTeamIntent: false,
+      requireTeamIntent: false
+    })
+    const result = schema.safeParse({
+      ...createValidRegistrationFormState(),
+      proofOfExecutionUrl: 'ftp://example.com/file',
+      profileForm: {
+        ...createValidRegistrationFormState().profileForm,
+        githubProfileUrl: 'not-a-url'
+      }
+    })
+
+    expect(result.success).toBe(true)
+  })
+
+  test('requires participation mode when visible and required', () => {
+    const schema = buildParticipantRegistrationFormSchema({
+      profileFields: [],
+      maxTeamMembers: 4,
+      hasCurrentApplicationTerms: false,
+      isInPersonEvent: false,
+      showWhyThisEvent: false,
+      requireWhyThisEvent: false,
+      showProofOfExecution: false,
+      requireProofOfExecution: false,
+      showTeamIntent: true,
+      requireTeamIntent: true
+    })
+    const result = schema.safeParse(createValidRegistrationFormState())
+
+    expect(result.success).toBe(false)
+    expect(result.error?.flatten().fieldErrors.teamIntent).toEqual([
+      'Choose how you plan to participate.'
     ])
   })
 })

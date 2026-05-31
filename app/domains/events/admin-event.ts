@@ -33,6 +33,15 @@ export interface EventFormState {
   pitchScoreWeightPercent: number
   shortlistFinalistCount: number
   inPersonEvent: boolean
+  applicationXProfileVisible: boolean
+  applicationLinkedinProfileVisible: boolean
+  applicationGithubProfileVisible: boolean
+  applicationChatgptEmailVisible: boolean
+  applicationOpenaiOrgIdVisible: boolean
+  applicationLumaEmailVisible: boolean
+  applicationWhyThisEventVisible: boolean
+  applicationProofOfExecutionVisible: boolean
+  applicationTeamIntentVisible: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean
@@ -41,6 +50,7 @@ export interface EventFormState {
   requireLumaEmail: boolean
   requireWhyThisEvent: boolean
   requireProofOfExecution: boolean
+  requireTeamIntent: boolean
   requireSubmissionSummary: boolean
   requireSubmissionRepositoryUrl: boolean
   requireSubmissionDemoUrl: boolean
@@ -60,6 +70,70 @@ export interface EventFormTrack {
   name: string
   description: string
   displayOrder: number
+}
+
+const hackathonApplicationFieldDefaults = {
+  applicationXProfileVisible: true,
+  applicationLinkedinProfileVisible: true,
+  applicationGithubProfileVisible: true,
+  applicationChatgptEmailVisible: true,
+  applicationOpenaiOrgIdVisible: true,
+  applicationLumaEmailVisible: true,
+  applicationWhyThisEventVisible: true,
+  applicationProofOfExecutionVisible: true,
+  applicationTeamIntentVisible: true,
+  requireXProfile: false,
+  requireLinkedinProfile: false,
+  requireGithubProfile: false,
+  requireChatgptEmail: true,
+  requireOpenaiOrgId: true,
+  requireLumaEmail: true,
+  requireWhyThisEvent: false,
+  requireProofOfExecution: false,
+  requireTeamIntent: false
+} as const
+
+const registrationOnlyApplicationFieldDefaults = {
+  applicationXProfileVisible: false,
+  applicationLinkedinProfileVisible: false,
+  applicationGithubProfileVisible: false,
+  applicationChatgptEmailVisible: false,
+  applicationOpenaiOrgIdVisible: false,
+  applicationLumaEmailVisible: false,
+  applicationWhyThisEventVisible: false,
+  applicationProofOfExecutionVisible: false,
+  applicationTeamIntentVisible: false,
+  requireXProfile: false,
+  requireLinkedinProfile: false,
+  requireGithubProfile: false,
+  requireChatgptEmail: false,
+  requireOpenaiOrgId: false,
+  requireLumaEmail: false,
+  requireWhyThisEvent: false,
+  requireProofOfExecution: false,
+  requireTeamIntent: false
+} as const
+
+const applicationFieldRequirementPairs = [
+  ['applicationXProfileVisible', 'requireXProfile', 'X profile'],
+  ['applicationLinkedinProfileVisible', 'requireLinkedinProfile', 'LinkedIn profile'],
+  ['applicationGithubProfileVisible', 'requireGithubProfile', 'GitHub profile'],
+  ['applicationChatgptEmailVisible', 'requireChatgptEmail', 'ChatGPT email'],
+  ['applicationOpenaiOrgIdVisible', 'requireOpenaiOrgId', 'OpenAI org ID'],
+  ['applicationLumaEmailVisible', 'requireLumaEmail', 'Luma email'],
+  ['applicationWhyThisEventVisible', 'requireWhyThisEvent', 'Why this event'],
+  ['applicationProofOfExecutionVisible', 'requireProofOfExecution', 'Proof-of-execution links'],
+  ['applicationTeamIntentVisible', 'requireTeamIntent', 'Participation mode']
+] as const
+
+export function getEventTypeApplicationFieldDefaults(eventType: EventType) {
+  return eventType === 'hackathon'
+    ? hackathonApplicationFieldDefaults
+    : registrationOnlyApplicationFieldDefaults
+}
+
+export function applyEventTypeApplicationFieldDefaults(form: EventFormState, eventType: EventType) {
+  Object.assign(form, getEventTypeApplicationFieldDefaults(eventType))
 }
 
 function isHttpUrl(value: string) {
@@ -192,7 +266,6 @@ function normalizeEventConfigFormInput(candidate: unknown) {
     blindScoreWeightPercent: 100,
     pitchScoreWeightPercent: 0,
     shortlistFinalistCount: 1,
-    requireProofOfExecution: false,
     requireSubmissionSummary: false,
     requireSubmissionRepositoryUrl: false,
     requireSubmissionDemoUrl: false
@@ -227,6 +300,15 @@ const eventConfigFormBaseSchema = z.object({
   pitchScoreWeightPercent: z.number().int().min(0).max(100),
   shortlistFinalistCount: z.number().int().min(1),
   inPersonEvent: z.boolean(),
+  applicationXProfileVisible: z.boolean(),
+  applicationLinkedinProfileVisible: z.boolean(),
+  applicationGithubProfileVisible: z.boolean(),
+  applicationChatgptEmailVisible: z.boolean(),
+  applicationOpenaiOrgIdVisible: z.boolean(),
+  applicationLumaEmailVisible: z.boolean(),
+  applicationWhyThisEventVisible: z.boolean(),
+  applicationProofOfExecutionVisible: z.boolean(),
+  applicationTeamIntentVisible: z.boolean(),
   requireXProfile: z.boolean(),
   requireLinkedinProfile: z.boolean(),
   requireGithubProfile: z.boolean(),
@@ -235,6 +317,7 @@ const eventConfigFormBaseSchema = z.object({
   requireLumaEmail: z.boolean(),
   requireWhyThisEvent: z.boolean(),
   requireProofOfExecution: z.boolean(),
+  requireTeamIntent: z.boolean(),
   requireSubmissionSummary: z.boolean(),
   requireSubmissionRepositoryUrl: z.boolean(),
   requireSubmissionDemoUrl: z.boolean()
@@ -259,6 +342,16 @@ const eventConfigFormBaseSchema = z.object({
       path: ['registrationClosesAt'],
       message: 'Provide a valid registration close date and time.'
     })
+  }
+
+  for (const [visibleKey, requiredKey, label] of applicationFieldRequirementPairs) {
+    if (input[requiredKey] && !input[visibleKey]) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [requiredKey],
+        message: `${label} cannot be required while hidden from the application form.`
+      })
+    }
   }
 
   if (isHackathon && Number.isNaN(submissionOpensAt)) {
@@ -385,6 +478,15 @@ export function createEmptyEventFormState(): EventFormState {
     pitchScoreWeightPercent: 30,
     shortlistFinalistCount: 10,
     inPersonEvent: false,
+    applicationXProfileVisible: hackathonApplicationFieldDefaults.applicationXProfileVisible,
+    applicationLinkedinProfileVisible: hackathonApplicationFieldDefaults.applicationLinkedinProfileVisible,
+    applicationGithubProfileVisible: hackathonApplicationFieldDefaults.applicationGithubProfileVisible,
+    applicationChatgptEmailVisible: hackathonApplicationFieldDefaults.applicationChatgptEmailVisible,
+    applicationOpenaiOrgIdVisible: hackathonApplicationFieldDefaults.applicationOpenaiOrgIdVisible,
+    applicationLumaEmailVisible: hackathonApplicationFieldDefaults.applicationLumaEmailVisible,
+    applicationWhyThisEventVisible: hackathonApplicationFieldDefaults.applicationWhyThisEventVisible,
+    applicationProofOfExecutionVisible: hackathonApplicationFieldDefaults.applicationProofOfExecutionVisible,
+    applicationTeamIntentVisible: hackathonApplicationFieldDefaults.applicationTeamIntentVisible,
     requireXProfile: false,
     requireLinkedinProfile: false,
     requireGithubProfile: false,
@@ -393,6 +495,7 @@ export function createEmptyEventFormState(): EventFormState {
     requireLumaEmail: true,
     requireWhyThisEvent: false,
     requireProofOfExecution: false,
+    requireTeamIntent: false,
     requireSubmissionSummary: false,
     requireSubmissionRepositoryUrl: false,
     requireSubmissionDemoUrl: false
@@ -471,6 +574,15 @@ export function createEventFormState(event: EventRecord): EventFormState {
     pitchScoreWeightPercent: event.pitchScoreWeightPercent,
     shortlistFinalistCount: event.shortlistFinalistCount,
     inPersonEvent: event.inPersonEvent,
+    applicationXProfileVisible: event.applicationXProfileVisible,
+    applicationLinkedinProfileVisible: event.applicationLinkedinProfileVisible,
+    applicationGithubProfileVisible: event.applicationGithubProfileVisible,
+    applicationChatgptEmailVisible: event.applicationChatgptEmailVisible,
+    applicationOpenaiOrgIdVisible: event.applicationOpenaiOrgIdVisible,
+    applicationLumaEmailVisible: event.applicationLumaEmailVisible,
+    applicationWhyThisEventVisible: event.applicationWhyThisEventVisible,
+    applicationProofOfExecutionVisible: event.applicationProofOfExecutionVisible,
+    applicationTeamIntentVisible: event.applicationTeamIntentVisible,
     requireXProfile: event.requireXProfile,
     requireLinkedinProfile: event.requireLinkedinProfile,
     requireGithubProfile: event.requireGithubProfile,
@@ -479,6 +591,7 @@ export function createEventFormState(event: EventRecord): EventFormState {
     requireLumaEmail: event.requireLumaEmail,
     requireWhyThisEvent: event.requireWhyThisEvent,
     requireProofOfExecution: event.requireProofOfExecution,
+    requireTeamIntent: event.requireTeamIntent,
     requireSubmissionSummary: event.requireSubmissionSummary,
     requireSubmissionRepositoryUrl: event.requireSubmissionRepositoryUrl,
     requireSubmissionDemoUrl: event.requireSubmissionDemoUrl
@@ -504,6 +617,15 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     participantsLimit: configForm.participantsLimit,
     autoApproveApplications: configForm.autoApproveApplications,
     inPersonEvent: configForm.inPersonEvent,
+    applicationXProfileVisible: configForm.applicationXProfileVisible,
+    applicationLinkedinProfileVisible: configForm.applicationLinkedinProfileVisible,
+    applicationGithubProfileVisible: configForm.applicationGithubProfileVisible,
+    applicationChatgptEmailVisible: configForm.applicationChatgptEmailVisible,
+    applicationOpenaiOrgIdVisible: configForm.applicationOpenaiOrgIdVisible,
+    applicationLumaEmailVisible: configForm.applicationLumaEmailVisible,
+    applicationWhyThisEventVisible: configForm.applicationWhyThisEventVisible,
+    applicationProofOfExecutionVisible: configForm.applicationProofOfExecutionVisible,
+    applicationTeamIntentVisible: configForm.applicationTeamIntentVisible,
     requireXProfile: configForm.requireXProfile,
     requireLinkedinProfile: configForm.requireLinkedinProfile,
     requireGithubProfile: configForm.requireGithubProfile,
@@ -512,6 +634,7 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     requireLumaEmail: configForm.requireLumaEmail,
     requireWhyThisEvent: configForm.requireWhyThisEvent,
     requireProofOfExecution: configForm.requireProofOfExecution,
+    requireTeamIntent: configForm.requireTeamIntent,
     ...(isHackathon
       ? {
           tracks: toEventTracksPayload(configForm.tracks),

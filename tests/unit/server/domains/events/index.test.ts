@@ -51,6 +51,15 @@ function buildEventRecord(
     participantsLimit: null,
     autoApproveApplications: false,
     inPersonEvent: false,
+    applicationXProfileVisible: true,
+    applicationLinkedinProfileVisible: true,
+    applicationGithubProfileVisible: true,
+    applicationChatgptEmailVisible: false,
+    applicationOpenaiOrgIdVisible: false,
+    applicationLumaEmailVisible: false,
+    applicationWhyThisEventVisible: true,
+    applicationProofOfExecutionVisible: true,
+    applicationTeamIntentVisible: true,
     requireXProfile: false,
     requireLinkedinProfile: false,
     requireGithubProfile: false,
@@ -59,6 +68,7 @@ function buildEventRecord(
     requireLumaEmail: false,
     requireWhyThisEvent: false,
     requireProofOfExecution: false,
+    requireTeamIntent: false,
     requireSubmissionSummary: false,
     requireSubmissionRepositoryUrl: false,
     requireSubmissionDemoUrl: false,
@@ -508,6 +518,9 @@ describe('event management utilities', () => {
     }), {
       autoApproveApplications: true,
       inPersonEvent: true,
+      applicationChatgptEmailVisible: true,
+      applicationOpenaiOrgIdVisible: true,
+      applicationLumaEmailVisible: true,
       requireChatgptEmail: true,
       requireOpenaiOrgId: true,
       requireLumaEmail: true,
@@ -516,12 +529,22 @@ describe('event management utilities', () => {
     })).toMatchObject({
       autoApproveApplications: true,
       inPersonEvent: true,
+      applicationChatgptEmailVisible: true,
+      applicationOpenaiOrgIdVisible: true,
+      applicationLumaEmailVisible: true,
       requireChatgptEmail: true,
       requireOpenaiOrgId: true,
       requireLumaEmail: true,
       requireWhyThisEvent: true,
       requireProofOfExecution: true
     })
+  })
+
+  test('rejects required application fields hidden from the application form', () => {
+    expect(() => buildEventUpdatePayload(buildEventRecord(), {
+      applicationProofOfExecutionVisible: false,
+      requireProofOfExecution: true
+    })).toThrowError(ApiError)
   })
 
   test('allows participant limit patches on registration-only events', () => {

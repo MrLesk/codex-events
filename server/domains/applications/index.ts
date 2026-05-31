@@ -366,9 +366,9 @@ async function listAdminApplicationWithdrawalAvailabilityByApplicationId(
 }
 
 export function isEventLumaEmailRequired(
-  event: Pick<EventRecord, 'requireLumaEmail'>
+  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail'>
 ) {
-  return event.requireLumaEmail
+  return event.applicationLumaEmailVisible && event.requireLumaEmail
 }
 
 export function isEventLumaAttendanceSyncEnabled(
@@ -378,22 +378,22 @@ export function isEventLumaAttendanceSyncEnabled(
 }
 
 export function isEventLumaSyncEnabled(
-  event: Pick<EventRecord, 'requireLumaEmail' | 'lumaEventApiId'>
+  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId'>
 ) {
   return isEventLumaEmailRequired(event) && isEventLumaAttendanceSyncEnabled(event)
 }
 
 export function getInitialApplicationLumaSyncStatus(
-  event: Pick<EventRecord, 'requireLumaEmail' | 'lumaEventApiId'>
+  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId'>
 ) {
   return isEventLumaSyncEnabled(event) ? 'not_synced' as const : null
 }
 
 export function serializeRegistrationDetailsJson(
-  event: Pick<EventRecord, 'id' | 'maxTeamMembers' | 'inPersonEvent' | 'requireWhyThisEvent' | 'requireProofOfExecution'>,
+  event: Pick<EventRecord, 'id' | 'maxTeamMembers' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent'>,
   payload: Pick<SubmitApplicationBody, 'registrationTeamIntent' | 'registrationTeamMembers' | 'inPersonAttendanceCommitment' | 'whyThisEvent' | 'proofOfExecutionUrl'>
 ) {
-  assertGuard(payload.registrationTeamMembers.length <= event.maxTeamMembers, {
+  assertGuard(!event.applicationTeamIntentVisible || payload.registrationTeamMembers.length <= event.maxTeamMembers, {
     code: 'registration_team_members_invalid',
     message: 'The provided team-member registration hints exceed the maximum team size for this event.',
     details: {
@@ -402,7 +402,17 @@ export function serializeRegistrationDetailsJson(
     }
   })
 
-  const normalizedTeamMembers = payload.registrationTeamIntent === 'team'
+  const teamIntent = event.applicationTeamIntentVisible ? payload.registrationTeamIntent : 'unknown'
+
+  assertGuard(!event.applicationTeamIntentVisible || !event.requireTeamIntent || teamIntent !== 'unknown', {
+    code: 'registration_team_intent_required',
+    message: 'Participation mode is required for this event.',
+    details: {
+      eventId: event.id
+    }
+  })
+
+  const normalizedTeamMembers = teamIntent === 'team'
     ? payload.registrationTeamMembers
         .slice(0, event.maxTeamMembers)
         .map((member) => {
@@ -421,10 +431,14 @@ export function serializeRegistrationDetailsJson(
         .filter((member): member is { fullName?: string, email?: string } => Boolean(member))
     : []
 
-  const whyThisEvent = normalizeTextValue(payload.whyThisEvent)
-  const proofOfExecutionUrl = normalizeProofOfExecutionUrl(payload.proofOfExecutionUrl)
+  const whyThisEvent = event.applicationWhyThisEventVisible
+    ? normalizeTextValue(payload.whyThisEvent)
+    : ''
+  const proofOfExecutionUrl = event.applicationProofOfExecutionVisible
+    ? normalizeProofOfExecutionUrl(payload.proofOfExecutionUrl)
+    : ''
 
-  assertGuard(!event.requireWhyThisEvent || whyThisEvent.length > 0, {
+  assertGuard(!event.applicationWhyThisEventVisible || !event.requireWhyThisEvent || whyThisEvent.length > 0, {
     code: 'why_this_event_required',
     message: 'A why-this-event response is required for this event.',
     details: {
@@ -432,7 +446,7 @@ export function serializeRegistrationDetailsJson(
     }
   })
 
-  assertGuard(!event.requireProofOfExecution || proofOfExecutionUrl.length > 0, {
+  assertGuard(!event.applicationProofOfExecutionVisible || !event.requireProofOfExecution || proofOfExecutionUrl.length > 0, {
     code: 'proof_of_execution_required',
     message: 'At least one proof-of-execution link is required for this event.',
     details: {
@@ -441,7 +455,7 @@ export function serializeRegistrationDetailsJson(
   })
 
   return JSON.stringify({
-    teamIntent: payload.registrationTeamIntent,
+    teamIntent,
     teamMembers: normalizedTeamMembers,
     inPersonAttendanceCommitment: event.inPersonEvent ? payload.inPersonAttendanceCommitment : false,
     whyThisEvent,
@@ -542,23 +556,23 @@ export function assertEventAllowsApplications(event: EventRecord, now = new Date
 export function assertUserMeetsEventProfileRequirements(user: UserRecord, event: EventRecord) {
   const missingFields = []
 
-  if (event.requireXProfile && !user.xProfileUrl) {
+  if (event.applicationXProfileVisible && event.requireXProfile && !user.xProfileUrl) {
     missingFields.push('xProfileUrl')
   }
 
-  if (event.requireLinkedinProfile && !user.linkedinProfileUrl) {
+  if (event.applicationLinkedinProfileVisible && event.requireLinkedinProfile && !user.linkedinProfileUrl) {
     missingFields.push('linkedinProfileUrl')
   }
 
-  if (event.requireGithubProfile && !user.githubProfileUrl) {
+  if (event.applicationGithubProfileVisible && event.requireGithubProfile && !user.githubProfileUrl) {
     missingFields.push('githubProfileUrl')
   }
 
-  if (event.requireChatgptEmail && !user.chatgptEmail) {
+  if (event.applicationChatgptEmailVisible && event.requireChatgptEmail && !user.chatgptEmail) {
     missingFields.push('chatgptEmail')
   }
 
-  if (event.requireOpenaiOrgId && !user.openaiOrgId) {
+  if (event.applicationOpenaiOrgIdVisible && event.requireOpenaiOrgId && !user.openaiOrgId) {
     missingFields.push('openaiOrgId')
   }
 

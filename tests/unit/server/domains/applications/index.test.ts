@@ -202,11 +202,18 @@ describe('application utilities', () => {
       maxTeamMembers: 5,
       participantsLimit: null,
       inPersonEvent: false,
+      applicationXProfileVisible: true,
+      applicationLinkedinProfileVisible: true,
+      applicationGithubProfileVisible: true,
+      applicationChatgptEmailVisible: true,
+      applicationOpenaiOrgIdVisible: true,
+      applicationLumaEmailVisible: true,
       requireXProfile: true,
       requireLinkedinProfile: false,
       requireGithubProfile: true,
       requireChatgptEmail: true,
       requireOpenaiOrgId: true,
+      requireLumaEmail: false,
       currentApplicationTermsDocumentId: null,
       currentWinnerTermsDocumentId: null,
       createdByUserId: 'creator_1',
@@ -253,6 +260,12 @@ describe('application utilities', () => {
       maxTeamMembers: 5,
       participantsLimit: null,
       inPersonEvent: false,
+      applicationXProfileVisible: true,
+      applicationLinkedinProfileVisible: true,
+      applicationGithubProfileVisible: true,
+      applicationChatgptEmailVisible: true,
+      applicationOpenaiOrgIdVisible: true,
+      applicationLumaEmailVisible: true,
       requireXProfile: false,
       requireLinkedinProfile: false,
       requireGithubProfile: false,
@@ -384,8 +397,12 @@ describe('application utilities', () => {
       id: 'event_1',
       maxTeamMembers: 2,
       inPersonEvent: true,
+      applicationWhyThisEventVisible: true,
+      applicationProofOfExecutionVisible: true,
+      applicationTeamIntentVisible: true,
       requireWhyThisEvent: true,
-      requireProofOfExecution: true
+      requireProofOfExecution: true,
+      requireTeamIntent: false
     }, {
       registrationTeamIntent: 'team',
       registrationTeamMembers: [
@@ -421,8 +438,12 @@ describe('application utilities', () => {
       id: 'event_1',
       maxTeamMembers: 1,
       inPersonEvent: false,
+      applicationWhyThisEventVisible: true,
+      applicationProofOfExecutionVisible: true,
+      applicationTeamIntentVisible: true,
       requireWhyThisEvent: false,
-      requireProofOfExecution: false
+      requireProofOfExecution: false,
+      requireTeamIntent: false
     }, {
       registrationTeamIntent: 'team',
       registrationTeamMembers: [
@@ -446,8 +467,12 @@ describe('application utilities', () => {
       id: 'event_1',
       maxTeamMembers: 4,
       inPersonEvent: false,
+      applicationWhyThisEventVisible: true,
+      applicationProofOfExecutionVisible: true,
+      applicationTeamIntentVisible: true,
       requireWhyThisEvent: true,
-      requireProofOfExecution: false
+      requireProofOfExecution: false,
+      requireTeamIntent: false
     }, {
       registrationTeamIntent: 'unknown',
       registrationTeamMembers: [],
@@ -460,8 +485,67 @@ describe('application utilities', () => {
       id: 'event_1',
       maxTeamMembers: 4,
       inPersonEvent: false,
+      applicationWhyThisEventVisible: true,
+      applicationProofOfExecutionVisible: true,
+      applicationTeamIntentVisible: true,
       requireWhyThisEvent: false,
-      requireProofOfExecution: true
+      requireProofOfExecution: true,
+      requireTeamIntent: false
+    }, {
+      registrationTeamIntent: 'unknown',
+      registrationTeamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisEvent: '',
+      proofOfExecutionUrl: ''
+    })).toThrowError(ApiError)
+  })
+
+  test('ignores hidden application fields during registration details serialization', () => {
+    expect(serializeRegistrationDetailsJson({
+      id: 'event_1',
+      maxTeamMembers: 1,
+      inPersonEvent: false,
+      applicationWhyThisEventVisible: false,
+      applicationProofOfExecutionVisible: false,
+      applicationTeamIntentVisible: false,
+      requireWhyThisEvent: false,
+      requireProofOfExecution: false,
+      requireTeamIntent: false
+    }, {
+      registrationTeamIntent: 'team',
+      registrationTeamMembers: [
+        {
+          fullName: 'Ada Lovelace',
+          email: 'ada@example.com'
+        },
+        {
+          fullName: 'Grace Hopper',
+          email: 'grace@example.com'
+        }
+      ],
+      inPersonAttendanceCommitment: false,
+      whyThisEvent: 'Hidden answer',
+      proofOfExecutionUrl: 'ftp://example.com/project'
+    })).toBe(JSON.stringify({
+      teamIntent: 'unknown',
+      teamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisEvent: '',
+      proofOfExecutionUrl: ''
+    }))
+  })
+
+  test('requires participation mode when configured', () => {
+    expect(() => serializeRegistrationDetailsJson({
+      id: 'event_1',
+      maxTeamMembers: 4,
+      inPersonEvent: false,
+      applicationWhyThisEventVisible: false,
+      applicationProofOfExecutionVisible: false,
+      applicationTeamIntentVisible: true,
+      requireWhyThisEvent: false,
+      requireProofOfExecution: false,
+      requireTeamIntent: true
     }, {
       registrationTeamIntent: 'unknown',
       registrationTeamMembers: [],
@@ -476,8 +560,12 @@ describe('application utilities', () => {
       id: 'event_1',
       maxTeamMembers: 4,
       inPersonEvent: false,
+      applicationWhyThisEventVisible: true,
+      applicationProofOfExecutionVisible: true,
+      applicationTeamIntentVisible: true,
       requireWhyThisEvent: false,
-      requireProofOfExecution: false
+      requireProofOfExecution: false,
+      requireTeamIntent: false
     }, {
       registrationTeamIntent: 'unknown',
       registrationTeamMembers: [],

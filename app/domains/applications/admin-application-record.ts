@@ -87,9 +87,9 @@ export function getApplicationAttendanceStatusColor(
 }
 
 export function shouldShowApprovedParticipantAttendanceSummary(
-  event: Pick<EventRecord, 'requireLumaEmail' | 'lumaEventApiId'> | null | undefined
+  event: Pick<EventRecord, 'applicationLumaEmailVisible' | 'requireLumaEmail' | 'lumaEventApiId'> | null | undefined
 ) {
-  return Boolean(event?.requireLumaEmail && event.lumaEventApiId?.trim())
+  return Boolean(event?.applicationLumaEmailVisible && event.requireLumaEmail && event.lumaEventApiId?.trim())
 }
 
 export function shouldShowApplicationLumaSyncStatus(

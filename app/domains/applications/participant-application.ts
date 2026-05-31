@@ -69,7 +69,7 @@ export interface ParticipantApplicationRecord {
   registrationDetailsJson: string
   createdAt: string
   updatedAt: string
-  applicationTermsDocument?: ParticipantApplicationTermsDocument | null
+  applicationTermsDocument?: ParticipantApplicationTermsDocument
 }
 
 export interface VisibleEventRecord extends PublicEvent {
@@ -99,59 +99,75 @@ export interface EventProfileField extends RequiredProfileField {
   visible: boolean
 }
 
+type ProfileFieldConfigurationEvent = Pick<
+  PublicEvent,
+  | 'applicationXProfileVisible'
+  | 'applicationLinkedinProfileVisible'
+  | 'applicationGithubProfileVisible'
+  | 'applicationChatgptEmailVisible'
+  | 'applicationOpenaiOrgIdVisible'
+  | 'applicationLumaEmailVisible'
+  | 'requireXProfile'
+  | 'requireLinkedinProfile'
+  | 'requireGithubProfile'
+  | 'requireChatgptEmail'
+  | 'requireOpenaiOrgId'
+  | 'requireLumaEmail'
+>
+
 const requiredProfileFieldRules: Array<{
   key: RequiredProfileField['key']
   label: RequiredProfileField['label']
-  isRequired: (event: Pick<PublicEvent, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>) => boolean
-  isVisible: (event: Pick<PublicEvent, 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>) => boolean
+  isRequired: (event: ProfileFieldConfigurationEvent) => boolean
+  isVisible: (event: ProfileFieldConfigurationEvent) => boolean
   hasValue: (platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaEmail'>) => boolean
 }> = [
   {
     key: 'xProfileUrl',
     label: 'X profile URL',
-    isRequired: event => event.requireXProfile,
-    isVisible: () => true,
+    isRequired: event => event.applicationXProfileVisible && event.requireXProfile,
+    isVisible: event => event.applicationXProfileVisible,
     hasValue: platformUser => Boolean(platformUser.xProfileUrl)
   },
   {
     key: 'linkedinProfileUrl',
     label: 'LinkedIn profile URL',
-    isRequired: event => event.requireLinkedinProfile,
-    isVisible: () => true,
+    isRequired: event => event.applicationLinkedinProfileVisible && event.requireLinkedinProfile,
+    isVisible: event => event.applicationLinkedinProfileVisible,
     hasValue: platformUser => Boolean(platformUser.linkedinProfileUrl)
   },
   {
     key: 'githubProfileUrl',
     label: 'GitHub profile URL',
-    isRequired: event => event.requireGithubProfile,
-    isVisible: () => true,
+    isRequired: event => event.applicationGithubProfileVisible && event.requireGithubProfile,
+    isVisible: event => event.applicationGithubProfileVisible,
     hasValue: platformUser => Boolean(platformUser.githubProfileUrl)
   },
   {
     key: 'chatgptEmail',
     label: 'ChatGPT email',
-    isRequired: event => event.requireChatgptEmail,
-    isVisible: event => event.requireChatgptEmail,
+    isRequired: event => event.applicationChatgptEmailVisible && event.requireChatgptEmail,
+    isVisible: event => event.applicationChatgptEmailVisible,
     hasValue: platformUser => Boolean(platformUser.chatgptEmail)
   },
   {
     key: 'openaiOrgId',
     label: 'OpenAI org ID',
-    isRequired: event => event.requireOpenaiOrgId,
-    isVisible: event => event.requireOpenaiOrgId,
+    isRequired: event => event.applicationOpenaiOrgIdVisible && event.requireOpenaiOrgId,
+    isVisible: event => event.applicationOpenaiOrgIdVisible,
     hasValue: platformUser => Boolean(platformUser.openaiOrgId)
   },
   {
     key: 'lumaEmail',
     label: 'Luma email',
-    isRequired: event => event.requireLumaEmail,
-    isVisible: event => event.requireLumaEmail,
+    isRequired: event => event.applicationLumaEmailVisible && event.requireLumaEmail,
+    isVisible: event => event.applicationLumaEmailVisible,
     hasValue: platformUser => Boolean(platformUser.lumaEmail)
   }
 ]
 
 export function listRequiredProfileFields(
-  event: Pick<PublicEvent, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>
+  event: ProfileFieldConfigurationEvent
 ) {
   return requiredProfileFieldRules
     .filter(rule => rule.isVisible(event) && rule.isRequired(event))
@@ -162,7 +178,7 @@ export function listRequiredProfileFields(
 }
 
 export function listEventProfileFields(
-  event: Pick<PublicEvent, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>
+  event: ProfileFieldConfigurationEvent
 ): EventProfileField[] {
   return requiredProfileFieldRules.map(rule => ({
     key: rule.key,
@@ -178,7 +194,7 @@ export const buildAnonymousParticipantActor = buildAnonymousSessionActor
 export const buildAuthenticatedIdentityParticipantActor = buildAuthenticatedIdentitySessionActor
 
 export function listMissingRequiredProfileFields(
-  event: Pick<PublicEvent, 'requireXProfile' | 'requireLinkedinProfile' | 'requireGithubProfile' | 'requireChatgptEmail' | 'requireOpenaiOrgId' | 'requireLumaEmail'>,
+  event: ProfileFieldConfigurationEvent,
   platformUser: Pick<ParticipantPlatformUserProfile, 'xProfileUrl' | 'linkedinProfileUrl' | 'githubProfileUrl' | 'chatgptEmail' | 'openaiOrgId' | 'lumaEmail'>
 ) {
   return requiredProfileFieldRules

@@ -47,11 +47,18 @@ async function seedApplicationContext(
   harness: ReturnType<typeof createApiRouteTestHarness>,
   options?: {
     requireGithubProfile?: boolean
+    applicationChatgptEmailVisible?: boolean
     requireChatgptEmail?: boolean
+    applicationOpenaiOrgIdVisible?: boolean
     requireOpenaiOrgId?: boolean
+    applicationLumaEmailVisible?: boolean
     requireLumaEmail?: boolean
+    applicationWhyThisEventVisible?: boolean
     requireWhyThisEvent?: boolean
+    applicationProofOfExecutionVisible?: boolean
     requireProofOfExecution?: boolean
+    applicationTeamIntentVisible?: boolean
+    requireTeamIntent?: boolean
     lumaEventUrl?: string | null
     lumaEventApiId?: string | null
     inPersonEvent?: boolean
@@ -116,12 +123,19 @@ async function seedApplicationContext(
     maxTeamMembers: 5,
     autoApproveApplications: options?.autoApproveApplications ?? false,
     inPersonEvent: options?.inPersonEvent ?? false,
+    applicationChatgptEmailVisible: options?.applicationChatgptEmailVisible ?? Boolean(options?.requireChatgptEmail),
+    applicationOpenaiOrgIdVisible: options?.applicationOpenaiOrgIdVisible ?? Boolean(options?.requireOpenaiOrgId),
+    applicationLumaEmailVisible: options?.applicationLumaEmailVisible ?? Boolean(options?.requireLumaEmail),
+    applicationWhyThisEventVisible: options?.applicationWhyThisEventVisible ?? true,
+    applicationProofOfExecutionVisible: options?.applicationProofOfExecutionVisible ?? true,
+    applicationTeamIntentVisible: options?.applicationTeamIntentVisible ?? true,
     requireGithubProfile: options?.requireGithubProfile ?? false,
     requireChatgptEmail: options?.requireChatgptEmail ?? false,
     requireOpenaiOrgId: options?.requireOpenaiOrgId ?? false,
     requireLumaEmail: options?.requireLumaEmail ?? false,
     requireWhyThisEvent: options?.requireWhyThisEvent ?? false,
     requireProofOfExecution: options?.requireProofOfExecution ?? false,
+    requireTeamIntent: options?.requireTeamIntent ?? false,
     lumaEventUrl: options?.lumaEventUrl ?? null,
     lumaEventApiId: options?.lumaEventApiId ?? null,
     currentApplicationTermsDocumentId: null,

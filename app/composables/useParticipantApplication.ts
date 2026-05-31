@@ -229,15 +229,19 @@ export function useParticipantApplication(
           ...(options.applicationTermsDocumentId
             ? { applicationTermsDocumentId: options.applicationTermsDocumentId }
             : {}),
-          registrationTeamIntent: options.registrationTeamIntent,
-          registrationTeamMembers: options.registrationTeamMembers,
+          ...(resolvedEvent.value.applicationTeamIntentVisible
+            ? {
+                registrationTeamIntent: options.registrationTeamIntent,
+                registrationTeamMembers: options.registrationTeamMembers
+              }
+            : {}),
           ...(typeof options.inPersonAttendanceCommitment === 'boolean'
             ? { inPersonAttendanceCommitment: options.inPersonAttendanceCommitment }
             : {}),
-          ...(typeof options.whyThisEvent === 'string'
+          ...(resolvedEvent.value.applicationWhyThisEventVisible && typeof options.whyThisEvent === 'string'
             ? { whyThisEvent: options.whyThisEvent }
             : {}),
-          ...(typeof options.proofOfExecutionUrl === 'string'
+          ...(resolvedEvent.value.applicationProofOfExecutionVisible && typeof options.proofOfExecutionUrl === 'string'
             ? { proofOfExecutionUrl: options.proofOfExecutionUrl }
             : {})
         }

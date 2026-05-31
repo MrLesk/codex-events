@@ -90,8 +90,9 @@ Key characteristics:
 - Each event can optionally define a participant approval limit used as an indicative planning target during admin review.
 - Each event can approve new participant applications automatically after required submission checks pass.
 - Each event can optionally reference a restricted Discord server URL.
-- Each event can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma email, for registration.
-- Each event can require a `why this event` response and proof-of-execution links in applications.
+- Each event has a fixed application field configuration. First name and family name are always visible and required. Event admins can mark X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, Luma email, `why this event`, proof-of-execution links, and participation mode as visible or hidden.
+- Each visible application field can be optional or required. A field cannot be required while hidden.
+- The current application field configuration applies when a participant views or submits the form. Changing the configuration does not rewrite existing application records.
 - Each event can optionally reference event-specific application terms.
 - A configured Discord server URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
 
@@ -277,10 +278,10 @@ Rules:
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
 - Auto-approved applications enqueue the same participant-facing approval email as manually approved applications.
-- If the event requires a Luma email and has a Luma event API ID, application submission verifies that the participant's saved Luma email is registered as a guest on that Luma event.
-- If the event auto-approves applications and requires a Luma email with a Luma event API ID, application submission also enqueues a Luma approval sync.
-- If the event requires a Luma email and has a Luma event API ID, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
-- If the event requires a Luma email and has a Luma event API ID, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
+- If the event shows and requires a Luma email and has a Luma event API ID, application submission verifies that the participant's saved Luma email is registered as a guest on that Luma event.
+- If the event auto-approves applications and shows and requires a Luma email with a Luma event API ID, application submission also enqueues a Luma approval sync.
+- If the event shows and requires a Luma email and has a Luma event API ID, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
+- If the event shows and requires a Luma email and has a Luma event API ID, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
 - Platform admins can run an event-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - In Hackathon events, a user must be approved before creating or joining a team in that event.
 - In Meetup and Build events, an approved application is the participant's event access record.
@@ -291,14 +292,15 @@ Rules:
 - Admin-managed withdrawal is blocked if dismantling the participant's team would affect an active draft, submitted, or locked submission.
 - Blind judging uses application information without exposing team identity.
 - When the event has current application terms, user application acceptance references the exact application terms version accepted for that event.
-- A user can submit a `UserApplication` only if the user profile satisfies that event's required profile rules.
+- A user can submit a `UserApplication` only if the user profile satisfies the event's currently visible required profile fields.
 - If an event is marked as an in-person event, a user application requires explicit commitment to attend in person on the event date in that city and country after approval.
-- A user application records a registration team-intent hint: `solo`, `team`, or `unknown`.
-- When the registration team-intent hint is `team`, the user application can include free-form teammate hints captured during application (name/family-name and/or email per hinted member).
-- A user application can include a free-form `why this event` response.
-- A user application can include one or more proof-of-execution links.
-- If the event requires motivation, the `why this event` response must be non-empty.
-- If the event requires proof of execution, at least one proof-of-execution link must be non-empty and every provided link must use `http` or `https`.
+- A user application records a registration team-intent hint only when participation mode is visible. The hint is `solo`, `team`, or `unknown`.
+- When participation mode is visible and the registration team-intent hint is `team`, the user application can include free-form teammate hints captured during application (name/family-name and/or email per hinted member).
+- A user application can include a free-form `why this event` response only when that field is visible.
+- A user application can include one or more proof-of-execution links only when that field is visible.
+- If visible participation mode is required, the user must choose `solo` or `team`.
+- If visible motivation is required, the `why this event` response must be non-empty.
+- If visible proof of execution is required, at least one proof-of-execution link must be non-empty and every provided link must use `http` or `https`.
 - A `UserApplication` can persist a Luma sync outcome of `not_synced`, `approve_synced`, `reject_synced`, `approve_failed`, or `reject_failed`.
 - `not_synced` is used only for events where Luma sync is enabled.
 - A `UserApplication` can record `checkedInAt` when a valid signed Luma guest check-in update confirms the approved participant attended the event.

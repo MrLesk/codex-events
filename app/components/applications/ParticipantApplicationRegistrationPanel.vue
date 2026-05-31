@@ -48,7 +48,7 @@ const profileForm = defineModel<{
 })
 
 const props = defineProps<{
-  event: Pick<PublicEvent, 'slug' | 'state' | 'city' | 'country' | 'autoApproveApplications' | 'inPersonEvent' | 'requireWhyThisEvent' | 'requireProofOfExecution'>
+  event: Pick<PublicEvent, 'eventType' | 'slug' | 'state' | 'city' | 'country' | 'autoApproveApplications' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent'>
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
   profileFields: EventProfileField[]
   submissionPolicy: ParticipantApplicationSubmissionPolicy
@@ -96,15 +96,36 @@ const teamIntentOptions: Array<{
 const syncingFromModels = ref(false)
 
 const primaryProfileFields = computed(() =>
-  props.profileFields.filter(field => field.key !== 'chatgptEmail' && field.key !== 'openaiOrgId')
+  props.profileFields.filter(field => field.visible && field.key !== 'chatgptEmail' && field.key !== 'openaiOrgId')
 )
 
 const eventCreditProfileFields = computed(() =>
-  props.profileFields.filter(field => field.key === 'chatgptEmail' || field.key === 'openaiOrgId')
+  props.profileFields.filter(field => field.visible && (field.key === 'chatgptEmail' || field.key === 'openaiOrgId'))
 )
 
 const maxTeamMemberHints = computed(() => Math.max(0, props.maxTeamMembers - 1))
 const applicationTermsPageHref = computed(() => `/events/${props.event.slug}/application-terms`)
+const showWhyThisEvent = computed(() => props.event.applicationWhyThisEventVisible)
+const showProofOfExecution = computed(() => props.event.applicationProofOfExecutionVisible)
+const showTeamIntent = computed(() => props.event.applicationTeamIntentVisible)
+const showApplicationQuestions = computed(() => showWhyThisEvent.value || showProofOfExecution.value)
+const showLinksAndAccountsSection = computed(() => primaryProfileFields.value.length > 0 || eventCreditProfileFields.value.length > 0)
+const teamIntentHelperText = computed(() =>
+  props.event.eventType === 'hackathon'
+    ? 'This does not create your team yet. If you are approved, you can still create a team or join one later while team formation is open.'
+    : 'This helps organizers understand whether you expect to participate alone or with others.'
+)
+const postSubmissionText = computed(() => {
+  if (props.event.eventType === 'hackathon') {
+    return props.event.autoApproveApplications
+      ? 'After you apply, you can create a team or join one while team formation is open.'
+      : 'After you apply, we will review your application. If you are approved, you can create a team or join one while team formation is open.'
+  }
+
+  return props.event.autoApproveApplications
+    ? 'After you apply, your event workspace will show the details available to approved participants.'
+    : 'After you apply, we will review your application and update your event workspace after a decision is made.'
+})
 
 const requiredChipClass = 'rounded-full border border-amber-600/35 bg-amber-500/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-amber-700 dark:border-amber-300/35 dark:bg-amber-300/12 dark:text-amber-200'
 const inlineSectionClass = 'space-y-3 border-t border-black/8 pt-4 dark:border-white/[0.08]'
@@ -115,8 +136,12 @@ const registrationSchema = computed(() => buildParticipantRegistrationFormSchema
   maxTeamMembers: props.maxTeamMembers,
   hasCurrentApplicationTerms: Boolean(props.currentApplicationTerms),
   isInPersonEvent: props.event.inPersonEvent,
+  showWhyThisEvent: showWhyThisEvent.value,
   requireWhyThisEvent: props.event.requireWhyThisEvent,
-  requireProofOfExecution: props.event.requireProofOfExecution
+  showProofOfExecution: showProofOfExecution.value,
+  requireProofOfExecution: props.event.requireProofOfExecution,
+  showTeamIntent: showTeamIntent.value,
+  requireTeamIntent: props.event.requireTeamIntent
 }))
 
 const {
@@ -149,7 +174,13 @@ watch([
   () => props.profileFields,
   () => props.maxTeamMembers,
   () => props.currentApplicationTerms?.id ?? null,
-  () => props.event.inPersonEvent
+  () => props.event.inPersonEvent,
+  () => props.event.applicationWhyThisEventVisible,
+  () => props.event.applicationProofOfExecutionVisible,
+  () => props.event.applicationTeamIntentVisible,
+  () => props.event.requireWhyThisEvent,
+  () => props.event.requireProofOfExecution,
+  () => props.event.requireTeamIntent
 ], () => {
   syncingFromModels.value = true
   setValues({
@@ -240,6 +271,11 @@ const proofOfExecutionUrlError = computed(() => {
   return currentErrors.proofOfExecutionUrl ?? ''
 })
 
+const teamIntentError = computed(() => {
+  const currentErrors = errors.value as Record<string, string | undefined>
+  return currentErrors.teamIntent ?? ''
+})
+
 const hasClientValidationErrors = computed(() => Object.keys(errors.value).length > 0)
 
 const canSubmitFromPanel = computed(() => props.submissionPolicy.isAllowed && !hasClientValidationErrors.value)
@@ -272,7 +308,7 @@ const missingRequiredFieldCount = computed(() => {
   }
 
   for (const field of props.profileFields) {
-    if (!field.required) {
+    if (!field.visible || !field.required) {
       continue
     }
 
@@ -291,11 +327,15 @@ const missingRequiredFieldCount = computed(() => {
     count += 1
   }
 
-  if (props.event.requireWhyThisEvent && !whyThisEvent.value.trim()) {
+  if (showWhyThisEvent.value && props.event.requireWhyThisEvent && !whyThisEvent.value.trim()) {
     count += 1
   }
 
-  if (props.event.requireProofOfExecution && !proofOfExecutionUrl.value.trim()) {
+  if (showProofOfExecution.value && props.event.requireProofOfExecution && !proofOfExecutionUrl.value.trim()) {
+    count += 1
+  }
+
+  if (showTeamIntent.value && props.event.requireTeamIntent && teamIntent.value === 'unknown') {
     count += 1
   }
 
@@ -308,7 +348,7 @@ const invalidFieldCount = computed(() => {
   requiredKeys.add('familyName')
 
   for (const field of props.profileFields) {
-    if (field.required) {
+    if (field.visible && field.required) {
       requiredKeys.add(field.key)
     }
   }
@@ -321,20 +361,28 @@ const invalidFieldCount = computed(() => {
     requiredKeys.add('inPersonAttendanceCommitment')
   }
 
-  if (props.event.requireWhyThisEvent) {
+  if (showWhyThisEvent.value && props.event.requireWhyThisEvent) {
     requiredKeys.add('whyThisEvent')
   }
 
-  if (props.event.requireProofOfExecution) {
+  if (showProofOfExecution.value && props.event.requireProofOfExecution) {
     requiredKeys.add('proofOfExecutionUrl')
+  }
+
+  if (showTeamIntent.value && props.event.requireTeamIntent) {
+    requiredKeys.add('teamIntent')
   }
 
   let invalidCount = 0
 
-  for (const key of Object.keys(profileFieldErrors.value)) {
-    if (!requiredKeys.has(key)) {
+  for (const [key, error] of Object.entries(profileFieldErrors.value)) {
+    if (error.length > 0 && !requiredKeys.has(key)) {
       invalidCount += 1
     }
+  }
+
+  if (teamIntentError.value && !requiredKeys.has('teamIntent')) {
+    invalidCount += 1
   }
 
   invalidCount += teamMemberEmailErrors.value.filter(error => error.length > 0).length
@@ -462,7 +510,10 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
               class="space-y-4 rounded-xl border border-black/8 bg-white/80 px-4 pb-20 pt-4 dark:border-white/[0.08] dark:bg-[#171717]/80 md:pb-4"
               @submit.prevent="handleSubmitAttempt"
             >
-              <div class="space-y-3">
+              <div
+                v-if="showLinksAndAccountsSection"
+                class="space-y-3"
+              >
                 <div class="flex items-center justify-between gap-3">
                   <p class="text-[13px] font-medium text-highlighted dark:text-white">
                     About you
@@ -645,7 +696,10 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
                 :description="submissionPolicyReason"
               />
 
-              <section :class="inlineSectionClass">
+              <section
+                v-if="showApplicationQuestions"
+                :class="inlineSectionClass"
+              >
                 <div>
                   <p class="text-[13px] font-medium text-highlighted dark:text-white">
                     Your application
@@ -653,7 +707,10 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
                 </div>
 
                 <div :class="inlineSectionBodyClass">
-                  <label class="space-y-1">
+                  <label
+                    v-if="showWhyThisEvent"
+                    class="space-y-1"
+                  >
                     <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
                       <span>Why this event</span>
                       <span
@@ -680,7 +737,10 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
                     </p>
                   </label>
 
-                  <label class="space-y-1">
+                  <label
+                    v-if="showProofOfExecution"
+                    class="space-y-1"
+                  >
                     <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
                       <span>Proof of execution links</span>
                       <span
@@ -712,9 +772,18 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
                 </div>
               </section>
 
-              <div class="space-y-2">
-                <p class="text-[14px] font-medium text-highlighted dark:text-white">
-                  How are you planning to participate?
+              <div
+                v-if="showTeamIntent"
+                class="space-y-2"
+              >
+                <p class="inline-flex items-center gap-1.5 text-[14px] font-medium text-highlighted dark:text-white">
+                  <span>How are you planning to participate?</span>
+                  <span
+                    v-if="event.requireTeamIntent"
+                    :class="requiredChipClass"
+                  >
+                    Required
+                  </span>
                 </p>
                 <div class="grid gap-2 sm:grid-cols-3">
                   <button
@@ -744,12 +813,18 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
                   </button>
                 </div>
                 <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
-                  This does not create your team yet. If you are approved, you can still create a team or join one later while team formation is open.
+                  {{ teamIntentHelperText }}
+                </p>
+                <p
+                  v-if="submitAttempted && teamIntentError"
+                  class="text-[11px] text-error"
+                >
+                  {{ teamIntentError }}
                 </p>
               </div>
 
               <div
-                v-if="teamIntent === 'team'"
+                v-if="showTeamIntent && teamIntent === 'team' && maxTeamMemberHints > 0"
                 class="space-y-3"
               >
                 <p class="text-[14px] font-medium text-highlighted dark:text-white">
@@ -852,7 +927,6 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
               >
                 {{ termsAcceptedError }}
               </p>
-
               <AppButton
                 type="submit"
                 color="neutral"
@@ -883,12 +957,7 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
               </div>
 
               <p class="text-[12px] text-neutral-500 dark:text-[#8C8C8C]">
-                <template v-if="event.autoApproveApplications">
-                  After you apply, you can create a team or join one while team formation is open.
-                </template>
-                <template v-else>
-                  After you apply, we will review your application. If you are approved, you can create a team or join one while team formation is open.
-                </template>
+                {{ postSubmissionText }}
               </p>
             </form>
           </template>

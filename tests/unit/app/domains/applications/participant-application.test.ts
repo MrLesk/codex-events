@@ -27,16 +27,34 @@ import {
 } from '../../../../../app/domains/applications/participant-application'
 import { cloneFormValues } from '../../../../../app/utils/form-values'
 
+function createProfileFieldConfig(overrides = {}) {
+  return {
+    applicationXProfileVisible: true,
+    applicationLinkedinProfileVisible: true,
+    applicationGithubProfileVisible: true,
+    applicationChatgptEmailVisible: true,
+    applicationOpenaiOrgIdVisible: true,
+    applicationLumaEmailVisible: true,
+    requireXProfile: false,
+    requireLinkedinProfile: false,
+    requireGithubProfile: false,
+    requireChatgptEmail: false,
+    requireOpenaiOrgId: false,
+    requireLumaEmail: false,
+    ...overrides
+  }
+}
+
 describe('participant application helpers', () => {
   test('lists only the required profile fields missing from the platform account', () => {
-    expect(listMissingRequiredProfileFields({
+    expect(listMissingRequiredProfileFields(createProfileFieldConfig({
       requireXProfile: true,
       requireLinkedinProfile: true,
       requireGithubProfile: true,
       requireChatgptEmail: true,
       requireOpenaiOrgId: true,
       requireLumaEmail: true
-    }, {
+    }), {
       xProfileUrl: null,
       linkedinProfileUrl: 'https://linkedin.com/in/member',
       githubProfileUrl: null,
@@ -68,14 +86,14 @@ describe('participant application helpers', () => {
   })
 
   test('lists required profile fields for an event', () => {
-    expect(listRequiredProfileFields({
+    expect(listRequiredProfileFields(createProfileFieldConfig({
       requireXProfile: true,
       requireLinkedinProfile: false,
       requireGithubProfile: true,
       requireChatgptEmail: false,
       requireOpenaiOrgId: true,
       requireLumaEmail: false
-    })).toEqual([
+    }))).toEqual([
       { key: 'xProfileUrl', label: 'X profile URL' },
       { key: 'githubProfileUrl', label: 'GitHub profile URL' },
       { key: 'openaiOrgId', label: 'OpenAI org ID' }
@@ -83,50 +101,67 @@ describe('participant application helpers', () => {
   })
 
   test('lists all event profile fields with required flags', () => {
-    expect(listEventProfileFields({
+    expect(listEventProfileFields(createProfileFieldConfig({
       requireXProfile: true,
       requireLinkedinProfile: false,
       requireGithubProfile: true,
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
       requireLumaEmail: true
-    })).toEqual([
+    }))).toEqual([
       { key: 'xProfileUrl', label: 'X profile URL', required: true, visible: true },
       { key: 'linkedinProfileUrl', label: 'LinkedIn profile URL', required: false, visible: true },
       { key: 'githubProfileUrl', label: 'GitHub profile URL', required: true, visible: true },
-      { key: 'chatgptEmail', label: 'ChatGPT email', required: false, visible: false },
-      { key: 'openaiOrgId', label: 'OpenAI org ID', required: false, visible: false },
+      { key: 'chatgptEmail', label: 'ChatGPT email', required: false, visible: true },
+      { key: 'openaiOrgId', label: 'OpenAI org ID', required: false, visible: true },
       { key: 'lumaEmail', label: 'Luma email', required: true, visible: true }
     ])
   })
 
   test('shows and requires luma email whenever the event requires it', () => {
-    expect(listRequiredProfileFields({
+    expect(listRequiredProfileFields(createProfileFieldConfig({
       requireXProfile: false,
       requireLinkedinProfile: false,
       requireGithubProfile: false,
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
       requireLumaEmail: true
-    })).toEqual([
+    }))).toEqual([
       {
         key: 'lumaEmail',
         label: 'Luma email'
       }
     ])
 
-    expect(listEventProfileFields({
+    expect(listEventProfileFields(createProfileFieldConfig({
       requireXProfile: false,
       requireLinkedinProfile: false,
       requireGithubProfile: false,
       requireChatgptEmail: false,
       requireOpenaiOrgId: false,
       requireLumaEmail: true
-    }).find(field => field.key === 'lumaEmail')).toEqual({
+    })).find(field => field.key === 'lumaEmail')).toEqual({
       key: 'lumaEmail',
       label: 'Luma email',
       required: true,
       visible: true
+    })
+  })
+
+  test('does not require hidden profile fields', () => {
+    expect(listRequiredProfileFields(createProfileFieldConfig({
+      applicationGithubProfileVisible: false,
+      requireGithubProfile: true
+    }))).toEqual([])
+
+    expect(listEventProfileFields(createProfileFieldConfig({
+      applicationGithubProfileVisible: false,
+      requireGithubProfile: true
+    })).find(field => field.key === 'githubProfileUrl')).toEqual({
+      key: 'githubProfileUrl',
+      label: 'GitHub profile URL',
+      required: false,
+      visible: false
     })
   })
 
@@ -567,8 +602,8 @@ describe('participant application helpers', () => {
       now: new Date('2026-03-21T12:00:00.000Z'),
       applicationStatus: null,
       missingRequiredProfileFieldCount: 0,
-      hasCurrentApplicationTerms: true,
-      hasAcceptedCurrentTerms: true,
+      hasCurrentApplicationTerms: false,
+      hasAcceptedCurrentTerms: false,
       requiresInPersonAttendanceCommitment: false,
       hasAcceptedInPersonAttendanceCommitment: false
     })).toEqual({
@@ -582,8 +617,8 @@ describe('participant application helpers', () => {
       now: new Date('2026-03-21T12:00:00.000Z'),
       applicationStatus: null,
       missingRequiredProfileFieldCount: 0,
-      hasCurrentApplicationTerms: false,
-      hasAcceptedCurrentTerms: false,
+      hasCurrentApplicationTerms: true,
+      hasAcceptedCurrentTerms: true,
       requiresInPersonAttendanceCommitment: false,
       hasAcceptedInPersonAttendanceCommitment: false
     })).toEqual({

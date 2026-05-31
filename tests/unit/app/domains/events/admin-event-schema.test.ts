@@ -114,7 +114,6 @@ describe('event config form schema', () => {
       blindScoreWeightPercent: undefined,
       pitchScoreWeightPercent: undefined,
       shortlistFinalistCount: undefined,
-      requireProofOfExecution: undefined,
       requireSubmissionSummary: undefined,
       requireSubmissionRepositoryUrl: undefined,
       requireSubmissionDemoUrl: undefined
@@ -129,6 +128,24 @@ describe('event config form schema', () => {
     expect(result.data.tracks).toEqual([])
     expect(result.data.maxTeamMembers).toBe(1)
     expect(result.data.pitchReviewEnabled).toBe(false)
+  })
+
+  test('rejects application fields required while hidden', () => {
+    const result = eventConfigFormSchema.safeParse({
+      ...createValidEventFormState(),
+      applicationGithubProfileVisible: false,
+      requireGithubProfile: true
+    })
+
+    expect(result.success).toBe(false)
+
+    if (result.success) {
+      return
+    }
+
+    expect(result.error.flatten().fieldErrors.requireGithubProfile).toEqual([
+      'GitHub profile cannot be required while hidden from the application form.'
+    ])
   })
 
   test('omits competition fields from registration-only configuration patches', () => {
