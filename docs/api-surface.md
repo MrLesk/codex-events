@@ -234,6 +234,7 @@ Testing:
 
 Purpose:
 - Support event-organizer roster reads and event-organizer grants from the authenticated account workspace.
+- Event-organizer access is an event-creation permission only. Event organizers manage only events they create or events where they are explicitly assigned `event_admin`.
 
 Operations:
 
@@ -662,6 +663,7 @@ Testing:
 - Shortlist leaderboard data remains a computed blind-view surface, while the saved shortlist order and any later final-deliberation reorder persist the admin-selected ranking order used by later judging and winner workflows.
 - Granting platform-admin access also normalizes explicit `event_admin` assignment coverage across existing events.
 - Event organizers can create events but see only events where they hold scoped access.
+- Event admins are scoped to their assigned events. An organizer or event admin for one event can submit a participant application to another event where they do not hold event-admin access.
 
 ## Test Coverage Matrix
 

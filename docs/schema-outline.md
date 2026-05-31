@@ -52,7 +52,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `luma_email` stores the canonical Luma email used for event profile requirements and Luma approval-state synchronization.
 - `deleted_at` supports GDPR-compliant account lifecycle handling.
 - `is_platform_admin` replaces a separate platform role entity.
-- `is_event_organizer` grants event creation access without platform-wide admin visibility.
+- `is_event_organizer` grants event creation access without platform-wide or unrelated-event admin visibility.
 - `profile_icon_updated_at` records when the current profile icon object was last replaced.
 - Platform actor resolution uses `UserAuthIdentity` records so multiple linked Auth0 subjects can resolve to the same user.
 - `luma_username` is retained only as legacy migration data for users who registered before Luma email became the canonical profile field.
@@ -273,6 +273,8 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - Every platform admin also has a `event_admin` assignment row for each event.
 - An event created by an event organizer records the creator as a `event_admin` assignment for that event.
+- An appointed event admin is represented by an explicit `event_admin` assignment for that event.
+- Event-admin access is scoped to the assignment's `event_id`; event organizers and event admins can still hold participant records in other events.
 - `is_in_judge_pool` controls automatic blind-review distribution and pitch-panel membership.
 - `is_staff` records staff designation for the assignment.
 - `event_admin` can set `is_in_judge_pool` and `is_staff` independently.

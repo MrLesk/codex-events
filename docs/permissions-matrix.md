@@ -21,6 +21,8 @@ This document defines the canonical permissions for the Codex event platform.
 
 - `platform_admin` includes all `event_admin` permissions in every event.
 - `event_organizer` grants event creation access only and does not include visibility into events the user does not manage.
+- Creating an event or being appointed as an `event_admin` grants admin access only for that event.
+- Event admins and event organizers can register as participants for other events where they do not hold event-admin access.
 - `event_admin` can use judge permissions only when that admin also participates in judging through a `JudgeAssignment`.
 - The automatic judge distribution pool is controlled by `EventRoleAssignment.is_in_judge_pool` for Hackathon events.
 - Staff designation is controlled by `EventRoleAssignment.is_staff`.
@@ -49,6 +51,7 @@ This document defines the canonical permissions for the Codex event platform.
 | Grant event organizer access | No | No | Yes |
 | Remove event organizer access | No | No | Yes |
 | Assign event admins across any event | No | No | Yes |
+| View unrelated event admin detail | No | No | Yes |
 | Update platform legal settings | No | No | Yes |
 | Publish platform Privacy Policy or Platform Terms version | No | No | Yes |
 

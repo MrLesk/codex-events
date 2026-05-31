@@ -275,6 +275,91 @@ describe('TASK-3.6 application routes', () => {
     })
   })
 
+  test('event organizers with admin access elsewhere can apply to unrelated events as participants', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events/:eventId/applications', handler: applicationsListHandler },
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|event_organizer',
+        email: 'organizer@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness)
+
+    await harness.database.insert(users).values({
+      id: 'event_organizer',
+      auth0Subject: 'auth0|event_organizer',
+      email: 'organizer@example.com',
+      displayName: 'Event Organizer',
+      isEventOrganizer: true
+    })
+    await harness.database.insert(events).values({
+      id: 'managed_event',
+      eventType: 'build',
+      name: 'Managed Event',
+      slug: 'managed-event',
+      description: 'Managed by the organizer',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Managed Address',
+      registrationOpensAt: fixtureRegistrationOpensAt,
+      registrationClosesAt: fixtureRegistrationClosesAt,
+      submissionOpensAt: fixtureRegistrationClosesAt,
+      submissionClosesAt: fixtureSubmissionClosesAt,
+      state: 'draft',
+      maxTeamMembers: 1,
+      createdByUserId: 'event_organizer'
+    })
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'role_event_organizer_managed_event',
+      eventId: 'managed_event',
+      userId: 'event_organizer',
+      role: 'event_admin',
+      isInJudgePool: false,
+      isStaff: false,
+      createdAt: '2026-03-22T12:02:00.000Z'
+    })
+
+    const adminListResponse = await harness.request('/api/events/event_1/applications')
+    expect(adminListResponse.status).toBe(403)
+    expect(await adminListResponse.json()).toMatchObject({
+      error: {
+        code: 'event_participant_visibility_required'
+      }
+    })
+
+    const applicationResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+    expect(applicationResponse.status).toBe(200)
+    expect(await applicationResponse.json()).toMatchObject({
+      data: {
+        eventId: 'event_1',
+        userId: 'event_organizer',
+        status: 'submitted'
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.eventId, 'event_1'),
+        eq(userApplications.userId, 'event_organizer')
+      )
+    })
+
+    expect(storedApplication).toMatchObject({
+      eventId: 'event_1',
+      userId: 'event_organizer',
+      status: 'submitted'
+    })
+  })
+
   test('POST /api/events/:eventId/applications auto-approves when configured and enqueues approval side effects', async () => {
     const reviewEmailQueueProducer = createQueueProducerStub()
     const lumaQueueProducer = createQueueProducerStub()

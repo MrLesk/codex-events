@@ -46,6 +46,7 @@ Rules:
 - A user with `is_event_organizer = true` is an event organizer.
 - Platform admins can create events.
 - Event organizers can create events.
+- Event-organizer status grants event creation access only. It does not grant admin visibility or admin operations for events the user does not manage.
 - Platform admins can grant platform-admin access to other active users.
 - Platform admins can remove platform-admin access from active users.
 - Platform admins can grant event-organizer access to other active users.
@@ -240,6 +241,9 @@ Rules:
 - Staff can see participant and team data for the event but cannot perform admin operations.
 - Every platform admin also has a `EventRoleAssignment` row with role `event_admin` for every event.
 - When an event organizer creates an event, the creator receives a `EventRoleAssignment` row with role `event_admin` for that event.
+- A user can also be appointed as an `event_admin` for an event by an existing event admin or platform admin.
+- Event-admin access is scoped to the event named by the assignment. Being an event admin for one event does not grant admin visibility or admin operations for other events.
+- Event organizers and event admins can still apply to and participate in other events where they do not hold event-admin access.
 - `EventRoleAssignment` includes `is_in_judge_pool` to control automatic blind-review distribution and pitch-panel membership and `is_staff` to record staff designation.
 - Judge assignments and `is_in_judge_pool` are available only for Hackathon events.
 - A user with role `judge` must be in the automatic judge distribution pool and must not be marked as staff.
