@@ -104,7 +104,7 @@ Variable names follow a convention worth knowing:
 
 - `NUXT_*` are the application's runtime configuration, copied into the Worker.
 - `AUTH0_*` (without `NUXT_`) are used by the deploy workflow to configure Auth0 and are not copied into the Worker.
-- `CF_*` values cover Cloudflare credentials, resource names, and DNS zone metadata. The deploy tooling passes Wrangler's supported Cloudflare credential names internally.
+- `CF_*` values cover Cloudflare credentials, resource names, and DNS zone metadata. Deploy tooling and workflows pass Wrangler's supported Cloudflare credential names when Wrangler runs.
 
 ### Required variables
 

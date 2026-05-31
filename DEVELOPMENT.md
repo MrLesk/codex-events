@@ -245,7 +245,7 @@ The generated Wrangler config binds Queue producers only. Remote workflows deplo
 
 The remote `CF_API_TOKEN` must be able to run `wrangler d1 list`, `wrangler d1 create`, `wrangler r2 bucket info`, `wrangler r2 bucket create`, `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, `wrangler deploy`, and `wrangler queues consumer add`. It must also be able to list and delete Queue consumers through the Cloudflare Queues API. Configure the token with the Cloudflare account and zone permissions listed in `OPERATOR.md`; include both read and edit/write access where both are listed.
 
-Deploy scripts keep `CF_*` as the project configuration surface and pass `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` only to Wrangler child processes. This avoids Wrangler's deprecated `CF_ACCOUNT_ID` and `CF_API_TOKEN` aliases without making operators store Cloudflare credentials under two names.
+Deploy scripts and GitHub workflows keep `CF_*` as the project configuration surface, then map those values to Wrangler's supported `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` environment names when Wrangler runs. This avoids Wrangler's deprecated `CF_ACCOUNT_ID` and `CF_API_TOKEN` aliases without making operators store Cloudflare credentials under two names.
 
 For manual deployment, export the target environment values and run:
 
