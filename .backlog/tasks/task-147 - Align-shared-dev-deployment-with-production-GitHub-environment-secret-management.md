@@ -38,7 +38,7 @@ Create a dedicated GitHub `dev` environment for the shared dev deployment path, 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Create a GitHub `dev` environment and seed it with the current repo-level CI secrets plus the additional shared-dev Worker secret values needed for deploy (`NUXT_AUTH0_MANAGEMENT_CLIENT_ID`, `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET`, `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`, `NUXT_RESEND_*`, `NUXT_LUMA_API_KEY`). Use the shared dev Auth0 tenant management credentials from `AUTH0_TEST_MGMT_CLIENT_*`, treat `NUXT_AUTH0_AUDIENCE` as empty when unset, and rotate the account-link challenge secret to a new generated value.
+1. Create a GitHub `dev` environment and seed it with the current repo-level CI secrets plus the additional shared-dev Worker secret values needed for deploy (`NUXT_AUTH0_MANAGEMENT_CLIENT_ID`, `NUXT_AUTH0_MANAGEMENT_CLIENT_SECRET`, `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET`, `NUXT_RESEND_*`, `NUXT_LUMA_API_KEY`). Use the shared dev Auth0 tenant management credentials from `AUTH0_TEST_MGMT_CLIENT_*`, and rotate the account-link challenge secret to a new generated value.
 2. Update `.github/workflows/ci.yml` so `deploy-dev` and `auth0-bdd-suite` run against `environment: dev`, and make `deploy-dev` upload the shared dev Worker secrets via `wrangler secret bulk` before migrations and deploy, matching the production release pattern.
 3. Update operator docs in `DEVELOPMENT.md` and `README.md` so shared dev secrets are described as GitHub `dev` environment secrets rather than repo-level secrets, and document that the dev deploy workflow syncs Worker secrets automatically.
 4. Run the required repository validation commands.

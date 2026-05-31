@@ -61,7 +61,6 @@ NUXT_AUTH0_CLIENT_ID=your-client-id
 NUXT_AUTH0_CLIENT_SECRET=your-client-secret
 NUXT_AUTH0_SESSION_SECRET=<from-openssl>
 NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
-NUXT_AUTH0_AUDIENCE=https://your-api  # optional
 ```
 
 ```typescript
