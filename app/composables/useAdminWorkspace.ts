@@ -79,11 +79,16 @@ export function useAdminWorkspace(options: AdminWorkspaceOptions = {}) {
   })
 
   async function refreshRoot() {
-    await session.refresh()
+    const requests: Array<Promise<unknown>> = [
+      session.refresh(),
+      refreshNuxtData(buildApiCacheKey('session-actor', subjectKey.value))
+    ]
 
     if (loadEvents.value) {
-      await events.refresh()
+      requests.push(events.refresh())
     }
+
+    await Promise.all(requests)
   }
 
   return {
