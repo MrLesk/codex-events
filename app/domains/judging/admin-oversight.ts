@@ -41,7 +41,7 @@ export interface JudgeAssignmentSummary {
       status: AdminApplicationRecord['status']
       submittedAt: string
       reviewedAt: string | null
-      applicationTermsDocumentId: string
+      applicationTermsDocumentId: string | null
     }>
   }
   pitchSubmission?: {

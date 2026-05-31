@@ -42,6 +42,25 @@ describe('participant registration form schema', () => {
     expect(result.success).toBe(true)
   })
 
+  test('requires terms acceptance only when event terms exist', () => {
+    const withoutTermsResult = registrationSchema.safeParse(createValidRegistrationFormState())
+    const withTermsSchema = buildParticipantRegistrationFormSchema({
+      profileFields: [],
+      maxTeamMembers: 4,
+      hasCurrentApplicationTerms: true,
+      isInPersonEvent: false,
+      requireWhyThisEvent: false,
+      requireProofOfExecution: false
+    })
+    const withTermsResult = withTermsSchema.safeParse(createValidRegistrationFormState())
+
+    expect(withoutTermsResult.success).toBe(true)
+    expect(withTermsResult.success).toBe(false)
+    expect(withTermsResult.error?.flatten().fieldErrors.termsAccepted).toEqual([
+      'Accept Application Terms to submit.'
+    ])
+  })
+
   test('rejects invalid proof links inside a comma-separated list', () => {
     const result = registrationSchema.safeParse({
       ...createValidRegistrationFormState(),

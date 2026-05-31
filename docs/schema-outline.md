@@ -402,7 +402,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Notes
 
-- Every event uses `application_terms`.
+- `application_terms` is used when an event needs event-specific registration terms in addition to platform documents.
 - `winner_terms` is used only by Hackathon prize-redemption workflows.
 
 ## UserApplication
@@ -461,7 +461,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - Applications created while `auto_approve_applications` is true are stored directly as `approved` with `reviewed_at` equal to `submitted_at` and no reviewing user.
 - `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that require a Luma email and define a `luma_event_api_id`.
 - `checked_in_at` is sticky in this version and is not cleared by later Luma uncheck updates.
-- Withdrawal retains the application record rather than deleting it so participation history, terms acceptance, and audit context remain available.
+- `application_terms_document_id` and `application_terms_accepted_at` are null when the event has no current application terms at submission time.
+- Withdrawal retains the application record rather than deleting it so participation history, event-terms acceptance when present, and audit context remain available.
 
 ## Team
 

@@ -316,7 +316,7 @@ const missingRequiredProfileFields = computed(() =>
 )
 
 async function submitParticipantApplication() {
-  if (!participantSubmissionPolicy.value.isAllowed || !currentApplicationTerms.value) {
+  if (!participantSubmissionPolicy.value.isAllowed) {
     return
   }
 
@@ -358,7 +358,6 @@ async function submitParticipantApplication() {
 
   try {
     const applicationPayload: Record<string, unknown> = {
-      applicationTermsDocumentId: currentApplicationTerms.value.id,
       whyThisEvent: whyThisEvent.value,
       proofOfExecutionUrl: proofOfExecutionUrl.value,
       registrationTeamIntent: registrationTeamIntent.value,
@@ -366,6 +365,10 @@ async function submitParticipantApplication() {
         registrationTeamMembers.value,
         event.value.maxTeamMembers
       )
+    }
+
+    if (currentApplicationTerms.value) {
+      applicationPayload.applicationTermsDocumentId = currentApplicationTerms.value.id
     }
 
     if (event.value.inPersonEvent) {

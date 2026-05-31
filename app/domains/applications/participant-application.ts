@@ -64,12 +64,12 @@ export interface ParticipantApplicationRecord {
   withdrawnAt: string | null
   reviewedAt: string | null
   reviewedByUserId: string | null
-  applicationTermsDocumentId: string
-  applicationTermsAcceptedAt: string
+  applicationTermsDocumentId: string | null
+  applicationTermsAcceptedAt: string | null
   registrationDetailsJson: string
   createdAt: string
   updatedAt: string
-  applicationTermsDocument?: ParticipantApplicationTermsDocument
+  applicationTermsDocument?: ParticipantApplicationTermsDocument | null
 }
 
 export interface VisibleEventRecord extends PublicEvent {
@@ -674,14 +674,7 @@ export function getParticipantApplicationSubmissionPolicy(options: {
     }
   }
 
-  if (!options.hasCurrentApplicationTerms) {
-    return {
-      isAllowed: false,
-      reason: 'The current application terms are unavailable for this event.'
-    }
-  }
-
-  if (!options.hasAcceptedCurrentTerms) {
+  if (options.hasCurrentApplicationTerms && !options.hasAcceptedCurrentTerms) {
     return {
       isAllowed: false,
       reason: 'Accept the current application terms before submitting.'

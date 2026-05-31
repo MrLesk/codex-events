@@ -56,6 +56,7 @@ async function seedApplicationContext(
     lumaEventApiId?: string | null
     inPersonEvent?: boolean
     autoApproveApplications?: boolean
+    currentApplicationTerms?: boolean
   }
 ) {
   await harness.database.insert(users).values([
@@ -149,33 +150,35 @@ async function seedApplicationContext(
     }
   ])
 
-  await harness.database.insert(eventTermsDocuments).values([
-    {
-      id: 'terms_app_1',
-      eventId: 'event_1',
-      documentType: 'application_terms',
-      version: 1,
-      title: 'Application Terms v1',
-      content: 'Application terms one',
-      publishedAt: '2026-03-01T00:00:00.000Z'
-    },
-    {
-      id: 'terms_app_2',
-      eventId: 'event_1',
-      documentType: 'application_terms',
-      version: 2,
-      title: 'Application Terms v2',
-      content: 'Application terms two',
-      publishedAt: '2026-03-02T00:00:00.000Z'
-    }
-  ])
+  if (options?.currentApplicationTerms !== false) {
+    await harness.database.insert(eventTermsDocuments).values([
+      {
+        id: 'terms_app_1',
+        eventId: 'event_1',
+        documentType: 'application_terms',
+        version: 1,
+        title: 'Application Terms v1',
+        content: 'Application terms one',
+        publishedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'terms_app_2',
+        eventId: 'event_1',
+        documentType: 'application_terms',
+        version: 2,
+        title: 'Application Terms v2',
+        content: 'Application terms two',
+        publishedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
 
-  await harness.database
-    .update(events)
-    .set({
-      currentApplicationTermsDocumentId: 'terms_app_2'
-    })
-    .where(eq(events.id, 'event_1'))
+    await harness.database
+      .update(events)
+      .set({
+        currentApplicationTermsDocumentId: 'terms_app_2'
+      })
+      .where(eq(events.id, 'event_1'))
+  }
 }
 
 describe('TASK-3.6 application routes', () => {
@@ -201,6 +204,18 @@ describe('TASK-3.6 application routes', () => {
     })
     harnesses.push(harness)
     await seedApplicationContext(harness)
+
+    const missingTermsResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({})
+    })
+
+    expect(missingTermsResponse.status).toBe(409)
+    expect(await missingTermsResponse.json()).toMatchObject({
+      error: {
+        code: 'application_terms_acceptance_required'
+      }
+    })
 
     const outdatedResponse = await harness.request('/api/events/event_1/applications', {
       method: 'POST',
@@ -272,6 +287,52 @@ describe('TASK-3.6 application routes', () => {
         whyThisEvent: 'I want to build a practical project with other builders.',
         proofOfExecutionUrl: 'https://github.com/regular/previous-project, https://demo.example.com/regular/project'
       })
+    })
+  })
+
+  test('POST /api/events/:eventId/applications allows submission without event application terms', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      currentApplicationTerms: false
+    })
+
+    const successResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        registrationTeamIntent: 'solo'
+      })
+    })
+
+    expect(successResponse.status).toBe(200)
+    expect(await successResponse.json()).toMatchObject({
+      data: {
+        userId: 'regular_user',
+        status: 'submitted',
+        applicationTermsDocumentId: null,
+        applicationTermsAcceptedAt: null
+      }
+    })
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.eventId, 'event_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+
+    expect(storedApplication).toMatchObject({
+      status: 'submitted',
+      applicationTermsDocumentId: null,
+      applicationTermsAcceptedAt: null
     })
   })
 

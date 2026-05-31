@@ -52,7 +52,7 @@ Codex Events helps teams replace scattered forms, spreadsheets, judge sheets, ev
     </td>
     <td width="33%">
       <strong>Reuse the same foundation</strong><br />
-      Users keep reusable platform accounts while each event has its own schedule, rules, roles, terms, teams, submissions, judging, and outcomes.
+      Users keep reusable platform accounts while each event has its own schedule, rules, roles, optional terms, teams, submissions, judging, and outcomes.
     </td>
     <td width="33%">
       <strong>Choose where it runs</strong><br />
@@ -65,7 +65,7 @@ Codex Events helps teams replace scattered forms, spreadsheets, judge sheets, ev
 
 | Capability | How it helps |
 | --- | --- |
-| **Application-first participation** | Per-event registration windows, profile requirements, application terms, approvals, participant decision emails, and optional Luma attendance integration. |
+| **Application-first participation** | Per-event registration windows, profile requirements, optional event-specific terms, approvals, participant decision emails, and optional Luma attendance integration. |
 | **Built-in team workflows** | Solo participation, team creation, join requests, team admins, team limits, and account-scoped team workspaces. |
 | **Structured submissions** | Submission windows, tracks, summaries, repository links, demo links, drafts, locking, withdrawal, and disqualification handling. |
 | **Structured judging** | Blind review, judge assignment, skipped-review redistribution, shortlist management, live pitch stages, pitch review, weighted scoring, and final deliberation. |

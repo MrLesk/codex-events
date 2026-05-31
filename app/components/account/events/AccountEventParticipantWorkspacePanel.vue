@@ -567,7 +567,7 @@ async function toggleSubmissionPublicVisibility(nextValue: boolean) {
 
 <template>
   <div
-    data-testid="account-!border !border-black/8 !bg-default/80 !shadow-none dark:!border-white/[0.08] dark:!bg-default/80"
+    data-testid="account-event-workspace-panel"
     class="space-y-6"
   >
     <AppAlert

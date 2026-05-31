@@ -15,7 +15,7 @@ Feature: TASK-4.7 judge workspace UI
     Then the opened blind assignment should show status "In review"
     When I complete the opened blind review with workspace fixture scores
     Then the opened blind assignment should show status "Completed"
-    And the opened blind assignment should hide the complete action and show next blind review
+    And the opened blind assignment should hide the complete action and show the queue return action
 
   Scenario: Judge skips an in-progress blind review from the workspace inbox
     Given the saved "judge" Auth0 session state exists

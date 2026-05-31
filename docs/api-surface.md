@@ -62,7 +62,7 @@ It translates the canonical product model into stable backend domains, operation
 ### Exact-Version Document Acceptance
 
 - Platform document acceptance references the exact accepted `PlatformDocument` version.
-- Event application submission references the exact accepted `EventTermsDocument` version for `application_terms`.
+- Event application submission references the exact accepted `EventTermsDocument` version when the event has current `application_terms`.
 - Prize redemption references the exact accepted `EventTermsDocument` version for `winner_terms`.
 - Acceptance write operations reject outdated or mismatched document references.
 
@@ -378,13 +378,13 @@ Testing:
 ## Event Terms
 
 Purpose:
-- Expose current event-specific terms and manage versioned terms documents.
+- Expose optional event-specific terms and manage versioned terms documents.
 
 Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Get current event terms | `GET /api/events/:eventId/terms/current` | authenticated user | Returns the current `application_terms` and `winner_terms` references. |
+| Get current event terms | `GET /api/events/:eventId/terms/current` | authenticated user | Returns the current `application_terms` and `winner_terms` references when present. |
 | List terms versions for a type | `GET /api/events/:eventId/terms/:documentType/versions` | event admin or platform admin | Returns version history for the terms type. |
 | Create terms version | `POST /api/events/:eventId/terms/:documentType/versions` | event admin or platform admin | Creates a new versioned terms document. |
 | Set current terms reference | `POST /api/events/:eventId/terms/:documentType/actions/set-current` | event admin or platform admin | Updates the event's current terms reference for the given document type. |
@@ -403,7 +403,7 @@ Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| Submit application | `POST /api/events/:eventId/applications` | authenticated user | Allowed only in `registration_open`, only if no prior application exists, and only if the user profile satisfies the event's required profile flags. Requires exact-version acceptance of the current application terms. Carries registration hint payload with `registrationTeamIntent` (`solo`, `team`, `unknown`) and optional teammate hints, plus optional `whyThisEvent` and `proofOfExecutionUrl`, where `proofOfExecutionUrl` accepts one or more comma-separated `http` or `https` links. For in-person events, also requires `inPersonAttendanceCommitment = true`. If configured, also requires non-empty `whyThisEvent` and/or at least one proof link in `proofOfExecutionUrl`. When the event requires a Luma email and has a configured `lumaEventApiId`, submission also verifies that the participant's saved `lumaEmail` is registered as a guest on that Luma event before the application is created. When `autoApproveApplications = true`, the created application is approved immediately and approval email/Luma sync side effects are enqueued. |
+| Submit application | `POST /api/events/:eventId/applications` | authenticated user | Allowed only in `registration_open`, only if no prior application exists, and only if the user profile satisfies the event's required profile flags. Requires exact-version acceptance only when the event has current application terms. Carries registration hint payload with `registrationTeamIntent` (`solo`, `team`, `unknown`) and optional teammate hints, plus optional `whyThisEvent` and `proofOfExecutionUrl`, where `proofOfExecutionUrl` accepts one or more comma-separated `http` or `https` links. For in-person events, also requires `inPersonAttendanceCommitment = true`. If configured, also requires non-empty `whyThisEvent` and/or at least one proof link in `proofOfExecutionUrl`. When the event requires a Luma email and has a configured `lumaEventApiId`, submission also verifies that the participant's saved `lumaEmail` is registered as a guest on that Luma event before the application is created. When `autoApproveApplications = true`, the created application is approved immediately and approval email/Luma sync side effects are enqueued. |
 | Get own application | `GET /api/events/:eventId/applications/me` | authenticated user | Returns the caller's application for the event, if present. |
 | Withdraw own application | `POST /api/events/:eventId/applications/me/actions/withdraw` | authenticated user | Allowed only when the caller's application is `submitted` or `approved` and the caller has no active team membership in the event. Transitions the application to `withdrawn`, records `withdrawnAt`, writes an audit record, and enqueues Luma guest rejection when the event requires a Luma email and defines a Luma event API ID. This operation does not delete the application record. |
 | List event applications | `GET /api/events/:eventId/applications` | staff, event admin, or platform admin | Returns paginated application records for participant-visibility and review workflows. Supports `page`, `page_size` up to `100`, and optional `status`; response metadata includes total count and status counts. Staff access is read-only. |

@@ -16,8 +16,8 @@ export interface AdminApplicationRecord {
   withdrawnAt: string | null
   reviewedAt: string | null
   reviewedByUserId: string | null
-  applicationTermsDocumentId: string
-  applicationTermsAcceptedAt: string
+  applicationTermsDocumentId: string | null
+  applicationTermsAcceptedAt: string | null
   registrationDetailsJson: string
   createdAt: string
   updatedAt: string

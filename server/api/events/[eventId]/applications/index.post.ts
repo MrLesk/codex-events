@@ -91,8 +91,8 @@ export default defineApiHandler(async (h3Event) => {
     submittedAt,
     reviewedAt,
     reviewedByUserId: null,
-    applicationTermsDocumentId: currentTermsDocument.id,
-    applicationTermsAcceptedAt: submittedAt,
+    applicationTermsDocumentId: currentTermsDocument?.id ?? null,
+    applicationTermsAcceptedAt: currentTermsDocument ? submittedAt : null,
     registrationDetailsJson,
     createdAt: submittedAt,
     updatedAt: submittedAt
@@ -110,8 +110,8 @@ export default defineApiHandler(async (h3Event) => {
     checkedInAt: null,
     reviewedAt,
     reviewedByUserId: null,
-    applicationTermsDocumentId: currentTermsDocument.id,
-    applicationTermsAcceptedAt: submittedAt,
+    applicationTermsDocumentId: currentTermsDocument?.id ?? null,
+    applicationTermsAcceptedAt: currentTermsDocument ? submittedAt : null,
     registrationDetailsJson,
     createdAt: submittedAt,
     updatedAt: submittedAt

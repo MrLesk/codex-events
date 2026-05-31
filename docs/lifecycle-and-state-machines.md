@@ -254,7 +254,7 @@ Behavior:
 - Admin-managed withdrawal is blocked when dismantling the participant's team would affect an active draft, submitted, or locked submission.
 - The user cannot create a team.
 - The user cannot join a team.
-- The application record remains stored for auditability and exact-version terms acceptance history.
+- The application record remains stored for auditability, event-terms acceptance history when present, and operational history.
 
 ### Transitions
 

@@ -26,11 +26,13 @@ export default defineApiHandler(async (h3Event) => {
     return apiData(null)
   }
 
-  const applicationTermsDocument = await getEventTermsDocumentOrThrow(
-    database,
-    eventId,
-    application.applicationTermsDocumentId
-  )
+  const applicationTermsDocument = application.applicationTermsDocumentId
+    ? await getEventTermsDocumentOrThrow(
+        database,
+        eventId,
+        application.applicationTermsDocumentId
+      )
+    : null
 
   return apiData(serializeUserApplication(application, {
     applicationTermsDocument

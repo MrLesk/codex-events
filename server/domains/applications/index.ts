@@ -54,7 +54,7 @@ const registrationTeamMemberHintSchema = z.object({
 })
 
 export const submitApplicationBodySchema = z.object({
-  applicationTermsDocumentId: z.string().trim().min(1),
+  applicationTermsDocumentId: z.string().trim().min(1).optional(),
   registrationTeamIntent: z.enum(registrationTeamIntentValues).default('unknown'),
   registrationTeamMembers: z.array(registrationTeamMemberHintSchema).default([]),
   inPersonAttendanceCommitment: z.boolean().default(false),
@@ -606,32 +606,38 @@ export async function assertNoExistingApplication(
   })
 }
 
-export async function getCurrentApplicationTermsDocumentOrThrow(
+export async function getCurrentApplicationTermsDocument(
   database: AppDatabase,
   event: EventRecord
 ) {
   const currentTerms = await getCurrentEventTerms(database, event)
-  const document = currentTerms.applicationTerms
-
-  if (!document) {
-    throw new ApiError({
-      statusCode: 409,
-      code: 'application_terms_unavailable',
-      message: 'The event does not currently expose application terms for acceptance.',
-      details: {
-        eventId: event.id
-      }
-    })
-  }
-
-  return document
+  return currentTerms.applicationTerms
 }
 
 export async function assertCurrentApplicationTermsAcceptance(
   database: AppDatabase,
   event: EventRecord,
-  applicationTermsDocumentId: string
+  applicationTermsDocumentId?: string | null
 ) {
+  const currentDocument = await getCurrentApplicationTermsDocument(database, event)
+
+  if (!currentDocument) {
+    return null
+  }
+
+  if (!applicationTermsDocumentId) {
+    throw new ApiError({
+      statusCode: 409,
+      code: 'application_terms_acceptance_required',
+      message: 'Application submission requires acceptance of the current application terms document.',
+      details: {
+        eventId: event.id,
+        currentEventTermsDocumentId: currentDocument.id,
+        currentVersion: currentDocument.version
+      }
+    })
+  }
+
   const document = await getEventTermsDocumentOrThrow(database, event.id, applicationTermsDocumentId)
 
   assertGuard(document.documentType === 'application_terms', {
@@ -643,8 +649,6 @@ export async function assertCurrentApplicationTermsAcceptance(
       documentType: document.documentType
     }
   })
-
-  const currentDocument = await getCurrentApplicationTermsDocumentOrThrow(database, event)
 
   assertGuard(currentDocument.id === document.id, {
     code: 'application_terms_document_outdated',
@@ -860,11 +864,13 @@ export async function getUserApplicationWithTermsOrThrow(
   applicationId: string
 ) {
   const application = await getApplicationOrThrow(database, eventId, applicationId)
-  const applicationTermsDocument = await getEventTermsDocumentOrThrow(
-    database,
-    eventId,
-    application.applicationTermsDocumentId
-  )
+  const applicationTermsDocument = application.applicationTermsDocumentId
+    ? await getEventTermsDocumentOrThrow(
+        database,
+        eventId,
+        application.applicationTermsDocumentId
+      )
+    : null
 
   return {
     application,

@@ -852,13 +852,6 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
               >
                 {{ termsAcceptedError }}
               </p>
-              <AppAlert
-                v-if="!currentApplicationTerms"
-                color="warning"
-                variant="soft"
-                title="Application terms unavailable"
-                description="Current terms are not available right now."
-              />
 
               <AppButton
                 type="submit"

@@ -202,7 +202,7 @@ export function useParticipantApplication(
   const isSubmitting = ref(false)
 
   async function submitApplication(options: {
-    applicationTermsDocumentId: string
+    applicationTermsDocumentId?: string | null
     registrationTeamIntent: ParticipantRegistrationTeamIntent
     registrationTeamMembers: Array<{
       fullName: string | null
@@ -226,7 +226,9 @@ export function useParticipantApplication(
       await apiFetch(`/api/events/${visibleEventId.value}/applications`, {
         method: 'POST',
         body: {
-          applicationTermsDocumentId: options.applicationTermsDocumentId,
+          ...(options.applicationTermsDocumentId
+            ? { applicationTermsDocumentId: options.applicationTermsDocumentId }
+            : {}),
           registrationTeamIntent: options.registrationTeamIntent,
           registrationTeamMembers: options.registrationTeamMembers,
           ...(typeof options.inPersonAttendanceCommitment === 'boolean'

@@ -576,6 +576,21 @@ describe('participant application helpers', () => {
     })
 
     expect(getParticipantApplicationSubmissionPolicy({
+      eventState: 'registration_open',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      now: new Date('2026-03-21T12:00:00.000Z'),
+      applicationStatus: null,
+      missingRequiredProfileFieldCount: 0,
+      hasCurrentApplicationTerms: false,
+      hasAcceptedCurrentTerms: false,
+      requiresInPersonAttendanceCommitment: false,
+      hasAcceptedInPersonAttendanceCommitment: false
+    })).toEqual({
+      isAllowed: true
+    })
+
+    expect(getParticipantApplicationSubmissionPolicy({
       eventState: 'submission_open',
       registrationOpensAt: '2026-03-20T12:00:00.000Z',
       registrationClosesAt: '2026-03-23T12:00:00.000Z',

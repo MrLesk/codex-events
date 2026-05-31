@@ -12,7 +12,7 @@ Supported event types are:
 - `meetup`: a registration-only community event.
 - `build`: a registration-only community build event.
 
-Meetups and Builds use the same application, review, attendance, Luma sync, profile requirement, terms acceptance, and participant-limit model as Hackathons. They do not expose team formation, submissions, judging, prizes, winners, credits, or competition lifecycle actions.
+Meetups and Builds use the same application, review, attendance, Luma sync, profile requirement, optional event-terms acceptance, and participant-limit model as Hackathons. They do not expose team formation, submissions, judging, prizes, winners, credits, or competition lifecycle actions.
 
 ## Core Entities
 
@@ -92,7 +92,7 @@ Key characteristics:
 - Each event can optionally reference a restricted Discord server URL.
 - Each event can require X, LinkedIn, and GitHub profiles, a ChatGPT email, an OpenAI org ID, and a Luma email, for registration.
 - Each event can require a `why this event` response and proof-of-execution links in applications.
-- Each event references its own application terms.
+- Each event can optionally reference event-specific application terms.
 - A configured Discord server URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
 
 Hackathon-only characteristics:
@@ -218,10 +218,10 @@ Document types:
 
 Rules:
 
-- Each event references one current application terms document.
+- An event can optionally reference one current application terms document.
 - Hackathon events reference one current winner terms document for prize redemption.
 - Meetup and Build events do not use winner terms.
-- Event application uses the current application terms document for that event.
+- Event applications require event-specific application terms acceptance only when the event references a current application terms document.
 - Prize redemption uses the current winner terms document for that Hackathon event.
 - User acceptance must reference the exact accepted document version.
 
@@ -285,12 +285,12 @@ Rules:
 - In Hackathon events, a user must be approved before creating or joining a team in that event.
 - In Meetup and Build events, an approved application is the participant's event access record.
 - Withdrawal ends participation eligibility for the event, including in-person attendance eligibility when applicable.
-- Withdrawal retains the application record for auditability, exact-version terms acceptance, and operational history. It does not hard-delete the application.
+- Withdrawal retains the application record for auditability, event-terms acceptance when present, and operational history. It does not hard-delete the application.
 - Admin-managed withdrawal removes the participant from any active team in that event when the team can remain valid.
 - If admin-managed withdrawal targets the last active member of a team, or the last active admin of a team, the withdrawal dismantles that team.
 - Admin-managed withdrawal is blocked if dismantling the participant's team would affect an active draft, submitted, or locked submission.
 - Blind judging uses application information without exposing team identity.
-- User application acceptance references the exact application terms version accepted for that event.
+- When the event has current application terms, user application acceptance references the exact application terms version accepted for that event.
 - A user can submit a `UserApplication` only if the user profile satisfies that event's required profile rules.
 - If an event is marked as an in-person event, a user application requires explicit commitment to attend in person on the event date in that city and country after approval.
 - A user application records a registration team-intent hint: `solo`, `team`, or `unknown`.
@@ -623,4 +623,4 @@ Event credits apply only to Hackathon events.
 
 - The platform must support GDPR-compliant account deletion.
 - The platform must retain the auditability needed for operational and legal review.
-- Acceptance of platform registration documents, event application terms, and winner terms must be recorded against the accepted document version.
+- Acceptance of platform registration documents, event application terms when present, and winner terms must be recorded against the accepted document version.

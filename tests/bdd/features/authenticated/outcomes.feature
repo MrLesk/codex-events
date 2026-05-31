@@ -11,6 +11,7 @@ Feature: TASK-3.8 authenticated outcome flows
     And the outcomes shortlist should remain blind to team identity
     When the saved "event_admin" session starts pitch for the outcomes fixture event
     Then the outcomes fixture event state should be "pitch"
+    When the saved "event_admin" session completes pitch presentations for the outcomes fixture event
     When the saved "event_admin" session starts pitch review for the outcomes fixture event
     Then the outcomes fixture event state should be "pitch_review"
     When the saved "judge" session loads the active pitch assignments for the outcomes fixture event

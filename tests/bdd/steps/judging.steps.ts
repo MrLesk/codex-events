@@ -119,12 +119,12 @@ When('the saved {string} session completes the remembered judging assignment wit
           criterionScores: [
             {
               evaluationCriterionId: platformFixtureIds.judgingCriterionOneId,
-              score: 8,
+              score: 5,
               comment: 'Strong novelty'
             },
             {
               evaluationCriterionId: platformFixtureIds.judgingCriterionTwoId,
-              score: 9,
+              score: 5,
               comment: 'Strong execution'
             }
           ]

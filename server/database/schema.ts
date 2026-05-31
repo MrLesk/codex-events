@@ -458,9 +458,8 @@ export const userApplications = sqliteTable(
     reviewedAt: text('reviewed_at'),
     reviewedByUserId: text('reviewed_by_user_id').references(() => users.id),
     applicationTermsDocumentId: text('application_terms_document_id')
-      .notNull()
       .references(() => eventTermsDocuments.id),
-    applicationTermsAcceptedAt: text('application_terms_accepted_at').notNull(),
+    applicationTermsAcceptedAt: text('application_terms_accepted_at'),
     registrationDetailsJson: text('registration_details_json')
       .notNull()
       .default('{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisEvent":"","proofOfExecutionUrl":""}'),

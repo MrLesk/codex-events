@@ -199,9 +199,9 @@ Then('I should see the admin application {string} with status {string}', async (
   }).click()
 
   const application = page.getByTestId(`admin-application-${applicationId}`)
+  await waitForApplicationStatus(page, applicationId, status as 'submitted' | 'approved' | 'rejected' | 'withdrawn')
 
   if (status !== 'submitted') {
-    await waitForApplicationStatus(page, applicationId, status)
     return
   }
 

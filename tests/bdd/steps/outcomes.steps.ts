@@ -139,6 +139,23 @@ When('the saved {string} session starts pitch for the outcomes fixture event', a
   }
 })
 
+When('the saved {string} session completes pitch presentations for the outcomes fixture event', async ({ page }, personaKey: string) => {
+  const apiClient = await createAuthenticatedApiClient(parsePersonaKey(personaKey))
+
+  try {
+    for (let index = 0; index < 3; index += 1) {
+      const response = await apiClient.post(`/api/events/${platformFixtureIds.outcomesEventId}/actions/advance-pitch-presentation`)
+      const state = getScenarioState(page)
+      state.response = response
+      state.json = await response.json()
+
+      expect(response.ok()).toBe(true)
+    }
+  } finally {
+    await apiClient.dispose()
+  }
+})
+
 Then('the outcomes fixture event state should be {string}', async ({ page }, expectedState: string) => {
   expect(getScenarioState(page).response?.ok()).toBe(true)
   expect(getScenarioState(page).json).toMatchObject({

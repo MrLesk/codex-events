@@ -47,9 +47,11 @@ When('the saved {string} session creates a managed event named {string}', async 
   try {
     const response = await apiClient.post('/api/events', {
       data: {
+        eventType: 'hackathon',
         name,
         slug: `bdd-managed-event-${now}`,
         description: 'Event created by TASK-3.9 Auth0-backed release-gate coverage.',
+        agendaItems: [],
         city: 'Vienna',
         country: 'Austria',
         address: 'BDD Fixture Address',
