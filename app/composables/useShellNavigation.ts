@@ -180,17 +180,17 @@ export function useShellNavigation() {
     }
 
     const items: ShellNavigationItem[] = [{
-      id: 'my-events',
-      label: 'My events',
-      description: 'Your active, upcoming, and past events',
-      to: '/account',
-      icon: 'i-lucide-flag'
-    }, {
       id: 'profile-settings',
       label: 'Profile settings',
       description: 'Profile details and platform lifecycle',
       to: '/account/settings',
       icon: 'i-lucide-id-card'
+    }, {
+      id: 'my-events',
+      label: 'My events',
+      description: 'Your active, upcoming, and past events',
+      to: '/account',
+      icon: 'i-lucide-flag'
     }]
 
     if (hasJudgeAccess.value) {

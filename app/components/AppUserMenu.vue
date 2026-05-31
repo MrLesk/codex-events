@@ -70,22 +70,6 @@ const hasPlatformSettingsAccess = computed(() => actor.value.kind === 'platform_
           class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
         >
           <NuxtLink
-            to="/account"
-            class="flex w-full items-center gap-2"
-          >
-            <AppIcon
-              name="i-lucide-flag"
-              class="size-4"
-            />
-            <span>My events</span>
-          </NuxtLink>
-        </DropdownMenuItem>
-
-        <DropdownMenuItem
-          as-child
-          class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
-        >
-          <NuxtLink
             to="/account/settings"
             class="flex w-full items-center gap-2"
           >
@@ -94,6 +78,22 @@ const hasPlatformSettingsAccess = computed(() => actor.value.kind === 'platform_
               class="size-4"
             />
             <span>Profile settings</span>
+          </NuxtLink>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem
+          as-child
+          class="gap-2 rounded-none px-4 py-2 text-[13px] text-[#A3A3A3] focus:bg-white/[0.04] focus:text-white data-[highlighted]:bg-white/[0.04] data-[highlighted]:text-white [&_svg]:text-current"
+        >
+          <NuxtLink
+            to="/account"
+            class="flex w-full items-center gap-2"
+          >
+            <AppIcon
+              name="i-lucide-flag"
+              class="size-4"
+            />
+            <span>My events</span>
           </NuxtLink>
         </DropdownMenuItem>
 
