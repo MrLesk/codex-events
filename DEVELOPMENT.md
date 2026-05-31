@@ -97,7 +97,7 @@ Luma webhook bootstrap automation:
 - `NUXT_AUTH0_APP_BASE_URL=https://your-platform.example bun tools/luma/webhook-bootstrap.ts check`
 - `NUXT_AUTH0_APP_BASE_URL=https://your-platform.example bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json`
 
-These commands reconcile the repository-managed `guest.updated` webhook for an environment and, in `apply` mode, write a `wrangler secret bulk`-compatible JSON file containing `NUXT_LUMA_WEBHOOK_SECRET`. The script reads `LUMA_API_KEY` or falls back to `NUXT_LUMA_API_KEY`, falls back to `NUXT_LUMA_API_BASE_URL` for the API host, and can derive the webhook URL from an https `NUXT_AUTH0_APP_BASE_URL` when you do not pass `LUMA_WEBHOOK_URL` explicitly.
+These commands reconcile the repository-managed `guest.updated` webhook for an environment and, in `apply` mode, write a `wrangler secret bulk`-compatible JSON file containing `NUXT_LUMA_WEBHOOK_SECRET`. The script reads `LUMA_API_KEY` or falls back to `NUXT_LUMA_API_KEY`, falls back to `NUXT_LUMA_API_BASE_URL` for the API host, and derives the webhook URL from an https `NUXT_AUTH0_APP_BASE_URL`.
 
 Local first-platform-admin bootstrap command:
 
@@ -227,10 +227,6 @@ Keep `CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred 
 - `CF_EVENT_OUTCOME_EMAIL_QUEUE`
 - `CF_LUMA_SYNC_QUEUE`
 
-This URL variable is an optional override:
-
-- `LUMA_WEBHOOK_URL`
-
 Each remote environment must provide:
 
 - `BASE_DOMAIN`
@@ -264,8 +260,6 @@ When Luma sync is enabled, the workflow or operator should reconcile the webhook
 ```bash
 bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json
 ```
-
-`LUMA_WEBHOOK_URL` is optional when `NUXT_AUTH0_APP_BASE_URL` is an HTTPS URL; the script derives the webhook URL from that app base URL.
 
 ## GitHub Deployments
 
@@ -319,10 +313,6 @@ Cloudflare Email Service and Queues runtime settings:
 - `NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS`
 - `NUXT_LUMA_QUEUE_BINDING`
 - `NUXT_LUMA_RETRY_DELAY_SECONDS`
-
-Deployment URL setting:
-
-- `LUMA_WEBHOOK_URL`
 
 The GitHub `test` environment must provide these secrets:
 

@@ -62,11 +62,11 @@ describe('luma webhook bootstrap config', () => {
     })
   })
 
-  test('rejects missing webhook url when the app base url is not https', () => {
+  test('rejects webhook derivation when the app base url is not https', () => {
     expect(() => resolveConfig({
       NUXT_LUMA_API_KEY: 'luma_api_key',
       NUXT_AUTH0_APP_BASE_URL: 'http://localhost:3000'
-    })).toThrow('LUMA_WEBHOOK_URL is required')
+    })).toThrow('NUXT_AUTH0_APP_BASE_URL must be an https URL')
   })
 })
 

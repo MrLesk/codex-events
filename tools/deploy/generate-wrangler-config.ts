@@ -40,7 +40,6 @@ export interface ResolvedDeployConfigInput {
   appBaseUrl: string
   auth0CustomDomain: string
   firstPlatformAdminEmail: string
-  lumaWebhookUrl: string
   zoneName: string
   workerName: string
   d1DatabaseName: string
@@ -175,16 +174,6 @@ function normalizeHostname(value: string, name: string) {
   return parsed.hostname.toLowerCase()
 }
 
-function normalizeHttpsUrl(value: string, name: string) {
-  const parsed = new URL(value.trim())
-
-  if (parsed.protocol !== 'https:') {
-    throw new Error(`${name} must be an https URL.`)
-  }
-
-  return `${parsed.origin}${parsed.pathname.replace(/\/$/, '')}${parsed.search}${parsed.hash}`
-}
-
 function normalizeResourceName(value: string, name: string) {
   const normalized = value.trim().toLowerCase()
 
@@ -307,10 +296,6 @@ export function resolveDeployConfigInput(
     readOptionalEnvironmentValue(environment, 'AUTH0_CUSTOM_DOMAIN') || buildDefaultAuth0CustomDomain(baseDomain),
     'AUTH0_CUSTOM_DOMAIN'
   )
-  const lumaWebhookUrl = normalizeHttpsUrl(
-    readOptionalEnvironmentValue(environment, 'LUMA_WEBHOOK_URL') || `${appBaseUrl}/api/public/luma/webhooks`,
-    'LUMA_WEBHOOK_URL'
-  )
   const outboundEmailFromEmail = readRequiredEnvironmentValue(environment, 'NUXT_OUTBOUND_EMAIL_FROM_EMAIL')
   return {
     target,
@@ -320,7 +305,6 @@ export function resolveDeployConfigInput(
     appBaseUrl,
     auth0CustomDomain,
     firstPlatformAdminEmail: readOptionalEnvironmentValue(environment, 'NUXT_FIRST_PLATFORM_ADMIN_EMAIL'),
-    lumaWebhookUrl,
     zoneName: readRequiredEnvironmentValue(environment, 'CF_ZONE_NAME'),
     workerName: resolveResourceName(environment, 'CF_WORKER_NAME', resourceBaseName),
     d1DatabaseName,

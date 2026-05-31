@@ -37,7 +37,6 @@ describe('deploy Wrangler config generator', () => {
     expect(input.resourcePrefix).toBe('codex-events')
     expect(input.appBaseUrl).toBe('https://test.example.com')
     expect(input.auth0CustomDomain).toBe('auth.test.example.com')
-    expect(input.lumaWebhookUrl).toBe('https://test.example.com/api/public/luma/webhooks')
     expect(config.name).toBe('codex-events-test')
     expect(config.main).toBe('../../.output/server/index.mjs')
     expect(config.assets.directory).toBe('../../.output/public')
@@ -183,7 +182,6 @@ describe('deploy Wrangler config generator', () => {
       ENV_NAME: 'preview',
       RESOURCE_PREFIX: 'custom-events',
       AUTH0_CUSTOM_DOMAIN: 'login.example.com',
-      LUMA_WEBHOOK_URL: 'https://hooks.example.com/luma/',
       CF_WORKER_NAME: 'custom-worker',
       CF_D1_DATABASE_NAME: 'custom-d1',
       CF_PROFILE_ICONS_BUCKET: 'custom-profile-icons',
@@ -197,7 +195,6 @@ describe('deploy Wrangler config generator', () => {
     expect(input.environmentName).toBe('preview')
     expect(input.resourcePrefix).toBe('custom-events')
     expect(input.auth0CustomDomain).toBe('login.example.com')
-    expect(input.lumaWebhookUrl).toBe('https://hooks.example.com/luma')
     expect(input.workerName).toBe('custom-worker')
     expect(input.d1DatabaseName).toBe('custom-d1')
     expect(input.profileIconsBucket).toBe('custom-profile-icons')

@@ -7,13 +7,14 @@ definePageMeta({
 
 const route = useRoute()
 const accountTabListRef = ref<HTMLElement | null>(null)
-const platformSettingsTabs = ['legal', 'event-organizers', 'platform-admins'] as const
+const platformSettingsTabs = ['legal', 'event-organizers', 'platform-admins', 'debug'] as const
 type PlatformSettingsTab = typeof platformSettingsTabs[number]
 
 const platformSettingsTabLabels: Record<PlatformSettingsTab, string> = {
   'legal': 'Legal settings',
   'event-organizers': 'Manage event organizers',
-  'platform-admins': 'Manage platform admins'
+  'platform-admins': 'Manage platform admins',
+  'debug': 'Debug information'
 }
 
 const activeTab = computed<PlatformSettingsTab>(() =>
@@ -144,12 +145,21 @@ useSeoMeta({
       </section>
 
       <section
-        v-else
+        v-else-if="activeTab === 'platform-admins'"
         id="platform-settings-tab-panel-platform-admins"
         role="tabpanel"
         aria-labelledby="platform-settings-tab-platform-admins"
       >
         <AccountPlatformAdminRosterPanel />
+      </section>
+
+      <section
+        v-else
+        id="platform-settings-tab-panel-debug"
+        role="tabpanel"
+        aria-labelledby="platform-settings-tab-debug"
+      >
+        <AccountPlatformDebugPanel />
       </section>
     </AppContainer>
   </div>

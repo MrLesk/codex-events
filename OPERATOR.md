@@ -269,7 +269,6 @@ Deployment defaults and resource names:
 | `CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name |
 | `CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue name |
 | `CF_LUMA_SYNC_QUEUE` | Luma sync queue name |
-| `LUMA_WEBHOOK_URL` | Luma webhook URL. Defaults to `https://<BASE_DOMAIN>/api/public/luma/webhooks` |
 
 Auth0 and display:
 
@@ -352,8 +351,6 @@ When Luma sync is enabled, reconcile the webhook before uploading Worker secrets
 ```bash
 bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json
 ```
-
-`LUMA_WEBHOOK_URL` is optional when `NUXT_AUTH0_APP_BASE_URL` is an HTTPS URL; the script derives the webhook URL from that app base URL.
 
 ## References
 

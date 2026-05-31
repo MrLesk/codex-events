@@ -32,8 +32,6 @@ jobs:
       CF_APPLICATION_REVIEW_EMAIL_QUEUE: ${{ vars.CF_APPLICATION_REVIEW_EMAIL_QUEUE }}
       CF_EVENT_OUTCOME_EMAIL_QUEUE: ${{ vars.CF_EVENT_OUTCOME_EMAIL_QUEUE }}
       CF_LUMA_SYNC_QUEUE: ${{ vars.CF_LUMA_SYNC_QUEUE }}
-      # Deployment URL overrides.
-      LUMA_WEBHOOK_URL: ${{ vars.LUMA_WEBHOOK_URL }}
       # Auth0 bootstrap settings.
       AUTH0_MANAGEMENT_DOMAIN: ${{ vars.AUTH0_MANAGEMENT_DOMAIN }}
       AUTH0_APP_BASE_URL: https://${{ vars.BASE_DOMAIN }}

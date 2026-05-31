@@ -3,6 +3,8 @@ import 'dotenv/config'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 
+import { buildHttpsLumaWebhookUrl } from '../../shared/domains/luma/webhook-url'
+
 type CommandMode = 'apply' | 'check'
 
 interface ScriptArgs {
@@ -79,7 +81,7 @@ export function getUsageMessage() {
 Environment variables:
 - LUMA_API_KEY (fallback: NUXT_LUMA_API_KEY)
 - LUMA_API_BASE_URL (fallback: NUXT_LUMA_API_BASE_URL; default: ${defaultLumaApiBaseUrl})
-- LUMA_WEBHOOK_URL (fallback: <NUXT_AUTH0_APP_BASE_URL>/api/public/luma/webhooks when https)
+- NUXT_AUTH0_APP_BASE_URL (used to derive the Luma webhook URL; must be https)
 `
 }
 
@@ -123,24 +125,9 @@ function normalizeUrlString(value: string) {
   return `${url.origin}${url.pathname.replace(/\/$/, '')}${url.search}${url.hash}`
 }
 
-function normalizeHttpsUrlString(value: string, name: string) {
-  const normalized = normalizeUrlString(value)
-
-  if (!normalized.startsWith('https://')) {
-    throw new Error(`${name} must be an https URL.`)
-  }
-
-  return normalized
-}
-
 function normalizeOptionalUrl(value: string | undefined) {
   const trimmed = value?.trim() ?? ''
   return trimmed ? normalizeUrlString(trimmed) : ''
-}
-
-function normalizeOptionalHttpsUrl(value: string | undefined, name: string) {
-  const trimmed = value?.trim() ?? ''
-  return trimmed ? normalizeHttpsUrlString(trimmed, name) : ''
 }
 
 function normalizeEventTypes(eventTypes: readonly string[]) {
@@ -160,22 +147,6 @@ function sortWebhookRecords(records: readonly LumaWebhookRecord[]) {
   })
 }
 
-function readWebhookUrlFromAppBaseUrl(value: string | undefined) {
-  const trimmed = value?.trim() ?? ''
-
-  if (!trimmed) {
-    return ''
-  }
-
-  const normalizedAppBaseUrl = normalizeUrlString(trimmed)
-
-  if (!normalizedAppBaseUrl.startsWith('https://')) {
-    return ''
-  }
-
-  return `${normalizedAppBaseUrl}/api/public/luma/webhooks`
-}
-
 export function resolveConfig(environment: NodeJS.ProcessEnv = process.env): LumaWebhookBootstrapConfig {
   const apiKey = environment.LUMA_API_KEY?.trim() || environment.NUXT_LUMA_API_KEY?.trim() || ''
 
@@ -186,14 +157,10 @@ export function resolveConfig(environment: NodeJS.ProcessEnv = process.env): Lum
   const apiBaseUrl = normalizeOptionalUrl(environment.LUMA_API_BASE_URL)
     || normalizeOptionalUrl(environment.NUXT_LUMA_API_BASE_URL)
     || defaultLumaApiBaseUrl
-  const webhookUrl = normalizeOptionalHttpsUrl(environment.LUMA_WEBHOOK_URL, 'LUMA_WEBHOOK_URL')
-    || readWebhookUrlFromAppBaseUrl(environment.NUXT_AUTH0_APP_BASE_URL)
-
-  if (!webhookUrl) {
-    throw new Error(
-      'LUMA_WEBHOOK_URL is required unless NUXT_AUTH0_APP_BASE_URL is configured as an https URL.'
-    )
-  }
+  const webhookUrl = buildHttpsLumaWebhookUrl(
+    environment.NUXT_AUTH0_APP_BASE_URL ?? '',
+    'NUXT_AUTH0_APP_BASE_URL'
+  )
 
   return {
     apiKey,
