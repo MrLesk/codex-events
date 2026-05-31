@@ -182,6 +182,7 @@ function promptBannerImageUpload() {
             color="neutral"
             variant="soft"
             size="sm"
+            :loading="props.backgroundImageUploadPending"
             :disabled="props.backgroundImageUploadPending"
             @click="promptBackgroundImageUpload"
           >
@@ -198,6 +199,14 @@ function promptBannerImageUpload() {
           >
             Remove uploaded background
           </AppButton>
+          <p
+            v-if="props.backgroundImageUploadPending"
+            class="text-xs text-muted"
+            role="status"
+            aria-live="polite"
+          >
+            Uploading background image...
+          </p>
         </div>
         <p
           v-else
@@ -259,6 +268,7 @@ function promptBannerImageUpload() {
             color="neutral"
             variant="soft"
             size="sm"
+            :loading="props.bannerImageUploadPending"
             :disabled="props.bannerImageUploadPending"
             @click="promptBannerImageUpload"
           >
@@ -275,6 +285,14 @@ function promptBannerImageUpload() {
           >
             Remove uploaded banner
           </AppButton>
+          <p
+            v-if="props.bannerImageUploadPending"
+            class="text-xs text-muted"
+            role="status"
+            aria-live="polite"
+          >
+            Uploading banner image...
+          </p>
         </div>
         <p
           v-else

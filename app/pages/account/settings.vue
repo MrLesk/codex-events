@@ -312,10 +312,14 @@ useSeoMeta({
                     size="3xl"
                     fallback="icon"
                   />
-                  <span class="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+                  <span
+                    class="absolute inset-0 flex items-center justify-center rounded-full bg-black/45 transition-opacity"
+                    :class="profileIconState.uploadPending ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100'"
+                  >
                     <AppIcon
-                      name="i-lucide-pencil"
+                      :name="profileIconState.uploadPending ? 'i-lucide-loader-circle' : 'i-lucide-pencil'"
                       class="size-4 text-white"
+                      :class="profileIconState.uploadPending ? 'animate-spin' : ''"
                     />
                   </span>
                 </button>
@@ -331,6 +335,14 @@ useSeoMeta({
                   >
                   <p class="text-xs text-muted">
                     JPG/PNG up to 1mb
+                  </p>
+                  <p
+                    v-if="profileIconState.uploadPending"
+                    class="text-xs text-muted"
+                    role="status"
+                    aria-live="polite"
+                  >
+                    Uploading profile icon...
                   </p>
                 </div>
               </div>
