@@ -42,6 +42,8 @@ const props = defineProps<{
   isSubmitting?: boolean
   submitLabel: string
   helperText?: string
+  submitError?: string
+  submitErrorTitle?: string
   mode?: EventProgramSettingsMode
   autoGenerateSlug?: boolean
   canUploadManagedImages?: boolean
@@ -1132,6 +1134,14 @@ const submitConfigForm = handleSubmit(() => {
                   </p>
 
                   <AppAlert
+                    v-if="submitError"
+                    color="error"
+                    variant="soft"
+                    :title="submitErrorTitle ?? 'Unable to save changes'"
+                    :description="submitError"
+                  />
+
+                  <AppAlert
                     v-if="validationErrorMessages.length > 0"
                     color="error"
                     variant="soft"
@@ -1180,6 +1190,14 @@ const submitConfigForm = handleSubmit(() => {
             <p class="text-sm text-muted">
               {{ helperText ?? 'Save your changes to update this event.' }}
             </p>
+
+            <AppAlert
+              v-if="submitError"
+              color="error"
+              variant="soft"
+              :title="submitErrorTitle ?? 'Unable to save changes'"
+              :description="submitError"
+            />
 
             <AppAlert
               v-if="validationErrorMessages.length > 0"
@@ -1538,17 +1556,27 @@ const submitConfigForm = handleSubmit(() => {
       v-if="!showInlineDetailsActions && !isSettingsMode"
       class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-col gap-4 rounded-xl px-5 py-5 sm:flex-row sm:items-center sm:justify-between"
     >
-      <p class="max-w-3xl text-sm text-muted">
-        {{ helperText ?? 'Save your changes to update this event.' }}
-      </p>
+      <div class="max-w-3xl space-y-3">
+        <p class="text-sm text-muted">
+          {{ helperText ?? 'Save your changes to update this event.' }}
+        </p>
 
-      <AppAlert
-        v-if="validationErrorMessages.length > 0"
-        color="error"
-        variant="soft"
-        title="Form validation failed"
-        :description="validationErrorMessages[0]"
-      />
+        <AppAlert
+          v-if="submitError"
+          color="error"
+          variant="soft"
+          :title="submitErrorTitle ?? 'Unable to save changes'"
+          :description="submitError"
+        />
+
+        <AppAlert
+          v-if="validationErrorMessages.length > 0"
+          color="error"
+          variant="soft"
+          title="Form validation failed"
+          :description="validationErrorMessages[0]"
+        />
+      </div>
 
       <AppButton
         type="submit"

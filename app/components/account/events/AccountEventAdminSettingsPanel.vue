@@ -85,6 +85,7 @@ const isSavingCriteria = ref(false)
 const isSavingPrizes = ref(false)
 const savingTermsDocumentType = ref<TermsDocument['documentType'] | null>(null)
 const hasAttemptedCriteriaSave = ref(false)
+const configMutationError = ref('')
 const mutationError = ref('')
 const criteriaMutationError = ref('')
 const imageMutationState = reactive({
@@ -627,7 +628,7 @@ async function patchConfiguration(
     return
   }
 
-  mutationError.value = ''
+  configMutationError.value = ''
   isSavingConfig.value = true
 
   try {
@@ -646,7 +647,7 @@ async function patchConfiguration(
 
     await workspace.refreshWorkspace()
   } catch (error) {
-    mutationError.value = normalizeApiError(error).message
+    configMutationError.value = normalizeApiError(error).message
   } finally {
     isSavingConfig.value = false
   }
@@ -1162,6 +1163,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
           :banner-image-upload-error="imageMutationState.banner.error"
           :submit-label="programSettingsCopy.submitLabel"
           :helper-text="programSettingsCopy.helperText"
+          :submit-error="configMutationError"
           @submit="saveConfiguration"
           @upload-background-image="uploadBackgroundImage"
           @remove-background-image="removeBackgroundImage"

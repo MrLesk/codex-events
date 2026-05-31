@@ -39,6 +39,7 @@ const props = defineProps<{
 }>()
 
 const form = reactive(createEmptyEventFormState())
+const submitErrorTitle = computed(() => props.initialEvent ? 'Unable to save event' : 'Unable to create event')
 
 function applyInitialEvent() {
   if (!props.initialEvent) {
@@ -60,20 +61,14 @@ function submitForm() {
 
 <template>
   <div class="space-y-4">
-    <AppAlert
-      v-if="submitError"
-      color="error"
-      variant="soft"
-      :title="initialEvent ? 'Unable to save event' : 'Unable to create event'"
-      :description="submitError"
-    />
-
     <EventConfigForm
       v-model:form="form"
       :is-submitting="isSubmitting"
       :mode="mode"
       :submit-label="submitLabel"
       :helper-text="helperText"
+      :submit-error="submitError"
+      :submit-error-title="submitErrorTitle"
       :auto-generate-slug="autoGenerateSlug"
       :can-upload-managed-images="canUploadManagedImages"
       :background-image-upload-pending="backgroundImageUploadPending"
