@@ -3,6 +3,7 @@ import type { ApiErrorShape } from '~/lib/api'
 
 import { normalizeApiError } from '~/lib/api'
 import {
+  getAccountRegistrationMissingDocumentsCopy,
   getAccountRegistrationSubmitErrorMessage,
   getAccountRegistrationIntro,
   missingIdentityEmailMessage
@@ -63,16 +64,24 @@ const platformDocumentsUnavailable = computed(() =>
 const canOpenLegalSettingsForSetup = computed(() =>
   actor.value.kind === 'platform_user' && actor.value.isPlatformAdmin
 )
+const canCreateFirstPlatformAdminSetupAccount = computed(() =>
+  actor.value.kind === 'authenticated_identity'
+  && actor.value.canCreateFirstPlatformAdminSetupAccount
+)
+const missingDocumentsCopy = computed(() => getAccountRegistrationMissingDocumentsCopy({
+  canCreateFirstPlatformAdminSetupAccount: canCreateFirstPlatformAdminSetupAccount.value,
+  canOpenLegalSettingsForSetup: canOpenLegalSettingsForSetup.value
+}))
+const canSubmitMissingDocumentsFlow = computed(() =>
+  canCreateFirstPlatformAdminSetupAccount.value || canOpenLegalSettingsForSetup.value
+)
 const isReadyToSubmit = computed(() =>
   !platformDocumentsUnavailable.value
   && privacyAccepted.value
   && termsAccepted.value
 )
 const accountRegistrationIntro = computed(() => platformDocumentsUnavailable.value
-  ? {
-      title: 'Finish account registration',
-      description: 'Platform legal content must be published before regular account registration can continue.'
-    }
+  ? missingDocumentsCopy.value.intro
   : getAccountRegistrationIntro()
 )
 const identityEmailUnavailable = computed(() =>
@@ -95,7 +104,10 @@ async function submitInitialPlatformSetupAccount() {
     return
   }
 
-  if (actor.value.kind !== 'authenticated_identity') {
+  if (
+    actor.value.kind !== 'authenticated_identity'
+    || !canCreateFirstPlatformAdminSetupAccount.value
+  ) {
     return
   }
 
@@ -221,10 +233,10 @@ useSeoMeta({
         @submit.prevent="submitPlatformConsent"
       >
         <AppAlert
-          color="warning"
+          :color="missingDocumentsCopy.alert.color"
           variant="soft"
-          title="Legal content required"
-          description="The platform needs legal settings, a Privacy Policy, and Platform Terms before regular account registration can continue."
+          :title="missingDocumentsCopy.alert.title"
+          :description="missingDocumentsCopy.alert.description"
         />
 
         <AppAlert
@@ -253,15 +265,15 @@ useSeoMeta({
 
         <div class="space-y-3">
           <p
-            v-if="actor.kind === 'authenticated_identity'"
+            v-if="missingDocumentsCopy.helperText"
             class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
           >
-            Create the setup account only with the email configured as the first platform admin.
+            {{ missingDocumentsCopy.helperText }}
           </p>
 
           <div class="flex justify-end">
             <AppButton
-              v-if="actor.kind === 'authenticated_identity' || canOpenLegalSettingsForSetup"
+              v-if="canSubmitMissingDocumentsFlow"
               type="submit"
               color="neutral"
               variant="solid"
@@ -269,7 +281,7 @@ useSeoMeta({
               :disabled="submitState.pending || identityEmailUnavailable"
               class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
             >
-              {{ canOpenLegalSettingsForSetup ? 'Open legal settings' : 'Create setup account' }}
+              {{ missingDocumentsCopy.submitButtonLabel }}
             </AppButton>
           </div>
         </div>

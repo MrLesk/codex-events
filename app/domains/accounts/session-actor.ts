@@ -71,6 +71,7 @@ export interface AuthenticatedIdentitySessionActor {
   isAuthenticated: true
   hasPlatformAccount: false
   hasAcceptedCurrentPlatformDocuments: false
+  canCreateFirstPlatformAdminSetupAccount: boolean
   sessionUser: SessionUserIdentity
   platformUser: null
   isPlatformAdmin: false
@@ -118,6 +119,7 @@ export function buildAuthenticatedIdentitySessionActor(sessionUser: SessionUserI
     isAuthenticated: true,
     hasPlatformAccount: false,
     hasAcceptedCurrentPlatformDocuments: false,
+    canCreateFirstPlatformAdminSetupAccount: false,
     sessionUser,
     platformUser: null,
     isPlatformAdmin: false,

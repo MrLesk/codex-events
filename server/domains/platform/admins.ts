@@ -62,6 +62,17 @@ export async function hasActivePlatformAdmins(database: AppDatabase) {
   return (rows[0]?.total ?? 0) > 0
 }
 
+export async function canCreateFirstPlatformAdminSetupAccount(
+  database: AppDatabase,
+  input: {
+    userEmail: string | null | undefined
+    configuredEmail: string | null | undefined
+  }
+) {
+  return matchesConfiguredFirstPlatformAdminEmail(input.userEmail, input.configuredEmail)
+    && !(await hasActivePlatformAdmins(database))
+}
+
 export async function grantConfiguredFirstPlatformAdminAccess(
   database: AppDatabase,
   input: {

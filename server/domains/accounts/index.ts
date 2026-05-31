@@ -14,9 +14,8 @@ import { buildAuditLogInsert, writeAuditLog } from '#server/database/audit-log'
 import { ApiError } from '#server/http/api-error'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 import {
-  grantConfiguredFirstPlatformAdminAccess,
-  hasActivePlatformAdmins,
-  matchesConfiguredFirstPlatformAdminEmail
+  canCreateFirstPlatformAdminSetupAccount,
+  grantConfiguredFirstPlatformAdminAccess
 } from '#server/domains/platform/admins'
 import {
   assertCurrentPlatformDocument,
@@ -274,15 +273,6 @@ async function requirePlatformDocumentById(
   return document
 }
 
-async function canCreateFirstPlatformAdminSetupAccount(
-  database: AppDatabase,
-  actor: AuthenticatedIdentityActor,
-  configuredEmail: string | null | undefined
-) {
-  return matchesConfiguredFirstPlatformAdminEmail(actor.sessionUser.email, configuredEmail)
-    && !(await hasActivePlatformAdmins(database))
-}
-
 async function resolveRegistrationPlatformDocuments(
   database: AppDatabase,
   actor: AuthenticatedIdentityActor,
@@ -316,7 +306,10 @@ async function resolveRegistrationPlatformDocuments(
 
   if (
     (!currentDocuments.privacy_policy || !currentDocuments.platform_terms)
-    && await canCreateFirstPlatformAdminSetupAccount(database, actor, configuredEmail)
+    && await canCreateFirstPlatformAdminSetupAccount(database, {
+      userEmail: actor.sessionUser.email,
+      configuredEmail
+    })
   ) {
     return null
   }

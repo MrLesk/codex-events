@@ -241,6 +241,70 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
+  test('GET /api/session marks the configured first platform admin identity as setup-eligible', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      runtimeConfig: {
+        firstPlatformAdminEmail: 'First-Admin@Example.com'
+      },
+      sessionUser: {
+        sub: 'google-oauth2|first-admin',
+        email: 'first-admin@example.com',
+        email_verified: true,
+        name: 'First Admin'
+      }
+    })
+    databases.push(harness)
+
+    const response = await harness.request('/api/session')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        actor: {
+          kind: 'authenticated_identity',
+          hasPlatformAccount: false,
+          canCreateFirstPlatformAdminSetupAccount: true,
+          platformUser: null
+        }
+      }
+    })
+  })
+
+  test('GET /api/session does not mark regular authenticated identities as first-admin setup-eligible', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/session', handler: sessionHandler }
+      ],
+      runtimeConfig: {
+        firstPlatformAdminEmail: 'first-admin@example.com'
+      },
+      sessionUser: {
+        sub: 'google-oauth2|regular-user',
+        email: 'regular-user@example.com',
+        email_verified: true,
+        name: 'Regular User'
+      }
+    })
+    databases.push(harness)
+
+    const response = await harness.request('/api/session')
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      data: {
+        actor: {
+          kind: 'authenticated_identity',
+          hasPlatformAccount: false,
+          canCreateFirstPlatformAdminSetupAccount: false,
+          platformUser: null
+        }
+      }
+    })
+  })
+
   test('GET /api/account/events returns current and past events for the platform user', async () => {
     const harness = createApiRouteTestHarness({
       routes: [

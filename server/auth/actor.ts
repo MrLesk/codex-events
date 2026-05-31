@@ -7,7 +7,10 @@ import {
   ensurePlatformUserAuthIdentities,
   findPlatformUserByAuth0Subject
 } from '#server/domains/accounts/auth-identities'
-import { grantConfiguredFirstPlatformAdminAccess } from '#server/domains/platform/admins'
+import {
+  canCreateFirstPlatformAdminSetupAccount,
+  grantConfiguredFirstPlatformAdminAccess
+} from '#server/domains/platform/admins'
 import {
   linkedAuth0SubjectsClaim
 } from '#server/domains/accounts/linking'
@@ -45,6 +48,7 @@ export interface AuthenticatedIdentityActor {
   isAuthenticated: true
   hasPlatformAccount: false
   hasAcceptedCurrentPlatformDocuments: false
+  canCreateFirstPlatformAdminSetupAccount: boolean
   sessionUser: SessionUserProfile
   platformUser: null
 }
@@ -129,14 +133,20 @@ async function findPlatformUserBySubject(event: H3Event, auth0Subject: string) {
   return await findPlatformUserByAuth0Subject(getDatabase(event), auth0Subject)
 }
 
-function buildAuthenticatedIdentityActor(
-  sessionUser: SessionUserProfile
-): AuthenticatedIdentityActor {
+async function buildAuthenticatedIdentityActor(
+  database: ReturnType<typeof getDatabase>,
+  sessionUser: SessionUserProfile,
+  configuredEmail: string | null | undefined
+): Promise<AuthenticatedIdentityActor> {
   return {
     kind: 'authenticated_identity',
     isAuthenticated: true,
     hasPlatformAccount: false,
     hasAcceptedCurrentPlatformDocuments: false,
+    canCreateFirstPlatformAdminSetupAccount: await canCreateFirstPlatformAdminSetupAccount(database, {
+      userEmail: sessionUser.email,
+      configuredEmail
+    }),
     sessionUser,
     platformUser: null
   }
@@ -212,7 +222,11 @@ export async function resolveRequestActor(event: H3Event): Promise<RequestActor>
     return await buildPlatformActor(database, sessionUser, effectivePlatformUser)
   }
 
-  return buildAuthenticatedIdentityActor(sessionUser)
+  return await buildAuthenticatedIdentityActor(
+    database,
+    sessionUser,
+    useRuntimeConfig(event).firstPlatformAdminEmail
+  )
 }
 
 export async function getRequestActor(event: H3Event): Promise<RequestActor> {

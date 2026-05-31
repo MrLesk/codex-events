@@ -18,6 +18,7 @@ export default defineApiHandler(async (h3Event) => {
         isAuthenticated: actor.isAuthenticated,
         hasPlatformAccount: actor.hasPlatformAccount,
         hasAcceptedCurrentPlatformDocuments: actor.hasAcceptedCurrentPlatformDocuments,
+        canCreateFirstPlatformAdminSetupAccount: actor.canCreateFirstPlatformAdminSetupAccount,
         sessionUser: actor.sessionUser,
         platformUser: null,
         isPlatformAdmin: false,
