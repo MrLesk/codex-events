@@ -189,7 +189,7 @@ This account can reach the Legal settings tab right away. Everything else stays 
 
 ### 5.3 Add platform legal content
 
-On the Legal settings tab:
+On the Legal settings tab (you need to save each content separately):
 
 1. Save the support email and imprint content.
 2. Publish the Privacy Policy.
