@@ -22,6 +22,7 @@ interface TenantConfig {
   actionName: string
   actionRuntime: string
   brandingPrimaryColor: string
+  brandingPrimaryButtonLabelColor: string
   brandingPageBackgroundColor: string
   brandingLogoUrl: string
   brandingFaviconUrl: string
@@ -61,6 +62,14 @@ interface Auth0Branding {
   colors?: {
     primary?: string
     page_background?: string
+  }
+}
+
+interface Auth0BrandingTheme {
+  themeId: string
+  colors?: {
+    primary_button?: string
+    primary_button_label?: string
   }
 }
 
@@ -121,6 +130,8 @@ const defaultActionRuntime = 'node22'
 const defaultAuth0AppDisplayName = 'Codex Events'
 const defaultAuth0DatabaseConnectionName = 'Username-Password-Authentication'
 const defaultBrandingPrimaryColor = '#030213'
+const lightButtonLabelColor = '#ffffff'
+const darkButtonLabelColor = '#030213'
 const defaultBrandingPageBackgroundColor = '#f3f3f5'
 const defaultBrandingWordmarkPath = '/auth0/codex-events-wordmark.svg'
 const defaultLocalBddAppBaseUrl = 'http://localhost:3100'
@@ -577,6 +588,32 @@ function normalizeColorForComparison(value: string | undefined) {
   return (value ?? '').trim().toLowerCase()
 }
 
+function readHexChannel(value: string, startIndex: number) {
+  return Number.parseInt(value.slice(startIndex, startIndex + 2), 16)
+}
+
+function getRelativeLuminance(hexColor: string) {
+  const normalized = normalizeHexColor(hexColor, 'hex color')
+  const channels = [
+    readHexChannel(normalized, 1),
+    readHexChannel(normalized, 3),
+    readHexChannel(normalized, 5)
+  ].map((channel) => {
+    const normalizedChannel = channel / 255
+    return normalizedChannel <= 0.03928
+      ? normalizedChannel / 12.92
+      : ((normalizedChannel + 0.055) / 1.055) ** 2.4
+  })
+
+  return (channels[0] * 0.2126) + (channels[1] * 0.7152) + (channels[2] * 0.0722)
+}
+
+export function resolvePrimaryButtonLabelColor(primaryColor: string) {
+  return getRelativeLuminance(primaryColor) > 0.45
+    ? darkButtonLabelColor
+    : lightButtonLabelColor
+}
+
 function normalizeUrlForComparison(value: string | undefined) {
   const trimmed = (value ?? '').trim()
   if (!trimmed) {
@@ -685,6 +722,10 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
   const inferredBrandingFaviconUrl = normalizedAppBaseUrl.startsWith('https://')
     ? buildPublicAssetUrl(normalizedAppBaseUrl, '/favicon.ico')
     : ''
+  const brandingPrimaryColor = normalizeOptionalHexColor(
+    firstDefinedValue(environment.AUTH0_BRANDING_PRIMARY_COLOR, defaultBrandingPrimaryColor),
+    'AUTH0_BRANDING_PRIMARY_COLOR'
+  )
   const defaultManagementAudience = `${normalizeDomain(tenantDomain)}/api/v2/`
 
   return {
@@ -722,10 +763,8 @@ export function resolveConfig(environment: NodeJS.ProcessEnv): TenantConfig {
     privacyUrl: normalizeUrlString(firstDefinedValue(environment.AUTH0_PRIVACY_URL, `${normalizedAppBaseUrl}/privacy-policy`)),
     actionName: firstDefinedValue(environment.AUTH0_POST_LOGIN_ACTION_NAME, defaultActionName),
     actionRuntime: firstDefinedValue(environment.AUTH0_POST_LOGIN_ACTION_RUNTIME, defaultActionRuntime),
-    brandingPrimaryColor: normalizeOptionalHexColor(
-      firstDefinedValue(environment.AUTH0_BRANDING_PRIMARY_COLOR, defaultBrandingPrimaryColor),
-      'AUTH0_BRANDING_PRIMARY_COLOR'
-    ),
+    brandingPrimaryColor,
+    brandingPrimaryButtonLabelColor: resolvePrimaryButtonLabelColor(brandingPrimaryColor || defaultBrandingPrimaryColor),
     brandingPageBackgroundColor: normalizeOptionalHexColor(
       firstDefinedValue(environment.AUTH0_BRANDING_PAGE_BACKGROUND_COLOR, defaultBrandingPageBackgroundColor),
       'AUTH0_BRANDING_PAGE_BACKGROUND_COLOR'
@@ -928,6 +967,14 @@ export async function runOptionalPaidAuth0LoginCustomization(
   }
 }
 
+function isCustomDomainReady(customDomain: Auth0CustomDomain) {
+  return (
+    customDomain.status === 'ready'
+    && customDomain.verification?.status === 'verified'
+    && customDomain.certificate?.status === 'provisioned'
+  )
+}
+
 async function getCustomDomains(config: TenantConfig, token: string) {
   const response = await auth0ManagementRequest(config, token, '/api/v2/custom-domains', {
     method: 'GET'
@@ -971,8 +1018,24 @@ async function ensureCustomDomain(config: TenantConfig, token: string, mode: Com
     console.log(`Applied: set ${config.customDomain} as primary Auth0 custom domain.`)
   }
 
+  if (mode === 'apply' && customDomain && isCustomDomainReady(customDomain) && !customDomain.is_default) {
+    await auth0ManagementRequest(config, token, '/api/v2/custom-domains/default', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        domain: config.customDomain
+      })
+    })
+    customDomains = await getCustomDomains(config, token)
+    customDomain = customDomains.find(domain => domain.domain === config.customDomain)
+    console.log(`Applied: set ${config.customDomain} as the default Auth0 custom domain.`)
+  }
+
   if (!customDomain?.primary) {
     failures.push(`Custom domain ${config.customDomain} is not primary.`)
+  }
+
+  if (!customDomain?.is_default) {
+    failures.push(`Custom domain ${config.customDomain} is not the default Auth0 custom domain for notification links.`)
   }
 
   if (customDomain?.status !== 'ready') {
@@ -1234,6 +1297,50 @@ async function ensureBranding(config: TenantConfig, token: string, mode: Command
 
   if (expectedFaviconUrl && normalizeUrlForComparison(verified.favicon_url) !== expectedFaviconUrl) {
     failures.push(`Auth0 branding favicon_url is ${verified.favicon_url ?? 'unset'}, expected ${expected.favicon_url}.`)
+  }
+}
+
+async function getDefaultBrandingTheme(config: TenantConfig, token: string) {
+  const response = await auth0ManagementRequest(config, token, '/api/v2/branding/themes/default', {
+    method: 'GET'
+  })
+  return await response.json() as Auth0BrandingTheme
+}
+
+async function ensureDefaultBrandingTheme(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
+  const expectedPrimaryButton = normalizeColorForComparison(config.brandingPrimaryColor)
+  const expectedPrimaryButtonLabel = normalizeColorForComparison(config.brandingPrimaryButtonLabelColor)
+
+  if (!expectedPrimaryButton || !expectedPrimaryButtonLabel) {
+    return
+  }
+
+  let theme = await getDefaultBrandingTheme(config, token)
+  const primaryButtonNeedsPatch = normalizeColorForComparison(theme.colors?.primary_button) !== expectedPrimaryButton
+  const primaryButtonLabelNeedsPatch = normalizeColorForComparison(theme.colors?.primary_button_label) !== expectedPrimaryButtonLabel
+  const needsPatch = primaryButtonNeedsPatch || primaryButtonLabelNeedsPatch
+
+  if (mode === 'apply' && needsPatch) {
+    await auth0ManagementRequest(config, token, `/api/v2/branding/themes/${encodeURIComponent(theme.themeId)}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        colors: {
+          ...(theme.colors ?? {}),
+          primary_button: config.brandingPrimaryColor,
+          primary_button_label: config.brandingPrimaryButtonLabelColor
+        }
+      })
+    })
+    console.log('Applied: ensured Auth0 default branding theme button colors.')
+    theme = await getDefaultBrandingTheme(config, token)
+  }
+
+  if (normalizeColorForComparison(theme.colors?.primary_button) !== expectedPrimaryButton) {
+    failures.push(`Auth0 default branding theme primary_button is ${theme.colors?.primary_button ?? 'unset'}, expected ${config.brandingPrimaryColor}.`)
+  }
+
+  if (normalizeColorForComparison(theme.colors?.primary_button_label) !== expectedPrimaryButtonLabel) {
+    failures.push(`Auth0 default branding theme primary_button_label is ${theme.colors?.primary_button_label ?? 'unset'}, expected ${config.brandingPrimaryButtonLabelColor}.`)
   }
 }
 
@@ -1625,6 +1732,7 @@ export async function main() {
     await ensureClientUrls(config, managementToken, mode, failures)
     await ensureTenantDefaultRedirection(config, managementToken, mode, failures)
     await ensureBranding(config, managementToken, mode, failures)
+    await ensureDefaultBrandingTheme(config, managementToken, mode, failures)
     await runOptionalPaidAuth0LoginCustomization(async () => {
       await ensureUniversalLoginPageTemplate(config, managementToken, mode, failures)
       await ensureLoginCustomText(config, managementToken, mode, failures)

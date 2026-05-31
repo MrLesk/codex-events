@@ -11,6 +11,7 @@ import {
   isPaidAuth0LoginCustomizationUnavailable,
   requiredManagementApiScopes,
   resolveConfig,
+  resolvePrimaryButtonLabelColor,
   runOptionalPaidAuth0LoginCustomization
 } from '../../../../tools/auth0/auth0-bootstrap'
 import { deriveAuth0GeneratedSecret } from '../../../../tools/auth0/generated-secrets'
@@ -57,6 +58,7 @@ describe('auth0 bootstrap config', () => {
     expect(config.bddAppBaseUrl).toBe('')
     expect(config.loginUri).toBe('https://test.codex-events.com/auth/login')
     expect(config.brandingPrimaryColor).toBe('#030213')
+    expect(config.brandingPrimaryButtonLabelColor).toBe('#ffffff')
     expect(config.brandingPageBackgroundColor).toBe('#f3f3f5')
     expect(config.brandingLogoUrl).toBe('https://test.codex-events.com/auth0/codex-events-wordmark.svg')
     expect(config.brandingFaviconUrl).toBe('https://test.codex-events.com/favicon.ico')
@@ -91,9 +93,15 @@ describe('auth0 bootstrap config', () => {
     expect(config.appDisplayName).toBe('Codex Community')
     expect(config.loginUri).toBe('https://test.codex-events.com/custom-login')
     expect(config.brandingPrimaryColor).toBe('#111111')
+    expect(config.brandingPrimaryButtonLabelColor).toBe('#ffffff')
     expect(config.brandingPageBackgroundColor).toBe('#fafafa')
     expect(config.brandingLogoUrl).toBe('https://cdn.example.com/codex.svg')
     expect(config.brandingFaviconUrl).toBe('https://cdn.example.com/favicon.ico')
+  })
+
+  test('derives a readable Auth0 primary button label color', () => {
+    expect(resolvePrimaryButtonLabelColor('#030213')).toBe('#ffffff')
+    expect(resolvePrimaryButtonLabelColor('#f3f3f5')).toBe('#030213')
   })
 
   test('builds the required callback, logout, and origin URLs for local app and BDD origins', () => {
