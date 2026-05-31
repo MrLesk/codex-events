@@ -72,7 +72,6 @@ function createEvent() {
         auth0: {
           accountLinkChallengeSecret: 'link-secret',
           appBaseUrl: 'https://test.codex-events.com',
-          audience: 'https://api.example.test',
           clientId: 'client-id',
           clientSecret: 'client-secret',
           databaseConnectionName: 'Username-Password-Authentication',
@@ -125,7 +124,6 @@ describe('platform account-link Auth0 helper', () => {
     expect(ServerClient).toHaveBeenCalledTimes(1)
     expect(ServerClient).toHaveBeenCalledWith(expect.objectContaining({
       authorizationParams: {
-        audience: 'https://api.example.test',
         redirect_uri: 'https://test.codex-events.com/auth/link/callback'
       },
       stateIdentifier: '__a0_platform_account_link_session',

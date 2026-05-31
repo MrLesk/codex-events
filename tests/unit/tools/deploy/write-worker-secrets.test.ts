@@ -29,7 +29,6 @@ describe('Worker secret writer', () => {
       NUXT_AUTH0_CLIENT_SECRET: 'app-client-secret',
       NUXT_AUTH0_SESSION_SECRET: generatedSecrets.sessionSecret,
       NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: generatedSecrets.accountLinkChallengeSecret,
-      NUXT_AUTH0_AUDIENCE: '',
       NUXT_LUMA_API_KEY: ''
     })
   })
@@ -38,14 +37,12 @@ describe('Worker secret writer', () => {
     expect(buildWorkerSecrets(createEnvironment({
       NUXT_AUTH0_SESSION_SECRET: 'explicit-session-secret',
       NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: 'explicit-challenge-secret',
-      NUXT_AUTH0_AUDIENCE: 'https://api.example.com',
       NUXT_LUMA_API_KEY: 'luma-api-key'
     }), {
       NUXT_LUMA_WEBHOOK_SECRET: 'webhook-secret'
     })).toMatchObject({
       NUXT_AUTH0_SESSION_SECRET: 'explicit-session-secret',
       NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: 'explicit-challenge-secret',
-      NUXT_AUTH0_AUDIENCE: 'https://api.example.com',
       NUXT_LUMA_API_KEY: 'luma-api-key',
       NUXT_LUMA_WEBHOOK_SECRET: 'webhook-secret'
     })

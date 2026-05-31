@@ -21,7 +21,6 @@ NUXT_AUTH0_CLIENT_SECRET=your-auth0-client-secret
 NUXT_AUTH0_SESSION_SECRET=replace-with-generated-session-secret
 NUXT_AUTH0_APP_BASE_URL=http://localhost:3000
 NUXT_AUTH0_BDD_APP_BASE_URL=http://localhost:3100
-NUXT_AUTH0_AUDIENCE=
 NUXT_AUTH0_DATABASE_CONNECTION_NAME=Username-Password-Authentication
 NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET=replace-with-generated-account-link-secret
 NUXT_FIRST_PLATFORM_ADMIN_EMAIL=
@@ -331,7 +330,6 @@ The GitHub `test` environment must provide these secrets:
 - `CF_API_TOKEN`
 - `NUXT_AUTH0_CLIENT_ID`
 - `NUXT_AUTH0_CLIENT_SECRET`
-- `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
 - `AUTH0_MGMT_CLIENT_ID`
 - `AUTH0_MGMT_CLIENT_SECRET`
 - `NUXT_LUMA_API_KEY` when any test event uses Luma sync
@@ -346,7 +344,6 @@ The GitHub `bdd` environment must provide these secrets:
 - `NUXT_AUTH0_DOMAIN`
 - `NUXT_AUTH0_CLIENT_ID`
 - `NUXT_AUTH0_CLIENT_SECRET`
-- `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
 - `AUTH0_MGMT_CLIENT_ID`
 - `AUTH0_MGMT_CLIENT_SECRET`
 - `E2E_PLATFORM_ADMIN_EMAIL`
@@ -365,7 +362,6 @@ The GitHub `production` environment must provide these secrets before a release 
 - `AUTH0_MGMT_CLIENT_SECRET`
 - `CF_ACCOUNT_ID`
 - `CF_API_TOKEN`
-- `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_LUMA_API_KEY` when production events use Luma sync
 

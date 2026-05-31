@@ -52,7 +52,6 @@ interface PlatformAccountLinkLoginConfig extends PlatformAccountLinkConfig {
   clientId: string
   clientSecret: string
   sessionSecret: string
-  audience?: string
   sessionConfiguration?: SessionConfiguration
 }
 
@@ -95,7 +94,6 @@ type RequestScopedPlatformAccountLinkAuth0Context = H3Event['context'] & {
     clientId?: string
     clientSecret?: string
     appBaseUrl?: string
-    audience?: string
     sessionSecret?: string
     sessionConfiguration?: SessionConfiguration
   }
@@ -217,7 +215,6 @@ function readLoginConfig(event: H3Event): PlatformAccountLinkLoginConfig {
     clientId,
     clientSecret,
     sessionSecret,
-    audience: typeof auth0Config.audience === 'string' ? auth0Config.audience.trim() || undefined : undefined,
     sessionConfiguration: typeof auth0Config.sessionConfiguration === 'object' && auth0Config.sessionConfiguration
       ? auth0Config.sessionConfiguration as SessionConfiguration
       : undefined
@@ -392,7 +389,6 @@ function getPlatformAccountLinkAuth0Client(event: H3Event) {
     clientId: loginConfig.clientId,
     clientSecret: loginConfig.clientSecret,
     authorizationParams: {
-      audience: loginConfig.audience,
       redirect_uri: getPlatformAccountLinkCallbackUrl(event)
     },
     transactionIdentifier: linkTransactionIdentifier,

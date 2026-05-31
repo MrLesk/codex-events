@@ -141,7 +141,6 @@ Add these only when they apply:
 
 | Key | Platform | Where to find it |
 | --- | --- | --- |
-| `NUXT_AUTH0_AUDIENCE` | Auth0 | Only if the application requests an Auth0 API audience |
 | `NUXT_LUMA_API_KEY` | Luma | Only if events use Luma sync |
 
 ### Cloudflare API token
@@ -299,7 +298,6 @@ Outbound email and queues:
 | --- | --- |
 | `NUXT_AUTH0_SESSION_SECRET` | Override for the generated Auth0 session secret. Defaults to a stable value derived from `NUXT_AUTH0_CLIENT_SECRET` |
 | `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` | Override for the generated account-link challenge secret shared by the Worker and Auth0 Action. Defaults to a stable value derived from `NUXT_AUTH0_CLIENT_SECRET` |
-| `NUXT_AUTH0_AUDIENCE` | Auth0 API audience when the application requests one |
 | `NUXT_LUMA_API_KEY` | Luma API key when events use Luma sync |
 
 ### Test environment
@@ -331,7 +329,7 @@ Required test secrets:
 | `AUTH0_MGMT_CLIENT_ID` | Auth0 Management application client ID |
 | `AUTH0_MGMT_CLIENT_SECRET` | Auth0 Management application client secret |
 
-As with production, the test job derives the session and account-link secrets from `NUXT_AUTH0_CLIENT_SECRET` when overrides are omitted. Set `NUXT_AUTH0_AUDIENCE` only when the test application uses a non-empty audience, and `NUXT_LUMA_API_KEY` only when test events use Luma sync.
+As with production, the test job derives the session and account-link secrets from `NUXT_AUTH0_CLIENT_SECRET` when overrides are omitted. Set `NUXT_LUMA_API_KEY` only when test events use Luma sync.
 
 ### Manual deployment
 
