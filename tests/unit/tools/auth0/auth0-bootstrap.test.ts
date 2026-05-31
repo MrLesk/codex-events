@@ -8,6 +8,7 @@ import {
   buildExpectedLoginCustomText,
   buildPostLoginActionSecrets,
   buildUniversalLoginPageTemplate,
+  isAuth0DefaultBrandingThemeUnavailable,
   isPaidAuth0LoginCustomizationUnavailable,
   requiredManagementApiScopes,
   resolveConfig,
@@ -179,8 +180,19 @@ describe('auth0 bootstrap config', () => {
     const template = buildUniversalLoginPageTemplate(config)
 
     expect(template).toContain('body._widget-auto-layout a { color: #030213 !important; }')
+    expect(template).toContain('color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;')
     expect(template).toContain('body._widget-auto-layout #prompt-logo-center {')
     expect(template).toContain('{%- auth0:widget -%}')
+  })
+
+  test('detects missing Auth0 default branding theme responses as skippable', () => {
+    const error = new Auth0ManagementRequestError(
+      '/api/v2/branding/themes/default',
+      404,
+      '{"statusCode":404,"error":"Not Found","message":"There was an error retrieving branding settings: invalid theme ID","errorCode":"theme_not_found"}'
+    )
+
+    expect(isAuth0DefaultBrandingThemeUnavailable(error)).toBe(true)
   })
 
   test('clears only the hosted signup consent partial while preserving other prompt partials', () => {

@@ -165,6 +165,7 @@ export const requiredManagementApiScopes = [
 
 export function buildUniversalLoginPageTemplate(config: TenantConfig) {
   const linkColor = config.brandingPrimaryColor || defaultBrandingPrimaryColor
+  const primaryButtonLabelColor = config.brandingPrimaryButtonLabelColor || lightButtonLabelColor
 
   return [
     '<!DOCTYPE html>',
@@ -175,6 +176,9 @@ export function buildUniversalLoginPageTemplate(config: TenantConfig) {
     `      body._widget-auto-layout a { color: ${linkColor} !important; }`,
     `      body._widget-auto-layout a:hover { color: ${linkColor} !important; opacity: 0.88; }`,
     `      body._widget-auto-layout a:focus-visible { outline: 2px solid ${linkColor}; outline-offset: 2px; }`,
+    `      body._widget-auto-layout button[type="submit"],`,
+    `      body._widget-auto-layout input[type="submit"],`,
+    `      body._widget-auto-layout [role="button"] { color: ${primaryButtonLabelColor} !important; -webkit-text-fill-color: ${primaryButtonLabelColor} !important; }`,
     '      body._widget-auto-layout #prompt-logo-center {',
     '        display: block;',
     '        width: min(320px, 100%);',
@@ -942,6 +946,13 @@ export function isPaidAuth0LoginCustomizationUnavailable(error: unknown) {
     && paidAuth0LoginCustomizationPathPatterns.some(pattern => pattern.test(error.path))
 }
 
+export function isAuth0DefaultBrandingThemeUnavailable(error: unknown) {
+  return error instanceof Auth0ManagementRequestError
+    && error.status === 404
+    && error.path === '/api/v2/branding/themes/default'
+    && /theme_not_found|invalid theme ID/i.test(error.responseBody)
+}
+
 function buildPaidAuth0LoginCustomizationWarning(error: Auth0ManagementRequestError) {
   return [
     'Warning: skipping Auth0 Universal Login page-template and prompt customization because',
@@ -1301,10 +1312,18 @@ async function ensureBranding(config: TenantConfig, token: string, mode: Command
 }
 
 async function getDefaultBrandingTheme(config: TenantConfig, token: string) {
-  const response = await auth0ManagementRequest(config, token, '/api/v2/branding/themes/default', {
-    method: 'GET'
-  })
-  return await response.json() as Auth0BrandingTheme
+  try {
+    const response = await auth0ManagementRequest(config, token, '/api/v2/branding/themes/default', {
+      method: 'GET'
+    })
+    return await response.json() as Auth0BrandingTheme
+  } catch (error) {
+    if (isAuth0DefaultBrandingThemeUnavailable(error)) {
+      return null
+    }
+
+    throw error
+  }
 }
 
 async function ensureDefaultBrandingTheme(config: TenantConfig, token: string, mode: CommandMode, failures: string[]) {
@@ -1316,6 +1335,12 @@ async function ensureDefaultBrandingTheme(config: TenantConfig, token: string, m
   }
 
   let theme = await getDefaultBrandingTheme(config, token)
+
+  if (!theme) {
+    console.warn('Warning: skipping Auth0 default branding theme button color sync because this tenant has no materialized default branding theme.')
+    return
+  }
+
   const primaryButtonNeedsPatch = normalizeColorForComparison(theme.colors?.primary_button) !== expectedPrimaryButton
   const primaryButtonLabelNeedsPatch = normalizeColorForComparison(theme.colors?.primary_button_label) !== expectedPrimaryButtonLabel
   const needsPatch = primaryButtonNeedsPatch || primaryButtonLabelNeedsPatch
