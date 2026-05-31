@@ -243,7 +243,7 @@ The existing app runtime variables remain the override interface for Auth0, outb
 
 The generated Wrangler config binds Queue producers only. Remote workflows deploy the Worker first, then reconcile Queue consumers by deleting existing consumers from each environment-owned queue through the Cloudflare Queues API and adding the Worker back with the desired batch and retry settings. Cloudflare keeps inactive Worker consumers in the single-consumer slot until they are removed, so consumer attachment is intentionally separate from `wrangler deploy`.
 
-The remote `CLOUDFLARE_API_TOKEN` must be able to run `wrangler d1 list`, `wrangler d1 create`, `wrangler r2 bucket info`, `wrangler r2 bucket create`, `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, `wrangler deploy`, and `wrangler queues consumer add`. It must also be able to list and delete Queue consumers through the Cloudflare Queues API. Configure the token with the Cloudflare account and zone permissions listed in `OPERATOR.md`; include both read and edit/write access where both are listed.
+The remote `CF_API_TOKEN` must be able to run `wrangler d1 list`, `wrangler d1 create`, `wrangler r2 bucket info`, `wrangler r2 bucket create`, `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, `wrangler deploy`, and `wrangler queues consumer add`. It must also be able to list and delete Queue consumers through the Cloudflare Queues API. Configure the token with the Cloudflare account and zone permissions listed in `OPERATOR.md`; include both read and edit/write access where both are listed.
 
 For manual deployment, export the target environment values and run:
 
@@ -327,8 +327,8 @@ Deployment URL setting:
 
 The GitHub `test` environment must provide these secrets:
 
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_API_TOKEN`
+- `CF_ACCOUNT_ID`
+- `CF_API_TOKEN`
 - `NUXT_AUTH0_CLIENT_ID`
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
@@ -363,8 +363,8 @@ The GitHub `production` environment must provide these secrets before a release 
 - `NUXT_AUTH0_CLIENT_ID`
 - `AUTH0_MGMT_CLIENT_ID`
 - `AUTH0_MGMT_CLIENT_SECRET`
-- `CLOUDFLARE_ACCOUNT_ID`
-- `CLOUDFLARE_API_TOKEN`
+- `CF_ACCOUNT_ID`
+- `CF_API_TOKEN`
 - `NUXT_AUTH0_AUDIENCE` when the Auth0 application uses a non-empty audience
 - `NUXT_AUTH0_CLIENT_SECRET`
 - `NUXT_LUMA_API_KEY` when production events use Luma sync

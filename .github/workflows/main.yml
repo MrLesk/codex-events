@@ -109,8 +109,8 @@ jobs:
       NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ${{ secrets.NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET }}
       NUXT_LUMA_API_KEY: ${{ secrets.NUXT_LUMA_API_KEY }}
       # Cloudflare credentials.
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
 
     steps:
       - name: Check test deployment configuration

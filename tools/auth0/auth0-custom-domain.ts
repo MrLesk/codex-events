@@ -172,7 +172,7 @@ function loadConfig(): Auth0CustomDomainConfig {
     managementAudience: `${normalizeTenantDomain(requireEnv('AUTH0_MANAGEMENT_DOMAIN'))}/api/v2/`,
     customDomain: resolveAuth0CustomDomain(process.env),
     zoneName: normalizeHostname(requireEnv('CF_ZONE_NAME')),
-    cloudflareApiToken: requireEnv('CLOUDFLARE_API_TOKEN'),
+    cloudflareApiToken: requireEnv('CF_API_TOKEN'),
     waitTimeoutMs: parseSecondsEnv('AUTH0_CUSTOM_DOMAIN_WAIT_SECONDS', 600),
     pollIntervalMs: parseSecondsEnv('AUTH0_CUSTOM_DOMAIN_POLL_SECONDS', 15)
   }

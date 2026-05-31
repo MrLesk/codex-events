@@ -104,7 +104,7 @@ Variable names follow a convention worth knowing:
 
 - `NUXT_*` are the application's runtime configuration, copied into the Worker.
 - `AUTH0_*` (without `NUXT_`) are used by the deploy workflow to configure Auth0 and are not copied into the Worker.
-- `CLOUDFLARE_*` are deploy credentials; `CF_*` are the Cloudflare resource names and DNS zone.
+- `CF_*` values cover Cloudflare credentials, resource names, and DNS zone metadata.
 
 ### Required variables
 
@@ -128,8 +128,8 @@ Add these only when they apply:
 
 | Key | Platform | Where to find it |
 | --- | --- | --- |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare | Cloudflare dashboard → account ID |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare | Create a token with the permissions in [Cloudflare API token](#cloudflare-api-token) below — copy it immediately, it is shown only once |
+| `CF_ACCOUNT_ID` | Cloudflare | Cloudflare dashboard → account ID |
+| `CF_API_TOKEN` | Cloudflare | Create a token with the permissions in [Cloudflare API token](#cloudflare-api-token) below — copy it immediately, it is shown only once |
 | `NUXT_AUTH0_CLIENT_ID` | Auth0 | Your Regular Web Application (section 3.2) |
 | `NUXT_AUTH0_CLIENT_SECRET` | Auth0 | Your Regular Web Application (section 3.2) |
 | `AUTH0_MGMT_CLIENT_ID` | Auth0 | Your Machine-to-Machine application (section 3.3) |
@@ -146,7 +146,7 @@ Add these only when they apply:
 
 ### Cloudflare API token
 
-Create a custom Cloudflare API token for the deploy workflow, then paste it into `CLOUDFLARE_API_TOKEN` above. Cloudflare shows the value only once, so copy it as you create it.
+Create a custom Cloudflare API token for the deploy workflow, then paste it into `CF_API_TOKEN` above. Cloudflare shows the value only once, so copy it as you create it.
 
 Cloudflare edit access does not consistently include read access, so keep both levels where shown.
 
@@ -325,8 +325,8 @@ Required test secrets:
 
 | Secret | Value |
 | --- | --- |
-| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare account ID |
-| `CLOUDFLARE_API_TOKEN` | Cloudflare API token |
+| `CF_ACCOUNT_ID` | Cloudflare account ID |
+| `CF_API_TOKEN` | Cloudflare API token |
 | `NUXT_AUTH0_CLIENT_ID` | Test Auth0 application client ID |
 | `NUXT_AUTH0_CLIENT_SECRET` | Test Auth0 application client secret |
 | `AUTH0_MGMT_CLIENT_ID` | Auth0 Management application client ID |

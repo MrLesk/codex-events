@@ -102,8 +102,8 @@ async function requestCloudflareApi<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  const accountId = readRequiredEnvironmentValue(environment, 'CLOUDFLARE_ACCOUNT_ID')
-  const apiToken = readRequiredEnvironmentValue(environment, 'CLOUDFLARE_API_TOKEN')
+  const accountId = readRequiredEnvironmentValue(environment, 'CF_ACCOUNT_ID')
+  const apiToken = readRequiredEnvironmentValue(environment, 'CF_API_TOKEN')
   const headers = new Headers(init.headers)
   headers.set('Authorization', `Bearer ${apiToken}`)
   headers.set('Content-Type', 'application/json')
