@@ -1,18 +1,17 @@
 import { setHeader } from 'h3'
 
-import { getDatabase } from '#server/database/client'
 import { defineApiHandler } from '#server/http/api-handler'
 import { ApiError } from '#server/http/api-error'
 import { getEventImageObject } from '#server/domains/events/images'
 import {
-  getPublicEventBySlugOrThrow,
+  getVisibleEventBySlugOrThrow,
   routeSlugParamsSchema
 } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
-  const event = await getPublicEventBySlugOrThrow(getDatabase(h3Event), slug)
+  const event = await getVisibleEventBySlugOrThrow(h3Event, slug)
 
   if (!event.bannerImageUrl) {
     throw new ApiError({

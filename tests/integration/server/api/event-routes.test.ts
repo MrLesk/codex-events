@@ -70,6 +70,8 @@ import {
   publicEventFeedbackRateLimitBindingName
 } from '../../../../server/utils/rate-limit'
 import { createApiRouteTestHarness } from '../../../support/backend/api-route'
+import { stubAuth0Session } from '../../../support/backend/runtime'
+import { eventImageObjectKey } from '../../../../server/domains/events/images'
 
 describe('TASK-3.5 event CRUD routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
@@ -3847,6 +3849,95 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(await missingBannerResponse.json()).toMatchObject({
       error: {
         code: 'event_banner_image_not_found'
+      }
+    })
+  })
+
+  test('GET /api/public/events/:slug/images/banner lets admins preview draft banners', async () => {
+    const eventImagesBucket = new InMemoryR2Bucket()
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/public/events/:slug/images/banner', handler: publicEventBannerImageGetHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|event_admin',
+        email: 'event-admin@example.com'
+      },
+      cloudflareEnv: {
+        [eventImagesBindingName]: eventImagesBucket
+      },
+      runtimeConfig: {
+        eventImages: {
+          binding: eventImagesBindingName
+        }
+      }
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values([
+      {
+        id: 'creator_1',
+        auth0Subject: 'auth0|creator_1',
+        email: 'creator@example.com',
+        displayName: 'Creator'
+      },
+      {
+        id: 'event_admin',
+        auth0Subject: 'auth0|event_admin',
+        email: 'event-admin@example.com',
+        displayName: 'Event Admin'
+      }
+    ])
+    await harness.database.insert(events).values({
+      id: 'event_draft_banner',
+      eventType: 'build',
+      name: 'Draft Banner Event',
+      slug: 'draft-banner-event',
+      description: 'Draft event with a banner',
+      city: 'Vienna',
+      country: 'Austria',
+      address: 'Address',
+      registrationOpensAt: '2026-03-20T12:00:00.000Z',
+      registrationClosesAt: '2026-03-23T12:00:00.000Z',
+      submissionOpensAt: '2026-03-23T12:00:00.000Z',
+      submissionClosesAt: '2026-03-25T12:00:00.000Z',
+      state: 'draft',
+      maxTeamMembers: 1,
+      bannerImageUrl: 'http://localhost/api/public/events/draft-banner-event/images/banner',
+      createdByUserId: 'creator_1'
+    })
+    await harness.database.insert(eventRoleAssignments).values({
+      id: 'role_admin_draft_banner',
+      eventId: 'event_draft_banner',
+      userId: 'event_admin',
+      role: 'event_admin',
+      isInJudgePool: false,
+      createdAt: '2026-03-22T12:00:00.000Z'
+    })
+    await eventImagesBucket.put(
+      eventImageObjectKey('event_draft_banner', 'banner'),
+      pngSignatureBytes,
+      {
+        httpMetadata: {
+          contentType: 'image/png'
+        }
+      }
+    )
+
+    const adminResponse = await harness.request('/api/public/events/draft-banner-event/images/banner')
+
+    expect(adminResponse.status).toBe(200)
+    expect(adminResponse.headers.get('content-type')).toBe('image/png')
+    expect(new Uint8Array(await adminResponse.arrayBuffer())).toEqual(pngSignatureBytes)
+
+    stubAuth0Session(null)
+
+    const publicResponse = await harness.request('/api/public/events/draft-banner-event/images/banner')
+
+    expect(publicResponse.status).toBe(404)
+    expect(await publicResponse.json()).toMatchObject({
+      error: {
+        code: 'event_not_found'
       }
     })
   })
