@@ -7,21 +7,22 @@ const descriptionMarkdown = computed(() => props.description.trim())
 </script>
 
 <template>
-  <section
+  <AppCard
     v-if="descriptionMarkdown"
-    class="event-workspace-detail-panel rounded-xl p-6"
+    class="!border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl"
     data-testid="public-event-overview"
   >
     <AppMarkdownRenderer :source="descriptionMarkdown" />
-  </section>
+  </AppCard>
 
-  <section
+  <AppCard
     v-else
-    class="!border !border-dashed !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.32)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl p-8 text-center"
+    class="!border !border-dashed !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.32)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl"
+    :ui="{ body: 'p-8 text-center' }"
     data-testid="public-event-overview-empty"
   >
     <p class="text-[15px] font-medium text-highlighted dark:text-white">
       Overview will appear here once published.
     </p>
-  </section>
+  </AppCard>
 </template>

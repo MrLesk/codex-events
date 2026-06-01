@@ -829,6 +829,8 @@ useSeoMeta({
         aria-labelledby="account-tab-overview"
         class="space-y-7"
       >
+        <EventOverviewPanel :description="event.description" />
+
         <AppCard
           v-if="hasParticipantContext"
           class="!border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl"
@@ -1043,8 +1045,6 @@ useSeoMeta({
             </section>
           </div>
         </AppCard>
-
-        <EventOverviewPanel :description="event.description" />
       </section>
 
       <section
