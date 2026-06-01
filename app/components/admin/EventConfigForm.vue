@@ -1025,7 +1025,10 @@ const submitConfigForm = handleSubmit(() => {
                     In-person event
                   </label>
 
-                  <EventConfigApplicationFieldsTable v-model:form="form" />
+                  <EventConfigApplicationFieldsTable
+                    v-model:form="form"
+                    class="mt-2"
+                  />
 
                   <label
                     v-if="isHackathon"
@@ -1380,7 +1383,10 @@ const submitConfigForm = handleSubmit(() => {
               In-person event
             </label>
 
-            <EventConfigApplicationFieldsTable v-model:form="form" />
+            <EventConfigApplicationFieldsTable
+              v-model:form="form"
+              class="mt-2"
+            />
 
             <label
               v-if="isHackathon"

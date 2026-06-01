@@ -123,7 +123,7 @@ const applicationFieldRequirementPairs = [
   ['applicationLumaEmailVisible', 'requireLumaEmail', 'Luma email'],
   ['applicationWhyThisEventVisible', 'requireWhyThisEvent', 'Why this event'],
   ['applicationProofOfExecutionVisible', 'requireProofOfExecution', 'Proof-of-execution links'],
-  ['applicationTeamIntentVisible', 'requireTeamIntent', 'Participation mode']
+  ['applicationTeamIntentVisible', 'requireTeamIntent', 'Team preference']
 ] as const
 
 export function getEventTypeApplicationFieldDefaults(eventType: EventType) {

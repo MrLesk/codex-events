@@ -8,6 +8,7 @@ type BooleanFieldKey = {
 interface ApplicationFieldRow {
   id: string
   label: string
+  description?: string
   visibleKey?: BooleanFieldKey
   requiredKey?: BooleanFieldKey
   locked?: boolean
@@ -49,36 +50,42 @@ const fieldRows: ApplicationFieldRow[] = [
   {
     id: 'chatgpt-email',
     label: 'ChatGPT email',
+    description: 'email used for ChatGPT',
     visibleKey: 'applicationChatgptEmailVisible',
     requiredKey: 'requireChatgptEmail'
   },
   {
     id: 'openai-org-id',
     label: 'OpenAI org ID',
+    description: 'organization identifier',
     visibleKey: 'applicationOpenaiOrgIdVisible',
     requiredKey: 'requireOpenaiOrgId'
   },
   {
     id: 'luma-email',
     label: 'Luma email',
+    description: 'email used for Luma registration',
     visibleKey: 'applicationLumaEmailVisible',
     requiredKey: 'requireLumaEmail'
   },
   {
     id: 'why-this-event',
     label: 'Why this event',
+    description: 'motivation question',
     visibleKey: 'applicationWhyThisEventVisible',
     requiredKey: 'requireWhyThisEvent'
   },
   {
     id: 'proof-of-execution',
     label: 'Proof-of-execution links',
+    description: 'links to prior work',
     visibleKey: 'applicationProofOfExecutionVisible',
     requiredKey: 'requireProofOfExecution'
   },
   {
     id: 'participation-mode',
-    label: 'Participation mode',
+    label: 'Team preference',
+    description: 'solo, team, or decide later',
     visibleKey: 'applicationTeamIntentVisible',
     requiredKey: 'requireTeamIntent'
   }
@@ -128,7 +135,7 @@ function handleRequiredChange(row: ApplicationFieldRow, event: Event) {
 <template>
   <div class="grid grid-cols-1 gap-3">
     <div class="grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] items-center gap-3 border-b border-black/8 pb-2 text-xs font-semibold uppercase text-muted dark:border-white/[0.08]">
-      <span>Field name</span>
+      <span>Registration field name</span>
       <span class="text-center">Visible</span>
       <span class="text-center">Required</span>
     </div>
@@ -140,8 +147,14 @@ function handleRequiredChange(row: ApplicationFieldRow, event: Event) {
         class="grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] items-center gap-3 border-b border-black/6 py-3 text-sm last:border-b-0 dark:border-white/[0.06]"
       >
         <div class="min-w-0">
-          <p class="truncate font-medium text-toned">
-            {{ row.label }}
+          <p class="font-medium text-toned">
+            <span>{{ row.label }}</span>
+            <span
+              v-if="row.description"
+              class="font-normal text-muted"
+            >
+              ({{ row.description }})
+            </span>
           </p>
         </div>
 
@@ -168,9 +181,5 @@ function handleRequiredChange(row: ApplicationFieldRow, event: Event) {
         </label>
       </div>
     </div>
-
-    <p class="text-xs text-muted">
-      Current settings apply when someone views or submits the application form.
-    </p>
   </div>
 </template>
