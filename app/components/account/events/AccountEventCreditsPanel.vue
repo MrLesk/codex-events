@@ -86,8 +86,8 @@ const createActionLabel = computed(() =>
 )
 const createUploadDescription = computed(() =>
   createInventoryFile.value
-    ? `${createInventoryFile.value.name} will be imported immediately after the offer is created.`
-    : 'Optional: add a single-column CSV now, or create the offer first and upload inventory later.'
+    ? `${createInventoryFile.value.name} will be uploaded after the offer is created.`
+    : 'Optional now. Upload a single-column CSV with one code or redemption link per row, or add inventory after creating the offer.'
 )
 const adminSummaryCards = computed(() => {
   const offerCount = adminCredits.value.length
@@ -631,9 +631,9 @@ async function copyCreditValue(value: string) {
                   v-model="getEditState(offer).description"
                   :name="`credit-offer-details-${offer.id}`"
                   :editor-id="`credit-offer-details-${offer.id}`"
-                  label="Details"
-                  description="Participants see this markdown-formatted content before they claim a value."
-                  placeholder="Use markdown for redemption steps, links, and formatting."
+                  label="Participant instructions"
+                  description="Shown above the assigned code or link. Include redemption steps, provider links, deadlines, and support notes."
+                  placeholder="Tell participants where to use the code or link, what account they need, and any deadline or eligibility note."
                   height="260px"
                   required
                 />
@@ -815,10 +815,10 @@ async function copyCreditValue(value: string) {
       <template #header>
         <div class="space-y-1">
           <h2 class="text-xl font-semibold text-highlighted">
-            Create new offer
+            Create credit offer
           </h2>
           <p class="text-sm text-muted">
-            Name the next participant-facing offer and optionally upload its first CSV batch now.
+            Add the title participants see, write the redemption instructions, and optionally upload the first set of codes or links.
           </p>
         </div>
       </template>
@@ -829,24 +829,27 @@ async function copyCreditValue(value: string) {
           @submit.prevent="createOffer"
         >
           <AppFormField
-            label="Offer name"
+            label="Offer name shown to participants"
             name="credit-offer-name"
           >
             <AppInput
               id="credit-offer-name"
               v-model="createForm.name"
               :disabled="createPending"
-              placeholder="OpenAI credits"
+              placeholder="OpenAI credits, meal voucher, workshop discount"
             />
+            <p class="text-xs text-muted">
+              Use the short title participants should recognize in the Credits tab.
+            </p>
           </AppFormField>
 
           <LazyAdminMarkdownEditorField
             v-model="createForm.description"
             name="credit-offer-details-editor"
             editor-id="credit-offer-details-editor"
-            label="Details"
-            description="Participants see this markdown-formatted content before they claim a value."
-            placeholder="Use markdown for redemption steps, links, and formatting."
+            label="Participant instructions"
+            description="Shown before a participant redeems. Include where to use the code or link, any account requirement, deadlines, and support notes."
+            placeholder="Example: Use your assigned code at the provider checkout page before June 30. One code is available per approved participant."
             height="260px"
             required
           />
@@ -864,7 +867,7 @@ async function copyCreditValue(value: string) {
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div class="space-y-1">
                 <p class="text-sm font-medium text-highlighted">
-                  Initial inventory upload
+                  Codes or links CSV
                 </p>
                 <p class="text-xs text-muted">
                   {{ createUploadDescription }}
