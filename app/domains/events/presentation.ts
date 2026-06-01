@@ -570,3 +570,7 @@ export function formatTermsDocumentType(documentType: PublicEventTermsReference[
 export function formatMaxTeamMembers(maxTeamMembers: number) {
   return `Maximum ${maxTeamMembers} team members`
 }
+
+export function getEventDashboardTeamSizeMetaItems(event: Pick<PublicEvent, 'eventType' | 'maxTeamMembers'>) {
+  return event.eventType === 'hackathon' ? [`${event.maxTeamMembers} max/team`] : []
+}

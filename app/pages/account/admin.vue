@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AccountEventDashboardList from '~/components/account/AccountEventDashboardList.vue'
-import { formatEventLocation } from '~/domains/events/presentation'
+import { formatEventLocation, getEventDashboardTeamSizeMetaItems } from '~/domains/events/presentation'
 import {
   adminOverviewTabs,
   countAdminOverviewEventsByTab,
@@ -60,7 +60,7 @@ const listItems = computed(() =>
     overline: 'Admin',
     meta: [
       formatEventLocation(event),
-      `${event.maxTeamMembers} max/team`,
+      ...getEventDashboardTeamSizeMetaItems(event),
       event.slug
     ]
   }))

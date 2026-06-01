@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import AccountEventDashboardList from '~/components/account/AccountEventDashboardList.vue'
-import { formatEventLocation } from '~/domains/events/presentation'
+import { formatEventLocation, getEventDashboardTeamSizeMetaItems } from '~/domains/events/presentation'
 import type { JudgeDashboardAssignmentSummary } from '~/domains/judging/workspace'
 
 import {
@@ -60,7 +60,7 @@ const listItems = computed(() =>
       overline: dashboardCopy.overline,
       meta: [
         formatEventLocation(event),
-        `${event.maxTeamMembers} max/team`,
+        ...getEventDashboardTeamSizeMetaItems(event),
         dashboardCopy.queueMeta
       ]
     }

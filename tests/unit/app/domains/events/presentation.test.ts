@@ -7,6 +7,7 @@ import {
   formatEventStateLabel,
   formatEventDateWithWeekday,
   formatPrizeReward,
+  getEventDashboardTeamSizeMetaItems,
   getPublicEventStatePresentation,
   resolvePublicEventHeaderStateClass,
   summarizeEventState,
@@ -31,6 +32,23 @@ describe('public event agenda presentation helpers', () => {
       city: 'Vienna',
       country: 'Austria'
     })).toBe('Vienna, Austria')
+  })
+
+  test('limits dashboard team size metadata to hackathon events', () => {
+    expect(getEventDashboardTeamSizeMetaItems({
+      eventType: 'hackathon',
+      maxTeamMembers: 4
+    })).toEqual(['4 max/team'])
+
+    expect(getEventDashboardTeamSizeMetaItems({
+      eventType: 'meetup',
+      maxTeamMembers: 1
+    })).toEqual([])
+
+    expect(getEventDashboardTeamSizeMetaItems({
+      eventType: 'build',
+      maxTeamMembers: 1
+    })).toEqual([])
   })
 
   test('collapses agenda labels to time-only when the full agenda fits in one local day', () => {
