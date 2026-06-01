@@ -3525,7 +3525,8 @@ describe('TASK-3.5 event CRUD routes', () => {
   test('PATCH /api/events/:eventId saves participant limits for registration-only events with hidden defaults', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'patch', path: '/api/events/:eventId', handler: eventPatchHandler }
+        { method: 'patch', path: '/api/events/:eventId', handler: eventPatchHandler },
+        { method: 'get', path: '/api/events/slug/:slug', handler: eventBySlugGetHandler }
       ],
       sessionUser: {
         sub: 'auth0|admin',
@@ -3660,6 +3661,17 @@ describe('TASK-3.5 event CRUD routes', () => {
       inPersonEvent: false,
       requireChatgptEmail: false,
       address: 'Updated Address'
+    })
+
+    const refreshedResponse = await harness.request('/api/events/slug/patch-meetup')
+
+    expect(refreshedResponse.status).toBe(200)
+    expect(await refreshedResponse.json()).toMatchObject({
+      data: {
+        eventType: 'meetup',
+        participantsLimit: 80,
+        address: 'Updated Address'
+      }
     })
   })
 

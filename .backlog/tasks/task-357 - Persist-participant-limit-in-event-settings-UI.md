@@ -3,9 +3,9 @@ id: TASK-357
 title: Persist participant limit in event settings UI
 status: Done
 assignee:
-  - Codex
+  - '@Codex'
 created_date: '2026-05-31 20:59'
-updated_date: '2026-05-31 21:03'
+updated_date: '2026-06-01 19:55'
 labels:
   - bug
   - events
@@ -37,10 +37,11 @@ Fix the event settings flow so a saved participant limit remains stored and visi
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Trace the settings form submission to confirm whether the participant limit is omitted, reset to null, or not reflected after the refresh.
-2. Apply the smallest fix in the existing form/workspace pattern so the saved event record updates the settings form reliably after PATCH/refresh.
-3. Add or update focused tests for participant-limit mapping/submission/reload behavior, keeping the existing registration-only competition-field protections.
-4. Run lint, typecheck, unit tests, integration tests, and BDD if this touches the browser workflow; document any existing blocking failure.
+1. Trace the admin event settings form save and refresh path for `participantsLimit`, starting from `EventConfigForm.vue`, `app/domains/events/admin-event.ts`, the event PATCH route, and the event read/query mapping.
+2. Identify whether the saved value is omitted before persistence, written to the wrong table/column, overwritten after save, or omitted from the reloaded event payload.
+3. Apply the smallest direct fix using existing domain mapping/schema patterns, without compatibility fallback behavior.
+4. Add or adjust focused unit/integration coverage for save followed by reload/readback.
+5. Run `bun run lint`, `bun run typecheck`, and `bun run test:unit`; run integration/BBD only if the touched path requires them by the repo validation policy.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -49,14 +50,18 @@ Fix the event settings flow so a saved participant limit remains stored and visi
 Root cause: updateEventBodySchema reused defaulted create schemas. With Zod, defaulted schemas still materialize defaults when wrapped in optional(), so partial PATCH requests could inject participantsLimit: null and other default values even when the client omitted those fields.
 
 Fix: split default-free update input schemas from create-time default schemas so PATCH only contains fields actually sent by the client. Added unit coverage for omitted PATCH defaults and integration coverage that a details-only PATCH preserves an existing participant limit.
+
+Reopened after a reproduced user report: Participants limit remains visible immediately after Save but disappears after a full page refresh. This suggests the client state updates optimistically or from the save response, while reload hydration reads a null/omitted value from the persisted event source.
+
+Current production code path was rechecked: PATCH persists `participantsLimit`, the event serializer includes it, and the slug reload endpoint returns the persisted value. Added integration coverage for the exact save-then-refresh read path through `GET /api/events/slug/:slug`. Attempting to start the app against the existing `.wrangler/state` failed before Nuxt boot because migration `0052_optional_application_terms.sql` hits pre-existing foreign-key violations in the local D1 state, mostly rows pointing at missing users. A clean temporary D1 state boots successfully, so that local state issue is separate from the participant-limit persistence path.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Fixed the participant limit persistence bug at the server PATCH contract. The update schema no longer reuses create-time defaults for optional update fields, preventing partial saves from silently clearing participantsLimit or applying other default configuration values. Added unit coverage proving omitted update fields stay omitted, updated form mapping coverage for non-null participant limits, and extended the event route integration test to verify a details-only PATCH preserves an existing participant limit.
+Rechecked the participant-limit save path and added integration coverage for the browser refresh read path. The existing PATCH route persists `participantsLimit`, and the test now verifies that a saved registration-only event still returns the limit through `GET /api/events/slug/:slug`, matching the full page refresh path.
 
-Validation: bun run lint passed; bun run typecheck passed; bun run test:unit passed; bun run test:integration passed. bun run test:bdd was attempted but still fails during fixture bootstrap with an existing CHECK constraint failed: score error before browser specs run.
+Validation: `bun run lint` passed; `bun run typecheck` passed; `bun run test:unit` passed; `bun run test:integration` passed. A direct ad hoc `bun test ...` invocation was not used for final validation because it does not load the project path aliases; the project test scripts do. Local dev against the existing `.wrangler/state` is blocked by unrelated pre-existing foreign-key violations during migration `0052_optional_application_terms.sql`; a clean temporary local D1 state starts successfully.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
