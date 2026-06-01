@@ -272,6 +272,10 @@
     scrollbar-gutter: stable;
   }
 
+  .app-shell-scroll-region--edge-background {
+    scrollbar-gutter: auto;
+  }
+
   .account-event-tab-list {
     scrollbar-color: rgba(64, 64, 64, 0.45) transparent;
     scrollbar-width: thin;

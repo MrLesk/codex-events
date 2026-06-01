@@ -10,6 +10,9 @@ const route = useRoute()
 const showWorkspaceSidebar = computed(() =>
   hasPlatformAccount.value
 )
+const shouldLetPageBackgroundReachScrollbar = computed(() =>
+  route.path.startsWith('/account/events/')
+)
 const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_identity')
 </script>
 
@@ -17,7 +20,10 @@ const showIdentityAlert = computed(() => actor.value.kind === 'authenticated_ide
   <div class="flex h-screen flex-col overflow-hidden text-foreground">
     <AppShellHeader />
 
-    <div class="app-shell-scroll-region min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-none">
+    <div
+      class="app-shell-scroll-region min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-none"
+      :class="shouldLetPageBackgroundReachScrollbar ? 'app-shell-scroll-region--edge-background' : undefined"
+    >
       <div class="relative flex items-start">
         <AppShellSidebar
           v-if="showWorkspaceSidebar"
