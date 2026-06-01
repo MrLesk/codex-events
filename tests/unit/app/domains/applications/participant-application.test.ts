@@ -289,11 +289,12 @@ describe('participant application helpers', () => {
     expect(getParticipantApplicationStatusColor('rejected')).toBe('error')
     expect(getParticipantApplicationStatusColor('withdrawn')).toBe('neutral')
 
-    expect(summarizeParticipantApplicationStatus('submitted', 'registration_open')).toContain('under review')
-    expect(summarizeParticipantApplicationStatus('submitted', 'registration_open')).toContain('after approval')
-    expect(summarizeParticipantApplicationStatus('approved', 'registration_open')).toContain('approved to create a team')
-    expect(summarizeParticipantApplicationStatus('rejected', 'registration_open')).toContain('cannot submit another application')
-    expect(summarizeParticipantApplicationStatus('withdrawn', 'registration_open')).toContain('withdrew from this event')
+    expect(summarizeParticipantApplicationStatus('submitted', 'registration_open', 'hackathon')).toContain('Team setup and project submission')
+    expect(summarizeParticipantApplicationStatus('submitted', 'registration_open', 'build')).toContain('event participation status')
+    expect(summarizeParticipantApplicationStatus('approved', 'registration_open', 'hackathon')).toContain('approved to create a team')
+    expect(summarizeParticipantApplicationStatus('approved', 'registration_open', 'build')).toBe('You are approved for this event.')
+    expect(summarizeParticipantApplicationStatus('rejected', 'registration_open', 'hackathon')).toContain('cannot submit another application')
+    expect(summarizeParticipantApplicationStatus('withdrawn', 'registration_open', 'hackathon')).toContain('withdrew from this event')
   })
 
   test('shows the overview status banner only for non-approved application states', () => {

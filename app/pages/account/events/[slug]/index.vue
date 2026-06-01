@@ -538,7 +538,7 @@ const applicationStatusColor = computed(() => {
 })
 const applicationStatusSummary = computed(() =>
   applicationStatus.value
-    ? summarizeParticipantApplicationStatus(applicationStatus.value, event.value.state)
+    ? summarizeParticipantApplicationStatus(applicationStatus.value, event.value.state, event.value.eventType)
     : ''
 )
 const applicationSubmittedNoticeContent = computed(() =>
@@ -566,6 +566,11 @@ const showOverviewApplicationStatusBanner = computed(() =>
 )
 const showApprovedOverviewActions = computed(() =>
   applicationStatus.value === 'approved' && isCompetitionEvent.value && !hasEventEnteredSubmissionPhase(event.value)
+)
+const participationOverviewDescription = computed(() =>
+  isCompetitionEvent.value
+    ? 'Track your application, team, and project here as they become available.'
+    : 'Track your application and event participation here as they become available.'
 )
 const applicationStatusNoticeTitle = computed(() => {
   switch (applicationStatus.value) {
@@ -841,7 +846,7 @@ useSeoMeta({
                 Your participation
               </p>
               <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
-                Track your application, team, and project here as they become available.
+                {{ participationOverviewDescription }}
               </p>
             </div>
           </template>

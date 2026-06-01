@@ -233,12 +233,19 @@ export function getParticipantApplicationStatusColor(status: ParticipantApplicat
 
 export function summarizeParticipantApplicationStatus(
   status: ParticipantApplicationRecord['status'],
-  eventState: PublicEventState
+  eventState: PublicEventState,
+  eventType: PublicEvent['eventType']
 ) {
   switch (status) {
     case 'submitted':
-      return 'Your application is under review. Team setup and project submission will appear here after approval.'
+      return eventType === 'hackathon'
+        ? 'Your application is under review. Team setup and project submission will appear here after approval.'
+        : 'Your application is under review. Your event participation status will appear here after approval.'
     case 'approved':
+      if (eventType !== 'hackathon') {
+        return 'You are approved for this event.'
+      }
+
       return eventState === 'registration_open' || eventState === 'submission_open'
         ? 'You are approved to create a team or request to join an open team in this event.'
         : 'You are approved for this event. Team actions now depend on the current event lifecycle state.'
