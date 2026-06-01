@@ -1034,50 +1034,30 @@ async function copyCreditValue(value: string) {
 
                 <template v-if="offer.claimedCode">
                   <div
-                    class="grid gap-3 sm:grid-cols-2"
+                    class="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(12rem,1fr)]"
                   >
                     <div class="rounded-xl border border-black/8 bg-white/62 px-4 py-3 dark:border-white/[0.08] dark:bg-black/10">
                       <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-                        Status
+                        Your assigned value
                       </p>
-                      <p class="mt-1 text-base font-semibold text-highlighted">
-                        Attached to your account
-                      </p>
-                    </div>
 
-                    <div class="rounded-xl border border-black/8 bg-white/62 px-4 py-3 dark:border-white/[0.08] dark:bg-black/10">
-                      <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
-                        Claimed
-                      </p>
-                      <p class="mt-1 text-base font-semibold text-highlighted">
-                        {{ formatCreditClaimedAt(offer.claimedCode.claimedAt) }}
-                      </p>
-                    </div>
-                  </div>
+                      <AppButton
+                        v-if="isEventCreditLink(offer.claimedCode.value)"
+                        :to="offer.claimedCode.value"
+                        color="neutral"
+                        variant="soft"
+                        external
+                        trailing-icon="i-lucide-external-link"
+                        class="mt-3"
+                      >
+                        Open redemption link
+                      </AppButton>
 
-                  <div class="space-y-3">
-                    <p class="text-sm font-medium text-highlighted">
-                      Your assigned value
-                    </p>
-
-                    <AppButton
-                      v-if="isEventCreditLink(offer.claimedCode.value)"
-                      :to="offer.claimedCode.value"
-                      color="neutral"
-                      variant="soft"
-                      external
-                      trailing-icon="i-lucide-external-link"
-                      class="self-start"
-                    >
-                      Open redemption link
-                    </AppButton>
-
-                    <div
-                      v-else
-                      class="rounded-xl border border-black/8 bg-white/62 px-4 py-4 dark:border-white/[0.08] dark:bg-black/10"
-                    >
-                      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <code class="break-all font-mono text-sm text-highlighted">
+                      <div
+                        v-else
+                        class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <code class="min-w-0 break-all font-mono text-sm text-highlighted">
                           {{ offer.claimedCode.value }}
                         </code>
 
@@ -1092,6 +1072,15 @@ async function copyCreditValue(value: string) {
                           Copy code
                         </AppButton>
                       </div>
+                    </div>
+
+                    <div class="rounded-xl border border-black/8 bg-white/62 px-4 py-3 dark:border-white/[0.08] dark:bg-black/10">
+                      <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">
+                        Claimed
+                      </p>
+                      <p class="mt-1 text-base font-semibold text-highlighted">
+                        {{ formatCreditClaimedAt(offer.claimedCode.claimedAt) }}
+                      </p>
                     </div>
                   </div>
                 </template>
