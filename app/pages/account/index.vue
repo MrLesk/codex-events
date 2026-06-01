@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import EventParticipationCard from '~/components/events/EventParticipationCard.vue'
+import { isEventParticipationUpcoming } from '~/domains/events/participation'
 
 definePageMeta({
   middleware: ['require-platform-account']
@@ -7,25 +8,15 @@ definePageMeta({
 
 const workspace = useEventParticipationWorkspace()
 
-function isUpcomingEvent(startsAt: string) {
-  const parsedStartsAt = Date.parse(startsAt)
-
-  if (Number.isNaN(parsedStartsAt)) {
-    return false
-  }
-
-  return parsedStartsAt > Date.now()
-}
-
 const isLoading = computed(() =>
   workspace.status.value === 'idle' || workspace.status.value === 'pending'
 )
 const activeEvents = computed(() =>
-  workspace.currentEvents.value.filter(record => !isUpcomingEvent(record.event.startsAt))
+  workspace.currentEvents.value.filter(record => !isEventParticipationUpcoming(record))
 )
 const upcomingEvents = computed(() =>
   [...workspace.currentEvents.value]
-    .filter(record => isUpcomingEvent(record.event.startsAt))
+    .filter(record => isEventParticipationUpcoming(record))
     .sort((left, right) =>
       Date.parse(left.event.startsAt) - Date.parse(right.event.startsAt)
     )

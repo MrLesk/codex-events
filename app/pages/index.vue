@@ -2,7 +2,11 @@
 import type { PublicApiListResponse, PublicEvent } from '~/domains/events/presentation'
 
 import EventCard from '~/components/public/events/EventCard.vue'
-import { getPublicHomepageEventView, type PublicHomepageTab } from '~/domains/events/public-homepage'
+import {
+  getPublicHomepageEventView,
+  getPublicHomepageTabForEvent,
+  type PublicHomepageTab
+} from '~/domains/events/public-homepage'
 import { normalizeTabQueryValue } from '~/lib/query-values'
 
 const publicEventsPageSize = 4
@@ -70,11 +74,9 @@ const homepageEventView = computed(() =>
   )
 )
 const selectedTab = computed<PublicHomepageTab>(() => homepageEventView.value.effectiveTab)
-const filteredEvents = computed(() => events.value.filter((event) => {
-  const isPast = event.state === 'completed'
-
-  return homepageEventView.value.effectiveTab === 'past' ? isPast : !isPast
-}))
+const filteredEvents = computed(() =>
+  events.value.filter(event => getPublicHomepageTabForEvent(event) === homepageEventView.value.effectiveTab)
+)
 const currentFilterTotal = computed(() => {
   if (homepageEventView.value.effectiveTab === 'past') {
     return pastTotal.value

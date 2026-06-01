@@ -47,6 +47,10 @@ export function getAdminOverviewTabForEvent(
     return 'upcoming'
   }
 
+  if (event.state === 'registration_open') {
+    return 'active'
+  }
+
   const startsAtTimestamp = Date.parse(getAdminOverviewEventStartsAt(event))
 
   if (!Number.isNaN(startsAtTimestamp) && startsAtTimestamp > nowTimestamp) {

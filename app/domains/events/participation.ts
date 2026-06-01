@@ -91,6 +91,19 @@ export function normalizeEventParticipationApiError(error: unknown) {
   return normalizeApiError(error)
 }
 
+export function isEventParticipationUpcoming(
+  record: Pick<EventParticipationRecord, 'event' | 'isPast'>,
+  nowTimestamp: number = Date.now()
+) {
+  if (record.isPast || record.event.state === 'registration_open') {
+    return false
+  }
+
+  const startsAtTimestamp = Date.parse(record.event.startsAt)
+
+  return !Number.isNaN(startsAtTimestamp) && startsAtTimestamp > nowTimestamp
+}
+
 export function getEventParticipationOutcomeNotice(
   record: {
     event: Pick<EventParticipationEventSummary, 'state'>

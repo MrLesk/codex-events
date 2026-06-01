@@ -1,4 +1,10 @@
+import type { EventState } from '~/domains/events/states'
+
 export type PublicHomepageTab = 'active' | 'past'
+
+interface PublicHomepageEventEntry {
+  state: EventState
+}
 
 export interface PublicHomepageEventView {
   activeEventCount: number
@@ -30,6 +36,10 @@ function resolvePublicHomepageEffectiveTab(
   }
 
   return 'active'
+}
+
+export function getPublicHomepageTabForEvent(event: PublicHomepageEventEntry): PublicHomepageTab {
+  return event.state === 'completed' ? 'past' : 'active'
 }
 
 export function getPublicHomepageEventView(

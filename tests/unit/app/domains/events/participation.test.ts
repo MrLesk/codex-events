@@ -9,7 +9,8 @@ import {
   getEventParticipationRankNotice,
   getEventParticipationPrimaryAction,
   getParticipationStageColor,
-  getParticipationStatusColor
+  getParticipationStatusColor,
+  isEventParticipationUpcoming
 } from '../../../../../app/domains/events/participation'
 
 function buildRecord(
@@ -47,6 +48,19 @@ function buildRecord(
 }
 
 describe('event participation badge helpers', () => {
+  test('does not treat registration-open events as upcoming even before their start time', () => {
+    expect(isEventParticipationUpcoming(buildRecord(), Date.parse('2026-03-01T00:00:00Z'))).toBe(false)
+  })
+
+  test('treats future non-registration current events as upcoming', () => {
+    expect(isEventParticipationUpcoming(buildRecord({
+      event: {
+        ...buildRecord().event,
+        state: 'submission_open'
+      }
+    }), Date.parse('2026-03-01T00:00:00Z'))).toBe(true)
+  })
+
   test('uses application submitted plus pending when review is still outstanding', () => {
     const record = buildRecord()
 
