@@ -265,9 +265,6 @@ const applicationStatus = computed(() =>
   participationRecord.value?.application?.status ?? accessRecord.value?.applicationStatus ?? null
 )
 const canClaimCredits = computed(() => applicationStatus.value === 'approved')
-const hasParticipantContext = computed(() =>
-  Boolean(applicationStatus.value || participationRecord.value?.activeTeam || participationRecord.value?.latestTeam)
-)
 const shouldLoadPublishedStaffRoster = computed(() => actor.value.kind === 'platform_user')
 const publishedStaffRosterRequest = await useApiData<PublishedEventRosterLoadState>(
   () => `account-event-staff:${workspaceEventId.value}`,
@@ -562,13 +559,13 @@ const showHeaderApplicationStatusSummary = computed(() =>
 const showOverviewApplicationStatusBanner = computed(() =>
   shouldShowParticipantOverviewStatusBanner(applicationStatus.value)
 )
+const showOverviewStatusNotices = computed(() =>
+  applicationSubmittedNoticeVisible.value
+  || showOverviewApplicationStatusBanner.value
+  || Boolean(participantOutcomeNotice.value)
+)
 const showApprovedOverviewActions = computed(() =>
   applicationStatus.value === 'approved' && isCompetitionEvent.value && !hasEventEnteredSubmissionPhase(event.value)
-)
-const participationOverviewDescription = computed(() =>
-  isCompetitionEvent.value
-    ? 'Track your application, team, and project here as they become available.'
-    : 'Track your application and event participation here as they become available.'
 )
 const applicationStatusNoticeTitle = computed(() => {
   switch (applicationStatus.value) {
@@ -832,222 +829,209 @@ useSeoMeta({
         aria-labelledby="account-tab-overview"
         class="space-y-7"
       >
+        <div
+          v-if="showOverviewStatusNotices"
+          class="space-y-4"
+        >
+          <AppAlert
+            v-if="applicationSubmittedNoticeVisible"
+            data-testid="account-event-application-submitted-notice"
+            color="success"
+            variant="soft"
+            :title="applicationSubmittedNoticeContent.title"
+            :description="applicationSubmittedNoticeContent.description"
+          />
+
+          <AppAlert
+            v-if="showOverviewApplicationStatusBanner"
+            :color="applicationStatus === 'approved' ? 'success' : applicationStatusNoticeColor"
+            variant="soft"
+            :title="applicationStatusNoticeTitle"
+            :description="applicationStatusSummary"
+          />
+
+          <AppAlert
+            v-if="participantOutcomeNotice"
+            :color="participantOutcomeNotice.color"
+            variant="soft"
+            :title="participantOutcomeNotice.title"
+            :description="participantOutcomeNotice.description"
+          />
+        </div>
+
+        <AccountEventParticipationRankNotice
+          :event-state="event.state"
+          :team-name="participantRankTeamName"
+          :rank-summary="participationRank"
+        />
+
         <EventOverviewPanel :description="event.description" />
 
-        <AppCard
-          v-if="hasParticipantContext"
-          class="!border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60 rounded-xl"
-        >
-          <template #header>
-            <div class="space-y-1">
-              <p class="text-[20px] font-medium text-highlighted dark:text-white">
-                Your participation
-              </p>
-              <p class="text-[14px] text-neutral-600 dark:text-[#A3A3A3]">
-                {{ participationOverviewDescription }}
-              </p>
-            </div>
-          </template>
-
-          <div class="space-y-4">
-            <AppAlert
-              v-if="applicationSubmittedNoticeVisible"
-              data-testid="account-event-application-submitted-notice"
-              color="success"
-              variant="soft"
-              :title="applicationSubmittedNoticeContent.title"
-              :description="applicationSubmittedNoticeContent.description"
-            />
-
-            <AppAlert
-              v-if="showOverviewApplicationStatusBanner"
-              :color="applicationStatus === 'approved' ? 'success' : applicationStatusNoticeColor"
-              variant="soft"
-              :title="applicationStatusNoticeTitle"
-              :description="applicationStatusSummary"
-            />
-
-            <AppAlert
-              v-if="withdrawApplicationErrorMessage"
-              color="error"
-              variant="soft"
-              title="Unable to withdraw participation"
-              :description="withdrawApplicationErrorMessage"
-            />
-
-            <AppAlert
-              v-if="participantOutcomeNotice"
-              :color="participantOutcomeNotice.color"
-              variant="soft"
-              :title="participantOutcomeNotice.title"
-              :description="participantOutcomeNotice.description"
-            />
-
-            <AccountEventParticipationRankNotice
-              :event-state="event.state"
-              :team-name="participantRankTeamName"
-              :rank-summary="participationRank"
-            />
-
-            <template v-if="applicationStatus === 'approved'">
-              <section
-                v-if="showApprovedOverviewActions"
-                class="grid gap-4 lg:grid-cols-2"
-              >
-                <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
-                  <div class="flex h-full flex-col gap-4">
-                    <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-                      <h2 class="text-lg font-semibold text-highlighted dark:text-white">
-                        {{ approvedOverviewTeamActionTitle }}
-                      </h2>
-                      <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                        {{ approvedOverviewTeamActionDescription }}
-                      </p>
-                    </div>
-
-                    <div>
-                      <AppButton
-                        :to="workspaceTabHref"
-                        color="neutral"
-                        variant="solid"
-                        trailing-icon="i-lucide-arrow-up-right"
-                        class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-                      >
-                        Open Workspace
-                      </AppButton>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
-                  <div class="flex h-full flex-col gap-4">
-                    <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
-                      <h2 class="text-lg font-semibold text-highlighted dark:text-white">
-                        Review the event details
-                      </h2>
-                      <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                        {{ approvedOverviewDetailsActionDescription }}
-                      </p>
-                    </div>
-
-                    <div>
-                      <AppButton
-                        :to="detailsTabHref"
-                        color="neutral"
-                        variant="solid"
-                        trailing-icon="i-lucide-arrow-up-right"
-                        class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-                      >
-                        Open Details
-                      </AppButton>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section
-                v-if="showTeamAndSubmissionCards"
-                class="grid gap-4 lg:grid-cols-2"
-              >
-                <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
-                  <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                    Workspace
+        <template v-if="applicationStatus === 'approved'">
+          <section
+            v-if="showApprovedOverviewActions"
+            class="grid gap-4 lg:grid-cols-2"
+          >
+            <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
+              <div class="flex h-full flex-col gap-4">
+                <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+                  <h2 class="text-lg font-semibold text-highlighted dark:text-white">
+                    {{ approvedOverviewTeamActionTitle }}
                   </h2>
-
-                  <template v-if="participationRecord?.activeTeam">
-                    <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                      Current team: <span class="font-semibold text-highlighted dark:text-white">{{ participationRecord.activeTeam.name }}</span>
-                    </p>
-                    <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                      Role: {{ participationRecord.activeTeam.membershipRole }} • {{ participationRecord.activeTeam.activeMemberCount }} active members
-                    </p>
-
-                    <AppButton
-                      :to="workspaceTabHref"
-                      color="neutral"
-                      variant="solid"
-                      trailing-icon="i-lucide-arrow-up-right"
-                      class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-                    >
-                      Go to Workspace
-                    </AppButton>
-                  </template>
-
-                  <template v-else>
-                    <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                      You are approved for this event, but you do not have an active team yet.
-                    </p>
-
-                    <AppButton
-                      :to="workspaceTabHref"
-                      color="neutral"
-                      variant="solid"
-                      trailing-icon="i-lucide-arrow-up-right"
-                      class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
-                    >
-                      Go to Workspace
-                    </AppButton>
-                  </template>
+                  <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                    {{ approvedOverviewTeamActionDescription }}
+                  </p>
                 </div>
 
-                <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
-                  <h2 class="text-xl font-semibold text-highlighted dark:text-white">
-                    Teams
-                  </h2>
-
-                  <p class="mt-3 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    Browse every active team in the event, including solo and multi-person teams.
-                  </p>
-                  <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    Join actions appear there only when a team is open to new members and team formation is still open.
-                  </p>
-
+                <div>
                   <AppButton
-                    :to="teamsTabHref"
+                    :to="workspaceTabHref"
                     color="neutral"
                     variant="solid"
                     trailing-icon="i-lucide-arrow-up-right"
-                    class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                    class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
                   >
-                    Open Teams
+                    Open Workspace
                   </AppButton>
                 </div>
-              </section>
-            </template>
+              </div>
+            </div>
 
-            <section
-              v-if="applicationStatus === 'submitted' || applicationStatus === 'approved'"
-              class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5"
-            >
-              <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div class="space-y-2">
-                  <p class="text-sm font-semibold text-highlighted dark:text-white">
-                    Withdraw from this event
-                  </p>
+            <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
+              <div class="flex h-full flex-col gap-4">
+                <div class="space-y-1 border-b border-black/8 pb-3 dark:border-white/[0.08]">
+                  <h2 class="text-lg font-semibold text-highlighted dark:text-white">
+                    Review the event details
+                  </h2>
                   <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
-                    {{ withdrawalDescription }}
-                  </p>
-                  <p
-                    v-if="!withdrawApplicationAvailability.isAllowed && withdrawApplicationAvailability.reason"
-                    class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
-                  >
-                    {{ withdrawApplicationAvailability.reason }}
+                    {{ approvedOverviewDetailsActionDescription }}
                   </p>
                 </div>
 
-                <AppButton
-                  color="error"
-                  variant="soft"
-                  :loading="isWithdrawApplicationPending"
-                  :disabled="!withdrawApplicationAvailability.isAllowed || isWithdrawApplicationPending"
-                  @click="withdrawOwnApplication"
-                >
-                  Withdraw participation
-                </AppButton>
+                <div>
+                  <AppButton
+                    :to="detailsTabHref"
+                    color="neutral"
+                    variant="solid"
+                    trailing-icon="i-lucide-arrow-up-right"
+                    class="rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                  >
+                    Open Details
+                  </AppButton>
+                </div>
               </div>
-            </section>
+            </div>
+          </section>
+
+          <section
+            v-if="showTeamAndSubmissionCards"
+            class="grid gap-4 lg:grid-cols-2"
+          >
+            <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
+              <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+                Workspace
+              </h2>
+
+              <template v-if="participationRecord?.activeTeam">
+                <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                  Current team: <span class="font-semibold text-highlighted dark:text-white">{{ participationRecord.activeTeam.name }}</span>
+                </p>
+                <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                  Role: {{ participationRecord.activeTeam.membershipRole }} • {{ participationRecord.activeTeam.activeMemberCount }} active members
+                </p>
+
+                <AppButton
+                  :to="workspaceTabHref"
+                  color="neutral"
+                  variant="solid"
+                  trailing-icon="i-lucide-arrow-up-right"
+                  class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                >
+                  Go to Workspace
+                </AppButton>
+              </template>
+
+              <template v-else>
+                <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                  You are approved for this event, but you do not have an active team yet.
+                </p>
+
+                <AppButton
+                  :to="workspaceTabHref"
+                  color="neutral"
+                  variant="solid"
+                  trailing-icon="i-lucide-arrow-up-right"
+                  class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+                >
+                  Go to Workspace
+                </AppButton>
+              </template>
+            </div>
+
+            <div class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5">
+              <h2 class="text-xl font-semibold text-highlighted dark:text-white">
+                Teams
+              </h2>
+
+              <p class="mt-3 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                Browse every active team in the event, including solo and multi-person teams.
+              </p>
+              <p class="mt-2 text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                Join actions appear there only when a team is open to new members and team formation is still open.
+              </p>
+
+              <AppButton
+                :to="teamsTabHref"
+                color="neutral"
+                variant="solid"
+                trailing-icon="i-lucide-arrow-up-right"
+                class="mt-4 rounded-lg bg-black px-4 py-2 text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-[#ECECEC]"
+              >
+                Open Teams
+              </AppButton>
+            </div>
+          </section>
+        </template>
+
+        <AppAlert
+          v-if="withdrawApplicationErrorMessage"
+          color="error"
+          variant="soft"
+          title="Unable to withdraw participation"
+          :description="withdrawApplicationErrorMessage"
+        />
+
+        <section
+          v-if="applicationStatus === 'submitted' || applicationStatus === 'approved'"
+          class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 px-5 py-5"
+        >
+          <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="space-y-2">
+              <p class="text-sm font-semibold text-highlighted dark:text-white">
+                Withdraw from this event
+              </p>
+              <p class="text-sm text-neutral-600 dark:text-[#A3A3A3]">
+                {{ withdrawalDescription }}
+              </p>
+              <p
+                v-if="!withdrawApplicationAvailability.isAllowed && withdrawApplicationAvailability.reason"
+                class="text-sm text-neutral-600 dark:text-[#A3A3A3]"
+              >
+                {{ withdrawApplicationAvailability.reason }}
+              </p>
+            </div>
+
+            <AppButton
+              color="error"
+              variant="soft"
+              :loading="isWithdrawApplicationPending"
+              :disabled="!withdrawApplicationAvailability.isAllowed || isWithdrawApplicationPending"
+              @click="withdrawOwnApplication"
+            >
+              Withdraw participation
+            </AppButton>
           </div>
-        </AppCard>
+        </section>
       </section>
 
       <section
