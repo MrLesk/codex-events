@@ -12,7 +12,7 @@ import {
   serializeEventCreditOffer,
   updateEventCreditOfferBodySchema
 } from '#server/domains/credits'
-import { assertCompetitionEvent, requireEventAdmin } from '#server/domains/events'
+import { requireEventAdmin } from '#server/domains/events'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
@@ -21,8 +21,7 @@ export default defineApiHandler(async (h3Event) => {
   const body = await parseValidatedBody(h3Event, updateEventCreditOfferBodySchema)
   const database = getDatabase(h3Event)
 
-  const { event } = await requireEventAdmin(h3Event, eventId)
-  assertCompetitionEvent(event)
+  await requireEventAdmin(h3Event, eventId)
   await getEventCreditOfferOrThrow(database, eventId, creditId)
 
   await database

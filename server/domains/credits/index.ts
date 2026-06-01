@@ -9,7 +9,7 @@ import { requirePlatformActor } from '#server/auth/actor'
 import { getDatabase } from '#server/database/client'
 import { eventCreditCodes, eventCreditOffers, userApplications } from '#server/database/schema'
 import { ApiError } from '#server/http/api-error'
-import { assertCompetitionEvent, getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
+import { getVisibleEventOrThrow, routeIdParamsSchema } from '#server/domains/events'
 import { assertGuard } from '#server/domains/lifecycle-guard'
 
 type EventCreditOfferRecord = typeof eventCreditOffers.$inferSelect
@@ -170,7 +170,6 @@ export async function requireEventCreditsViewAccess(h3Event: H3Event, eventId: s
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
   const event = await getVisibleEventOrThrow(h3Event, eventId)
-  assertCompetitionEvent(event)
   const authorization = await resolveEventAuthorization(h3Event, eventId)
   const approvedApplication = await getApprovedUserApplication(database, eventId, actor.platformUser.id)
 
@@ -199,7 +198,6 @@ export async function requireEventCreditClaimAccess(h3Event: H3Event, eventId: s
   const actor = await requirePlatformActor(h3Event)
   const database = getDatabase(h3Event)
   const event = await getVisibleEventOrThrow(h3Event, eventId)
-  assertCompetitionEvent(event)
   const offer = await getEventCreditOfferOrThrow(database, eventId, creditId)
   const approvedApplication = await getApprovedUserApplication(database, eventId, actor.platformUser.id)
 

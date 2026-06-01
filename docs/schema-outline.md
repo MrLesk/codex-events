@@ -175,7 +175,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 ### Notes
 
-- `event_type` determines which workflow surfaces are available. `hackathon` enables teams, submissions, judging, prizes, credits, winner terms, and completed competition outcomes. `meetup` and `build` are registration-only events.
+- `event_type` determines which workflow surfaces are available. `hackathon` enables teams, submissions, judging, prizes, winner terms, and completed competition outcomes. All event types can use event credits. `meetup` and `build` are registration-only events.
 - `registration_open` is manually activated by an admin while the configured registration window is open.
 - Meetup and Build events support only `draft`, `registration_open`, and `completed`.
 - Hackathon-only lifecycle states use the same shared `state` enum but are not valid operational states for Meetup and Build events.
@@ -762,7 +762,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - A credit offer belongs to one event.
 - A credit offer is separate from winner prizes.
-- A Hackathon can define multiple credit offers.
+- An event can define multiple credit offers.
 - A credit offer stores participant-facing markdown copy and ordering only. Uploaded redeemable values live on `EventCreditCode`.
 
 ## EventCreditCode

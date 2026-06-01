@@ -23,6 +23,7 @@ export type AccountEventWorkspaceTab = (typeof accountEventWorkspaceTabs)[number
 
 export interface AccountEventTabAccessOptions {
   hasApprovedParticipantAccess: boolean
+  hasCreditInventory?: boolean
   hasGallery: boolean
   hasPublishedPrizes: boolean
   hasPublishedStaff: boolean
@@ -124,6 +125,7 @@ export function getAccountEventTabAccess(
 ): AccountEventTabAccess {
   const {
     hasApprovedParticipantAccess,
+    hasCreditInventory = false,
     hasGallery,
     hasPublishedPrizes,
     hasPublishedStaff,
@@ -136,7 +138,7 @@ export function getAccountEventTabAccess(
   const isCompetitionEvent = eventType === 'hackathon'
   const availableTabs: AccountEventWorkspaceTab[] = ['overview']
 
-  if (isCompetitionEvent && (hasApprovedParticipantAccess || canManage)) {
+  if (canManage || (hasApprovedParticipantAccess && hasCreditInventory)) {
     availableTabs.push('credits')
   }
 

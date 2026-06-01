@@ -198,7 +198,7 @@ Behavior:
   Guard: event configuration is ready, the registration window is open, and an admin opens registration manually.
 - `registration_open -> completed`
   Actor: event admin or platform admin.
-  Guard: the event is ready to close. No submission, judging, winner, prize, or credit workflows run.
+  Guard: the event is ready to close. No submission, judging, winner, or prize workflows run.
 
 ## UserApplication
 

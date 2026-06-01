@@ -77,6 +77,7 @@ describe('TASK-220 event credit routes', () => {
   async function seedCreditsContext(
     harness: ReturnType<typeof createApiRouteTestHarness>,
     options?: {
+      eventType?: 'hackathon' | 'meetup' | 'build'
       includeApprovedApplicationFor?: string[]
       includeSubmittedApplicationFor?: string[]
     }
@@ -115,7 +116,7 @@ describe('TASK-220 event credit routes', () => {
 
     await harness.database.insert(events).values({
       id: 'event_1',
-      eventType: 'hackathon',
+      eventType: options?.eventType ?? 'hackathon',
       name: 'Fixture Event',
       slug: 'fixture-event',
       description: 'Fixture event',
@@ -258,6 +259,62 @@ describe('TASK-220 event credit routes', () => {
       expect.objectContaining({ action: 'event_credit_offer.inventory_imported' }),
       expect.objectContaining({ action: 'event_credit_offer.updated' })
     ])
+  })
+
+  test('event admins can manage credits for registration-only events', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events/:eventId/admin/credits', handler: adminCreditsGetHandler },
+        { method: 'post', path: '/api/events/:eventId/credits', handler: creditsPostHandler },
+        { method: 'post', path: '/api/events/:eventId/credits/:creditId/import', handler: creditImportPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform_admin',
+        email: 'platform-admin@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedCreditsContext(harness, {
+      eventType: 'meetup'
+    })
+
+    const createResponse = await harness.request('/api/events/event_1/credits', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Event coupons',
+        description: 'Redeem this code at check-in.'
+      })
+    })
+    expect(createResponse.status).toBe(200)
+    const createdOfferPayload = await createResponse.json()
+
+    const importForm = new FormData()
+    importForm.append(
+      'file',
+      new Blob(['MEETUP-1\n'], { type: 'text/csv' }),
+      'credits.csv'
+    )
+
+    const importResponse = await harness.request(`/api/events/event_1/credits/${createdOfferPayload.data.id}/import`, {
+      method: 'POST',
+      body: importForm
+    })
+    expect(importResponse.status).toBe(200)
+
+    const listResponse = await harness.request('/api/events/event_1/admin/credits')
+    expect(listResponse.status).toBe(200)
+    expect(await listResponse.json()).toMatchObject({
+      data: [
+        {
+          id: createdOfferPayload.data.id,
+          availableCount: 1,
+          totalCount: 1,
+          codes: [
+            expect.objectContaining({ value: 'MEETUP-1' })
+          ]
+        }
+      ]
+    })
   })
 
   test('admin credit import batches large CSV uploads under D1 parameter limits', async () => {
@@ -412,6 +469,66 @@ describe('TASK-220 event credit routes', () => {
     expect(auditEntries).toEqual([
       expect.objectContaining({ action: 'event_credit_code.claimed' })
     ])
+  })
+
+  test('approved participants can list and claim credits for registration-only events', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/events/:eventId/credits', handler: creditsGetHandler },
+        { method: 'post', path: '/api/events/:eventId/credits/:creditId/actions/claim', handler: creditClaimPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedCreditsContext(harness, {
+      eventType: 'build',
+      includeApprovedApplicationFor: ['regular_user']
+    })
+
+    await harness.database.insert(eventCreditOffers).values({
+      id: 'credit_offer_1',
+      eventId: 'event_1',
+      name: 'Build event coupons',
+      description: 'Redeem this build-event coupon.',
+      displayOrder: 1,
+      createdAt: '2026-03-22T12:00:00.000Z',
+      updatedAt: '2026-03-22T12:00:00.000Z'
+    })
+    await harness.database.insert(eventCreditCodes).values({
+      id: 'credit_code_1',
+      creditOfferId: 'credit_offer_1',
+      value: 'BUILD-1',
+      createdAt: '2026-03-22T12:01:00.000Z'
+    })
+
+    const listResponse = await harness.request('/api/events/event_1/credits')
+    expect(listResponse.status).toBe(200)
+    expect(await listResponse.json()).toMatchObject({
+      data: [
+        {
+          id: 'credit_offer_1',
+          totalCount: 1,
+          availableCount: 1,
+          claimedCode: null
+        }
+      ]
+    })
+
+    const claimResponse = await harness.request('/api/events/event_1/credits/credit_offer_1/actions/claim', {
+      method: 'POST'
+    })
+    expect(claimResponse.status).toBe(200)
+    expect(await claimResponse.json()).toMatchObject({
+      data: {
+        id: 'credit_offer_1',
+        claimedCode: {
+          value: 'BUILD-1'
+        }
+      }
+    })
   })
 
   test('claiming credits requires an approved application', async () => {

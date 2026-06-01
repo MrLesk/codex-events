@@ -33,7 +33,7 @@ This document defines the canonical permissions for the Codex event platform.
 - A user acting through a blind `JudgeAssignment` uses the blind judging view even if that user is also an admin.
 - A user acting through a pitch `JudgeAssignment` uses the open pitch judging view even if that user is also an admin.
 - Admin visibility outside a judging assignment flow is not restricted by the assignment view.
-- Team, submission, judging, shortlist, winner, prize, and credit permissions apply only to Hackathon events. Meetup and Build events expose application review, participant visibility, gallery, feedback, lifecycle completion, settings, staff, and event-admin role management.
+- Team, submission, judging, shortlist, winner, and prize permissions apply only to Hackathon events. Meetup and Build events expose application review, participant visibility, event credits, gallery, feedback, lifecycle completion, settings, staff, and event-admin role management.
 
 ## Global Platform Actions
 
@@ -199,11 +199,11 @@ Prize redemption permissions apply only to Hackathon events.
 
 ## Event Credits
 
-Event credit permissions apply only to Hackathon events.
+Event credit permissions apply to every event type.
 
 | Action | Approved User | Event Admin | Platform Admin |
 | --- | --- | --- | --- |
-| View event credits in the account event workspace | Yes | Yes | Yes |
+| View event credits in the account event workspace | Yes, when uploaded inventory exists | Yes | Yes |
 | Claim an available credit from an offer | Yes | No | No |
 | View own claimed credit values | Yes | No | No |
 | View credit inventory and claim records | No | Yes | Yes |

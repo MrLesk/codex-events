@@ -595,18 +595,18 @@ Testing:
 ## Event Credits
 
 Purpose:
-- Support Hackathon admin-managed event credit inventory and approved-participant credit claims.
+- Support event admin-managed credit inventory and approved-participant credit claims.
 
 Operations:
 
 | Operation | Method And Path | Actor | Guards And Notes |
 | --- | --- | --- | --- |
-| List participant-visible credits for an event | `GET /api/events/:eventId/credits` | approved participant, event admin, or platform admin | Hackathon only. Returns credit offers with the caller's own claim state for that event. |
-| List admin credit inventory for an event | `GET /api/events/:eventId/admin/credits` | event admin or platform admin | Hackathon only. Returns credit offers, inventory counts, and claim records for the event. |
-| Create credit offer | `POST /api/events/:eventId/credits` | event admin or platform admin | Hackathon only. Creates one event credit offer with participant-facing name and markdown description fields. |
-| Update credit offer | `PATCH /api/events/:eventId/credits/:creditId` | event admin or platform admin | Hackathon only. Updates participant-facing credit-offer metadata, including the markdown description. |
-| Import credit inventory into an offer | `POST /api/events/:eventId/credits/:creditId/import` | event admin or platform admin | Hackathon only. Accepts a single-column CSV upload and appends one redeemable value per non-empty row. |
-| Claim one credit from an offer | `POST /api/events/:eventId/credits/:creditId/actions/claim` | approved participant | Hackathon only. Returns the caller's existing assigned value for that offer when already claimed; otherwise atomically assigns one unclaimed uploaded value. |
+| List participant-visible credits for an event | `GET /api/events/:eventId/credits` | approved participant, event admin, or platform admin | Returns credit offers with the caller's own claim state for that event. |
+| List admin credit inventory for an event | `GET /api/events/:eventId/admin/credits` | event admin or platform admin | Returns credit offers, inventory counts, and claim records for the event. |
+| Create credit offer | `POST /api/events/:eventId/credits` | event admin or platform admin | Creates one event credit offer with participant-facing name and markdown description fields. |
+| Update credit offer | `PATCH /api/events/:eventId/credits/:creditId` | event admin or platform admin | Updates participant-facing credit-offer metadata, including the markdown description. |
+| Import credit inventory into an offer | `POST /api/events/:eventId/credits/:creditId/import` | event admin or platform admin | Accepts a single-column CSV upload and appends one redeemable value per non-empty row. |
+| Claim one credit from an offer | `POST /api/events/:eventId/credits/:creditId/actions/claim` | approved participant | Returns the caller's existing assigned value for that offer when already claimed; otherwise atomically assigns one unclaimed uploaded value. |
 
 Testing:
 - Unit: participant eligibility, URL-versus-code presentation helpers, and single-claim guards.
@@ -644,8 +644,8 @@ Testing:
 - In-person application commitment is required only when the event is configured with `inPersonEvent = true`.
 - Withdrawal ends when submitted work is locked for judging.
 - Removal from competition during or after judging uses `disqualified`.
-- Hackathon event credits are separate from prizes and do not depend on winner announcement.
-- Approved Hackathon participants can claim at most one uploaded value from each event credit offer.
+- Event credits are separate from prizes and do not depend on winner announcement.
+- Approved participants can claim at most one uploaded value from each event credit offer.
 - Hackathon prize-eligible team membership freezes when submitted work is locked for judging.
 - Event feedback submission is anonymous in product data and becomes available only after the event reaches `completed`.
 - Each feedback topic accepts either a `1..5` rating or an explicit `Not applicable` response.

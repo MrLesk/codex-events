@@ -17,6 +17,10 @@ import type {
   EventParticipationRecord
 } from '~/domains/events/participation'
 import type {
+  EventCreditApiListResponse,
+  ParticipantEventCreditOffer
+} from '~/domains/credits'
+import type {
   ParticipantApiDataResponse,
   ParticipantApplicationRecord
 } from '~/domains/applications/participant-application'
@@ -200,9 +204,24 @@ const [
   requestFetch<AccountEventsResponse>('/api/account/events'),
   requestFetch<EventParticipationApiDataResponse<EventParticipationPayload>>('/api/events/participation')
 ])
+const initialAccessRecord = [
+  ...accountEventsResponse.data.current,
+  ...accountEventsResponse.data.past
+].find(record => record.slug === slug.value) ?? null
+const initialParticipationRecord = [
+  ...participationResponse.data.current,
+  ...participationResponse.data.past
+].find(record => record.event.slug === slug.value) ?? null
+const initialApplicationStatus = initialParticipationRecord?.application?.status
+  ?? initialAccessRecord?.applicationStatus
+  ?? null
+const initialParticipantCreditsResponse = initialApplicationStatus === 'approved'
+  ? await requestFetch<EventCreditApiListResponse<ParticipantEventCreditOffer>>(`/api/events/${initialEvent.id}/credits`)
+  : { data: [] }
 const toast = useToast()
 const accountEventsData = ref(accountEventsResponse.data)
 const participationData = ref(participationResponse.data)
+const participantCreditOffers = ref(initialParticipantCreditsResponse.data)
 const isWithdrawApplicationPending = ref(false)
 const withdrawApplicationErrorMessage = ref('')
 const accessRecord = computed(() => [
@@ -265,6 +284,9 @@ const applicationStatus = computed(() =>
   participationRecord.value?.application?.status ?? accessRecord.value?.applicationStatus ?? null
 )
 const canClaimCredits = computed(() => applicationStatus.value === 'approved')
+const hasCreditInventory = computed(() =>
+  participantCreditOffers.value.some(offer => offer.totalCount > 0)
+)
 const shouldLoadPublishedStaffRoster = computed(() => actor.value.kind === 'platform_user')
 const publishedStaffRosterRequest = await useApiData<PublishedEventRosterLoadState>(
   () => `account-event-staff:${workspaceEventId.value}`,
@@ -293,6 +315,7 @@ const publishedStaffRoster = computed(() =>
 const tabAccess = computed(() =>
   getAccountEventTabAccess({
     hasApprovedParticipantAccess: applicationStatus.value === 'approved',
+    hasCreditInventory: hasCreditInventory.value,
     hasGallery: Boolean(event.value.hasGallery),
     hasPublishedPrizes: hasPublishedPrizes.value,
     hasPublishedStaff: publishedStaffRoster.value.members.length > 0,

@@ -12,7 +12,7 @@ import {
   getEventCreditOfferOrThrow,
   parseSingleColumnCreditCsv
 } from '#server/domains/credits'
-import { assertCompetitionEvent, requireEventAdmin } from '#server/domains/events'
+import { requireEventAdmin } from '#server/domains/events'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
@@ -21,8 +21,7 @@ export default defineApiHandler(async (h3Event) => {
   const { eventId, creditId } = parseValidatedParams(h3Event, creditParamsSchema)
   const database = getDatabase(h3Event)
 
-  const { event } = await requireEventAdmin(h3Event, eventId)
-  assertCompetitionEvent(event)
+  await requireEventAdmin(h3Event, eventId)
   await getEventCreditOfferOrThrow(database, eventId, creditId)
 
   const multipart = await readMultipartFormData(h3Event)

@@ -4,7 +4,7 @@ import { getDatabase } from '#server/database/client'
 import { eventCreditCodes, eventCreditOffers, users } from '#server/database/schema'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiList } from '#server/http/api-response'
-import { assertCompetitionEvent, requireEventAdmin, routeIdParamsSchema } from '#server/domains/events'
+import { requireEventAdmin, routeIdParamsSchema } from '#server/domains/events'
 import {
   listEventCreditCodesForEvent,
   listEventCreditOffers,
@@ -18,8 +18,7 @@ type UserRecord = typeof users.$inferSelect
 
 export default defineApiHandler(async (h3Event) => {
   const { eventId } = parseValidatedParams(h3Event, routeIdParamsSchema)
-  const { event } = await requireEventAdmin(h3Event, eventId)
-  assertCompetitionEvent(event)
+  await requireEventAdmin(h3Event, eventId)
 
   const database = getDatabase(h3Event)
   const offers: EventCreditOfferRecord[] = await listEventCreditOffers(database, eventId)

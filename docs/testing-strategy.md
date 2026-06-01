@@ -82,7 +82,7 @@ When backend constraints prevent complete actor-facing UI coverage, the gap must
 - Platform roles such as platform admin, event organizer, event admin, staff, and judge are never modeled as Auth0 roles for application behavior.
 - Event-type behavior is tested as product behavior, not as legacy compatibility. Tests should use `/events` and `/api/events` routes only.
 - Hackathon-only workflows are tested only against `eventType = hackathon`.
-- Meetup and Build workflows are tested as registration-only events and must reject team, submission, judging, prize, winner, and credit operations.
+- Meetup and Build workflows are tested as registration-only events and must reject team, submission, judging, prize, and winner operations while allowing event-credit operations.
 
 ## Event Type Coverage
 

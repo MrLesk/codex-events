@@ -10,7 +10,7 @@ import {
   createEventCreditOfferBodySchema,
   serializeEventCreditOffer
 } from '#server/domains/credits'
-import { assertCompetitionEvent, requireEventAdmin, routeIdParamsSchema } from '#server/domains/events'
+import { requireEventAdmin, routeIdParamsSchema } from '#server/domains/events'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
@@ -19,8 +19,7 @@ export default defineApiHandler(async (h3Event) => {
   const body = await parseValidatedBody(h3Event, createEventCreditOfferBodySchema)
   const database = getDatabase(h3Event)
 
-  const { event } = await requireEventAdmin(h3Event, eventId)
-  assertCompetitionEvent(event)
+  await requireEventAdmin(h3Event, eventId)
 
   const creditOfferId = crypto.randomUUID()
   const createdAt = new Date().toISOString()

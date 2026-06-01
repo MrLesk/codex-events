@@ -8,11 +8,11 @@ The platform supports multiple typed events running in parallel. Users have a pl
 
 Supported event types are:
 
-- `hackathon`: a competition event with team formation, submissions, judging, winner selection, prizes, credits, and completed project showcases.
+- `hackathon`: a competition event with team formation, submissions, judging, winner selection, prizes, and completed project showcases.
 - `meetup`: a registration-only community event.
 - `build`: a registration-only community build event.
 
-Meetups and Builds use the same application, review, attendance, Luma sync, profile requirement, optional event-terms acceptance, and participant-limit model as Hackathons. They do not expose team formation, submissions, judging, prizes, winners, credits, or competition lifecycle actions.
+Meetups and Builds use the same application, review, attendance, Luma sync, profile requirement, optional event-terms acceptance, participant-limit, and event-credit model as Hackathons. They do not expose team formation, submissions, judging, prizes, winners, or competition lifecycle actions.
 
 ## Core Entities
 
@@ -95,6 +95,7 @@ Key characteristics:
 - The current application field configuration applies when a participant views or submits the form. Changing the configuration does not rewrite existing application records.
 - Each event can optionally reference event-specific application terms.
 - A configured Discord server URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
+- Each event can define credit offers with uploaded redeemable values for approved participants.
 
 Hackathon-only characteristics:
 
@@ -116,7 +117,7 @@ Meetup and Build rules:
 - Meetups and Builds use only `draft`, `registration_open`, and `completed`.
 - Meetups and Builds can approve, reject, and withdraw applications through the shared `UserApplication` model.
 - Approved applications represent participation directly.
-- Meetups and Builds do not create teams, submissions, judging assignments, prizes, winner records, credit offers, or completed competition outcomes.
+- Meetups and Builds do not create teams, submissions, judging assignments, prizes, winner records, or completed competition outcomes.
 - Competition-only APIs and UI surfaces are unavailable for Meetups and Builds.
 
 ### EventTrack
@@ -453,7 +454,7 @@ Operational rules:
 
 ### EventCreditOffer
 
-An event-scoped credit offer that approved Hackathon participants can claim.
+An event-scoped credit offer that approved participants can claim.
 
 Examples:
 
@@ -466,7 +467,7 @@ Rules:
 - Event credits are separate from prizes and are not part of winner selection.
 - Each credit offer belongs to exactly one event.
 - A credit offer has a participant-facing name and markdown description.
-- A Hackathon can define multiple credit offers.
+- An event can define multiple credit offers.
 - Event admins and platform admins can append inventory to an existing credit offer over time.
 - A credit offer can remain available as long as it has unclaimed inventory.
 
@@ -614,11 +615,11 @@ Judging applies only to Hackathon events.
 
 ### Event Credits
 
-Event credits apply only to Hackathon events.
-
 - Event credits are participant benefits, not winner prizes.
 - Event credits do not depend on winner announcement or prize-redemption workflow.
+- Event admins and platform admins can manage event credits for any event type.
 - Only approved participants can claim event credits.
+- Approved participants see event credits in the account event workspace only when uploaded credit inventory exists for the event.
 - A participant can claim at most one uploaded value from each credit offer.
 
 ## Compliance

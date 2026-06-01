@@ -10,6 +10,7 @@ import {
 
 const hackathonOptions = {
   eventType: 'hackathon' as const,
+  hasCreditInventory: true,
   hasPublishedStaff: true
 }
 
@@ -203,6 +204,7 @@ describe('getAccountEventTabAccess', () => {
   test('hides competition-only tabs for registration-only events', () => {
     expect(getAccountEventTabAccess({
       eventType: 'meetup',
+      hasCreditInventory: true,
       hasPublishedStaff: true,
       hasApprovedParticipantAccess: true,
       hasGallery: true,
@@ -212,10 +214,50 @@ describe('getAccountEventTabAccess', () => {
       canManage: true,
       canViewParticipantsAndTeams: true
     })).toEqual({
-      availableTabs: ['overview', 'details', 'gallery', 'staff', 'participants', 'operations', 'settings'],
+      availableTabs: ['overview', 'credits', 'details', 'gallery', 'staff', 'participants', 'operations', 'settings'],
       showPrizeConfiguration: false,
       showAgendaConfigurationInDetails: true
     })
+  })
+
+  test('shows credits to approved registration-only participants only when inventory exists', () => {
+    expect(getAccountEventTabAccess({
+      eventType: 'meetup',
+      hasCreditInventory: true,
+      hasPublishedStaff: true,
+      hasApprovedParticipantAccess: true,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: false
+    }).availableTabs).toEqual(['overview', 'credits', 'details', 'staff'])
+
+    expect(getAccountEventTabAccess({
+      eventType: 'meetup',
+      hasCreditInventory: false,
+      hasPublishedStaff: true,
+      hasApprovedParticipantAccess: true,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: false
+    }).availableTabs).toEqual(['overview', 'details', 'staff'])
+  })
+
+  test.each(['meetup', 'build'] as const)('shows credits to %s event admins without participant inventory', (eventType) => {
+    expect(getAccountEventTabAccess({
+      eventType,
+      hasCreditInventory: false,
+      hasPublishedStaff: false,
+      hasApprovedParticipantAccess: false,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: true,
+      canViewParticipantsAndTeams: false
+    }).availableTabs).toContain('credits')
   })
 
   test('allows internal workspace access without an account-events record when the actor can manage the draft', () => {

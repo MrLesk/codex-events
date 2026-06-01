@@ -965,7 +965,7 @@ async function copyCreditValue(value: string) {
           color="neutral"
           variant="soft"
           title="No credits available yet"
-          description="This tab becomes actionable once this event publishes one or more credit offers."
+          description="Credits appear here once this event has uploaded values to claim."
         />
 
         <div
