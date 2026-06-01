@@ -74,6 +74,7 @@ const claimPendingById = reactive<Record<string, boolean>>({})
 const claimErrorById = reactive<Record<string, string>>({})
 const expandedInventoryOfferIds = ref(new Set<string>())
 const expandedParticipantOfferIds = ref(new Set<string>())
+const revealedClaimedCodeIds = ref(new Set<string>())
 const editingOfferNameIds = ref(new Set<string>())
 const savePendingById = reactive<Record<string, boolean>>({})
 const saveErrorById = reactive<Record<string, string>>({})
@@ -81,6 +82,7 @@ const importPendingById = reactive<Record<string, boolean>>({})
 const importErrorById = reactive<Record<string, string>>({})
 
 const selectedCreateFileName = computed(() => createInventoryFile.value?.name ?? '')
+const maskedCreditValue = '•••• •••• ••••'
 const createActionLabel = computed(() =>
   createInventoryFile.value ? 'Create offer and upload CSV' : 'Create offer'
 )
@@ -164,8 +166,17 @@ watch(participantCredits, (offers) => {
   const nextExpandedParticipantOfferIds = new Set(
     [...expandedParticipantOfferIds.value].filter(offerId => nextIds.has(offerId))
   )
+  const nextClaimedCodeIds = new Set(
+    offers
+      .map(offer => offer.claimedCode?.id)
+      .filter((codeId): codeId is string => Boolean(codeId))
+  )
+  const nextRevealedClaimedCodeIds = new Set(
+    [...revealedClaimedCodeIds.value].filter(codeId => nextClaimedCodeIds.has(codeId))
+  )
 
   expandedParticipantOfferIds.value = nextExpandedParticipantOfferIds
+  revealedClaimedCodeIds.value = nextRevealedClaimedCodeIds
 }, {
   immediate: true
 })
@@ -218,6 +229,10 @@ function isParticipantOfferExpanded(offerId: string) {
   return expandedParticipantOfferIds.value.has(offerId)
 }
 
+function isClaimedCodeRevealed(codeId: string) {
+  return revealedClaimedCodeIds.value.has(codeId)
+}
+
 function toggleInventoryExpanded(offerId: string) {
   const nextExpandedInventoryOfferIds = new Set(expandedInventoryOfferIds.value)
 
@@ -240,6 +255,18 @@ function toggleParticipantOfferExpanded(offerId: string) {
   }
 
   expandedParticipantOfferIds.value = nextExpandedParticipantOfferIds
+}
+
+function toggleClaimedCodeVisibility(codeId: string) {
+  const nextRevealedClaimedCodeIds = new Set(revealedClaimedCodeIds.value)
+
+  if (nextRevealedClaimedCodeIds.has(codeId)) {
+    nextRevealedClaimedCodeIds.delete(codeId)
+  } else {
+    nextRevealedClaimedCodeIds.add(codeId)
+  }
+
+  revealedClaimedCodeIds.value = nextRevealedClaimedCodeIds
 }
 
 async function refreshCredits() {
@@ -1058,19 +1085,37 @@ async function copyCreditValue(value: string) {
                         class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <code class="min-w-0 break-all font-mono text-sm text-highlighted">
-                          {{ offer.claimedCode.value }}
+                          {{ isClaimedCodeRevealed(offer.claimedCode.id) ? offer.claimedCode.value : maskedCreditValue }}
                         </code>
 
-                        <AppButton
-                          color="neutral"
-                          variant="soft"
-                          size="sm"
-                          icon="i-lucide-copy"
-                          class="self-start sm:self-auto"
-                          @click="copyCreditValue(offer.claimedCode.value)"
-                        >
-                          Copy code
-                        </AppButton>
+                        <div class="flex shrink-0 items-center gap-2 self-start sm:self-auto">
+                          <AppButton
+                            color="neutral"
+                            variant="soft"
+                            size="sm"
+                            icon="i-lucide-copy"
+                            @click="copyCreditValue(offer.claimedCode.value)"
+                          >
+                            Copy code
+                          </AppButton>
+
+                          <AppButton
+                            type="button"
+                            color="neutral"
+                            variant="ghost"
+                            size="sm"
+                            :icon="isClaimedCodeRevealed(offer.claimedCode.id) ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                            class="h-8 w-8 gap-0 px-0"
+                            :aria-label="isClaimedCodeRevealed(offer.claimedCode.id) ? 'Hide assigned code' : 'Show assigned code'"
+                            :aria-pressed="isClaimedCodeRevealed(offer.claimedCode.id)"
+                            :title="isClaimedCodeRevealed(offer.claimedCode.id) ? 'Hide code' : 'Show code'"
+                            @click="toggleClaimedCodeVisibility(offer.claimedCode.id)"
+                          >
+                            <span class="sr-only">
+                              {{ isClaimedCodeRevealed(offer.claimedCode.id) ? 'Hide assigned code' : 'Show assigned code' }}
+                            </span>
+                          </AppButton>
+                        </div>
                       </div>
                     </div>
 
