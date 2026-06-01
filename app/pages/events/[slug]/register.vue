@@ -414,26 +414,28 @@ async function submitParticipantApplication() {
       method: 'POST',
       body: applicationPayload
     })
-
-    const nextSubmissionTransition = resolveParticipantApplicationSubmittedTransition(slug.value, {
-      autoApproveApplications: event.value.autoApproveApplications
-    })
-
-    hasExistingApplication.value = true
-    submissionTransition.value = nextSubmissionTransition
-
-    await nextTick()
-    await navigateTo(nextSubmissionTransition.to, { replace: true })
   } catch (error) {
-    if (submissionTransition.value) {
-      submissionTransition.value = null
-      submissionError.value = 'Your application was submitted. Open the event workspace from your account to keep going.'
-    } else {
-      submissionError.value = normalizeParticipantApiError(error).message
-    }
-  } finally {
+    submissionError.value = normalizeParticipantApiError(error).message
     isSubmitting.value = false
     isSavingProfile.value = false
+    return
+  }
+
+  const nextSubmissionTransition = resolveParticipantApplicationSubmittedTransition(slug.value, {
+    autoApproveApplications: event.value.autoApproveApplications
+  })
+
+  hasExistingApplication.value = true
+  submissionTransition.value = nextSubmissionTransition
+  isSubmitting.value = false
+  isSavingProfile.value = false
+
+  await nextTick()
+
+  try {
+    await navigateTo(nextSubmissionTransition.to, { replace: true })
+  } catch {
+    // Keep the submitted-state panel visible if the router rejects after the application was created.
   }
 }
 
