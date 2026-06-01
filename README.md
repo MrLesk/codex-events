@@ -13,6 +13,8 @@
 </p>
 
 <p align="center">
+  <a href="https://codex-events.com">Demo</a>
+  |
   <a href="docs/domain-model.md">Product Model</a>
   |
   <a href="docs/lifecycle-and-state-machines.md">Lifecycle</a>
