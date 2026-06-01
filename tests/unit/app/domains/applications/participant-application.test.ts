@@ -5,6 +5,7 @@ import {
   areParticipantTeamMemberHintsEqual,
   createParticipantTeamMemberHintRows,
   formatParticipantApplicationStatus,
+  getParticipantApplicationSubmittedNoticeContent,
   getParticipantApplicationWithdrawalAvailability,
   getEventApplicationAvailabilityMessage,
   getParticipantApplicationSubmissionPolicy,
@@ -295,12 +296,40 @@ describe('participant application helpers', () => {
     expect(summarizeParticipantApplicationStatus('withdrawn', 'registration_open')).toContain('withdrew from this event')
   })
 
-  test('shows the overview status banner until approval transitions into submission work', () => {
-    expect(shouldShowParticipantOverviewStatusBanner('submitted', 'registration_open')).toBe(true)
-    expect(shouldShowParticipantOverviewStatusBanner('rejected', 'completed')).toBe(true)
-    expect(shouldShowParticipantOverviewStatusBanner('approved', 'registration_open')).toBe(true)
-    expect(shouldShowParticipantOverviewStatusBanner('approved', 'submission_open')).toBe(false)
-    expect(shouldShowParticipantOverviewStatusBanner(null, 'registration_open')).toBe(false)
+  test('shows the overview status banner only for non-approved application states', () => {
+    expect(shouldShowParticipantOverviewStatusBanner('submitted')).toBe(true)
+    expect(shouldShowParticipantOverviewStatusBanner('rejected')).toBe(true)
+    expect(shouldShowParticipantOverviewStatusBanner('approved')).toBe(false)
+    expect(shouldShowParticipantOverviewStatusBanner(null)).toBe(false)
+  })
+
+  test('formats one-time application submitted notices by approval and event type', () => {
+    expect(getParticipantApplicationSubmittedNoticeContent({
+      applicationStatus: 'submitted',
+      eventType: 'hackathon',
+      autoApproveApplications: false
+    })).toEqual({
+      title: 'Registration submitted',
+      description: 'Your registration was submitted successfully.'
+    })
+
+    expect(getParticipantApplicationSubmittedNoticeContent({
+      applicationStatus: 'approved',
+      eventType: 'hackathon',
+      autoApproveApplications: true
+    })).toEqual({
+      title: 'Approved for this event',
+      description: 'You are approved to create a team or request to join an open team in this event.'
+    })
+
+    expect(getParticipantApplicationSubmittedNoticeContent({
+      applicationStatus: 'approved',
+      eventType: 'meetup',
+      autoApproveApplications: true
+    })).toEqual({
+      title: 'Registration approved',
+      description: 'Your registration was approved automatically.'
+    })
   })
 
   test('computes participant application withdrawal availability from status and team membership', () => {

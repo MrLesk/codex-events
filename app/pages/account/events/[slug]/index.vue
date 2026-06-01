@@ -71,6 +71,7 @@ import {
 import { getEventParticipationOutcomeNotice } from '~/domains/events/participation'
 import {
   formatParticipantApplicationStatus,
+  getParticipantApplicationSubmittedNoticeContent,
   getParticipantApplicationWithdrawalAvailability,
   getParticipantApplicationStatusColor,
   isParticipantApplicationSubmittedNotice,
@@ -540,15 +541,12 @@ const applicationStatusSummary = computed(() =>
     ? summarizeParticipantApplicationStatus(applicationStatus.value, event.value.state)
     : ''
 )
-const applicationSubmittedNoticeTitle = computed(() =>
-  applicationStatus.value === 'approved' && event.value.autoApproveApplications
-    ? 'Registration approved'
-    : 'Registration submitted'
-)
-const applicationSubmittedNoticeDescription = computed(() =>
-  applicationStatus.value === 'approved' && event.value.autoApproveApplications
-    ? 'Your registration was approved automatically.'
-    : 'Your registration was submitted successfully.'
+const applicationSubmittedNoticeContent = computed(() =>
+  getParticipantApplicationSubmittedNoticeContent({
+    applicationStatus: applicationStatus.value,
+    eventType: event.value.eventType,
+    autoApproveApplications: event.value.autoApproveApplications
+  })
 )
 const participantOutcomeNotice = computed(() =>
   participationRecord.value
@@ -564,7 +562,7 @@ const showHeaderApplicationStatusSummary = computed(() =>
   Boolean(applicationStatusSummary.value) && applicationStatus.value !== 'approved'
 )
 const showOverviewApplicationStatusBanner = computed(() =>
-  shouldShowParticipantOverviewStatusBanner(applicationStatus.value, event.value.state)
+  shouldShowParticipantOverviewStatusBanner(applicationStatus.value)
 )
 const showApprovedOverviewActions = computed(() =>
   applicationStatus.value === 'approved' && isCompetitionEvent.value && !hasEventEnteredSubmissionPhase(event.value)
@@ -852,8 +850,8 @@ useSeoMeta({
               data-testid="account-event-application-submitted-notice"
               color="success"
               variant="soft"
-              :title="applicationSubmittedNoticeTitle"
-              :description="applicationSubmittedNoticeDescription"
+              :title="applicationSubmittedNoticeContent.title"
+              :description="applicationSubmittedNoticeContent.description"
             />
 
             <AppAlert

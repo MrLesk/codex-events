@@ -250,18 +250,13 @@ export function summarizeParticipantApplicationStatus(
 }
 
 export function shouldShowParticipantOverviewStatusBanner(
-  status: ParticipantApplicationRecord['status'] | null,
-  eventState: PublicEventState
+  status: ParticipantApplicationRecord['status'] | null
 ) {
   if (!status) {
     return false
   }
 
-  if (status !== 'approved') {
-    return true
-  }
-
-  return eventState === 'registration_open'
+  return status !== 'approved'
 }
 
 export function getParticipantApplicationWithdrawalAvailability(options: {
@@ -508,6 +503,33 @@ export function resolveParticipantApplicationSubmittedTransition(
         notice: 'application_submitted'
       }
     }
+  }
+}
+
+export function getParticipantApplicationSubmittedNoticeContent(options: {
+  applicationStatus: ParticipantApplicationRecord['status'] | null
+  eventType: PublicEvent['eventType']
+  autoApproveApplications: boolean
+}) {
+  if (options.applicationStatus !== 'approved') {
+    return {
+      title: 'Registration submitted',
+      description: 'Your registration was submitted successfully.'
+    }
+  }
+
+  if (options.eventType === 'hackathon') {
+    return {
+      title: 'Approved for this event',
+      description: 'You are approved to create a team or request to join an open team in this event.'
+    }
+  }
+
+  return {
+    title: 'Registration approved',
+    description: options.autoApproveApplications
+      ? 'Your registration was approved automatically.'
+      : 'You are approved for this event.'
   }
 }
 
