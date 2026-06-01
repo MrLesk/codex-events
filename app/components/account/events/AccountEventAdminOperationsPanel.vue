@@ -2117,7 +2117,7 @@ async function runLifecycleAction() {
           <div
             v-for="card in lifecycleMetricCards"
             :key="card.key"
-            class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex h-full flex-col gap-4 rounded-xl px-5 py-5"
+            :class="['flex h-full flex-col gap-4 rounded-xl !border !border-black/10 !bg-white/72 px-5 py-5 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60', lifecycleHeroClass]"
           >
             <div class="space-y-2">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
