@@ -50,5 +50,6 @@ const showAttendance = computed(() =>
     read-only
     :show-attendance="showAttendance"
     :participants-limit="event?.participantsLimit ?? null"
+    :auto-approve-applications="event?.autoApproveApplications ?? false"
   />
 </template>

@@ -40,13 +40,15 @@ const props = withDefaults(defineProps<{
   readOnly?: boolean
   searchEnabled?: boolean
   showAttendance?: boolean
+  autoApproveApplications?: boolean
 }>(), {
   isLoading: false,
   errorMessage: '',
   pendingActionKey: null,
   readOnly: false,
   searchEnabled: false,
-  showAttendance: false
+  showAttendance: false,
+  autoApproveApplications: false
 })
 
 const emit = defineEmits<{
@@ -60,6 +62,9 @@ const emit = defineEmits<{
 const stagedCount = computed(() =>
   props.applications.filter(application => application.status === 'submitted' && Boolean(application.preApprovalStatus)).length
 )
+const hasSubmittedApplications = computed(() =>
+  props.applications.some(application => application.status === 'submitted')
+)
 const whyThisEventPreviewCharacterLimit = 280
 const proofLinksPreviewCount = 2
 const expandedApplicationSectionKeys = ref(new Set<string>())
@@ -68,6 +73,9 @@ const searchQuery = ref('')
 const checkedInOnly = ref(false)
 const showApprovedAttendance = computed(() =>
   props.showAttendance && props.view === 'approved'
+)
+const showAutoApproveApplicationsNotice = computed(() =>
+  props.view === 'applications' && !props.readOnly && props.autoApproveApplications && !hasSubmittedApplications.value
 )
 const hasSearchQuery = computed(() =>
   props.searchEnabled && searchQuery.value.trim().length > 0
@@ -352,6 +360,13 @@ function formatCheckedInTimestamp(application: AdminApplicationRecord) {
 }
 
 const reviewContent = computed(() => {
+  if (showAutoApproveApplicationsNotice.value) {
+    return {
+      title: 'Participant Review',
+      description: 'This event approves participants automatically.'
+    }
+  }
+
   if (props.view === 'approved') {
     return {
       title: 'Approved Participants',
@@ -586,8 +601,16 @@ const emptyState = computed(() => {
           </div>
         </AppAlert>
 
+        <AppAlert
+          v-if="showAutoApproveApplicationsNotice"
+          color="neutral"
+          variant="soft"
+          title="Nothing to review"
+          description="This event automatically approves participants after they register, so no review action is needed here."
+        />
+
         <div
-          v-if="searchEnabled || showApprovedAttendance"
+          v-if="!showAutoApproveApplicationsNotice && (searchEnabled || showApprovedAttendance)"
           class="flex flex-col gap-3 md:flex-row md:items-center"
         >
           <AppInput
@@ -621,7 +644,7 @@ const emptyState = computed(() => {
         </div>
 
         <div
-          v-if="view === 'applications' && !readOnly"
+          v-if="view === 'applications' && !readOnly && !showAutoApproveApplicationsNotice"
           class="!border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64 flex flex-wrap items-center justify-between gap-3 rounded-lg px-4 py-4"
         >
           <p class="text-sm text-muted">
@@ -639,7 +662,7 @@ const emptyState = computed(() => {
         </div>
 
         <div
-          v-if="applicationReviewGroups.length > 0"
+          v-if="!showAutoApproveApplicationsNotice && applicationReviewGroups.length > 0"
           class="grid gap-5"
         >
           <section
@@ -1039,7 +1062,7 @@ const emptyState = computed(() => {
         </div>
 
         <AppAlert
-          v-else
+          v-else-if="!showAutoApproveApplicationsNotice"
           color="neutral"
           variant="soft"
           :title="emptyState.title"

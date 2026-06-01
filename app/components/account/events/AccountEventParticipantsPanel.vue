@@ -19,13 +19,15 @@ const props = withDefaults(defineProps<{
   readOnly?: boolean
   showAttendance?: boolean
   participantsLimit?: number | null
+  autoApproveApplications?: boolean
 }>(), {
   isLoading: false,
   errorMessage: '',
   pendingActionKey: null,
   readOnly: false,
   showAttendance: false,
-  participantsLimit: null
+  participantsLimit: null,
+  autoApproveApplications: false
 })
 
 const emit = defineEmits<{
@@ -239,6 +241,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
       :read-only="readOnly"
       search-enabled
       :show-attendance="showAttendance"
+      :auto-approve-applications="autoApproveApplications"
       @approve="emit('approve', $event)"
       @approve-team="emit('approveTeam', $event)"
       @reject="emit('reject', $event)"

@@ -2283,6 +2283,7 @@ async function runLifecycleAction() {
           :pending-action-key="pendingActionKey"
           :show-attendance="showCheckedInParticipantSummary"
           :participants-limit="currentEvent.participantsLimit ?? null"
+          :auto-approve-applications="currentEvent.autoApproveApplications"
           @approve="approveApplication"
           @approve-team="approveApplicationGroup"
           @reject="rejectApplication"
