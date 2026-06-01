@@ -50,7 +50,7 @@ const profileAvatarSrc = computed(() => {
             Codex Community
           </p>
           <p class="truncate text-[17px] font-semibold tracking-[-0.01em] text-highlighted dark:text-white">
-            Event Platform
+            Events Platform
           </p>
         </div>
       </NuxtLink>

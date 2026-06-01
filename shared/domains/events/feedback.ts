@@ -82,7 +82,7 @@ export const eventFeedbackQuestions: EventFeedbackQuestionDefinition[] = [
   },
   {
     id: 'platformRating',
-    label: 'Event Platform',
+    label: 'Events Platform',
     prompt: 'How well did codex-events.com work during the event?'
   },
   {
