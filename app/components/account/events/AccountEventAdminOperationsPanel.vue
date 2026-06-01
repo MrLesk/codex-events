@@ -34,8 +34,7 @@ import {
 } from '~/domains/submissions/admin-operations'
 import {
   formatEventState,
-  getEventOperationsPhase,
-  getEventStateColor
+  getEventOperationsPhase
 } from '~/domains/events/states'
 import { getCurrentLifecycleControl } from '~/domains/events/lifecycle-controls'
 import { shouldShowApprovedParticipantAttendanceSummary } from '~/domains/applications/admin-application-record'
@@ -585,24 +584,6 @@ watch([showPitchReviewPanel, canManage, pendingActionKey], async ([visible, allo
 onBeforeUnmount(() => {
   stopPitchReviewAutoRefresh()
 })
-
-const lifecycleHeroClassByColor = {
-  primary: '!border-primary/24 !bg-primary/[0.06] dark:!border-primary/34 dark:!bg-primary/[0.08]',
-  secondary: '!border-secondary/24 !bg-secondary/[0.08] dark:!border-secondary/34 dark:!bg-secondary/[0.12]',
-  neutral: '!border-black/10 !bg-white/72 dark:!border-white/[0.10] dark:!bg-[#101010]/60',
-  success: '!border-success/24 !bg-success/[0.06] dark:!border-success/34 dark:!bg-success/[0.08]',
-  warning: '!border-warning/24 !bg-warning/[0.06] dark:!border-warning/34 dark:!bg-warning/[0.08]',
-  error: '!border-error/24 !bg-error/[0.06] dark:!border-error/34 dark:!bg-error/[0.08]',
-  info: '!border-info/24 !bg-info/[0.06] dark:!border-info/34 dark:!bg-info/[0.08]'
-} as const
-
-const lifecycleStateColor = computed(() =>
-  currentEvent.value ? getEventStateColor(currentEvent.value.state) : 'neutral'
-)
-
-const lifecycleHeroClass = computed(() =>
-  lifecycleHeroClassByColor[lifecycleStateColor.value]
-)
 
 const approvedApplicationCount = computed(() =>
   applications.value.filter(application => application.status === 'approved').length
@@ -2117,7 +2098,7 @@ async function runLifecycleAction() {
           <div
             v-for="card in lifecycleMetricCards"
             :key="card.key"
-            :class="['flex h-full flex-col gap-4 rounded-xl !border !border-black/10 !bg-white/72 px-5 py-5 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60', lifecycleHeroClass]"
+            class="flex h-full flex-col gap-4 rounded-xl !border !border-black/8 !bg-white/78 px-5 py-5 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64"
           >
             <div class="space-y-2">
               <p class="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
@@ -2170,7 +2151,7 @@ async function runLifecycleAction() {
 
         <AppCard
           v-if="!canLoadShortlist"
-          :class="['rounded-xl !border !border-black/10 !bg-white/72 !shadow-[0_20px_40px_-24px_rgba(15,23,42,0.4)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#101010]/60', lifecycleHeroClass]"
+          class="rounded-xl !border !border-black/8 !bg-white/78 !shadow-[0_12px_32px_-28px_rgba(15,23,42,0.5)] !backdrop-blur-xl dark:!border-white/[0.10] dark:!bg-[#151515]/64"
         >
           <div class="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
             <div class="lg:pr-6">
