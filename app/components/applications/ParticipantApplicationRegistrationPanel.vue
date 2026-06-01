@@ -11,9 +11,13 @@ import type {
   ParticipantRegistrationTeamIntent,
   ParticipantRegistrationTeamMemberHint
 } from '~/domains/applications/participant-application'
+import type { ParticipantRegistrationProfileForm } from '~/domains/applications/participant-application-form'
 
 import { areParticipantTeamMemberHintsEqual } from '~/domains/applications/participant-application'
-import { buildParticipantRegistrationFormSchema } from '~/domains/applications/participant-application-form'
+import {
+  buildParticipantRegistrationFormSchema,
+  normalizeParticipantRegistrationProfileForm
+} from '~/domains/applications/participant-application-form'
 import { cloneFormValues } from '~/utils/form-values'
 
 const termsAccepted = defineModel<boolean>('termsAccepted', {
@@ -34,16 +38,7 @@ const teamIntent = defineModel<ParticipantRegistrationTeamIntent>('teamIntent', 
 const teamMemberHints = defineModel<ParticipantRegistrationTeamMemberHint[]>('teamMemberHints', {
   required: true
 })
-const profileForm = defineModel<{
-  firstName: string
-  familyName: string
-  xProfileUrl: string
-  linkedinProfileUrl: string
-  githubProfileUrl: string
-  chatgptEmail: string
-  openaiOrgId: string
-  lumaEmail: string
-}>('profileForm', {
+const profileForm = defineModel<ParticipantRegistrationProfileForm>('profileForm', {
   required: true
 })
 
@@ -159,7 +154,7 @@ const {
     proofOfExecutionUrl: proofOfExecutionUrl.value,
     teamIntent: teamIntent.value,
     teamMemberHints: cloneFormValues(teamMemberHints.value),
-    profileForm: cloneFormValues(profileForm.value)
+    profileForm: normalizeParticipantRegistrationProfileForm(profileForm.value)
   }
 })
 
@@ -190,7 +185,7 @@ watch([
     proofOfExecutionUrl: proofOfExecutionUrl.value,
     teamIntent: teamIntent.value,
     teamMemberHints: cloneFormValues(teamMemberHints.value),
-    profileForm: cloneFormValues(profileForm.value)
+    profileForm: normalizeParticipantRegistrationProfileForm(profileForm.value)
   }, submitCount.value > 0)
   syncingFromModels.value = false
 }, {
@@ -216,7 +211,7 @@ watch(values, (nextValues) => {
   }
 
   if (nextValues.profileForm) {
-    Object.assign(profileForm.value, cloneFormValues(nextValues.profileForm))
+    Object.assign(profileForm.value, normalizeParticipantRegistrationProfileForm(nextValues.profileForm))
   }
 }, {
   deep: true
@@ -297,13 +292,14 @@ const submissionPolicyReason = computed(() => {
 })
 
 const missingRequiredFieldCount = computed(() => {
+  const normalizedProfileForm = normalizeParticipantRegistrationProfileForm(profileForm.value)
   let count = 0
 
-  if (!profileForm.value.firstName.trim()) {
+  if (!normalizedProfileForm.firstName.trim()) {
     count += 1
   }
 
-  if (!profileForm.value.familyName.trim()) {
+  if (!normalizedProfileForm.familyName.trim()) {
     count += 1
   }
 
@@ -312,9 +308,9 @@ const missingRequiredFieldCount = computed(() => {
       continue
     }
 
-    const value = profileForm.value[field.key]
+    const value = normalizedProfileForm[field.key]
 
-    if (typeof value !== 'string' || value.trim().length === 0) {
+    if (value.trim().length === 0) {
       count += 1
     }
   }
@@ -510,10 +506,7 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
               class="space-y-4 rounded-xl border border-black/8 bg-white/80 px-4 pb-20 pt-4 dark:border-white/[0.08] dark:bg-[#171717]/80 md:pb-4"
               @submit.prevent="handleSubmitAttempt"
             >
-              <div
-                v-if="showLinksAndAccountsSection"
-                class="space-y-3"
-              >
+              <div class="space-y-3">
                 <div class="flex items-center justify-between gap-3">
                   <p class="text-[13px] font-medium text-highlighted dark:text-white">
                     About you
@@ -571,7 +564,10 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
                 </div>
               </div>
 
-              <div class="space-y-3">
+              <div
+                v-if="showLinksAndAccountsSection"
+                class="space-y-3"
+              >
                 <div class="flex items-center justify-between gap-3">
                   <p class="text-[13px] font-medium text-highlighted dark:text-white">
                     Links and accounts

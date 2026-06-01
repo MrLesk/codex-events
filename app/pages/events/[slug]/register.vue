@@ -28,6 +28,7 @@ import {
   resolveParticipantApplicationSubmittedTransition,
   resolveParticipantRegistrationEntry
 } from '~/domains/applications/participant-application'
+import { normalizeParticipantRegistrationProfileForm } from '~/domains/applications/participant-application-form'
 import { normalizeAccountProfileUrl } from '~/domains/accounts/profile'
 
 definePageMeta({
@@ -123,16 +124,18 @@ watch(() => accountActor.value, (actor) => {
     return
   }
 
-  profileForm.firstName = actor.platformUser.firstName
-  profileForm.familyName = actor.platformUser.familyName
-  profileForm.xProfileUrl = actor.platformUser.xProfileUrl ?? ''
-  profileForm.linkedinProfileUrl = actor.platformUser.linkedinProfileUrl ?? ''
-  profileForm.githubProfileUrl = actor.platformUser.githubProfileUrl
-    ?? actor.sessionUser.githubProfileUrl
-    ?? ''
-  profileForm.chatgptEmail = actor.platformUser.chatgptEmail ?? ''
-  profileForm.openaiOrgId = actor.platformUser.openaiOrgId ?? ''
-  profileForm.lumaEmail = actor.platformUser.lumaEmail ?? ''
+  Object.assign(profileForm, normalizeParticipantRegistrationProfileForm({
+    firstName: actor.platformUser.firstName,
+    familyName: actor.platformUser.familyName,
+    xProfileUrl: actor.platformUser.xProfileUrl,
+    linkedinProfileUrl: actor.platformUser.linkedinProfileUrl,
+    githubProfileUrl: actor.platformUser.githubProfileUrl
+      ?? actor.sessionUser.githubProfileUrl
+      ?? '',
+    chatgptEmail: actor.platformUser.chatgptEmail,
+    openaiOrgId: actor.platformUser.openaiOrgId,
+    lumaEmail: actor.platformUser.lumaEmail
+  }))
 }, { immediate: true })
 
 watch(() => event.value.maxTeamMembers, (maxTeamMembers) => {
@@ -337,33 +340,36 @@ async function submitParticipantApplication() {
   isSavingProfile.value = true
 
   try {
+    const normalizedProfileForm = normalizeParticipantRegistrationProfileForm(profileForm)
+    Object.assign(profileForm, normalizedProfileForm)
+
     const accountPatch: Record<string, unknown> = {
-      firstName: profileForm.firstName,
-      familyName: profileForm.familyName
+      firstName: normalizedProfileForm.firstName,
+      familyName: normalizedProfileForm.familyName
     }
 
     if (visibleProfileFieldKeys.value.has('xProfileUrl')) {
-      accountPatch.xProfileUrl = normalizeAccountProfileUrl(profileForm.xProfileUrl)
+      accountPatch.xProfileUrl = normalizeAccountProfileUrl(normalizedProfileForm.xProfileUrl)
     }
 
     if (visibleProfileFieldKeys.value.has('linkedinProfileUrl')) {
-      accountPatch.linkedinProfileUrl = normalizeAccountProfileUrl(profileForm.linkedinProfileUrl)
+      accountPatch.linkedinProfileUrl = normalizeAccountProfileUrl(normalizedProfileForm.linkedinProfileUrl)
     }
 
     if (visibleProfileFieldKeys.value.has('githubProfileUrl')) {
-      accountPatch.githubProfileUrl = normalizeAccountProfileUrl(profileForm.githubProfileUrl)
+      accountPatch.githubProfileUrl = normalizeAccountProfileUrl(normalizedProfileForm.githubProfileUrl)
     }
 
     if (visibleProfileFieldKeys.value.has('chatgptEmail')) {
-      accountPatch.chatgptEmail = profileForm.chatgptEmail
+      accountPatch.chatgptEmail = normalizedProfileForm.chatgptEmail
     }
 
     if (visibleProfileFieldKeys.value.has('openaiOrgId')) {
-      accountPatch.openaiOrgId = profileForm.openaiOrgId
+      accountPatch.openaiOrgId = normalizedProfileForm.openaiOrgId
     }
 
     if (visibleProfileFieldKeys.value.has('lumaEmail')) {
-      accountPatch.lumaEmail = profileForm.lumaEmail
+      accountPatch.lumaEmail = normalizedProfileForm.lumaEmail
     }
 
     await $fetch('/api/account', {

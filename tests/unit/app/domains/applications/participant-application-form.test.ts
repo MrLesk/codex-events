@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'vitest'
 
-import { buildParticipantRegistrationFormSchema } from '../../../../../app/domains/applications/participant-application-form'
+import {
+  buildParticipantRegistrationFormSchema,
+  normalizeParticipantRegistrationProfileForm
+} from '../../../../../app/domains/applications/participant-application-form'
 
 describe('participant registration form schema', () => {
   const registrationSchema = buildParticipantRegistrationFormSchema({
@@ -36,6 +39,24 @@ describe('participant registration form schema', () => {
       }
     }
   }
+
+  test('normalizes registration profile form values to strings', () => {
+    expect(normalizeParticipantRegistrationProfileForm({
+      firstName: 'Ada',
+      familyName: null,
+      githubProfileUrl: 'https://github.com/ada',
+      chatgptEmail: 42
+    })).toEqual({
+      firstName: 'Ada',
+      familyName: '',
+      xProfileUrl: '',
+      linkedinProfileUrl: '',
+      githubProfileUrl: 'https://github.com/ada',
+      chatgptEmail: '',
+      openaiOrgId: '',
+      lumaEmail: ''
+    })
+  })
 
   test('accepts comma-separated proof links', () => {
     const result = registrationSchema.safeParse({

@@ -15,6 +15,20 @@ import {
 } from '~/domains/accounts/profile'
 import { isProofOfExecutionLinksValid } from '~/domains/applications/participant-application'
 
+const participantRegistrationProfileFormKeys = [
+  'firstName',
+  'familyName',
+  'xProfileUrl',
+  'linkedinProfileUrl',
+  'githubProfileUrl',
+  'chatgptEmail',
+  'openaiOrgId',
+  'lumaEmail'
+] as const
+
+export type ParticipantRegistrationProfileFormKey = typeof participantRegistrationProfileFormKeys[number]
+export type ParticipantRegistrationProfileForm = Record<ParticipantRegistrationProfileFormKey, string>
+
 const optionalEmailSchema = z.string().trim().refine(
   value => value.length === 0 || z.string().email().safeParse(value).success,
   'Enter a valid email address.'
@@ -35,6 +49,19 @@ function createOptionalSocialProfileUrlSchema(
   return z.string().trim()
     .refine(value => value.length === 0 || isAccountProfileUrlValid(value), formatMessage)
     .refine(value => value.length === 0 || isAccountSocialProfileUrlValid(key, value), domainMessage)
+}
+
+export function normalizeParticipantRegistrationProfileForm(
+  value: Partial<Record<ParticipantRegistrationProfileFormKey, unknown>> | null | undefined
+): ParticipantRegistrationProfileForm {
+  const normalized = {} as ParticipantRegistrationProfileForm
+
+  for (const key of participantRegistrationProfileFormKeys) {
+    const fieldValue = value?.[key]
+    normalized[key] = typeof fieldValue === 'string' ? fieldValue : ''
+  }
+
+  return normalized
 }
 
 export function buildParticipantRegistrationFormSchema(options: {
