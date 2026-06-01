@@ -268,12 +268,37 @@ const canClaimCredits = computed(() => applicationStatus.value === 'approved')
 const hasParticipantContext = computed(() =>
   Boolean(applicationStatus.value || participationRecord.value?.activeTeam || participationRecord.value?.latestTeam)
 )
+const shouldLoadPublishedStaffRoster = computed(() => actor.value.kind === 'platform_user')
+const publishedStaffRosterRequest = await useApiData<PublishedEventRosterLoadState>(
+  () => `account-event-staff:${workspaceEventId.value}`,
+  async ({ apiFetch, signal }) => {
+    if (!shouldLoadPublishedStaffRoster.value) {
+      return createEmptyPublishedEventRosterLoadState()
+    }
+
+    return await loadPublishedEventRoster(
+      path => apiFetch<PublicApiListResponse<PublishedEventRosterMember>>(path, { signal }),
+      {
+        eventId: workspaceEventId.value,
+        role: 'staff'
+      }
+    )
+  },
+  {
+    default: createEmptyPublishedEventRosterLoadState,
+    immediate: shouldLoadPublishedStaffRoster.value
+  }
+)
+const publishedStaffRoster = computed(() =>
+  publishedStaffRosterRequest.data.value ?? createEmptyPublishedEventRosterLoadState()
+)
 
 const tabAccess = computed(() =>
   getAccountEventTabAccess({
     hasApprovedParticipantAccess: applicationStatus.value === 'approved',
     hasGallery: Boolean(event.value.hasGallery),
     hasPublishedPrizes: hasPublishedPrizes.value,
+    hasPublishedStaff: publishedStaffRoster.value.members.length > 0,
     eventType: event.value.eventType,
     eventState: event.value.state,
     canJudge: canJudge.value,
@@ -323,9 +348,6 @@ const activeSection = computed<AccountEventWorkspaceTab>(() =>
 const shouldLoadPublishedJudgesRoster = computed(() =>
   actor.value.kind === 'platform_user' && activeSection.value === 'judges'
 )
-const shouldLoadPublishedStaffRoster = computed(() =>
-  actor.value.kind === 'platform_user' && activeSection.value === 'staff'
-)
 const shouldLoadCompletedPrizesData = computed(() =>
   isCompetitionEvent.value && event.value.state === 'completed' && activeSection.value === 'prizes'
 )
@@ -337,7 +359,6 @@ const shouldLoadParticipationRank = computed(() =>
 )
 const [
   publishedJudgesRosterRequest,
-  publishedStaffRosterRequest,
   winnersRequest,
   publishedProjectsRequest,
   participationRankRequest
@@ -360,26 +381,6 @@ const [
     {
       default: createEmptyPublishedEventRosterLoadState,
       immediate: shouldLoadPublishedJudgesRoster.value
-    }
-  ),
-  useApiData<PublishedEventRosterLoadState>(
-    () => `account-event-staff:${workspaceEventId.value}`,
-    async ({ apiFetch, signal }) => {
-      if (!shouldLoadPublishedStaffRoster.value) {
-        return createEmptyPublishedEventRosterLoadState()
-      }
-
-      return await loadPublishedEventRoster(
-        path => apiFetch<PublicApiListResponse<PublishedEventRosterMember>>(path, { signal }),
-        {
-          eventId: workspaceEventId.value,
-          role: 'staff'
-        }
-      )
-    },
-    {
-      default: createEmptyPublishedEventRosterLoadState,
-      immediate: shouldLoadPublishedStaffRoster.value
     }
   ),
   useApiData<WinnerEntry[]>(
@@ -447,9 +448,6 @@ refreshWhenEnabled(publishedProjectsRequest, shouldLoadCompletedPrizesData)
 refreshWhenEnabled(participationRankRequest, shouldLoadParticipationRank)
 const publishedJudgesRoster = computed(() =>
   publishedJudgesRosterRequest.data.value ?? createEmptyPublishedEventRosterLoadState()
-)
-const publishedStaffRoster = computed(() =>
-  publishedStaffRosterRequest.data.value ?? createEmptyPublishedEventRosterLoadState()
 )
 const winners = computed(() => winnersRequest.data.value ?? [])
 const publishedProjects = computed(() => publishedProjectsRequest.data.value ?? [])

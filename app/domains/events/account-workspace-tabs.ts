@@ -25,6 +25,7 @@ export interface AccountEventTabAccessOptions {
   hasApprovedParticipantAccess: boolean
   hasGallery: boolean
   hasPublishedPrizes: boolean
+  hasPublishedStaff: boolean
   eventType?: EventType | null
   eventState?: PublicEventState | null
   canJudge: boolean
@@ -125,6 +126,7 @@ export function getAccountEventTabAccess(
     hasApprovedParticipantAccess,
     hasGallery,
     hasPublishedPrizes,
+    hasPublishedStaff,
     eventType,
     eventState,
     canJudge,
@@ -152,7 +154,9 @@ export function getAccountEventTabAccess(
     availableTabs.push('judges')
   }
 
-  availableTabs.push('staff')
+  if (hasPublishedStaff || canManage) {
+    availableTabs.push('staff')
+  }
 
   if (isCompetitionEvent && (canJudge || canManage || canViewParticipantsAndTeams)) {
     availableTabs.push('feedback')

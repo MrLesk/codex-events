@@ -9,7 +9,8 @@ import {
 } from '../../../../../app/domains/events/account-workspace-tabs'
 
 const hackathonOptions = {
-  eventType: 'hackathon' as const
+  eventType: 'hackathon' as const,
+  hasPublishedStaff: true
 }
 
 describe('getAccountEventTabAccess', () => {
@@ -64,6 +65,7 @@ describe('getAccountEventTabAccess', () => {
   test('keeps the prizes tab available to admins even before prizes are published', () => {
     expect(getAccountEventTabAccess({
       ...hackathonOptions,
+      hasPublishedStaff: false,
       hasApprovedParticipantAccess: false,
       hasGallery: false,
       hasPublishedPrizes: false,
@@ -74,6 +76,23 @@ describe('getAccountEventTabAccess', () => {
       availableTabs: ['overview', 'credits', 'prizes', 'details', 'gallery', 'judges', 'staff', 'feedback', 'participants', 'teams', 'submissions', 'operations', 'settings'],
       showPrizeConfiguration: true,
       showAgendaConfigurationInDetails: true
+    })
+  })
+
+  test('hides the staff tab from non-admins when no staff are published', () => {
+    expect(getAccountEventTabAccess({
+      ...hackathonOptions,
+      hasPublishedStaff: false,
+      hasApprovedParticipantAccess: true,
+      hasGallery: false,
+      hasPublishedPrizes: false,
+      canJudge: false,
+      canManage: false,
+      canViewParticipantsAndTeams: false
+    })).toEqual({
+      availableTabs: ['overview', 'credits', 'details', 'judges', 'workspace', 'teams'],
+      showPrizeConfiguration: false,
+      showAgendaConfigurationInDetails: false
     })
   })
 
@@ -184,6 +203,7 @@ describe('getAccountEventTabAccess', () => {
   test('hides competition-only tabs for registration-only events', () => {
     expect(getAccountEventTabAccess({
       eventType: 'meetup',
+      hasPublishedStaff: true,
       hasApprovedParticipantAccess: true,
       hasGallery: true,
       hasPublishedPrizes: true,
