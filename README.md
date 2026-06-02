@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  Coordinate applications, teams, submissions, judging, winners, prizes, galleries, and feedback from one place, on infrastructure you choose.
+  Run hackathons, meetups, and build events from one self-hosted workspace — the same applications, approvals, and attendance for every event, plus teams, submissions, judging, and prizes when you run a hackathon. On infrastructure you choose.
 </p>
 
 <p align="center">
@@ -44,57 +44,56 @@
 
 ## A Shared Workspace For Events
 
-Codex Events helps teams replace scattered forms, spreadsheets, judge sheets, event-tool exports, email threads, and one-off scripts with a shared workspace for recurring or parallel events.
+Codex Events replaces the scattered forms, spreadsheets, judge sheets, tool exports, and email threads behind an event with one shared workspace for recurring or parallel events. Participants keep a reusable platform account; each event brings its own schedule, application flow, rules, roles, and outcomes.
+
+## Event Types
+
+You run three kinds of event from the same platform. Every event shares the same accounts, applications, approvals, and attendance. Meetups and builds stop there; hackathons add the competition layer on top.
 
 <table>
   <tr>
-    <td width="33%">
-      <strong>Keep each event understandable</strong><br />
-      Manage applications, approvals, teams, submissions, judging, winners, prizes, galleries, and post-event feedback without stitching tools together.
+    <td width="33%" valign="top">
+      <strong>Hackathon</strong><br />
+      Full competition event.<br /><br />
+      Apply &rarr; form a team &rarr; submit a project &rarr; blind and live-pitch judging &rarr; shortlist &rarr; winners, prizes, and a public project showcase.
     </td>
-    <td width="33%">
-      <strong>Reuse the same foundation</strong><br />
-      Users keep reusable platform accounts while each event has its own schedule, rules, roles, optional terms, teams, submissions, judging, and outcomes.
+    <td width="33%" valign="top">
+      <strong>Meetup</strong><br />
+      Registration-only community event.<br /><br />
+      Apply &rarr; get approved &rarr; attend.
     </td>
-    <td width="33%">
-      <strong>Choose where it runs</strong><br />
-      Deploy the platform in your Cloudflare and Auth0 environment, with authorization and competition state stored in the application data model.
+    <td width="33%" valign="top">
+      <strong>Build</strong><br />
+      Registration-only build event.<br /><br />
+      Apply &rarr; get approved &rarr; attend.
     </td>
   </tr>
 </table>
 
-## What It Helps With
+## Features
+
+### Every event type includes
 
 | Capability | How it helps |
 | --- | --- |
-| **Application-first participation** | Per-event registration windows, profile requirements, optional event-specific terms, approvals, participant decision emails, and optional Luma attendance integration. |
-| **Built-in team workflows** | Solo participation, team creation, join requests, team admins, team limits, and account-scoped team workspaces. |
-| **Structured submissions** | Submission windows, tracks, summaries, repository links, demo links, drafts, locking, withdrawal, and disqualification handling. |
-| **Structured judging** | Blind review, judge assignment, skipped-review redistribution, shortlist management, live pitch stages, pitch review, weighted scoring, and final deliberation. |
-| **Outcomes and follow-through** | Winner announcements, prize eligibility snapshots, winner emails, winner terms, legal-name collection, prize redemption tracking, and completed public showcases. |
-| **Clear permission boundaries** | Platform admins, event admins, staff, judges, approved participants, team admins, and prize recipients are separate actors with explicit platform-data permissions. |
-| **Post-event learning** | Anonymous feedback collection after completion, with results available to the operating team. |
+| **Reusable accounts** | Participants register once and keep a profile, linked sign-in identities, and history across every event they join. |
+| **Application-first registration** | Per-event registration windows, configurable application fields, required profile fields, and optional event-specific terms. |
+| **Approvals and decision emails** | Review applications with staged approve/reject decisions or automatic approval, and notify participants of the outcome by email. |
+| **Attendance and Luma sync** | Mark events in person, gate the venue address and Discord link to approved participants, and optionally verify Luma guests and sync check-ins. |
+| **Event credits** | Offer redeemable credits — such as API or tooling credits — to approved participants from uploaded inventory. |
+| **Galleries and feedback** | Share a private event gallery, publish selected photos, and collect anonymous post-event feedback. |
+| **Explicit roles and audit** | Platform admins, event admins, event organizers, and staff are separate actors with scoped permissions and an audit trail. |
 
-## What The Platform Covers
+### Hackathons also add
 
-<table>
-  <tr>
-    <th align="left">Public and participant experience</th>
-    <th align="left">Organizer workflows</th>
-    <th align="left">Competition and outcomes</th>
-  </tr>
-  <tr>
-    <td valign="top">
-      Public event pages, schedules, tracks, prizes, registration, account onboarding, reusable profiles, application status, team formation, submissions, galleries, credits, shortlist visibility, and completed outcomes.
-    </td>
-    <td valign="top">
-      Platform-admin and event-admin workflows, staff and judge assignments, staged application review, participant-facing emails, lifecycle transitions, event sync, durable records, and role-specific workspaces.
-    </td>
-    <td valign="top">
-      Team-owned submissions, blind and pitch scoring, finalist boundaries, final ranking, prizes, winner communications, prize redemption, public winner showcases, published projects, galleries, and feedback reporting.
-    </td>
-  </tr>
-</table>
+| Capability | How it helps |
+| --- | --- |
+| **Team formation** | Solo or team participation, open-team join requests, team admins, and per-event team-size limits. |
+| **Structured submissions** | Submission windows, tracks, summaries, repository and demo links, drafts, locking, withdrawal, and disqualification. |
+| **Blind and pitch judging** | Configurable blind review (0–2 reviewers per project), a live pitch stage, pitch review, weighted scoring, and skipped-review redistribution. |
+| **Shortlist and finalists** | Save the blind-review shortlist, set the finalist boundary, and run the live pitch lineup. |
+| **Winners and prizes** | Announce winners, freeze prize eligibility, send winner notices, and track prize redemption against accepted winner terms. |
+| **Public showcases** | A completed-event showcase of winning projects, plus opt-in public publishing for non-winning projects. |
 
 ---
 
@@ -134,15 +133,15 @@ Remote test and production deployments are generated from environment-specific d
 
 Codex Events is a good fit when your team wants to:
 
-- run multiple events from the same platform;
-- review and approve participants before they enter the workspace;
-- support solo builders and teams without separate tooling;
-- run blind judging, live pitches, or both;
-- keep admin, staff, judge, participant, and winner permissions explicit;
+- run several events in parallel or as a recurring series — hackathons, meetups, and build events — from one platform;
+- review and approve participants before they reach the event workspace;
+- run registration-only community events with shared approvals, attendance, and credits;
+- run hackathons with solo and team participation, blind and live-pitch judging, and prizes, without stitching separate tools together;
+- keep platform-admin, event-admin, staff, judge, participant, and winner permissions explicit;
 - host on Cloudflare with your own Auth0 tenant and deployment pipeline;
 - keep participant data, competition state, and prize follow-up in one consistent record.
 
-It may be more than you need if you only want a single static event page, an RSVP form, or an unstructured showcase gallery.
+It may be more than you need if you only want a single static event page or an RSVP form.
 
 ## What You Bring
 

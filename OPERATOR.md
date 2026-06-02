@@ -33,11 +33,11 @@ You need:
 
 Each environment has its own app hostname; the Auth0 login screen defaults to that hostname prefixed with `auth.`. The test rows apply only if you enable the optional [test environment](#6-advanced-settings).
 
-| Purpose | Example |
-| --- | --- |
-| Production app | `events.example.com` |
-| Auth0 login | `auth.events.example.com` |
-| Test app (optional) | `test.events.example.com` |
+| Purpose                     | Example                        |
+|-----------------------------|--------------------------------|
+| Production app              | `events.example.com`           |
+| Auth0 login                 | `auth.events.example.com`      |
+| Test app (optional)         | `test.events.example.com`      |
 | Test Auth0 login (optional) | `auth.test.events.example.com` |
 
 ## 2. Cloudflare
@@ -108,40 +108,40 @@ Variable names follow a convention worth knowing:
 
 ### Required variables
 
-| Key | Platform | Where to find it |
-| --- | --- | --- |
-| `CF_ZONE_NAME` | Cloudflare | Your Cloudflare DNS zone — usually the parent domain, e.g. `example.com` |
-| `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Cloudflare | Any address on the domain you onboarded to Cloudflare Email (section 2) — you choose it |
-| `AUTH0_MANAGEMENT_DOMAIN` | Auth0 | The tenant domain from section 3.1, e.g. `your-tenant.eu.auth0.com` |
-| `BASE_DOMAIN` | - | The hostname the app runs on, e.g. `events.example.com` |
-| `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | - | Email of the person who will be the first platform admin |
+| Key                               | Platform   | Where to find it                                                                        |
+|-----------------------------------|------------|-----------------------------------------------------------------------------------------|
+| `CF_ZONE_NAME`                    | Cloudflare | Your Cloudflare DNS zone — usually the parent domain, e.g. `example.com`                |
+| `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`  | Cloudflare | Any address on the domain you onboarded to Cloudflare Email (section 2) — you choose it |
+| `AUTH0_MANAGEMENT_DOMAIN`         | Auth0      | The tenant domain from section 3.1, e.g. `your-tenant.eu.auth0.com`                     |
+| `BASE_DOMAIN`                     | -          | The hostname the app runs on, e.g. `events.example.com`                                 |
+| `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | -          | Email of the person who will be the first platform admin                                |
 
 Add these only when they apply:
 
-| Key | Platform | Where to find it |
-| --- | --- | --- |
-| `AUTH0_CUSTOM_DOMAIN` | Auth0 | Only if your login hostname is not `auth.<BASE_DOMAIN>`, e.g. `auth.example.com` |
-| `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 | Only if your database connection is not named `Username-Password-Authentication` |
-| `NUXT_OUTBOUND_EMAIL_REPLY_TO` | - | Only if replies should go to a different address than `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` |
+| Key                                   | Platform | Where to find it                                                                       |
+|---------------------------------------|----------|----------------------------------------------------------------------------------------|
+| `AUTH0_CUSTOM_DOMAIN`                 | Auth0    | Only if your login hostname is not `auth.<BASE_DOMAIN>`, e.g. `auth.example.com`       |
+| `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0    | Only if your database connection is not named `Username-Password-Authentication`       |
+| `NUXT_OUTBOUND_EMAIL_REPLY_TO`        | -        | Only if replies should go to a different address than `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` |
 
 ### Required secrets
 
-| Key | Platform | Where to find it |
-| --- | --- | --- |
-| `CF_ACCOUNT_ID` | Cloudflare | Cloudflare dashboard → account ID |
-| `CF_API_TOKEN` | Cloudflare | Create a token with the permissions in [Cloudflare API token](#cloudflare-api-token) below — copy it immediately, it is shown only once |
-| `NUXT_AUTH0_CLIENT_ID` | Auth0 | Your Regular Web Application (section 3.2) |
-| `NUXT_AUTH0_CLIENT_SECRET` | Auth0 | Your Regular Web Application (section 3.2) |
-| `AUTH0_MGMT_CLIENT_ID` | Auth0 | Your Machine-to-Machine application (section 3.3) |
-| `AUTH0_MGMT_CLIENT_SECRET` | Auth0 | Your Machine-to-Machine application (section 3.3) |
+| Key                        | Platform   | Where to find it                                                                                                                        |
+|----------------------------|------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| `CF_ACCOUNT_ID`            | Cloudflare | Cloudflare dashboard → account ID                                                                                                       |
+| `CF_API_TOKEN`             | Cloudflare | Create a token with the permissions in [Cloudflare API token](#cloudflare-api-token) below — copy it immediately, it is shown only once |
+| `NUXT_AUTH0_CLIENT_ID`     | Auth0      | Your Regular Web Application (section 3.2)                                                                                              |
+| `NUXT_AUTH0_CLIENT_SECRET` | Auth0      | Your Regular Web Application (section 3.2)                                                                                              |
+| `AUTH0_MGMT_CLIENT_ID`     | Auth0      | Your Machine-to-Machine application (section 3.3)                                                                                       |
+| `AUTH0_MGMT_CLIENT_SECRET` | Auth0      | Your Machine-to-Machine application (section 3.3)                                                                                       |
 
 The deploy workflow derives `NUXT_AUTH0_SESSION_SECRET` and `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` automatically from `NUXT_AUTH0_CLIENT_SECRET`, so you do not set them here. Set explicit values only when you need controlled secret rotation (see [section 6](#optional-secrets)).
 
 Add these only when they apply:
 
-| Key | Platform | Where to find it |
-| --- | --- | --- |
-| `NUXT_LUMA_API_KEY` | Luma | Only if events use Luma sync |
+| Key                 | Platform | Where to find it             |
+|---------------------|----------|------------------------------|
+| `NUXT_LUMA_API_KEY` | Luma     | Only if events use Luma sync |
 
 ### Cloudflare API token
 
@@ -149,16 +149,16 @@ Create a custom Cloudflare API token for the deploy workflow, then paste it into
 
 Cloudflare edit access does not consistently include read access, so keep both levels where shown.
 
-| Scope | Resource | Access | Why |
-| --- | --- | --- | --- |
-| Account | Workers Scripts | Read, Edit | Deploy the Worker and upload its secrets |
-| Account | D1 | Read, Edit | Create the D1 database and run migrations |
-| Account | Workers R2 Storage | Read, Edit | Create the R2 buckets for profile and event images |
-| Account | Queues | Read, Edit | Create the email and Luma queues and attach the Worker as their consumer |
-| Account | Cloudflare Images | Read, Edit | Enable the Cloudflare Images binding for protected gallery previews |
-| Zone | Zone | Read | Look up the zone for the route and DNS record |
-| Zone | Workers Routes | Read, Edit | Route your domain to the Worker |
-| Zone | DNS | Read, Edit | Write the Auth0 custom-domain verification record |
+| Scope   | Resource           | Access     | Why                                                                      |
+|---------|--------------------|------------|--------------------------------------------------------------------------|
+| Account | Workers Scripts    | Read, Edit | Deploy the Worker and upload its secrets                                 |
+| Account | D1                 | Read, Edit | Create the D1 database and run migrations                                |
+| Account | Workers R2 Storage | Read, Edit | Create the R2 buckets for profile and event images                       |
+| Account | Queues             | Read, Edit | Create the email and Luma queues and attach the Worker as their consumer |
+| Account | Cloudflare Images  | Read, Edit | Enable the Cloudflare Images binding for protected gallery previews      |
+| Zone    | Zone               | Read       | Look up the zone for the route and DNS record                            |
+| Zone    | Workers Routes     | Read, Edit | Route your domain to the Worker                                          |
+| Zone    | DNS                | Read, Edit | Write the Auth0 custom-domain verification record                        |
 
 Scope the zone permissions to the DNS zone you used for `CF_ZONE_NAME`.
 
@@ -223,9 +223,7 @@ Everything in this section is optional for a default production deployment.
 
 ### How resources are named
 
-Remote deploys generate ignored Wrangler config files from each GitHub environment's values. Every environment supplies its own `BASE_DOMAIN`; the generator never derives `test.*`, `prod.*`, or any other hostname from an environment name.
-
-For the selected target, the generator derives:
+Each deploy reads the values from its GitHub environment and derives:
 
 - application URL: `https://<BASE_DOMAIN>`
 - Cloudflare route pattern: `<BASE_DOMAIN>`
@@ -234,23 +232,22 @@ For the selected target, the generator derives:
 
 `ENV_NAME` defaults to `prod` for production and `test` for the test target. `RESOURCE_PREFIX` defaults to `codex-events`. Keep `CF_ZONE_NAME` explicit because the DNS zone cannot be inferred safely from a hostname.
 
-| Target | `ENV_NAME` | `RESOURCE_PREFIX` | Worker and D1 default |
-| --- | --- | --- | --- |
-| Production | `prod` | `codex-events` | `codex-events-prod` |
-| Test | `test` | `codex-events` | `codex-events-test` |
-| Preview | `preview` | `codex-events` | `codex-events-preview` |
+| Target     | `ENV_NAME` | `RESOURCE_PREFIX` | Worker and D1 default  |
+|------------|------------|-------------------|------------------------|
+| Production | `prod`     | `codex-events`    | `codex-events-prod`    |
+| Test       | `test`     | `codex-events`    | `codex-events-test`    |
 
 Default production resource names:
 
-| GitHub variable | Cloudflare resource | Default production value |
-| --- | --- | --- |
-| `CF_WORKER_NAME` | Worker | `codex-events-prod` |
-| `CF_D1_DATABASE_NAME` | D1 database | `codex-events-prod` |
-| `CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket | `codex-events-prod-profile-icons` |
-| `CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket | `codex-events-prod-event-images` |
+| GitHub variable                     | Cloudflare resource              | Default production value                              |
+|-------------------------------------|----------------------------------|-------------------------------------------------------|
+| `CF_WORKER_NAME`                    | Worker                           | `codex-events-prod`                                   |
+| `CF_D1_DATABASE_NAME`               | D1 database                      | `codex-events-prod`                                   |
+| `CF_PROFILE_ICONS_BUCKET`           | Profile-icons R2 bucket          | `codex-events-prod-profile-icons`                     |
+| `CF_EVENT_IMAGES_BUCKET`            | Event-images R2 bucket           | `codex-events-prod-event-images`                      |
 | `CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue | `codex-events-prod-application-review-email-delivery` |
-| `CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue | `codex-events-prod-event-outcome-email-delivery` |
-| `CF_LUMA_SYNC_QUEUE` | Luma sync queue | `codex-events-prod-application-luma-sync` |
+| `CF_EVENT_OUTCOME_EMAIL_QUEUE`      | Event outcome email queue        | `codex-events-prod-event-outcome-email-delivery`      |
+| `CF_LUMA_SYNC_QUEUE`                | Luma sync queue                  | `codex-events-prod-application-luma-sync`             |
 
 ### Optional variables
 
@@ -258,46 +255,46 @@ Set any of these in the GitHub environment to override a default.
 
 Deployment defaults and resource names:
 
-| Variable | Value |
-| --- | --- |
-| `ENV_NAME` | Environment name used in generated resource names. Defaults to `prod` for production |
-| `RESOURCE_PREFIX` | Resource-name prefix. Defaults to `codex-events` |
-| `CF_WORKER_NAME` | Worker name |
-| `CF_D1_DATABASE_NAME` | D1 database name; created if it does not exist |
-| `CF_PROFILE_ICONS_BUCKET` | Profile-icons R2 bucket name; created if it does not exist |
-| `CF_EVENT_IMAGES_BUCKET` | Event-images R2 bucket name; created if it does not exist |
-| `CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name |
-| `CF_EVENT_OUTCOME_EMAIL_QUEUE` | Event outcome email queue name |
-| `CF_LUMA_SYNC_QUEUE` | Luma sync queue name |
+| Variable                            | Value                                                                                |
+|-------------------------------------|--------------------------------------------------------------------------------------|
+| `ENV_NAME`                          | Environment name used in generated resource names. Defaults to `prod` for production |
+| `RESOURCE_PREFIX`                   | Resource-name prefix. Defaults to `codex-events`                                     |
+| `CF_WORKER_NAME`                    | Worker name                                                                          |
+| `CF_D1_DATABASE_NAME`               | D1 database name; created if it does not exist                                       |
+| `CF_PROFILE_ICONS_BUCKET`           | Profile-icons R2 bucket name; created if it does not exist                           |
+| `CF_EVENT_IMAGES_BUCKET`            | Event-images R2 bucket name; created if it does not exist                            |
+| `CF_APPLICATION_REVIEW_EMAIL_QUEUE` | Application decision email queue name                                                |
+| `CF_EVENT_OUTCOME_EMAIL_QUEUE`      | Event outcome email queue name                                                       |
+| `CF_LUMA_SYNC_QUEUE`                | Luma sync queue name                                                                 |
 
 Auth0 and display:
 
-| Variable | Value |
-| --- | --- |
-| `AUTH0_CUSTOM_DOMAIN` | Login hostname override. Defaults to `auth.<BASE_DOMAIN>` |
-| `AUTH0_APP_DISPLAY_NAME` | Name shown in Auth0-hosted login copy. Defaults to `Codex Events` |
+| Variable                              | Value                                                                          |
+|---------------------------------------|--------------------------------------------------------------------------------|
+| `AUTH0_CUSTOM_DOMAIN`                 | Login hostname override. Defaults to `auth.<BASE_DOMAIN>`                      |
+| `AUTH0_APP_DISPLAY_NAME`              | Name shown in Auth0-hosted login copy. Defaults to `Codex Events`              |
 | `NUXT_AUTH0_DATABASE_CONNECTION_NAME` | Auth0 database connection name. Defaults to `Username-Password-Authentication` |
 
 Outbound email and queues:
 
-| Variable | Value |
-| --- | --- |
-| `NUXT_OUTBOUND_EMAIL_BINDING` | Worker Email Service binding name. Defaults to `EMAIL` |
-| `NUXT_OUTBOUND_EMAIL_FROM_NAME` | Sender display name. Defaults to `Codex Events` |
-| `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING` | Binding for application decision emails. Defaults to `APPLICATION_REVIEW_EMAIL_QUEUE` |
-| `NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS` | Retry delay for application decision email jobs. Defaults to `120` |
-| `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING` | Binding for event outcome emails. Defaults to `EVENT_OUTCOME_EMAIL_QUEUE` |
-| `NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS` | Retry delay for event outcome email jobs. Defaults to `120` |
-| `NUXT_LUMA_QUEUE_BINDING` | Binding for Luma sync jobs. Defaults to `APPLICATION_LUMA_SYNC_QUEUE` |
-| `NUXT_LUMA_RETRY_DELAY_SECONDS` | Retry delay for Luma sync jobs. Defaults to `120` |
+| Variable                                             | Value                                                                                 |
+|------------------------------------------------------|---------------------------------------------------------------------------------------|
+| `NUXT_OUTBOUND_EMAIL_BINDING`                        | Worker Email Service binding name. Defaults to `EMAIL`                                |
+| `NUXT_OUTBOUND_EMAIL_FROM_NAME`                      | Sender display name. Defaults to `Codex Events`                                       |
+| `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING`       | Binding for application decision emails. Defaults to `APPLICATION_REVIEW_EMAIL_QUEUE` |
+| `NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS` | Retry delay for application decision email jobs. Defaults to `120`                    |
+| `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING`            | Binding for event outcome emails. Defaults to `EVENT_OUTCOME_EMAIL_QUEUE`             |
+| `NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS`      | Retry delay for event outcome email jobs. Defaults to `120`                           |
+| `NUXT_LUMA_QUEUE_BINDING`                            | Binding for Luma sync jobs. Defaults to `APPLICATION_LUMA_SYNC_QUEUE`                 |
+| `NUXT_LUMA_RETRY_DELAY_SECONDS`                      | Retry delay for Luma sync jobs. Defaults to `120`                                     |
 
 ### Optional secrets
 
-| Secret | Value |
-| --- | --- |
-| `NUXT_AUTH0_SESSION_SECRET` | Override for the generated Auth0 session secret. Defaults to a stable value derived from `NUXT_AUTH0_CLIENT_SECRET` |
+| Secret                                     | Value                                                                                                                                                              |
+|--------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `NUXT_AUTH0_SESSION_SECRET`                | Override for the generated Auth0 session secret. Defaults to a stable value derived from `NUXT_AUTH0_CLIENT_SECRET`                                                |
 | `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` | Override for the generated account-link challenge secret shared by the Worker and Auth0 Action. Defaults to a stable value derived from `NUXT_AUTH0_CLIENT_SECRET` |
-| `NUXT_LUMA_API_KEY` | Luma API key when events use Luma sync |
+| `NUXT_LUMA_API_KEY`                        | Luma API key when events use Luma sync                                                                                                                             |
 
 ### Test environment
 
@@ -309,23 +306,23 @@ Test requires its own Auth0 tenant — production and test cannot share one on t
 
 Required test variables:
 
-| Variable | Value |
-| --- | --- |
-| `BASE_DOMAIN` | Test app hostname |
-| `CF_ZONE_NAME` | Cloudflare DNS zone name |
-| `AUTH0_MANAGEMENT_DOMAIN` | Test Auth0 tenant hostname |
+| Variable                          | Value                               |
+|-----------------------------------|-------------------------------------|
+| `BASE_DOMAIN`                     | Test app hostname                   |
+| `CF_ZONE_NAME`                    | Cloudflare DNS zone name            |
+| `AUTH0_MANAGEMENT_DOMAIN`         | Test Auth0 tenant hostname          |
 | `NUXT_FIRST_PLATFORM_ADMIN_EMAIL` | First platform admin email for test |
-| `NUXT_OUTBOUND_EMAIL_FROM_EMAIL` | Verified test sender address |
+| `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`  | Verified test sender address        |
 
 Required test secrets:
 
-| Secret | Value |
-| --- | --- |
-| `CF_ACCOUNT_ID` | Cloudflare account ID |
-| `CF_API_TOKEN` | Cloudflare API token |
-| `NUXT_AUTH0_CLIENT_ID` | Test Auth0 application client ID |
-| `NUXT_AUTH0_CLIENT_SECRET` | Test Auth0 application client secret |
-| `AUTH0_MGMT_CLIENT_ID` | Auth0 Management application client ID |
+| Secret                     | Value                                      |
+|----------------------------|--------------------------------------------|
+| `CF_ACCOUNT_ID`            | Cloudflare account ID                      |
+| `CF_API_TOKEN`             | Cloudflare API token                       |
+| `NUXT_AUTH0_CLIENT_ID`     | Test Auth0 application client ID           |
+| `NUXT_AUTH0_CLIENT_SECRET` | Test Auth0 application client secret       |
+| `AUTH0_MGMT_CLIENT_ID`     | Auth0 Management application client ID     |
 | `AUTH0_MGMT_CLIENT_SECRET` | Auth0 Management application client secret |
 
 As with production, the test job derives the session and account-link secrets from `NUXT_AUTH0_CLIENT_SECRET` when overrides are omitted. Set `NUXT_LUMA_API_KEY` only when test events use Luma sync.

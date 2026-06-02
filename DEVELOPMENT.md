@@ -192,144 +192,43 @@ The protected example surface added in this repo is `/dashboard`.
 
 ## Remote Deployments
 
-The tracked `wrangler.jsonc` is local/adopter-safe and does not contain remote Cloudflare environments. Remote test and production deployments generate ignored Wrangler config files from operator-owned environment values:
+Operator-facing deployment — the GitHub `production` and `test` environments, their variables and secrets, the Cloudflare API token scopes, and first-run setup — lives in [`OPERATOR.md`](OPERATOR.md). This section covers only how the deploy tooling is wired in this repository.
+
+The tracked `wrangler.jsonc` is local/adopter-safe and contains no remote Cloudflare environments. Remote test and production deployments generate ignored Wrangler config files under `.wrangler/generated/` from the environment values documented in `OPERATOR.md`:
 
 ```bash
 bun tools/deploy/generate-wrangler-config.ts test
 bun tools/deploy/generate-wrangler-config.ts production
 ```
 
-The generated files are written under `.wrangler/generated/` and are used by:
+Those generated files drive the deploy scripts:
 
-- `bun run db:migrate:test`
-- `bun run db:migrate:production`
-- `bun run deploy:test`
-- `bun run deploy:production`
+- `bun run db:migrate:test` / `bun run db:migrate:production`
+- `bun run deploy:test` / `bun run deploy:production`
 
-Each environment provides its own `BASE_DOMAIN`. The generator never derives `test.*`, `prod.*`, or any other hostname from an environment name.
+For the selected target, the generator resolves the application URL, Cloudflare route pattern, Luma webhook URL, and resource names from `BASE_DOMAIN`, `ENV_NAME`, and `RESOURCE_PREFIX`, copies the app runtime variables into the generated Wrangler `vars` block, and fails fast when a required deploy value is missing. It never derives a hostname from an environment name, so each environment supplies its own `BASE_DOMAIN`. The deploy workflow resolves the D1 database and R2 buckets first (creating them when missing), then generates the config with the resolved D1 UUID and bucket names. The resolved names and their overrides are listed in [OPERATOR.md → How resources are named](OPERATOR.md#how-resources-are-named).
 
-For the selected target, the generator derives:
+Two repo-specific details matter when maintaining this tooling:
 
-- application URL: `https://<base-domain>`
-- Cloudflare route pattern: `<base-domain>`
-- Luma webhook URL: `https://<base-domain>/api/public/luma/webhooks`
-- resource names from `ENV_NAME` and `RESOURCE_PREFIX`
+- **Queue consumers are reconciled separately from `wrangler deploy`.** The generated config binds Queue producers only. Remote workflows deploy the Worker first, then reconcile consumers by deleting existing consumers from each environment-owned queue through the Cloudflare Queues API and re-adding the Worker with the desired batch and retry settings. Cloudflare keeps an inactive Worker consumer in the single-consumer slot until it is removed, so consumer attachment is intentionally separate from deploy.
+- **Cloudflare credentials use Wrangler's supported names.** Deploy scripts and workflows keep `CF_*` as the project configuration surface, then map them to `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` when Wrangler runs, avoiding Wrangler's deprecated `CF_ACCOUNT_ID`/`CF_API_TOKEN` aliases without storing credentials under two names.
 
-`ENV_NAME` defaults to `test` for the test target and `prod` for the production target. `RESOURCE_PREFIX` defaults to `codex-events`. Default resource names use `<RESOURCE_PREFIX>-<ENV_NAME>` for every environment.
-
-Keep `CF_ZONE_NAME` explicit because the Cloudflare DNS zone cannot be inferred safely from a deployment hostname. `AUTH0_CUSTOM_DOMAIN` is an optional override and defaults to `auth.<BASE_DOMAIN>`. The deploy workflow creates or finds the D1 database and R2 buckets by their resolved names, writes the resolved D1 UUID into the job environment, and then generates Wrangler config with that UUID and the resolved bucket names. The `CF_*` prefix marks deployment metadata for Cloudflare resources. These resource-name variables are optional overrides for generated names:
-
-- `CF_WORKER_NAME`
-- `CF_D1_DATABASE_NAME`
-- `CF_PROFILE_ICONS_BUCKET`
-- `CF_EVENT_IMAGES_BUCKET`
-- `CF_APPLICATION_REVIEW_EMAIL_QUEUE`
-- `CF_EVENT_OUTCOME_EMAIL_QUEUE`
-- `CF_LUMA_SYNC_QUEUE`
-
-Each remote environment must provide:
-
-- `BASE_DOMAIN`
-- `CF_ZONE_NAME`
-- `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
-
-The existing app runtime variables remain the override interface for Auth0, outbound email, queue binding names, retry delays, and optional Luma access. The generator copies those values into the generated Wrangler `vars` block and fails fast when a required deploy value is missing.
-
-The generated Wrangler config binds Queue producers only. Remote workflows deploy the Worker first, then reconcile Queue consumers by deleting existing consumers from each environment-owned queue through the Cloudflare Queues API and adding the Worker back with the desired batch and retry settings. Cloudflare keeps inactive Worker consumers in the single-consumer slot until they are removed, so consumer attachment is intentionally separate from `wrangler deploy`.
-
-The remote `CF_API_TOKEN` must be able to run `wrangler d1 list`, `wrangler d1 create`, `wrangler r2 bucket info`, `wrangler r2 bucket create`, `wrangler queues create`, `wrangler secret bulk`, `wrangler d1 migrations apply --remote`, `wrangler deploy`, and `wrangler queues consumer add`. It must also be able to list and delete Queue consumers through the Cloudflare Queues API. Configure the token with the Cloudflare account and zone permissions listed in `OPERATOR.md`; include both read and edit/write access where both are listed.
-
-Deploy scripts and GitHub workflows keep `CF_*` as the project configuration surface, then map those values to Wrangler's supported `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` environment names when Wrangler runs. This avoids Wrangler's deprecated `CF_ACCOUNT_ID` and `CF_API_TOKEN` aliases without making operators store Cloudflare credentials under two names.
-
-For manual deployment, export the target environment values and run:
-
-```bash
-bun run db:migrate:test
-bun run deploy:test
-```
-
-or:
-
-```bash
-bun run db:migrate:production
-bun run deploy:production
-```
-
-When Luma sync is enabled, the workflow or operator should reconcile the webhook before uploading Worker secrets:
-
-```bash
-bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json
-```
+The manual deploy commands and the required token scopes are in [OPERATOR.md → Manual deployment](OPERATOR.md#manual-deployment) and [OPERATOR.md → Cloudflare API token](OPERATOR.md#cloudflare-api-token).
 
 ## GitHub Deployments
 
-Pushes to `main` publish the test environment through `.github/workflows/deploy-test.yml` after the fast checks pass. Production publishes from GitHub Releases through `.github/workflows/deploy-production.yml`.
+Pushes to `main` publish the test environment through `.github/workflows/deploy-test.yml` after the fast checks pass. Production publishes from GitHub Releases through `.github/workflows/deploy-production.yml`. Push-based test deployment is optional: if the `test` environment has no `BASE_DOMAIN`, the deploy job exits cleanly before reading the rest of the deployment metadata, so forks and unconfigured environments run CI only.
 
-The GitHub `test` and `production` environments should store only environment-local deployment metadata as variables and credentials as secrets. Push-based test deployment is optional for forks and unconfigured environments: if `BASE_DOMAIN` is empty, the deploy job exits cleanly before reading the rest of the deployment metadata.
+The `test` and `production` GitHub environment variables and secrets, the Cloudflare API token scopes, the Auth0 Management API scopes, and the first-release Auth0 custom-domain and DNS-verification behavior are all documented in [`OPERATOR.md`](OPERATOR.md) — see [section 4 (GitHub)](OPERATOR.md#4-github), [section 5 (Release and first start)](OPERATOR.md#5-release-and-first-start), and [section 6 (Advanced settings)](OPERATOR.md#6-advanced-settings).
 
-Use these environment variable groups:
+### BDD test environment
 
-Required deployment settings:
-
-- `BASE_DOMAIN`
-- `CF_ZONE_NAME`
-- `AUTH0_MANAGEMENT_DOMAIN`
-- `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
-
-Deployment defaults and optional resource-name overrides:
-
-- `ENV_NAME`
-- `RESOURCE_PREFIX`
-- `CF_WORKER_NAME`
-- `CF_D1_DATABASE_NAME`
-- `CF_PROFILE_ICONS_BUCKET`
-- `CF_EVENT_IMAGES_BUCKET`
-- `CF_APPLICATION_REVIEW_EMAIL_QUEUE`
-- `CF_EVENT_OUTCOME_EMAIL_QUEUE`
-- `CF_LUMA_SYNC_QUEUE`
-
-Auth0 tenant automation settings:
-
-- `AUTH0_APP_DISPLAY_NAME`
-- `AUTH0_CUSTOM_DOMAIN` when the Auth0 login hostname is not `auth.<BASE_DOMAIN>`
-
-Auth0 runtime settings:
-
-- `NUXT_AUTH0_DATABASE_CONNECTION_NAME` when the Auth0 database connection is not `Username-Password-Authentication`
-
-Platform bootstrap setting:
-
-- `NUXT_FIRST_PLATFORM_ADMIN_EMAIL`
-
-Cloudflare Email Service and Queues runtime settings:
-
-- `NUXT_OUTBOUND_EMAIL_BINDING`
-- `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
-- `NUXT_OUTBOUND_EMAIL_FROM_NAME`
-- `NUXT_OUTBOUND_EMAIL_REPLY_TO` when replies should go somewhere other than `NUXT_OUTBOUND_EMAIL_FROM_EMAIL`
-- `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING`
-- `NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS`
-- `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING`
-- `NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS`
-- `NUXT_LUMA_QUEUE_BINDING`
-- `NUXT_LUMA_RETRY_DELAY_SECONDS`
-
-The GitHub `test` environment must provide these secrets:
-
-- `CF_ACCOUNT_ID`
-- `CF_API_TOKEN`
-- `NUXT_AUTH0_CLIENT_ID`
-- `NUXT_AUTH0_CLIENT_SECRET`
-- `AUTH0_MGMT_CLIENT_ID`
-- `AUTH0_MGMT_CLIENT_SECRET`
-- `NUXT_LUMA_API_KEY` when any test event uses Luma sync
-
-The GitHub `bdd` environment must provide these variables:
+The Auth0-backed BDD workflow uses a dedicated GitHub `bdd` environment that is not a deployment target and is not covered by `OPERATOR.md`. It must provide these variables:
 
 - `AUTH0_MANAGEMENT_DOMAIN`
 - `NUXT_AUTH0_DATABASE_CONNECTION_NAME`
 
-The GitHub `bdd` environment must provide these secrets:
+and these secrets:
 
 - `NUXT_AUTH0_DOMAIN`
 - `NUXT_AUTH0_CLIENT_ID`
@@ -344,54 +243,6 @@ The GitHub `bdd` environment must provide these secrets:
 - `E2E_JUDGE_PASSWORD`
 - `E2E_REGULAR_USER_EMAIL`
 - `E2E_REGULAR_USER_PASSWORD`
-
-The GitHub `production` environment must provide these secrets before a release can run:
-
-- `NUXT_AUTH0_CLIENT_ID`
-- `AUTH0_MGMT_CLIENT_ID`
-- `AUTH0_MGMT_CLIENT_SECRET`
-- `CF_ACCOUNT_ID`
-- `CF_API_TOKEN`
-- `NUXT_AUTH0_CLIENT_SECRET`
-- `NUXT_LUMA_API_KEY` when production events use Luma sync
-
-The generated Wrangler config supplies deploy-time Cloudflare bindings and non-secret runtime vars. GitHub workflows upload Worker secrets from the relevant GitHub environment plus generated defaults for `NUXT_AUTH0_SESSION_SECRET` and `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` when explicit override secrets are omitted. They also upload the generated `NUXT_LUMA_WEBHOOK_SECRET` when Luma reconciliation runs. GitHub environments do not need a stored `NUXT_LUMA_WEBHOOK_SECRET`.
-
-Cloudflare tokens used by Auth0 custom-domain automation also need the zone permissions listed in `OPERATOR.md` for `CF_ZONE_NAME`.
-
-The Auth0 management machine-to-machine application identified by `AUTH0_MGMT_CLIENT_ID` and `AUTH0_MGMT_CLIENT_SECRET` currently needs these Auth0 Management API scopes:
-
-- `read:clients`
-- `update:clients`
-- `read:tenant_settings`
-- `update:tenant_settings`
-- `read:branding`
-- `update:branding`
-- `delete:branding`
-- `read:prompts`
-- `update:prompts`
-- `read:custom_domains`
-- `create:custom_domains`
-- `update:custom_domains`
-- `read:users`
-- `read:actions`
-- `create:actions`
-- `update:actions`
-- `read:triggers`
-- `update:triggers`
-- `update:users`
-
-The `read:users` and `update:users` scopes are required by the Auth0 post-login Action for account linking. The app runtime does not use Auth0 Management API credentials.
-
-`NUXT_AUTH0_CLIENT_ID` is only an application identifier, not a management credential. Outbound email delivery uses the Cloudflare Email Service `send_email` binding configured in the generated Wrangler config; the production sending domain must be onboarded in Cloudflare Email Service before release.
-
-On the first successful production release, the workflow also:
-
-- creates or reuses the Auth0 custom domain
-- creates or updates the required Cloudflare DNS-only CNAME verification record
-- waits for Auth0 verification and certificate provisioning before applying the rest of the tenant bootstrap
-
-If Auth0 returns `operation_not_supported` with a verified-billing-method message while creating the custom domain, add billing information in the target Auth0 tenant and rerun the deployment workflow. The workflow cannot finish the custom-domain setup until Auth0 allows custom-domain creation for that tenant.
 
 ## Validation
 
