@@ -1239,7 +1239,8 @@ function buildFixtureSql(personas: ProvisionedStablePersona[]) {
       set current_application_terms_document_id = ${sqlLiteral(fixtureApiTeamFormationTermsId)}
       where id = ${sqlLiteral(fixtureApiTeamFormationEventId)}`,
     `update events
-      set current_application_terms_document_id = ${sqlLiteral(fixtureParticipantProfileRequirementTermsId)}
+      set current_application_terms_document_id = ${sqlLiteral(fixtureParticipantProfileRequirementTermsId)},
+          application_chatgpt_email_visible = 1
       where id = ${sqlLiteral(fixtureParticipantProfileRequirementEventId)}`,
     `update events
       set current_application_terms_document_id = ${sqlLiteral(fixtureParticipantApprovedTermsId)}
