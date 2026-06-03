@@ -7,6 +7,10 @@ import {
   isProofOfExecutionLinksValid,
   normalizeProofOfExecutionLinks
 } from '#proof-of-execution-links'
+import {
+  isAiKnowledgeLevel,
+  normalizeAiKnowledgeLevel
+} from '#ai-knowledge'
 import { requirePlatformActor } from '#server/auth/actor'
 import {
   assertEventParticipantVisibilityAccess,
@@ -59,7 +63,8 @@ export const submitApplicationBodySchema = z.object({
   registrationTeamMembers: z.array(registrationTeamMemberHintSchema).default([]),
   inPersonAttendanceCommitment: z.boolean().default(false),
   whyThisEvent: z.string().trim().max(4000).default(''),
-  proofOfExecutionUrl: z.string().trim().max(2048).default('')
+  proofOfExecutionUrl: z.string().trim().max(2048).default(''),
+  aiKnowledgeLevel: z.string().trim().max(32).default('')
 })
 
 type UserApplicationRecord = typeof userApplications.$inferSelect
@@ -390,8 +395,8 @@ export function getInitialApplicationLumaSyncStatus(
 }
 
 export function serializeRegistrationDetailsJson(
-  event: Pick<EventRecord, 'id' | 'maxTeamMembers' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent'>,
-  payload: Pick<SubmitApplicationBody, 'registrationTeamIntent' | 'registrationTeamMembers' | 'inPersonAttendanceCommitment' | 'whyThisEvent' | 'proofOfExecutionUrl'>
+  event: Pick<EventRecord, 'id' | 'maxTeamMembers' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'applicationAiKnowledgeVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent'>,
+  payload: Pick<SubmitApplicationBody, 'registrationTeamIntent' | 'registrationTeamMembers' | 'inPersonAttendanceCommitment' | 'whyThisEvent' | 'proofOfExecutionUrl' | 'aiKnowledgeLevel'>
 ) {
   assertGuard(!event.applicationTeamIntentVisible || payload.registrationTeamMembers.length <= event.maxTeamMembers, {
     code: 'registration_team_members_invalid',
@@ -437,6 +442,9 @@ export function serializeRegistrationDetailsJson(
   const proofOfExecutionUrl = event.applicationProofOfExecutionVisible
     ? normalizeProofOfExecutionUrl(payload.proofOfExecutionUrl)
     : ''
+  const aiKnowledgeLevel = event.applicationAiKnowledgeVisible
+    ? normalizeAiKnowledgeLevel(payload.aiKnowledgeLevel)
+    : ''
 
   assertGuard(!event.applicationWhyThisEventVisible || !event.requireWhyThisEvent || whyThisEvent.length > 0, {
     code: 'why_this_event_required',
@@ -454,12 +462,21 @@ export function serializeRegistrationDetailsJson(
     }
   })
 
+  assertGuard(!event.applicationAiKnowledgeVisible || payload.aiKnowledgeLevel.length === 0 || isAiKnowledgeLevel(payload.aiKnowledgeLevel), {
+    code: 'ai_knowledge_level_invalid',
+    message: 'AI Knowledge must be beginner, intermediate, or advanced.',
+    details: {
+      eventId: event.id
+    }
+  })
+
   return JSON.stringify({
     teamIntent,
     teamMembers: normalizedTeamMembers,
     inPersonAttendanceCommitment: event.inPersonEvent ? payload.inPersonAttendanceCommitment : false,
     whyThisEvent,
-    proofOfExecutionUrl
+    proofOfExecutionUrl,
+    aiKnowledgeLevel
   })
 }
 

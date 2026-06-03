@@ -4,6 +4,7 @@ import {
   buildAdminApplicationReviewGroups,
   canApproveAdminApplicationReviewGroup,
   filterAdminApplicationReviewGroups,
+  filterAdminApplicationReviewGroupsByAiKnowledge,
   filterAdminApplicationReviewGroupsByApplicant,
   hasAdminApplicationReviewApplicantApprovalSelected,
   hasAdminApplicationReviewGroupApprovalSelected,
@@ -21,6 +22,7 @@ function createApplication(options: {
   submittedAt?: string
   teamIntent?: 'solo' | 'team' | 'unknown'
   teamMembers?: Array<{ fullName?: string, email?: string }>
+  aiKnowledgeLevel?: '' | 'beginner' | 'intermediate' | 'advanced'
 }) {
   return {
     id: options.id,
@@ -40,7 +42,8 @@ function createApplication(options: {
       teamMembers: options.teamMembers ?? [],
       inPersonAttendanceCommitment: false,
       whyThisEvent: '',
-      proofOfExecutionUrl: ''
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: options.aiKnowledgeLevel ?? ''
     }),
     createdAt: '2026-03-29T09:00:00.000Z',
     updatedAt: '2026-03-29T09:00:00.000Z',
@@ -462,6 +465,57 @@ describe('buildAdminApplicationReviewGroups', () => {
         fullName: 'Carol Example',
         email: 'carol@example.com',
         mentionedByApplicationIds: ['application-1']
+      }]
+    })])
+  })
+
+  test('filters groups by AI Knowledge level without leaking hidden teammate hints', () => {
+    const applications = [
+      createApplication({
+        id: 'application-1',
+        displayName: 'Alice Example',
+        email: 'alice@example.com',
+        aiKnowledgeLevel: 'beginner',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Carol Example',
+          email: 'carol@example.com'
+        }]
+      }),
+      createApplication({
+        id: 'application-2',
+        displayName: 'Bob Example',
+        email: 'bob@example.com',
+        aiKnowledgeLevel: 'advanced',
+        teamIntent: 'team',
+        teamMembers: [{
+          fullName: 'Dave Example',
+          email: 'dave@example.com'
+        }]
+      })
+    ]
+    const groups = buildAdminApplicationReviewGroups(applications)
+
+    expect(filterAdminApplicationReviewGroupsByAiKnowledge(groups, 'beginner')).toEqual([expect.objectContaining({
+      applicants: [expect.objectContaining({
+        application: applications[0]
+      })],
+      pendingTeammates: [{
+        id: 'email:carol@example.com',
+        fullName: 'Carol Example',
+        email: 'carol@example.com',
+        mentionedByApplicationIds: ['application-1']
+      }]
+    })])
+    expect(filterAdminApplicationReviewGroupsByAiKnowledge(groups, 'advanced')).toEqual([expect.objectContaining({
+      applicants: [expect.objectContaining({
+        application: applications[1]
+      })],
+      pendingTeammates: [{
+        id: 'email:dave@example.com',
+        fullName: 'Dave Example',
+        email: 'dave@example.com',
+        mentionedByApplicationIds: ['application-2']
       }]
     })])
   })

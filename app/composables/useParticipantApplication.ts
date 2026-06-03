@@ -4,6 +4,7 @@ import type {
   ParticipantApiDataResponse,
   ParticipantApplicationRecord,
   ParticipantCurrentTermsResponse,
+  ParticipantAiKnowledgeLevelInput,
   ParticipantRegistrationTeamIntent,
   ParticipantSessionUser,
   VisibleEventRecord
@@ -211,6 +212,7 @@ export function useParticipantApplication(
     inPersonAttendanceCommitment?: boolean
     whyThisEvent?: string
     proofOfExecutionUrl?: string
+    aiKnowledgeLevel?: ParticipantAiKnowledgeLevelInput
   }) {
     if (!visibleEventId.value) {
       submissionError.value = 'The current event application route could not be resolved.'
@@ -243,6 +245,9 @@ export function useParticipantApplication(
             : {}),
           ...(resolvedEvent.value.applicationProofOfExecutionVisible && typeof options.proofOfExecutionUrl === 'string'
             ? { proofOfExecutionUrl: options.proofOfExecutionUrl }
+            : {}),
+          ...(resolvedEvent.value.applicationAiKnowledgeVisible && typeof options.aiKnowledgeLevel === 'string'
+            ? { aiKnowledgeLevel: options.aiKnowledgeLevel }
             : {})
         }
       })

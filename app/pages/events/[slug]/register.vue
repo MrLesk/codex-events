@@ -13,6 +13,7 @@ import type {
   ParticipantCurrentTermsResponse,
   ParticipantApplicationTermsDocument,
   ParticipantApplicationSubmittedTransition,
+  ParticipantAiKnowledgeLevelInput,
   ParticipantRegistrationTeamMemberHint,
   VisibleEventRecord
 } from '~/domains/applications/participant-application'
@@ -86,6 +87,7 @@ const applicationTermsAccepted = ref(false)
 const inPersonAttendanceCommitment = ref(false)
 const whyThisEvent = ref('')
 const proofOfExecutionUrl = ref('')
+const aiKnowledgeLevel = ref<ParticipantAiKnowledgeLevelInput>('')
 const registrationTeamIntent = ref<'solo' | 'team' | 'unknown'>('unknown')
 const registrationTeamMembers = ref<ParticipantRegistrationTeamMemberHint[]>([])
 const profileFields = computed(() => listEventProfileFields(event.value))
@@ -402,6 +404,10 @@ async function submitParticipantApplication() {
       applicationPayload.proofOfExecutionUrl = proofOfExecutionUrl.value
     }
 
+    if (event.value.applicationAiKnowledgeVisible) {
+      applicationPayload.aiKnowledgeLevel = aiKnowledgeLevel.value
+    }
+
     if (event.value.applicationTeamIntentVisible) {
       applicationPayload.registrationTeamIntent = registrationTeamIntent.value
       applicationPayload.registrationTeamMembers = normalizeParticipantTeamMemberHintsForSubmission(
@@ -529,6 +535,7 @@ useSeoMeta({
           v-model:in-person-attendance-commitment="inPersonAttendanceCommitment"
           v-model:why-this-event="whyThisEvent"
           v-model:proof-of-execution-url="proofOfExecutionUrl"
+          v-model:ai-knowledge-level="aiKnowledgeLevel"
           v-model:team-intent="registrationTeamIntent"
           v-model:team-member-hints="registrationTeamMembers"
           v-model:profile-form="profileForm"

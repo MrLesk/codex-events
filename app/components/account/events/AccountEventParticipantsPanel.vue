@@ -18,6 +18,7 @@ const props = withDefaults(defineProps<{
   pendingActionKey?: string | null
   readOnly?: boolean
   showAttendance?: boolean
+  showAiKnowledge?: boolean
   participantsLimit?: number | null
   autoApproveApplications?: boolean
 }>(), {
@@ -26,6 +27,7 @@ const props = withDefaults(defineProps<{
   pendingActionKey: null,
   readOnly: false,
   showAttendance: false,
+  showAiKnowledge: false,
   participantsLimit: null,
   autoApproveApplications: false
 })
@@ -241,6 +243,7 @@ function selectParticipantView(nextView: AdminApplicationReviewView) {
       :read-only="readOnly"
       search-enabled
       :show-attendance="showAttendance"
+      :show-ai-knowledge="showAiKnowledge"
       :auto-approve-applications="autoApproveApplications"
       @approve="emit('approve', $event)"
       @approve-team="emit('approveTeam', $event)"

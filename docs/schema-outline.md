@@ -122,6 +122,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `application_why_this_event_visible`
 - `application_proof_of_execution_visible`
 - `application_team_intent_visible`
+- `application_ai_knowledge_visible`
 - `require_x_profile`
 - `require_linkedin_profile`
 - `require_github_profile`
@@ -194,6 +195,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `in_person_event` controls whether applications must include explicit in-person attendance commitment.
 - Application field visibility columns control whether each optional application field appears on the participant application form. First name and family name are always visible and required.
 - `require_x_profile`, `require_linkedin_profile`, `require_github_profile`, `require_chatgpt_email`, `require_openai_org_id`, `require_luma_profile`, `require_why_this_event`, `require_proof_of_execution`, and `require_team_intent` control whether the corresponding visible field is required.
+- `application_ai_knowledge_visible` controls an always-optional self-assessment field for AI agent experience.
 - A field cannot be required while its matching `application_*_visible` column is false.
 - Application field configuration can be updated after applications exist. The current configuration applies when a participant views or submits the form and does not rewrite older `registration_details_json` payloads.
 - `require_submission_summary` controls whether Hackathon team submissions must include a non-empty `summary`.
@@ -467,6 +469,7 @@ It describes the intended persistent model at the level of entities, key fields,
   - `inPersonAttendanceCommitment`: boolean commitment required when the event has `in_person_event = true`
   - `whyThisEvent`: trimmed free-form motivation text when visible
   - `proofOfExecutionUrl`: optional string carrying one or more comma-separated `http` or `https` links to prior execution evidence when visible
+  - `aiKnowledgeLevel`: `beginner`, `intermediate`, `advanced`, or an empty string when AI Knowledge is hidden or not selected
 - `withdrawn_at` records when the participant withdrew from the event.
 - `checked_in_at` records when a valid signed Luma guest check-in update first marked the approved participant as attended.
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.

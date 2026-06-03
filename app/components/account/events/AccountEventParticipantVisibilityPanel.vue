@@ -49,6 +49,7 @@ const showAttendance = computed(() =>
     :error-message="error?.message ?? ''"
     read-only
     :show-attendance="showAttendance"
+    :show-ai-knowledge="event?.applicationAiKnowledgeVisible ?? false"
     :participants-limit="event?.participantsLimit ?? null"
     :auto-approve-applications="event?.autoApproveApplications ?? false"
   />

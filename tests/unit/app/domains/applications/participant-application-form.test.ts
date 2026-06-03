@@ -16,7 +16,8 @@ describe('participant registration form schema', () => {
     showProofOfExecution: true,
     requireProofOfExecution: false,
     showTeamIntent: true,
-    requireTeamIntent: false
+    requireTeamIntent: false,
+    showAiKnowledge: false
   })
 
   function createValidRegistrationFormState() {
@@ -27,6 +28,7 @@ describe('participant registration form schema', () => {
       teamMemberHints: [],
       whyThisEvent: '',
       proofOfExecutionUrl: '',
+      aiKnowledgeLevel: '',
       profileForm: {
         firstName: 'Ada',
         familyName: 'Lovelace',
@@ -79,7 +81,8 @@ describe('participant registration form schema', () => {
       showProofOfExecution: true,
       requireProofOfExecution: false,
       showTeamIntent: true,
-      requireTeamIntent: false
+      requireTeamIntent: false,
+      showAiKnowledge: false
     })
     const withTermsResult = withTermsSchema.safeParse(createValidRegistrationFormState())
 
@@ -120,7 +123,8 @@ describe('participant registration form schema', () => {
       showProofOfExecution: false,
       requireProofOfExecution: false,
       showTeamIntent: false,
-      requireTeamIntent: false
+      requireTeamIntent: false,
+      showAiKnowledge: false
     })
     const result = schema.safeParse({
       ...createValidRegistrationFormState(),
@@ -145,7 +149,8 @@ describe('participant registration form schema', () => {
       showProofOfExecution: false,
       requireProofOfExecution: false,
       showTeamIntent: true,
-      requireTeamIntent: true
+      requireTeamIntent: true,
+      showAiKnowledge: false
     })
     const result = schema.safeParse(createValidRegistrationFormState())
 
@@ -153,5 +158,51 @@ describe('participant registration form schema', () => {
     expect(result.error?.flatten().fieldErrors.teamIntent).toEqual([
       'Choose how you plan to participate.'
     ])
+  })
+
+  test('validates AI Knowledge only when visible', () => {
+    const hiddenSchema = buildParticipantRegistrationFormSchema({
+      profileFields: [],
+      maxTeamMembers: 4,
+      hasCurrentApplicationTerms: false,
+      isInPersonEvent: false,
+      showWhyThisEvent: false,
+      requireWhyThisEvent: false,
+      showProofOfExecution: false,
+      requireProofOfExecution: false,
+      showTeamIntent: false,
+      requireTeamIntent: false,
+      showAiKnowledge: false
+    })
+    const visibleSchema = buildParticipantRegistrationFormSchema({
+      profileFields: [],
+      maxTeamMembers: 4,
+      hasCurrentApplicationTerms: false,
+      isInPersonEvent: false,
+      showWhyThisEvent: false,
+      requireWhyThisEvent: false,
+      showProofOfExecution: false,
+      requireProofOfExecution: false,
+      showTeamIntent: false,
+      requireTeamIntent: false,
+      showAiKnowledge: true
+    })
+
+    expect(hiddenSchema.safeParse({
+      ...createValidRegistrationFormState(),
+      aiKnowledgeLevel: 'expert'
+    }).success).toBe(true)
+    expect(visibleSchema.safeParse({
+      ...createValidRegistrationFormState(),
+      aiKnowledgeLevel: ''
+    }).success).toBe(true)
+    expect(visibleSchema.safeParse({
+      ...createValidRegistrationFormState(),
+      aiKnowledgeLevel: 'advanced'
+    }).success).toBe(true)
+    expect(visibleSchema.safeParse({
+      ...createValidRegistrationFormState(),
+      aiKnowledgeLevel: 'expert'
+    }).success).toBe(false)
   })
 })

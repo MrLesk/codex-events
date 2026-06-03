@@ -8,12 +8,18 @@ import type {
   ParticipantApplicationSubmittedTransition,
   ParticipantApplicationSubmissionPolicy,
   ParticipantApplicationTermsDocument,
+  ParticipantAiKnowledgeLevelInput,
   ParticipantRegistrationTeamIntent,
   ParticipantRegistrationTeamMemberHint
 } from '~/domains/applications/participant-application'
 import type { ParticipantRegistrationProfileForm } from '~/domains/applications/participant-application-form'
 
-import { areParticipantTeamMemberHintsEqual } from '~/domains/applications/participant-application'
+import {
+  aiKnowledgeLevelOptionLabels,
+  aiKnowledgeLevelValues,
+  areParticipantTeamMemberHintsEqual,
+  normalizeAiKnowledgeLevel
+} from '~/domains/applications/participant-application'
 import {
   buildParticipantRegistrationFormSchema,
   normalizeParticipantRegistrationProfileForm
@@ -32,6 +38,9 @@ const whyThisEvent = defineModel<string>('whyThisEvent', {
 const proofOfExecutionUrl = defineModel<string>('proofOfExecutionUrl', {
   required: true
 })
+const aiKnowledgeLevel = defineModel<ParticipantAiKnowledgeLevelInput>('aiKnowledgeLevel', {
+  required: true
+})
 const teamIntent = defineModel<ParticipantRegistrationTeamIntent>('teamIntent', {
   required: true
 })
@@ -43,7 +52,7 @@ const profileForm = defineModel<ParticipantRegistrationProfileForm>('profileForm
 })
 
 const props = defineProps<{
-  event: Pick<PublicEvent, 'eventType' | 'slug' | 'state' | 'city' | 'country' | 'autoApproveApplications' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent'>
+  event: Pick<PublicEvent, 'eventType' | 'slug' | 'state' | 'city' | 'country' | 'autoApproveApplications' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'applicationAiKnowledgeVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent'>
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
   profileFields: EventProfileField[]
   submissionPolicy: ParticipantApplicationSubmissionPolicy
@@ -103,7 +112,8 @@ const applicationTermsPageHref = computed(() => `/events/${props.event.slug}/app
 const showWhyThisEvent = computed(() => props.event.applicationWhyThisEventVisible)
 const showProofOfExecution = computed(() => props.event.applicationProofOfExecutionVisible)
 const showTeamIntent = computed(() => props.event.applicationTeamIntentVisible)
-const showApplicationQuestions = computed(() => showWhyThisEvent.value || showProofOfExecution.value)
+const showAiKnowledge = computed(() => props.event.applicationAiKnowledgeVisible)
+const showApplicationQuestions = computed(() => showWhyThisEvent.value || showProofOfExecution.value || showAiKnowledge.value)
 const showLinksAndAccountsSection = computed(() => primaryProfileFields.value.length > 0 || eventCreditProfileFields.value.length > 0)
 const teamIntentHelperText = computed(() =>
   props.event.eventType === 'hackathon'
@@ -136,7 +146,8 @@ const registrationSchema = computed(() => buildParticipantRegistrationFormSchema
   showProofOfExecution: showProofOfExecution.value,
   requireProofOfExecution: props.event.requireProofOfExecution,
   showTeamIntent: showTeamIntent.value,
-  requireTeamIntent: props.event.requireTeamIntent
+  requireTeamIntent: props.event.requireTeamIntent,
+  showAiKnowledge: showAiKnowledge.value
 }))
 
 const {
@@ -152,6 +163,7 @@ const {
     inPersonAttendanceCommitment: inPersonAttendanceCommitment.value,
     whyThisEvent: whyThisEvent.value,
     proofOfExecutionUrl: proofOfExecutionUrl.value,
+    aiKnowledgeLevel: aiKnowledgeLevel.value,
     teamIntent: teamIntent.value,
     teamMemberHints: cloneFormValues(teamMemberHints.value),
     profileForm: normalizeParticipantRegistrationProfileForm(profileForm.value)
@@ -163,6 +175,7 @@ watch([
   inPersonAttendanceCommitment,
   whyThisEvent,
   proofOfExecutionUrl,
+  aiKnowledgeLevel,
   teamIntent,
   teamMemberHints,
   profileForm,
@@ -173,6 +186,7 @@ watch([
   () => props.event.applicationWhyThisEventVisible,
   () => props.event.applicationProofOfExecutionVisible,
   () => props.event.applicationTeamIntentVisible,
+  () => props.event.applicationAiKnowledgeVisible,
   () => props.event.requireWhyThisEvent,
   () => props.event.requireProofOfExecution,
   () => props.event.requireTeamIntent
@@ -183,6 +197,7 @@ watch([
     inPersonAttendanceCommitment: inPersonAttendanceCommitment.value,
     whyThisEvent: whyThisEvent.value,
     proofOfExecutionUrl: proofOfExecutionUrl.value,
+    aiKnowledgeLevel: aiKnowledgeLevel.value,
     teamIntent: teamIntent.value,
     teamMemberHints: cloneFormValues(teamMemberHints.value),
     profileForm: normalizeParticipantRegistrationProfileForm(profileForm.value)
@@ -202,6 +217,7 @@ watch(values, (nextValues) => {
   inPersonAttendanceCommitment.value = nextValues.inPersonAttendanceCommitment ?? false
   whyThisEvent.value = nextValues.whyThisEvent ?? ''
   proofOfExecutionUrl.value = nextValues.proofOfExecutionUrl ?? ''
+  aiKnowledgeLevel.value = normalizeAiKnowledgeLevel(nextValues.aiKnowledgeLevel)
   teamIntent.value = nextValues.teamIntent ?? 'unknown'
 
   const nextTeamMemberHints = cloneFormValues(nextValues.teamMemberHints ?? [])
@@ -264,6 +280,11 @@ const whyThisEventError = computed(() => {
 const proofOfExecutionUrlError = computed(() => {
   const currentErrors = errors.value as Record<string, string | undefined>
   return currentErrors.proofOfExecutionUrl ?? ''
+})
+
+const aiKnowledgeLevelError = computed(() => {
+  const currentErrors = errors.value as Record<string, string | undefined>
+  return currentErrors.aiKnowledgeLevel ?? ''
 })
 
 const teamIntentError = computed(() => {
@@ -378,6 +399,10 @@ const invalidFieldCount = computed(() => {
   }
 
   if (teamIntentError.value && !requiredKeys.has('teamIntent')) {
+    invalidCount += 1
+  }
+
+  if (aiKnowledgeLevelError.value) {
     invalidCount += 1
   }
 
@@ -703,6 +728,39 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
                 </div>
 
                 <div :class="inlineSectionBodyClass">
+                  <label
+                    v-if="showAiKnowledge"
+                    class="space-y-1"
+                  >
+                    <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
+                      <span>AI Knowledge</span>
+                    </span>
+                    <AppSelect
+                      v-model="aiKnowledgeLevel"
+                      :disabled="isSubmitting || isSavingProfile"
+                      :class="submitAttempted && aiKnowledgeLevelError
+                        ? 'border-error/45 focus:border-error dark:border-error/50'
+                        : 'focus:border-primary'"
+                    >
+                      <option value="">
+                        Please select
+                      </option>
+                      <option
+                        v-for="level in aiKnowledgeLevelValues"
+                        :key="level"
+                        :value="level"
+                      >
+                        {{ aiKnowledgeLevelOptionLabels[level] }}
+                      </option>
+                    </AppSelect>
+                    <p
+                      v-if="submitAttempted && aiKnowledgeLevelError"
+                      class="text-[11px] text-error"
+                    >
+                      {{ aiKnowledgeLevelError }}
+                    </p>
+                  </label>
+
                   <label
                     v-if="showWhyThisEvent"
                     class="space-y-1"

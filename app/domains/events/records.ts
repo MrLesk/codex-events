@@ -76,6 +76,7 @@ export interface EventRecord {
   applicationWhyThisEventVisible: boolean
   applicationProofOfExecutionVisible: boolean
   applicationTeamIntentVisible: boolean
+  applicationAiKnowledgeVisible: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean

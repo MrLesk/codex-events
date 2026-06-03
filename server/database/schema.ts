@@ -148,6 +148,7 @@ export const events = sqliteTable(
     applicationWhyThisEventVisible: integer('application_why_this_event_visible', { mode: 'boolean' }).notNull().default(true),
     applicationProofOfExecutionVisible: integer('application_proof_of_execution_visible', { mode: 'boolean' }).notNull().default(true),
     applicationTeamIntentVisible: integer('application_team_intent_visible', { mode: 'boolean' }).notNull().default(true),
+    applicationAiKnowledgeVisible: integer('application_ai_knowledge_visible', { mode: 'boolean' }).notNull().default(false),
     requireXProfile: integer('require_x_profile', { mode: 'boolean' }).notNull().default(false),
     requireLinkedinProfile: integer('require_linkedin_profile', { mode: 'boolean' }).notNull().default(false),
     requireGithubProfile: integer('require_github_profile', { mode: 'boolean' }).notNull().default(false),
@@ -472,7 +473,7 @@ export const userApplications = sqliteTable(
     applicationTermsAcceptedAt: text('application_terms_accepted_at'),
     registrationDetailsJson: text('registration_details_json')
       .notNull()
-      .default('{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisEvent":"","proofOfExecutionUrl":""}'),
+      .default('{"teamIntent":"unknown","teamMembers":[],"inPersonAttendanceCommitment":false,"whyThisEvent":"","proofOfExecutionUrl":"","aiKnowledgeLevel":""}'),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn()
   },

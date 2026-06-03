@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
 import type {
+  AdminApplicationAiKnowledgeFilter,
   AdminApplicationReviewGroup,
   AdminApplicationReviewPendingTeammate,
   AdminApplicationReviewView
@@ -10,12 +11,18 @@ import {
   buildAdminApplicationReviewGroups,
   canApproveAdminApplicationReviewGroup,
   filterAdminApplicationReviewGroups,
+  filterAdminApplicationReviewGroupsByAiKnowledge,
   filterAdminApplicationReviewGroupsByApplicant,
   hasAdminApplicationReviewApplicantApprovalSelected,
   hasAdminApplicationReviewGroupApprovalSelected,
   searchAdminApplicationReviewGroups
 } from '~/domains/applications/admin-application-review'
-import { parseProofOfExecutionLinks } from '~/domains/applications/participant-application'
+import {
+  aiKnowledgeLevelLabels,
+  aiKnowledgeLevelValues,
+  formatAiKnowledgeLevel,
+  parseProofOfExecutionLinks
+} from '~/domains/applications/participant-application'
 import { buildProfileIconHref } from '~/domains/accounts/profile-icon'
 import {
   formatFailedApplicationLumaSyncAlertToggleLabel,
@@ -40,6 +47,7 @@ const props = withDefaults(defineProps<{
   readOnly?: boolean
   searchEnabled?: boolean
   showAttendance?: boolean
+  showAiKnowledge?: boolean
   autoApproveApplications?: boolean
 }>(), {
   isLoading: false,
@@ -48,6 +56,7 @@ const props = withDefaults(defineProps<{
   readOnly: false,
   searchEnabled: false,
   showAttendance: false,
+  showAiKnowledge: false,
   autoApproveApplications: false
 })
 
@@ -71,8 +80,12 @@ const expandedApplicationSectionKeys = ref(new Set<string>())
 const isFailedLumaSyncAlertExpanded = ref(false)
 const searchQuery = ref('')
 const checkedInOnly = ref(false)
+const aiKnowledgeFilter = ref<AdminApplicationAiKnowledgeFilter>('all')
 const showApprovedAttendance = computed(() =>
   props.showAttendance && props.view === 'approved'
+)
+const hasAiKnowledgeFilter = computed(() =>
+  props.showAiKnowledge && aiKnowledgeFilter.value !== 'all'
 )
 const showAutoApproveApplicationsNotice = computed(() =>
   props.view === 'applications' && !props.readOnly && props.autoApproveApplications && !hasSubmittedApplications.value
@@ -91,6 +104,10 @@ const filteredReviewGroups = computed(() => {
       groups,
       applicant => isApplicationCheckedIn(applicant.application)
     )
+  }
+
+  if (hasAiKnowledgeFilter.value) {
+    groups = filterAdminApplicationReviewGroupsByAiKnowledge(groups, aiKnowledgeFilter.value)
   }
 
   return groups
@@ -143,6 +160,15 @@ watch(
   () => [props.view, failedLumaSyncApplications.value.length],
   () => {
     isFailedLumaSyncAlertExpanded.value = false
+  }
+)
+
+watch(
+  () => props.showAiKnowledge,
+  (isVisible) => {
+    if (!isVisible) {
+      aiKnowledgeFilter.value = 'all'
+    }
   }
 )
 
@@ -232,6 +258,7 @@ function shouldShowApplicantMetadata(applicant: AdminApplicationReviewGroup['app
     || applicant.application.user?.openaiOrgId
     || applicant.application.user?.linkedinProfileUrl
     || applicant.application.user?.xProfileUrl
+    || props.showAiKnowledge
   )
 }
 
@@ -414,6 +441,20 @@ const emptyState = computed(() => {
     return {
       title: 'No checked-in approved participants match this search',
       description: 'Try a different name, email, or teammate hint, or clear the checked-in filter.'
+    }
+  }
+
+  if (hasAiKnowledgeFilter.value && hasSearchQuery.value) {
+    return {
+      title: 'No participants match this search and AI Knowledge filter',
+      description: 'Try a different search or choose another AI Knowledge level.'
+    }
+  }
+
+  if (hasAiKnowledgeFilter.value) {
+    return {
+      title: 'No participants match this AI Knowledge filter',
+      description: 'Choose another AI Knowledge level or show all participants.'
     }
   }
 
@@ -610,7 +651,7 @@ const emptyState = computed(() => {
         />
 
         <div
-          v-if="!showAutoApproveApplicationsNotice && (searchEnabled || showApprovedAttendance)"
+          v-if="!showAutoApproveApplicationsNotice && (searchEnabled || showApprovedAttendance || showAiKnowledge)"
           class="flex flex-col gap-3 md:flex-row md:items-center"
         >
           <AppInput
@@ -641,6 +682,29 @@ const emptyState = computed(() => {
           >
             Checked in only
           </button>
+
+          <label
+            v-if="showAiKnowledge"
+            class="min-w-0 md:w-64"
+          >
+            <span class="sr-only">AI Knowledge</span>
+            <AppSelect
+              v-model="aiKnowledgeFilter"
+              name="admin-ai-knowledge-filter"
+              data-testid="admin-ai-knowledge-filter"
+            >
+              <option value="all">
+                All AI Knowledge
+              </option>
+              <option
+                v-for="level in aiKnowledgeLevelValues"
+                :key="level"
+                :value="level"
+              >
+                {{ aiKnowledgeLevelLabels[level] }}
+              </option>
+            </AppSelect>
+          </label>
         </div>
 
         <div
@@ -840,6 +904,12 @@ const emptyState = computed(() => {
                           class="size-3"
                         />
                       </a>
+                      <span
+                        v-if="showAiKnowledge"
+                        class="rounded-full border border-black/10 px-3 py-1 text-highlighted dark:border-white/[0.12]"
+                      >
+                        AI Knowledge: {{ formatAiKnowledgeLevel(applicant.registrationDetails.aiKnowledgeLevel) }}
+                      </span>
                     </div>
 
                     <AppAlert

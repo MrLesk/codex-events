@@ -88,6 +88,12 @@ const fieldRows: ApplicationFieldRow[] = [
     description: 'solo, team, or decide later',
     visibleKey: 'applicationTeamIntentVisible',
     requiredKey: 'requireTeamIntent'
+  },
+  {
+    id: 'ai-knowledge',
+    label: 'AI Knowledge',
+    description: 'self-assessed AI agent experience',
+    visibleKey: 'applicationAiKnowledgeVisible'
   }
 ]
 
@@ -169,7 +175,10 @@ function handleRequiredChange(row: ApplicationFieldRow, event: Event) {
           >
         </label>
 
-        <label class="flex justify-center">
+        <label
+          v-if="row.requiredKey || row.locked"
+          class="flex justify-center"
+        >
           <input
             type="checkbox"
             class="size-4 rounded border-black/20 disabled:cursor-not-allowed disabled:opacity-45 dark:border-white/[0.3]"
@@ -179,6 +188,12 @@ function handleRequiredChange(row: ApplicationFieldRow, event: Event) {
             @change="handleRequiredChange(row, $event)"
           >
         </label>
+        <div
+          v-else
+          class="text-center text-xs text-muted"
+        >
+          Optional
+        </div>
       </div>
     </div>
   </div>

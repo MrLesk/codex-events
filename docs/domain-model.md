@@ -90,8 +90,9 @@ Key characteristics:
 - Each event can optionally define a participant approval limit used as an indicative planning target during admin review.
 - Each event can approve new participant applications automatically after required submission checks pass.
 - Each event can optionally reference a restricted Discord server URL.
-- Each event has a fixed application field configuration. First name and family name are always visible and required. Event admins can mark X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, Luma email, `why this event`, proof-of-execution links, and participation mode as visible or hidden.
+- Each event has a fixed application field configuration. First name and family name are always visible and required. Event admins can mark X, LinkedIn, GitHub, ChatGPT email, OpenAI org ID, Luma email, `why this event`, proof-of-execution links, participation mode, and AI Knowledge as visible or hidden.
 - Each visible application field can be optional or required. A field cannot be required while hidden.
+- AI Knowledge is always optional when visible. It captures the participant's self-assessed AI agent experience as Beginner, Intermediate, or Advanced.
 - The current application field configuration applies when a participant views or submits the form. Changing the configuration does not rewrite existing application records.
 - Each event can optionally reference event-specific application terms.
 - A configured Discord server URL is visible only in the account-scoped event workspace for approved participants, judges, staff, event admins, and platform admins.
@@ -299,6 +300,7 @@ Rules:
 - When participation mode is visible and the registration team-intent hint is `team`, the user application can include free-form teammate hints captured during application (name/family-name and/or email per hinted member).
 - A user application can include a free-form `why this event` response only when that field is visible.
 - A user application can include one or more proof-of-execution links only when that field is visible.
+- A user application can include an AI Knowledge level only when that field is visible.
 - If visible participation mode is required, the user must choose `solo` or `team`.
 - If visible motivation is required, the `why this event` response must be non-empty.
 - If visible proof of execution is required, at least one proof-of-execution link must be non-empty and every provided link must use `http` or `https`.

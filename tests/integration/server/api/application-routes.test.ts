@@ -299,7 +299,8 @@ describe('TASK-3.6 application routes', () => {
         ],
         inPersonAttendanceCommitment: false,
         whyThisEvent: 'I want to build a practical project with other builders.',
-        proofOfExecutionUrl: 'https://github.com/regular/previous-project, https://demo.example.com/regular/project'
+        proofOfExecutionUrl: 'https://github.com/regular/previous-project, https://demo.example.com/regular/project',
+        aiKnowledgeLevel: ''
       })
     })
   })
@@ -633,7 +634,8 @@ describe('TASK-3.6 application routes', () => {
       teamMembers: [],
       inPersonAttendanceCommitment: true,
       whyThisEvent: '',
-      proofOfExecutionUrl: ''
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
     }))
   })
 
@@ -705,7 +707,8 @@ describe('TASK-3.6 application routes', () => {
       teamMembers: [],
       inPersonAttendanceCommitment: false,
       whyThisEvent: 'I want to collaborate and build.',
-      proofOfExecutionUrl: 'https://github.com/regular/shipped-work, https://demo.example.com/regular/work'
+      proofOfExecutionUrl: 'https://github.com/regular/shipped-work, https://demo.example.com/regular/work',
+      aiKnowledgeLevel: ''
     }))
   })
 

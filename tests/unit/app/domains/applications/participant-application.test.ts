@@ -775,7 +775,8 @@ describe('participant application helpers', () => {
         }
       ],
       whyThisEvent: 'I want to build something useful.',
-      proofOfExecutionUrl: 'https://github.com/example/project'
+      proofOfExecutionUrl: 'https://github.com/example/project',
+      aiKnowledgeLevel: 'advanced'
     }))).toEqual({
       teamIntent: 'team',
       teamMembers: [
@@ -786,7 +787,8 @@ describe('participant application helpers', () => {
       ],
       inPersonAttendanceCommitment: false,
       whyThisEvent: 'I want to build something useful.',
-      proofOfExecutionUrl: 'https://github.com/example/project'
+      proofOfExecutionUrl: 'https://github.com/example/project',
+      aiKnowledgeLevel: 'advanced'
     })
 
     expect(parseParticipantRegistrationDetailsJson('{invalid-json')).toEqual({
@@ -794,7 +796,8 @@ describe('participant application helpers', () => {
       teamMembers: [],
       inPersonAttendanceCommitment: false,
       whyThisEvent: '',
-      proofOfExecutionUrl: ''
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
     })
   })
 })

@@ -75,6 +75,7 @@ function createEvent(overrides: Partial<EventRecord> = {}): EventRecord {
     applicationWhyThisEventVisible: true,
     applicationProofOfExecutionVisible: true,
     applicationTeamIntentVisible: true,
+    applicationAiKnowledgeVisible: false,
     requireXProfile: false,
     requireLinkedinProfile: false,
     requireGithubProfile: true,

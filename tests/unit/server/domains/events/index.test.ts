@@ -60,6 +60,7 @@ function buildEventRecord(
     applicationWhyThisEventVisible: true,
     applicationProofOfExecutionVisible: true,
     applicationTeamIntentVisible: true,
+    applicationAiKnowledgeVisible: false,
     requireXProfile: false,
     requireLinkedinProfile: false,
     requireGithubProfile: false,
@@ -640,11 +641,13 @@ describe('event management utilities', () => {
   test('serializes common application requirements for registration-only events', () => {
     expect(serializeEvent(buildEventRecord({
       eventType: 'build',
+      applicationAiKnowledgeVisible: true,
       requireProofOfExecution: true,
       requireSubmissionSummary: true,
       requireSubmissionRepositoryUrl: true,
       requireSubmissionDemoUrl: true
     }))).toMatchObject({
+      applicationAiKnowledgeVisible: true,
       requireProofOfExecution: true,
       requireSubmissionSummary: false,
       requireSubmissionRepositoryUrl: false,

@@ -1,7 +1,7 @@
 import Fuse from 'fuse.js'
 
 import type { AdminApplicationRecord } from '~/domains/applications/admin-application-record'
-import type { ParticipantRegistrationDetails } from './participant-application'
+import type { ParticipantAiKnowledgeLevel, ParticipantRegistrationDetails } from './participant-application'
 
 import { parseParticipantRegistrationDetailsJson } from './participant-application'
 
@@ -10,6 +10,7 @@ const adminApplicationFuzzyNameUniquenessMargin = 0.03
 
 export type AdminApplicationReviewMatchKind = 'exact_email' | 'fuzzy_name'
 export type AdminApplicationReviewView = 'applications' | 'approved' | 'rejected' | 'withdrawn'
+export type AdminApplicationAiKnowledgeFilter = 'all' | ParticipantAiKnowledgeLevel
 
 export interface AdminApplicationReviewApplicant {
   application: AdminApplicationRecord
@@ -598,6 +599,20 @@ export function filterAdminApplicationReviewGroups(
         return applicant.application.status === 'withdrawn'
     }
   })
+}
+
+export function filterAdminApplicationReviewGroupsByAiKnowledge(
+  groups: AdminApplicationReviewGroup[],
+  filter: AdminApplicationAiKnowledgeFilter
+): AdminApplicationReviewGroup[] {
+  if (filter === 'all') {
+    return groups
+  }
+
+  return filterAdminApplicationReviewGroupsByApplicant(
+    groups,
+    applicant => applicant.registrationDetails.aiKnowledgeLevel === filter
+  )
 }
 
 export function filterAdminApplicationReviewGroupsByApplicant(

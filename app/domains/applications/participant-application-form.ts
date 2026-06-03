@@ -4,6 +4,7 @@ import type {
   AccountSocialProfileUrlKey
 } from '~/domains/accounts/profile'
 import type {
+  ParticipantAiKnowledgeLevel,
   EventProfileField,
   ParticipantRegistrationTeamIntent
 } from '~/domains/applications/participant-application'
@@ -14,6 +15,9 @@ import {
   isOpenAiOrgIdFormatValid
 } from '~/domains/accounts/profile'
 import { isProofOfExecutionLinksValid } from '~/domains/applications/participant-application'
+import {
+  aiKnowledgeLevelValues
+} from '#ai-knowledge'
 
 const participantRegistrationProfileFormKeys = [
   'firstName',
@@ -75,6 +79,7 @@ export function buildParticipantRegistrationFormSchema(options: {
   requireProofOfExecution: boolean
   showTeamIntent: boolean
   requireTeamIntent: boolean
+  showAiKnowledge: boolean
 }) {
   const visibleProfileKeys = new Set(options.profileFields
     .filter(field => field.visible)
@@ -94,6 +99,12 @@ export function buildParticipantRegistrationFormSchema(options: {
       : z.string(),
     proofOfExecutionUrl: options.showProofOfExecution
       ? createOptionalProofOfExecutionLinksSchema('Enter valid proof links. Separate multiple links with commas.')
+      : z.string(),
+    aiKnowledgeLevel: options.showAiKnowledge
+      ? z.union([
+          z.literal(''),
+          z.enum(aiKnowledgeLevelValues as [ParticipantAiKnowledgeLevel, ParticipantAiKnowledgeLevel, ParticipantAiKnowledgeLevel])
+        ])
       : z.string(),
     profileForm: z.object({
       firstName: z.string().trim().min(1).max(120),

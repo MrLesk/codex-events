@@ -2282,6 +2282,7 @@ async function runLifecycleAction() {
           :error-message="applicationsStatus === 'error' ? applicationsErrorMessage : ''"
           :pending-action-key="pendingActionKey"
           :show-attendance="showCheckedInParticipantSummary"
+          :show-ai-knowledge="currentEvent.applicationAiKnowledgeVisible"
           :participants-limit="currentEvent.participantsLimit ?? null"
           :auto-approve-applications="currentEvent.autoApproveApplications"
           @approve="approveApplication"

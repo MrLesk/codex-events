@@ -72,7 +72,8 @@ export default defineApiHandler(async (h3Event) => {
     registrationTeamMembers: body.registrationTeamMembers,
     inPersonAttendanceCommitment: body.inPersonAttendanceCommitment,
     whyThisEvent: body.whyThisEvent,
-    proofOfExecutionUrl: body.proofOfExecutionUrl
+    proofOfExecutionUrl: body.proofOfExecutionUrl,
+    aiKnowledgeLevel: body.aiKnowledgeLevel
   })
 
   const submittedAt = new Date().toISOString()

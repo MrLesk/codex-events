@@ -148,6 +148,17 @@ describe('event config form schema', () => {
     ])
   })
 
+  test('keeps AI Knowledge hidden by default and includes it in configuration patches', () => {
+    expect(createEmptyEventFormState().applicationAiKnowledgeVisible).toBe(false)
+
+    expect(buildEventConfigurationPatch({
+      ...createValidEventFormState(),
+      applicationAiKnowledgeVisible: true
+    }, 'hackathon')).toMatchObject({
+      applicationAiKnowledgeVisible: true
+    })
+  })
+
   test('omits competition fields from registration-only configuration patches', () => {
     const patch = buildEventConfigurationPatch({
       ...createValidEventFormState(),

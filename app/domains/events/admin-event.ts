@@ -42,6 +42,7 @@ export interface EventFormState {
   applicationWhyThisEventVisible: boolean
   applicationProofOfExecutionVisible: boolean
   applicationTeamIntentVisible: boolean
+  applicationAiKnowledgeVisible: boolean
   requireXProfile: boolean
   requireLinkedinProfile: boolean
   requireGithubProfile: boolean
@@ -82,6 +83,7 @@ const hackathonApplicationFieldDefaults = {
   applicationWhyThisEventVisible: true,
   applicationProofOfExecutionVisible: true,
   applicationTeamIntentVisible: true,
+  applicationAiKnowledgeVisible: false,
   requireXProfile: false,
   requireLinkedinProfile: false,
   requireGithubProfile: false,
@@ -103,6 +105,7 @@ const registrationOnlyApplicationFieldDefaults = {
   applicationWhyThisEventVisible: false,
   applicationProofOfExecutionVisible: false,
   applicationTeamIntentVisible: false,
+  applicationAiKnowledgeVisible: false,
   requireXProfile: false,
   requireLinkedinProfile: false,
   requireGithubProfile: false,
@@ -309,6 +312,7 @@ const eventConfigFormBaseSchema = z.object({
   applicationWhyThisEventVisible: z.boolean(),
   applicationProofOfExecutionVisible: z.boolean(),
   applicationTeamIntentVisible: z.boolean(),
+  applicationAiKnowledgeVisible: z.boolean(),
   requireXProfile: z.boolean(),
   requireLinkedinProfile: z.boolean(),
   requireGithubProfile: z.boolean(),
@@ -487,6 +491,7 @@ export function createEmptyEventFormState(): EventFormState {
     applicationWhyThisEventVisible: hackathonApplicationFieldDefaults.applicationWhyThisEventVisible,
     applicationProofOfExecutionVisible: hackathonApplicationFieldDefaults.applicationProofOfExecutionVisible,
     applicationTeamIntentVisible: hackathonApplicationFieldDefaults.applicationTeamIntentVisible,
+    applicationAiKnowledgeVisible: hackathonApplicationFieldDefaults.applicationAiKnowledgeVisible,
     requireXProfile: false,
     requireLinkedinProfile: false,
     requireGithubProfile: false,
@@ -583,6 +588,7 @@ export function createEventFormState(event: EventRecord): EventFormState {
     applicationWhyThisEventVisible: event.applicationWhyThisEventVisible,
     applicationProofOfExecutionVisible: event.applicationProofOfExecutionVisible,
     applicationTeamIntentVisible: event.applicationTeamIntentVisible,
+    applicationAiKnowledgeVisible: event.applicationAiKnowledgeVisible,
     requireXProfile: event.requireXProfile,
     requireLinkedinProfile: event.requireLinkedinProfile,
     requireGithubProfile: event.requireGithubProfile,
@@ -626,6 +632,7 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     applicationWhyThisEventVisible: configForm.applicationWhyThisEventVisible,
     applicationProofOfExecutionVisible: configForm.applicationProofOfExecutionVisible,
     applicationTeamIntentVisible: configForm.applicationTeamIntentVisible,
+    applicationAiKnowledgeVisible: configForm.applicationAiKnowledgeVisible,
     requireXProfile: configForm.requireXProfile,
     requireLinkedinProfile: configForm.requireLinkedinProfile,
     requireGithubProfile: configForm.requireGithubProfile,

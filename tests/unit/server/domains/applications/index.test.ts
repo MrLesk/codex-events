@@ -400,6 +400,7 @@ describe('application utilities', () => {
       applicationWhyThisEventVisible: true,
       applicationProofOfExecutionVisible: true,
       applicationTeamIntentVisible: true,
+      applicationAiKnowledgeVisible: true,
       requireWhyThisEvent: true,
       requireProofOfExecution: true,
       requireTeamIntent: false
@@ -417,7 +418,8 @@ describe('application utilities', () => {
       ],
       inPersonAttendanceCommitment: true,
       whyThisEvent: ' I have shipped similar projects before. ',
-      proofOfExecutionUrl: ' https://github.com/example/shipped-work, https://demo.example.com/project '
+      proofOfExecutionUrl: ' https://github.com/example/shipped-work, https://demo.example.com/project ',
+      aiKnowledgeLevel: 'intermediate'
     })).toBe(JSON.stringify({
       teamIntent: 'team',
       teamMembers: [
@@ -431,7 +433,8 @@ describe('application utilities', () => {
       ],
       inPersonAttendanceCommitment: true,
       whyThisEvent: 'I have shipped similar projects before.',
-      proofOfExecutionUrl: 'https://github.com/example/shipped-work, https://demo.example.com/project'
+      proofOfExecutionUrl: 'https://github.com/example/shipped-work, https://demo.example.com/project',
+      aiKnowledgeLevel: 'intermediate'
     }))
 
     expect(() => serializeRegistrationDetailsJson({
@@ -441,6 +444,7 @@ describe('application utilities', () => {
       applicationWhyThisEventVisible: true,
       applicationProofOfExecutionVisible: true,
       applicationTeamIntentVisible: true,
+      applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: false,
       requireProofOfExecution: false,
       requireTeamIntent: false
@@ -458,7 +462,8 @@ describe('application utilities', () => {
       ],
       inPersonAttendanceCommitment: false,
       whyThisEvent: '',
-      proofOfExecutionUrl: ''
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
     })).toThrowError(ApiError)
   })
 
@@ -470,6 +475,7 @@ describe('application utilities', () => {
       applicationWhyThisEventVisible: true,
       applicationProofOfExecutionVisible: true,
       applicationTeamIntentVisible: true,
+      applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: true,
       requireProofOfExecution: false,
       requireTeamIntent: false
@@ -478,7 +484,8 @@ describe('application utilities', () => {
       registrationTeamMembers: [],
       inPersonAttendanceCommitment: false,
       whyThisEvent: '',
-      proofOfExecutionUrl: ''
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
     })).toThrowError(ApiError)
 
     expect(() => serializeRegistrationDetailsJson({
@@ -488,6 +495,7 @@ describe('application utilities', () => {
       applicationWhyThisEventVisible: true,
       applicationProofOfExecutionVisible: true,
       applicationTeamIntentVisible: true,
+      applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: false,
       requireProofOfExecution: true,
       requireTeamIntent: false
@@ -496,7 +504,8 @@ describe('application utilities', () => {
       registrationTeamMembers: [],
       inPersonAttendanceCommitment: false,
       whyThisEvent: '',
-      proofOfExecutionUrl: ''
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
     })).toThrowError(ApiError)
   })
 
@@ -508,6 +517,7 @@ describe('application utilities', () => {
       applicationWhyThisEventVisible: false,
       applicationProofOfExecutionVisible: false,
       applicationTeamIntentVisible: false,
+      applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: false,
       requireProofOfExecution: false,
       requireTeamIntent: false
@@ -525,14 +535,56 @@ describe('application utilities', () => {
       ],
       inPersonAttendanceCommitment: false,
       whyThisEvent: 'Hidden answer',
-      proofOfExecutionUrl: 'ftp://example.com/project'
+      proofOfExecutionUrl: 'ftp://example.com/project',
+      aiKnowledgeLevel: 'advanced'
     })).toBe(JSON.stringify({
       teamIntent: 'unknown',
       teamMembers: [],
       inPersonAttendanceCommitment: false,
       whyThisEvent: '',
-      proofOfExecutionUrl: ''
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
     }))
+  })
+
+  test('rejects invalid visible AI Knowledge values while allowing an unselected value', () => {
+    const event = {
+      id: 'event_1',
+      maxTeamMembers: 4,
+      inPersonEvent: false,
+      applicationWhyThisEventVisible: false,
+      applicationProofOfExecutionVisible: false,
+      applicationTeamIntentVisible: false,
+      applicationAiKnowledgeVisible: true,
+      requireWhyThisEvent: false,
+      requireProofOfExecution: false,
+      requireTeamIntent: false
+    }
+
+    expect(serializeRegistrationDetailsJson(event, {
+      registrationTeamIntent: 'unknown',
+      registrationTeamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisEvent: '',
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
+    })).toBe(JSON.stringify({
+      teamIntent: 'unknown',
+      teamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisEvent: '',
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
+    }))
+
+    expect(() => serializeRegistrationDetailsJson(event, {
+      registrationTeamIntent: 'unknown',
+      registrationTeamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisEvent: '',
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: 'expert'
+    })).toThrowError(ApiError)
   })
 
   test('requires participation mode when configured', () => {
@@ -543,6 +595,7 @@ describe('application utilities', () => {
       applicationWhyThisEventVisible: false,
       applicationProofOfExecutionVisible: false,
       applicationTeamIntentVisible: true,
+      applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: false,
       requireProofOfExecution: false,
       requireTeamIntent: true
@@ -551,7 +604,8 @@ describe('application utilities', () => {
       registrationTeamMembers: [],
       inPersonAttendanceCommitment: false,
       whyThisEvent: '',
-      proofOfExecutionUrl: ''
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
     })).toThrowError(ApiError)
   })
 
@@ -563,6 +617,7 @@ describe('application utilities', () => {
       applicationWhyThisEventVisible: true,
       applicationProofOfExecutionVisible: true,
       applicationTeamIntentVisible: true,
+      applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: false,
       requireProofOfExecution: false,
       requireTeamIntent: false
@@ -571,7 +626,8 @@ describe('application utilities', () => {
       registrationTeamMembers: [],
       inPersonAttendanceCommitment: false,
       whyThisEvent: '',
-      proofOfExecutionUrl: 'https://github.com/example/project, ftp://example.com/project'
+      proofOfExecutionUrl: 'https://github.com/example/project, ftp://example.com/project',
+      aiKnowledgeLevel: ''
     })).toThrowError(ApiError)
   })
 

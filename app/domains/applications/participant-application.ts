@@ -16,6 +16,15 @@ import {
   buildAnonymousSessionActor,
   buildAuthenticatedIdentitySessionActor
 } from '~/domains/accounts/session-actor'
+import {
+  aiKnowledgeLevelLabels,
+  aiKnowledgeLevelOptionLabels,
+  aiKnowledgeLevelValues,
+  formatAiKnowledgeLevel,
+  normalizeAiKnowledgeLevel,
+  type AiKnowledgeLevel,
+  type AiKnowledgeLevelInput
+} from '#ai-knowledge'
 
 export {
   isProofOfExecutionLinksValid,
@@ -41,6 +50,16 @@ export interface ParticipantApplicationTermsDocument {
 export const participantRegistrationTeamIntentValues = ['solo', 'team', 'unknown'] as const
 
 export type ParticipantRegistrationTeamIntent = typeof participantRegistrationTeamIntentValues[number]
+export type ParticipantAiKnowledgeLevel = AiKnowledgeLevel
+export type ParticipantAiKnowledgeLevelInput = AiKnowledgeLevelInput
+
+export {
+  aiKnowledgeLevelLabels,
+  aiKnowledgeLevelOptionLabels,
+  aiKnowledgeLevelValues,
+  formatAiKnowledgeLevel,
+  normalizeAiKnowledgeLevel
+}
 
 export interface ParticipantRegistrationTeamMemberHint {
   fullName: string
@@ -53,6 +72,7 @@ export interface ParticipantRegistrationDetails {
   inPersonAttendanceCommitment: boolean
   whyThisEvent: string
   proofOfExecutionUrl: string
+  aiKnowledgeLevel: ParticipantAiKnowledgeLevelInput
 }
 
 export interface ParticipantApplicationRecord {
@@ -586,7 +606,8 @@ export function parseParticipantRegistrationDetailsJson(value: string | null | u
       teamMembers: [],
       inPersonAttendanceCommitment: false,
       whyThisEvent: '',
-      proofOfExecutionUrl: ''
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
     }
   }
 
@@ -619,13 +640,15 @@ export function parseParticipantRegistrationDetailsJson(value: string | null | u
     const proofOfExecutionUrl = typeof parsed.proofOfExecutionUrl === 'string'
       ? parsed.proofOfExecutionUrl
       : ''
+    const aiKnowledgeLevel = normalizeAiKnowledgeLevel(parsed.aiKnowledgeLevel)
 
     return {
       teamIntent,
       teamMembers,
       inPersonAttendanceCommitment,
       whyThisEvent,
-      proofOfExecutionUrl
+      proofOfExecutionUrl,
+      aiKnowledgeLevel
     }
   } catch {
     return {
@@ -633,7 +656,8 @@ export function parseParticipantRegistrationDetailsJson(value: string | null | u
       teamMembers: [],
       inPersonAttendanceCommitment: false,
       whyThisEvent: '',
-      proofOfExecutionUrl: ''
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
     }
   }
 }

@@ -117,6 +117,7 @@ describe('shared schema foundation', () => {
     expect(eventColumns.applicationWhyThisEventVisible.name).toBe('application_why_this_event_visible')
     expect(eventColumns.applicationProofOfExecutionVisible.name).toBe('application_proof_of_execution_visible')
     expect(eventColumns.applicationTeamIntentVisible.name).toBe('application_team_intent_visible')
+    expect(eventColumns.applicationAiKnowledgeVisible.name).toBe('application_ai_knowledge_visible')
     expect(eventColumns.requireWhyThisEvent.name).toBe('require_why_this_event')
     expect(eventColumns.requireProofOfExecution.name).toBe('require_proof_of_execution')
     expect(eventColumns.requireTeamIntent.name).toBe('require_team_intent')
