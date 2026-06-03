@@ -85,6 +85,7 @@ function createEvent(overrides: Partial<EventRecord> = {}): EventRecord {
     requireWhyThisEvent: false,
     requireProofOfExecution: false,
     requireTeamIntent: false,
+    requireAiKnowledge: false,
     requireSubmissionSummary: false,
     requireSubmissionRepositoryUrl: false,
     requireSubmissionDemoUrl: false,

@@ -121,6 +121,7 @@ describe('shared schema foundation', () => {
     expect(eventColumns.requireWhyThisEvent.name).toBe('require_why_this_event')
     expect(eventColumns.requireProofOfExecution.name).toBe('require_proof_of_execution')
     expect(eventColumns.requireTeamIntent.name).toBe('require_team_intent')
+    expect(eventColumns.requireAiKnowledge.name).toBe('require_ai_knowledge')
     expect(eventColumns.requireSubmissionSummary.name).toBe('require_submission_summary')
     expect(eventColumns.requireSubmissionRepositoryUrl.name).toBe('require_submission_repository_url')
     expect(eventColumns.requireSubmissionDemoUrl.name).toBe('require_submission_demo_url')

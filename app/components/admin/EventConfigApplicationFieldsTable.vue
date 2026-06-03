@@ -93,7 +93,8 @@ const fieldRows: ApplicationFieldRow[] = [
     id: 'ai-knowledge',
     label: 'AI Knowledge',
     description: 'self-assessed AI agent experience',
-    visibleKey: 'applicationAiKnowledgeVisible'
+    visibleKey: 'applicationAiKnowledgeVisible',
+    requiredKey: 'requireAiKnowledge'
   }
 ]
 

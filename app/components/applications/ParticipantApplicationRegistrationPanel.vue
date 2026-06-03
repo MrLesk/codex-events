@@ -52,7 +52,7 @@ const profileForm = defineModel<ParticipantRegistrationProfileForm>('profileForm
 })
 
 const props = defineProps<{
-  event: Pick<PublicEvent, 'eventType' | 'slug' | 'state' | 'city' | 'country' | 'autoApproveApplications' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'applicationAiKnowledgeVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent'>
+  event: Pick<PublicEvent, 'eventType' | 'slug' | 'state' | 'city' | 'country' | 'autoApproveApplications' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'applicationAiKnowledgeVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent' | 'requireAiKnowledge'>
   currentApplicationTerms: ParticipantApplicationTermsDocument | null
   profileFields: EventProfileField[]
   submissionPolicy: ParticipantApplicationSubmissionPolicy
@@ -147,7 +147,8 @@ const registrationSchema = computed(() => buildParticipantRegistrationFormSchema
   requireProofOfExecution: props.event.requireProofOfExecution,
   showTeamIntent: showTeamIntent.value,
   requireTeamIntent: props.event.requireTeamIntent,
-  showAiKnowledge: showAiKnowledge.value
+  showAiKnowledge: showAiKnowledge.value,
+  requireAiKnowledge: props.event.requireAiKnowledge
 }))
 
 const {
@@ -189,7 +190,8 @@ watch([
   () => props.event.applicationAiKnowledgeVisible,
   () => props.event.requireWhyThisEvent,
   () => props.event.requireProofOfExecution,
-  () => props.event.requireTeamIntent
+  () => props.event.requireTeamIntent,
+  () => props.event.requireAiKnowledge
 ], () => {
   syncingFromModels.value = true
   setValues({
@@ -356,6 +358,10 @@ const missingRequiredFieldCount = computed(() => {
     count += 1
   }
 
+  if (showAiKnowledge.value && props.event.requireAiKnowledge && !aiKnowledgeLevel.value) {
+    count += 1
+  }
+
   return count
 })
 
@@ -388,6 +394,10 @@ const invalidFieldCount = computed(() => {
 
   if (showTeamIntent.value && props.event.requireTeamIntent) {
     requiredKeys.add('teamIntent')
+  }
+
+  if (showAiKnowledge.value && props.event.requireAiKnowledge) {
+    requiredKeys.add('aiKnowledgeLevel')
   }
 
   let invalidCount = 0
@@ -734,6 +744,12 @@ function getProfileFieldPlaceholder(key: EventProfileField['key']) {
                   >
                     <span class="inline-flex items-center gap-1.5 text-[12px] font-medium text-neutral-600 dark:text-[#A3A3A3]">
                       <span>AI Knowledge</span>
+                      <span
+                        v-if="event.requireAiKnowledge"
+                        :class="requiredChipClass"
+                      >
+                        Required
+                      </span>
                     </span>
                     <AppSelect
                       v-model="aiKnowledgeLevel"

@@ -202,7 +202,8 @@ const hackathonApplicationFieldDefaults = {
   requireLumaEmail: true,
   requireWhyThisEvent: false,
   requireProofOfExecution: false,
-  requireTeamIntent: false
+  requireTeamIntent: false,
+  requireAiKnowledge: false
 } as const
 
 const registrationOnlyApplicationFieldDefaults = {
@@ -224,7 +225,8 @@ const registrationOnlyApplicationFieldDefaults = {
   requireLumaEmail: false,
   requireWhyThisEvent: false,
   requireProofOfExecution: false,
-  requireTeamIntent: false
+  requireTeamIntent: false,
+  requireAiKnowledge: false
 } as const
 
 const applicationFieldRequirementPairs = [
@@ -236,7 +238,8 @@ const applicationFieldRequirementPairs = [
   ['applicationLumaEmailVisible', 'requireLumaEmail', 'Luma email'],
   ['applicationWhyThisEventVisible', 'requireWhyThisEvent', 'Why this event'],
   ['applicationProofOfExecutionVisible', 'requireProofOfExecution', 'Proof-of-execution links'],
-  ['applicationTeamIntentVisible', 'requireTeamIntent', 'Participation mode']
+  ['applicationTeamIntentVisible', 'requireTeamIntent', 'Participation mode'],
+  ['applicationAiKnowledgeVisible', 'requireAiKnowledge', 'AI Knowledge']
 ] as const
 
 function getApplicationFieldDefaults(eventType: typeof eventTypes[number] | unknown) {
@@ -324,6 +327,7 @@ const eventConfigShape = {
   requireWhyThisEvent: profileRequirementSchema.default(false),
   requireProofOfExecution: profileRequirementSchema.default(false),
   requireTeamIntent: profileRequirementSchema.default(false),
+  requireAiKnowledge: profileRequirementSchema.default(false),
   requireSubmissionSummary: profileRequirementSchema.default(false),
   requireSubmissionRepositoryUrl: profileRequirementSchema.default(false),
   requireSubmissionDemoUrl: profileRequirementSchema.default(false)
@@ -408,6 +412,7 @@ export const updateEventBodySchema = z.object({
   requireWhyThisEvent: profileRequirementSchema.optional(),
   requireProofOfExecution: profileRequirementSchema.optional(),
   requireTeamIntent: profileRequirementSchema.optional(),
+  requireAiKnowledge: profileRequirementSchema.optional(),
   requireSubmissionSummary: profileRequirementSchema.optional(),
   requireSubmissionRepositoryUrl: profileRequirementSchema.optional(),
   requireSubmissionDemoUrl: profileRequirementSchema.optional()
@@ -1560,6 +1565,7 @@ export function serializeEvent(
     requireWhyThisEvent: event.requireWhyThisEvent,
     requireProofOfExecution: event.requireProofOfExecution,
     requireTeamIntent: event.requireTeamIntent,
+    requireAiKnowledge: event.requireAiKnowledge,
     requireSubmissionSummary: isCompetitionEvent ? event.requireSubmissionSummary : false,
     requireSubmissionRepositoryUrl: isCompetitionEvent ? event.requireSubmissionRepositoryUrl : false,
     requireSubmissionDemoUrl: isCompetitionEvent ? event.requireSubmissionDemoUrl : false,
@@ -1641,6 +1647,7 @@ export function serializePublicEvent(
     requireWhyThisEvent: event.requireWhyThisEvent,
     requireProofOfExecution: event.requireProofOfExecution,
     requireTeamIntent: event.requireTeamIntent,
+    requireAiKnowledge: event.requireAiKnowledge,
     requireSubmissionSummary: event.requireSubmissionSummary,
     requireSubmissionRepositoryUrl: event.requireSubmissionRepositoryUrl,
     requireSubmissionDemoUrl: event.requireSubmissionDemoUrl,

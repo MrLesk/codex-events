@@ -3036,6 +3036,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         blindScoreWeightPercent: 60,
         pitchScoreWeightPercent: 40,
         inPersonEvent: true,
+        applicationAiKnowledgeVisible: true,
         requireXProfile: true,
         requireLinkedinProfile: false,
         requireGithubProfile: true,
@@ -3044,6 +3045,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         requireLumaEmail: true,
         requireWhyThisEvent: true,
         requireProofOfExecution: true,
+        requireAiKnowledge: true,
         requireSubmissionSummary: true,
         requireSubmissionRepositoryUrl: true,
         requireSubmissionDemoUrl: true
@@ -3073,11 +3075,13 @@ describe('TASK-3.5 event CRUD routes', () => {
           })
         ],
         inPersonEvent: true,
+        applicationAiKnowledgeVisible: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
         requireLumaEmail: true,
         requireWhyThisEvent: true,
         requireProofOfExecution: true,
+        requireAiKnowledge: true,
         requireSubmissionSummary: true,
         requireSubmissionRepositoryUrl: true,
         requireSubmissionDemoUrl: true
@@ -3097,7 +3101,9 @@ describe('TASK-3.5 event CRUD routes', () => {
       blindReviewCount: 2,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 60,
-      pitchScoreWeightPercent: 40
+      pitchScoreWeightPercent: 40,
+      applicationAiKnowledgeVisible: true,
+      requireAiKnowledge: true
     })
 
     const creatorAssignment = await harness.database.query.eventRoleAssignments.findFirst({
@@ -3245,11 +3251,13 @@ describe('TASK-3.5 event CRUD routes', () => {
         applicationLumaEmailVisible: true,
         applicationWhyThisEventVisible: true,
         applicationProofOfExecutionVisible: true,
+        applicationAiKnowledgeVisible: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
         requireLumaEmail: true,
         requireWhyThisEvent: true,
-        requireProofOfExecution: true
+        requireProofOfExecution: true,
+        requireAiKnowledge: true
       })
     })
 
@@ -3266,11 +3274,13 @@ describe('TASK-3.5 event CRUD routes', () => {
         applicationLumaEmailVisible: true,
         applicationWhyThisEventVisible: true,
         applicationProofOfExecutionVisible: true,
+        applicationAiKnowledgeVisible: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
         requireLumaEmail: true,
         requireWhyThisEvent: true,
         requireProofOfExecution: true,
+        requireAiKnowledge: true,
         blindReviewCount: 0,
         pitchReviewEnabled: false,
         requireSubmissionSummary: false,
@@ -3294,11 +3304,13 @@ describe('TASK-3.5 event CRUD routes', () => {
       applicationLumaEmailVisible: true,
       applicationWhyThisEventVisible: true,
       applicationProofOfExecutionVisible: true,
+      applicationAiKnowledgeVisible: true,
       requireChatgptEmail: true,
       requireOpenaiOrgId: true,
       requireLumaEmail: true,
       requireWhyThisEvent: true,
       requireProofOfExecution: true,
+      requireAiKnowledge: true,
       blindReviewCount: 1,
       pitchReviewEnabled: false
     })
@@ -3451,6 +3463,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         blindScoreWeightPercent: 0,
         pitchScoreWeightPercent: 100,
         inPersonEvent: true,
+        applicationAiKnowledgeVisible: true,
         applicationChatgptEmailVisible: true,
         applicationOpenaiOrgIdVisible: true,
         applicationLumaEmailVisible: true,
@@ -3459,6 +3472,7 @@ describe('TASK-3.5 event CRUD routes', () => {
         requireLumaEmail: true,
         requireWhyThisEvent: true,
         requireProofOfExecution: true,
+        requireAiKnowledge: true,
         requireSubmissionSummary: true,
         requireSubmissionRepositoryUrl: true,
         requireSubmissionDemoUrl: true
@@ -3488,11 +3502,13 @@ describe('TASK-3.5 event CRUD routes', () => {
         blindScoreWeightPercent: 0,
         pitchScoreWeightPercent: 100,
         inPersonEvent: true,
+        applicationAiKnowledgeVisible: true,
         requireChatgptEmail: true,
         requireOpenaiOrgId: true,
         requireLumaEmail: true,
         requireWhyThisEvent: true,
-        requireProofOfExecution: true
+        requireProofOfExecution: true,
+        requireAiKnowledge: true
       }
     })
 
@@ -3508,7 +3524,9 @@ describe('TASK-3.5 event CRUD routes', () => {
       blindReviewCount: 0,
       pitchReviewEnabled: true,
       blindScoreWeightPercent: 0,
-      pitchScoreWeightPercent: 100
+      pitchScoreWeightPercent: 100,
+      applicationAiKnowledgeVisible: true,
+      requireAiKnowledge: true
     })
 
     const pendingApplication = await harness.database.query.userApplications.findFirst({

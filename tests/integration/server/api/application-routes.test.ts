@@ -59,6 +59,8 @@ async function seedApplicationContext(
     requireProofOfExecution?: boolean
     applicationTeamIntentVisible?: boolean
     requireTeamIntent?: boolean
+    applicationAiKnowledgeVisible?: boolean
+    requireAiKnowledge?: boolean
     lumaEventUrl?: string | null
     lumaEventApiId?: string | null
     inPersonEvent?: boolean
@@ -129,6 +131,7 @@ async function seedApplicationContext(
     applicationWhyThisEventVisible: options?.applicationWhyThisEventVisible ?? true,
     applicationProofOfExecutionVisible: options?.applicationProofOfExecutionVisible ?? true,
     applicationTeamIntentVisible: options?.applicationTeamIntentVisible ?? true,
+    applicationAiKnowledgeVisible: options?.applicationAiKnowledgeVisible ?? Boolean(options?.requireAiKnowledge),
     requireGithubProfile: options?.requireGithubProfile ?? false,
     requireChatgptEmail: options?.requireChatgptEmail ?? false,
     requireOpenaiOrgId: options?.requireOpenaiOrgId ?? false,
@@ -136,6 +139,7 @@ async function seedApplicationContext(
     requireWhyThisEvent: options?.requireWhyThisEvent ?? false,
     requireProofOfExecution: options?.requireProofOfExecution ?? false,
     requireTeamIntent: options?.requireTeamIntent ?? false,
+    requireAiKnowledge: options?.requireAiKnowledge ?? false,
     lumaEventUrl: options?.lumaEventUrl ?? null,
     lumaEventApiId: options?.lumaEventApiId ?? null,
     currentApplicationTermsDocumentId: null,
@@ -738,6 +742,57 @@ describe('TASK-3.6 application routes', () => {
       error: {
         code: 'proof_of_execution_url_invalid'
       }
+    })
+  })
+
+  test('POST /api/events/:eventId/applications enforces required AI Knowledge when configured', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'post', path: '/api/events/:eventId/applications', handler: applicationsPostHandler }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular_user',
+        email: 'regular@example.com'
+      }
+    })
+    harnesses.push(harness)
+    await seedApplicationContext(harness, {
+      requireAiKnowledge: true
+    })
+
+    const missingResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2'
+      })
+    })
+
+    expect(missingResponse.status).toBe(409)
+    expect(await missingResponse.json()).toMatchObject({
+      error: {
+        code: 'ai_knowledge_level_required'
+      }
+    })
+
+    const successResponse = await harness.request('/api/events/event_1/applications', {
+      method: 'POST',
+      body: JSON.stringify({
+        applicationTermsDocumentId: 'terms_app_2',
+        aiKnowledgeLevel: 'beginner'
+      })
+    })
+
+    expect(successResponse.status).toBe(200)
+
+    const storedApplication = await harness.database.query.userApplications.findFirst({
+      where: and(
+        eq(userApplications.eventId, 'event_1'),
+        eq(userApplications.userId, 'regular_user')
+      )
+    })
+
+    expect(JSON.parse(storedApplication?.registrationDetailsJson ?? '{}')).toMatchObject({
+      aiKnowledgeLevel: 'beginner'
     })
   })
 

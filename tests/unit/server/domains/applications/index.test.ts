@@ -403,7 +403,8 @@ describe('application utilities', () => {
       applicationAiKnowledgeVisible: true,
       requireWhyThisEvent: true,
       requireProofOfExecution: true,
-      requireTeamIntent: false
+      requireTeamIntent: false,
+      requireAiKnowledge: false
     }, {
       registrationTeamIntent: 'team',
       registrationTeamMembers: [
@@ -447,7 +448,8 @@ describe('application utilities', () => {
       applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: false,
       requireProofOfExecution: false,
-      requireTeamIntent: false
+      requireTeamIntent: false,
+      requireAiKnowledge: false
     }, {
       registrationTeamIntent: 'team',
       registrationTeamMembers: [
@@ -478,7 +480,8 @@ describe('application utilities', () => {
       applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: true,
       requireProofOfExecution: false,
-      requireTeamIntent: false
+      requireTeamIntent: false,
+      requireAiKnowledge: false
     }, {
       registrationTeamIntent: 'unknown',
       registrationTeamMembers: [],
@@ -498,7 +501,8 @@ describe('application utilities', () => {
       applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: false,
       requireProofOfExecution: true,
-      requireTeamIntent: false
+      requireTeamIntent: false,
+      requireAiKnowledge: false
     }, {
       registrationTeamIntent: 'unknown',
       registrationTeamMembers: [],
@@ -520,7 +524,8 @@ describe('application utilities', () => {
       applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: false,
       requireProofOfExecution: false,
-      requireTeamIntent: false
+      requireTeamIntent: false,
+      requireAiKnowledge: false
     }, {
       registrationTeamIntent: 'team',
       registrationTeamMembers: [
@@ -558,7 +563,8 @@ describe('application utilities', () => {
       applicationAiKnowledgeVisible: true,
       requireWhyThisEvent: false,
       requireProofOfExecution: false,
-      requireTeamIntent: false
+      requireTeamIntent: false,
+      requireAiKnowledge: false
     }
 
     expect(serializeRegistrationDetailsJson(event, {
@@ -585,6 +591,18 @@ describe('application utilities', () => {
       proofOfExecutionUrl: '',
       aiKnowledgeLevel: 'expert'
     })).toThrowError(ApiError)
+
+    expect(() => serializeRegistrationDetailsJson({
+      ...event,
+      requireAiKnowledge: true
+    }, {
+      registrationTeamIntent: 'unknown',
+      registrationTeamMembers: [],
+      inPersonAttendanceCommitment: false,
+      whyThisEvent: '',
+      proofOfExecutionUrl: '',
+      aiKnowledgeLevel: ''
+    })).toThrowError(ApiError)
   })
 
   test('requires participation mode when configured', () => {
@@ -598,7 +616,8 @@ describe('application utilities', () => {
       applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: false,
       requireProofOfExecution: false,
-      requireTeamIntent: true
+      requireTeamIntent: true,
+      requireAiKnowledge: false
     }, {
       registrationTeamIntent: 'unknown',
       registrationTeamMembers: [],
@@ -620,7 +639,8 @@ describe('application utilities', () => {
       applicationAiKnowledgeVisible: false,
       requireWhyThisEvent: false,
       requireProofOfExecution: false,
-      requireTeamIntent: false
+      requireTeamIntent: false,
+      requireAiKnowledge: false
     }, {
       registrationTeamIntent: 'unknown',
       registrationTeamMembers: [],

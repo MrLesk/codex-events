@@ -52,6 +52,7 @@ export interface EventFormState {
   requireWhyThisEvent: boolean
   requireProofOfExecution: boolean
   requireTeamIntent: boolean
+  requireAiKnowledge: boolean
   requireSubmissionSummary: boolean
   requireSubmissionRepositoryUrl: boolean
   requireSubmissionDemoUrl: boolean
@@ -92,7 +93,8 @@ const hackathonApplicationFieldDefaults = {
   requireLumaEmail: true,
   requireWhyThisEvent: false,
   requireProofOfExecution: false,
-  requireTeamIntent: false
+  requireTeamIntent: false,
+  requireAiKnowledge: false
 } as const
 
 const registrationOnlyApplicationFieldDefaults = {
@@ -114,7 +116,8 @@ const registrationOnlyApplicationFieldDefaults = {
   requireLumaEmail: false,
   requireWhyThisEvent: false,
   requireProofOfExecution: false,
-  requireTeamIntent: false
+  requireTeamIntent: false,
+  requireAiKnowledge: false
 } as const
 
 const applicationFieldRequirementPairs = [
@@ -126,7 +129,8 @@ const applicationFieldRequirementPairs = [
   ['applicationLumaEmailVisible', 'requireLumaEmail', 'Luma email'],
   ['applicationWhyThisEventVisible', 'requireWhyThisEvent', 'Why this event'],
   ['applicationProofOfExecutionVisible', 'requireProofOfExecution', 'Proof-of-execution links'],
-  ['applicationTeamIntentVisible', 'requireTeamIntent', 'Team preference']
+  ['applicationTeamIntentVisible', 'requireTeamIntent', 'Team preference'],
+  ['applicationAiKnowledgeVisible', 'requireAiKnowledge', 'AI Knowledge']
 ] as const
 
 export function getEventTypeApplicationFieldDefaults(eventType: EventType) {
@@ -322,6 +326,7 @@ const eventConfigFormBaseSchema = z.object({
   requireWhyThisEvent: z.boolean(),
   requireProofOfExecution: z.boolean(),
   requireTeamIntent: z.boolean(),
+  requireAiKnowledge: z.boolean(),
   requireSubmissionSummary: z.boolean(),
   requireSubmissionRepositoryUrl: z.boolean(),
   requireSubmissionDemoUrl: z.boolean()
@@ -516,6 +521,7 @@ export function createEmptyEventFormState(): EventFormState {
     requireWhyThisEvent: false,
     requireProofOfExecution: false,
     requireTeamIntent: false,
+    requireAiKnowledge: false,
     requireSubmissionSummary: false,
     requireSubmissionRepositoryUrl: false,
     requireSubmissionDemoUrl: false
@@ -613,6 +619,7 @@ export function createEventFormState(event: EventRecord): EventFormState {
     requireWhyThisEvent: event.requireWhyThisEvent,
     requireProofOfExecution: event.requireProofOfExecution,
     requireTeamIntent: event.requireTeamIntent,
+    requireAiKnowledge: event.requireAiKnowledge,
     requireSubmissionSummary: event.requireSubmissionSummary,
     requireSubmissionRepositoryUrl: event.requireSubmissionRepositoryUrl,
     requireSubmissionDemoUrl: event.requireSubmissionDemoUrl
@@ -657,6 +664,7 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     requireWhyThisEvent: configForm.requireWhyThisEvent,
     requireProofOfExecution: configForm.requireProofOfExecution,
     requireTeamIntent: configForm.requireTeamIntent,
+    requireAiKnowledge: configForm.requireAiKnowledge,
     ...(isHackathon
       ? {
           tracks: toEventTracksPayload(configForm.tracks),

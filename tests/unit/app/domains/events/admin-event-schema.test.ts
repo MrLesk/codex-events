@@ -148,16 +148,35 @@ describe('event config form schema', () => {
     expect(result.error.flatten().fieldErrors.requireGithubProfile).toEqual([
       'GitHub profile cannot be required while hidden from the application form.'
     ])
+
+    const aiKnowledgeResult = eventConfigFormSchema.safeParse({
+      ...createValidEventFormState(),
+      applicationAiKnowledgeVisible: false,
+      requireAiKnowledge: true
+    })
+
+    expect(aiKnowledgeResult.success).toBe(false)
+
+    if (aiKnowledgeResult.success) {
+      return
+    }
+
+    expect(aiKnowledgeResult.error.flatten().fieldErrors.requireAiKnowledge).toEqual([
+      'AI Knowledge cannot be required while hidden from the application form.'
+    ])
   })
 
   test('keeps AI Knowledge hidden by default and includes it in configuration patches', () => {
     expect(createEmptyEventFormState().applicationAiKnowledgeVisible).toBe(false)
+    expect(createEmptyEventFormState().requireAiKnowledge).toBe(false)
 
     expect(buildEventConfigurationPatch({
       ...createValidEventFormState(),
-      applicationAiKnowledgeVisible: true
+      applicationAiKnowledgeVisible: true,
+      requireAiKnowledge: true
     }, 'hackathon')).toMatchObject({
-      applicationAiKnowledgeVisible: true
+      applicationAiKnowledgeVisible: true,
+      requireAiKnowledge: true
     })
   })
 

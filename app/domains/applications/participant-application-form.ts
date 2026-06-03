@@ -80,6 +80,7 @@ export function buildParticipantRegistrationFormSchema(options: {
   showTeamIntent: boolean
   requireTeamIntent: boolean
   showAiKnowledge: boolean
+  requireAiKnowledge: boolean
 }) {
   const visibleProfileKeys = new Set(options.profileFields
     .filter(field => field.visible)
@@ -223,6 +224,14 @@ export function buildParticipantRegistrationFormSchema(options: {
         code: z.ZodIssueCode.custom,
         path: ['proofOfExecutionUrl'],
         message: 'Proof of execution URL is required.'
+      })
+    }
+
+    if (options.showAiKnowledge && options.requireAiKnowledge && input.aiKnowledgeLevel.length === 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['aiKnowledgeLevel'],
+        message: 'Choose your AI Knowledge level.'
       })
     }
   })

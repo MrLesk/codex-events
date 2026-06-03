@@ -395,7 +395,7 @@ export function getInitialApplicationLumaSyncStatus(
 }
 
 export function serializeRegistrationDetailsJson(
-  event: Pick<EventRecord, 'id' | 'maxTeamMembers' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'applicationAiKnowledgeVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent'>,
+  event: Pick<EventRecord, 'id' | 'maxTeamMembers' | 'inPersonEvent' | 'applicationWhyThisEventVisible' | 'applicationProofOfExecutionVisible' | 'applicationTeamIntentVisible' | 'applicationAiKnowledgeVisible' | 'requireWhyThisEvent' | 'requireProofOfExecution' | 'requireTeamIntent' | 'requireAiKnowledge'>,
   payload: Pick<SubmitApplicationBody, 'registrationTeamIntent' | 'registrationTeamMembers' | 'inPersonAttendanceCommitment' | 'whyThisEvent' | 'proofOfExecutionUrl' | 'aiKnowledgeLevel'>
 ) {
   assertGuard(!event.applicationTeamIntentVisible || payload.registrationTeamMembers.length <= event.maxTeamMembers, {
@@ -465,6 +465,14 @@ export function serializeRegistrationDetailsJson(
   assertGuard(!event.applicationAiKnowledgeVisible || payload.aiKnowledgeLevel.length === 0 || isAiKnowledgeLevel(payload.aiKnowledgeLevel), {
     code: 'ai_knowledge_level_invalid',
     message: 'AI Knowledge must be beginner, intermediate, or advanced.',
+    details: {
+      eventId: event.id
+    }
+  })
+
+  assertGuard(!event.applicationAiKnowledgeVisible || !event.requireAiKnowledge || aiKnowledgeLevel.length > 0, {
+    code: 'ai_knowledge_level_required',
+    message: 'AI Knowledge is required for this event.',
     details: {
       eventId: event.id
     }

@@ -70,6 +70,7 @@ function buildEventRecord(
     requireWhyThisEvent: false,
     requireProofOfExecution: false,
     requireTeamIntent: false,
+    requireAiKnowledge: false,
     requireSubmissionSummary: false,
     requireSubmissionRepositoryUrl: false,
     requireSubmissionDemoUrl: false,
@@ -522,22 +523,26 @@ describe('event management utilities', () => {
       applicationChatgptEmailVisible: true,
       applicationOpenaiOrgIdVisible: true,
       applicationLumaEmailVisible: true,
+      applicationAiKnowledgeVisible: true,
       requireChatgptEmail: true,
       requireOpenaiOrgId: true,
       requireLumaEmail: true,
       requireWhyThisEvent: true,
-      requireProofOfExecution: true
+      requireProofOfExecution: true,
+      requireAiKnowledge: true
     })).toMatchObject({
       autoApproveApplications: true,
       inPersonEvent: true,
       applicationChatgptEmailVisible: true,
       applicationOpenaiOrgIdVisible: true,
       applicationLumaEmailVisible: true,
+      applicationAiKnowledgeVisible: true,
       requireChatgptEmail: true,
       requireOpenaiOrgId: true,
       requireLumaEmail: true,
       requireWhyThisEvent: true,
-      requireProofOfExecution: true
+      requireProofOfExecution: true,
+      requireAiKnowledge: true
     })
   })
 
@@ -545,6 +550,10 @@ describe('event management utilities', () => {
     expect(() => buildEventUpdatePayload(buildEventRecord(), {
       applicationProofOfExecutionVisible: false,
       requireProofOfExecution: true
+    })).toThrowError(ApiError)
+    expect(() => buildEventUpdatePayload(buildEventRecord(), {
+      applicationAiKnowledgeVisible: false,
+      requireAiKnowledge: true
     })).toThrowError(ApiError)
   })
 
@@ -642,12 +651,14 @@ describe('event management utilities', () => {
     expect(serializeEvent(buildEventRecord({
       eventType: 'build',
       applicationAiKnowledgeVisible: true,
+      requireAiKnowledge: true,
       requireProofOfExecution: true,
       requireSubmissionSummary: true,
       requireSubmissionRepositoryUrl: true,
       requireSubmissionDemoUrl: true
     }))).toMatchObject({
       applicationAiKnowledgeVisible: true,
+      requireAiKnowledge: true,
       requireProofOfExecution: true,
       requireSubmissionSummary: false,
       requireSubmissionRepositoryUrl: false,

@@ -158,6 +158,7 @@ export const events = sqliteTable(
     requireWhyThisEvent: integer('require_why_this_event', { mode: 'boolean' }).notNull().default(false),
     requireProofOfExecution: integer('require_proof_of_execution', { mode: 'boolean' }).notNull().default(false),
     requireTeamIntent: integer('require_team_intent', { mode: 'boolean' }).notNull().default(false),
+    requireAiKnowledge: integer('require_ai_knowledge', { mode: 'boolean' }).notNull().default(false),
     requireSubmissionSummary: integer('require_submission_summary', { mode: 'boolean' }).notNull().default(false),
     requireSubmissionRepositoryUrl: integer('require_submission_repository_url', { mode: 'boolean' }).notNull().default(false),
     requireSubmissionDemoUrl: integer('require_submission_demo_url', { mode: 'boolean' }).notNull().default(false),

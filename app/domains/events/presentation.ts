@@ -86,6 +86,7 @@ export interface PublicEvent {
   requireWhyThisEvent: boolean
   requireProofOfExecution: boolean
   requireTeamIntent: boolean
+  requireAiKnowledge: boolean
   requireSubmissionSummary: boolean
   requireSubmissionRepositoryUrl: boolean
   requireSubmissionDemoUrl: boolean

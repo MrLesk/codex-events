@@ -62,6 +62,7 @@ async function createEvent(form: EventFormState) {
         applicationWhyThisEventVisible: form.applicationWhyThisEventVisible,
         applicationProofOfExecutionVisible: form.applicationProofOfExecutionVisible,
         applicationTeamIntentVisible: form.applicationTeamIntentVisible,
+        applicationAiKnowledgeVisible: form.applicationAiKnowledgeVisible,
         requireXProfile: form.requireXProfile,
         requireLinkedinProfile: form.requireLinkedinProfile,
         requireGithubProfile: form.requireGithubProfile,
@@ -71,6 +72,7 @@ async function createEvent(form: EventFormState) {
         requireWhyThisEvent: form.requireWhyThisEvent,
         requireProofOfExecution: form.requireProofOfExecution,
         requireTeamIntent: form.requireTeamIntent,
+        requireAiKnowledge: form.requireAiKnowledge,
         requireSubmissionSummary: isHackathon ? form.requireSubmissionSummary : false,
         requireSubmissionRepositoryUrl: isHackathon ? form.requireSubmissionRepositoryUrl : false,
         requireSubmissionDemoUrl: isHackathon ? form.requireSubmissionDemoUrl : false
