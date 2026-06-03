@@ -4,7 +4,9 @@ import {
   buildEventConfigurationPatch,
   createEmptyEventFormState,
   eventConfigFormSchema,
-  eventDetailsFormSchema
+  eventDetailsFormSchema,
+  formatParticipantsLimitInput,
+  parseParticipantsLimitInput
 } from '../../../../../app/domains/events/admin-event'
 
 function createValidEventFormState() {
@@ -157,6 +159,15 @@ describe('event config form schema', () => {
     }, 'hackathon')).toMatchObject({
       applicationAiKnowledgeVisible: true
     })
+  })
+
+  test('normalizes nullable participant limit input values', () => {
+    expect(formatParticipantsLimitInput(null)).toBe('')
+    expect(formatParticipantsLimitInput(80)).toBe('80')
+    expect(parseParticipantsLimitInput('')).toBeNull()
+    expect(parseParticipantsLimitInput('  ')).toBeNull()
+    expect(parseParticipantsLimitInput('80')).toBe(80)
+    expect(parseParticipantsLimitInput('invalid')).toBeNull()
   })
 
   test('omits competition fields from registration-only configuration patches', () => {

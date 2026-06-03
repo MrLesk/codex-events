@@ -15,9 +15,11 @@ import {
   applyEventTypeApplicationFieldDefaults,
   createEventSlug,
   eventDetailsFormSchema,
+  formatParticipantsLimitInput,
   getAgendaItemEndAfterStartChange,
   getNextAgendaItemDefaultTimes,
-  eventConfigFormSchema
+  eventConfigFormSchema,
+  parseParticipantsLimitInput
 } from '~/domains/events/admin-event'
 import { cloneFormValues } from '~/utils/form-values'
 import { getEventConfigFormModeView } from '~/domains/events/program-settings'
@@ -94,19 +96,19 @@ const validationSchema = computed(() =>
 )
 
 const participantsLimitInput = computed({
-  get: () => form.value.participantsLimit?.toString() ?? '',
-  set: (value: string) => {
-    const normalizedValue = value.trim()
-
-    if (!normalizedValue) {
-      form.value.participantsLimit = null
-      return
-    }
-
-    const parsed = Number.parseInt(normalizedValue, 10)
-    form.value.participantsLimit = Number.isNaN(parsed) ? null : parsed
+  get: () => formatParticipantsLimitInput(form.value.participantsLimit),
+  set: (value) => {
+    form.value.participantsLimit = parseParticipantsLimitInput(value)
   }
 })
+
+function updateParticipantsLimitInput(event: Event) {
+  if (!(event.target instanceof HTMLInputElement)) {
+    return
+  }
+
+  participantsLimitInput.value = event.target.value
+}
 
 function createAgendaItemId() {
   if (typeof globalThis.crypto?.randomUUID === 'function') {
@@ -994,12 +996,14 @@ const submitConfigForm = handleSubmit(() => {
 
                   <label class="grid gap-2">
                     <span class="text-sm font-medium text-toned">Participants limit</span>
-                    <AppInput
-                      v-model="participantsLimitInput"
+                    <input
+                      :value="participantsLimitInput"
                       type="number"
                       min="1"
                       placeholder="Leave empty for no limit"
-                    />
+                      class="w-full rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25]"
+                      @input="updateParticipantsLimitInput"
+                    >
                   </label>
                 </div>
 
@@ -1352,12 +1356,14 @@ const submitConfigForm = handleSubmit(() => {
 
             <label class="grid gap-2">
               <span class="text-sm font-medium text-toned">Participants limit</span>
-              <AppInput
-                v-model="participantsLimitInput"
+              <input
+                :value="participantsLimitInput"
                 type="number"
                 min="1"
                 placeholder="Leave empty for no limit"
-              />
+                class="w-full rounded-lg border border-black/8 bg-white px-4 py-3 text-sm text-highlighted outline-none transition disabled:cursor-not-allowed disabled:opacity-60 dark:border-white/[0.08] dark:bg-[#111111] focus:border-black/25 dark:focus:border-white/[0.25]"
+                @input="updateParticipantsLimitInput"
+              >
             </label>
           </div>
 

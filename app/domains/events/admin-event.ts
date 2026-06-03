@@ -453,6 +453,21 @@ export function getTermsVersionPublishErrorMessage(title: string, content: strin
   return ''
 }
 
+export function formatParticipantsLimitInput(value: number | null | undefined) {
+  return value?.toString() ?? ''
+}
+
+export function parseParticipantsLimitInput(value: string) {
+  const normalizedValue = value.trim()
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  const parsed = Number.parseInt(normalizedValue, 10)
+  return Number.isNaN(parsed) ? null : parsed
+}
+
 export function createEmptyEventFormState(): EventFormState {
   return {
     eventType: 'hackathon',

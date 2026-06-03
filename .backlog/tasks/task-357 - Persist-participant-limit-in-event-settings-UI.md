@@ -5,17 +5,16 @@ status: Done
 assignee:
   - '@Codex'
 created_date: '2026-05-31 20:59'
-updated_date: '2026-06-01 19:55'
+updated_date: '2026-06-03 22:36'
 labels:
   - bug
   - events
   - admin
 dependencies: []
 modified_files:
-  - server/domains/events/index.ts
-  - tests/unit/server/domains/events/index.test.ts
-  - tests/unit/app/domains/admin-domain-modules.test.ts
-  - tests/integration/server/api/event-routes.test.ts
+  - app/components/admin/EventConfigForm.vue
+  - app/domains/events/admin-event.ts
+  - tests/unit/app/domains/events/admin-event-schema.test.ts
 priority: high
 ordinal: 55000
 ---
@@ -54,14 +53,16 @@ Fix: split default-free update input schemas from create-time default schemas so
 Reopened after a reproduced user report: Participants limit remains visible immediately after Save but disappears after a full page refresh. This suggests the client state updates optimistically or from the save response, while reload hydration reads a null/omitted value from the persisted event source.
 
 Current production code path was rechecked: PATCH persists `participantsLimit`, the event serializer includes it, and the slug reload endpoint returns the persisted value. Added integration coverage for the exact save-then-refresh read path through `GET /api/events/slug/:slug`. Attempting to start the app against the existing `.wrangler/state` failed before Nuxt boot because migration `0052_optional_application_terms.sql` hits pre-existing foreign-key violations in the local D1 state, mostly rows pointing at missing users. A clean temporary D1 state boots successfully, so that local state issue is separate from the participant-limit persistence path.
+
+Production diagnosis on 2026-06-03: Wrangler tail showed PATCH /api/events/:id returning 200 from the settings page, while a read-only production D1 query showed participants_limit remained null and updated_at advanced to the save time. This indicates the settings save succeeds but submits the stale/null participant limit from client form state.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Rechecked the participant-limit save path and added integration coverage for the browser refresh read path. The existing PATCH route persists `participantsLimit`, and the test now verifies that a saved registration-only event still returns the limit through `GET /api/events/slug/:slug`, matching the full page refresh path.
+Fixed the remaining participant-limit persistence issue in the settings UI. Production diagnosis showed PATCH requests returning 200 while D1 kept `participants_limit` null, so the server path was healthy and the client was submitting stale/null form state. The participant-limit field now parses the native input event directly into `form.participantsLimit`, and the nullable input parser is covered by unit tests.
 
-Validation: `bun run lint` passed; `bun run typecheck` passed; `bun run test:unit` passed; `bun run test:integration` passed. A direct ad hoc `bun test ...` invocation was not used for final validation because it does not load the project path aliases; the project test scripts do. Local dev against the existing `.wrangler/state` is blocked by unrelated pre-existing foreign-key violations during migration `0052_optional_application_terms.sql`; a clean temporary local D1 state starts successfully.
+Validation: `bun run lint` passed; `bun run typecheck` passed; `bun run test:unit` passed; `bun run test:integration` passed; `bun run test:bdd` passed.
 <!-- SECTION:FINAL_SUMMARY:END -->
 
 ## Definition of Done
