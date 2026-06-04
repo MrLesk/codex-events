@@ -370,8 +370,8 @@ function shouldShowWithdrawAction(application: AdminApplicationRecord) {
   return application.status === 'submitted' || application.status === 'approved'
 }
 
-function shouldShowHeaderWithdrawAction(application: AdminApplicationRecord) {
-  return !props.readOnly && application.status === 'approved'
+function shouldShowApplicationActionColumn(application: AdminApplicationRecord) {
+  return !props.readOnly && shouldShowWithdrawAction(application)
 }
 
 function formatWithdrawalTimestamp(application: AdminApplicationRecord) {
@@ -741,7 +741,7 @@ const emptyState = computed(() => {
                 :key="applicant.application.id"
                 :data-testid="`admin-application-${applicant.application.id}`"
                 class="grid gap-5 px-5 py-5"
-                :class="view === 'applications' && applicant.application.status === 'submitted' ? 'xl:grid-cols-[minmax(0,1fr)_14rem] xl:items-center' : ''"
+                :class="shouldShowApplicationActionColumn(applicant.application) ? 'sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-start xl:items-center' : ''"
               >
                 <div class="min-w-0 space-y-3">
                   <div class="space-y-3">
@@ -820,27 +820,6 @@ const emptyState = computed(() => {
                           </div>
                         </div>
                       </div>
-
-                      <button
-                        v-if="shouldShowHeaderWithdrawAction(applicant.application)"
-                        type="button"
-                        :data-testid="`admin-application-withdraw-${applicant.application.id}`"
-                        :class="`${getDecisionButtonClass('withdraw', false)} shrink-0 sm:min-w-[9rem] sm:w-auto`"
-                        :disabled="!getAdminWithdrawalAvailability(applicant.application).isAllowed || (pendingActionKey !== null && pendingActionKey !== `withdraw:${applicant.application.id}`)"
-                        @click="emit('withdraw', applicant.application)"
-                      >
-                        <span>Withdraw</span>
-                        <AppIcon
-                          v-if="pendingActionKey === `withdraw:${applicant.application.id}`"
-                          name="i-lucide-loader-circle"
-                          class="size-4 animate-spin"
-                        />
-                        <AppIcon
-                          v-else
-                          name="i-lucide-undo-2"
-                          class="size-4"
-                        />
-                      </button>
                     </div>
 
                     <div
@@ -911,20 +890,6 @@ const emptyState = computed(() => {
                         AI Knowledge: {{ formatAiKnowledgeLevel(applicant.registrationDetails.aiKnowledgeLevel) }}
                       </span>
                     </div>
-
-                    <AppAlert
-                      v-if="shouldShowHeaderWithdrawAction(applicant.application) && getAdminWithdrawalAvailability(applicant.application).warning"
-                      color="warning"
-                      variant="soft"
-                      title="This withdrawal will dismantle the team"
-                      :description="getAdminWithdrawalAvailability(applicant.application).warning ?? ''"
-                    />
-                    <p
-                      v-else-if="shouldShowHeaderWithdrawAction(applicant.application) && getAdminWithdrawalAvailability(applicant.application).reason"
-                      class="text-xs leading-5 text-muted"
-                    >
-                      {{ getAdminWithdrawalAvailability(applicant.application).reason }}
-                    </p>
                   </div>
 
                   <div
@@ -994,7 +959,7 @@ const emptyState = computed(() => {
                 </div>
 
                 <div
-                  v-if="!readOnly && shouldShowWithdrawAction(applicant.application) && !shouldShowHeaderWithdrawAction(applicant.application)"
+                  v-if="shouldShowApplicationActionColumn(applicant.application)"
                   class="grid gap-2 self-center xl:pl-2"
                 >
                   <AppAlert
