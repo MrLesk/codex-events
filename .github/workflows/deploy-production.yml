@@ -62,7 +62,6 @@ jobs:
       NUXT_AUTH0_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_CLIENT_SECRET }}
       NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}
       NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ${{ secrets.NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET }}
-      NUXT_LUMA_API_KEY: ${{ secrets.NUXT_LUMA_API_KEY }}
       # Cloudflare credentials.
       CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
       CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -129,15 +128,11 @@ jobs:
             fi
           done < <(jq -r '.queues.producers[].queue' .wrangler/generated/production.jsonc)
 
-      - name: Reconcile production Luma webhook
-        if: ${{ env.NUXT_LUMA_API_KEY != '' }}
-        run: bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-production-luma-webhook-secret.json
-
       - name: Upload production Worker secrets
         run: |
-          bun tools/deploy/write-worker-secrets.ts .wrangler-production-secrets.json --merge .wrangler-production-luma-webhook-secret.json
+          bun tools/deploy/write-worker-secrets.ts .wrangler-production-secrets.json
           bunx wrangler secret bulk .wrangler-production-secrets.json --config .wrangler/generated/production.jsonc
-          rm -f .wrangler-production-secrets.json .wrangler-production-luma-webhook-secret.json
+          rm -f .wrangler-production-secrets.json
 
       - name: Apply production Auth0 configuration
         run: bun tools/auth0/auth0-bootstrap.ts apply

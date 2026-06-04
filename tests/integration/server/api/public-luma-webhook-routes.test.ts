@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from 'vitest'
 import { eq } from 'drizzle-orm'
 
-import lumaWebhooksPostHandler from '../../../../server/api/public/luma/webhooks.post'
+import lumaWebhooksPostHandler from '../../../../server/api/public/events/[slug]/luma/webhooks.post'
 import {
   auditLogs,
   events,
@@ -58,6 +58,9 @@ async function seedAttendanceContext(
     applicationLumaEmailVisible: true,
     requireLumaEmail: true,
     lumaEventApiId: options?.eventApiId ?? 'evt-123',
+    lumaApiKey: 'luma_test_key',
+    lumaWebhookSecret: 'whsec_test',
+    lumaWebhookStatus: 'configured',
     createdByUserId: 'platform_admin'
   })
 
@@ -101,6 +104,7 @@ async function buildSignedHeaders(rawBody: string) {
 
 describe('public Luma webhook routes', () => {
   const harnesses: Array<ReturnType<typeof createApiRouteTestHarness>> = []
+  const webhookPath = '/api/public/events/event_1/luma/webhooks'
 
   afterEach(async () => {
     while (harnesses.length > 0) {
@@ -111,13 +115,8 @@ describe('public Luma webhook routes', () => {
   test('marks an approved participant as attended exactly once', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/public/luma/webhooks', handler: lumaWebhooksPostHandler }
-      ],
-      runtimeConfig: {
-        luma: {
-          webhookSecret: 'whsec_test'
-        }
-      }
+        { method: 'post', path: '/api/public/events/:slug/luma/webhooks', handler: lumaWebhooksPostHandler }
+      ]
     })
     harnesses.push(harness)
     await seedAttendanceContext(harness)
@@ -135,12 +134,12 @@ describe('public Luma webhook routes', () => {
     })
     const headers = await buildSignedHeaders(rawBody)
 
-    const firstResponse = await harness.request('/api/public/luma/webhooks', {
+    const firstResponse = await harness.request(webhookPath, {
       method: 'POST',
       headers,
       body: rawBody
     })
-    const secondResponse = await harness.request('/api/public/luma/webhooks', {
+    const secondResponse = await harness.request(webhookPath, {
       method: 'POST',
       headers,
       body: rawBody
@@ -181,13 +180,8 @@ describe('public Luma webhook routes', () => {
   test('returns 200 without mutation for a valid signed delivery from an unknown event', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/public/luma/webhooks', handler: lumaWebhooksPostHandler }
-      ],
-      runtimeConfig: {
-        luma: {
-          webhookSecret: 'whsec_test'
-        }
-      }
+        { method: 'post', path: '/api/public/events/:slug/luma/webhooks', handler: lumaWebhooksPostHandler }
+      ]
     })
     harnesses.push(harness)
     await seedAttendanceContext(harness, {
@@ -204,7 +198,7 @@ describe('public Luma webhook routes', () => {
         }
       }
     })
-    const response = await harness.request('/api/public/luma/webhooks', {
+    const response = await harness.request(webhookPath, {
       method: 'POST',
       headers: await buildSignedHeaders(rawBody),
       body: rawBody
@@ -228,13 +222,8 @@ describe('public Luma webhook routes', () => {
   test('returns 200 without mutation for an unmatched participant or a non-approved application', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/public/luma/webhooks', handler: lumaWebhooksPostHandler }
-      ],
-      runtimeConfig: {
-        luma: {
-          webhookSecret: 'whsec_test'
-        }
-      }
+        { method: 'post', path: '/api/public/events/:slug/luma/webhooks', handler: lumaWebhooksPostHandler }
+      ]
     })
     harnesses.push(harness)
     await seedAttendanceContext(harness, {
@@ -262,12 +251,12 @@ describe('public Luma webhook routes', () => {
       }
     })
 
-    const unmatchedResponse = await harness.request('/api/public/luma/webhooks', {
+    const unmatchedResponse = await harness.request(webhookPath, {
       method: 'POST',
       headers: await buildSignedHeaders(unmatchedBody),
       body: unmatchedBody
     })
-    const nonApprovedResponse = await harness.request('/api/public/luma/webhooks', {
+    const nonApprovedResponse = await harness.request(webhookPath, {
       method: 'POST',
       headers: await buildSignedHeaders(nonApprovedBody),
       body: nonApprovedBody
@@ -287,13 +276,8 @@ describe('public Luma webhook routes', () => {
   test('ignores later non-check-in guest updates after attendance is set', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/public/luma/webhooks', handler: lumaWebhooksPostHandler }
-      ],
-      runtimeConfig: {
-        luma: {
-          webhookSecret: 'whsec_test'
-        }
-      }
+        { method: 'post', path: '/api/public/events/:slug/luma/webhooks', handler: lumaWebhooksPostHandler }
+      ]
     })
     harnesses.push(harness)
     await seedAttendanceContext(harness, {
@@ -310,7 +294,7 @@ describe('public Luma webhook routes', () => {
         }
       }
     })
-    const response = await harness.request('/api/public/luma/webhooks', {
+    const response = await harness.request(webhookPath, {
       method: 'POST',
       headers: await buildSignedHeaders(rawBody),
       body: rawBody
@@ -329,13 +313,8 @@ describe('public Luma webhook routes', () => {
   test('rejects invalid signatures', async () => {
     const harness = createApiRouteTestHarness({
       routes: [
-        { method: 'post', path: '/api/public/luma/webhooks', handler: lumaWebhooksPostHandler }
-      ],
-      runtimeConfig: {
-        luma: {
-          webhookSecret: 'whsec_test'
-        }
-      }
+        { method: 'post', path: '/api/public/events/:slug/luma/webhooks', handler: lumaWebhooksPostHandler }
+      ]
     })
     harnesses.push(harness)
     await seedAttendanceContext(harness)
@@ -350,7 +329,7 @@ describe('public Luma webhook routes', () => {
         }
       }
     })
-    const response = await harness.request('/api/public/luma/webhooks', {
+    const response = await harness.request(webhookPath, {
       method: 'POST',
       headers: {
         'content-type': 'application/json',

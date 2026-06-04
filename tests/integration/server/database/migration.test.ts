@@ -91,6 +91,46 @@ describe('shared database migration', () => {
     `).run('evt-unique123', 'event_2')).rejects.toThrow()
   })
 
+  test('stores event-owned Luma webhook configuration with a guarded status', async () => {
+    const now = isoTimestamp(0)
+    await seedUser(database, 'creator_1', now)
+    await seedEvent(database, 'event_1', 'draft', now, 'creator_1')
+
+    const defaultRow = await database.prepare(`
+      select luma_api_key, luma_webhook_id, luma_webhook_secret, luma_webhook_status, luma_webhook_error, luma_webhook_registered_at
+      from events
+      where id = ?
+    `).all<{
+      luma_api_key: string | null
+      luma_webhook_id: string | null
+      luma_webhook_secret: string | null
+      luma_webhook_status: string
+      luma_webhook_error: string | null
+      luma_webhook_registered_at: string | null
+    }>('event_1')
+
+    expect(defaultRow.results).toEqual([{
+      luma_api_key: null,
+      luma_webhook_id: null,
+      luma_webhook_secret: null,
+      luma_webhook_status: 'not_configured',
+      luma_webhook_error: null,
+      luma_webhook_registered_at: null
+    }])
+
+    await database.prepare(`
+      update events
+      set luma_webhook_status = ?
+      where id = ?
+    `).run('configured', 'event_1')
+
+    await expect(database.prepare(`
+      update events
+      set luma_webhook_status = ?
+      where id = ?
+    `).run('unknown', 'event_1')).rejects.toThrow()
+  })
+
   test('creates and removes primary linked-auth-identity rows with user inserts and soft deletion', async () => {
     const now = isoTimestamp(0)
 

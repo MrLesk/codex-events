@@ -16,8 +16,9 @@ import {
   createEventBodySchema,
   listEventTracks,
   serializeEventAgendaItems,
-  serializeEvent
+  serializeAdminEvent
 } from '#server/domains/events'
+import { reconcileEventLumaWebhook } from '#server/domains/events/luma-webhook-registration'
 import { parseValidatedBody } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
@@ -51,6 +52,7 @@ export default defineApiHandler(async (h3Event) => {
     discordServerUrl: body.discordServerUrl ?? null,
     lumaEventUrl: body.lumaEventUrl ?? null,
     lumaEventApiId: body.lumaEventApiId ?? null,
+    lumaApiKey: body.lumaApiKey ?? null,
     city: body.city,
     country: body.country,
     address: body.address,
@@ -116,7 +118,18 @@ export default defineApiHandler(async (h3Event) => {
   const createdEvent = await database.query.events.findFirst({
     where: eq(events.id, eventId)
   })
+  await reconcileEventLumaWebhook({
+    database,
+    event: createdEvent!,
+    runtimeConfig: useRuntimeConfig(h3Event)
+  })
+
+  const configuredEvent = await database.query.events.findFirst({
+    where: eq(events.id, eventId)
+  })
   const createdTracks = await listEventTracks(database, eventId)
 
-  return apiData(serializeEvent(createdEvent!, undefined, createdTracks))
+  return apiData(serializeAdminEvent(configuredEvent!, undefined, createdTracks, {
+    appBaseUrl: useRuntimeConfig(h3Event).auth0.appBaseUrl
+  }))
 })

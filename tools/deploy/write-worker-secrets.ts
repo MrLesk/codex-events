@@ -23,7 +23,6 @@ Environment variables:
 - NUXT_AUTH0_CLIENT_SECRET
 - NUXT_AUTH0_SESSION_SECRET (optional; derived from NUXT_AUTH0_CLIENT_SECRET)
 - NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET (optional; derived from NUXT_AUTH0_CLIENT_SECRET)
-- NUXT_LUMA_API_KEY (optional)
 `
 }
 
@@ -101,7 +100,6 @@ export function buildWorkerSecrets(environment: EnvironmentValues, extraSecrets:
     NUXT_AUTH0_CLIENT_SECRET: readRequiredValue(environment, 'NUXT_AUTH0_CLIENT_SECRET'),
     NUXT_AUTH0_SESSION_SECRET: generatedSecrets.sessionSecret,
     NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: generatedSecrets.accountLinkChallengeSecret,
-    NUXT_LUMA_API_KEY: readOptionalValue(environment, 'NUXT_LUMA_API_KEY'),
     ...extraSecrets
   } satisfies WorkerSecrets
 }

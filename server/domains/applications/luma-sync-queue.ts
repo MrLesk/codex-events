@@ -26,7 +26,6 @@ const applicationLumaSyncRuntimeConfigSchema = z.object({
     binding: z.string().trim().optional()
   }).optional(),
   luma: z.object({
-    apiKey: z.string().trim().optional(),
     apiBaseUrl: z.string().trim().optional(),
     profileBaseUrl: z.string().trim().optional(),
     queueBinding: z.string().trim().optional(),
@@ -237,10 +236,6 @@ function getRetryDelaySeconds(config: ApplicationLumaSyncRuntimeConfig) {
   return config.luma?.retryDelaySeconds ?? defaultApplicationLumaSyncRetryDelaySeconds
 }
 
-function getLumaApiKey(config: ApplicationLumaSyncRuntimeConfig) {
-  return config.luma?.apiKey?.trim() || ''
-}
-
 function getLumaApiBaseUrl(config: ApplicationLumaSyncRuntimeConfig) {
   return config.luma?.apiBaseUrl?.trim() || defaultLumaApiBaseUrl
 }
@@ -296,6 +291,7 @@ async function requestLumaJson(
   path: string,
   options: {
     config: ApplicationLumaSyncRuntimeConfig
+    apiKey: string
     fetchImpl: FetchLike
     query?: Record<string, string | null | undefined>
     method?: 'GET' | 'POST'
@@ -315,7 +311,7 @@ async function requestLumaJson(
     headers: {
       'accept': 'application/json',
       'user-agent': defaultLumaRequestUserAgent,
-      'x-luma-api-key': getLumaApiKey(options.config)
+      'x-luma-api-key': options.apiKey
     }
   }
 
@@ -497,6 +493,7 @@ async function findGuestByLumaUserId(
   lumaUserApiId: string,
   options: {
     config: ApplicationLumaSyncRuntimeConfig
+    apiKey: string
     fetchImpl: FetchLike
   }
 ) {
@@ -505,6 +502,7 @@ async function findGuestByLumaUserId(
   while (true) {
     const payload = await requestLumaJson('/v1/event/get-guests', {
       config: options.config,
+      apiKey: options.apiKey,
       fetchImpl: options.fetchImpl,
       query: {
         event_id: eventApiId,
@@ -550,11 +548,13 @@ async function findGuestByEmail(
   email: string,
   options: {
     config: ApplicationLumaSyncRuntimeConfig
+    apiKey: string
     fetchImpl: FetchLike
   }
 ) {
   const payload = await requestLumaJson('/v1/event/get-guest', {
     config: options.config,
+    apiKey: options.apiKey,
     fetchImpl: options.fetchImpl,
     query: {
       event_id: eventApiId,
@@ -583,6 +583,7 @@ async function findGuestByEmail(
 export async function resolveLumaEmailFromUsername(
   input: {
     lumaEventApiId: string
+    lumaApiKey: string
     lumaUsername: string
   },
   options: {
@@ -592,6 +593,11 @@ export async function resolveLumaEmailFromUsername(
 ) {
   const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig)
   const fetchImpl = resolveFetchImpl(options.fetchImpl)
+  const apiKey = input.lumaApiKey.trim()
+
+  if (!apiKey) {
+    throw new PermanentLumaSyncError('luma_api_key_missing')
+  }
 
   const lumaUserApiId = await resolveLumaUserApiId(input.lumaUsername, {
     config,
@@ -599,6 +605,7 @@ export async function resolveLumaEmailFromUsername(
   })
   const { guestEmail, guestId } = await findGuestByLumaUserId(input.lumaEventApiId, lumaUserApiId, {
     config,
+    apiKey,
     fetchImpl
   })
 
@@ -613,6 +620,7 @@ export async function resolveLumaEmailFromUsername(
 export async function lookupLumaEventGuestByEmail(
   input: {
     lumaEventApiId: string
+    lumaApiKey: string
     lumaEmail: string
   },
   options: {
@@ -621,8 +629,9 @@ export async function lookupLumaEventGuestByEmail(
   }
 ): Promise<LumaEventGuestLookupByEmailResult> {
   const config = resolveQueueRuntimeConfigFromUnknown(options.runtimeConfig)
+  const apiKey = input.lumaApiKey.trim()
 
-  if (!getLumaApiKey(config)) {
+  if (!apiKey) {
     return {
       status: 'lookup_failed',
       reason: 'luma_api_key_missing'
@@ -634,6 +643,7 @@ export async function lookupLumaEventGuestByEmail(
   try {
     const { guestId, guestEmail } = await findGuestByEmail(input.lumaEventApiId, input.lumaEmail, {
       config,
+      apiKey,
       fetchImpl
     })
 
@@ -666,11 +676,13 @@ async function updateLumaGuestStatus(
   },
   options: {
     config: ApplicationLumaSyncRuntimeConfig
+    apiKey: string
     fetchImpl: FetchLike
   }
 ) {
   await requestLumaJson('/v1/event/update-guest-status', {
     config: options.config,
+    apiKey: options.apiKey,
     fetchImpl: options.fetchImpl,
     method: 'POST',
     body: {
@@ -926,29 +938,12 @@ export async function processApplicationLumaSyncQueueMessage(
     }
   }
 
-  if (!getLumaApiKey(config)) {
-    await recordTerminalLumaSyncOutcome(database, {
-      applicationId: application.id,
-      status: failureStatus,
-      action: 'user_application.luma_sync_failed',
-      metadata: {
-        decision: parsedMessage.data.decision,
-        reason: 'luma_api_key_missing'
-      }
-    })
-    message.ack()
-
-    return {
-      messageId: message.id,
-      action: 'ack',
-      reason: 'luma_api_key_missing'
-    }
-  }
-
   try {
     const eventApiId = event.lumaEventApiId!.trim()
+    const apiKey = event.lumaApiKey!.trim()
     const { guestId, guestEmail } = await findGuestByEmail(eventApiId, lumaEmail, {
       config,
+      apiKey,
       fetchImpl
     })
 
@@ -958,6 +953,7 @@ export async function processApplicationLumaSyncQueueMessage(
       decision: parsedMessage.data.decision
     }, {
       config,
+      apiKey,
       fetchImpl
     })
 

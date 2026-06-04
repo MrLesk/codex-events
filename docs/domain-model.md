@@ -81,7 +81,8 @@ Key characteristics:
 - Each event can define structured agenda items for public schedule display and admin editing.
 - Each event can be marked as an in-person event.
 - Each event can optionally reference a public Luma event URL.
-- Each event can optionally store a Luma event API ID used for operational sync.
+- Each event can optionally store a Luma event API ID and event-specific Luma API key used for operational sync.
+- Each event stores its Luma webhook ID, signing secret, status, registration time, and concise registration error when webhook setup has been attempted.
 - A configured Luma event API ID maps to at most one event.
 - Each event has a city, country, and address.
 - An event street address is visible only in account-scoped event workspace views for approved participants, judges, staff, event admins, and platform admins.
@@ -280,10 +281,10 @@ Rules:
 - Admin review uses a staged pre-approval decision (`approved` or `rejected`) that is persisted until explicitly applied.
 - Applying staged decisions updates final application outcomes and enqueues participant-facing approval or rejection emails.
 - Auto-approved applications enqueue the same participant-facing approval email as manually approved applications.
-- If the event shows and requires a Luma email and has a Luma event API ID, application submission verifies that the participant's saved Luma email is registered as a guest on that Luma event.
-- If the event auto-approves applications and shows and requires a Luma email with a Luma event API ID, application submission also enqueues a Luma approval sync.
-- If the event shows and requires a Luma email and has a Luma event API ID, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
-- If the event shows and requires a Luma email and has a Luma event API ID, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
+- If the event shows and requires a Luma email and has configured Luma sync, application submission verifies that the participant's saved Luma email is registered as a guest on that Luma event.
+- If the event auto-approves applications and shows and requires a Luma email with configured Luma sync, application submission also enqueues a Luma approval sync.
+- If the event shows and requires a Luma email and has configured Luma sync, applying staged decisions also enqueues a Luma guest-status sync for the final approval or rejection.
+- If the event shows and requires a Luma email and has configured Luma sync, participant withdrawal and admin-managed withdrawal both enqueue the canonical Luma rejection sync so the user is removed from the event guest list.
 - Platform admins can run an event-scoped operational backfill route to resolve stored legacy Luma usernames into canonical Luma emails for already-registered users.
 - In Hackathon events, a user must be approved before creating or joining a team in that event.
 - In Meetup and Build events, an approved application is the participant's event access record.

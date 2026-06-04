@@ -1469,21 +1469,30 @@ describe('domain admin operational helpers', () => {
     ])).toBe('2 / 4')
   })
 
-  test('shows attendance summary only when Luma email is required and an event API ID is configured', () => {
+  test('shows attendance summary only when Luma email is required and Luma is configured', () => {
     expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
       applicationLumaEmailVisible: true,
       requireLumaEmail: true,
-      lumaEventApiId: 'evt-123'
+      lumaEventApiId: 'evt-123',
+      lumaWebhookStatus: 'configured'
     }))).toBe(true)
 
     expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
       requireLumaEmail: false,
-      lumaEventApiId: 'evt-123'
+      lumaEventApiId: 'evt-123',
+      lumaWebhookStatus: 'configured'
     }))).toBe(false)
 
     expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
       requireLumaEmail: true,
-      lumaEventApiId: '   '
+      lumaEventApiId: '   ',
+      lumaWebhookStatus: 'configured'
+    }))).toBe(false)
+
+    expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({
+      requireLumaEmail: true,
+      lumaEventApiId: 'evt-123',
+      lumaWebhookStatus: 'failed'
     }))).toBe(false)
 
     expect(shouldShowApprovedParticipantAttendanceSummary(createEvent({

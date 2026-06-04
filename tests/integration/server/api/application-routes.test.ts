@@ -63,6 +63,7 @@ async function seedApplicationContext(
     requireAiKnowledge?: boolean
     lumaEventUrl?: string | null
     lumaEventApiId?: string | null
+    lumaApiKey?: string | null
     inPersonEvent?: boolean
     autoApproveApplications?: boolean
     currentApplicationTerms?: boolean
@@ -142,6 +143,9 @@ async function seedApplicationContext(
     requireAiKnowledge: options?.requireAiKnowledge ?? false,
     lumaEventUrl: options?.lumaEventUrl ?? null,
     lumaEventApiId: options?.lumaEventApiId ?? null,
+    lumaApiKey: options?.lumaEventApiId ? options?.lumaApiKey ?? 'luma_test_key' : null,
+    lumaWebhookSecret: options?.lumaEventApiId ? 'whsec_test' : null,
+    lumaWebhookStatus: options?.lumaEventApiId ? 'configured' : 'not_configured',
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
     createdByUserId: 'platform_admin'
@@ -460,7 +464,6 @@ describe('TASK-3.6 application routes', () => {
           queueBinding: 'APPLICATION_REVIEW_EMAIL_QUEUE'
         },
         luma: {
-          apiKey: 'luma_test_key',
           queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE'
         }
       }
@@ -904,11 +907,7 @@ describe('TASK-3.6 application routes', () => {
         sub: 'auth0|regular_user',
         email: 'regular@example.com'
       },
-      runtimeConfig: {
-        luma: {
-          apiKey: 'luma_test_key'
-        }
-      }
+      runtimeConfig: {}
     })
     harnesses.push(harness)
     await seedApplicationContext(harness, {
@@ -1002,11 +1001,7 @@ describe('TASK-3.6 application routes', () => {
         sub: 'auth0|regular_user',
         email: 'regular@example.com'
       },
-      runtimeConfig: {
-        luma: {
-          apiKey: 'luma_test_key'
-        }
-      }
+      runtimeConfig: {}
     })
     harnesses.push(harness)
     await seedApplicationContext(harness, {
@@ -1070,11 +1065,6 @@ describe('TASK-3.6 application routes', () => {
       sessionUser: {
         sub: 'auth0|regular_user',
         email: 'regular@example.com'
-      },
-      runtimeConfig: {
-        luma: {
-          apiKey: 'luma_test_key'
-        }
       }
     })
     harnesses.push(harness)

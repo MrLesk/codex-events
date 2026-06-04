@@ -37,13 +37,11 @@ NUXT_APPLICATION_REVIEW_EMAILS_RETRY_DELAY_SECONDS=120
 NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING=EVENT_OUTCOME_EMAIL_QUEUE
 NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME=codex-events-dev-event-outcome-email-delivery
 NUXT_EVENT_OUTCOME_EMAILS_RETRY_DELAY_SECONDS=120
-NUXT_LUMA_API_KEY=
 NUXT_LUMA_API_BASE_URL=https://public-api.luma.com
 NUXT_LUMA_PROFILE_BASE_URL=https://luma.com
 NUXT_LUMA_QUEUE_BINDING=APPLICATION_LUMA_SYNC_QUEUE
 NUXT_LUMA_QUEUE_NAME=codex-events-dev-application-luma-sync
 NUXT_LUMA_RETRY_DELAY_SECONDS=120
-NUXT_LUMA_WEBHOOK_SECRET=
 ```
 
 Generate local-only Auth0 secret values with Bun:
@@ -91,13 +89,6 @@ The script reads explicit tenant automation variables: `AUTH0_MANAGEMENT_DOMAIN`
 When `AUTH0_APP_BASE_URL` is HTTPS and explicit branding URLs are omitted, the bootstrap defaults to `${AUTH0_APP_BASE_URL}/auth0/codex-events-wordmark.svg` for the Auth0 wordmark and `${AUTH0_APP_BASE_URL}/favicon.ico` for the favicon.
 
 For app runtime variables, rename legacy `NUXT_PUBLIC_AUTH0_*` keys to the `NUXT_AUTH0_*` keys above. Use `AUTH0_*` only for tenant automation and GitHub environment-level Auth0 settings.
-
-Luma webhook bootstrap automation:
-
-- `NUXT_AUTH0_APP_BASE_URL=https://your-platform.example bun tools/luma/webhook-bootstrap.ts check`
-- `NUXT_AUTH0_APP_BASE_URL=https://your-platform.example bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json`
-
-These commands reconcile the repository-managed `guest.updated` webhook for an environment and, in `apply` mode, write a `wrangler secret bulk`-compatible JSON file containing `NUXT_LUMA_WEBHOOK_SECRET`. The script reads `LUMA_API_KEY` or falls back to `NUXT_LUMA_API_KEY`, falls back to `NUXT_LUMA_API_BASE_URL` for the API host, and derives the webhook URL from an https `NUXT_AUTH0_APP_BASE_URL`.
 
 Local first-platform-admin bootstrap command:
 
@@ -166,8 +157,7 @@ Application decision emails, event outcome emails, and optional Luma guest-statu
 - `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_BINDING` and `NUXT_APPLICATION_REVIEW_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for participant decision emails.
 - `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_BINDING` and `NUXT_EVENT_OUTCOME_EMAILS_QUEUE_NAME` should match the producer and consumer queue configuration for shortlist and winner emails.
 - `NUXT_LUMA_QUEUE_BINDING` and `NUXT_LUMA_QUEUE_NAME` should match the producer and consumer queue configuration for Luma sync jobs.
-- `NUXT_LUMA_API_KEY` is only required when you operate events that use Luma sync.
-- `NUXT_LUMA_WEBHOOK_SECRET` is the runtime signing secret for inbound Luma webhook verification and is uploaded automatically by the checked-in deploy workflows after Luma webhook reconciliation.
+- Luma API keys, webhook IDs, and webhook signing secrets are stored per event after an event admin saves the Luma event API ID and API key in event settings.
 
 ## Local Development
 
@@ -206,7 +196,7 @@ Those generated files drive the deploy scripts:
 - `bun run db:migrate:test` / `bun run db:migrate:production`
 - `bun run deploy:test` / `bun run deploy:production`
 
-For the selected target, the generator resolves the application URL, Cloudflare route pattern, Luma webhook URL, and resource names from `BASE_DOMAIN`, `ENV_NAME`, and `RESOURCE_PREFIX`, copies the app runtime variables into the generated Wrangler `vars` block, and fails fast when a required deploy value is missing. It never derives a hostname from an environment name, so each environment supplies its own `BASE_DOMAIN`. The deploy workflow resolves the D1 database and R2 buckets first (creating them when missing), then generates the config with the resolved D1 UUID and bucket names. The resolved names and their overrides are listed in [OPERATOR.md → How resources are named](OPERATOR.md#how-resources-are-named).
+For the selected target, the generator resolves the application URL, Cloudflare route pattern, and resource names from `BASE_DOMAIN`, `ENV_NAME`, and `RESOURCE_PREFIX`, copies the app runtime variables into the generated Wrangler `vars` block, and fails fast when a required deploy value is missing. It never derives a hostname from an environment name, so each environment supplies its own `BASE_DOMAIN`. The deploy workflow resolves the D1 database and R2 buckets first (creating them when missing), then generates the config with the resolved D1 UUID and bucket names. The resolved names and their overrides are listed in [OPERATOR.md → How resources are named](OPERATOR.md#how-resources-are-named).
 
 Two repo-specific details matter when maintaining this tooling:
 

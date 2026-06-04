@@ -92,6 +92,7 @@ async function seedLumaSyncContext(options?: {
   requireLumaEmail?: boolean
   lumaEventUrl?: string | null
   lumaEventApiId?: string | null
+  lumaApiKey?: string | null
   withdrawnAt?: string | null
 }) {
   const d1Database = createTestD1Database()
@@ -135,6 +136,9 @@ async function seedLumaSyncContext(options?: {
     requireLumaEmail: options?.requireLumaEmail ?? true,
     lumaEventUrl: options?.lumaEventUrl ?? 'https://luma.com/codex',
     lumaEventApiId: options?.lumaEventApiId ?? 'evt-123',
+    lumaApiKey: options?.lumaApiKey ?? 'luma_test_key',
+    lumaWebhookSecret: 'whsec_test',
+    lumaWebhookStatus: 'configured',
     currentApplicationTermsDocumentId: null,
     currentWinnerTermsDocumentId: null,
     createdByUserId: 'platform_admin'
@@ -265,7 +269,6 @@ describe('application luma sync queue utilities', () => {
       database,
       runtimeConfig: {
         luma: {
-          apiKey: 'luma_test_key',
           retryDelaySeconds: 90
         }
       },
@@ -339,13 +342,10 @@ describe('application luma sync queue utilities', () => {
 
     await expect(resolveLumaEmailFromUsername({
       lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key',
       lumaUsername: 'bpirvu'
     }, {
-      runtimeConfig: {
-        luma: {
-          apiKey: 'luma_test_key'
-        }
-      },
+      runtimeConfig: {},
       fetchImpl
     })).resolves.toEqual({
       eventApiId: 'evt-123',
@@ -376,13 +376,10 @@ describe('application luma sync queue utilities', () => {
 
     await expect(lookupLumaEventGuestByEmail({
       lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key',
       lumaEmail: 'regular@example.com'
     }, {
-      runtimeConfig: {
-        luma: {
-          apiKey: 'luma_test_key'
-        }
-      },
+      runtimeConfig: {},
       fetchImpl
     })).resolves.toEqual({
       status: 'found',
@@ -406,13 +403,10 @@ describe('application luma sync queue utilities', () => {
 
     await expect(lookupLumaEventGuestByEmail({
       lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key',
       lumaEmail: 'missing@example.com'
     }, {
-      runtimeConfig: {
-        luma: {
-          apiKey: 'luma_test_key'
-        }
-      },
+      runtimeConfig: {},
       fetchImpl
     })).resolves.toEqual({
       status: 'not_found'
@@ -422,6 +416,7 @@ describe('application luma sync queue utilities', () => {
   test('lookupLumaEventGuestByEmail returns lookup_failed when the lookup cannot be completed', async () => {
     await expect(lookupLumaEventGuestByEmail({
       lumaEventApiId: 'evt-123',
+      lumaApiKey: '',
       lumaEmail: 'regular@example.com'
     }, {
       runtimeConfig: {
@@ -465,7 +460,6 @@ describe('application luma sync queue utilities', () => {
       database,
       runtimeConfig: {
         luma: {
-          apiKey: 'luma_test_key',
           retryDelaySeconds: 90
         }
       }
@@ -506,11 +500,7 @@ describe('application luma sync queue utilities', () => {
 
     const result = await processApplicationLumaSyncQueueMessage(message, {
       database,
-      runtimeConfig: {
-        luma: {
-          apiKey: 'luma_test_key'
-        }
-      },
+      runtimeConfig: {},
       fetchImpl
     })
 
@@ -541,7 +531,6 @@ describe('application luma sync queue utilities', () => {
       database,
       runtimeConfig: {
         luma: {
-          apiKey: 'luma_test_key',
           retryDelaySeconds: 90
         }
       },

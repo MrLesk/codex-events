@@ -9,9 +9,7 @@ const defaultWebhookMaxAgeSeconds = 300
 
 const lumaWebhookRuntimeConfigSchema = z.object({
   luma: z.object({
-    apiKey: z.string().trim().optional(),
-    apiBaseUrl: z.string().trim().optional(),
-    webhookSecret: z.string().trim().optional()
+    apiBaseUrl: z.string().trim().optional()
   }).optional()
 })
 
@@ -199,19 +197,10 @@ function parseWebhookEnvelope(rawBody: string): LumaWebhookEnvelope {
 async function requestLumaGuestEmail(
   eventApiId: string,
   guestId: string,
+  apiKey: string,
   runtimeConfig: z.infer<typeof lumaWebhookRuntimeConfigSchema>,
   fetchImpl: typeof fetch = globalThis.fetch
 ) {
-  const apiKey = runtimeConfig.luma?.apiKey?.trim() ?? ''
-
-  if (!apiKey) {
-    throw new ApiError({
-      statusCode: 503,
-      code: 'luma_webhook_guest_lookup_unavailable',
-      message: 'The Luma guest lookup is not configured for this environment.'
-    })
-  }
-
   const apiBaseUrl = runtimeConfig.luma?.apiBaseUrl?.trim() || defaultLumaApiBaseUrl
   const url = new URL('/v1/event/get-guest', `${apiBaseUrl.replace(/\/$/, '')}/`)
   url.searchParams.set('event_id', eventApiId)
@@ -283,18 +272,18 @@ export async function verifyLumaWebhookRequest(
   event: H3Event,
   rawBody: string,
   options?: {
+    webhookSecret?: string | null
     now?: Date
     maxAgeSeconds?: number
   }
 ) {
-  const runtimeConfig = getLumaWebhookRuntimeConfig(event)
-  const webhookSecret = runtimeConfig.luma?.webhookSecret?.trim() ?? ''
+  const webhookSecret = options?.webhookSecret?.trim() ?? ''
 
   if (!webhookSecret) {
     throw new ApiError({
       statusCode: 503,
       code: 'luma_webhook_unavailable',
-      message: 'The Luma webhook endpoint is not configured for this environment.'
+      message: 'The Luma webhook endpoint is not configured for this event.'
     })
   }
 
@@ -410,6 +399,7 @@ export async function resolveLumaAttendanceGuestEmail(
   event: H3Event,
   attendanceEvent: Pick<LumaAttendanceCheckInEvent, 'eventApiId' | 'guestId' | 'guestEmail'>,
   options?: {
+    lumaApiKey?: string | null
     fetchImpl?: typeof fetch
   }
 ) {
@@ -421,9 +411,20 @@ export async function resolveLumaAttendanceGuestEmail(
     return null
   }
 
+  const apiKey = options?.lumaApiKey?.trim() ?? ''
+
+  if (!apiKey) {
+    throw new ApiError({
+      statusCode: 503,
+      code: 'luma_webhook_guest_lookup_unavailable',
+      message: 'The Luma guest lookup is not configured for this event.'
+    })
+  }
+
   return await requestLumaGuestEmail(
     attendanceEvent.eventApiId,
     attendanceEvent.guestId,
+    apiKey,
     getLumaWebhookRuntimeConfig(event),
     options?.fetchImpl
   )

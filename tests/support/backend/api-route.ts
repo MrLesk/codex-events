@@ -58,10 +58,8 @@ export function createApiRouteTestHarness(options: {
       retryDelaySeconds?: number
     }
     luma?: {
-      apiKey?: string
       apiBaseUrl?: string
       profileBaseUrl?: string
-      webhookSecret?: string
       queueBinding?: string
       queueName?: string
       retryDelaySeconds?: number
@@ -181,10 +179,8 @@ export function createApiRouteTestHarness(options: {
     const outcomeEmailsQueueBinding = options.runtimeConfig?.eventOutcomeEmails?.queueBinding ?? 'EVENT_OUTCOME_EMAIL_QUEUE'
     const outcomeEmailsQueueName = options.runtimeConfig?.eventOutcomeEmails?.queueName ?? 'codex-events-dev-event-outcome-email-delivery'
     const outcomeEmailsRetryDelaySeconds = options.runtimeConfig?.eventOutcomeEmails?.retryDelaySeconds ?? 120
-    const lumaApiKey = options.runtimeConfig?.luma?.apiKey ?? ''
     const lumaApiBaseUrl = options.runtimeConfig?.luma?.apiBaseUrl ?? 'https://public-api.luma.com'
     const lumaProfileBaseUrl = options.runtimeConfig?.luma?.profileBaseUrl ?? 'https://luma.com'
-    const lumaWebhookSecret = options.runtimeConfig?.luma?.webhookSecret ?? ''
     const lumaQueueBinding = options.runtimeConfig?.luma?.queueBinding ?? 'APPLICATION_LUMA_SYNC_QUEUE'
     const lumaQueueName = options.runtimeConfig?.luma?.queueName ?? 'codex-events-dev-application-luma-sync'
     const lumaRetryDelaySeconds = options.runtimeConfig?.luma?.retryDelaySeconds ?? 120
@@ -226,10 +222,8 @@ export function createApiRouteTestHarness(options: {
         retryDelaySeconds: outcomeEmailsRetryDelaySeconds
       },
       luma: {
-        apiKey: lumaApiKey,
         apiBaseUrl: lumaApiBaseUrl,
         profileBaseUrl: lumaProfileBaseUrl,
-        webhookSecret: lumaWebhookSecret,
         queueBinding: lumaQueueBinding,
         queueName: lumaQueueName,
         retryDelaySeconds: lumaRetryDelaySeconds

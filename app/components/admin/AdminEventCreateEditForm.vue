@@ -21,6 +21,7 @@ const emit = defineEmits<{
   removeBackgroundImage: []
   uploadBannerImage: [file: File]
   removeBannerImage: []
+  retryLumaConfiguration: []
 }>()
 
 const props = defineProps<{
@@ -36,6 +37,7 @@ const props = defineProps<{
   backgroundImageUploadError?: string
   bannerImageUploadPending?: boolean
   bannerImageUploadError?: string
+  isRetryingLumaConfiguration?: boolean
 }>()
 
 const form = reactive(createEmptyEventFormState())
@@ -75,11 +77,17 @@ function submitForm() {
       :background-image-upload-error="backgroundImageUploadError"
       :banner-image-upload-pending="bannerImageUploadPending"
       :banner-image-upload-error="bannerImageUploadError"
+      :luma-webhook-url="initialEvent?.lumaWebhookUrl ?? null"
+      :luma-webhook-status="initialEvent?.lumaWebhookStatus ?? null"
+      :luma-webhook-error="initialEvent?.lumaWebhookError ?? null"
+      :luma-webhook-registered-at="initialEvent?.lumaWebhookRegisteredAt ?? null"
+      :is-retrying-luma-configuration="isRetryingLumaConfiguration"
       @submit="submitForm"
       @upload-background-image="emit('uploadBackgroundImage', $event)"
       @remove-background-image="emit('removeBackgroundImage')"
       @upload-banner-image="emit('uploadBannerImage', $event)"
       @remove-banner-image="emit('removeBannerImage')"
+      @retry-luma-configuration="emit('retryLumaConfiguration')"
     />
   </div>
 </template>

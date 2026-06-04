@@ -12,9 +12,10 @@ import {
   replaceEventTracks,
   requireEventAdmin,
   routeIdParamsSchema,
-  serializeEvent,
+  serializeAdminEvent,
   updateEventBodySchema
 } from '#server/domains/events'
+import { reconcileEventLumaWebhook } from '#server/domains/events/luma-webhook-registration'
 import { parseValidatedBody, parseValidatedParams } from '#server/http/validation'
 import { eq } from 'drizzle-orm'
 
@@ -24,6 +25,7 @@ export default defineApiHandler(async (h3Event) => {
   const body = await parseValidatedBody(h3Event, updateEventBodySchema)
   const database = getDatabase(h3Event)
   const { event } = await requireEventAdmin(h3Event, eventId)
+  const shouldReconcileLuma = Object.hasOwn(body, 'lumaApiKey') || Object.hasOwn(body, 'lumaEventApiId')
 
   if (body.slug && body.slug !== event.slug) {
     await assertEventSlugAvailable(database, body.slug, event.id)
@@ -59,7 +61,23 @@ export default defineApiHandler(async (h3Event) => {
   const updatedEvent = await database.query.events.findFirst({
     where: eq(events.id, eventId)
   })
+
+  if (shouldReconcileLuma) {
+    await reconcileEventLumaWebhook({
+      database,
+      event: updatedEvent!,
+      runtimeConfig: useRuntimeConfig(h3Event)
+    })
+  }
+
+  const configuredEvent = shouldReconcileLuma
+    ? await database.query.events.findFirst({
+        where: eq(events.id, eventId)
+      })
+    : updatedEvent
   const updatedTracks = await listEventTracks(database, eventId)
 
-  return apiData(serializeEvent(updatedEvent!, undefined, updatedTracks))
+  return apiData(serializeAdminEvent(configuredEvent!, undefined, updatedTracks, {
+    appBaseUrl: useRuntimeConfig(h3Event).auth0.appBaseUrl
+  }))
 })

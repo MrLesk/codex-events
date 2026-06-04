@@ -63,17 +63,33 @@ describe('application utilities', () => {
     })
   })
 
-  test('attendance sync only depends on whether the event stores a Luma event API id', () => {
+  test('attendance sync requires a configured event Luma webhook', () => {
     expect(isEventLumaAttendanceSyncEnabled({
-      lumaEventApiId: 'evt-123'
+      lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key',
+      lumaWebhookSecret: 'whsec_test',
+      lumaWebhookStatus: 'configured'
     })).toBe(true)
 
     expect(isEventLumaAttendanceSyncEnabled({
-      lumaEventApiId: '   '
+      lumaEventApiId: '   ',
+      lumaApiKey: 'luma_test_key',
+      lumaWebhookSecret: 'whsec_test',
+      lumaWebhookStatus: 'configured'
     })).toBe(false)
 
     expect(isEventLumaAttendanceSyncEnabled({
-      lumaEventApiId: null
+      lumaEventApiId: null,
+      lumaApiKey: 'luma_test_key',
+      lumaWebhookSecret: 'whsec_test',
+      lumaWebhookStatus: 'configured'
+    })).toBe(false)
+
+    expect(isEventLumaAttendanceSyncEnabled({
+      lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key',
+      lumaWebhookSecret: 'whsec_test',
+      lumaWebhookStatus: 'failed'
     })).toBe(false)
   })
 

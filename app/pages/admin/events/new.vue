@@ -39,6 +39,7 @@ async function createEvent(form: EventFormState) {
         discordServerUrl: form.discordServerUrl.trim() || null,
         lumaEventUrl: form.lumaEventUrl.trim() || null,
         lumaEventApiId: form.lumaEventApiId.trim() || null,
+        lumaApiKey: form.lumaApiKey.trim() || null,
         description: form.description,
         agendaItems: toEventAgendaPayload(form.agendaItems),
         tracks: isHackathon ? toEventTracksPayload(form.tracks) : [],

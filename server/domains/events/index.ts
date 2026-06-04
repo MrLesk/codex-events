@@ -29,9 +29,11 @@ import {
   userApplications,
   users
 } from '#server/database/schema'
+import type { eventLumaWebhookStatuses } from '#server/database/schema'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { ApiError } from '#server/http/api-error'
 import { publicEventImagePath } from '#server/domains/events/images'
+import { buildEventLumaWebhookUrl } from '#shared/domains/luma/webhook-url'
 
 const isoTimestampSchema = z.string().refine(
   value => !Number.isNaN(Date.parse(value)),
@@ -57,6 +59,7 @@ const nullableLumaEventApiIdSchema = z.string()
   .regex(/^evt-[A-Za-z0-9]+$/, 'Expected a Luma event API ID like evt-123.')
   .nullable()
   .optional()
+const nullableLumaApiKeySchema = z.string().trim().min(1).nullable().optional()
 const nullableTrimmedStringSchema = z.string().trim().min(1).nullable().optional()
 
 const roleEnumSchema = z.enum(eventRoleTypes)
@@ -292,6 +295,7 @@ const eventConfigShape = {
   discordServerUrl: nullableHttpUrlSchema,
   lumaEventUrl: nullableHttpUrlSchema,
   lumaEventApiId: nullableLumaEventApiIdSchema,
+  lumaApiKey: nullableLumaApiKeySchema,
   city: z.string().trim().min(1),
   country: z.string().trim().min(1),
   address: z.string().trim().min(1),
@@ -377,6 +381,7 @@ export const updateEventBodySchema = z.object({
   discordServerUrl: eventConfigShape.discordServerUrl.optional(),
   lumaEventUrl: eventConfigShape.lumaEventUrl.optional(),
   lumaEventApiId: eventConfigShape.lumaEventApiId.optional(),
+  lumaApiKey: eventConfigShape.lumaApiKey.optional(),
   city: eventConfigShape.city.optional(),
   country: eventConfigShape.country.optional(),
   address: eventConfigShape.address.optional(),
@@ -526,6 +531,7 @@ type UserRecord = typeof users.$inferSelect
 export type EventAgendaItem = z.infer<typeof agendaItemSchema>
 export type EventTrackInput = z.infer<typeof trackSchema>
 export type EventType = typeof eventTypes[number]
+export type EventLumaWebhookStatus = (typeof eventLumaWebhookStatuses)[number]
 
 const publicEventStates = [
   'registration_open',
@@ -1587,6 +1593,29 @@ export function serializeEvent(
           }
         }
       : {})
+  }
+}
+
+export function serializeAdminEvent(
+  event: EventRecord,
+  currentTerms?: {
+    applicationTerms: EventTermsDocumentRecord | null
+    winnerTerms: EventTermsDocumentRecord | null
+  },
+  tracks?: EventTrackRecord[],
+  options?: {
+    appBaseUrl?: string
+  }
+) {
+  const appBaseUrl = options?.appBaseUrl?.trim() ?? ''
+
+  return {
+    ...serializeEvent(event, currentTerms, tracks),
+    lumaApiKey: event.lumaApiKey,
+    lumaWebhookStatus: event.lumaWebhookStatus,
+    lumaWebhookError: event.lumaWebhookError,
+    lumaWebhookRegisteredAt: event.lumaWebhookRegisteredAt,
+    lumaWebhookUrl: appBaseUrl ? buildEventLumaWebhookUrl(appBaseUrl, event.id) : null
   }
 }
 

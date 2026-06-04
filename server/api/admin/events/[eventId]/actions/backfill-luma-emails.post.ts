@@ -12,7 +12,6 @@ import {
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 import {
-  resolveApplicationLumaSyncRuntimeConfig,
   resolveLumaEmailFromUsername
 } from '#server/domains/applications/luma-sync-queue'
 import { isEventLumaSyncEnabled } from '#server/domains/applications'
@@ -46,14 +45,6 @@ export default defineApiHandler(async (h3Event) => {
     code: 'event_luma_sync_not_enabled',
     message: 'This event does not have Luma sync enabled.',
     details: { eventId }
-  })
-
-  const runtimeConfig = resolveApplicationLumaSyncRuntimeConfig(useRuntimeConfig(h3Event))
-
-  assertGuard(Boolean(runtimeConfig.luma?.apiKey?.trim()), {
-    statusCode: 500,
-    code: 'luma_api_key_missing',
-    message: 'The Luma API key is not configured for this environment.'
   })
 
   const candidateRows = await database
@@ -91,9 +82,10 @@ export default defineApiHandler(async (h3Event) => {
     try {
       const { guestEmail } = await resolveLumaEmailFromUsername({
         lumaEventApiId: event.lumaEventApiId!.trim(),
+        lumaApiKey: event.lumaApiKey!.trim(),
         lumaUsername
       }, {
-        runtimeConfig
+        runtimeConfig: useRuntimeConfig(h3Event)
       })
 
       await database

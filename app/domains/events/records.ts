@@ -47,6 +47,11 @@ export interface EventRecord {
   discordServerUrl?: string | null
   lumaEventUrl: string | null
   lumaEventApiId: string | null
+  lumaApiKey?: string | null
+  lumaWebhookStatus?: 'not_configured' | 'configured' | 'failed'
+  lumaWebhookError?: string | null
+  lumaWebhookRegisteredAt?: string | null
+  lumaWebhookUrl?: string | null
   city: string
   country: string
   address: string

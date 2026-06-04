@@ -123,7 +123,7 @@ The repository includes automation for recurring setup and maintenance:
 
 - Auth0 setup for required app URLs, branding, custom domains, Actions, and account-linking callbacks.
 - First platform-admin setup.
-- Luma webhook setup for environments that enable Luma sync.
+- Event-scoped Luma webhook setup from event settings.
 - Cloudflare queue, secret, migration, and deployment workflows.
 - A GitHub Release driven production deployment workflow.
 
@@ -151,7 +151,7 @@ Plan for:
 - an Auth0 tenant and Regular Web Application for the platform;
 - an onboarded Cloudflare Email Service sending domain and verified sender address;
 - production and, if desired, test domains;
-- optional Luma API access when events use Luma guest sync or attendance webhooks;
+- optional event-scoped Luma API access when specific events use Luma guest sync or attendance webhooks;
 - deployment-owned legal controller details, support and privacy contact addresses, and current Privacy Policy and Platform Terms content;
 - people who can manage platform admins, event admins, judges, staff, and release access.
 

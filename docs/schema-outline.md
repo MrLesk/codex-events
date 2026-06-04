@@ -92,6 +92,12 @@ It describes the intended persistent model at the level of entities, key fields,
 - `discord_server_url`
 - `luma_event_url`
 - `luma_event_api_id`
+- `luma_api_key`
+- `luma_webhook_id`
+- `luma_webhook_secret`
+- `luma_webhook_status`
+- `luma_webhook_error`
+- `luma_webhook_registered_at`
 - `city`
 - `country`
 - `address`
@@ -165,6 +171,7 @@ It describes the intended persistent model at the level of entities, key fields,
 
 - `slug` is unique.
 - `luma_event_api_id` is unique when present.
+- `luma_webhook_status` is `not_configured`, `configured`, or `failed`.
 - For Hackathon events, `blind_review_count` is `0`, `1`, or `2`.
 - For Hackathon events, `blind_score_weight_percent` is null or between `0` and `100`.
 - For Hackathon events, `pitch_score_weight_percent` is null or between `0` and `100`.
@@ -205,7 +212,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `address` is always stored for the event, but public serializers suppress it and account-scoped detail reads return it only to approved participants plus judges, staff, event admins, and platform admins.
 - `discord_server_url` is optional because not every event has a dedicated Discord server, and when present it is returned only in account-scoped detail reads for approved participants plus judges, staff, event admins, and platform admins.
 - `luma_event_url` is optional because not every event has a public Luma event page to link.
-- `luma_event_api_id` is optional because not every event has a Luma event configured for approval and rejection sync.
+- `luma_event_api_id` and `luma_api_key` are optional because not every event has Luma configured for approval, rejection, and attendance sync.
+- `luma_webhook_id`, `luma_webhook_secret`, `luma_webhook_status`, `luma_webhook_error`, and `luma_webhook_registered_at` store the event's webhook registration state. Webhook status is `not_configured` until the event has enough Luma configuration for registration, `configured` after Luma returns a webhook ID and signing secret, and `failed` when registration cannot be completed with the stored event API ID and key.
 - `agenda_items_json` stores a validated ordered JSON array of agenda items (`id`, `startsAt`, optional `endsAt`, `title`, optional `details`, `displayOrder`).
 
 ## EventTrack
@@ -475,7 +483,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `checked_in_at` records when a valid signed Luma guest check-in update first marked the approved participant as attended.
 - `pre_approval_status` stores a staged admin review decision that is applied later to transition the canonical `status`.
 - Applications created while `auto_approve_applications` is true are stored directly as `approved` with `reviewed_at` equal to `submitted_at` and no reviewing user.
-- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that show and require a Luma email and define a `luma_event_api_id`.
+- `luma_sync_status` tracks the queued Luma approval or rejection sync outcome for events that show and require a Luma email and have configured Luma sync.
 - `checked_in_at` is sticky in this version and is not cleared by later Luma uncheck updates.
 - `application_terms_document_id` and `application_terms_accepted_at` are null when the event has no current application terms at submission time.
 - Withdrawal retains the application record rather than deleting it so participation history, event-terms acceptance when present, and audit context remain available.

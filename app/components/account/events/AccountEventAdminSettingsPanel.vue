@@ -80,6 +80,7 @@ const workspace = useAdminEventSettingsWorkspace(eventId, {
 })
 
 const isSavingConfig = ref(false)
+const isRetryingLumaConfiguration = ref(false)
 const isSavingCriteria = ref(false)
 const isSavingPrizes = ref(false)
 const savingTermsDocumentType = ref<TermsDocument['documentType'] | null>(null)
@@ -614,6 +615,35 @@ async function patchConfiguration(
   }
 }
 
+async function retryLumaConfiguration() {
+  const event = currentEvent.value
+
+  if (!event) {
+    return
+  }
+
+  configMutationError.value = ''
+  isRetryingLumaConfiguration.value = true
+
+  try {
+    await $fetch<ApiDataResponse<EventRecord>>(`/api/events/${event.id}/luma/actions/retry-configuration`, {
+      method: 'POST'
+    })
+
+    toast.add({
+      title: 'Luma configuration retried',
+      description: 'The latest Luma webhook status is shown in event settings.',
+      color: 'success'
+    })
+
+    await workspace.refreshWorkspace()
+  } catch (error) {
+    configMutationError.value = normalizeApiError(error).message
+  } finally {
+    isRetryingLumaConfiguration.value = false
+  }
+}
+
 type EventImageSlot = 'background' | 'banner'
 
 async function uploadEventImage(slot: EventImageSlot, file: File) {
@@ -1129,6 +1159,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
           :background-image-upload-error="imageMutationState.background.error"
           :banner-image-upload-pending="imageMutationState.banner.pending"
           :banner-image-upload-error="imageMutationState.banner.error"
+          :is-retrying-luma-configuration="isRetryingLumaConfiguration"
           :submit-label="programSettingsCopy.submitLabel"
           :helper-text="programSettingsCopy.helperText"
           :submit-error="configMutationError"
@@ -1137,6 +1168,7 @@ async function saveTerms(documentType: TermsDocument['documentType']) {
           @remove-background-image="removeBackgroundImage"
           @upload-banner-image="uploadBannerImage"
           @remove-banner-image="removeBannerImage"
+          @retry-luma-configuration="retryLumaConfiguration"
         />
       </section>
 

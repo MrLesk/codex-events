@@ -31,11 +31,6 @@ describe('admin luma backfill routes', () => {
       sessionUser: {
         sub: 'auth0|platform_admin',
         email: 'platform-admin@example.com'
-      },
-      runtimeConfig: {
-        luma: {
-          apiKey: 'luma_test_key'
-        }
       }
     })
     harnesses.push(harness)
@@ -84,6 +79,9 @@ describe('admin luma backfill routes', () => {
       requireLumaEmail: true,
       lumaEventUrl: 'https://luma.com/codex',
       lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key',
+      lumaWebhookSecret: 'whsec_test',
+      lumaWebhookStatus: 'configured',
       currentApplicationTermsDocumentId: null,
       currentWinnerTermsDocumentId: null,
       createdByUserId: 'platform_admin'

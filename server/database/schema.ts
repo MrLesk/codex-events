@@ -30,6 +30,7 @@ export const eventStates = [
 ] as const
 
 export const eventTypes = ['hackathon', 'meetup', 'build'] as const
+export const eventLumaWebhookStatuses = ['not_configured', 'configured', 'failed'] as const
 export const eventRoleTypes = ['event_admin', 'judge', 'staff'] as const
 export const platformDocumentTypes = ['privacy_policy', 'platform_terms'] as const
 export const eventTermsDocumentTypes = ['application_terms', 'winner_terms'] as const
@@ -118,6 +119,12 @@ export const events = sqliteTable(
     discordServerUrl: text('discord_server_url'),
     lumaEventUrl: text('luma_event_url'),
     lumaEventApiId: text('luma_event_api_id'),
+    lumaApiKey: text('luma_api_key'),
+    lumaWebhookId: text('luma_webhook_id'),
+    lumaWebhookSecret: text('luma_webhook_secret'),
+    lumaWebhookStatus: text('luma_webhook_status', { enum: eventLumaWebhookStatuses }).notNull().default('not_configured'),
+    lumaWebhookError: text('luma_webhook_error'),
+    lumaWebhookRegisteredAt: text('luma_webhook_registered_at'),
     city: text('city').notNull(),
     country: text('country').notNull(),
     address: text('address').notNull(),
@@ -210,6 +217,10 @@ export const events = sqliteTable(
     check(
       'events_type_check',
       sql`${table.eventType} in ('hackathon', 'meetup', 'build')`
+    ),
+    check(
+      'events_luma_webhook_status_check',
+      sql`${table.lumaWebhookStatus} in ('not_configured', 'configured', 'failed')`
     )
   ]
 )

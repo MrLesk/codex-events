@@ -46,10 +46,8 @@ export default defineNuxtConfig({
       retryDelaySeconds: 120
     },
     luma: {
-      apiKey: '',
       apiBaseUrl: 'https://public-api.luma.com',
       profileBaseUrl: 'https://luma.com',
-      webhookSecret: '',
       queueBinding: 'APPLICATION_LUMA_SYNC_QUEUE',
       queueName: 'codex-events-dev-application-luma-sync',
       retryDelaySeconds: 120

@@ -44,15 +44,11 @@ describe('luma webhook utilities', () => {
       headers: {
         'webhook-signature': signatureHeader,
         'webhook-id': 'whmsg_123'
-      },
-      runtimeConfig: {
-        luma: {
-          webhookSecret: 'whsec_test'
-        }
       }
     })
 
     await expect(verifyLumaWebhookRequest(event, rawBody, {
+      webhookSecret: 'whsec_test',
       now: new Date(Number.parseInt(timestamp, 10) * 1000),
       maxAgeSeconds: 300
     })).resolves.toEqual({
@@ -72,15 +68,11 @@ describe('luma webhook utilities', () => {
     const event = createEvent({
       headers: {
         'webhook-signature': `t=${timestamp},v1=deadbeef`
-      },
-      runtimeConfig: {
-        luma: {
-          webhookSecret: 'whsec_test'
-        }
       }
     })
 
     await expect(verifyLumaWebhookRequest(event, rawBody, {
+      webhookSecret: 'whsec_test',
       now: new Date(Number.parseInt(timestamp, 10) * 1000),
       maxAgeSeconds: 300
     })).rejects.toMatchObject({
@@ -141,7 +133,6 @@ describe('luma webhook utilities', () => {
     const event = createEvent({
       runtimeConfig: {
         luma: {
-          apiKey: 'luma_test_key',
           apiBaseUrl: 'https://public-api.luma.com'
         }
       }
@@ -152,6 +143,7 @@ describe('luma webhook utilities', () => {
       guestId: 'gst-123',
       guestEmail: null
     }, {
+      lumaApiKey: 'luma_test_key',
       fetchImpl
     })).resolves.toBe('guest@example.com')
   })

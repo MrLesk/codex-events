@@ -80,6 +80,24 @@ describe('event config form schema', () => {
     expect(result.error?.issues[0]?.message).toBe('Enter a valid Luma event API ID like evt-123.')
   })
 
+  test('includes the event Luma API key in configuration patches', () => {
+    expect(buildEventConfigurationPatch({
+      ...createValidEventFormState(),
+      lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key'
+    }, 'hackathon')).toMatchObject({
+      lumaEventApiId: 'evt-123',
+      lumaApiKey: 'luma_test_key'
+    })
+
+    expect(buildEventConfigurationPatch({
+      ...createValidEventFormState(),
+      lumaApiKey: '   '
+    }, 'hackathon')).toMatchObject({
+      lumaApiKey: null
+    })
+  })
+
   test('accepts configured submission tracks with name and description', () => {
     const result = eventConfigFormSchema.safeParse({
       ...createValidEventFormState(),

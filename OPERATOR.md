@@ -137,11 +137,7 @@ Add these only when they apply:
 
 The deploy workflow derives `NUXT_AUTH0_SESSION_SECRET` and `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` automatically from `NUXT_AUTH0_CLIENT_SECRET`, so you do not set them here. Set explicit values only when you need controlled secret rotation (see [section 6](#optional-secrets)).
 
-Add these only when they apply:
-
-| Key                 | Platform | Where to find it             |
-|---------------------|----------|------------------------------|
-| `NUXT_LUMA_API_KEY` | Luma     | Only if events use Luma sync |
+Luma API keys are entered per event by event admins. The app stores the event webhook ID and signing secret after registering the webhook with Luma.
 
 ### Cloudflare API token
 
@@ -227,7 +223,6 @@ Each deploy reads the values from its GitHub environment and derives:
 
 - application URL: `https://<BASE_DOMAIN>`
 - Cloudflare route pattern: `<BASE_DOMAIN>`
-- Luma webhook URL: `https://<BASE_DOMAIN>/api/public/luma/webhooks`
 - resource names as `<RESOURCE_PREFIX>-<ENV_NAME>`
 
 `ENV_NAME` defaults to `prod` for production and `test` for the test target. `RESOURCE_PREFIX` defaults to `codex-events`. Keep `CF_ZONE_NAME` explicit because the DNS zone cannot be inferred safely from a hostname.
@@ -294,7 +289,6 @@ Outbound email and queues:
 |--------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `NUXT_AUTH0_SESSION_SECRET`                | Override for the generated Auth0 session secret. Defaults to a stable value derived from `NUXT_AUTH0_CLIENT_SECRET`                                                |
 | `NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET` | Override for the generated account-link challenge secret shared by the Worker and Auth0 Action. Defaults to a stable value derived from `NUXT_AUTH0_CLIENT_SECRET` |
-| `NUXT_LUMA_API_KEY`                        | Luma API key when events use Luma sync                                                                                                                             |
 
 ### Test environment
 
@@ -325,7 +319,7 @@ Required test secrets:
 | `AUTH0_MGMT_CLIENT_ID`     | Auth0 Management application client ID     |
 | `AUTH0_MGMT_CLIENT_SECRET` | Auth0 Management application client secret |
 
-As with production, the test job derives the session and account-link secrets from `NUXT_AUTH0_CLIENT_SECRET` when overrides are omitted. Set `NUXT_LUMA_API_KEY` only when test events use Luma sync.
+As with production, the test job derives the session and account-link secrets from `NUXT_AUTH0_CLIENT_SECRET` when overrides are omitted.
 
 ### Manual deployment
 
@@ -341,12 +335,6 @@ or:
 ```bash
 bun run db:migrate:production
 bun run deploy:production
-```
-
-When Luma sync is enabled, reconcile the webhook before uploading Worker secrets:
-
-```bash
-bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-luma-webhook-secret.json
 ```
 
 ## References

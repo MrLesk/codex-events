@@ -104,7 +104,6 @@ jobs:
       NUXT_AUTH0_CLIENT_SECRET: ${{ secrets.NUXT_AUTH0_CLIENT_SECRET }}
       NUXT_AUTH0_SESSION_SECRET: ${{ secrets.NUXT_AUTH0_SESSION_SECRET }}
       NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET: ${{ secrets.NUXT_AUTH0_ACCOUNT_LINK_CHALLENGE_SECRET }}
-      NUXT_LUMA_API_KEY: ${{ secrets.NUXT_LUMA_API_KEY }}
       # Cloudflare credentials.
       CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
       CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
@@ -177,29 +176,12 @@ jobs:
             fi
           done < <(jq -r '.queues.producers[].queue' .wrangler/generated/test.jsonc)
 
-      - name: Reconcile test Luma webhook
-        if: ${{ steps.test_deploy_config.outputs.enabled == 'true' && env.NUXT_LUMA_API_KEY != '' }}
-        run: |
-          set -euo pipefail
-          if output="$(bun tools/luma/webhook-bootstrap.ts apply --secret-bulk-path .wrangler-test-luma-webhook-secret.json 2>&1)"; then
-            printf '%s\n' "$output"
-            exit 0
-          fi
-
-          printf '%s\n' "$output"
-          if grep -Fq 'active Luma Plus plan' <<< "$output"; then
-            echo "::warning::Skipping test Luma webhook reconciliation because this Luma calendar cannot use API requests without an active Luma Plus plan."
-            exit 0
-          fi
-
-          exit 1
-
       - name: Upload test Worker secrets
         if: ${{ steps.test_deploy_config.outputs.enabled == 'true' }}
         run: |
-          bun tools/deploy/write-worker-secrets.ts .wrangler-test-secrets.json --merge .wrangler-test-luma-webhook-secret.json
+          bun tools/deploy/write-worker-secrets.ts .wrangler-test-secrets.json
           bunx wrangler secret bulk .wrangler-test-secrets.json --config .wrangler/generated/test.jsonc
-          rm -f .wrangler-test-secrets.json .wrangler-test-luma-webhook-secret.json
+          rm -f .wrangler-test-secrets.json
 
       - name: Apply test Auth0 configuration
         if: ${{ steps.test_deploy_config.outputs.enabled == 'true' }}

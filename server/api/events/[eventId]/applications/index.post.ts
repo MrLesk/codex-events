@@ -42,6 +42,7 @@ export default defineApiHandler(async (h3Event) => {
   if (isEventLumaSyncEnabled(event) && lumaEmail) {
     const lumaGuestLookup = await lookupLumaEventGuestByEmail({
       lumaEventApiId: event.lumaEventApiId!.trim(),
+      lumaApiKey: event.lumaApiKey!.trim(),
       lumaEmail
     }, {
       runtimeConfig: useRuntimeConfig(h3Event)

@@ -12,6 +12,7 @@ export interface EventFormState {
   discordServerUrl: string
   lumaEventUrl: string
   lumaEventApiId: string
+  lumaApiKey: string
   description: string
   agendaItems: EventFormAgendaItem[]
   tracks: EventFormTrack[]
@@ -286,6 +287,7 @@ const eventConfigFormBaseSchema = z.object({
   discordServerUrl: createOptionalHttpUrlSchema('Enter a valid Discord server URL.'),
   lumaEventUrl: createOptionalHttpUrlSchema('Enter a valid Luma event URL.'),
   lumaEventApiId: createOptionalLumaEventApiIdSchema('Enter a valid Luma event API ID like evt-123.'),
+  lumaApiKey: z.string().trim(),
   description: requiredTextSchema,
   agendaItems: agendaItemsFormSchema,
   tracks: tracksFormSchema,
@@ -481,6 +483,7 @@ export function createEmptyEventFormState(): EventFormState {
     discordServerUrl: '',
     lumaEventUrl: '',
     lumaEventApiId: '',
+    lumaApiKey: '',
     description: '',
     agendaItems: [],
     tracks: [],
@@ -563,6 +566,7 @@ export function createEventFormState(event: EventRecord): EventFormState {
     discordServerUrl: event.discordServerUrl ?? '',
     lumaEventUrl: event.lumaEventUrl ?? '',
     lumaEventApiId: event.lumaEventApiId ?? '',
+    lumaApiKey: event.lumaApiKey ?? '',
     description: event.description,
     agendaItems: [...event.agendaItems]
       .sort((left, right) => left.displayOrder - right.displayOrder || left.startsAt.localeCompare(right.startsAt))
@@ -635,6 +639,7 @@ export function buildEventConfigurationPatch(configForm: EventFormState, eventTy
     discordServerUrl: configForm.discordServerUrl.trim() || null,
     lumaEventUrl: configForm.lumaEventUrl.trim() || null,
     lumaEventApiId: configForm.lumaEventApiId.trim() || null,
+    lumaApiKey: configForm.lumaApiKey.trim() || null,
     description: configForm.description,
     agendaItems: toEventAgendaPayload(configForm.agendaItems),
     city: configForm.city,
