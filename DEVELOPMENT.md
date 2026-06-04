@@ -4,6 +4,11 @@ This file is contributor-facing documentation for working on the `codex-events` 
 
 ## Setup
 
+Required local tools:
+
+- Bun, matching the version pinned in `package.json`.
+- Backlog.md CLI, with the `backlog` command available on `PATH`.
+
 Install dependencies:
 
 ```bash
