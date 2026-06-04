@@ -9,6 +9,9 @@ on:
   schedule:
     - cron: '0 3 * * *'
 
+permissions:
+  contents: read
+
 jobs:
   backend-checks:
     runs-on: ubuntu-latest
