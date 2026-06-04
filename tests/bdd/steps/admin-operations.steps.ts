@@ -143,6 +143,27 @@ async function waitForApplicationStatus(page: Page, applicationId: string, statu
   }
 }
 
+async function openParticipantReviewView(page: Page, status: string) {
+  const participantViewLabel = formatParticipantViewLabel(status)
+
+  if (!participantViewLabel) {
+    throw new Error(`Unsupported admin application status assertion: ${status}`)
+  }
+
+  await page.getByRole('button', {
+    name: participantViewLabel,
+    exact: false
+  }).click()
+}
+
+async function waitForAdminApplication(page: Page, applicationId: string) {
+  const application = page.getByTestId(`admin-application-${applicationId}`)
+
+  await expect(application).toBeVisible()
+
+  return application
+}
+
 async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) {
   const storageStatePath = storageStatePathForPersona(personaKey)
 
@@ -179,7 +200,18 @@ async function applyStoredStateToPage(personaKey: StablePersonaKey, page: Page) 
 
 When('I open the admin operations page for event {string} with the saved {string} session', async ({ page }, eventId: string, personaKey: string) => {
   await applyStoredStateToPage(parsePersonaKey(personaKey), page)
-  await page.goto(`/account/events/${resolveEventSlug(eventId)}?tab=participants`)
+  const eventSlug = resolveEventSlug(eventId)
+
+  await Promise.all([
+    page.waitForResponse((response) => {
+      const url = new URL(response.url())
+
+      return url.pathname === `/api/events/${eventId}/applications`
+        && url.searchParams.get('page') === '1'
+        && response.ok()
+    }),
+    page.goto(`/account/events/${eventSlug}?tab=participants`)
+  ])
 })
 
 Then('I should see the admin operations text {string}', async ({ page }, text: string) => {
@@ -187,39 +219,19 @@ Then('I should see the admin operations text {string}', async ({ page }, text: s
 })
 
 Then('I should see the admin application {string} with status {string}', async ({ page }, applicationId: string, status: string) => {
-  const participantViewLabel = formatParticipantViewLabel(status)
-
-  if (!participantViewLabel) {
-    throw new Error(`Unsupported admin application status assertion: ${status}`)
-  }
-
-  await page.getByRole('button', {
-    name: participantViewLabel,
-    exact: false
-  }).click()
-
-  const application = page.getByTestId(`admin-application-${applicationId}`)
+  await openParticipantReviewView(page, status)
   await waitForApplicationStatus(page, applicationId, status as 'submitted' | 'approved' | 'rejected' | 'withdrawn')
-
-  if (status !== 'submitted') {
-    return
-  }
-
-  await expect(application).toBeVisible()
+  await waitForAdminApplication(page, applicationId)
 })
 
 When('I approve the admin application {string}', async ({ page }, applicationId: string) => {
   const approveButton = page.getByTestId(`admin-application-approve-${applicationId}`)
 
+  await waitForAdminApplication(page, applicationId)
+  await expect(approveButton).toBeEnabled()
+
   if (!(await isDecisionButtonActive(approveButton, 'approve'))) {
-    await Promise.all([
-      page.waitForResponse(response =>
-        response.url().includes(`/api/events/`)
-        && response.url().includes(`/applications/${applicationId}/actions/approve`)
-        && response.ok()
-      ),
-      approveButton.click()
-    ])
+    await approveButton.click()
   }
 
   await expect.poll(async () => await isDecisionButtonActive(approveButton, 'approve')).toBe(true)
@@ -239,15 +251,11 @@ When('I approve the admin application {string}', async ({ page }, applicationId:
 When('I reject the admin application {string}', async ({ page }, applicationId: string) => {
   const rejectButton = page.getByTestId(`admin-application-reject-${applicationId}`)
 
+  await waitForAdminApplication(page, applicationId)
+  await expect(rejectButton).toBeEnabled()
+
   if (!(await isDecisionButtonActive(rejectButton, 'reject'))) {
-    await Promise.all([
-      page.waitForResponse(response =>
-        response.url().includes(`/api/events/`)
-        && response.url().includes(`/applications/${applicationId}/actions/reject`)
-        && response.ok()
-      ),
-      rejectButton.click()
-    ])
+    await rejectButton.click()
   }
 
   await expect.poll(async () => await isDecisionButtonActive(rejectButton, 'reject')).toBe(true)
