@@ -6,9 +6,7 @@ import type {
   PublicPrize
 } from '~/domains/events/presentation'
 import {
-  formatEventLocation,
-  formatEventWindow,
-  formatMaxTeamMembers,
+  formatAccountEventHeaderSummary,
   resolveEventDetailBackgroundImageUrl
 } from '~/domains/events/presentation'
 import type {
@@ -653,14 +651,7 @@ const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImag
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)
-const detailSummary = computed(() => [
-  formatEventWindow(
-    event.value.registrationOpensAt,
-    isCompetitionEvent.value ? event.value.submissionClosesAt : event.value.registrationClosesAt
-  ),
-  formatEventLocation(event.value),
-  isCompetitionEvent.value ? formatMaxTeamMembers(event.value.maxTeamMembers) : null
-].filter(Boolean).join(' • '))
+const detailSummary = computed(() => formatAccountEventHeaderSummary(event.value))
 function updateAccessRecordApplicationStatus(nextStatus: ParticipantApplicationRecord['status']) {
   const patchRecords = (records: AccountEventAccessRecord[]) =>
     records.map(record => record.slug === slug.value

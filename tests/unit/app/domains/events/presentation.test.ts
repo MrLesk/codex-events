@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest'
 import {
   describeEventWindowNote,
   describeEventWindowStatus,
+  formatAccountEventHeaderSummary,
   formatEventLocation,
   formatEventStateLabel,
   formatEventDateWithWeekday,
@@ -69,6 +70,32 @@ describe('public event agenda presentation helpers', () => {
       eventType: 'build',
       maxTeamMembers: 1
     })).toEqual([])
+  })
+
+  test('formats the account header summary from the event schedule date', () => {
+    const event = {
+      eventType: 'build' as const,
+      city: 'Vienna',
+      country: 'Austria',
+      maxTeamMembers: 1,
+      registrationOpensAt: '2026-06-03T10:00:00.000Z',
+      registrationClosesAt: '2026-06-19T10:00:00.000Z',
+      submissionOpensAt: '2026-06-19T10:00:00.000Z',
+      agendaItems: [
+        {
+          id: 'main-program',
+          startsAt: '2026-06-20T09:00:00.000Z',
+          endsAt: null,
+          title: 'Main program',
+          details: null,
+          displayOrder: 1
+        }
+      ]
+    }
+
+    expect(formatAccountEventHeaderSummary(event)).toBe(
+      `${formatEventDateWithWeekday('2026-06-20T09:00:00.000Z')} • Vienna, Austria`
+    )
   })
 
   test('resolves event imagery for detail pages and cards with distinct precedence', () => {

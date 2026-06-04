@@ -608,3 +608,13 @@ export function getEventRegistrationTeamSizeMetaItems(event: Pick<PublicEvent, '
 export function getEventDashboardTeamSizeMetaItems(event: Pick<PublicEvent, 'eventType' | 'maxTeamMembers'>) {
   return event.eventType === 'hackathon' ? [`${event.maxTeamMembers} max/team`] : []
 }
+
+export function formatAccountEventHeaderSummary(
+  event: Pick<PublicEvent, 'agendaItems' | 'city' | 'country' | 'eventType' | 'maxTeamMembers' | 'submissionOpensAt'>
+) {
+  return [
+    formatEventDateWithWeekday(getEventEarliestStartAt(event)),
+    formatEventLocation(event),
+    event.eventType === 'hackathon' ? formatMaxTeamMembers(event.maxTeamMembers) : null
+  ].filter(Boolean).join(' • ')
+}
