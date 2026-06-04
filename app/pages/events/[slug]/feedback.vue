@@ -3,6 +3,7 @@ import {
   formatEventLocation,
   formatEventWindow,
   getEventRegistrationTeamSizeMetaItems,
+  resolveEventDetailBackgroundImageUrl,
   type PublicEvent
 } from '~/domains/events/presentation'
 
@@ -53,16 +54,7 @@ if (event.value.state !== 'completed') {
   })
 }
 
-const detailBackgroundImageUrl = computed(() => {
-  const backgroundImageUrl = event.value.backgroundImageUrl?.trim()
-
-  if (backgroundImageUrl) {
-    return backgroundImageUrl
-  }
-
-  const bannerImageUrl = event.value.bannerImageUrl?.trim()
-  return bannerImageUrl || null
-})
+const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImageUrl(event.value))
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)

@@ -7,7 +7,8 @@ import type {
 import {
   formatEventDateWithWeekday,
   formatEventLocation,
-  getEventEarliestStartAt
+  getEventEarliestStartAt,
+  resolveEventDetailBackgroundImageUrl
 } from '~/domains/events/presentation'
 import type { EventPhotoRecord } from '#shared/domains/events/photos'
 import type {
@@ -202,16 +203,7 @@ const isWinnerRevealVisible = computed(() => isCompetitionEvent.value && event.v
 const publicPrizeTabLabel = computed(() => isWinnerRevealVisible.value ? 'Winners' : 'Prizes')
 const hasEventWorkspaceAccess = computed(() => workspaceAccessRequest.data.value)
 
-const detailBackgroundImageUrl = computed(() => {
-  const backgroundImageUrl = event.value.backgroundImageUrl?.trim()
-
-  if (backgroundImageUrl) {
-    return backgroundImageUrl
-  }
-
-  const bannerImageUrl = event.value.bannerImageUrl?.trim()
-  return bannerImageUrl || null
-})
+const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImageUrl(event.value))
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)

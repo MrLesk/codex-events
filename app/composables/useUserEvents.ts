@@ -16,6 +16,7 @@ export interface UserEventEntry {
   address: string
   bannerImageUrl: string | null
   backgroundImageUrl: string | null
+  displayBackgroundImageUrl: string | null
   registrationOpensAt: string
   registrationClosesAt: string
   submissionOpensAt: string

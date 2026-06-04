@@ -54,6 +54,7 @@ export interface PublicEvent {
   agendaItems: PublicEventAgendaItem[]
   tracks?: PublicEventTrack[]
   backgroundImageUrl: string | null
+  displayBackgroundImageUrl: string | null
   bannerImageUrl: string | null
   lumaEventUrl?: string | null
   city: string
@@ -126,6 +127,33 @@ export interface PublicApiListResponse<T> {
     pageSize?: number
     total?: number
   }
+}
+
+export interface EventImageSource {
+  displayBackgroundImageUrl: string | null
+  bannerImageUrl: string | null
+}
+
+export function resolveEventDetailBackgroundImageUrl(event: EventImageSource) {
+  const displayBackgroundImageUrl = event.displayBackgroundImageUrl?.trim()
+
+  if (displayBackgroundImageUrl) {
+    return displayBackgroundImageUrl
+  }
+
+  const bannerImageUrl = event.bannerImageUrl?.trim()
+  return bannerImageUrl || null
+}
+
+export function resolveEventCardHeroImageUrl(event: EventImageSource) {
+  const bannerImageUrl = event.bannerImageUrl?.trim()
+
+  if (bannerImageUrl) {
+    return bannerImageUrl
+  }
+
+  const displayBackgroundImageUrl = event.displayBackgroundImageUrl?.trim()
+  return displayBackgroundImageUrl || null
 }
 
 const stateLabels: Record<PublicEventState, string> = {

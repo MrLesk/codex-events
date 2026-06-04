@@ -8,8 +8,10 @@ import {
   getEventImagesBucket,
   eventImageMaxBytes,
   eventImageObjectKey,
+  platformDefaultEventBackgroundImageObjectKey,
   putEventImageObject,
-  publicEventImagePath
+  publicEventImagePath,
+  publicPlatformDefaultEventBackgroundImagePath
 } from '../../../../../server/domains/events/images'
 
 function createBucketStub() {
@@ -39,11 +41,13 @@ describe('event image utilities', () => {
   test('builds canonical event image object keys', () => {
     expect(eventImageObjectKey('event_1', 'background')).toBe('events/event_1/background-image')
     expect(eventImageObjectKey('event_1', 'banner')).toBe('events/event_1/banner-image')
+    expect(platformDefaultEventBackgroundImageObjectKey()).toBe('platform/default-event-background-image')
   })
 
   test('builds canonical public event image paths', () => {
     expect(publicEventImagePath('codex-spring', 'background')).toBe('/api/public/events/codex-spring/images/background')
     expect(publicEventImagePath('codex-spring', 'banner')).toBe('/api/public/events/codex-spring/images/banner')
+    expect(publicPlatformDefaultEventBackgroundImagePath()).toBe('/api/public/platform/event-default-background-image')
   })
 
   test('accepts supported image signatures and derives the content type from bytes', () => {

@@ -4,6 +4,7 @@ import {
   formatEventDateWithWeekday,
   formatEventLocation,
   getEventEarliestStartAt,
+  resolveEventCardHeroImageUrl,
   type PublicEvent
 } from '~/domains/events/presentation'
 
@@ -16,17 +17,7 @@ const props = withDefaults(defineProps<{
   showTimelineRail: true
 })
 
-const heroImage = computed(() => {
-  const bannerImageUrl = props.event.bannerImageUrl?.trim()
-
-  if (bannerImageUrl) {
-    return bannerImageUrl
-  }
-
-  const backgroundImageUrl = props.event.backgroundImageUrl?.trim()
-
-  return backgroundImageUrl || null
-})
+const heroImage = computed(() => resolveEventCardHeroImageUrl(props.event))
 const earliestStartAt = computed(() => getEventEarliestStartAt(props.event))
 const timelineDateLabel = computed(() => formatEventCompactDate(earliestStartAt.value))
 const eventDayLabel = computed(() => formatEventDateWithWeekday(earliestStartAt.value))

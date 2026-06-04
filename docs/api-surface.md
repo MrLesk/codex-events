@@ -86,6 +86,7 @@ The canonical backend domains are:
 - `session`
 - `legal`
 - `platform-legal-settings`
+- `platform-settings`
 - `luma-webhooks`
 - `platform-documents`
 - `account`
@@ -135,6 +136,24 @@ Operations:
 Testing:
 - Unit: settings validation and contact-recipient resolution.
 - Integration: public read behavior, platform-admin-only writes, audit logging, and missing-settings contact behavior.
+
+## Platform Settings
+
+Purpose:
+- Expose deployment-wide presentation defaults used by event read and image delivery workflows.
+
+Operations:
+
+| Operation | Method And Path | Actor | Guards And Notes |
+| --- | --- | --- | --- |
+| Get current platform settings | `GET /api/platform-settings/current` | public or authenticated user | Returns the current default event background image URL, or `null` when platform settings are not configured. |
+| Upload default event background image | `POST /api/platform-settings/event-default-background-image` | platform admin | Accepts one managed JPEG or PNG multipart upload, stores the object in the existing event images bucket, updates `defaultEventBackgroundImageUrl`, enforces the authenticated upload rate limiter, and writes an audit row. |
+| Remove default event background image | `DELETE /api/platform-settings/event-default-background-image` | platform admin | Deletes the managed object from the existing event images bucket, clears `defaultEventBackgroundImageUrl`, and writes an audit row. |
+| Get public default event background image | `GET /api/public/platform/event-default-background-image` | public or authenticated user | Returns the configured platform default event background image bytes. The response sets `nosniff` and returns `404` when the default is not configured or the managed object is missing. |
+
+Testing:
+- Unit: settings serialization, upsert behavior, object-key helpers, and frontend platform settings composables.
+- Integration: public read behavior, platform-admin-only upload/removal, image validation, upload rate limiting, audit logging, public byte delivery, and missing-default behavior.
 
 ## Luma Webhooks
 
@@ -302,6 +321,8 @@ Operations:
 
 Notes:
 - `participantsLimit` is an indicative planning target surfaced in admin approval workflows and does not reject staged or applied approval decisions by itself.
+- Event read payloads expose `backgroundImageUrl` as the event-specific stored background image URL and `displayBackgroundImageUrl` as the effective display background image URL. `displayBackgroundImageUrl` uses the event-specific background image first, then the platform default event background image when configured.
+- The public event background image route serves only the event-specific uploaded background image. It does not serve the platform default event background image.
 - `autoApproveApplications` approves only new applications after required submission checks pass. Turning it on does not retroactively approve already submitted applications.
 - Hackathon `blindReviewCount` accepts `0`, `1`, or `2`.
 - Hackathon `pitchReviewEnabled` can be true with or without blind review.

@@ -17,7 +17,9 @@ import {
   getEventWindowProgress,
   getEventEarliestStartAt,
   getAgendaItemPresentation,
-  shouldShowAgendaDayContext
+  shouldShowAgendaDayContext,
+  resolveEventCardHeroImageUrl,
+  resolveEventDetailBackgroundImageUrl
 } from '../../../../../app/domains/events/presentation'
 
 describe('public event agenda presentation helpers', () => {
@@ -67,6 +69,16 @@ describe('public event agenda presentation helpers', () => {
       eventType: 'build',
       maxTeamMembers: 1
     })).toEqual([])
+  })
+
+  test('resolves event imagery for detail pages and cards with distinct precedence', () => {
+    const event = {
+      displayBackgroundImageUrl: 'https://example.com/default-background.png',
+      bannerImageUrl: 'https://example.com/banner.png'
+    }
+
+    expect(resolveEventDetailBackgroundImageUrl(event)).toBe('https://example.com/default-background.png')
+    expect(resolveEventCardHeroImageUrl(event)).toBe('https://example.com/banner.png')
   })
 
   test('collapses agenda labels to time-only when the full agenda fits in one local day', () => {

@@ -5,6 +5,7 @@ import {
   formatEventWindow,
   getEventRegistrationTeamSizeMetaItems,
   getEventEarliestStartAt,
+  resolveEventDetailBackgroundImageUrl,
   type PublicEvent
 } from '~/domains/events/presentation'
 import type {
@@ -70,16 +71,7 @@ if (!eventData.value) {
 }
 
 const event = computed(() => eventData.value!)
-const detailBackgroundImageUrl = computed(() => {
-  const backgroundImageUrl = event.value.backgroundImageUrl?.trim()
-
-  if (backgroundImageUrl) {
-    return backgroundImageUrl
-  }
-
-  const bannerImageUrl = event.value.bannerImageUrl?.trim()
-  return bannerImageUrl || null
-})
+const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImageUrl(event.value))
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)

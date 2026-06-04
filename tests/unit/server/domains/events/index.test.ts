@@ -647,6 +647,24 @@ describe('event management utilities', () => {
     })
   })
 
+  test('serializes event-specific and default display background URLs separately', () => {
+    expect(serializeEvent(buildEventRecord(), undefined, undefined, {
+      defaultEventBackgroundImageUrl: 'https://example.com/default-background.png'
+    })).toMatchObject({
+      backgroundImageUrl: null,
+      displayBackgroundImageUrl: 'https://example.com/default-background.png'
+    })
+
+    expect(serializeEvent(buildEventRecord({
+      backgroundImageUrl: 'https://example.com/event-background.png'
+    }), undefined, undefined, {
+      defaultEventBackgroundImageUrl: 'https://example.com/default-background.png'
+    })).toMatchObject({
+      backgroundImageUrl: 'https://example.com/event-background.png',
+      displayBackgroundImageUrl: 'https://example.com/event-background.png'
+    })
+  })
+
   test('serializes common application requirements for registration-only events', () => {
     expect(serializeEvent(buildEventRecord({
       eventType: 'build',
@@ -673,6 +691,18 @@ describe('event management utilities', () => {
       city: 'Vienna',
       country: 'Austria',
       address: ''
+    })
+  })
+
+  test('serializes public event display background without replacing stored event fields', () => {
+    expect(serializePublicEvent(buildEventRecord({
+      bannerImageUrl: 'https://example.com/banner.png'
+    }), undefined, undefined, {
+      defaultEventBackgroundImageUrl: 'https://example.com/default-background.png'
+    })).toMatchObject({
+      backgroundImageUrl: null,
+      displayBackgroundImageUrl: 'https://example.com/default-background.png',
+      bannerImageUrl: 'https://example.com/banner.png'
     })
   })
 

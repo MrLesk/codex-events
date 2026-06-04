@@ -12,6 +12,7 @@ import {
   eventTracks,
   events,
   judgeAssignments,
+  platformSettings,
   prizeEligibilitySnapshots,
   prizeRedemptions,
   prizes,
@@ -94,6 +95,8 @@ describe('shared schema foundation', () => {
     const feedbackChecks = getTableConfig(eventFeedback).checks.map(checkItem => checkItem.name)
     const photoChecks = getTableConfig(eventPhotos).checks.map(checkItem => checkItem.name)
     const auditIndexes = getTableConfig(auditLogs).indexes.map(index => index.config.name)
+    const platformSettingsColumns = getTableColumns(platformSettings)
+    const platformSettingsChecks = getTableConfig(platformSettings).checks.map(checkItem => checkItem.name)
 
     expect(eventColumns.lumaEventUrl.name).toBe('luma_event_url')
     expect(eventColumns.discordServerUrl.name).toBe('discord_server_url')
@@ -176,5 +179,8 @@ describe('shared schema foundation', () => {
     expect(auditIndexes).toContain('audit_logs_created_idx')
     expect(auditIndexes).toContain('audit_logs_entity_created_idx')
     expect(auditIndexes).toContain('audit_logs_metadata_event_created_idx')
+    expect(getTableName(platformSettings)).toBe('platform_settings')
+    expect(platformSettingsColumns.defaultEventBackgroundImageUrl.name).toBe('default_event_background_image_url')
+    expect(platformSettingsChecks).toContain('platform_settings_singleton_id_check')
   })
 })

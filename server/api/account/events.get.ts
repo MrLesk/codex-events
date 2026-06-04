@@ -10,6 +10,11 @@ import {
   teams,
   userApplications
 } from '#server/database/schema'
+import {
+  getEventDisplayImageOptions,
+  resolveEventDisplayBackgroundImageUrl,
+  type EventDisplayImageOptions
+} from '#server/domains/platform/settings'
 import { defineApiHandler } from '#server/http/api-handler'
 import { apiData } from '#server/http/api-response'
 
@@ -54,7 +59,8 @@ function serializeEventParticipation(
   membership: TeamMembershipRecord | null,
   submission: SubmissionRecord | null,
   roles: EventRoleAssignmentRecord[],
-  showRestrictedDetails: boolean
+  showRestrictedDetails: boolean,
+  imageOptions: EventDisplayImageOptions
 ) {
   return {
     id: event.id,
@@ -68,6 +74,7 @@ function serializeEventParticipation(
     address: showRestrictedDetails ? event.address : '',
     bannerImageUrl: event.bannerImageUrl,
     backgroundImageUrl: event.backgroundImageUrl,
+    displayBackgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, imageOptions),
     registrationOpensAt: event.registrationOpensAt,
     registrationClosesAt: event.registrationClosesAt,
     submissionOpensAt: event.submissionOpensAt,
@@ -186,6 +193,7 @@ export default defineApiHandler(async (h3Event) => {
     )
   })
   const orderedEvents = sortEventsByFreshness(eventRecords)
+  const imageOptions = await getEventDisplayImageOptions(database)
   const applicationByEventId = new Map(applications.map(record => [record.eventId, record] as const))
   const teamByEventId = new Map(teamRecords.map(record => [record.eventId, record] as const))
   const membershipByTeamId = new Map(memberships.map(record => [record.teamId, record] as const))
@@ -225,7 +233,8 @@ export default defineApiHandler(async (h3Event) => {
       membership,
       submission,
       relevantRoles,
-      showRestrictedDetails
+      showRestrictedDetails,
+      imageOptions
     )
   })
 

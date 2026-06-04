@@ -16,6 +16,10 @@ import platformDocumentVersionsGetHandler from '../../../../server/api/platform-
 import platformDocumentVersionsPostHandler from '../../../../server/api/platform-documents/[documentType]/versions.post'
 import platformLegalSettingsCurrentGetHandler from '../../../../server/api/platform-legal-settings/current.get'
 import platformLegalSettingsCurrentPatchHandler from '../../../../server/api/platform-legal-settings/current.patch'
+import platformSettingsCurrentGetHandler from '../../../../server/api/platform-settings/current.get'
+import platformSettingsDefaultBackgroundDeleteHandler from '../../../../server/api/platform-settings/event-default-background-image.delete'
+import platformSettingsDefaultBackgroundPostHandler from '../../../../server/api/platform-settings/event-default-background-image.post'
+import publicPlatformDefaultEventBackgroundGetHandler from '../../../../server/api/public/platform/event-default-background-image.get'
 import {
   auditLogs,
   events,
@@ -23,6 +27,7 @@ import {
   eventTermsDocuments,
   platformDocuments,
   platformLegalSettings,
+  platformSettings,
   submissions,
   teamMembers,
   teams,
@@ -39,6 +44,7 @@ import { createApiRouteTestHarness } from '../../../support/backend/api-route'
 describe('TASK-3.5 actor-facing API routes', () => {
   const databases: Array<ReturnType<typeof createApiRouteTestHarness>> = []
   const profileIconBindingName = 'PROFILE_ICONS'
+  const eventImagesBindingName = 'EVENT_IMAGES'
   const pngSignatureBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
 
   function createOversizedPngBytes(size: number) {
@@ -1088,6 +1094,42 @@ describe('TASK-3.5 actor-facing API routes', () => {
     })
   })
 
+  test('GET /api/platform-settings/current returns event defaults publicly', async () => {
+    const defaultBackgroundUrl = 'http://localhost/api/public/platform/event-default-background-image'
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'get',
+          path: '/api/platform-settings/current',
+          handler: platformSettingsCurrentGetHandler
+        }
+      ]
+    })
+    databases.push(harness)
+
+    const missingResponse = await harness.request('/api/platform-settings/current')
+
+    expect(missingResponse.status).toBe(200)
+    expect(await missingResponse.json()).toEqual({
+      data: null
+    })
+
+    await harness.database.insert(platformSettings).values({
+      id: 'default',
+      defaultEventBackgroundImageUrl: defaultBackgroundUrl
+    })
+
+    const configuredResponse = await harness.request('/api/platform-settings/current')
+
+    expect(configuredResponse.status).toBe(200)
+    expect(await configuredResponse.json()).toMatchObject({
+      data: {
+        id: 'default',
+        defaultEventBackgroundImageUrl: defaultBackgroundUrl
+      }
+    })
+  })
+
   test('PATCH /api/platform-legal-settings/current upserts settings for platform admins only', async () => {
     const regularHarness = createApiRouteTestHarness({
       routes: [
@@ -1192,6 +1234,318 @@ describe('TASK-3.5 actor-facing API routes', () => {
         action: 'platform_legal_settings.created'
       })
     ])
+  })
+
+  test('platform default event background upload and removal are platform-admin only', async () => {
+    const defaultBackgroundUrl = 'http://localhost/api/public/platform/event-default-background-image'
+    const regularHarness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/platform-settings/event-default-background-image',
+          handler: platformSettingsDefaultBackgroundPostHandler
+        },
+        {
+          method: 'delete',
+          path: '/api/platform-settings/event-default-background-image',
+          handler: platformSettingsDefaultBackgroundDeleteHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|regular-background-user',
+        email: 'regular-background-user@example.com'
+      }
+    })
+    databases.push(regularHarness)
+    await seedAcceptedPlatformUser(regularHarness, {
+      id: 'regular_background_user',
+      auth0Subject: 'auth0|regular-background-user',
+      email: 'regular-background-user@example.com'
+    })
+
+    const forbiddenUploadForm = new FormData()
+    forbiddenUploadForm.append(
+      'file',
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
+      'background.png'
+    )
+
+    const forbiddenUploadResponse = await regularHarness.request(
+      '/api/platform-settings/event-default-background-image',
+      {
+        method: 'POST',
+        body: forbiddenUploadForm
+      }
+    )
+    const forbiddenDeleteResponse = await regularHarness.request(
+      '/api/platform-settings/event-default-background-image',
+      {
+        method: 'DELETE'
+      }
+    )
+
+    expect(forbiddenUploadResponse.status).toBe(403)
+    expect(await forbiddenUploadResponse.json()).toMatchObject({
+      error: {
+        code: 'platform_admin_required'
+      }
+    })
+    expect(forbiddenDeleteResponse.status).toBe(403)
+    expect(await forbiddenDeleteResponse.json()).toMatchObject({
+      error: {
+        code: 'platform_admin_required'
+      }
+    })
+
+    const eventImagesBucket = new InMemoryR2Bucket()
+    const adminHarness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/platform-settings/event-default-background-image',
+          handler: platformSettingsDefaultBackgroundPostHandler
+        },
+        {
+          method: 'delete',
+          path: '/api/platform-settings/event-default-background-image',
+          handler: platformSettingsDefaultBackgroundDeleteHandler
+        },
+        {
+          method: 'get',
+          path: '/api/public/platform/event-default-background-image',
+          handler: publicPlatformDefaultEventBackgroundGetHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform-background-admin',
+        email: 'platform-background-admin@example.com'
+      },
+      cloudflareEnv: {
+        [eventImagesBindingName]: eventImagesBucket,
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter()
+      },
+      runtimeConfig: {
+        eventImages: {
+          binding: eventImagesBindingName
+        }
+      }
+    })
+    databases.push(adminHarness)
+    await seedAcceptedPlatformUser(adminHarness, {
+      id: 'platform_background_admin',
+      auth0Subject: 'auth0|platform-background-admin',
+      email: 'platform-background-admin@example.com',
+      isPlatformAdmin: true
+    })
+
+    const missingImageResponse = await adminHarness.request('/api/public/platform/event-default-background-image')
+
+    expect(missingImageResponse.status).toBe(404)
+    expect(await missingImageResponse.json()).toMatchObject({
+      error: {
+        code: 'platform_default_event_background_image_not_found'
+      }
+    })
+
+    const uploadForm = new FormData()
+    uploadForm.append(
+      'file',
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
+      'default-background.png'
+    )
+
+    const uploadResponse = await adminHarness.request('/api/platform-settings/event-default-background-image', {
+      method: 'POST',
+      body: uploadForm
+    })
+    const storedSettings = await adminHarness.database.query.platformSettings.findFirst({
+      where: eq(platformSettings.id, 'default')
+    })
+
+    expect(uploadResponse.status).toBe(200)
+    expect(await uploadResponse.json()).toMatchObject({
+      data: {
+        id: 'default',
+        defaultEventBackgroundImageUrl: defaultBackgroundUrl
+      }
+    })
+    expect(storedSettings).toMatchObject({
+      id: 'default',
+      defaultEventBackgroundImageUrl: defaultBackgroundUrl
+    })
+
+    const imageResponse = await adminHarness.request('/api/public/platform/event-default-background-image')
+
+    expect(imageResponse.status).toBe(200)
+    expect(imageResponse.headers.get('cache-control')).toBe('public, no-store')
+    expect(imageResponse.headers.get('content-type')).toBe('image/png')
+    expect(imageResponse.headers.get('x-content-type-options')).toBe('nosniff')
+    expect(new Uint8Array(await imageResponse.arrayBuffer())).toEqual(pngSignatureBytes)
+
+    const deleteResponse = await adminHarness.request('/api/platform-settings/event-default-background-image', {
+      method: 'DELETE'
+    })
+    const clearedSettings = await adminHarness.database.query.platformSettings.findFirst({
+      where: eq(platformSettings.id, 'default')
+    })
+
+    expect(deleteResponse.status).toBe(200)
+    expect(await deleteResponse.json()).toMatchObject({
+      data: {
+        id: 'default',
+        defaultEventBackgroundImageUrl: null
+      }
+    })
+    expect(clearedSettings).toMatchObject({
+      id: 'default',
+      defaultEventBackgroundImageUrl: null
+    })
+
+    const removedImageResponse = await adminHarness.request('/api/public/platform/event-default-background-image')
+    const auditRows = await adminHarness.database.select().from(auditLogs)
+
+    expect(removedImageResponse.status).toBe(404)
+    expect(await removedImageResponse.json()).toMatchObject({
+      error: {
+        code: 'platform_default_event_background_image_not_found'
+      }
+    })
+    expect(auditRows).toEqual([
+      expect.objectContaining({
+        actorUserId: 'platform_background_admin',
+        entityType: 'platform_settings',
+        entityId: 'default',
+        action: 'platform_settings.created'
+      }),
+      expect.objectContaining({
+        actorUserId: 'platform_background_admin',
+        entityType: 'platform_settings',
+        entityId: 'default',
+        action: 'platform_settings.updated'
+      })
+    ])
+  })
+
+  test('POST /api/platform-settings/event-default-background-image rejects invalid image files', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/platform-settings/event-default-background-image',
+          handler: platformSettingsDefaultBackgroundPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform-invalid-background-admin',
+        email: 'platform-invalid-background-admin@example.com'
+      },
+      cloudflareEnv: {
+        [eventImagesBindingName]: new InMemoryR2Bucket(),
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter()
+      },
+      runtimeConfig: {
+        eventImages: {
+          binding: eventImagesBindingName
+        }
+      }
+    })
+    databases.push(harness)
+    await seedAcceptedPlatformUser(harness, {
+      id: 'platform_invalid_background_admin',
+      auth0Subject: 'auth0|platform-invalid-background-admin',
+      email: 'platform-invalid-background-admin@example.com',
+      isPlatformAdmin: true
+    })
+
+    const invalidImageForm = new FormData()
+    invalidImageForm.append(
+      'file',
+      new Blob([new Uint8Array([1, 2, 3, 4])], { type: 'image/png' }),
+      'default-background.png'
+    )
+
+    const invalidTypeResponse = await harness.request('/api/platform-settings/event-default-background-image', {
+      method: 'POST',
+      body: invalidImageForm
+    })
+
+    expect(invalidTypeResponse.status).toBe(400)
+    expect(await invalidTypeResponse.json()).toMatchObject({
+      error: {
+        code: 'event_image_content_type_invalid'
+      }
+    })
+
+    const oversizedForm = new FormData()
+    oversizedForm.append(
+      'file',
+      new Blob([createOversizedPngBytes((5 * 1024 * 1024) + 1)], { type: 'image/png' }),
+      'default-background.png'
+    )
+
+    const oversizedResponse = await harness.request('/api/platform-settings/event-default-background-image', {
+      method: 'POST',
+      body: oversizedForm
+    })
+
+    expect(oversizedResponse.status).toBe(400)
+    expect(await oversizedResponse.json()).toMatchObject({
+      error: {
+        code: 'event_image_file_too_large'
+      }
+    })
+  })
+
+  test('POST /api/platform-settings/event-default-background-image returns 429 when upload rate limited', async () => {
+    const harness = createApiRouteTestHarness({
+      routes: [
+        {
+          method: 'post',
+          path: '/api/platform-settings/event-default-background-image',
+          handler: platformSettingsDefaultBackgroundPostHandler
+        }
+      ],
+      sessionUser: {
+        sub: 'auth0|platform-rate-limited-background-admin',
+        email: 'platform-rate-limited-background-admin@example.com'
+      },
+      cloudflareEnv: {
+        [eventImagesBindingName]: new InMemoryR2Bucket(),
+        [authenticatedUploadRateLimitBindingName]: createRateLimiter(false)
+      },
+      runtimeConfig: {
+        eventImages: {
+          binding: eventImagesBindingName
+        }
+      }
+    })
+    databases.push(harness)
+    await seedAcceptedPlatformUser(harness, {
+      id: 'platform_rate_limited_background_admin',
+      auth0Subject: 'auth0|platform-rate-limited-background-admin',
+      email: 'platform-rate-limited-background-admin@example.com',
+      isPlatformAdmin: true
+    })
+
+    const uploadForm = new FormData()
+    uploadForm.append(
+      'file',
+      new Blob([pngSignatureBytes], { type: 'image/png' }),
+      'default-background.png'
+    )
+
+    const response = await harness.request('/api/platform-settings/event-default-background-image', {
+      method: 'POST',
+      body: uploadForm
+    })
+
+    expect(response.status).toBe(429)
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'upload_rate_limited',
+        message: 'Too many uploads were submitted. Please wait before trying again.'
+      }
+    })
   })
 
   test('GET /api/platform-documents/:documentType/versions requires auth and lists versions descending', async () => {

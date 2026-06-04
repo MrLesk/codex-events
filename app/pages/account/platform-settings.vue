@@ -7,11 +7,12 @@ definePageMeta({
 
 const route = useRoute()
 const accountTabListRef = ref<HTMLElement | null>(null)
-const platformSettingsTabs = ['legal', 'event-organizers', 'platform-admins'] as const
+const platformSettingsTabs = ['legal', 'event-defaults', 'event-organizers', 'platform-admins'] as const
 type PlatformSettingsTab = typeof platformSettingsTabs[number]
 
 const platformSettingsTabLabels: Record<PlatformSettingsTab, string> = {
   'legal': 'Legal settings',
+  'event-defaults': 'Event defaults',
   'event-organizers': 'Manage event organizers',
   'platform-admins': 'Manage platform admins'
 }
@@ -82,7 +83,7 @@ onMounted(() => {
 
 useSeoMeta({
   title: 'Platform Settings | Codex Events',
-  description: 'Manage platform legal settings and platform-wide access.'
+  description: 'Manage platform legal settings, event defaults, and platform-wide access.'
 })
 </script>
 
@@ -96,7 +97,7 @@ useSeoMeta({
               Platform settings
             </h1>
             <p class="max-w-3xl text-[15px] text-neutral-700 dark:text-[#A3A3A3]">
-              Manage deployment legal settings and platform-wide access from one place.
+              Manage deployment legal settings, event defaults, and platform-wide access from one place.
             </p>
           </div>
         </div>
@@ -132,6 +133,15 @@ useSeoMeta({
         aria-labelledby="platform-settings-tab-legal"
       >
         <AccountPlatformLegalSettingsPanel />
+      </section>
+
+      <section
+        v-else-if="activeTab === 'event-defaults'"
+        id="platform-settings-tab-panel-event-defaults"
+        role="tabpanel"
+        aria-labelledby="platform-settings-tab-event-defaults"
+      >
+        <AccountPlatformEventDefaultsPanel />
       </section>
 
       <section

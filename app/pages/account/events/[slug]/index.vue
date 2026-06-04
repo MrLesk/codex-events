@@ -8,7 +8,8 @@ import type {
 import {
   formatEventLocation,
   formatEventWindow,
-  formatMaxTeamMembers
+  formatMaxTeamMembers,
+  resolveEventDetailBackgroundImageUrl
 } from '~/domains/events/presentation'
 import type {
   EventParticipationApiDataResponse,
@@ -106,6 +107,7 @@ interface AccountEventAccessRecord {
   address: string
   bannerImageUrl: string | null
   backgroundImageUrl: string | null
+  displayBackgroundImageUrl: string | null
   registrationOpensAt: string
   registrationClosesAt: string
   submissionOpensAt: string
@@ -647,16 +649,7 @@ const canViewRestrictedEventDetails = computed(() =>
   || canViewParticipantsAndTeams.value
 )
 
-const detailBackgroundImageUrl = computed(() => {
-  const backgroundImageUrl = event.value.backgroundImageUrl?.trim()
-
-  if (backgroundImageUrl) {
-    return backgroundImageUrl
-  }
-
-  const bannerImageUrl = event.value.bannerImageUrl?.trim()
-  return bannerImageUrl || null
-})
+const detailBackgroundImageUrl = computed(() => resolveEventDetailBackgroundImageUrl(event.value))
 const detailBackgroundImageStyle = computed(() => detailBackgroundImageUrl.value
   ? { backgroundImage: `url(${JSON.stringify(detailBackgroundImageUrl.value)})` }
   : undefined)

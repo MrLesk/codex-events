@@ -55,6 +55,7 @@ import {
   judgeAssignments,
   judgeCriterionScores,
   platformDocuments,
+  platformSettings,
   prizes,
   prizeEligibilitySnapshots,
   prizeRedemptions,
@@ -1638,6 +1639,137 @@ describe('TASK-3.5 event CRUD routes', () => {
     expect(payload.data).not.toHaveProperty('discordServerUrl')
     expect(payload.data.currentTerms.applicationTerms).not.toHaveProperty('id')
     expect(payload.data.currentTerms.winnerTerms).not.toHaveProperty('id')
+  })
+
+  test('event payloads expose platform default display backgrounds without replacing event backgrounds', async () => {
+    const defaultBackgroundUrl = 'http://localhost/api/public/platform/event-default-background-image'
+    const bannerImageUrl = 'http://localhost/api/public/events/banner-only-event/images/banner'
+    const eventBackgroundUrl = 'http://localhost/api/public/events/own-background-event/images/background'
+    const harness = createApiRouteTestHarness({
+      routes: [
+        { method: 'get', path: '/api/public/events', handler: publicEventsGetHandler },
+        { method: 'get', path: '/api/public/events/:slug', handler: publicEventDetailGetHandler },
+        { method: 'get', path: '/api/events/:eventId', handler: eventDetailGetHandler },
+        { method: 'get', path: '/api/public/events/:slug/images/background', handler: publicEventBackgroundImageGetHandler }
+      ]
+    })
+    harnesses.push(harness)
+
+    await harness.database.insert(users).values({
+      id: 'creator_1',
+      auth0Subject: 'auth0|creator_1',
+      email: 'creator@example.com',
+      displayName: 'Creator'
+    })
+    await harness.database.insert(platformSettings).values({
+      id: 'default',
+      defaultEventBackgroundImageUrl: defaultBackgroundUrl
+    })
+    await harness.database.insert(events).values([
+      {
+        id: 'event_banner_only',
+        eventType: 'meetup',
+        name: 'Banner Only Event',
+        slug: 'banner-only-event',
+        description: 'Event with a banner and platform default background',
+        bannerImageUrl,
+        city: 'Vienna',
+        country: 'Austria',
+        address: 'Address',
+        registrationOpensAt: '2026-03-20T12:00:00.000Z',
+        registrationClosesAt: '2026-03-23T12:00:00.000Z',
+        submissionOpensAt: '2026-03-23T12:00:00.000Z',
+        submissionClosesAt: '2026-03-25T12:00:00.000Z',
+        state: 'registration_open',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1',
+        createdAt: '2026-03-01T00:00:00.000Z',
+        updatedAt: '2026-03-01T00:00:00.000Z'
+      },
+      {
+        id: 'event_own_background',
+        eventType: 'hackathon',
+        name: 'Own Background Event',
+        slug: 'own-background-event',
+        description: 'Event with an uploaded background',
+        backgroundImageUrl: eventBackgroundUrl,
+        city: 'Vienna',
+        country: 'Austria',
+        address: 'Address',
+        registrationOpensAt: '2026-03-21T12:00:00.000Z',
+        registrationClosesAt: '2026-03-24T12:00:00.000Z',
+        submissionOpensAt: '2026-03-24T12:00:00.000Z',
+        submissionClosesAt: '2026-03-26T12:00:00.000Z',
+        state: 'registration_open',
+        maxTeamMembers: 5,
+        createdByUserId: 'creator_1',
+        createdAt: '2026-03-02T00:00:00.000Z',
+        updatedAt: '2026-03-02T00:00:00.000Z'
+      }
+    ])
+
+    const publicListResponse = await harness.request('/api/public/events?page=1&page_size=100')
+    const publicListPayload = await publicListResponse.json() as {
+      data: Array<{
+        slug: string
+        backgroundImageUrl: string | null
+        bannerImageUrl: string | null
+        displayBackgroundImageUrl: string | null
+      }>
+    }
+    const bannerOnlyListEvent = publicListPayload.data.find(event => event.slug === 'banner-only-event')
+    const ownBackgroundListEvent = publicListPayload.data.find(event => event.slug === 'own-background-event')
+
+    expect(publicListResponse.status).toBe(200)
+    expect(bannerOnlyListEvent).toMatchObject({
+      backgroundImageUrl: null,
+      bannerImageUrl,
+      displayBackgroundImageUrl: defaultBackgroundUrl
+    })
+    expect(ownBackgroundListEvent).toMatchObject({
+      backgroundImageUrl: eventBackgroundUrl,
+      displayBackgroundImageUrl: eventBackgroundUrl
+    })
+
+    const publicDetailResponse = await harness.request('/api/public/events/banner-only-event')
+    const callerDetailResponse = await harness.request('/api/events/event_banner_only')
+    const ownBackgroundDetailResponse = await harness.request('/api/public/events/own-background-event')
+
+    expect(publicDetailResponse.status).toBe(200)
+    expect(await publicDetailResponse.json()).toMatchObject({
+      data: {
+        slug: 'banner-only-event',
+        backgroundImageUrl: null,
+        bannerImageUrl,
+        displayBackgroundImageUrl: defaultBackgroundUrl
+      }
+    })
+    expect(callerDetailResponse.status).toBe(200)
+    expect(await callerDetailResponse.json()).toMatchObject({
+      data: {
+        id: 'event_banner_only',
+        backgroundImageUrl: null,
+        bannerImageUrl,
+        displayBackgroundImageUrl: defaultBackgroundUrl
+      }
+    })
+    expect(ownBackgroundDetailResponse.status).toBe(200)
+    expect(await ownBackgroundDetailResponse.json()).toMatchObject({
+      data: {
+        slug: 'own-background-event',
+        backgroundImageUrl: eventBackgroundUrl,
+        displayBackgroundImageUrl: eventBackgroundUrl
+      }
+    })
+
+    const backgroundImageResponse = await harness.request('/api/public/events/banner-only-event/images/background')
+
+    expect(backgroundImageResponse.status).toBe(404)
+    expect(await backgroundImageResponse.json()).toMatchObject({
+      error: {
+        code: 'event_background_image_not_found'
+      }
+    })
   })
 
   test('POST /api/public/events/:slug/feedback stores anonymous completed-event feedback', async () => {

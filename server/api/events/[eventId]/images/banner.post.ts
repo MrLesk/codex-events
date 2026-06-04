@@ -18,6 +18,7 @@ import {
   routeIdParamsSchema,
   serializeEvent
 } from '#server/domains/events'
+import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { assertAuthenticatedUploadRateLimit } from '#server/utils/rate-limit'
 import { parseValidatedParams } from '#server/http/validation'
 
@@ -60,6 +61,7 @@ export default defineApiHandler(async (h3Event) => {
   const updatedEvent = await database.query.events.findFirst({
     where: eq(events.id, event.id)
   })
+  const imageOptions = await getEventDisplayImageOptions(database)
 
-  return apiData(serializeEvent(updatedEvent!))
+  return apiData(serializeEvent(updatedEvent!, undefined, undefined, imageOptions))
 })

@@ -211,6 +211,8 @@ It describes the intended persistent model at the level of entities, key fields,
 - `require_submission_demo_url` controls whether Hackathon team submissions must include a valid `demo_url`.
 - `address` is always stored for the event, but public serializers suppress it and account-scoped detail reads return it only to approved participants plus judges, staff, event admins, and platform admins.
 - `discord_server_url` is optional because not every event has a dedicated Discord server, and when present it is returned only in account-scoped detail reads for approved participants plus judges, staff, event admins, and platform admins.
+- `background_image_url` stores only the event-specific uploaded background image URL. Event read serializers expose a separate `displayBackgroundImageUrl` derived from this field or from the platform default event background image.
+- `banner_image_url` stores only the event-specific uploaded banner image URL.
 - `luma_event_url` is optional because not every event has a public Luma event page to link.
 - `luma_event_api_id` and `luma_api_key` are optional because not every event has Luma configured for approval, rejection, and attendance sync.
 - `luma_webhook_id`, `luma_webhook_secret`, `luma_webhook_status`, `luma_webhook_error`, and `luma_webhook_registered_at` store the event's webhook registration state. Webhook status is `not_configured` until the event has enough Luma configuration for registration, `configured` after Luma returns a webhook ID and signing secret, and `failed` when registration cannot be completed with the stored event API ID and key.
@@ -360,6 +362,25 @@ It describes the intended persistent model at the level of entities, key fields,
 - This singleton stores the deployment-owned support inbox and public imprint body.
 - It does not store versioned user-consent text.
 - Updating legal settings does not alter `PlatformDocument` versions or acceptance records.
+
+## PlatformSettings
+
+### Key Fields
+
+- `id`
+- `default_event_background_image_url`
+- `created_at`
+- `updated_at`
+
+### Constraints
+
+- `id = default`
+
+### Notes
+
+- This singleton stores deployment-wide presentation defaults.
+- `default_event_background_image_url` points to the managed public platform default event background image endpoint when configured.
+- Event-specific `background_image_url` values remain stored on `Event` and override this default in event display payloads.
 
 ## PlatformDocument
 
@@ -903,6 +924,7 @@ It describes the intended persistent model at the level of entities, key fields,
 - `EventRoleAssignment` belongs to `Event` and `User`
 - `EventTrack` belongs to `Event`
 - `PlatformLegalSettings` stands alone as the deployment-owned legal settings singleton
+- `PlatformSettings` stands alone as the deployment-owned presentation settings singleton
 - `PlatformDocument` stands alone as a platform-wide document
 - `UserPlatformDocumentAcceptance` belongs to `User` and `PlatformDocument`
 - `EventTermsDocument` belongs to `Event`

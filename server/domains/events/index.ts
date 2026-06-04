@@ -33,6 +33,10 @@ import type { eventLumaWebhookStatuses } from '#server/database/schema'
 import { assertAllowedState, assertGuard } from '#server/domains/lifecycle-guard'
 import { ApiError } from '#server/http/api-error'
 import { publicEventImagePath } from '#server/domains/events/images'
+import {
+  resolveEventDisplayBackgroundImageUrl,
+  type EventDisplayImageOptions
+} from '#server/domains/platform/settings'
 import { buildEventLumaWebhookUrl } from '#shared/domains/luma/webhook-url'
 
 const isoTimestampSchema = z.string().refine(
@@ -1514,7 +1518,8 @@ export function serializeEvent(
     applicationTerms: EventTermsDocumentRecord | null
     winnerTerms: EventTermsDocumentRecord | null
   },
-  tracks?: EventTrackRecord[]
+  tracks?: EventTrackRecord[],
+  options: EventDisplayImageOptions = {}
 ) {
   const isCompetitionEvent = event.eventType === 'hackathon'
   const pitchPresentationSubmissionIds = isCompetitionEvent
@@ -1529,6 +1534,7 @@ export function serializeEvent(
     description: event.description,
     agendaItems: parseEventAgendaItems(event.agendaItemsJson),
     backgroundImageUrl: event.backgroundImageUrl,
+    displayBackgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, options),
     bannerImageUrl: event.bannerImageUrl,
     lumaEventUrl: event.lumaEventUrl,
     lumaEventApiId: event.lumaEventApiId,
@@ -1603,14 +1609,14 @@ export function serializeAdminEvent(
     winnerTerms: EventTermsDocumentRecord | null
   },
   tracks?: EventTrackRecord[],
-  options?: {
+  options: {
     appBaseUrl?: string
-  }
+  } & EventDisplayImageOptions = {}
 ) {
   const appBaseUrl = options?.appBaseUrl?.trim() ?? ''
 
   return {
-    ...serializeEvent(event, currentTerms, tracks),
+    ...serializeEvent(event, currentTerms, tracks, options),
     lumaApiKey: event.lumaApiKey,
     lumaWebhookStatus: event.lumaWebhookStatus,
     lumaWebhookError: event.lumaWebhookError,
@@ -1634,7 +1640,8 @@ export function serializePublicEvent(
     applicationTerms: EventTermsDocumentRecord | null
     winnerTerms: EventTermsDocumentRecord | null
   },
-  tracks?: EventTrackRecord[]
+  tracks?: EventTrackRecord[],
+  options: EventDisplayImageOptions = {}
 ) {
   return {
     eventType: event.eventType,
@@ -1643,6 +1650,7 @@ export function serializePublicEvent(
     description: event.description,
     agendaItems: parseEventAgendaItems(event.agendaItemsJson),
     backgroundImageUrl: event.backgroundImageUrl,
+    displayBackgroundImageUrl: resolveEventDisplayBackgroundImageUrl(event, options),
     bannerImageUrl: event.bannerImageUrl,
     lumaEventUrl: event.lumaEventUrl,
     city: event.city,

@@ -19,6 +19,7 @@ import {
   serializeAdminEvent
 } from '#server/domains/events'
 import { reconcileEventLumaWebhook } from '#server/domains/events/luma-webhook-registration'
+import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { parseValidatedBody } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
@@ -127,9 +128,13 @@ export default defineApiHandler(async (h3Event) => {
   const configuredEvent = await database.query.events.findFirst({
     where: eq(events.id, eventId)
   })
-  const createdTracks = await listEventTracks(database, eventId)
+  const [createdTracks, imageOptions] = await Promise.all([
+    listEventTracks(database, eventId),
+    getEventDisplayImageOptions(database)
+  ])
 
   return apiData(serializeAdminEvent(configuredEvent!, undefined, createdTracks, {
-    appBaseUrl: useRuntimeConfig(h3Event).auth0.appBaseUrl
+    appBaseUrl: useRuntimeConfig(h3Event).auth0.appBaseUrl,
+    ...imageOptions
   }))
 })

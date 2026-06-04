@@ -422,6 +422,19 @@ export const platformLegalSettings = sqliteTable(
   ]
 )
 
+export const platformSettings = sqliteTable(
+  'platform_settings',
+  {
+    id: text('id').primaryKey(),
+    defaultEventBackgroundImageUrl: text('default_event_background_image_url'),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn()
+  },
+  table => [
+    check('platform_settings_singleton_id_check', sql`${table.id} = 'default'`)
+  ]
+)
+
 export const userPlatformDocumentAcceptances = sqliteTable(
   'user_platform_document_acceptances',
   {

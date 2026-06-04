@@ -85,13 +85,26 @@ export function eventImageObjectKey(eventId: string, slot: EventImageSlot) {
   return `events/${eventId}/${slot}-image`
 }
 
+export function platformDefaultEventBackgroundImageObjectKey() {
+  return 'platform/default-event-background-image'
+}
+
 export function publicEventImagePath(slug: string, slot: EventImageSlot) {
   return `/api/public/events/${encodeURIComponent(slug)}/images/${slot}`
+}
+
+export function publicPlatformDefaultEventBackgroundImagePath() {
+  return '/api/public/platform/event-default-background-image'
 }
 
 export function buildPublicEventImageUrl(event: H3Event, slug: string, slot: EventImageSlot) {
   const requestUrl = getRequestURL(event)
   return new URL(publicEventImagePath(slug, slot), requestUrl.origin).toString()
+}
+
+export function buildPublicPlatformDefaultEventBackgroundImageUrl(event: H3Event) {
+  const requestUrl = getRequestURL(event)
+  return new URL(publicPlatformDefaultEventBackgroundImagePath(), requestUrl.origin).toString()
 }
 
 export function getEventImagesBucket(event: H3Event): R2BucketLike {
@@ -167,6 +180,10 @@ export async function getEventImageObject(event: H3Event, eventId: string, slot:
   return await getEventImagesBucket(event).get(eventImageObjectKey(eventId, slot))
 }
 
+export async function getPlatformDefaultEventBackgroundImageObject(event: H3Event) {
+  return await getEventImagesBucket(event).get(platformDefaultEventBackgroundImageObjectKey())
+}
+
 export async function putEventImageObject(
   event: H3Event,
   eventId: string,
@@ -193,6 +210,32 @@ export async function putEventImageObject(
   )
 }
 
+export async function putPlatformDefaultEventBackgroundImageObject(
+  event: H3Event,
+  payload: {
+    contentType: string
+    data: Uint8Array
+  }
+) {
+  const normalizedData = payload.data.constructor === Uint8Array
+    ? payload.data
+    : new Uint8Array(payload.data)
+
+  await getEventImagesBucket(event).put(
+    platformDefaultEventBackgroundImageObjectKey(),
+    normalizedData,
+    {
+      httpMetadata: {
+        contentType: payload.contentType
+      }
+    }
+  )
+}
+
 export async function deleteEventImageObject(event: H3Event, eventId: string, slot: EventImageSlot) {
   await getEventImagesBucket(event).delete(eventImageObjectKey(eventId, slot))
+}
+
+export async function deletePlatformDefaultEventBackgroundImageObject(event: H3Event) {
+  await getEventImagesBucket(event).delete(platformDefaultEventBackgroundImageObjectKey())
 }

@@ -8,16 +8,20 @@ import {
   routeSlugParamsSchema,
   serializePublicEvent
 } from '#server/domains/events'
+import { getEventDisplayImageOptions } from '#server/domains/platform/settings'
 import { parseValidatedParams } from '#server/http/validation'
 
 export default defineApiHandler(async (h3Event) => {
   const { slug } = parseValidatedParams(h3Event, routeSlugParamsSchema)
   const database = getDatabase(h3Event)
   const event = await getPublicEventBySlugOrThrow(database, slug)
-  const currentTerms = await getCurrentEventTerms(database, event)
-  const tracks = await listEventTracks(database, event.id)
+  const [currentTerms, tracks, imageOptions] = await Promise.all([
+    getCurrentEventTerms(database, event),
+    listEventTracks(database, event.id),
+    getEventDisplayImageOptions(database)
+  ])
 
   return apiData({
-    ...serializePublicEvent(event, currentTerms, tracks)
+    ...serializePublicEvent(event, currentTerms, tracks, imageOptions)
   })
 })

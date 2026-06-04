@@ -53,6 +53,7 @@ This document defines the canonical permissions for the Codex event platform.
 | Assign event admins across any event | No | No | Yes |
 | View unrelated event admin detail | No | No | Yes |
 | Update platform legal settings | No | No | Yes |
+| Update platform event defaults | No | No | Yes |
 | Publish platform Privacy Policy or Platform Terms version | No | No | Yes |
 
 ## Event Lifecycle Actions
@@ -129,12 +130,15 @@ Team permissions apply only to Hackathon events.
 
 | Action | Public User | Event Admin | Platform Admin |
 | --- | --- | --- | --- |
+| View platform default event background image | Yes, when configured | Yes | Yes |
 | View uploaded public event background image | Yes, only for publicly visible events | Yes | Yes |
 | View uploaded public event banner image | Yes, only for publicly visible events | Yes | Yes |
 | Upload event background image | No | Yes | Yes |
 | Remove event background image | No | Yes | Yes |
 | Upload event banner image | No | Yes | Yes |
 | Remove event banner image | No | Yes | Yes |
+| Upload platform default event background image | No | No | Yes |
+| Remove platform default event background image | No | No | Yes |
 
 ## Submission Permissions
 

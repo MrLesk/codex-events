@@ -77,7 +77,10 @@ Key characteristics:
 
 - Multiple events can exist in parallel.
 - Each event has an `eventType` of `hackathon`, `meetup`, or `build`.
-- Each event can define a background image and a banner image.
+- Each event can define an event-specific background image and a banner image.
+- An event-specific background image overrides the platform default event background image.
+- When an event has no event-specific background image, event detail backgrounds use the platform default event background image when one is configured, even if the event has a banner image.
+- Event cards can present the event banner before the effective background image.
 - Each event can define structured agenda items for public schedule display and admin editing.
 - Each event can be marked as an in-person event.
 - Each event can optionally reference a public Luma event URL.
@@ -210,6 +213,24 @@ Rules:
 - Platform admins can update legal settings during first-run setup before current platform documents exist or have been accepted.
 - Updating legal settings does not create a new platform-document version and does not require renewed user consent.
 - If legal settings are not configured, public legal-contact behavior is explicitly unavailable rather than falling back to repository-owned operator details.
+
+### PlatformSettings
+
+Deployment-wide platform presentation defaults.
+
+Key characteristics:
+
+- Stores the default event background image URL and timestamps.
+- Has one current settings record per deployment.
+- Is separate from event-owned image fields.
+
+Rules:
+
+- Platform admins can upload or remove the default event background image.
+- The default event background image is a managed JPEG or PNG upload stored in the existing event images bucket.
+- Events keep their own `backgroundImageUrl` as the event-specific stored image value.
+- Event read payloads expose `displayBackgroundImageUrl` as the effective background image for display. It equals the event-specific background image when present and otherwise equals the platform default event background image when configured.
+- Public event background image routes serve only event-specific uploaded background images, not the platform default image.
 
 ### EventTermsDocument
 
